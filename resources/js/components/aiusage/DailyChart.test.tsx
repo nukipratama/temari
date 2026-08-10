@@ -22,24 +22,24 @@ describe('DailyChart', () => {
         render(<DailyChart data={twoDays} currency="USD" />);
 
         expect(screen.getByText('2 days')).toBeInTheDocument();
-        expect(screen.getByText('$0,05')).toBeInTheDocument();
+        expect(screen.getByText('$0.05')).toBeInTheDocument();
     });
 
     it('labels each bar with its day and token total for screen readers', () => {
         render(<DailyChart data={twoDays} currency="USD" />);
 
-        expect(screen.getByLabelText('18 Mei: 450 tokens')).toBeInTheDocument();
-        expect(screen.getByLabelText('19 Mei: 430 tokens')).toBeInTheDocument();
+        expect(screen.getByLabelText('May 18: 450 tokens')).toBeInTheDocument();
+        expect(screen.getByLabelText('May 19: 430 tokens')).toBeInTheDocument();
     });
 
     it('scales the tallest bar to full height and the rest against it', () => {
         render(<DailyChart data={twoDays} currency="USD" />);
 
-        expect(screen.getByLabelText('18 Mei: 450 tokens').style.height).toBe(
+        expect(screen.getByLabelText('May 18: 450 tokens').style.height).toBe(
             '100%',
         );
         expect(
-            screen.getByLabelText('19 Mei: 430 tokens').style.height,
+            screen.getByLabelText('May 19: 430 tokens').style.height,
         ).not.toBe('100%');
     });
 
@@ -51,7 +51,7 @@ describe('DailyChart', () => {
             />,
         );
 
-        expect(screen.getByLabelText('19 Mei: 0 tokens').style.height).toBe(
+        expect(screen.getByLabelText('May 19: 0 tokens').style.height).toBe(
             '2%',
         );
     });
@@ -59,7 +59,7 @@ describe('DailyChart', () => {
     it('uses the short weekday axis label for a window of 14 days or fewer', () => {
         render(<DailyChart data={twoDays} currency="USD" />);
 
-        expect(screen.getByText('Sen, 18')).toBeInTheDocument();
+        expect(screen.getByText('18 Mon')).toBeInTheDocument();
     });
 
     it('falls back to a truncated day-month axis label with a title tooltip past 14 days', () => {
@@ -67,11 +67,13 @@ describe('DailyChart', () => {
             <DailyChart data={manyDays(15)} currency="USD" />,
         );
 
-        expect(screen.queryByText(/^Sen, /)).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/^\d+ (Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/),
+        ).not.toBeInTheDocument();
 
         const axisLabels = container.querySelectorAll('span[title]');
         expect(axisLabels).toHaveLength(15);
-        expect(axisLabels[0].textContent).toBe('1 Mei');
-        expect(axisLabels[0].getAttribute('title')).toBe('1 Mei');
+        expect(axisLabels[0].textContent).toBe('May 1');
+        expect(axisLabels[0].getAttribute('title')).toBe('May 1');
     });
 });

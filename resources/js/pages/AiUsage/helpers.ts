@@ -4,7 +4,7 @@ import { formatMonthDayId, formatWeekdayDayId } from '@/lib/pace';
 
 import type { RangeToken } from './types';
 
-const numberFmt = new Intl.NumberFormat('id-ID');
+const numberFmt = new Intl.NumberFormat('en-US');
 
 export function fmt(n: number): string {
     return numberFmt.format(n);
@@ -12,7 +12,7 @@ export function fmt(n: number): string {
 
 /** Format a cost as a currency string, scaled to the budget's currency. */
 export function formatCost(amount: number, currency: string): string {
-    return new Intl.NumberFormat('id-ID', {
+    return new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency,
         currencyDisplay: 'narrowSymbol',

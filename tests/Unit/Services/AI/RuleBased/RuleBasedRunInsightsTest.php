@@ -58,7 +58,7 @@ it('blames the heat rather than the aerobic base when a hot run decouples', func
 
 it('calls moderate decoupling normal and stays silent below the floor', function (): void {
     expect(insights()->technical(detailWith(['stream_summary' => ['decoupling_pct' => 3.2]])))
-        ->toContain('decoupling +3,2%, still within normal range')
+        ->toContain('decoupling +3.2%, still within normal range')
         ->and(insights()->technical(detailWith(['stream_summary' => ['decoupling_pct' => 1.1]])))
         ->not->toContain('decoupling');
 });
@@ -144,7 +144,7 @@ it('notes the trailing partial segment as a finish, not a full km', function ():
         'partial_split' => ['distance_m' => 700, 'pace' => '5:12'],
     ]]);
 
-    expect(insights()->splits($detail))->toBe('Closed out the last 0,7 km at 5:12.');
+    expect(insights()->splits($detail))->toBe('Closed out the last 0.7 km at 5:12.');
 });
 
 it('praises pace consistency when the run was not already called even', function (): void {

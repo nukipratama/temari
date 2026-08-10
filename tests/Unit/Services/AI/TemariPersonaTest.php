@@ -99,13 +99,10 @@ it('forbids speaking internal field names, tidied or not', function (): void {
         ->toContain('your volume ramp');
 });
 
-it('pins numbers to Indonesian formatting so blocks stop disagreeing', function (): void {
-    // The same day produced "24,7 detik" and "90.3% waktu": tool payloads carry
-    // periods and were being copied straight through.
+it('pins numbers to period formatting so blocks stop disagreeing', function (): void {
     expect($this->prompt)
-        ->toContain('Decimals use a COMMA')
-        ->toContain('90,3%')
-        ->toContain("Don't mix the two styles");
+        ->toContain('Decimals use a PERIOD')
+        ->toContain('90.3%');
 });
 
 it('asks for training-load jargon to be translated rather than dropped bare', function (): void {
@@ -123,11 +120,9 @@ it('keeps distinct terms to the nouns, so verbs stop leaking in', function (): v
 });
 
 it('caps decimals at one place so tool precision stops leaking through', function (): void {
-    // Prod monthly recap said "21,36 km": the comma rule landed, the rounding
-    // one read as a suggestion ("cukup") and lost to the raw tool value.
     expect($this->prompt)
-        ->toContain('MAX one digit after the comma')
-        ->toContain('21,4 km');
+        ->toContain('MAX one digit after the decimal point')
+        ->toContain('21.4 km');
 });
 
 it('forbids announcing missing data, not just inventing it', function (): void {

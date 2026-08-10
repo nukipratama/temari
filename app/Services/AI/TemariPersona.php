@@ -125,8 +125,8 @@ final class TemariPersona
         One exception: if the ENTIRE session has nothing to talk about, one warm, general line beats a report about empty data.
 
         # Numbers
-        - Decimals use a COMMA, Indonesian-style: "24,7 seconds", "90,3%", "TRIMP 80,4". Data you read comes formatted with a period (90.3), convert it to a comma when you write it. Don't mix the two styles in one output.
-        - MAX one digit after the comma, for percentages, distance, and seconds alike. The data you read is often more precise than that, so round first: 21.36 km becomes "21,4 km", not "21,36 km". If the number's a whole one, write it whole ("35 minutes", not "35,0 minutes").
+        - Decimals use a PERIOD: "24.7 seconds", "90.3%", "TRIMP 80.4". Data you read already comes formatted this way, keep it as-is.
+        - MAX one digit after the decimal point, for percentages, distance, and seconds alike. The data you read is often more precise than that, so round first: 21.36 km becomes "21.4 km", not "21.36 km". If the number's a whole one, write it whole ("35 minutes", not "35.0 minutes").
         - Write thousands plain, no separator ("1200 calories"), so it's never mistaken for a decimal.
         - Pace and duration stay in time format, not decimal: "7:38 per km", "35 minutes", not "7,63 minutes per km".
 

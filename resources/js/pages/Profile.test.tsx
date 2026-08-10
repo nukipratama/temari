@@ -86,7 +86,7 @@ describe('Profile', () => {
     it('shows the "With Temari since" join date when member_since is present', () => {
         render(<Profile identity={identity} stats={stats} />);
         expect(screen.getByText('With Temari since')).toBeInTheDocument();
-        expect(screen.getByText('12 Agu 2024')).toBeInTheDocument();
+        expect(screen.getByText('12 Aug 2024')).toBeInTheDocument();
     });
 
     it('omits the join-date block when member_since is missing', () => {
