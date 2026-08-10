@@ -6,8 +6,8 @@ import CtlTrendChart, {
 } from '@/components/race/CtlTrendChart';
 import Card from '@/components/ui/Card';
 import EmptyPanel from '@/components/ui/EmptyPanel';
-import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
+import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
@@ -100,14 +100,11 @@ export default function Race({
             <Head title="Race" />
             <PageContainer>
                 <header>
-                    <Eyebrow token="hero" tone="ink-2" className="mb-3.5">
-                        Race
-                    </Eyebrow>
-                    <h1 className="font-display text-display-lg text-ink">
+                    <PageHero eyebrow="Race">
                         {race
                             ? 'Your race, on the calendar.'
                             : 'Give the plan something to aim at.'}
-                    </h1>
+                    </PageHero>
                     <p className="mt-2 max-w-xl font-sans text-sm leading-relaxed text-ink-2">
                         Set a race and Temari projects a realistic finish time
                         from your own PRs, then tracks your fitness trend

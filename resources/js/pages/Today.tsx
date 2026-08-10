@@ -19,8 +19,8 @@ import TemariVoiceCard from '@/components/dashboard/TemariVoiceCard';
 import VitalChips from '@/components/dashboard/VitalChips';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
 import { type TemariPose } from '@/components/temari/TemariProto';
-import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
+import PageHero from '@/components/ui/PageHero';
 import { appLayout } from '@/layouts/appLayout';
 import { formatTimeId, formatWeekdayDateId } from '@/lib/pace';
 import { VIBE_TO_POSE, poseForRun } from '@/lib/temariPose';
@@ -67,16 +67,13 @@ export default function Today({
             <PageContainer>
                 {/* HEADLINE */}
                 <header className="mb-8">
-                    <Eyebrow token="hero" tone="ink-2" className="mb-3.5">
-                        {dateLine}
-                    </Eyebrow>
-                    <h1 className="font-display text-display-2xl text-ink">
+                    <PageHero size="2xl" eyebrow={dateLine}>
                         Hey, {firstName}
                         <br />
                         <span className="italic text-horizon">
                             {vibeSubtitle}
                         </span>
-                    </h1>
+                    </PageHero>
                 </header>
 
                 {recentRuns.length === 0 ? (

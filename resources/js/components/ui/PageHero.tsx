@@ -3,48 +3,74 @@ import type { ReactNode } from 'react';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 
+export type PageHeroSize = '2xl' | 'xl' | 'lg' | 'md' | 'sm';
+
 interface PageHeroProps {
-    eyebrow: string;
-    lead?: string;
-    emph: ReactNode;
-    /** Set when the hero sits on a dark sky/horizon panel — flips text + accent tones. */
+    /** A plain string renders as the standard hero eyebrow. Pass a ReactNode
+     *  (e.g. a <BackLink>, or an <Eyebrow> with its own className) for
+     *  anything else. Omit for a headline with no label. */
+    eyebrow?: ReactNode;
+    /** Display-scale step (`text-display-{size}`). Default 'lg', the app's
+     *  standard page-title weight; pick a bigger/smaller step to shape the
+     *  page's own top-fold hierarchy. */
+    size?: PageHeroSize;
+    /** Dark HeroPanel/sky-panel context: cream headline text. Default false. */
     onSky?: boolean;
-    /** Drop the italic accent on the emphasized portion. Use on data-led pages
-     *  (Jejak, Kalender, AiUsage) so the headline reads less editorial. */
-    noItalic?: boolean;
+    /** Italicize the whole headline (Temari-voice register). Default false —
+     *  compose an inline <em>/<span> in children for partial emphasis instead. */
+    italic?: boolean;
     className?: string;
+    /** Full headline content — line breaks and inline emphasis are
+     *  caller-composed so each page keeps its own top-fold shape. */
+    children: ReactNode;
 }
 
-const HEADLINE_ON_SKY = 'font-display text-display-xl text-cream';
-const HEADLINE_ON_CREAM = 'font-display text-display-lg text-ink';
+const SIZE_CLASS: Record<PageHeroSize, string> = {
+    '2xl': 'text-display-2xl',
+    xl: 'text-display-xl',
+    lg: 'text-display-lg',
+    md: 'text-display-md',
+    sm: 'text-display-sm',
+};
 
+/**
+ * The shared "eyebrow + headline" top-fold shell used across page headers.
+ * Owns only the h1's font/size/color; eyebrow content and headline markup
+ * are fully caller-composed as children.
+ */
 export default function PageHero({
     eyebrow,
-    lead,
-    emph,
+    size = 'lg',
     onSky = false,
-    noItalic = false,
+    italic = false,
     className,
+    children,
 }: Readonly<PageHeroProps>) {
-    return (
-        <div className={className}>
+    const eyebrowNode =
+        typeof eyebrow === 'string' ? (
             <Eyebrow
                 token="hero"
                 tone={onSky ? 'horizon' : 'ink-2'}
-                className="mb-3"
+                className="mb-3.5"
             >
                 {eyebrow}
             </Eyebrow>
-            <h1 className={onSky ? HEADLINE_ON_SKY : HEADLINE_ON_CREAM}>
-                {lead && <>{lead} </>}
-                <em
-                    className={cn(
-                        noItalic ? 'not-italic' : 'italic',
-                        onSky ? 'text-horizon' : 'text-horizon-deep',
-                    )}
-                >
-                    {emph}
-                </em>
+        ) : (
+            eyebrow
+        );
+
+    return (
+        <div className={className}>
+            {eyebrowNode}
+            <h1
+                className={cn(
+                    'font-display',
+                    SIZE_CLASS[size],
+                    italic && 'italic',
+                    onSky ? 'text-cream' : 'text-ink',
+                )}
+            >
+                {children}
             </h1>
         </div>
     );

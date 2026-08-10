@@ -312,6 +312,20 @@ body {
     .scrollbar-hide::-webkit-scrollbar {
         display: none;
     }
+
+    /* Breaks a section out of a centered, padded parent (e.g. PageContainer)
+       to fill the full viewport width. 50vw is measured from the true
+       viewport rather than the nearest containing block, so it escapes
+       correctly regardless of the parent's own max-width or padding —
+       a proper container-escape, not a negative-margin hack tied to a
+       specific parent's padding value. Safe against the `overflow-x: clip`
+       guard on html/body above: on a scrollbar-gutter browser 100vw can
+       run a few px past the visual viewport, and clip absorbs that
+       instead of it becoming visible horizontal scroll. */
+    .full-bleed {
+        width: 100vw;
+        margin-inline: calc(50% - 50vw);
+    }
 }
 
 /* Reusable atomic component classes — the duplicated combos that recur

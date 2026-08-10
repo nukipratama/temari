@@ -115,10 +115,12 @@ export default function RunsIndex({
                                 ? `History · ${runs.length} results`
                                 : `History · ${runs.length} activities`
                         }
-                        lead="Every run"
-                        emph="has a story."
-                        noItalic
-                    />
+                    >
+                        Every run{' '}
+                        <em className="not-italic text-horizon-deep">
+                            has a story.
+                        </em>
+                    </PageHero>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <RiwayatTabs active="jejak" />
                         <RiwayatFilter {...sections} onReset={resetFilters} />

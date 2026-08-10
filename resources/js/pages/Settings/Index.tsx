@@ -67,11 +67,10 @@ export default function Settings({
                     and from the avatar menu on every page, so a breadcrumb here
                     would be chrome without a job. */}
                 <header className="mb-8">
-                    <PageHero
-                        eyebrow="Settings"
-                        lead="Set up Temari,"
-                        emph="your way."
-                    />
+                    <PageHero eyebrow="Settings">
+                        Set up Temari,{' '}
+                        <em className="italic text-horizon-deep">your way.</em>
+                    </PageHero>
                 </header>
 
                 {/* One notification section, not three. The user holds a single

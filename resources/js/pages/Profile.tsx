@@ -13,6 +13,7 @@ import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
 import PageContainer from '@/components/ui/PageContainer';
+import PageHero from '@/components/ui/PageHero';
 import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
 import { appLayout } from '@/layouts/appLayout';
@@ -98,20 +99,23 @@ export default function Profile({
             <Head title="Profile" />
             <PageContainer>
                 <header className="mb-8">
-                    <Eyebrow
-                        token="hero"
-                        tone="ink-2"
-                        className="mb-3.5 lg:text-xs"
+                    <PageHero
+                        eyebrow={
+                            <Eyebrow
+                                token="hero"
+                                tone="ink-2"
+                                className="mb-3.5 lg:text-xs"
+                            >
+                                {eyebrowParts.join(' · ')}
+                            </Eyebrow>
+                        }
                     >
-                        {eyebrowParts.join(' · ')}
-                    </Eyebrow>
-                    <h1 className="font-display text-display-lg text-ink">
                         {firstName ? `${firstName} Runner,` : 'Runner,'}
                         <br />
                         <em className="italic text-horizon-deep">
                             your story.
                         </em>
-                    </h1>
+                    </PageHero>
                 </header>
 
                 <HeroPanel className="lg:px-9 lg:py-8">
