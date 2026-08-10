@@ -61,12 +61,16 @@ export interface ShareKartuData {
 }
 
 export type Format = 'story' | 'feed';
-export type Layout = 'kartu' | 'rute';
+export type Layout = 'kartu' | 'rute' | 'stats';
+export type ColorwayId = 'navy' | 'dawn' | 'ember';
 
 export interface ShareCardConfig {
     kartu: ShareKartuData;
     layout: Layout;
     format: Format;
+    /** Defaults to 'navy' — the original single look, so every existing
+     *  caller that doesn't pass one keeps today's exact output. */
+    colorway?: ColorwayId;
 }
 
 const DIMS: Record<Format, { w: number; h: number }> = {
@@ -94,6 +98,10 @@ const C = {
     line: '#e3dccd',
     inkOnSky: '#b8ad97',
     rarity: RARITY_HEX,
+    // Ember colorway's dark bg/surface: the app.css `--color-ember`/`-deep`
+    // hue (#c4623f) carried down to canvas-background darkness, the same way
+    // `horizon` sits far above `sky`/`skyDeep` in lightness.
+    emberDark: '#2a160f',
 };
 
 // Every card gets the SAME bright border bloom regardless of rarity — unlike
@@ -104,29 +112,73 @@ const BORDER_GLOW_BLUR = 60;
 
 interface Palette {
     isDark: boolean;
+    /** Full-canvas fill (`paintBackground`) and the card body fill
+     *  (`drawCardFrame`) — deliberately the same tone so the rounded corners
+     *  reveal a full-bleed card rather than a floating one on a backdrop. */
+    bg: string;
+    surface: string;
+    /** Inset "pearl" panels that pop off `surface` — the hero art window,
+     *  bright regardless of colorway (poster art, not page chrome). */
+    surfaceSunken: string;
     text: string;
+    /** Run-name accent. Always `C.horizon` — the brand bridge, never varies. */
     name: string;
     meta: string;
     divider: string;
     quote: string;
+    inkOnSky: string;
 }
 
-// One look only: every template renders on dark navy (the old Inverted theme).
-const PALETTE: Palette = {
-    isDark: true,
-    text: C.cream,
-    name: C.horizon,
-    meta: 'rgba(246,241,232,0.72)',
-    divider: 'rgba(246,241,232,0.18)',
-    quote: 'rgba(246,241,232,0.88)',
+// Three looks: the original dark navy, a light "dawn" swap, and a second
+// dark variant hued from the ember mood family. `horizon` (name) and
+// `rarity` never appear here — both are the fixed brand/collectible bridge,
+// constant across every colorway.
+export const COLORWAYS: Record<ColorwayId, Palette> = {
+    navy: {
+        isDark: true,
+        bg: C.skyDeep,
+        surface: C.skyDeep,
+        surfaceSunken: C.creamDeep,
+        text: C.cream,
+        name: C.horizon,
+        meta: 'rgba(246,241,232,0.72)',
+        divider: 'rgba(246,241,232,0.18)',
+        quote: 'rgba(246,241,232,0.88)',
+        inkOnSky: C.inkOnSky,
+    },
+    dawn: {
+        isDark: false,
+        bg: C.cream,
+        surface: C.cream,
+        surfaceSunken: C.creamDeep,
+        text: C.ink,
+        name: C.horizon,
+        meta: 'rgba(26,24,18,0.72)',
+        divider: 'rgba(26,24,18,0.18)',
+        quote: 'rgba(26,24,18,0.88)',
+        inkOnSky: C.ink3,
+    },
+    ember: {
+        isDark: true,
+        bg: C.emberDark,
+        surface: C.emberDark,
+        surfaceSunken: C.creamDeep,
+        text: C.cream,
+        name: C.horizon,
+        meta: 'rgba(246,241,232,0.72)',
+        divider: 'rgba(246,241,232,0.18)',
+        quote: 'rgba(246,241,232,0.88)',
+        inkOnSky: C.inkOnSky,
+    },
 };
 
 function paintBackground(
     ctx: CanvasRenderingContext2D,
     w: number,
     h: number,
+    pal: Palette,
 ): void {
-    ctx.fillStyle = C.skyDeep;
+    ctx.fillStyle = pal.bg;
     ctx.fillRect(0, 0, w, h);
 }
 
@@ -198,11 +250,12 @@ function drawCardFrame(
     w: number,
     h: number,
     rarityCol: string,
+    pal: Palette,
 ): void {
     const border = 12;
     const radius = 44;
     roundRectPath(ctx, 0, 0, w, h, radius);
-    ctx.fillStyle = C.skyDeep;
+    ctx.fillStyle = pal.surface;
     ctx.fill();
     ctx.lineWidth = border;
     ctx.strokeStyle = rarityCol;
@@ -540,6 +593,7 @@ function ruteKmRow(
 function ruteStatGridRow(
     ctx: CanvasRenderingContext2D,
     k: ShareKartuData,
+    pal: Palette,
     w: number,
     story: boolean,
     draw: boolean,
@@ -552,7 +606,7 @@ function ruteStatGridRow(
     }
     y += (story ? 64 : 40) + gapBonus;
     if (draw) {
-        drawHeroStatGrid(ctx, cells, PAD, y, w - PAD * 2, story);
+        drawHeroStatGrid(ctx, cells, pal, PAD, y, w - PAD * 2, story);
     }
     return (
         y +
@@ -605,7 +659,7 @@ function drawRuteBlock(
 ): number {
     y = ruteNameRow(ctx, k, pal, w, story, draw, y);
     y = ruteKmRow(ctx, k, pal, w, rarityCol, story, draw, y, gapBonus);
-    y = ruteStatGridRow(ctx, k, w, story, draw, y, gapBonus);
+    y = ruteStatGridRow(ctx, k, pal, w, story, draw, y, gapBonus);
     y = ruteBadgesRow(ctx, k, w, story, draw, y, gapBonus);
     return y;
 }
@@ -622,7 +676,7 @@ function drawRute(d: DrawCtx): void {
     const story = cfg.format === 'story';
     const rarityCol = C.rarity[k.rarity] ?? C.line;
     paintGlow(ctx, w / 2, h * 0.38, w * 0.5);
-    drawCardFrame(ctx, w, h, rarityCol);
+    drawCardFrame(ctx, w, h, rarityCol, pal);
     drawBrand(ctx, w - PAD, PAD, pal.isDark, bunny);
     drawRarityFlag(ctx, PAD, PAD, k.rarity);
 
@@ -804,6 +858,7 @@ function drawHeroArtWindow(
     rarityCol: string,
     moodCol: string,
     story: boolean,
+    pal: Palette,
 ): void {
     const r = 24;
     ctx.save();
@@ -812,9 +867,12 @@ function drawHeroArtWindow(
 
     // Pearl backdrop: a light cream gradient with real top-to-bottom depth, so
     // the route reads with contrast instead of floating on flat off-white.
+    // Always a bright poster-art window regardless of colorway (`surfaceSunken`
+    // stays the cream family in every colorway), so the route lifts off it the
+    // same way on navy, dawn, and ember alike.
     const bg = ctx.createLinearGradient(box.x, box.y, box.x, box.y + box.h);
     bg.addColorStop(0, '#fcf9f3');
-    bg.addColorStop(1, C.creamDeep);
+    bg.addColorStop(1, pal.surfaceSunken);
     ctx.fillStyle = bg;
     ctx.fillRect(box.x, box.y, box.w, box.h);
 
@@ -899,6 +957,7 @@ interface HeroBlock {
     k: ShareKartuData;
     box: { x: number; y: number; w: number; h: number };
     rarityCol: string;
+    pal: Palette;
     story: boolean;
     /** false = measure only (advance the cursor without painting). */
     draw: boolean;
@@ -951,7 +1010,7 @@ function drawHeroBlock(s: HeroBlock): number {
  * count is identical in the measure + draw passes so sizing is stable.
  */
 function heroNameRow(s: HeroBlock, y: number): number {
-    const { ctx, k, box, story, draw } = s;
+    const { ctx, k, box, story, draw, pal } = s;
     const nameSize = story ? box.w * 0.099 : box.w * 0.084;
     ctx.font = `700 ${nameSize}px "Oswald"`;
     ctx.letterSpacing = '-1px'; // condensed + tight = athletic
@@ -962,7 +1021,7 @@ function heroNameRow(s: HeroBlock, y: number): number {
     const firstBaseline = y + lineH;
     const lastBaseline = y + lineH * lines.length;
     if (draw) {
-        ctx.fillStyle = C.cream;
+        ctx.fillStyle = pal.text;
         lines.forEach((ln, i) =>
             ctx.fillText(ln, box.x + box.w / 2, firstBaseline + i * lineH),
         );
@@ -973,7 +1032,7 @@ function heroNameRow(s: HeroBlock, y: number): number {
 
 /** KM hero number + "KM" suffix, centred as a group (number floods horizon). */
 function heroKmRow(s: HeroBlock, y: number): number {
-    const { ctx, k, box, story, draw, rarityCol } = s;
+    const { ctx, k, box, story, draw, rarityCol, pal } = s;
     const kmSize = story ? box.w * 0.135 : box.w * 0.12;
     const suffixSize = story ? 28 : 24;
     const gap = 16;
@@ -994,7 +1053,7 @@ function heroKmRow(s: HeroBlock, y: number): number {
         ctx.fillText(k.km, startX, y);
         ctx.letterSpacing = '0px';
         ctx.font = `700 ${suffixSize}px "JetBrains Mono"`;
-        ctx.fillStyle = C.inkOnSky;
+        ctx.fillStyle = pal.inkOnSky;
         ctx.fillText('KM', startX + kmW + gap, y);
     }
     return y;
@@ -1089,7 +1148,7 @@ function heroStatGridRow(s: HeroBlock, y: number): number {
     }
     y += (story ? 30 : 22) + (s.gapBonus ?? 0);
     if (draw) {
-        drawHeroStatGrid(ctx, cells, box.x, y, box.w, story);
+        drawHeroStatGrid(ctx, cells, s.pal, box.x, y, box.w, story);
     }
     return (
         y +
@@ -1173,7 +1232,7 @@ function drawBadgesRow(
  * it's truncated to whatever width the short wind + date tail leaves.
  */
 function heroContextRow(s: HeroBlock, y: number): number {
-    const { ctx, k, box, story, draw } = s;
+    const { ctx, k, box, story, draw, pal } = s;
     // Keep the clock time alongside the day (date is "5 Jul 2026\n06.30").
     const dateStr = k.date ? k.date.replace('\n', ' · ') : null;
     const parts = [
@@ -1189,7 +1248,7 @@ function heroContextRow(s: HeroBlock, y: number): number {
         // Same size + style in both formats — this row reads as small metadata
         // either way, no reason for feed to shrink it further than story.
         ctx.font = '500 29px "JetBrains Mono"';
-        ctx.fillStyle = C.cream;
+        ctx.fillStyle = pal.text;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
         ctx.fillText(
@@ -1251,6 +1310,7 @@ const HERO_STAT_ROW_H = { story: 92, feed: 74 } as const;
 function drawHeroStatGrid(
     ctx: CanvasRenderingContext2D,
     cells: Array<{ label: string; value: string }>,
+    pal: Palette,
     left: number,
     y: number,
     w: number,
@@ -1269,7 +1329,7 @@ function drawHeroStatGrid(
         ctx.textBaseline = 'alphabetic';
         ctx.font = `700 ${labelSize}px "JetBrains Mono"`;
         ctx.letterSpacing = '2px';
-        ctx.fillStyle = C.inkOnSky;
+        ctx.fillStyle = pal.inkOnSky;
         ctx.fillText(cell.label, cx, cy + labelSize);
         ctx.letterSpacing = '0px';
         // Shrink the value to fit its column so long values (e.g. "39 min 10
@@ -1280,7 +1340,7 @@ function drawHeroStatGrid(
             vSize -= 2;
             ctx.font = `700 ${vSize}px "JetBrains Mono"`;
         }
-        ctx.fillStyle = C.cream;
+        ctx.fillStyle = pal.text;
         ctx.fillText(cell.value, cx, cy + labelSize + valueSize + 4);
     });
     ctx.textAlign = 'left';
@@ -1326,14 +1386,14 @@ function drawZoneBar(
  * Mirrors the React Kartu component.
  */
 function drawHero(d: DrawCtx): void {
-    const { ctx, w, h, cfg, moodBunny } = d;
+    const { ctx, w, h, cfg, pal, moodBunny } = d;
     const k = cfg.kartu;
     const story = cfg.format === 'story';
     const rarityCol = C.rarity[k.rarity] ?? C.line;
     const moodCol = moodSigilColor(k.mood);
 
     paintGlow(ctx, w / 2, h * 0.36, w * 0.5);
-    drawCardFrame(ctx, w, h, rarityCol);
+    drawCardFrame(ctx, w, h, rarityCol, pal);
 
     const cx = 0;
     const cy = 0;
@@ -1354,6 +1414,7 @@ function drawHero(d: DrawCtx): void {
         k,
         box: { x: innerX, y, w: innerW, h: 0 },
         rarityCol,
+        pal,
         story,
         draw,
         gapBonus,
@@ -1380,13 +1441,99 @@ function drawHero(d: DrawCtx): void {
         rarityCol,
         moodCol,
         story,
+        pal,
     );
     drawHeroBlock(makeBlock(innerTop + artH + blockGap, true, gapBonus));
+}
+
+/**
+ * Stats-grid poster: no route dependency, so it's the one template still
+ * available on a no-GPS run. A centred name over a 2x2 grid of hero-sized
+ * stat tiles — distance, pace, duration, and heart rate, the four numbers
+ * present on nearly every run regardless of GPS or sensor coverage. Tiles sit
+ * on `pal.surfaceSunken` (the same bright pearl tone as the hero's art
+ * window in every colorway), so their label/value ink stays the fixed dark
+ * `C.ink3`/`C.ink` rather than tracking the card's own `pal.text`.
+ */
+function drawStats(d: DrawCtx): void {
+    const { ctx, w, h, cfg, pal, bunny } = d;
+    const k = cfg.kartu;
+    const story = cfg.format === 'story';
+    const rarityCol = C.rarity[k.rarity] ?? C.line;
+
+    paintGlow(ctx, w / 2, h * 0.3, w * 0.5);
+    drawCardFrame(ctx, w, h, rarityCol, pal);
+    drawBrand(ctx, w - PAD, PAD, pal.isDark, bunny);
+    drawRarityFlag(ctx, PAD, PAD, k.rarity);
+
+    const nameSize = story ? w * 0.088 : w * 0.076;
+    ctx.font = `700 ${nameSize}px "Oswald"`;
+    ctx.letterSpacing = '-1px';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    const nameLines = wrapText(ctx, k.name.toUpperCase(), w - PAD * 2).slice(
+        0,
+        2,
+    );
+    const nameLineH = nameSize * 1.05;
+    let ny = PAD + (story ? 190 : 160) + nameLineH;
+    ctx.fillStyle = pal.text;
+    nameLines.forEach((ln) => {
+        ctx.fillText(ln, w / 2, ny);
+        ny += nameLineH;
+    });
+    ctx.letterSpacing = '0px';
+
+    const cells: Array<{ label: string; value: string }> = [
+        { label: 'DISTANCE', value: `${k.km} km` },
+        { label: 'PACE', value: k.pace ? `${k.pace}/km` : '—' },
+        { label: 'DURATION', value: k.durasi },
+        { label: 'HR', value: k.hr ?? '—' },
+    ];
+
+    const gridTop = ny + (story ? 64 : 44);
+    const gridBottom = h - PAD - (story ? 96 : 76);
+    const gap = story ? 28 : 20;
+    const cellW = (w - PAD * 2 - gap) / 2;
+    const cellH = (gridBottom - gridTop - gap) / 2;
+    const labelSize = story ? 26 : 21;
+    const valueSize = story ? 76 : 58;
+    const maxValueW = cellW - 48;
+
+    cells.forEach((cell, i) => {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        const x = PAD + col * (cellW + gap);
+        const y = gridTop + row * (cellH + gap);
+        roundRectPath(ctx, x, y, cellW, cellH, 32);
+        ctx.fillStyle = pal.surfaceSunken;
+        ctx.fill();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.font = `700 ${labelSize}px "JetBrains Mono"`;
+        ctx.letterSpacing = '3px';
+        ctx.fillStyle = C.ink3;
+        ctx.fillText(cell.label, x + cellW / 2, y + cellH * 0.4);
+        ctx.letterSpacing = '0px';
+
+        let vSize = valueSize;
+        ctx.font = `700 ${vSize}px "Oswald"`;
+        while (vSize > 28 && ctx.measureText(cell.value).width > maxValueW) {
+            vSize -= 3;
+            ctx.font = `700 ${vSize}px "Oswald"`;
+        }
+        ctx.fillStyle = C.ink;
+        ctx.fillText(cell.value, x + cellW / 2, y + cellH * 0.74);
+    });
+
+    drawDateFooter(d);
 }
 
 const TEMPLATES: Record<Layout, (d: DrawCtx) => void> = {
     kartu: drawHero,
     rute: drawRute,
+    stats: drawStats,
 };
 
 /**
@@ -1406,12 +1553,12 @@ export async function drawShareCard(
     }
 
     await ensureFonts();
-    const pal = PALETTE;
-    const bunny = await loadBunny('cream');
+    const pal = COLORWAYS[cfg.colorway ?? 'navy'];
+    const bunny = await loadBunny(pal.isDark ? 'cream' : 'ink');
     const moodBunny = await loadBunny('ink', moodSigilColor(cfg.kartu.mood));
 
     ctx.clearRect(0, 0, w, h);
-    paintBackground(ctx, w, h);
+    paintBackground(ctx, w, h, pal);
 
     const d: DrawCtx = { ctx, w, h, cfg, pal, bunny, moodBunny };
     TEMPLATES[cfg.layout](d);

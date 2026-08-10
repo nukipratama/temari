@@ -14,6 +14,13 @@ vi.mock('@/lib/shareCard', () => ({
     shareCardBlob: vi.fn(() =>
         Promise.resolve(new Blob(['x'], { type: 'image/png' })),
     ),
+    // The modal only reads `.surface` (swatch preview colour) — the real
+    // module has the full Palette shape, tested on its own in shareCard.test.ts.
+    COLORWAYS: {
+        navy: { surface: '#161b33' },
+        dawn: { surface: '#f6f1e8' },
+        ember: { surface: '#3a2015' },
+    },
 }));
 
 // jsdom doesn't implement ClipboardItem
@@ -153,8 +160,10 @@ describe('ShareCardModal', () => {
         render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
         const kartuBtn = screen.getByRole('button', { name: 'Card' });
         const ruteBtn = screen.getByRole('button', { name: 'Route' });
+        const statsBtn = screen.getByRole('button', { name: 'Stats' });
         expect(kartuBtn).toBeInTheDocument();
         expect(ruteBtn).toBeInTheDocument();
+        expect(statsBtn).toBeInTheDocument();
         // The dropdown and the trimmed Struk template are gone.
         expect(screen.queryByLabelText('Pilih gaya kartu')).toBeNull();
         expect(screen.queryByRole('button', { name: 'Receipt' })).toBeNull();
@@ -163,17 +172,40 @@ describe('ShareCardModal', () => {
         expect(screen.getAllByText(/Counter Kick/).length).toBeGreaterThan(0);
     });
 
-    it('hides the Gaya picker when the card has no route', () => {
+    it('hides only the Route template for a no-GPS run, keeping Card and Stats', () => {
         render(
             <ShareCardModal
                 kartu={{ ...kartu, polyline: null }}
                 onClose={vi.fn()}
             />,
         );
-        // Only Kartu remains, so there's nothing to pick — the picker is hidden.
+        // Route needs a polyline the run doesn't have; Card and Stats don't.
         expect(screen.queryByRole('button', { name: 'Route' })).toBeNull();
-        expect(screen.queryByRole('button', { name: 'Card' })).toBeNull();
-        expect(screen.queryByText('Gaya')).toBeNull();
+        expect(
+            screen.getByRole('button', { name: 'Card' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Stats' }),
+        ).toBeInTheDocument();
+    });
+
+    it('clamps a stale stats-incompatible layout back to kartu for a no-GPS run, same as rute', () => {
+        const { rerender } = render(
+            <ShareCardModal kartu={kartu} onClose={vi.fn()} />,
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Route' }));
+        rerender(
+            <ShareCardModal
+                kartu={{ ...kartu, polyline: null }}
+                onClose={vi.fn()}
+            />,
+        );
+        // The Route button is gone, and Card is selectable again — the stale
+        // selection didn't strand the picker on a hidden option.
+        expect(screen.queryByRole('button', { name: 'Route' })).toBeNull();
+        expect(
+            screen.getByRole('button', { name: 'Card', pressed: true }),
+        ).toBeInTheDocument();
     });
 
     it('clamps a stale rute layout to kartu for a no-GPS run so the map is never blank', async () => {
@@ -193,6 +225,47 @@ describe('ShareCardModal', () => {
         );
         const lastCall = vi.mocked(drawShareCard).mock.calls.at(-1);
         expect(lastCall?.[1].layout).toBe('kartu');
+    });
+
+    describe('colorway swatch picker', () => {
+        it('offers navy, dawn, and ember swatches with navy selected by default', () => {
+            render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+            expect(
+                screen.getByRole('button', {
+                    name: 'Colorway: Navy',
+                    pressed: true,
+                }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', {
+                    name: 'Colorway: Dawn',
+                    pressed: false,
+                }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', {
+                    name: 'Colorway: Ember',
+                    pressed: false,
+                }),
+            ).toBeInTheDocument();
+        });
+
+        it('switches the drawn colorway when a swatch is clicked', async () => {
+            const { drawShareCard } = await import('@/lib/shareCard');
+            vi.mocked(drawShareCard).mockClear();
+            render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Colorway: Ember' }),
+            );
+            const lastCall = vi.mocked(drawShareCard).mock.calls.at(-1);
+            expect(lastCall?.[1].colorway).toBe('ember');
+            expect(
+                screen.getByRole('button', {
+                    name: 'Colorway: Ember',
+                    pressed: true,
+                }),
+            ).toBeInTheDocument();
+        });
     });
 
     describe('export source', () => {

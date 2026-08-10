@@ -2,6 +2,7 @@ import polylineCodec from '@mapbox/polyline';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+    COLORWAYS,
     drawShareCard,
     shareCardBlob,
     type Layout,
@@ -116,7 +117,7 @@ beforeEach(() => {
 });
 
 describe('drawShareCard', () => {
-    const layouts: Layout[] = ['kartu', 'rute'];
+    const layouts: Layout[] = ['kartu', 'rute', 'stats'];
     const formats: Format[] = ['story', 'feed'];
 
     it.each(layouts)(
@@ -755,6 +756,165 @@ describe('drawShareCard — edge / branch cases', () => {
         });
         expect(ctx.fillText).toHaveBeenCalledWith(
             expect.stringContaining('14 km/j'),
+            expect.any(Number),
+            expect.any(Number),
+        );
+    });
+});
+
+/** Like `makeCtx`, but records the `fillStyle` in effect every time `fillRect`
+ *  is called — `paintBackground`'s canvas-wide fill is always the first call,
+ *  so `fills[0]` is the colorway's `bg` value actually used to paint. */
+function makeCtxWithFillRectLog() {
+    const ctx = makeCtx();
+    const fills: string[] = [];
+    ctx.fillRect = vi.fn(() => {
+        fills.push(ctx.fillStyle);
+    });
+    return { ctx, fills };
+}
+
+describe('colorways', () => {
+    it('defaults to navy when no colorway is given — byte-identical to explicit navy', async () => {
+        const implicit = makeCtxWithFillRectLog();
+        await drawShareCard(
+            {
+                width: 0,
+                height: 0,
+                getContext: () => implicit.ctx,
+            } as unknown as HTMLCanvasElement,
+            { kartu, layout: 'kartu', format: 'story' },
+        );
+        const explicit = makeCtxWithFillRectLog();
+        await drawShareCard(
+            {
+                width: 0,
+                height: 0,
+                getContext: () => explicit.ctx,
+            } as unknown as HTMLCanvasElement,
+            { kartu, layout: 'kartu', format: 'story', colorway: 'navy' },
+        );
+        expect(implicit.fills[0]).toBe(COLORWAYS.navy.bg);
+        expect(implicit.fills[0]).toBe(explicit.fills[0]);
+    });
+
+    it('paints the dawn colorway on a light background, distinct from navy', async () => {
+        const { ctx, fills } = makeCtxWithFillRectLog();
+        await drawShareCard(
+            {
+                width: 0,
+                height: 0,
+                getContext: () => ctx,
+            } as unknown as HTMLCanvasElement,
+            { kartu, layout: 'kartu', format: 'story', colorway: 'dawn' },
+        );
+        expect(fills[0]).toBe(COLORWAYS.dawn.bg);
+        expect(fills[0]).not.toBe(COLORWAYS.navy.bg);
+    });
+
+    it('paints the ember colorway on an ember-hued dark background, distinct from navy', async () => {
+        const { ctx, fills } = makeCtxWithFillRectLog();
+        await drawShareCard(
+            {
+                width: 0,
+                height: 0,
+                getContext: () => ctx,
+            } as unknown as HTMLCanvasElement,
+            { kartu, layout: 'kartu', format: 'story', colorway: 'ember' },
+        );
+        expect(fills[0]).toBe(COLORWAYS.ember.bg);
+        expect(fills[0]).not.toBe(COLORWAYS.navy.bg);
+    });
+
+    it('renders the rute and stats layouts under every colorway without crashing', async () => {
+        for (const layout of ['rute', 'stats'] as Layout[]) {
+            for (const colorway of ['navy', 'dawn', 'ember'] as const) {
+                const ctx = makeCtx();
+                const canvas = {
+                    width: 0,
+                    height: 0,
+                    getContext: () => ctx,
+                } as unknown as HTMLCanvasElement;
+                await drawShareCard(canvas, {
+                    kartu,
+                    layout,
+                    format: 'story',
+                    colorway,
+                });
+                expect(ctx.fillText).toHaveBeenCalled();
+            }
+        }
+    });
+});
+
+describe('stats template', () => {
+    it('draws the distance, pace, duration, and HR tiles', async () => {
+        const ctx = makeCtx();
+        const canvas = {
+            width: 0,
+            height: 0,
+            getContext: () => ctx,
+        } as unknown as HTMLCanvasElement;
+        await drawShareCard(canvas, {
+            kartu,
+            layout: 'stats',
+            format: 'story',
+        });
+        expect(ctx.fillText).toHaveBeenCalledWith(
+            'DISTANCE',
+            expect.any(Number),
+            expect.any(Number),
+        );
+        expect(ctx.fillText).toHaveBeenCalledWith(
+            'PACE',
+            expect.any(Number),
+            expect.any(Number),
+        );
+        expect(ctx.fillText).toHaveBeenCalledWith(
+            'DURATION',
+            expect.any(Number),
+            expect.any(Number),
+        );
+        expect(ctx.fillText).toHaveBeenCalledWith(
+            'HR',
+            expect.any(Number),
+            expect.any(Number),
+        );
+    });
+
+    it('still renders when the run has no GPS route (no polyline dependency)', async () => {
+        const ctx = makeCtx();
+        const canvas = {
+            width: 0,
+            height: 0,
+            getContext: () => ctx,
+        } as unknown as HTMLCanvasElement;
+        await drawShareCard(canvas, {
+            kartu: { ...kartu, polyline: null },
+            layout: 'stats',
+            format: 'feed',
+        });
+        expect(ctx.fillText).toHaveBeenCalledWith(
+            'DISTANCE',
+            expect.any(Number),
+            expect.any(Number),
+        );
+    });
+
+    it('falls back to the placeholder dash for missing pace/HR cells', async () => {
+        const ctx = makeCtx();
+        const canvas = {
+            width: 0,
+            height: 0,
+            getContext: () => ctx,
+        } as unknown as HTMLCanvasElement;
+        await drawShareCard(canvas, {
+            kartu: { ...kartu, pace: null, hr: null },
+            layout: 'stats',
+            format: 'story',
+        });
+        expect(ctx.fillText).toHaveBeenCalledWith(
+            '—',
             expect.any(Number),
             expect.any(Number),
         );
