@@ -24,7 +24,7 @@
  *   node scripts/check-raw-palette.mjs
  */
 
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -50,17 +50,10 @@ const RAW_PALETTE_RE = new RegExp(
 
 const SCAN_EXTENSIONS = new Set(['.ts', '.tsx']);
 
-function walk(dir, files = []) {
-    for (const entry of readdirSync(dir)) {
-        const full = path.join(dir, entry);
-        const stat = statSync(full);
-        if (stat.isDirectory()) {
-            walk(full, files);
-        } else if (SCAN_EXTENSIONS.has(path.extname(entry))) {
-            files.push(full);
-        }
-    }
-    return files;
+function walk(dir) {
+    return readdirSync(dir, { recursive: true, withFileTypes: true })
+        .filter((entry) => entry.isFile() && SCAN_EXTENSIONS.has(path.extname(entry.name)))
+        .map((entry) => path.join(entry.parentPath, entry.name));
 }
 
 function fail(lines) {

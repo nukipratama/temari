@@ -141,9 +141,9 @@ export const COLORWAYS: Record<ColorwayId, Palette> = {
         surfaceSunken: C.creamDeep,
         text: C.cream,
         name: C.horizon,
-        meta: 'rgba(246,241,232,0.72)',
-        divider: 'rgba(246,241,232,0.18)',
-        quote: 'rgba(246,241,232,0.88)',
+        meta: 'rgba(245,240,228,0.72)',
+        divider: 'rgba(245,240,228,0.18)',
+        quote: 'rgba(245,240,228,0.88)',
         inkOnSky: C.inkOnSky,
     },
     dawn: {
@@ -165,9 +165,9 @@ export const COLORWAYS: Record<ColorwayId, Palette> = {
         surfaceSunken: C.creamDeep,
         text: C.cream,
         name: C.horizon,
-        meta: 'rgba(246,241,232,0.72)',
-        divider: 'rgba(246,241,232,0.18)',
-        quote: 'rgba(246,241,232,0.88)',
+        meta: 'rgba(245,240,228,0.72)',
+        divider: 'rgba(245,240,228,0.18)',
+        quote: 'rgba(245,240,228,0.88)',
         inkOnSky: C.inkOnSky,
     },
 };
@@ -189,8 +189,8 @@ function paintGlow(
     r: number,
 ): void {
     const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    g.addColorStop(0, 'rgba(232,160,118,0.34)');
-    g.addColorStop(0.66, 'rgba(232,160,118,0)');
+    g.addColorStop(0, 'rgba(217,165,60,0.34)');
+    g.addColorStop(0.66, 'rgba(217,165,60,0)');
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -1181,9 +1181,9 @@ function drawBadgePill(
     padX: number,
 ): void {
     roundRectPath(ctx, x, y, w, h, h / 2);
-    ctx.fillStyle = 'rgba(246,241,232,0.10)';
+    ctx.fillStyle = 'rgba(245,240,228,0.10)';
     ctx.fill();
-    ctx.fillStyle = 'rgba(246,241,232,0.85)';
+    ctx.fillStyle = 'rgba(245,240,228,0.85)';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText(label, x + padX, y + h / 2 + 1);

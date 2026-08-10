@@ -40,7 +40,7 @@ const SUN_GLOW =
     'radial-gradient(circle, oklch(80% 0.14 55 / 0.6) 0%, oklch(72% 0.13 50 / 0.25) 28%, transparent 58%)';
 
 const FORM_CARD_SHADOW =
-    '0 20px 50px rgba(31,39,71,0.06), 0 0 0 1px rgba(31,39,71,0.06)';
+    '0 20px 50px rgba(36,28,84,0.06), 0 0 0 1px rgba(36,28,84,0.06)';
 
 // Strava button keeps #FC4C02 brand orange and the official Strava glyph per their guidelines.
 export default function Login({
