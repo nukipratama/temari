@@ -10,11 +10,11 @@ use Inertia\Testing\AssertableInertia as Assert;
 uses(RefreshDatabase::class);
 
 it('requires authentication for the index', function (): void {
-    $this->get('/aksesori')->assertRedirect('/login');
+    $this->get('/accessories')->assertRedirect('/login');
 });
 
 it('requires authentication for the equip endpoint', function (): void {
-    $this->post('/api/aksesori/equip', ['unlock_key' => 'accessory.medal_pertama'])->assertRedirect('/login');
+    $this->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_pertama'])->assertRedirect('/login');
 });
 
 it('renders the catalog + equipped slots', function (): void {
@@ -26,10 +26,10 @@ it('renders the catalog + equipped slots', function (): void {
         'equipped' => false,
     ]);
 
-    $this->actingAs($user)->get('/aksesori')
+    $this->actingAs($user)->get('/accessories')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Koleksi/Aksesori')
+            ->component('Collection/Accessories')
             ->where('equipped.ikat_kepala', 'accessory.ikat_kepala_epik')
             ->where('equipped.medal', null)
             ->where('equipped.aura', null)
@@ -46,7 +46,7 @@ it('equips an ikat_kepala + un-equips the previous sibling', function (): void {
     ]);
 
     $this->actingAs($user)
-        ->post('/api/aksesori/equip', ['unlock_key' => 'accessory.ikat_kepala_legendaris'])
+        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.ikat_kepala_legendaris'])
         ->assertRedirect();
 
     expect(UserUnlock::query()
@@ -63,7 +63,7 @@ it('rejects an equip request missing the unlock key', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->postJson('/api/aksesori/equip', [])
+        ->postJson('/api/accessories/equip', [])
         ->assertStatus(422);
 });
 
@@ -71,7 +71,7 @@ it('refuses to equip an accessory the user has not unlocked', function (): void 
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->post('/api/aksesori/equip', ['unlock_key' => 'accessory.medal_emas'])
+        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_emas'])
         ->assertSessionHasErrors(['unlock_key']);
 });
 
@@ -83,7 +83,7 @@ it('refuses to equip an unlock that does not belong to any slot', function (): v
     ]);
 
     $this->actingAs($user)
-        ->post('/api/aksesori/equip', ['unlock_key' => 'achievement.first_run'])
+        ->post('/api/accessories/equip', ['unlock_key' => 'achievement.first_run'])
         ->assertSessionHasErrors(['unlock_key']);
 });
 
@@ -92,7 +92,7 @@ it('resolves equipped unlock keys per slot', function (): void {
     UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.ikat_kepala_legendaris']);
     UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_emas']);
 
-    $this->actingAs($user)->get('/aksesori')
+    $this->actingAs($user)->get('/accessories')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('equipped.ikat_kepala', 'accessory.ikat_kepala_legendaris')
@@ -103,7 +103,7 @@ it('resolves medal slot when medal_pertama is equipped', function (): void {
     $user = User::factory()->create();
     UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_pertama']);
 
-    $this->actingAs($user)->get('/aksesori')
+    $this->actingAs($user)->get('/accessories')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('equipped.medal', 'accessory.medal_pertama'));
 });
@@ -112,7 +112,7 @@ it('resolves aura slot when an aura unlock is equipped', function (): void {
     $user = User::factory()->create();
     UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.aura_pemanasan']);
 
-    $this->actingAs($user)->get('/aksesori')
+    $this->actingAs($user)->get('/accessories')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('equipped.aura', 'accessory.aura_pemanasan'));
 });

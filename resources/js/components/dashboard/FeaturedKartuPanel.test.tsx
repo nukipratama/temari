@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { FeaturedCard } from '@/pages/HariIni/helpers';
+import type { FeaturedCard } from '@/pages/Today/helpers';
 import type { AnalysisPayload } from '@/types/inertia';
 
 import FeaturedKartuPanel from './FeaturedKartuPanel';
@@ -45,7 +45,7 @@ describe('FeaturedKartuPanel', () => {
         expect(screen.getByText(/Temari's top pick/)).toBeInTheDocument();
         expect(screen.getAllByText('Comeback Kid').length).toBeGreaterThan(0);
         const cta = screen.getByRole('link', { name: /view activity/i });
-        expect(cta).toHaveAttribute('href', '/aktivitas/42');
+        expect(cta).toHaveAttribute('href', '/activities/42');
     });
 
     it('renders the featured-kartu voice quote', () => {

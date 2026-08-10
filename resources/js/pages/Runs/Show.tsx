@@ -38,7 +38,7 @@ import { cn } from '@/lib/cn';
 import { postJson } from '@/lib/http';
 import { formatIdDate, formatShortDateTimeId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
-import { aktivitasUrl } from '@/lib/routes';
+import { activityUrl } from '@/lib/routes';
 import { BADGE_ABILITY, badgeName } from '@/lib/runcard';
 
 import {
@@ -120,7 +120,7 @@ export default function RunsShow({
     } = useRunShow({ detail, card, storyLine, moodFallback, relativeEffort });
 
     const [resyncing, resync] = usePendingPost(
-        `/aktivitas/${activity.id}/resync`,
+        `/activities/${activity.id}/resync`,
         { preserveScroll: true },
     );
 
@@ -137,7 +137,7 @@ export default function RunsShow({
         }
         setReplaying(true);
         setReplayError(false);
-        void postJson(`/api/kartu/${card.id}/replay`)
+        void postJson(`/api/cards/${card.id}/replay`)
             .then((response) => {
                 if (!response.ok) {
                     throw new Error(`Replay failed (${response.status})`);
@@ -153,7 +153,7 @@ export default function RunsShow({
             <Head title={detail.name ?? 'Run'} />
             <PageContainer>
                 <BackLink
-                    href="/aktivitas"
+                    href="/activities"
                     className="mb-4 hidden lg:inline-flex"
                 >
                     History · Log
@@ -181,7 +181,7 @@ export default function RunsShow({
                         </PillButton>
                     </StravaAction>
                     <SendNotificationButton
-                        url={`/aktivitas/${activity.id}/kirim`}
+                        url={`/activities/${activity.id}/kirim`}
                         retryAfterSeconds={notificationRetryAfterSeconds}
                         reachable={notificationsReachable}
                     />
@@ -325,7 +325,7 @@ export default function RunsShow({
                                         </div>
                                         {pastYou.past.activity_id != null && (
                                             <Link
-                                                href={aktivitasUrl({
+                                                href={activityUrl({
                                                     activity_id:
                                                         pastYou.past
                                                             .activity_id,

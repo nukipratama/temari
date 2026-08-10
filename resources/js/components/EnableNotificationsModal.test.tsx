@@ -39,7 +39,7 @@ describe('EnableNotificationsModal', () => {
         vi.mocked(router.visit).mockReset();
         render(<EnableNotificationsModal open onClose={vi.fn()} />);
         fireEvent.click(screen.getByRole('button', { name: 'Go to Settings' }));
-        expect(router.visit).toHaveBeenCalledWith('/pengaturan');
+        expect(router.visit).toHaveBeenCalledWith('/settings');
     });
 
     it('calls onClose when the dismiss CTA is clicked', () => {

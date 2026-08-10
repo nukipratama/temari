@@ -74,12 +74,12 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
     const sentRef = useRef(false);
     const panelRef = useRef<HTMLDivElement>(null);
 
-    // /api/kartu/{card}/seen returns plain JSON, so Inertia's router can't
+    // /api/cards/{card}/seen returns plain JSON, so Inertia's router can't
     // call it (it errors on non-Inertia responses).
     const markSeen = useCallback((): Promise<void> => {
         if (sentRef.current) return Promise.resolve();
         sentRef.current = true;
-        return postJson(`/api/kartu/${pending.card_id}/seen`)
+        return postJson(`/api/cards/${pending.card_id}/seen`)
             .then(() => {})
             .catch(() => {
                 /* silent — next reload picks up server state */
@@ -95,7 +95,7 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
     // arriving before the seen POST clears pending_reveal_card_id.
     const viewKoleksi = useCallback((): void => {
         void markSeen().then(() =>
-            router.visit('/kartu', { preserveScroll: false }),
+            router.visit('/cards', { preserveScroll: false }),
         );
     }, [markSeen]);
 

@@ -11,7 +11,7 @@ interface SettingsRowProps {
     label: string;
     /** Secondary description (e.g., "Set your own Z1-Z5 boundaries...") */
     description?: string;
-    /** Inertia route href (e.g., "/pengaturan/zona") */
+    /** Inertia route href (e.g., "/settings/zones") */
     href?: string;
     /** External href (e.g., Telegram bot link) */
     externalHref?: string;

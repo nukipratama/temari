@@ -8,11 +8,11 @@ describe('RiwayatTabs', () => {
         render(<RiwayatTabs active="jejak" />);
         expect(screen.getByText('Jejak').closest('a')).toHaveAttribute(
             'href',
-            '/aktivitas',
+            '/activities',
         );
         expect(screen.getByText('Kalender').closest('a')).toHaveAttribute(
             'href',
-            '/kalender',
+            '/calendar',
         );
     });
 

@@ -19,7 +19,7 @@ beforeEach(function (): void {
 });
 
 it('requires authentication', function (): void {
-    $this->post('/profil/notifikasi/test')->assertRedirect(route('login'));
+    $this->post('/profile/notifications/test')->assertRedirect(route('login'));
 });
 
 it('sends a test notification when a Telegram connection is wired', function (): void {
@@ -27,7 +27,7 @@ it('sends a test notification when a Telegram connection is wired', function ():
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();
 
-    $this->actingAs($user)->post('/profil/notifikasi/test')->assertRedirect()->assertSessionHas('success');
+    $this->actingAs($user)->post('/profile/notifications/test')->assertRedirect()->assertSessionHas('success');
 
     Notification::assertSentTo($user, TestNotification::class);
 });
@@ -37,7 +37,7 @@ it('sends a test notification when only a web-push subscription is wired', funct
     $user = User::factory()->create();
     $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
 
-    $this->actingAs($user)->post('/profil/notifikasi/test')->assertRedirect()->assertSessionHas('success');
+    $this->actingAs($user)->post('/profile/notifications/test')->assertRedirect()->assertSessionHas('success');
 
     Notification::assertSentTo($user, TestNotification::class);
 });
@@ -46,7 +46,7 @@ it('does not send without any wired channel', function (): void {
     Notification::fake();
     $user = User::factory()->create();
 
-    $this->actingAs($user)->post('/profil/notifikasi/test')->assertRedirect()->assertSessionHas('info');
+    $this->actingAs($user)->post('/profile/notifications/test')->assertRedirect()->assertSessionHas('info');
 
     Notification::assertNothingSent();
 });
@@ -56,7 +56,7 @@ it('does not send with only a revoked connection', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->revoked()->create();
 
-    $this->actingAs($user)->post('/profil/notifikasi/test')->assertRedirect()->assertSessionHas('info');
+    $this->actingAs($user)->post('/profile/notifications/test')->assertRedirect()->assertSessionHas('info');
 
     Notification::assertNothingSent();
 });
@@ -66,7 +66,7 @@ it('blocks the shared demo account', function (): void {
     $demo = User::factory()->create(['is_demo' => true]);
     TelegramConnection::factory()->for($demo)->create();
 
-    $this->actingAs($demo)->postJson('/profil/notifikasi/test')->assertForbidden();
+    $this->actingAs($demo)->postJson('/profile/notifications/test')->assertForbidden();
 
     Notification::assertNothingSent();
 });
@@ -76,10 +76,10 @@ it('cools down after a send so a second tap does not fire again', function (): v
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create(['revoked_at' => null]);
 
-    $this->actingAs($user)->post('/profil/notifikasi/test')->assertRedirect();
+    $this->actingAs($user)->post('/profile/notifications/test')->assertRedirect();
     Notification::assertSentTimes(TestNotification::class, 1);
 
-    $this->actingAs($user)->post('/profil/notifikasi/test')->assertRedirect();
+    $this->actingAs($user)->post('/profile/notifications/test')->assertRedirect();
 
     // Still one: the second tap is swallowed by the cooldown, not sent twice.
     Notification::assertSentTimes(TestNotification::class, 1);
@@ -92,8 +92,8 @@ it('cools per user, so one account cannot mute another', function (): void {
     TelegramConnection::factory()->for($first)->create(['revoked_at' => null]);
     TelegramConnection::factory()->for($second)->create(['revoked_at' => null]);
 
-    $this->actingAs($first)->post('/profil/notifikasi/test')->assertRedirect();
-    $this->actingAs($second)->post('/profil/notifikasi/test')->assertRedirect();
+    $this->actingAs($first)->post('/profile/notifications/test')->assertRedirect();
+    $this->actingAs($second)->post('/profile/notifications/test')->assertRedirect();
 
     Notification::assertSentTimes(TestNotification::class, 2);
 });

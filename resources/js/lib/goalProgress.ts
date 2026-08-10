@@ -1,5 +1,5 @@
 /**
- * Shared goal-progress math for the goal cards on HariIni (`GoalsCard`) and
+ * Shared goal-progress math for the goal cards on Today (`GoalsCard`) and
  * Target (`GoalCard`). Keeps the ratio + number-formatting identical across the
  * two surfaces so the `<ProgressBar />` fill and the `current/target` readout
  * never drift between pages.

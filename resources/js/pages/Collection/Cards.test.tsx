@@ -5,7 +5,7 @@ import type { Activity, ActivityDetail, RunCard } from '@/types/inertia';
 
 import { setMockPage } from '@/test/setup';
 
-import KoleksiKartu from './Kartu';
+import Cards from './Cards';
 
 // ConfettiBurst renders real framer-motion particles on a real timer; stub it
 // with a DOM probe so a tap's `burstKey` can be asserted directly instead of
@@ -77,10 +77,10 @@ beforeEach(() => {
     });
 });
 
-describe('Koleksi/Kartu', () => {
+describe('Collection/Cards', () => {
     it('renders the EmptyState when no cards and no featured card, with a sync CTA', () => {
         render(
-            <KoleksiKartu
+            <Cards
                 cards={emptyCards()}
                 selectedRarity={null}
                 featuredCard={null}
@@ -108,7 +108,7 @@ describe('Koleksi/Kartu', () => {
             stravaSync: { state: 'syncing', last_synced_at: null },
         });
         render(
-            <KoleksiKartu
+            <Cards
                 cards={emptyCards()}
                 selectedRarity={null}
                 featuredCard={null}
@@ -126,7 +126,7 @@ describe('Koleksi/Kartu', () => {
 
     it('renders the LegendaryTease when legendary count is 0', () => {
         render(
-            <KoleksiKartu
+            <Cards
                 cards={emptyCards()}
                 selectedRarity={null}
                 featuredCard={null}
@@ -141,7 +141,7 @@ describe('Koleksi/Kartu', () => {
     it('omits the LegendaryTease when at least one legendary card exists', () => {
         const counts = { ...rarityCounts, legendary: 1 };
         render(
-            <KoleksiKartu
+            <Cards
                 cards={emptyCards()}
                 selectedRarity={null}
                 featuredCard={null}
@@ -155,7 +155,7 @@ describe('Koleksi/Kartu', () => {
 
     it('renders the rarity filter pills (counts per rarity)', () => {
         render(
-            <KoleksiKartu
+            <Cards
                 cards={emptyCards()}
                 selectedRarity="epic"
                 featuredCard={null}
@@ -195,7 +195,7 @@ describe('Koleksi/Kartu', () => {
             },
         };
         render(
-            <KoleksiKartu
+            <Cards
                 cards={emptyCards()}
                 selectedRarity={null}
                 featuredCard={featured}
@@ -212,7 +212,7 @@ describe('Koleksi/Kartu', () => {
             data: [cardWithRel(7, 'epic', 'Strong Finish')],
         };
         const { container } = render(
-            <KoleksiKartu
+            <Cards
                 cards={cards}
                 selectedRarity={null}
                 featuredCard={null}
@@ -226,7 +226,7 @@ describe('Koleksi/Kartu', () => {
 
         const cardLink = screen
             .getAllByRole('link')
-            .find((el) => el.getAttribute('href') === '/aktivitas/7');
+            .find((el) => el.getAttribute('href') === '/activities/7');
         fireEvent.click(cardLink!);
 
         expect(confetti?.dataset.burstKey).not.toBe('');
@@ -241,7 +241,7 @@ describe('Koleksi/Kartu', () => {
             ],
         };
         const { container } = render(
-            <KoleksiKartu
+            <Cards
                 cards={cards}
                 selectedRarity={null}
                 featuredCard={null}
@@ -255,7 +255,7 @@ describe('Koleksi/Kartu', () => {
         );
         const links = screen
             .getAllByRole('link')
-            .filter((el) => el.getAttribute('href') === '/aktivitas/1');
+            .filter((el) => el.getAttribute('href') === '/activities/1');
         fireEvent.click(links[0]);
 
         // Card 1 is epic, so the tap fires a confetti burst.
@@ -273,7 +273,7 @@ describe('Koleksi/Kartu', () => {
             detail: null,
         };
         render(
-            <KoleksiKartu
+            <Cards
                 cards={emptyCards()}
                 selectedRarity={null}
                 featuredCard={featured}
@@ -288,7 +288,7 @@ describe('Koleksi/Kartu', () => {
 
     it('labels the search input and sort select for assistive tech', () => {
         render(
-            <KoleksiKartu
+            <Cards
                 cards={emptyCards()}
                 selectedRarity={null}
                 featuredCard={null}
@@ -318,7 +318,7 @@ describe('Koleksi/Kartu', () => {
         };
         const cards = { ...emptyCards(), data: [cardWithoutDetail] };
         render(
-            <KoleksiKartu
+            <Cards
                 cards={cards}
                 selectedRarity={null}
                 featuredCard={null}
@@ -337,7 +337,7 @@ describe('Koleksi/Kartu', () => {
             ],
         };
         render(
-            <KoleksiKartu
+            <Cards
                 cards={cards}
                 selectedRarity={null}
                 featuredCard={null}
@@ -364,7 +364,7 @@ describe('Koleksi/Kartu', () => {
             ],
         };
         render(
-            <KoleksiKartu
+            <Cards
                 cards={cards}
                 selectedRarity={null}
                 featuredCard={null}

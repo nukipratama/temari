@@ -1,11 +1,11 @@
 ---
-title: Personal records (Rekor)
+title: Personal records
 description: The PR gallery — featured scoreboard, milestone strip, trophy wall, pace ticker, AI context line, and per-distance progression chart.
 tags: [feature, records]
 status: living
 reviewed: 2026-06-20
 code_refs:
-  - resources/js/pages/Koleksi/Rekor.tsx
+  - resources/js/pages/Collection/Records.tsx
   - app/Http/Controllers/RekorController.php
   - resources/js/components/koleksi/MilestoneStrip.tsx
   - resources/js/components/koleksi/ProgressionChart.tsx
@@ -14,11 +14,11 @@ code_refs:
   - resources/js/components/temari/AnalysisStatus.tsx
 ---
 
-# Personal records (Rekor)
+# Personal records
 
-`/rekor` is the runner's PR wall: best time at every distance, the standout effort blown up into a scoreboard, and a "you used to be slower" progression chart per distance.
+`/records` is the runner's PR wall: best time at every distance, the standout effort blown up into a scoreboard, and a "you used to be slower" progression chart per distance.
 
-**Navigation:** `route('rekor')` → `/rekor`. Named route: `rekor`.
+**Navigation:** `route('records')` → `/records`. Named route: `records`.
 
 ## System dependencies
 
@@ -35,9 +35,9 @@ The single-action [RekorController](../../app/Http/Controllers/RekorController.p
 
 PR categories cover **1K / 5K / 10K / 15K / Half / Full Marathon** plus pace best-efforts; the page splits them into distance PRs and pace PRs client-side.
 
-## The page (`Koleksi/Rekor.tsx`)
+## The page (`Collection/Records.tsx`)
 
-[KoleksiRekor](../../resources/js/pages/Koleksi/Rekor.tsx) sorts distance PRs longest-first, picks the longest as the headline `featured`, and stacks:
+[KoleksiRekor](../../resources/js/pages/Collection/Records.tsx) sorts distance PRs longest-first, picks the longest as the headline `featured`, and stacks:
 
 - **HeroScoreboard** — an oversized time on a sky panel, the glowing Temari mascot, and the PR's **context line** streamed through [AnalysisStatus](../../resources/js/components/temari/AnalysisStatus.tsx) (see [[ai-pipeline]]). Captions (Tipe / Hari / Tempat / Cuaca) sit below, then a [SplitsSparkline](../../resources/js/components/run/SplitsSparkline.tsx) of the per-km pace.
 - **MilestoneStrip** — only when the featured PR has a positive gap to its next round-number goal. [MilestoneStrip](../../resources/js/components/koleksi/MilestoneStrip.tsx) renders "you're N seconds off sub-X" using `targetSec` / `deltaSec` from `featuredExtras`.

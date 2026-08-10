@@ -7,8 +7,8 @@ use App\Support\LocalRedirectPath;
 it('keeps a same-host relative path', function (string $path): void {
     expect(LocalRedirectPath::sanitize($path))->toBe($path);
 })->with([
-    '/aktivitas/5',
-    '/aktivitas/5?tab=splits',
+    '/activities/5',
+    '/activities/5?tab=splits',
     '/',
 ]);
 
@@ -48,12 +48,12 @@ it('strips an embedded null byte', function (): void {
 });
 
 it('reduces a full same-host intended URL to its path', function (): void {
-    expect(LocalRedirectPath::fromIntended(url('/aktivitas/5?tab=splits')))
-        ->toBe('/aktivitas/5?tab=splits');
+    expect(LocalRedirectPath::fromIntended(url('/activities/5?tab=splits')))
+        ->toBe('/activities/5?tab=splits');
 });
 
 it('accepts an already-relative intended value', function (): void {
-    expect(LocalRedirectPath::fromIntended('/aktivitas/5'))->toBe('/aktivitas/5');
+    expect(LocalRedirectPath::fromIntended('/activities/5'))->toBe('/activities/5');
 });
 
 it('drops an intended URL pointing at another host', function (): void {

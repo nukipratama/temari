@@ -53,7 +53,7 @@ class RekorController extends Controller
 
         $featured = $this->scoreboardBuilder->pickFeaturedPr($personalRecords);
 
-        return Inertia::render('Koleksi/Rekor', [
+        return Inertia::render('Collection/Records', [
             'personalRecords' => $payload,
             'featuredExtras' => $this->scoreboardBuilder->featuredExtras($featured),
         ]);

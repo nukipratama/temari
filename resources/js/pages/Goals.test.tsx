@@ -5,10 +5,10 @@ import type { Rarity } from '@/types/inertia';
 
 import { makeUser, setMockPage } from '@/test/setup';
 
-import Target from './Target';
+import Goals from './Goals';
 
 function makeGoal(
-    overrides: Partial<Parameters<typeof Target>[0]['goals'][number]> = {},
+    overrides: Partial<Parameters<typeof Goals>[0]['goals'][number]> = {},
 ) {
     return {
         id: 'accessory.medal_pertama',
@@ -32,10 +32,10 @@ beforeEach(() => {
     });
 });
 
-describe('Target', () => {
+describe('Goals', () => {
     it('renders the eyebrow with completed / total counts', () => {
         render(
-            <Target goals={[makeGoal()]} completedCount={2} totalCount={28} />,
+            <Goals goals={[makeGoal()]} completedCount={2} totalCount={28} />,
         );
         expect(screen.getByText(/2 \/ 28 goals reached/)).toBeInTheDocument();
     });
@@ -45,7 +45,7 @@ describe('Target', () => {
             makeGoal({ id: 'm1', slot: 'medal', title: 'First medal' }),
             makeGoal({ id: 'a1', slot: 'aura', title: 'Warmup aura' }),
         ];
-        render(<Target goals={goals} completedCount={0} totalCount={2} />);
+        render(<Goals goals={goals} completedCount={0} totalCount={2} />);
 
         expect(screen.getByText('Medal')).toBeInTheDocument();
         expect(screen.getByText('Aura')).toBeInTheDocument();
@@ -57,7 +57,7 @@ describe('Target', () => {
 
     it('marks a completed goal with the check badge', () => {
         const { container } = render(
-            <Target
+            <Goals
                 goals={[
                     makeGoal({ is_completed: true, current: 1, target: 1 }),
                 ]}
@@ -70,7 +70,7 @@ describe('Target', () => {
 
     it('formats fractional current/target values to one decimal', () => {
         const { container } = render(
-            <Target
+            <Goals
                 goals={[
                     makeGoal({
                         slot: 'sepatu',
@@ -89,7 +89,7 @@ describe('Target', () => {
 
     it('renders a zero-width bar when the target is zero', () => {
         const { container } = render(
-            <Target
+            <Goals
                 goals={[makeGoal({ target: 0, current: 0 })]}
                 completedCount={0}
                 totalCount={1}
@@ -101,7 +101,7 @@ describe('Target', () => {
 
     it('shows the "Almost!" nudge once progress reaches 75% but isn\'t completed yet', () => {
         render(
-            <Target
+            <Goals
                 goals={[
                     makeGoal({ current: 80, target: 100, is_completed: false }),
                 ]}
@@ -114,7 +114,7 @@ describe('Target', () => {
 
     it('hides the "Almost!" nudge below the 75% threshold', () => {
         render(
-            <Target
+            <Goals
                 goals={[
                     makeGoal({ current: 50, target: 100, is_completed: false }),
                 ]}
@@ -127,7 +127,7 @@ describe('Target', () => {
 
     it('gives each progress bar a meaningful accessible name', () => {
         render(
-            <Target
+            <Goals
                 goals={[
                     makeGoal({
                         title: 'Log your 1st PR',

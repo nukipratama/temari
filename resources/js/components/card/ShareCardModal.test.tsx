@@ -46,7 +46,7 @@ function stubDataUrlFetch() {
 const kartu: ShareKartuData = {
     id: 7,
     name: 'Counter Kick',
-    shareUrl: '/aktivitas/7',
+    shareUrl: '/activities/7',
     rarity: 'epic',
     mood: 'enteng',
     subtitle: 'Negative-split morning · 20 Mei 2026',
@@ -131,7 +131,7 @@ describe('ShareCardModal', () => {
             );
         });
         expect(writeText).toHaveBeenCalledWith(
-            expect.stringContaining('/aktivitas/7'),
+            expect.stringContaining('/activities/7'),
         );
     });
 
@@ -320,7 +320,7 @@ describe('ShareCardModal', () => {
             });
             expect(share).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    url: expect.stringContaining('/aktivitas/7'),
+                    url: expect.stringContaining('/activities/7'),
                     // The card has a quote, so it rides along as the share text.
                     text: kartu.quote,
                 }),

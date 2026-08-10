@@ -15,7 +15,7 @@ describe('MobileBottomNav', () => {
     });
 
     it('marks the tab matching the current url as active', () => {
-        setMockPage({}, '/kartu');
+        setMockPage({}, '/cards');
         render(<MobileBottomNav />);
         const link = screen.getByText('Collection').closest('a')!;
         expect(link).toHaveAttribute('aria-current', 'page');
@@ -28,18 +28,18 @@ describe('MobileBottomNav', () => {
         render(<MobileBottomNav />);
         expect(screen.getByText('History').closest('a')).toHaveAttribute(
             'href',
-            '/aktivitas',
+            '/activities',
         );
         expect(screen.getByText('Me').closest('a')).toHaveAttribute(
             'href',
-            '/profil',
+            '/profile',
         );
     });
 
     // ink-on-sky is the design system's muted tone for dark sky panels; the
     // old text-cream/55 it replaced sat at roughly 2.2:1 against the bar.
     it('tints inactive tabs with the readable on-sky muted tone', () => {
-        setMockPage({}, '/kartu');
+        setMockPage({}, '/cards');
         render(<MobileBottomNav />);
         expect(screen.getByText('Collection').closest('a')).toHaveClass(
             'text-horizon',
@@ -55,7 +55,7 @@ describe('MobileBottomNav', () => {
     it('scrolls to top instead of navigating when the active tab is tapped', () => {
         const scrollTo = vi.fn();
         vi.stubGlobal('scrollTo', scrollTo);
-        setMockPage({}, '/kartu');
+        setMockPage({}, '/cards');
         render(<MobileBottomNav />);
 
         const link = screen.getByText('Collection').closest('a')!;
@@ -72,7 +72,7 @@ describe('MobileBottomNav', () => {
     it('leaves an inactive tab to navigate normally', () => {
         const scrollTo = vi.fn();
         vi.stubGlobal('scrollTo', scrollTo);
-        setMockPage({}, '/kartu');
+        setMockPage({}, '/cards');
         render(<MobileBottomNav />);
 
         const link = screen.getByText('Me').closest('a')!;
@@ -98,7 +98,7 @@ describe('MobileBottomNav', () => {
                 removeEventListener: vi.fn(),
             })),
         );
-        setMockPage({}, '/kartu');
+        setMockPage({}, '/cards');
         render(<MobileBottomNav />);
 
         screen

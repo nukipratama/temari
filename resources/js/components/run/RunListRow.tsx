@@ -19,7 +19,7 @@ import {
     paceSecPerKm,
 } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
-import { aktivitasUrl } from '@/lib/routes';
+import { activityUrl } from '@/lib/routes';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
 
 export interface RunNote {
@@ -52,7 +52,7 @@ function RunListRow({
 
     return (
         <MotionLink
-            href={aktivitasUrl(detail)}
+            href={activityUrl(detail)}
             whileTap={pressShrink}
             className="flex items-start gap-4 border-b border-line px-5 py-4 text-sm transition last:border-b-0 hover:bg-surface"
         >

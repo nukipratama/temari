@@ -26,7 +26,7 @@ interface Goal {
     is_completed: boolean;
 }
 
-interface TargetProps {
+interface GoalsProps {
     goals: Goal[];
     completedCount: number;
     totalCount: number;
@@ -59,11 +59,11 @@ const SLOT_ICONS: Record<string, string> = {
     aura: 'mdi:blur',
 };
 
-export default function Target({
+export default function Goals({
     goals,
     completedCount,
     totalCount,
-}: Readonly<TargetProps>) {
+}: Readonly<GoalsProps>) {
     const eyebrow = `Collection · ${completedCount} / ${totalCount} goals reached`;
 
     const goalsBySlot: Record<string, Goal[]> = Object.fromEntries(
@@ -174,4 +174,4 @@ function GoalCard({ goal }: Readonly<{ goal: Goal }>) {
     );
 }
 
-Target.layout = appLayout;
+Goals.layout = appLayout;

@@ -11,7 +11,7 @@ import type {
 
 import { makeUser, setMockPage } from '@/test/setup';
 
-import HariIni from './HariIni';
+import Today from './Today';
 
 const briefing: BriefingResult = {
     vibeState: 'pumped',
@@ -131,10 +131,10 @@ beforeEach(() => {
     });
 });
 
-describe('HariIni', () => {
+describe('Today', () => {
     it('renders the editorial greeting with first name + vibe subtitle', () => {
         render(
-            <HariIni
+            <Today
                 briefing={briefing}
                 load={load}
                 snapshot={snapshot}
@@ -149,7 +149,7 @@ describe('HariIni', () => {
 
     it('renders the three vital chips (Vibe / Readiness / Break)', () => {
         render(
-            <HariIni
+            <Today
                 briefing={briefing}
                 load={load}
                 snapshot={snapshot}
@@ -163,7 +163,7 @@ describe('HariIni', () => {
 
     it('shows the Temari read quote when mascotVoice is done', () => {
         render(
-            <HariIni
+            <Today
                 briefing={briefing}
                 load={load}
                 snapshot={snapshot}
@@ -175,7 +175,7 @@ describe('HariIni', () => {
 
     it('renders the featured hero kartu when a recentRun has an attached runCard', () => {
         render(
-            <HariIni
+            <Today
                 briefing={briefing}
                 load={load}
                 snapshot={snapshot}
@@ -187,7 +187,7 @@ describe('HariIni', () => {
 
     it('omits the hero panel when no recent run has a card', () => {
         render(
-            <HariIni
+            <Today
                 briefing={briefing}
                 load={load}
                 snapshot={snapshot}
@@ -199,7 +199,7 @@ describe('HariIni', () => {
 
     it('shows the session title of the merged Temari voice', () => {
         render(
-            <HariIni
+            <Today
                 briefing={briefing}
                 load={load}
                 snapshot={snapshot}
@@ -213,7 +213,7 @@ describe('HariIni', () => {
 
     it('renders the Kondisi card with CTL / ATL / Strain / Monotony rows', () => {
         render(
-            <HariIni
+            <Today
                 briefing={briefing}
                 load={load}
                 snapshot={snapshot}
@@ -227,7 +227,7 @@ describe('HariIni', () => {
 
     it('no longer renders a "Kartu terakhir" strip; the featured hero replaces it', () => {
         render(
-            <HariIni
+            <Today
                 briefing={briefing}
                 load={load}
                 snapshot={snapshot}
@@ -242,7 +242,7 @@ describe('HariIni', () => {
 
     it('renders the featuredKartuVoice quote inside the hero panel', () => {
         render(
-            <HariIni
+            <Today
                 briefing={briefing}
                 load={load}
                 snapshot={snapshot}
@@ -260,7 +260,7 @@ describe('HariIni', () => {
             mascotVoice: { ...briefing.mascotVoice, content: '' },
         };
         render(
-            <HariIni
+            <Today
                 briefing={emptyBriefing}
                 load={load}
                 snapshot={snapshot}
@@ -277,7 +277,7 @@ describe('HariIni', () => {
             mascotVoice: { ...briefing.mascotVoice, content: '\n\n   \n\n' },
         };
         render(
-            <HariIni
+            <Today
                 briefing={blank}
                 load={load}
                 snapshot={snapshot}
@@ -297,7 +297,7 @@ describe('HariIni', () => {
             },
         };
         render(
-            <HariIni
+            <Today
                 briefing={titleOnly}
                 load={load}
                 snapshot={snapshot}
@@ -316,7 +316,7 @@ describe('HariIni', () => {
             mascotVoice: { ...briefing.mascotVoice, content: longText },
         };
         render(
-            <HariIni
+            <Today
                 briefing={longQuoteBriefing}
                 load={load}
                 snapshot={snapshot}
@@ -367,7 +367,7 @@ describe('HariIni', () => {
             goalsSummary,
         });
         render(
-            <HariIni
+            <Today
                 briefing={briefing}
                 load={load}
                 snapshot={snapshot}
@@ -400,7 +400,7 @@ describe('HariIni', () => {
             goalsSummary: { total: 0, completed: 0, closest: [] },
         });
         render(
-            <HariIni
+            <Today
                 briefing={briefing}
                 load={load}
                 snapshot={snapshot}
@@ -412,7 +412,7 @@ describe('HariIni', () => {
 
     it('renders the last-run card with location, weather, pace, trimp, and a note', () => {
         render(
-            <HariIni
+            <Today
                 briefing={briefing}
                 load={load}
                 snapshot={snapshot}
@@ -429,7 +429,7 @@ describe('HariIni', () => {
 
     it('renders the last-run card with em-dash fallbacks when pace/trimp/weather/location absent', () => {
         render(
-            <HariIni
+            <Today
                 briefing={briefing}
                 load={load}
                 snapshot={snapshot}
@@ -454,7 +454,7 @@ describe('HariIni', () => {
             vibeState: 'mysterious' as BriefingResult['vibeState'],
         };
         render(
-            <HariIni
+            <Today
                 briefing={oddBriefing}
                 load={load}
                 snapshot={snapshot}
@@ -467,7 +467,7 @@ describe('HariIni', () => {
 
     it('shows em-dash / empty vital chips and "belum cukup data" when load and snapshot are null', () => {
         render(
-            <HariIni
+            <Today
                 briefing={briefing}
                 load={null}
                 snapshot={null}
@@ -487,7 +487,7 @@ describe('HariIni', () => {
             recoveryHoursLabel: null,
         };
         render(
-            <HariIni
+            <Today
                 briefing={noHours}
                 load={load}
                 snapshot={snapshot}
@@ -504,7 +504,7 @@ describe('HariIni', () => {
             streakLabel: null,
         };
         render(
-            <HariIni
+            <Today
                 briefing={onlyRecovery}
                 load={load}
                 snapshot={snapshot}
@@ -516,7 +516,7 @@ describe('HariIni', () => {
 
     it('flips the "Another take" button to its pending label when triggered', async () => {
         render(
-            <HariIni
+            <Today
                 briefing={briefing}
                 load={load}
                 snapshot={snapshot}
@@ -549,7 +549,7 @@ describe('HariIni', () => {
             },
         };
         render(
-            <HariIni
+            <Today
                 briefing={withBody}
                 load={load}
                 snapshot={snapshot}

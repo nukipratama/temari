@@ -25,7 +25,7 @@ import {
 } from '@/lib/mood';
 import { formatPace, formatShortDateId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
-import { aktivitasUrl } from '@/lib/routes';
+import { activityUrl } from '@/lib/routes';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
 
 import {
@@ -50,7 +50,7 @@ interface LifetimeStats {
     first_run_at: string | null;
 }
 
-interface KalenderProps {
+interface CalendarProps {
     cells: ReadonlyArray<CalendarCell>;
     month: string;
     monthLabel: string;
@@ -72,7 +72,7 @@ const WEEKDAY_LABELS = [
     'Sun',
 ] as const;
 
-export default function Kalender({
+export default function Calendar({
     cells,
     monthLabel,
     prevMonth,
@@ -82,7 +82,7 @@ export default function Kalender({
     lifetime,
     todayQuote = null,
     monthlyRecap,
-}: Readonly<KalenderProps>) {
+}: Readonly<CalendarProps>) {
     const {
         weeks,
         dominantMood,
@@ -234,7 +234,7 @@ function MonthlyRecapCard({
                     {recap.status === 'done' && (
                         <div className="mt-3">
                             <SendNotificationButton
-                                url={`/rekap-bulanan/${month}/kirim`}
+                                url={`/recaps/monthly/${month}/send`}
                                 retryAfterSeconds={
                                     recap.notification_retry_after_seconds
                                 }
@@ -262,7 +262,7 @@ function MonthNav({
     return (
         <div className="flex items-center gap-2">
             <NavButton
-                href={`/kalender?month=${prevMonth}`}
+                href={`/calendar?month=${prevMonth}`}
                 icon="mdi:chevron-left"
                 label="Previous month"
             />
@@ -270,13 +270,13 @@ function MonthNav({
                 {label}
             </h2>
             <NavButton
-                href={`/kalender?month=${nextMonth}`}
+                href={`/calendar?month=${nextMonth}`}
                 icon="mdi:chevron-right"
                 label="Next month"
             />
             {showTodayButton && (
                 <Link
-                    href="/kalender"
+                    href="/calendar"
                     className="focus-ring ml-1 rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1 text-xs font-semibold text-leaf-deep transition hover:border-leaf hover:bg-leaf/15"
                 >
                     Today
@@ -465,7 +465,7 @@ const DayCellView = memo(function DayCellView({
     if (cell.activity_id !== null) {
         return (
             <Link
-                href={aktivitasUrl({ activity_id: cell.activity_id })}
+                href={activityUrl({ activity_id: cell.activity_id })}
                 className={cn(cellChrome, 'focus-ring')}
                 aria-label={ariaLabel}
             >
@@ -554,7 +554,7 @@ function TodayCell({
     if (cell.activity_id !== null) {
         return (
             <Link
-                href={aktivitasUrl({ activity_id: cell.activity_id })}
+                href={activityUrl({ activity_id: cell.activity_id })}
                 className={cn(chrome, 'focus-ring-on-sky hover:bg-sky-2')}
                 aria-label={ariaLabel}
             >
@@ -611,4 +611,4 @@ function Legend({ className }: Readonly<{ className?: string }>) {
     );
 }
 
-Kalender.layout = appLayout;
+Calendar.layout = appLayout;

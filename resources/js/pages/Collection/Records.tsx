@@ -26,7 +26,7 @@ import { appLayout } from '@/layouts/appLayout';
 import { formatNaiveIdDate } from '@/lib/pace';
 import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
-import { aktivitasUrl } from '@/lib/routes';
+import { activityUrl } from '@/lib/routes';
 
 interface ExtendedPR extends Omit<PersonalRecord, 'activity'> {
     value_sec: number;
@@ -46,7 +46,7 @@ interface FeaturedExtras {
     delta_sec: number | null;
 }
 
-interface RekorProps {
+interface RecordsProps {
     personalRecords: ExtendedPR[];
     featuredExtras?: FeaturedExtras | null;
 }
@@ -77,10 +77,10 @@ const PACE_ORDER: Record<string, number> = {
     best_60min: 5,
 };
 
-export default function KoleksiRekor({
+export default function Records({
     personalRecords,
     featuredExtras = null,
-}: Readonly<RekorProps>) {
+}: Readonly<RecordsProps>) {
     const distancePRs = personalRecords
         .filter((p) =>
             DISTANCE_CATEGORIES.includes(
@@ -208,7 +208,7 @@ function HeroScoreboard({
                         location ??
                         (pr.activity_id ? (
                             <Link
-                                href={aktivitasUrl({
+                                href={activityUrl({
                                     activity_id: pr.activity_id,
                                 })}
                                 className="focus-ring-on-sky rounded text-cream underline-offset-2 hover:underline"
@@ -387,4 +387,4 @@ function EmptyState() {
     );
 }
 
-KoleksiRekor.layout = appLayout;
+Records.layout = appLayout;

@@ -16,7 +16,7 @@ use Illuminate\Support\Carbon;
  * post-run {@see StoryLine}, the one-liner from the {@see Analysis} row
  * carrying the {@see AnalysisType::PostRunSpeech} narration once it is Done.
  *
- * Centralised so the three page controllers (Riwayat / HariIni / Kalender)
+ * Centralised so the three page controllers (Activities / Today / Calendar)
  * share one produced shape instead of drifting.
  */
 class PostRunNoteReader

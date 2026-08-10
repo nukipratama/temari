@@ -38,7 +38,7 @@ describe('RiwayatFilter', () => {
                 range={{
                     value: '12w',
                     options: RANGE_OPTIONS,
-                    hrefFor: (v) => `/aktivitas?range=${v}`,
+                    hrefFor: (v) => `/activities?range=${v}`,
                     only: ['runs'],
                 }}
             />,
@@ -46,7 +46,7 @@ describe('RiwayatFilter', () => {
         openPanel();
 
         const link = screen.getByRole('link', { name: /8 weeks/i });
-        expect(link).toHaveAttribute('href', '/aktivitas?range=8w');
+        expect(link).toHaveAttribute('href', '/activities?range=8w');
         // The active option is marked, not duplicated as a link target.
         expect(screen.getByRole('link', { name: /12 weeks/i })).toHaveAttribute(
             'aria-current',
@@ -103,7 +103,7 @@ describe('RiwayatFilter', () => {
                 range={{
                     value: '12w',
                     options: RANGE_OPTIONS,
-                    hrefFor: (v) => `/aktivitas?range=${v}`,
+                    hrefFor: (v) => `/activities?range=${v}`,
                 }}
                 mood={{
                     selected: new Set(),
@@ -125,7 +125,7 @@ describe('RiwayatFilter', () => {
                 range={{
                     value: '12w',
                     options: RANGE_OPTIONS,
-                    hrefFor: (v) => `/aktivitas?range=${v}`,
+                    hrefFor: (v) => `/activities?range=${v}`,
                 }}
             />,
         );
@@ -191,7 +191,7 @@ describe('RiwayatFilter', () => {
                 range={{
                     value: '12w',
                     options: RANGE_OPTIONS,
-                    hrefFor: (v) => `/aktivitas?range=${v}`,
+                    hrefFor: (v) => `/activities?range=${v}`,
                 }}
                 mood={{
                     selected: new Set(['nyala']),
@@ -220,7 +220,7 @@ describe('RiwayatFilter', () => {
                 range={{
                     value: '8w',
                     options: RANGE_OPTIONS,
-                    hrefFor: (v) => `/aktivitas?range=${v}`,
+                    hrefFor: (v) => `/activities?range=${v}`,
                 }}
                 distance={{
                     value: '0-5',

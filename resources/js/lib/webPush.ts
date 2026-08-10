@@ -73,7 +73,7 @@ export async function subscribe(publicKey: string): Promise<void> {
         applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
     });
 
-    const response = await send('/profil/push', 'POST', subscription.toJSON());
+    const response = await send('/profile/push', 'POST', subscription.toJSON());
     if (!response.ok) {
         await subscription.unsubscribe();
         throw new Error(`subscribe failed (${response.status})`);
@@ -88,7 +88,7 @@ export async function unsubscribe(): Promise<void> {
     }
     const { endpoint } = subscription;
     await subscription.unsubscribe();
-    await send('/profil/push', 'DELETE', { endpoint });
+    await send('/profile/push', 'DELETE', { endpoint });
 }
 
 /** Decode a base64url VAPID public key into the Uint8Array PushManager wants. */

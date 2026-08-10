@@ -8,7 +8,7 @@ const baseProps = {
     name: 'Steady Steps',
     rarity: 'rare' as const,
     km: '10.01',
-    ctaHref: '/aktivitas/7',
+    ctaHref: '/activities/7',
     card: <div data-testid="kartu" />,
 };
 
@@ -17,7 +17,7 @@ describe('FeaturedCardHero', () => {
         render(<FeaturedCardHero {...baseProps} />);
         expect(screen.getByText('Steady Steps')).toBeInTheDocument();
         const cta = screen.getByRole('link', { name: /view activity/i });
-        expect(cta).toHaveAttribute('href', '/aktivitas/7');
+        expect(cta).toHaveAttribute('href', '/activities/7');
         // The CTA navigates, so it must be an anchor, not a button nested in one.
         expect(cta.tagName).toBe('A');
     });
@@ -27,11 +27,11 @@ describe('FeaturedCardHero', () => {
             <FeaturedCardHero
                 {...baseProps}
                 ctaLabel="View run detail"
-                ctaHref="/aktivitas/3"
+                ctaHref="/activities/3"
             />,
         );
         const cta = screen.getByRole('link', { name: /view run detail/i });
-        expect(cta).toHaveAttribute('href', '/aktivitas/3');
+        expect(cta).toHaveAttribute('href', '/activities/3');
     });
 
     it('renders the rarity·km catch line', () => {

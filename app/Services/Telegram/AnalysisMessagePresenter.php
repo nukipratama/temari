@@ -120,9 +120,9 @@ class AnalysisMessagePresenter
     public function url(Analysis $analysis): ?string
     {
         return match ($analysis->analysis_type) {
-            AnalysisType::PostRunSpeech => route('aktivitas.show', $analysis->subject_id),
+            AnalysisType::PostRunSpeech => route('activities.show', $analysis->subject_id),
             AnalysisType::WeeklyRecap => $this->weeklyRecapUrl($analysis),
-            AnalysisType::MonthlyRecap => route('kalender', ['month' => $analysis->discriminator]),
+            AnalysisType::MonthlyRecap => route('calendar', ['month' => $analysis->discriminator]),
             default => null,
         };
     }
@@ -141,8 +141,8 @@ class AnalysisMessagePresenter
             ->value('week_ending');
 
         return $weekEnding === null
-            ? route('aktivitas.index')
-            : route('aktivitas.index', ['week' => Carbon::parse($weekEnding)->toDateString()]);
+            ? route('activities.index')
+            : route('activities.index', ['week' => Carbon::parse($weekEnding)->toDateString()]);
     }
 
     /**

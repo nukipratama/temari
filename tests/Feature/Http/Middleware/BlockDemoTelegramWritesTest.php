@@ -17,7 +17,7 @@ it('blocks a demo user from an Inertia notification-preference write with an Ind
 
     $this->actingAs($user)
         ->withHeader('X-Inertia', 'true')
-        ->patch('/profil/notifikasi', [
+        ->patch('/profile/notifications', [
             'notifications_enabled' => false,
             'telegram_enabled' => true,
             'push_enabled' => true,
@@ -33,7 +33,7 @@ it('returns a JSON 403 to a plain fetch on the notification test endpoint from t
     TelegramConnection::factory()->for($user)->create();
 
     $this->actingAs($user)
-        ->postJson('/profil/notifikasi/test')
+        ->postJson('/profile/notifications/test')
         ->assertStatus(403)
         ->assertJson(['message' => 'Akun demo cuma bisa dilihat, gak bisa diubah.']);
 });
@@ -42,7 +42,7 @@ it('does not block a normal user from the same notification-preference write', f
     $user = User::factory()->create(['is_demo' => false]);
 
     $this->actingAs($user)
-        ->patch('/profil/notifikasi', [
+        ->patch('/profile/notifications', [
             'notifications_enabled' => false,
             'telegram_enabled' => true,
             'push_enabled' => true,
@@ -58,7 +58,7 @@ it('does not block a demo user from equipping an accessory (interactive sandbox)
     UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_pertama']);
 
     $this->actingAs($user)
-        ->post('/api/aksesori/equip', ['unlock_key' => 'accessory.medal_pertama'])
+        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_pertama'])
         ->assertRedirect()
         ->assertSessionDoesntHaveErrors();
 
@@ -72,14 +72,14 @@ it('does not block a demo user from marking a card seen (passive UX write)', fun
     $user = User::factory()->create(['is_demo' => true]);
     $card = RunCard::factory()->for(Activity::factory()->for($user))->create();
 
-    expect($this->actingAs($user)->postJson("/api/kartu/{$card->id}/seen")->status())
+    expect($this->actingAs($user)->postJson("/api/cards/{$card->id}/seen")->status())
         ->not->toBe(403);
 });
 
 it('does not block a GET read from the demo user', function (): void {
     $user = User::factory()->create(['is_demo' => true]);
 
-    $this->actingAs($user)->get('/profil')->assertSuccessful();
+    $this->actingAs($user)->get('/profile')->assertSuccessful();
 });
 
 it('still lets the demo user log out', function (): void {

@@ -18,7 +18,7 @@ class SettingsController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        return Inertia::render('Pengaturan/Index', [
+        return Inertia::render('Settings/Index', [
             'telegram' => $this->resolveTelegram($user, $telegramLinkToken),
             'notificationPrefs' => $this->resolveNotificationPrefs($user),
             // Lets the test button render a countdown instead of failing on a

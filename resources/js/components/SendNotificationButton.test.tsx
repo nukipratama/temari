@@ -9,10 +9,10 @@ import SendNotificationButton from './SendNotificationButton';
 describe('SendNotificationButton', () => {
     it('posts to the given url when clicked', () => {
         vi.mocked(router.post).mockReset();
-        render(<SendNotificationButton url="/aktivitas/99/kirim" />);
+        render(<SendNotificationButton url="/activities/99/send" />);
         fireEvent.click(screen.getByText('Send notification'));
         expect(router.post).toHaveBeenCalledWith(
-            '/aktivitas/99/kirim',
+            '/activities/99/send',
             {},
             expect.objectContaining({ preserveScroll: true }),
         );
@@ -21,10 +21,10 @@ describe('SendNotificationButton', () => {
     it('opens the demo-blocked modal instead of posting for a demo user', () => {
         setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
         vi.mocked(router.post).mockReset();
-        render(<SendNotificationButton url="/aktivitas/99/kirim" />);
+        render(<SendNotificationButton url="/activities/99/send" />);
         fireEvent.click(screen.getByText('Send notification'));
         expect(router.post).not.toHaveBeenCalledWith(
-            '/aktivitas/99/kirim',
+            '/activities/99/send',
             expect.anything(),
             expect.anything(),
         );
@@ -35,7 +35,7 @@ describe('SendNotificationButton', () => {
 
     it('closes the demo-blocked modal when its Close button is pressed', async () => {
         setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
-        render(<SendNotificationButton url="/aktivitas/99/kirim" />);
+        render(<SendNotificationButton url="/activities/99/send" />);
         fireEvent.click(screen.getByText('Send notification'));
         fireEvent.click(screen.getByLabelText('Close'));
         await waitFor(() =>
@@ -50,7 +50,7 @@ describe('SendNotificationButton', () => {
         vi.mocked(router.post).mockReset();
         render(
             <SendNotificationButton
-                url="/aktivitas/99/kirim"
+                url="/activities/99/send"
                 reachable={false}
             />,
         );
@@ -65,7 +65,7 @@ describe('SendNotificationButton', () => {
         setMockPage({ auth: { user: makeUser({ is_demo: false }) } });
         render(
             <SendNotificationButton
-                url="/aktivitas/99/kirim"
+                url="/activities/99/send"
                 reachable={false}
             />,
         );
@@ -82,7 +82,7 @@ describe('SendNotificationButton', () => {
         setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
         render(
             <SendNotificationButton
-                url="/aktivitas/99/kirim"
+                url="/activities/99/send"
                 reachable={false}
             />,
         );
@@ -99,7 +99,7 @@ describe('SendNotificationButton', () => {
         vi.mocked(router.post).mockImplementation((_url, _data, options) => {
             options?.onStart?.({} as never);
         });
-        render(<SendNotificationButton url="/aktivitas/99/kirim" />);
+        render(<SendNotificationButton url="/activities/99/send" />);
         const button = screen.getByText('Send notification').closest('button')!;
         fireEvent.click(button);
         expect(button).toBeDisabled();
@@ -110,7 +110,7 @@ describe('SendNotificationButton', () => {
         vi.mocked(router.post).mockReset();
         render(
             <SendNotificationButton
-                url="/aktivitas/99/kirim"
+                url="/activities/99/send"
                 retryAfterSeconds={125}
             />,
         );
@@ -126,7 +126,7 @@ describe('SendNotificationButton', () => {
         vi.mocked(router.post).mockReset();
         render(
             <SendNotificationButton
-                url="/aktivitas/99/kirim"
+                url="/activities/99/send"
                 retryAfterSeconds={null}
             />,
         );

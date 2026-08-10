@@ -6,7 +6,7 @@ import type { EquippedAccessories } from '@/types/inertia';
 
 import { setMockPage } from '@/test/setup';
 
-import KoleksiAksesori from './Aksesori';
+import Accessories from './Accessories';
 
 type Slot = 'medal' | 'ikat_kepala' | 'kaus' | 'celana' | 'sepatu' | 'aura';
 
@@ -48,13 +48,13 @@ beforeEach(() => {
     });
 });
 
-describe('Koleksi/Aksesori', () => {
+describe('Collection/Accessories', () => {
     it('renders headers + equipped slot labels when nothing is equipped', () => {
         const items = [
             item('accessory.ikat_kepala_epik', 'ikat_kepala', false, false),
             item('accessory.medal_pertama', 'medal', false, false),
         ];
-        render(<KoleksiAksesori items={items} equipped={emptyEquipped} />);
+        render(<Accessories items={items} equipped={emptyEquipped} />);
         expect(screen.getByText(/Dress up Temari/)).toBeInTheDocument();
         // 6 slot labels appear in the equipped strip with "not equipped" status.
         expect(screen.getAllByText(/not equipped/).length).toBe(6);
@@ -67,7 +67,7 @@ describe('Koleksi/Aksesori', () => {
             item('accessory.medal_emas', 'medal', true, true),
         ];
         render(
-            <KoleksiAksesori
+            <Accessories
                 items={items}
                 equipped={{
                     ...emptyEquipped,
@@ -83,7 +83,7 @@ describe('Koleksi/Aksesori', () => {
 
     it('renders the medal name when equipped', () => {
         render(
-            <KoleksiAksesori
+            <Accessories
                 items={[item('accessory.medal_pertama', 'medal', true, true)]}
                 equipped={{
                     ...emptyEquipped,
@@ -98,7 +98,7 @@ describe('Koleksi/Aksesori', () => {
 
     it('shows the item name label for equipped aura', () => {
         render(
-            <KoleksiAksesori
+            <Accessories
                 items={[item('accessory.aura_pemanasan', 'aura', true, true)]}
                 equipped={{
                     ...emptyEquipped,
@@ -116,10 +116,10 @@ describe('Koleksi/Aksesori', () => {
         const items = [
             item('accessory.ikat_kepala_epik', 'ikat_kepala', true, false),
         ];
-        render(<KoleksiAksesori items={items} equipped={emptyEquipped} />);
+        render(<Accessories items={items} equipped={emptyEquipped} />);
         fireEvent.click(screen.getByText('Equip'));
         expect(router.post).toHaveBeenCalledWith(
-            '/api/aksesori/equip',
+            '/api/accessories/equip',
             { unlock_key: 'accessory.ikat_kepala_epik' },
             expect.objectContaining({ preserveScroll: true }),
         );
@@ -127,7 +127,7 @@ describe('Koleksi/Aksesori', () => {
 
     it('renders the default preview (no slot variant) for unknown unlock keys', () => {
         const items = [item('accessory.sepatu_basic', 'sepatu', true, false)];
-        render(<KoleksiAksesori items={items} equipped={emptyEquipped} />);
+        render(<Accessories items={items} equipped={emptyEquipped} />);
         expect(screen.getByText('accessory.sepatu_basic')).toBeInTheDocument();
     });
 
@@ -142,7 +142,7 @@ describe('Koleksi/Aksesori', () => {
             ),
             item('accessory.medal_pertama', 'medal', false, false),
         ];
-        render(<KoleksiAksesori items={items} equipped={emptyEquipped} />);
+        render(<Accessories items={items} equipped={emptyEquipped} />);
         // Each slot section has its own toggle + locked-item wrapper, so scope
         // both to the ikat_kepala section rather than the first "locked"
         // button in the document (medal's section also has one).

@@ -15,19 +15,19 @@ import { cn } from '@/lib/cn';
  * button instead of the brand mark.
  *
  * Deliberately an explicit map rather than something derived from
- * `activeTabFromUrl`: `/kalender`, `/rekor`, `/aksesori` and `/target` all
+ * `activeTabFromUrl`: `/calendar`, `/records`, `/accessories` and `/goals` all
  * resolve to a tab too, but they are reached through in-page tab strips, so
  * they are siblings of their tab root and must keep the brand mark.
  *
- * `ZonaHR` points at `/pengaturan`, not the `/profil` its old in-page
+ * `HrZones` points at `/settings`, not the `/profile` its old in-page
  * breadcrumb used — that link read "Me · Settings" as a trail but skipped
  * straight past its actual parent.
  */
 const BACK_TARGETS: Record<string, { href: string; label: string }> = {
-    'Runs/Show': { href: '/aktivitas', label: 'History' },
+    'Runs/Show': { href: '/activities', label: 'History' },
     // Settings is deliberately absent: it is one tap from the Me tab and
     // from the avatar menu on every page, so it reads as a root, not a push.
-    'Pengaturan/ZonaHR': { href: '/pengaturan', label: 'Settings' },
+    'Settings/HrZones': { href: '/settings', label: 'Settings' },
 };
 
 /**

@@ -18,7 +18,7 @@ beforeEach(function (): void {
 });
 
 it('requires authentication', function (): void {
-    $this->post(route('rekap.bulanan.kirim', ['month' => '2026-06']))->assertRedirect(route('login'));
+    $this->post(route('recaps.monthly.send', ['month' => '2026-06']))->assertRedirect(route('login'));
 });
 
 it('force-sends the push when the monthly recap is done', function (): void {
@@ -28,7 +28,7 @@ it('force-sends the push when the monthly recap is done', function (): void {
     $analysis = doneAnalysisFor(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-06', content: 'Bulan ini 120 km.');
 
     $this->actingAs($user)
-        ->post(route('rekap.bulanan.kirim', ['month' => '2026-06']))
+        ->post(route('recaps.monthly.send', ['month' => '2026-06']))
         ->assertRedirect()
         ->assertSessionHas('success');
 
@@ -46,7 +46,7 @@ it('does not re-send and flashes info while the send cooldown is active', functi
     RateLimiter::hit(Cooldown::notificationKey($analysis->id), Cooldown::WINDOW_SECONDS);
 
     $this->actingAs($user)
-        ->post(route('rekap.bulanan.kirim', ['month' => '2026-06']))
+        ->post(route('recaps.monthly.send', ['month' => '2026-06']))
         ->assertRedirect()
         ->assertSessionHas('info');
 
@@ -59,7 +59,7 @@ it('does not send and flashes info when the recap is not ready', function (): vo
     doneAnalysisFor(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-06', done: false, content: 'Bulan ini 120 km.');
 
     $this->actingAs($user)
-        ->post(route('rekap.bulanan.kirim', ['month' => '2026-06']))
+        ->post(route('recaps.monthly.send', ['month' => '2026-06']))
         ->assertRedirect()
         ->assertSessionHas('info');
 
@@ -72,7 +72,7 @@ it('does not send for a month the user has no recap for', function (): void {
     doneAnalysisFor(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-06', content: 'Bulan ini 120 km.');
 
     $this->actingAs($user)
-        ->post(route('rekap.bulanan.kirim', ['month' => '2026-05']))
+        ->post(route('recaps.monthly.send', ['month' => '2026-05']))
         ->assertRedirect()
         ->assertSessionHas('info');
 
@@ -84,7 +84,7 @@ it('404s on a malformed month', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->post(route('rekap.bulanan.kirim', ['month' => 'juni-2026']))
+        ->post(route('recaps.monthly.send', ['month' => 'juni-2026']))
         ->assertNotFound();
 
     Notification::assertNothingSent();

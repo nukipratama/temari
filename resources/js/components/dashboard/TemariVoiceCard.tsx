@@ -15,7 +15,7 @@ import {
 } from '@/hooks/useCooldownCountdown';
 import { formatDurationHMS } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
-import { formatWeather } from '@/pages/HariIni/helpers';
+import { formatWeather } from '@/pages/Today/helpers';
 
 /**
  * Renders the day's Temari voice as a structured 2-part block:
@@ -50,7 +50,7 @@ function VoiceContent({ text }: Readonly<{ text: string }>) {
     );
 }
 
-export default function KataTemariCard({
+export default function TemariVoiceCard({
     briefing,
     pose,
     lastRun,

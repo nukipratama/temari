@@ -94,7 +94,7 @@ export const DEFAULT_SORT: SortMode = 'newest';
 
 /**
  * The query object for a filter state. Defaults are omitted so the common
- * unfiltered view stays a clean `/aktivitas`, and moods are serialised in
+ * unfiltered view stays a clean `/activities`, and moods are serialised in
  * MOOD_ORDER so the same selection always produces the same shareable link.
  */
 export function filterQuery({
@@ -120,7 +120,7 @@ export function filterQuery({
 export function hrefWithFilters(state: FilterState): string {
     const query = new URLSearchParams(filterQuery(state)).toString();
 
-    return query === '' ? '/aktivitas' : `/aktivitas?${query}`;
+    return query === '' ? '/activities' : `/activities?${query}`;
 }
 
 /** Looks up an option's label by value, falling back to the raw value itself. */
@@ -288,7 +288,7 @@ export function useJejakFilters({
     // within the current range window.
     const visitWithFilters = useCallback(
         (patch: Partial<FilterState>) => {
-            router.get('/aktivitas', filterQuery({ ...current, ...patch }), {
+            router.get('/activities', filterQuery({ ...current, ...patch }), {
                 preserveScroll: true,
                 preserveState: true,
                 only: RANGE_RELOAD_PROPS,
@@ -436,7 +436,7 @@ export function useJejakFilters({
         return {
             summary,
             apply: () =>
-                router.get('/aktivitas', resumable, {
+                router.get('/activities', resumable, {
                     preserveScroll: true,
                     preserveState: true,
                     only: RANGE_RELOAD_PROPS,

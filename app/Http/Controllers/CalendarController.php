@@ -18,7 +18,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * /kalender — Google-Calendar-style single-month view. `?month=YYYY-MM`
+ * /calendar — Google-Calendar-style single-month view. `?month=YYYY-MM`
  * selects the visible month (defaults to today's). The cell grid pads
  * leading days from the previous month + trailing days from the next so
  * the grid always renders complete weeks (Mon-Sun). Each cell carries
@@ -64,7 +64,7 @@ class CalendarController extends Controller
             $discriminator,
         );
 
-        return Inertia::render('Riwayat/Kalender', [
+        return Inertia::render('Activities/Calendar', [
             'month' => $discriminator,
             'monthLabel' => $this->formatMonthLabel($monthStart),
             'prevMonth' => $monthStart->copy()->subMonthNoOverflow()->format('Y-m'),

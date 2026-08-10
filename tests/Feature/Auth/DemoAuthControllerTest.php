@@ -23,8 +23,8 @@ it('returns to a safe `from` deep link after demo login', function (): void {
     config()->set('demo.login_enabled', true);
     User::factory()->create(['email' => DemoRunSeeder::DEMO_USER_EMAIL]);
 
-    $this->post(route('auth.demo'), ['from' => '/aktivitas/13'])
-        ->assertRedirect(url('/aktivitas/13'));
+    $this->post(route('auth.demo'), ['from' => '/activities/13'])
+        ->assertRedirect(url('/activities/13'));
 });
 
 it('ignores a foreign `from` on demo login and falls back to the dashboard', function (): void {

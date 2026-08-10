@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Builds the per-day cell grid for the /kalender month view. Each cell carries
+ * Builds the per-day cell grid for the /calendar month view. Each cell carries
  * the day's aggregated distance / pace / weighted HR / TRIMP / mood so the
  * frontend renders rich detail without a second query. The grid spans whole
  * Mon-Sun weeks ($gridStart..$gridEnd) padded around the visible month.

@@ -5,9 +5,9 @@ import BackLink from './BackLink';
 
 describe('BackLink', () => {
     it('renders a link to href with the label', () => {
-        render(<BackLink href="/kartu">Collection · Cards</BackLink>);
+        render(<BackLink href="/cards">Collection · Cards</BackLink>);
         const link = screen.getByRole('link', { name: /collection · cards/i });
-        expect(link).toHaveAttribute('href', '/kartu');
+        expect(link).toHaveAttribute('href', '/cards');
     });
 
     it('uses the muted tint by default', () => {

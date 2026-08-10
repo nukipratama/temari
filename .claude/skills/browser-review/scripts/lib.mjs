@@ -79,7 +79,7 @@ export async function dismissReveal(page) {
 
 // Chromium can't rasterize a screenshot taller than ~32,767 physical pixels —
 // past that it doesn't throw, it silently writes a 0-byte file. A long
-// unpaginated list (e.g. /aktivitas with enough seeded runs) times deviceScaleFactor
+// unpaginated list (e.g. /activities with enough seeded runs) times deviceScaleFactor
 // 3 on mobile crosses that with room to spare. Guard it explicitly instead of
 // shipping a broken capture with no failure signal.
 const MAX_CANVAS_PX = 32000;
@@ -105,7 +105,7 @@ const SKIP = [
 /**
  * Enumerate GET page routes from Laravel itself. Returns [{ name, uri, path }]
  * where {param} routes are resolved to a real id by scraping the first matching
- * link off the list page (so /aktivitas/{activity} -> /aktivitas/126, live).
+ * link off the list page (so /activities/{activity} -> /activities/126, live).
  * Unresolvable param routes are dropped (and logged — usually means thin data,
  * so re-run `artisan demo:seed`).
  */
@@ -128,7 +128,7 @@ export async function discoverPageRoutes(page) {
       pages.push({ name: uri === '/' || uri === '' ? 'hari-ini' : uri.replaceAll('/', '-'), path: `/${uri}` });
       continue;
     }
-    // Single-param page: resolve the id from the list page (e.g. aktivitas/{activity}).
+    // Single-param page: resolve the id from the list page (e.g. activities/{activity}).
     const base = uri.split('/{')[0];
     await page.goto(`${BASE}/${base}`, { waitUntil: 'networkidle' }).catch(() => {});
     const href = await page.locator(`a[href^="/${base}/"]`).first().getAttribute('href').catch(() => null);

@@ -9,7 +9,7 @@ import {
     RANGE_FILTER_OPTIONS,
     labelFor,
     type RangeFilterValue,
-} from '@/pages/Riwayat/useJejakFilters';
+} from '@/pages/Activities/useJejakFilters';
 
 interface InlineNoteProps {
     icon: string;
@@ -83,7 +83,7 @@ export function WeekFocusNote({
             icon="mdi:calendar-week"
             className="mb-6 flex-wrap"
             action={
-                <BackLink href="/aktivitas" tone="accent">
+                <BackLink href="/activities" tone="accent">
                     View all runs
                 </BackLink>
             }

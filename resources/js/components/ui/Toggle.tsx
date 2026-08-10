@@ -11,7 +11,7 @@ interface ToggleProps {
 /**
  * The app's switch.
  *
- * Promoted out of `Pengaturan/Index` when the settings page grew past one place
+ * Promoted out of `Settings/Index` when the settings page grew past one place
  * that needed a switch. It renders **only the control**, not a label row: the
  * visible label, description and icon belong to `SettingsRow`, so both toggle
  * rows and chevron rows share one layout instead of each inventing its own

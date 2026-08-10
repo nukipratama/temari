@@ -1,11 +1,11 @@
-import type { FeaturedCard } from '@/pages/HariIni/helpers';
+import type { FeaturedCard } from '@/pages/Today/helpers';
 import type { AnalysisPayload } from '@/types/inertia';
 
 import FeaturedCardHero from '@/components/card/FeaturedCardHero';
 import Kartu from '@/components/card/Kartu';
 import ExpandableQuote from '@/components/dashboard/ExpandableQuote';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import { aktivitasUrl } from '@/lib/routes';
+import { activityUrl } from '@/lib/routes';
 
 export default function FeaturedKartuPanel({
     featured,
@@ -21,7 +21,7 @@ export default function FeaturedKartuPanel({
             durasi={featured.durasi}
             badges={featured.badges}
             polyline={featured.polyline}
-            ctaHref={aktivitasUrl({ activity_id: featured.activityId })}
+            ctaHref={activityUrl({ activity_id: featured.activityId })}
             voice={
                 featuredKartuVoice.status !== 'pending' && (
                     <AnalysisStatus

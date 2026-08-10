@@ -9,7 +9,7 @@ import type {
 
 import { setMockPage } from '@/test/setup';
 
-import KataTemariCard from './KataTemariCard';
+import TemariVoiceCard from './TemariVoiceCard';
 
 function payload(content: string): AnalysisPayload {
     return {
@@ -59,10 +59,10 @@ const runWithWeather: ActivityDetail = {
     weather_rain_detected: false,
 };
 
-describe('KataTemariCard', () => {
+describe('TemariVoiceCard', () => {
     it('renders the section label and a title-only voice', () => {
         render(
-            <KataTemariCard
+            <TemariVoiceCard
                 briefing={briefingWith('“Just an easy run today.”')}
                 pose="observational"
                 lastRun={null}
@@ -76,7 +76,7 @@ describe('KataTemariCard', () => {
 
     it('splits the merged voice into a session title and Temari’s reasoning', () => {
         render(
-            <KataTemariCard
+            <TemariVoiceCard
                 briefing={briefingWith(
                     'Light tempo today.\n\nYour last two sessions were both easy, so keep the pace in zone 2 for 40 minutes.',
                 )}
@@ -92,7 +92,7 @@ describe('KataTemariCard', () => {
 
     it('renders a weather chip from the last run', () => {
         render(
-            <KataTemariCard
+            <TemariVoiceCard
                 briefing={briefingWith('Light tempo.')}
                 pose="observational"
                 lastRun={runWithWeather}
@@ -103,7 +103,7 @@ describe('KataTemariCard', () => {
 
     it('emits no chip when there is no last run', () => {
         render(
-            <KataTemariCard
+            <TemariVoiceCard
                 briefing={briefingWith('Light tempo.')}
                 pose="observational"
                 lastRun={null}
@@ -114,7 +114,7 @@ describe('KataTemariCard', () => {
 
     it('flips "Another take" to its pending label when triggered', async () => {
         render(
-            <KataTemariCard
+            <TemariVoiceCard
                 briefing={briefingWith('Light tempo.')}
                 pose="observational"
                 lastRun={null}
@@ -137,7 +137,7 @@ describe('KataTemariCard', () => {
 
     it('disables "Another take" and shows a countdown while on cooldown', () => {
         render(
-            <KataTemariCard
+            <TemariVoiceCard
                 briefing={briefingWith('Light tempo.', {
                     retry_after_seconds: 900,
                 })}
@@ -155,7 +155,7 @@ describe('KataTemariCard', () => {
     it('hides the "Another take" button when AI is globally paused', () => {
         setMockPage({ aiPaused: true });
         render(
-            <KataTemariCard
+            <TemariVoiceCard
                 briefing={briefingWith('Light tempo.')}
                 pose="observational"
                 lastRun={null}
@@ -170,7 +170,7 @@ describe('KataTemariCard', () => {
         const longBody =
             'Keep the pace in zone 2 for the full forty minutes, '.repeat(4);
         render(
-            <KataTemariCard
+            <TemariVoiceCard
                 briefing={briefingWith(`Light tempo today.\n\n${longBody}`)}
                 pose="observational"
                 lastRun={null}

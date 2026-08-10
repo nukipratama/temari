@@ -12,7 +12,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 uses(RefreshDatabase::class);
 
 it('requires authentication', function (): void {
-    $this->get('/kartu')->assertRedirect('/login');
+    $this->get('/cards')->assertRedirect('/login');
 });
 
 it('shows the user\'s cards on the gallery', function (): void {
@@ -24,10 +24,10 @@ it('shows the user\'s cards on the gallery', function (): void {
         'special_move' => 'Paru-paru Baja',
     ]);
 
-    $this->actingAs($user)->get('/kartu')
+    $this->actingAs($user)->get('/cards')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Koleksi/Kartu')
+            ->component('Collection/Cards')
             ->has('cards.data', 1)
             ->where('cards.data.0.special_move', 'Paru-paru Baja')
             ->where('cards.data.0.rarity', 'epic'));
@@ -46,7 +46,7 @@ it('falls back to the computed mood (not the sleepy default) when no post-run st
     ]);
     RunCard::factory()->for($activity)->create(['rarity' => 'epic']);
 
-    $this->actingAs($user)->get('/kartu')
+    $this->actingAs($user)->get('/cards')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('cards.data.0.mood', 'enteng'));
@@ -55,10 +55,10 @@ it('falls back to the computed mood (not the sleepy default) when no post-run st
 it('renders the empty state when no cards match the filter', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/kartu?rarity=legendary')
+    $this->actingAs($user)->get('/cards?rarity=legendary')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Koleksi/Kartu')
+            ->component('Collection/Cards')
             ->where('cards.data', [])
             ->where('selectedRarity', 'legendary'));
 });
@@ -79,7 +79,7 @@ it('filters by rarity', function (): void {
         'special_move' => 'CommonMove',
     ]);
 
-    $this->actingAs($user)->get('/kartu?rarity=epic')
+    $this->actingAs($user)->get('/cards?rarity=epic')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->has('cards.data', 1)
@@ -103,10 +103,10 @@ it('exposes a featured card that picks the highest-rarity recent', function (): 
         'special_move' => 'Pembalik Keadaan',
     ]);
 
-    $this->actingAs($user)->get('/kartu')
+    $this->actingAs($user)->get('/cards')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Koleksi/Kartu')
+            ->component('Collection/Cards')
             ->where('featuredCard.special_move', 'Pembalik Keadaan')
             ->where('featuredCard.rarity', 'epic')
             ->where('rarityCounts.epic', 1)
@@ -121,7 +121,7 @@ it('numbers each card by edition within its rarity', function (): void {
         RunCard::factory()->for($act)->create(['rarity' => 'rare', 'special_move' => $move]);
     }
 
-    $this->actingAs($user)->get('/kartu')
+    $this->actingAs($user)->get('/cards')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             // Grid is newest-first; chronological edition numbering runs oldest = #1.
@@ -141,7 +141,7 @@ it('hides other users\' cards', function (): void {
     ]);
 
     $me = User::factory()->create();
-    $this->actingAs($me)->get('/kartu')
+    $this->actingAs($me)->get('/cards')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('cards.data', []));
 });

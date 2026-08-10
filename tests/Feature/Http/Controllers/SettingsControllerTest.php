@@ -11,19 +11,19 @@ use Inertia\Testing\AssertableInertia as Assert;
 uses(RefreshDatabase::class);
 
 it('renders the settings page for an authenticated user', function (): void {
-    $this->actingAs(User::factory()->create())->get('/pengaturan')
+    $this->actingAs(User::factory()->create())->get('/settings')
         ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->component('Pengaturan/Index'));
+        ->assertInertia(fn (Assert $page) => $page->component('Settings/Index'));
 });
 
 it('requires auth', function (): void {
-    $this->get('/pengaturan')->assertRedirect('/login');
+    $this->get('/settings')->assertRedirect('/login');
 });
 
 it('exposes the telegram connect url when the bot username is configured', function (): void {
     config(['services.telegram.bot_username' => 'temari_bot']);
 
-    $this->actingAs(User::factory()->create())->get('/pengaturan')
+    $this->actingAs(User::factory()->create())->get('/settings')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('telegram.connected', false)
@@ -41,7 +41,7 @@ it('reports the connection state and the channel-neutral preferences', function 
         'push_enabled' => false,
     ]);
 
-    $this->actingAs($user)->get('/pengaturan')
+    $this->actingAs($user)->get('/settings')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('telegram.connected', true)
@@ -51,7 +51,7 @@ it('reports the connection state and the channel-neutral preferences', function 
             ->where('notificationPrefs.push_enabled', false));
 });
 
-it('redirects the legacy /settings path to the settings page', function (): void {
-    $this->actingAs(User::factory()->create())->get('/settings')
-        ->assertRedirect('/pengaturan');
+it('redirects the legacy /pengaturan path to the settings page', function (): void {
+    $this->actingAs(User::factory()->create())->get('/pengaturan')
+        ->assertRedirect('/settings');
 });

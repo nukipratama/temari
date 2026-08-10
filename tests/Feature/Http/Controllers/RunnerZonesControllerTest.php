@@ -34,20 +34,20 @@ function validZonesPayload(array $overrides = []): array
 }
 
 it('requires authentication for the index', function (): void {
-    $this->get('/pengaturan/zona')->assertRedirect('/login');
+    $this->get('/settings/zones')->assertRedirect('/login');
 });
 
 it('requires authentication for the update', function (): void {
-    $this->patch('/pengaturan/zona', validZonesPayload())->assertRedirect('/login');
+    $this->patch('/settings/zones', validZonesPayload())->assertRedirect('/login');
 });
 
 it('renders the page with the config-fallback profile for a fresh user', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/pengaturan/zona')
+    $this->actingAs($user)->get('/settings/zones')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Pengaturan/ZonaHR')
+            ->component('Settings/HrZones')
             ->where('hasCustomProfile', false)
             ->where('source', 'default')
             ->where('stravaSyncedLabel', null)
@@ -63,7 +63,7 @@ it('exposes the strava source and a last-synced label for a synced profile', fun
         'strava_zones_synced_at' => now(),
     ]);
 
-    $this->actingAs($user)->get('/pengaturan/zona')
+    $this->actingAs($user)->get('/settings/zones')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('source', 'strava')
@@ -74,7 +74,7 @@ it('renders the page with the stored custom profile', function (): void {
     $user = User::factory()->create();
     RunnerProfile::factory()->for($user)->create(['max_hr' => 195]);
 
-    $this->actingAs($user)->get('/pengaturan/zona')
+    $this->actingAs($user)->get('/settings/zones')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('hasCustomProfile', true)
@@ -85,7 +85,7 @@ it('creates a runner_profiles row and bumps hr_zones_changed_at', function (): v
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->patch('/pengaturan/zona', validZonesPayload())
+        ->patch('/settings/zones', validZonesPayload())
         ->assertRedirect()
         ->assertSessionHas('success');
 
@@ -101,7 +101,7 @@ it('marks the profile source as manual on save', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->patch('/pengaturan/zona', validZonesPayload())
+        ->patch('/settings/zones', validZonesPayload())
         ->assertRedirect();
 
     expect(RunnerProfile::query()->where('user_id', $user->id)->value('source'))->toBe('manual');
@@ -112,7 +112,7 @@ it('updates the existing row in place rather than creating a second one', functi
     RunnerProfile::factory()->for($user)->create(['max_hr' => 170]);
 
     $this->actingAs($user)
-        ->patch('/pengaturan/zona', validZonesPayload())
+        ->patch('/settings/zones', validZonesPayload())
         ->assertRedirect();
 
     expect(RunnerProfile::query()->where('user_id', $user->id)->count())->toBe(1)
@@ -123,7 +123,7 @@ it('rejects an invalid submission and persists nothing', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->patch('/pengaturan/zona', validZonesPayload(['max_hr' => 90]))
+        ->patch('/settings/zones', validZonesPayload(['max_hr' => 90]))
         ->assertSessionHasErrors('max_hr');
 
     expect(RunnerProfile::query()->where('user_id', $user->id)->exists())->toBeFalse();
@@ -135,7 +135,7 @@ it('does not dispatch any recompute job on update (forward-only design)', functi
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->patch('/pengaturan/zona', validZonesPayload())
+        ->patch('/settings/zones', validZonesPayload())
         ->assertRedirect();
 
     Queue::assertNothingPushed();
@@ -145,17 +145,17 @@ it('exposes canSyncFromStrava true only with a live profile:read_all connection'
     $scoped = User::factory()->create();
     StravaConnection::factory()->for($scoped)->create(['scopes' => 'read,activity:read_all,profile:read_all']);
 
-    $this->actingAs($scoped)->get('/pengaturan/zona')
+    $this->actingAs($scoped)->get('/settings/zones')
         ->assertInertia(fn (Assert $page) => $page->where('canSyncFromStrava', true));
 
     $unscoped = User::factory()->create();
     StravaConnection::factory()->for($unscoped)->create(['scopes' => 'read,activity:read_all']);
 
-    $this->actingAs($unscoped)->get('/pengaturan/zona')
+    $this->actingAs($unscoped)->get('/settings/zones')
         ->assertInertia(fn (Assert $page) => $page->where('canSyncFromStrava', false));
 
     $none = User::factory()->create();
-    $this->actingAs($none)->get('/pengaturan/zona')
+    $this->actingAs($none)->get('/settings/zones')
         ->assertInertia(fn (Assert $page) => $page->where('canSyncFromStrava', false));
 });
 
@@ -164,13 +164,13 @@ it('resets to default by deleting the runner profile', function (): void {
     RunnerProfile::factory()->for($user)->create(['source' => 'manual']);
 
     $this->actingAs($user)
-        ->delete('/pengaturan/zona')
+        ->delete('/settings/zones')
         ->assertRedirect()
         ->assertSessionHas('success');
 
     expect(RunnerProfile::query()->where('user_id', $user->id)->exists())->toBeFalse();
 
-    $this->actingAs($user)->get('/pengaturan/zona')
+    $this->actingAs($user)->get('/settings/zones')
         ->assertInertia(fn (Assert $page) => $page->where('source', 'default'));
 });
 
@@ -191,7 +191,7 @@ it('re-syncs from Strava inline and flips the source to strava for a scoped user
     app()->instance(ZoneFetcher::class, $fetcher);
 
     $this->actingAs($user)
-        ->post('/pengaturan/zona/sinkron-strava')
+        ->post('/settings/zones/resync-strava')
         ->assertRedirect()
         ->assertSessionHas('success');
 
@@ -207,7 +207,7 @@ it('forbids re-syncing without the profile:read_all scope, without touching Stra
     app()->instance(ZoneFetcher::class, $fetcher);
 
     $this->actingAs($user)
-        ->post('/pengaturan/zona/sinkron-strava')
+        ->post('/settings/zones/resync-strava')
         ->assertForbidden();
 });
 
@@ -222,7 +222,7 @@ it('says so instead of touching Strava while the kill-switch is off', function (
     app()->instance(ZoneFetcher::class, $fetcher);
 
     $this->actingAs($user)
-        ->post('/pengaturan/zona/sinkron-strava')
+        ->post('/settings/zones/resync-strava')
         ->assertRedirect()
         ->assertSessionMissing('success')
         ->assertSessionHas('info');

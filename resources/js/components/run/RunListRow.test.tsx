@@ -40,7 +40,7 @@ describe('RunListRow', () => {
     it('links to /aktivitas/{activity_id}', () => {
         render(<RunListRow detail={detail({ activity_id: 7 })} />);
         expect(screen.getByRole('link').getAttribute('href')).toBe(
-            '/aktivitas/7',
+            '/activities/7',
         );
     });
 

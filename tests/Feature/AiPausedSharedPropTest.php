@@ -19,7 +19,7 @@ it('shares true when LLM generation is paused', function (): void {
         ->shouldReceive('generationPaused')
         ->andReturn(true);
 
-    $this->actingAs(User::factory()->create())->get('/rekor')
+    $this->actingAs(User::factory()->create())->get('/records')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('aiPaused', true));
 });
@@ -29,7 +29,7 @@ it('shares false when the pipeline is healthy', function (): void {
         ->shouldReceive('generationPaused')
         ->andReturn(false);
 
-    $this->actingAs(User::factory()->create())->get('/rekor')
+    $this->actingAs(User::factory()->create())->get('/records')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('aiPaused', false));
 });

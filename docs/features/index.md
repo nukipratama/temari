@@ -16,13 +16,13 @@ _Pages_
 - [[dashboard]] — the "Hari Ini" home (greeting, Kata Temari, vitals, featured kartu, suggestion)
 - [[run-history]] — Jejak/Kalender, weekly snapshots, filters, journey strip
 - [[run-detail]] — single run: four-lens, route map, splits, HR zones, AI insights
-- [[profile]] — Aku, persona, profile voice
+- [[profile]] — persona, profile voice
 - [[settings]] — Pengaturan hub (Telegram toggles, HR-zone entry, account deletion)
 - [[settings-hr-zones]] — Zona HR (Karvonen zones)
 - [[ai-usage]] — token usage dashboard (ops-gated)
 
 _Collection_
-- [[cards-collection]] — Koleksi/Kartu, rarities, badges, special moves
+- [[cards-collection]] — Collection/Cards, rarities, badges, special moves
 - [[records]] — Rekor, PRs, progression chart
 - [[targets-accessories]] — Target + Aksesori, unlock collection
 

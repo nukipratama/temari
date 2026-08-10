@@ -21,7 +21,7 @@ beforeEach(function (): void {
  * (no existing Analysis rows) must not enqueue any LLM job. Analyses are
  * always user-triggered via the AnalysisStatus "Analisis sekarang" button.
  */
-it('does not enqueue any LLM job on GET / (Hari Ini)', function (): void {
+it('does not enqueue any LLM job on GET / (Today)', function (): void {
     $this->actingAs(User::factory()->create())->get('/')->assertSuccessful();
 
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
@@ -29,20 +29,20 @@ it('does not enqueue any LLM job on GET / (Hari Ini)', function (): void {
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
-it('does not enqueue any LLM job on GET /profil (Aku)', function (): void {
-    $this->actingAs(User::factory()->create())->get('/profil')->assertSuccessful();
+it('does not enqueue any LLM job on GET /profile', function (): void {
+    $this->actingAs(User::factory()->create())->get('/profile')->assertSuccessful();
 
     Bus::assertNotDispatched(AnalyzeAkuProfileVoiceJob::class);
 });
 
-it('does not enqueue any LLM job on GET /kalender (Riwayat · Kalender)', function (): void {
-    $this->actingAs(User::factory()->create())->get('/kalender?month=2026-05')->assertSuccessful();
+it('does not enqueue any LLM job on GET /calendar (Activities · Calendar)', function (): void {
+    $this->actingAs(User::factory()->create())->get('/calendar?month=2026-05')->assertSuccessful();
 
     Bus::assertNotDispatched(AnalyzeMonthlyRecapJob::class);
 });
 
-it('does not enqueue any LLM job on GET /aktivitas (Riwayat · Linimasa)', function (): void {
-    $this->actingAs(User::factory()->create())->get('/aktivitas')->assertSuccessful();
+it('does not enqueue any LLM job on GET /activities (Activities · Feed)', function (): void {
+    $this->actingAs(User::factory()->create())->get('/activities')->assertSuccessful();
 
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });

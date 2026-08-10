@@ -24,7 +24,7 @@ class GoalController extends Controller
         $goals = $this->goals->forUser($user);
         $completed = $this->goals->completedCount($goals);
 
-        return Inertia::render('Target', [
+        return Inertia::render('Goals', [
             'goals' => $goals,
             'completedCount' => $completed,
             'totalCount' => count($goals),

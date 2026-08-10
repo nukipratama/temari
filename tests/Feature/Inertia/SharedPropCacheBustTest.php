@@ -34,7 +34,7 @@ uses(RefreshDatabase::class);
  */
 function visitAs(User $user): TestResponse
 {
-    return test()->actingAs($user->fresh())->get('/rekor');
+    return test()->actingAs($user->fresh())->get('/records');
 }
 
 function warmSharedProps(User $user): void
@@ -71,7 +71,7 @@ it('reflects an accessory swap on the very next request', function (): void {
     warmSharedProps($user);
 
     $this->actingAs($user)
-        ->post('/api/aksesori/equip', ['unlock_key' => 'accessory.medal_perak'])
+        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_perak'])
         ->assertRedirect();
 
     visitAs($user)
@@ -230,7 +230,7 @@ it('busts only the acting user cache, never a bystander', function (): void {
     warmSharedProps($user);
 
     $this->actingAs($user)
-        ->post('/api/aksesori/equip', ['unlock_key' => 'accessory.medal_perak'])
+        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_perak'])
         ->assertRedirect();
 
     expect(Cache::has(SharedPropCacheKey::EquippedAccessories->key($other->id)))->toBeTrue()

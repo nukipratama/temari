@@ -35,7 +35,7 @@ interface TelegramPayload {
     connect_url: string | null;
 }
 
-interface PengaturanProps {
+interface SettingsProps {
     telegram?: TelegramPayload;
     notificationPrefs?: NotificationPrefs;
     /** Seconds left on the test-send cooldown, or null when it is not cooling. */
@@ -54,16 +54,16 @@ const PREFS_DEFAULT: NotificationPrefs = {
     push_enabled: true,
 };
 
-export default function Pengaturan({
+export default function Settings({
     telegram = TELEGRAM_DEFAULT,
     notificationPrefs = PREFS_DEFAULT,
     testCooldownSeconds = null,
-}: Readonly<PengaturanProps>) {
+}: Readonly<SettingsProps>) {
     return (
         <>
             <Head title="Settings" />
             <PageContainer>
-                {/* No back affordance: Pengaturan is one tap from the Aku tab
+                {/* No back affordance: Settings is one tap from the Me tab
                     and from the avatar menu on every page, so a breadcrumb here
                     would be chrome without a job. */}
                 <header className="mb-8">
@@ -99,7 +99,7 @@ export default function Pengaturan({
                                 icon="mdi:heart-pulse"
                                 label="HR zones"
                                 description="Set your own Z1-Z5 boundaries so Temari reads your runs more accurately."
-                                href="/pengaturan/zona"
+                                href="/settings/zones"
                             />
                         </Card>
                     </div>
@@ -144,7 +144,7 @@ function DeleteAccountPanel() {
                 primaryLabel="Yes, delete my account"
                 primaryIcon="mdi:account-remove-outline"
                 primaryClassName="bg-ember-deep text-cream hover:opacity-90"
-                onPrimary={() => router.delete('/akun')}
+                onPrimary={() => router.delete('/account')}
             />
         </>
     );
@@ -248,7 +248,7 @@ function TestSendButton({
     cooldownSeconds: number | null;
     guard: (run: () => void) => void;
 }>) {
-    const [sending, send] = usePendingPost('/profil/notifikasi/test', {
+    const [sending, send] = usePendingPost('/profile/notifications/test', {
         preserveScroll: true,
     });
     const remaining = useCooldownCountdown(cooldownSeconds);
@@ -374,7 +374,7 @@ function TelegramPanel({
                     type="button"
                     onClick={() =>
                         guard(() =>
-                            router.delete('/profil/telegram', {
+                            router.delete('/profile/telegram', {
                                 preserveScroll: true,
                             }),
                         )
@@ -395,4 +395,4 @@ function TelegramPanel({
     );
 }
 
-Pengaturan.layout = appLayout;
+Settings.layout = appLayout;

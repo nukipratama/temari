@@ -23,7 +23,7 @@ it('formats a post-run message with the title line, a blank line, the content, a
     $message = new AnalysisMessagePresenter()->format($analysis);
 
     expect($message)->toStartWith("🏃 Your run is in! 🏁\n\nPace kamu konsisten banget.")
-        ->and($message)->toContain('View run details: ' . route('aktivitas.show', 123));
+        ->and($message)->toContain('View run details: ' . route('activities.show', 123));
 });
 
 it('includes a metrics line for a post-run notification', function (): void {
@@ -72,7 +72,7 @@ it('links a weekly recap to the run history page', function (): void {
     $message = new AnalysisMessagePresenter()->format($analysis);
 
     expect($message)->toStartWith("📊 Your weekly recap is ready\n\nMinggu ini 28 km.")
-        ->and($message)->toContain('View history: ' . route('aktivitas.index'));
+        ->and($message)->toContain('View history: ' . route('activities.index'));
 });
 
 it('links a monthly recap to its month on the calendar', function (): void {
@@ -85,7 +85,7 @@ it('links a monthly recap to its month on the calendar', function (): void {
     $message = new AnalysisMessagePresenter()->format($analysis);
 
     expect($message)->toStartWith("🗓️ Your June recap is ready\n\nBulan ini 120 km.")
-        ->and($message)->toContain('View calendar: ' . route('kalender', ['month' => '2026-06']));
+        ->and($message)->toContain('View calendar: ' . route('calendar', ['month' => '2026-06']));
 });
 
 // --- title() ---------------------------------------------------------------
@@ -156,7 +156,7 @@ it('deep-links the weekly recap to its own week', function (): void {
     ]);
 
     expect(new AnalysisMessagePresenter()->url($analysis))
-        ->toBe(route('aktivitas.index', ['week' => '2026-05-17']));
+        ->toBe(route('activities.index', ['week' => '2026-05-17']));
 });
 
 // A deleted week must not turn the notification into a dead end.
@@ -166,7 +166,7 @@ it('falls back to the bare run history when the recap snapshot is gone', functio
         'subject_id' => 99_999,
     ]);
 
-    expect(new AnalysisMessagePresenter()->url($analysis))->toBe(route('aktivitas.index'));
+    expect(new AnalysisMessagePresenter()->url($analysis))->toBe(route('activities.index'));
 });
 
 it('falls back to the app name for a non-notifiable type', function (): void {

@@ -27,7 +27,7 @@ code_refs:
   - app/Console/Commands/Telegram/SetWebhookCommand.php
   - app/Console/Commands/Telegram/ListenCommand.php
   - app/Http/Controllers/SettingsController.php
-  - resources/js/pages/Pengaturan/Index.tsx
+  - resources/js/pages/Settings/Index.tsx
   - resources/js/components/SendNotificationButton.tsx
   - resources/js/components/EnableNotificationsModal.tsx
   - resources/js/hooks/useNotificationsReachable.ts
@@ -49,13 +49,13 @@ A bot is created in Telegram's @BotFather (`/newbot`), which also sets its name,
 
 ## Linking an account
 
-Telegram has no OAuth, so the logged-in web session carries its identity through the bot. The Pengaturan page ([SettingsController](../../app/Http/Controllers/SettingsController.php) `resolveTelegram()`) mints a signed deep-link token ([TelegramLinkToken](../../app/Services/Telegram/TelegramLinkToken.php), 60-min TTL) and renders a Telegram-branded "Hubungkan Telegram" button pointing at `t.me/<bot>?start=<token>`.
+Telegram has no OAuth, so the logged-in web session carries its identity through the bot. The Settings page ([SettingsController](../../app/Http/Controllers/SettingsController.php) `resolveTelegram()`) mints a signed deep-link token ([TelegramLinkToken](../../app/Services/Telegram/TelegramLinkToken.php), 60-min TTL) and renders a Telegram-branded "Hubungkan Telegram" button pointing at `t.me/<bot>?start=<token>`.
 
 When the user taps Start, the update reaches [HandleTelegramUpdateJob](../../app/Jobs/Telegram/HandleTelegramUpdateJob.php) — via the webhook ([TelegramWebhookController](../../app/Http/Controllers/Telegram/TelegramWebhookController.php), CSRF-exempt and gated on the `X-Telegram-Bot-Api-Secret-Token` header) in prod, or `telegram:listen` in dev. It verifies the token (signature + expiry), then either links (storing the server-reported `chat_id`, replying with an account-naming welcome, and **consuming the token** so a leaked link can't be replayed), replies that the link is no longer valid without linking, or replies generically to garbage. `/stop` revokes. All reply copy is Temari-voiced in [TelegramReplies](../../app/Services/Telegram/TelegramReplies.php). The decision behind this flow is [[telegram-account-linking]].
 
 ## Preferences + disconnect
 
-The Pengaturan page ([Pengaturan/Index.tsx](../../resources/js/pages/Pengaturan/Index.tsx)) groups these under one **Notifikasi** section: an *Apa yang dikirim* group with the single **Kabarin aku** master switch (`notifications_enabled`, the channel-neutral [NotificationPreference](../../app/Models/NotificationPreference.php) column), and a *Ke mana* group where each channel carries its own **mute** toggle (`telegram_enabled`, `push_enabled`) with the destructive "Putuskan" / "Matikan" action demoted beneath it (see [[settings]]); [TelegramConnectionController](../../app/Http/Controllers/Telegram/TelegramConnectionController.php) persists the toggles and revokes on disconnect. The Telegram connect button keeps Telegram's brand mark and blue (not recolored), the way the Strava button is left as-shipped (see [[strava-connect]]). There is no dedicated streak-reminder toggle: the [[streak-reminders]] Saturday nudge is covered by the same master switch ([StreakReminderNotification](../../app/Notifications/StreakReminderNotification.php), [StreakRemindCommand](../../app/Console/Commands/Gamification/StreakRemindCommand.php)), which names it in its description rather than leaving it hidden behind a recap toggle.
+The Settings page ([Settings/Index.tsx](../../resources/js/pages/Settings/Index.tsx)) groups these under one **Notifikasi** section: an *Apa yang dikirim* group with the single **Kabarin aku** master switch (`notifications_enabled`, the channel-neutral [NotificationPreference](../../app/Models/NotificationPreference.php) column), and a *Ke mana* group where each channel carries its own **mute** toggle (`telegram_enabled`, `push_enabled`) with the destructive "Putuskan" / "Matikan" action demoted beneath it (see [[settings]]); [TelegramConnectionController](../../app/Http/Controllers/Telegram/TelegramConnectionController.php) persists the toggles and revokes on disconnect. The Telegram connect button keeps Telegram's brand mark and blue (not recolored), the way the Strava button is left as-shipped (see [[strava-connect]]). There is no dedicated streak-reminder toggle: the [[streak-reminders]] Saturday nudge is covered by the same master switch ([StreakReminderNotification](../../app/Notifications/StreakReminderNotification.php), [StreakRemindCommand](../../app/Console/Commands/Gamification/StreakRemindCommand.php)), which names it in its description rather than leaving it hidden behind a recap toggle.
 
 ## Sending
 

@@ -1,13 +1,13 @@
 ---
-title: Dashboard (Hari Ini)
+title: Dashboard
 description: The home page — daily greeting, Temari's daily voice, vitals, featured kartu, last run, training load, goals
 tags: [feature, dashboard]
 status: living
 reviewed: 2026-07-29
 code_refs:
-  - resources/js/pages/HariIni.tsx
+  - resources/js/pages/Today.tsx
   - app/Http/Controllers/DashboardController.php
-  - resources/js/components/dashboard/KataTemariCard.tsx
+  - resources/js/components/dashboard/TemariVoiceCard.tsx
   - resources/js/components/dashboard/VitalChips.tsx
   - resources/js/components/dashboard/FeaturedKartuPanel.tsx
   - resources/js/components/dashboard/LastLariCard.tsx
@@ -15,9 +15,9 @@ code_refs:
   - resources/js/components/dashboard/GoalsCard.tsx
 ---
 
-# Dashboard (Hari Ini)
+# Dashboard
 
-The app's home (`/`). It greets the runner by name, hands them Temari's read on the day, then stacks the day's vitals, this week's featured kartu, the last run, training load, and the nearest goals. Server entry is [DashboardController](app/Http/Controllers/DashboardController.php) (`__invoke`), rendering the [HariIni](resources/js/pages/HariIni.tsx) page.
+The app's home (`/`). It greets the runner by name, hands them Temari's read on the day, then stacks the day's vitals, this week's featured kartu, the last run, training load, and the nearest goals. Server entry is [DashboardController](app/Http/Controllers/DashboardController.php) (`__invoke`), rendering the [Today](resources/js/pages/Today.tsx) page.
 
 **Navigation:** `route('dashboard')` → `/`. Named route: `dashboard`.
 
@@ -30,11 +30,11 @@ The app's home (`/`). It greets the runner by name, hands them Temari's read on 
 
 ## The headline
 
-`HariIni` builds the eyebrow line from `formatWeekdayDateId` + `formatTimeId` + the briefing's `vibeLabel`, and the `<h1>` reads "Halo, {firstName}" over an italic `vibeSubtitle`. The vibe drives Temari's `pose` (`VIBE_TO_POSE`). The greeting prose itself comes from the server: `DashboardController::resolveGreeting` returns today's cached `StoryLine` (kind `daily_greeting`) or generates it via the `Temari` story service.
+`Today` builds the eyebrow line from `formatWeekdayDateId` + `formatTimeId` + the briefing's `vibeLabel`, and the `<h1>` reads "Halo, {firstName}" over an italic `vibeSubtitle`. The vibe drives Temari's `pose` (`VIBE_TO_POSE`). The greeting prose itself comes from the server: `DashboardController::resolveGreeting` returns today's cached `StoryLine` (kind `daily_greeting`) or generates it via the `Temari` story service.
 
 ## Kata Temari (briefing card)
 
-Directly under the headline sits [KataTemariCard](resources/js/components/dashboard/KataTemariCard.tsx) — Temari's mascot beside "Kata Temari hari ini". It renders **one** LLM block (`briefing.mascotVoice`) through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx), so it shows the spinner / retry / "Baca ulang" states from the [[ai-pipeline]]. The text is parsed on `\n\n`: the first paragraph is the session title (display type), the rest is Temari's reasoning and her caveat. A weather chip from the last run and a "Saran lain" re-trigger (`useAnalysisTrigger`) sit under it. It renders whether or not the user has runs yet.
+Directly under the headline sits [TemariVoiceCard](resources/js/components/dashboard/TemariVoiceCard.tsx) — Temari's mascot beside "Kata Temari hari ini". It renders **one** LLM block (`briefing.mascotVoice`) through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx), so it shows the spinner / retry / "Baca ulang" states from the [[ai-pipeline]]. The text is parsed on `\n\n`: the first paragraph is the session title (display type), the rest is Temari's reasoning and her caveat. A weather chip from the last run and a "Saran lain" re-trigger (`useAnalysisTrigger`) sit under it. It renders whether or not the user has runs yet.
 
 That block used to be two separately billed calls (a mascot voice plus a session suggestion); they were merged into one voice so the dashboard speaks once. The whole briefing object is assembled server-side by [BriefingComposer::compose](app/Services/Run/Story/BriefingComposer.php#L24) — **two** Analysis rows now: the daily voice and the featured-kartu voice (the latter keyed on a separate discriminator so re-picking the featured card doesn't rebill the other). Each is its own [[ai-pipeline]] block with independent retry. The signals their prompts read come from the context builders in [[ai-narration-internals]]; the vibe that colours Temari's tone is [[vibe-and-mood]].
 
@@ -49,11 +49,11 @@ When there are runs, [FeaturedKartuPanel](resources/js/components/dashboard/Feat
 ## The 2-up: last run, kondisi
 
 - [LastLariCard](resources/js/components/dashboard/LastLariCard.tsx) — the most recent run (`recentRuns[0]`) as a `LinkCard` to its detail page, with km / pace / TRIMP tiles and an optional post-run note one-liner (`lastRunNote`, from `PostRunNoteReader::forActivity`). Temari's pose comes from `poseForRun`.
-- [KondisiCard](resources/js/components/dashboard/KondisiCard.tsx) — training load read-out: **Fondasi** (CTL 42d), **Kelelahan** (ATL 7d), **Beban** (strain), **Variasi** (monotony), each with a plain-language hint. Links out to `/aktivitas`. See [[run-history]] for the weekly metrics this mirrors.
+- [KondisiCard](resources/js/components/dashboard/KondisiCard.tsx) — training load read-out: **Fondasi** (CTL 42d), **Kelelahan** (ATL 7d), **Beban** (strain), **Variasi** (monotony), each with a plain-language hint. Links out to `/activities`. See [[run-history]] for the weekly metrics this mirrors.
 
 ## Goals
 
-[GoalsCard](resources/js/components/dashboard/GoalsCard.tsx) reads `goalsSummary` from Inertia **shared props** (not a page prop) and renders the nearest targets as progress bars linking to `/target`; it returns `null` when there are none. See [[targets-accessories]].
+[GoalsCard](resources/js/components/dashboard/GoalsCard.tsx) reads `goalsSummary` from Inertia **shared props** (not a page prop) and renders the nearest targets as progress bars linking to `/goals`; it returns `null` when there are none. See [[targets-accessories]].
 
 ## Empty state
 

@@ -34,7 +34,7 @@ const DEFAULT_PAGE_PROPS: Record<string, unknown> = {
     demoLoginEnabled: false,
 };
 const DEFAULT_URL = '/';
-const DEFAULT_COMPONENT = 'HariIni';
+const DEFAULT_COMPONENT = 'Today';
 
 // Global Inertia mock — real Link/Head/usePage need an app context that
 // unit tests don't bootstrap. Tests override usePage props via

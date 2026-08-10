@@ -55,7 +55,7 @@ class AksesoriController extends Controller
             ];
         }
 
-        return Inertia::render('Koleksi/Aksesori', [
+        return Inertia::render('Collection/Accessories', [
             'items' => $items,
             'equipped' => $this->equipped->resolve($unlocks),
         ]);

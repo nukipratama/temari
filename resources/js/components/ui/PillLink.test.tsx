@@ -5,9 +5,9 @@ import PillLink from './PillLink';
 
 describe('PillLink', () => {
     it('renders an anchor (not a button) so it is valid inside link-free markup', () => {
-        render(<PillLink href="/kartu/5">View card</PillLink>);
+        render(<PillLink href="/cards/5">View card</PillLink>);
         const link = screen.getByRole('link', { name: /view card/i });
-        expect(link).toHaveAttribute('href', '/kartu/5');
+        expect(link).toHaveAttribute('href', '/cards/5');
         expect(link.tagName).toBe('A');
     });
 

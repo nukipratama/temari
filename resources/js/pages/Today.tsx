@@ -12,11 +12,11 @@ import type {
 
 import FeaturedKartuPanel from '@/components/dashboard/FeaturedKartuPanel';
 import GoalsCard from '@/components/dashboard/GoalsCard';
-import KataTemariCard from '@/components/dashboard/KataTemariCard';
 import KondisiCard from '@/components/dashboard/KondisiCard';
 import LastLariCard, {
     type LastRunNote,
 } from '@/components/dashboard/LastLariCard';
+import TemariVoiceCard from '@/components/dashboard/TemariVoiceCard';
 import VitalChips from '@/components/dashboard/VitalChips';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
 import { type TemariPose } from '@/components/temari/TemariProto';
@@ -26,9 +26,9 @@ import { appLayout } from '@/layouts/appLayout';
 import { formatTimeId, formatWeekdayDateId } from '@/lib/pace';
 import { VIBE_TO_POSE, poseForRun } from '@/lib/temariPose';
 
-import { featuredCardFor, vibeSubtitleFor } from './HariIni/helpers';
+import { featuredCardFor, vibeSubtitleFor } from './Today/helpers';
 
-interface HariIniProps {
+interface TodayProps {
     briefing: BriefingResult;
     load: TrainingLoad | null;
     snapshot: WeeklySnapshot | null;
@@ -37,15 +37,15 @@ interface HariIniProps {
     recentMoods?: Record<number, Mood>;
 }
 
-export default function HariIni({
+export default function Today({
     briefing,
     load,
     snapshot,
     recentRuns,
     lastRunNote = null,
     recentMoods = {},
-}: Readonly<HariIniProps>) {
-    const { props } = usePage<SharedProps & HariIniProps>();
+}: Readonly<TodayProps>) {
+    const { props } = usePage<SharedProps & TodayProps>();
     const firstName = props.auth.user?.first_name ?? '';
     const pose: TemariPose =
         VIBE_TO_POSE[briefing.vibeState] ?? 'observational';
@@ -82,7 +82,7 @@ export default function HariIni({
 
                 {recentRuns.length === 0 ? (
                     <>
-                        <KataTemariCard
+                        <TemariVoiceCard
                             briefing={briefing}
                             pose={pose}
                             lastRun={lastRun}
@@ -119,7 +119,7 @@ export default function HariIni({
                                     note={lastRunNote}
                                 />
                             )}
-                            <KataTemariCard
+                            <TemariVoiceCard
                                 briefing={briefing}
                                 pose={pose}
                                 lastRun={lastRun}
@@ -136,4 +136,4 @@ export default function HariIni({
     );
 }
 
-HariIni.layout = appLayout;
+Today.layout = appLayout;

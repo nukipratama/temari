@@ -13,12 +13,12 @@ it('disconnects by revoking the connection', function (): void {
     $connection = TelegramConnection::factory()->for($user)->create();
 
     $this->actingAs($user)
-        ->delete('/profil/telegram')
+        ->delete('/profile/telegram')
         ->assertRedirect();
 
     expect($connection->fresh()->isRevoked())->toBeTrue();
 });
 
 it('requires authentication', function (): void {
-    $this->delete('/profil/telegram')->assertRedirect('/login');
+    $this->delete('/profile/telegram')->assertRedirect('/login');
 });

@@ -41,7 +41,7 @@ final class LifetimeStatsTool extends UserTool
     /** @return array<string, mixed> */
     public function handle(array $arguments): array
     {
-        // The cached aggregate /kalender also reads, so the two surfaces cannot drift.
+        // The cached aggregate /calendar also reads, so the two surfaces cannot drift.
         $lifetime = $this->lifetimeStats->forUser($this->user);
         $firstRunAt = $lifetime['first_run_at'];
 

@@ -14,13 +14,13 @@ const TABS = [
     {
         id: 'jejak' as const,
         label: 'Jejak',
-        href: '/aktivitas',
+        href: '/activities',
         icon: 'mdi:shoe-print',
     },
     {
         id: 'kalender' as const,
         label: 'Kalender',
-        href: '/kalender',
+        href: '/calendar',
         icon: 'mdi:calendar-blank-outline',
     },
 ];

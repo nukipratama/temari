@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
 /**
- * Builds the weekly-best progression chart for the featured PR on /rekor.
+ * Builds the weekly-best progression chart for the featured PR on /records.
  *
  * For the featured PR's distance bucket (target distance +/- 5%), it finds the
  * best elapsed_time per ISO week over the last 26 weeks, scaling each run's time
@@ -35,7 +35,7 @@ class ProgressionSeriesBuilder
 
     /**
      * Batch variant of build(): one query covering every requested PR's distance
-     * band, bucketed in PHP, so /rekor's multi-distance selector costs a single
+     * band, bucketed in PHP, so /records's multi-distance selector costs a single
      * round trip instead of one per category. Keyed by PrCategory value; a
      * category with too few in-window runs is omitted. Insertion order follows
      * the given $records.
@@ -104,7 +104,7 @@ class ProgressionSeriesBuilder
 
     /**
      * Overwrite the PR's own week with its stored time, so the chart's labeled
-     * best point matches the /rekor hero and trophy wall exactly instead of
+     * best point matches the /records hero and trophy wall exactly instead of
      * drifting a second or two (the weekly series scales whole-run elapsed_time
      * while the PR is split-interpolated to the exact target distance).
      *

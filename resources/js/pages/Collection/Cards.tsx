@@ -38,7 +38,7 @@ import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { pressShrink } from '@/lib/motion';
-import { aktivitasUrl } from '@/lib/routes';
+import { activityUrl } from '@/lib/routes';
 import {
     RARITY_LABELS,
     RARITY_ORDER,
@@ -62,7 +62,7 @@ type CardWithRel = RunCardModel & {
     activity: Activity & { detail: ActivityDetail };
 };
 
-interface KartuProps {
+interface CardsProps {
     cards: PaginatedResponse<CardWithRel>;
     selectedRarity: string | null;
     featuredCard: FeaturedCardPayload | null;
@@ -85,12 +85,12 @@ const RARITY_RANK: Record<Rarity, number> = {
     common: 1,
 };
 
-export default function KoleksiKartu({
+export default function Cards({
     cards,
     selectedRarity,
     featuredCard,
     rarityCounts,
-}: Readonly<KartuProps>) {
+}: Readonly<CardsProps>) {
     const [burstKey, setBurstKey] = useState<string | null>(null);
     const [search, setSearch] = useState('');
     const [sortBy, setSortBy] = useState<SortMode>('date');
@@ -214,7 +214,7 @@ function SlimBanner({ featured }: Readonly<{ featured: FeaturedCardPayload }>) {
             durasi={kartuProps.durasi}
             badges={kartuProps.badges}
             polyline={kartuProps.polyline}
-            ctaHref={aktivitasUrl(featured)}
+            ctaHref={activityUrl(featured)}
             voice={
                 featured.flavor_analysis &&
                 featured.flavor_analysis.status !== 'pending' && (
@@ -259,7 +259,7 @@ function RarityFilter({
                 Rarity
             </Eyebrow>
             <FilterPill
-                href="/kartu"
+                href="/cards"
                 label="All"
                 active={selected === null}
                 dot={null}
@@ -267,7 +267,7 @@ function RarityFilter({
             {RARITY_ORDER.map((r) => (
                 <FilterPill
                     key={r}
-                    href={`/kartu?rarity=${r}`}
+                    href={`/cards?rarity=${r}`}
                     label={`${RARITY_LABELS[r]} · ${counts[r]}`}
                     active={selected === r}
                     dot={r}
@@ -375,7 +375,7 @@ const CardCell = memo(function CardCell({
 
     return (
         <MotionLink
-            href={aktivitasUrl(card)}
+            href={activityUrl(card)}
             whileTap={pressShrink}
             onClick={() => onTap(card.rarity, card.id)}
             className="mx-auto block w-full max-w-[300px] focus-visible:ring-2 focus-visible:ring-horizon focus-visible:ring-offset-2 focus-visible:outline-none"
@@ -448,4 +448,4 @@ function LegendaryTease() {
     );
 }
 
-KoleksiKartu.layout = appLayout;
+Cards.layout = appLayout;

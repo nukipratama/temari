@@ -37,7 +37,7 @@ export default function GoalsCard() {
                     return (
                         <LinkCard
                             key={goal.id}
-                            href="/target"
+                            href="/goals"
                             padding="md"
                             className="flex h-full flex-col gap-2"
                         >

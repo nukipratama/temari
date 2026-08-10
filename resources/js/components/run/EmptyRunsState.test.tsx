@@ -53,13 +53,13 @@ function expectActionLinks() {
     const kartu = screen
         .getByText('Check out the legendary collection')
         .closest('a');
-    expect(kartu).toHaveAttribute('href', '/kartu');
+    expect(kartu).toHaveAttribute('href', '/cards');
 
     const aksesori = screen.getByText('Dress up Temari').closest('a');
-    expect(aksesori).toHaveAttribute('href', '/aksesori');
+    expect(aksesori).toHaveAttribute('href', '/accessories');
 
     const aktivitas = screen.getByText('See your run recap').closest('a');
-    expect(aktivitas).toHaveAttribute('href', '/aktivitas');
+    expect(aktivitas).toHaveAttribute('href', '/activities');
 }
 
 describe('EmptyRunsState', () => {
