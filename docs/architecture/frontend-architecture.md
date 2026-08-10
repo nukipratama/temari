@@ -24,7 +24,7 @@ There is no client-side router and no REST/JSON API for pages. Every screen is a
 
 ## The request lifecycle
 
-1. **Blade root.** [app.blade.php](resources/views/app.blade.php) is the single server-rendered shell: `lang="id"`, the CSRF meta tag, Google Fonts, `@vite(['resources/css/app.css', 'resources/js/app.tsx'])`, and `@inertia` (the mount point). `$rootView = 'app'` is set in [HandleInertiaRequests](app/Http/Middleware/HandleInertiaRequests.php#L18).
+1. **Blade root.** [app.blade.php](resources/views/app.blade.php) is the single server-rendered shell: `lang="en"`, the CSRF meta tag, Google Fonts, `@vite(['resources/css/app.css', 'resources/js/app.tsx'])`, and `@inertia` (the mount point). `$rootView = 'app'` is set in [HandleInertiaRequests](app/Http/Middleware/HandleInertiaRequests.php#L18).
 2. **Controller.** Renders a page name + page props (see the calls in [routes/web.php](routes/web.php#L50)'s controllers, e.g. [DashboardController](app/Http/Controllers/DashboardController.php#L69)).
 3. **Middleware merges shared props** (below) into every response.
 4. **React resolves + mounts** the page (below).
@@ -105,6 +105,6 @@ The 1:1 `*.test.tsx` convention (every component/lib file has a sibling test) is
 ## Conventions worth knowing
 
 - **Light-mode only, Tailwind v4.** `.dark` is never applied; there are no `*-dark` tokens. The theme is defined in `resources/css/app.css`'s `@theme` block; see [[design-tokens]].
-- **Indonesian voice, English running terms** — applies to all UI copy; details in the `temari` skill and [[voice-and-tone]].
+- **One casual English voice** — applies to all UI copy; details in the `temari` skill and [[voice-and-tone]].
 - **Two POST channels.** Inertia's `router`/`<Form>` for anything that returns a page or redirect; plain `fetch` via [`postJson`](resources/js/lib/http.ts#L13) for the small JSON endpoints (Inertia's router rejects non-Inertia responses). `postJson` owns the plumbing only — CSRF header, `same-origin` credentials, empty JSON body — and resolves with the raw `Response`, so each caller keeps its own error policy: the card "seen" marker swallows, the card replay checks `.ok`, and the analysis trigger ([`triggerAnalysis`](resources/js/hooks/useAnalysisTrigger.ts#L166)) handles 429/403 itself.
 - The data shapes these pages render (`Analysis`, `WeeklySnapshot`, `RunCard`, `StoryLine`, …) are documented in [[data-model]]; the AI voice blocks flow through the [[ai-pipeline]].

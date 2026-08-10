@@ -1,6 +1,6 @@
 ---
 name: temari
-description: Project conventions and domain map for the temari repo — Daybreak design tokens, Indonesian voice rules, the AI narrator/analysis pipeline, the 1:1 test convention with its aggregate suites, and the sail toolchain. Use when writing UI, AI narration, or tests in this codebase, or when unsure where a change wires in.
+description: Project conventions and domain map for the temari repo — Daybreak design tokens, voice rules, the AI narrator/analysis pipeline, the 1:1 test convention with its aggregate suites, and the sail toolchain. Use when writing UI, AI narration, or tests in this codebase, or when unsure where a change wires in.
 ---
 
 # temari conventions
@@ -19,13 +19,12 @@ Backend logic is split by domain under `app/Services/`:
 - **Geo/** — polyline encode/decode + Nominatim reverse-geocode (`app/Jobs/Geo/` resolves location names).
 - **Weather/** — Open-Meteo snapshot attached per activity.
 
-Two DB connections: default `mysql` plus a second **`analytics`** schema for metering (e.g. `ai_token_usages`); its migrations live in `database/migrations/analytics/`. Pages are Indonesian-named under `resources/js/pages/`: `HariIni` (dashboard), `Riwayat/Kalender`, `Koleksi/{Kartu,Rekor,Aksesori}`, `Runs/Show`.
+Two DB connections: default `mysql` plus a second **`analytics`** schema for metering (e.g. `ai_token_usages`); its migrations live in `database/migrations/analytics/`. Pages live under `resources/js/pages/`: `Today` (dashboard), `Activities/{Feed,Calendar}`, `Collection/{Cards,Records,Accessories}`, `Runs/Show`.
 
 ## Voice & copy
 
-- **Indonesian-first.** Only running-domain terms stay English (`pace`, `HR`, `km`, `TRIMP`, `splits`).
 - **No em-dashes (`—`)** in UI copy *or* LLM prompt strings — they read as an AI/translation tell. Use commas, periods, colons, or `·`. (The `'—'` glyph as a *null placeholder* in data display is fine.)
-- All user-facing copy (UI chrome, Temari narration, LLM prompts) follows one casual-Jakarta register: a code-switch test for English terms, a beginner-accessibility tier for jargon, a calque blacklist, and a `**bold**` emphasis rule.
+- All user-facing copy (UI chrome, Temari narration, LLM prompts) follows one casual register: plain running-domain vocabulary (`pace`, `HR`, `km`, `TRIMP`, `splits`), a jargon-accessibility tier for technical terms, and a `**bold**` emphasis rule.
 - Full rules: [docs/voice-and-tone.md](../../../docs/voice-and-tone.md). Persona source of truth: [TemariPersona.php](../../../app/Services/AI/TemariPersona.php). Read it before writing or reviewing copy.
 
 ## Design system

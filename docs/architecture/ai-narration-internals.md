@@ -68,7 +68,7 @@ Every narrator now reads rather than receives. What remains in any context is on
 
 [BriefingContext](app/Services/Run/Story/BriefingContext.php) is the dashboard briefing's personalisation layer, built per user as-of a moment ([`forUser`](app/Services/Run/Story/BriefingContext.php#L59)) and serialised straight into the LLM user message ([`toArray`](app/Services/Run/Story/BriefingContext.php#L231), with short keys to keep token cost down). It collects this-week / last-week run-count + km deltas, recovery hours, and form status, plus two computed heuristics:
 
-- the Indonesian **time-of-day bucket** (`subuh` / `pagi` / `siang` / `sore` / `malam`) so a morning briefing reads differently from an evening one ([`bucketFor`](app/Services/Run/Story/BriefingContext.php#L212));
+- the **time-of-day bucket** (`early_morning` / `morning` / `midday` / `evening` / `night`) so a morning briefing reads differently from an evening one ([`bucketFor`](app/Services/Run/Story/BriefingContext.php#L212));
 - **consecutive weeks active** — a streak proxy reusing the `WeeklySnapshot` rows we already keep, since we don't track a day-level streak ([`countConsecutiveActiveWeeks`](app/Services/Run/Story/BriefingContext.php#L196)).
 
 Recovery hours is "hours since the most recent activity start", sharper than days-since for a mid-day briefing — now computed by [RecoveryWindow::forUser](app/Services/Run/Story/RecoveryWindow.php#L35) and passed in. `BriefingContext::forUser` is called from [WeekStateTool::handle](app/Services/AI/Agent/Tools/WeekStateTool.php#L48), one of the agent tools [BriefingMascotVoiceNarrator](app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php) reads from; the rendered surface is the [[dashboard]] Kata Temari card.
