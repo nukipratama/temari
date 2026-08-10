@@ -212,16 +212,7 @@ SVG;
         /** @var list<array{0:string,1:string}> $cells */
         $cells = [['DISTANCE', "{$km} km"]];
         if ($detail !== null) {
-            $pace = $this->paceLabel($detail);
-            if ($pace !== null) {
-                $cells[] = ['PACE', $pace];
-            }
-            if ($detail->elapsed_time !== null) {
-                $cells[] = ['DURATION', DurationFormatter::hms((int) $detail->elapsed_time)];
-            }
-            if ($detail->average_heartrate !== null) {
-                $cells[] = ['HR', round($detail->average_heartrate).' bpm'];
-            }
+            $cells = [...$cells, ...$this->coreStatCells($detail)];
         }
 
         $positions = [[90, 270], [612, 270], [90, 427], [612, 427]];
@@ -257,22 +248,9 @@ SVG;
             return '';
         }
 
-        /** @var list<array{0:string,1:string}> $cells */
-        $cells = [];
-        $pace = $this->paceLabel($detail);
-        if ($pace !== null) {
-            $cells[] = ['PACE', $pace];
-        }
-        if ($detail->average_heartrate !== null) {
-            $cells[] = ['HR', round($detail->average_heartrate).' bpm'];
-        }
-        if ($detail->elapsed_time !== null) {
-            $cells[] = ['DURATION', DurationFormatter::hms((int) $detail->elapsed_time)];
-        }
-
         $svg = '';
         $x = 90;
-        foreach (array_slice($cells, 0, 3) as [$label, $value]) {
+        foreach (array_slice($this->coreStatCells($detail), 0, 3) as [$label, $value]) {
             $label = $this->escape($label);
             $value = $this->escape($value);
             $svg .= <<<SVG
@@ -322,6 +300,30 @@ SVG;
         $secPerKm = PaceCalculator::secPerKm($detail->distance, $detail->elapsed_time);
 
         return $secPerKm === null ? null : PaceFormatter::format($secPerKm).'/km';
+    }
+
+    /**
+     * PACE / HR / DURATION cells in canonical order, shared by `statsRow` and
+     * `statsGrid` so the two branches can't drift out of sync with each other.
+     * Only cells with data are included.
+     *
+     * @return list<array{0:string,1:string}>
+     */
+    private function coreStatCells(ActivityDetail $detail): array
+    {
+        $cells = [];
+        $pace = $this->paceLabel($detail);
+        if ($pace !== null) {
+            $cells[] = ['PACE', $pace];
+        }
+        if ($detail->average_heartrate !== null) {
+            $cells[] = ['HR', round($detail->average_heartrate).' bpm'];
+        }
+        if ($detail->elapsed_time !== null) {
+            $cells[] = ['DURATION', DurationFormatter::hms((int) $detail->elapsed_time)];
+        }
+
+        return $cells;
     }
 
     private function humanizeBadge(string $slug): string

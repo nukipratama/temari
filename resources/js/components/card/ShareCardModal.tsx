@@ -43,11 +43,15 @@ const LAYOUT_LABELS: Record<Layout, string> = {
 /** Which templates need a drawable route — the single source of truth for
  *  both the layout picker's visibility and the draw-effect's stale-selection
  *  clamp, replacing the old ad hoc `l !== 'rute'` checks in both places. */
-const TEMPLATE_CAPS: Record<Layout, { requiresPolyline: boolean }> = {
-    kartu: { requiresPolyline: false },
-    rute: { requiresPolyline: true },
-    stats: { requiresPolyline: false },
+const TEMPLATE_CAPS: Record<Layout, boolean> = {
+    kartu: false,
+    rute: true,
+    stats: false,
 };
+
+function hasRoute(kartu: ShareKartuData): boolean {
+    return kartu.polyline != null && kartu.polyline !== '';
+}
 
 const COLORWAYS_LIST: ColorwayId[] = ['navy', 'dawn', 'ember'];
 const COLORWAY_LABELS: Record<ColorwayId, string> = {
@@ -84,12 +88,9 @@ export default function ShareCardModal({
         }
         // Clamp to a drawable layout: a no-GPS run has no route, so a stale
         // 'rute' selection (carried over from a previous GPS card) must not
-        // paint a blank map. See `hasRoute` below.
-        const hasRoute = kartu.polyline != null && kartu.polyline !== '';
+        // paint a blank map.
         const drawLayout =
-            !TEMPLATE_CAPS[layout].requiresPolyline || hasRoute
-                ? layout
-                : 'kartu';
+            !TEMPLATE_CAPS[layout] || hasRoute(kartu) ? layout : 'kartu';
         drawRef.current = drawShareCard(canvasRef.current, {
             kartu,
             layout: drawLayout,
@@ -108,10 +109,9 @@ export default function ShareCardModal({
     if (kartu === null) return null;
 
     // Templates that need a polyline are hidden for no-GPS runs.
-    const hasRoute = kartu.polyline != null && kartu.polyline !== '';
-    const availableLayouts = hasRoute
+    const availableLayouts = hasRoute(kartu)
         ? LAYOUTS
-        : LAYOUTS.filter((l) => !TEMPLATE_CAPS[l].requiresPolyline);
+        : LAYOUTS.filter((l) => !TEMPLATE_CAPS[l]);
     // Clamp so share/copy never export a stale 'rute' layout on a no-GPS run.
     const effectiveLayout: Layout = availableLayouts.includes(layout)
         ? layout

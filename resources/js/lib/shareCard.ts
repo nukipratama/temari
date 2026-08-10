@@ -1554,7 +1554,7 @@ export async function drawShareCard(
 
     await ensureFonts();
     const pal = COLORWAYS[cfg.colorway ?? 'navy'];
-    const bunny = await loadBunny('cream');
+    const bunny = await loadBunny(pal.isDark ? 'cream' : 'ink');
     const moodBunny = await loadBunny('ink', moodSigilColor(cfg.kartu.mood));
 
     ctx.clearRect(0, 0, w, h);
