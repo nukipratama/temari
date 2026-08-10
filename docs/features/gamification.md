@@ -14,7 +14,11 @@ code_refs:
   - app/Services/Run/Story/Temari.php
   - app/Actions/Gamification/DetectActivityMilestonesAction.php
   - app/Actions/Gamification/GrantEligibleUnlocksAction.php
+  - app/Actions/Gamification/GrantSeasonUnlocksAction.php
   - app/Services/Gamification/GoalResolver.php
+  - app/Services/Gamification/SeasonGoalResolver.php
+  - app/Services/Gamification/SeasonGamificationContext.php
+  - app/Http/Controllers/BadgeBoardController.php
   - app/Models/RunCard.php
   - app/Models/UserUnlock.php
   - app/Models/PersonalRecord.php
@@ -22,7 +26,7 @@ code_refs:
 
 # Gamification
 
-Gamification isn't a page — it's an engine that runs as each activity is ingested. The visible payoffs (cards, rarities, records, unlock progress) surface across [[cards-collection]], [[records]] and [[targets-accessories]]. This note describes the engine and where each piece is wired.
+Gamification isn't a page — it's an engine that runs as each activity is ingested. The visible payoffs (cards, rarities, records, unlock progress) surface across [[cards-collection]], [[records]] and [[targets-accessories]] (the badge board and live accessory progress). This note describes the engine and where each piece is wired.
 
 **No dedicated route** — this is a service-layer engine, not a page.
 
@@ -39,7 +43,9 @@ Gamification isn't a page — it's an engine that runs as each activity is inges
 
 The scoring rules themselves are pure. Everything that needs the user's whole history is resolved up front by [BuildCardContextAction::__invoke()](../../app/Actions/Run/Story/BuildCardContextAction.php#L38) into a [CardContext](../../app/Services/Run/Story/CardContext.php) (first run ever, first distance bracket, weekly consistency, day streak, athlete max HR); [BadgeEvaluator::evaluate()](../../app/Services/Run/Story/BadgeEvaluator.php#L62) and [RarityScorer::score()](../../app/Services/Run/Story/RarityScorer.php#L45) then read facts off that context and never touch the database. The builder folds the first-run, first-bracket and weekly-consistency counts into a single conditional aggregate, so a card costs two whole-history queries rather than four.
 
-The rarity isn't a coin flip: [RarityScorer::score()](../../app/Services/Run/Story/RarityScorer.php#L45) folds a handful of run signals (distance, pace, weather, the earned badge set, PRs) into a single number, and [fromScore()](../../app/Services/Run/Story/RarityScorer.php#L89) buckets that number into a tier. Tune the tier boundaries there, not in the callers. The same rarity rank is what the featured-kartu picker ranks on, see [[vibe-and-mood]].
+The rarity isn't a coin flip: [RarityScorer::score()](../../app/Services/Run/Story/RarityScorer.php#L45) folds a handful of run signals (distance, pace, weather, the earned badge set, PRs, and — since Slice 7 — executing a planned Tempo/Interval session at or faster than its prescribed pace) into a single number, and [fromScore()](../../app/Services/Run/Story/RarityScorer.php#L89) buckets that number into a tier. Tune the tier boundaries there, not in the callers. The same rarity rank is what the featured-kartu picker ranks on, see [[vibe-and-mood]].
+
+**The quality-execution point (Slice 7) decouples rarity from distance.** Before it, a well-executed easy run could reach Rare (7-8) but never Epic/Legendary without distance or a PR — the non-distance/non-PR ceiling was 8. `BuildCardContextAction` now also looks up whether a [PlannedSession](../../app/Models/PlannedSession.php) (see [[plan-periodizer]]) existed for the run's date and was a quality session type; if the run's actual pace met or beat that session's prescribed [PaceBand](../../app/Enums/PaceBand.php), `CardContext::$qualitySessionPaceMet` is true and the score gets +2, raising that ceiling to 10 — a well-executed *quality* run now has its own path to the top tiers.
 
 **The badge count's contribution is capped.** Badges stack with circumstance rather than merit — a hot, rainy, pre-dawn long run collects several without being remarkable — so an uncapped count dominated the score and made Rare the single most common tier, covering half of all cards. The ceiling keeps badges as one signal among several rather than the deciding one.
 
@@ -47,7 +53,9 @@ The rarity isn't a coin flip: [RarityScorer::score()](../../app/Services/Run/Sto
 
 Effort badges are read against the athlete's max HR, so a stale max quietly distorts them: `all_out` (hard) landed on 69% of runs while `easy_miles` (easy) fired on none at all, since its 70%-of-max bar describes a recovery jog rather than the easy run a Z2 session actually is. Both thresholds now sit where runners would recognise the effort, and max HR self-corrects during ingest (see [[stream-analysis]]).
 
-The result persists to the `run_cards` table via [RunCard](../../app/Models/RunCard.php): `rarity` is a string column cast to the `Rarity` enum, `badges` casts to an array, and `special_move` holds the name. The model exposes `forUser()` and `badgeCountsForUser()` for the collection views.
+The result persists to the `run_cards` table via [RunCard](../../app/Models/RunCard.php): `rarity` is a string column cast to the `Rarity` enum, `badges` casts to an array, and `special_move` holds the name. The model exposes `forUser()`, `badgeCountsForUser()` (lifetime, `Badge::tracked()` only — feeds `GamificationContext`) and `allBadgeCountsForUser()` (every `Badge` case, optionally date-ranged — feeds the badge board) for the collection views.
+
+**Two badges retired (Slice 7): `Berturut`/`streak` (7-day) and `Rajin`/`habit_forming` (3-day).** Both keyed off `CardContext::$consecutiveDaysBefore`, a daily-consecutive counter — a completely different signal from `GamificationContext::$streakWeeks`/`$twoWeekStreak` (weekly), which still drives `StreakRemindCommand` and the `aura_warmup` accessory goal untouched. `Badge` now has 16 cases (was 18 after Slice 2g retired the holiday badge). The frontend's `BADGE_LABELS`/`BADGE_ABILITY` drop the two entries too (same "let it fall back to `prettyBadge()`" treatment Slice 2g used for `holiday_run`), so a pre-existing card that still carries one of these slugs in its `badges` JSON array renders without crashing.
 
 [SpecialMoves](../../app/Services/Run/Story/SpecialMoves.php) (`pick(...)`) deterministically chooses a thematic name (e.g. "Closing Kick", "Easy Miles", "Red Line") from buckets keyed on zone distribution and pace — same run, same name, every time.
 
@@ -67,7 +75,19 @@ A PR is written by `app/Services/Run/Metrics/PersonalRecords` via `updateOrCreat
 
 `config/temari_goals.php` is the single canonical catalog of grant criteria: each of the 25 keys declares a `metric`/`metric_key`/`target` triple against [GamificationContext](../../app/Services/Gamification/GamificationContext.php). [GoalResolver::currentValue()](../../app/Services/Gamification/GoalResolver.php#L87) resolves that triple to a current value for progress bars, and `GrantEligibleUnlocksAction` reuses the same method to decide grants generically (`current >= target`) instead of a hardcoded `if` per key — adding an unlock needs a config entry only, no PHP change. `config/temari_unlocks.php` stays display-only: name, icon, rarity, flavor description, keyed by the same unlock key.
 
-[GoalResolver](../../app/Services/Gamification/GoalResolver.php) (`forUser()`, `completedCount()`, `closestToCompletion()`) computes progress toward *every* unlock in the catalog — current vs target — to feed the [[targets-accessories]] progress bars, including the ones not yet earned.
+[GoalResolver](../../app/Services/Gamification/GoalResolver.php) (`forUser()`, `completedCount()`, `closestToCompletion()`) computes progress toward *every* unlock in the catalog — current vs target — to feed the [[targets-accessories]] progress bars, including the ones not yet earned. **Only the page-level surface retired in Slice 7** (`GoalController`, `Goals.tsx`, the `goalsSummary` shared prop) — `GoalResolver` itself stays, since `GrantEligibleUnlocksAction` and the live progress numbers on `/accessories` both still depend on it.
+
+## Season goals and the rest-day reward
+
+A [Season](../../app/Models/Season.php) is the training arc `Season IS the training block` refers to — race-oriented (ends on `race_date`) or self-scaled (a fixed rolling 12-week block, matching `Periodizer::HORIZON_WEEKS`). [SeasonService::ensureCurrent()](../../app/Services/Run/Plan/SeasonService.php) auto-cycles it: called from both `Periodizer::regenerate()` and `PlanController::index()`, it closes the current season early and opens the other mode when a `RaceGoal` is set or cleared mid-season (mirroring `Periodizer`'s own "mode switch takes effect at the next call" rule), and rolls a self-scaled season into a fresh one once its 12 weeks expire — always without a gap or overlap. Every user gets a real season from their first Plan-tab view, before any plan has even been regenerated.
+
+5 [SeasonGoal](../../app/Models/SeasonGoal.php) rows generate once, at season creation (a stable checklist, unlike the day-by-day plan): total sessions completed, total quality (Tempo/Interval) sessions completed, the season's single longest planned long run completed, rest days honored, and a 5th that's race-margin (race-oriented) or CTL-growth (self-scaled). [SeasonGoalResolver](../../app/Services/Gamification/SeasonGoalResolver.php) resolves `current` live from a [SeasonGamificationContext](../../app/Services/Gamification/SeasonGamificationContext.php) — the same `metric`-string-driven pattern `GoalResolver` uses, scoped to the season's date range instead of the user's whole history. Rendered on the Plan tab, see [[plan-periodizer]].
+
+**The rest-day reward is not a `Badge`.** Every `Badge` grant requires a real ingested `Activity` (`run_cards.activity_id` is a required unique FK) — a rest day, by definition, has none. "Honored" = a `PlannedSession` with `session_type = Rest` where no `Activity` was logged that date (never a day with no `PlannedSession` row at all — that's simply unplanned, not honored). [GrantSeasonUnlocksAction](../../app/Actions/Gamification/GrantSeasonUnlocksAction.php) reuses `UserUnlock`'s shape instead, keyed `season.{id}.rest_honored_{3|7}` — the season id in the key is what makes the same threshold re-earnable every season, unlike the lifetime accessory catalog. No ingest hook can trigger it (honoring is an absence, not an arrival), so it's granted opportunistically wherever a `SeasonGamificationContext` is already computed: the Plan tab and the badge board.
+
+## Badge board
+
+[BadgeBoardController](../../app/Http/Controllers/BadgeBoardController.php) (`/badges`, `Collection/Badges`) shows all 16 `Badge` cases plus the rest-day entry as one visually-equivalent list — earned entries show a lifetime count, unearned show their criterion (the frontend's existing `runcard.ts` `BADGE_LABELS`/`BADGE_ABILITY` catalog supplies that text; the rest-day entry, having no `Badge` case, carries its own display text in `Collection/Badges.tsx`). Every entry also carries a "this season" count via `RunCard::allBadgeCountsForUser()`'s date-ranged variant.
 
 ## See also
 

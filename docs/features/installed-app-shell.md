@@ -77,7 +77,7 @@ On a **pushed** screen the brand mark gives way to a back button — roots show
 identity, pushes show a way out. Which screens count is an explicit map in
 `MobileTopBar`, not something derived from `activeTabFromUrl`, for two reasons:
 
-- `/calendar`, `/records`, `/accessories` and `/goals` resolve to a tab too, but are
+- `/calendar`, `/records`, `/accessories` and `/badges` resolve to a tab too, but are
   reached through in-page tab strips, so they are siblings of their root rather
   than a stack, and keep the brand mark.
 - `/settings` is deliberately absent from the map even though it is nested by

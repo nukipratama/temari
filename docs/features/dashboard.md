@@ -12,12 +12,11 @@ code_refs:
   - resources/js/components/dashboard/FeaturedKartuPanel.tsx
   - resources/js/components/dashboard/LastLariCard.tsx
   - resources/js/components/dashboard/KondisiCard.tsx
-  - resources/js/components/dashboard/GoalsCard.tsx
 ---
 
 # Dashboard
 
-The app's home (`/`). It greets the runner by name, hands them Temari's read on the day, then stacks the day's vitals, this week's featured kartu, the last run, training load, and the nearest goals. Server entry is [DashboardController](app/Http/Controllers/DashboardController.php) (`__invoke`), rendering the [Today](resources/js/pages/Today.tsx) page.
+The app's home (`/`). It greets the runner by name, hands them Temari's read on the day, then stacks the day's vitals, this week's featured kartu, the last run, and training load. Server entry is [DashboardController](app/Http/Controllers/DashboardController.php) (`__invoke`), rendering the [Today](resources/js/pages/Today.tsx) page.
 
 **Navigation:** `route('dashboard')` → `/`. Named route: `dashboard`.
 
@@ -50,10 +49,6 @@ When there are runs, [FeaturedKartuPanel](resources/js/components/dashboard/Feat
 
 - [LastLariCard](resources/js/components/dashboard/LastLariCard.tsx) — the most recent run (`recentRuns[0]`) as a `LinkCard` to its detail page, with km / pace / TRIMP tiles and an optional post-run note one-liner (`lastRunNote`, from `PostRunNoteReader::forActivity`). Temari's pose comes from `poseForRun`.
 - [KondisiCard](resources/js/components/dashboard/KondisiCard.tsx) — training load read-out: **Fondasi** (CTL 42d), **Kelelahan** (ATL 7d), **Beban** (strain), **Variasi** (monotony), each with a plain-language hint. Links out to `/activities`. See [[run-history]] for the weekly metrics this mirrors.
-
-## Goals
-
-[GoalsCard](resources/js/components/dashboard/GoalsCard.tsx) reads `goalsSummary` from Inertia **shared props** (not a page prop) and renders the nearest targets as progress bars linking to `/goals`; it returns `null` when there are none. See [[targets-accessories]].
 
 ## Empty state
 

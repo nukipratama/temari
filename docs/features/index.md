@@ -26,7 +26,7 @@ _Pages_
 _Collection_
 - [[cards-collection]] — Collection/Cards, rarities, badges, special moves
 - [[records]] — Rekor, PRs, progression chart
-- [[targets-accessories]] — Target + Aksesori, unlock collection
+- [[targets-accessories]] — Accessories (with live unlock progress) + the badge board
 
 _Systems_
 - [[recaps]] — weekly/monthly/persona narratives across the app
