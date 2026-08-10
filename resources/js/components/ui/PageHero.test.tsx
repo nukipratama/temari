@@ -41,4 +41,29 @@ describe('PageHero', () => {
             'italic',
         );
     });
+
+    it('wraps a string eyebrow in the standard hero Eyebrow, tone flipping on-sky', () => {
+        render(<PageHero eyebrow="Collection">Trophy wall</PageHero>);
+        expect(screen.getByText('Collection').className).toContain(
+            'text-ink-2',
+        );
+
+        render(
+            <PageHero eyebrow="Collection" onSky>
+                Trophy wall
+            </PageHero>,
+        );
+        expect(screen.getAllByText('Collection')[1].className).toContain(
+            'text-horizon',
+        );
+    });
+
+    it('renders a ReactNode eyebrow (e.g. BackLink) as-is, unwrapped', () => {
+        render(
+            <PageHero eyebrow={<span data-testid="back">Settings</span>}>
+                Your heart rate zones.
+            </PageHero>,
+        );
+        expect(screen.getByTestId('back')).toBeInTheDocument();
+    });
 });

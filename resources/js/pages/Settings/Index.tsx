@@ -6,7 +6,6 @@ import DemoBlockedModal from '@/components/DemoBlockedModal';
 import PushNotificationToggle from '@/components/PushNotificationToggle';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import Card from '@/components/ui/Card';
-import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
@@ -68,17 +67,7 @@ export default function Settings({
                     and from the avatar menu on every page, so a breadcrumb here
                     would be chrome without a job. */}
                 <header className="mb-8">
-                    <PageHero
-                        eyebrow={
-                            <Eyebrow
-                                token="hero"
-                                tone="ink-2"
-                                className="mb-3.5"
-                            >
-                                Settings
-                            </Eyebrow>
-                        }
-                    >
+                    <PageHero eyebrow="Settings">
                         Set up Temari,{' '}
                         <em className="italic text-horizon-deep">your way.</em>
                     </PageHero>

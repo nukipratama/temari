@@ -19,7 +19,6 @@ import TemariVoiceCard from '@/components/dashboard/TemariVoiceCard';
 import VitalChips from '@/components/dashboard/VitalChips';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
 import { type TemariPose } from '@/components/temari/TemariProto';
-import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import { appLayout } from '@/layouts/appLayout';
@@ -68,18 +67,7 @@ export default function Today({
             <PageContainer>
                 {/* HEADLINE */}
                 <header className="mb-8">
-                    <PageHero
-                        size="2xl"
-                        eyebrow={
-                            <Eyebrow
-                                token="hero"
-                                tone="ink-2"
-                                className="mb-3.5"
-                            >
-                                {dateLine}
-                            </Eyebrow>
-                        }
-                    >
+                    <PageHero size="2xl" eyebrow={dateLine}>
                         Hey, {firstName}
                         <br />
                         <span className="italic text-horizon">

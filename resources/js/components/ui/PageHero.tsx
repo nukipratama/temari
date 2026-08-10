@@ -1,12 +1,14 @@
 import type { ReactNode } from 'react';
 
+import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 
 export type PageHeroSize = '2xl' | 'xl' | 'lg' | 'md' | 'sm';
 
 interface PageHeroProps {
-    /** Rendered above the headline as-is — usually an <Eyebrow>, occasionally
-     *  a <BackLink> on sub-pages. Omit for a headline with no label. */
+    /** A plain string renders as the standard hero eyebrow. Pass a ReactNode
+     *  (e.g. a <BackLink>, or an <Eyebrow> with its own className) for
+     *  anything else. Omit for a headline with no label. */
     eyebrow?: ReactNode;
     /** Display-scale step (`text-display-{size}`). Default 'lg', the app's
      *  standard page-title weight; pick a bigger/smaller step to shape the
@@ -44,9 +46,22 @@ export default function PageHero({
     className,
     children,
 }: Readonly<PageHeroProps>) {
+    const eyebrowNode =
+        typeof eyebrow === 'string' ? (
+            <Eyebrow
+                token="hero"
+                tone={onSky ? 'horizon' : 'ink-2'}
+                className="mb-3.5"
+            >
+                {eyebrow}
+            </Eyebrow>
+        ) : (
+            eyebrow
+        );
+
     return (
         <div className={className}>
-            {eyebrow}
+            {eyebrowNode}
             <h1
                 className={cn(
                     'font-display',

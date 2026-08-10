@@ -6,7 +6,6 @@ import CtlTrendChart, {
 } from '@/components/race/CtlTrendChart';
 import Card from '@/components/ui/Card';
 import EmptyPanel from '@/components/ui/EmptyPanel';
-import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
@@ -101,17 +100,7 @@ export default function Race({
             <Head title="Race" />
             <PageContainer>
                 <header>
-                    <PageHero
-                        eyebrow={
-                            <Eyebrow
-                                token="hero"
-                                tone="ink-2"
-                                className="mb-3.5"
-                            >
-                                Race
-                            </Eyebrow>
-                        }
-                    >
+                    <PageHero eyebrow="Race">
                         {race
                             ? 'Your race, on the calendar.'
                             : 'Give the plan something to aim at.'}

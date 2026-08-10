@@ -1,4 +1,3 @@
-import Eyebrow from '@/components/ui/Eyebrow';
 import PageHero from '@/components/ui/PageHero';
 
 import KoleksiTabs, { type KoleksiTab } from './KoleksiTabs';
@@ -21,13 +20,7 @@ export default function CollectionHeader({
 }: Readonly<CollectionHeaderProps>) {
     return (
         <header className="flex flex-col gap-5">
-            <PageHero
-                eyebrow={
-                    <Eyebrow token="hero" tone="ink-2" className="mb-3.5">
-                        {eyebrow}
-                    </Eyebrow>
-                }
-            >
+            <PageHero eyebrow={eyebrow}>
                 {headline1},<br />
                 <em className="italic text-horizon-deep">{headline2}</em>
             </PageHero>

@@ -111,15 +111,9 @@ export default function RunsIndex({
                 <header className="flex flex-col gap-5">
                     <PageHero
                         eyebrow={
-                            <Eyebrow
-                                token="hero"
-                                tone="ink-2"
-                                className="mb-3.5"
-                            >
-                                {anyFilterActive
-                                    ? `History · ${runs.length} results`
-                                    : `History · ${runs.length} activities`}
-                            </Eyebrow>
+                            anyFilterActive
+                                ? `History · ${runs.length} results`
+                                : `History · ${runs.length} activities`
                         }
                     >
                         Every run{' '}
