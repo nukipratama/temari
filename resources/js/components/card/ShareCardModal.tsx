@@ -261,7 +261,7 @@ export default function ShareCardModal({
                             style={{
                                 maxWidth: '100%',
                                 maxHeight: '52vh',
-                                boxShadow: '0 16px 48px rgba(31,39,71,0.25)',
+                                boxShadow: '0 16px 48px rgba(36,28,84,0.25)',
                             }}
                         />
 

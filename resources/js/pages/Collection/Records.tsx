@@ -320,7 +320,7 @@ function PaceTicker({ records }: Readonly<{ records: ExtendedPR[] }>) {
                     className="pointer-events-none absolute inset-0"
                     style={{
                         background:
-                            'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(246,241,232,0.02) 3px, rgba(246,241,232,0.02) 4px)',
+                            'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(245,240,228,0.02) 3px, rgba(245,240,228,0.02) 4px)',
                     }}
                 />
                 <div className="relative grid gap-1 sm:grid-cols-2 lg:grid-cols-4">

@@ -2,7 +2,7 @@
 
 /**
  * One-off generator for the iOS apple-touch-startup-image set.
- * Composites the app icon onto the Daybreak cream background_color so a cold
+ * Composites the app icon onto the Threadwork cream background_color so a cold
  * standalone launch shows the brand instead of a white flash.
  * Regenerate after changing public/icon-512.png or the surface token:
  * ./vendor/bin/sail php scripts/build-splash-screens.php
@@ -22,9 +22,9 @@ $sizes = [
 ];
 
 foreach ($sizes as [$w, $h]) {
-    // Matches manifest background_color (#F6F1E8, --color-surface).
+    // Matches manifest background_color (#F5F0E4, --color-surface).
     $canvas = new Imagick();
-    $canvas->newImage($w, $h, new ImagickPixel('#F6F1E8'));
+    $canvas->newImage($w, $h, new ImagickPixel('#F5F0E4'));
     $canvas->setImageFormat('png');
 
     // Icon at ~28% of the narrow edge, optically centred (slightly above middle).

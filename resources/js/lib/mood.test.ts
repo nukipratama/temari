@@ -77,7 +77,7 @@ describe('mood', () => {
         });
 
         it('falls back to chill grey for unknown mood', () => {
-            expect(moodSigilColor('unknown' as Mood)).toBe('#6e7b72');
+            expect(moodSigilColor('unknown' as Mood)).toBe('#55488f');
         });
     });
 

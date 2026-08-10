@@ -3,7 +3,7 @@ import { latLngBounds } from 'leaflet';
 import { useMemo, useState } from 'react';
 import { MapContainer, Polyline, TileLayer } from 'react-leaflet';
 
-import { DAYBREAK } from '@/lib/chartTokens';
+import { THREADWORK } from '@/lib/chartTokens';
 // leaflet.css lives in resources/css/app.css (@import). Importing it here would race
 // the lazy-load and leave tiles unpositioned on first render.
 
@@ -74,7 +74,7 @@ export default function RouteMap({
                     <Polyline
                         positions={positions}
                         pathOptions={{
-                            color: DAYBREAK.leaf,
+                            color: THREADWORK.leaf,
                             weight: 4,
                             opacity: 0.9,
                         }}

@@ -47,7 +47,7 @@ class RunCardImageRenderer
 
     private const int PANEL_PAD = 34;
 
-    // Daybreak colorways (kept literal so the SVG is fully self-contained).
+    // Threadwork colorways (kept literal so the SVG is fully self-contained).
     // `sky` is the card body fill, `skyDeep` the canvas-margin fill outside
     // it, `sky2` the inset-panel fill (route panel / stat grid cells), and
     // `inkOnSky` the muted meta/label tone. `navy` is unchanged from before
@@ -55,25 +55,25 @@ class RunCardImageRenderer
     // existing Telegram post.
     private const array COLORWAYS = [
         'navy' => [
-            'cream' => '#f6f1e8',
-            'sky' => '#1f2747',
-            'skyDeep' => '#161b33',
-            'sky2' => '#2c355c',
-            'inkOnSky' => '#b8ad97',
+            'cream' => '#f5f0e4',
+            'sky' => '#241c54',
+            'skyDeep' => '#170f38',
+            'sky2' => '#362a73',
+            'inkOnSky' => '#b0a3c9',
         ],
         'dawn' => [
             'cream' => '#1a1812',
-            'sky' => '#f6f1e8',
-            'skyDeep' => '#eee7d6',
-            'sky2' => '#e3dccd',
+            'sky' => '#f5f0e4',
+            'skyDeep' => '#ece2ce',
+            'sky2' => '#ddd4bd',
             'inkOnSky' => '#6e6452',
         ],
         'ember' => [
-            'cream' => '#f6f1e8',
+            'cream' => '#f5f0e4',
             'sky' => '#3a2015',
             'skyDeep' => '#2a160f',
             'sky2' => '#4f2c1c',
-            'inkOnSky' => '#b8ad97',
+            'inkOnSky' => '#b0a3c9',
         ],
     ];
 

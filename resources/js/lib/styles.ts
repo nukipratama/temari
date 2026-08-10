@@ -8,16 +8,16 @@ export function emberGlowStyle(
     falloff = '70%',
 ): CSSProperties {
     return {
-        background: `radial-gradient(circle, rgba(232,160,118,${intensity}) 0%, transparent ${falloff})`,
+        background: `radial-gradient(circle, rgba(217,165,60,${intensity}) 0%, transparent ${falloff})`,
     };
 }
 
-/** RGB tuples for the Daybreak glow palette. */
+/** RGB tuples for the Threadwork glow palette. */
 export const GLOW_COLORS = {
-    ember: { r: 232, g: 160, b: 118 },
+    ember: { r: 217, g: 165, b: 60 },
     leaf: { r: 107, g: 142, b: 111 },
-    horizon: { r: 232, g: 160, b: 118 },
-    sky: { r: 31, g: 39, b: 71 },
+    horizon: { r: 217, g: 165, b: 60 },
+    sky: { r: 36, g: 28, b: 84 },
 } as const;
 
 /** Generic radial glow from an RGB color. */
@@ -48,6 +48,6 @@ export function noiseFilterStyle(): CSSProperties {
 export function dawnRayStyle(): CSSProperties {
     return {
         background:
-            'linear-gradient(160deg, transparent 25%, rgba(232,160,118,0.09) 42%, rgba(255,246,235,0.06) 50%, rgba(232,160,118,0.09) 58%, transparent 75%)',
+            'linear-gradient(160deg, transparent 25%, rgba(217,165,60,0.09) 42%, rgba(255,246,235,0.06) 50%, rgba(217,165,60,0.09) 58%, transparent 75%)',
     };
 }

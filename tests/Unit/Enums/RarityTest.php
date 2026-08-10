@@ -29,7 +29,7 @@ it('ranks cases from common (0) to legendary (4)', function (): void {
  * server-rendered surface (RunCardImageRenderer) that drifts
  * from the client's tint fails here first.
  */
-it('exposes the Daybreak rarity hex tints', function (): void {
+it('exposes the Threadwork rarity hex tints', function (): void {
     expect(Rarity::Common->hexColor())->toBe('#7d8694')
         ->and(Rarity::Uncommon->hexColor())->toBe('#2fb350')
         ->and(Rarity::Rare->hexColor())->toBe('#2f81f7')
