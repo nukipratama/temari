@@ -7,8 +7,10 @@ import { useModal } from '@/hooks/useModal';
 import { cn } from '@/lib/cn';
 import { RARITY_LABELS } from '@/lib/runcard';
 import {
+    COLORWAYS,
     drawShareCard,
     shareCardBlob,
+    type ColorwayId,
     type Format,
     type Layout,
     type ShareKartuData,
@@ -32,10 +34,26 @@ function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
     });
 }
 
-const LAYOUTS: Layout[] = ['kartu', 'rute'];
+const LAYOUTS: Layout[] = ['kartu', 'rute', 'stats'];
 const LAYOUT_LABELS: Record<Layout, string> = {
     kartu: 'Card',
     rute: 'Route',
+    stats: 'Stats',
+};
+/** Which templates need a drawable route — the single source of truth for
+ *  both the layout picker's visibility and the draw-effect's stale-selection
+ *  clamp, replacing the old ad hoc `l !== 'rute'` checks in both places. */
+const TEMPLATE_CAPS: Record<Layout, { requiresPolyline: boolean }> = {
+    kartu: { requiresPolyline: false },
+    rute: { requiresPolyline: true },
+    stats: { requiresPolyline: false },
+};
+
+const COLORWAYS_LIST: ColorwayId[] = ['navy', 'dawn', 'ember'];
+const COLORWAY_LABELS: Record<ColorwayId, string> = {
+    navy: 'Navy',
+    dawn: 'Dawn',
+    ember: 'Ember',
 };
 
 export default function ShareCardModal({
@@ -44,6 +62,7 @@ export default function ShareCardModal({
 }: Readonly<ShareCardModalProps>) {
     const [layout, setLayout] = useState<Layout>('kartu');
     const [format, setFormat] = useState<Format>('story');
+    const [colorway, setColorway] = useState<ColorwayId>('navy');
     // Transient status under the CTAs: confirms a copy/share that has no native
     // UI of its own, or surfaces a failure instead of swallowing it silently.
     const [status, setStatus] = useState<{
@@ -66,14 +85,18 @@ export default function ShareCardModal({
         // Clamp to a drawable layout: a no-GPS run has no route, so a stale
         // 'rute' selection (carried over from a previous GPS card) must not
         // paint a blank map. See `hasRoute` below.
+        const hasRoute = kartu.polyline != null && kartu.polyline !== '';
         const drawLayout =
-            kartu.polyline != null && kartu.polyline !== '' ? layout : 'kartu';
+            !TEMPLATE_CAPS[layout].requiresPolyline || hasRoute
+                ? layout
+                : 'kartu';
         drawRef.current = drawShareCard(canvasRef.current, {
             kartu,
             layout: drawLayout,
             format,
+            colorway,
         });
-    }, [kartu, layout, format]);
+    }, [kartu, layout, format, colorway]);
 
     // Auto-clear the status line so it reads as a transient toast.
     useEffect(() => {
@@ -84,17 +107,17 @@ export default function ShareCardModal({
 
     if (kartu === null) return null;
 
-    // The route-hero template needs a polyline; hide it for no-GPS runs.
+    // Templates that need a polyline are hidden for no-GPS runs.
     const hasRoute = kartu.polyline != null && kartu.polyline !== '';
     const availableLayouts = hasRoute
         ? LAYOUTS
-        : LAYOUTS.filter((l) => l !== 'rute');
+        : LAYOUTS.filter((l) => !TEMPLATE_CAPS[l].requiresPolyline);
     // Clamp so share/copy never export a stale 'rute' layout on a no-GPS run.
     const effectiveLayout: Layout = availableLayouts.includes(layout)
         ? layout
         : 'kartu';
 
-    const cfg = { kartu, layout: effectiveLayout, format };
+    const cfg = { kartu, layout: effectiveLayout, format, colorway };
 
     // The preview canvas already holds the exact export bitmap at its full
     // internal resolution, so read it back rather than redrawing every template
@@ -273,8 +296,8 @@ export default function ShareCardModal({
                             ))}
                         </div>
 
-                        {/* Style — template picker. Hidden when a no-GPS run leaves only
-                            the Kartu layout, so there's nothing to choose. */}
+                        {/* Style — template picker. Hidden only if a single layout remains
+                            to choose from (e.g. Route needs a polyline the run doesn't have). */}
                         {availableLayouts.length > 1 && (
                             <div className="flex w-full gap-2">
                                 {availableLayouts.map((l) => (
@@ -282,10 +305,10 @@ export default function ShareCardModal({
                                         key={l}
                                         type="button"
                                         onClick={() => setLayout(l)}
-                                        aria-pressed={layout === l}
+                                        aria-pressed={effectiveLayout === l}
                                         className={cn(
                                             toggleButtonVariants({
-                                                selected: layout === l,
+                                                selected: effectiveLayout === l,
                                                 size: 'md',
                                             }),
                                             'flex-1',
@@ -296,6 +319,34 @@ export default function ShareCardModal({
                                 ))}
                             </div>
                         )}
+
+                        {/* Colorway — swatch picker. Always 3 choices; unlike the
+                            template picker, colorway never depends on run data. */}
+                        <div className="flex w-full items-center justify-center gap-3">
+                            {COLORWAYS_LIST.map((c) => (
+                                <button
+                                    key={c}
+                                    type="button"
+                                    onClick={() => setColorway(c)}
+                                    aria-pressed={colorway === c}
+                                    aria-label={`Colorway: ${COLORWAY_LABELS[c]}`}
+                                    className={cn(
+                                        'focus-ring h-9 w-9 rounded-full border-2 transition',
+                                        colorway === c
+                                            ? 'border-sky'
+                                            : 'border-transparent hover:border-cream-deep',
+                                    )}
+                                >
+                                    <span
+                                        aria-hidden
+                                        className="block h-full w-full rounded-full border border-black/10"
+                                        style={{
+                                            background: COLORWAYS[c].surface,
+                                        }}
+                                    />
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {/* CTAs — pinned footer. */}
