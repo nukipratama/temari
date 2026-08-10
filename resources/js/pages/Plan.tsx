@@ -3,6 +3,7 @@ import type { FormDataConvertible } from '@inertiajs/core';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
+import TemariProto, { type SeasonPhase } from '@/components/temari/TemariProto';
 import Card from '@/components/ui/Card';
 import Chip, { type ChipTone } from '@/components/ui/Chip';
 import EmptyPanel from '@/components/ui/EmptyPanel';
@@ -15,6 +16,7 @@ import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { formatGoalNumber, goalProgressRatio } from '@/lib/goalProgress';
 import { formatNaiveIdDate, formatPace, todayLocalIso } from '@/lib/pace';
+import { currentSeasonPhase } from '@/lib/seasonPhase';
 
 interface SeasonGoal {
     id: number;
@@ -88,6 +90,16 @@ const PHASE_TONE: Record<string, ChipTone> = {
 
 const BAND_ORDER = ['short', 'medium', 'long'] as const;
 
+// The mascot's thread coverage builds up as the season progresses — deload
+// weeks pause accretion rather than reset it, so a deload week borrows the
+// last non-deload phase's coverage instead of rendering its own.
+const SEASON_VISUAL_CAPTION: Record<SeasonPhase, string> = {
+    base: 'Thread just getting started — sparse and loosely wound.',
+    build: 'Coverage building, bands starting to lock in.',
+    peak: 'Fully wound — the most intricate the pattern gets.',
+    taper: 'Pattern held at full coverage, with a rested shine.',
+};
+
 function paceLabel(day: PlanDay): string | null {
     if (day.pace_sec_per_km == null) return null;
     return `${formatPace(day.pace_sec_per_km)}/km`;
@@ -101,6 +113,7 @@ export default function Plan({
 }: Readonly<PlanProps>) {
     const [regenerating, setRegenerating] = useState(false);
     const today = todayLocalIso();
+    const seasonPhase = currentSeasonPhase(weeks);
 
     const regenerate = () => {
         router.post(
@@ -200,7 +213,23 @@ export default function Plan({
                             Badge board
                         </Link>
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                    <div className="mt-3 flex items-center gap-3">
+                        <TemariProto
+                            pose="observational"
+                            size={56}
+                            dropShadow={false}
+                            seasonPhase={seasonPhase}
+                        />
+                        <div>
+                            <Chip tone={PHASE_TONE[seasonPhase] ?? 'neutral'}>
+                                {PHASE_LABEL[seasonPhase] ?? seasonPhase}
+                            </Chip>
+                            <p className="mt-1 text-xs text-ink-2">
+                                {SEASON_VISUAL_CAPTION[seasonPhase]}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                         {season.goals.map((goal) => (
                             <Card
                                 key={goal.id}

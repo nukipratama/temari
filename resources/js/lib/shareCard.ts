@@ -392,14 +392,13 @@ function ensureFonts(): Promise<void> {
     return fontsReady;
 }
 
-// Flat, canvas-safe port of BunnyGlyph in components/BrandMark.tsx (no
+// Flat, canvas-safe port of TemariGlyph in components/BrandMark.tsx (no
 // gradients/highlights). Keep the core geometry in sync with that source.
-function bunnySvg(tone: 'ink' | 'cream', bandHex: string = C.horizon): string {
+function temariSvg(tone: 'ink' | 'cream', bandHex: string = C.horizon): string {
     const isInk = tone === 'ink';
     const face = isInk ? C.ink : C.cream;
-    const blush = isInk ? C.horizon : C.horizonDeep;
     const features = isInk ? C.cream : C.ink;
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><defs><clipPath id="b"><circle cx="50" cy="58" r="40"/></clipPath></defs><ellipse cx="32" cy="8" rx="9" ry="16" fill="${face}" transform="rotate(-12 32 8)"/><ellipse cx="68" cy="8" rx="9" ry="16" fill="${face}" transform="rotate(12 68 8)"/><ellipse cx="32" cy="10" rx="4" ry="9" fill="${blush}" transform="rotate(-12 32 10)"/><ellipse cx="68" cy="10" rx="4" ry="9" fill="${blush}" transform="rotate(12 68 10)"/><circle cx="50" cy="58" r="40" fill="${face}"/><g clip-path="url(#b)"><rect x="10" y="40" width="80" height="14" fill="${bandHex}"/></g><circle cx="38" cy="68" r="4.5" fill="${features}"/><circle cx="62" cy="68" r="4.5" fill="${features}"/><path d="M 44 80 Q 50 85 56 80" fill="none" stroke="${features}" stroke-width="2.4" stroke-linecap="round"/></svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><defs><clipPath id="b"><circle cx="50" cy="52" r="42"/></clipPath></defs><path d="M 42 10 Q 50 4 58 10 Q 52 12 50 16 Q 48 12 42 10 Z" fill="${face}"/><circle cx="50" cy="52" r="42" fill="${face}"/><g clip-path="url(#b)"><rect x="8" y="34" width="84" height="13" fill="${bandHex}"/></g><circle cx="38" cy="62" r="4.5" fill="${features}"/><circle cx="62" cy="62" r="4.5" fill="${features}"/><path d="M 44 74 Q 50 79 56 74" fill="none" stroke="${features}" stroke-width="2.4" stroke-linecap="round"/></svg>`;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -414,21 +413,21 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 // Few tone/band combinations exist and each glyph never changes; cache every
 // decoded image (keyed by tone + headband hex) so repeated repaints reuse it
 // instead of re-encoding and re-decoding the SVG.
-const bunnyCache: Record<string, HTMLImageElement> = {};
+const temariCache: Record<string, HTMLImageElement> = {};
 
-async function loadBunny(
+async function loadTemari(
     tone: 'ink' | 'cream',
     bandHex: string = C.horizon,
 ): Promise<HTMLImageElement | null> {
     const key = `${tone}:${bandHex}`;
-    if (bunnyCache[key]) {
-        return bunnyCache[key];
+    if (temariCache[key]) {
+        return temariCache[key];
     }
     try {
         const img = await loadImage(
-            `data:image/svg+xml;utf8,${encodeURIComponent(bunnySvg(tone, bandHex))}`,
+            `data:image/svg+xml;utf8,${encodeURIComponent(temariSvg(tone, bandHex))}`,
         );
-        bunnyCache[key] = img;
+        temariCache[key] = img;
         return img;
     } catch {
         return null;
@@ -460,13 +459,13 @@ function drawRarityFlag(
     return h;
 }
 
-/** Brand lockup (bunny + wordmark) right-aligned to `rightX`. */
+/** Brand lockup (Temari glyph + wordmark) right-aligned to `rightX`. */
 function drawBrand(
     ctx: CanvasRenderingContext2D,
     rightX: number,
     y: number,
     isDark: boolean,
-    bunny: HTMLImageElement | null,
+    temari: HTMLImageElement | null,
 ): void {
     const size = 52;
     const gap = 14;
@@ -477,8 +476,8 @@ function drawBrand(
     const wordW = ctx.measureText(word).width;
     const totalW = size + gap + wordW;
     const startX = rightX - totalW;
-    if (bunny) {
-        ctx.drawImage(bunny, startX, y, size, size);
+    if (temari) {
+        ctx.drawImage(temari, startX, y, size, size);
     }
     ctx.fillStyle = isDark ? C.cream : C.ink;
     ctx.fillText(word, startX + size + gap, y + size / 2 + 1);
@@ -490,9 +489,9 @@ interface DrawCtx {
     h: number;
     cfg: ShareCardConfig;
     pal: Palette;
-    bunny: HTMLImageElement | null;
+    temari: HTMLImageElement | null;
     /** Temari glyph with its headband tinted to the card's mood. */
-    moodBunny: HTMLImageElement | null;
+    moodTemari: HTMLImageElement | null;
 }
 
 /** Bottom-left mono date stamp, shared by the poster and numeric templates. */
@@ -671,13 +670,13 @@ function drawRuteBlock(
  *  sparse card (no badges, no edition) fills the canvas instead of leaving a
  *  dead gap at the bottom. */
 function drawRute(d: DrawCtx): void {
-    const { ctx, w, h, cfg, pal, bunny } = d;
+    const { ctx, w, h, cfg, pal, temari } = d;
     const k = cfg.kartu;
     const story = cfg.format === 'story';
     const rarityCol = C.rarity[k.rarity] ?? C.line;
     paintGlow(ctx, w / 2, h * 0.38, w * 0.5);
     drawCardFrame(ctx, w, h, rarityCol, pal);
-    drawBrand(ctx, w - PAD, PAD, pal.isDark, bunny);
+    drawBrand(ctx, w - PAD, PAD, pal.isDark, temari);
     drawRarityFlag(ctx, PAD, PAD, k.rarity);
 
     const topOffset = PAD + (story ? 110 : 88);
@@ -853,7 +852,7 @@ function drawHeroArtBadges(
 function drawHeroArtWindow(
     ctx: CanvasRenderingContext2D,
     k: ShareKartuData,
-    bunny: HTMLImageElement | null,
+    temari: HTMLImageElement | null,
     box: { x: number; y: number; w: number; h: number },
     rarityCol: string,
     moodCol: string,
@@ -925,16 +924,16 @@ function drawHeroArtWindow(
     );
     drawHeroShimmer(ctx, box.x, box.y, box.w, box.h, k.rarity, rarityCol);
 
-    // Brand mark (bunny + wordmark), tucked into the map's bottom-right corner
-    // instead of a big Temari mascot watermark — a quiet signature rather than
-    // a character floating over the route.
+    // Brand mark (Temari glyph + wordmark), tucked into the map's bottom-right
+    // corner instead of a big Temari mascot watermark — a quiet signature
+    // rather than a character floating over the route.
     const brandPad = 20;
     drawBrand(
         ctx,
         box.x + box.w - brandPad,
         box.y + box.h - 52 - brandPad,
         false,
-        bunny,
+        temari,
     );
 
     // Draw the corner chips INSIDE the clip so their square outer corners are
@@ -1386,7 +1385,7 @@ function drawZoneBar(
  * Mirrors the React Kartu component.
  */
 function drawHero(d: DrawCtx): void {
-    const { ctx, w, h, cfg, pal, moodBunny } = d;
+    const { ctx, w, h, cfg, pal, moodTemari } = d;
     const k = cfg.kartu;
     const story = cfg.format === 'story';
     const rarityCol = C.rarity[k.rarity] ?? C.line;
@@ -1436,7 +1435,7 @@ function drawHero(d: DrawCtx): void {
     drawHeroArtWindow(
         ctx,
         k,
-        moodBunny,
+        moodTemari,
         { x: innerX, y: innerTop, w: innerW, h: artH },
         rarityCol,
         moodCol,
@@ -1456,14 +1455,14 @@ function drawHero(d: DrawCtx): void {
  * `C.ink3`/`C.ink` rather than tracking the card's own `pal.text`.
  */
 function drawStats(d: DrawCtx): void {
-    const { ctx, w, h, cfg, pal, bunny } = d;
+    const { ctx, w, h, cfg, pal, temari } = d;
     const k = cfg.kartu;
     const story = cfg.format === 'story';
     const rarityCol = C.rarity[k.rarity] ?? C.line;
 
     paintGlow(ctx, w / 2, h * 0.3, w * 0.5);
     drawCardFrame(ctx, w, h, rarityCol, pal);
-    drawBrand(ctx, w - PAD, PAD, pal.isDark, bunny);
+    drawBrand(ctx, w - PAD, PAD, pal.isDark, temari);
     drawRarityFlag(ctx, PAD, PAD, k.rarity);
 
     const nameSize = story ? w * 0.088 : w * 0.076;
@@ -1554,13 +1553,13 @@ export async function drawShareCard(
 
     await ensureFonts();
     const pal = COLORWAYS[cfg.colorway ?? 'navy'];
-    const bunny = await loadBunny(pal.isDark ? 'cream' : 'ink');
-    const moodBunny = await loadBunny('ink', moodSigilColor(cfg.kartu.mood));
+    const temari = await loadTemari(pal.isDark ? 'cream' : 'ink');
+    const moodTemari = await loadTemari('ink', moodSigilColor(cfg.kartu.mood));
 
     ctx.clearRect(0, 0, w, h);
     paintBackground(ctx, w, h, pal);
 
-    const d: DrawCtx = { ctx, w, h, cfg, pal, bunny, moodBunny };
+    const d: DrawCtx = { ctx, w, h, cfg, pal, temari, moodTemari };
     TEMPLATES[cfg.layout](d);
 }
 

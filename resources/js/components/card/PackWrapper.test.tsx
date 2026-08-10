@@ -16,7 +16,7 @@ describe('PackWrapper', () => {
         const { container } = render(
             <PackWrapper rarity="epic" onOpen={vi.fn()} />,
         );
-        // The card-back tiles bunny glyphs so the card can't be read through it.
+        // The card-back tiles glyphs so the card can't be read through it.
         expect(container.querySelectorAll('svg').length).toBeGreaterThanOrEqual(
             12,
         );

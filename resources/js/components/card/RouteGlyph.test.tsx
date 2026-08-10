@@ -24,7 +24,7 @@ describe('RouteGlyph', () => {
         expect(svg?.querySelectorAll('rect').length).toBe(4);
     });
 
-    it('falls back to the bunny glyph when there is no route or pace data', () => {
+    it('falls back to the glyph when there is no route or pace data', () => {
         const { container } = render(<RouteGlyph rarity="rare" />);
         expect(
             container.querySelector('[data-variant="glyph"]'),

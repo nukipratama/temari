@@ -4,7 +4,7 @@ import { motion, useMotionValue, useTransform } from 'framer-motion';
 
 import type { Rarity } from '@/types/inertia';
 
-import { BunnyGlyph } from '@/components/BrandMark';
+import { TemariGlyph } from '@/components/BrandMark';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 import { RARITY_HEX } from '@/lib/runcard';
@@ -132,7 +132,7 @@ export default function PackWrapper({
                             key={id}
                             className={i % 2 === 0 ? 'rotate-6' : '-rotate-6'}
                         >
-                            <BunnyGlyph size={34} tone="ink" />
+                            <TemariGlyph size={34} tone="ink" />
                         </span>
                     ))}
                 </div>
