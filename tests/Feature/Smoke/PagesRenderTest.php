@@ -29,4 +29,5 @@ it('renders every authenticated page for a fresh user', function (string $route,
     'profile' => ['profile', 'Profile'],
     'settings' => ['settings', 'Settings/Index'],
     'race' => ['race', 'Race'],
+    'plan' => ['plan', 'Plan'],
 ]);
