@@ -47,7 +47,7 @@ function seedActivityForJob(): Activity
         'activity_id' => $activity->id,
         'user_id' => $user->id,
         'kind' => StoryLine::KIND_POST_RUN,
-        'mood' => 'nyala',
+        'mood' => 'blazing',
     ]);
 
     return $activity;
@@ -62,7 +62,7 @@ it('writes speech + 3 insight rows Done from one job run', function (): void {
     // The speech is told the mood and nothing else about the run: the insight
     // triplet is the other three lenses' material, not its own.
     $speechMock->shouldReceive('generate')
-        ->withArgs(fn ($a, $d, $mood): bool => $mood === 'nyala')
+        ->withArgs(fn ($a, $d, $mood): bool => $mood === 'blazing')
         ->andReturn('nice run');
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
     mockInsightNarrator($insights);
@@ -290,7 +290,7 @@ function pendingActivityGroup(User $user, string $startDate): Activity
         'activity_id' => $activity->id,
         'user_id' => $user->id,
         'kind' => StoryLine::KIND_POST_RUN,
-        'mood' => 'nyala',
+        'mood' => 'blazing',
     ]);
     foreach (AnalyzeActivityJob::groupedTypes() as $type) {
         Analysis::factory()->create([

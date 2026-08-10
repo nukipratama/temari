@@ -13,7 +13,7 @@ interface Particle {
     duration: number;
 }
 
-// Daybreak palette spread (leaf, ember, citrus, horizon, citrus-deep, mumet).
+// Daybreak palette spread (leaf, ember, citrus, horizon, citrus-deep, overloaded).
 // Mirrors app.css @theme; Chart/SVG-style particle fills can't read CSS vars.
 const COLORS = [
     '#6B8E6F',

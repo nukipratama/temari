@@ -39,7 +39,7 @@ export interface MoodVariant {
 // Coordinates assume a 100x100 viewBox; head ~ y 16..52, eyes at y ≈ 33,
 // eyebrows y ≈ 28, mouth y ≈ 42..46.
 export const MOOD_VARIANTS: Record<Mood, MoodVariant> = {
-    nyala: {
+    blazing: {
         moodColor: '#d99a1a',
         eyes: 'open',
         eyebrowLeft: 'M 34 28 Q 38 25 42 27',
@@ -57,7 +57,7 @@ export const MOOD_VARIANTS: Record<Mood, MoodVariant> = {
         accessory: 'medal',
         particles: 'sparkles',
     },
-    enteng: {
+    easy: {
         moodColor: '#c83a76',
         eyes: 'wide',
         eyebrowLeft: 'M 34 27 Q 38 23 42 26',
@@ -75,7 +75,7 @@ export const MOOD_VARIANTS: Record<Mood, MoodVariant> = {
         accessory: 'flag',
         particles: 'hearts',
     },
-    lemes: {
+    gassed: {
         moodColor: '#b8302f',
         eyes: 'squint',
         eyebrowLeft: 'M 34 29 Q 38 32 42 29',
@@ -93,7 +93,7 @@ export const MOOD_VARIANTS: Record<Mood, MoodVariant> = {
         accessory: 'towel',
         particles: 'droplets',
     },
-    oleng: {
+    wobbly: {
         moodColor: '#c46f1c',
         eyes: 'shut',
         eyebrowLeft: 'M 34 30 Q 38 33 42 30',
@@ -111,7 +111,7 @@ export const MOOD_VARIANTS: Record<Mood, MoodVariant> = {
         accessory: 'bottle',
         particles: 'lines',
     },
-    mumet: {
+    overloaded: {
         moodColor: '#6b4ea8',
         eyes: 'spiral',
         eyebrowLeft: 'M 34 28 Q 38 26 42 28',
@@ -129,7 +129,7 @@ export const MOOD_VARIANTS: Record<Mood, MoodVariant> = {
         accessory: 'question',
         particles: 'stars',
     },
-    adem: {
+    chill: {
         moodColor: '#6e7b72',
         eyes: 'closed',
         eyebrowLeft: 'M 34 29 Q 38 30 42 29',
@@ -150,5 +150,5 @@ export const MOOD_VARIANTS: Record<Mood, MoodVariant> = {
 };
 
 export function variantFor(mood: Mood): MoodVariant {
-    return MOOD_VARIANTS[mood] ?? MOOD_VARIANTS.adem;
+    return MOOD_VARIANTS[mood] ?? MOOD_VARIANTS.chill;
 }

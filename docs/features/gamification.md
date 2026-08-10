@@ -45,13 +45,13 @@ The rarity isn't a coin flip: [RarityScorer::score()](../../app/Services/Run/Sto
 
 **The tier boundaries are fitted, not chosen.** The cap alone didn't settle it — Langka was still the most common tier on real data. [run:compare-recalibration](../../app/Console/Commands/Run/CompareRecalibrationCommand.php) recomputes every stored run under the current rules and prints the score distribution, and the boundaries are the closest integers that put Langka-or-better near a fifth of cards rather than a third. Because scores are integers the fit is coarse: the next boundary up would collapse that share to under 8%. Re-run the command before moving them, and read the percentile table it prints rather than guessing.
 
-Effort badges are read against the athlete's max HR, so a stale max quietly distorts them: `keras` (hard) landed on 69% of runs while `santai` (easy) fired on none at all, since its 70%-of-max bar describes a recovery jog rather than the easy run a Z2 session actually is. Both thresholds now sit where runners would recognise the effort, and max HR self-corrects during ingest (see [[stream-analysis]]).
+Effort badges are read against the athlete's max HR, so a stale max quietly distorts them: `all_out` (hard) landed on 69% of runs while `easy_miles` (easy) fired on none at all, since its 70%-of-max bar describes a recovery jog rather than the easy run a Z2 session actually is. Both thresholds now sit where runners would recognise the effort, and max HR self-corrects during ingest (see [[stream-analysis]]).
 
 The result persists to the `run_cards` table via [RunCard](../../app/Models/RunCard.php): `rarity` is a string column cast to the `Rarity` enum, `badges` casts to an array, and `special_move` holds the name. The model exposes `forUser()` and `badgeCountsForUser()` for the collection views.
 
 [SpecialMoves](../../app/Services/Run/Story/SpecialMoves.php) (`pick(...)`) deterministically chooses a thematic name (e.g. "Closing Kick", "Easy Miles", "Red Line") from buckets keyed on zone distribution and pace — same run, same name, every time.
 
-[Temari](../../app/Services/Run/Story/Temari.php) wraps the mascot's reaction: it maps run metrics and the user's current vibe to a mood (nyala, enteng, oleng, lemes, mumet, adem) and writes a `StoryLine`, so the card carries a voice, not just numbers.
+[Temari](../../app/Services/Run/Story/Temari.php) wraps the mascot's reaction: it maps run metrics and the user's current vibe to a mood (blazing, easy, wobbly, gassed, overloaded, chill) and writes a `StoryLine`, so the card carries a voice, not just numbers.
 
 ## Milestones
 
@@ -63,7 +63,7 @@ A PR is written by `app/Services/Run/Metrics/PersonalRecords` via `updateOrCreat
 
 ## Unlocks & accessories
 
-[GrantEligibleUnlocksAction](../../app/Actions/Gamification/GrantEligibleUnlocksAction.php) (`__invoke(User): list<string>`) recomputes and persists which accessories a user has earned — medals, ikat_kepala, kaus, celana, sepatu, aura — from PR counts, rarity/badge collection, distance milestones and streaks. It is idempotent and is called after a PR is detected, after the weekly aggregation, and when a card reaches an elite rarity. Grants land in `user_unlocks` via [UserUnlock](../../app/Models/UserUnlock.php) (`unlock_key`, `unlocked_at`, `equipped`, `metadata`).
+[GrantEligibleUnlocksAction](../../app/Actions/Gamification/GrantEligibleUnlocksAction.php) (`__invoke(User): list<string>`) recomputes and persists which accessories a user has earned — medals, headband, shirt, shorts, shoes, aura — from PR counts, rarity/badge collection, distance milestones and streaks. It is idempotent and is called after a PR is detected, after the weekly aggregation, and when a card reaches an elite rarity. Grants land in `user_unlocks` via [UserUnlock](../../app/Models/UserUnlock.php) (`unlock_key`, `unlocked_at`, `equipped`, `metadata`).
 
 [GoalResolver](../../app/Services/Gamification/GoalResolver.php) (`forUser()`, `completedCount()`, `closestToCompletion()`) computes progress toward *every* unlock in the catalog — current vs target — to feed the [[targets-accessories]] progress bars, including the ones not yet earned.
 

@@ -858,7 +858,7 @@ it('does NOT dispatch ResolveActivityLocationJob when the activity has no coords
 
 // Max HR only ever arrived from a Strava sync or a manual edit, so a stale value
 // dragged every zone below it down: real data sat at max_hr 180 while the athlete
-// had already hit 188, pushing easy runs into Z3 and the "keras" badge onto 69%
+// had already hit 188, pushing easy runs into Z3 and the "all_out" badge onto 69%
 // of runs. The athlete's own peak cannot be an underestimate.
 it('raises a stale max HR to the observed peak and re-derives the zones', function (): void {
     $activity = makeActivityWithConnection();

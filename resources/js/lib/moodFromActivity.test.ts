@@ -20,38 +20,40 @@ function detail(overrides: Partial<ActivityDetail> = {}): ActivityDetail {
 
 describe('moodFromActivity', () => {
     it('returns dim for runs with no/low TRIMP', () => {
-        expect(moodFromActivity(detail({ trimp_edwards: null }))).toBe('adem');
-        expect(moodFromActivity(detail({ trimp_edwards: 20 }))).toBe('adem');
+        expect(moodFromActivity(detail({ trimp_edwards: null }))).toBe('chill');
+        expect(moodFromActivity(detail({ trimp_edwards: 20 }))).toBe('chill');
     });
 
     it('returns spinning for short interval-ish runs', () => {
-        expect(moodFromActivity(detail({ trimp_edwards: 40 }))).toBe('mumet');
+        expect(moodFromActivity(detail({ trimp_edwards: 40 }))).toBe(
+            'overloaded',
+        );
     });
 
     it('returns glow for solid aerobic runs', () => {
-        expect(moodFromActivity(detail({ trimp_edwards: 75 }))).toBe('nyala');
+        expect(moodFromActivity(detail({ trimp_edwards: 75 }))).toBe('blazing');
     });
 
     it('returns squished for long-distance drained runs', () => {
         expect(
             moodFromActivity(detail({ trimp_edwards: 100, distance: 15000 })),
-        ).toBe('oleng');
+        ).toBe('wobbly');
     });
 
     it('returns bouncy for solid hard sessions', () => {
-        expect(moodFromActivity(detail({ trimp_edwards: 150 }))).toBe('enteng');
+        expect(moodFromActivity(detail({ trimp_edwards: 150 }))).toBe('easy');
     });
 
     it('returns wobble for crushing efforts', () => {
-        expect(moodFromActivity(detail({ trimp_edwards: 220 }))).toBe('lemes');
+        expect(moodFromActivity(detail({ trimp_edwards: 220 }))).toBe('gassed');
     });
 
     it('reads a crushing effort as a quality win when the run is a tagged race/workout', () => {
         expect(
             moodFromActivity(detail({ trimp_edwards: 220, workout_type: 3 })),
-        ).toBe('nyala');
+        ).toBe('blazing');
         expect(
             moodFromActivity(detail({ trimp_edwards: 220, workout_type: 1 })),
-        ).toBe('nyala');
+        ).toBe('blazing');
     });
 });

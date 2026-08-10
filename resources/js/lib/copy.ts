@@ -7,8 +7,8 @@
  *  - No em-dashes (—) or en-dashes (–) in copy or LLM prompts. Use comma, period,
  *    colon, or parentheses for pauses.
  *  - Running domain terms stay English (pace, split, TRIMP, threshold, etc.).
- *  - Mood values are still keyed by their Indonesian slugs (nyala / enteng /
- *    oleng / lemes / mumet / adem) pending the DB key migration in a later slice.
+ *  - Mood values are still keyed by their Indonesian slugs (blazing / easy /
+ *    wobbly / gassed / overloaded / chill) pending the DB key migration in a later slice.
  *  - Light emoji touch (1 per voice line) is welcome in mascot voice and empty
  *    states. Avoid emojis in headings, KPIs, table headers, nav labels.
  *
@@ -44,10 +44,10 @@ export const CTA = {
 
 /** Mood-keyed emoji palette (D5). One emoji per voice line, never on chips. */
 export const MOOD_EMOJI = {
-    nyala: '🔥',
-    enteng: '🌸',
-    oleng: '⚡',
-    lemes: '💧',
-    mumet: '🌀',
-    adem: '🍃',
+    blazing: '🔥',
+    easy: '🌸',
+    wobbly: '⚡',
+    gassed: '💧',
+    overloaded: '🌀',
+    chill: '🍃',
 } as const;

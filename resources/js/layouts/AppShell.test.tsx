@@ -14,7 +14,7 @@ const pendingCard: PendingReveal = {
     activity_id: 1,
     rarity: 'common',
     special_move: 'Pagi Santai',
-    mood: 'adem',
+    mood: 'chill',
     badges: null,
     detail_name: 'Easy run',
     distance_m: 5000,
@@ -225,7 +225,7 @@ describe('AppShell', () => {
             auth: { user: andiUser },
             flash: {
                 unlock: {
-                    unlock_key: 'accessory.ikat_kepala_epik',
+                    unlock_key: 'accessory.headband_epic',
                     name: 'Ikat Kepala Istimewa',
                     icon: 'mdi:star',
                     is_major: true,
@@ -250,7 +250,7 @@ describe('AppShell', () => {
             auth: { user: andiUser },
             flash: {
                 unlock: {
-                    unlock_key: 'accessory.ikat_kepala_epik',
+                    unlock_key: 'accessory.headband_epic',
                     name: 'Ikat Kepala Istimewa',
                     icon: 'mdi:star',
                     is_major: true,
@@ -277,7 +277,7 @@ describe('AppShell', () => {
             auth: { user: andiUser },
             flash: {
                 unlock: {
-                    unlock_key: 'accessory.medal_emas',
+                    unlock_key: 'accessory.medal_gold',
                     name: 'Medali Emas',
                     icon: 'mdi:medal',
                     is_major: false,

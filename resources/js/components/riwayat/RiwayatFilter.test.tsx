@@ -14,16 +14,16 @@ const RANGE_OPTIONS = [
 
 const MOOD_OPTIONS: ReadonlyArray<MoodOption> = [
     {
-        mood: 'nyala',
+        mood: 'blazing',
         label: 'Blazing',
         hint: 'pr',
-        swatchClass: 'bg-mood-nyala',
+        swatchClass: 'bg-mood-blazing',
     },
     {
-        mood: 'lemes',
+        mood: 'gassed',
         label: 'Gassed',
         hint: 'strain',
-        swatchClass: 'bg-mood-lemes',
+        swatchClass: 'bg-mood-gassed',
     },
 ];
 
@@ -60,7 +60,7 @@ describe('RiwayatFilter', () => {
         render(
             <RiwayatFilter
                 mood={{
-                    selected: new Set(['nyala']),
+                    selected: new Set(['blazing']),
                     options: MOOD_OPTIONS,
                     onToggle,
                 }}
@@ -70,7 +70,7 @@ describe('RiwayatFilter', () => {
         openPanel();
 
         fireEvent.click(screen.getByRole('button', { name: /gassed/i }));
-        expect(onToggle).toHaveBeenCalledWith('lemes');
+        expect(onToggle).toHaveBeenCalledWith('gassed');
 
         fireEvent.click(screen.getByRole('button', { name: /reset/i }));
         expect(onReset).toHaveBeenCalled();
@@ -80,7 +80,7 @@ describe('RiwayatFilter', () => {
         render(
             <RiwayatFilter
                 mood={{
-                    selected: new Set(['nyala']),
+                    selected: new Set(['blazing']),
                     options: MOOD_OPTIONS,
                     onToggle: vi.fn(),
                 }}
@@ -194,7 +194,7 @@ describe('RiwayatFilter', () => {
                     hrefFor: (v) => `/activities?range=${v}`,
                 }}
                 mood={{
-                    selected: new Set(['nyala']),
+                    selected: new Set(['blazing']),
                     options: MOOD_OPTIONS,
                     onToggle: vi.fn(),
                 }}

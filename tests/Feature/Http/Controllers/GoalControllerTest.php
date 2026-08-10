@@ -24,7 +24,7 @@ it('renders the Goals page with goals for a fresh user', function (): void {
 
 it('counts unlocked goals as completed', function (): void {
     $user = User::factory()->create();
-    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_pertama']);
+    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_first']);
 
     $this->actingAs($user)->get('/goals')
         ->assertSuccessful()

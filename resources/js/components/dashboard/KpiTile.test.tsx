@@ -8,9 +8,9 @@ import KpiTile from './KpiTile';
 // Not exported from KpiTile.tsx — mirrored here so the test can assert the
 // actual tone class landed, not just that rendering didn't throw.
 const TONE_CLASS: Record<Tone, string> = {
-    positive: 'text-mood-enteng',
-    warning: 'text-mood-nyala',
-    alert: 'text-mood-lemes',
+    positive: 'text-mood-easy',
+    warning: 'text-mood-blazing',
+    alert: 'text-mood-gassed',
     neutral: 'text-ink',
 };
 

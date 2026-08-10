@@ -14,6 +14,7 @@ use Override;
  */
 class UserUnlockFactory extends Factory
 {
+    #[Override]
     protected $model = UserUnlock::class;
 
     /** @return array<string, mixed> */
@@ -22,7 +23,7 @@ class UserUnlockFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'unlock_key' => 'accessory.medal_pertama',
+            'unlock_key' => 'accessory.medal_first',
             'unlocked_at' => now(),
             'metadata' => null,
         ];

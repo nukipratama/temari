@@ -43,10 +43,10 @@ interface AccessoriesItem {
 
 interface EquippedPayload {
     medal: string | null;
-    ikat_kepala: string | null;
-    kaus: string | null;
-    celana: string | null;
-    sepatu: string | null;
+    headband: string | null;
+    shirt: string | null;
+    shorts: string | null;
+    shoes: string | null;
     aura: string | null;
 }
 
@@ -57,19 +57,19 @@ interface AccessoriesProps {
 
 const SLOT_LABEL: Record<Slot, string> = {
     medal: 'Medal',
-    ikat_kepala: 'Headband',
-    kaus: 'Shirt',
-    celana: 'Shorts',
-    sepatu: 'Shoes',
+    headband: 'Headband',
+    shirt: 'Shirt',
+    shorts: 'Shorts',
+    shoes: 'Shoes',
     aura: 'Aura',
 };
 
 const SLOT_ORDER: Slot[] = [
     'medal',
-    'ikat_kepala',
-    'kaus',
-    'celana',
-    'sepatu',
+    'headband',
+    'shirt',
+    'shorts',
+    'shoes',
     'aura',
 ];
 
@@ -83,13 +83,11 @@ export default function Accessories({
     const aksesoriCount = `${unlockedCount} / ${items.length}`;
 
     const previewEquipped: TemariEquipped = {
-        headband: equipped.ikat_kepala
-            ? mapHeadband(equipped.ikat_kepala)
-            : null,
+        headband: equipped.headband ? mapHeadband(equipped.headband) : null,
         medal: mapMedal(equipped.medal),
-        kaus: mapKaus(equipped.kaus),
-        celana: mapCelana(equipped.celana),
-        sepatu: mapSepatu(equipped.sepatu),
+        kaus: mapKaus(equipped.shirt),
+        celana: mapCelana(equipped.shorts),
+        sepatu: mapSepatu(equipped.shoes),
         aura: mapAura(equipped.aura),
     };
 

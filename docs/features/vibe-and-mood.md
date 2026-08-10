@@ -53,7 +53,7 @@ Indonesian-voice rule holds: the vibe *names* stay in Bahasa Indonesia; only the
 
 ## Run-level moods
 
-A finished run gets a single **mood** instead — six values on [Temari](../../app/Services/Run/Story/Temari.php): `nyala` (PR / hard win), `enteng` (easy / negative split), `oleng` (heat strain), `lemes` (decoupling drift), `mumet` (hard-zone heavy / overreaching), `adem` (rest / default). The selection cascade is `moodForActivity` ([Temari.php:116](../../app/Services/Run/Story/Temari.php#L116)); it reads the run's [[stream-analysis|stream summary]] and weather. This mood is what [[gamification]] writes onto the run's `StoryLine`, and each mood also carries a 4-char "sigil" and an optional accessory hint for the SVG renderer ([Temari.php:31](../../app/Services/Run/Story/Temari.php#L31)).
+A finished run gets a single **mood** instead — six values on [Temari](../../app/Services/Run/Story/Temari.php): `blazing` (PR / hard win), `easy` (easy / negative split), `wobbly` (heat strain), `gassed` (decoupling drift), `overloaded` (hard-zone heavy / overreaching), `chill` (rest / default). The selection cascade is `moodForActivity` ([Temari.php:116](../../app/Services/Run/Story/Temari.php#L116)); it reads the run's [[stream-analysis|stream summary]] and weather. This mood is what [[gamification]] writes onto the run's `StoryLine`, and each mood also carries a 4-char "sigil" and an optional accessory hint for the SVG renderer ([Temari.php:31](../../app/Services/Run/Story/Temari.php#L31)).
 
 The bridge between the two systems is `moodForVibe` ([Temari.php:148](../../app/Services/Run/Story/Temari.php#L148)): when there's no run to react to, the daily greeting still needs a mascot mood, so each vibe collapses onto the nearest run-mood.
 

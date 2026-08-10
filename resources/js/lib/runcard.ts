@@ -31,49 +31,49 @@ export const RARITY_ORDER: Rarity[] = [
 // Slug → display name (emoji emblem + casual name). Mirrored word-for-word
 // from PHP Badge::labels() — keep both runtimes in sync.
 export const BADGE_LABELS: Record<string, string> = {
-    hari_panas: '🔥 Heat Tamer',
-    pejuang_hujan: '🌧️ Rain Warrior',
-    anak_pagi: '🌅 Early Bird',
+    heat_tamer: '🔥 Heat Tamer',
+    rain_warrior: '🌧️ Rain Warrior',
+    early_bird: '🌅 Early Bird',
     long_slow_distance: '🐢 Long Slow Distance',
     negative_split: '👻 Negative Split',
-    tahan_diri: '🧘 Held Back',
-    anak_malam: '🌙 Night Owl',
-    pendaki: '⛰️ Climber',
-    pertama_kali: '🏅 First Timer',
-    rajin: '💪 Habit Forming',
-    kilat: '⚡ Speedster',
-    jauh: '🗺️ Long Hauler',
+    held_back: '🧘 Held Back',
+    night_owl: '🌙 Night Owl',
+    climber: '⛰️ Climber',
+    first_timer: '🏅 First Timer',
+    habit_forming: '💪 Habit Forming',
+    speedster: '⚡ Speedster',
+    long_hauler: '🗺️ Long Hauler',
     z2_master: '🫀 Z2 Master',
-    anak_dingin: '❄️ Cold Runner',
-    keras: '😤 All Out',
-    santai: '☺️ Easy Miles',
-    berturut: '🔥 Streak',
-    hari_spesial: '🎉 Holiday Run',
-    lawan_angin: '🌬️ Headwind',
+    cold_runner: '❄️ Cold Runner',
+    all_out: '😤 All Out',
+    easy_miles: '☺️ Easy Miles',
+    streak: '🔥 Streak',
+    holiday_run: '🎉 Holiday Run',
+    headwind: '🌬️ Headwind',
 };
 
 // One-line "ability" meaning per badge, accurate to RunCardFactory::badges()
 // thresholds. Casual register, no em-dashes. Shown on the card ability rows.
 export const BADGE_ABILITY: Record<string, string> = {
-    hari_panas: 'Braved a run in 31°C+ heat.',
-    pejuang_hujan: 'Kept running through the rain.',
-    anak_pagi: 'Out the door before 6am.',
+    heat_tamer: 'Braved a run in 31°C+ heat.',
+    rain_warrior: 'Kept running through the rain.',
+    early_bird: 'Out the door before 6am.',
     long_slow_distance: 'Long and easy, 12K+ at a mostly relaxed pace.',
     negative_split: 'Second half faster than the first.',
-    tahan_diri: '10K+ and stayed patient instead of chasing pace.',
-    anak_malam: 'Ran at night, before dawn or after 9pm.',
-    pendaki: '200m+ of elevation gain, basically a mountain.',
-    pertama_kali: 'Your first logged run.',
-    rajin: 'Ran 3 days in a row.',
-    kilat: 'Pace under 5:00/km, fast.',
-    jauh: 'Half marathon distance or more, 21K+.',
+    held_back: '10K+ and stayed patient instead of chasing pace.',
+    night_owl: 'Ran at night, before dawn or after 9pm.',
+    climber: '200m+ of elevation gain, basically a mountain.',
+    first_timer: 'Your first logged run.',
+    habit_forming: 'Ran 3 days in a row.',
+    speedster: 'Pace under 5:00/km, fast.',
+    long_hauler: 'Half marathon distance or more, 21K+.',
     z2_master: 'More than 80% of the time in Z2.',
-    anak_dingin: 'Before 6am, still dark, still cold.',
-    keras: 'Average HR above 85% max, full effort.',
-    santai: 'Average HR below 70% max, genuinely easy.',
-    berturut: 'Ran 7 days in a row, no skips.',
-    hari_spesial: 'Ran on a national holiday.',
-    lawan_angin: 'Pushed through strong wind, 20 km/h or more.',
+    cold_runner: 'Before 6am, still dark, still cold.',
+    all_out: 'Average HR above 85% max, full effort.',
+    easy_miles: 'Average HR below 70% max, genuinely easy.',
+    streak: 'Ran 7 days in a row, no skips.',
+    holiday_run: 'Ran on a national holiday.',
+    headwind: 'Pushed through strong wind, 20 km/h or more.',
 };
 
 export const RARITY_BORDER: Record<Rarity, string> = {
@@ -150,7 +150,7 @@ export const RARITY_POSE: Record<Rarity, TemariPose> = {
     legendary: 'glow',
 };
 
-// Slug → Title Case ("anak_pagi" → "Anak Pagi"). Fallback for unknown slugs.
+// Slug → Title Case ("early_bird" → "Early Bird"). Fallback for unknown slugs.
 export function prettyBadge(slug: string): string {
     return slug
         .split('_')
@@ -158,7 +158,7 @@ export function prettyBadge(slug: string): string {
         .join(' ');
 }
 
-// Emoji emblem for a badge slug ("hari_panas" → "🔥"). Empty when unknown.
+// Emoji emblem for a badge slug ("heat_tamer" → "🔥"). Empty when unknown.
 export function badgeEmblem(slug: string): string {
     const label = BADGE_LABELS[slug];
     if (!label) return '';
@@ -166,7 +166,7 @@ export function badgeEmblem(slug: string): string {
     return sp === -1 ? '' : label.slice(0, sp);
 }
 
-// Display name without the leading emoji ("hari_panas" → "Tahan Gerah").
+// Display name without the leading emoji ("heat_tamer" → "Heat Tamer").
 // Falls back to prettyBadge for slugs not in BADGE_LABELS.
 export function badgeName(slug: string): string {
     const label = BADGE_LABELS[slug];

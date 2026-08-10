@@ -23,12 +23,12 @@ it('keeps a known range', function (string $range): void {
 })->with(['8w', '12w', '6m', '1y', 'all']);
 
 it('keeps only known moods, deduplicated and in URL order', function (): void {
-    expect(jejakRequest('mood=lemes,nyala,lemes,bogus')->moods())->toBe(['lemes', 'nyala']);
+    expect(jejakRequest('mood=gassed,blazing,gassed,bogus')->moods())->toBe(['gassed', 'blazing']);
 });
 
 it('returns no mood filter for absent or fully unknown values', function (string $query): void {
     expect(jejakRequest($query)->moods())->toBe([]);
-})->with(['', 'mood=', 'mood=bogus', 'mood[]=lemes']);
+})->with(['', 'mood=', 'mood=bogus', 'mood[]=gassed']);
 
 it('normalises a week deep link to that week\'s sunday', function (): void {
     expect(jejakRequest('week=2026-06-17')->week()?->toDateString())->toBe('2026-06-21');

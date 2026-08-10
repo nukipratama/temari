@@ -95,7 +95,7 @@ export default function Kartu({
     durasi,
     trimp,
     rarity = 'epic',
-    mood = 'adem',
+    mood = 'chill',
     badges,
     stats,
     zonePct,

@@ -55,7 +55,7 @@ mapping is encoded in the role utilities below (`.text-prose`, `.text-stat`, `.t
 | Cream | `cream`, `cream-deep` (`#f6f1e8`) | Paper / secondary surface, borders, on-dark text |
 | Ink | `ink` / `ink-2` / `ink-3` (+ `ink-on-sky`) | 3-tier text contrast (primary / supporting / meta); `ink-on-sky` = muted label on dark sky |
 | Surface | `surface`, `surface-card`, `surface-elev`, `surface-warm`, `surface-sunken`, `line` | App surfaces (dawn-shift drifts `surface`); `surface-card` = the single warm cream all cards share (one token retints every card); `surface-elev` = floating UI only |
-| Mood | `mood-{nyala,enteng,oleng,lemes,mumet,adem}` (+ `-bg`) | Calendar cells, mood badges |
+| Mood | `mood-{blazing,easy,wobbly,gassed,overloaded,chill}` (+ `-bg`) | Calendar cells, mood badges |
 | Rarity | `rarity-{common,uncommon,rare,epic,legendary}` | Card rarity |
 | Hues | `leaf` / `leaf-deep`, `ember` / `ember-deep`, `citrus` / `citrus-deep`, `stone` | Semantic accents; `citrus` reserved for PR / legendaris |
 | Strava | `strava-orange`, `strava-orange-hover` | Brand mark only — never themed or restyled |

@@ -6,10 +6,10 @@ import { ACCESSORY_KEYS, equippedToKeys } from './equippedAccessories';
 
 const emptyEquipped: EquippedAccessories = {
     medal: null,
-    ikat_kepala: null,
-    kaus: null,
-    celana: null,
-    sepatu: null,
+    headband: null,
+    shirt: null,
+    shorts: null,
+    shoes: null,
     aura: null,
 };
 
@@ -30,11 +30,11 @@ describe('equippedToKeys', () => {
     it('maps each equipped slot to its unlock key', () => {
         const result = equippedToKeys({
             ...emptyEquipped,
-            ikat_kepala: ACCESSORY_KEYS.ikatKepalaLegendaris,
-            medal: ACCESSORY_KEYS.medalEmas,
+            headband: ACCESSORY_KEYS.headbandLegendary,
+            medal: ACCESSORY_KEYS.medalGold,
         });
-        expect(result).toContain(ACCESSORY_KEYS.ikatKepalaLegendaris);
-        expect(result).toContain(ACCESSORY_KEYS.medalEmas);
+        expect(result).toContain(ACCESSORY_KEYS.headbandLegendary);
+        expect(result).toContain(ACCESSORY_KEYS.medalGold);
         expect(result).toHaveLength(2);
     });
 
@@ -42,8 +42,8 @@ describe('equippedToKeys', () => {
         expect(
             equippedToKeys({
                 ...emptyEquipped,
-                sepatu: ACCESSORY_KEYS.sepatuBasic,
+                shoes: ACCESSORY_KEYS.shoesBasic,
             }),
-        ).toEqual([ACCESSORY_KEYS.sepatuBasic]);
+        ).toEqual([ACCESSORY_KEYS.shoesBasic]);
     });
 });

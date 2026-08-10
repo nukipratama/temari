@@ -15,7 +15,7 @@ it('authorizes the request', function (): void {
 });
 
 it('accepts a valid unlock key', function (): void {
-    expect(passesEquipAksesori(['unlock_key' => 'accessory.medal_pertama']))->toBeTrue();
+    expect(passesEquipAksesori(['unlock_key' => 'accessory.medal_first']))->toBeTrue();
 });
 
 it('rejects a missing unlock key', function (): void {

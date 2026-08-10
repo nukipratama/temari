@@ -22,9 +22,9 @@ import { type WeekBucket } from '@/pages/Activities/useJejakFilters';
 
 const FORM_CHIP_CLASS: Record<FormStatus, string> = {
     fresh: 'bg-leaf/15 text-leaf-deep',
-    optimal: 'bg-mood-enteng/15 text-mood-enteng',
-    fatigued: 'bg-mood-nyala/20 text-citrus-deep',
-    overreaching: 'bg-mood-lemes/15 text-mood-lemes',
+    optimal: 'bg-mood-easy/15 text-mood-easy',
+    fatigued: 'bg-mood-blazing/20 text-citrus-deep',
+    overreaching: 'bg-mood-gassed/15 text-mood-gassed',
 };
 
 const MONOTONY_ALERT_AT = 1.5;
@@ -253,7 +253,7 @@ function MetricChip({
             className={cn(
                 'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold',
                 alert
-                    ? 'bg-mood-lemes/15 text-mood-lemes'
+                    ? 'bg-mood-gassed/15 text-mood-gassed'
                     : 'bg-cream-deep/60 text-ink-2',
             )}
         >

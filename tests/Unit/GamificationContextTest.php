@@ -53,13 +53,13 @@ it('returns zero counts for a user with no data', function (): void {
         ->and($ctx->halfMarathon)->toBe(0)
         ->and($ctx->fastPace)->toBe(0)
         ->and($ctx->badgeCounts)->toBe([
-            'anak_malam' => 0,
-            'anak_pagi' => 0,
-            'pejuang_hujan' => 0,
+            'night_owl' => 0,
+            'early_bird' => 0,
+            'rain_warrior' => 0,
             'negative_split' => 0,
-            'hari_panas' => 0,
+            'heat_tamer' => 0,
             'z2_master' => 0,
-            'lawan_angin' => 0,
+            'headwind' => 0,
         ]);
 });
 

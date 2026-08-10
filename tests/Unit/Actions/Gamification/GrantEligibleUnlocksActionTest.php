@@ -29,15 +29,15 @@ it('returns empty when nothing has been earned yet', function (): void {
     expect(($this->engine)($user))->toBe([]);
 });
 
-it('grants accessory.medal_pertama on first PR', function (): void {
+it('grants accessory.medal_first on first PR', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create();
 
     $granted = ($this->engine)($user);
 
-    expect($granted)->toContain('accessory.medal_pertama')
+    expect($granted)->toContain('accessory.medal_first')
         ->and(UserUnlock::query()->where('user_id', $user->id)->pluck('unlock_key')->all())
-        ->toContain('accessory.medal_pertama');
+        ->toContain('accessory.medal_first');
 });
 
 it('is idempotent — re-running does not duplicate the unlock', function (): void {
@@ -65,7 +65,7 @@ it('short-circuits once every accessory has been unlocked', function (): void {
     expect(($this->engine)($user))->toBe([]);
 });
 
-it('grants medal_emas once five PRs are recorded', function (): void {
+it('grants medal_gold once five PRs are recorded', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->count(5)->state(new Sequence(
         ['category' => '1km'],
@@ -76,10 +76,10 @@ it('grants medal_emas once five PRs are recorded', function (): void {
     ))->create();
 
     expect(($this->engine)($user))
-        ->toContain('accessory.medal_emas');
+        ->toContain('accessory.medal_gold');
 });
 
-it('grants ikat_kepala_legendaris from a Legendaris run card', function (): void {
+it('grants headband_legendary from a Legendaris run card', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();
     RunCard::factory()->create([
@@ -88,10 +88,10 @@ it('grants ikat_kepala_legendaris from a Legendaris run card', function (): void
     ]);
 
     expect(($this->engine)($user))
-        ->toContain('accessory.ikat_kepala_legendaris');
+        ->toContain('accessory.headband_legendary');
 });
 
-it('grants ikat_kepala_epik after three Epik run cards', function (): void {
+it('grants headband_epic after three Epik run cards', function (): void {
     $user = User::factory()->create();
     foreach (range(1, 3) as $_) {
         $activity = Activity::factory()->for($user)->create();
@@ -102,10 +102,10 @@ it('grants ikat_kepala_epik after three Epik run cards', function (): void {
     }
 
     expect(($this->engine)($user))
-        ->toContain('accessory.ikat_kepala_epik');
+        ->toContain('accessory.headband_epic');
 });
 
-it('grants aura_angin after three lawan_angin badge cards', function (): void {
+it('grants aura_windrunner after three headwind badge cards', function (): void {
     $user = User::factory()->create();
     foreach (range(1, 3) as $_) {
         $activity = Activity::factory()->for($user)->create();
@@ -116,13 +116,13 @@ it('grants aura_angin after three lawan_angin badge cards', function (): void {
     }
 
     expect(($this->engine)($user))
-        ->toContain('accessory.aura_angin');
+        ->toContain('accessory.aura_windrunner');
 });
 
 it('flashes a toast payload to the session when a session is active', function (): void {
     Session::start();
     config()->set('temari_unlocks', [
-        'accessory.medal_pertama' => ['name' => 'Medali Custom', 'icon' => 'mdi:trophy', 'slot' => 'medal', 'rarity' => 'common'],
+        'accessory.medal_first' => ['name' => 'Medali Custom', 'icon' => 'mdi:trophy', 'slot' => 'medal', 'rarity' => 'common'],
     ]);
 
     $user = User::factory()->create();
@@ -132,7 +132,7 @@ it('flashes a toast payload to the session when a session is active', function (
 
     $flashed = Session::get('unlock');
     expect($flashed)->toBeArray()
-        ->and($flashed['unlock_key'])->toBe('accessory.medal_pertama')
+        ->and($flashed['unlock_key'])->toBe('accessory.medal_first')
         ->and($flashed['name'])->toBe('Medali Custom')
         ->and($flashed['icon'])->toBe('mdi:trophy');
 });
@@ -152,7 +152,7 @@ it('skips the flash when the unlock has no config entry', function (): void {
 it('falls back to the key + default icon when the config entry omits name and icon', function (): void {
     Session::start();
     config()->set('temari_unlocks', [
-        'accessory.medal_pertama' => ['description' => 'x', 'slot' => 'medal', 'rarity' => 'common'],
+        'accessory.medal_first' => ['description' => 'x', 'slot' => 'medal', 'rarity' => 'common'],
     ]);
 
     $user = User::factory()->create();
@@ -161,8 +161,8 @@ it('falls back to the key + default icon when the config entry omits name and ic
     ($this->engine)($user);
 
     expect(Session::get('unlock'))->toBe([
-        'unlock_key' => 'accessory.medal_pertama',
-        'name' => 'accessory.medal_pertama',
+        'unlock_key' => 'accessory.medal_first',
+        'name' => 'accessory.medal_first',
         'icon' => 'mdi:medal',
         'is_major' => false,
     ]);

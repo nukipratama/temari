@@ -41,7 +41,7 @@ function briefingWith(
         streakLabel: 'Ran today',
         sigilPattern: 'orct',
         accessory: null,
-        mood: 'nyala',
+        mood: 'blazing',
     };
 }
 

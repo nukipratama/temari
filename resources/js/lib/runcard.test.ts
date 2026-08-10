@@ -54,12 +54,12 @@ describe('RARITY_LABELS', () => {
 });
 
 const BADGE_KEYS = [
-    'hari_panas',
-    'pejuang_hujan',
-    'anak_pagi',
+    'heat_tamer',
+    'rain_warrior',
+    'early_bird',
     'long_slow_distance',
     'negative_split',
-    'tahan_diri',
+    'held_back',
 ];
 
 describe('BADGE_LABELS', () => {
@@ -70,8 +70,8 @@ describe('BADGE_LABELS', () => {
     });
 
     it('uses the casual English names', () => {
-        expect(BADGE_LABELS.hari_panas).toBe('🔥 Heat Tamer');
-        expect(BADGE_LABELS.tahan_diri).toBe('🧘 Held Back');
+        expect(BADGE_LABELS.heat_tamer).toBe('🔥 Heat Tamer');
+        expect(BADGE_LABELS.held_back).toBe('🧘 Held Back');
         expect(BADGE_LABELS.negative_split).toBe('👻 Negative Split');
     });
 });
@@ -87,9 +87,9 @@ describe('BADGE_ABILITY', () => {
 
 describe('badgeEmblem / badgeName', () => {
     it('splits the emoji from the name', () => {
-        expect(badgeEmblem('hari_panas')).toBe('🔥');
-        expect(badgeName('hari_panas')).toBe('Heat Tamer');
-        expect(badgeName('tahan_diri')).toBe('Held Back');
+        expect(badgeEmblem('heat_tamer')).toBe('🔥');
+        expect(badgeName('heat_tamer')).toBe('Heat Tamer');
+        expect(badgeName('held_back')).toBe('Held Back');
     });
 
     it('falls back to prettyBadge for unknown slugs', () => {

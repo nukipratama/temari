@@ -85,7 +85,7 @@ const storyLine: StoryLine = {
     user_id: 1,
     activity_id: 99,
     kind: 'post_run',
-    mood: 'nyala',
+    mood: 'blazing',
     speech: null,
     sigil_pattern: 'ssss',
     for_date: null,
@@ -150,7 +150,7 @@ function renderShow(
             storyLine={storyLine}
             speechAnalysis={speechAnalysis()}
             {...insightDefaults}
-            moodFallback="adem"
+            moodFallback="chill"
             isChainHead
             notificationRetryAfterSeconds={null}
             pastYou={null}
@@ -167,7 +167,7 @@ describe('Runs/Show', () => {
     });
 
     it('uses the backend moodFallback when there is no post-run story line', () => {
-        renderShow({ storyLine: null, moodFallback: 'oleng' });
+        renderShow({ storyLine: null, moodFallback: 'wobbly' });
         expect(screen.getAllByText('Wobbly').length).toBeGreaterThan(0);
     });
 

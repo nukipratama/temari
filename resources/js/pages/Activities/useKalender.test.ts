@@ -30,20 +30,20 @@ function cellsFor(
 describe('dominantMoodOf', () => {
     it("picks the most frequent run mood among the month's own days", () => {
         const cells = cellsFor([
-            { date: '2026-05-01', day: 1, mood: 'nyala' },
-            { date: '2026-05-02', day: 2, mood: 'adem' },
-            { date: '2026-05-03', day: 3, mood: 'adem' },
+            { date: '2026-05-01', day: 1, mood: 'blazing' },
+            { date: '2026-05-02', day: 2, mood: 'chill' },
+            { date: '2026-05-03', day: 3, mood: 'chill' },
             { date: '2026-05-04', day: 4, mood: null },
         ]);
-        expect(dominantMoodOf(cells)).toBe('adem');
+        expect(dominantMoodOf(cells)).toBe('chill');
     });
 
     it('breaks ties by MOOD_ORDER so the pick is deterministic', () => {
         const cells = cellsFor([
-            { date: '2026-05-01', day: 1, mood: 'adem' },
-            { date: '2026-05-02', day: 2, mood: 'nyala' },
+            { date: '2026-05-01', day: 1, mood: 'chill' },
+            { date: '2026-05-02', day: 2, mood: 'blazing' },
         ]);
-        expect(dominantMoodOf(cells)).toBe('nyala');
+        expect(dominantMoodOf(cells)).toBe('blazing');
     });
 
     it('excludes padding days from adjacent months', () => {
@@ -52,22 +52,22 @@ describe('dominantMoodOf', () => {
                 date: '2026-04-30',
                 day: 30,
                 is_current_month: false,
-                mood: 'adem',
+                mood: 'chill',
             },
             {
                 date: '2026-04-29',
                 day: 29,
                 is_current_month: false,
-                mood: 'adem',
+                mood: 'chill',
             },
             {
                 date: '2026-05-01',
                 day: 1,
                 is_current_month: true,
-                mood: 'nyala',
+                mood: 'blazing',
             },
         ]);
-        expect(dominantMoodOf(cells)).toBe('nyala');
+        expect(dominantMoodOf(cells)).toBe('blazing');
     });
 
     it('returns null when the month has no runs', () => {
@@ -135,27 +135,27 @@ describe('isFilteredOut', () => {
 
     it('filters out a cell with no mood once a filter is active', () => {
         const cell = cellsFor([{ date: '2026-05-01', day: 1 }])[0];
-        expect(isFilteredOut(cell, new Set<Mood>(['nyala']))).toBe(true);
+        expect(isFilteredOut(cell, new Set<Mood>(['blazing']))).toBe(true);
     });
 
     it('keeps a cell whose mood is in the active filter set', () => {
         const cell = cellsFor([
-            { date: '2026-05-01', day: 1, mood: 'nyala' },
+            { date: '2026-05-01', day: 1, mood: 'blazing' },
         ])[0];
-        expect(isFilteredOut(cell, new Set<Mood>(['nyala']))).toBe(false);
+        expect(isFilteredOut(cell, new Set<Mood>(['blazing']))).toBe(false);
     });
 
     it('filters out a cell whose mood is not in the active filter set', () => {
         const cell = cellsFor([
-            { date: '2026-05-01', day: 1, mood: 'adem' },
+            { date: '2026-05-01', day: 1, mood: 'chill' },
         ])[0];
-        expect(isFilteredOut(cell, new Set<Mood>(['nyala']))).toBe(true);
+        expect(isFilteredOut(cell, new Set<Mood>(['blazing']))).toBe(true);
     });
 });
 
 describe('useKalender', () => {
     const CELLS = cellsFor([
-        { date: '2026-05-01', day: 1, mood: 'nyala', distance_km: 5 },
+        { date: '2026-05-01', day: 1, mood: 'blazing', distance_km: 5 },
         { date: '2026-05-02', day: 2 },
     ]);
 
@@ -169,7 +169,7 @@ describe('useKalender', () => {
         );
 
         expect(result.current.weeks).toHaveLength(1);
-        expect(result.current.dominantMood).toBe('nyala');
+        expect(result.current.dominantMood).toBe('blazing');
     });
 
     it('reports whether the viewed month is the current one', () => {
@@ -202,11 +202,11 @@ describe('useKalender', () => {
         );
         expect(result.current.moodFilter.size).toBe(0);
 
-        act(() => result.current.toggleMood('nyala'));
-        expect(result.current.moodFilter.has('nyala')).toBe(true);
+        act(() => result.current.toggleMood('blazing'));
+        expect(result.current.moodFilter.has('blazing')).toBe(true);
 
-        act(() => result.current.toggleMood('nyala'));
-        expect(result.current.moodFilter.has('nyala')).toBe(false);
+        act(() => result.current.toggleMood('blazing'));
+        expect(result.current.moodFilter.has('blazing')).toBe(false);
     });
 
     it('resets the mood filter back to empty', () => {
@@ -218,7 +218,7 @@ describe('useKalender', () => {
             }),
         );
 
-        act(() => result.current.toggleMood('nyala'));
+        act(() => result.current.toggleMood('blazing'));
         expect(result.current.moodFilter.size).toBe(1);
 
         act(() => result.current.resetFilter());

@@ -49,7 +49,7 @@ it('falls back to the computed mood (not the sleepy default) when no post-run st
     $this->actingAs($user)->get('/cards')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('cards.data.0.mood', 'enteng'));
+            ->where('cards.data.0.mood', 'easy'));
 });
 
 it('renders the empty state when no cards match the filter', function (): void {

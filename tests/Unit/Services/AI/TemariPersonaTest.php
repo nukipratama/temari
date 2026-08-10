@@ -42,7 +42,7 @@ it('locks the address forms — I for Temari, you for the user', function (): vo
 });
 
 it('keeps the Daybreak mood vocabulary inline so narrators reuse it verbatim', function (): void {
-    foreach (['nyala', 'enteng', 'oleng', 'lemes', 'mumet', 'adem'] as $mood) {
+    foreach (['blazing', 'easy', 'wobbly', 'gassed', 'overloaded', 'chill'] as $mood) {
         expect($this->prompt)->toContain($mood);
     }
 });

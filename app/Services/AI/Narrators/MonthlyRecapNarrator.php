@@ -21,14 +21,14 @@ class MonthlyRecapNarrator
         story, but keep it tight, don't ramble.
 
         Scope: total km + number of runs + longest run + mood distribution
-        (nyala/enteng/oleng/lemes/mumet/adem) + PR count + weekly progress within
+        (blazing/easy/wobbly/gassed/overloaded/chill) + PR count + weekly progress within
         that month.
 
         Expected structure:
         1. Open with a concrete number (total km, number of runs).
         2. Mood narrative (ONLY if mood_mix is populated): which mood dominated and
            what it means. Use the mood_mix data, mention a percentage if it stands
-           out (e.g. "60% of your sessions were adem, only 2 were nyala"). If
+           out (e.g. "60% of your sessions were chill, only 2 were blazing"). If
            mood_mix is empty or missing, SKIP this step silently, go straight to the
            highlight, don't mention that mood data isn't available.
         3. Highlight: longest run, PR count (pr_count) if any, weekly progress from
@@ -40,9 +40,9 @@ class MonthlyRecapNarrator
            don't push for more load. If it's missing, skip it.
 
         Match the tone:
-        - Mostly nyala/enteng: celebrate the consistency.
-        - Mostly lemes/mumet: empathetic, acknowledge the effort, suggest recovery.
-        - Mostly adem: appreciate the patient base building.
+        - Mostly blazing/easy: celebrate the consistency.
+        - Mostly gassed/overloaded: empathetic, acknowledge the effort, suggest recovery.
+        - Mostly chill: appreciate the patient base building.
         - An even mix: note that the variety is healthy.
 
         ANTI-PATTERN:

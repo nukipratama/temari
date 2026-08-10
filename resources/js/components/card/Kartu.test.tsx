@@ -131,7 +131,12 @@ describe('Kartu', () => {
                 km="1"
                 durasi="1:00"
                 trimp={1}
-                badges={['negative_split', 'rajin', 'keras', 'berturut']}
+                badges={[
+                    'negative_split',
+                    'habit_forming',
+                    'all_out',
+                    'streak',
+                ]}
                 size="md"
                 compact
             />,
@@ -151,7 +156,12 @@ describe('Kartu', () => {
                 km="1"
                 durasi="1:00"
                 trimp={1}
-                badges={['negative_split', 'rajin', 'keras', 'berturut']}
+                badges={[
+                    'negative_split',
+                    'habit_forming',
+                    'all_out',
+                    'streak',
+                ]}
                 size="md"
             />,
         );
@@ -196,7 +206,7 @@ describe('Kartu', () => {
                 km="1"
                 durasi="1:00"
                 trimp={1}
-                mood="nyala"
+                mood="blazing"
                 size="lg"
             />,
         );
@@ -211,7 +221,7 @@ describe('Kartu', () => {
                 km="1"
                 durasi="1:00"
                 trimp={1}
-                mood="lemes"
+                mood="gassed"
                 size="md"
             />,
         );

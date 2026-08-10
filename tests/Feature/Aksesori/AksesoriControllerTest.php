@@ -14,15 +14,15 @@ it('requires authentication for the index', function (): void {
 });
 
 it('requires authentication for the equip endpoint', function (): void {
-    $this->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_pertama'])->assertRedirect('/login');
+    $this->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_first'])->assertRedirect('/login');
 });
 
 it('renders the catalog + equipped slots', function (): void {
     $user = User::factory()->create();
 
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.ikat_kepala_epik']);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.headband_epic']);
     UserUnlock::factory()->for($user)->create([
-        'unlock_key' => 'accessory.medal_pertama',
+        'unlock_key' => 'accessory.medal_first',
         'equipped' => false,
     ]);
 
@@ -30,32 +30,32 @@ it('renders the catalog + equipped slots', function (): void {
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Collection/Accessories')
-            ->where('equipped.ikat_kepala', 'accessory.ikat_kepala_epik')
+            ->where('equipped.headband', 'accessory.headband_epic')
             ->where('equipped.medal', null)
             ->where('equipped.aura', null)
             ->has('items', 25));
 });
 
-it('equips an ikat_kepala + un-equips the previous sibling', function (): void {
+it('equips a headband + un-equips the previous sibling', function (): void {
     $user = User::factory()->create();
 
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.ikat_kepala_epik']);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.headband_epic']);
     UserUnlock::factory()->for($user)->create([
-        'unlock_key' => 'accessory.ikat_kepala_legendaris',
+        'unlock_key' => 'accessory.headband_legendary',
         'equipped' => false,
     ]);
 
     $this->actingAs($user)
-        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.ikat_kepala_legendaris'])
+        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.headband_legendary'])
         ->assertRedirect();
 
     expect(UserUnlock::query()
         ->where('user_id', $user->id)
-        ->where('unlock_key', 'accessory.ikat_kepala_epik')
+        ->where('unlock_key', 'accessory.headband_epic')
         ->value('equipped'))->toBeFalse();
     expect(UserUnlock::query()
         ->where('user_id', $user->id)
-        ->where('unlock_key', 'accessory.ikat_kepala_legendaris')
+        ->where('unlock_key', 'accessory.headband_legendary')
         ->value('equipped'))->toBeTrue();
 });
 
@@ -71,7 +71,7 @@ it('refuses to equip an accessory the user has not unlocked', function (): void 
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_emas'])
+        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_gold'])
         ->assertSessionHasErrors(['unlock_key']);
 });
 
@@ -89,30 +89,30 @@ it('refuses to equip an unlock that does not belong to any slot', function (): v
 
 it('resolves equipped unlock keys per slot', function (): void {
     $user = User::factory()->create();
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.ikat_kepala_legendaris']);
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_emas']);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.headband_legendary']);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_gold']);
 
     $this->actingAs($user)->get('/accessories')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('equipped.ikat_kepala', 'accessory.ikat_kepala_legendaris')
-            ->where('equipped.medal', 'accessory.medal_emas'));
+            ->where('equipped.headband', 'accessory.headband_legendary')
+            ->where('equipped.medal', 'accessory.medal_gold'));
 });
 
-it('resolves medal slot when medal_pertama is equipped', function (): void {
+it('resolves medal slot when medal_first is equipped', function (): void {
     $user = User::factory()->create();
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_pertama']);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_first']);
 
     $this->actingAs($user)->get('/accessories')
         ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->where('equipped.medal', 'accessory.medal_pertama'));
+        ->assertInertia(fn (Assert $page) => $page->where('equipped.medal', 'accessory.medal_first'));
 });
 
 it('resolves aura slot when an aura unlock is equipped', function (): void {
     $user = User::factory()->create();
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.aura_pemanasan']);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.aura_warmup']);
 
     $this->actingAs($user)->get('/accessories')
         ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->where('equipped.aura', 'accessory.aura_pemanasan'));
+        ->assertInertia(fn (Assert $page) => $page->where('equipped.aura', 'accessory.aura_warmup'));
 });

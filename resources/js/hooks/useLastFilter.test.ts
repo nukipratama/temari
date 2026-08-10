@@ -20,22 +20,22 @@ describe('useLastFilter', () => {
     });
 
     it('offers a saved filter when the current view is unfiltered', () => {
-        window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
+        window.localStorage.setItem(KEY, JSON.stringify({ mood: 'blazing' }));
         const { result } = renderHook(() => useLastFilter({}));
-        expect(result.current.resumable).toEqual({ mood: 'nyala' });
+        expect(result.current.resumable).toEqual({ mood: 'blazing' });
     });
 
     // Offering to resume a filter while one is already applied is just noise.
     it('offers nothing while a filter is already active', () => {
-        window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
+        window.localStorage.setItem(KEY, JSON.stringify({ mood: 'blazing' }));
         const { result } = renderHook(() => useLastFilter({ dist: '21up' }));
         expect(result.current.resumable).toBeNull();
     });
 
     it('remembers the filter the user is currently looking at', () => {
-        renderHook(() => useLastFilter({ mood: 'lemes', dist: '0-5' }));
+        renderHook(() => useLastFilter({ mood: 'gassed', dist: '0-5' }));
         expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({
-            mood: 'lemes',
+            mood: 'gassed',
             dist: '0-5',
         });
     });
@@ -43,15 +43,15 @@ describe('useLastFilter', () => {
     // Clearing filters is exactly when the previous one might be wanted back, so
     // an empty query must not overwrite the memory.
     it('does not erase the memory when the user clears their filters', () => {
-        window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
+        window.localStorage.setItem(KEY, JSON.stringify({ mood: 'blazing' }));
         renderHook(() => useLastFilter({}));
         expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({
-            mood: 'nyala',
+            mood: 'blazing',
         });
     });
 
     it('forgets on demand so the offer cannot nag', () => {
-        window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
+        window.localStorage.setItem(KEY, JSON.stringify({ mood: 'blazing' }));
         const { result } = renderHook(() => useLastFilter({}));
 
         act(() => result.current.forget());
@@ -67,7 +67,7 @@ describe('useLastFilter', () => {
     });
 
     it('ignores a saved value of the wrong shape', () => {
-        window.localStorage.setItem(KEY, JSON.stringify(['mood', 'nyala']));
+        window.localStorage.setItem(KEY, JSON.stringify(['mood', 'blazing']));
         const { result } = renderHook(() => useLastFilter({}));
         expect(result.current.resumable).toBeNull();
     });
@@ -75,10 +75,10 @@ describe('useLastFilter', () => {
     it('drops non-string entries from a tampered value', () => {
         window.localStorage.setItem(
             KEY,
-            JSON.stringify({ mood: 'nyala', evil: { a: 1 } }),
+            JSON.stringify({ mood: 'blazing', evil: { a: 1 } }),
         );
         const { result } = renderHook(() => useLastFilter({}));
-        expect(result.current.resumable).toEqual({ mood: 'nyala' });
+        expect(result.current.resumable).toEqual({ mood: 'blazing' });
     });
 
     // Safari private mode throws on write; resuming is a nicety, never a crash.
@@ -88,7 +88,7 @@ describe('useLastFilter', () => {
         });
 
         expect(() =>
-            renderHook(() => useLastFilter({ mood: 'nyala' })),
+            renderHook(() => useLastFilter({ mood: 'blazing' })),
         ).not.toThrow();
     });
 

@@ -112,7 +112,7 @@ function KindCells({
             <td
                 className={cn(
                     'px-5 py-3 font-medium',
-                    truncatedRate > 1 ? 'text-mood-lemes' : 'text-ink-2',
+                    truncatedRate > 1 ? 'text-mood-gassed' : 'text-ink-2',
                 )}
             >
                 {row.truncated_calls > 0

@@ -5,12 +5,12 @@ import type { Mood } from '@/types/inertia';
 import { MOOD_VARIANTS, variantFor } from './temariMoodVariants';
 
 const ALL_MOODS: Mood[] = [
-    'nyala',
-    'enteng',
-    'lemes',
-    'oleng',
-    'mumet',
-    'adem',
+    'blazing',
+    'easy',
+    'gassed',
+    'wobbly',
+    'overloaded',
+    'chill',
 ];
 
 describe('temariMoodVariants', () => {
@@ -27,12 +27,12 @@ describe('temariMoodVariants', () => {
     });
 
     it('variantFor returns the right variant', () => {
-        expect(variantFor('nyala')).toBe(MOOD_VARIANTS.nyala);
-        expect(variantFor('mumet')).toBe(MOOD_VARIANTS.mumet);
+        expect(variantFor('blazing')).toBe(MOOD_VARIANTS.blazing);
+        expect(variantFor('overloaded')).toBe(MOOD_VARIANTS.overloaded);
     });
 
-    it('variantFor falls back to adem for an unknown mood', () => {
-        expect(variantFor('unknown' as Mood)).toBe(MOOD_VARIANTS.adem);
+    it('variantFor falls back to chill for an unknown mood', () => {
+        expect(variantFor('unknown' as Mood)).toBe(MOOD_VARIANTS.chill);
     });
 
     it('every mood declares an accessory + particle slot', () => {
@@ -43,11 +43,11 @@ describe('temariMoodVariants', () => {
     });
 
     it('maps moods to their signature accessory + particles', () => {
-        expect(MOOD_VARIANTS.nyala.accessory).toBe('medal');
-        expect(MOOD_VARIANTS.nyala.particles).toBe('sparkles');
-        expect(MOOD_VARIANTS.adem.accessory).toBe('nightcap');
-        expect(MOOD_VARIANTS.adem.particles).toBe('zzz');
-        expect(MOOD_VARIANTS.lemes.accessory).toBe('towel');
-        expect(MOOD_VARIANTS.lemes.particles).toBe('droplets');
+        expect(MOOD_VARIANTS.blazing.accessory).toBe('medal');
+        expect(MOOD_VARIANTS.blazing.particles).toBe('sparkles');
+        expect(MOOD_VARIANTS.chill.accessory).toBe('nightcap');
+        expect(MOOD_VARIANTS.chill.particles).toBe('zzz');
+        expect(MOOD_VARIANTS.gassed.accessory).toBe('towel');
+        expect(MOOD_VARIANTS.gassed.particles).toBe('droplets');
     });
 });

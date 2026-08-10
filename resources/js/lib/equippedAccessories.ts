@@ -7,31 +7,31 @@ import type { EquippedAccessories } from '@/types/inertia';
  * so the two can't drift.
  */
 export const ACCESSORY_KEYS = {
-    ikatKepalaLegendaris: 'accessory.ikat_kepala_legendaris',
-    ikatKepalaEpik: 'accessory.ikat_kepala_epik',
-    ikatKepalaLangka: 'accessory.ikat_kepala_langka',
-    ikatKepalaBerkesan: 'accessory.ikat_kepala_berkesan',
-    medalPertama: 'accessory.medal_pertama',
-    medalEmas: 'accessory.medal_emas',
-    medalPerak: 'accessory.medal_perak',
-    medalPlatina: 'accessory.medal_platina',
-    kausPemula: 'accessory.kaus_pemula',
-    kausPagi: 'accessory.kaus_pagi',
-    kausHujan: 'accessory.kaus_hujan',
-    kausLegendaris: 'accessory.kaus_legendaris',
-    celanaRingan: 'accessory.celana_ringan',
-    celanaJarak: 'accessory.celana_jarak',
-    celanaSplit: 'accessory.celana_split',
-    celanaMaraton: 'accessory.celana_maraton',
-    sepatuBasic: 'accessory.sepatu_basic',
-    sepatuCepat: 'accessory.sepatu_cepat',
-    sepatuTahan: 'accessory.sepatu_tahan',
-    sepatuLegendaris: 'accessory.sepatu_legendaris',
-    auraPemanasan: 'accessory.aura_pemanasan',
-    auraGerah: 'accessory.aura_gerah',
-    auraTenang: 'accessory.aura_tenang',
-    auraJagoan: 'accessory.aura_jagoan',
-    auraAngin: 'accessory.aura_angin',
+    headbandLegendary: 'accessory.headband_legendary',
+    headbandEpic: 'accessory.headband_epic',
+    headbandRare: 'accessory.headband_rare',
+    headbandUncommon: 'accessory.headband_uncommon',
+    medalFirst: 'accessory.medal_first',
+    medalGold: 'accessory.medal_gold',
+    medalSilver: 'accessory.medal_silver',
+    medalPlatinum: 'accessory.medal_platinum',
+    shirtBeginner: 'accessory.shirt_beginner',
+    shirtEarlyBird: 'accessory.shirt_early_bird',
+    shirtRainWarrior: 'accessory.shirt_rain_warrior',
+    shirtLegendary: 'accessory.shirt_legendary',
+    shortsLightweight: 'accessory.shorts_lightweight',
+    shortsExplorer: 'accessory.shorts_explorer',
+    shortsNegativeSplit: 'accessory.shorts_negative_split',
+    shortsMarathon: 'accessory.shorts_marathon',
+    shoesBasic: 'accessory.shoes_basic',
+    shoesSpeed: 'accessory.shoes_speed',
+    shoesRugged: 'accessory.shoes_rugged',
+    shoesLegendary: 'accessory.shoes_legendary',
+    auraWarmup: 'accessory.aura_warmup',
+    auraHeatwave: 'accessory.aura_heatwave',
+    auraCalm: 'accessory.aura_calm',
+    auraChampion: 'accessory.aura_champion',
+    auraWindrunner: 'accessory.aura_windrunner',
 } as const;
 
 /**
@@ -60,7 +60,7 @@ export function equippedToKeys(
 // ── Server unlock key → TemariEquipped variant mappers ─────────────
 //
 // Single source of truth for mapping the server-side unlock key strings
-// (e.g. `accessory.ikat_kepala_legendaris`) to the typed TemariEquipped
+// (e.g. `accessory.headband_legendary`) to the typed TemariEquipped
 // variants (e.g. `legendaris`). Shared by Temari.tsx, Aksesori.tsx, and
 // AksesoriUnlockModal.tsx.
 //
@@ -76,42 +76,42 @@ function variantMap<V>(map: Record<string, V>): Record<string, V> {
 
 /** Key-suffix → variant for each slot. The suffix is the full segment after `accessory.`. */
 const VARIANT_MAPS = {
-    ikat_kepala: variantMap<TemariEquipped['headband']>({
-        ikat_kepala_legendaris: 'legendaris',
-        ikat_kepala_epik: 'epik',
-        ikat_kepala_langka: 'epik',
-        ikat_kepala_berkesan: 'ember',
+    headband: variantMap<TemariEquipped['headband']>({
+        headband_legendary: 'legendaris',
+        headband_epic: 'epik',
+        headband_rare: 'epik',
+        headband_uncommon: 'ember',
     }),
     medal: variantMap<TemariEquipped['medal']>({
-        medal_platina: 'platina',
-        medal_perak: 'perak',
-        medal_emas: 'emas',
-        medal_pertama: 'pertama',
+        medal_platinum: 'platina',
+        medal_silver: 'perak',
+        medal_gold: 'emas',
+        medal_first: 'pertama',
     }),
-    kaus: variantMap<TemariEquipped['kaus']>({
-        kaus_legendaris: 'legendaris',
-        kaus_hujan: 'hujan',
-        kaus_pagi: 'pagi',
-        kaus_pemula: 'pemula',
+    shirt: variantMap<TemariEquipped['kaus']>({
+        shirt_legendary: 'legendaris',
+        shirt_rain_warrior: 'hujan',
+        shirt_early_bird: 'pagi',
+        shirt_beginner: 'pemula',
     }),
-    celana: variantMap<TemariEquipped['celana']>({
-        celana_maraton: 'maraton',
-        celana_split: 'split',
-        celana_jarak: 'jarak',
-        celana_ringan: 'ringan',
+    shorts: variantMap<TemariEquipped['celana']>({
+        shorts_marathon: 'maraton',
+        shorts_negative_split: 'split',
+        shorts_explorer: 'jarak',
+        shorts_lightweight: 'ringan',
     }),
-    sepatu: variantMap<TemariEquipped['sepatu']>({
-        sepatu_legendaris: 'legendaris',
-        sepatu_tahan: 'tahan',
-        sepatu_cepat: 'cepat',
-        sepatu_basic: 'basic',
+    shoes: variantMap<TemariEquipped['sepatu']>({
+        shoes_legendary: 'legendaris',
+        shoes_rugged: 'tahan',
+        shoes_speed: 'cepat',
+        shoes_basic: 'basic',
     }),
     aura: variantMap<TemariEquipped['aura']>({
-        aura_jagoan: 'jagoan',
-        aura_tenang: 'tenang',
-        aura_gerah: 'gerah',
-        aura_pemanasan: 'pemanasan',
-        aura_angin: 'angin',
+        aura_champion: 'jagoan',
+        aura_calm: 'tenang',
+        aura_heatwave: 'gerah',
+        aura_warmup: 'pemanasan',
+        aura_windrunner: 'angin',
     }),
 };
 
@@ -123,7 +123,7 @@ function suffixOf(key: string): string {
 
 export function mapHeadband(key: string | null): TemariEquipped['headband'] {
     if (!key) return null;
-    return VARIANT_MAPS.ikat_kepala[suffixOf(key)] ?? 'ember';
+    return VARIANT_MAPS.headband[suffixOf(key)] ?? 'ember';
 }
 
 export function mapMedal(key: string | null): TemariEquipped['medal'] {
@@ -133,17 +133,17 @@ export function mapMedal(key: string | null): TemariEquipped['medal'] {
 
 export function mapKaus(key: string | null): TemariEquipped['kaus'] {
     if (!key) return null;
-    return VARIANT_MAPS.kaus[suffixOf(key)] ?? 'pemula';
+    return VARIANT_MAPS.shirt[suffixOf(key)] ?? 'pemula';
 }
 
 export function mapCelana(key: string | null): TemariEquipped['celana'] {
     if (!key) return null;
-    return VARIANT_MAPS.celana[suffixOf(key)] ?? 'ringan';
+    return VARIANT_MAPS.shorts[suffixOf(key)] ?? 'ringan';
 }
 
 export function mapSepatu(key: string | null): TemariEquipped['sepatu'] {
     if (!key) return null;
-    return VARIANT_MAPS.sepatu[suffixOf(key)] ?? 'basic';
+    return VARIANT_MAPS.shoes[suffixOf(key)] ?? 'basic';
 }
 
 export function mapAura(key: string | null): TemariEquipped['aura'] {
@@ -158,11 +158,11 @@ export function mapAura(key: string | null): TemariEquipped['aura'] {
  */
 export function serverToEquipped(ea: EquippedAccessories): TemariEquipped {
     return {
-        headband: mapHeadband(ea.ikat_kepala),
+        headband: mapHeadband(ea.headband),
         medal: mapMedal(ea.medal),
-        kaus: mapKaus(ea.kaus),
-        celana: mapCelana(ea.celana),
-        sepatu: mapSepatu(ea.sepatu),
+        kaus: mapKaus(ea.shirt),
+        celana: mapCelana(ea.shorts),
+        sepatu: mapSepatu(ea.shoes),
         aura: mapAura(ea.aura),
     };
 }
@@ -173,11 +173,11 @@ export function serverToEquipped(ea: EquippedAccessories): TemariEquipped {
  */
 /** Slot prefixes in priority order (longest first to avoid partial matches). */
 const SLOT_PREFIXES = [
-    'ikat_kepala',
+    'headband',
     'medal',
-    'kaus',
-    'celana',
-    'sepatu',
+    'shirt',
+    'shorts',
+    'shoes',
     'aura',
 ] as const;
 
@@ -187,21 +187,21 @@ const SLOT_MAPPER: Record<
     SlotName,
     (key: string) => TemariEquipped[keyof TemariEquipped]
 > = {
-    ikat_kepala: (key) => mapHeadband(key),
+    headband: (key) => mapHeadband(key),
     medal: (key) => mapMedal(key),
-    kaus: (key) => mapKaus(key),
-    celana: (key) => mapCelana(key),
-    sepatu: (key) => mapSepatu(key),
+    shirt: (key) => mapKaus(key),
+    shorts: (key) => mapCelana(key),
+    shoes: (key) => mapSepatu(key),
     aura: (key) => mapAura(key),
 };
 
 /** Slots where the default is `{ medal: 'none' }` (slots other than medal are absent/null). */
 const SLOT_KEYS: Record<SlotName, keyof TemariEquipped> = {
-    ikat_kepala: 'headband',
+    headband: 'headband',
     medal: 'medal',
-    kaus: 'kaus',
-    celana: 'celana',
-    sepatu: 'sepatu',
+    shirt: 'kaus',
+    shorts: 'celana',
+    shoes: 'sepatu',
     aura: 'aura',
 };
 

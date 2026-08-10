@@ -16,17 +16,17 @@ use Illuminate\Support\Carbon;
 class Temari
 {
     // Daybreak mood vocabulary — see [README handoff §Mood Vocabulary].
-    public const MOOD_NYALA = 'nyala';     // PR / hard win
+    public const MOOD_NYALA = 'blazing';     // PR / hard win
 
-    public const MOOD_ENTENG = 'enteng';   // easy run / negative split
+    public const MOOD_ENTENG = 'easy';   // easy run / negative split
 
-    public const MOOD_OLENG = 'oleng';     // HR drift / heat strain
+    public const MOOD_OLENG = 'wobbly';     // HR drift / heat strain
 
-    public const MOOD_LEMES = 'lemes';     // wobble / decoupling drift
+    public const MOOD_LEMES = 'gassed';     // wobble / decoupling drift
 
-    public const MOOD_MUMET = 'mumet';     // overreaching / hard-zone heavy
+    public const MOOD_MUMET = 'overloaded';     // overreaching / hard-zone heavy
 
-    public const MOOD_ADEM = 'adem';       // rest day / default
+    public const MOOD_ADEM = 'chill';       // rest day / default
 
     // 4-char sigil codes; renderer reads each char as a stitch op.
     private const array SIGIL_FOR_MOOD = [
@@ -130,8 +130,8 @@ class Temari
             $hardSession && $negativeSplit && $decoupling <= 5.0 => self::MOOD_NYALA,
             // An intended-hard session (tagged race/workout, or inferred tempo) runs
             // HR/decoupling hot on purpose — that's the work, not weakness. A strong
-            // finish is a quality win (nyala); an uncontrolled grind is honest overreach
-            // (mumet), never the tired 'lemes'.
+            // finish is a quality win (blazing); an uncontrolled grind is honest overreach
+            // (overloaded), never the tired 'gassed'.
             $intendedHard && $decoupling > 12.0 => $negativeSplit ? self::MOOD_NYALA : self::MOOD_MUMET,
             // HR drifted well past pace on a run that wasn't meant to be hard.
             $decoupling > 12.0 => self::MOOD_LEMES,
@@ -139,7 +139,7 @@ class Temari
             // A hard grind that never settled into a controlled finish.
             $hardSession && ! $negativeSplit => self::MOOD_MUMET,
             // Finished strong (a hard-but-controlled session lands here too, since
-            // an uncontrolled hard session was already caught as mumet above).
+            // an uncontrolled hard session was already caught as overloaded above).
             $negativeSplit => self::MOOD_ENTENG,
             default => self::MOOD_ADEM,
         };

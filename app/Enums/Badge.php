@@ -10,25 +10,25 @@ namespace App\Enums;
  */
 enum Badge: string
 {
-    case HariPanas = 'hari_panas';
-    case PejuangHujan = 'pejuang_hujan';
-    case AnakPagi = 'anak_pagi';
+    case HariPanas = 'heat_tamer';
+    case PejuangHujan = 'rain_warrior';
+    case AnakPagi = 'early_bird';
     case LongSlowDistance = 'long_slow_distance';
     case NegativeSplit = 'negative_split';
-    case TahanDiri = 'tahan_diri';
-    case AnakMalam = 'anak_malam';
-    case Pendaki = 'pendaki';
-    case PertamaKali = 'pertama_kali';
-    case Rajin = 'rajin';
-    case Kilat = 'kilat';
-    case Jauh = 'jauh';
+    case TahanDiri = 'held_back';
+    case AnakMalam = 'night_owl';
+    case Pendaki = 'climber';
+    case PertamaKali = 'first_timer';
+    case Rajin = 'habit_forming';
+    case Kilat = 'speedster';
+    case Jauh = 'long_hauler';
     case Z2Master = 'z2_master';
-    case AnakDingin = 'anak_dingin';
-    case Keras = 'keras';
-    case Santai = 'santai';
-    case Berturut = 'berturut';
-    case HariSpesial = 'hari_spesial';
-    case LawanAngin = 'lawan_angin';
+    case AnakDingin = 'cold_runner';
+    case Keras = 'all_out';
+    case Santai = 'easy_miles';
+    case Berturut = 'streak';
+    case HariSpesial = 'holiday_run';
+    case LawanAngin = 'headwind';
 
     public function label(): string
     {

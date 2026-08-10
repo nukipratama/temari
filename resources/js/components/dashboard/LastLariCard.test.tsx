@@ -41,7 +41,7 @@ describe('LastLariCard', () => {
             <LastLariCard
                 run={richRun}
                 pose="proud"
-                note={{ oneline: 'A solid session.', mood: 'nyala' }}
+                note={{ oneline: 'A solid session.', mood: 'blazing' }}
             />,
         );
         expect(screen.getByText('Negative-split morning')).toBeInTheDocument();
@@ -71,7 +71,7 @@ describe('LastLariCard', () => {
             <LastLariCard
                 run={richRun}
                 pose="proud"
-                note={{ oneline: 'x', mood: 'mumet' }}
+                note={{ oneline: 'x', mood: 'overloaded' }}
             />,
         );
         expect(screen.getByText('07.00')).toBeInTheDocument();

@@ -65,7 +65,7 @@ it('returns the full goal catalog at zero progress for a fresh user', function (
 
     $goals = $this->resolver->forUser($user);
 
-    // 4 medal + 4 ikat_kepala + 4 kaus + 4 celana + 4 sepatu + 5 aura.
+    // 4 medal + 4 headband + 4 shirt + 4 shorts + 4 shoes + 5 aura.
     expect($goals)->toHaveCount(25);
 
     foreach ($goals as $goal) {
@@ -75,8 +75,8 @@ it('returns the full goal catalog at zero progress for a fresh user', function (
     }
 
     $byId = collect($goals)->keyBy('id');
-    expect($byId['accessory.medal_pertama']['current'])->toBe(0)
-        ->and($byId['accessory.sepatu_cepat']['current'])->toBe(0);
+    expect($byId['accessory.medal_first']['current'])->toBe(0)
+        ->and($byId['accessory.shoes_speed']['current'])->toBe(0);
 });
 
 it('renders goal descriptions as real characters, never raw unicode escapes', function (): void {
@@ -89,7 +89,7 @@ it('renders goal descriptions as real characters, never raw unicode escapes', fu
         expect($goal['description'])->not->toContain('\u{');
     }
 
-    expect($byId['accessory.aura_gerah']['description'])->toContain('31°C');
+    expect($byId['accessory.aura_heatwave']['description'])->toContain('31°C');
 });
 
 it('counts PRs toward the medal goals and caps current at target', function (): void {
@@ -105,22 +105,22 @@ it('counts PRs toward the medal goals and caps current at target', function (): 
 
     $byId = goalsById($this->resolver, $user);
 
-    expect($byId['accessory.medal_pertama']['current'])->toBe(1)   // capped at target 1
-        ->and($byId['accessory.medal_emas']['current'])->toBe(5)   // capped at target 5
-        ->and($byId['accessory.medal_perak']['current'])->toBe(6)  // below target 10
-        ->and($byId['accessory.medal_platina']['current'])->toBe(6); // below target 20
+    expect($byId['accessory.medal_first']['current'])->toBe(1)   // capped at target 1
+        ->and($byId['accessory.medal_gold']['current'])->toBe(5)   // capped at target 5
+        ->and($byId['accessory.medal_silver']['current'])->toBe(6)  // below target 10
+        ->and($byId['accessory.medal_platinum']['current'])->toBe(6); // below target 20
 });
 
 it('marks a goal completed only when the unlock_key is present, independent of progress', function (): void {
     $user = User::factory()->create();
-    // No PRs at all, but the medal_pertama unlock is recorded.
-    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_pertama']);
+    // No PRs at all, but the medal_first unlock is recorded.
+    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_first']);
 
     $byId = goalsById($this->resolver, $user);
 
-    expect($byId['accessory.medal_pertama']['is_completed'])->toBeTrue()
-        ->and($byId['accessory.medal_pertama']['current'])->toBe(0)
-        ->and($byId['accessory.medal_emas']['is_completed'])->toBeFalse();
+    expect($byId['accessory.medal_first']['is_completed'])->toBeTrue()
+        ->and($byId['accessory.medal_first']['current'])->toBe(0)
+        ->and($byId['accessory.medal_gold']['is_completed'])->toBeFalse();
 });
 
 it('counts rarity cards toward ikat_kepala goals', function (): void {
@@ -132,12 +132,12 @@ it('counts rarity cards toward ikat_kepala goals', function (): void {
 
     $byId = goalsById($this->resolver, $user);
 
-    expect($byId['accessory.ikat_kepala_berkesan']['current'])->toBe(2) // 2 uncommon, target 3
-        ->and($byId['accessory.ikat_kepala_langka']['current'])->toBe(1) // 1 rare, target 3
-        ->and($byId['accessory.ikat_kepala_legendaris']['current'])->toBe(1); // 1 legendary, target 1
+    expect($byId['accessory.headband_uncommon']['current'])->toBe(2) // 2 uncommon, target 3
+        ->and($byId['accessory.headband_rare']['current'])->toBe(1) // 1 rare, target 3
+        ->and($byId['accessory.headband_legendary']['current'])->toBe(1); // 1 legendary, target 1
 });
 
-it('caps aura_pemanasan progress at the 2-week target regardless of the actual streak length', function (): void {
+it('caps aura_warmup progress at the 2-week target regardless of the actual streak length', function (): void {
     // The streak computation itself is GamificationContext's job (its own test
     // proves the gap/zero-run edge cases) — this only checks GoalResolver's own
     // min(streak, target) capping, so a streak longer than the target is
@@ -160,10 +160,10 @@ it('caps aura_pemanasan progress at the 2-week target regardless of the actual s
 
     $byId = collect($this->resolver->forUser($user, $ctx))->keyBy('id')->all();
 
-    expect($byId['accessory.aura_pemanasan']['current'])->toBe(2); // min(streak, 2)
+    expect($byId['accessory.aura_warmup']['current'])->toBe(2); // min(streak, 2)
 });
 
-it('tracks accumulated distance toward sepatu km goals', function (): void {
+it('tracks accumulated distance toward shoes km goals', function (): void {
     $user = User::factory()->create();
     // 60 km total across two runs.
     makeActivity($user, ['distance' => 40000.0]);
@@ -171,21 +171,21 @@ it('tracks accumulated distance toward sepatu km goals', function (): void {
 
     $byId = goalsById($this->resolver, $user);
 
-    expect($byId['accessory.sepatu_legendaris']['current'])->toBe(60.0); // /1000
+    expect($byId['accessory.shoes_legendary']['current'])->toBe(60.0); // /1000
 });
 
-it('counts activities toward kaus_pemula, sepatu_basic and kaus_legendaris', function (): void {
+it('counts activities toward shirt_beginner, shoes_basic and shirt_legendary', function (): void {
     $user = User::factory()->create();
     Activity::factory()->for($user)->analyzed()->count(10)->create();
 
     $byId = goalsById($this->resolver, $user);
 
-    expect($byId['accessory.kaus_pemula']['current'])->toBe(1)      // capped at 1
-        ->and($byId['accessory.sepatu_basic']['current'])->toBe(10) // exactly target
-        ->and($byId['accessory.kaus_legendaris']['current'])->toBe(10); // below target 50
+    expect($byId['accessory.shirt_beginner']['current'])->toBe(1)      // capped at 1
+        ->and($byId['accessory.shoes_basic']['current'])->toBe(10) // exactly target
+        ->and($byId['accessory.shirt_legendary']['current'])->toBe(10); // below target 50
 });
 
-it('counts badge-bearing cards toward kaus_pagi, kaus_hujan and aura goals', function (): void {
+it('counts badge-bearing cards toward shirt_early_bird, shirt_rain_warrior and aura goals', function (): void {
     $user = User::factory()->create();
     makeCard($user, Rarity::Common, [Badge::AnakPagi->value]);
     makeCard($user, Rarity::Common, [Badge::PejuangHujan->value]);
@@ -195,14 +195,14 @@ it('counts badge-bearing cards toward kaus_pagi, kaus_hujan and aura goals', fun
 
     $byId = goalsById($this->resolver, $user);
 
-    expect($byId['accessory.kaus_pagi']['current'])->toBe(1)
-        ->and($byId['accessory.kaus_hujan']['current'])->toBe(1)
-        ->and($byId['accessory.aura_gerah']['current'])->toBe(1)
-        ->and($byId['accessory.aura_tenang']['current'])->toBe(1)
-        ->and($byId['accessory.aura_angin']['current'])->toBe(1);
+    expect($byId['accessory.shirt_early_bird']['current'])->toBe(1)
+        ->and($byId['accessory.shirt_rain_warrior']['current'])->toBe(1)
+        ->and($byId['accessory.aura_heatwave']['current'])->toBe(1)
+        ->and($byId['accessory.aura_calm']['current'])->toBe(1)
+        ->and($byId['accessory.aura_windrunner']['current'])->toBe(1);
 });
 
-it('counts 5k/10k/half-marathon distance runs toward the celana goals', function (): void {
+it('counts 5k/10k/half-marathon distance runs toward the shorts goals', function (): void {
     $user = User::factory()->create();
     makeActivity($user, ['distance' => 5000.0]);   // 5k+ only
     makeActivity($user, ['distance' => 10000.0]);  // 5k+ and 10k+
@@ -210,9 +210,9 @@ it('counts 5k/10k/half-marathon distance runs toward the celana goals', function
 
     $byId = goalsById($this->resolver, $user);
 
-    expect($byId['accessory.celana_ringan']['current'])->toBe(1)  // 5k+, capped 1
-        ->and($byId['accessory.celana_jarak']['current'])->toBe(1)  // 10k+, capped 1
-        ->and($byId['accessory.celana_maraton']['current'])->toBe(1); // half, capped 1
+    expect($byId['accessory.shorts_lightweight']['current'])->toBe(1)  // 5k+, capped 1
+        ->and($byId['accessory.shorts_explorer']['current'])->toBe(1)  // 10k+, capped 1
+        ->and($byId['accessory.shorts_marathon']['current'])->toBe(1); // half, capped 1
 });
 
 it('does not count a run just under the half-marathon distance', function (): void {
@@ -222,10 +222,10 @@ it('does not count a run just under the half-marathon distance', function (): vo
 
     $byId = goalsById($this->resolver, $user);
 
-    expect($byId['accessory.celana_maraton']['current'])->toBe(0);
+    expect($byId['accessory.shorts_marathon']['current'])->toBe(0);
 });
 
-it('counts a sub-5:30/km run toward sepatu_cepat but not a 5:33/km run', function (): void {
+it('counts a sub-5:30/km run toward shoes_speed but not a 5:33/km run', function (): void {
     $user = User::factory()->create();
     // 1000/330 = 5:30/km exactly (qualifies, >=). 3.0 m/s = 5:33/km (does not).
     makeActivity($user, ['average_speed' => 1000 / 330]); // exactly the threshold
@@ -233,23 +233,23 @@ it('counts a sub-5:30/km run toward sepatu_cepat but not a 5:33/km run', functio
 
     $byId = goalsById($this->resolver, $user);
 
-    expect($byId['accessory.sepatu_cepat']['current'])->toBe(1);
+    expect($byId['accessory.shoes_speed']['current'])->toBe(1);
 });
 
-it('counts legendary cards toward aura_jagoan', function (): void {
+it('counts legendary cards toward aura_champion', function (): void {
     $user = User::factory()->create();
     makeCard($user, Rarity::Legendary);
     makeCard($user, Rarity::Legendary);
 
     $byId = goalsById($this->resolver, $user);
 
-    expect($byId['accessory.aura_jagoan']['current'])->toBe(2); // target 3
+    expect($byId['accessory.aura_champion']['current'])->toBe(2); // target 3
 });
 
 it('completedCount counts only completed goals', function (): void {
     $user = User::factory()->create();
-    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_pertama']);
-    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.kaus_pemula']);
+    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_first']);
+    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.shirt_beginner']);
 
     $goals = $this->resolver->forUser($user);
 
@@ -258,9 +258,9 @@ it('completedCount counts only completed goals', function (): void {
 
 it('closestToCompletion ranks in-progress goals by pct and excludes completed ones', function (): void {
     $user = User::factory()->create();
-    // 5 PRs feed medal_emas (5/5 = 100%) but it is NOT unlocked, so it leads.
-    // The completed medal_pertama must not appear at all.
-    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_pertama']);
+    // 5 PRs feed medal_gold (5/5 = 100%) but it is NOT unlocked, so it leads.
+    // The completed medal_first must not appear at all.
+    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_first']);
     PersonalRecord::factory()->for($user)->count(5)->sequence(
         ['category' => '1km'],
         ['category' => '5km'],
@@ -273,11 +273,11 @@ it('closestToCompletion ranks in-progress goals by pct and excludes completed on
 
     // Highest-pct in-progress goal first.
     expect($closest[0]['is_completed'])->toBeFalse()
-        ->and($closest[0]['id'])->toBe('accessory.medal_emas');
+        ->and($closest[0]['id'])->toBe('accessory.medal_gold');
 
     // The completed goal never shows up, even under a limit large enough to fit it.
     $ids = collect($closest)->pluck('id');
-    expect($ids)->not->toContain('accessory.medal_pertama');
+    expect($ids)->not->toContain('accessory.medal_first');
     foreach ($closest as $goal) {
         expect($goal['is_completed'])->toBeFalse();
     }
@@ -288,7 +288,7 @@ it('closestToCompletion never pads with completed goals when fewer than the limi
     // Unlock every goal except one, leaving a single incomplete goal.
     $goals = $this->resolver->forUser($user);
     $allIds = collect($goals)->pluck('id');
-    $leftIncomplete = 'accessory.medal_pertama';
+    $leftIncomplete = 'accessory.medal_first';
     foreach ($allIds as $id) {
         if ($id === $leftIncomplete) {
             continue;
@@ -322,8 +322,8 @@ it('carries the catalog rarity onto each goal', function (): void {
     $byId = goalsById($this->resolver, $user);
 
     // From config/temari_unlocks.php.
-    expect($byId['accessory.medal_pertama']['rarity'])->toBe('common')
-        ->and($byId['accessory.medal_emas']['rarity'])->toBe('uncommon');
+    expect($byId['accessory.medal_first']['rarity'])->toBe('common')
+        ->and($byId['accessory.medal_gold']['rarity'])->toBe('uncommon');
 });
 
 it('resolves the catalog once per TTL instead of re-querying on every call', function (): void {
@@ -355,7 +355,7 @@ it('bypasses the cache when the caller supplies its own context', function (): v
     $cached = $this->resolver->forUser($user);
 
     $prGoal = fn (array $goals): array => collect($goals)
-        ->firstWhere('id', 'accessory.medal_pertama');
+        ->firstWhere('id', 'accessory.medal_first');
 
     // The supplied context sees the new PR; the cached read still holds the
     // snapshot taken before it, which is what the 120s window means.
@@ -369,7 +369,7 @@ it('keys the cache per user so one runner never reads another goals', function (
     PersonalRecord::factory()->for($a)->create(['category' => PrCategory::Km5]);
 
     $prCurrent = fn (User $u): int|float => collect($this->resolver->forUser($u))
-        ->firstWhere('id', 'accessory.medal_pertama')['current'];
+        ->firstWhere('id', 'accessory.medal_first')['current'];
 
     expect($prCurrent($a))->toBe(1)
         ->and($prCurrent($b))->toBe(0)

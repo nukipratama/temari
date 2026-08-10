@@ -11,7 +11,7 @@ function makeGoal(
     overrides: Partial<Parameters<typeof Goals>[0]['goals'][number]> = {},
 ) {
     return {
-        id: 'accessory.medal_pertama',
+        id: 'accessory.medal_first',
         title: 'Log your 1st PR',
         description: 'Log 1 PR in any category.',
         slot: 'medal',
@@ -73,7 +73,7 @@ describe('Goals', () => {
             <Goals
                 goals={[
                     makeGoal({
-                        slot: 'sepatu',
+                        slot: 'shoes',
                         unit: 'km',
                         current: 12.5,
                         target: 100.5,

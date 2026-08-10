@@ -70,10 +70,10 @@ it('badgeCountsForUser scopes to the given user', function (): void {
 it('casts badges to an array', function (): void {
     $card = RunCard::factory()->make([
         'activity_id' => 1,
-        'badges' => ['hari_panas', 'negative_split'],
+        'badges' => ['heat_tamer', 'negative_split'],
     ]);
 
-    expect($card->badges)->toBe(['hari_panas', 'negative_split']);
+    expect($card->badges)->toBe(['heat_tamer', 'negative_split']);
 });
 
 it('belongs to an activity and enforces one card per activity', function (): void {

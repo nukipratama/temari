@@ -14,7 +14,7 @@ export const DAYBREAK = {
     emberDeep: '#a35030',
     horizon: '#e8a076',
     horizonDeep: '#d08a60',
-    mumet: '#7b5bb6',
+    overloaded: '#7b5bb6',
     citrus: '#d9b23a',
     citrusDeep: '#b8941e',
     stone: '#8e8579',

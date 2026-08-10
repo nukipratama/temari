@@ -25,9 +25,9 @@ function runWith(overrides: Partial<ActivityDetail>): ActivityDetail {
 
 describe('MOOD_TO_POSE', () => {
     it('maps every mood to a pose', () => {
-        expect(MOOD_TO_POSE.nyala).toBe('proud');
-        expect(MOOD_TO_POSE.enteng).toBe('excited');
-        expect(MOOD_TO_POSE.adem).toBe('reading');
+        expect(MOOD_TO_POSE.blazing).toBe('proud');
+        expect(MOOD_TO_POSE.easy).toBe('excited');
+        expect(MOOD_TO_POSE.chill).toBe('reading');
     });
 });
 
@@ -62,7 +62,7 @@ describe('poseForRun', () => {
             elapsed_time: 3_600,
             average_heartrate: 170,
         });
-        expect(poseForRun(run, 'nyala')).toBe('proud');
+        expect(poseForRun(run, 'blazing')).toBe('proud');
     });
 });
 

@@ -44,7 +44,7 @@ const briefing: BriefingResult = {
     streakLabel: 'Ran today',
     sigilPattern: 'orct',
     accessory: null,
-    mood: 'nyala',
+    mood: 'blazing',
 };
 
 const load: TrainingLoad = {
@@ -91,7 +91,7 @@ const detailWithCard: ActivityDetail = {
             activity_id: 99,
             rarity: 'epic',
             special_move: 'Game Changer',
-            badges: ['negative_split', 'hari_panas'],
+            badges: ['negative_split', 'heat_tamer'],
         },
     },
 };
@@ -417,7 +417,7 @@ describe('Today', () => {
                 load={load}
                 snapshot={snapshot}
                 recentRuns={[richRun]}
-                lastRunNote={{ oneline: 'Solid session.', mood: 'nyala' }}
+                lastRunNote={{ oneline: 'Solid session.', mood: 'blazing' }}
             />,
         );
         expect(screen.getByText('Morning negative-split')).toBeInTheDocument();

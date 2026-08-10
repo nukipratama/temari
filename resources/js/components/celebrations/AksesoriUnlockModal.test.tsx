@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import AksesoriUnlockModal from './AksesoriUnlockModal';
 
 const epikUnlock = {
-    unlock_key: 'accessory.ikat_kepala_epik',
+    unlock_key: 'accessory.headband_epic',
     name: 'Special Headband',
     icon: 'mdi:star',
     is_major: true,

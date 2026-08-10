@@ -15,7 +15,7 @@ const featured: FeaturedCard = {
     durasi: '40:00',
     trimp: '87',
     rarity: 'epic',
-    mood: 'nyala',
+    mood: 'blazing',
     badges: ['negative_split'],
     stats: { pace: '5:30/km' },
     zonePct: null,

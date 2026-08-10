@@ -236,7 +236,7 @@ describe('Activities/Feed', () => {
         expect(router.get).toHaveBeenCalledWith(
             '/activities',
             // '8w' is the default range, so it is omitted from the URL.
-            { mood: 'enteng' },
+            { mood: 'easy' },
             expect.objectContaining({
                 preserveScroll: true,
                 preserveState: true,
@@ -249,7 +249,7 @@ describe('Activities/Feed', () => {
             <RunsIndex
                 runs={[run(101, 'Easy morning', '2026-05-19T06:00:00')]}
                 rangeFilter="8w"
-                moodFilter={['enteng']}
+                moodFilter={['easy']}
                 rangeStart="2026-04-13"
                 weeklySnapshots={[]}
             />,
@@ -268,7 +268,7 @@ describe('Activities/Feed', () => {
             <RunsIndex
                 runs={[run(101, 'Easy morning', '2026-05-19T06:00:00')]}
                 rangeFilter="8w"
-                moodFilter={['enteng']}
+                moodFilter={['easy']}
                 rangeStart="2026-04-13"
                 weeklySnapshots={[]}
             />,
@@ -293,7 +293,7 @@ describe('Activities/Feed', () => {
             <RunsIndex
                 runs={[run(101, 'Easy morning', '2026-05-19T06:00:00')]}
                 rangeFilter="8w"
-                moodFilter={['enteng']}
+                moodFilter={['easy']}
                 rangeStart="2026-04-13"
                 weeklySnapshots={[]}
             />,
@@ -318,7 +318,7 @@ describe('Activities/Feed', () => {
             <RunsIndex
                 runs={[run(101, 'Easy morning', '2026-05-19T06:00:00')]}
                 rangeFilter="8w"
-                moodFilter={['enteng']}
+                moodFilter={['easy']}
                 rangeStart="2026-04-13"
                 weeklySnapshots={[]}
             />,
@@ -335,7 +335,7 @@ describe('Activities/Feed', () => {
             <RunsIndex
                 runs={[]}
                 rangeFilter="8w"
-                moodFilter={['enteng']}
+                moodFilter={['easy']}
                 rangeStart="2026-04-13"
                 weeklySnapshots={[]}
             />,
@@ -356,7 +356,7 @@ describe('Activities/Feed', () => {
             <RunsIndex
                 runs={[run(101, 'Easy morning', '2026-05-19T06:00:00')]}
                 rangeFilter="1y"
-                moodFilter={['enteng']}
+                moodFilter={['easy']}
                 distanceFilter="21up"
                 rangeStart="2025-05-19"
                 weeklySnapshots={[]}
@@ -368,7 +368,7 @@ describe('Activities/Feed', () => {
 
         expect(router.get).toHaveBeenCalledWith(
             '/activities',
-            { range: '1y', mood: 'enteng', dist: '0-5' },
+            { range: '1y', mood: 'easy', dist: '0-5' },
             expect.anything(),
         );
     });
@@ -498,7 +498,7 @@ describe('Activities/Feed', () => {
                     runs={[run(101, 'Easy morning', '2026-05-19T06:00:00')]}
                     rangeFilter="8w"
                     sortMode="fastest"
-                    moodFilter={['enteng']}
+                    moodFilter={['easy']}
                     rangeStart="2026-04-13"
                     weeklySnapshots={[]}
                 />,
@@ -574,7 +574,7 @@ describe('Activities/Feed', () => {
             vi.mocked(router.get).mockReset();
             window.localStorage.setItem(
                 KEY,
-                JSON.stringify({ mood: 'nyala', dist: '21up' }),
+                JSON.stringify({ mood: 'blazing', dist: '21up' }),
             );
             render(
                 <RunsIndex
@@ -593,7 +593,7 @@ describe('Activities/Feed', () => {
             fireEvent.click(screen.getByText(/Resume:/));
             expect(router.get).toHaveBeenCalledWith(
                 '/activities',
-                { mood: 'nyala', dist: '21up' },
+                { mood: 'blazing', dist: '21up' },
                 expect.anything(),
             );
         });

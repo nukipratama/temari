@@ -40,7 +40,7 @@ fonts, gradients, spacing) in [docs/design-tokens.md](../../../docs/design-token
 - `cream` / `cream-deep` (`#f6f1e8`) — paper / secondary surface and borders.
 - `ink` / `ink-2` / `ink-3` — the 3-tier text-contrast scale (see below).
 - `surface` / `surface-elev` / `surface-warm` / `surface-sunken` + `line` — app surfaces (dawn-shift drifts `surface`).
-- `mood-{nyala,enteng,oleng,lemes,mumet,adem}` (each with a pastel `-bg` variant) — calendar cells + mood badges.
+- `mood-{blazing,easy,wobbly,gassed,overloaded,chill}` (each with a pastel `-bg` variant) — calendar cells + mood badges.
 - `rarity-{common,uncommon,rare,epic,legendary}` — card rarity.
 - semantic hues `leaf` / `leaf-deep`, `ember` / `ember-deep`, `citrus` / `citrus-deep`, `stone`.
 - `strava-orange` / `strava-orange-hover` — reserved, never themed (see below).
