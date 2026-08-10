@@ -35,10 +35,17 @@ final readonly class RarityScorer
      *  +3 PR set
      *  +2 negative split
      *  +2 long run (>=12km)
+     *  +2 executed a planned Tempo/Interval session at or faster than its prescribed pace
      *  +1 first distance bracket
      *  +1 per badge earned
      *  +1 zone discipline (<10% Z3+ on >=10km)
      *  +1 weekly consistency (>=3 runs this week)
+     *
+     * Added 2026-08-10 (Slice 7): the quality-execution point. Before it, the
+     * non-distance/non-PR ceiling was 8 — a well-executed easy run could
+     * already reach Rare, but never Epic/Legendary without distance or a PR.
+     * This gives a well-executed *quality* run (Slice 6's `PlannedSession`)
+     * its own path to the top tiers, raising that ceiling to 10.
      *
      * @param  array<int, string>  $badges
      */
@@ -60,6 +67,9 @@ final readonly class RarityScorer
             $score += 2;
         }
         if ($distance >= BadgeEvaluator::LONG_SLOW_DISTANCE_THRESHOLD_M) {
+            $score += 2;
+        }
+        if ($context->qualitySessionPaceMet) {
             $score += 2;
         }
         if ($context->isFirstDistanceBracket) {
