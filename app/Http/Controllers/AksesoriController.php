@@ -31,6 +31,7 @@ class AksesoriController extends Controller
             ->get();
 
         $catalog = (array) config('temari_unlocks', []);
+        $goalsCatalog = (array) config('temari_goals', []);
 
         $unlockedKeys = $unlocks->pluck('unlock_key')->all();
         $equippedByKey = $unlocks->keyBy('unlock_key');
@@ -49,7 +50,7 @@ class AksesoriController extends Controller
                 'name' => (string) ($meta['name'] ?? $key),
                 'icon' => (string) ($meta['icon'] ?? 'mdi:medal'),
                 'description' => (string) ($meta['description'] ?? ''),
-                'criteria' => (string) ($meta['criteria'] ?? ''),
+                'criteria' => (string) ($goalsCatalog[$key]['description'] ?? ''),
                 'unlocked' => \in_array((string) $key, $unlockedKeys, true),
                 'equipped' => $unlock !== null && (bool) $unlock->equipped,
             ];

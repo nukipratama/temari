@@ -41,7 +41,7 @@ it('defaults to biasa rarity on a featureless short run', function (): void {
     expect($card->rarity)->toBe(Rarity::Common);
 });
 
-it('promotes to epik when this activity broke a PR on a long run', function (): void {
+it('promotes to rare when this activity broke a PR on a long run', function (): void {
     // Seed a prior analyzed activity so first_timer and first-distance-bracket
     // do not inflate the score beyond what we assert.
     $user = User::factory()->create();
@@ -72,8 +72,8 @@ it('promotes to epik when this activity broke a PR on a long run', function (): 
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    // Score: +3 PR, +2 long run (>=12km), +1 first-10K-bracket, +0 badges, +0 zone, +0 weekly = 6 -> Epic
-    expect($card->rarity)->toBe(Rarity::Epic);
+    // Score: +3 PR, +2 long run (>=12km), +1 first-10K-bracket, +1 badge (all_out), +0 zone, +0 weekly = 7 -> Rare
+    expect($card->rarity)->toBe(Rarity::Rare);
 });
 
 it('promotes to legendaris on a half-marathon PR with clean zone split', function (): void {
@@ -112,7 +112,7 @@ it('promotes to legendaris on a half-marathon PR with clean zone split', functio
     expect($card->rarity)->toBe(Rarity::Legendary);
 });
 
-it('keeps a negative split with two badges at berkesan rather than langka', function (): void {
+it('keeps a negative split with two badges at Common rather than Uncommon', function (): void {
     $user = User::factory()->create();
     // Prior analyzed activity at 6km so first_timer doesn't fire, and 8km won't be a new bracket.
     $prev = Activity::factory()->for($user)->analyzed()->create();
@@ -139,8 +139,8 @@ it('keeps a negative split with two badges at berkesan rather than langka', func
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
     // Score: +2 negSplit, badges: negSplit + easy_miles (140bpm is 78% of the default
-    // 180 max, an easy effort) -> badgeCount=2, = 2+2 = 4 -> Uncommon.
-    expect($card->rarity)->toBe(Rarity::Uncommon);
+    // 180 max, an easy effort) -> badgeCount=2, = 2+2 = 4 -> Common.
+    expect($card->rarity)->toBe(Rarity::Common);
 });
 
 it('awards the heat_tamer badge when temp >= 31C', function (): void {
@@ -441,7 +441,7 @@ it('does not downgrade a PR-minted card when a later run beats that PR on resync
     ]);
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
-    expect($card->rarity)->toBe(Rarity::Epic)
+    expect($card->rarity)->toBe(Rarity::Rare)
         ->and($card->fresh()->pr_set)->toBeTrue();
 
     // A later, faster run reassigns the 10km PR to another activity.
@@ -451,7 +451,7 @@ it('does not downgrade a PR-minted card when a later run beats that PR on resync
     // Rebuilding the earlier card keeps the sticky +3 PR contribution and its tier.
     $rebuilt = app(RunCardFactory::class)->build($activity->fresh(), $detail->fresh());
 
-    expect($rebuilt->rarity)->toBe(Rarity::Epic)
+    expect($rebuilt->rarity)->toBe(Rarity::Rare)
         ->and($rebuilt->pr_set)->toBeTrue();
 });
 

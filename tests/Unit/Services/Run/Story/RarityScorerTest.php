@@ -94,27 +94,26 @@ it('sums every point source', function (): void {
     expect($score)->toBe(3 + 2 + 2 + 1 + 2 + 1 + 1);
 });
 
-it('maps score 0-2 to Biasa (Common)', function (): void {
+it('maps score 0-4 to Common', function (): void {
     expect(scorer()->fromScore(0))->toBe(Rarity::Common);
-    expect(scorer()->fromScore(2))->toBe(Rarity::Common);
+    expect(scorer()->fromScore(4))->toBe(Rarity::Common);
 });
 
-it('maps score 3-4 to Berkesan (Uncommon)', function (): void {
-    expect(scorer()->fromScore(3))->toBe(Rarity::Uncommon);
-    expect(scorer()->fromScore(4))->toBe(Rarity::Uncommon);
+it('maps score 5-6 to Uncommon', function (): void {
+    expect(scorer()->fromScore(5))->toBe(Rarity::Uncommon);
+    expect(scorer()->fromScore(6))->toBe(Rarity::Uncommon);
 });
 
-it('maps score 5-6 to Langka (Rare)', function (): void {
-    expect(scorer()->fromScore(5))->toBe(Rarity::Rare);
-    expect(scorer()->fromScore(6))->toBe(Rarity::Rare);
+it('maps score 7-8 to Rare', function (): void {
+    expect(scorer()->fromScore(7))->toBe(Rarity::Rare);
+    expect(scorer()->fromScore(8))->toBe(Rarity::Rare);
 });
 
-it('maps score 7-8 to Istimewa (Epic)', function (): void {
-    expect(scorer()->fromScore(7))->toBe(Rarity::Epic);
-    expect(scorer()->fromScore(8))->toBe(Rarity::Epic);
+it('maps score 9 to Epic', function (): void {
+    expect(scorer()->fromScore(9))->toBe(Rarity::Epic);
 });
 
-it('maps score 9+ to Legendaris', function (): void {
-    expect(scorer()->fromScore(9))->toBe(Rarity::Legendary);
+it('maps score 10+ to Legendary', function (): void {
+    expect(scorer()->fromScore(10))->toBe(Rarity::Legendary);
     expect(scorer()->fromScore(20))->toBe(Rarity::Legendary);
 });

@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Actions\Gamification;
 
-use App\Enums\Badge;
-use App\Enums\Rarity;
 use App\Models\User;
 use App\Models\UserUnlock;
 use App\Services\Gamification\GamificationContext;
+use App\Services\Gamification\GoalResolver;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Session;
 
@@ -28,6 +27,11 @@ class GrantEligibleUnlocksAction
 
     /** @var list<string>|null */
     private static ?array $allKeys = null;
+
+    public function __construct(
+        private readonly GoalResolver $goalResolver = new GoalResolver(),
+    ) {
+    }
 
     /** @return list<string> */
     private static function allKeys(): array
@@ -87,148 +91,26 @@ class GrantEligibleUnlocksAction
     }
 
     /**
+     * Evaluates every entry in the goal catalog against the context generically:
+     * grant once `current >= target`, the same comparator {@see GoalResolver}
+     * uses for progress bars. A new unlock needs only a catalog entry here, no
+     * PHP change.
+     *
      * @return list<string>
      */
     private function computeEligible(User $user): array
     {
         $ctx = GamificationContext::forUser($user);
 
-        return [
-            ...$this->eligibleMedal($ctx),
-            ...$this->eligibleIkatKepala($ctx),
-            ...$this->eligibleKaus($ctx),
-            ...$this->eligibleCelana($ctx),
-            ...$this->eligibleSepatu($ctx),
-            ...$this->eligibleAura($ctx),
-        ];
-    }
+        /** @var array<string, array{metric: string, metric_key?: string, target: int|float}> $catalog */
+        $catalog = (array) config('temari_goals', []);
 
-    /** @return list<string> */
-    private function eligibleMedal(GamificationContext $ctx): array
-    {
         $keys = [];
-        if ($ctx->prCount >= 1) {
-            $keys[] = 'accessory.medal_first';
-        }
-        if ($ctx->prCount >= 5) {
-            $keys[] = 'accessory.medal_gold';
-        }
-        if ($ctx->prCount >= 10) {
-            $keys[] = 'accessory.medal_silver';
-        }
-        if ($ctx->prCount >= 20) {
-            $keys[] = 'accessory.medal_platinum';
-        }
-
-        return $keys;
-    }
-
-    /** @return list<string> */
-    private function eligibleIkatKepala(GamificationContext $ctx): array
-    {
-        $keys = [];
-        $rc = $ctx->rarityCounts;
-
-        if (($rc[Rarity::Uncommon->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.headband_uncommon';
-        }
-        if (($rc[Rarity::Rare->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.headband_rare';
-        }
-        if (($rc[Rarity::Epic->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.headband_epic';
-        }
-        if (($rc[Rarity::Legendary->value] ?? 0) >= 1) {
-            $keys[] = 'accessory.headband_legendary';
-        }
-
-        return $keys;
-    }
-
-    /** @return list<string> */
-    private function eligibleKaus(GamificationContext $ctx): array
-    {
-        $keys = [];
-
-        if ($ctx->activityCount >= 1) {
-            $keys[] = 'accessory.shirt_beginner';
-        }
-        if (($ctx->badgeCounts[Badge::AnakPagi->value] ?? 0) >= 5) {
-            $keys[] = 'accessory.shirt_early_bird';
-        }
-        if (($ctx->badgeCounts[Badge::PejuangHujan->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.shirt_rain_warrior';
-        }
-        if ($ctx->activityCount >= 50) {
-            $keys[] = 'accessory.shirt_legendary';
-        }
-
-        return $keys;
-    }
-
-    /** @return list<string> */
-    private function eligibleCelana(GamificationContext $ctx): array
-    {
-        $keys = [];
-
-        if ($ctx->fiveKPlus >= 1) {
-            $keys[] = 'accessory.shorts_lightweight';
-        }
-        if ($ctx->tenKPlus >= 1) {
-            $keys[] = 'accessory.shorts_explorer';
-        }
-        if (($ctx->badgeCounts[Badge::NegativeSplit->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.shorts_negative_split';
-        }
-        if ($ctx->halfMarathon >= 1) {
-            $keys[] = 'accessory.shorts_marathon';
-        }
-
-        return $keys;
-    }
-
-    /** @return list<string> */
-    private function eligibleSepatu(GamificationContext $ctx): array
-    {
-        $keys = [];
-
-        if ($ctx->activityCount >= 10) {
-            $keys[] = 'accessory.shoes_basic';
-        }
-
-        if ($ctx->fastPace >= 1) {
-            $keys[] = 'accessory.shoes_speed';
-        }
-
-        if ($ctx->tenKPlus >= 5) {
-            $keys[] = 'accessory.shoes_rugged';
-        }
-        if ($ctx->totalDistanceM >= 1_000_000) {
-            $keys[] = 'accessory.shoes_legendary';
-        }
-
-        return $keys;
-    }
-
-    /** @return list<string> */
-    private function eligibleAura(GamificationContext $ctx): array
-    {
-        $keys = [];
-
-        if ($ctx->twoWeekStreak >= 2) {
-            $keys[] = 'accessory.aura_warmup';
-        }
-        if (($ctx->badgeCounts[Badge::HariPanas->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.aura_heatwave';
-        }
-        if (($ctx->badgeCounts[Badge::Z2Master->value] ?? 0) >= 5) {
-            $keys[] = 'accessory.aura_calm';
-        }
-        if (($ctx->rarityCounts[Rarity::Legendary->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.aura_champion';
-        }
-        if (($ctx->badgeCounts[Badge::LawanAngin->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.aura_windrunner';
+        foreach ($catalog as $key => $goal) {
+            $current = $this->goalResolver->currentValue($ctx, $goal['metric'], $goal['metric_key'] ?? '');
+            if ($current >= $goal['target']) {
+                $keys[] = (string) $key;
+            }
         }
 
         return $keys;
