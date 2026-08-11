@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Race from './Race';
@@ -37,18 +37,22 @@ describe('Race', () => {
         ).toBeInTheDocument();
     });
 
-    it('renders the active race summary and projection', () => {
+    it('renders the active race summary and projection', async () => {
         render(<Race race={RACE} projection={PROJECTION} ctlTrend={[]} />);
 
         expect(screen.getByText('Jakarta 10K')).toBeInTheDocument();
         expect(screen.getByText('10.0')).toBeInTheDocument();
         expect(screen.getByText('50:00')).toBeInTheDocument();
-        expect(screen.getByText(/48:20/)).toBeInTheDocument();
-        expect(screen.getByText(/55:00/)).toBeInTheDocument();
         expect(screen.getByText(/2 PRs/)).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: 'Update race' }),
         ).toBeInTheDocument();
+        // The projected low/high figures tally up from 0 (tier-2 count-up),
+        // so wait for them to settle.
+        await waitFor(() => {
+            expect(screen.getByText(/48:20/)).toBeInTheDocument();
+            expect(screen.getByText(/55:00/)).toBeInTheDocument();
+        });
     });
 
     it('explains there is no projection yet when the race has no PR to anchor from', () => {
@@ -57,15 +61,19 @@ describe('Race', () => {
         expect(screen.getByText(/No personal record yet/)).toBeInTheDocument();
     });
 
-    it('shows how many days remain before the race', () => {
+    it('shows how many days remain before the race', async () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date('2026-11-26T12:00:00'));
 
         render(<Race race={RACE} projection={null} ctlTrend={[]} />);
 
-        expect(screen.getByText('10 days to go')).toBeInTheDocument();
-
+        // The initial render already captured the countdown target under the
+        // fake system time; switch back to real timers so the count-up's
+        // animation frame loop (tier-2, tallies up from 0) can actually settle.
         vi.useRealTimers();
+        await waitFor(() =>
+            expect(screen.getByText('10 days to go')).toBeInTheDocument(),
+        );
     });
 
     it('submits the form with distance in meters and goal time in seconds', () => {

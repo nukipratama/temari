@@ -1,8 +1,12 @@
+import { motion } from 'framer-motion';
 import { lazy, Suspense, useMemo } from 'react';
 
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Skeleton from '@/components/ui/Skeleton';
+import StatTile from '@/components/ui/StatTile';
+import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
+import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatNaiveIdDate } from '@/lib/pace';
 
 // Chart.js core + its scale/element registration live inside this lazy module,
@@ -74,6 +78,10 @@ export default function CtlTrendChart({
         () => ({
             responsive: true,
             maintainAspectRatio: false,
+            animation: {
+                duration: 900,
+                easing: 'easeOutQuart' as const,
+            },
             plugins: {
                 legend: {
                     display: true,
@@ -105,6 +113,10 @@ export default function CtlTrendChart({
         [trend],
     );
 
+    const latest = trend[trend.length - 1];
+    const ctlCount = useCountUp(latest?.ctl ?? 0);
+    const atlCount = useCountUp(latest?.atl ?? 0);
+
     if (trend.length === 0) {
         return (
             <EmptyPanel
@@ -117,17 +129,47 @@ export default function CtlTrendChart({
     const summarySentence = `Fitness ${trend[0].ctl.toFixed(0)} to ${trend[trend.length - 1].ctl.toFixed(0)} over ${trend.length} days.`;
 
     return (
-        <div
-            role="img"
-            aria-label={`90-day fitness and fatigue trend. ${summarySentence}`}
-            className={cn('h-[240px] sm:h-[280px]', className)}
-        >
-            <span className="sr-only">{summarySentence}</span>
-            <Suspense
-                fallback={<Skeleton className="h-full w-full rounded-xl" />}
+        <div className={cn('flex flex-col gap-4', className)}>
+            <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={staggerContainer}
+                className="flex flex-wrap gap-4"
             >
-                <Line data={data} options={options} />
-            </Suspense>
+                <motion.div variants={fadeInUp}>
+                    <StatTile
+                        tone="sunken"
+                        size="sm"
+                        label="Fitness now"
+                        value={Math.round(ctlCount)}
+                        unit="CTL"
+                    />
+                </motion.div>
+                <motion.div variants={fadeInUp}>
+                    <StatTile
+                        tone="sunken"
+                        size="sm"
+                        label="Fatigue now"
+                        value={Math.round(atlCount)}
+                        unit="ATL"
+                    />
+                </motion.div>
+            </motion.div>
+            <motion.div
+                role="img"
+                aria-label={`90-day fitness and fatigue trend. ${summarySentence}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="h-[240px] sm:h-[280px]"
+            >
+                <span className="sr-only">{summarySentence}</span>
+                <Suspense
+                    fallback={<Skeleton className="h-full w-full rounded-xl" />}
+                >
+                    <Line data={data} options={options} />
+                </Suspense>
+            </motion.div>
         </div>
     );
 }
