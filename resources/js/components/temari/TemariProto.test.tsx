@@ -125,10 +125,10 @@ describe('TemariProto', () => {
 
     it('renders two resting tendrils when not holding', () => {
         const { container } = render(<TemariProto pose="proud" />);
-        const tips = Array.from(container.querySelectorAll('circle')).filter(
-            (c) => c.getAttribute('r') === '1.6',
+        const tendrils = Array.from(container.querySelectorAll('path')).filter(
+            (p) => p.getAttribute('stroke-width') === '2.2',
         );
-        expect(tips).toHaveLength(2);
+        expect(tendrils).toHaveLength(2);
     });
 
     it.each(['holding', 'reading'] as const)(
@@ -139,10 +139,10 @@ describe('TemariProto', () => {
                 container.querySelector('#temari-book-glow'),
             ).toBeInTheDocument();
             // Resting tendrils are replaced by the book grip in held poses.
-            const restingTips = Array.from(
-                container.querySelectorAll('circle'),
-            ).filter((c) => c.getAttribute('r') === '1.6');
-            expect(restingTips).toHaveLength(0);
+            const restingTendrils = Array.from(
+                container.querySelectorAll('path'),
+            ).filter((p) => p.getAttribute('stroke-width') === '2.2');
+            expect(restingTendrils).toHaveLength(0);
         },
     );
 
