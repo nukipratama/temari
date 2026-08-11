@@ -8,6 +8,7 @@ use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
+use App\Models\Scopes\KnownAnalysisTypeScope;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -107,13 +108,18 @@ class CleanupDeletedActivityJob implements ShouldQueue
 
             // Polymorphic narration has no FK; purge the deleted run's rows (the
             // activity-keyed speech + insights, and the card-keyed flavor).
+            // withoutGlobalScope so a retired-type row for this subject (see
+            // KnownAnalysisTypeScope) is purged too instead of surviving the
+            // very activity/card it belonged to.
             Analysis::query()
+                ->withoutGlobalScope(KnownAnalysisTypeScope::class)
                 ->where('subject_type', Activity::class)
                 ->where('subject_id', $localId)
                 ->delete();
 
             if ($cardId !== null) {
                 Analysis::query()
+                    ->withoutGlobalScope(KnownAnalysisTypeScope::class)
                     ->where('subject_type', RunCard::class)
                     ->where('subject_id', $cardId)
                     ->delete();

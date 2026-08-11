@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Models\AI;
 
 use Illuminate\Database\Eloquent\Attributes\Scope;
+use App\Models\Scopes\KnownAnalysisTypeScope;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Support\Cooldown;
 use Database\Factories\AI\AnalysisFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -32,6 +34,7 @@ use Override;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
+#[ScopedBy([KnownAnalysisTypeScope::class])]
 #[Fillable([
     'subject_type',
     'subject_id',
@@ -105,9 +108,11 @@ class Analysis extends Model
      * Rows whose analysis_type still maps to a live {@see AnalysisType} case.
      * Retired types (narration surfaces that were removed) leave their historical
      * rows behind, and the enum cast throws a ValueError the moment one is
-     * hydrated, so every read that does not already filter by type must exclude
-     * them. Ops paths want them gone anyway: a block whose narrator no longer
-     * exists can never be re-dispatched or re-armed.
+     * hydrated. {@see \App\Models\Scopes\KnownAnalysisTypeScope} now applies this
+     * same filter globally as a backstop, so this scope is belt-and-suspenders
+     * rather than the only guard; it stays for readability at these call sites.
+     * Ops paths want retired-type rows gone anyway: a block whose narrator no
+     * longer exists can never be re-dispatched or re-armed.
      *
      * @param  Builder<Analysis>  $query
      * @return Builder<Analysis>
