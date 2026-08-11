@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { EquippedAccessories } from '@/types/inertia';
@@ -134,7 +134,7 @@ describe('Collection/Accessories', () => {
         expect(screen.getByText('accessory.shoes_basic')).toBeInTheDocument();
     });
 
-    it('shows live progress numbers on a locked item', () => {
+    it('shows live progress numbers on a locked item', async () => {
         const items = [
             {
                 ...item('accessory.medal_gold', 'medal', false, false),
@@ -144,9 +144,12 @@ describe('Collection/Accessories', () => {
             },
         ];
         render(<Accessories items={items} equipped={emptyEquipped} />);
-        expect(
-            screen.getByText((_, el) => el?.textContent === '2/5'),
-        ).toBeInTheDocument();
+        // The current-value count-up tweens from 0 on mount.
+        await waitFor(() =>
+            expect(
+                screen.getByText((_, el) => el?.textContent === '2/5'),
+            ).toBeInTheDocument(),
+        );
         expect(screen.getByText('PR')).toBeInTheDocument();
     });
 

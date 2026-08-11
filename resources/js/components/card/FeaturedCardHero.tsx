@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { motion } from 'framer-motion';
 import { type ReactNode } from 'react';
 
 import type { Rarity } from '@/types/inertia';
@@ -8,6 +9,7 @@ import RouteGlyph from '@/components/card/RouteGlyph';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
 import PillLink from '@/components/ui/PillLink';
+import { fadeInUp } from '@/lib/motion';
 import {
     RARITY_LABELS,
     RARITY_SYMBOL,
@@ -85,7 +87,12 @@ export default function FeaturedCardHero({
                 )}
 
                 {/* Left copy — kept clear of the bleeding card on desktop. */}
-                <div className="relative lg:max-w-[58%]">
+                <motion.div
+                    variants={fadeInUp}
+                    initial="hidden"
+                    animate="visible"
+                    className="relative lg:max-w-[58%]"
+                >
                     <Eyebrow token="hero" tone="horizon" className="mb-3">
                         {eyebrow}
                     </Eyebrow>
@@ -141,7 +148,7 @@ export default function FeaturedCardHero({
                         />
                         {ctaLabel}
                     </PillLink>
-                </div>
+                </motion.div>
 
                 {/* Mobile: the card lives on the navy hero panel, below the copy. */}
                 <div className="mt-6 flex justify-center lg:hidden">

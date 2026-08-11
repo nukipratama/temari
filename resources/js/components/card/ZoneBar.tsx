@@ -1,7 +1,10 @@
+import { motion } from 'framer-motion';
+
 import type { ZonePct } from '@/types/inertia';
 
 import { HR_ZONES, HR_ZONE_COLORS } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
+import { staggerContainer } from '@/lib/motion';
 
 interface ZoneBarProps {
     zonePct: ZonePct;
@@ -42,22 +45,31 @@ export default function ZoneBar({
 
     return (
         <div className={cn('flex flex-col gap-1', className)}>
-            <div
+            <motion.div
+                variants={staggerContainer}
+                initial="hidden"
+                animate="visible"
                 className="flex h-3 gap-0.5 overflow-hidden rounded-full bg-cream/10"
                 aria-hidden
             >
                 {segments.map(({ zone, pct }) => (
-                    <div
+                    <motion.div
                         key={zone}
+                        variants={{
+                            hidden: { scaleX: 0 },
+                            visible: { scaleX: 1 },
+                        }}
+                        transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
                         className="min-w-[4px]"
                         style={{
                             width: `${pct}%`,
                             background: HR_ZONE_COLORS[zone],
+                            transformOrigin: 'left',
                         }}
                         title={`${zone}: ${pct}%`}
                     />
                 ))}
-            </div>
+            </motion.div>
             <span className="sr-only">{summary}</span>
             {showLegend && (
                 <div className="flex justify-between font-mono text-[8px] uppercase tracking-[0.08em] text-ink-on-sky">

@@ -24,7 +24,9 @@ export default function CollectionHeader({
                 {headline1},<br />
                 <em className="italic text-horizon-deep">{headline2}</em>
             </PageHero>
-            <KoleksiTabs active={active} activeCount={activeCount} />
+            <div data-coachmark="collection-tabs">
+                <KoleksiTabs active={active} activeCount={activeCount} />
+            </div>
         </header>
     );
 }
