@@ -10,12 +10,7 @@ import { cn } from '@/lib/cn';
 import { tabIconPop } from '@/lib/motion';
 import { activeTabFromUrl, ITEMS } from '@/lib/nav';
 
-/**
- * Tapping the tab you are already on should scroll back to the top, the way
- * every native tab bar behaves. Without this it falls through to a plain Inertia
- * visit: a full round trip, a remount, and a scroll reset — the same work as
- * switching tabs, for a destination you never left.
- */
+// Tapping the active tab scrolls to top instead of a full Inertia round-trip to the same page.
 function scrollToTop(event: MouseEvent<Element>) {
     event.preventDefault();
     const reduced = window.matchMedia(

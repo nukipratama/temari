@@ -36,8 +36,6 @@ describe('TopNav', () => {
         );
     });
 
-    // History (/activities, /calendar) folded into Today as a second tab —
-    // there is no standalone "History" nav entry any more.
     it('highlights Today for the /activities page', () => {
         setMockPage(user(), '/activities');
         render(<TopNav />);
@@ -56,8 +54,6 @@ describe('TopNav', () => {
         );
     });
 
-    // Race (/race) folded into Plan as a second tab — it no longer lumps
-    // under Me.
     it('highlights Plan for the /race page', () => {
         setMockPage(user(), '/race');
         render(<TopNav />);
@@ -139,8 +135,6 @@ describe('TopNav', () => {
     it('activeTabFromUrl returns null for paths that do not match any prefix', () => {
         setMockPage(user(), '/xyz');
         render(<TopNav />);
-        // None of the four tabs should carry the active text-ink color.
-        // (smoke check — the negative case for activeTabFromUrl loop returning null)
         expect(screen.getByText('Today')).toBeInTheDocument();
     });
 });

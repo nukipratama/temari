@@ -14,18 +14,12 @@ export interface SectionTabItem<TId extends string = string> {
 interface SectionTabsProps<TId extends string> {
     tabs: ReadonlyArray<SectionTabItem<TId>>;
     active: TId;
-    /** Shown as a count chip on the active tab only — sibling counts would
-     *  require extra queries on every page load. */
+    /** Active tab's count chip only — sibling counts would need extra queries per page load. */
     activeCount?: string;
     className?: string;
 }
 
-/**
- * Reusable sub-tab strip for a top-level nav item that folds in a second
- * page (e.g. Today/History, Plan/Race). Generalized from the earlier
- * `KoleksiTabs`/`RiwayatTabs` pair — same markup, same scroll-into-view
- * behavior, driven by a `tabs` prop instead of a hardcoded list.
- */
+/** Sub-tab strip for a top-level nav item that folds in a second page (e.g. Today/History). */
 export default function SectionTabs<TId extends string>({
     tabs,
     active,
@@ -34,12 +28,7 @@ export default function SectionTabs<TId extends string>({
 }: Readonly<SectionTabsProps<TId>>) {
     const navRef = useRef<HTMLElement>(null);
 
-    // The tab row scrolls horizontally on narrow screens; bring the active tab
-    // fully into view on mount so a later tab isn't clipped off-screen.
-    // `scrollIntoView({ inline: 'nearest' })` accounts for both edges of the
-    // tab (label + count badge) — a manual scrollLeft based only on the left
-    // edge could still leave the right edge clipped, or push an earlier tab
-    // off-screen on the left.
+    // scrollIntoView (not a manual scrollLeft calc) covers both edges of the active tab.
     useEffect(() => {
         const nav = navRef.current;
         if (!nav) {

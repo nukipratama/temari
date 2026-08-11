@@ -4,8 +4,7 @@ export type KoleksiTab = 'kartu' | 'rekor' | 'aksesori' | 'badges';
 
 interface KoleksiTabsProps {
     active: KoleksiTab;
-    /** Shown as a count chip on the active tab only — sibling counts would
-     *  require extra queries on every page load. */
+    /** Active tab's count chip only — sibling counts would need extra queries per page load. */
     activeCount?: string;
     className?: string;
 }

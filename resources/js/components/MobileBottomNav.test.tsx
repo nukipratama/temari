@@ -40,8 +40,7 @@ describe('MobileBottomNav', () => {
         );
     });
 
-    // ink-on-sky is the design system's muted tone for dark sky panels; the
-    // old text-cream/55 it replaced sat at roughly 2.2:1 against the bar.
+    // ink-on-sky replaced text-cream/55, which sat at ~2.2:1 contrast against the bar.
     it('tints inactive tabs with the readable on-sky muted tone', () => {
         setMockPage({}, '/cards');
         render(<MobileBottomNav />);
@@ -53,9 +52,6 @@ describe('MobileBottomNav', () => {
         );
     });
 
-    // Native tab bars scroll to top when you tap the tab you are already on.
-    // Falling through to the Link would instead issue a full Inertia visit —
-    // a round trip, a remount and a scroll reset — for a page you never left.
     it('scrolls to top instead of navigating when the active tab is tapped', () => {
         const scrollTo = vi.fn();
         vi.stubGlobal('scrollTo', scrollTo);
