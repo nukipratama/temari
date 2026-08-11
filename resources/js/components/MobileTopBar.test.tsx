@@ -8,75 +8,75 @@ import MobileTopBar from './MobileTopBar';
 describe('MobileTopBar', () => {
     it('renders the brand mark link to home', () => {
         render(<MobileTopBar />);
-        expect(screen.getByLabelText('Beranda')).toHaveAttribute('href', '/');
+        expect(screen.getByLabelText('Home')).toHaveAttribute('href', '/');
     });
 
     // Roots show identity, pushed screens show a way out — the native split.
-    // Note the third case: /kalender, /rekor, /aksesori and /target resolve to a
+    // Note the third case: /calendar, /records, /accessories and /goals resolve to a
     // tab too, but are reached through in-page tab strips, so they are siblings
     // rather than pushes and must keep the brand mark.
     it.each([
-        ['Runs/Show', '/aktivitas', 'Riwayat'],
-        ['Pengaturan/ZonaHR', '/pengaturan', 'Pengaturan'],
+        ['Runs/Show', '/activities', 'History'],
+        ['Settings/HrZones', '/settings', 'Settings'],
     ])(
         'replaces the brand mark with a back button on %s',
         (component, href, label) => {
             setMockPage({}, '/x', component);
             render(<MobileTopBar />);
 
-            const back = screen.getByLabelText(`Kembali ke ${label}`);
+            const back = screen.getByLabelText(`Back to ${label}`);
             expect(back).toHaveAttribute('href', href);
-            expect(screen.queryByLabelText('Beranda')).not.toBeInTheDocument();
+            expect(screen.queryByLabelText('Home')).not.toBeInTheDocument();
         },
     );
 
-    // Pengaturan sits in this list, not the pushed one: it is one tap from the
-    // Aku tab and from the avatar menu on every page, so it behaves as a root.
+    // Settings sits in this list, not the pushed one: it is one tap from the
+    // Me tab and from the avatar menu on every page, so it behaves as a root.
     it.each([
-        'HariIni',
-        'Koleksi/Kartu',
-        'Riwayat/Jejak',
-        'Aku',
-        'Riwayat/Kalender',
-        'Koleksi/Rekor',
-        'Pengaturan/Index',
+        'Today',
+        'Collection/Cards',
+        'Activities/Feed',
+        'Profile',
+        'Activities/Calendar',
+        'Collection/Records',
+        'Settings/Index',
     ])('keeps the brand mark and shows no back button on %s', (component) => {
         setMockPage({}, '/x', component);
         render(<MobileTopBar />);
 
-        expect(screen.getByLabelText('Beranda')).toBeInTheDocument();
-        expect(screen.queryByLabelText(/^Kembali ke/)).not.toBeInTheDocument();
+        expect(screen.getByLabelText('Home')).toBeInTheDocument();
+        expect(screen.queryByLabelText(/^Back to/)).not.toBeInTheDocument();
     });
 
     // A notification deep link opens the run detail cold, with nothing behind
     // it, so back has to be a real href rather than history.back().
     it('points back at a real url rather than relying on history', () => {
-        setMockPage({}, '/aktivitas/123', 'Runs/Show');
+        setMockPage({}, '/activities/123', 'Runs/Show');
         render(<MobileTopBar />);
         expect(
-            screen.getByLabelText('Kembali ke Riwayat').getAttribute('href'),
-        ).toBe('/aktivitas');
+            screen.getByLabelText('Back to History').getAttribute('href'),
+        ).toBe('/activities');
     });
 
     it('shows the user menu when a user is signed in', () => {
         setMockPage({ auth: { user: makeUser({ name: 'Ada Lovelace' }) } });
         render(<MobileTopBar />);
         expect(
-            screen.getByLabelText('Buka menu Ada Lovelace'),
+            screen.getByLabelText('Open menu for Ada Lovelace'),
         ).toBeInTheDocument();
     });
 
     it('omits the user menu when there is no signed-in user', () => {
         setMockPage({ auth: { user: null } });
         render(<MobileTopBar />);
-        expect(screen.queryByLabelText(/Buka menu/)).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(/Open menu/)).not.toBeInTheDocument();
     });
 
     it('renders the Strava sync badge in its disconnected state by default', () => {
         setMockPage({ auth: { user: null }, stravaSync: null });
         render(<MobileTopBar />);
         expect(
-            screen.getByLabelText('Strava belum nyambung'),
+            screen.getByLabelText('Strava not connected'),
         ).toBeInTheDocument();
     });
 

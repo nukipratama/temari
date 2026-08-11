@@ -45,7 +45,7 @@ class ReverseGeocodeAction
         try {
             $response = Http::withHeaders([
                 'User-Agent' => $this->userAgent(),
-                'Accept-Language' => 'id,en',
+                'Accept-Language' => 'en',
             ])
                 ->timeout(self::TIMEOUT_SECONDS)
                 ->get(self::URL, [

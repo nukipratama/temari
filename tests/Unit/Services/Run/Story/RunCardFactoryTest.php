@@ -16,7 +16,7 @@ use Illuminate\Support\Carbon;
 uses(RefreshDatabase::class);
 
 it('defaults to biasa rarity on a featureless short run', function (): void {
-    // Seed a prior activity so pertama_kali does not trigger.
+    // Seed a prior activity so first_timer does not trigger.
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -41,8 +41,8 @@ it('defaults to biasa rarity on a featureless short run', function (): void {
     expect($card->rarity)->toBe(Rarity::Common);
 });
 
-it('promotes to epik when this activity broke a PR on a long run', function (): void {
-    // Seed a prior analyzed activity so pertama_kali and first-distance-bracket
+it('promotes to rare when this activity broke a PR on a long run', function (): void {
+    // Seed a prior analyzed activity so first_timer and first-distance-bracket
     // do not inflate the score beyond what we assert.
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->analyzed()->create();
@@ -72,8 +72,8 @@ it('promotes to epik when this activity broke a PR on a long run', function (): 
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    // Score: +3 PR, +2 long run (>=12km), +1 first-10K-bracket, +0 badges, +0 zone, +0 weekly = 6 -> Epic
-    expect($card->rarity)->toBe(Rarity::Epic);
+    // Score: +3 PR, +2 long run (>=12km), +1 first-10K-bracket, +1 badge (all_out), +0 zone, +0 weekly = 7 -> Rare
+    expect($card->rarity)->toBe(Rarity::Rare);
 });
 
 it('promotes to legendaris on a half-marathon PR with clean zone split', function (): void {
@@ -106,15 +106,15 @@ it('promotes to legendaris on a half-marathon PR with clean zone split', functio
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
     // Score: +3 PR, +2 negSplit, +2 longRun, +1 first-21K-bracket,
-    // badges: negSplit, LSD(21.5K + Z3+=0 < 25%), tahan_diri(Z3+ < 10%), z2_master(Z2=90 > 80), jauh(>=21K)
+    // badges: negSplit, LSD(21.5K + Z3+=0 < 25%), held_back(Z3+ < 10%), z2_master(Z2=90 > 80), long_hauler(>=21K)
     // = 5 badges -> +5, zoneDiscipline=+1
     // Total: 3+2+2+1+5+1+0 = 14 -> Legendaris
     expect($card->rarity)->toBe(Rarity::Legendary);
 });
 
-it('keeps a negative split with two badges at berkesan rather than langka', function (): void {
+it('keeps a negative split with two badges at Common rather than Uncommon', function (): void {
     $user = User::factory()->create();
-    // Prior analyzed activity at 6km so pertama_kali doesn't fire, and 8km won't be a new bracket.
+    // Prior analyzed activity at 6km so first_timer doesn't fire, and 8km won't be a new bracket.
     $prev = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($prev)->create([
         'distance' => 6_000,
@@ -138,12 +138,12 @@ it('keeps a negative split with two badges at berkesan rather than langka', func
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    // Score: +2 negSplit, badges: negSplit + santai (140bpm is 78% of the default
-    // 180 max, an easy effort) -> badgeCount=2, = 2+2 = 4 -> Uncommon.
-    expect($card->rarity)->toBe(Rarity::Uncommon);
+    // Score: +2 negSplit, badges: negSplit + easy_miles (140bpm is 78% of the default
+    // 180 max, an easy effort) -> badgeCount=2, = 2+2 = 4 -> Common.
+    expect($card->rarity)->toBe(Rarity::Common);
 });
 
-it('awards the hari_panas badge when temp >= 31C', function (): void {
+it('awards the heat_tamer badge when temp >= 31C', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -164,10 +164,10 @@ it('awards the hari_panas badge when temp >= 31C', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('hari_panas');
+    expect($card->badges)->toContain('heat_tamer');
 });
 
-it('awards pendaki on a short punchy climb even without big elevation gain', function (): void {
+it('awards climber on a short punchy climb even without big elevation gain', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -187,10 +187,10 @@ it('awards pendaki on a short punchy climb even without big elevation gain', fun
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('pendaki');
+    expect($card->badges)->toContain('climber');
 });
 
-it('withholds pendaki on a flat run with a gentle grade', function (): void {
+it('withholds climber on a flat run with a gentle grade', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -210,10 +210,10 @@ it('withholds pendaki on a flat run with a gentle grade', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->not->toContain('pendaki');
+    expect($card->badges)->not->toContain('climber');
 });
 
-it('awards pejuang_hujan badge on rain detection', function (): void {
+it('awards rain_warrior badge on rain detection', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -234,10 +234,10 @@ it('awards pejuang_hujan badge on rain detection', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('pejuang_hujan');
+    expect($card->badges)->toContain('rain_warrior');
 });
 
-it('awards lawan_angin badge when wind speed is 20 km/h or more', function (): void {
+it('awards headwind badge when wind speed is 20 km/h or more', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -259,10 +259,10 @@ it('awards lawan_angin badge when wind speed is 20 km/h or more', function (): v
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('lawan_angin');
+    expect($card->badges)->toContain('headwind');
 });
 
-it('does not award lawan_angin badge when wind speed is under 20 km/h', function (): void {
+it('does not award headwind badge when wind speed is under 20 km/h', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -284,10 +284,10 @@ it('does not award lawan_angin badge when wind speed is under 20 km/h', function
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->not->toContain('lawan_angin');
+    expect($card->badges)->not->toContain('headwind');
 });
 
-it('awards anak_pagi badge when start hour is before 06:00', function (): void {
+it('awards early_bird badge when start hour is before 06:00', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -308,7 +308,7 @@ it('awards anak_pagi badge when start hour is before 06:00', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('anak_pagi');
+    expect($card->badges)->toContain('early_bird');
 });
 
 it('awards long_slow_distance badge on a 13km easy run > 1h', function (): void {
@@ -337,7 +337,7 @@ it('awards long_slow_distance badge on a 13km easy run > 1h', function (): void 
     expect($card->badges)->toContain('long_slow_distance');
 });
 
-it('awards tahan_diri badge on a 10K+ run with <10% Z3+', function (): void {
+it('awards held_back badge on a 10K+ run with <10% Z3+', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -359,7 +359,7 @@ it('awards tahan_diri badge on a 10K+ run with <10% Z3+', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('tahan_diri');
+    expect($card->badges)->toContain('held_back');
 });
 
 it('skips the legendaris check when current detail has no distance', function (): void {
@@ -441,7 +441,7 @@ it('does not downgrade a PR-minted card when a later run beats that PR on resync
     ]);
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
-    expect($card->rarity)->toBe(Rarity::Epic)
+    expect($card->rarity)->toBe(Rarity::Rare)
         ->and($card->fresh()->pr_set)->toBeTrue();
 
     // A later, faster run reassigns the 10km PR to another activity.
@@ -451,7 +451,7 @@ it('does not downgrade a PR-minted card when a later run beats that PR on resync
     // Rebuilding the earlier card keeps the sticky +3 PR contribution and its tier.
     $rebuilt = app(RunCardFactory::class)->build($activity->fresh(), $detail->fresh());
 
-    expect($rebuilt->rarity)->toBe(Rarity::Epic)
+    expect($rebuilt->rarity)->toBe(Rarity::Rare)
         ->and($rebuilt->pr_set)->toBeTrue();
 });
 
@@ -546,7 +546,7 @@ it('does not overwrite an existing pending reveal when a new card lands', functi
 
 // --- New badge tests ---
 
-it('awards anak_malam badge for a run before 5am', function (): void {
+it('awards night_owl badge for a run before 5am', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -567,10 +567,10 @@ it('awards anak_malam badge for a run before 5am', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('anak_malam');
+    expect($card->badges)->toContain('night_owl');
 });
 
-it('awards anak_malam badge for a run after 9pm', function (): void {
+it('awards night_owl badge for a run after 9pm', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -591,10 +591,10 @@ it('awards anak_malam badge for a run after 9pm', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('anak_malam');
+    expect($card->badges)->toContain('night_owl');
 });
 
-it('awards pendaki badge on elevation gain >= 200m', function (): void {
+it('awards climber badge on elevation gain >= 200m', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -615,10 +615,10 @@ it('awards pendaki badge on elevation gain >= 200m', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('pendaki');
+    expect($card->badges)->toContain('climber');
 });
 
-it('awards pertama_kali badge on the very first run', function (): void {
+it('awards first_timer badge on the very first run', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 5_000,
@@ -632,10 +632,10 @@ it('awards pertama_kali badge on the very first run', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('pertama_kali');
+    expect($card->badges)->toContain('first_timer');
 });
 
-it('still awards pertama_kali when an un-analyzed stub exists in the sync backlog', function (): void {
+it('still awards first_timer when an un-analyzed stub exists in the sync backlog', function (): void {
     $user = User::factory()->create();
     // A stub from an in-flight sync (no analyzed_at) must not suppress the badge
     // on the user's real first ingested run.
@@ -651,10 +651,10 @@ it('still awards pertama_kali when an un-analyzed stub exists in the sync backlo
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('pertama_kali');
+    expect($card->badges)->toContain('first_timer');
 });
 
-it('awards kilat badge when pace is under 5:00/km', function (): void {
+it('awards speedster badge when pace is under 5:00/km', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -677,10 +677,10 @@ it('awards kilat badge when pace is under 5:00/km', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('kilat');
+    expect($card->badges)->toContain('speedster');
 });
 
-it('awards jauh badge on half marathon distance', function (): void {
+it('awards long_hauler badge on half marathon distance', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -703,7 +703,7 @@ it('awards jauh badge on half marathon distance', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('jauh');
+    expect($card->badges)->toContain('long_hauler');
 });
 
 it('awards z2_master badge when Z2 > 80%', function (): void {
@@ -731,7 +731,7 @@ it('awards z2_master badge when Z2 > 80%', function (): void {
     expect($card->badges)->toContain('z2_master');
 });
 
-it('awards keras badge when avg HR > 85% max', function (): void {
+it('awards all_out badge when avg HR > 85% max', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -752,10 +752,10 @@ it('awards keras badge when avg HR > 85% max', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('keras');
+    expect($card->badges)->toContain('all_out');
 });
 
-it('awards santai badge when avg HR < 70% max', function (): void {
+it('awards easy_miles badge when avg HR < 70% max', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -776,12 +776,12 @@ it('awards santai badge when avg HR < 70% max', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('santai');
+    expect($card->badges)->toContain('easy_miles');
 });
 
-it('does not award keras when avg HR is moderate against the athlete max HR', function (): void {
+it('does not award all_out when avg HR is moderate against the athlete max HR', function (): void {
     // avg 130 against an athlete max of 190 is 0.68, comfortably easy. Under the
-    // old run-peak denominator (130/150 = 0.87) this run was mislabeled keras.
+    // old run-peak denominator (130/150 = 0.87) this run was mislabeled all_out.
     $user = User::factory()->create();
     RunnerProfile::factory()->for($user)->create(['max_hr' => 190]);
     $prev = Activity::factory()->for($user)->create();
@@ -803,11 +803,11 @@ it('does not award keras when avg HR is moderate against the athlete max HR', fu
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->not->toContain('keras');
-    expect($card->badges)->toContain('santai');
+    expect($card->badges)->not->toContain('all_out');
+    expect($card->badges)->toContain('easy_miles');
 });
 
-it('awards keras when avg HR is near the athlete max HR', function (): void {
+it('awards all_out when avg HR is near the athlete max HR', function (): void {
     // avg 170 against an athlete max of 190 is 0.89, a genuinely hard effort.
     $user = User::factory()->create();
     RunnerProfile::factory()->for($user)->create(['max_hr' => 190]);
@@ -830,88 +830,12 @@ it('awards keras when avg HR is near the athlete max HR', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('keras');
-    expect($card->badges)->not->toContain('santai');
+    expect($card->badges)->toContain('all_out');
+    expect($card->badges)->not->toContain('easy_miles');
 });
 
-it('awards rajin badge on 3+ consecutive running days', function (): void {
-    $user = User::factory()->create();
-    ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create([
-        'distance' => 3_000,
-        'start_date_local' => Carbon::parse('2026-05-07 10:00:00'),
-    ]);
-    ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create([
-        'distance' => 3_000,
-        'start_date_local' => Carbon::parse('2026-05-08 10:00:00'),
-    ]);
-
-    $activity = Activity::factory()->for($user)->create();
-    $detail = ActivityDetail::factory()->for($activity)->create([
-        'distance' => 5_000,
-        'start_date_local' => Carbon::parse('2026-05-09 10:00:00'),
-        'weather_temp_c' => 25,
-        'weather_rain_detected' => false,
-        'total_elevation_gain' => 0,
-        'average_heartrate' => 150,
-        'max_heartrate' => 190,
-    ]);
-
-    $card = app(RunCardFactory::class)->build($activity, $detail);
-
-    expect($card->badges)->toContain('rajin');
-});
-
-it('awards berturut badge on 7+ consecutive running days', function (): void {
-    $user = User::factory()->create();
-    for ($i = 0; $i < 6; $i++) {
-        ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create([
-            'distance' => 3_000,
-            'start_date_local' => Carbon::parse('2026-05-0' . ($i + 1) . ' 10:00:00'),
-        ]);
-    }
-
-    $activity = Activity::factory()->for($user)->create();
-    $detail = ActivityDetail::factory()->for($activity)->create([
-        'distance' => 5_000,
-        'start_date_local' => Carbon::parse('2026-05-07 10:00:00'),
-        'weather_temp_c' => 25,
-        'weather_rain_detected' => false,
-        'total_elevation_gain' => 0,
-        'average_heartrate' => 150,
-        'max_heartrate' => 190,
-    ]);
-
-    $card = app(RunCardFactory::class)->build($activity, $detail);
-
-    expect($card->badges)->toContain('berturut');
-});
-
-it('awards hari_spesial badge on Indonesian Independence Day', function (): void {
-    $user = User::factory()->create();
-    $prev = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->for($prev)->create([
-        'distance' => 3_000,
-        'start_date_local' => Carbon::parse('2026-04-20 10:00:00'),
-    ]);
-
-    $activity = Activity::factory()->for($user)->create();
-    $detail = ActivityDetail::factory()->for($activity)->create([
-        'distance' => 5_000,
-        'start_date_local' => Carbon::parse('2026-08-17 10:00:00'),
-        'weather_temp_c' => 25,
-        'weather_rain_detected' => false,
-        'total_elevation_gain' => 0,
-        'average_heartrate' => 150,
-        'max_heartrate' => 190,
-    ]);
-
-    $card = app(RunCardFactory::class)->build($activity, $detail);
-
-    expect($card->badges)->toContain('hari_spesial');
-});
-
-it('awards anak_dingin on a cold run without also awarding anak_pagi', function (): void {
-    // A cold midday run: anak_dingin fires on temperature, anak_pagi does not
+it('awards cold_runner on a cold run without also awarding early_bird', function (): void {
+    // A cold midday run: cold_runner fires on temperature, early_bird does not
     // (hour is not before 06:00). The two badges now diverge.
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
@@ -933,12 +857,12 @@ it('awards anak_dingin on a cold run without also awarding anak_pagi', function 
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('anak_dingin')
-        ->and($card->badges)->not->toContain('anak_pagi');
+    expect($card->badges)->toContain('cold_runner')
+        ->and($card->badges)->not->toContain('early_bird');
 });
 
-it('awards anak_pagi on a warm pre-dawn run without also awarding anak_dingin', function (): void {
-    // The inverse divergence: an early but warm run earns anak_pagi only. Before
+it('awards early_bird on a warm pre-dawn run without also awarding cold_runner', function (): void {
+    // The inverse divergence: an early but warm run earns early_bird only. Before
     // the fix both fired on the same hour<6 condition, double-awarding rarity.
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
@@ -960,11 +884,11 @@ it('awards anak_pagi on a warm pre-dawn run without also awarding anak_dingin', 
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('anak_pagi')
-        ->and($card->badges)->not->toContain('anak_dingin');
+    expect($card->badges)->toContain('early_bird')
+        ->and($card->badges)->not->toContain('cold_runner');
 });
 
-it('falls back to a pre-dawn window for anak_dingin when no weather is stored', function (): void {
+it('falls back to a pre-dawn window for cold_runner when no weather is stored', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -985,7 +909,7 @@ it('falls back to a pre-dawn window for anak_dingin when no weather is stored', 
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('anak_dingin');
+    expect($card->badges)->toContain('cold_runner');
 });
 
 // Badges stack with circumstance rather than merit: a hot, rainy, pre-dawn long
@@ -1016,9 +940,9 @@ it('caps how far the badge count alone can lift rarity', function (): void {
         ->and($card->rarity)->not->toBe(Rarity::Epic);
 });
 
-// 70% of max is a recovery jog, not an easy run: on real data it awarded santai
-// to zero runs out of 136 while keras took 69%.
-it('awards santai for a genuine easy effort rather than only a recovery jog', function (): void {
+// 70% of max is a recovery jog, not an easy run: on real data it awarded easy_miles
+// to zero runs out of 136 while all_out took 69%.
+it('awards easy_miles for a genuine easy effort rather than only a recovery jog', function (): void {
     $user = User::factory()->create();
     RunnerProfile::factory()->for($user)->create(['max_hr' => 190, 'resting_hr' => 55]);
 
@@ -1036,6 +960,6 @@ it('awards santai for a genuine easy effort rather than only a recovery jog', fu
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->badges)->toContain('santai')
-        ->and($card->badges)->not->toContain('keras');
+    expect($card->badges)->toContain('easy_miles')
+        ->and($card->badges)->not->toContain('all_out');
 });

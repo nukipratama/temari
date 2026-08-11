@@ -2,15 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import type { AnalysisPayload } from '@/types/inertia';
 
-import { aktivitasUrl, analysisTriggerUrl } from './routes';
+import { activityUrl, analysisTriggerUrl } from './routes';
 
-describe('aktivitasUrl', () => {
+describe('activityUrl', () => {
     it('reads activity_id from a row that carries it', () => {
-        expect(aktivitasUrl({ activity_id: 42 })).toBe('/aktivitas/42');
+        expect(activityUrl({ activity_id: 42 })).toBe('/activities/42');
     });
 
     it('reads id from an Activity', () => {
-        expect(aktivitasUrl({ id: 99 })).toBe('/aktivitas/99');
+        expect(activityUrl({ id: 99 })).toBe('/activities/99');
     });
 });
 

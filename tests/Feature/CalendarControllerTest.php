@@ -28,10 +28,10 @@ beforeEach(function (): void {
 it('renders the Kalender page for the current month by default', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/kalender')
+    $this->actingAs($user)->get('/calendar')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Riwayat/Kalender')
+            ->component('Activities/Calendar')
             ->where('month', Carbon::today()->format('Y-m'))
             ->has('monthLabel')
             ->has('cells'));
@@ -40,20 +40,20 @@ it('renders the Kalender page for the current month by default', function (): vo
 it('shares telegramConnected true for a live connection', function (): void {
     $connected = User::factory()->create();
     TelegramConnection::factory()->for($connected)->create();
-    $this->actingAs($connected)->get('/kalender')
+    $this->actingAs($connected)->get('/calendar')
         ->assertInertia(fn (Assert $page) => $page->where('telegramConnected', true));
 });
 
 it('shares telegramConnected false for a revoked connection', function (): void {
     $revoked = User::factory()->create();
     TelegramConnection::factory()->for($revoked)->revoked()->create();
-    $this->actingAs($revoked)->get('/kalender')
+    $this->actingAs($revoked)->get('/calendar')
         ->assertInertia(fn (Assert $page) => $page->where('telegramConnected', false));
 });
 
 it('shares telegramConnected false when there is no connection', function (): void {
     $none = User::factory()->create();
-    $this->actingAs($none)->get('/kalender')
+    $this->actingAs($none)->get('/calendar')
         ->assertInertia(fn (Assert $page) => $page->where('telegramConnected', false));
 });
 
@@ -61,13 +61,13 @@ it('shares webPushSubscribed true once the user has a push subscription', functi
     $subscribed = User::factory()->create();
     $subscribed->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
 
-    $this->actingAs($subscribed)->get('/kalender')
+    $this->actingAs($subscribed)->get('/calendar')
         ->assertInertia(fn (Assert $page) => $page->where('webPushSubscribed', true));
 });
 
 it('shares webPushSubscribed false when the user has no push subscription', function (): void {
     $none = User::factory()->create();
-    $this->actingAs($none)->get('/kalender')
+    $this->actingAs($none)->get('/calendar')
         ->assertInertia(fn (Assert $page) => $page->where('webPushSubscribed', false));
 });
 
@@ -77,7 +77,7 @@ it('shares a push-only user as webPushSubscribed without a Telegram connection',
     $pushOnly = User::factory()->create();
     $pushOnly->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
 
-    $this->actingAs($pushOnly)->get('/kalender')
+    $this->actingAs($pushOnly)->get('/calendar')
         ->assertInertia(fn (Assert $page) => $page
             ->where('telegramConnected', false)
             ->where('webPushSubscribed', true));
@@ -86,14 +86,14 @@ it('shares a push-only user as webPushSubscribed without a Telegram connection',
 it('honors ?month=YYYY-MM when valid', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/kalender?month=2026-01')
+    $this->actingAs($user)->get('/calendar?month=2026-01')
         ->assertInertia(fn (Assert $page) => $page->where('month', '2026-01'));
 });
 
 it('falls back to today\'s month when ?month is invalid', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/kalender?month=bogus')
+    $this->actingAs($user)->get('/calendar?month=bogus')
         ->assertInertia(fn (Assert $page) => $page->where('month', Carbon::today()->format('Y-m')));
 });
 
@@ -101,14 +101,14 @@ it('falls back to today\'s month when ?month parses but is impossible (Carbon th
     // 9999-99 passes the YYYY-MM regex but Carbon::parse refuses month 99.
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/kalender?month=9999-99')
+    $this->actingAs($user)->get('/calendar?month=9999-99')
         ->assertInertia(fn (Assert $page) => $page->where('month', Carbon::today()->format('Y-m')));
 });
 
 it('exposes prev / next month strings for navigation', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/kalender?month=2026-05')
+    $this->actingAs($user)->get('/calendar?month=2026-05')
         ->assertInertia(fn (Assert $page) => $page
             ->where('prevMonth', '2026-04')
             ->where('nextMonth', '2026-06'));
@@ -117,7 +117,7 @@ it('exposes prev / next month strings for navigation', function (): void {
 it('pads the grid to whole Mon-Sun weeks (divisible by 7)', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/kalender?month=2026-05')
+    $this->actingAs($user)->get('/calendar?month=2026-05')
         ->assertInertia(fn (Assert $page) => $page
             ->has('cells', fn (Assert $cells) => $cells->etc())
             ->where('cells', fn ($cells) => count($cells) % 7 === 0));
@@ -136,7 +136,7 @@ it('aggregates multiple runs on the same day into one cell', function (): void {
         ]);
     }
 
-    $this->actingAs($user)->get('/kalender?month=2026-05')
+    $this->actingAs($user)->get('/calendar?month=2026-05')
         ->assertInertia(fn (Assert $page) => $page
             ->where('cells', function ($cells) {
                 $cell = collect($cells)->firstWhere('date', '2026-05-15');
@@ -149,10 +149,10 @@ it('aggregates multiple runs on the same day into one cell', function (): void {
 it('exposes a lifetime stats payload', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/kalender?month=2026-05')
+    $this->actingAs($user)->get('/calendar?month=2026-05')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Riwayat/Kalender')
+            ->component('Activities/Calendar')
             ->has('lifetime.total_runs')
             ->has('lifetime.total_km')
             ->has('lifetime.first_run_at'));
@@ -167,7 +167,7 @@ it('passes the MonthlyRecap analysis for the viewed month as the monthlyRecap pr
         'discriminator' => '2026-05',
     ]);
 
-    $this->actingAs($user)->get('/kalender?month=2026-05')
+    $this->actingAs($user)->get('/calendar?month=2026-05')
         ->assertInertia(fn (Assert $page) => $page
             ->where('monthlyRecap.status', 'done')
             ->where('monthlyRecap.content', 'Bulan Mei kamu padat, ritmenya kejaga.')
@@ -186,7 +186,7 @@ it('surfaces the monthly recap Telegram cooldown when a send is on cooldown', fu
     ]);
     RateLimiter::hit(Cooldown::notificationKey($recap->id), Cooldown::WINDOW_SECONDS);
 
-    $this->actingAs($user)->get('/kalender?month=2026-05')
+    $this->actingAs($user)->get('/calendar?month=2026-05')
         ->assertInertia(fn (Assert $page) => $page
             ->where('monthlyRecap.notification_retry_after_seconds', fn (?int $s): bool => $s !== null && $s > 0)
             ->etc());
@@ -201,7 +201,7 @@ it('only matches the recap row for the viewed month, not another month', functio
         'discriminator' => '2026-04',
     ]);
 
-    $this->actingAs($user)->get('/kalender?month=2026-05')
+    $this->actingAs($user)->get('/calendar?month=2026-05')
         ->assertInertia(fn (Assert $page) => $page
             ->where('monthlyRecap.status', 'pending')
             ->where('monthlyRecap.content', null)
@@ -216,10 +216,10 @@ it('flags the latest completed month with a run as the chain head', function ():
         'start_date_local' => Carbon::create(2026, 5, 20),
     ]);
 
-    $this->actingAs($user)->get('/kalender?month=2026-05')
+    $this->actingAs($user)->get('/calendar?month=2026-05')
         ->assertInertia(fn (Assert $page) => $page->where('monthlyRecap.is_chain_head', true));
 
-    $this->actingAs($user)->get('/kalender?month=2026-04')
+    $this->actingAs($user)->get('/calendar?month=2026-04')
         ->assertInertia(fn (Assert $page) => $page->where('monthlyRecap.is_chain_head', false));
 });
 
@@ -231,7 +231,7 @@ it('never flags the current (in-progress) month as the chain head', function ():
         'start_date_local' => Carbon::create(2026, 6, 5),
     ]);
 
-    $this->actingAs($user)->get('/kalender?month=2026-06')
+    $this->actingAs($user)->get('/calendar?month=2026-06')
         ->assertInertia(fn (Assert $page) => $page->where('monthlyRecap.is_chain_head', false));
 });
 
@@ -246,7 +246,7 @@ it('reports telegramConnected false when the channel is muted but still linked',
     TelegramConnection::factory()->for($user)->create(['revoked_at' => null]);
     NotificationPreference::factory()->for($user)->create(['telegram_enabled' => false]);
 
-    $this->actingAs($user)->get('/kalender')
+    $this->actingAs($user)->get('/calendar')
         ->assertInertia(fn (Assert $page) => $page->where('telegramConnected', false));
 
     // Muting must not have revoked anything.
@@ -258,7 +258,7 @@ it('reports webPushSubscribed false when push is muted but still subscribed', fu
     $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
     NotificationPreference::factory()->for($user)->create(['push_enabled' => false]);
 
-    $this->actingAs($user)->get('/kalender')
+    $this->actingAs($user)->get('/calendar')
         ->assertInertia(fn (Assert $page) => $page->where('webPushSubscribed', false));
 
     expect($user->fresh()->pushSubscriptions()->count())->toBe(1);

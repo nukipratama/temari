@@ -5,14 +5,14 @@ tags: [feature, runs]
 status: living
 reviewed: 2026-07-29
 code_refs:
-  - resources/js/pages/Riwayat/Jejak.tsx
-  - resources/js/pages/Riwayat/Kalender.tsx
+  - resources/js/pages/Activities/Feed.tsx
+  - resources/js/pages/Activities/Calendar.tsx
   - app/Http/Controllers/RunController.php
   - app/Http/Requests/JejakFilterRequest.php
   - app/Services/Run/JejakQuery.php
   - app/Services/Run/JejakFilters.php
   - app/Http/Controllers/CalendarController.php
-  - resources/js/pages/Riwayat/useJejakFilters.ts
+  - resources/js/pages/Activities/useJejakFilters.ts
   - resources/js/components/riwayat/RiwayatTabs.tsx
   - resources/js/components/riwayat/RiwayatFilter.tsx
   - resources/js/components/riwayat/WeekSection.tsx
@@ -25,12 +25,12 @@ code_refs:
 
 The "Riwayat" area is the user's whole running archive, split into two views
 that share a header tab strip. [RiwayatTabs](../../resources/js/components/riwayat/RiwayatTabs.tsx)
-links **Jejak** (`/aktivitas`) and **Kalender** (`/kalender`) — two routes, two
+links **Jejak** (`/activities`) and **Kalender** (`/calendar`) — two routes, two
 controllers, one mental model.
 
-**Navigation:** `route('aktivitas.index')` → `/aktivitas` (Jejak, `RunController::index`);
-`route('kalender')` → `/kalender` (Kalender, `CalendarController::__invoke`).
-Named routes: `aktivitas.index`, `kalender`.
+**Navigation:** `route('activities.index')` → `/activities` (Jejak, `RunController::index`);
+`route('calendar')` → `/calendar` (Kalender, `CalendarController::__invoke`).
+Named routes: `activities.index`, `calendar`.
 
 ## System dependencies
 
@@ -41,9 +41,9 @@ Named routes: `aktivitas.index`, `kalender`.
 
 ## Jejak — the timeline
 
-[Jejak.tsx](../../resources/js/pages/Riwayat/Jejak.tsx) (default export
+[Feed.tsx](../../resources/js/pages/Activities/Feed.tsx) (default export
 `RunsIndex`) is pure composition: every filter derivation lives in
-[useJejakFilters.ts](../../resources/js/pages/Riwayat/useJejakFilters.ts). It lists
+[useJejakFilters.ts](../../resources/js/pages/Activities/useJejakFilters.ts). It lists
 every run **grouped by ISO week** (`groupByWeek` there, Monday-start; undated runs
 fall into a trailing "Tanpa tanggal" bucket). Each
 [WeekSection](../../resources/js/components/riwayat/WeekSection.tsx)
@@ -101,7 +101,7 @@ removable chip.
 
 ## Kalender — the month grid
 
-[Kalender.tsx](../../resources/js/pages/Riwayat/Kalender.tsx) is a
+[Calendar.tsx](../../resources/js/pages/Activities/Calendar.tsx) is a
 Google-Calendar-style single month. [CalendarController](../../app/Http/Controllers/CalendarController.php)
 (`__invoke`) resolves `?month=YYYY-MM`, pads the grid to full Mon–Sun weeks, and
 hands the frontend pre-computed `cells` (per-day distance / pace / HR / mood /
@@ -111,7 +111,7 @@ links to that run's [[run-detail]]; the mood tints the cell fill.
 The month also carries a `monthlyRecap` (`MonthlyRecapCard`) — Temari wears the
 month's **dominant run mood** (`dominantMoodOf`) — and a `lifetime` eyebrow.
 The mood filter here is client-side and only *dims* unmatched cells
-(`isFilteredOut` in [Kalender.tsx](../../resources/js/pages/Riwayat/Kalender.tsx)),
+(`isFilteredOut` in [Calendar.tsx](../../resources/js/pages/Activities/Calendar.tsx)),
 so the month grid keeps its shape. Jejak's mood filter is server-side and removes
 runs instead.
 

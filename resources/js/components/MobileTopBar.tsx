@@ -15,19 +15,19 @@ import { cn } from '@/lib/cn';
  * button instead of the brand mark.
  *
  * Deliberately an explicit map rather than something derived from
- * `activeTabFromUrl`: `/kalender`, `/rekor`, `/aksesori` and `/target` all
+ * `activeTabFromUrl`: `/calendar`, `/records`, `/accessories` and `/badges` all
  * resolve to a tab too, but they are reached through in-page tab strips, so
  * they are siblings of their tab root and must keep the brand mark.
  *
- * `ZonaHR` points at `/pengaturan`, not the `/profil` its old in-page
- * breadcrumb used — that link read "Aku · Pengaturan" as a trail but skipped
+ * `HrZones` points at `/settings`, not the `/profile` its old in-page
+ * breadcrumb used — that link read "Me · Settings" as a trail but skipped
  * straight past its actual parent.
  */
 const BACK_TARGETS: Record<string, { href: string; label: string }> = {
-    'Runs/Show': { href: '/aktivitas', label: 'Riwayat' },
-    // Pengaturan is deliberately absent: it is one tap from the Aku tab and
+    'Runs/Show': { href: '/activities', label: 'History' },
+    // Settings is deliberately absent: it is one tap from the Me tab and
     // from the avatar menu on every page, so it reads as a root, not a push.
-    'Pengaturan/ZonaHR': { href: '/pengaturan', label: 'Pengaturan' },
+    'Settings/HrZones': { href: '/settings', label: 'Settings' },
 };
 
 /**
@@ -69,7 +69,7 @@ export default function MobileTopBar() {
                 // useSwipeBack stays as the gesture equivalent.
                 <Link
                     href={back.href}
-                    aria-label={`Kembali ke ${back.label}`}
+                    aria-label={`Back to ${back.label}`}
                     className="pressable focus-ring -ml-1 inline-flex min-w-0 items-center gap-1 rounded py-1 pl-1 pr-2 text-label-small text-ink-2 transition hover:text-ink"
                 >
                     <Icon
@@ -82,11 +82,7 @@ export default function MobileTopBar() {
                     <span className="truncate">{back.label}</span>
                 </Link>
             ) : (
-                <Link
-                    href="/"
-                    aria-label="Beranda"
-                    className="focus-ring rounded"
-                >
+                <Link href="/" aria-label="Home" className="focus-ring rounded">
                     <BrandMark wordmarkClassName="hidden min-[350px]:inline" />
                 </Link>
             )}

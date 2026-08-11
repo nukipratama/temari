@@ -7,8 +7,10 @@ import { useModal } from '@/hooks/useModal';
 import { cn } from '@/lib/cn';
 import { RARITY_LABELS } from '@/lib/runcard';
 import {
+    COLORWAYS,
     drawShareCard,
     shareCardBlob,
+    type ColorwayId,
     type Format,
     type Layout,
     type ShareKartuData,
@@ -32,10 +34,30 @@ function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
     });
 }
 
-const LAYOUTS: Layout[] = ['kartu', 'rute'];
+const LAYOUTS: Layout[] = ['kartu', 'rute', 'stats'];
 const LAYOUT_LABELS: Record<Layout, string> = {
-    kartu: 'Kartu',
-    rute: 'Rute',
+    kartu: 'Card',
+    rute: 'Route',
+    stats: 'Stats',
+};
+/** Which templates need a drawable route — the single source of truth for
+ *  both the layout picker's visibility and the draw-effect's stale-selection
+ *  clamp, replacing the old ad hoc `l !== 'rute'` checks in both places. */
+const TEMPLATE_CAPS: Record<Layout, boolean> = {
+    kartu: false,
+    rute: true,
+    stats: false,
+};
+
+function hasRoute(kartu: ShareKartuData): boolean {
+    return kartu.polyline != null && kartu.polyline !== '';
+}
+
+const COLORWAYS_LIST: ColorwayId[] = ['navy', 'dawn', 'ember'];
+const COLORWAY_LABELS: Record<ColorwayId, string> = {
+    navy: 'Navy',
+    dawn: 'Dawn',
+    ember: 'Ember',
 };
 
 export default function ShareCardModal({
@@ -44,6 +66,7 @@ export default function ShareCardModal({
 }: Readonly<ShareCardModalProps>) {
     const [layout, setLayout] = useState<Layout>('kartu');
     const [format, setFormat] = useState<Format>('story');
+    const [colorway, setColorway] = useState<ColorwayId>('navy');
     // Transient status under the CTAs: confirms a copy/share that has no native
     // UI of its own, or surfaces a failure instead of swallowing it silently.
     const [status, setStatus] = useState<{
@@ -65,15 +88,16 @@ export default function ShareCardModal({
         }
         // Clamp to a drawable layout: a no-GPS run has no route, so a stale
         // 'rute' selection (carried over from a previous GPS card) must not
-        // paint a blank map. See `hasRoute` below.
+        // paint a blank map.
         const drawLayout =
-            kartu.polyline != null && kartu.polyline !== '' ? layout : 'kartu';
+            !TEMPLATE_CAPS[layout] || hasRoute(kartu) ? layout : 'kartu';
         drawRef.current = drawShareCard(canvasRef.current, {
             kartu,
             layout: drawLayout,
             format,
+            colorway,
         });
-    }, [kartu, layout, format]);
+    }, [kartu, layout, format, colorway]);
 
     // Auto-clear the status line so it reads as a transient toast.
     useEffect(() => {
@@ -84,17 +108,16 @@ export default function ShareCardModal({
 
     if (kartu === null) return null;
 
-    // The route-hero template needs a polyline; hide it for no-GPS runs.
-    const hasRoute = kartu.polyline != null && kartu.polyline !== '';
-    const availableLayouts = hasRoute
+    // Templates that need a polyline are hidden for no-GPS runs.
+    const availableLayouts = hasRoute(kartu)
         ? LAYOUTS
-        : LAYOUTS.filter((l) => l !== 'rute');
+        : LAYOUTS.filter((l) => !TEMPLATE_CAPS[l]);
     // Clamp so share/copy never export a stale 'rute' layout on a no-GPS run.
     const effectiveLayout: Layout = availableLayouts.includes(layout)
         ? layout
         : 'kartu';
 
-    const cfg = { kartu, layout: effectiveLayout, format };
+    const cfg = { kartu, layout: effectiveLayout, format, colorway };
 
     // The preview canvas already holds the exact export bitmap at its full
     // internal resolution, so read it back rather than redrawing every template
@@ -131,7 +154,7 @@ export default function ShareCardModal({
                     title: `${kartu.name} · Temari`,
                     text:
                         kartu.quote ??
-                        `Kartu ${RARITY_LABELS[kartu.rarity]}: ${kartu.name}`,
+                        `${RARITY_LABELS[kartu.rarity]} card: ${kartu.name}`,
                     url,
                 });
             } catch {
@@ -140,14 +163,14 @@ export default function ShareCardModal({
         } else if (navigator.clipboard?.writeText !== undefined) {
             try {
                 await navigator.clipboard.writeText(url);
-                setStatus({ tone: 'ok', text: 'Link aktivitas kesalin.' });
+                setStatus({ tone: 'ok', text: 'Activity link copied.' });
             } catch {
-                setStatus({ tone: 'err', text: 'Gagal nyalin link.' });
+                setStatus({ tone: 'err', text: 'Failed to copy link.' });
             }
         } else {
             setStatus({
                 tone: 'err',
-                text: 'Browser ini belum dukung berbagi.',
+                text: "This browser doesn't support sharing.",
             });
         }
     };
@@ -159,7 +182,7 @@ export default function ShareCardModal({
         ) {
             setStatus({
                 tone: 'err',
-                text: 'Browser ini belum dukung salin gambar. Pakai Bagikan ya.',
+                text: "This browser doesn't support copying images. Use Share instead.",
             });
             return;
         }
@@ -168,11 +191,11 @@ export default function ShareCardModal({
             await navigator.clipboard.write([
                 new ClipboardItem({ 'image/png': blob }),
             ]);
-            setStatus({ tone: 'ok', text: 'Gambar kartu kesalin.' });
+            setStatus({ tone: 'ok', text: 'Card image copied.' });
         } catch {
             setStatus({
                 tone: 'err',
-                text: 'Gagal nyalin gambar. Coba Bagikan aja.',
+                text: 'Failed to copy image. Try Share instead.',
             });
         }
     };
@@ -207,14 +230,14 @@ export default function ShareCardModal({
                         <button
                             type="button"
                             onClick={onClose}
-                            aria-label="Tutup"
+                            aria-label="Close"
                             className={iconButtonVariants({ size: 'sm' })}
                         >
                             <Icon icon="mdi:close" width={16} height={16} />
                         </button>
                         <div className="flex-1 text-center">
                             <div className="text-label-micro text-ink-2">
-                                Bagikan kartu
+                                Share card
                             </div>
                             <div className="font-display text-xl tracking-tight text-ink">
                                 {kartu.name}
@@ -233,12 +256,12 @@ export default function ShareCardModal({
                             ref={canvasRef}
                             width={1080}
                             height={format === 'story' ? 1920 : 1080}
-                            aria-label={`Pratinjau kartu ${kartu.name}`}
+                            aria-label={`Preview of ${kartu.name}`}
                             className="block rounded-2xl"
                             style={{
                                 maxWidth: '100%',
                                 maxHeight: '52vh',
-                                boxShadow: '0 16px 48px rgba(31,39,71,0.25)',
+                                boxShadow: '0 16px 48px rgba(36,28,84,0.25)',
                             }}
                         />
 
@@ -267,14 +290,14 @@ export default function ShareCardModal({
                                         )}
                                     />
                                     {f === 'story'
-                                        ? 'Potret · 9:16'
-                                        : 'Persegi · 1:1'}
+                                        ? 'Portrait · 9:16'
+                                        : 'Square · 1:1'}
                                 </button>
                             ))}
                         </div>
 
-                        {/* Gaya — template picker. Hidden when a no-GPS run leaves only
-                            the Kartu layout, so there's nothing to choose. */}
+                        {/* Style — template picker. Hidden only if a single layout remains
+                            to choose from (e.g. Route needs a polyline the run doesn't have). */}
                         {availableLayouts.length > 1 && (
                             <div className="flex w-full gap-2">
                                 {availableLayouts.map((l) => (
@@ -282,10 +305,10 @@ export default function ShareCardModal({
                                         key={l}
                                         type="button"
                                         onClick={() => setLayout(l)}
-                                        aria-pressed={layout === l}
+                                        aria-pressed={effectiveLayout === l}
                                         className={cn(
                                             toggleButtonVariants({
-                                                selected: layout === l,
+                                                selected: effectiveLayout === l,
                                                 size: 'md',
                                             }),
                                             'flex-1',
@@ -296,6 +319,34 @@ export default function ShareCardModal({
                                 ))}
                             </div>
                         )}
+
+                        {/* Colorway — swatch picker. Always 3 choices; unlike the
+                            template picker, colorway never depends on run data. */}
+                        <div className="flex w-full items-center justify-center gap-3">
+                            {COLORWAYS_LIST.map((c) => (
+                                <button
+                                    key={c}
+                                    type="button"
+                                    onClick={() => setColorway(c)}
+                                    aria-pressed={colorway === c}
+                                    aria-label={`Colorway: ${COLORWAY_LABELS[c]}`}
+                                    className={cn(
+                                        'focus-ring h-9 w-9 rounded-full border-2 transition',
+                                        colorway === c
+                                            ? 'border-sky'
+                                            : 'border-transparent hover:border-cream-deep',
+                                    )}
+                                >
+                                    <span
+                                        aria-hidden
+                                        className="block h-full w-full rounded-full border border-black/10"
+                                        style={{
+                                            background: COLORWAYS[c].surface,
+                                        }}
+                                    />
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {/* CTAs — pinned footer. */}
@@ -311,7 +362,7 @@ export default function ShareCardModal({
                                 height={16}
                                 aria-hidden
                             />
-                            Bagikan
+                            Share
                         </PillButton>
                         <PillButton
                             tone="ghost"
@@ -324,7 +375,7 @@ export default function ShareCardModal({
                                 height={16}
                                 aria-hidden
                             />
-                            Salin gambar
+                            Copy image
                         </PillButton>
                         {status !== null && (
                             <p

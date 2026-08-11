@@ -54,7 +54,7 @@ describe('UsageFilters', () => {
     it('submits the date fields as a custom window', () => {
         renderFilters();
 
-        fireEvent.click(screen.getByRole('button', { name: /terapkan/i }));
+        fireEvent.click(screen.getByRole('button', { name: /apply/i }));
 
         expect(router.get).toHaveBeenCalledWith(
             '/ai-usage',
@@ -66,7 +66,7 @@ describe('UsageFilters', () => {
     it('sends the kind filter along with a submitted custom window', () => {
         renderFilters({ kind: 'briefing' });
 
-        fireEvent.click(screen.getByRole('button', { name: /terapkan/i }));
+        fireEvent.click(screen.getByRole('button', { name: /apply/i }));
 
         expect(router.get).toHaveBeenCalledWith(
             '/ai-usage',
@@ -96,7 +96,7 @@ describe('UsageFilters', () => {
     it('applies the kind filter immediately on change, preserving the range', () => {
         renderFilters({ range: '7d' as RangeToken });
 
-        fireEvent.change(screen.getByLabelText(/jenis/i), {
+        fireEvent.change(screen.getByLabelText(/kind/i), {
             target: { value: 'briefing' },
         });
 
@@ -110,7 +110,7 @@ describe('UsageFilters', () => {
     it('clearing the kind filter drops it from the query rather than sending an empty one', () => {
         renderFilters({ range: '7d' as RangeToken, kind: 'briefing' });
 
-        fireEvent.change(screen.getByLabelText(/jenis/i), {
+        fireEvent.change(screen.getByLabelText(/kind/i), {
             target: { value: '' },
         });
 
@@ -124,15 +124,15 @@ describe('UsageFilters', () => {
     it('hides the kind dropdown when the report has no kinds to filter by', () => {
         renderFilters({ availableKinds: [] });
 
-        expect(screen.queryByLabelText(/jenis/i)).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(/kind/i)).not.toBeInTheDocument();
     });
 
     it.each([
-        ['hari ini', /hari ini/i, 'today'],
-        ['7 hari', /7 hari/i, '7d'],
-        ['30 hari', /30 hari/i, '30d'],
-        ['bulan ini', /bulan ini/i, 'month'],
-        ['semua', /semua/i, 'all'],
+        ['Today', /today/i, 'today'],
+        ['7 days', /7 days/i, '7d'],
+        ['30 days', /30 days/i, '30d'],
+        ['This month', /this month/i, 'month'],
+        ['All', /all/i, 'all'],
     ])(
         'preset "%s" links to a date-free range token (durable, never stale)',
         (_label, pattern, token) => {
@@ -150,7 +150,7 @@ describe('UsageFilters', () => {
         renderFilters({ kind: 'briefing' });
 
         expect(
-            screen.getByRole('link', { name: /7 hari/i }).getAttribute('href'),
+            screen.getByRole('link', { name: /7 days/i }).getAttribute('href'),
         ).toBe('/ai-usage?range=7d&kind=briefing');
     });
 
@@ -158,10 +158,10 @@ describe('UsageFilters', () => {
         renderFilters({ range: '7d' as RangeToken });
 
         expect(
-            screen.getByRole('link', { name: /7 hari/i }).className,
+            screen.getByRole('link', { name: /7 days/i }).className,
         ).toContain('bg-sky');
         expect(
-            screen.getByRole('link', { name: /30 hari/i }).className,
+            screen.getByRole('link', { name: /30 days/i }).className,
         ).toContain('bg-cream-deep');
     });
 });

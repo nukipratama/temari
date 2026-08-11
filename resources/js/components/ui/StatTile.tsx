@@ -8,7 +8,7 @@ import { cn } from '@/lib/cn';
 
 /**
  * Canonical "label + big tabular-nums value (+ optional unit/sub)" tile.
- * Folds together the per-page private copies (HariIni VitalChip/Stat,
+ * Folds together the per-page private copies (Today VitalChip/Stat,
  * Runs/Show HeroStat, dashboard Stat). The card surface, value
  * type-scale and text-contrast tier all swap via the `tone` + `size` matrix
  * so each old call site maps to one variant pair without per-call overrides.
@@ -66,7 +66,7 @@ interface StatTileProps {
     sub?: ReactNode;
     tone?: StatTileTone;
     size?: StatTileSize;
-    /** Center the label/value/sub stack (HariIni run-summary tiles). */
+    /** Center the label/value/sub stack (Today run-summary tiles). */
     align?: 'start' | 'center';
     /** Render a leading family-color dot before the label. */
     dotClass?: string;

@@ -2,6 +2,7 @@ import polylineCodec from '@mapbox/polyline';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+    COLORWAYS,
     drawShareCard,
     shareCardBlob,
     type Layout,
@@ -17,14 +18,14 @@ const pointToPointPolyline = polylineCodec.encode([
 
 const kartu: ShareKartuData = {
     id: 1,
-    name: 'Pemburu Sabar',
-    shareUrl: '/aktivitas/1',
+    name: 'Patient Hunter',
+    shareUrl: '/activities/1',
     rarity: 'legendary',
-    mood: 'nyala',
+    mood: 'blazing',
     subtitle: null,
     date: '30 Mei 2026\n06:30',
     km: '42.61',
-    durasi: '6 jam 8 menit',
+    durasi: '6 hr 8 min',
     pace: '5:48',
     trimp: '913',
     hr: '164 bpm',
@@ -33,9 +34,9 @@ const kartu: ShareKartuData = {
     zonePct: { Z1: 10, Z2: 40, Z3: 30, Z4: 15, Z5: 5 },
     location: 'Gelora Bung Karno, Jakarta',
     weather: '27°C',
-    tags: ['Anak Pagi'],
+    tags: ['Early Bird'],
     tagEmojis: ['🌅'],
-    quote: 'Kartu ini lahir dari sesi yang tenang tapi solid.',
+    quote: 'This card was born from a calm but solid session.',
     polyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
     edition: { index: 2, total: 7 },
 };
@@ -104,7 +105,7 @@ beforeEach(() => {
         },
         configurable: true,
     });
-    // jsdom never fires image load; resolve immediately so loadBunny settles.
+    // jsdom never fires image load; resolve immediately so loadTemari settles.
     class FakeImage {
         onload: (() => void) | null = null;
         onerror: (() => void) | null = null;
@@ -116,7 +117,7 @@ beforeEach(() => {
 });
 
 describe('drawShareCard', () => {
-    const layouts: Layout[] = ['kartu', 'rute'];
+    const layouts: Layout[] = ['kartu', 'rute', 'stats'];
     const formats: Format[] = ['story', 'feed'];
 
     it.each(layouts)(
@@ -180,7 +181,12 @@ describe('drawShareCard', () => {
     it('renders a multi-badge cluster on both layouts (2-col beside KM / row on rute)', async () => {
         const many = {
             ...kartu,
-            tags: ['Pejuang Hujan', 'Rajin', 'Z2 Master', 'Negative Split'],
+            tags: [
+                'Rain Warrior',
+                'Habit Forming',
+                'Z2 Master',
+                'Negative Split',
+            ],
             tagEmojis: ['🌧️', '💪', '❤️‍🔥', '⚡'],
         };
         for (const layout of ['kartu', 'rute'] as Layout[]) {
@@ -196,7 +202,7 @@ describe('drawShareCard', () => {
                 format: 'story',
             });
             expect(ctx.fillText).toHaveBeenCalledWith(
-                expect.stringContaining('Rajin'),
+                expect.stringContaining('Habit Forming'),
                 expect.any(Number),
                 expect.any(Number),
             );
@@ -283,7 +289,7 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, durasi: '39 menit 10 detik panjang sekali' },
+            kartu: { ...kartu, durasi: '39 min 10 sec extremely long' },
             layout: 'kartu',
             format: 'story',
         });
@@ -333,7 +339,7 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, subtitle: 'Long run minggu ini', quote: null },
+            kartu: { ...kartu, subtitle: 'Long run this week', quote: null },
             layout: 'kartu',
             format: 'story',
         });
@@ -428,10 +434,10 @@ describe('drawShareCard — edge / branch cases', () => {
     });
 
     it.each(['kartu', 'rute'] as Layout[])(
-        'draws the %s layout without a mascot/bunny when SVG glyph decode fails',
+        'draws the %s layout without a mascot/glyph when SVG glyph decode fails',
         async (layout) => {
-            // Image that always errors -> loadBunny resolves null -> the hero
-            // (kartu) skips its mascot and the rute brand lockup omits the bunny.
+            // Image that always errors -> loadTemari resolves null -> the hero
+            // (kartu) skips its mascot and the rute brand lockup omits the glyph.
             class FailingImage {
                 onload: (() => void) | null = null;
                 onerror: (() => void) | null = null;
@@ -478,7 +484,7 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, subtitle: 'Tempo Selasa' },
+            kartu: { ...kartu, subtitle: 'Tuesday tempo' },
             layout: 'kartu',
             format: 'feed',
         });
@@ -590,7 +596,7 @@ describe('drawShareCard — edge / branch cases', () => {
             // Two tags but only one emoji -> second pip uses the ✦ fallback.
             kartu: {
                 ...kartu,
-                tags: ['Anak Pagi', 'Kilat'],
+                tags: ['Early Bird', 'Speedster'],
                 tagEmojis: ['🌅'],
             },
             layout: 'kartu',
@@ -705,7 +711,7 @@ describe('drawShareCard — edge / branch cases', () => {
         // stays as the floating badge; date + location ride the muted context strip;
         // no "temari.app" wordmark.
         expect(ctx.fillText).toHaveBeenCalledWith(
-            'ELEVASI',
+            'ELEVATION',
             expect.any(Number),
             expect.any(Number),
         );
@@ -754,4 +760,194 @@ describe('drawShareCard — edge / branch cases', () => {
             expect.any(Number),
         );
     });
+});
+
+/** Like `makeCtx`, but records the `fillStyle` in effect every time `fillRect`
+ *  is called — `paintBackground`'s canvas-wide fill is always the first call,
+ *  so `fills[0]` is the colorway's `bg` value actually used to paint. */
+function makeCtxWithFillRectLog() {
+    const ctx = makeCtx();
+    const fills: string[] = [];
+    ctx.fillRect = vi.fn(() => {
+        fills.push(ctx.fillStyle);
+    });
+    return { ctx, fills };
+}
+
+describe('colorways', () => {
+    it('defaults to navy when no colorway is given — byte-identical to explicit navy', async () => {
+        const implicit = makeCtxWithFillRectLog();
+        await drawShareCard(
+            {
+                width: 0,
+                height: 0,
+                getContext: () => implicit.ctx,
+            } as unknown as HTMLCanvasElement,
+            { kartu, layout: 'kartu', format: 'story' },
+        );
+        const explicit = makeCtxWithFillRectLog();
+        await drawShareCard(
+            {
+                width: 0,
+                height: 0,
+                getContext: () => explicit.ctx,
+            } as unknown as HTMLCanvasElement,
+            { kartu, layout: 'kartu', format: 'story', colorway: 'navy' },
+        );
+        expect(implicit.fills[0]).toBe(COLORWAYS.navy.bg);
+        expect(implicit.fills[0]).toBe(explicit.fills[0]);
+    });
+
+    it('paints the dawn colorway on a light background, distinct from navy', async () => {
+        const { ctx, fills } = makeCtxWithFillRectLog();
+        await drawShareCard(
+            {
+                width: 0,
+                height: 0,
+                getContext: () => ctx,
+            } as unknown as HTMLCanvasElement,
+            { kartu, layout: 'kartu', format: 'story', colorway: 'dawn' },
+        );
+        expect(fills[0]).toBe(COLORWAYS.dawn.bg);
+        expect(fills[0]).not.toBe(COLORWAYS.navy.bg);
+    });
+
+    it('paints the ember colorway on an ember-hued dark background, distinct from navy', async () => {
+        const { ctx, fills } = makeCtxWithFillRectLog();
+        await drawShareCard(
+            {
+                width: 0,
+                height: 0,
+                getContext: () => ctx,
+            } as unknown as HTMLCanvasElement,
+            { kartu, layout: 'kartu', format: 'story', colorway: 'ember' },
+        );
+        expect(fills[0]).toBe(COLORWAYS.ember.bg);
+        expect(fills[0]).not.toBe(COLORWAYS.navy.bg);
+    });
+
+    it('renders the rute and stats layouts under every colorway without crashing', async () => {
+        for (const layout of ['rute', 'stats'] as Layout[]) {
+            for (const colorway of ['navy', 'dawn', 'ember'] as const) {
+                const ctx = makeCtx();
+                const canvas = {
+                    width: 0,
+                    height: 0,
+                    getContext: () => ctx,
+                } as unknown as HTMLCanvasElement;
+                await drawShareCard(canvas, {
+                    kartu,
+                    layout,
+                    format: 'story',
+                    colorway,
+                });
+                expect(ctx.fillText).toHaveBeenCalled();
+            }
+        }
+    });
+});
+
+describe('stats template', () => {
+    it('draws the distance, pace, duration, and HR tiles', async () => {
+        const ctx = makeCtx();
+        const canvas = {
+            width: 0,
+            height: 0,
+            getContext: () => ctx,
+        } as unknown as HTMLCanvasElement;
+        await drawShareCard(canvas, {
+            kartu,
+            layout: 'stats',
+            format: 'story',
+        });
+        expect(ctx.fillText).toHaveBeenCalledWith(
+            'DISTANCE',
+            expect.any(Number),
+            expect.any(Number),
+        );
+        expect(ctx.fillText).toHaveBeenCalledWith(
+            'PACE',
+            expect.any(Number),
+            expect.any(Number),
+        );
+        expect(ctx.fillText).toHaveBeenCalledWith(
+            'DURATION',
+            expect.any(Number),
+            expect.any(Number),
+        );
+        expect(ctx.fillText).toHaveBeenCalledWith(
+            'HR',
+            expect.any(Number),
+            expect.any(Number),
+        );
+    });
+
+    it('still renders when the run has no GPS route (no polyline dependency)', async () => {
+        const ctx = makeCtx();
+        const canvas = {
+            width: 0,
+            height: 0,
+            getContext: () => ctx,
+        } as unknown as HTMLCanvasElement;
+        await drawShareCard(canvas, {
+            kartu: { ...kartu, polyline: null },
+            layout: 'stats',
+            format: 'feed',
+        });
+        expect(ctx.fillText).toHaveBeenCalledWith(
+            'DISTANCE',
+            expect.any(Number),
+            expect.any(Number),
+        );
+    });
+
+    it('falls back to the placeholder dash for missing pace/HR cells', async () => {
+        const ctx = makeCtx();
+        const canvas = {
+            width: 0,
+            height: 0,
+            getContext: () => ctx,
+        } as unknown as HTMLCanvasElement;
+        await drawShareCard(canvas, {
+            kartu: { ...kartu, pace: null, hr: null },
+            layout: 'stats',
+            format: 'story',
+        });
+        expect(ctx.fillText).toHaveBeenCalledWith(
+            '—',
+            expect.any(Number),
+            expect.any(Number),
+        );
+    });
+});
+
+describe('thread-band accent (Slice 9c)', () => {
+    const layouts: Layout[] = ['kartu', 'rute', 'stats'];
+
+    it.each(layouts)(
+        'draws one stroke segment per band, scaling from common (1) to legendary (5) on the %s layout',
+        async (layout) => {
+            const draw = async (rarity: ShareKartuData['rarity']) => {
+                const ctx = makeCtx();
+                const canvas = {
+                    width: 0,
+                    height: 0,
+                    getContext: () => ctx,
+                } as unknown as HTMLCanvasElement;
+                await drawShareCard(canvas, {
+                    kartu: { ...kartu, rarity },
+                    layout,
+                    format: 'story',
+                });
+                return ctx.moveTo.mock.calls.length;
+            };
+
+            // Every other moveTo call in a render pass is rarity-independent
+            // (frame path, route, text metrics, ...), so the moveTo count
+            // delta between tiers isolates the thread-band ticks: 5 - 1 = 4.
+            const common = await draw('common');
+            const legendary = await draw('legendary');
+            expect(legendary - common).toBe(4);
+        },
+    );
 });

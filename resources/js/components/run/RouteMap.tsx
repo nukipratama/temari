@@ -3,7 +3,7 @@ import { latLngBounds } from 'leaflet';
 import { useMemo, useState } from 'react';
 import { MapContainer, Polyline, TileLayer } from 'react-leaflet';
 
-import { DAYBREAK } from '@/lib/chartTokens';
+import { THREADWORK } from '@/lib/chartTokens';
 // leaflet.css lives in resources/css/app.css (@import). Importing it here would race
 // the lazy-load and leave tiles unpositioned on first render.
 
@@ -26,14 +26,14 @@ export default function RouteMap({
     if (positions.length < 2) {
         return (
             <div className="flex h-56 items-center justify-center rounded-2xl border border-dashed border-line text-sm text-ink-3">
-                Rute tidak tersedia
+                Route not available
             </div>
         );
     }
 
     const mapLabel = distanceKm
-        ? `Peta rute lari, ${distanceKm} km`
-        : 'Peta rute lari';
+        ? `Run route map, ${distanceKm} km`
+        : 'Run route map';
 
     // `isolate` confines Leaflet's internal pane/control z-indexes (up to ~1000)
     // to this box so they don't paint over the fixed bottom nav. `role="img"` sits
@@ -74,7 +74,7 @@ export default function RouteMap({
                     <Polyline
                         positions={positions}
                         pathOptions={{
-                            color: DAYBREAK.leaf,
+                            color: THREADWORK.leaf,
                             weight: 4,
                             opacity: 0.9,
                         }}
@@ -89,11 +89,11 @@ export default function RouteMap({
                 <button
                     type="button"
                     onClick={() => setActive(true)}
-                    aria-label="Aktifkan peta untuk menggeser dan memperbesar"
+                    aria-label="Activate map to pan and zoom"
                     className="absolute inset-0 z-[1000] flex items-end justify-center bg-transparent p-3"
                 >
                     <span className="rounded-full bg-ink/70 px-3 py-1.5 text-label-micro text-cream backdrop-blur-sm">
-                        Aktifkan peta
+                        Activate map
                     </span>
                 </button>
             )}

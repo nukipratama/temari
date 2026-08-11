@@ -49,24 +49,24 @@ describe('formatPace', () => {
 });
 
 describe('formatDuration', () => {
-    it('spells sub-hour durations with menit + detik', () => {
-        expect(formatDuration(630)).toBe('10 menit 30 detik');
+    it('spells sub-hour durations with min + sec', () => {
+        expect(formatDuration(630)).toBe('10 min 30 sec');
     });
 
-    it('drops detik when the minute is whole', () => {
-        expect(formatDuration(600)).toBe('10 menit');
+    it('drops seconds when the minute is whole', () => {
+        expect(formatDuration(600)).toBe('10 min');
     });
 
-    it('formats hours as "H jam M menit", dropping seconds', () => {
-        expect(formatDuration(7320)).toBe('2 jam 2 menit');
+    it('formats hours as "H hr M min", dropping seconds', () => {
+        expect(formatDuration(7320)).toBe('2 hr 2 min');
     });
 
-    it('drops menit when the hour is whole', () => {
-        expect(formatDuration(7200)).toBe('2 jam');
+    it('drops minutes when the hour is whole', () => {
+        expect(formatDuration(7200)).toBe('2 hr');
     });
 
-    it('falls back to detik-only under a minute', () => {
-        expect(formatDuration(45)).toBe('45 detik');
+    it('falls back to seconds-only under a minute', () => {
+        expect(formatDuration(45)).toBe('45 sec');
     });
 });
 
@@ -129,7 +129,7 @@ describe('formatIdDate', () => {
 
     it('returns short format by default with weekday', () => {
         const result = formatIdDate('2026-05-11T08:00:00');
-        expect(result).toMatch(/^\w+,\s\d{2}\s\w+$/);
+        expect(result).toMatch(/^\w+,\s\w+\s\d{2}$/);
     });
 
     it('returns long format when requested', () => {
@@ -193,45 +193,45 @@ describe('formatRelativeId', () => {
         expect(formatRelativeId('totally-not-a-date', now)).toBe('—');
     });
 
-    it('returns "baru aja" for under a minute', () => {
+    it('returns "just now" for under a minute', () => {
         const iso = new Date(now.getTime() - 30 * 1000).toISOString();
-        expect(formatRelativeId(iso, now)).toBe('baru aja');
+        expect(formatRelativeId(iso, now)).toBe('just now');
     });
 
     it('returns minutes for under an hour', () => {
         const iso = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
-        expect(formatRelativeId(iso, now)).toBe('5 menit lalu');
+        expect(formatRelativeId(iso, now)).toBe('5 min ago');
     });
 
     it('returns hours for under a day', () => {
         const iso = new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString();
-        expect(formatRelativeId(iso, now)).toBe('3 jam lalu');
+        expect(formatRelativeId(iso, now)).toBe('3 hr ago');
     });
 
-    it('returns "kemarin" for exactly one day', () => {
+    it('returns "yesterday" for exactly one day', () => {
         const iso = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString();
-        expect(formatRelativeId(iso, now)).toBe('kemarin');
+        expect(formatRelativeId(iso, now)).toBe('yesterday');
     });
 
     it('returns days for under a week', () => {
         const iso = new Date(
             now.getTime() - 3 * 24 * 60 * 60 * 1000,
         ).toISOString();
-        expect(formatRelativeId(iso, now)).toBe('3 hari lalu');
+        expect(formatRelativeId(iso, now)).toBe('3 days ago');
     });
 
     it('returns weeks for under five weeks', () => {
         const iso = new Date(
             now.getTime() - 14 * 24 * 60 * 60 * 1000,
         ).toISOString();
-        expect(formatRelativeId(iso, now)).toBe('2 minggu lalu');
+        expect(formatRelativeId(iso, now)).toBe('2 wk ago');
     });
 
     it('falls back to short date for old timestamps', () => {
         const iso = new Date(
             now.getTime() - 60 * 24 * 60 * 60 * 1000,
         ).toISOString();
-        expect(formatRelativeId(iso, now)).toMatch(/\w+,\s\d{2}\s\w+/);
+        expect(formatRelativeId(iso, now)).toMatch(/\w+,\s\w+\s\d{2}/);
     });
 
     it('returns "—" for null / invalid input', () => {
@@ -239,27 +239,27 @@ describe('formatRelativeId', () => {
         expect(formatRelativeId('not-a-date')).toBe('—');
     });
 
-    it('returns "baru aja" for under a minute', () => {
+    it('returns "just now" for under a minute', () => {
         const iso = new Date(now.getTime() - 5 * 1000).toISOString();
-        expect(formatRelativeId(iso, now)).toBe('baru aja');
+        expect(formatRelativeId(iso, now)).toBe('just now');
     });
 
-    it('clamps a future / clock-skewed timestamp to "baru aja" (no negative units)', () => {
+    it('clamps a future / clock-skewed timestamp to "just now" (no negative units)', () => {
         const future = new Date(
             now.getTime() + 3 * 60 * 60 * 1000,
         ).toISOString();
-        expect(formatRelativeId(future, now)).toBe('baru aja');
+        expect(formatRelativeId(future, now)).toBe('just now');
     });
 });
 
 describe('formatNaiveRelativeId', () => {
     it('measures the delta from the as-recorded wall clock, ignoring any offset', () => {
-        // Wall clock 09:00 vs a local-now of 12:00 → 3 jam lalu. new Date() would
-        // shift the -08:00 input to 17:00Z and clamp it to "baru aja" instead.
+        // Wall clock 09:00 vs a local-now of 12:00 → 3 hr ago. new Date() would
+        // shift the -08:00 input to 17:00Z and clamp it to "just now" instead.
         const localNow = new Date(2026, 4, 20, 12, 0, 0);
         expect(
             formatNaiveRelativeId('2026-05-20T09:00:00-08:00', localNow),
-        ).toBe('3 jam lalu');
+        ).toBe('3 hr ago');
     });
 
     it('returns dash for null and non-parseable input', () => {
@@ -299,31 +299,31 @@ describe('date/time format variants', () => {
     const d = new Date(2026, 4, 11, 8, 30);
 
     it('formatWeekdayDateId: long weekday + day + long month', () => {
-        expect(formatWeekdayDateId(d)).toBe('Senin, 11 Mei');
+        expect(formatWeekdayDateId(d)).toBe('Monday, May 11');
     });
 
-    it('formatTimeId: zero-padded HH:MM', () => {
-        expect(formatTimeId(d)).toBe('08.30');
+    it('formatTimeId: zero-padded hour + minute', () => {
+        expect(formatTimeId(d)).toBe('08:30 AM');
     });
 
     it('formatShortWeekdayDateId: short weekday + day + short month', () => {
-        expect(formatShortWeekdayDateId(d)).toBe('Sen, 11 Mei');
+        expect(formatShortWeekdayDateId(d)).toBe('Mon, May 11');
     });
 
     it('formatMonthDayId: day + short month', () => {
-        expect(formatMonthDayId(d)).toBe('11 Mei');
+        expect(formatMonthDayId(d)).toBe('May 11');
     });
 
     it('formatWeekdayDayId: short weekday + day', () => {
-        expect(formatWeekdayDayId(d)).toBe('Sen, 11');
+        expect(formatWeekdayDayId(d)).toBe('11 Mon');
     });
 
     it('formatDayMonthYearId: day + long month + year', () => {
-        expect(formatDayMonthYearId(d)).toBe('11 Mei 2026');
+        expect(formatDayMonthYearId(d)).toBe('May 11, 2026');
     });
 
     it('formatPaddedDayMonthYearId: padded day + short month + year', () => {
-        expect(formatPaddedDayMonthYearId(d)).toBe('11 Mei 2026');
+        expect(formatPaddedDayMonthYearId(d)).toBe('May 11, 2026');
     });
 });
 

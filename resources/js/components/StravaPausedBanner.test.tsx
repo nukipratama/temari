@@ -29,7 +29,7 @@ describe('StravaPausedBanner', () => {
         render(<StravaPausedBanner />);
         expect(
             screen.getByText(
-                'Tarikan dari Strava lagi dijeda sebentar. Lari kamu aman kok di Strava, nanti ketarik lagi otomatis.',
+                "The pull from Strava is paused for a bit. Your runs are safe on Strava, they'll pull back in automatically.",
             ),
         ).toBeInTheDocument();
     });

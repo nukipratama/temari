@@ -3,12 +3,15 @@ import { extendTailwindMerge } from 'tailwind-merge';
 /**
  * tailwind-merge, taught about the project's typography-tier utilities.
  *
- * `.text-label-small` / `.text-label-micro` / `.text-label-hero` / `.text-stat-fluid`
- * (defined in resources/css/app.css) bundle font size (and family/tracking) but
- * no color. Out of the box tailwind-merge misreads their `text-` prefix as a
- * text-*color* and drops them when a real color (`text-ink-2`) is merged in the
- * same call, silently stripping the styling. Registering them in the `font-size`
- * group makes them coexist with a color again.
+ * `.text-label-small` / `.text-label-micro` / `.text-label-hero` (defined in
+ * resources/css/app.css) and the `--text-display-*` / `--text-headline-*` /
+ * `--text-quote-*` / `--text-stat` / `--text-stat-fluid` scale tokens (the
+ * `@theme` block) bundle font size (and sometimes family/tracking) but no
+ * color. Out of the box tailwind-merge misreads their `text-` prefix as a
+ * text-*color* and drops them when a real color (`text-ink-2`) is merged in
+ * the same call, silently stripping the styling — confirmed live in
+ * StatTile's `lg` size (`text-stat` + a color) before this fix. Registering
+ * them in the `font-size` group makes them coexist with a color again.
  */
 const twMerge = extendTailwindMerge({
     extend: {
@@ -17,7 +20,21 @@ const twMerge = extendTailwindMerge({
                 'text-label-small',
                 'text-label-micro',
                 'text-label-hero',
+                'text-stat',
                 'text-stat-fluid',
+                'text-display-2xl',
+                'text-display-xl',
+                'text-display-lg',
+                'text-display-md',
+                'text-display-sm',
+                'text-display-xs',
+                'text-headline-lg',
+                'text-headline-md',
+                'text-headline-sm',
+                'text-headline-xs',
+                'text-quote-lg',
+                'text-quote-md',
+                'text-quote-sm',
             ],
         },
     },

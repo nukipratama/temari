@@ -132,7 +132,7 @@ export default function HeroPanel({
                         className="pointer-events-none absolute -inset-x-20 bottom-0 h-[60%] rounded-full opacity-60"
                         style={{
                             background:
-                                'radial-gradient(ellipse 80% 60% at 50% 100%, rgba(232,160,118,0.12) 0%, transparent 80%)',
+                                'radial-gradient(ellipse 80% 60% at 50% 100%, rgba(217,165,60,0.12) 0%, transparent 80%)',
                         }}
                     />
 
@@ -142,7 +142,7 @@ export default function HeroPanel({
                         className="pointer-events-none absolute left-[5%] top-0 h-full w-[90%] opacity-40"
                         style={{
                             background:
-                                'radial-gradient(ellipse 100% 70% at 50% 25%, rgba(232,160,118,0.2) 0%, rgba(232,160,118,0.05) 40%, transparent 70%)',
+                                'radial-gradient(ellipse 100% 70% at 50% 25%, rgba(217,165,60,0.2) 0%, rgba(217,165,60,0.05) 40%, transparent 70%)',
                         }}
                     />
 

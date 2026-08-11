@@ -19,43 +19,31 @@ function gamificationPropsFor(?User $user): array
 it('keeps every prop a closure so a partial reload can skip it', function (): void {
     $props = gamificationPropsFor(User::factory()->create());
 
-    foreach (['equippedAccessories', 'pendingReveal', 'goalsSummary'] as $key) {
+    foreach (['equippedAccessories', 'pendingReveal', 'activeRace'] as $key) {
         expect($props[$key])->toBeInstanceOf(Closure::class);
     }
 });
 
 it('reports what the mascot is wearing', function (): void {
     $user = User::factory()->create();
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_emas']);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_gold']);
 
     expect((gamificationPropsFor($user)['equippedAccessories'])())
-        ->toMatchArray(['medal' => 'accessory.medal_emas']);
+        ->toMatchArray(['medal' => 'accessory.medal_gold']);
 });
 
-it('gives a guest the empty accessory set and no goals or reveal', function (): void {
+it('gives a guest the empty accessory set and no reveal', function (): void {
     $props = gamificationPropsFor(null);
 
-    expect(($props['goalsSummary'])())->toBeNull()
-        ->and(($props['pendingReveal'])())->toBeNull()
+    expect(($props['pendingReveal'])())->toBeNull()
         ->and(($props['equippedAccessories'])())->toBe([
             'medal' => null,
-            'ikat_kepala' => null,
-            'kaus' => null,
-            'celana' => null,
-            'sepatu' => null,
+            'headband' => null,
+            'shirt' => null,
+            'shorts' => null,
+            'shoes' => null,
             'aura' => null,
         ]);
-});
-
-it('summarises the user goals with a total, a completed count and the closest few', function (): void {
-    $user = User::factory()->create();
-
-    $summary = (gamificationPropsFor($user)['goalsSummary'])();
-
-    expect($summary)->toHaveKeys(['total', 'completed', 'closest'])
-        ->and($summary['total'])->toBeGreaterThan(0)
-        ->and($summary['closest'])->toBeArray()
-        ->and(count($summary['closest']))->toBeLessThanOrEqual(3);
 });
 
 it('returns no pending reveal when the user has no card waiting', function (): void {

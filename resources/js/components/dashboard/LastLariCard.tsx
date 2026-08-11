@@ -17,12 +17,12 @@ import {
     paceSecPerKm,
 } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
-import { aktivitasUrl } from '@/lib/routes';
+import { activityUrl } from '@/lib/routes';
 import {
     formatIdDateUpper,
     formatWeather,
     shortenLocation,
-} from '@/pages/HariIni/helpers';
+} from '@/pages/Today/helpers';
 
 export interface LastRunNote {
     oneline: string;
@@ -55,18 +55,18 @@ export default function LastLariCard({
 
     return (
         <LinkCard
-            href={aktivitasUrl(run)}
+            href={activityUrl(run)}
             padding="md"
             className="flex h-full flex-col gap-3"
         >
             <SectionLabel dot className="mb-0">
-                Lari terakhir · {dateLabel}
+                Last run · {dateLabel}
             </SectionLabel>
             <div className="flex items-start gap-3">
                 <Temari pose={pose} size={48} />
                 <div className="min-w-0 flex-1">
                     <div className="font-display text-2xl leading-tight tracking-[-0.01em] text-ink">
-                        {run.name ?? 'Lari'}
+                        {run.name ?? 'Run'}
                     </div>
                     {dateUpper && (
                         <Eyebrow
@@ -159,7 +159,7 @@ export default function LastLariCard({
                 tone="horizon-deep"
                 className="mt-auto"
             >
-                Lihat detail lari →
+                View run detail →
             </Eyebrow>
         </LinkCard>
     );

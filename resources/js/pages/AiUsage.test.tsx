@@ -153,9 +153,7 @@ describe('AiUsage page', () => {
 
         expect(screen.getByText('AI Usage')).toBeInTheDocument();
         expect(
-            screen.getByText(
-                'Konsumsi token Azure OpenAI per rentang tanggal.',
-            ),
+            screen.getByText('Azure OpenAI token consumption per date range.'),
         ).toBeInTheDocument();
     });
 
@@ -163,7 +161,7 @@ describe('AiUsage page', () => {
         render(<AiUsage {...baseProps} />);
 
         expect(screen.getByText('2026-05-01')).toBeInTheDocument();
-        expect(screen.getByText('Anggaran Hari Ini')).toBeInTheDocument();
+        expect(screen.getByText("Today's Budget")).toBeInTheDocument();
         expect(
             screen.getByText('Breakdown per Deployment'),
         ).toBeInTheDocument();
@@ -178,24 +176,24 @@ describe('AiUsage page', () => {
         render(<AiUsage {...baseProps} />);
 
         expect(
-            screen.getByRole('progressbar', { name: '51.1% dari total' }),
+            screen.getByRole('progressbar', { name: '51.1% of total' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('progressbar', { name: '83.0% dari total' }),
+            screen.getByRole('progressbar', { name: '83.0% of total' }),
         ).toBeInTheDocument();
     });
 
     it('renders the daily chart section when the window has days', () => {
         render(<AiUsage {...baseProps} />);
 
-        expect(screen.getByText('Konsumsi Harian')).toBeInTheDocument();
-        expect(screen.getByText('2 hari')).toBeInTheDocument();
+        expect(screen.getByText('Daily Consumption')).toBeInTheDocument();
+        expect(screen.getByText('2 days')).toBeInTheDocument();
     });
 
     it('drops the daily chart section entirely when there is nothing to plot', () => {
         render(<AiUsage {...baseProps} daily={[]} />);
 
-        expect(screen.queryByText('Konsumsi Harian')).not.toBeInTheDocument();
+        expect(screen.queryByText('Daily Consumption')).not.toBeInTheDocument();
     });
 
     it('renders the flash info banner when present', () => {
@@ -216,7 +214,7 @@ describe('AiUsage page', () => {
     it('hides the attention area when nothing is stuck', () => {
         render(<AiUsage {...baseProps} />);
 
-        expect(screen.queryByText('Perlu perhatian')).not.toBeInTheDocument();
+        expect(screen.queryByText('Needs attention')).not.toBeInTheDocument();
         expect(
             screen.queryByRole('button', { name: /Pulihkan semua/ }),
         ).not.toBeInTheDocument();
@@ -225,7 +223,7 @@ describe('AiUsage page', () => {
     it('shows the attention area once a bucket is filled', () => {
         render(<AiUsage {...baseProps} deadLettered={[deadLetteredGroup]} />);
 
-        expect(screen.getByText('Perlu perhatian')).toBeInTheDocument();
+        expect(screen.getByText('Needs attention')).toBeInTheDocument();
         expect(screen.getByText('Charlie')).toBeInTheDocument();
     });
 
@@ -241,7 +239,7 @@ describe('AiUsage page', () => {
             />,
         );
 
-        expect(screen.getByText('Rp 1.000,00')).toBeInTheDocument();
+        expect(screen.getByText('Rp 1,000.00')).toBeInTheDocument();
         expect(screen.getAllByText(/^Rp /).length).toBeGreaterThan(1);
     });
 });

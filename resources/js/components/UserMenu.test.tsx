@@ -11,10 +11,10 @@ beforeEach(() => {
 describe('UserMenu', () => {
     it('opens the dropdown on click and shows the user name + logout', () => {
         render(<UserMenu name="Ada Lovelace" avatarUrl={null} />);
-        fireEvent.click(screen.getByLabelText(/Buka menu Ada Lovelace/));
-        expect(screen.getByText('Masuk sebagai')).toBeInTheDocument();
+        fireEvent.click(screen.getByLabelText(/Open menu for Ada Lovelace/));
+        expect(screen.getByText('Signed in as')).toBeInTheDocument();
         expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
-        expect(screen.getByText('Keluar')).toBeInTheDocument();
+        expect(screen.getByText('Log out')).toBeInTheDocument();
     });
 
     // Moved here from Aku: settings used to be a row at the bottom of that
@@ -22,39 +22,40 @@ describe('UserMenu', () => {
     // beside logout, one tap from every page on every layout.
     it('links to the settings hub alongside logout', () => {
         render(<UserMenu name="Ada Lovelace" avatarUrl={null} />);
-        fireEvent.click(screen.getByLabelText(/Buka menu Ada Lovelace/));
+        fireEvent.click(screen.getByLabelText(/Open menu for Ada Lovelace/));
 
-        expect(
-            screen.getByRole('link', { name: 'Pengaturan' }),
-        ).toHaveAttribute('href', '/pengaturan');
+        expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
+            'href',
+            '/settings',
+        );
     });
 
     it('closes the dropdown when the settings link is followed', () => {
         render(<UserMenu name="Ada Lovelace" avatarUrl={null} />);
-        fireEvent.click(screen.getByLabelText(/Buka menu Ada Lovelace/));
-        fireEvent.click(screen.getByRole('link', { name: 'Pengaturan' }));
+        fireEvent.click(screen.getByLabelText(/Open menu for Ada Lovelace/));
+        fireEvent.click(screen.getByRole('link', { name: 'Settings' }));
 
-        expect(screen.queryByText('Masuk sebagai')).not.toBeInTheDocument();
+        expect(screen.queryByText('Signed in as')).not.toBeInTheDocument();
     });
 
-    it('posts to /logout when the Keluar button is clicked', () => {
+    it('posts to /logout when the Log out button is clicked', () => {
         render(<UserMenu name="Ada Lovelace" avatarUrl={null} />);
-        fireEvent.click(screen.getByLabelText(/Buka menu Ada Lovelace/));
-        fireEvent.click(screen.getByText('Keluar'));
+        fireEvent.click(screen.getByLabelText(/Open menu for Ada Lovelace/));
+        fireEvent.click(screen.getByText('Log out'));
         expect(router.post).toHaveBeenCalledWith('/logout');
     });
 
     it('closes the dropdown when Escape is pressed', () => {
         render(<UserMenu name="Ada Lovelace" avatarUrl={null} />);
-        fireEvent.click(screen.getByLabelText(/Buka menu Ada Lovelace/));
-        expect(screen.getByText('Keluar')).toBeInTheDocument();
+        fireEvent.click(screen.getByLabelText(/Open menu for Ada Lovelace/));
+        expect(screen.getByText('Log out')).toBeInTheDocument();
         fireEvent.keyDown(document, { key: 'Escape' });
-        expect(screen.queryByText('Keluar')).not.toBeInTheDocument();
+        expect(screen.queryByText('Log out')).not.toBeInTheDocument();
     });
 
     it('returns focus to the trigger button when Escape is pressed', () => {
         render(<UserMenu name="Ada Lovelace" avatarUrl={null} />);
-        const trigger = screen.getByLabelText(/Buka menu Ada Lovelace/);
+        const trigger = screen.getByLabelText(/Open menu for Ada Lovelace/);
         trigger.focus();
         fireEvent.click(trigger);
         fireEvent.keyDown(document, { key: 'Escape' });
@@ -63,11 +64,11 @@ describe('UserMenu', () => {
 
     it('does not adopt ARIA menu semantics (disclosure popover, not a menu)', () => {
         render(<UserMenu name="Ada Lovelace" avatarUrl={null} />);
-        fireEvent.click(screen.getByLabelText(/Buka menu Ada Lovelace/));
+        fireEvent.click(screen.getByLabelText(/Open menu for Ada Lovelace/));
         expect(screen.queryByRole('menu')).not.toBeInTheDocument();
         expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Keluar' }),
+            screen.getByRole('button', { name: 'Log out' }),
         ).toBeInTheDocument();
     });
 
@@ -78,7 +79,7 @@ describe('UserMenu', () => {
                 avatarUrl="https://example.com/a.jpg"
             />,
         );
-        const avatarButton = screen.getByLabelText(/Buka menu Ada/);
+        const avatarButton = screen.getByLabelText(/Open menu for Ada/);
         expect(avatarButton.querySelector('img')).not.toBeNull();
     });
 });

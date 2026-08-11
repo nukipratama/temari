@@ -164,9 +164,7 @@ it('treats only the latest run as the per-activity chain head', function (Analys
         ->and(chainResolver()->isHeadRegenerate($user, $type, $older->id, null, chainDoneRow()))->toBeFalse();
 })->with([
     'post_run_speech' => AnalysisType::PostRunSpeech,
-    'run_insight_technical' => AnalysisType::RunInsightTechnical,
-    'run_insight_splits' => AnalysisType::RunInsightSplits,
-    'run_insight_zones' => AnalysisType::RunInsightZones,
+    'run_insight' => AnalysisType::RunInsight,
 ]);
 
 it('never reports a head regenerate for an unchained type', function (): void {
@@ -238,13 +236,13 @@ it('resumes the earliest run whose clicked-type row is not Done', function (): v
     Analysis::factory()->create([
         'subject_type' => Activity::class,
         'subject_id' => $oldest->id,
-        'analysis_type' => AnalysisType::RunInsightSplits,
+        'analysis_type' => AnalysisType::RunInsight,
         'discriminator' => null,
         'status' => AnalysisStatus::Pending,
     ]);
     chainRun($user, '2026-06-10 06:00:00', AnalysisType::PostRunSpeech, AnalysisStatus::Pending);
 
-    expect(chainResolver()->earliestUnfilledLink($user, AnalysisType::RunInsightSplits)?->subjectId)->toBe($oldest->id);
+    expect(chainResolver()->earliestUnfilledLink($user, AnalysisType::RunInsight)?->subjectId)->toBe($oldest->id);
 });
 
 it('returns no per-activity link when every run of that type is Done', function (): void {

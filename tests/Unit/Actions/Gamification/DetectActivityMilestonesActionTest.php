@@ -75,7 +75,7 @@ it('fires longest_ever when a new activity beats the prior longest', function ()
     expect($kinds)->toContain('longest_ever');
 });
 
-it('writes both milestone bodies with an Indonesian comma decimal', function (): void {
+it('writes both milestone bodies with a period decimal', function (): void {
     $user = User::factory()->create();
     [$short, $shortDetail] = buildActivity($user, '2026-05-15', 5_000);
     ($this->detector)($short, $shortDetail);
@@ -86,10 +86,10 @@ it('writes both milestone bodies with an Indonesian comma decimal', function ():
     $longest = collect($milestones)->firstWhere('kind', 'longest_ever');
     $firstEver = collect($milestones)->firstWhere('kind', 'first_ever_distance');
 
-    expect($longest['body'])->toContain('10,5 km')
-        ->and($longest['body'])->not->toContain('10.5')
-        ->and($firstEver['body'])->toContain('10,5 km')
-        ->and($firstEver['body'])->not->toContain('10.5');
+    expect($longest['body'])->toContain('10.5 km')
+        ->and($longest['body'])->not->toContain('10,5')
+        ->and($firstEver['body'])->toContain('10.5 km')
+        ->and($firstEver['body'])->not->toContain('10,5');
 });
 
 it('includes a PR milestone when categories are passed in', function (): void {

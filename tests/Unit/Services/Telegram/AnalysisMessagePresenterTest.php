@@ -22,14 +22,14 @@ it('formats a post-run message with the title line, a blank line, the content, a
 
     $message = new AnalysisMessagePresenter()->format($analysis);
 
-    expect($message)->toStartWith("🏃 Lari kamu udah masuk! 🏁\n\nPace kamu konsisten banget.")
-        ->and($message)->toContain('Lihat detail lari: ' . route('aktivitas.show', 123));
+    expect($message)->toStartWith("🏃 Your run is in! 🏁\n\nPace kamu konsisten banget.")
+        ->and($message)->toContain('View run details: ' . route('activities.show', 123));
 });
 
 it('includes a metrics line for a post-run notification', function (): void {
     $activity = Activity::factory()->create();
     ActivityDetail::factory()->for($activity)->create([
-        'distance' => 5200,        // 5,2 km
+        'distance' => 5200,        // 5.2 km
         'elapsed_time' => 2054,     // 34:14, pace 6:35/km
         'average_heartrate' => 159,
     ]);
@@ -41,7 +41,7 @@ it('includes a metrics line for a post-run notification', function (): void {
 
     $message = new AnalysisMessagePresenter()->format($analysis);
 
-    expect($message)->toContain('5,2 km · 34:14 · 6:35/km · 159 bpm');
+    expect($message)->toContain('5.2 km · 34:14 · 6:35/km · 159 bpm');
 });
 
 it('omits HR from the metrics line on a strap-less run', function (): void {
@@ -59,7 +59,7 @@ it('omits HR from the metrics line on a strap-less run', function (): void {
 
     $message = new AnalysisMessagePresenter()->format($analysis);
 
-    expect($message)->toContain('5,2 km · 34:14 · 6:35/km')
+    expect($message)->toContain('5.2 km · 34:14 · 6:35/km')
         ->and($message)->not->toContain('bpm');
 });
 
@@ -71,8 +71,8 @@ it('links a weekly recap to the run history page', function (): void {
 
     $message = new AnalysisMessagePresenter()->format($analysis);
 
-    expect($message)->toStartWith("📊 Rekap minggu lalu udah siap\n\nMinggu ini 28 km.")
-        ->and($message)->toContain('Lihat riwayat: ' . route('aktivitas.index'));
+    expect($message)->toStartWith("📊 Your weekly recap is ready\n\nMinggu ini 28 km.")
+        ->and($message)->toContain('View history: ' . route('activities.index'));
 });
 
 it('links a monthly recap to its month on the calendar', function (): void {
@@ -84,24 +84,24 @@ it('links a monthly recap to its month on the calendar', function (): void {
 
     $message = new AnalysisMessagePresenter()->format($analysis);
 
-    expect($message)->toStartWith("🗓️ Rekap Juni udah siap\n\nBulan ini 120 km.")
-        ->and($message)->toContain('Lihat kalender: ' . route('kalender', ['month' => '2026-06']));
+    expect($message)->toStartWith("🗓️ Your June recap is ready\n\nBulan ini 120 km.")
+        ->and($message)->toContain('View calendar: ' . route('calendar', ['month' => '2026-06']));
 });
 
 // --- title() ---------------------------------------------------------------
 
 it('builds a post-run title carrying the run distance', function (): void {
     $activity = Activity::factory()->create();
-    ActivityDetail::factory()->for($activity)->create(['distance' => 8230]); // 8.23 km → 8,2K
+    ActivityDetail::factory()->for($activity)->create(['distance' => 8230]); // 8.23 km → 8.2K
     $analysis = Analysis::factory()->make([
         'analysis_type' => AnalysisType::PostRunSpeech,
         'subject_id' => $activity->id,
     ]);
 
-    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('🏃 Lari 8,2K kamu udah masuk! 🏁');
+    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('🏃 Your 8.2K run is in! 🏁');
 });
 
-it('drops the ",0" so a whole-kilometre run reads as "5K"', function (): void {
+it('drops the ".0" so a whole-kilometre run reads as "5K"', function (): void {
     $activity = Activity::factory()->create();
     ActivityDetail::factory()->for($activity)->create(['distance' => 5000]);
     $analysis = Analysis::factory()->make([
@@ -109,7 +109,7 @@ it('drops the ",0" so a whole-kilometre run reads as "5K"', function (): void {
         'subject_id' => $activity->id,
     ]);
 
-    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('🏃 Lari 5K kamu udah masuk! 🏁');
+    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('🏃 Your 5K run is in! 🏁');
 });
 
 it('falls back to a distance-less post-run title when the activity has no detail', function (): void {
@@ -118,16 +118,16 @@ it('falls back to a distance-less post-run title when the activity has no detail
         'subject_id' => 999999,
     ]);
 
-    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('🏃 Lari kamu udah masuk! 🏁');
+    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('🏃 Your run is in! 🏁');
 });
 
-it('builds a monthly-recap title naming the Indonesian month', function (): void {
+it('builds a monthly-recap title naming the month', function (): void {
     $analysis = Analysis::factory()->make([
         'analysis_type' => AnalysisType::MonthlyRecap,
         'discriminator' => '2026-07',
     ]);
 
-    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('🗓️ Rekap Juli udah siap');
+    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('🗓️ Your July recap is ready');
 });
 
 it('falls back to the label when the monthly-recap discriminator is missing', function (): void {
@@ -136,13 +136,13 @@ it('falls back to the label when the monthly-recap discriminator is missing', fu
         'discriminator' => null,
     ]);
 
-    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('🗓️ Rekap bulanan udah siap');
+    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('🗓️ Your monthly recap is ready');
 });
 
 it('uses the static label for the weekly recap title', function (): void {
     $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::WeeklyRecap]);
 
-    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('📊 Rekap minggu lalu udah siap');
+    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('📊 Your weekly recap is ready');
 });
 
 // Tapping "your weekly recap is ready" should land on *that* week, the way the
@@ -156,7 +156,7 @@ it('deep-links the weekly recap to its own week', function (): void {
     ]);
 
     expect(new AnalysisMessagePresenter()->url($analysis))
-        ->toBe(route('aktivitas.index', ['week' => '2026-05-17']));
+        ->toBe(route('activities.index', ['week' => '2026-05-17']));
 });
 
 // A deleted week must not turn the notification into a dead end.
@@ -166,7 +166,7 @@ it('falls back to the bare run history when the recap snapshot is gone', functio
         'subject_id' => 99_999,
     ]);
 
-    expect(new AnalysisMessagePresenter()->url($analysis))->toBe(route('aktivitas.index'));
+    expect(new AnalysisMessagePresenter()->url($analysis))->toBe(route('activities.index'));
 });
 
 it('falls back to the app name for a non-notifiable type', function (): void {

@@ -25,21 +25,21 @@ export function paceSecPerKm(
     return movingTimeSec / (distanceM / 1000);
 }
 
-// Full Indonesian words: "2 jam 30 menit" / "30 menit 10 detik" / "45 detik".
-// Seconds show only when the duration is under an hour, where they read as
-// detail rather than clutter. Use formatDurationHMS for the digital H:MM:SS form.
+// Full words: "2 hr 30 min" / "30 min 10 sec" / "45 sec". Seconds show only
+// when the duration is under an hour, where they read as detail rather than
+// clutter. Use formatDurationHMS for the digital H:MM:SS form.
 export function formatDuration(seconds: number): string {
     const total = Math.round(seconds);
     const h = Math.floor(total / 3600);
     const m = Math.floor((total % 3600) / 60);
     const s = total % 60;
     if (h > 0) {
-        return m > 0 ? `${h} jam ${m} menit` : `${h} jam`;
+        return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
     }
     if (m > 0) {
-        return s > 0 ? `${m} menit ${s} detik` : `${m} menit`;
+        return s > 0 ? `${m} min ${s} sec` : `${m} min`;
     }
-    return `${s} detik`;
+    return `${s} sec`;
 }
 
 export function formatDurationHMS(seconds: number | null | undefined): string {
@@ -79,25 +79,25 @@ export function parseNaiveLocalDate(iso: string): Date | null {
 }
 
 // Shared wording for the relative formatters below. Negative (future/skewed)
-// deltas clamp to "baru aja" rather than leaking "-3 jam lalu" into the UI.
+// deltas clamp to "just now" rather than leaking "-3 hr ago" into the UI.
 function relativeIdFromDelta(ms: number, iso: string, naive: boolean): string {
     if (!Number.isFinite(ms)) return '—';
-    if (ms < 0) return 'baru aja';
+    if (ms < 0) return 'just now';
     const sec = Math.round(ms / 1000);
-    if (sec < 60) return 'baru aja';
+    if (sec < 60) return 'just now';
     const min = Math.floor(sec / 60);
-    if (min < 60) return `${min} menit lalu`;
+    if (min < 60) return `${min} min ago`;
     const h = Math.floor(min / 60);
-    if (h < 24) return `${h} jam lalu`;
+    if (h < 24) return `${h} hr ago`;
     const day = Math.floor(h / 24);
-    if (day === 1) return 'kemarin';
-    if (day < 7) return `${day} hari lalu`;
+    if (day === 1) return 'yesterday';
+    if (day < 7) return `${day} days ago`;
     const week = Math.floor(day / 7);
-    if (week < 5) return `${week} minggu lalu`;
+    if (week < 5) return `${week} wk ago`;
     return naive ? formatNaiveIdDate(iso, 'short') : formatIdDate(iso, 'short');
 }
 
-// "5 menit lalu", "2 jam lalu", "kemarin", "3 hari lalu" for TRUE INSTANTS
+// "5 min ago", "2 hr ago", "yesterday", "3 days ago" for TRUE INSTANTS
 // (created_at / generated_at / fetched_at style UTC timestamps, or local Dates
 // round-tripped through toISOString). Falls back to '—' on null/invalid.
 // For naive wall-clock values (start_date_local), use formatNaiveRelativeId.
@@ -115,7 +115,7 @@ export function formatRelativeId(
 
 // Relative wording for NAIVE wall-clock values (Strava's start_date_local,
 // serialized with a misleading trailing Z): the delta is measured against the
-// as-recorded local clock, so a 06:30 run reads "12 jam lalu" at 18:30 local
+// as-recorded local clock, so a 06:30 run reads "12 hr ago" at 18:30 local
 // instead of being shifted by the viewer's offset.
 export function formatNaiveRelativeId(
     iso: string | null | undefined,
@@ -130,14 +130,14 @@ export function formatNaiveRelativeId(
 function idDateFromDate(d: Date, format: 'short' | 'long'): string {
     if (Number.isNaN(d.getTime())) return '—';
     if (format === 'long') {
-        return d.toLocaleDateString('id-ID', {
+        return d.toLocaleDateString('en-US', {
             weekday: 'long',
             day: '2-digit',
             month: 'long',
             year: 'numeric',
         });
     }
-    return d.toLocaleDateString('id-ID', {
+    return d.toLocaleDateString('en-US', {
         weekday: 'long',
         day: '2-digit',
         month: 'short',
@@ -166,57 +166,57 @@ export function formatNaiveIdDate(
     return idDateFromDate(d, format);
 }
 
-/** "Senin, 11 Mei" — long weekday + numeric day + long month, no year. */
+/** "Monday, May 11" — long weekday + numeric day + long month, no year. */
 export function formatWeekdayDateId(date: Date): string {
-    return date.toLocaleDateString('id-ID', {
+    return date.toLocaleDateString('en-US', {
         weekday: 'long',
         day: 'numeric',
         month: 'long',
     });
 }
 
-/** "08:30" — 24-hour clock, zero-padded. */
+/** "08:30 AM" — zero-padded hour and minute. */
 export function formatTimeId(date: Date): string {
-    return date.toLocaleTimeString('id-ID', {
+    return date.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
     });
 }
 
-/** "Sen, 11 Mei" — short weekday + numeric day + short month. */
+/** "Mon, May 11" — short weekday + numeric day + short month. */
 export function formatShortWeekdayDateId(date: Date): string {
-    return date.toLocaleDateString('id-ID', {
+    return date.toLocaleDateString('en-US', {
         weekday: 'short',
         day: 'numeric',
         month: 'short',
     });
 }
 
-/** "11 Mei" — numeric day + short month, no weekday or year. */
+/** "May 11" — numeric day + short month, no weekday or year. */
 export function formatMonthDayId(date: Date): string {
-    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
 }
 
-/** "Sen, 11" — short weekday + numeric day only. */
+/** "11 Mon" — numeric day + short weekday only. */
 export function formatWeekdayDayId(date: Date): string {
-    return date.toLocaleDateString('id-ID', {
+    return date.toLocaleDateString('en-US', {
         weekday: 'short',
         day: 'numeric',
     });
 }
 
-/** "11 Mei 2026" — numeric day + long month + year, no weekday. */
+/** "May 11, 2026" — numeric day + long month + year, no weekday. */
 export function formatDayMonthYearId(date: Date): string {
-    return date.toLocaleDateString('id-ID', {
+    return date.toLocaleDateString('en-US', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
     });
 }
 
-/** "11 Mei 2026" — zero-padded day + short month + year. */
+/** "May 11, 2026" — zero-padded day + short month + year. */
 export function formatPaddedDayMonthYearId(date: Date): string {
-    return date.toLocaleDateString('id-ID', {
+    return date.toLocaleDateString('en-US', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
@@ -228,14 +228,14 @@ const ID_MONTH_SHORT = [
     'Feb',
     'Mar',
     'Apr',
-    'Mei',
+    'May',
     'Jun',
     'Jul',
-    'Agu',
+    'Aug',
     'Sep',
-    'Okt',
+    'Oct',
     'Nov',
-    'Des',
+    'Dec',
 ] as const;
 
 // "19 Feb 2026" — parses YYYY-MM-DD from the front of the string so the wall-

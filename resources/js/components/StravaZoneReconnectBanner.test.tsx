@@ -27,11 +27,11 @@ describe('StravaZoneReconnectBanner', () => {
     it('shows a reconnect link when the scope is missing', () => {
         setMockPage({ ...base, stravaZoneScopeMissing: true });
         render(<StravaZoneReconnectBanner />);
-        expect(screen.getByText(/Sambungin ulang Strava/)).toBeInTheDocument();
-        const link = screen.getByText('Sambungin lagi').closest('a');
+        expect(screen.getByText(/Reconnect Strava/)).toBeInTheDocument();
+        const link = screen.getByText('Reconnect').closest('a');
         expect(link).toHaveAttribute(
             'href',
-            '/auth/strava/redirect?from=/profil',
+            '/auth/strava/redirect?from=/profile',
         );
     });
 });

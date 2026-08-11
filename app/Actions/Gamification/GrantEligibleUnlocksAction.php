@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Actions\Gamification;
 
-use App\Enums\Badge;
-use App\Enums\Rarity;
 use App\Models\User;
 use App\Models\UserUnlock;
 use App\Services\Gamification\GamificationContext;
+use App\Services\Gamification\GoalResolver;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Session;
 
@@ -20,14 +19,19 @@ class GrantEligibleUnlocksAction
 {
     /** Keys that trigger the full-screen unlock takeover instead of the toast. */
     private const array MAJOR_KEYS = [
-        'accessory.ikat_kepala_legendaris',
-        'accessory.kaus_legendaris',
-        'accessory.sepatu_legendaris',
-        'accessory.aura_jagoan',
+        'accessory.headband_legendary',
+        'accessory.shirt_legendary',
+        'accessory.shoes_legendary',
+        'accessory.aura_champion',
     ];
 
     /** @var list<string>|null */
     private static ?array $allKeys = null;
+
+    public function __construct(
+        private readonly GoalResolver $goalResolver = new GoalResolver(),
+    ) {
+    }
 
     /** @return list<string> */
     private static function allKeys(): array
@@ -87,148 +91,26 @@ class GrantEligibleUnlocksAction
     }
 
     /**
+     * Evaluates every entry in the goal catalog against the context generically:
+     * grant once `current >= target`, the same comparator {@see GoalResolver}
+     * uses for progress bars. A new unlock needs only a catalog entry here, no
+     * PHP change.
+     *
      * @return list<string>
      */
     private function computeEligible(User $user): array
     {
         $ctx = GamificationContext::forUser($user);
 
-        return [
-            ...$this->eligibleMedal($ctx),
-            ...$this->eligibleIkatKepala($ctx),
-            ...$this->eligibleKaus($ctx),
-            ...$this->eligibleCelana($ctx),
-            ...$this->eligibleSepatu($ctx),
-            ...$this->eligibleAura($ctx),
-        ];
-    }
+        /** @var array<string, array{metric: string, metric_key?: string, target: int|float}> $catalog */
+        $catalog = (array) config('temari_goals', []);
 
-    /** @return list<string> */
-    private function eligibleMedal(GamificationContext $ctx): array
-    {
         $keys = [];
-        if ($ctx->prCount >= 1) {
-            $keys[] = 'accessory.medal_pertama';
-        }
-        if ($ctx->prCount >= 5) {
-            $keys[] = 'accessory.medal_emas';
-        }
-        if ($ctx->prCount >= 10) {
-            $keys[] = 'accessory.medal_perak';
-        }
-        if ($ctx->prCount >= 20) {
-            $keys[] = 'accessory.medal_platina';
-        }
-
-        return $keys;
-    }
-
-    /** @return list<string> */
-    private function eligibleIkatKepala(GamificationContext $ctx): array
-    {
-        $keys = [];
-        $rc = $ctx->rarityCounts;
-
-        if (($rc[Rarity::Uncommon->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.ikat_kepala_berkesan';
-        }
-        if (($rc[Rarity::Rare->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.ikat_kepala_langka';
-        }
-        if (($rc[Rarity::Epic->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.ikat_kepala_epik';
-        }
-        if (($rc[Rarity::Legendary->value] ?? 0) >= 1) {
-            $keys[] = 'accessory.ikat_kepala_legendaris';
-        }
-
-        return $keys;
-    }
-
-    /** @return list<string> */
-    private function eligibleKaus(GamificationContext $ctx): array
-    {
-        $keys = [];
-
-        if ($ctx->activityCount >= 1) {
-            $keys[] = 'accessory.kaus_pemula';
-        }
-        if (($ctx->badgeCounts[Badge::AnakPagi->value] ?? 0) >= 5) {
-            $keys[] = 'accessory.kaus_pagi';
-        }
-        if (($ctx->badgeCounts[Badge::PejuangHujan->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.kaus_hujan';
-        }
-        if ($ctx->activityCount >= 50) {
-            $keys[] = 'accessory.kaus_legendaris';
-        }
-
-        return $keys;
-    }
-
-    /** @return list<string> */
-    private function eligibleCelana(GamificationContext $ctx): array
-    {
-        $keys = [];
-
-        if ($ctx->fiveKPlus >= 1) {
-            $keys[] = 'accessory.celana_ringan';
-        }
-        if ($ctx->tenKPlus >= 1) {
-            $keys[] = 'accessory.celana_jarak';
-        }
-        if (($ctx->badgeCounts[Badge::NegativeSplit->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.celana_split';
-        }
-        if ($ctx->halfMarathon >= 1) {
-            $keys[] = 'accessory.celana_maraton';
-        }
-
-        return $keys;
-    }
-
-    /** @return list<string> */
-    private function eligibleSepatu(GamificationContext $ctx): array
-    {
-        $keys = [];
-
-        if ($ctx->activityCount >= 10) {
-            $keys[] = 'accessory.sepatu_basic';
-        }
-
-        if ($ctx->fastPace >= 1) {
-            $keys[] = 'accessory.sepatu_cepat';
-        }
-
-        if ($ctx->tenKPlus >= 5) {
-            $keys[] = 'accessory.sepatu_tahan';
-        }
-        if ($ctx->totalDistanceM >= 1_000_000) {
-            $keys[] = 'accessory.sepatu_legendaris';
-        }
-
-        return $keys;
-    }
-
-    /** @return list<string> */
-    private function eligibleAura(GamificationContext $ctx): array
-    {
-        $keys = [];
-
-        if ($ctx->twoWeekStreak >= 2) {
-            $keys[] = 'accessory.aura_pemanasan';
-        }
-        if (($ctx->badgeCounts[Badge::HariPanas->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.aura_gerah';
-        }
-        if (($ctx->badgeCounts[Badge::Z2Master->value] ?? 0) >= 5) {
-            $keys[] = 'accessory.aura_tenang';
-        }
-        if (($ctx->rarityCounts[Rarity::Legendary->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.aura_jagoan';
-        }
-        if (($ctx->badgeCounts[Badge::LawanAngin->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.aura_angin';
+        foreach ($catalog as $key => $goal) {
+            $current = $this->goalResolver->currentValue($ctx, $goal['metric'], $goal['metric_key'] ?? '');
+            if ($current >= $goal['target']) {
+                $keys[] = (string) $key;
+            }
         }
 
         return $keys;

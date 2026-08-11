@@ -38,7 +38,7 @@ export default function ZoneBar({
     const breakdown = segments
         .map((s) => formatZoneShare(s.zone, s.pct))
         .join(', ');
-    const summary = `Distribusi zona detak jantung, didominasi ${dominant.zone} (${dominant.pct}%): ${breakdown}`;
+    const summary = `Heart rate zone distribution, dominated by ${dominant.zone} (${dominant.pct}%): ${breakdown}`;
 
     return (
         <div className={cn('flex flex-col gap-1', className)}>

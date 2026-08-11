@@ -1,11 +1,11 @@
 ---
-title: Profile (Aku)
+title: Profile
 description: The runner's identity page — Temari's profile voice, lifetime stats, 12-week persona mix, PR progression charts, Strava status
 tags: [feature, profile]
 status: living
 reviewed: 2026-06-20
 code_refs:
-  - resources/js/pages/Aku.tsx
+  - resources/js/pages/Profile.tsx
   - app/Http/Controllers/ProfileController.php
   - resources/js/components/PersonaBar.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
@@ -16,17 +16,17 @@ code_refs:
   - app/Services/Run/Metrics/TrainingPaceCalculator.php
 ---
 
-# Profile (Aku)
+# Profile
 
-The "Aku" page (`/profil`) is the runner's about-me: who they are, how Temari sees them, their lifetime totals, a 12-week mood persona, and their PR progression over time. Server entry is [ProfileController](app/Http/Controllers/ProfileController.php) (`__invoke`), rendering the [Aku](resources/js/pages/Aku.tsx) page.
+The Profile page (`/profile`) is the runner's about-me: who they are, how Temari sees them, their lifetime totals, a 12-week mood persona, and their PR progression over time. Server entry is [ProfileController](app/Http/Controllers/ProfileController.php) (`__invoke`), rendering the [Profile](resources/js/pages/Profile.tsx) page.
 
-**Navigation:** `route('profil')` → `/profil`. Named route: `profil`. "Aku" is the nav *label* only ([TopNav](resources/js/components/TopNav.tsx)); there is no `/aku` route, and `/profile` is a permanent redirect to `/profil`.
+**Navigation:** `route('profile')` → `/profile`. Named route: `profile`. "Me" is the nav *label* only ([TopNav](resources/js/components/TopNav.tsx)); there is no `/aku` route, and `/profil` is a permanent redirect to `/profile`.
 
 ## System dependencies
 
 - **AI narration** — `profileVoice` (`AkuProfileVoice`) is an `Analysis` row from the [[ai-pipeline]]. It is the page's only narrated block.
 - **Gamification** — the `PersonalRecord` rows behind the progression charts come from [[gamification]].
-- **Settings** — the Telegram toggles, HR-zone entry, and account deletion moved to the [[settings]] hub; Aku links to it.
+- **Settings** — the Telegram toggles, HR-zone entry, and account deletion moved to the [[settings]] hub; Profile links to it.
 - **Data model** — `PersonalRecord` shape in [[data-model]].
 
 ## Identity + Kata Temari tentang kamu
@@ -37,9 +37,9 @@ This is the merged Aku voice: it reads who the runner is from their 12-week mood
 
 ## Stats trio
 
-Three `StatCard`s: **Total km**, **Total lari**, **Lari terjauh**. The controller delegates to [LifetimeStats](app/Services/Run/LifetimeStats.php), the same service `/kalender` uses: one aggregate query over `ActivityDetail` (`SUM(distance)`, `MAX(distance)`, `MIN(start_date_local)`) plus `user->activities()->count()` for the run count, converted to km and cached per user for 5 minutes. `/profil` maps its `longest_km` onto the `longest_run_km` prop; the page renders **Total km** at 1dp and **Lari terjauh** at 2dp, matching the precision the service rounds to.
+Three `StatCard`s: **Total km**, **Total lari**, **Lari terjauh**. The controller delegates to [LifetimeStats](app/Services/Run/LifetimeStats.php), the same service `/calendar` uses: one aggregate query over `ActivityDetail` (`SUM(distance)`, `MAX(distance)`, `MIN(start_date_local)`) plus `user->activities()->count()` for the run count, converted to km and cached per user for 5 minutes. `/profile` maps its `longest_km` onto the `longest_run_km` prop; the page renders **Total km** at 1dp and **Lari terjauh** at 2dp, matching the precision the service rounds to.
 
-Sharing `/kalender`'s cache means the totals can trail a just-ingested run by up to the TTL, the same window `/kalender` has always had.
+Sharing `/calendar`'s cache means the totals can trail a just-ingested run by up to the TTL, the same window `/calendar` has always had.
 
 ## Fitness — VDOT, threshold pace & training paces
 
@@ -57,11 +57,11 @@ When `progressionByCategory` is non-empty, a tabbed section (5K / 10K / HM / FM)
 
 ## Not on this page
 
-PRs and accessories are **not** rendered here — Aku shows no PR cards and no accessory strip. The full PR list lives at `/rekor` ([[records]]) and the unlock catalog at `/aksesori` ([[targets-accessories]]).
+PRs and accessories are **not** rendered here — Profile shows no PR cards and no accessory strip. The full PR list lives at `/records` ([[records]]) and the unlock catalog at `/accessories` ([[targets-accessories]]).
 
-## Pengaturan
+## Settings
 
-Aku no longer carries a settings entry point. The Telegram notification panel and the Zona HR entry once lived inline here, then behind a single row at the bottom of the page; both now live on the [[settings]] hub, reached from the avatar menu ([UserMenu](../../resources/js/components/UserMenu.tsx)) next to "Keluar". Settings is an account action, not a profile section — putting it beside logout makes it reachable from every page instead of only this one.
+Profile no longer carries a settings entry point. The Telegram notification panel and the Zona HR entry once lived inline here, then behind a single row at the bottom of the page; both now live on the [[settings]] hub, reached from the avatar menu ([UserMenu](../../resources/js/components/UserMenu.tsx)) next to "Keluar". Settings is an account action, not a profile section — putting it beside logout makes it reachable from every page instead of only this one.
 
 ## Notes / gotchas
 

@@ -1,6 +1,6 @@
 # Design tokens
 
-Single source of truth for the **Daybreak** design system. All values are
+Single source of truth for the **Threadwork** design system. All values are
 defined in the `@theme` block of [resources/css/app.css](../resources/css/app.css);
 this file is the human-readable index. When you change a token, update it in
 `app.css` (the real source) and reflect it here. CLAUDE.md and the README point
@@ -50,12 +50,12 @@ mapping is encoded in the role utilities below (`.text-prose`, `.text-stat`, `.t
 
 | Family | Tokens | Role |
 |---|---|---|
-| Sky | `sky`, `sky-deep`, `sky-2` (`#1f2747`) | Structure, dark hero panels (only "dark" surface) |
-| Horizon | `horizon`, `horizon-deep` (`#e8a076` peach) | Primary CTA, "earned" / PR state, Temari accent |
-| Cream | `cream`, `cream-deep` (`#f6f1e8`) | Paper / secondary surface, borders, on-dark text |
+| Sky | `sky`, `sky-deep`, `sky-2` (`#241c54`) | Structure, dark hero panels (only "dark" surface). Deep indigo thread. |
+| Horizon | `horizon`, `horizon-deep` (`#d9a53c` gold) | Primary CTA, "earned" / PR state, Temari accent. Gold thread. |
+| Cream | `cream`, `cream-deep` (`#f5f0e4`) | Paper / secondary surface, borders, on-dark text. Warm linen canvas. |
 | Ink | `ink` / `ink-2` / `ink-3` (+ `ink-on-sky`) | 3-tier text contrast (primary / supporting / meta); `ink-on-sky` = muted label on dark sky |
-| Surface | `surface`, `surface-card`, `surface-elev`, `surface-warm`, `surface-sunken`, `line` | App surfaces (dawn-shift drifts `surface`); `surface-card` = the single warm cream all cards share (one token retints every card); `surface-elev` = floating UI only |
-| Mood | `mood-{nyala,enteng,oleng,lemes,mumet,adem}` (+ `-bg`) | Calendar cells, mood badges |
+| Surface | `surface`, `surface-card`, `surface-elev`, `surface-warm`, `surface-sunken`, `line` | App surfaces (dawn-shift drifts `surface`); `surface-card` = the single warm linen all cards share (one token retints every card); `surface-elev` = floating UI only |
+| Mood | `mood-{blazing,easy,wobbly,gassed,overloaded,chill}` (+ `-bg`) | Calendar cells, mood badges. Each remapped to a thread jewel tone (gold/emerald/crimson/indigo/violet). |
 | Rarity | `rarity-{common,uncommon,rare,epic,legendary}` | Card rarity |
 | Hues | `leaf` / `leaf-deep`, `ember` / `ember-deep`, `citrus` / `citrus-deep`, `stone` | Semantic accents; `citrus` reserved for PR / legendaris |
 | Strava | `strava-orange`, `strava-orange-hover` | Brand mark only — never themed or restyled |
@@ -65,12 +65,12 @@ mapping is encoded in the role utilities below (`.text-prose`, `.text-stat`, `.t
 - `text-ink` — primary text (body, headings, button labels, KPI values).
 - `text-ink-2` — supporting body (subtitles, descriptive lines).
 - `text-ink-3` — labels / timestamps / footnotes / metadata only; never body prose. Darkened to `#6e6452` to clear WCAG AA (≥4.5:1) on cream.
-- `text-ink-on-sky` (`#b8ad97`) — muted metadata label on dark sky panels. Replaces the old `text-cream/55`, which failed AA (~2.2:1).
+- `text-ink-on-sky` (`#b0a3c9`) — muted metadata label on dark sky panels. Replaces the old `text-cream/55`, which failed AA (~2.2:1).
 
 ### CTA contrast
 
-- `horizon` (light peach) → dark text (`text-sky` / `text-ink`), never white.
-- `sky` / `sky-deep` (dark navy) → `text-cream` / white.
+- `horizon` (gold) → dark text (`text-sky` / `text-ink`), never white.
+- `sky` / `sky-deep` (deep indigo) → `text-cream` / white.
 - `leaf-deep` → `text-cream` (passes AA); darken on hover with `hover:opacity-90`, not a hue jump.
 
 ## Gradients & atmospherics
@@ -136,7 +136,7 @@ can be migrated to this pattern incrementally; `Card` / `PillButton` / `Chip` ar
 
 ## Common pitfalls
 
-- **Raw Tailwind colors slip in.** A quick `bg-gray-100` or `text-lime-600` reads as laziness or an incomplete refactor. Every utility must resolve to a semantic `--color-*` token. Sweep `rg 'bg-(gray|slate|zinc|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d'` before merging.
+- **Raw Tailwind colors slip in.** A quick `bg-gray-100` or `text-lime-600` reads as laziness or an incomplete refactor. Every utility must resolve to a semantic `--color-*` token. Enforced in CI by [scripts/check-raw-palette.mjs](../scripts/check-raw-palette.mjs) (`npm run check:palette`), which fails on any raw Tailwind palette family + numeric shade combo in `resources/js`.
 - **`text-ink-3` on body prose.** `ink-3` is for labels/timestamps/metadata only, never wrapping a `<p>` of running text. Sweep `grep text-ink-3` before merging — if any match wraps a prose paragraph, it's wrong.
 - **Missing `tabular-nums` on stat displays.** Any big-number display (`<span class="text-stat">`, KPI tiles, PR times) must carry `tabular-nums` so digits don't jitter as they change. The `.text-stat` / `.text-stat-sm` utilities include it; raw `font-mono` alone does not.
 - **`font-mono` omitted from uppercase labels.** Because `font-sans` is Tailwind's default, every `.text-label-micro` / `.text-label-small` utility needs an explicit `font-mono` — without it the label renders in the body font. Prefer the utility class over hand-rolling the combo.

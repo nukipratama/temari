@@ -65,7 +65,7 @@ it('builds a titled, high-urgency web push test message', function (): void {
     $message = $notification->toWebPush(User::factory()->create(), $notification);
     $payload = $message->toArray();
 
-    expect($payload['title'])->toBe('🔔 Tes notifikasi')
+    expect($payload['title'])->toBe('🔔 Test notification')
         ->and($payload['body'])->toBe(TelegramReplies::test())
         ->and($message->getOptions())->toBe(['urgency' => 'high']);
 });

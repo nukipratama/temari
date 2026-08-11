@@ -33,11 +33,11 @@ final class WeekStateTool extends UserTool
 
     public function description(): string
     {
-        return 'Keadaan minggu ini: lari dan km minggu ini vs minggu lalu, volume_ramp_pct, '
-            .'berapa minggu beruntun aktif, arah kebugaran, jam berapa sekarang (time_bucket), '
-            .'sudah lari hari ini atau belum, sudah berapa jam sejak lari terakhir, form_status, '
-            .'plus readiness_ceiling dan build_nudge yang membatasi seberapa keras kamu boleh '
-            .'menyarankan. Panggil sebelum menyarankan apa pun.';
+        return "This week's state: runs and km this week vs last week, volume_ramp_pct, how many "
+            .'weeks in a row they\'ve been active, fitness direction, what time of day it is '
+            .'(time_bucket), whether they\'ve already run today, how many hours since their last '
+            .'run, form_status, plus readiness_ceiling and build_nudge which cap how hard you\'re '
+            .'allowed to suggest. Call this before suggesting anything.';
     }
 
     /** @return array<string, mixed> */

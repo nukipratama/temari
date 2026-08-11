@@ -51,9 +51,9 @@ async function loginAsDemo(page) {
 }
 
 async function dismissReveal(page) {
-    const dialog = page.getByRole('dialog', { name: /kartu baru/i });
+    const dialog = page.getByRole('dialog', { name: /new card/i });
     if (await dialog.isVisible().catch(() => false)) {
-        await page.getByRole('button', { name: /tutup/i }).first().click().catch(() => {});
+        await page.getByRole('button', { name: /close/i }).first().click().catch(() => {});
         await page.waitForTimeout(800);
     }
 }
@@ -63,9 +63,9 @@ async function dismissReveal(page) {
     await page.setViewportSize({ width: 1400, height: 900 });
     await loginAsDemo(page);
     // Inject a full-width grid of all 8 poses via React root injection is complex;
-    // instead navigate to aksesori which already renders the mascot, then use
+    // instead navigate to accessories which already renders the mascot, then use
     // page.evaluate to inject an overlay showing all poses side by side.
-    await page.goto(`${BASE}/aksesori`);
+    await page.goto(`${BASE}/accessories`);
     await page.waitForLoadState('networkidle');
 
     await page.evaluate(() => {
@@ -106,35 +106,35 @@ async function dismissReveal(page) {
     await page.evaluate(() => document.getElementById('pose-grid')?.remove());
 
     // Navigate to pages that actually show different poses
-    // rekor = glow
-    await page.goto(`${BASE}/rekor`);
+    // records = glow
+    await page.goto(`${BASE}/records`);
     await page.waitForLoadState('networkidle');
     await dismissReveal(page);
-    await screenshot(page, '04-rekor-glow-desktop');
+    await screenshot(page, '04-records-glow-desktop');
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`${BASE}/rekor`);
+    await page.goto(`${BASE}/records`);
     await page.waitForLoadState('networkidle');
     await dismissReveal(page);
-    await screenshot(page, '05-rekor-glow-mobile');
+    await screenshot(page, '05-records-glow-mobile');
 
-    // kartu detail = pose by rarity (legendary = glow)
+    // cards detail = pose by rarity (legendary = glow)
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`${BASE}/kartu/115`);
+    await page.goto(`${BASE}/cards/115`);
     await page.waitForLoadState('networkidle');
     await dismissReveal(page);
-    await screenshot(page, '06-kartu-detail-mobile');
+    await screenshot(page, '06-cards-detail-mobile');
 
-    // aktivitas detail = briefing card pose (mood-driven)
-    await page.goto(`${BASE}/aktivitas/126`);
+    // activities detail = briefing card pose (mood-driven)
+    await page.goto(`${BASE}/activities/126`);
     await page.waitForLoadState('networkidle');
     await dismissReveal(page);
     // scroll to briefing card
     await page.evaluate(() => window.scrollBy(0, 600));
     await page.waitForTimeout(400);
-    await screenshot(page, '07-aktivitas-briefing-mobile');
+    await screenshot(page, '07-activities-briefing-mobile');
 
     // ── 3. Share card (reuse authenticated page — reveal already cleared) ───────
-    await page.goto(`${BASE}/kartu/115`);
+    await page.goto(`${BASE}/cards/115`);
     await page.waitForLoadState('networkidle');
 
     const bagikan = page.getByRole('button', { name: /bagikan/i }).first();

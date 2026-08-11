@@ -14,13 +14,13 @@ const pendingCard: PendingReveal = {
     activity_id: 1,
     rarity: 'common',
     special_move: 'Pagi Santai',
-    mood: 'adem',
+    mood: 'chill',
     badges: null,
     detail_name: 'Easy run',
     distance_m: 5000,
     elapsed_time_sec: 1800,
     trimp_edwards: 42,
-    public_share_url: '/aktivitas/1',
+    public_share_url: '/activities/1',
     edition: { index: 1, total: 1 },
 };
 
@@ -88,7 +88,7 @@ describe('AppShell', () => {
             </AppShell>,
         );
         expect(screen.getByText('child content')).toBeInTheDocument();
-        ['Hari Ini', 'Koleksi', 'Riwayat', 'Aku'].forEach((label) => {
+        ['Today', 'Collection', 'History', 'Me'].forEach((label) => {
             expect(screen.getAllByText(label).length).toBeGreaterThan(0);
         });
         // <main> keeps bottom clearance for the fixed mobile bottom nav (cleared on lg).
@@ -111,14 +111,14 @@ describe('AppShell', () => {
                 <p>child content</p>
             </AppShell>,
         );
-        expect(screen.getByText(/Sambungin ulang Strava/)).toBeInTheDocument();
+        expect(screen.getByText(/Reconnect Strava/)).toBeInTheDocument();
     });
 
     it('mounts the flash notice as shell chrome', () => {
         setMockPage({
             auth: { user: andiUser },
             flash: {
-                info: 'Tarikan dari Strava lagi dijeda sebentar. Nanti ketarik lagi otomatis.',
+                info: "The pull from Strava is paused for a bit. It'll resume automatically.",
             },
             demoLoginEnabled: false,
         });
@@ -128,7 +128,7 @@ describe('AppShell', () => {
             </AppShell>,
         );
         expect(
-            screen.getByText(/Tarikan dari Strava lagi dijeda sebentar/),
+            screen.getByText(/The pull from Strava is paused for a bit/),
         ).toBeInTheDocument();
     });
 
@@ -140,7 +140,7 @@ describe('AppShell', () => {
         setMockPage(
             { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
             '/',
-            'HariIni',
+            'Today',
         );
         const { rerender } = render(
             <AppShell>
@@ -151,8 +151,8 @@ describe('AppShell', () => {
 
         setMockPage(
             { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
-            '/kartu',
-            'Koleksi/Kartu',
+            '/cards',
+            'Collection/Cards',
         );
         rerender(
             <AppShell>
@@ -183,8 +183,8 @@ describe('AppShell', () => {
     it('keeps the content region mounted across a partial reload of the same page', () => {
         setMockPage(
             { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
-            '/aktivitas',
-            'Riwayat/Jejak',
+            '/activities',
+            'Activities/Feed',
         );
         const { rerender } = render(
             <AppShell>
@@ -196,8 +196,8 @@ describe('AppShell', () => {
         // Same component, new query string — a filter/`only:` refresh.
         setMockPage(
             { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
-            '/aktivitas?range=8w',
-            'Riwayat/Jejak',
+            '/activities?range=8w',
+            'Activities/Feed',
         );
         rerender(
             <AppShell>
@@ -209,7 +209,11 @@ describe('AppShell', () => {
     });
 
     it('shows the mobile top bar on every page', () => {
-        setMockPage({ auth: { user: makeUser() } }, '/kartu', 'Koleksi/Kartu');
+        setMockPage(
+            { auth: { user: makeUser() } },
+            '/cards',
+            'Collection/Cards',
+        );
         render(<AppShell>content</AppShell>);
         // Scoped by testid, not by tag: TopNav is also a <header> and stays in
         // the DOM on mobile, hidden by CSS alone.
@@ -221,7 +225,7 @@ describe('AppShell', () => {
             auth: { user: andiUser },
             flash: {
                 unlock: {
-                    unlock_key: 'accessory.ikat_kepala_epik',
+                    unlock_key: 'accessory.headband_epic',
                     name: 'Ikat Kepala Istimewa',
                     icon: 'mdi:star',
                     is_major: true,
@@ -235,9 +239,9 @@ describe('AppShell', () => {
             </AppShell>,
         );
         expect(screen.getByText(/Ikat Kepala Istimewa/)).toBeInTheDocument();
-        // Clicking "Nanti aja" triggers onClose (covers () => setMajorUnlock(null))
+        // Clicking "Not now" triggers onClose (covers () => setMajorUnlock(null))
         await act(async () => {
-            fireEvent.click(screen.getByText('Nanti aja'));
+            fireEvent.click(screen.getByText('Not now'));
         });
     });
 
@@ -246,7 +250,7 @@ describe('AppShell', () => {
             auth: { user: andiUser },
             flash: {
                 unlock: {
-                    unlock_key: 'accessory.ikat_kepala_epik',
+                    unlock_key: 'accessory.headband_epic',
                     name: 'Ikat Kepala Istimewa',
                     icon: 'mdi:star',
                     is_major: true,
@@ -261,7 +265,7 @@ describe('AppShell', () => {
             </AppShell>,
         );
         // CardReveal (the pack) takes priority: it's shown...
-        expect(await screen.findByText('Sync masuk')).toBeInTheDocument();
+        expect(await screen.findByText('Syncing in')).toBeInTheDocument();
         // ...and the aksesori modal is held back, even though a major unlock fired.
         expect(
             screen.queryByText(/Ikat Kepala Istimewa/),
@@ -273,7 +277,7 @@ describe('AppShell', () => {
             auth: { user: andiUser },
             flash: {
                 unlock: {
-                    unlock_key: 'accessory.medal_emas',
+                    unlock_key: 'accessory.medal_gold',
                     name: 'Medali Emas',
                     icon: 'mdi:medal',
                     is_major: false,
@@ -287,7 +291,7 @@ describe('AppShell', () => {
                 <p>x</p>
             </AppShell>,
         );
-        expect(await screen.findByText('Sync masuk')).toBeInTheDocument();
-        expect(screen.queryByText('Unlock baru')).not.toBeInTheDocument();
+        expect(await screen.findByText('Syncing in')).toBeInTheDocument();
+        expect(screen.queryByText('New unlock')).not.toBeInTheDocument();
     });
 });

@@ -57,7 +57,7 @@ describe('ProgressionChart', () => {
         render(<ProgressionChart weeks={[]} timesSec={[]} goalSec={null} />);
 
         expect(
-            screen.getByText(/Belum cukup lari di jarak ini/),
+            screen.getByText(/Not enough runs at this distance/),
         ).toBeInTheDocument();
         expect(screen.queryByTestId('line-chart')).not.toBeInTheDocument();
     });
@@ -141,10 +141,10 @@ describe('ProgressionChart', () => {
         );
 
         const chart = screen.getByRole('img', {
-            name: /Grafik progresi waktu terbaik 5K/,
+            name: /Best time progression chart 5K/,
         });
         expect(chart).toBeInTheDocument();
-        expect(screen.getByText(/Dari 25:00 pada/)).toBeInTheDocument();
+        expect(screen.getByText(/From 25:00 on/)).toBeInTheDocument();
     });
 
     it('falls back to a generic accessible name when no category is given', () => {
@@ -157,7 +157,7 @@ describe('ProgressionChart', () => {
         );
         expect(
             screen.getByRole('img', {
-                name: /^Grafik progresi waktu terbaik\./,
+                name: /^Best time progression chart\./,
             }),
         ).toBeInTheDocument();
     });
@@ -247,8 +247,8 @@ describe('ProgressionChart', () => {
                 chart: { chartArea: undefined, ctx: {} },
             });
 
-            // horizon token (#e8a076) at 0.18 alpha.
-            expect(color).toBe('#e8a0762e');
+            // horizon token (#d9a53c) at 0.18 alpha.
+            expect(color).toBe('#d9a53c2e');
         });
 
         it('builds a vertical gradient once the chart area is known', () => {

@@ -5,6 +5,7 @@ import type { ActivityDetail } from '@/types/inertia';
 import {
     BADGE_ABILITY,
     BADGE_LABELS,
+    RARITY_BAND_COUNT,
     RARITY_LABELS,
     RARITY_ORDER,
     avgCadenceFromDetail,
@@ -12,6 +13,7 @@ import {
     badgeName,
     fastestKmFromDetail,
     kartuPropsFromDetail,
+    threadBandLines,
     zonePctFromDetail,
 } from './runcard';
 
@@ -42,24 +44,57 @@ describe('RARITY_LABELS', () => {
 
     // Parity guard: mirrored in App\Enums\Rarity::label() (see RarityTest.php).
     // Changing the ladder on one runtime without the other fails a test.
-    it('exposes the Indonesian rarity ladder labels', () => {
+    it('exposes the rarity ladder labels', () => {
         expect(RARITY_LABELS).toEqual({
-            common: 'Biasa',
-            uncommon: 'Berkesan',
-            rare: 'Langka',
-            epic: 'Istimewa',
-            legendary: 'Legendaris',
+            common: 'Common',
+            uncommon: 'Uncommon',
+            rare: 'Rare',
+            epic: 'Epic',
+            legendary: 'Legendary',
         });
     });
 });
 
+// Parity guard: mirrored in App\Enums\Rarity::bandCount() (see RarityTest.php).
+describe('RARITY_BAND_COUNT', () => {
+    it('scales from 1 (common) to 5 (legendary)', () => {
+        expect(RARITY_BAND_COUNT).toEqual({
+            common: 1,
+            uncommon: 2,
+            rare: 3,
+            epic: 4,
+            legendary: 5,
+        });
+    });
+});
+
+describe('threadBandLines', () => {
+    it('draws one stitch leaning the same way for count 1', () => {
+        const lines = threadBandLines(1);
+        expect(lines).toHaveLength(1);
+        expect(lines[0]).toMatchObject({ y1: 1, y2: 0 });
+    });
+
+    it('adds a second, opposite-leaning crossing set from count 4 on', () => {
+        const epic = threadBandLines(4);
+        const legendary = threadBandLines(5);
+        expect(epic).toHaveLength(4);
+        expect(legendary).toHaveLength(5);
+
+        const crossing = (lines: ReturnType<typeof threadBandLines>) =>
+            lines.filter((l) => l.y1 === 0);
+        expect(crossing(epic)).toHaveLength(1);
+        expect(crossing(legendary)).toHaveLength(2);
+    });
+});
+
 const BADGE_KEYS = [
-    'hari_panas',
-    'pejuang_hujan',
-    'anak_pagi',
+    'heat_tamer',
+    'rain_warrior',
+    'early_bird',
     'long_slow_distance',
     'negative_split',
-    'tahan_diri',
+    'held_back',
 ];
 
 describe('BADGE_LABELS', () => {
@@ -69,10 +104,9 @@ describe('BADGE_LABELS', () => {
         });
     });
 
-    // The two English names are running terms (code-switch rule); the rest are ID-first.
-    it('uses the ID-first casual names', () => {
-        expect(BADGE_LABELS.hari_panas).toBe('🔥 Tahan Gerah');
-        expect(BADGE_LABELS.tahan_diri).toBe('🧘 Anti Kalap');
+    it('uses the casual English names', () => {
+        expect(BADGE_LABELS.heat_tamer).toBe('🔥 Heat Tamer');
+        expect(BADGE_LABELS.held_back).toBe('🧘 Held Back');
         expect(BADGE_LABELS.negative_split).toBe('👻 Negative Split');
     });
 });
@@ -88,14 +122,21 @@ describe('BADGE_ABILITY', () => {
 
 describe('badgeEmblem / badgeName', () => {
     it('splits the emoji from the name', () => {
-        expect(badgeEmblem('hari_panas')).toBe('🔥');
-        expect(badgeName('hari_panas')).toBe('Tahan Gerah');
-        expect(badgeName('tahan_diri')).toBe('Anti Kalap');
+        expect(badgeEmblem('heat_tamer')).toBe('🔥');
+        expect(badgeName('heat_tamer')).toBe('Heat Tamer');
+        expect(badgeName('held_back')).toBe('Held Back');
     });
 
     it('falls back to prettyBadge for unknown slugs', () => {
         expect(badgeEmblem('unknown_slug')).toBe('');
         expect(badgeName('unknown_slug')).toBe('Unknown Slug');
+    });
+
+    // holiday_run was retired (Slice 2g): an old card can still carry it in
+    // its stored badge array, and it must render as inert history, not crash.
+    it('renders the retired holiday_run slug without a map entry', () => {
+        expect(badgeEmblem('holiday_run')).toBe('');
+        expect(badgeName('holiday_run')).toBe('Holiday Run');
     });
 });
 
@@ -195,13 +236,13 @@ describe('kartuPropsFromDetail', () => {
         expect(
             kartuPropsFromDetail(fullDetail, { durationFormat: 'words' })
                 .durasi,
-        ).toBe('30 menit 10 detik');
+        ).toBe('30 min 10 sec');
     });
 
-    it('falls back to "Lari" in the subtitle when the run has no name', () => {
+    it('falls back to "Run" in the subtitle when the run has no name', () => {
         expect(
             kartuPropsFromDetail({ ...fullDetail, name: null }).subtitle,
-        ).toContain('Lari · ');
+        ).toContain('Run · ');
     });
 
     it('uses "—" sentinels and null fields when detail is null or empty', () => {

@@ -1,6 +1,6 @@
 ---
 name: temari
-description: Project conventions and domain map for the temari repo — Daybreak design tokens, Indonesian voice rules, the AI narrator/analysis pipeline, the 1:1 test convention with its aggregate suites, and the sail toolchain. Use when writing UI, AI narration, or tests in this codebase, or when unsure where a change wires in.
+description: Project conventions and domain map for the temari repo — Threadwork design tokens, voice rules, the AI narrator/analysis pipeline, the 1:1 test convention with its aggregate suites, and the sail toolchain. Use when writing UI, AI narration, or tests in this codebase, or when unsure where a change wires in.
 ---
 
 # temari conventions
@@ -19,28 +19,28 @@ Backend logic is split by domain under `app/Services/`:
 - **Geo/** — polyline encode/decode + Nominatim reverse-geocode (`app/Jobs/Geo/` resolves location names).
 - **Weather/** — Open-Meteo snapshot attached per activity.
 
-Two DB connections: default `mysql` plus a second **`analytics`** schema for metering (e.g. `ai_token_usages`); its migrations live in `database/migrations/analytics/`. Pages are Indonesian-named under `resources/js/pages/`: `HariIni` (dashboard), `Riwayat/Kalender`, `Koleksi/{Kartu,Rekor,Aksesori}`, `Runs/Show`.
+Two DB connections: default `mysql` plus a second **`analytics`** schema for metering (e.g. `ai_token_usages`); its migrations live in `database/migrations/analytics/`. Pages live under `resources/js/pages/`: `Today` (dashboard), `Activities/{Feed,Calendar}`, `Collection/{Cards,Records,Accessories}`, `Runs/Show`.
 
 ## Voice & copy
 
-- **Indonesian-first.** Only running-domain terms stay English (`pace`, `HR`, `km`, `TRIMP`, `splits`).
 - **No em-dashes (`—`)** in UI copy *or* LLM prompt strings — they read as an AI/translation tell. Use commas, periods, colons, or `·`. (The `'—'` glyph as a *null placeholder* in data display is fine.)
-- All user-facing copy (UI chrome, Temari narration, LLM prompts) follows one casual-Jakarta register: a code-switch test for English terms, a beginner-accessibility tier for jargon, a calque blacklist, and a `**bold**` emphasis rule.
+- All user-facing copy (UI chrome, Temari narration, LLM prompts) follows one casual register: plain running-domain vocabulary (`pace`, `HR`, `km`, `TRIMP`, `splits`), a jargon-accessibility tier for technical terms, and a `**bold**` emphasis rule.
 - Full rules: [docs/voice-and-tone.md](../../../docs/voice-and-tone.md). Persona source of truth: [TemariPersona.php](../../../app/Services/AI/TemariPersona.php). Read it before writing or reviewing copy.
 
 ## Design system
 
-Palette is **Daybreak** (pre-dawn Jakarta at 05:30). Tokens live in the `@theme` block of
-[resources/css/app.css](../../../resources/css/app.css); full reference (colors, type scale,
-fonts, gradients, spacing) in [docs/design-tokens.md](../../../docs/design-tokens.md). Use the
-**semantic token families, never raw Tailwind colors** like `lime-500`:
+Palette is **Threadwork** (thread/embroidery jewel tones on a warm linen canvas). Tokens live in
+the `@theme` block of [resources/css/app.css](../../../resources/css/app.css); full reference
+(colors, type scale, fonts, gradients, spacing) in
+[docs/design-tokens.md](../../../docs/design-tokens.md). Use the **semantic token families, never
+raw Tailwind colors** like `lime-500`:
 
-- `sky` (`#1f2747`) / `sky-deep` (`#161b33`) / `sky-2` (`#2c355c`) — structure, dark hero panels, the only "dark" surface.
-- `horizon` / `horizon-deep` (`#e8a076` peach) — primary CTA, "earned"/PR state, Temari accent.
-- `cream` / `cream-deep` (`#f6f1e8`) — paper / secondary surface and borders.
+- `sky` (`#241c54`) / `sky-deep` (`#170f38`) / `sky-2` (`#362a73`) — structure, dark hero panels, the only "dark" surface. Deep indigo thread.
+- `horizon` / `horizon-deep` (`#d9a53c` gold) — primary CTA, "earned"/PR state, Temari accent. Gold thread.
+- `cream` / `cream-deep` (`#f5f0e4`) — paper / secondary surface and borders. Warm linen canvas.
 - `ink` / `ink-2` / `ink-3` — the 3-tier text-contrast scale (see below).
 - `surface` / `surface-elev` / `surface-warm` / `surface-sunken` + `line` — app surfaces (dawn-shift drifts `surface`).
-- `mood-{nyala,enteng,oleng,lemes,mumet,adem}` (each with a pastel `-bg` variant) — calendar cells + mood badges.
+- `mood-{blazing,easy,wobbly,gassed,overloaded,chill}` (each with a pastel `-bg` variant) — calendar cells + mood badges. Each remapped to a thread jewel tone.
 - `rarity-{common,uncommon,rare,epic,legendary}` — card rarity.
 - semantic hues `leaf` / `leaf-deep`, `ember` / `ember-deep`, `citrus` / `citrus-deep`, `stone`.
 - `strava-orange` / `strava-orange-hover` — reserved, never themed (see below).
@@ -51,18 +51,17 @@ fonts, gradients, spacing) in [docs/design-tokens.md](../../../docs/design-token
 ### Strava brand mark — hands off
 
 The "Connect with Strava" button (and any Strava brand mark) is never restyled. Strava brand
-orange `#FC4C02` / hover `#E34402` are reserved via `--color-strava-orange` tokens. The warm
-`horizon` peach (`#e8a076`) and `ember` share a hue family with Strava orange, so within any
-card that **displays the Strava brand mark** the warm accent is *not* used: switch the local
-context to neutral (`surface-sunken` + `ink`) so the brand mark gets breathing room. Strava can
-revoke API access for brand-guideline violations.
+orange `#FC4C02` / hover `#E34402` are reserved via `--color-strava-orange` tokens. `ember` shares
+a hue family with Strava orange, so within any card that **displays the Strava brand mark** the
+warm accent is *not* used: switch the local context to neutral (`surface-sunken` + `ink`) so the
+brand mark gets breathing room. Strava can revoke API access for brand-guideline violations.
 
 ### CTA contrast rule (WCAG)
 
-`horizon` (`#e8a076`) is a light peach, so it pairs with **dark** text, never white. Follow the
+`horizon` (`#d9a53c`) is a gold thread tone, so it pairs with **dark** text, never white. Follow the
 [`PillButton`](../../../resources/js/components/ui/PillButton.tsx) presets:
-- `horizon` bg → `text-sky` (dark navy on peach passes comfortably); hover darkens to `horizon-deep`.
-- `sky` / `sky-deep` bg (dark navy) → `text-cream` / white text (passes ~12:1); hover darkens to `sky-deep`.
+- `horizon` bg → `text-sky` (dark indigo on gold passes comfortably); hover darkens to `horizon-deep`.
+- `sky` / `sky-deep` bg (dark indigo) → `text-cream` / white text (passes ~13:1); hover darkens to `sky-deep`.
 - `leaf-deep` (`#4f6c54`) bg → white text (passes AA ~4.9:1); used for dense "retry"/action chips. No darker leaf token exists, so darken on hover with `hover:opacity-90`, not a hue jump.
 - Never put white text on `horizon`/`citrus`/`cream` (all too light).
 

@@ -1,9 +1,15 @@
 import type { CardEdition, Mood, Rarity, ZonePct } from '@/types/inertia';
 
-import { DAYBREAK, hrZone } from '@/lib/chartTokens';
+import { THREADWORK, hrZone } from '@/lib/chartTokens';
 import { moodSigilColor } from '@/lib/mood';
 import { projectPolyline } from '@/lib/route';
-import { RARITY_HEX, RARITY_LABELS, RARITY_SYMBOL } from '@/lib/runcard';
+import {
+    RARITY_BAND_COUNT,
+    RARITY_HEX,
+    RARITY_LABELS,
+    RARITY_SYMBOL,
+    threadBandLines,
+} from '@/lib/runcard';
 
 const HR_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const;
 
@@ -61,12 +67,16 @@ export interface ShareKartuData {
 }
 
 export type Format = 'story' | 'feed';
-export type Layout = 'kartu' | 'rute';
+export type Layout = 'kartu' | 'rute' | 'stats';
+export type ColorwayId = 'navy' | 'dawn' | 'ember';
 
 export interface ShareCardConfig {
     kartu: ShareKartuData;
     layout: Layout;
     format: Format;
+    /** Defaults to 'navy' — the original single look, so every existing
+     *  caller that doesn't pass one keeps today's exact output. */
+    colorway?: ColorwayId;
 }
 
 const DIMS: Record<Format, { w: number; h: number }> = {
@@ -76,24 +86,28 @@ const DIMS: Record<Format, { w: number; h: number }> = {
 
 const PAD = 92;
 
-// Daybreak palette as literal hex (canvas can't read CSS vars). Brand hues
-// reference the shared DAYBREAK bridge so they can't drift; the rest are
+// Threadwork palette as literal hex (canvas can't read CSS vars). Brand hues
+// reference the shared THREADWORK bridge so they can't drift; the rest are
 // canvas-only shades that mirror the @theme block in app.css.
 const C = {
-    horizon: DAYBREAK.horizon,
-    horizonDeep: DAYBREAK.horizonDeep,
-    ink: DAYBREAK.ink,
+    horizon: THREADWORK.horizon,
+    horizonDeep: THREADWORK.horizonDeep,
+    ink: THREADWORK.ink,
     ink2: '#3d362a',
     ink3: '#6e6452',
-    cream: '#f6f1e8',
-    creamDeep: '#eee7d6',
-    sky: DAYBREAK.sky,
-    skyDeep: DAYBREAK.skyDeep,
-    surfaceCard: '#f6f1e8',
-    surfaceSunken: '#efe8da',
-    line: '#e3dccd',
-    inkOnSky: '#b8ad97',
+    cream: '#f5f0e4',
+    creamDeep: '#ece2ce',
+    sky: THREADWORK.sky,
+    skyDeep: THREADWORK.skyDeep,
+    surfaceCard: '#f5f0e4',
+    surfaceSunken: '#ece2ce',
+    line: '#ddd4bd',
+    inkOnSky: '#b0a3c9',
     rarity: RARITY_HEX,
+    // Ember colorway's dark bg/surface: the app.css `--color-ember`/`-deep`
+    // hue (#c4623f) carried down to canvas-background darkness, the same way
+    // `horizon` sits far above `sky`/`skyDeep` in lightness.
+    emberDark: '#2a160f',
 };
 
 // Every card gets the SAME bright border bloom regardless of rarity — unlike
@@ -104,29 +118,73 @@ const BORDER_GLOW_BLUR = 60;
 
 interface Palette {
     isDark: boolean;
+    /** Full-canvas fill (`paintBackground`) and the card body fill
+     *  (`drawCardFrame`) — deliberately the same tone so the rounded corners
+     *  reveal a full-bleed card rather than a floating one on a backdrop. */
+    bg: string;
+    surface: string;
+    /** Inset "pearl" panels that pop off `surface` — the hero art window,
+     *  bright regardless of colorway (poster art, not page chrome). */
+    surfaceSunken: string;
     text: string;
+    /** Run-name accent. Always `C.horizon` — the brand bridge, never varies. */
     name: string;
     meta: string;
     divider: string;
     quote: string;
+    inkOnSky: string;
 }
 
-// One look only: every template renders on dark navy (the old Inverted theme).
-const PALETTE: Palette = {
-    isDark: true,
-    text: C.cream,
-    name: C.horizon,
-    meta: 'rgba(246,241,232,0.72)',
-    divider: 'rgba(246,241,232,0.18)',
-    quote: 'rgba(246,241,232,0.88)',
+// Three looks: the original dark navy, a light "dawn" swap, and a second
+// dark variant hued from the ember mood family. `horizon` (name) and
+// `rarity` never appear here — both are the fixed brand/collectible bridge,
+// constant across every colorway.
+export const COLORWAYS: Record<ColorwayId, Palette> = {
+    navy: {
+        isDark: true,
+        bg: C.skyDeep,
+        surface: C.skyDeep,
+        surfaceSunken: C.creamDeep,
+        text: C.cream,
+        name: C.horizon,
+        meta: 'rgba(245,240,228,0.72)',
+        divider: 'rgba(245,240,228,0.18)',
+        quote: 'rgba(245,240,228,0.88)',
+        inkOnSky: C.inkOnSky,
+    },
+    dawn: {
+        isDark: false,
+        bg: C.cream,
+        surface: C.cream,
+        surfaceSunken: C.creamDeep,
+        text: C.ink,
+        name: C.horizon,
+        meta: 'rgba(26,24,18,0.72)',
+        divider: 'rgba(26,24,18,0.18)',
+        quote: 'rgba(26,24,18,0.88)',
+        inkOnSky: C.ink3,
+    },
+    ember: {
+        isDark: true,
+        bg: C.emberDark,
+        surface: C.emberDark,
+        surfaceSunken: C.creamDeep,
+        text: C.cream,
+        name: C.horizon,
+        meta: 'rgba(245,240,228,0.72)',
+        divider: 'rgba(245,240,228,0.18)',
+        quote: 'rgba(245,240,228,0.88)',
+        inkOnSky: C.inkOnSky,
+    },
 };
 
 function paintBackground(
     ctx: CanvasRenderingContext2D,
     w: number,
     h: number,
+    pal: Palette,
 ): void {
-    ctx.fillStyle = C.skyDeep;
+    ctx.fillStyle = pal.bg;
     ctx.fillRect(0, 0, w, h);
 }
 
@@ -137,8 +195,8 @@ function paintGlow(
     r: number,
 ): void {
     const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    g.addColorStop(0, 'rgba(232,160,118,0.34)');
-    g.addColorStop(0.66, 'rgba(232,160,118,0)');
+    g.addColorStop(0, 'rgba(217,165,60,0.34)');
+    g.addColorStop(0.66, 'rgba(217,165,60,0)');
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -191,18 +249,22 @@ function roundRectPathCorners(
  * body edge-to-edge with a vivid rarity border and the same bright inward
  * bloom on every rarity (matches the in-app Kartu's `.kartu-glow`). No
  * surrounding backdrop — rounded corners reveal the same navy, so it reads
- * as a full-bleed card rather than a floating one.
+ * as a full-bleed card rather than a floating one. Also draws the
+ * thread-band accent (Slice 9c) hugging the border's bottom-center, additive
+ * to the border above rather than a re-hue.
  */
 function drawCardFrame(
     ctx: CanvasRenderingContext2D,
     w: number,
     h: number,
     rarityCol: string,
+    rarity: Rarity,
+    pal: Palette,
 ): void {
     const border = 12;
     const radius = 44;
     roundRectPath(ctx, 0, 0, w, h, radius);
-    ctx.fillStyle = C.skyDeep;
+    ctx.fillStyle = pal.surface;
     ctx.fill();
     ctx.lineWidth = border;
     ctx.strokeStyle = rarityCol;
@@ -218,6 +280,39 @@ function drawCardFrame(
     );
     ctx.stroke();
     ctx.shadowBlur = 0;
+    drawThreadBandTicks(ctx, w, h, rarityCol, rarity);
+}
+
+/**
+ * Thread-band rarity accent (Slice 9c): a small stitched cluster centered on
+ * the frame's bottom edge, just inside the border stroke — clear of every
+ * template's own content, which stays within its own inner margin, and of
+ * `drawDateFooter`'s bottom-left placement. Density scales with tier via
+ * `threadBandLines` (shared with the React card glyph and the server SVG
+ * renderer, so all three surfaces draw the identical pattern).
+ */
+function drawThreadBandTicks(
+    ctx: CanvasRenderingContext2D,
+    w: number,
+    h: number,
+    color: string,
+    rarity: Rarity,
+): void {
+    const boxW = 170;
+    const boxH = 20;
+    const x0 = w / 2 - boxW / 2;
+    const y0 = h - 34;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = color;
+    for (const l of threadBandLines(RARITY_BAND_COUNT[rarity])) {
+        ctx.globalAlpha = l.opacity;
+        ctx.beginPath();
+        ctx.moveTo(x0 + l.x1 * boxW, y0 + l.y1 * boxH);
+        ctx.lineTo(x0 + l.x2 * boxW, y0 + l.y2 * boxH);
+        ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
 }
 
 /**
@@ -339,14 +434,13 @@ function ensureFonts(): Promise<void> {
     return fontsReady;
 }
 
-// Flat, canvas-safe port of BunnyGlyph in components/BrandMark.tsx (no
+// Flat, canvas-safe port of TemariGlyph in components/BrandMark.tsx (no
 // gradients/highlights). Keep the core geometry in sync with that source.
-function bunnySvg(tone: 'ink' | 'cream', bandHex: string = C.horizon): string {
+function temariSvg(tone: 'ink' | 'cream', bandHex: string = C.horizon): string {
     const isInk = tone === 'ink';
     const face = isInk ? C.ink : C.cream;
-    const blush = isInk ? C.horizon : C.horizonDeep;
     const features = isInk ? C.cream : C.ink;
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><defs><clipPath id="b"><circle cx="50" cy="58" r="40"/></clipPath></defs><ellipse cx="32" cy="8" rx="9" ry="16" fill="${face}" transform="rotate(-12 32 8)"/><ellipse cx="68" cy="8" rx="9" ry="16" fill="${face}" transform="rotate(12 68 8)"/><ellipse cx="32" cy="10" rx="4" ry="9" fill="${blush}" transform="rotate(-12 32 10)"/><ellipse cx="68" cy="10" rx="4" ry="9" fill="${blush}" transform="rotate(12 68 10)"/><circle cx="50" cy="58" r="40" fill="${face}"/><g clip-path="url(#b)"><rect x="10" y="40" width="80" height="14" fill="${bandHex}"/></g><circle cx="38" cy="68" r="4.5" fill="${features}"/><circle cx="62" cy="68" r="4.5" fill="${features}"/><path d="M 44 80 Q 50 85 56 80" fill="none" stroke="${features}" stroke-width="2.4" stroke-linecap="round"/></svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><defs><clipPath id="b"><circle cx="50" cy="52" r="42"/></clipPath></defs><path d="M 42 10 Q 50 4 58 10 Q 52 12 50 16 Q 48 12 42 10 Z" fill="${face}"/><circle cx="50" cy="52" r="42" fill="${face}"/><g clip-path="url(#b)"><rect x="8" y="34" width="84" height="13" fill="${bandHex}"/></g><circle cx="38" cy="62" r="4.5" fill="${features}"/><circle cx="62" cy="62" r="4.5" fill="${features}"/><path d="M 44 74 Q 50 79 56 74" fill="none" stroke="${features}" stroke-width="2.4" stroke-linecap="round"/></svg>`;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -361,21 +455,21 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 // Few tone/band combinations exist and each glyph never changes; cache every
 // decoded image (keyed by tone + headband hex) so repeated repaints reuse it
 // instead of re-encoding and re-decoding the SVG.
-const bunnyCache: Record<string, HTMLImageElement> = {};
+const temariCache: Record<string, HTMLImageElement> = {};
 
-async function loadBunny(
+async function loadTemari(
     tone: 'ink' | 'cream',
     bandHex: string = C.horizon,
 ): Promise<HTMLImageElement | null> {
     const key = `${tone}:${bandHex}`;
-    if (bunnyCache[key]) {
-        return bunnyCache[key];
+    if (temariCache[key]) {
+        return temariCache[key];
     }
     try {
         const img = await loadImage(
-            `data:image/svg+xml;utf8,${encodeURIComponent(bunnySvg(tone, bandHex))}`,
+            `data:image/svg+xml;utf8,${encodeURIComponent(temariSvg(tone, bandHex))}`,
         );
-        bunnyCache[key] = img;
+        temariCache[key] = img;
         return img;
     } catch {
         return null;
@@ -407,13 +501,13 @@ function drawRarityFlag(
     return h;
 }
 
-/** Brand lockup (bunny + wordmark) right-aligned to `rightX`. */
+/** Brand lockup (Temari glyph + wordmark) right-aligned to `rightX`. */
 function drawBrand(
     ctx: CanvasRenderingContext2D,
     rightX: number,
     y: number,
     isDark: boolean,
-    bunny: HTMLImageElement | null,
+    temari: HTMLImageElement | null,
 ): void {
     const size = 52;
     const gap = 14;
@@ -424,8 +518,8 @@ function drawBrand(
     const wordW = ctx.measureText(word).width;
     const totalW = size + gap + wordW;
     const startX = rightX - totalW;
-    if (bunny) {
-        ctx.drawImage(bunny, startX, y, size, size);
+    if (temari) {
+        ctx.drawImage(temari, startX, y, size, size);
     }
     ctx.fillStyle = isDark ? C.cream : C.ink;
     ctx.fillText(word, startX + size + gap, y + size / 2 + 1);
@@ -437,12 +531,12 @@ interface DrawCtx {
     h: number;
     cfg: ShareCardConfig;
     pal: Palette;
-    bunny: HTMLImageElement | null;
+    temari: HTMLImageElement | null;
     /** Temari glyph with its headband tinted to the card's mood. */
-    moodBunny: HTMLImageElement | null;
+    moodTemari: HTMLImageElement | null;
 }
 
-/** Bottom-left mono date stamp, shared by the poster and angka templates. */
+/** Bottom-left mono date stamp, shared by the poster and numeric templates. */
 function drawDateFooter(d: DrawCtx): void {
     const { ctx, h, cfg, pal } = d;
     const parts = [
@@ -540,6 +634,7 @@ function ruteKmRow(
 function ruteStatGridRow(
     ctx: CanvasRenderingContext2D,
     k: ShareKartuData,
+    pal: Palette,
     w: number,
     story: boolean,
     draw: boolean,
@@ -552,7 +647,7 @@ function ruteStatGridRow(
     }
     y += (story ? 64 : 40) + gapBonus;
     if (draw) {
-        drawHeroStatGrid(ctx, cells, PAD, y, w - PAD * 2, story);
+        drawHeroStatGrid(ctx, cells, pal, PAD, y, w - PAD * 2, story);
     }
     return (
         y +
@@ -605,7 +700,7 @@ function drawRuteBlock(
 ): number {
     y = ruteNameRow(ctx, k, pal, w, story, draw, y);
     y = ruteKmRow(ctx, k, pal, w, rarityCol, story, draw, y, gapBonus);
-    y = ruteStatGridRow(ctx, k, w, story, draw, y, gapBonus);
+    y = ruteStatGridRow(ctx, k, pal, w, story, draw, y, gapBonus);
     y = ruteBadgesRow(ctx, k, w, story, draw, y, gapBonus);
     return y;
 }
@@ -617,13 +712,13 @@ function drawRuteBlock(
  *  sparse card (no badges, no edition) fills the canvas instead of leaving a
  *  dead gap at the bottom. */
 function drawRute(d: DrawCtx): void {
-    const { ctx, w, h, cfg, pal, bunny } = d;
+    const { ctx, w, h, cfg, pal, temari } = d;
     const k = cfg.kartu;
     const story = cfg.format === 'story';
     const rarityCol = C.rarity[k.rarity] ?? C.line;
     paintGlow(ctx, w / 2, h * 0.38, w * 0.5);
-    drawCardFrame(ctx, w, h, rarityCol);
-    drawBrand(ctx, w - PAD, PAD, pal.isDark, bunny);
+    drawCardFrame(ctx, w, h, rarityCol, k.rarity, pal);
+    drawBrand(ctx, w - PAD, PAD, pal.isDark, temari);
     drawRarityFlag(ctx, PAD, PAD, k.rarity);
 
     const topOffset = PAD + (story ? 110 : 88);
@@ -799,11 +894,12 @@ function drawHeroArtBadges(
 function drawHeroArtWindow(
     ctx: CanvasRenderingContext2D,
     k: ShareKartuData,
-    bunny: HTMLImageElement | null,
+    temari: HTMLImageElement | null,
     box: { x: number; y: number; w: number; h: number },
     rarityCol: string,
     moodCol: string,
     story: boolean,
+    pal: Palette,
 ): void {
     const r = 24;
     ctx.save();
@@ -812,9 +908,12 @@ function drawHeroArtWindow(
 
     // Pearl backdrop: a light cream gradient with real top-to-bottom depth, so
     // the route reads with contrast instead of floating on flat off-white.
+    // Always a bright poster-art window regardless of colorway (`surfaceSunken`
+    // stays the cream family in every colorway), so the route lifts off it the
+    // same way on navy, dawn, and ember alike.
     const bg = ctx.createLinearGradient(box.x, box.y, box.x, box.y + box.h);
     bg.addColorStop(0, '#fcf9f3');
-    bg.addColorStop(1, C.creamDeep);
+    bg.addColorStop(1, pal.surfaceSunken);
     ctx.fillStyle = bg;
     ctx.fillRect(box.x, box.y, box.w, box.h);
 
@@ -867,16 +966,16 @@ function drawHeroArtWindow(
     );
     drawHeroShimmer(ctx, box.x, box.y, box.w, box.h, k.rarity, rarityCol);
 
-    // Brand mark (bunny + wordmark), tucked into the map's bottom-right corner
-    // instead of a big Temari mascot watermark — a quiet signature rather than
-    // a character floating over the route.
+    // Brand mark (Temari glyph + wordmark), tucked into the map's bottom-right
+    // corner instead of a big Temari mascot watermark — a quiet signature
+    // rather than a character floating over the route.
     const brandPad = 20;
     drawBrand(
         ctx,
         box.x + box.w - brandPad,
         box.y + box.h - 52 - brandPad,
         false,
-        bunny,
+        temari,
     );
 
     // Draw the corner chips INSIDE the clip so their square outer corners are
@@ -899,6 +998,7 @@ interface HeroBlock {
     k: ShareKartuData;
     box: { x: number; y: number; w: number; h: number };
     rarityCol: string;
+    pal: Palette;
     story: boolean;
     /** false = measure only (advance the cursor without painting). */
     draw: boolean;
@@ -951,7 +1051,7 @@ function drawHeroBlock(s: HeroBlock): number {
  * count is identical in the measure + draw passes so sizing is stable.
  */
 function heroNameRow(s: HeroBlock, y: number): number {
-    const { ctx, k, box, story, draw } = s;
+    const { ctx, k, box, story, draw, pal } = s;
     const nameSize = story ? box.w * 0.099 : box.w * 0.084;
     ctx.font = `700 ${nameSize}px "Oswald"`;
     ctx.letterSpacing = '-1px'; // condensed + tight = athletic
@@ -962,7 +1062,7 @@ function heroNameRow(s: HeroBlock, y: number): number {
     const firstBaseline = y + lineH;
     const lastBaseline = y + lineH * lines.length;
     if (draw) {
-        ctx.fillStyle = C.cream;
+        ctx.fillStyle = pal.text;
         lines.forEach((ln, i) =>
             ctx.fillText(ln, box.x + box.w / 2, firstBaseline + i * lineH),
         );
@@ -973,7 +1073,7 @@ function heroNameRow(s: HeroBlock, y: number): number {
 
 /** KM hero number + "KM" suffix, centred as a group (number floods horizon). */
 function heroKmRow(s: HeroBlock, y: number): number {
-    const { ctx, k, box, story, draw, rarityCol } = s;
+    const { ctx, k, box, story, draw, rarityCol, pal } = s;
     const kmSize = story ? box.w * 0.135 : box.w * 0.12;
     const suffixSize = story ? 28 : 24;
     const gap = 16;
@@ -994,7 +1094,7 @@ function heroKmRow(s: HeroBlock, y: number): number {
         ctx.fillText(k.km, startX, y);
         ctx.letterSpacing = '0px';
         ctx.font = `700 ${suffixSize}px "JetBrains Mono"`;
-        ctx.fillStyle = C.inkOnSky;
+        ctx.fillStyle = pal.inkOnSky;
         ctx.fillText('KM', startX + kmW + gap, y);
     }
     return y;
@@ -1089,7 +1189,7 @@ function heroStatGridRow(s: HeroBlock, y: number): number {
     }
     y += (story ? 30 : 22) + (s.gapBonus ?? 0);
     if (draw) {
-        drawHeroStatGrid(ctx, cells, box.x, y, box.w, story);
+        drawHeroStatGrid(ctx, cells, s.pal, box.x, y, box.w, story);
     }
     return (
         y +
@@ -1122,9 +1222,9 @@ function drawBadgePill(
     padX: number,
 ): void {
     roundRectPath(ctx, x, y, w, h, h / 2);
-    ctx.fillStyle = 'rgba(246,241,232,0.10)';
+    ctx.fillStyle = 'rgba(245,240,228,0.10)';
     ctx.fill();
-    ctx.fillStyle = 'rgba(246,241,232,0.85)';
+    ctx.fillStyle = 'rgba(245,240,228,0.85)';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText(label, x + padX, y + h / 2 + 1);
@@ -1173,7 +1273,7 @@ function drawBadgesRow(
  * it's truncated to whatever width the short wind + date tail leaves.
  */
 function heroContextRow(s: HeroBlock, y: number): number {
-    const { ctx, k, box, story, draw } = s;
+    const { ctx, k, box, story, draw, pal } = s;
     // Keep the clock time alongside the day (date is "5 Jul 2026\n06.30").
     const dateStr = k.date ? k.date.replace('\n', ' · ') : null;
     const parts = [
@@ -1189,7 +1289,7 @@ function heroContextRow(s: HeroBlock, y: number): number {
         // Same size + style in both formats — this row reads as small metadata
         // either way, no reason for feed to shrink it further than story.
         ctx.font = '500 29px "JetBrains Mono"';
-        ctx.fillStyle = C.cream;
+        ctx.fillStyle = pal.text;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
         ctx.fillText(
@@ -1233,9 +1333,9 @@ function heroStatCells(
         { label: 'PACE', value: k.pace ? k.pace + '/km' : null },
         { label: 'HR', value: k.hr },
         { label: 'CADENCE', value: k.cadence },
-        { label: 'DURASI', value: k.durasi },
+        { label: 'DURATION', value: k.durasi },
         { label: 'BEST', value: k.fastestKm },
-        { label: 'ELEVASI', value: k.ascent ?? null },
+        { label: 'ELEVATION', value: k.ascent ?? null },
     ];
     return raw.filter(
         (c): c is { label: string; value: string } =>
@@ -1251,6 +1351,7 @@ const HERO_STAT_ROW_H = { story: 92, feed: 74 } as const;
 function drawHeroStatGrid(
     ctx: CanvasRenderingContext2D,
     cells: Array<{ label: string; value: string }>,
+    pal: Palette,
     left: number,
     y: number,
     w: number,
@@ -1269,18 +1370,18 @@ function drawHeroStatGrid(
         ctx.textBaseline = 'alphabetic';
         ctx.font = `700 ${labelSize}px "JetBrains Mono"`;
         ctx.letterSpacing = '2px';
-        ctx.fillStyle = C.inkOnSky;
+        ctx.fillStyle = pal.inkOnSky;
         ctx.fillText(cell.label, cx, cy + labelSize);
         ctx.letterSpacing = '0px';
-        // Shrink the value to fit its column so long values (e.g. "39 menit 10
-        // detik") can't overlap the neighbouring cell.
+        // Shrink the value to fit its column so long values (e.g. "39 min 10
+        // sec") can't overlap the neighbouring cell.
         let vSize = valueSize;
         ctx.font = `700 ${vSize}px "JetBrains Mono"`;
         while (vSize > 18 && ctx.measureText(cell.value).width > maxValueW) {
             vSize -= 2;
             ctx.font = `700 ${vSize}px "JetBrains Mono"`;
         }
-        ctx.fillStyle = C.cream;
+        ctx.fillStyle = pal.text;
         ctx.fillText(cell.value, cx, cy + labelSize + valueSize + 4);
     });
     ctx.textAlign = 'left';
@@ -1326,14 +1427,14 @@ function drawZoneBar(
  * Mirrors the React Kartu component.
  */
 function drawHero(d: DrawCtx): void {
-    const { ctx, w, h, cfg, moodBunny } = d;
+    const { ctx, w, h, cfg, pal, moodTemari } = d;
     const k = cfg.kartu;
     const story = cfg.format === 'story';
     const rarityCol = C.rarity[k.rarity] ?? C.line;
     const moodCol = moodSigilColor(k.mood);
 
     paintGlow(ctx, w / 2, h * 0.36, w * 0.5);
-    drawCardFrame(ctx, w, h, rarityCol);
+    drawCardFrame(ctx, w, h, rarityCol, k.rarity, pal);
 
     const cx = 0;
     const cy = 0;
@@ -1354,6 +1455,7 @@ function drawHero(d: DrawCtx): void {
         k,
         box: { x: innerX, y, w: innerW, h: 0 },
         rarityCol,
+        pal,
         story,
         draw,
         gapBonus,
@@ -1375,18 +1477,104 @@ function drawHero(d: DrawCtx): void {
     drawHeroArtWindow(
         ctx,
         k,
-        moodBunny,
+        moodTemari,
         { x: innerX, y: innerTop, w: innerW, h: artH },
         rarityCol,
         moodCol,
         story,
+        pal,
     );
     drawHeroBlock(makeBlock(innerTop + artH + blockGap, true, gapBonus));
+}
+
+/**
+ * Stats-grid poster: no route dependency, so it's the one template still
+ * available on a no-GPS run. A centred name over a 2x2 grid of hero-sized
+ * stat tiles — distance, pace, duration, and heart rate, the four numbers
+ * present on nearly every run regardless of GPS or sensor coverage. Tiles sit
+ * on `pal.surfaceSunken` (the same bright pearl tone as the hero's art
+ * window in every colorway), so their label/value ink stays the fixed dark
+ * `C.ink3`/`C.ink` rather than tracking the card's own `pal.text`.
+ */
+function drawStats(d: DrawCtx): void {
+    const { ctx, w, h, cfg, pal, temari } = d;
+    const k = cfg.kartu;
+    const story = cfg.format === 'story';
+    const rarityCol = C.rarity[k.rarity] ?? C.line;
+
+    paintGlow(ctx, w / 2, h * 0.3, w * 0.5);
+    drawCardFrame(ctx, w, h, rarityCol, k.rarity, pal);
+    drawBrand(ctx, w - PAD, PAD, pal.isDark, temari);
+    drawRarityFlag(ctx, PAD, PAD, k.rarity);
+
+    const nameSize = story ? w * 0.088 : w * 0.076;
+    ctx.font = `700 ${nameSize}px "Oswald"`;
+    ctx.letterSpacing = '-1px';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    const nameLines = wrapText(ctx, k.name.toUpperCase(), w - PAD * 2).slice(
+        0,
+        2,
+    );
+    const nameLineH = nameSize * 1.05;
+    let ny = PAD + (story ? 190 : 160) + nameLineH;
+    ctx.fillStyle = pal.text;
+    nameLines.forEach((ln) => {
+        ctx.fillText(ln, w / 2, ny);
+        ny += nameLineH;
+    });
+    ctx.letterSpacing = '0px';
+
+    const cells: Array<{ label: string; value: string }> = [
+        { label: 'DISTANCE', value: `${k.km} km` },
+        { label: 'PACE', value: k.pace ? `${k.pace}/km` : '—' },
+        { label: 'DURATION', value: k.durasi },
+        { label: 'HR', value: k.hr ?? '—' },
+    ];
+
+    const gridTop = ny + (story ? 64 : 44);
+    const gridBottom = h - PAD - (story ? 96 : 76);
+    const gap = story ? 28 : 20;
+    const cellW = (w - PAD * 2 - gap) / 2;
+    const cellH = (gridBottom - gridTop - gap) / 2;
+    const labelSize = story ? 26 : 21;
+    const valueSize = story ? 76 : 58;
+    const maxValueW = cellW - 48;
+
+    cells.forEach((cell, i) => {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        const x = PAD + col * (cellW + gap);
+        const y = gridTop + row * (cellH + gap);
+        roundRectPath(ctx, x, y, cellW, cellH, 32);
+        ctx.fillStyle = pal.surfaceSunken;
+        ctx.fill();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.font = `700 ${labelSize}px "JetBrains Mono"`;
+        ctx.letterSpacing = '3px';
+        ctx.fillStyle = C.ink3;
+        ctx.fillText(cell.label, x + cellW / 2, y + cellH * 0.4);
+        ctx.letterSpacing = '0px';
+
+        let vSize = valueSize;
+        ctx.font = `700 ${vSize}px "Oswald"`;
+        while (vSize > 28 && ctx.measureText(cell.value).width > maxValueW) {
+            vSize -= 3;
+            ctx.font = `700 ${vSize}px "Oswald"`;
+        }
+        ctx.fillStyle = C.ink;
+        ctx.fillText(cell.value, x + cellW / 2, y + cellH * 0.74);
+    });
+
+    drawDateFooter(d);
 }
 
 const TEMPLATES: Record<Layout, (d: DrawCtx) => void> = {
     kartu: drawHero,
     rute: drawRute,
+    stats: drawStats,
 };
 
 /**
@@ -1406,14 +1594,14 @@ export async function drawShareCard(
     }
 
     await ensureFonts();
-    const pal = PALETTE;
-    const bunny = await loadBunny('cream');
-    const moodBunny = await loadBunny('ink', moodSigilColor(cfg.kartu.mood));
+    const pal = COLORWAYS[cfg.colorway ?? 'navy'];
+    const temari = await loadTemari(pal.isDark ? 'cream' : 'ink');
+    const moodTemari = await loadTemari('ink', moodSigilColor(cfg.kartu.mood));
 
     ctx.clearRect(0, 0, w, h);
-    paintBackground(ctx, w, h);
+    paintBackground(ctx, w, h, pal);
 
-    const d: DrawCtx = { ctx, w, h, cfg, pal, bunny, moodBunny };
+    const d: DrawCtx = { ctx, w, h, cfg, pal, temari, moodTemari };
     TEMPLATES[cfg.layout](d);
 }
 

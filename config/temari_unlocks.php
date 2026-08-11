@@ -7,225 +7,205 @@ declare(strict_types=1);
 | Temari Accessory Unlocks
 |--------------------------------------------------------------------------
 |
-| Declarative map: unlock_key → metadata. Each accessory has a name, an
-| icon (Iconify), a short description, a rarity tier, and a criteria
-| summary shown in locked silhouette state on the Profil koleksi grid.
+| Display-only metadata: unlock_key → name, icon (Iconify), a flavor
+| description, and a rarity tier, shown on the Collection/Accessories grid.
+| Grant eligibility (metric/metric_key/target) lives in one place,
+| config/temari_goals.php, keyed by the same unlock_key — GoalResolver and
+| GrantEligibleUnlocksAction both read it. This file's `slot` also mirrors
+| that catalog's `slot`, and its `description` here is flavor text, not the
+| grant criteria (which the goal catalog's `description` supplies as the
+| locked-state "criteria" text).
 |
 | 25 items across 6 slots (4 per slot, aura has 5). Slots: medal,
-| ikat_kepala, kaus, celana, sepatu, aura.
+| headband, shirt, shorts, shoes, aura.
 |
 */
 
 return [
-    // ── Medali (4) ──────────────────────────────────────────────────────
-    'accessory.medal_pertama' => [
-        'name' => 'Medali Pertama',
+    // ── Medals (4) ──────────────────────────────────────────────────────
+    'accessory.medal_first' => [
+        'name' => 'First Medal',
         'slot' => 'medal',
         'rarity' => 'common',
         'icon' => 'mdi:medal',
-        'description' => 'Medali kuningan buat PR pertama kamu.',
-        'criteria' => 'Catat 1 PR di kategori apapun.',
+        'description' => 'A brass medal for your first PR.',
     ],
-    'accessory.medal_emas' => [
-        'name' => 'Medali Emas',
+    'accessory.medal_gold' => [
+        'name' => 'Gold Medal',
         'slot' => 'medal',
         'rarity' => 'uncommon',
         'icon' => 'mdi:medal-outline',
-        'description' => 'Medali emas tipis buat 5 PR total.',
-        'criteria' => 'Catat 5 PR total.',
+        'description' => 'A thin gold medal for 5 total PRs.',
     ],
-    'accessory.medal_perak' => [
-        'name' => 'Medali Perak',
+    'accessory.medal_silver' => [
+        'name' => 'Silver Medal',
         'slot' => 'medal',
         'rarity' => 'rare',
         'icon' => 'mdi:medal',
-        'description' => 'Medali perak buat yang udah 10 PR.',
-        'criteria' => 'Catat 10 PR total.',
+        'description' => "A silver medal once you've logged 10 PRs.",
     ],
-    'accessory.medal_platina' => [
-        'name' => 'Medali Platina',
+    'accessory.medal_platinum' => [
+        'name' => 'Platinum Medal',
         'slot' => 'medal',
         'rarity' => 'epic',
         'icon' => 'mdi:trophy',
-        'description' => 'Medali platina buat kolektor 20 PR.',
-        'criteria' => 'Catat 20 PR total.',
+        'description' => 'A platinum medal for PR collectors, 20 and counting.',
     ],
 
-    // ── Ikat Kepala (4) ────────────────────────────────────────────────
-    'accessory.ikat_kepala_berkesan' => [
-        'name' => 'Ikat Kepala Berkesan',
-        'slot' => 'ikat_kepala',
+    // ── Headband (4) ────────────────────────────────────────────────
+    'accessory.headband_uncommon' => [
+        'name' => 'Uncommon Headband',
+        'slot' => 'headband',
         'rarity' => 'uncommon',
         'icon' => 'mdi:bandage',
-        'description' => 'Ikat kepala hijau buat yang udah dapat 3 kartu Berkesan.',
-        'criteria' => 'Dapatkan 3 kartu Berkesan.',
+        'description' => "A green headband once you've earned 3 Uncommon cards.",
     ],
-    'accessory.ikat_kepala_langka' => [
-        'name' => 'Ikat Kepala Langka',
-        'slot' => 'ikat_kepala',
+    'accessory.headband_rare' => [
+        'name' => 'Rare Headband',
+        'slot' => 'headband',
         'rarity' => 'rare',
         'icon' => 'mdi:bandage',
-        'description' => 'Ikat kepala biru buat yang udah dapat 3 kartu Langka.',
-        'criteria' => 'Dapatkan 3 kartu Langka.',
+        'description' => "A blue headband once you've earned 3 Rare cards.",
     ],
-    'accessory.ikat_kepala_epik' => [
-        'name' => 'Ikat Kepala Istimewa',
-        'slot' => 'ikat_kepala',
+    'accessory.headband_epic' => [
+        'name' => 'Epic Headband',
+        'slot' => 'headband',
         'rarity' => 'epic',
         'icon' => 'mdi:bandage',
-        'description' => 'Ikat kepala ungu buat koleksi 3 kartu Istimewa.',
-        'criteria' => 'Dapatkan 3 kartu Istimewa.',
+        'description' => 'A purple headband for a collection of 3 Epic cards.',
     ],
-    'accessory.ikat_kepala_legendaris' => [
-        'name' => 'Ikat Kepala Legendaris',
-        'slot' => 'ikat_kepala',
+    'accessory.headband_legendary' => [
+        'name' => 'Legendary Headband',
+        'slot' => 'headband',
         'rarity' => 'legendary',
         'icon' => 'mdi:bandage',
-        'description' => 'Ikat kepala emas, cuma buat yang punya kartu Legendaris.',
-        'criteria' => 'Dapatkan 1 kartu Legendaris.',
+        'description' => 'A gold headband, only for those holding a Legendary card.',
     ],
 
-    // ── Kaus (4) ───────────────────────────────────────────────────────
-    'accessory.kaus_pemula' => [
-        'name' => 'Kaus Pemula',
-        'slot' => 'kaus',
+    // ── Shirt (4) ───────────────────────────────────────────────────────
+    'accessory.shirt_beginner' => [
+        'name' => 'Beginner Shirt',
+        'slot' => 'shirt',
         'rarity' => 'common',
         'icon' => 'mdi:tshirt-crew',
-        'description' => 'Kaus putih polos buat lari pertama kamu.',
-        'criteria' => 'Catat 1 aktivitas lari.',
+        'description' => 'A plain white tee for your first run.',
     ],
-    'accessory.kaus_pagi' => [
-        'name' => 'Kaus Anak Pagi',
-        'slot' => 'kaus',
+    'accessory.shirt_early_bird' => [
+        'name' => 'Early Bird Shirt',
+        'slot' => 'shirt',
         'rarity' => 'uncommon',
         'icon' => 'mdi:tshirt-crew',
-        'description' => 'Kaus hangat buat yang kumpulin 5 lari pagi.',
-        'criteria' => 'Selesaikan 5 lari pagi (sebelum jam 6).',
+        'description' => 'A warm tee for collecting 5 morning runs.',
     ],
-    'accessory.kaus_hujan' => [
-        'name' => 'Kaus Pejuang Hujan',
-        'slot' => 'kaus',
+    'accessory.shirt_rain_warrior' => [
+        'name' => 'Rain Warrior Shirt',
+        'slot' => 'shirt',
         'rarity' => 'rare',
         'icon' => 'mdi:tshirt-crew',
-        'description' => 'Kaus tahan air buat yang nekat lari pas hujan 3 kali.',
-        'criteria' => 'Selesaikan 3 lari pas hujan.',
+        'description' => 'A water-resistant tee for braving 3 rainy runs.',
     ],
-    'accessory.kaus_legendaris' => [
-        'name' => 'Kaus Legendaris',
-        'slot' => 'kaus',
+    'accessory.shirt_legendary' => [
+        'name' => 'Legendary Shirt',
+        'slot' => 'shirt',
         'rarity' => 'legendary',
         'icon' => 'mdi:tshirt-crew',
-        'description' => 'Kaus emas, cuma buat yang udah 50 lari.',
-        'criteria' => 'Catat 50 aktivitas lari.',
+        'description' => 'A gold tee, only for those with 50 runs logged.',
     ],
 
-    // ── Celana (4) ─────────────────────────────────────────────────────
-    'accessory.celana_ringan' => [
-        'name' => 'Celana Ringan',
-        'slot' => 'celana',
+    // ── Shorts (4) ─────────────────────────────────────────────────────
+    'accessory.shorts_lightweight' => [
+        'name' => 'Lightweight Shorts',
+        'slot' => 'shorts',
         'rarity' => 'common',
         'icon' => 'mdi:lingerie',
-        'description' => 'Celana ringan buat lari 5 km pertama.',
-        'criteria' => 'Catat 1 lari sejauh 5 km atau lebih.',
+        'description' => 'Lightweight shorts for your first 5K.',
     ],
-    'accessory.celana_jarak' => [
-        'name' => 'Celana Penjelajah',
-        'slot' => 'celana',
+    'accessory.shorts_explorer' => [
+        'name' => 'Explorer Shorts',
+        'slot' => 'shorts',
         'rarity' => 'uncommon',
         'icon' => 'mdi:lingerie',
-        'description' => 'Celana bawaan buat yang udah ngejar 10 km.',
-        'criteria' => 'Catat 1 lari sejauh 10 km atau lebih.',
+        'description' => 'Everyday shorts for chasing down 10K.',
     ],
-    'accessory.celana_split' => [
-        'name' => 'Celana Negative Split',
-        'slot' => 'celana',
+    'accessory.shorts_negative_split' => [
+        'name' => 'Negative Split Shorts',
+        'slot' => 'shorts',
         'rarity' => 'rare',
         'icon' => 'mdi:lingerie',
-        'description' => 'Celana buat yang bisa negative split 3 kali.',
-        'criteria' => 'Catat 3 lari negative split.',
+        'description' => 'Shorts for pulling off 3 negative splits.',
     ],
-    'accessory.celana_maraton' => [
-        'name' => 'Celana Maraton',
-        'slot' => 'celana',
+    'accessory.shorts_marathon' => [
+        'name' => 'Marathon Shorts',
+        'slot' => 'shorts',
         'rarity' => 'epic',
         'icon' => 'mdi:lingerie',
-        'description' => 'Celana juara buat yang udah lari 21 km.',
-        'criteria' => 'Catat 1 lari sejauh 21 km atau lebih.',
+        'description' => 'Champion shorts for going the 21K distance.',
     ],
 
-    // ── Sepatu (4) ─────────────────────────────────────────────────────
-    'accessory.sepatu_basic' => [
-        'name' => 'Sepatu Basic',
-        'slot' => 'sepatu',
+    // ── Shoes (4) ─────────────────────────────────────────────────────
+    'accessory.shoes_basic' => [
+        'name' => 'Basic Shoes',
+        'slot' => 'shoes',
         'rarity' => 'common',
         'icon' => 'mdi:shoe-sneaker',
-        'description' => 'Sepatu dasar buat 10 lari pertama.',
-        'criteria' => 'Catat 10 aktivitas lari.',
+        'description' => 'Basic shoes for your first 10 runs.',
     ],
-    'accessory.sepatu_cepat' => [
-        'name' => 'Sepatu Cepat',
-        'slot' => 'sepatu',
+    'accessory.shoes_speed' => [
+        'name' => 'Speed Shoes',
+        'slot' => 'shoes',
         'rarity' => 'uncommon',
         'icon' => 'mdi:shoe-sneaker',
-        'description' => 'Sepatu racing buat yang pernah lari pace 5:30/km.',
-        'criteria' => 'Catat 1 lari dengan rata-rata pace di bawah 5:30/km.',
+        'description' => 'Racing shoes for hitting a 5:30/km pace.',
     ],
-    'accessory.sepatu_tahan' => [
-        'name' => 'Sepatu Tahan Banting',
-        'slot' => 'sepatu',
+    'accessory.shoes_rugged' => [
+        'name' => 'Rugged Shoes',
+        'slot' => 'shoes',
         'rarity' => 'rare',
         'icon' => 'mdi:shoe-sneaker',
-        'description' => 'Sepatu kuat buat yang sering lari 10K+ dengan 5 lari.',
-        'criteria' => 'Catat 5 lari sejauh 10 km atau lebih.',
+        'description' => 'Tough shoes for the 10K+ regular, 5 runs deep.',
     ],
-    'accessory.sepatu_legendaris' => [
-        'name' => 'Sepatu Legendaris',
-        'slot' => 'sepatu',
+    'accessory.shoes_legendary' => [
+        'name' => 'Legendary Shoes',
+        'slot' => 'shoes',
         'rarity' => 'legendary',
         'icon' => 'mdi:shoe-sneaker',
-        'description' => 'Sepatu emas buat yang total jarak udah 1000 km.',
-        'criteria' => 'Akumulasi jarak 1000 km.',
+        'description' => 'Gold shoes for 1,000 km logged and counting.',
     ],
 
     // ── Aura (4) ───────────────────────────────────────────────────────
-    'accessory.aura_pemanasan' => [
-        'name' => 'Aura Pemanasan',
+    'accessory.aura_warmup' => [
+        'name' => 'Warm-Up Aura',
         'slot' => 'aura',
         'rarity' => 'common',
         'icon' => 'mdi:blur',
-        'description' => 'Aura hangat buat yang konsisten 2 minggu.',
-        'criteria' => 'Lari di 2 minggu berturut-turut.',
+        'description' => 'A warm aura for staying consistent 2 weeks running.',
     ],
-    'accessory.aura_gerah' => [
-        'name' => 'Aura Gerah',
+    'accessory.aura_heatwave' => [
+        'name' => 'Heatwave Aura',
         'slot' => 'aura',
         'rarity' => 'uncommon',
         'icon' => 'mdi:fire',
-        'description' => 'Aura api buat yang nekat lari 3 kali pas gerah.',
-        'criteria' => 'Selesaikan 3 lari saat suhu di atas 31°C.',
+        'description' => 'A fiery aura for braving 3 sweltering runs.',
     ],
-    'accessory.aura_tenang' => [
-        'name' => 'Aura Tenang',
+    'accessory.aura_calm' => [
+        'name' => 'Calm Aura',
         'slot' => 'aura',
         'rarity' => 'rare',
         'icon' => 'mdi:blur',
-        'description' => 'Aura adem buat yang bisa jaga HR Zone 2 di 5 lari.',
-        'criteria' => 'Catat 5 lari di HR Zone 2 (bawah 70% HRmax).',
+        'description' => 'A cool aura for holding HR Zone 2 across 5 runs.',
     ],
-    'accessory.aura_jagoan' => [
-        'name' => 'Aura Jagoan',
+    'accessory.aura_champion' => [
+        'name' => 'Champion Aura',
         'slot' => 'aura',
         'rarity' => 'epic',
         'icon' => 'mdi:blur',
-        'description' => 'Aura kilat buat yang punya 3 kartu Legendaris.',
-        'criteria' => 'Dapatkan 3 kartu Legendaris.',
+        'description' => 'A lightning aura for holding 3 Legendary cards.',
     ],
-    'accessory.aura_angin' => [
-        'name' => 'Aura Angin',
+    'accessory.aura_windrunner' => [
+        'name' => 'Windrunner Aura',
         'slot' => 'aura',
         'rarity' => 'rare',
         'icon' => 'mdi:weather-windy',
-        'description' => 'Aura angin buat yang tetap ngebut walau angin kencang 3 kali.',
-        'criteria' => 'Selesaikan 3 lari saat angin di atas 20 km/j.',
+        'description' => 'A windswept aura for pushing pace through strong wind, 3 times.',
     ],
 ];

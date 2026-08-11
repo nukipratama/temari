@@ -24,7 +24,7 @@ interface TemariNudgeModalProps {
     /** Extra classes merged onto the primary CTA (e.g. a brand color override). */
     primaryClassName?: string;
     onPrimary: () => void;
-    /** Secondary dismiss label; defaults to a soft "Nanti aja". */
+    /** Secondary dismiss label; defaults to a soft "Not now". */
     secondaryLabel?: string;
     pose?: TemariPose;
 }
@@ -44,7 +44,7 @@ export default function TemariNudgeModal({
     primaryIcon,
     primaryClassName,
     onPrimary,
-    secondaryLabel = 'Nanti aja',
+    secondaryLabel = 'Not now',
     pose = 'observational',
 }: Readonly<TemariNudgeModalProps>) {
     const panelRef = useRef<HTMLDivElement>(null);
@@ -90,7 +90,7 @@ export default function TemariNudgeModal({
                             <button
                                 type="button"
                                 onClick={onClose}
-                                aria-label="Tutup"
+                                aria-label="Close"
                                 className={iconButtonVariants({ size: 'sm' })}
                             >
                                 <Icon icon="mdi:close" width={16} height={16} />

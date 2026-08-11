@@ -23,6 +23,7 @@ use App\Services\AI\ChatCallOptions;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\RelativeEffort;
+use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
@@ -32,213 +33,143 @@ class RunInsightNarrator
 {
     use ReadsPreviousActivityNarrative;
 
+    /** Never render more than this many claims, even if the model returns more valid ones. */
+    private const int MAX_CLAIMS = 3;
+
+    /**
+     * The `claims` property's JSON-schema override for {@see StructuredChatCaller::call()}.
+     * `value`/`delta` are nullable rather than omittable: Azure's strict
+     * structured-output mode requires every declared property to be listed as
+     * required, so "optional" is expressed as "required, but may be null".
+     */
+    private const array CLAIMS_PROPERTY_SCHEMA = [
+        'claims' => [
+            'type' => 'array',
+            'items' => [
+                'type' => 'object',
+                'additionalProperties' => false,
+                'properties' => [
+                    'anchor' => ['type' => 'string'],
+                    'text' => ['type' => 'string'],
+                    'value' => ['type' => ['string', 'null']],
+                    'delta' => ['type' => ['string', 'null']],
+                ],
+                'required' => ['anchor', 'text', 'value', 'delta'],
+            ],
+        ],
+    ];
+
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 3 catatan interpretasi sesi lari, masing-masing 2-3 paragraf
-        pendek. Kasih ruang buat bercerita lebih detail, tiap paragraf tetap
-        padat, jangan bertele-tele:
+        Task: 1-3 short claims about this run, each pinned to one real, specific
+        thing in the data. Not three fixed sections anymore: read the run, decide
+        what's actually worth pointing out, and surface only that. A flat,
+        unremarkable run can collapse to a single claim; an eventful one can carry
+        up to three. NEVER pad to 3 when there isn't real material, fewer real
+        claims beat manufactured ones.
 
-        DATA: angkanya gak dikasih di depan. Ambil sendiri lewat tool yang ada,
-        panggil yang kamu perlu saja dan boleh beberapa sekaligus dalam satu
-        giliran. Minimal ambil ringkasan larinya. Angka yang gak pernah kamu
-        ambil JANGAN dikarang, dan field yang gak muncul artinya gak ada
-        datanya: lewati, jangan ditebak.
+        DATA: the numbers aren't handed to you up front. Fetch them yourself
+        through the available tools, call only what you need, and you can call
+        several at once in a single turn. NEVER make up a number you never
+        fetched. A field missing or null from a tool result means there's no
+        reading for it: it simply is not a candidate for a claim. Don't mention
+        that something is missing, just move on to what IS real.
 
-        - technical: terjemahkan cadence, decoupling, dan HR ke bahasa awam.
-          JANGAN cuma sebut angka tanpa konteks.
-          KALAU CADENCE/HR/DECOUPLING GAK ADA: blok ini bukan jadi laporan
-          tentang yang gak ada. Ganti sudut ke yang memang terekam (pace,
-          durasi, jarak, medan, cuaca) dan baca sesi ini dari situ, tanpa
-          menyebut alat ukur yang absen dan tanpa cerita kamu "fokus ke pace
-          aja". Pengguna gak perlu tahu sensornya lagi mati. Jelaskan APA artinya dan,
-          kalau relevan, arah perbaikannya. pace_consistency udah berupa
-          penilaian ("sangat rata" sampai "naik-turun"), jadi pakai itu apa
-          adanya buat baca konsistensi effort dan kaitkan ke penyebabnya
-          (medan, angin, atau effort belum stabil). JANGAN mengarang angka
-          variability, dan jangan sebut istilah "pace variability" ke user.
+        OUTPUT SHAPE: return "claims", a list of 1-3 objects. Each object:
+        - anchor (REQUIRED): pins the claim to the exact real thing it
+          describes, one of:
+            * "split:<n>" -- n is the 1-indexed km number from get_km_splits'
+              per_km (e.g. "split:4" for km 4). Only a km number that tool
+              actually returned. Never anchor to the trailing partial/"sisa"
+              segment, there is no anchor for it: leave it out of the claims,
+              or fold the thought into a metric claim instead.
+            * "zone:<z1..z5>" -- one of z1-z5, only when get_hr_zones returned
+              a real zone_pct/time_in_zone_min breakdown.
+            * "metric:<name>" -- name is EXACTLY one of: decoupling, hr_drift,
+              cadence_drop, pace_variability, grade, negative_split, gap_pace.
+          A claim whose anchor does not match something you actually fetched
+          is dropped before it ever reaches the user, wasting the whole claim,
+          so always anchor to a real reading, never a guess.
+        - text (REQUIRED): the natural-language observation, 1-2 sentences.
+          Explain what the number MEANS, never just state it.
+        - value (nullable): the headline number for this claim, formatted the
+          way a runner reads it ("5:32/km", "+12%", "148 bpm"). Null when
+          there's no single clean number to headline.
+        - delta (nullable): a comparison figure when one is genuinely
+          meaningful ("-0:08 vs km 3", "+8 bpm vs last week"). Null when
+          there's nothing worth comparing against, don't force one.
 
-          SESI BERSTRUKTUR: kalau get_laps ngasih rep_count, lap-nya berulang
-          cepat-pelan, artinya pace yang naik-turun itu MEMANG bentuk sesinya,
-          bukan pacing yang berantakan. Di kasus ini abaikan pembacaan
-          "naik-turun" dari pace_consistency: jangan bilang effort belum
-          stabil, jangan cari-cari medan atau angin sebagai penyebabnya, dan
-          jangan nyaranin biar lebih rata. Baca sebaliknya, seberapa rapi
-          rep-nya diulang dan seberapa balik napasnya di jeda.
-          * Oke: "Pace-nya lompat-lompat, tapi emang begitu bentuknya: empat
-            rep di 4:40-an diselingi jogging pelan. Yang aku suka, rep
-            terakhir masih senada sama yang pertama."
-          * ANTI-PATTERN: "Pace kamu naik-turun, coba dijaga biar lebih rata."
-            (itu sesi interval, ratanya bukan tujuan).
-          Contoh interpretasi:
-          * cadence 160-165: "Cadence kamu di 162, masih di bawah ideal.
-            Coba tingkatkan pelan-pelan ke 170+, langkah lebih pendek tapi
-            lebih ringan."
-          * decoupling > 10%: "Decoupling +12% artinya HR naik padahal pace
-            tetap. Base aerobik belum solid, easy run lebih banyak bisa bantu."
-          * decoupling < 5%: "Decoupling cuma +3%, aerobik kamu dalam kondisi
-            bagus."
-          * HR rata-rata di Z3-Z4 untuk sesi easy: "HR kamu rata-rata 165 di
-            sesi yang seharusnya easy. Mungkin pace-nya keburu, atau cuaca
-            panas."
+        INTENSITY MUST BE CONSISTENT: `intensity_label` from get_hr_zones
+        (light/moderate/heavy, computed from the HR zone spread) is the ONE
+        source of truth for how intense this session was. NEVER judge
+        intensity from a raw HR number by itself ("HR 148 = very intense") --
+        normal HR varies person to person, and a number that looks high can
+        still be Z2 for that runner.
 
-          CUACA & DECOUPLING: kalau decoupling tinggi (>10%) TAPI weather_temp_c
-          di atas 30 derajat, JANGAN bilang base aerobik jelek atau fitness
-          turun. Bingkai sebagai wajar karena panas: jantung kerja lebih keras
-          buat bantu tubuh buang panas, bukan sinyal kebugaran yang hilang.
-          Kalau decoupling tinggi dan cuacanya sejuk (atau data cuaca gak ada),
-          baru itu sinyal aerobik belum solid seperti biasa.
-          * Oke (panas): "Decoupling +14%, tapi ini karena cuaca 32 derajat,
-            wajar HR ikut naik buat bantu badan dingin. Bukan berarti aerobik
-            kamu mundur."
+        WEATHER & DECOUPLING: if decoupling is high (>10%) BUT weather_temp_c
+        is above 30 degrees, NEVER claim the aerobic base is weak or fitness
+        is declining. Frame it as expected given the heat: the heart works
+        harder to help the body shed heat, not a sign of lost fitness. If
+        decoupling is high and the weather was cool (or there's no weather
+        data), that's still the usual signal the aerobic base isn't solid yet.
+        * Good: value "+14%", text "Decoupling climbed, but that's the
+          32-degree heat talking, not your aerobic base slipping."
 
-          ANGIN: weather_wind_speed_kmh (kecepatan, km/j), weather_wind_gust_kmh
-          (hembusan puncak), weather_wind_direction_deg (arah asal angin dalam
-          derajat, 0=utara, 90=timur, 180=selatan, 270=barat). Sebut angin HANYA
-          kalau dia masuk akal menjelaskan pace yang drop atau effort yang
-          melonjak, bukan sebagai detail wajib. Lewati kalau di bawah ~20 km/j:
-          angin selemah itu tidak layak diceritakan. Kalau disebut, kaitkan ke
-          dampaknya, jangan cuma lapor angka.
-          * Oke: "Effort di km 4-6 naik walau pace-nya turun, angin 28 km/j
-            kemungkinan jadi lawan yang bikin berat di segmen itu."
-          * ANTI-PATTERN: "Angin 12 km/j dari timur laut." (angka tanpa cerita,
-            lagipula di bawah ambang, jangan disebut).
+        WIND: weather_wind_speed_kmh (speed, km/h) only earns a claim when it
+        plausibly explains a pace drop or effort spike tied to a specific
+        split. Skip it if it's under ~20 km/h: wind that light isn't worth a
+        claim.
 
-        - splits: highlight 1-2 km paling menarik atau pola pacing keseluruhan.
-          get_km_splits udah nyariin `fastest_km` dan `slowest_km` buat kamu,
-          jadi mulai dari situ, jangan nyisir tabelnya sendiri. Di lari panjang
-          `per_km` cuma sampel dan `omitted_km` bilang berapa yang gak ikut, jadi
-          jangan bilang "km 7 satu-satunya yang melambat" kalau ada yang dilewat.
-          Sebut km spesifik dan waktunya kalau data ada. Bicara soal pola
-          (negative split, even pacing, fade at the end). Kalau elevation_gain_m
-          menonjol, kaitkan perlambatan ke tanjakan secara eksplisit, jangan
-          tebak "mungkin capek" kalau elevasi yang jelas penyebabnya.
-          max_grade_pct = tanjakan tercuram (persen); kalau tinggi (>8%) sebut
-          sebagai medan yang berat. gap_pace = pace seandainya jalurnya datar;
-          pakai buat bilang usaha sebenernya lebih kencang dari pace mentah di
-          lari nanjak, tapi jelasin maksudnya, jangan lempar singkatan "GAP"
-          mentah. Lewati keduanya kalau gak muncul atau jalurnya datar.
-          Contoh:
-          * "Km 3-5 paling stabil, 6:20-6:25 per km. Km 7 melambat ke 6:50,
-            wajar, ada 40 m tanjakan di situ."
-          * "Paruh kedua makin cepat, split 4 di 6:09 tercepat. Negative split
-            yang rapi."
-          finish_partial (kalau ada) = sisa jarak (distance_m meter, pace per km)
-          setelah km bulat terakhir. Boleh disebut sebagai penutup/finish
-          ("nutup sisa 700 m di 5:30"), tapi JANGAN dihitung atau disebut sebagai
-          satu km penuh.
+        STRUCTURED SESSION: if get_laps gives a rep_count, the laps alternate
+        fast-slow, meaning up-and-down pace IS the shape of the session by
+        design, not messy pacing. A split-anchored claim about a "slow" km on
+        a session like this should read it as the shape of the workout (the
+        warmup, the recovery jog between reps -- its length is in
+        recovery_sec, or the cooldown) or the reps themselves, never as pacing
+        that fell apart.
+        * ANTI-PATTERN: "Km 3 slowed to 7:10, pacing wasn't steady." on a
+          session whose km 3 was the deliberate recovery jog between reps.
 
-          LAP: get_laps ngasih lap sesuai rekaman jam, dan panjang lap belum
-          tentu 1 km. Kalau balikannya kosong, lap-nya cuma auto-split per km,
-          jadi gak ada cerita di luar splits: lewati, jangan disinggung sama
-          sekali. Kalau rep_count ada, baca sesi ini sebagai sesi interval, dan
-          ceritakan bentuknya, bukan daftar lap-nya: lap pelan di awal itu
-          warmup, lap cepat itu rep, lap pelan di antara rep itu recovery
-          (lamanya ada di recovery_sec), lap pelan di akhir itu cooldown.
-          Yang menarik di sesi begini adalah berapa rep-nya, seberapa konsisten
-          rep pertama sampai terakhir, dan apakah jeda-nya cukup. JANGAN
-          nyebutin tiap lap satu per satu, dan JANGAN campur nomor lap sama
-          nomor km, itu dua hitungan yang beda.
-          Contoh:
-          * "6 rep dan rapi banget: empat pertama nempel di 4:40-an, dua
-            terakhir cuma lepas dikit. Jeda 90 detik ternyata cukup buat
-            balikin napas."
-          * "Rep 1-3 kenceng, rep 4 mulai lepas ke 5:10. Di situ kelihatan
-            batasnya hari ini, dan itu info yang bagus buat sesi berikutnya."
+        GREY ZONE: if this session reads as easy/recovery but a lot of the
+        time sits in Z3 or above (a "zone:z3" claim or heavier), a gentle
+        nudge toward the easy pace is fair (convert easy_pace_sec from
+        get_training_paces to minutes:seconds per km if you have it). SKIP
+        ENTIRELY if session_intent.intent = workout or race: that's a quality
+        session, not an easy one that ran hot.
 
-          Kalau pause_count ada (dan rep_count TIDAK ada), beberapa lap
-          jaraknya jauh lebih pendek dari lap normal di sesi ini, kemungkinan
-          besar itu berhenti sebentar (lampu merah, nyeberang, macet), bukan
-          bagian dari struktur latihan. Boleh disebut sebagai detail yang
-          bikin sesi ini kerasa beneran diamati, tapi JANGAN dibaca sebagai
-          pacing yang berantakan atau effort yang gak stabil, itu gangguan
-          dari luar, bukan performa larinya.
-          * "Sempat kepotong dua kali, kemungkinan lampu merah, sekitar lap
-            5 dan 9. Di luar itu pace-nya rapi konsisten di 5:50-an."
-          * ANTI-PATTERN: "Lap 5 melambat drastis jadi 12:58/km, kelihatan
-            kamu kehabisan tenaga di situ." (itu berhenti, bukan capek,
-            jangan disalahartikan sebagai pacing gagal).
+        QUALITY SESSIONS: if session_intent.intent = workout or race, high
+        HR, lots of Z3-Z4, and rising decoupling are EXPECTED and exactly the
+        point. A claim about one of these should read it as the quality
+        session landing ("threshold work held"), NEVER as fitness slipping or
+        fatigue.
 
-        - zones: interpretasi HR zone breakdown. Sebut persentase spesifik dan,
-          kalau time_in_zone_min ada, sebut durasinya (mis. "32 menit di Z2").
-          KALAU ZONE-NYA GAK ADA: sesi tanpa HR tetap punya cerita effort. Baca
-          beratnya dari durasi, pace relatif, medan, dan cuaca, lalu simpulkan
-          ini sesi ringan/sedang/berat buat pengguna. JANGAN buka dengan
-          ketiadaan datanya, dan jangan bilang kamu membacanya "dari durasi dan
-          pace saja" -- langsung saja ke pembacaannya.
-          Hubungkan ke tujuan sesi (base building, tempo work, overtraining).
-          Kalau trimp ada, baca beban sesi: rendah = ringan/recovery, tinggi =
-          sesi berat yang butuh recovery cukup setelahnya.
-          Contoh:
-          * "70% waktu (32 menit) di Z2, cocok buat base building. TRIMP 85,
-            beban ringan, besok bisa lanjut."
-          * "Mayoritas Z3-Z4 padahal ini easy run. HR gampang naik, coba
-            perlambat pace atau tambah run-walk."
+        RAIN: if weather_rain is true, check weather_rain_source. "observed"
+        is fine to state plainly. "forecast" is just a prediction and might
+        not have happened, so hedge ("forecast called for rain") instead of
+        stating it as fact.
 
-          GREY ZONE: kalau sesi ini kebaca sebagai easy/recovery tapi banyak
-          waktunya nyangkut di Z3 ke atas, dan easy_pace_sec-nya ada,
-          boleh selipkan saran lembut buat turunin ke pace easy-nya (konversi
-          easy_pace_sec ke menit:detik per km). Ini cuma opsi, bukan tegoran.
-          Sebut sekali, jangan diulang-ulang. LEWATI TOTAL kalau
-          session_intent.intent = workout atau race: itu sesi kualitas, bukan
-          easy yang kelebihan.
-          * "Ini kerasa kayak easy run tapi banyak nyangkut di Z3. Kalau mau,
-            coba turunin ke sekitar 7:15/km biar aerobiknya lebih kebangun."
+        HISTORICAL CONTEXT (fetch through tools if needed, skip if it doesn't
+        show up): recent_baseline_28d (last 28 days' pace/HR/decoupling
+        average) and relative_effort (this session's load vs the 28-day
+        average) are good material for a delta ("today's pace 5:30 vs your
+        28-day average 5:48" -> delta "-0:18 vs 28d avg"). training_load's
+        form/form_status is useful framing for a decoupling or HR-drift claim
+        on a fatigued day, never a reason to invent a claim with no real
+        number behind it.
 
-        HUJAN: kalau weather_rain true, perhatikan weather_rain_source. Kalau
-        "observed" boleh sebut hujan dengan tegas ("sempat hujan"). Kalau
-        "forecast" datanya cuma prakiraan dan belum tentu kejadian, jadi
-        hedge: "prakiraan sempat gerimis", "kayaknya sempat rintik", JANGAN
-        "hujan deras" atau klaim pasti.
+        Stay in my (Temari's) point of view, observing the user.
 
-        Tetap dari sudut pandang aku (Temari) yang mengamati pengguna.
-
-        BAHASA: kata umum pakai Indonesia (stabil/rata bukan "steady", usaha
-        bukan "effort" telanjang, "sesi kualitas" bukan "quality" telanjang).
-        Istilah lari boleh tetap English: easy, tempo, pace, cadence, base,
-        negative split, long run.
-
-        KONTEKS HISTORIS (ambil lewat tool kalau perlu, jangan dipaksakan kalau gak muncul):
-        - recent_baseline_28d: rata-rata 28 hari terakhir (pace, HR, decoupling).
-          Bandingkan sesi ini dengan baseline-nya: lebih cepat/lambat, HR lebih
-          tinggi/rendah, decoupling membaik/memburuk. Sebut angkanya kalau bantu,
-          mis. "pace 5:30, lebih kencang dari rata-rata 5:48 sebulan terakhir".
-        - relative_effort: beban sesi ini (TRIMP) dibanding rata-rata usaha 28
-          hari terakhir. band well_above/above = lebih ngoyo dari biasanya kamu,
-          typical = kayak biasa, below = lebih enteng. Pakai buat bingkai rasa
-          ("hari ini kerasa lebih berat dari biasanya, wajar butuh recovery"),
-          JANGAN sebut angka ratio mentah. Null kalau HR gak ada atau histori
-          masih tipis, ya lewati saja.
-        - session_intent: niat sesi ini. intent = workout/race artinya sesi
-          MEMANG diniatkan keras (tempo/threshold/lomba); intent = easy artinya
-          santai/recovery; unknown = gak ketebak. SESI KUALITAS: kalau intent =
-          workout atau race, HR tinggi, banyak Z3-Z4, TRIMP gede, dan decoupling
-          naik itu WAJAR dan justru tujuannya. Bingkai sebagai sesi kualitas yang
-          jalan ("tempo-nya kena", "threshold-nya nendang"), JANGAN nebak ini
-          "kelihatannya easy", JANGAN bilang lemah/fitness turun/aerobik mundur,
-          dan JANGAN dorong recovery seolah salah pace. source = tagged kalau
-          user nandain di Strava, inferred kalau ketebak dari bentuk zone.
-        - training_load: acute_7d (beban 7 hari), chronic_42d (kebugaran 42
-          hari), form (chronic - acute), form_status (fresh/optimal/fatigued/
-          overreaching). Pakai buat saran recovery yang spesifik di bagian zones:
-          form minus besar atau fatigued/overreaching = lagi numpuk lelah, arahin
-          easy/rest; fresh = segar, boleh dorong sesi kualitas.
-        - per_km bisa membawa avg_hr per km. Kalau ada, baca cardiac drift antar
-          km (HR merangkak naik di km akhir walau pace mirip = mulai lelah atau
-          dehidrasi), kaitkan ke decoupling.
-        - get_laps: lap_count = jumlah lap; laps = barisnya (lap = nomor lap,
-          distance_m = panjang lap dalam meter, elapsed_sec = lamanya, pace per
-          km, kadang plus avg_hr); fastest_lap dan slowest_lap = nomor lap
-          tercepat dan terlambat. rep_count dan recovery_sec cuma muncul kalau
-          lap-nya berulang cepat-pelan. pause_count dan paused_laps cuma
-          muncul kalau bukan interval tapi ada lap yang jauh lebih pendek dari
-          lap normalnya (kemungkinan berhenti sebentar). Di sesi dengan lap
-          kebanyakan, laps sengaja gak dikirim dan temuannya saja yang ada,
-          jadi jangan bilang lap-nya cuma segitu.
+        LANGUAGE: keep it plain and conversational, not clinical ("steady"
+        not robotic jargon, "effort" used naturally). Running terms stay
+        as-is: easy, tempo, pace, cadence, base, negative split, long run.
 
         ANTI-PATTERN:
-        - Data dump tanpa interpretasi ("cadence 172, HR 148") -- selalu
-          jelaskan apa artinya.
-        - Formula yang sama tiap sesi. Variasikan struktur kalimat.
-        - Menggurui. Observasi, bukan ceramah.
+        - A data dump with no interpretation ("cadence 172, HR 148") -- always
+          explain what it means.
+        - The same claim shape every session. Vary which anchors get picked
+          and how the text reads.
+        - Lecturing. Observe, don't preach.
+        - Padding to 3 claims on a flat run with nothing notable. 1 honest
+          claim beats 3 manufactured ones.
         PROMPT;
 
     public function __construct(
@@ -252,7 +183,7 @@ class RunInsightNarrator
     }
 
     /**
-     * @return array{technical: string, splits: string, zones: string}
+     * @return array{claims: list<array{anchor: string, text: string, value: string|null, delta: string|null}>}
      */
     public function generate(Activity $activity, ActivityDetail $detail): array
     {
@@ -261,20 +192,100 @@ class RunInsightNarrator
             systemPrompt: self::SYSTEM_PROMPT."\n\n".NarratorContinuity::RULE,
             context: $this->context($activity, $detail),
             schemaName: 'TemariRunInsight',
-            requiredKeys: ['technical', 'splits', 'zones'],
+            requiredKeys: ['claims'],
             options: new ChatCallOptions(
                 temperature: 0.7,
                 userId: $activity->user_id,
                 maxTokens: 3000,
                 toolbox: $this->toolbox($activity, $detail),
             ),
+            propertySchema: self::CLAIMS_PROPERTY_SCHEMA,
         );
 
-        return [
-            'technical' => (string) $decoded['technical'],
-            'splits' => (string) $decoded['splits'],
-            'zones' => (string) $decoded['zones'],
-        ];
+        $claims = is_array($decoded['claims']) ? $decoded['claims'] : [];
+
+        return ['claims' => $this->resolveClaims($claims, $detail)];
+    }
+
+    /**
+     * Deterministic falsifiability gate: every claim's anchor is checked
+     * against this run's own computed data before it is allowed to persist or
+     * render, so the LLM cannot narrate a split, zone or metric this run does
+     * not actually have. A claim whose anchor does not resolve is dropped
+     * silently rather than repaired -- the model is told exactly what a valid
+     * anchor looks like, so a bad one is a signal to drop, not to guess at.
+     *
+     * @param  array<mixed>  $claims  Raw, untrusted model output.
+     * @return list<array{anchor: string, text: string, value: string|null, delta: string|null}>
+     */
+    private function resolveClaims(array $claims, ActivityDetail $detail): array
+    {
+        $summary = StreamSummary::fromArray($detail->streamSummary());
+        $resolved = [];
+
+        foreach ($claims as $claim) {
+            if (count($resolved) >= self::MAX_CLAIMS) {
+                break;
+            }
+
+            if (! is_array($claim)) {
+                continue;
+            }
+
+            $anchor = $claim['anchor'] ?? null;
+            $text = $claim['text'] ?? null;
+            if (! is_string($anchor) || ! is_string($text) || $text === '' || ! self::anchorResolves($anchor, $summary)) {
+                continue;
+            }
+
+            $resolved[] = [
+                'anchor' => $anchor,
+                'text' => $text,
+                'value' => is_string($claim['value'] ?? null) ? $claim['value'] : null,
+                'delta' => is_string($claim['delta'] ?? null) ? $claim['delta'] : null,
+            ];
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * Whether $anchor names something this run's own {@see StreamSummary}
+     * actually has, per the anchor namespace: `split:<n>`, `zone:<z1..z5>`,
+     * `metric:<name>`.
+     */
+    private static function anchorResolves(string $anchor, StreamSummary $summary): bool
+    {
+        if (preg_match('/^split:([1-9]\d*)$/', $anchor, $matches) === 1) {
+            return count($summary->perKm() ?? []) >= (int) $matches[1];
+        }
+
+        if (preg_match('/^zone:z[1-5]$/', $anchor) === 1) {
+            return $summary->zonePct() !== [] || $summary->zoneMinutes() !== null;
+        }
+
+        if (preg_match('/^metric:([a-z_]+)$/', $anchor, $matches) === 1) {
+            return self::metricResolves($matches[1], $summary);
+        }
+
+        return false;
+    }
+
+    /** The exhaustive `metric:<name>` set; any other name falls through to false. */
+    private static function metricResolves(string $name, StreamSummary $summary): bool
+    {
+        return match ($name) {
+            'decoupling' => $summary->hasDecouplingPct(),
+            'hr_drift' => $summary->hrDriftBpm() !== null,
+            'cadence_drop' => $summary->cadenceDropSpm() !== null,
+            'pace_variability' => $summary->paceVariabilitySec() !== null,
+            'grade' => $summary->maxGradePct() !== null,
+            'gap_pace' => $summary->gapPace() !== null,
+            // A computed bool (true or false) is a real reading; only the
+            // absence of the key at all means this run never measured it.
+            'negative_split' => $summary->negativeSplit() !== null,
+            default => false,
+        };
     }
 
     /**
@@ -290,7 +301,7 @@ class RunInsightNarrator
         $prevNarrative = $this->previousActivityNarrative(
             $activity,
             $detail,
-            AnalysisType::RunInsightTechnical,
+            AnalysisType::RunInsight,
         );
 
         return NarratorContinuity::fields($prevNarrative);

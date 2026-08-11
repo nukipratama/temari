@@ -51,8 +51,16 @@ class VdotEstimator
             if ($vdot === null) {
                 continue;
             }
-            // Daniels' formula is distance-normalized; max VDOT wins.
-            if ($bestVdot === null || $vdot > $bestVdot) {
+            // Daniels' formula is distance-normalized in theory, but a runner
+            // who is disproportionately fast over a short distance (anaerobic
+            // speed, not aerobic endurance) makes a max-across-distances VDOT
+            // prescribe paces faster than any real PR at longer distances —
+            // e.g. a marathon "target" pace quicker than the athlete's actual
+            // marathon PR. Same asymmetric-caution stance as {@see Readiness}:
+            // take the MINIMUM VDOT across categories, so every prescribed
+            // pace stays within what at least one genuine PR has proven
+            // reachable, never faster than the athlete's slowest relative PR.
+            if ($bestVdot === null || $vdot < $bestVdot) {
                 $bestVdot = $vdot;
                 $best = $pr->category;
             }

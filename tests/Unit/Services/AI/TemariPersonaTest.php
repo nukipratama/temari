@@ -11,10 +11,10 @@ beforeEach(function (): void {
 /*
  * MANUAL VOICE SPOT-CHECK (run after meaningful persona edits):
  *  - Hit /dashboard logged in as a user with recent activity and read the
- *    Briefing Temari card. Voice should be first-person Temari ("aku" /
- *    "kamu"), hangat, santai khas obrolan Jakarta, garis merah di lo/gue.
+ *    Briefing Temari card. Voice should be first-person Temari ("I" /
+ *    "you"), warm, casual global running-app register, no profanity/ALL CAPS.
  *  - Open a recent run at /aktivitas/{id} and read all 4 thread entries
- *    (Cerita lari ini, Terjemahan teknis, Split highlight, HR zone). Same
+ *    (run story, technical translation, split highlight, HR zone). Same
  *    voice across all four — they're produced by different narrators but
  *    should sound like the same character.
  *  - Open /aktivitas + /kalender and read the weekly recap narrative + trend caption.
@@ -31,103 +31,98 @@ it('exposes the full persona system message', function (): void {
 
 it('introduces Temari in first person as the companion for every run', function (): void {
     expect($this->prompt)
-        ->toContain('Aku adalah Temari')
-        ->toContain('menemani setiap larimu');
+        ->toContain("I'm Temari")
+        ->toContain('runs alongside you');
 });
 
-it('locks the address forms — aku for Temari, kamu for the user', function (): void {
+it('locks the address forms — I for Temari, you for the user', function (): void {
     expect($this->prompt)
-        ->toContain('Sebut diriku "aku"')
-        ->toContain('Sebut pengguna "kamu"');
+        ->toContain('Refer to myself as "I"')
+        ->toContain('Refer to the user as "you"');
 });
 
 it('keeps the Daybreak mood vocabulary inline so narrators reuse it verbatim', function (): void {
-    foreach (['nyala', 'enteng', 'oleng', 'lemes', 'mumet', 'adem'] as $mood) {
+    foreach (['blazing', 'easy', 'wobbly', 'gassed', 'overloaded', 'chill'] as $mood) {
         expect($this->prompt)->toContain($mood);
     }
 });
 
 it('allows one bold emphasis but bans other markdown, em-dash, and clinical phrasing', function (): void {
     expect($this->prompt)
-        ->toContain('**bold**')
-        ->toContain('JANGAN markdown lain')
+        ->toContain('**Bold**')
+        ->toContain('NO other markdown')
         ->toContain('em dash')
-        ->toContain('orang ketiga');
+        ->toContain('clinical third person');
 });
 
-it('draws the slang bright line at lo/gue while allowing casual Jakarta vocab', function (): void {
+it('draws a hard line at profanity and shouting while allowing casual contractions', function (): void {
     expect($this->prompt)
-        ->toContain('Garis merah')
-        ->toContain('"lo"')
-        ->toContain('"gue"')
-        ->toContain('"udah"')
-        ->toContain('"gak"');
+        ->toContain('Hard line, never cross it')
+        ->toContain('no profanity or crude slang')
+        ->toContain('ALL CAPS')
+        ->toContain('"you\'re"')
+        ->toContain('"gonna"');
 });
 
 it('makes encouragement soft and optional, not a forced beat', function (): void {
     expect($this->prompt)
-        ->toContain('OPSIONAL')
-        ->toContain('Jangan maksa nada positif');
+        ->toContain('OPTIONAL')
+        ->toContain("Don't force a positive note");
 });
 
-it('tells narrators to vary openers and never open with a "nyambung" connector', function (): void {
+it('tells narrators to vary openers and never open with a continuity connector', function (): void {
     expect($this->prompt)
-        ->toContain('Cara membuka & variasi')
-        ->toContain('masih nyambung')
-        ->toContain('Variasikan cara membuka');
+        ->toContain('Opening & variation')
+        ->toContain('still riding that')
+        ->toContain('Vary how you open');
 });
 
-it('forbids preachy / coach-mode phrasing like "kamu harus"', function (): void {
+it('forbids preachy / coach-mode phrasing like "you have to"', function (): void {
     expect($this->prompt)
-        ->toContain('JANGAN menggurui')
-        ->toContain('"kamu harus"');
+        ->toContain('NEVER lecture or preach')
+        ->toContain('"you have to"');
 });
 
 it('grounds Temari in Indonesian running context', function (): void {
     expect($this->prompt)
-        ->toContain('Lari subuh')
+        ->toContain('Early-morning runs are common')
         ->toContain('31°C')
-        ->toContain('hujan');
+        ->toContain('Rain is scheduled');
 });
 
 it('forbids speaking internal field names, tidied or not', function (): void {
     // Prod output said "volume-ramp-nya turun banget" and "session intent-nya
     // memang easy": column names read aloud as if they were words.
     expect($this->prompt)
-        ->toContain('Nama field data')
+        ->toContain('Data field names')
         ->toContain('session_intent')
-        ->toContain('volume ramp-nya');
+        ->toContain('your volume ramp');
 });
 
-it('pins numbers to Indonesian formatting so blocks stop disagreeing', function (): void {
-    // The same day produced "24,7 detik" and "90.3% waktu": tool payloads carry
-    // periods and were being copied straight through.
+it('pins numbers to period formatting so blocks stop disagreeing', function (): void {
     expect($this->prompt)
-        ->toContain('Desimal pakai KOMA')
-        ->toContain('90,3%')
-        ->toContain('Jangan campur dua gaya');
+        ->toContain('Decimals use a PERIOD')
+        ->toContain('90.3%');
 });
 
 it('asks for training-load jargon to be translated rather than dropped bare', function (): void {
     expect($this->prompt)
-        ->toContain('Istilah beban latihan')
-        ->toContain('rata-rata kamu biasanya');
+        ->toContain('Training-load jargon')
+        ->toContain("what's normal for you");
 });
 
-it('keeps English to the nouns, so verbs stop leaking in', function (): void {
+it('keeps distinct terms to the nouns, so verbs stop leaking in', function (): void {
     // Prod output said "mayoritas waktunya memang stay di Z2". The allow-list
-    // covers running terms; it never said the verbs around them stay Indonesian.
+    // covers running terms; it never said the verbs around them stay plain.
     expect($this->prompt)
-        ->toContain('NAMA HAL-nya (kata benda), bukan kata kerjanya')
-        ->toContain('stay di Z2');
+        ->toContain('the NOUN, not the verb')
+        ->toContain('camping in Z2');
 });
 
 it('caps decimals at one place so tool precision stops leaking through', function (): void {
-    // Prod monthly recap said "21,36 km": the comma rule landed, the rounding
-    // one read as a suggestion ("cukup") and lost to the raw tool value.
     expect($this->prompt)
-        ->toContain('MAKSIMAL satu angka di belakang koma')
-        ->toContain('21,4 km');
+        ->toContain('MAX one digit after the decimal point')
+        ->toContain('21.4 km');
 });
 
 it('forbids announcing missing data, not just inventing it', function (): void {
@@ -137,14 +132,14 @@ it('forbids announcing missing data, not just inventing it', function (): void {
     // don't-invent half and ignored the don't-announce half, so both are stated
     // as separate hard rules with the observed sentences as the anti-examples.
     expect($this->prompt)
-        ->toContain('Dua aturan, dua-duanya keras')
-        ->toContain('JANGAN diumumkan')
-        ->toContain('Cadence memang nggak kebaca')
-        ->toContain('aku nggak mau ngarang');
+        ->toContain('Two rules, both hard')
+        ->toContain('NEVER announce it')
+        ->toContain("Cadence isn't showing up")
+        ->toContain("I don't want to guess");
 });
 
 it('forbids narrating its own reading process to the user', function (): void {
     expect($this->prompt)
-        ->toContain('cerita soal proses kamu sendiri')
-        ->toContain('mereka lagi ngobrol sama aku');
+        ->toContain("narrate your own process")
+        ->toContain("talking to me");
 });

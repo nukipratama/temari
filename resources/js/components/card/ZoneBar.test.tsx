@@ -26,7 +26,7 @@ describe('ZoneBar', () => {
 
     it('exposes a textual zone-distribution summary for assistive tech', () => {
         render(<ZoneBar zonePct={{ Z1: 20, Z2: 50, Z3: 30 }} />);
-        expect(screen.getByText(/didominasi Z2 \(50%\)/)).toBeInTheDocument();
+        expect(screen.getByText(/dominated by Z2 \(50%\)/)).toBeInTheDocument();
         expect(screen.getByText(/Z1 20%, Z2 50%, Z3 30%/)).toBeInTheDocument();
     });
 

@@ -66,13 +66,11 @@ it('adds one fresh run today and fills today\'s narration with zero queued jobs 
     expect(dailyRefreshTodayRunCount($user))->toBe(1);
     expectDemoDateKeyedNarrationDone($user);
 
-    // The new run's detail page is fully filled (speech + the three insights).
+    // The new run's detail page is fully filled (speech + the run insight).
     $todayActivityId = Activity::query()->where('user_id', $user->id)->max('id');
     foreach ([
         AnalysisType::PostRunSpeech,
-        AnalysisType::RunInsightTechnical,
-        AnalysisType::RunInsightSplits,
-        AnalysisType::RunInsightZones,
+        AnalysisType::RunInsight,
     ] as $type) {
         $row = Analysis::query()
             ->where('subject_type', Activity::class)

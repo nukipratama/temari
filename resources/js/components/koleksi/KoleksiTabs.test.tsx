@@ -6,28 +6,28 @@ import KoleksiTabs from './KoleksiTabs';
 describe('KoleksiTabs', () => {
     it('renders all four sub-tab labels', () => {
         render(<KoleksiTabs active="kartu" />);
-        expect(screen.getByText('Kartu')).toBeInTheDocument();
-        expect(screen.getByText('Rekor')).toBeInTheDocument();
-        expect(screen.getByText('Aksesori')).toBeInTheDocument();
-        expect(screen.getByText('Target')).toBeInTheDocument();
+        expect(screen.getByText('Cards')).toBeInTheDocument();
+        expect(screen.getByText('Records')).toBeInTheDocument();
+        expect(screen.getByText('Accessories')).toBeInTheDocument();
+        expect(screen.getByText('Badges')).toBeInTheDocument();
     });
 
     it('marks only the active tab with aria-current', () => {
         render(<KoleksiTabs active="aksesori" />);
-        expect(screen.getByText('Aksesori').closest('a')).toHaveAttribute(
+        expect(screen.getByText('Accessories').closest('a')).toHaveAttribute(
             'aria-current',
             'page',
         );
-        expect(screen.getByText('Kartu').closest('a')).not.toHaveAttribute(
+        expect(screen.getByText('Cards').closest('a')).not.toHaveAttribute(
             'aria-current',
         );
     });
 
     it('shows the count chip only on the active tab when given', () => {
-        render(<KoleksiTabs active="target" activeCount="3" />);
+        render(<KoleksiTabs active="badges" activeCount="3" />);
         expect(screen.getByText('3')).toBeInTheDocument();
-        expect(screen.getByText('Target').closest('a')).toHaveTextContent('3');
-        expect(screen.getByText('Kartu').closest('a')).not.toHaveTextContent(
+        expect(screen.getByText('Badges').closest('a')).toHaveTextContent('3');
+        expect(screen.getByText('Cards').closest('a')).not.toHaveTextContent(
             '3',
         );
     });
@@ -36,7 +36,7 @@ describe('KoleksiTabs', () => {
         render(<KoleksiTabs active="kartu" />);
         expect(
             screen
-                .getByText('Kartu')
+                .getByText('Cards')
                 .closest('a')!
                 .querySelector('.bg-horizon\\/25'),
         ).toBeNull();

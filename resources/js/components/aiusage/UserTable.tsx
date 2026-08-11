@@ -5,14 +5,7 @@ import DataTable, { Td } from '@/components/ui/DataTable';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { fmt } from '@/pages/AiUsage/helpers';
 
-const COLUMNS = [
-    'User',
-    'Panggilan',
-    'Prompt',
-    'Completion',
-    'Total',
-    'Rata-rata',
-];
+const COLUMNS = ['User', 'Calls', 'Prompt', 'Completion', 'Total', 'Average'];
 
 export default function UserTable({
     rows,
@@ -22,7 +15,7 @@ export default function UserTable({
         <DataTable
             icon="mdi:account-multiple"
             title="Breakdown per User"
-            subtitle="Pengguna yang paling banyak mengajak Temari mengobrol."
+            subtitle="Users who chat with Temari the most."
             tone="accent"
             columns={COLUMNS}
             minWidth={520}
@@ -49,7 +42,7 @@ function UserCells({
                     <span>{label}</span>
                     {row.deleted && (
                         <span className="rounded-full bg-ink/5 px-1.5 py-0.5 text-[10px] font-normal text-ink-3">
-                            dihapus
+                            deleted
                         </span>
                     )}
                 </div>
@@ -61,7 +54,7 @@ function UserCells({
                 <ProgressBar
                     value={share}
                     size="sm"
-                    ariaLabel={`${(share * 100).toFixed(1)}% dari total`}
+                    ariaLabel={`${(share * 100).toFixed(1)}% of total`}
                     className="mt-1 max-w-[160px]"
                 />
             </td>

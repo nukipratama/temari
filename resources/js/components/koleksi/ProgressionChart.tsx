@@ -18,13 +18,13 @@ interface ProgressionChartProps {
     className?: string;
 }
 
-// Daybreak tokens resolved to the hex Chart.js needs (it paints to canvas and
+// Threadwork tokens resolved to the hex Chart.js needs (it paints to canvas and
 // can't read the CSS custom properties). Keep in sync with the @theme block in
 // resources/css/app.css. `#RRGGBBAA` suffixes are the token color at a set alpha.
 const CHART_TOKENS = {
-    horizon: '#e8a076', // --color-horizon (best-time line + area fill)
-    horizonDeep: '#d08a60', // --color-horizon-deep (point fill)
-    cream: '#f6f1e8', // --color-cream (point border)
+    horizon: '#d9a53c', // --color-horizon (best-time line + area fill)
+    horizonDeep: '#b98a2a', // --color-horizon-deep (point fill)
+    cream: '#f5f0e4', // --color-cream (point border)
     citrus: '#d9b23a', // --color-citrus (goal line / PR accent)
     ink2: '#3d362a', // --color-ink-2 (axis ticks)
     ink3: '#6e6452', // --color-ink-3 (grid line)
@@ -49,14 +49,14 @@ export default function ProgressionChart({
     className,
 }: Readonly<ProgressionChartProps>) {
     const chartLabel = category
-        ? `Grafik progresi waktu terbaik ${category}`
-        : 'Grafik progresi waktu terbaik';
+        ? `Best time progression chart ${category}`
+        : 'Best time progression chart';
     const firstIdx = timesSec.findIndex((t) => t != null);
     const lastIdx = lastDefinedIndex(timesSec);
     const summarySentence =
         firstIdx >= 0 && lastIdx >= 0
-            ? `Dari ${formatDurationHMS(timesSec[firstIdx]!)} pada ${formatNaiveIdDate(weeks[firstIdx], 'short')} menjadi ${formatDurationHMS(timesSec[lastIdx]!)} pada ${formatNaiveIdDate(weeks[lastIdx], 'short')}.`
-            : 'Belum ada data waktu untuk periode ini.';
+            ? `From ${formatDurationHMS(timesSec[firstIdx]!)} on ${formatNaiveIdDate(weeks[firstIdx], 'short')} to ${formatDurationHMS(timesSec[lastIdx]!)} on ${formatNaiveIdDate(weeks[lastIdx], 'short')}.`
+            : 'No time data for this period yet.';
     // Space points by their real date (day-offset from the first week), not at even
     // intervals, so uneven time gaps read honestly instead of overstating progress.
     const xOffsets = useMemo(() => {
@@ -193,7 +193,7 @@ export default function ProgressionChart({
     if (weeks.length === 0) {
         return (
             <EmptyPanel
-                title="Belum cukup lari di jarak ini buat narik garis progresi."
+                title="Not enough runs at this distance yet to draw a progression line."
                 className={cn('py-10', className)}
             />
         );

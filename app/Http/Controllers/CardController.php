@@ -40,7 +40,7 @@ class CardController extends Controller
             $c->setAttribute('mood', $cards->mood($c));
         });
 
-        return Inertia::render('Koleksi/Kartu', [
+        return Inertia::render('Collection/Cards', [
             'cards' => $page,
             'selectedRarity' => $rarity,
             'featuredCard' => $this->featuredCard($cards, $user, $rarity, $editions, $counts),

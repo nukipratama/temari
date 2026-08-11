@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { FeaturedCard } from '@/pages/HariIni/helpers';
+import type { FeaturedCard } from '@/pages/Today/helpers';
 import type { AnalysisPayload } from '@/types/inertia';
 
 import FeaturedKartuPanel from './FeaturedKartuPanel';
@@ -9,13 +9,13 @@ import FeaturedKartuPanel from './FeaturedKartuPanel';
 const featured: FeaturedCard = {
     cardId: 7,
     activityId: 42,
-    name: 'Pembalik Keadaan',
-    subtitle: 'Epik · 2 hari lalu',
+    name: 'Comeback Kid',
+    subtitle: 'Epic · 2 days ago',
     km: '5.28',
     durasi: '40:00',
     trimp: '87',
     rarity: 'epic',
-    mood: 'nyala',
+    mood: 'blazing',
     badges: ['negative_split'],
     stats: { pace: '5:30/km' },
     zonePct: null,
@@ -27,7 +27,7 @@ const featured: FeaturedCard = {
 const voice: AnalysisPayload = {
     id: 5,
     status: 'done',
-    content: 'Kartu ini bukti kamu bisa lebih jauh.',
+    content: 'This card proves you can go further.',
     type: 'briefing_featured_kartu_voice',
     subject_type: 'briefing_user_day',
     subject_id: 1,
@@ -42,14 +42,10 @@ describe('FeaturedKartuPanel', () => {
                 featuredKartuVoice={voice}
             />,
         );
-        expect(
-            screen.getByText(/Kartu andalan dari Temari/),
-        ).toBeInTheDocument();
-        expect(screen.getAllByText('Pembalik Keadaan').length).toBeGreaterThan(
-            0,
-        );
-        const cta = screen.getByRole('link', { name: /lihat aktivitas/i });
-        expect(cta).toHaveAttribute('href', '/aktivitas/42');
+        expect(screen.getByText(/Temari's top pick/)).toBeInTheDocument();
+        expect(screen.getAllByText('Comeback Kid').length).toBeGreaterThan(0);
+        const cta = screen.getByRole('link', { name: /view activity/i });
+        expect(cta).toHaveAttribute('href', '/activities/42');
     });
 
     it('renders the featured-kartu voice quote', () => {
@@ -60,7 +56,7 @@ describe('FeaturedKartuPanel', () => {
             />,
         );
         expect(
-            screen.getByText(/bukti kamu bisa lebih jauh/),
+            screen.getByText(/proves you can go further/),
         ).toBeInTheDocument();
     });
 });

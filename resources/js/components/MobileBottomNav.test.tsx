@@ -6,45 +6,50 @@ import { setMockPage } from '@/test/setup';
 import MobileBottomNav from './MobileBottomNav';
 
 describe('MobileBottomNav', () => {
-    it('renders all four primary tabs with their labels', () => {
+    it('renders all five primary tabs with their labels', () => {
         render(<MobileBottomNav />);
-        expect(screen.getByText('Hari Ini')).toBeInTheDocument();
-        expect(screen.getByText('Koleksi')).toBeInTheDocument();
-        expect(screen.getByText('Riwayat')).toBeInTheDocument();
-        expect(screen.getByText('Aku')).toBeInTheDocument();
+        expect(screen.getByText('Today')).toBeInTheDocument();
+        expect(screen.getByText('Collection')).toBeInTheDocument();
+        expect(screen.getByText('History')).toBeInTheDocument();
+        expect(screen.getByText('Plan')).toBeInTheDocument();
+        expect(screen.getByText('Me')).toBeInTheDocument();
     });
 
     it('marks the tab matching the current url as active', () => {
-        setMockPage({}, '/kartu');
+        setMockPage({}, '/cards');
         render(<MobileBottomNav />);
-        const link = screen.getByText('Koleksi').closest('a')!;
+        const link = screen.getByText('Collection').closest('a')!;
         expect(link).toHaveAttribute('aria-current', 'page');
-        expect(screen.getByText('Hari Ini').closest('a')).not.toHaveAttribute(
+        expect(screen.getByText('Today').closest('a')).not.toHaveAttribute(
             'aria-current',
         );
     });
 
     it('links each tab to its target path', () => {
         render(<MobileBottomNav />);
-        expect(screen.getByText('Riwayat').closest('a')).toHaveAttribute(
+        expect(screen.getByText('History').closest('a')).toHaveAttribute(
             'href',
-            '/aktivitas',
+            '/activities',
         );
-        expect(screen.getByText('Aku').closest('a')).toHaveAttribute(
+        expect(screen.getByText('Plan').closest('a')).toHaveAttribute(
             'href',
-            '/profil',
+            '/plan',
+        );
+        expect(screen.getByText('Me').closest('a')).toHaveAttribute(
+            'href',
+            '/profile',
         );
     });
 
     // ink-on-sky is the design system's muted tone for dark sky panels; the
     // old text-cream/55 it replaced sat at roughly 2.2:1 against the bar.
     it('tints inactive tabs with the readable on-sky muted tone', () => {
-        setMockPage({}, '/kartu');
+        setMockPage({}, '/cards');
         render(<MobileBottomNav />);
-        expect(screen.getByText('Koleksi').closest('a')).toHaveClass(
+        expect(screen.getByText('Collection').closest('a')).toHaveClass(
             'text-horizon',
         );
-        expect(screen.getByText('Aku').closest('a')).toHaveClass(
+        expect(screen.getByText('Me').closest('a')).toHaveClass(
             'text-ink-on-sky',
         );
     });
@@ -55,10 +60,10 @@ describe('MobileBottomNav', () => {
     it('scrolls to top instead of navigating when the active tab is tapped', () => {
         const scrollTo = vi.fn();
         vi.stubGlobal('scrollTo', scrollTo);
-        setMockPage({}, '/kartu');
+        setMockPage({}, '/cards');
         render(<MobileBottomNav />);
 
-        const link = screen.getByText('Koleksi').closest('a')!;
+        const link = screen.getByText('Collection').closest('a')!;
         const event = new MouseEvent('click', {
             bubbles: true,
             cancelable: true,
@@ -72,10 +77,10 @@ describe('MobileBottomNav', () => {
     it('leaves an inactive tab to navigate normally', () => {
         const scrollTo = vi.fn();
         vi.stubGlobal('scrollTo', scrollTo);
-        setMockPage({}, '/kartu');
+        setMockPage({}, '/cards');
         render(<MobileBottomNav />);
 
-        const link = screen.getByText('Aku').closest('a')!;
+        const link = screen.getByText('Me').closest('a')!;
         const event = new MouseEvent('click', {
             bubbles: true,
             cancelable: true,
@@ -98,11 +103,11 @@ describe('MobileBottomNav', () => {
                 removeEventListener: vi.fn(),
             })),
         );
-        setMockPage({}, '/kartu');
+        setMockPage({}, '/cards');
         render(<MobileBottomNav />);
 
         screen
-            .getByText('Koleksi')
+            .getByText('Collection')
             .closest('a')!
             .dispatchEvent(
                 new MouseEvent('click', { bubbles: true, cancelable: true }),

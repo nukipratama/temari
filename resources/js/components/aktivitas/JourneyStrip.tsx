@@ -49,18 +49,18 @@ export default function JourneyStrip({
     return (
         <Card as="section" padding="lg" className={className}>
             <Eyebrow as="h3" token="hero" tone="ink-2">
-                Kamu vs Lari Pertama Kamu
+                You vs Your First Run
             </Eyebrow>
             <p className="mt-2 font-sans text-sm leading-relaxed text-ink">
                 Total{' '}
                 <span className="font-semibold text-horizon-deep">
                     {total_km.toFixed(1)} km
                 </span>{' '}
-                kekumpul sejak lari pertama
+                logged since your first run
                 {first.date && (
                     <>
                         {' '}
-                        di{' '}
+                        on{' '}
                         <span className="font-semibold">
                             {formatShortDateTimeId(first.date)}
                         </span>
@@ -81,14 +81,12 @@ export default function JourneyStrip({
                         )}
                     >
                         {pace_improvement_sec === 0 ? (
-                            'Pace sama dengan lari pertama'
+                            'Same pace as your first run'
                         ) : (
                             <>
                                 {Math.abs(Math.round(pace_improvement_sec))}{' '}
-                                detik/km{' '}
-                                {pace_improvement_sec > 0
-                                    ? 'lebih cepat'
-                                    : 'lebih lambat'}
+                                sec/km{' '}
+                                {pace_improvement_sec > 0 ? 'faster' : 'slower'}
                             </>
                         )}
                     </span>
@@ -105,20 +103,22 @@ export default function JourneyStrip({
                         )}
                     >
                         {hr_improvement_bpm === 0 ? (
-                            'HR sama dengan lari pertama'
+                            'Same HR as your first run'
                         ) : (
                             <>
                                 {Math.abs(Math.round(hr_improvement_bpm))} bpm{' '}
-                                {hr_improvement_bpm > 0
-                                    ? 'lebih rendah'
-                                    : 'lebih tinggi'}
+                                {hr_improvement_bpm > 0 ? 'lower' : 'higher'}
                             </>
                         )}
                     </span>
                 )}
             </div>
-            <PaceLine label="Lari pertama kamu" summary={first} />
-            <PaceLine label="Lari terbaru" summary={current} className="mt-1" />
+            <PaceLine label="Your first run" summary={first} />
+            <PaceLine
+                label="Most recent run"
+                summary={current}
+                className="mt-1"
+            />
         </Card>
     );
 }
@@ -140,7 +140,7 @@ function PaceLine({
             )}
         >
             <span className="font-semibold text-ink">{label}:</span>{' '}
-            {summary.name ?? 'Lari'}{' '}
+            {summary.name ?? 'Run'}{' '}
             {summary.distance_km !== null && (
                 <>· {summary.distance_km.toFixed(2)} km </>
             )}

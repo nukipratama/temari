@@ -25,9 +25,9 @@ final class TrainingLoadTool extends UserTool
 
     public function description(): string
     {
-        return 'Kondisi beban latihan pengguna: acute_7d, chronic_42d, form, dan form_status '
-            .'(fresh/optimal/fatigued/overreaching). Panggil sebelum menyarankan recovery atau sesi '
-            .'berikutnya. Kalau training_load gak muncul, riwayat TRIMP-nya belum cukup.';
+        return "The user's training load state: acute_7d, chronic_42d, form, and form_status "
+            .'(fresh/optimal/fatigued/overreaching). Call this before suggesting recovery or the '
+            .'next session. If training_load is missing, their TRIMP history isn\'t enough yet.';
     }
 
     /** @return array<string, mixed> */

@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Actions\Run\Story;
 
+use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
+use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Story\CardContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -18,8 +22,14 @@ use Illuminate\Support\Facades\DB;
  * conditional aggregate: they scan the same per-user rows and differ only in
  * predicate. See {@see self::historyCounts()} for the per-count analyzed_at
  * treatment.
+ *
+ * Costs 3 queries (was 2 before Slice 7's quality-execution rarity dimension
+ * added a {@see PlannedSession} lookup): the aggregate, the consecutive-day
+ * scan, and the planned-session-for-this-date lookup. The third only grows to
+ * a fourth (a VDOT estimate) when that lookup actually finds a Tempo/Interval
+ * row for this date — see {@see self::qualitySessionPaceMet()}.
  */
-final class BuildCardContextAction
+final readonly class BuildCardContextAction
 {
     private const int WEEKLY_CONSISTENCY_RUNS = 3;
 
@@ -35,6 +45,12 @@ final class BuildCardContextAction
     /** How far back the streak scan reaches, in distinct run days. */
     private const int STREAK_LOOKBACK_DAYS = 30;
 
+    public function __construct(
+        private VdotEstimator $vdotEstimator,
+        private TrainingPaceCalculator $paceCalculator,
+    ) {
+    }
+
     public function __invoke(Activity $activity, ActivityDetail $detail): CardContext
     {
         $startDate = $activity->detail?->start_date_local;
@@ -49,7 +65,40 @@ final class BuildCardContextAction
             athleteMaxHr: $detail->average_heartrate !== null
                 ? $activity->user->hrProfile()['max_hr']
                 : null,
+            qualitySessionPaceMet: $this->qualitySessionPaceMet($activity, $detail, $startDate),
         );
+    }
+
+    /**
+     * True when a planned Tempo/Interval session existed for this run's date
+     * and the run met or beat its prescribed pace (fewer seconds/km is
+     * faster). See {@see \App\Services\Run\Story\RarityScorer}.
+     */
+    private function qualitySessionPaceMet(Activity $activity, ActivityDetail $detail, ?Carbon $startDate): bool
+    {
+        if ($startDate === null) {
+            return false;
+        }
+
+        $session = PlannedSession::query()
+            ->where('user_id', $activity->user_id)
+            ->where('date', $startDate->toDateString())
+            ->whereIn('session_type', [SessionType::Tempo, SessionType::Interval])
+            ->first();
+
+        if ($session === null || $session->pace_band === null) {
+            return false;
+        }
+
+        $actualPace = $detail->paceSecPerKm();
+        if ($actualPace === null) {
+            return false;
+        }
+
+        $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($activity->user));
+        $prescribedPace = $paces[$session->pace_band->value] ?? null;
+
+        return $prescribedPace !== null && $actualPace <= $prescribedPace;
     }
 
     /**

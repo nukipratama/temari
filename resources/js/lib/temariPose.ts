@@ -4,12 +4,12 @@ import type { ActivityDetail, FormStatus, Mood } from '@/types/inertia';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 
 export const MOOD_TO_POSE: Record<Mood, TemariPose> = {
-    nyala: 'proud',
-    enteng: 'excited',
-    lemes: 'wobble',
-    oleng: 'wobble',
-    mumet: 'wobble',
-    adem: 'reading',
+    blazing: 'proud',
+    easy: 'excited',
+    gassed: 'wobble',
+    wobbly: 'wobble',
+    overloaded: 'wobble',
+    chill: 'reading',
 };
 
 export const VIBE_TO_POSE: Record<string, TemariPose> = {

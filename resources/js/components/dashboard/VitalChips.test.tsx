@@ -23,19 +23,19 @@ function payload(): AnalysisPayload {
 
 const briefing: BriefingResult = {
     vibeState: 'pumped',
-    vibeLabel: 'Membara',
+    vibeLabel: 'Pumped',
     vibeEmoji: '💥',
     mascotVoice: payload(),
     featuredKartuVoice: payload(),
     featuredCardId: null,
-    recoveryLabel: 'Pemulihan: 41j',
+    recoveryLabel: 'Recovery: 41h',
     recoveryTone: 'positive',
-    recoveryHoursLabel: '41j',
+    recoveryHoursLabel: '41h',
     recoveryHours: 41,
-    streakLabel: 'Lari hari ini',
+    streakLabel: 'Ran today',
     sigilPattern: 'orct',
     accessory: null,
-    mood: 'nyala',
+    mood: 'blazing',
 };
 
 const load: TrainingLoad = {
@@ -52,21 +52,21 @@ describe('VitalChips', () => {
     it('renders all three labels', () => {
         render(<VitalChips briefing={briefing} load={load} />);
         expect(screen.getByText('Vibe')).toBeInTheDocument();
-        expect(screen.getByText('Kesiapan')).toBeInTheDocument();
-        expect(screen.getByText('Recovery')).toBeInTheDocument();
+        expect(screen.getByText('Readiness')).toBeInTheDocument();
+        expect(screen.getByText('Break')).toBeInTheDocument();
     });
 
-    it('leads the Vibe tile with the label and a gloss sub, and signed form for Kesiapan', () => {
+    it('leads the Vibe tile with the label and a gloss sub, and signed form for Readiness', () => {
         render(<VitalChips briefing={briefing} load={load} />);
         // Vibe shows just the label (not the |form| number that duplicated
-        // Kesiapan), with a one-line gloss on the sub-line.
-        expect(screen.getByText('Membara')).toBeInTheDocument();
-        expect(screen.getByText('lagi on fire')).toBeInTheDocument();
+        // Readiness), with a one-line gloss on the sub-line.
+        expect(screen.getByText('Pumped')).toBeInTheDocument();
+        expect(screen.getByText('on fire')).toBeInTheDocument();
         expect(screen.queryByText('2.5')).not.toBeInTheDocument();
         // signed form → "-2.5"
         expect(screen.getByText('-2.5')).toBeInTheDocument();
         // recovery hours label
-        expect(screen.getByText('41j')).toBeInTheDocument();
+        expect(screen.getByText('41h')).toBeInTheDocument();
     });
 
     it('scales the value with a fluid clamp so it fits the narrow mobile column', () => {
@@ -76,9 +76,9 @@ describe('VitalChips', () => {
         expect(screen.getByText('-2.5').className).toContain('text-stat-fluid');
     });
 
-    it('still shows the vibe label and an em-dash Kesiapan when load is null', () => {
+    it('still shows the vibe label and an em-dash Readiness when load is null', () => {
         render(<VitalChips briefing={briefing} load={null} />);
-        expect(screen.getByText('Membara')).toBeInTheDocument();
+        expect(screen.getByText('Pumped')).toBeInTheDocument();
         expect(screen.getByText('—')).toBeInTheDocument();
     });
 
@@ -86,7 +86,7 @@ describe('VitalChips', () => {
         render(<VitalChips briefing={briefing} load={load} />);
         // A vibe is a word, so it drops the big tabular numeric size for a fluid
         // word size that fits the narrow 3-up mobile tile.
-        const vibe = screen.getByText('Membara');
+        const vibe = screen.getByText('Pumped');
         expect(vibe.className).not.toContain('text-stat-fluid');
         expect(vibe.className).not.toContain('tabular-nums');
     });
@@ -98,14 +98,14 @@ describe('VitalChips', () => {
         expect(vibeMeter).toHaveAttribute('min', '0');
         expect(vibeMeter).toHaveAttribute('max', '40');
 
-        const kesiapanMeter = screen.getByRole('meter', { name: 'Kesiapan' });
+        const kesiapanMeter = screen.getByRole('meter', { name: 'Readiness' });
         expect(kesiapanMeter).toHaveAttribute('value', '-2.5');
         expect(kesiapanMeter).toHaveAttribute('min', '-40');
         expect(kesiapanMeter).toHaveAttribute('max', '40');
     });
 
     // Recovery is driven by hours since the last run, not by training load, so
-    // it keeps its gauge even when there is no load to compute Vibe/Kesiapan
+    // it keeps its gauge even when there is no load to compute Vibe/Readiness
     // from. Only the two load-derived rails disappear.
     it('drops only the load-derived gauges when load is null', () => {
         render(<VitalChips briefing={briefing} load={null} />);
@@ -113,10 +113,10 @@ describe('VitalChips', () => {
             screen.queryByRole('meter', { name: 'Vibe' }),
         ).not.toBeInTheDocument();
         expect(
-            screen.queryByRole('meter', { name: 'Kesiapan' }),
+            screen.queryByRole('meter', { name: 'Readiness' }),
         ).not.toBeInTheDocument();
         expect(
-            screen.getByRole('meter', { name: 'Recovery' }),
+            screen.getByRole('meter', { name: 'Break' }),
         ).toBeInTheDocument();
     });
 
@@ -125,7 +125,7 @@ describe('VitalChips', () => {
     // odd one out — a solid full-width rail with no scale and no explainer.
     it('gives Recovery the same bounded gauge as its siblings', () => {
         render(<VitalChips briefing={briefing} load={load} />);
-        const meter = screen.getByRole('meter', { name: 'Recovery' });
+        const meter = screen.getByRole('meter', { name: 'Break' });
         expect(meter).toHaveAttribute('value', '41');
         expect(meter).toHaveAttribute('min', '0');
         expect(meter).toHaveAttribute('max', '72');
@@ -135,10 +135,10 @@ describe('VitalChips', () => {
         const longRest: BriefingResult = {
             ...briefing,
             recoveryHours: 200,
-            recoveryHoursLabel: '8 hari',
+            recoveryHoursLabel: '8 days',
         };
         render(<VitalChips briefing={longRest} load={load} />);
-        expect(screen.getByRole('meter', { name: 'Recovery' })).toHaveAttribute(
+        expect(screen.getByRole('meter', { name: 'Break' })).toHaveAttribute(
             'value',
             '72',
         );
@@ -149,13 +149,13 @@ describe('VitalChips', () => {
         // Vibe's explainer points at the `vibe_vs_mood` entry, so its label is
         // the glossary label rather than the tile label.
         expect(
-            screen.getByRole('button', { name: 'Penjelasan Vibe vs Mood' }),
+            screen.getByRole('button', { name: 'Explain Vibe vs Mood' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Penjelasan Kesiapan' }),
+            screen.getByRole('button', { name: 'Explain Readiness' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Penjelasan Recovery' }),
+            screen.getByRole('button', { name: 'Explain Break' }),
         ).toBeInTheDocument();
     });
 
@@ -167,7 +167,7 @@ describe('VitalChips', () => {
         const { rerender } = render(
             <VitalChips briefing={noHours} load={load} />,
         );
-        expect(screen.getByText('Lari hari ini')).toBeInTheDocument();
+        expect(screen.getByText('Ran today')).toBeInTheDocument();
 
         const onlyRecovery: BriefingResult = {
             ...briefing,
@@ -175,6 +175,6 @@ describe('VitalChips', () => {
             streakLabel: null,
         };
         rerender(<VitalChips briefing={onlyRecovery} load={load} />);
-        expect(screen.getByText('Pemulihan: 41j')).toBeInTheDocument();
+        expect(screen.getByText('Recovery: 41h')).toBeInTheDocument();
     });
 });

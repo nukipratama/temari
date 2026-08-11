@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
 readonly class GamificationContext
 {
     /**
-     * Threshold for the "sepatu_cepat" goal: average pace under 5:30/km.
+     * Threshold for the "shoes_speed" goal: average pace under 5:30/km.
      * 5:30/km = 330 s/km, so an average_speed of 1000/330 m/s (~3.0303)
      * is exactly 5:30/km. A run qualifies when it is faster than that.
      */

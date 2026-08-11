@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Override;
 
 /**
@@ -52,6 +53,44 @@ class RunCard extends Model
 
         $rows = self::query()
             ->whereHas('activity', fn ($q) => $q->where('user_id', $userId))
+            ->select('badges')
+            ->lazy();
+
+        foreach ($rows as $row) {
+            foreach ($row->badges ?? [] as $badge) {
+                if (isset($counts[$badge])) {
+                    $counts[$badge]++;
+                }
+            }
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Every {@see Badge} case's count (not just {@see Badge::tracked()} —
+     * the unlock catalog's narrower subset), for the badge board. Optionally
+     * scoped to cards whose activity fell within `[$from, $to]` for the
+     * board's "this season" row. Kept alongside {@see self::badgeCountsForUser()}
+     * rather than widening it, so every existing lifetime (tracked-only)
+     * call site is untouched.
+     *
+     * @return array<string, int>
+     */
+    public static function allBadgeCountsForUser(int $userId, ?Carbon $from = null, ?Carbon $to = null): array
+    {
+        $counts = array_fill_keys(array_map(fn (Badge $b): string => $b->value, Badge::cases()), 0);
+
+        $rows = self::query()
+            ->whereHas('activity', function ($q) use ($userId, $from, $to): void {
+                $q->where('user_id', $userId);
+                if ($from !== null && $to !== null) {
+                    $q->whereHas('detail', fn ($d) => $d->whereBetween('start_date_local', [
+                        $from->copy()->startOfDay(),
+                        $to->copy()->endOfDay(),
+                    ]));
+                }
+            })
             ->select('badges')
             ->lazy();
 

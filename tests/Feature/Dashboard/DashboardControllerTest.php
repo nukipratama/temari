@@ -24,7 +24,7 @@ it('renders for a user with no synced activities', function (): void {
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('HariIni')
+            ->component('Today')
             ->where('auth.user.first_name', explode(' ', (string) $user->name)[0])
             ->where('load', null)
             ->where('recentRuns', []));
@@ -49,12 +49,12 @@ it('ships the persisted post-run mood per recent run for the featured card + las
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create();
-    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'enteng']);
+    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'easy']);
 
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->where("recentMoods.{$activity->id}", 'enteng'));
+            ->where("recentMoods.{$activity->id}", 'easy'));
 });
 
 it('renders KPIs + recent runs when the user has training-load history', function (): void {
@@ -78,7 +78,7 @@ it('renders KPIs + recent runs when the user has training-load history', functio
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('HariIni')
+            ->component('Today')
             ->has('load.weekly_trimp')
             ->has('load.form')
             ->has('snapshot')
@@ -130,7 +130,7 @@ it('does not ship the unused trendAnalysis or weeklyRecap props', function (): v
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('HariIni')
+            ->component('Today')
             ->missing('trendAnalysis')
             ->missing('weeklyRecap'));
 });
@@ -182,7 +182,7 @@ it('does not fetch recent runs or weekly snapshots on a briefing-only partial re
     expect($recentRunFetches)->toBeEmpty()
         ->and($snapshotReads)->toBeEmpty();
 
-    $response->assertJsonPath('component', 'HariIni');
+    $response->assertJsonPath('component', 'Today');
     // The one prop the poll does name still has to resolve.
     $response->assertJsonPath('props.briefing.mood', fn (mixed $mood): bool => is_string($mood));
     foreach (['load', 'snapshot', 'recentRuns', 'lastRunNote', 'recentMoods'] as $skipped) {
@@ -199,7 +199,7 @@ it('still returns every dashboard prop on a full page load', function (): void {
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('HariIni')
+            ->component('Today')
             ->has('briefing')
             ->has('snapshot')
             ->has('recentRuns', 1)
@@ -220,7 +220,7 @@ function briefingOnlyHeaders(object $actingAs): array
     return [
         'X-Inertia' => 'true',
         'X-Inertia-Version' => inertiaVersionFor($actingAs, '/'),
-        'X-Inertia-Partial-Component' => 'HariIni',
+        'X-Inertia-Partial-Component' => 'Today',
         'X-Inertia-Partial-Data' => 'briefing',
     ];
 }

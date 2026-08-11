@@ -19,11 +19,11 @@ enum Rarity: string
     public function label(): string
     {
         return match ($this) {
-            self::Common => 'Biasa',
-            self::Uncommon => 'Berkesan',
-            self::Rare => 'Langka',
-            self::Epic => 'Istimewa',
-            self::Legendary => 'Legendaris',
+            self::Common => 'Common',
+            self::Uncommon => 'Uncommon',
+            self::Rare => 'Rare',
+            self::Epic => 'Epic',
+            self::Legendary => 'Legendary',
         };
     }
 
@@ -39,7 +39,7 @@ enum Rarity: string
     }
 
     /**
-* Daybreak rarity tint, mirrored from the client's `RARITY_HEX`
+     * Threadwork rarity tint, mirrored from the client's `RARITY_HEX`
      * ({@see resources/js/lib/runcard.ts}). Single source of truth for the
      * server-rendered card surface ({@see \App\Services\Run\Story\RunCardImageRenderer}).
      */
@@ -51,6 +51,23 @@ enum Rarity: string
             self::Rare => '#2f81f7',
             self::Epic => '#a855f7',
             self::Legendary => '#f5a623',
+        };
+    }
+
+    /**
+     * Thread-band accent density (Slice 9c) for the card's rarity chrome —
+     * additive texture on top of the existing border/glow, not a re-hue.
+     * Mirrored in the client's `RARITY_BAND_COUNT`
+     * ({@see resources/js/lib/runcard.ts}).
+     */
+    public function bandCount(): int
+    {
+        return match ($this) {
+            self::Common => 1,
+            self::Uncommon => 2,
+            self::Rare => 3,
+            self::Epic => 4,
+            self::Legendary => 5,
         };
     }
 }

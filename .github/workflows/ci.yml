@@ -43,7 +43,7 @@ jobs:
           if printf '%s\n' "$changed" | grep -qE '^(app|bootstrap|config|database|routes|tests)/|^composer\.(json|lock)$|^phpunit\.xml$|^artisan$|^(phpstan|phpstan-baseline)\.neon$|^rector\.php$|^pint\.json$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
             backend=true
           fi
-          if printf '%s\n' "$changed" | grep -qE '^resources/(js|css|views)/|^public/|^package(-lock)?\.json$|^vite\.config\.ts$|^vitest\.config\.ts$|^tsconfig\.json$|^eslint\.config\.|^\.nvmrc$|^scripts/check-entry-chunks\.mjs$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
+          if printf '%s\n' "$changed" | grep -qE '^resources/(js|css|views)/|^public/|^package(-lock)?\.json$|^vite\.config\.ts$|^vitest\.config\.ts$|^tsconfig\.json$|^eslint\.config\.|^\.nvmrc$|^scripts/check-entry-chunks\.mjs$|^scripts/check-raw-palette\.mjs$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
             frontend=true
           fi
           echo "backend=$backend" >> "$GITHUB_OUTPUT"
@@ -172,6 +172,9 @@ jobs:
 
       - name: Component/test 1:1 structure check
         run: npx vitest run resources/js/test/structure.test.ts
+
+      - name: Raw Tailwind palette guard
+        run: npm run check:palette
 
       - name: Vitest
         run: |

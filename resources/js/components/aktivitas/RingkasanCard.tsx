@@ -39,10 +39,10 @@ export default function RingkasanCard({
                 'rounded-2xl border border-line bg-surface-warm p-4 shadow-sm sm:p-5',
                 className,
             )}
-            aria-label="Catatan Temari minggu ini"
+            aria-label="Temari's notes this week"
         >
             <div className="font-mono text-xs font-bold uppercase tracking-wider text-ink-2">
-                Catatan Temari
+                Temari's Notes
             </div>
             <div className="mt-2">
                 <AnalysisStatus
@@ -59,7 +59,7 @@ export default function RingkasanCard({
                     )}
                 />
             </div>
-            {/* awaitingSchedule already shows its own "belum tersedia" line above;
+            {/* awaitingSchedule already shows its own "not available yet" line above;
                 stacking the fallback stat sentence right after it with no framing
                 read as a contradiction ("not ready yet" immediately followed by
                 the actual summary). Label it explicitly as a preview instead of
@@ -68,7 +68,7 @@ export default function RingkasanCard({
                 <p className="mt-2 text-sm leading-relaxed text-ink-2">
                     {awaitingSchedule && (
                         <span className="font-semibold text-ink-3">
-                            Sementara ini:{' '}
+                            For now:{' '}
                         </span>
                     )}
                     {fallback}

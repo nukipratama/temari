@@ -18,7 +18,7 @@ it('deletes the account, revokes Strava, logs the user out and redirects to logi
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
-    $this->actingAs($user)->delete('/akun')
+    $this->actingAs($user)->delete('/account')
         ->assertRedirect(route('login'))
         ->assertSessionHas('info');
 
@@ -31,13 +31,13 @@ it('deletes the account, revokes Strava, logs the user out and redirects to logi
 });
 
 it('rejects a guest', function (): void {
-    $this->delete('/akun')->assertRedirect('/login');
+    $this->delete('/account')->assertRedirect('/login');
 });
 
 it('refuses to delete the demo account', function (): void {
     $demo = User::factory()->create(['is_demo' => true]);
 
-    $this->actingAs($demo)->delete('/akun')
+    $this->actingAs($demo)->delete('/account')
         ->assertSessionHasErrors('akun');
 
     expect(User::query()->whereKey($demo->id)->exists())->toBeTrue();
@@ -73,7 +73,7 @@ it('leaves no orphaned narration, deliveries or push endpoints behind', function
         'updated_at' => now(),
     ]);
 
-    $this->actingAs($user)->delete('/akun')->assertRedirect(route('login'));
+    $this->actingAs($user)->delete('/account')->assertRedirect(route('login'));
 
     expect(Analysis::query()->count())->toBe(0)
         // notification_deliveries has no user column either: it rides out on the
@@ -92,7 +92,7 @@ it('keeps token usage as cost history, orphaned under the old id', function (): 
         'total_tokens' => 15,
     ]);
 
-    $this->actingAs($user)->delete('/akun')->assertRedirect(route('login'));
+    $this->actingAs($user)->delete('/account')->assertRedirect(route('login'));
 
     expect(TokenUsage::query()->where('user_id', $user->id)->count())->toBe(1);
 });
@@ -113,7 +113,7 @@ it('does not touch another user data', function (): void {
         'updated_at' => now(),
     ]);
 
-    $this->actingAs($user)->delete('/akun')->assertRedirect(route('login'));
+    $this->actingAs($user)->delete('/account')->assertRedirect(route('login'));
 
     expect(Analysis::query()->count())->toBe(1)
         ->and(DB::table('push_subscriptions')->count())->toBe(1);

@@ -30,16 +30,16 @@ function postRunSpeechFor(Activity $activity, AnalysisStatus $status, ?string $c
 
 it('returns mood + oneline for a single ready activity', function (): void {
     $activity = Activity::factory()->create();
-    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'nyala']);
+    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'blazing']);
     postRunSpeechFor($activity, AnalysisStatus::Done, 'Lari pagi yang mantap.');
 
     expect(new PostRunNoteReader()->forActivity($activity->id))
-        ->toBe(['oneline' => 'Lari pagi yang mantap.', 'mood' => 'nyala']);
+        ->toBe(['oneline' => 'Lari pagi yang mantap.', 'mood' => 'blazing']);
 });
 
 it('returns null for a single activity when the speech is not Done', function (): void {
     $activity = Activity::factory()->create();
-    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'adem']);
+    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'chill']);
     postRunSpeechFor($activity, AnalysisStatus::Pending, 'belum siap');
 
     expect(new PostRunNoteReader()->forActivity($activity->id))->toBeNull();
@@ -54,7 +54,7 @@ it('returns null for a single activity when the mood is missing', function (): v
 
 it('returns null for a single activity when the speech content is empty', function (): void {
     $activity = Activity::factory()->create();
-    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'enteng']);
+    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'easy']);
     postRunSpeechFor($activity, AnalysisStatus::Done, '');
 
     expect(new PostRunNoteReader()->forActivity($activity->id))->toBeNull();
@@ -66,13 +66,13 @@ it('returns an empty array for an empty batch without querying', function (): vo
 
 it('moodsFor returns the persisted mood even when the speech is not ready yet', function (): void {
     $withSpeech = Activity::factory()->create();
-    StoryLine::factory()->for($withSpeech)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'nyala']);
+    StoryLine::factory()->for($withSpeech)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'blazing']);
     postRunSpeechFor($withSpeech, AnalysisStatus::Done, 'Mantap.');
 
     // Mood persisted at ingest, but the speech is still pending — moodsFor still
     // surfaces the mood (unlike forActivities, which gates on the speech).
     $pending = Activity::factory()->create();
-    StoryLine::factory()->for($pending)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'lemes']);
+    StoryLine::factory()->for($pending)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'gassed']);
     postRunSpeechFor($pending, AnalysisStatus::Pending, null);
 
     $noStoryLine = Activity::factory()->create();
@@ -80,8 +80,8 @@ it('moodsFor returns the persisted mood even when the speech is not ready yet', 
     $moods = new PostRunNoteReader()->moodsFor([$withSpeech->id, $pending->id, $noStoryLine->id]);
 
     expect($moods)->toBe([
-        $withSpeech->id => 'nyala',
-        $pending->id => 'lemes',
+        $withSpeech->id => 'blazing',
+        $pending->id => 'gassed',
     ]);
 });
 
@@ -91,27 +91,27 @@ it('moodsFor returns an empty array for an empty batch', function (): void {
 
 it('keys ready notes by activity id and omits unready ones', function (): void {
     $ready = Activity::factory()->create();
-    StoryLine::factory()->for($ready)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'nyala']);
+    StoryLine::factory()->for($ready)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'blazing']);
     postRunSpeechFor($ready, AnalysisStatus::Done, 'siap');
 
     $noSpeech = Activity::factory()->create();
-    StoryLine::factory()->for($noSpeech)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'adem']);
+    StoryLine::factory()->for($noSpeech)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'chill']);
 
     $noMood = Activity::factory()->create();
     postRunSpeechFor($noMood, AnalysisStatus::Done, 'tanpa mood');
 
     $notes = new PostRunNoteReader()->forActivities([$ready->id, $noSpeech->id, $noMood->id]);
 
-    expect($notes)->toBe([$ready->id => ['oneline' => 'siap', 'mood' => 'nyala']]);
+    expect($notes)->toBe([$ready->id => ['oneline' => 'siap', 'mood' => 'blazing']]);
 });
 
 it('bundles notes and moods from a single story-line read', function (): void {
     $ready = Activity::factory()->create();
-    StoryLine::factory()->for($ready)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'nyala']);
+    StoryLine::factory()->for($ready)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'blazing']);
     postRunSpeechFor($ready, AnalysisStatus::Done, 'siap');
 
     $moodOnly = Activity::factory()->create();
-    StoryLine::factory()->for($moodOnly)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'lemes']);
+    StoryLine::factory()->for($moodOnly)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'gassed']);
     postRunSpeechFor($moodOnly, AnalysisStatus::Pending, null);
 
     $queries = 0;
@@ -122,8 +122,8 @@ it('bundles notes and moods from a single story-line read', function (): void {
     $bundle = new PostRunNoteReader()->bundleFor([$ready->id, $moodOnly->id]);
 
     expect($bundle)->toBe([
-        'notes' => [$ready->id => ['oneline' => 'siap', 'mood' => 'nyala']],
-        'moods' => [$ready->id => 'nyala', $moodOnly->id => 'lemes'],
+        'notes' => [$ready->id => ['oneline' => 'siap', 'mood' => 'blazing']],
+        'moods' => [$ready->id => 'blazing', $moodOnly->id => 'gassed'],
     ])->and($queries)->toBe(2);
 });
 
@@ -134,7 +134,7 @@ it('bundles empty maps for an empty batch', function (): void {
 it('ignores non-post-run story lines and non-Done speech in a batch', function (): void {
     $activity = Activity::factory()->create();
     // Daily-greeting story line carries a mood but is the wrong kind.
-    StoryLine::factory()->dailyGreeting()->create(['user_id' => $activity->user_id, 'mood' => 'nyala']);
+    StoryLine::factory()->dailyGreeting()->create(['user_id' => $activity->user_id, 'mood' => 'blazing']);
     postRunSpeechFor($activity, AnalysisStatus::Done, 'siap');
 
     expect(new PostRunNoteReader()->forActivities([$activity->id]))->toBe([]);

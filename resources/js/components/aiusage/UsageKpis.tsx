@@ -30,7 +30,7 @@ export default function UsageKpis({
                 value={fmt(totals.total)}
                 sub={
                     <>
-                        {totals.calls} call
+                        {totals.calls} call{totals.calls === 1 ? '' : 's'}
                         <DeltaChip
                             current={totals.total}
                             previous={previousTotals?.total ?? null}
@@ -39,11 +39,11 @@ export default function UsageKpis({
                 }
             />
             <KpiTile
-                label="Estimasi Biaya"
+                label="Estimated Cost"
                 value={formatCost(totals.cost, currency)}
                 sub={
                     <>
-                        {`${fmt(avgPerCall)} token/call`}
+                        {`${fmt(avgPerCall)} tokens/call`}
                         <DeltaChip
                             current={totals.cost}
                             previous={previousTotals?.cost ?? null}
@@ -54,12 +54,12 @@ export default function UsageKpis({
             <KpiTile
                 label="Prompt"
                 value={fmt(totals.prompt)}
-                sub={`${promptShare}% dari total`}
+                sub={`${promptShare}% of total`}
             />
             <KpiTile
-                label="Terpotong"
+                label="Truncated"
                 value={`${truncatedShare}%`}
-                sub={`${totals.truncated_calls} dari ${totals.calls} call`}
+                sub={`${totals.truncated_calls} of ${totals.calls} call${totals.calls === 1 ? '' : 's'}`}
                 tone={truncatedShare > 1 ? 'alert' : 'neutral'}
             />
         </section>
@@ -67,7 +67,7 @@ export default function UsageKpis({
 }
 
 /**
- * Small "vs periode sebelumnya" delta next to a KPI. Hidden when there is no
+ * Small "vs previous period" delta next to a KPI. Hidden when there is no
  * comparable prior window (range=all) or the prior window had no data.
  */
 function DeltaChip({
@@ -79,7 +79,7 @@ function DeltaChip({
     }
     if (previous <= 0) {
         return current > 0 ? (
-            <span className="ml-1.5 text-ink-3">· baru</span>
+            <span className="ml-1.5 text-ink-3">· new</span>
         ) : null;
     }
 
@@ -93,7 +93,7 @@ function DeltaChip({
 
     return (
         <span className="ml-1.5 text-ink-3">
-            {arrow} {Math.abs(pct)}% vs sblm
+            {arrow} {Math.abs(pct)}% vs prev
         </span>
     );
 }

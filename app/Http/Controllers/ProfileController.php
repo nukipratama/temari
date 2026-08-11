@@ -53,7 +53,7 @@ class ProfileController extends Controller
 
         $progressionByCategory = $this->buildProgressionByCategory($progressionSeriesBuilder, $user, $personalRecords);
 
-        return Inertia::render('Aku', [
+        return Inertia::render('Profile', [
             'identity' => [
                 'name' => $user->name,
                 'avatar_url' => $user->avatar_url,

@@ -18,12 +18,12 @@ export default function ResumeFilterChip({
                 className="pressable focus-ring inline-flex items-center gap-1.5 rounded-full border border-line/60 bg-surface-warm py-1 pl-3 pr-3.5 text-xs font-medium text-ink-2"
             >
                 <Icon icon="mdi:history" width={13} height={13} aria-hidden />
-                Lanjutkan: {summary}
+                Resume: {summary}
             </button>
             <button
                 type="button"
                 onClick={onDismiss}
-                aria-label="Lupakan filter terakhir"
+                aria-label="Forget last filter"
                 className="focus-ring rounded px-1 text-xs font-medium text-ink-3 hover:text-ink-2"
             >
                 <Icon icon="mdi:close" width={13} height={13} aria-hidden />

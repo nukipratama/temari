@@ -4,7 +4,8 @@ import type { AnalysisStatus, AnalysisType, Rarity } from './generated';
 
 export type { AnalysisStatus, AnalysisType, Rarity } from './generated';
 
-export type Mood = 'nyala' | 'enteng' | 'oleng' | 'lemes' | 'mumet' | 'adem';
+export type Mood =
+    'blazing' | 'easy' | 'wobbly' | 'gassed' | 'overloaded' | 'chill';
 
 export type Tone = 'neutral' | 'positive' | 'warning' | 'alert';
 
@@ -51,14 +52,14 @@ export interface StravaSync {
 
 /** Resolved server-side from the user's equipped UserUnlock rows. */
 export type EquippedSlot =
-    'medal' | 'ikat_kepala' | 'kaus' | 'celana' | 'sepatu' | 'aura';
+    'medal' | 'headband' | 'shirt' | 'shorts' | 'shoes' | 'aura';
 
 export interface EquippedAccessories {
     medal: string | null;
-    ikat_kepala: string | null;
-    kaus: string | null;
-    celana: string | null;
-    sepatu: string | null;
+    headband: string | null;
+    shirt: string | null;
+    shorts: string | null;
+    shoes: string | null;
     aura: string | null;
 }
 
@@ -68,6 +69,19 @@ export interface UnlockFlash {
     name: string;
     icon: string;
     is_major: boolean;
+}
+
+/**
+ * The race the user is currently training for, shared app-wide. "Race" is the
+ * user-facing name; live accessory-unlock progress lives on `/accessories`,
+ * see AccessoriesItem.
+ */
+export interface ActiveRace {
+    id: number;
+    race_date: string;
+    distance_m: number;
+    goal_time_sec: number;
+    name: string | null;
 }
 
 export interface SharedProps {
@@ -82,7 +96,7 @@ export interface SharedProps {
     pendingReveal?: PendingReveal | null;
     equippedAccessories?: EquippedAccessories | null;
     stravaSync?: StravaSync | null;
-    goalsSummary?: GoalsSummary | null;
+    activeRace?: ActiveRace | null;
     /** ISO-8601 timestamp of the auth user's last heart-rate-zone change, or null. */
     hrZonesChangedAt?: string | null;
     /** Whether the auth user has a live (non-revoked) Telegram connection. */
@@ -102,20 +116,6 @@ export interface SharedProps {
     /** Inertia's shared validation/error bag, keyed by field (e.g. `strava`). */
     errors?: Record<string, string>;
     [key: string]: unknown;
-}
-
-export interface GoalsSummaryItem {
-    id: string;
-    title: string;
-    current: number;
-    target: number;
-    unit: string;
-}
-
-export interface GoalsSummary {
-    total: number;
-    completed: number;
-    closest: GoalsSummaryItem[];
 }
 
 export interface AnalysisPayload {

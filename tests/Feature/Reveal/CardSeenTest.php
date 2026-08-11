@@ -16,7 +16,7 @@ it('requires authentication for seen', function (): void {
     ActivityDetail::factory()->for($activity)->create();
     $card = RunCard::factory()->for($activity)->create();
 
-    $this->post("/api/kartu/{$card->id}/seen")->assertRedirect('/login');
+    $this->post("/api/cards/{$card->id}/seen")->assertRedirect('/login');
 });
 
 it('requires authentication for replay', function (): void {
@@ -24,7 +24,7 @@ it('requires authentication for replay', function (): void {
     ActivityDetail::factory()->for($activity)->create();
     $card = RunCard::factory()->for($activity)->create();
 
-    $this->post("/api/kartu/{$card->id}/replay")->assertRedirect('/login');
+    $this->post("/api/cards/{$card->id}/replay")->assertRedirect('/login');
 });
 
 it('clears pending_reveal_card_id when the user posts seen for the flagged card', function (): void {
@@ -36,7 +36,7 @@ it('clears pending_reveal_card_id when the user posts seen for the flagged card'
     $user->forceFill(['pending_reveal_card_id' => $card->id])->save();
 
     $this->actingAs($user)
-        ->postJson("/api/kartu/{$card->id}/seen")
+        ->postJson("/api/cards/{$card->id}/seen")
         ->assertSuccessful()
         ->assertJson(['seen' => true]);
 
@@ -55,7 +55,7 @@ it('no-ops when posting seen for a card that is not the flagged reveal', functio
 
     $user->forceFill(['pending_reveal_card_id' => $cardA->id])->save();
 
-    $this->actingAs($user)->postJson("/api/kartu/{$cardB->id}/seen")->assertSuccessful();
+    $this->actingAs($user)->postJson("/api/cards/{$cardB->id}/seen")->assertSuccessful();
 
     expect($user->fresh()->pending_reveal_card_id)->toBe($cardA->id);
 });
@@ -67,7 +67,7 @@ it('forbids posting seen for another user\'s card', function (): void {
     $card = RunCard::factory()->for($activity)->create();
 
     $intruder = User::factory()->create();
-    $this->actingAs($intruder)->postJson("/api/kartu/{$card->id}/seen")->assertForbidden();
+    $this->actingAs($intruder)->postJson("/api/cards/{$card->id}/seen")->assertForbidden();
 });
 
 it('shares pendingReveal as null when no flag is set', function (): void {
@@ -102,7 +102,7 @@ it('re-arms the reveal flag when replaying an owned card', function (): void {
     expect($user->pending_reveal_card_id)->toBeNull();
 
     $this->actingAs($user)
-        ->postJson("/api/kartu/{$card->id}/replay")
+        ->postJson("/api/cards/{$card->id}/replay")
         ->assertSuccessful()
         ->assertJson(['replay' => true]);
 
@@ -116,7 +116,7 @@ it('forbids replaying another user\'s card', function (): void {
     $card = RunCard::factory()->for($activity)->create();
 
     $intruder = User::factory()->create();
-    $this->actingAs($intruder)->postJson("/api/kartu/{$card->id}/replay")->assertForbidden();
+    $this->actingAs($intruder)->postJson("/api/cards/{$card->id}/replay")->assertForbidden();
 
     expect($owner->fresh()->pending_reveal_card_id)->toBeNull();
 });
@@ -153,7 +153,7 @@ it('shares pendingReveal payload (incl. km/duration/trimp) when a card is flagge
             ->where('pendingReveal.elapsed_time_sec', 3480)
             ->where('pendingReveal.trimp_edwards', 161.4)
             // No post-run story line yet: mood is computed, not the sleepy default.
-            ->where('pendingReveal.mood', 'enteng'));
+            ->where('pendingReveal.mood', 'easy'));
 });
 
 it('reads weather_temp_c through the pendingReveal eager load so hot-weather mood computes correctly', function (): void {
@@ -173,5 +173,5 @@ it('reads weather_temp_c through the pendingReveal eager load so hot-weather moo
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('pendingReveal.mood', 'oleng'));
+            ->where('pendingReveal.mood', 'wobbly'));
 });

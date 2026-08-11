@@ -30,16 +30,16 @@ export default function MilestoneStrip({
         >
             <div className="flex flex-wrap items-center gap-4">
                 <Eyebrow token="micro" tone="horizon">
-                    ★ Target berikutnya
+                    ★ Next target
                 </Eyebrow>
                 <div className="font-display text-headline-sm text-cream">
-                    Sub-<em className="italic">{targetLabel}</em> di{' '}
+                    Sub-<em className="italic">{targetLabel}</em>{' '}
                     {distanceLabel}
                 </div>
             </div>
             <div className="font-mono text-[11px] uppercase tracking-[0.08em] text-cream/70">
-                kurang{' '}
-                <span className="font-bold text-horizon">{deltaLabel}</span>
+                <span className="font-bold text-horizon">{deltaLabel}</span> to
+                go
             </div>
         </div>
     );

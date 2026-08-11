@@ -55,7 +55,7 @@ function featuredCard(User $user, Rarity $rarity, ?float $distance, array $badge
 
 it('returns the kartu voice for the resolved card from a valid LLM response', function (): void {
     $user = User::factory()->make(['id' => 1, 'name' => 'Ada Lovelace']);
-    $card = featuredCard($user, Rarity::Legendary, 12000.0, ['anak_pagi', 'negative_split', 'tahan_diri', 'hari_panas']);
+    $card = featuredCard($user, Rarity::Legendary, 12000.0, ['early_bird', 'negative_split', 'held_back', 'heat_tamer']);
 
     ['narrator' => $narrator, 'client' => $client] = bootFeaturedKartuNarrator(json_encode([
         'kartu_voice' => 'Aku kasih kartu ini karena 12 km tadi solid.',
@@ -77,7 +77,7 @@ it('returns a fallback line and skips the LLM when there is no featured card', f
     );
 
     expect($narrator->generate($user, null))
-        ->toBe('Belum ada kartu khusus buat kamu minggu ini. Terus lari, aku pantau!');
+        ->toBe("No special card for you this week yet. Keep running, I'm watching!");
     $client->assertNothingSent();
 });
 

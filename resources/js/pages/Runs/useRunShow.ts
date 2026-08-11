@@ -28,7 +28,7 @@ import {
     kartuPropsFromDetail,
 } from '@/lib/runcard';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
-import { districtFromLocation } from '@/pages/HariIni/helpers';
+import { districtFromLocation } from '@/pages/Today/helpers';
 
 /** The run's RunCard, enriched with the flavor/edition/share fields this page's
  *  card section needs (see RunController::cardPayload). */
@@ -46,12 +46,12 @@ export interface RelativeEffortPayload {
     band: 'well_above' | 'above' | 'typical' | 'below' | null;
 }
 
-/** Human "vs biasanya" line per band. Null band (thin baseline) shows nothing. */
+/** Human "vs usual" line per band. Null band (thin baseline) shows nothing. */
 const EFFORT_SUB: Record<NonNullable<RelativeEffortPayload['band']>, string> = {
-    well_above: 'lebih berat dari biasanya',
-    above: 'agak lebih berat dari biasanya',
-    typical: 'kayak biasanya',
-    below: 'lebih enteng dari biasanya',
+    well_above: 'harder than usual',
+    above: 'a bit harder than usual',
+    typical: 'about usual',
+    below: 'easier than usual',
 };
 
 interface UseRunShowArgs {
@@ -112,7 +112,7 @@ export function useRunShow({
         const temp = `${Math.round(detail.weather_temp_c)}°C`;
         const wind =
             detail.weather_wind_speed_kmh != null
-                ? `, angin ${Math.round(detail.weather_wind_speed_kmh)} km/j`
+                ? `, wind ${Math.round(detail.weather_wind_speed_kmh)} km/h`
                 : '';
         return `${temp}${wind}`;
     })();
@@ -147,7 +147,7 @@ export function useRunShow({
                       weather: shareWeather,
                       wind:
                           detail.weather_wind_speed_kmh != null
-                              ? `${Math.round(detail.weather_wind_speed_kmh)} km/j`
+                              ? `${Math.round(detail.weather_wind_speed_kmh)} km/h`
                               : null,
                       tags: cardBadges.map((b) => badgeName(b)),
                       tagEmojis: cardBadges.map((b) => badgeEmblem(b)),

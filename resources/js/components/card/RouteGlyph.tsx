@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 
 import type { Rarity } from '@/types/inertia';
 
-import { BunnyGlyph } from '@/components/BrandMark';
+import { TemariGlyph } from '@/components/BrandMark';
 import { cn } from '@/lib/cn';
 import { projectPolyline } from '@/lib/route';
 
@@ -123,7 +123,7 @@ export default function RouteGlyph({
                 style={{ backgroundColor: stroke }}
             />
             <span className="relative opacity-50">
-                <BunnyGlyph size={56} tone="ink" />
+                <TemariGlyph size={56} tone="ink" />
             </span>
         </div>
     );

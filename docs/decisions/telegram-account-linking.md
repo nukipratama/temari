@@ -24,7 +24,7 @@ Telegram notifications ([[telegram-notifications]]) need each temari account bou
 
 We carry identity in a **signed, TTL-bounded deep-link token**, not a typed pairing code.
 
-The logged-in Aku page mints a **compact HMAC-signed token** ([TelegramLinkToken](app/Services/Telegram/TelegramLinkToken.php), 60-min TTL, fresh per render): base64url of `user_id|expires_at` plus a truncated HMAC keyed on `APP_KEY`. It renders `t.me/<bot>?start=<token>`. On `/start`, [HandleTelegramUpdateJob](app/Jobs/Telegram/HandleTelegramUpdateJob.php) verifies the signature + expiry and branches: valid → link with the **server-reported** `chat_id`; signed-but-expired → reply "get a fresh link", no row written; tampered/malformed → generic reply. The token *is* the pending-link state, so there is no pending-codes table.
+The logged-in Profile page mints a **compact HMAC-signed token** ([TelegramLinkToken](app/Services/Telegram/TelegramLinkToken.php), 60-min TTL, fresh per render): base64url of `user_id|expires_at` plus a truncated HMAC keyed on `APP_KEY`. It renders `t.me/<bot>?start=<token>`. On `/start`, [HandleTelegramUpdateJob](app/Jobs/Telegram/HandleTelegramUpdateJob.php) verifies the signature + expiry and branches: valid → link with the **server-reported** `chat_id`; signed-but-expired → reply "get a fresh link", no row written; tampered/malformed → generic reply. The token *is* the pending-link state, so there is no pending-codes table.
 
 The token is deliberately **not** an encrypted blob: Telegram caps the `start` payload at 64 chars and allows only `[A-Za-z0-9_-]`, which `Crypt::encryptString` (a ~200-char base64 JSON envelope) blows past, so Telegram would silently drop it and linking would never fire. The compact signed form lands at ~50 chars.
 
@@ -35,7 +35,7 @@ Delivery is split by environment because a bot token's webhook and `getUpdates` 
 ## Consequences
 
 - **Enables:** one-tap linking with no pending-codes table and nothing to garbage-collect; the token is unforgeable (signed with `APP_KEY`, can't point at another `user_id`); a short TTL bounds replay of a leaked link; the `chat_id` is captured server-side from the real Telegram message, never user-supplied.
-- **Costs:** the connect link expires (60 min) and must be re-minted from the Aku page; two bots (prod + test) to administer because webhook and poll can't share one token.
+- **Costs:** the connect link expires (60 min) and must be re-minted from the Profile page; two bots (prod + test) to administer because webhook and poll can't share one token.
 - **Gotchas:** the token is single-use, so a leaked link can't be replayed after the owner links; the residual window is only *before* the owner links (mitigated by the short TTL and the link only appearing on the owner's authenticated page). The consumed-marker lives in the cache, so a cache flush mid-window would let a token link twice — acceptable for a one-hour link. Rejected alternative: a typed 6-digit pairing code, which adds friction, needs a pending-codes table plus brute-force rate-limiting, and is strictly weaker.
 
 ## See also

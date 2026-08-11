@@ -7,11 +7,15 @@ declare(strict_types=1);
 | Temari Goal Catalogue
 |--------------------------------------------------------------------------
 |
-| Declarative map: unlock key → progress-bar metadata. Each goal carries a
-| title, a description, its slot, the GamificationContext metric it tracks
-| (plus a metric_key for the per-badge/per-rarity counters), a target, and
-| a unit. GoalResolver reads this to compute `current` for every goal, and
-| pulls `rarity` for the same key from config/temari_unlocks.php.
+| The single canonical source of unlock grant criteria. Declarative map:
+| unlock key → title, description (also shown as the locked-state
+| "criteria" text on Collection/Accessories), its slot, the
+| GamificationContext metric it tracks (plus a metric_key for the
+| per-badge/per-rarity counters), a target, and a unit. GoalResolver reads
+| this to compute `current` for every progress bar, and pulls `rarity` for
+| the same key from config/temari_unlocks.php. GrantEligibleUnlocksAction
+| reads the same metric/metric_key/target generically to decide grants
+| (current >= target) — a new unlock needs an entry here, not a PHP change.
 |
 | 25 items across 6 slots (4 per slot, aura has 5), same keys and order as
 | config/temari_unlocks.php.
@@ -19,226 +23,226 @@ declare(strict_types=1);
 */
 
 return [
-    // ── Medali (4) ──────────────────────────────────────────────────────
-    'accessory.medal_pertama' => [
-        'title' => 'Catat PR ke-1',
-        'description' => 'Catat 1 PR di kategori apapun.',
+    // ── Medals (4) ──────────────────────────────────────────────────────
+    'accessory.medal_first' => [
+        'title' => 'Log your 1st PR',
+        'description' => 'Log 1 PR in any category.',
         'slot' => 'medal',
         'metric' => 'pr_count',
         'target' => 1,
         'unit' => 'PR',
     ],
-    'accessory.medal_emas' => [
-        'title' => 'Catat PR ke-5',
-        'description' => 'Catat 5 PR total.',
+    'accessory.medal_gold' => [
+        'title' => 'Log your 5th PR',
+        'description' => 'Log 5 PRs total.',
         'slot' => 'medal',
         'metric' => 'pr_count',
         'target' => 5,
         'unit' => 'PR',
     ],
-    'accessory.medal_perak' => [
-        'title' => 'Catat PR ke-10',
-        'description' => 'Catat 10 PR total.',
+    'accessory.medal_silver' => [
+        'title' => 'Log your 10th PR',
+        'description' => 'Log 10 PRs total.',
         'slot' => 'medal',
         'metric' => 'pr_count',
         'target' => 10,
         'unit' => 'PR',
     ],
-    'accessory.medal_platina' => [
-        'title' => 'Catat PR ke-20',
-        'description' => 'Catat 20 PR total.',
+    'accessory.medal_platinum' => [
+        'title' => 'Log your 20th PR',
+        'description' => 'Log 20 PRs total.',
         'slot' => 'medal',
         'metric' => 'pr_count',
         'target' => 20,
         'unit' => 'PR',
     ],
 
-    // ── Ikat Kepala (4) ────────────────────────────────────────────────
-    'accessory.ikat_kepala_berkesan' => [
-        'title' => 'Kumpulkan 3 kartu Berkesan',
-        'description' => 'Dapatkan 3 kartu Berkesan.',
-        'slot' => 'ikat_kepala',
+    // ── Headband (4) ────────────────────────────────────────────────
+    'accessory.headband_uncommon' => [
+        'title' => 'Collect 3 Uncommon cards',
+        'description' => 'Earn 3 Uncommon cards.',
+        'slot' => 'headband',
         'metric' => 'rarity_count',
         'metric_key' => 'uncommon',
         'target' => 3,
-        'unit' => 'kartu',
+        'unit' => 'cards',
     ],
-    'accessory.ikat_kepala_langka' => [
-        'title' => 'Kumpulkan 3 kartu Langka',
-        'description' => 'Dapatkan 3 kartu Langka.',
-        'slot' => 'ikat_kepala',
+    'accessory.headband_rare' => [
+        'title' => 'Collect 3 Rare cards',
+        'description' => 'Earn 3 Rare cards.',
+        'slot' => 'headband',
         'metric' => 'rarity_count',
         'metric_key' => 'rare',
         'target' => 3,
-        'unit' => 'kartu',
+        'unit' => 'cards',
     ],
-    'accessory.ikat_kepala_epik' => [
-        'title' => 'Kumpulkan 3 kartu Istimewa',
-        'description' => 'Dapatkan 3 kartu Istimewa.',
-        'slot' => 'ikat_kepala',
+    'accessory.headband_epic' => [
+        'title' => 'Collect 3 Epic cards',
+        'description' => 'Earn 3 Epic cards.',
+        'slot' => 'headband',
         'metric' => 'rarity_count',
         'metric_key' => 'epic',
         'target' => 3,
-        'unit' => 'kartu',
+        'unit' => 'cards',
     ],
-    'accessory.ikat_kepala_legendaris' => [
-        'title' => 'Kumpulkan 1 kartu Legendaris',
-        'description' => 'Dapatkan 1 kartu Legendaris.',
-        'slot' => 'ikat_kepala',
+    'accessory.headband_legendary' => [
+        'title' => 'Collect 1 Legendary card',
+        'description' => 'Earn 1 Legendary card.',
+        'slot' => 'headband',
         'metric' => 'rarity_count',
         'metric_key' => 'legendary',
         'target' => 1,
-        'unit' => 'kartu',
+        'unit' => 'cards',
     ],
 
-    // ── Kaus (4) ───────────────────────────────────────────────────────
-    'accessory.kaus_pemula' => [
-        'title' => 'Catat lari pertama',
-        'description' => 'Catat 1 aktivitas lari.',
-        'slot' => 'kaus',
+    // ── Shirt (4) ───────────────────────────────────────────────────────
+    'accessory.shirt_beginner' => [
+        'title' => 'Log your first run',
+        'description' => 'Log 1 run.',
+        'slot' => 'shirt',
         'metric' => 'activity_count',
         'target' => 1,
-        'unit' => 'lari',
+        'unit' => 'runs',
     ],
-    'accessory.kaus_pagi' => [
-        'title' => '5 lari pagi',
-        'description' => 'Selesaikan 5 lari pagi (sebelum jam 6).',
-        'slot' => 'kaus',
+    'accessory.shirt_early_bird' => [
+        'title' => '5 morning runs',
+        'description' => 'Complete 5 morning runs (before 6am).',
+        'slot' => 'shirt',
         'metric' => 'badge_count',
-        'metric_key' => 'anak_pagi',
+        'metric_key' => 'early_bird',
         'target' => 5,
-        'unit' => 'lari',
+        'unit' => 'runs',
     ],
-    'accessory.kaus_hujan' => [
-        'title' => '3 lari pas hujan',
-        'description' => 'Selesaikan 3 lari pas hujan.',
-        'slot' => 'kaus',
+    'accessory.shirt_rain_warrior' => [
+        'title' => '3 rainy runs',
+        'description' => 'Complete 3 runs in the rain.',
+        'slot' => 'shirt',
         'metric' => 'badge_count',
-        'metric_key' => 'pejuang_hujan',
+        'metric_key' => 'rain_warrior',
         'target' => 3,
-        'unit' => 'lari',
+        'unit' => 'runs',
     ],
-    'accessory.kaus_legendaris' => [
-        'title' => 'Catat 50 lari',
-        'description' => 'Catat 50 aktivitas lari.',
-        'slot' => 'kaus',
+    'accessory.shirt_legendary' => [
+        'title' => 'Log 50 runs',
+        'description' => 'Log 50 runs.',
+        'slot' => 'shirt',
         'metric' => 'activity_count',
         'target' => 50,
-        'unit' => 'lari',
+        'unit' => 'runs',
     ],
 
-    // ── Celana (4) ─────────────────────────────────────────────────────
-    'accessory.celana_ringan' => [
-        'title' => 'Lari 5 km pertama',
-        'description' => 'Catat 1 lari sejauh 5 km atau lebih.',
-        'slot' => 'celana',
+    // ── Shorts (4) ─────────────────────────────────────────────────────
+    'accessory.shorts_lightweight' => [
+        'title' => 'Your first 5K',
+        'description' => 'Log 1 run of 5 km or more.',
+        'slot' => 'shorts',
         'metric' => 'five_k_plus',
         'target' => 1,
-        'unit' => 'lari',
+        'unit' => 'runs',
     ],
-    'accessory.celana_jarak' => [
-        'title' => 'Lari 10 km pertama',
-        'description' => 'Catat 1 lari sejauh 10 km atau lebih.',
-        'slot' => 'celana',
+    'accessory.shorts_explorer' => [
+        'title' => 'Your first 10K',
+        'description' => 'Log 1 run of 10 km or more.',
+        'slot' => 'shorts',
         'metric' => 'ten_k_plus',
         'target' => 1,
-        'unit' => 'lari',
+        'unit' => 'runs',
     ],
-    'accessory.celana_split' => [
-        'title' => '3 negative split',
-        'description' => 'Catat 3 lari negative split.',
-        'slot' => 'celana',
+    'accessory.shorts_negative_split' => [
+        'title' => '3 negative splits',
+        'description' => 'Log 3 negative-split runs.',
+        'slot' => 'shorts',
         'metric' => 'badge_count',
         'metric_key' => 'negative_split',
         'target' => 3,
-        'unit' => 'lari',
+        'unit' => 'runs',
     ],
-    'accessory.celana_maraton' => [
-        'title' => 'Lari 21 km',
-        'description' => 'Catat 1 lari sejauh 21 km atau lebih.',
-        'slot' => 'celana',
+    'accessory.shorts_marathon' => [
+        'title' => 'Run 21K',
+        'description' => 'Log 1 run of 21 km or more.',
+        'slot' => 'shorts',
         'metric' => 'half_marathon',
         'target' => 1,
-        'unit' => 'lari',
+        'unit' => 'runs',
     ],
 
-    // ── Sepatu (4) ─────────────────────────────────────────────────────
-    'accessory.sepatu_basic' => [
-        'title' => 'Catat 10 lari',
-        'description' => 'Catat 10 aktivitas lari.',
-        'slot' => 'sepatu',
+    // ── Shoes (4) ─────────────────────────────────────────────────────
+    'accessory.shoes_basic' => [
+        'title' => 'Log 10 runs',
+        'description' => 'Log 10 runs.',
+        'slot' => 'shoes',
         'metric' => 'activity_count',
         'target' => 10,
-        'unit' => 'lari',
+        'unit' => 'runs',
     ],
-    'accessory.sepatu_cepat' => [
-        'title' => 'Pace di bawah 5:30/km',
-        'description' => 'Catat 1 lari dengan rata-rata pace di bawah 5:30/km.',
-        'slot' => 'sepatu',
+    'accessory.shoes_speed' => [
+        'title' => 'Pace under 5:30/km',
+        'description' => 'Log 1 run with an average pace under 5:30/km.',
+        'slot' => 'shoes',
         'metric' => 'fast_pace',
         'target' => 1,
-        'unit' => 'lari',
+        'unit' => 'runs',
     ],
-    'accessory.sepatu_tahan' => [
-        'title' => '5 lari 10 km+',
-        'description' => 'Catat 5 lari sejauh 10 km atau lebih.',
-        'slot' => 'sepatu',
+    'accessory.shoes_rugged' => [
+        'title' => '5 runs at 10K+',
+        'description' => 'Log 5 runs of 10 km or more.',
+        'slot' => 'shoes',
         'metric' => 'ten_k_plus',
         'target' => 5,
-        'unit' => 'lari',
+        'unit' => 'runs',
     ],
-    'accessory.sepatu_legendaris' => [
-        'title' => 'Total jarak 1000 km',
-        'description' => 'Kumpulin jarak sampai 1000 km.',
-        'slot' => 'sepatu',
+    'accessory.shoes_legendary' => [
+        'title' => '1,000 km total distance',
+        'description' => 'Rack up 1,000 km total distance.',
+        'slot' => 'shoes',
         'metric' => 'total_distance_km',
         'target' => 1000,
         'unit' => 'km',
     ],
 
     // ── Aura (5) ───────────────────────────────────────────────────────
-    'accessory.aura_pemanasan' => [
-        'title' => '2 minggu beruntun lari',
-        'description' => 'Lari di 2 minggu beruntun.',
+    'accessory.aura_warmup' => [
+        'title' => '2-week running streak',
+        'description' => 'Run in 2 consecutive weeks.',
         'slot' => 'aura',
         'metric' => 'two_week_streak',
         'target' => 2,
-        'unit' => 'minggu',
+        'unit' => 'weeks',
     ],
-    'accessory.aura_gerah' => [
-        'title' => '3 lari pas gerah',
-        'description' => 'Selesaikan 3 lari saat suhu di atas 31°C.',
+    'accessory.aura_heatwave' => [
+        'title' => '3 hot-weather runs',
+        'description' => 'Complete 3 runs with temps above 31°C.',
         'slot' => 'aura',
         'metric' => 'badge_count',
-        'metric_key' => 'hari_panas',
+        'metric_key' => 'heat_tamer',
         'target' => 3,
-        'unit' => 'lari',
+        'unit' => 'runs',
     ],
-    'accessory.aura_tenang' => [
-        'title' => '5 lari Zona HR 2',
-        'description' => 'Catat 5 lari di Zona HR 2 (bawah 70% HR maks).',
+    'accessory.aura_calm' => [
+        'title' => '5 runs in HR Zone 2',
+        'description' => 'Log 5 runs in HR Zone 2 (under 70% max HR).',
         'slot' => 'aura',
         'metric' => 'badge_count',
         'metric_key' => 'z2_master',
         'target' => 5,
-        'unit' => 'lari',
+        'unit' => 'runs',
     ],
-    'accessory.aura_jagoan' => [
-        'title' => '3 kartu Legendaris',
-        'description' => 'Dapatkan 3 kartu Legendaris.',
+    'accessory.aura_champion' => [
+        'title' => '3 Legendary cards',
+        'description' => 'Earn 3 Legendary cards.',
         'slot' => 'aura',
         'metric' => 'rarity_count',
         'metric_key' => 'legendary',
         'target' => 3,
-        'unit' => 'kartu',
+        'unit' => 'cards',
     ],
-    'accessory.aura_angin' => [
-        'title' => '3 lari lawan angin',
-        'description' => 'Selesaikan 3 lari saat angin di atas 20 km/j.',
+    'accessory.aura_windrunner' => [
+        'title' => '3 headwind runs',
+        'description' => 'Complete 3 runs with wind above 20 km/h.',
         'slot' => 'aura',
         'metric' => 'badge_count',
-        'metric_key' => 'lawan_angin',
+        'metric_key' => 'headwind',
         'target' => 3,
-        'unit' => 'lari',
+        'unit' => 'runs',
     ],
 ];

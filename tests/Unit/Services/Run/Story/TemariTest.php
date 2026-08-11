@@ -69,7 +69,7 @@ it('picks glow mood when this activity broke a PR', function (): void {
         ->toBe(Temari::MOOD_NYALA);
 });
 
-it('picks mumet mood on a hard grind (≥80% Z3+ time) without a controlled finish', function (): void {
+it('picks overloaded mood on a hard grind (≥80% Z3+ time) without a controlled finish', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 5_000,
@@ -81,7 +81,7 @@ it('picks mumet mood on a hard grind (≥80% Z3+ time) without a controlled fini
         ->toBe(Temari::MOOD_MUMET);
 });
 
-it('picks lemes mood when decoupling is high (>12%)', function (): void {
+it('picks gassed mood when decoupling is high (>12%)', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 10_000,
@@ -95,7 +95,7 @@ it('picks lemes mood when decoupling is high (>12%)', function (): void {
         ->toBe(Temari::MOOD_LEMES);
 });
 
-it('does not flag decoupling at exactly 12% as lemes (boundary is strictly above)', function (): void {
+it('does not flag decoupling at exactly 12% as gassed (boundary is strictly above)', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 10_000,
@@ -110,7 +110,7 @@ it('does not flag decoupling at exactly 12% as lemes (boundary is strictly above
         ->toBe(Temari::MOOD_ADEM);
 });
 
-it('flags decoupling at 12.01% as lemes', function (): void {
+it('flags decoupling at 12.01% as gassed', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 10_000,
@@ -125,7 +125,7 @@ it('flags decoupling at 12.01% as lemes', function (): void {
         ->toBe(Temari::MOOD_LEMES);
 });
 
-it('reads an inferred tempo (Z3-Z4 heavy, untagged) with high decoupling + neg split as nyala, not lemes', function (): void {
+it('reads an inferred tempo (Z3-Z4 heavy, untagged) with high decoupling + neg split as blazing, not gassed', function (): void {
     // The activity 276 shape: 81.7% Z3-Z4, decoupling 14, negative split, untagged.
     // Decoupling on an intended-hard session is the work, not weakness.
     $activity = Activity::factory()->create();
@@ -143,7 +143,7 @@ it('reads an inferred tempo (Z3-Z4 heavy, untagged) with high decoupling + neg s
         ->toBe(Temari::MOOD_NYALA);
 });
 
-it('reads a tagged workout with high decoupling and no controlled finish as mumet, not lemes', function (): void {
+it('reads a tagged workout with high decoupling and no controlled finish as overloaded, not gassed', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 8_000,
@@ -160,7 +160,7 @@ it('reads a tagged workout with high decoupling and no controlled finish as mume
         ->toBe(Temari::MOOD_MUMET);
 });
 
-it('picks nyala for a hard session finished under control (neg split, low decoupling)', function (): void {
+it('picks blazing for a hard session finished under control (neg split, low decoupling)', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 10_000,
@@ -175,7 +175,7 @@ it('picks nyala for a hard session finished under control (neg split, low decoup
         ->toBe(Temari::MOOD_NYALA);
 });
 
-it('picks nyala when decoupling is exactly at the 5% control ceiling', function (): void {
+it('picks blazing when decoupling is exactly at the 5% control ceiling', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 10_000,
@@ -191,7 +191,7 @@ it('picks nyala when decoupling is exactly at the 5% control ceiling', function 
         ->toBe(Temari::MOOD_NYALA);
 });
 
-it('drops to enteng once decoupling is just past the 5% control ceiling', function (): void {
+it('drops to easy once decoupling is just past the 5% control ceiling', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 10_000,
@@ -207,7 +207,7 @@ it('drops to enteng once decoupling is just past the 5% control ceiling', functi
         ->toBe(Temari::MOOD_ENTENG);
 });
 
-it('picks enteng for a hard session that was controlled but not clean enough for nyala', function (): void {
+it('picks easy for a hard session that was controlled but not clean enough for blazing', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 10_000,
@@ -223,7 +223,7 @@ it('picks enteng for a hard session that was controlled but not clean enough for
         ->toBe(Temari::MOOD_ENTENG);
 });
 
-it('no longer flags a moderately hard run (50% hard zone) as mumet', function (): void {
+it('no longer flags a moderately hard run (50% hard zone) as overloaded', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 10_000,
@@ -252,7 +252,7 @@ it('picks squished mood on hot-weather easy runs', function (): void {
         ->toBe(Temari::MOOD_OLENG);
 });
 
-it('flags exactly 31°C as hot weather (oleng)', function (): void {
+it('flags exactly 31°C as hot weather (wobbly)', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 8_000,
@@ -356,7 +356,7 @@ it('moodForActivityOrDefault matches the mood the post-run line would persist', 
         ->toBe(app(Temari::class)->postRunLine($activity, $detail)->mood);
 });
 
-it('moodForActivityOrDefault falls back to adem when the activity has no detail', function (): void {
+it('moodForActivityOrDefault falls back to chill when the activity has no detail', function (): void {
     // Returns before hasPr()'s query, so the activity never needs to be persisted.
     // user_id is pinned so the factory doesn't fall through to its
     // `User::factory()` default, which ->create()s a real User row even

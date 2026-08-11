@@ -13,7 +13,7 @@ import { setMockPage } from '@/test/setup';
 
 import AnalysisStatus from './AnalysisStatus';
 
-const BADGE_TEXT = /dihitung dengan zona lama/;
+const BADGE_TEXT = /calculated with old zones/;
 const OLD_TS = '2026-01-01T00:00:00+00:00';
 const NEW_TS = '2026-02-01T00:00:00+00:00';
 
@@ -40,7 +40,7 @@ describe('AnalysisStatus', () => {
         );
         expect(screen.getByText('Halo Temari')).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: /Baca ulang/ }),
+            screen.getByRole('button', { name: /Reread/ }),
         ).toBeInTheDocument();
     });
 
@@ -52,7 +52,7 @@ describe('AnalysisStatus', () => {
             />,
         );
         expect(
-            screen.queryByRole('button', { name: /Baca ulang/ }),
+            screen.queryByRole('button', { name: /Reread/ }),
         ).not.toBeInTheDocument();
     });
 
@@ -88,7 +88,7 @@ describe('AnalysisStatus', () => {
         ).not.toBeNull();
     });
 
-    it('flips the queued skeleton to a quiet "muat ulang nanti" state after polling gives up', async () => {
+    it('flips the queued skeleton to a quiet "check back later" state after polling gives up', async () => {
         vi.useFakeTimers();
         try {
             render(
@@ -106,7 +106,7 @@ describe('AnalysisStatus', () => {
             });
 
             expect(
-                screen.getByText(/Masih diproses, muat ulang nanti ya/),
+                screen.getByText(/Still processing, check back in a bit/),
             ).toBeInTheDocument();
             expect(screen.queryByRole('status')).toBeNull();
         } finally {
@@ -117,7 +117,7 @@ describe('AnalysisStatus', () => {
     it('renders the failed retry button', () => {
         render(<AnalysisStatus analysis={payload({ status: 'failed' })} />);
         expect(
-            screen.getByRole('button', { name: /Coba lagi/ }),
+            screen.getByRole('button', { name: /Try again/ }),
         ).toBeInTheDocument();
     });
 
@@ -128,7 +128,7 @@ describe('AnalysisStatus', () => {
         expect(container).toBeEmptyDOMElement();
     });
 
-    it('shows the "belum tersedia" note and no trigger when awaitingSchedule (current week)', () => {
+    it('shows the "not available yet" note and no trigger when awaitingSchedule (current week)', () => {
         render(
             <AnalysisStatus
                 analysis={payload({ status: 'pending' })}
@@ -136,10 +136,10 @@ describe('AnalysisStatus', () => {
             />,
         );
         expect(
-            screen.getByText(/Rekap minggu ini belum tersedia/),
+            screen.getByText(/This week's recap isn't available yet/),
         ).toBeInTheDocument();
         expect(
-            screen.queryByRole('button', { name: /Minta Temari bacain/ }),
+            screen.queryByRole('button', { name: /Ask Temari to read it/ }),
         ).not.toBeInTheDocument();
     });
 
@@ -148,14 +148,14 @@ describe('AnalysisStatus', () => {
             <AnalysisStatus
                 analysis={payload({ status: 'pending' })}
                 awaitingSchedule
-                awaitingScheduleLabel="Rekap bulan ini belum tersedia."
+                awaitingScheduleLabel="This month's recap isn't available yet."
             />,
         );
         expect(
-            screen.getByText(/Rekap bulan ini belum tersedia/),
+            screen.getByText(/This month's recap isn't available yet/),
         ).toBeInTheDocument();
         expect(
-            screen.queryByRole('button', { name: /Minta Temari bacain/ }),
+            screen.queryByRole('button', { name: /Ask Temari to read it/ }),
         ).not.toBeInTheDocument();
     });
 
@@ -168,11 +168,11 @@ describe('AnalysisStatus', () => {
         );
         expect(screen.getByText('Halo')).toBeInTheDocument();
         expect(
-            screen.queryByRole('button', { name: /Baca ulang/ }),
+            screen.queryByRole('button', { name: /Reread/ }),
         ).not.toBeInTheDocument();
     });
 
-    it('shows "Dibuat X lalu" hint when generated_at is present on done content', () => {
+    it('shows "Generated X ago" hint when generated_at is present on done content', () => {
         vi.useFakeTimers();
         const now = new Date('2026-07-07T12:00:00Z');
         vi.setSystemTime(now);
@@ -186,11 +186,11 @@ describe('AnalysisStatus', () => {
                 })}
             />,
         );
-        expect(screen.getByText(/Dibuat 5 menit lalu/)).toBeInTheDocument();
+        expect(screen.getByText(/Generated 5 min ago/)).toBeInTheDocument();
         vi.useRealTimers();
     });
 
-    it('gives the done-state timestamp and "Baca ulang" button the on-sky muted tone instead of text-ink-3', () => {
+    it('gives the done-state timestamp and "Reread" button the on-sky muted tone instead of text-ink-3', () => {
         vi.useFakeTimers();
         const now = new Date('2026-07-07T12:00:00Z');
         vi.setSystemTime(now);
@@ -206,13 +206,13 @@ describe('AnalysisStatus', () => {
             />,
         );
 
-        expect(screen.getByText(/Dibuat 5 menit lalu/)).toHaveClass(
+        expect(screen.getByText(/Generated 5 min ago/)).toHaveClass(
             'text-ink-on-sky',
         );
-        expect(screen.getByText(/Dibuat 5 menit lalu/)).not.toHaveClass(
+        expect(screen.getByText(/Generated 5 min ago/)).not.toHaveClass(
             'text-ink-3',
         );
-        const button = screen.getByRole('button', { name: /Baca ulang/ });
+        const button = screen.getByRole('button', { name: /Reread/ });
         expect(button).toHaveClass('text-ink-on-sky');
         expect(button).not.toHaveClass('text-ink-3');
         vi.useRealTimers();
@@ -224,10 +224,10 @@ describe('AnalysisStatus', () => {
                 analysis={payload({ status: 'processing', attempts: 3 })}
             />,
         );
-        expect(screen.getByText(/Percobaan 3/)).toBeInTheDocument();
+        expect(screen.getByText(/Attempt 3/)).toBeInTheDocument();
     });
 
-    it('disables Analisis ulang and shows countdown when retry_after_seconds > 0', () => {
+    it('disables Reread and shows countdown when retry_after_seconds > 0', () => {
         render(
             <AnalysisStatus
                 analysis={payload({
@@ -237,7 +237,7 @@ describe('AnalysisStatus', () => {
                 })}
             />,
         );
-        const button = screen.getByRole('button', { name: /Tunggu 2:05/ });
+        const button = screen.getByRole('button', { name: /Wait 2:05/ });
         expect(button).toBeDisabled();
     });
 
@@ -255,22 +255,22 @@ describe('AnalysisStatus', () => {
             );
 
             expect(
-                screen.getByRole('button', { name: /Tunggu 0:04/ }),
+                screen.getByRole('button', { name: /Wait 0:04/ }),
             ).toBeInTheDocument();
 
             await act(async () => {
                 vi.advanceTimersByTime(1000);
             });
             expect(
-                screen.getByRole('button', { name: /Tunggu 0:03/ }),
+                screen.getByRole('button', { name: /Wait 0:03/ }),
             ).toBeInTheDocument();
 
             await act(async () => {
                 vi.advanceTimersByTime(4000);
             });
-            // Countdown reaches 0 → button re-enables to "Baca ulang".
+            // Countdown reaches 0 → button re-enables to "Reread".
             expect(
-                screen.getByRole('button', { name: /^Baca ulang$/ }),
+                screen.getByRole('button', { name: /^Reread$/ }),
             ).not.toBeDisabled();
         } finally {
             vi.useRealTimers();
@@ -295,14 +295,12 @@ describe('AnalysisStatus', () => {
             );
 
             await act(async () => {
-                fireEvent.click(
-                    screen.getByRole('button', { name: /Baca ulang/ }),
-                );
+                fireEvent.click(screen.getByRole('button', { name: /Reread/ }));
             });
 
             await waitFor(() => {
                 expect(
-                    screen.getByText(/Pelan-pelan, Temari kewalahan/),
+                    screen.getByText(/Easy there, Temari's overwhelmed/),
                 ).toBeInTheDocument();
             });
         } finally {
@@ -323,7 +321,7 @@ describe('AnalysisStatus', () => {
     });
 
     describe('when AI is globally paused', () => {
-        it('hides the "Baca ulang" button on done content but keeps the content', () => {
+        it('hides the "Reread" button on done content but keeps the content', () => {
             setMockPage({ aiPaused: true });
             render(
                 <AnalysisStatus
@@ -332,15 +330,15 @@ describe('AnalysisStatus', () => {
             );
             expect(screen.getByText('Halo')).toBeInTheDocument();
             expect(
-                screen.queryByRole('button', { name: /Baca ulang/ }),
+                screen.queryByRole('button', { name: /Reread/ }),
             ).not.toBeInTheDocument();
         });
 
-        it('hides the "Coba lagi" button on a failed block', () => {
+        it('hides the "Try again" button on a failed block', () => {
             setMockPage({ aiPaused: true });
             render(<AnalysisStatus analysis={payload({ status: 'failed' })} />);
             expect(
-                screen.queryByRole('button', { name: /Coba lagi/ }),
+                screen.queryByRole('button', { name: /Try again/ }),
             ).not.toBeInTheDocument();
         });
 
@@ -350,13 +348,13 @@ describe('AnalysisStatus', () => {
                 <AnalysisStatus analysis={payload({ status: 'pending' })} />,
             );
             expect(
-                screen.queryByRole('button', { name: /Minta Temari bacain/ }),
+                screen.queryByRole('button', { name: /Ask Temari to read it/ }),
             ).not.toBeInTheDocument();
         });
     });
 
     describe('chained behavior', () => {
-        it('shows "Baca ulang" on a done block when it is the chain head', () => {
+        it('shows "Reread" on a done block when it is the chain head', () => {
             render(
                 <AnalysisStatus
                     analysis={payload({
@@ -369,11 +367,11 @@ describe('AnalysisStatus', () => {
                 />,
             );
             expect(
-                screen.getByRole('button', { name: /Baca ulang/ }),
+                screen.getByRole('button', { name: /Reread/ }),
             ).toBeInTheDocument();
         });
 
-        it('hides "Baca ulang" on a done block that is not the chain head', () => {
+        it('hides "Reread" on a done block that is not the chain head', () => {
             render(
                 <AnalysisStatus
                     analysis={payload({
@@ -387,11 +385,11 @@ describe('AnalysisStatus', () => {
             );
             expect(screen.getByText('recap')).toBeInTheDocument();
             expect(
-                screen.queryByRole('button', { name: /Baca ulang/ }),
+                screen.queryByRole('button', { name: /Reread/ }),
             ).not.toBeInTheDocument();
         });
 
-        it('still shows "Coba lagi" on a failed chained block (resumes the chain) even when not head', () => {
+        it('still shows "Try again" on a failed chained block (resumes the chain) even when not head', () => {
             render(
                 <AnalysisStatus
                     analysis={payload({
@@ -403,7 +401,7 @@ describe('AnalysisStatus', () => {
                 />,
             );
             expect(
-                screen.getByRole('button', { name: /Coba lagi/ }),
+                screen.getByRole('button', { name: /Try again/ }),
             ).toBeInTheDocument();
         });
 
@@ -421,7 +419,7 @@ describe('AnalysisStatus', () => {
             expect(container).toBeEmptyDOMElement();
         });
 
-        it('standalone (non-chained) done block keeps "Baca ulang" regardless of isChainHead', () => {
+        it('standalone (non-chained) done block keeps "Reread" regardless of isChainHead', () => {
             render(
                 <AnalysisStatus
                     analysis={payload({ status: 'done', content: 'x' })}
@@ -429,7 +427,7 @@ describe('AnalysisStatus', () => {
                 />,
             );
             expect(
-                screen.getByRole('button', { name: /Baca ulang/ }),
+                screen.getByRole('button', { name: /Reread/ }),
             ).toBeInTheDocument();
         });
     });

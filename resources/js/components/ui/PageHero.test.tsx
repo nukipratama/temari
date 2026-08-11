@@ -4,33 +4,66 @@ import { describe, expect, it } from 'vitest';
 import PageHero from './PageHero';
 
 describe('PageHero', () => {
-    it('renders eyebrow + lead + italic emph on a cream surface (default)', () => {
+    it('renders the eyebrow and headline children', () => {
         render(
-            <PageHero
-                eyebrow="Hari Ini"
-                lead="Setiap lari"
-                emph="ada ceritanya."
-            />,
+            <PageHero eyebrow="Today">
+                Every run <em>has a story.</em>
+            </PageHero>,
         );
-        expect(screen.getByText('Hari Ini')).toBeInTheDocument();
-        expect(screen.getByText('ada ceritanya.')).toBeInTheDocument();
+        expect(screen.getByText('Today')).toBeInTheDocument();
+        expect(screen.getByText('has a story.')).toBeInTheDocument();
     });
 
-    it('omits the lead clause when only emph is provided', () => {
-        render(<PageHero eyebrow="★ Identitas kamu" emph="Aku." />);
-        expect(screen.getByText('Aku.')).toBeInTheDocument();
+    it('applies the requested display-scale step', () => {
+        render(<PageHero size="2xl">Hey, runner</PageHero>);
+        expect(screen.getByText('Hey, runner').className).toContain(
+            'text-display-2xl',
+        );
     });
 
-    it('applies the on-sky tone classes (cream text + horizon accent)', () => {
-        render(
-            <PageHero
-                onSky
-                eyebrow="Koleksi"
-                lead="Trophy wall,"
-                emph="kartu lari."
-            />,
+    it('defaults to the lg step and ink text on a cream surface', () => {
+        render(<PageHero>Plain headline</PageHero>);
+        const h1 = screen.getByText('Plain headline');
+        expect(h1.className).toContain('text-display-lg');
+        expect(h1.className).toContain('text-ink');
+    });
+
+    it('applies the on-sky tone (cream headline text)', () => {
+        render(<PageHero onSky>Trophy wall</PageHero>);
+        expect(screen.getByText('Trophy wall').className).toContain(
+            'text-cream',
         );
-        const eyebrow = screen.getByText('Koleksi');
-        expect(eyebrow.className).toContain('text-horizon');
+    });
+
+    it('italicizes the whole headline when requested', () => {
+        render(<PageHero italic>Your heart rate zones.</PageHero>);
+        expect(screen.getByText('Your heart rate zones.').className).toContain(
+            'italic',
+        );
+    });
+
+    it('wraps a string eyebrow in the standard hero Eyebrow, tone flipping on-sky', () => {
+        render(<PageHero eyebrow="Collection">Trophy wall</PageHero>);
+        expect(screen.getByText('Collection').className).toContain(
+            'text-ink-2',
+        );
+
+        render(
+            <PageHero eyebrow="Collection" onSky>
+                Trophy wall
+            </PageHero>,
+        );
+        expect(screen.getAllByText('Collection')[1].className).toContain(
+            'text-horizon',
+        );
+    });
+
+    it('renders a ReactNode eyebrow (e.g. BackLink) as-is, unwrapped', () => {
+        render(
+            <PageHero eyebrow={<span data-testid="back">Settings</span>}>
+                Your heart rate zones.
+            </PageHero>,
+        );
+        expect(screen.getByTestId('back')).toBeInTheDocument();
     });
 });

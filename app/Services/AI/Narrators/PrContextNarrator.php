@@ -15,36 +15,36 @@ use App\Services\Run\Metrics\VdotEstimator;
 class PrContextNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 1-2 kalimat flavor untuk Personal Record, maksimal 35 kata.
+        Task: 1-2 flavor sentences for a Personal Record, max 35 words.
 
-        Highlight delta dari PR sebelumnya jika ada (sebutkan berapa detik
-        lebih cepat). Kalau ini PR pertama di kategori, rayakan sebagai
-        "PR pertama". Kalau gap-nya besar (>30 detik), soroti sebagai lompatan
-        besar. Kalau tipis (<10 detik), akui effort konsisten.
+        Highlight the delta from the previous PR if there is one (state how many
+        seconds faster). If this is the first PR in that category, celebrate it as a
+        "first-ever PR". If the gap is big (>30 seconds), call it out as a big leap.
+        If it's thin (<10 seconds), acknowledge the consistent effort.
 
-        Contoh:
-        - "PR 5km dipotong 12 detik dari yang lalu. Bukan kebetulan, ini
-          hasil latihan yang konsisten."
-        - "PR pertama di 10km! Langkah besar, kamu layak rayain."
-        - "Dipotong tipis, cuma 3 detik, tapi PR tetap PR. Momentum naik."
+        Examples:
+        - "5km PR cut by 12 seconds from last time. Not a fluke, that's the result
+          of consistent training."
+        - "First-ever PR at 10km! A big step, you earned that."
+        - "Cut it thin, just 3 seconds, but a PR's a PR. Momentum's building."
 
-        Tone: bangga, hangat, gak lebay.
+        Tone: proud, warm, not over the top.
 
-        CUACA: kalau kondisi pas PR ekstrem (weather_temp_c tinggi di atas 30,
-        atau weather_rain true), boleh sebut buat nambah bobot ("PR di tengah
-        panas 32 derajat, respect"). weather_rain_source "forecast" cuma
-        prakiraan, jadi hedge. Kalau adem, lewati, jangan dipaksa.
+        WEATHER: if conditions during the PR were extreme (weather_temp_c high,
+        above 30, or weather_rain true), fine to mention it for extra weight ("PR in
+        32-degree heat, respect"). weather_rain_source "forecast" is just a
+        prediction, so hedge. If it was calm, skip it, don't force it.
 
-        EVENT TERKUAT: kalau is_strongest_event true, PR ini juga bikin kategori
-        ini jadi event terkuat pengguna (VDOT tertinggi di antara semua jarak).
-        Boleh diakui sebagai poin bangga, sebut skor vdot kalau enak ("sekarang
-        ini event terkuatmu, VDOT 45"). Kalau false atau vdot gak muncul, jangan sebut
-        VDOT sama sekali.
+        STRONGEST EVENT: if is_strongest_event is true, this PR also makes this
+        category the user's strongest event (highest VDOT across all distances).
+        Fine to acknowledge as a point of pride, mention the vdot score if it reads
+        well ("this is your strongest event now, VDOT 45"). If false or vdot isn't
+        present, never mention VDOT at all.
 
         ANTI-PATTERN:
-        - "PR-nya hasil dari konsistensi minggu-minggu sebelumnya, bukan
-          kebetulan." -- formula yang muncul terus.
-        - Hyperbola ("INCREDIBLE!!!").
+        - "The PR is the result of the past few weeks' consistency, not a
+          coincidence." -- a formula that keeps showing up.
+        - Hyperbole ("INCREDIBLE!!!").
         PROMPT;
 
     public function __construct(

@@ -94,13 +94,13 @@ it('draws the pace + durasi cells from elapsed_time, not moving_time', function 
 
     // 5 km in 30:00 is 6:00/km; both cells must come from elapsed_time.
     expect($svgFor(['moving_time' => null, 'elapsed_time' => 1_800]))
-        ->toContain('DURASI')
+        ->toContain('DURATION')
         ->toContain('30:00')
         ->toContain('6:00/km');
 
     // Only moving_time present: nothing to draw either cell from.
     expect($svgFor(['moving_time' => 1_800, 'elapsed_time' => null]))
-        ->not->toContain('DURASI')
+        ->not->toContain('DURATION')
         ->not->toContain('PACE');
 });
 
@@ -116,4 +116,115 @@ it('omits the weather footer segment gracefully when temp is absent', function (
     $png = renderCard($card);
 
     expect(str_starts_with($png, PNG_MAGIC))->toBeTrue();
+});
+
+it('shows wind in English, not the old Indonesian "angin" wording', function (): void {
+    $card = makeRunCard([
+        'distance' => 5_280,
+        'summary_polyline' => null,
+        'weather_temp_c' => 31,
+        'weather_wind_speed_kmh' => 15,
+    ], ['rarity' => 'epic', 'special_move' => 'Tendangan Balik']);
+
+    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+        ->invoke(app(RunCardImageRenderer::class), $card);
+
+    expect($svg)->toContain('wind 15 km/h')->not->toContain('angin');
+});
+
+it('shows "Route unavailable" in English on a no-GPS rute layout', function (): void {
+    $card = makeRunCard([
+        'distance' => 3_000,
+        'summary_polyline' => null,
+    ], ['rarity' => 'common', 'special_move' => 'Langkah Mantap']);
+
+    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+        ->invoke(app(RunCardImageRenderer::class), $card, 'rute');
+
+    expect($svg)->toContain('Route unavailable')->not->toContain('tidak tersedia');
+});
+
+it('renders valid PNG bytes for the kartu layout (no route panel, larger KM hero)', function (): void {
+    $card = makeRunCard([
+        'distance' => 5_280,
+        'summary_polyline' => '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
+    ], ['rarity' => 'rare', 'special_move' => 'Kaki Cepat']);
+
+    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+        ->invoke(app(RunCardImageRenderer::class), $card, 'kartu');
+    $png = app(RunCardImageRenderer::class)->render($card, 'kartu');
+
+    expect(str_starts_with($png, PNG_MAGIC))->toBeTrue()
+        ->and($svg)->toContain('font-size="170"') // the enlarged hero KM figure
+        ->not->toContain('<polyline'); // no route panel, even though the run has a polyline
+});
+
+it('renders valid PNG bytes for the stats layout (2x2 grid, no hero KM, no route panel)', function (): void {
+    $card = makeRunCard([
+        'distance' => 8_400,
+        'elapsed_time' => 2_400,
+        'average_heartrate' => 152,
+        'summary_polyline' => '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
+    ], ['rarity' => 'legendary', 'special_move' => 'Terbang Tinggi']);
+
+    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+        ->invoke(app(RunCardImageRenderer::class), $card, 'stats');
+    $png = app(RunCardImageRenderer::class)->render($card, 'stats');
+
+    expect(str_starts_with($png, PNG_MAGIC))->toBeTrue()
+        ->and($svg)->toContain('DISTANCE')
+        ->toContain('DURATION')
+        ->toContain('HR')
+        ->not->toContain('KILOMETER'); // no single hero number on this branch
+});
+
+it('defaults render() to the original rute/navy look when called with no explicit args', function (): void {
+    $card = makeRunCard([
+        'distance' => 5_280,
+        'summary_polyline' => '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
+    ], ['rarity' => 'epic', 'special_move' => 'Tendangan Balik']);
+
+    $defaultSvg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+        ->invoke(app(RunCardImageRenderer::class), $card);
+    $explicitSvg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+        ->invoke(app(RunCardImageRenderer::class), $card, 'rute', 'navy');
+
+    expect($defaultSvg)->toBe($explicitSvg);
+});
+
+it('scales the thread-band accent line count with rarity tier', function (): void {
+    $svgFor = function (string $rarity): string {
+        $card = makeRunCard([
+            'distance' => 5_280,
+        ], ['rarity' => $rarity, 'special_move' => 'Langkah Mantap']);
+
+        return (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+            ->invoke(app(RunCardImageRenderer::class), $card);
+    };
+
+    // Common = 1 stitch, Legendary = 5 (3 primary + 2 crossing) — count the
+    // <line> elements the thread-band accent draws (distinct from the
+    // route/badge/stat markup, which uses <rect>/<text>/<polyline>, never <line>).
+    expect(substr_count($svgFor('common'), '<line '))->toBe(1)
+        ->and(substr_count($svgFor('uncommon'), '<line '))->toBe(2)
+        ->and(substr_count($svgFor('rare'), '<line '))->toBe(3)
+        ->and(substr_count($svgFor('epic'), '<line '))->toBe(4)
+        ->and(substr_count($svgFor('legendary'), '<line '))->toBe(5);
+});
+
+it('paints a different card-body fill for each colorway', function (): void {
+    $card = makeRunCard([
+        'distance' => 5_280,
+    ], ['rarity' => 'common', 'special_move' => 'Langkah Mantap']);
+
+    $svgFor = fn (string $colorway): string => (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+        ->invoke(app(RunCardImageRenderer::class), $card, 'kartu', $colorway);
+
+    $navy = $svgFor('navy');
+    $dawn = $svgFor('dawn');
+    $ember = $svgFor('ember');
+
+    expect($navy)->toContain('#241c54') // navy card body
+        ->and($dawn)->toContain('#f5f0e4')->not->toContain('#241c54')
+        ->and($ember)->toContain('#3a2015')->not->toContain('#241c54');
 });

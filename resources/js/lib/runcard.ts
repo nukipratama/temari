@@ -10,12 +10,14 @@ import {
     formatPace,
 } from '@/lib/pace';
 
+// Mirrored word-for-word from App\Enums\Rarity::label(); types/generated.ts
+// only emits RARITY_VALUES, not labels.
 export const RARITY_LABELS: Record<Rarity, string> = {
-    common: 'Biasa',
-    uncommon: 'Berkesan',
-    rare: 'Langka',
-    epic: 'Istimewa',
-    legendary: 'Legendaris',
+    common: 'Common',
+    uncommon: 'Uncommon',
+    rare: 'Rare',
+    epic: 'Epic',
+    legendary: 'Legendary',
 };
 
 export const RARITY_ORDER: Rarity[] = [
@@ -26,53 +28,46 @@ export const RARITY_ORDER: Rarity[] = [
     'legendary',
 ];
 
-// Slug → display name (emoji emblem + casual-Jakarta name). The two English ones
-// are running terms (code-switch rule), the rest are ID-first. Mirrored in PHP
-// Badge::labels() — keep both runtimes in sync.
+// Slug → display name (emoji emblem + casual name). Mirrored word-for-word
+// from PHP Badge::labels() — keep both runtimes in sync.
 export const BADGE_LABELS: Record<string, string> = {
-    hari_panas: '🔥 Tahan Gerah',
-    pejuang_hujan: '🌧️ Pejuang Hujan',
-    anak_pagi: '🌅 Anak Pagi',
+    heat_tamer: '🔥 Heat Tamer',
+    rain_warrior: '🌧️ Rain Warrior',
+    early_bird: '🌅 Early Bird',
     long_slow_distance: '🐢 Long Slow Distance',
     negative_split: '👻 Negative Split',
-    tahan_diri: '🧘 Anti Kalap',
-    anak_malam: '🌙 Anak Malam',
-    pendaki: '⛰️ Pendaki',
-    pertama_kali: '🏅 Pertama Kali',
-    rajin: '💪 Rajin',
-    kilat: '⚡ Kilat',
-    jauh: '🗺️ Jauh',
+    held_back: '🧘 Held Back',
+    night_owl: '🌙 Night Owl',
+    climber: '⛰️ Climber',
+    first_timer: '🏅 First Timer',
+    speedster: '⚡ Speedster',
+    long_hauler: '🗺️ Long Hauler',
     z2_master: '🫀 Z2 Master',
-    anak_dingin: '❄️ Anak Dingin',
-    keras: '😤 Keras',
-    santai: '☺️ Santai',
-    berturut: '🔥 Berturut',
-    hari_spesial: '🎉 Hari Spesial',
-    lawan_angin: '🌬️ Lawan Angin',
+    cold_runner: '❄️ Cold Runner',
+    all_out: '😤 All Out',
+    easy_miles: '☺️ Easy Miles',
+    headwind: '🌬️ Headwind',
 };
 
 // One-line "ability" meaning per badge, accurate to RunCardFactory::badges()
 // thresholds. Casual register, no em-dashes. Shown on the card ability rows.
 export const BADGE_ABILITY: Record<string, string> = {
-    hari_panas: 'Nekat lari pas gerah 31°C ke atas.',
-    pejuang_hujan: 'Diguyur hujan tetap lanjut lari.',
-    anak_pagi: 'Udah lari sebelum jam 6 pagi.',
-    long_slow_distance: 'Jarak jauh 12K+ santai, mayoritas pelan.',
-    negative_split: 'Paruh kedua malah lebih ngebut.',
-    tahan_diri: '10K+ sabar, gak kepancing buat ngebut.',
-    anak_malam: 'Lari malam, sebelum subuh atau setelah jam 9.',
-    pendaki: 'Elevasi total 200m ke atas, kayak naik gunung.',
-    pertama_kali: 'Lari pertama yang tercatat.',
-    rajin: 'Lari 3 hari berturut-turut.',
-    kilat: 'Pace di bawah 5:00/km, kencang.',
-    jauh: 'Jarak half marathon ke atas, 21K+.',
-    z2_master: 'Lebih dari 80% waktu di Z2.',
-    anak_dingin: 'Lari sebelum jam 6 pagi, still dark still cold.',
-    keras: 'HR rata-rata di atas 85% max, full effort.',
-    santai: 'HR rata-rata di bawah 70% max, beneran easy.',
-    berturut: 'Lari 7 hari berturut-turut, tanpa skip.',
-    hari_spesial: 'Lari pas hari libur nasional.',
-    lawan_angin: 'Lari nembus angin kencang, 20 km/j ke atas.',
+    heat_tamer: 'Braved a run in 31°C+ heat.',
+    rain_warrior: 'Kept running through the rain.',
+    early_bird: 'Out the door before 6am.',
+    long_slow_distance: 'Long and easy, 12K+ at a mostly relaxed pace.',
+    negative_split: 'Second half faster than the first.',
+    held_back: '10K+ and stayed patient instead of chasing pace.',
+    night_owl: 'Ran at night, before dawn or after 9pm.',
+    climber: '200m+ of elevation gain, basically a mountain.',
+    first_timer: 'Your first logged run.',
+    speedster: 'Pace under 5:00/km, fast.',
+    long_hauler: 'Half marathon distance or more, 21K+.',
+    z2_master: 'More than 80% of the time in Z2.',
+    cold_runner: 'Before 6am, still dark, still cold.',
+    all_out: 'Average HR above 85% max, full effort.',
+    easy_miles: 'Average HR below 70% max, genuinely easy.',
+    headwind: 'Pushed through strong wind, 20 km/h or more.',
 };
 
 export const RARITY_BORDER: Record<Rarity, string> = {
@@ -103,6 +98,59 @@ export const RARITY_HEX: Record<Rarity, string> = {
     epic: '#a855f7',
     legendary: '#f5a623',
 };
+
+// Thread-band accent density (Slice 9c) — mirrors App\Enums\Rarity::bandCount().
+// Additive rarity chrome, not a re-hue: more stitches at higher tiers.
+export const RARITY_BAND_COUNT: Record<Rarity, number> = {
+    common: 1,
+    uncommon: 2,
+    rare: 3,
+    epic: 4,
+    legendary: 5,
+};
+
+/** A single thread-band stitch, normalized to a 0..1 x 0..1 unit box. */
+export interface ThreadBandLine {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    opacity: number;
+}
+
+// Hand-placed stitch positions per count rather than an evenly-divided loop,
+// so 1-3 stitches read as a deliberate, balanced cluster instead of bunching
+// at one edge. From 4 on, a second set leans the opposite way and crosses
+// the rest — the "elaborate interwoven" look the top two tiers get. Mirrored
+// by hand in RunCardImageRenderer.php (different runtime, same geometry).
+const THREAD_BAND_PRIMARY_X: Record<number, number[]> = {
+    1: [0.5],
+    2: [0.32, 0.68],
+    3: [0.18, 0.5, 0.82],
+};
+const THREAD_BAND_CROSS_X: Record<number, number[]> = {
+    1: [0.36],
+    2: [0.22, 0.6],
+};
+
+/**
+ * Thread-band stitch geometry for a tier's band count (1-5). Shared by the
+ * React card glyph ({@see ThreadBandGlyph}) and the canvas share-card
+ * renderer so both draw the identical pattern from one source.
+ */
+export function threadBandLines(count: number): ThreadBandLine[] {
+    const primaryCount = Math.min(count, 3);
+    const crossCount = Math.max(count - 3, 0);
+    const lean = 0.09;
+    const lines: ThreadBandLine[] = [];
+    for (const x of THREAD_BAND_PRIMARY_X[primaryCount] ?? []) {
+        lines.push({ x1: x - lean, y1: 1, x2: x + lean, y2: 0, opacity: 0.95 });
+    }
+    for (const x of THREAD_BAND_CROSS_X[crossCount] ?? []) {
+        lines.push({ x1: x - lean, y1: 0, x2: x + lean, y2: 1, opacity: 0.6 });
+    }
+    return lines;
+}
 
 export const RARITY_TEXT: Record<Rarity, string> = {
     common: 'text-rarity-common',
@@ -149,7 +197,7 @@ export const RARITY_POSE: Record<Rarity, TemariPose> = {
     legendary: 'glow',
 };
 
-// Slug → Title Case ("anak_pagi" → "Anak Pagi"). Fallback for unknown slugs.
+// Slug → Title Case ("early_bird" → "Early Bird"). Fallback for unknown slugs.
 export function prettyBadge(slug: string): string {
     return slug
         .split('_')
@@ -157,7 +205,7 @@ export function prettyBadge(slug: string): string {
         .join(' ');
 }
 
-// Emoji emblem for a badge slug ("hari_panas" → "🔥"). Empty when unknown.
+// Emoji emblem for a badge slug ("heat_tamer" → "🔥"). Empty when unknown.
 export function badgeEmblem(slug: string): string {
     const label = BADGE_LABELS[slug];
     if (!label) return '';
@@ -165,7 +213,7 @@ export function badgeEmblem(slug: string): string {
     return sp === -1 ? '' : label.slice(0, sp);
 }
 
-// Display name without the leading emoji ("hari_panas" → "Tahan Gerah").
+// Display name without the leading emoji ("heat_tamer" → "Heat Tamer").
 // Falls back to prettyBadge for slugs not in BADGE_LABELS.
 export function badgeName(slug: string): string {
     const label = BADGE_LABELS[slug];
@@ -285,7 +333,7 @@ export interface KartuPropsFromDetail {
 export interface KartuPropsOptions {
     /**
      * Duration display: `'hms'` (digital "30:10", default) or `'words'`
-     * ("30 menit 10 detik"). Cards use HMS so the fixed-width stat-grid cell
+     * ("30 min 10 sec"). Cards use HMS so the fixed-width stat-grid cell
      * doesn't clip the long words form under `truncate`.
      */
     durationFormat?: 'words' | 'hms';
@@ -316,7 +364,7 @@ export function kartuPropsFromDetail(
                 ? '—'
                 : String(Math.round(detail.trimp_edwards)),
         subtitle: detail
-            ? `${detail.name ?? 'Lari'} · ${formatNaiveIdDate(detail.start_date_local, 'short')}`
+            ? `${detail.name ?? 'Run'} · ${formatNaiveIdDate(detail.start_date_local, 'short')}`
             : null,
         stats: buildCardStats(detail),
         zonePct: zonePctFromDetail(detail),

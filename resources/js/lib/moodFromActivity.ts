@@ -10,10 +10,10 @@ export function moodFromActivity(detail: ActivityDetail): Mood {
     // so a crushing TRIMP is a quality win, not a sign they wobbled.
     const intendedHard = detail.workout_type === 1 || detail.workout_type === 3;
 
-    if (trimp >= 200) return intendedHard ? 'nyala' : 'lemes'; // crushing effort
-    if (trimp >= 140) return 'enteng'; // solid hard session
-    if (trimp >= 90 && km >= 12) return 'oleng'; // long run drained
-    if (trimp >= 60) return 'nyala'; // good easy / aerobic
-    if (trimp >= 30) return 'mumet'; // short / interval-ish
-    return 'adem'; // very light / shake-out
+    if (trimp >= 200) return intendedHard ? 'blazing' : 'gassed'; // crushing effort
+    if (trimp >= 140) return 'easy'; // solid hard session
+    if (trimp >= 90 && km >= 12) return 'wobbly'; // long run drained
+    if (trimp >= 60) return 'blazing'; // good easy / aerobic
+    if (trimp >= 30) return 'overloaded'; // short / interval-ish
+    return 'chill'; // very light / shake-out
 }

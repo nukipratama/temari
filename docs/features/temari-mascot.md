@@ -23,20 +23,28 @@ a dressed-up wrapper.
 
 - **Gamification** — the `equipped` accessories map is written by [[gamification]] during ingest.
 - **Vibe & mood** — pose is driven by the daily vibe (`VIBE_TO_POSE`) or run mood (`MOOD_TO_POSE`) from [[vibe-and-mood]].
-- **Design tokens** — all SVG fills are tuned to the Daybreak palette in [[design-tokens]].
+- **Design tokens** — all SVG fills are tuned to the Threadwork palette in [[design-tokens]].
 - **Voice** — Temari's speech copy follows [[voice-and-tone]].
 
 ## The two core components
 
 [TemariProto.tsx](../../resources/js/components/temari/TemariProto.tsx) is the
-hand-drawn SVG body — a single ~950-line component. Its `pose` prop (the
+hand-drawn SVG body — a ball-bodied character (Slice 9b), styled after a
+temari 手鞠 hand-wound thread ball, with a face on its surface and short
+thread-tendril stubs at its base instead of limbs. Its `pose` prop (the
 `TemariPose` union: `proud`, `pumped`, `excited`, `holding`, `reading`,
-`wobble`, `observational`, `glow`) drives ear tilt, eye shape, mouth, arm swing,
-and a per-pose CSS animation (`POSE_ANIM`). It also paints equipped gear from an
-`equipped` object: headband, medal, kaus, celana, sepatu, aura — each keyed into
-its own palette table. `holding`/`reading` poses grip a book; `pumped`/`excited`/
-`glow` (and any aura) add sparkles. It's `memo`'d with a field-level comparator
-so a fresh inline `equipped={{...}}` doesn't rebuild the whole tree.
+`wobble`, `observational`, `glow`) drives eye shape, mouth, a small face-tilt,
+tendril splay, and a per-pose CSS animation (`POSE_ANIM`) that bounces/rocks
+the whole ball. It also paints equipped gear from an `equipped` object:
+headband (a bow at the crown), medal (a loop-and-coin), kaus/celana/sepatu
+(shirt/shorts thread bands and a trailing ribbon), aura — each keyed into its
+own palette table. `holding`/`reading` poses curl the tendrils around a book;
+`pumped`/`excited`/`glow` (and any aura) add sparkles. An optional
+`seasonPhase` prop (`base`/`build`/`peak`/`taper`) overlays a discrete
+thread-coverage pattern — only the [[plan-periodizer]] Plan tab's season
+summary passes it, so the mascot stays phase-agnostic everywhere else. It's
+`memo`'d with a field-level comparator so a fresh inline `equipped={{...}}`
+doesn't rebuild the whole tree.
 
 [Temari.tsx](../../resources/js/components/temari/Temari.tsx) is the **wrapper you
 almost always use**. It reads `equippedAccessories` from the globally-shared
@@ -54,8 +62,8 @@ celebration). See [[targets-accessories]].
 [temariPose.ts](../../resources/js/lib/temariPose.ts) holds the maps from app
 state to pose:
 
-- `MOOD_TO_POSE` — run `Mood` → pose (e.g. `nyala` → `proud`, `lemes` → `wobble`,
-  `adem` → `reading`). Used on the run detail and the recaps.
+- `MOOD_TO_POSE` — run `Mood` → pose (e.g. `blazing` → `proud`, `gassed` → `wobble`,
+  `chill` → `reading`). Used on the run detail and the recaps.
 - `VIBE_TO_POSE` — a persona/weekly `vibe` string → pose (e.g. `pumped` →
   `pumped`, `cooked` → `wobble`).
 - `poseForFormStatus` — weekly training-load `FormStatus` → pose, used on the
@@ -69,6 +77,6 @@ pose-driven, or an explicit CSS animation string). Recap cards pass
 
 ## See also
 
-- [[design-tokens]] — the Daybreak palette these SVG fills are tuned to
+- [[design-tokens]] — the Threadwork palette these SVG fills are tuned to
 - [[voice-and-tone]] — what Temari actually *says* in the bubbles
 - [[targets-accessories]] — where the equipped gear is earned and chosen

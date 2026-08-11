@@ -29,7 +29,7 @@ type PushState =
     | 'subscribed';
 
 /**
- * Device-level web-push control for the Pengaturan page. Detects where the user
+ * Device-level web-push control for the Settings page. Detects where the user
  * is in the install/permission flow and shows the one right action — the payoff
  * of the PWA work: native lock-screen notifications on iPhone. Only rendered when
  * a VAPID public key is configured.
@@ -87,11 +87,11 @@ export default function PushNotificationToggle({
     const runSubscribe = () =>
         guard(async () => {
             setBusy(true);
-            setStatus('Lagi nyalain notifikasi…');
+            setStatus('Turning on notifications…');
             try {
                 await subscribe(publicKey);
                 setState('subscribed');
-                setStatus('Notifikasi HP aktif.');
+                setStatus('Push notifications are on.');
             } catch (error) {
                 if (
                     error instanceof Error &&
@@ -100,7 +100,7 @@ export default function PushNotificationToggle({
                     setState('denied');
                     setStatus('');
                 } else {
-                    setStatus('Gagal nyalain notifikasi, coba lagi ya.');
+                    setStatus('Failed to turn on notifications, try again.');
                 }
             } finally {
                 setBusy(false);
@@ -113,7 +113,7 @@ export default function PushNotificationToggle({
             try {
                 await unsubscribe();
                 setState('ready');
-                setStatus('Notifikasi HP dimatiin.');
+                setStatus('Push notifications turned off.');
             } finally {
                 setBusy(false);
             }
@@ -128,26 +128,26 @@ export default function PushNotificationToggle({
     }
 
     // Once subscribed, the row's control becomes the mute — the same shape as the
-    // Telegram row beside it — and "Matikan", which actually drops the
+    // Telegram row beside it — and "Turn off", which actually drops the
     // subscription, moves below as the heavier, rarer action. Before that point
     // there is nothing to mute, so the subscribe/repair action keeps the slot.
     const subscribed = state === 'subscribed';
 
     let description = PUSH_DESCRIPTION[state];
     if (subscribed && muted) {
-        description = 'Dibisukan di HP ini.';
+        description = 'Muted on this device.';
     }
 
     return (
         <>
             <SettingsRow
                 icon="mdi:cellphone-message"
-                label="Notifikasi HP"
+                label="Push Notifications"
                 description={description}
                 control={
                     subscribed && onMuteChange !== undefined ? (
                         <Toggle
-                            label="Kirim notifikasi lari ke HP"
+                            label="Send run notifications to this device"
                             checked={!muted}
                             onChange={(on) => onMuteChange(!on)}
                         />
@@ -188,15 +188,16 @@ export default function PushNotificationToggle({
 /** One line per state, standing in for the old free-floating hint paragraphs. */
 const PUSH_DESCRIPTION: Record<PushState, string> = {
     loading: '',
-    unsupported: 'HP atau browser ini belum bisa nerima notifikasi Temari.',
+    unsupported:
+        "This device or browser can't receive notifications from Temari.",
     'needs-install-safari':
-        'Tambahin Temari ke Home Screen dulu (Share → Add to Home Screen), baru bisa nyalain notifikasi.',
+        'Add Temari to your Home Screen first (Share → Add to Home Screen), then you can turn on notifications.',
     'needs-install-other':
-        'Buka Temari di Safari dulu, terus Share → Add to Home Screen — notifikasi HP cuma jalan dari sana.',
-    denied: 'Notifikasi diblokir. Nyalain lagi dari Setelan HP → Notifikasi → Temari.',
-    stale: 'Perlu didaftarin ulang di HP ini.',
-    subscribed: 'Aktif di HP ini.',
-    ready: 'Nyalain biar Temari bisa kabarin kamu di HP.',
+        'Open Temari in Safari first, then Share → Add to Home Screen, push notifications only work from there.',
+    denied: 'Notifications are blocked. Turn them back on from Settings → Notifications → Temari on this device.',
+    stale: 'Needs to be re-registered on this device.',
+    subscribed: 'Active on this device.',
+    ready: 'Turn on so Temari can reach you on this device.',
 };
 
 /**
@@ -228,7 +229,7 @@ function PushAction({
                         height={14}
                         aria-hidden
                     />
-                    Perbaiki
+                    Fix
                 </PillButton>
             );
         case 'subscribed':
@@ -244,7 +245,7 @@ function PushAction({
                         height={14}
                         aria-hidden
                     />
-                    Matikan
+                    Turn off
                 </PillButton>
             );
         case 'ready':
@@ -260,7 +261,7 @@ function PushAction({
                         height={14}
                         aria-hidden
                     />
-                    Nyalakan
+                    Turn on
                 </PillButton>
             );
         default:

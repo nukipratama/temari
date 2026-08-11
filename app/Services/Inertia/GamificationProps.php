@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace App\Services\Inertia;
 
+use App\Models\RaceGoal;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Services\Gamification\EquippedAccessories;
-use App\Services\Gamification\GoalResolver;
 use App\Services\Run\Story\CardPresenter;
 use App\Support\SharedPropCacheKey;
 use Closure;
 
 /**
  * The collection-and-progress family of shared props: what the mascot is
- * wearing, the card waiting to be revealed, and how the user's goals are going.
+ * wearing and the card waiting to be revealed.
  *
  * Every prop is returned as a closure, so Inertia skips the work entirely on a
  * partial reload that did not ask for that key.
@@ -23,7 +23,6 @@ final readonly class GamificationProps
 {
     public function __construct(
         private EquippedAccessories $equippedAccessories,
-        private GoalResolver $goals,
         private CardPresenter $cards,
     ) {
     }
@@ -36,8 +35,37 @@ final readonly class GamificationProps
         return [
             'equippedAccessories' => fn (): array => $this->equippedAccessoriesFor($user),
             'pendingReveal' => fn () => $this->pendingRevealFor($user),
-            'goalsSummary' => fn () => $this->goalsSummaryFor($user),
+            'activeRace' => fn () => $this->activeRaceFor($user),
         ];
+    }
+
+    /**
+     * The race the user is currently training for, shared app-wide. Kept
+     * deliberately thin (no Riegel projection) — the projection is only
+     * computed on the Race page itself, not on every page load.
+     *
+     * @return array{id: int, race_date: string, distance_m: int, goal_time_sec: int, name: string|null}|null
+     */
+    private function activeRaceFor(?User $user): ?array
+    {
+        if ($user === null) {
+            return null;
+        }
+
+        return SharedPropCacheKey::ActiveRace->remember(
+            $user->id,
+            function () use ($user): ?array {
+                $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
+
+                return $race === null ? null : [
+                    'id' => $race->id,
+                    'race_date' => $race->race_date->toDateString(),
+                    'distance_m' => $race->distance_m,
+                    'goal_time_sec' => $race->goal_time_sec,
+                    'name' => $race->name,
+                ];
+            },
+        );
     }
 
     /**
@@ -59,43 +87,6 @@ final readonly class GamificationProps
             $user->id,
             fn (): array => $this->equippedAccessories->forUser($user),
         );
-    }
-
-    /**
-     * @return array{total: int, completed: int, closest: list<array{id: string, title: string, current: int|float, target: int|float, unit: string}>}|null
-     */
-    private function goalsSummaryFor(?User $user): ?array
-    {
-        if ($user === null) {
-            return null;
-        }
-
-        return SharedPropCacheKey::GoalsSummary->remember(
-            $user->id,
-            fn (): array => $this->computeGoalsSummary($user),
-        );
-    }
-
-    /**
-     * @return array{total: int, completed: int, closest: list<array{id: string, title: string, current: int|float, target: int|float, unit: string}>}
-     */
-    private function computeGoalsSummary(User $user): array
-    {
-        $goals = $this->goals->forUser($user);
-        $completed = $this->goals->completedCount($goals);
-        $closest = $this->goals->closestToCompletion($user, 3, $goals);
-
-        return [
-            'total' => count($goals),
-            'completed' => $completed,
-            'closest' => array_map(fn (array $g): array => [
-                'id' => $g['id'],
-                'title' => $g['title'],
-                'current' => $g['current'],
-                'target' => $g['target'],
-                'unit' => $g['unit'],
-            ], $closest),
-        ];
     }
 
     /**
@@ -139,7 +130,7 @@ final readonly class GamificationProps
             'average_heartrate' => $detail?->average_heartrate,
             'stream_summary' => $detail?->stream_summary,
             'summary_polyline' => $detail?->summary_polyline,
-            'public_share_url' => route('aktivitas.show', ['activity' => $card->activity_id]),
+            'public_share_url' => route('activities.show', ['activity' => $card->activity_id]),
             'edition' => $this->cards->edition($card, $user->id),
         ];
     }

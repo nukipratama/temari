@@ -384,6 +384,7 @@ it('reads the zone split in both percent and minutes, with the session TRIMP', f
         'zone_pct' => ['Z2' => 70, 'Z3' => 30],
         'time_in_zone_min' => ['Z2' => 32, 'Z3' => 14],
         'trimp' => 92.4,
+        'intensity_label' => 'moderate',
     ]);
 });
 
@@ -395,7 +396,40 @@ it('reads empty zones for a run with no heart rate', function (): void {
 
     expect($reading['zone_pct'])->toBe([])
         ->and($reading['time_in_zone_min'])->toBeNull()
-        ->and($reading['trimp'])->toBeNull();
+        ->and($reading['trimp'])->toBeNull()
+        ->and($reading['intensity_label'])->toBeNull();
+});
+
+it('reads intensity_label light for a Z1/Z2-dominant session regardless of raw HR', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update([
+        'stream_summary' => ['time_in_zone_pct' => ['Z1' => 5, 'Z2' => 95]],
+    ]);
+
+    expect(new HrZonesTool($a, $d->fresh())->handle([])['intensity_label'])->toBe('light');
+});
+
+it('reads intensity_label heavy when Z3-Z5 together cover at least half the session', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update([
+        'stream_summary' => ['time_in_zone_pct' => ['Z2' => 49, 'Z3' => 30, 'Z4' => 21]],
+    ]);
+
+    expect(new HrZonesTool($a, $d->fresh())->handle([])['intensity_label'])->toBe('heavy');
+});
+
+it('reads hr_drift_bpm from the stream summary', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['stream_summary' => ['hr_drift_bpm' => 7.5]]);
+
+    expect(new HrZonesTool($a, $d->fresh())->handle([])['hr_drift_bpm'])->toBe(7.5);
+});
+
+it('reads cadence_drop_spm from the stream summary via RunSummaryTool', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['stream_summary' => ['cadence_drop_spm' => 4.0]]);
+
+    expect(new RunSummaryTool($a, $d->fresh())->handle([])['cadence_drop_spm'])->toBe(4.0);
 });
 
 // ── TerrainTool ───────────────────────────────────────────────────────
@@ -589,15 +623,15 @@ it('reads the card identity with badge slugs humanised, so no raw code reaches t
         'activity_id' => $a->id,
         'rarity' => 'rare',
         'special_move' => 'Pembara Sabar',
-        'badges' => ['long_slow_distance', 'pejuang_hujan', 'not_a_real_badge'],
+        'badges' => ['long_slow_distance', 'rain_warrior', 'not_a_real_badge'],
     ]);
 
     $reading = new CardIdentityTool($card)->handle([]);
 
     expect($reading['rarity'])->toBe('rare')
-        ->and($reading['rarity_label'])->toBe('Langka')
+        ->and($reading['rarity_label'])->toBe('Rare')
         ->and($reading['special_move'])->toBe('Pembara Sabar')
-        ->and($reading['badges'])->toBe(['Long Slow Distance', 'Pejuang Hujan']);
+        ->and($reading['badges'])->toBe(['Long Slow Distance', 'Rain Warrior']);
 });
 
 it('reads an empty badge list when the card carries none', function (): void {
@@ -615,16 +649,16 @@ it('reads the featured card with badges humanised and capped at three tags', fun
         'activity_id' => $a->id,
         'rarity' => 'legendary',
         'special_move' => 'Langkah Sunyi',
-        'badges' => ['anak_pagi', 'negative_split', 'tahan_diri', 'hari_panas'],
+        'badges' => ['early_bird', 'negative_split', 'held_back', 'heat_tamer'],
     ]);
 
     $reading = new FeaturedCardTool($card->fresh()->load('activity.detail'))->handle([]);
 
     expect($reading['name'])->toBe('Langkah Sunyi')
-        ->and($reading['rarity_label'])->toBe('Legendaris')
+        ->and($reading['rarity_label'])->toBe('Legendary')
         ->and($reading['km'])->toBe('5km')
         ->and($reading['tags'])->toHaveCount(3)
-        ->and($reading['tags'][0])->toBe('Anak Pagi');
+        ->and($reading['tags'][0])->toBe('Early Bird');
 });
 
 it('reads a dash for the distance when the card run has none', function (): void {
@@ -784,19 +818,19 @@ it('folds the full mood mix from its two halves', function (): void {
         $line->save();
     };
 
-    $seed('nyala', $asOf->copy()->subWeeks(2));
-    $seed('nyala', $asOf->copy()->subWeeks(3));
-    $seed('adem', $asOf->copy()->subWeeks(8));
+    $seed('blazing', $asOf->copy()->subWeeks(2));
+    $seed('blazing', $asOf->copy()->subWeeks(3));
+    $seed('chill', $asOf->copy()->subWeeks(8));
 
     $reading = new PersonaMixTool($user, $asOf)->handle([]);
 
     expect($reading['total_runs'])->toBe(3)
         ->and($reading['persona_mix'])->toBe([
-            ['mood' => 'nyala', 'count' => 2, 'percent' => 66.7],
-            ['mood' => 'adem', 'count' => 1, 'percent' => 33.3],
+            ['mood' => 'blazing', 'count' => 2, 'percent' => 66.7],
+            ['mood' => 'chill', 'count' => 1, 'percent' => 33.3],
         ])
-        ->and($reading['persona_mix_recent'])->toBe([['mood' => 'nyala', 'count' => 2, 'percent' => 100.0]])
-        ->and($reading['persona_mix_earlier'])->toBe([['mood' => 'adem', 'count' => 1, 'percent' => 100.0]]);
+        ->and($reading['persona_mix_recent'])->toBe([['mood' => 'blazing', 'count' => 2, 'percent' => 100.0]])
+        ->and($reading['persona_mix_earlier'])->toBe([['mood' => 'chill', 'count' => 1, 'percent' => 100.0]]);
 });
 
 it('reads an empty mood mix when the runner has no story lines', function (): void {

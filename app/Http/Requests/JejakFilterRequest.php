@@ -43,7 +43,7 @@ class JejakFilterRequest extends FormRequest
     }
 
     /**
-     * Selected moods from `?mood=nyala,lemes`, keeping only known values and
+     * Selected moods from `?mood=blazing,gassed`, keeping only known values and
      * dropping duplicates. An empty result means "no mood filter".
      *
      * @return array<int, string>

@@ -15,7 +15,7 @@ uses(RefreshDatabase::class);
 it('requires authentication', function (): void {
     $activity = Activity::factory()->create();
 
-    $this->post(route('aktivitas.resync', $activity))->assertRedirect(route('login'));
+    $this->post(route('activities.resync', $activity))->assertRedirect(route('login'));
 });
 
 it('queues a resync for the owner and flashes a notice', function (): void {
@@ -24,7 +24,7 @@ it('queues a resync for the owner and flashes a notice', function (): void {
     $activity = Activity::factory()->for($user)->create();
 
     $this->actingAs($user)
-        ->post(route('aktivitas.resync', $activity))
+        ->post(route('activities.resync', $activity))
         ->assertRedirect()
         ->assertSessionHas('success');
 
@@ -41,7 +41,7 @@ it('404s when the activity belongs to another user', function (): void {
     $activity = Activity::factory()->for($owner)->create();
 
     $this->actingAs($other)
-        ->post(route('aktivitas.resync', $activity))
+        ->post(route('activities.resync', $activity))
         ->assertNotFound();
 
     Bus::assertNotDispatched(ResyncActivityJob::class);
@@ -52,9 +52,9 @@ it('throttles rapid taps like the manual sync', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();
 
-    $this->actingAs($user)->post(route('aktivitas.resync', $activity))->assertRedirect();
-    $this->actingAs($user)->post(route('aktivitas.resync', $activity))->assertRedirect();
-    $this->actingAs($user)->post(route('aktivitas.resync', $activity))->assertStatus(429);
+    $this->actingAs($user)->post(route('activities.resync', $activity))->assertRedirect();
+    $this->actingAs($user)->post(route('activities.resync', $activity))->assertRedirect();
+    $this->actingAs($user)->post(route('activities.resync', $activity))->assertStatus(429);
 });
 
 it('says so instead of faking success while the kill-switch is off', function (): void {
@@ -64,7 +64,7 @@ it('says so instead of faking success while the kill-switch is off', function ()
     $activity = Activity::factory()->for($user)->create();
 
     $this->actingAs($user)
-        ->post(route('aktivitas.resync', $activity))
+        ->post(route('activities.resync', $activity))
         ->assertRedirect()
         ->assertSessionMissing('success')
         ->assertSessionHas('info');

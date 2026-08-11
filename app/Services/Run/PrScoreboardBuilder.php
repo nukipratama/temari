@@ -11,7 +11,7 @@ use App\Services\Run\Metrics\StreamSummary;
 use Illuminate\Support\Collection;
 
 /**
- * Pure presentation logic for the /rekor hero scoreboard: which PR to feature,
+ * Pure presentation logic for the /records hero scoreboard: which PR to feature,
  * its "Sub-{round}" milestone target, and the per-km splits pace strip.
  */
 class PrScoreboardBuilder

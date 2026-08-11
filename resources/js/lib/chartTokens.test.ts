@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import { DAYBREAK, hrZone } from './chartTokens';
+import { THREADWORK, hrZone } from './chartTokens';
 
-describe('DAYBREAK chart token bridge', () => {
-    it('mirrors the canonical Daybreak hex values from app.css @theme', () => {
-        expect(DAYBREAK.leaf).toBe('#6b8e6f');
-        expect(DAYBREAK.ember).toBe('#c4623f');
-        expect(DAYBREAK.mumet).toBe('#7b5bb6');
-        expect(DAYBREAK.horizon).toBe('#e8a076');
-        expect(DAYBREAK.citrus).toBe('#d9b23a');
+describe('THREADWORK chart token bridge', () => {
+    it('mirrors the canonical Threadwork hex values from app.css @theme', () => {
+        expect(THREADWORK.leaf).toBe('#6b8e6f');
+        expect(THREADWORK.ember).toBe('#c4623f');
+        expect(THREADWORK.overloaded).toBe('#6b3fa0');
+        expect(THREADWORK.horizon).toBe('#d9a53c');
+        expect(THREADWORK.citrus).toBe('#d9b23a');
     });
 
     it('exposes every value as a 6-digit lowercase hex', () => {
-        for (const value of Object.values(DAYBREAK)) {
+        for (const value of Object.values(THREADWORK)) {
             expect(value).toMatch(/^#[0-9a-f]{6}$/);
         }
     });

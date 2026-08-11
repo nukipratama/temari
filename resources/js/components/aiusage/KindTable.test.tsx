@@ -63,9 +63,9 @@ describe('KindTable', () => {
         );
 
         expect(
-            screen.getByText('3.5 langkah · 71% cache · 18% reasoning'),
+            screen.getByText('3.5 steps · 71% cache · 18% reasoning'),
         ).toBeInTheDocument();
-        expect(screen.queryAllByText(/langkah/)).toHaveLength(1);
+        expect(screen.queryAllByText(/steps/)).toHaveLength(1);
     });
 
     it('renders the agent line from whichever of the three measures arrived', () => {
@@ -77,7 +77,7 @@ describe('KindTable', () => {
             />,
         );
 
-        expect(screen.getByText('3.5 langkah')).toBeInTheDocument();
+        expect(screen.getByText('3.5 steps')).toBeInTheDocument();
     });
 
     it('treats a measured zero as measured, not as missing', () => {
@@ -90,7 +90,7 @@ describe('KindTable', () => {
         );
 
         expect(
-            screen.getByText('0.0 langkah · 0% cache · 0% reasoning'),
+            screen.getByText('0.0 steps · 0% cache · 0% reasoning'),
         ).toBeInTheDocument();
     });
 
@@ -103,7 +103,7 @@ describe('KindTable', () => {
             />,
         );
 
-        expect(screen.getByText('1 / 5 dtk')).toBeInTheDocument();
+        expect(screen.getByText('1 / 5 s')).toBeInTheDocument();
     });
 
     it('falls back to the average when no max latency was recorded', () => {
@@ -115,7 +115,7 @@ describe('KindTable', () => {
             />,
         );
 
-        expect(screen.getByText('3 / 3 dtk')).toBeInTheDocument();
+        expect(screen.getByText('3 / 3 s')).toBeInTheDocument();
     });
 
     it('shows an em dash in the latency cell when latency was never measured', () => {
@@ -160,7 +160,7 @@ describe('KindTable', () => {
         render(<KindTable rows={[row()]} grandTotal={880} currency="USD" />);
 
         expect(
-            screen.getByRole('progressbar', { name: '51.1% dari total' }),
+            screen.getByRole('progressbar', { name: '51.1% of total' }),
         ).toBeInTheDocument();
     });
 
@@ -174,7 +174,7 @@ describe('KindTable', () => {
         );
 
         expect(
-            screen.getByRole('progressbar', { name: '0.0% dari total' }),
+            screen.getByRole('progressbar', { name: '0.0% of total' }),
         ).toBeInTheDocument();
     });
 
@@ -182,7 +182,7 @@ describe('KindTable', () => {
         render(<KindTable rows={[]} grandTotal={0} currency="USD" />);
 
         expect(
-            screen.getByText('Belum ada catatan token di rentang ini.'),
+            screen.getByText('No token usage recorded in this range yet.'),
         ).toBeInTheDocument();
     });
 });

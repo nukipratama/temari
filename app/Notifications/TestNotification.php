@@ -17,8 +17,8 @@ use NotificationChannels\WebPush\WebPushMessage;
  * The one-off "test notification" from the Aku page, so a user can confirm their
  * notification channels work without waiting for a run. Channel-agnostic by
  * design: `via()` fans out to every wired channel (Telegram if connected, web
- * push if subscribed), so the single "Kirim tes" action reaches every channel the
- * user has. Never sends on the shared demo identity.
+ * push if subscribed), so the single "Send test notification" action reaches
+ * every channel the user has. Never sends on the shared demo identity.
  */
 class TestNotification extends Notification implements ShouldQueue
 {
@@ -51,7 +51,7 @@ class TestNotification extends Notification implements ShouldQueue
     public function toWebPush(User $notifiable, Notification $notification): WebPushMessage
     {
         return new WebPushMessage()
-            ->title('🔔 Tes notifikasi')
+            ->title('🔔 Test notification')
             ->body(TelegramReplies::test())
             ->icon('/icon-192.png')
             // Mirror the real push: high urgency so the test is a truthful delivery signal.

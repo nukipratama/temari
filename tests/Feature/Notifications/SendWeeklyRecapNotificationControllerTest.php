@@ -21,7 +21,7 @@ beforeEach(function (): void {
 it('requires authentication', function (): void {
     $snapshot = WeeklySnapshot::factory()->create();
 
-    $this->post(route('rekap.mingguan.kirim', $snapshot))->assertRedirect(route('login'));
+    $this->post(route('recaps.weekly.send', $snapshot))->assertRedirect(route('login'));
 });
 
 it('force-sends the push when the weekly recap is done', function (): void {
@@ -32,7 +32,7 @@ it('force-sends the push when the weekly recap is done', function (): void {
     $analysis = doneAnalysisFor(WeeklySnapshot::class, $snapshot->id, AnalysisType::WeeklyRecap, content: 'Minggu ini 28 km.');
 
     $this->actingAs($user)
-        ->post(route('rekap.mingguan.kirim', $snapshot))
+        ->post(route('recaps.weekly.send', $snapshot))
         ->assertRedirect()
         ->assertSessionHas('success');
 
@@ -51,7 +51,7 @@ it('does not re-send and flashes info while the send cooldown is active', functi
     RateLimiter::hit(Cooldown::notificationKey($analysis->id), Cooldown::WINDOW_SECONDS);
 
     $this->actingAs($user)
-        ->post(route('rekap.mingguan.kirim', $snapshot))
+        ->post(route('recaps.weekly.send', $snapshot))
         ->assertRedirect()
         ->assertSessionHas('info');
 
@@ -65,7 +65,7 @@ it('does not send and flashes info when the recap is not ready', function (): vo
     doneAnalysisFor(WeeklySnapshot::class, $snapshot->id, AnalysisType::WeeklyRecap, done: false, content: 'Minggu ini 28 km.');
 
     $this->actingAs($user)
-        ->post(route('rekap.mingguan.kirim', $snapshot))
+        ->post(route('recaps.weekly.send', $snapshot))
         ->assertRedirect()
         ->assertSessionHas('info');
 
@@ -79,7 +79,7 @@ it('404s when the snapshot belongs to another user', function (): void {
     $snapshot = WeeklySnapshot::factory()->for($owner)->create();
 
     $this->actingAs($other)
-        ->post(route('rekap.mingguan.kirim', $snapshot))
+        ->post(route('recaps.weekly.send', $snapshot))
         ->assertNotFound();
 
     Notification::assertNothingSent();

@@ -26,7 +26,7 @@ class AccountController extends Controller
         $user = $request->user();
 
         if ($user->is_demo) {
-            return back()->withErrors(['akun' => 'Akun demo gak bisa dihapus ya.']);
+            return back()->withErrors(['akun' => 'The demo account can\'t be deleted.']);
         }
 
         // Log out first: the session guard re-persists its authenticated user on
@@ -40,6 +40,6 @@ class AccountController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login')->with('info', 'Akun kamu udah dihapus. Sambungan Strava juga udah dilepas. Makasih udah lari bareng Temari.');
+        return redirect()->route('login')->with('info', 'Your account has been deleted, and your Strava connection has been unlinked. Thanks for running with Temari.');
     }
 }

@@ -61,10 +61,10 @@ describe('AttentionArea', () => {
     it('renders a per-user dead-letter group with its stuck-block count and type chips', () => {
         renderArea({ deadLettered: [deadLetteredGroup] });
 
-        expect(screen.getByText('Perlu perhatian')).toBeInTheDocument();
+        expect(screen.getByText('Needs attention')).toBeInTheDocument();
         expect(screen.getByText('Charlie')).toBeInTheDocument();
         expect(
-            screen.getByText('2 blok berhenti dicoba otomatis'),
+            screen.getByText('2 blocks stopped auto-retrying'),
         ).toBeInTheDocument();
         expect(screen.getByText('weekly_recap')).toBeInTheDocument();
         expect(screen.getByText('pr_context')).toBeInTheDocument();
@@ -111,12 +111,10 @@ describe('AttentionArea', () => {
         );
     });
 
-    it('posts to the per-user retry route on "Coba lagi semua"', () => {
+    it('posts to the per-user retry route on "Retry all"', () => {
         renderArea({ deadLettered: [deadLetteredGroup] });
 
-        fireEvent.click(
-            screen.getByRole('button', { name: /Coba lagi semua/ }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: /Retry all/ }));
 
         expect(formMock.post).toHaveBeenCalledWith(
             '/ai-usage/users/7/retry-failed',
@@ -124,13 +122,13 @@ describe('AttentionArea', () => {
         );
     });
 
-    it('disables the retry button and shows "Mengirim…" while the retry is processing', () => {
+    it('disables the retry button and shows "Sending…" while the retry is processing', () => {
         formMock.processing = true;
         renderArea({ deadLettered: [deadLetteredGroup] });
 
-        expect(screen.getByRole('button', { name: /Mengirim/ })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /Sending/ })).toBeDisabled();
         expect(
-            screen.queryByRole('button', { name: /Coba lagi semua/ }),
+            screen.queryByRole('button', { name: /Retry all/ }),
         ).not.toBeInTheDocument();
     });
 
@@ -139,38 +137,40 @@ describe('AttentionArea', () => {
         renderArea({ deadLettered: [deadLetteredGroup] });
 
         expect(
-            screen.getByRole('button', { name: /Coba lagi semua/ }),
+            screen.getByRole('button', { name: /Retry all/ }),
         ).toBeDisabled();
     });
 
     it('renders the failed-under-budget bucket with a per-user re-arm button', () => {
         renderArea({ failedUnderBudget: [deadLetteredGroup] });
 
-        expect(screen.getByText('Failed, belum menyerah')).toBeInTheDocument();
         expect(
-            screen.getByText('2 blok gagal, masih dicoba otomatis'),
+            screen.getByText('Failed, not giving up yet'),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: /Coba lagi semua/ }),
+            screen.getByText('2 blocks failing, still auto-retrying'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /Retry all/ }),
         ).toBeInTheDocument();
     });
 
-    it('renders the nyangkut bucket without a per-user button (global recover handles it)', () => {
+    it('renders the stuck bucket without a per-user button (global recover handles it)', () => {
         renderArea({ nyangkut: [nyangkutGroup] });
 
-        expect(screen.getByText('Nyangkut')).toBeInTheDocument();
+        expect(screen.getByText('Stuck')).toBeInTheDocument();
         expect(screen.getByText('Dina')).toBeInTheDocument();
         expect(
-            screen.queryByRole('button', { name: /Coba lagi semua/ }),
+            screen.queryByRole('button', { name: /Retry all/ }),
         ).not.toBeInTheDocument();
     });
 
     it('hides a bucket that has no groups while another bucket is filled', () => {
         renderArea({ nyangkut: [nyangkutGroup] });
 
-        expect(screen.queryByText('Perlu perhatian')).not.toBeInTheDocument();
+        expect(screen.queryByText('Needs attention')).not.toBeInTheDocument();
         expect(
-            screen.queryByText('Failed, belum menyerah'),
+            screen.queryByText('Failed, not giving up yet'),
         ).not.toBeInTheDocument();
     });
 
@@ -178,14 +178,14 @@ describe('AttentionArea', () => {
         renderArea({ nyangkut: [nyangkutGroup] });
 
         expect(
-            screen.getByRole('button', { name: /Pulihkan semua/ }),
+            screen.getByRole('button', { name: /Recover all/ }),
         ).toBeInTheDocument();
     });
 
-    it('posts to the recover route on "Pulihkan semua"', () => {
+    it('posts to the recover route on "Recover all"', () => {
         renderArea({ deadLettered: [deadLetteredGroup] });
 
-        fireEvent.click(screen.getByRole('button', { name: /Pulihkan semua/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Recover all/ }));
 
         expect(formMock.post).toHaveBeenCalledWith(
             '/ai-usage/recover',
@@ -193,12 +193,12 @@ describe('AttentionArea', () => {
         );
     });
 
-    it('shows "Memulihkan…" on the recover bar while the sweep is in flight', () => {
+    it('shows "Recovering…" on the recover bar while the sweep is in flight', () => {
         formMock.processing = true;
         renderArea({ nyangkut: [nyangkutGroup] });
 
         expect(
-            screen.getByRole('button', { name: /Memulihkan/ }),
+            screen.getByRole('button', { name: /Recovering/ }),
         ).toBeDisabled();
     });
 });

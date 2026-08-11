@@ -13,7 +13,7 @@ use function is_string;
 
 /**
  * Computes the lifetime running totals (run count, total distance, first-run
- * date) shown on /kalender. The aggregate scans every analyzed run for the
+ * date) shown on /calendar. The aggregate scans every analyzed run for the
  * user, so it is cached for a few minutes keyed by user id. The numbers only
  * move when a new run is ingested + analyzed (a comparatively rare event), so a
  * short time-based TTL keeps the page query-cheap without a stale-feeling UI.

@@ -1,0 +1,399 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+
+import type { Activity, ActivityDetail, RunCard } from '@/types/inertia';
+
+import { setMockPage } from '@/test/setup';
+
+import Cards from './Cards';
+
+// ConfettiBurst renders real framer-motion particles on a real timer; stub it
+// with a DOM probe so a tap's `burstKey` can be asserted directly instead of
+// depending on animation/effect timing.
+vi.mock('@/components/ConfettiBurst', () => ({
+    default: ({ burstKey }: { burstKey: string | number | null }) => (
+        <div data-testid="confetti-burst" data-burst-key={burstKey ?? ''} />
+    ),
+}));
+
+const rarityCounts = { common: 5, uncommon: 4, rare: 3, epic: 2, legendary: 0 };
+
+function emptyCards() {
+    return {
+        data: [],
+        current_page: 1,
+        last_page: 1,
+        per_page: 12,
+        total: 0,
+        links: [],
+    };
+}
+
+function cardWithRel(
+    id: number,
+    rarity: RunCard['rarity'],
+    move = 'Steady Stride',
+) {
+    const activity: Activity = { id, user_id: 1, analyzed_at: '2026-05-10' };
+    const detail: ActivityDetail = {
+        id,
+        activity_id: id,
+        name: 'Morning run',
+        start_date_local: '2026-05-10T06:30',
+        distance: 5000,
+        elapsed_time: 1800,
+        trimp_edwards: 50,
+        average_heartrate: 150,
+        activity: {
+            ...activity,
+            run_card: {
+                id,
+                activity_id: id,
+                rarity,
+                special_move: move,
+                badges: ['negative_split'],
+            },
+        },
+    };
+    return {
+        id,
+        activity_id: id,
+        rarity,
+        mood: 'chill' as const,
+        special_move: move,
+        badges: ['negative_split'],
+        share_image_path: null,
+        activity: { ...activity, detail },
+    };
+}
+
+beforeEach(() => {
+    setMockPage({
+        auth: {
+            user: { id: 1, name: 'Ada', first_name: 'Ada', avatar_url: null },
+        },
+        flash: {},
+        demoLoginEnabled: false,
+    });
+});
+
+describe('Collection/Cards', () => {
+    it('renders the EmptyState when no cards and no featured card, with a sync CTA', () => {
+        render(
+            <Cards
+                cards={emptyCards()}
+                selectedRarity={null}
+                featuredCard={null}
+                rarityCounts={rarityCounts}
+            />,
+        );
+        expect(screen.getByText(/No cards here yet/)).toBeInTheDocument();
+        expect(
+            screen.getByRole('link', { name: /Connect Strava/i }),
+        ).toBeInTheDocument();
+    });
+
+    it('hides the sync CTA on the EmptyState while a sync is already running', () => {
+        setMockPage({
+            auth: {
+                user: {
+                    id: 1,
+                    name: 'Ada',
+                    first_name: 'Ada',
+                    avatar_url: null,
+                },
+            },
+            flash: {},
+            demoLoginEnabled: false,
+            stravaSync: { state: 'syncing', last_synced_at: null },
+        });
+        render(
+            <Cards
+                cards={emptyCards()}
+                selectedRarity={null}
+                featuredCard={null}
+                rarityCounts={rarityCounts}
+            />,
+        );
+        expect(screen.getByText(/No cards here yet/)).toBeInTheDocument();
+        expect(
+            screen.queryByRole('link', { name: /Connect Strava/i }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /sync/i }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('renders the LegendaryTease when legendary count is 0', () => {
+        render(
+            <Cards
+                cards={emptyCards()}
+                selectedRarity={null}
+                featuredCard={null}
+                rarityCounts={rarityCounts}
+            />,
+        );
+        expect(
+            screen.getByText(/Legendary · not unlocked yet/),
+        ).toBeInTheDocument();
+    });
+
+    it('omits the LegendaryTease when at least one legendary card exists', () => {
+        const counts = { ...rarityCounts, legendary: 1 };
+        render(
+            <Cards
+                cards={emptyCards()}
+                selectedRarity={null}
+                featuredCard={null}
+                rarityCounts={counts}
+            />,
+        );
+        expect(
+            screen.queryByText(/Legendary · not unlocked yet/),
+        ).not.toBeInTheDocument();
+    });
+
+    it('renders the rarity filter pills (counts per rarity)', () => {
+        render(
+            <Cards
+                cards={emptyCards()}
+                selectedRarity="epic"
+                featuredCard={null}
+                rarityCounts={rarityCounts}
+            />,
+        );
+        expect(screen.getByText(/Common · 5/)).toBeInTheDocument();
+        expect(screen.getByText(/Epic · 2/)).toBeInTheDocument();
+    });
+
+    it('renders the slim banner with the featured flavor quote', () => {
+        const featured = {
+            id: 7,
+            activity_id: 99,
+            rarity: 'epic' as const,
+            mood: 'blazing' as const,
+            special_move: 'Strong Finish',
+            badges: ['negative_split', 'heat_tamer'],
+            detail: {
+                id: 1,
+                activity_id: 99,
+                name: 'Sub-30',
+                start_date_local: '2026-05-10T06:00',
+                distance: 5000,
+                elapsed_time: 1751,
+                trimp_edwards: 85,
+                average_heartrate: 150,
+            } as ActivityDetail,
+            flavor_analysis: {
+                id: 1,
+                status: 'done' as const,
+                content: 'A refreshing run.',
+                type: 'card_flavor' as const,
+                subject_type: 'run_card',
+                subject_id: 7,
+                discriminator: null,
+            },
+        };
+        render(
+            <Cards
+                cards={emptyCards()}
+                selectedRarity={null}
+                featuredCard={featured}
+                rarityCounts={rarityCounts}
+            />,
+        );
+        expect(screen.getByText(/Your best card/)).toBeInTheDocument();
+        expect(screen.getByText(/A refreshing run/)).toBeInTheDocument();
+    });
+
+    it('triggers a confetti burst when an epic grid card is tapped', () => {
+        const cards = {
+            ...emptyCards(),
+            data: [cardWithRel(7, 'epic', 'Strong Finish')],
+        };
+        const { container } = render(
+            <Cards
+                cards={cards}
+                selectedRarity={null}
+                featuredCard={null}
+                rarityCounts={rarityCounts}
+            />,
+        );
+        const confetti = container.querySelector<HTMLElement>(
+            '[data-testid="confetti-burst"]',
+        );
+        expect(confetti?.dataset.burstKey).toBe('');
+
+        const cardLink = screen
+            .getAllByRole('link')
+            .find((el) => el.getAttribute('href') === '/activities/7');
+        fireEvent.click(cardLink!);
+
+        expect(confetti?.dataset.burstKey).not.toBe('');
+    });
+
+    it('renders the grid when cards.data has entries + handles cell taps', () => {
+        const cards = {
+            ...emptyCards(),
+            data: [
+                cardWithRel(1, 'epic', 'Epic Kick'),
+                cardWithRel(2, 'common'),
+            ],
+        };
+        const { container } = render(
+            <Cards
+                cards={cards}
+                selectedRarity={null}
+                featuredCard={null}
+                rarityCounts={rarityCounts}
+            />,
+        );
+        expect(screen.getByText('Epic Kick')).toBeInTheDocument();
+
+        const confetti = container.querySelector<HTMLElement>(
+            '[data-testid="confetti-burst"]',
+        );
+        const links = screen
+            .getAllByRole('link')
+            .filter((el) => el.getAttribute('href') === '/activities/1');
+        fireEvent.click(links[0]);
+
+        // Card 1 is epic, so the tap fires a confetti burst.
+        expect(confetti?.dataset.burstKey).not.toBe('');
+    });
+
+    it('falls back to the special move in the banner when there is no flavor analysis', () => {
+        const featured = {
+            id: 7,
+            activity_id: 99,
+            rarity: 'rare' as const,
+            mood: 'chill' as const,
+            special_move: 'Calm and Steady',
+            badges: null,
+            detail: null,
+        };
+        render(
+            <Cards
+                cards={emptyCards()}
+                selectedRarity={null}
+                featuredCard={featured}
+                rarityCounts={rarityCounts}
+            />,
+        );
+        // The banner heading renders the name in an <em> — the card also renders it, so use getAllByText.
+        expect(screen.getAllByText(/Calm and Steady/).length).toBeGreaterThan(
+            0,
+        );
+    });
+
+    it('labels the search input and sort select for assistive tech', () => {
+        render(
+            <Cards
+                cards={emptyCards()}
+                selectedRarity={null}
+                featuredCard={null}
+                rarityCounts={rarityCounts}
+            />,
+        );
+        expect(screen.getByLabelText('Search cards')).toBeInTheDocument();
+        expect(screen.getByLabelText('Sort')).toBeInTheDocument();
+    });
+
+    it('skips grid cells whose card has no detail', () => {
+        const cardWithoutDetail = {
+            id: 9,
+            activity_id: 99,
+            rarity: 'common' as const,
+            mood: 'chill' as const,
+            special_move: 'No Detail',
+            badges: null,
+            share_image_path: null,
+            activity: {
+                id: 99,
+                user_id: 1,
+                analyzed_at: '2026-05-10',
+                strava_external_id: null,
+                detail: undefined as never,
+            },
+        };
+        const cards = { ...emptyCards(), data: [cardWithoutDetail] };
+        render(
+            <Cards
+                cards={cards}
+                selectedRarity={null}
+                featuredCard={null}
+                rarityCounts={rarityCounts}
+            />,
+        );
+        expect(screen.queryByText('No Detail')).not.toBeInTheDocument();
+    });
+
+    it('filters the grid by the search query', async () => {
+        const cards = {
+            ...emptyCards(),
+            data: [
+                cardWithRel(1, 'epic', 'Epic Kick'),
+                cardWithRel(2, 'common', 'Steady Stride'),
+            ],
+        };
+        render(
+            <Cards
+                cards={cards}
+                selectedRarity={null}
+                featuredCard={null}
+                rarityCounts={rarityCounts}
+            />,
+        );
+
+        fireEvent.change(screen.getByLabelText('Search cards'), {
+            target: { value: 'Epic Kick' },
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText('Epic Kick')).toBeInTheDocument();
+            expect(screen.queryByText('Steady Stride')).not.toBeInTheDocument();
+        });
+    });
+
+    it('sorts the grid by rarity and by name', async () => {
+        const cards = {
+            ...emptyCards(),
+            data: [
+                cardWithRel(1, 'common', 'So Tired'),
+                cardWithRel(2, 'legendary', 'Threshold Zone'),
+            ],
+        };
+        render(
+            <Cards
+                cards={cards}
+                selectedRarity={null}
+                featuredCard={null}
+                rarityCounts={rarityCounts}
+            />,
+        );
+
+        fireEvent.change(screen.getByLabelText('Sort'), {
+            target: { value: 'rarity' },
+        });
+        await waitFor(() => {
+            const names = screen
+                .getAllByText(/So Tired|Threshold Zone/)
+                .map((el) => el.textContent);
+            expect(names.indexOf('Threshold Zone')).toBeLessThan(
+                names.indexOf('So Tired'),
+            );
+        });
+
+        fireEvent.change(screen.getByLabelText('Sort'), {
+            target: { value: 'name' },
+        });
+        await waitFor(() => {
+            const names = screen
+                .getAllByText(/So Tired|Threshold Zone/)
+                .map((el) => el.textContent);
+            expect(names.indexOf('So Tired')).toBeLessThan(
+                names.indexOf('Threshold Zone'),
+            );
+        });
+    });
+});

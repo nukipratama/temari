@@ -36,7 +36,7 @@ export default function StravaSyncBadge({
     const content = (
         <>
             {/* The sync glyph labels the badge as sync freshness, so a bare relative time
-                ("19 jam lalu") on the compact top bar can't misread as "last run 19h ago". */}
+                ("19h ago") on the compact top bar can't misread as "last run 19h ago". */}
             <Icon
                 icon={icon}
                 width={13}
@@ -93,24 +93,24 @@ function resolveBadge(
         }
         case 'syncing':
             return {
-                label: isCompact ? 'Sinkron' : 'Lagi sinkron',
-                ariaLabel: 'Strava lagi sinkron',
+                label: isCompact ? 'Sync' : 'Syncing',
+                ariaLabel: 'Strava syncing',
                 icon: 'mdi:sync',
                 iconClass: 'text-horizon-deep animate-spin',
             };
         case 'revoked':
             return {
                 label: isCompact
-                    ? 'Sambungkan ulang'
-                    : 'Strava putus · Sambungkan ulang',
-                ariaLabel: 'Sambungan Strava putus, sambungkan ulang',
+                    ? 'Reconnect'
+                    : 'Strava disconnected · Reconnect',
+                ariaLabel: 'Strava connection lost, reconnect',
                 icon: 'mdi:cloud-alert-outline',
                 iconClass: 'text-ember-deep',
             };
         default:
             return {
                 label: 'Strava',
-                ariaLabel: 'Strava belum nyambung',
+                ariaLabel: 'Strava not connected',
                 icon: 'mdi:cloud-off-outline',
                 iconClass: 'text-ink-3',
             };

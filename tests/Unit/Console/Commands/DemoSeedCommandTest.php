@@ -66,13 +66,13 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
     // Every defined accessory unlocks; best-in-slot ones are equipped for the mascot.
     $unlocked = UserUnlock::query()->where('user_id', $user->id)->pluck('unlock_key')->all();
     expect($unlocked)->toContain(
-        'accessory.medal_pertama',
-        'accessory.medal_emas',
-        'accessory.ikat_kepala_legendaris',
-        'accessory.ikat_kepala_epik',
+        'accessory.medal_first',
+        'accessory.medal_gold',
+        'accessory.headband_legendary',
+        'accessory.headband_epic',
     );
     $equipped = UserUnlock::query()->where('user_id', $user->id)->where('equipped', true)->pluck('unlock_key')->all();
-    expect($equipped)->toContain('accessory.ikat_kepala_legendaris', 'accessory.medal_emas');
+    expect($equipped)->toContain('accessory.headband_legendary', 'accessory.medal_gold');
 
     // At most one unlock equipped per slot: no double-equipped Medali (#53).
     $slots = new EquippedAccessories();

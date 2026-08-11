@@ -15,12 +15,12 @@ import {
 } from './mood';
 
 const ALL_MOODS: Mood[] = [
-    'nyala',
-    'enteng',
-    'lemes',
-    'oleng',
-    'mumet',
-    'adem',
+    'blazing',
+    'easy',
+    'gassed',
+    'wobbly',
+    'overloaded',
+    'chill',
 ];
 
 describe('mood', () => {
@@ -76,16 +76,16 @@ describe('mood', () => {
             });
         });
 
-        it('falls back to adem grey for unknown mood', () => {
-            expect(moodSigilColor('unknown' as Mood)).toBe('#6e7b72');
+        it('falls back to chill grey for unknown mood', () => {
+            expect(moodSigilColor('unknown' as Mood)).toBe('#55488f');
         });
     });
 
     describe('moodRing', () => {
         it('returns ring-mood-* class with /60 opacity', () => {
-            expect(moodRing('nyala')).toBe('ring-mood-nyala/60');
-            expect(moodRing('lemes')).toBe('ring-mood-lemes/60');
-            expect(moodRing('adem')).toBe('ring-mood-adem/60');
+            expect(moodRing('blazing')).toBe('ring-mood-blazing/60');
+            expect(moodRing('gassed')).toBe('ring-mood-gassed/60');
+            expect(moodRing('chill')).toBe('ring-mood-chill/60');
         });
     });
 });

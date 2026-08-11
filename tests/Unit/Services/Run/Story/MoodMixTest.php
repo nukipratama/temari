@@ -41,14 +41,14 @@ it('counts each mood and orders them by count descending', function (): void {
     $user = User::factory()->create();
     $when = Carbon::parse('2026-05-10 06:00:00');
 
-    moodLine($user, 'adem', $when);
-    moodLine($user, 'nyala', $when);
-    moodLine($user, 'nyala', $when);
-    moodLine($user, 'nyala', $when);
+    moodLine($user, 'chill', $when);
+    moodLine($user, 'blazing', $when);
+    moodLine($user, 'blazing', $when);
+    moodLine($user, 'blazing', $when);
 
     expect(MoodMix::between($user->id, Carbon::parse('2026-05-01')))->toBe([
-        ['mood' => 'nyala', 'count' => 3, 'percent' => 75.0],
-        ['mood' => 'adem', 'count' => 1, 'percent' => 25.0],
+        ['mood' => 'blazing', 'count' => 3, 'percent' => 75.0],
+        ['mood' => 'chill', 'count' => 1, 'percent' => 25.0],
     ]);
 });
 
@@ -56,11 +56,11 @@ it('ignores story lines with no activity behind them', function (): void {
     $user = User::factory()->create();
     $when = Carbon::parse('2026-05-10 06:00:00');
 
-    moodLine($user, 'nyala', $when);
-    moodLine($user, 'lemes', $when, withActivity: false);
+    moodLine($user, 'blazing', $when);
+    moodLine($user, 'gassed', $when, withActivity: false);
 
     expect(MoodMix::between($user->id, Carbon::parse('2026-05-01')))
-        ->toBe([['mood' => 'nyala', 'count' => 1, 'percent' => 100.0]]);
+        ->toBe([['mood' => 'blazing', 'count' => 1, 'percent' => 100.0]]);
 });
 
 it('does not leak one runner\'s moods into another\'s mix', function (): void {
@@ -68,11 +68,11 @@ it('does not leak one runner\'s moods into another\'s mix', function (): void {
     $theirs = User::factory()->create();
     $when = Carbon::parse('2026-05-10 06:00:00');
 
-    moodLine($mine, 'nyala', $when);
-    moodLine($theirs, 'lemes', $when);
+    moodLine($mine, 'blazing', $when);
+    moodLine($theirs, 'gassed', $when);
 
     expect(MoodMix::between($mine->id, Carbon::parse('2026-05-01')))
-        ->toBe([['mood' => 'nyala', 'count' => 1, 'percent' => 100.0]]);
+        ->toBe([['mood' => 'blazing', 'count' => 1, 'percent' => 100.0]]);
 });
 
 // Half-open [from, to): adjacent windows must tile without counting a run twice
@@ -83,19 +83,19 @@ it('includes a run at the exact start of the window and excludes one at the exac
     $from = Carbon::parse('2026-05-01 00:00:00');
     $to = Carbon::parse('2026-06-01 00:00:00');
 
-    moodLine($user, 'nyala', $from);
-    moodLine($user, 'lemes', $to);
+    moodLine($user, 'blazing', $from);
+    moodLine($user, 'gassed', $to);
 
     expect(MoodMix::between($user->id, $from, $to))
-        ->toBe([['mood' => 'nyala', 'count' => 1, 'percent' => 100.0]]);
+        ->toBe([['mood' => 'blazing', 'count' => 1, 'percent' => 100.0]]);
 });
 
 it('leaves the window open-ended when no upper bound is given', function (): void {
     $user = User::factory()->create();
     $from = Carbon::parse('2026-05-01 00:00:00');
 
-    moodLine($user, 'nyala', $from);
-    moodLine($user, 'enteng', Carbon::parse('2030-01-01 00:00:00'));
+    moodLine($user, 'blazing', $from);
+    moodLine($user, 'easy', Carbon::parse('2030-01-01 00:00:00'));
 
     expect(MoodMix::between($user->id, $from))->toHaveCount(2);
 });
@@ -103,7 +103,7 @@ it('leaves the window open-ended when no upper bound is given', function (): voi
 it('excludes runs before the window starts', function (): void {
     $user = User::factory()->create();
 
-    moodLine($user, 'nyala', Carbon::parse('2026-04-30 23:59:59'));
+    moodLine($user, 'blazing', Carbon::parse('2026-04-30 23:59:59'));
 
     expect(MoodMix::between($user->id, Carbon::parse('2026-05-01 00:00:00')))->toBe([]);
 });
@@ -111,15 +111,15 @@ it('excludes runs before the window starts', function (): void {
 // ── merge ────────────────────────────────────────────────────────────
 
 it('folds two mixes into one with shares recomputed against the combined total', function (): void {
-    $recent = [['mood' => 'nyala', 'count' => 2, 'percent' => 100.0]];
+    $recent = [['mood' => 'blazing', 'count' => 2, 'percent' => 100.0]];
     $earlier = [
-        ['mood' => 'adem', 'count' => 1, 'percent' => 50.0],
-        ['mood' => 'nyala', 'count' => 1, 'percent' => 50.0],
+        ['mood' => 'chill', 'count' => 1, 'percent' => 50.0],
+        ['mood' => 'blazing', 'count' => 1, 'percent' => 50.0],
     ];
 
     expect(MoodMix::merge($recent, $earlier))->toBe([
-        ['mood' => 'nyala', 'count' => 3, 'percent' => 75.0],
-        ['mood' => 'adem', 'count' => 1, 'percent' => 25.0],
+        ['mood' => 'blazing', 'count' => 3, 'percent' => 75.0],
+        ['mood' => 'chill', 'count' => 1, 'percent' => 25.0],
     ]);
 });
 
@@ -134,9 +134,9 @@ it('folds to exactly what querying the whole window would have returned', functi
     $windowStart = Carbon::parse('2026-03-01 00:00:00');
     $halfway = Carbon::parse('2026-04-15 00:00:00');
 
-    moodLine($user, 'adem', Carbon::parse('2026-03-10 06:00:00'));
-    moodLine($user, 'nyala', Carbon::parse('2026-03-20 06:00:00'));
-    moodLine($user, 'nyala', Carbon::parse('2026-05-01 06:00:00'));
+    moodLine($user, 'chill', Carbon::parse('2026-03-10 06:00:00'));
+    moodLine($user, 'blazing', Carbon::parse('2026-03-20 06:00:00'));
+    moodLine($user, 'blazing', Carbon::parse('2026-05-01 06:00:00'));
 
     $folded = MoodMix::merge(
         MoodMix::between($user->id, $halfway),

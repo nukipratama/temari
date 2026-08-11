@@ -1,14 +1,14 @@
 ---
 title: Recaps (weekly / monthly / persona)
-description: Temari's narrative recaps surfaced across the app — weekly on Jejak, monthly on Kalender, persona/profile voice on Aku
+description: Temari's narrative recaps surfaced across the app — weekly on Jejak, monthly on Kalender, persona/profile voice on Profile
 tags: [feature, recaps]
 status: living
 reviewed: 2026-06-20
 code_refs:
   - resources/js/components/aktivitas/RingkasanCard.tsx
-  - resources/js/pages/Riwayat/Jejak.tsx
+  - resources/js/pages/Activities/Feed.tsx
   - resources/js/components/riwayat/WeekSection.tsx
-  - resources/js/pages/Riwayat/Kalender.tsx
+  - resources/js/pages/Activities/Calendar.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
   - app/Http/Controllers/RunController.php
   - app/Http/Controllers/CalendarController.php
@@ -19,7 +19,7 @@ code_refs:
 
 Temari narrates the runner's history at three cadences — per **week**, per **month**, and a rolling **persona** read. This note covers where each narrative is *rendered* and which controller feeds it. The generation mechanics live in [[ai-pipeline]], the "don't generate the open period yet" rule in [[deferred-recap-windowing]], and the prev-link continuity in [[chained-narration]].
 
-**No dedicated route** — recaps render inline on [[run-history]] (Jejak/Kalender) and [[profile]] (Aku) pages.
+**No dedicated route** — recaps render inline on [[run-history]] (Jejak/Kalender) and [[profile]] pages.
 
 ## System dependencies
 
@@ -38,11 +38,11 @@ Rendered inside each [WeekSection](resources/js/components/riwayat/WeekSection.t
 
 ## Monthly recap — on Kalender
 
-Rendered by the local `MonthlyRecapCard` in [Kalender](resources/js/pages/Riwayat/Kalender.tsx), above the calendar grid as "Catatan Temari · {monthLabel}". Temari wears the month's dominant run mood (`dominantMoodOf` → `MOOD_TO_POSE`). It uses `AnalysisStatus` `chained` with `isChainHead={recap.is_chain_head}` and, for the current month, `awaitingSchedule` with the label "Recap bulan ini belum tersedia." There is **no rule-based fallback** for monthly — unfilled past months simply show the empty / resume state.
+Rendered by the local `MonthlyRecapCard` in [Kalender](resources/js/pages/Activities/Calendar.tsx), above the calendar grid as "Catatan Temari · {monthLabel}". Temari wears the month's dominant run mood (`dominantMoodOf` → `MOOD_TO_POSE`). It uses `AnalysisStatus` `chained` with `isChainHead={recap.is_chain_head}` and, for the current month, `awaitingSchedule` with the label "Recap bulan ini belum tersedia." There is **no rule-based fallback** for monthly — unfilled past months simply show the empty / resume state.
 
 [CalendarController](app/Http/Controllers/CalendarController.php) keys the recap by `Y-m` discriminator (`AnalysisType::MonthlyRecap`) and computes `is_chain_head` via `latestNarratedMonthFor` (the latest closed month with a run). The page type aliases this as `MonthlyRecap = AnalysisPayload & { is_chain_head: boolean }`.
 
-## Persona / profile voice — on Aku
+## Persona / profile voice — on Profile
 
 The profile page surfaces one more Temari narrative (see [[profile]]): **`profileVoice`** ("Kata Temari tentang kamu"), `AnalysisType::AkuProfileVoice`, keyed **per ISO week**. It carries both readings the page used to bill separately, the 12-week mood persona behind `PersonaBar` and the lifetime/progression numbers, in a single call.
 

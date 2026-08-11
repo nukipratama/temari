@@ -17,7 +17,7 @@ export default function BrandMark({
 
     return (
         <div className={cn('flex items-center gap-2.5', className)}>
-            <BunnyGlyph size={28} tone={tone} />
+            <TemariGlyph size={28} tone={tone} />
             <span
                 className={cn(
                     'font-mono font-bold leading-none tracking-[-0.02em]',
@@ -32,17 +32,15 @@ export default function BrandMark({
     );
 }
 
-export function BunnyGlyph({
+export function TemariGlyph({
     size,
     tone,
 }: Readonly<{ size: number; tone: 'ink' | 'cream' }>) {
     const isInk = tone === 'ink';
     const face = isInk ? 'var(--color-ink)' : 'var(--color-cream)';
-    const blush = isInk ? 'var(--color-horizon)' : 'var(--color-horizon-deep)';
     const band = 'var(--color-horizon)';
     const features = isInk ? 'var(--color-cream)' : 'var(--color-ink)';
     const highlightOpacity = isInk ? 0.12 : 0.18;
-    const earGradId = `brand-ear-${tone}`;
     const bodyClipId = `brand-body-clip-${tone}`;
 
     return (
@@ -54,83 +52,52 @@ export function BunnyGlyph({
             className="shrink-0 overflow-visible"
         >
             <defs>
-                <radialGradient id={earGradId} cx="0.5" cy="0.4" r="0.7">
-                    <stop offset="0%" stopColor={blush} stopOpacity={0.85} />
-                    <stop offset="100%" stopColor={blush} stopOpacity={0.55} />
-                </radialGradient>
                 <clipPath id={bodyClipId}>
-                    <circle cx="50" cy="58" r="40" />
+                    <circle cx="50" cy="52" r="42" />
                 </clipPath>
             </defs>
 
-            <ellipse
-                cx="32"
-                cy="8"
-                rx="9"
-                ry="16"
+            {/* Thread knot at the crown */}
+            <path
+                d="M 42 10 Q 50 4 58 10 Q 52 12 50 16 Q 48 12 42 10 Z"
                 fill={face}
-                transform="rotate(-12 32 8)"
-            />
-            <ellipse
-                cx="68"
-                cy="8"
-                rx="9"
-                ry="16"
-                fill={face}
-                transform="rotate(12 68 8)"
-            />
-            <ellipse
-                cx="32"
-                cy="10"
-                rx="4"
-                ry="9"
-                fill={`url(#${earGradId})`}
-                transform="rotate(-12 32 10)"
-            />
-            <ellipse
-                cx="68"
-                cy="10"
-                rx="4"
-                ry="9"
-                fill={`url(#${earGradId})`}
-                transform="rotate(12 68 10)"
             />
 
-            <circle cx="50" cy="58" r="40" fill={face} />
+            <circle cx="50" cy="52" r="42" fill={face} />
             <g clipPath={`url(#${bodyClipId})`}>
                 <ellipse
                     cx="38"
-                    cy="22"
-                    rx="36"
+                    cy="18"
+                    rx="38"
                     ry="20"
                     fill="white"
                     opacity={highlightOpacity}
                 />
-                <rect x="10" y="40" width="80" height="14" fill={band} />
+                <rect x="8" y="34" width="84" height="13" fill={band} />
                 <rect
-                    x="10"
-                    y="51"
-                    width="80"
+                    x="8"
+                    y="44"
+                    width="84"
                     height="3"
                     fill="black"
                     opacity="0.12"
                 />
             </g>
 
-            <circle cx="38" cy="68" r="4.5" fill={features} />
-            <circle cx="62" cy="68" r="4.5" fill={features} />
+            <circle cx="38" cy="62" r="4.5" fill={features} />
+            <circle cx="62" cy="62" r="4.5" fill={features} />
             {isInk && (
                 <>
                     <circle
                         cx="39.5"
-                        cy="66.5"
+                        cy="60.5"
                         r="1.3"
                         fill="white"
                         opacity="0.9"
                     />
                     <circle
                         cx="63.5"
-                        cy="66.5"
+                        cy="60.5"
                         r="1.3"
                         fill="white"
                         opacity="0.9"
@@ -139,7 +106,7 @@ export function BunnyGlyph({
             )}
 
             <path
-                d="M 44 80 Q 50 85 56 80"
+                d="M 44 74 Q 50 79 56 74"
                 fill="none"
                 stroke={features}
                 strokeWidth="2.4"

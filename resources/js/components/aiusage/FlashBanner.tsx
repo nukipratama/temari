@@ -19,7 +19,7 @@ export default function FlashBanner({
             <button
                 type="button"
                 onClick={() => setDismissed(true)}
-                aria-label="Tutup"
+                aria-label="Close"
                 className="focus-ring shrink-0 rounded-full p-1 text-ink-3 hover:text-ink"
             >
                 <Icon icon="mdi:close" width={16} aria-hidden />

@@ -36,24 +36,22 @@ Two distinct "feelings" drive how the app speaks. The **vibe** is a daily, *whol
 
 ### The eight vibes
 
-A fixed vocabulary — keys are internal, the Indonesian labels + emoji are the display surface ([Vibe.php:17](../../app/Services/Run/Story/Vibe.php#L17)):
+A fixed vocabulary — keys are internal, the labels + emoji are the display surface ([Vibe.php:17](../../app/Services/Run/Story/Vibe.php#L17)):
 
 | Vibe (key) | Label | Emoji | Roughly means |
 | --- | --- | --- | --- |
-| `bouncy` | Lincah | 🦘 | Aerobically sharp — pace held with HR *dropping* (negative decoupling) |
-| `steady` | Stabil | 🚶 | Nothing flagged; normal training rhythm |
-| `worn_down` | Loyo | 🥵 | `fatigued` form — tired but not over the edge |
-| `cooked` | Gosong | 🍳 | `overreaching` without the drift flag — dug a hole |
-| `fresh` | Segar | 🌧️ | Rested and primed (`fresh` form) |
-| `stretched_thin` | Tipis | 🧵 | `overreaching` *with* high decoupling — running on fumes |
-| `pumped` | Membara | 💥 | A recent PR (and not already fatigued/overreaching) |
-| `hibernating` | Hibernasi | 🐻 | No run for a long stretch (or none ever) |
-
-Indonesian-voice rule holds: the vibe *names* stay in Bahasa Indonesia; only the running-domain inputs (pace, HR, decoupling, form) are English.
+| `bouncy` | Bouncy | 🦘 | Aerobically sharp — pace held with HR *dropping* (negative decoupling) |
+| `steady` | Steady | 🚶 | Nothing flagged; normal training rhythm |
+| `worn_down` | Worn Down | 🥵 | `fatigued` form — tired but not over the edge |
+| `cooked` | Cooked | 🍳 | `overreaching` without the drift flag — dug a hole |
+| `fresh` | Fresh | 🌧️ | Rested and primed (`fresh` form) |
+| `stretched_thin` | Stretched Thin | 🧵 | `overreaching` *with* high decoupling — running on fumes |
+| `pumped` | Pumped | 💥 | A recent PR (and not already fatigued/overreaching) |
+| `hibernating` | Hibernating | 🐻 | No run for a long stretch (or none ever) |
 
 ## Run-level moods
 
-A finished run gets a single **mood** instead — six values on [Temari](../../app/Services/Run/Story/Temari.php): `nyala` (PR / hard win), `enteng` (easy / negative split), `oleng` (heat strain), `lemes` (decoupling drift), `mumet` (hard-zone heavy / overreaching), `adem` (rest / default). The selection cascade is `moodForActivity` ([Temari.php:116](../../app/Services/Run/Story/Temari.php#L116)); it reads the run's [[stream-analysis|stream summary]] and weather. This mood is what [[gamification]] writes onto the run's `StoryLine`, and each mood also carries a 4-char "sigil" and an optional accessory hint for the SVG renderer ([Temari.php:31](../../app/Services/Run/Story/Temari.php#L31)).
+A finished run gets a single **mood** instead — six values on [Temari](../../app/Services/Run/Story/Temari.php): `blazing` (PR / hard win), `easy` (easy / negative split), `wobbly` (heat strain), `gassed` (decoupling drift), `overloaded` (hard-zone heavy / overreaching), `chill` (rest / default). The selection cascade is `moodForActivity` ([Temari.php:116](../../app/Services/Run/Story/Temari.php#L116)); it reads the run's [[stream-analysis|stream summary]] and weather. This mood is what [[gamification]] writes onto the run's `StoryLine`, and each mood also carries a 4-char "sigil" and an optional accessory hint for the SVG renderer ([Temari.php:31](../../app/Services/Run/Story/Temari.php#L31)).
 
 The bridge between the two systems is `moodForVibe` ([Temari.php:148](../../app/Services/Run/Story/Temari.php#L148)): when there's no run to react to, the daily greeting still needs a mascot mood, so each vibe collapses onto the nearest run-mood.
 

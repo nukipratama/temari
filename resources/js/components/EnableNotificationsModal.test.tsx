@@ -15,37 +15,37 @@ describe('EnableNotificationsModal', () => {
     it('renders the title, body, and both CTAs when open', () => {
         render(<EnableNotificationsModal open onClose={vi.fn()} />);
         expect(
-            screen.getByText('Nyalain notifikasi dulu yuk'),
+            screen.getByText('Turn on notifications first'),
         ).toBeInTheDocument();
         expect(
-            screen.getByText(/tiap abis lari sama pas rekap/),
+            screen.getByText(/right after every run and at recap/),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Ke Pengaturan' }),
+            screen.getByRole('button', { name: 'Go to Settings' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Nanti aja' }),
+            screen.getByRole('button', { name: 'Not now' }),
         ).toBeInTheDocument();
     });
 
     it('names both channels so neither is presented as the only way', () => {
         render(<EnableNotificationsModal open onClose={vi.fn()} />);
         expect(
-            screen.getByText(/notifikasi HP atau Telegram/),
+            screen.getByText(/Push notifications or Telegram/),
         ).toBeInTheDocument();
     });
 
-    it('visits Pengaturan when the primary CTA is clicked', () => {
+    it('visits Settings when the primary CTA is clicked', () => {
         vi.mocked(router.visit).mockReset();
         render(<EnableNotificationsModal open onClose={vi.fn()} />);
-        fireEvent.click(screen.getByRole('button', { name: 'Ke Pengaturan' }));
-        expect(router.visit).toHaveBeenCalledWith('/pengaturan');
+        fireEvent.click(screen.getByRole('button', { name: 'Go to Settings' }));
+        expect(router.visit).toHaveBeenCalledWith('/settings');
     });
 
     it('calls onClose when the dismiss CTA is clicked', () => {
         const onClose = vi.fn();
         render(<EnableNotificationsModal open onClose={onClose} />);
-        fireEvent.click(screen.getByRole('button', { name: 'Nanti aja' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
         expect(onClose).toHaveBeenCalledOnce();
     });
 });

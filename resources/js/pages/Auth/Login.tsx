@@ -1,11 +1,11 @@
 import { Icon } from '@iconify/react';
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { useRef, useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
 import BrandMark from '@/components/BrandMark';
 import KartuMini from '@/components/card/KartuMini';
+import TemariProto from '@/components/temari/TemariProto';
 import PillButton from '@/components/ui/PillButton';
 import { bareLayout } from '@/layouts/BareShell';
 
@@ -18,18 +18,18 @@ interface LoginProps {
 const PILLARS: ReadonlyArray<{ icon: string; label: string; desc: string }> = [
     {
         icon: 'mdi:link-variant',
-        label: 'Aku baca 📖',
-        desc: 'Strava-mu nyambung otomatis',
+        label: 'I read 📖',
+        desc: 'Your Strava connects automatically',
     },
     {
         icon: 'mdi:cards-outline',
-        label: 'Aku catat ✍️',
-        desc: 'Tiap lari dapet kartunya',
+        label: 'I record ✍️',
+        desc: 'Every run gets its own card',
     },
     {
         icon: 'mdi:hand-heart-outline',
-        label: 'Aku temenin 🫶',
-        desc: 'Konsisten, bukan kenceng',
+        label: "I'm here for you 🫶",
+        desc: 'Consistency, not speed',
     },
 ];
 
@@ -40,11 +40,9 @@ const SUN_GLOW =
     'radial-gradient(circle, oklch(80% 0.14 55 / 0.6) 0%, oklch(72% 0.13 50 / 0.25) 28%, transparent 58%)';
 
 const FORM_CARD_SHADOW =
-    '0 20px 50px rgba(31,39,71,0.06), 0 0 0 1px rgba(31,39,71,0.06)';
+    '0 20px 50px rgba(36,28,84,0.06), 0 0 0 1px rgba(36,28,84,0.06)';
 
 // Strava button keeps #FC4C02 brand orange and the official Strava glyph per their guidelines.
-// Button label is localized ("Sambungkan dengan Strava") per explicit product decision; accept
-// the small risk that Strava brand review may flag it.
 export default function Login({
     authStravaUrl,
     from = null,
@@ -59,7 +57,7 @@ export default function Login({
 
     return (
         <>
-            <Head title="Masuk · Temari" />
+            <Head title="Log in · Temari" />
             <div className="grid grid-cols-1 min-h-screen lg:grid-cols-[1.05fr_1fr]">
                 <HeroSide />
                 <FormSide
@@ -111,18 +109,6 @@ function RouteEcho() {
 }
 
 function HeroSide() {
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const [playing, setPlaying] = useState(false);
-    // Click-to-play with sound: the click is the user gesture browsers require to
-    // allow audio, so the narrated ad plays unmuted. No autoplay (it's a 2.5min story).
-    // Only hide the overlay after play() resolves — if the browser rejects the call
-    // (e.g. interrupted by a second click) the button stays visible so the user can retry.
-    const playIntro = () => {
-        videoRef.current
-            ?.play()
-            .then(() => setPlaying(true))
-            .catch(() => {});
-    };
     return (
         <div
             className="relative flex flex-col items-center justify-center overflow-hidden px-8 pb-12 pt-24 text-cream sm:px-12 lg:px-16 lg:py-[54px]"
@@ -140,46 +126,18 @@ function HeroSide() {
             </div>
 
             <div className="relative z-10 w-full max-w-[560px] text-center xl:max-w-[620px]">
-                <div className="relative overflow-hidden rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.45)] ring-1 ring-cream/15">
-                    <video
-                        ref={videoRef}
-                        src="/videos/intro.mp4"
-                        poster="/videos/intro-poster.jpg"
-                        controls={playing}
-                        playsInline
-                        preload="metadata"
-                        className="block aspect-video w-full bg-sky-deep"
-                        onEnded={() => setPlaying(false)}
-                    >
-                        <track kind="captions" />
-                    </video>
-                    {!playing && (
-                        <button
-                            type="button"
-                            onClick={playIntro}
-                            aria-label="Putar video intro"
-                            className="focus-ring-on-sky group absolute inset-0 flex items-center justify-center bg-sky-deep/25 transition hover:bg-sky-deep/10"
-                        >
-                            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-cream/95 shadow-lg transition group-hover:scale-105">
-                                <Icon
-                                    icon="mdi:play"
-                                    width={32}
-                                    height={32}
-                                    className="ml-1 text-sky"
-                                    aria-hidden
-                                />
-                            </span>
-                        </button>
-                    )}
+                <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl bg-sky-deep shadow-[0_24px_60px_rgba(0,0,0,0.45)] ring-1 ring-cream/15">
+                    <TemariProto pose="glow" tone="sky" size={200} animate />
                 </div>
                 <h1 className="mt-7 font-display italic text-display-lg text-cream sm:text-display-xl">
-                    <span className="block whitespace-nowrap">Lari Kamu,</span>
+                    <span className="block whitespace-nowrap">Your Run,</span>
                     <span className="block whitespace-nowrap text-horizon">
-                        Gak Sendirian.
+                        Never Alone.
                     </span>
                 </h1>
                 <p className="mt-4 font-sans text-base leading-relaxed text-cream sm:text-lg">
-                    “Halo, aku Temari. Mulai sekarang, lari kamu aku temenin.”
+                    “Hi, I'm Temari. From now on, I'll be with you on every
+                    run.”
                 </p>
             </div>
         </div>
@@ -247,9 +205,9 @@ function FormSide({
 
             <div className="flex w-full max-w-[480px] items-center gap-4 rounded-2xl border border-cream-deep bg-cream px-4 py-4 2xl:max-w-[560px]">
                 <KartuMini
-                    name="10K Subuh"
+                    name="10K Sunrise"
                     rarity="legendary"
-                    mood="nyala"
+                    mood="blazing"
                     date="12 Jun"
                     edition={{ index: 3, total: 12 }}
                     polyline="~s{d@ofekSoRaMcPdMg@b^zFtV?bN{FtVf@b^bPdMnRaMlIqTdHqFfQcAfQcP?g[gQcPgQcAeHqFmIqT"
@@ -257,12 +215,12 @@ function FormSide({
                 />
                 <div>
                     <p className="font-sans text-sm font-semibold text-ink">
-                        Ini kartu beneran, bukan mockup
+                        This is a real card, not a mockup
                     </p>
                     <p className="mt-1 font-sans text-xs leading-relaxed text-ink-3">
-                        Tiap lari yang nyambung dari Strava-mu, Temari bikinin
-                        kartu koleksi kayak gini, lengkap sama rute dan mood
-                        hari itu.
+                        For every run that syncs from your Strava, Temari makes
+                        a collectible card just like this one, complete with the
+                        route and that day's mood.
                     </p>
                 </div>
             </div>
@@ -272,10 +230,10 @@ function FormSide({
                 style={{ boxShadow: FORM_CARD_SHADOW }}
             >
                 <h2 className="font-display italic text-display-xs text-ink">
-                    Selamat datang.
+                    Welcome.
                 </h2>
                 <p className="mt-2.5 font-sans text-sm leading-relaxed text-ink-2">
-                    Sambungin Strava-mu dulu. Temari udah nunggu di dalem.
+                    Connect your Strava first. Temari's waiting inside.
                 </p>
 
                 <a
@@ -291,7 +249,7 @@ function FormSide({
                         <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
                     </svg>
                     <span className="flex-1 px-12 text-center">
-                        Sambungkan dengan Strava
+                        Connect with Strava
                     </span>
                 </a>
 
@@ -310,7 +268,7 @@ function FormSide({
                             className="absolute left-5"
                         />
                         <span className="flex-1 px-12 text-center">
-                            Coba versi demo
+                            Try the demo
                         </span>
                     </PillButton>
                 )}
@@ -324,14 +282,13 @@ function FormSide({
                         className="mt-0.5 shrink-0 text-leaf-deep"
                     />
                     <span>
-                        Aku cuma pake Strava buat baca lari kamu doang, bukan
-                        yang lain.
+                        I only use Strava to read your runs, nothing else.
                     </span>
                 </p>
             </div>
 
             <p className="text-center text-label-micro text-ink-3">
-                Dibuat dengan ♥ oleh pelari, buat pelari
+                Made with ♥ by runners, for runners
             </p>
         </div>
     );

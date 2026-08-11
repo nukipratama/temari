@@ -1,0 +1,281 @@
+import { describe, expect, it } from 'vitest';
+
+import type { ActivityDetail, Rarity } from '@/types/inertia';
+
+import {
+    MOOD_UPPER,
+    atlHint,
+    atlTone,
+    ctlHint,
+    districtFromLocation,
+    formatIdDateUpper,
+    formatSignedForm,
+    featuredCardFor,
+    formatWeather,
+    kartuStripItem,
+    monotonyHint,
+    monotonyTone,
+    shortenLocation,
+    strainHint,
+    strainTone,
+    vibeSubtitleFor,
+} from './helpers';
+
+function runWith(
+    overrides: Partial<ActivityDetail>,
+    cardOverrides?: { rarity?: Rarity; id?: number; special_move?: string },
+): ActivityDetail {
+    return {
+        id: overrides.id ?? 1,
+        activity_id: overrides.activity_id ?? 99,
+        name: 'Run',
+        start_date_local: '2026-05-20T07:00',
+        distance: 5000,
+        elapsed_time: 1800,
+        trimp_edwards: 60,
+        average_heartrate: 145,
+        ...overrides,
+        activity: cardOverrides
+            ? {
+                  id: 99,
+                  user_id: 1,
+                  analyzed_at: '2026-05-20',
+                  run_card: {
+                      id: cardOverrides.id ?? 7,
+                      activity_id: 99,
+                      rarity: cardOverrides.rarity ?? 'common',
+                      special_move:
+                          cardOverrides.special_move ?? 'Steady Stride',
+                      badges: ['negative_split'],
+                  },
+              }
+            : undefined,
+    } as ActivityDetail;
+}
+
+describe('formatSignedForm', () => {
+    it('prepends + for positive form', () => {
+        expect(formatSignedForm(2.3)).toBe('+2.3');
+    });
+
+    it('keeps the - sign for negative form', () => {
+        expect(formatSignedForm(-1.7)).toBe('-1.7');
+    });
+});
+
+describe('vibeSubtitleFor', () => {
+    it('lowercases the vibe label and wraps it in "you\'re feeling …"', () => {
+        expect(vibeSubtitleFor('Fired Up')).toBe("you're feeling fired up.");
+    });
+});
+
+describe('featuredCardFor', () => {
+    it('returns null when the featured card id is null', () => {
+        const run = runWith(
+            {},
+            { id: 7, rarity: 'epic', special_move: 'Some Move' },
+        );
+        expect(featuredCardFor([run], null)).toBeNull();
+    });
+
+    it('returns null when no run matches the featured card id', () => {
+        const run = runWith(
+            {},
+            { id: 7, rarity: 'epic', special_move: 'Some Move' },
+        );
+        expect(featuredCardFor([run], 999)).toBeNull();
+    });
+
+    it('builds the display model for the server-chosen card', () => {
+        const chosen = runWith(
+            { id: 2, activity_id: 2, start_date_local: '2026-05-20' },
+            { id: 2, rarity: 'epic', special_move: 'Chosen One' },
+        );
+        const other = runWith(
+            { id: 3, activity_id: 3, start_date_local: '2026-05-21' },
+            { id: 3, rarity: 'legendary', special_move: 'Not This' },
+        );
+        const featured = featuredCardFor([other, chosen], 2);
+        expect(featured?.name).toBe('Chosen One');
+        // The CTA links to the card detail page, so it carries the card id, not the run id.
+        expect(featured?.cardId).toBe(2);
+    });
+});
+
+describe('kartuStripItem', () => {
+    it('returns null when the run has no attached card', () => {
+        expect(kartuStripItem(runWith({}))).toBeNull();
+    });
+
+    it('returns a strip item with rarity + key derived from card id', () => {
+        const run = runWith(
+            {},
+            { id: 42, rarity: 'rare', special_move: 'Cool Move' },
+        );
+        const item = kartuStripItem(run);
+        expect(item).toMatchObject({
+            key: 'card-42',
+            cardId: 42,
+            name: 'Cool Move',
+            rarity: 'rare',
+        });
+    });
+});
+
+describe('formatIdDateUpper', () => {
+    it('returns empty for null', () => {
+        expect(formatIdDateUpper(null)).toBe('');
+    });
+
+    it('returns empty for invalid ISO', () => {
+        expect(formatIdDateUpper('not-a-date')).toBe('');
+    });
+
+    it('uppercases the id-ID short weekday + day + month', () => {
+        const out = formatIdDateUpper('2026-05-20T07:00');
+        expect(out).toMatch(/^[A-Z]/);
+        expect(out).toBe(out.toUpperCase());
+    });
+});
+
+describe('MOOD_UPPER', () => {
+    it('uppercases every mood value', () => {
+        expect(MOOD_UPPER.blazing).toBe('NYALA');
+        expect(MOOD_UPPER.chill).toBe('ADEM');
+    });
+});
+
+describe('shortenLocation', () => {
+    it('returns null for null or empty', () => {
+        expect(shortenLocation(null)).toBeNull();
+        expect(shortenLocation('')).toBeNull();
+    });
+
+    it('returns the only segment when there is just one', () => {
+        expect(shortenLocation('Senayan')).toBe('Senayan');
+    });
+
+    it('keeps only the first two comma-separated segments', () => {
+        expect(
+            shortenLocation('Senayan, Jakarta Pusat, DKI Jakarta, Indonesia'),
+        ).toBe('Senayan, Jakarta Pusat');
+    });
+
+    it('skips empty segments', () => {
+        expect(shortenLocation(',,Senayan,,')).toBe('Senayan');
+    });
+});
+
+describe('districtFromLocation', () => {
+    it('returns null for null or empty', () => {
+        expect(districtFromLocation(null)).toBeNull();
+        expect(districtFromLocation('')).toBeNull();
+    });
+
+    it('returns the district (2nd segment), skipping the venue', () => {
+        expect(
+            districtFromLocation(
+                'Gelora Bung Karno, Jakarta Pusat, DKI Jakarta, Indonesia',
+            ),
+        ).toBe('Jakarta Pusat');
+    });
+
+    it('falls back to the only segment when there is no district', () => {
+        expect(districtFromLocation('Senayan')).toBe('Senayan');
+    });
+});
+
+describe('formatWeather', () => {
+    it('returns null when no fields are present', () => {
+        expect(formatWeather(null, null, null)).toBeNull();
+        expect(formatWeather(null, null, false)).toBeNull();
+    });
+
+    it('formats temperature, humidity, and rain when present', () => {
+        expect(formatWeather(28.4, 75, true)).toBe('28°C · 75% · rain');
+    });
+
+    it('omits rain when false', () => {
+        expect(formatWeather(28, 75, false)).toBe('28°C · 75%');
+    });
+});
+
+describe('ctlHint', () => {
+    it('returns empty for null', () => {
+        expect(ctlHint(null)).toBe('');
+        expect(ctlHint(undefined)).toBe('');
+    });
+
+    it('classifies ctl by threshold', () => {
+        expect(ctlHint(10)).toBe('still building');
+        expect(ctlHint(30)).toBe('trending up');
+        expect(ctlHint(60)).toBe('stable');
+        expect(ctlHint(100)).toBe('high');
+    });
+});
+
+describe('atlHint', () => {
+    it('returns empty for null', () => {
+        expect(atlHint(null)).toBe('');
+    });
+
+    it('classifies atl by threshold', () => {
+        expect(atlHint(10)).toBe('fresh');
+        expect(atlHint(40)).toBe('normal');
+        expect(atlHint(70)).toBe('tired');
+        expect(atlHint(100)).toBe('heavy');
+    });
+});
+
+describe('strainHint', () => {
+    it('returns empty for null', () => {
+        expect(strainHint(null)).toBe('');
+    });
+
+    it('classifies strain by threshold', () => {
+        expect(strainHint(100)).toBe('light');
+        expect(strainHint(300)).toBe('moderate');
+        expect(strainHint(600)).toBe('heavy');
+    });
+});
+
+describe('monotonyHint', () => {
+    it('returns empty for null', () => {
+        expect(monotonyHint(null)).toBe('');
+    });
+
+    it('classifies monotony by threshold', () => {
+        expect(monotonyHint(1.2)).toBe('healthy');
+        expect(monotonyHint(1.7)).toBe('high');
+        expect(monotonyHint(2.5)).toBe('monotonous');
+    });
+});
+
+describe('atlTone / strainTone / monotonyTone', () => {
+    it('reads calm for null (nothing to warn about yet)', () => {
+        expect(atlTone(null)).toBe('text-leaf');
+        expect(strainTone(null)).toBe('text-leaf');
+        expect(monotonyTone(null)).toBe('text-leaf');
+    });
+
+    it('escalates atl from calm to alert with the same buckets as atlHint', () => {
+        expect(atlTone(10)).toBe('text-leaf');
+        expect(atlTone(70)).toBe('text-citrus');
+        expect(atlTone(100)).toBe('text-ember');
+    });
+
+    it('escalates strain from calm to alert with the same buckets as strainHint', () => {
+        expect(strainTone(100)).toBe('text-leaf');
+        expect(strainTone(300)).toBe('text-citrus');
+        expect(strainTone(600)).toBe('text-ember');
+    });
+
+    // Regression: monotony >2.0 is the same hard-flag threshold Readiness caps
+    // a session for, but the Kondisi card used to render this row a fixed
+    // leaf/green regardless of value — the loudest state read as the calmest.
+    it('reads monotony >2.0 as alert, matching the Readiness hard-flag threshold', () => {
+        expect(monotonyTone(1.2)).toBe('text-leaf');
+        expect(monotonyTone(1.7)).toBe('text-citrus');
+        expect(monotonyTone(3.15)).toBe('text-ember');
+    });
+});

@@ -5,19 +5,19 @@ import PillLink from './PillLink';
 
 describe('PillLink', () => {
     it('renders an anchor (not a button) so it is valid inside link-free markup', () => {
-        render(<PillLink href="/kartu/5">Lihat kartu</PillLink>);
-        const link = screen.getByRole('link', { name: /lihat kartu/i });
-        expect(link).toHaveAttribute('href', '/kartu/5');
+        render(<PillLink href="/cards/5">View card</PillLink>);
+        const link = screen.getByRole('link', { name: /view card/i });
+        expect(link).toHaveAttribute('href', '/cards/5');
         expect(link.tagName).toBe('A');
     });
 
     it('applies the pill variant classes and passes className through', () => {
         render(
             <PillLink href="/x" className="mt-6">
-                Klik
+                Click
             </PillLink>,
         );
-        const link = screen.getByRole('link', { name: /klik/i });
+        const link = screen.getByRole('link', { name: /click/i });
         expect(link.className).toMatch(/mt-6/);
         expect(link.className).toMatch(/rounded-full/);
     });
@@ -25,33 +25,33 @@ describe('PillLink', () => {
     it('applies tone-specific classes', () => {
         render(
             <PillLink href="/x" tone="horizon">
-                Klik
+                Click
             </PillLink>,
         );
-        expect(screen.getByRole('link', { name: /klik/i }).className).toContain(
-            'bg-horizon',
-        );
+        expect(
+            screen.getByRole('link', { name: /click/i }).className,
+        ).toContain('bg-horizon');
     });
 
     it('applies size-specific classes', () => {
         render(
             <PillLink href="/x" size="sm">
-                Klik
+                Click
             </PillLink>,
         );
-        expect(screen.getByRole('link', { name: /klik/i }).className).toContain(
-            'text-[13px]',
-        );
+        expect(
+            screen.getByRole('link', { name: /click/i }).className,
+        ).toContain('text-[13px]');
     });
 
     it('fires onClick when clicked', () => {
         const onClick = vi.fn();
         render(
             <PillLink href="/x" onClick={onClick}>
-                Klik
+                Click
             </PillLink>,
         );
-        fireEvent.click(screen.getByRole('link', { name: /klik/i }));
+        fireEvent.click(screen.getByRole('link', { name: /click/i }));
         expect(onClick).toHaveBeenCalledOnce();
     });
 });

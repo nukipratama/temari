@@ -40,7 +40,7 @@ describe('RunListRow', () => {
     it('links to /aktivitas/{activity_id}', () => {
         render(<RunListRow detail={detail({ activity_id: 7 })} />);
         expect(screen.getByRole('link').getAttribute('href')).toBe(
-            '/aktivitas/7',
+            '/activities/7',
         );
     });
 
@@ -61,29 +61,29 @@ describe('RunListRow', () => {
     });
 
     it('derives a mood from TRIMP when none is provided', () => {
-        // TRIMP=70 (default fixture) falls in the `nyala` aerobic bucket.
+        // TRIMP=70 (default fixture) falls in the `blazing` aerobic bucket.
         // Mood surfaces as the MoodChip label text now (the Temari aria-label was dropped in the Badge refactor).
         render(<RunListRow detail={detail()} />);
-        expect(screen.getByText('Nyala')).toBeInTheDocument();
+        expect(screen.getByText('Blazing')).toBeInTheDocument();
     });
 
     it('uses passed mood when provided (overrides derivation)', () => {
-        // TRIMP=70 would derive `nyala`, but the explicit `mood` prop wins.
-        render(<RunListRow detail={detail()} mood="adem" />);
-        expect(screen.getByText('Adem')).toBeInTheDocument();
-        expect(screen.queryByText('Nyala')).not.toBeInTheDocument();
+        // TRIMP=70 would derive `blazing`, but the explicit `mood` prop wins.
+        render(<RunListRow detail={detail()} mood="chill" />);
+        expect(screen.getByText('Chill')).toBeInTheDocument();
+        expect(screen.queryByText('Blazing')).not.toBeInTheDocument();
     });
 
-    it('derives lemes for a crushing TRIMP', () => {
+    it('derives gassed for a crushing TRIMP', () => {
         render(<RunListRow detail={detail({ trimp_edwards: 220 })} />);
-        expect(screen.getByText('Lemes')).toBeInTheDocument();
+        expect(screen.getByText('Gassed')).toBeInTheDocument();
     });
 
     it('renders **bold** markers in the note as <strong>', () => {
         render(
             <RunListRow
                 detail={detail()}
-                note={{ oneline: 'dapet **PR** juga', mood: 'nyala' }}
+                note={{ oneline: 'also got a **PR**', mood: 'blazing' }}
             />,
         );
         const strong = screen.getByText('PR');

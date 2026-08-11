@@ -9,9 +9,8 @@ it('returns a non-empty label for every case', function (Badge $badge): void {
 })->with(Badge::cases());
 
 it('exposes a representative label', function (): void {
-    expect(Badge::HariPanas->label())->toBe('🔥 Tahan Gerah')
-        ->and(Badge::HariSpesial->label())->toBe('🎉 Hari Spesial')
-        ->and(Badge::LawanAngin->label())->toBe('🌬️ Lawan Angin');
+    expect(Badge::HariPanas->label())->toBe('🔥 Heat Tamer')
+        ->and(Badge::LawanAngin->label())->toBe('🌬️ Headwind');
 });
 
 it('lists the tracked badges for unlock criteria', function (): void {
@@ -38,13 +37,13 @@ it('exposes an emoji-free prompt label for every case', function (Badge $badge):
 
 it('maps representative badges to their emoji-free prompt labels', function (): void {
     expect(Badge::NegativeSplit->promptLabel())->toBe('Negative Split')
-        ->and(Badge::PejuangHujan->promptLabel())->toBe('Pejuang Hujan')
-        ->and(Badge::TahanDiri->promptLabel())->toBe('Anti Kalap');
+        ->and(Badge::PejuangHujan->promptLabel())->toBe('Rain Warrior')
+        ->and(Badge::TahanDiri->promptLabel())->toBe('Held Back');
 });
 
 it('maps a list of slugs to prompt labels, dropping unknown slugs', function (): void {
-    expect(Badge::promptLabelsFor(['negative_split', 'not_a_badge', 'pejuang_hujan']))
-        ->toBe(['Negative Split', 'Pejuang Hujan']);
+    expect(Badge::promptLabelsFor(['negative_split', 'not_a_badge', 'rain_warrior']))
+        ->toBe(['Negative Split', 'Rain Warrior']);
 });
 
 it('builds a slug to label catalog covering every case', function (): void {

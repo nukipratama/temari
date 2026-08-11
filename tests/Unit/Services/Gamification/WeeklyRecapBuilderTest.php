@@ -211,16 +211,16 @@ it('carries the run mood onto the best card when a post-run story line exists', 
     StoryLine::factory()->for($user)->create([
         'activity_id' => $activity->id,
         'kind' => StoryLine::KIND_POST_RUN,
-        'mood' => 'nyala',
+        'mood' => 'blazing',
     ]);
 
     $recap = $this->builder->forUser($user);
 
-    expect($recap->bestCard['mood'])->toBe('nyala');
+    expect($recap->bestCard['mood'])->toBe('blazing');
 });
 
 it('surfaces the nearest incomplete goal with a remainder label', function (): void {
-    // A brand-new user: the "catat lari pertama" goal sits at 0/1, so it is the
+    // A brand-new user: the "log your first run" goal sits at 0/1, so it is the
     // nearest incomplete goal and needs 1 more.
     $user = User::factory()->make(['id' => 1]);
     $recap = $this->builder->forUser($user);
@@ -229,7 +229,7 @@ it('surfaces the nearest incomplete goal with a remainder label', function (): v
         ->and($recap->nearestGoal['target'])->toBeGreaterThan(0)
         ->and($recap->nearestGoal['ratio'])->toBeGreaterThanOrEqual(0.0)
         ->and($recap->nearestGoal['ratio'])->toBeLessThanOrEqual(1.0)
-        ->and($recap->nearestGoal['remainder_label'])->toContain('lagi');
+        ->and($recap->nearestGoal['remainder_label'])->toContain('to go');
 });
 
 it('returns a null nearest goal when every goal is already complete', function (): void {

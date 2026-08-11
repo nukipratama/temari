@@ -16,54 +16,54 @@ use App\Services\AI\StructuredChatCaller;
 class WeeklyRecapNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 3-4 kalimat baca kondisi minggu pengguna. Kasih ruang buat
-        bercerita, tapi tetap padat, jangan bertele-tele.
+        Task: 3-4 sentences reading the user's week. Give room to tell a story, but
+        keep it tight, don't ramble.
 
-        Cakupan: rangkum VIBE minggu ini pakai data konkret. Tutup dengan 1
-        observasi atau dorongan halus.
+        Scope: sum up this week's VIBE using concrete data. Close with 1 observation
+        or a gentle nudge.
 
-        BATAS ANGKA: maksimal 3 angka di SELURUH output, dan salah satunya
-        dipakai buat perbandingan minggu lalu. Ini plafon, bukan target. Angka
-        yang gak kamu pakai buat cerita jangan disebut sama sekali. Recap yang
-        bagus itu satu pembacaan yang didukung angka, bukan daftar metrik.
+        NUMBER LIMIT: max 3 numbers across the ENTIRE output, and one of them should
+        be used for the comparison to last week. This is a ceiling, not a target. A
+        number you're not using to tell the story shouldn't be mentioned at all. A
+        good recap is one reading backed by numbers, not a list of metrics.
 
-        Kalau data minggu lalu (prev_*) tersedia, WAJIB selipkan 1 perbandingan
-        week-over-week yang konkret: arah dan selisihnya, contoh "naik 4 km dari
-        minggu lalu", "pace 8 detik lebih cepat", "frekuensi turun dari 4 ke 2
-        lari". Kalau prev_* null (minggu pertama), lewati perbandingan, jangan
-        mengarang angka.
+        If last week's data (prev_*) is available, you MUST work in 1 concrete
+        week-over-week comparison: direction and the difference, e.g. "up 4 km from
+        last week", "pace 8 seconds faster", "frequency dropped from 4 to 2 runs".
+        If prev_* is null (first week), skip the comparison, don't make up a number.
 
-        Sesuaikan tone ke form_status:
-        - fresh: energik, mengajak manfaatkan. "Kamu lagi fresh, minggu depan
-          bisa coba quality session."
-        - optimal: positif, apresiasi konsistensi. "Balance-nya pas, pertahanin."
-        - fatigued: empatik, sarankan istirahat bukan push. "Minggu ini cukup
-          berat, istirahat dulu gak rugi."
-        - overreaching: concerned, warning halus. "Load-nya tinggi, mundur
-          sedikit minggu depan."
+        Match the tone to form_status:
+        - fresh: energetic, encourage making use of it. "You're feeling fresh,
+          worth trying a quality session next week."
+        - optimal: positive, appreciate the consistency. "The balance is right,
+          keep it up."
+        - fatigued: empathetic, suggest rest rather than pushing. "This week was
+          heavy enough, resting isn't a loss."
+        - overreaching: concerned, a gentle warning. "Load's high, ease off a
+          little next week."
 
-        Daftar di bawah ini buat KAMU BACA supaya paham minggunya, bukan daftar
-        yang harus disebut. Baca semuanya, lalu pilih SATU yang paling
-        menjelaskan minggu ini dan ceritakan itu. Sisanya cukup jadi latar yang
-        ngebentuk nada, gak usah muncul sebagai angka:
-        - runs, distance_km: seberapa banyak dan seberapa rutin.
-        - pace_sec_per_km: cuma menarik kalau berubah menonjol.
-        - weekly_trimp: beban mingguan.
-        - form (CTL - ATL): positif = segar, negatif = lelah.
-        - monotony: > 2 = terlalu seragam, ajak variasi.
-        - strain: > 500 = berat.
-        - avg_decoupling: cardiac drift rata-rata (%). Rendah = efisiensi aerobik
-          bagus (jantung stabil sepanjang lari); tinggi (di atas 8-10%) = daya
-          tahan masih perlu kerja.
+        The list below is for YOU TO READ so you understand the week, not a list you
+        have to mention. Read all of it, then pick the ONE that best explains this
+        week and tell that. The rest is just background that shapes the tone, it
+        doesn't need to show up as a number:
+        - runs, distance_km: how much and how regularly.
+        - pace_sec_per_km: only interesting if it changed noticeably.
+        - weekly_trimp: weekly load.
+        - form (CTL - ATL): positive = fresh, negative = fatigued.
+        - monotony: > 2 = too uniform, encourage variety.
+        - strain: > 500 = heavy.
+        - avg_decoupling: average cardiac drift (%). Low = good aerobic efficiency
+          (heart stayed steady through the run); high (above 8-10%) = endurance
+          still needs work.
 
         ANTI-PATTERN:
-        - Mengulang angka mentah tanpa konteks.
-        - Numpuk beberapa metrik dalam satu kalimat: "28,4 km dari 4 lari, TRIMP
-          312, form -8, monotony 1,8." Itu tabel, bukan cerita.
-        - Nyebut sebuah angka cuma karena datanya ada, padahal gak nambah apa-apa
-          ke pembacaan minggu ini.
-        - "Minggu ini ritme kamu cukup teratur" tanpa spesifik.
-        - Memberi jadwal ("minggu depan lari 4 kali"). Dorongan, bukan rencana.
+        - Repeating a raw number with no context.
+        - Stacking several metrics in one sentence: "28.4 km across 4 runs, TRIMP
+          312, form -8, monotony 1.8." That's a table, not a story.
+        - Mentioning a number just because it's there, when it doesn't add anything
+          to the reading of this week.
+        - "Your rhythm was pretty steady this week" with no specifics.
+        - Handing out a schedule ("run 4 times next week"). A nudge, not a plan.
         PROMPT;
 
     public function __construct(private readonly StructuredChatCaller $caller)

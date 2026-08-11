@@ -5,8 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 import AksesoriUnlockModal from './AksesoriUnlockModal';
 
 const epikUnlock = {
-    unlock_key: 'accessory.ikat_kepala_epik',
-    name: 'Ikat Kepala Istimewa',
+    unlock_key: 'accessory.headband_epic',
+    name: 'Special Headband',
     icon: 'mdi:star',
     is_major: true,
 };
@@ -35,7 +35,7 @@ describe('AksesoriUnlockModal', () => {
 
     it('renders the unlock name for a major unlock', () => {
         render(<AksesoriUnlockModal unlock={epikUnlock} onClose={vi.fn()} />);
-        expect(screen.getByText(/Ikat Kepala Istimewa/)).toBeInTheDocument();
+        expect(screen.getByText(/Special Headband/)).toBeInTheDocument();
     });
 
     it('exposes a labelled modal dialog', () => {
@@ -64,25 +64,25 @@ describe('AksesoriUnlockModal', () => {
         expect(dialog.contains(document.activeElement)).toBe(true);
     });
 
-    it('calls onClose when "Nanti aja" is clicked', () => {
+    it('calls onClose when "Not now" is clicked', () => {
         const onClose = vi.fn();
         render(<AksesoriUnlockModal unlock={epikUnlock} onClose={onClose} />);
-        fireEvent.click(screen.getByText('Nanti aja'));
+        fireEvent.click(screen.getByText('Not now'));
         expect(onClose).toHaveBeenCalledOnce();
     });
 
-    it('renders the "Pakai sekarang" button for the equip action', () => {
+    it('renders the "Equip now" button for the equip action', () => {
         render(<AksesoriUnlockModal unlock={epikUnlock} onClose={vi.fn()} />);
-        expect(screen.getByText('Pakai sekarang')).toBeInTheDocument();
+        expect(screen.getByText('Equip now')).toBeInTheDocument();
     });
 
-    it('calls onClose when "Pakai sekarang" is clicked', () => {
+    it('calls onClose when "Equip now" is clicked', () => {
         const onClose = vi.fn();
         vi.mocked(router.visit).mockReset();
         render(<AksesoriUnlockModal unlock={epikUnlock} onClose={onClose} />);
-        fireEvent.click(screen.getByText('Pakai sekarang'));
+        fireEvent.click(screen.getByText('Equip now'));
         expect(onClose).toHaveBeenCalledOnce();
-        expect(router.visit).toHaveBeenCalledWith('/aksesori', {
+        expect(router.visit).toHaveBeenCalledWith('/accessories', {
             preserveScroll: false,
         });
     });

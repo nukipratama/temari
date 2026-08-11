@@ -46,7 +46,7 @@ export default function ErrorBanner() {
                 <button
                     type="button"
                     onClick={() => setDismissed(true)}
-                    aria-label="Tutup"
+                    aria-label="Close"
                     className="focus-ring -m-1 rounded p-1 text-ink-3 transition hover:text-ink"
                 >
                     <Icon icon="mdi:close" width={16} height={16} />

@@ -47,7 +47,7 @@ it('weaves the card context (move or distance) into the flavor', function (): vo
     // Every template carries either the move name or the formatted distance.
     expect($flavor === '' ? '' : $flavor)
         ->toBeString()
-        ->and(str_contains($flavor, 'Threshold Hold') || str_contains($flavor, '10,0'))
+        ->and(str_contains($flavor, 'Threshold Hold') || str_contains($flavor, '10.0'))
         ->toBeTrue();
 });
 
@@ -76,21 +76,21 @@ it('appends a badge coda when the card carries a known badge', function (): void
 
     $flavor = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::CardFlavor, $card->id));
 
-    expect($flavor)->toContain('Paruh kedua');
+    expect($flavor)->toContain('Second half');
 });
 
-it('appends the lawan_angin badge coda', function (): void {
+it('appends the headwind badge coda', function (): void {
     $card = seededCard(Rarity::Uncommon, 'Wind Breaker', [Badge::LawanAngin->value]);
 
     $flavor = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::CardFlavor, $card->id));
 
-    expect($flavor)->toContain('Angin kencang gak bikin kamu mundur.');
+    expect($flavor)->toContain("Strong wind didn't slow you down.");
 });
 
 it('falls back to a flat line when the card is missing', function (): void {
     $flavor = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::CardFlavor, 999_999));
 
-    expect($flavor)->toBe('Kartu ini lahir dari sesi yang tenang tapi solid.');
+    expect($flavor)->toBe('This card was born from a quiet but solid session.');
 });
 
 it('varies the ecosystem briefing voices by seed deterministically', function (): void {
@@ -134,7 +134,7 @@ it('keeps the subject-only seed when the discriminator is null', function (): vo
     // non-discriminated determinism (and the first-variant default) is preserved.
     $copy = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, 0, null));
 
-    expect($copy)->toBe('Bulan ini ritme kamu jalan terus. Gak ngotot, gak juga ngilang. Konsisten yang aku suka.');
+    expect($copy)->toBe('Your rhythm kept going this month. Not forcing it, not disappearing either. The kind of consistent I like to see.');
 });
 
 it('returns deterministic copy for every subject-free analysis arm', function (AnalysisType $type, string $expected): void {
@@ -142,13 +142,12 @@ it('returns deterministic copy for every subject-free analysis arm', function (A
 
     expect($copy)->toBe($expected);
 })->with([
-    'briefing mascot voice' => [AnalysisType::BriefingMascotVoice, "Tempo ringan, 35-45 menit.\n\nRitme kamu kebaca stabil beberapa minggu ini dan belum ada sesi quality sejak minggu lalu, jadi hari ini aku rasa muat satu tempo. Warmup 10 menit santai, tempo 15-20 menit sedikit lebih cepat dari pace rata-ratamu, terus cooldown, cadence di 175+.\n\nYang perlu diperhatikan: kalau HR cepat naik padahal pelan, mundur ke run-walk 15-25 menit atau berhenti di cooldown. Cuaca terasa panas atau badan masih lemes, rest juga tidak rugi."],
-    'run insight splits (no detail)' => [AnalysisType::RunInsightSplits, 'Splits-nya belum kebaca lengkap.'],
-    'run insight zones (no detail)' => [AnalysisType::RunInsightZones, 'Distribusi zone-nya belum kebaca lengkap.'],
-    'weekly recap' => [AnalysisType::WeeklyRecap, 'Minggu ini ritme kamu cukup teratur. Volume lari masuk akal, recovery juga keurus.'],
-    'pr context' => [AnalysisType::PrContext, 'PR-nya hasil dari konsistensi minggu-minggu sebelumnya, bukan kebetulan.'],
-    'aku profile voice' => [AnalysisType::AkuProfileVoice, 'Lari kamu lebih sering **adem** daripada digas, dan itu kelihatan di caranya numpuk: pelan, rutin, gak pernah lompat jauh. Tipe yang ngebangun base sabar. Terusin ritmenya, aku catat semuanya di sini.'],
-    'monthly recap' => [AnalysisType::MonthlyRecap, 'Bulan ini ritme kamu jalan terus. Gak ngotot, gak juga ngilang. Konsisten yang aku suka.'],
+    'briefing mascot voice' => [AnalysisType::BriefingMascotVoice, "Easy tempo, 35-45 minutes.\n\nYour rhythm's read steady these past few weeks and there hasn't been a quality session since last week, so today I think there's room for a tempo. 10-minute easy warmup, 15-20 minute tempo a bit faster than your average pace, then cooldown, cadence at 175+.\n\nWhat to watch: if HR climbs fast even at an easy pace, back off to a 15-25 minute run-walk or stop at the cooldown. If the weather's hot or you're still feeling wiped, resting isn't a loss either."],
+    'run insight (no detail)' => [AnalysisType::RunInsight, '[]'],
+    'weekly recap' => [AnalysisType::WeeklyRecap, 'Your rhythm was pretty steady this week. Volume was reasonable, recovery got taken care of too.'],
+    'pr context' => [AnalysisType::PrContext, 'This PR is the result of consistency over the past few weeks, not luck.'],
+    'aku profile voice' => [AnalysisType::AkuProfileVoice, "Your runs lean more **chill** than pushed, and it shows in how it adds up: slow, regular, never a big jump. The type who builds a base patiently. Keep the rhythm going, I'm tracking all of it here."],
+    'monthly recap' => [AnalysisType::MonthlyRecap, 'Your rhythm kept going this month. Not forcing it, not disappearing either. The kind of consistent I like to see.'],
 ]);
 
 it('weaves the run distance into the post-run speech', function (): void {
@@ -157,49 +156,52 @@ it('weaves the run distance into the post-run speech', function (): void {
 
     $speech = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PostRunSpeech, $activity->id));
 
-    expect($speech)->toContain('5,5 km');
+    expect($speech)->toContain('5.5 km');
+});
+
+it('does not cycle the post-run speech in lockstep with consecutive activity ids', function (): void {
+    // Regression for the demo feed's most visible defect: with the raw
+    // sequential activity id as the pool seed, every 6th run in the Riwayat
+    // feed rendered the byte-identical line. Consecutive real ids must land
+    // on a scattered, not rhythmic, set of phrases.
+    $lines = [];
+    for ($i = 0; $i < 18; $i++) {
+        $activity = Activity::factory()->create();
+        ActivityDetail::factory()->create(['activity_id' => $activity->id, 'distance' => 8000.0]);
+        $lines[] = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PostRunSpeech, $activity->id));
+    }
+
+    expect(count(array_unique($lines)))->toBeGreaterThanOrEqual(8);
 });
 
 it('falls back to a flat post-run speech when the activity detail is missing', function (): void {
     $speech = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PostRunSpeech, 999_999));
 
-    expect($speech)->toBe('Selesai juga. Konsisten kayak gini yang aku suka.');
+    expect($speech)->toBe('Done. This is the kind of consistency I like to see.');
 });
 
-it('reads the run-insight types off the run itself, not a seeded variant', function (AnalysisType $type): void {
+it('reads the run-insight claims off the run itself, not a seeded variant', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->create([
         'activity_id' => $activity->id,
         'average_cadence' => 85.0,
         'average_heartrate' => 150.0,
         'distance' => 5000.0,
+        'stream_summary' => ['decoupling_pct' => 6.5],
     ]);
 
-    $insights = app(RuleBasedRunInsights::class);
-    $expected = match ($type) {
-        AnalysisType::RunInsightTechnical => $insights->technical($detail->fresh()),
-        AnalysisType::RunInsightSplits => $insights->splits($detail->fresh()),
-        AnalysisType::RunInsightZones => $insights->zones($detail->fresh()),
-    };
+    $expected = app(RuleBasedRunInsights::class)->claims($detail->fresh());
+    $insight = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::RunInsight, $activity->id));
 
-    $insight = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow($type, $activity->id));
+    expect($expected)->not->toBe([])
+        ->and(json_decode($insight, true))->toBe($expected);
+});
 
-    expect($insight)->toBe($expected);
-})->with([
-    'technical' => [AnalysisType::RunInsightTechnical],
-    'splits' => [AnalysisType::RunInsightSplits],
-    'zones' => [AnalysisType::RunInsightZones],
-]);
+it('falls back to an empty claims list when the insight detail is missing', function (): void {
+    $insight = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::RunInsight, 999_999));
 
-it('falls back to a flat line when the insight detail is missing', function (AnalysisType $type, string $expected): void {
-    $insight = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow($type, 999_999));
-
-    expect($insight)->toBe($expected);
-})->with([
-    'technical' => [AnalysisType::RunInsightTechnical, 'Detail teknis-nya belum kebaca lengkap.'],
-    'splits' => [AnalysisType::RunInsightSplits, 'Splits-nya belum kebaca lengkap.'],
-    'zones' => [AnalysisType::RunInsightZones, 'Distribusi zone-nya belum kebaca lengkap.'],
-]);
+    expect($insight)->toBe('[]');
+});
 
 it('weaves the snapshot real numbers into the weekly recap', function (): void {
     $snapshot = WeeklySnapshot::factory()->create([
@@ -210,9 +212,9 @@ it('weaves the snapshot real numbers into the weekly recap', function (): void {
 
     $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
 
-    expect($recap)->toContain('24,6')
+    expect($recap)->toContain('24.6')
         ->and($recap)->toContain('4')
-        ->and($recap)->toContain('recovery minggu depan');
+        ->and($recap)->toContain('recovery next week');
 });
 
 it('adds a real-signal coda to the post-run speech (negative split)', function (): void {
@@ -227,8 +229,8 @@ it('adds a real-signal coda to the post-run speech (negative split)', function (
 
     $speech = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PostRunSpeech, $activity->id));
 
-    expect($speech)->toContain('8,0 km')
-        ->and($speech)->toContain('Paruh kedua malah lebih kencang');
+    expect($speech)->toContain('8.0 km')
+        ->and($speech)->toContain('Second half actually got faster');
 });
 
 it('uses km-less flavor templates when the card has no distance', function (): void {
@@ -258,8 +260,8 @@ it('omits the badge coda when the card carries only unknown badges', function ()
 
     // Known badge appends a coda sentence; unknown badge appends nothing, so the
     // bare-base copy is strictly shorter than its sibling's badge-decorated copy.
-    expect($withCoda)->toContain('Pace di bawah 5 per km, kencang.')
-        ->and($withoutCoda)->not->toContain('Pace di bawah 5 per km, kencang.');
+    expect($withCoda)->toContain('Sub-5 pace per km, fast.')
+        ->and($withoutCoda)->not->toContain('Sub-5 pace per km, fast.');
 });
 
 it('keeps all copy free of em-dashes', function (): void {

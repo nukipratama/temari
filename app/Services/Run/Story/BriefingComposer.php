@@ -80,20 +80,20 @@ class BriefingComposer
             return null;
         }
         if ($hoursSince < 72) {
-            return "{$hoursSince} jam";
+            return "{$hoursSince}h";
         }
         $days = (int) floor($hoursSince / 24);
 
-        return "{$days} hari";
+        return "{$days} days";
     }
 
     private function streakLabel(?int $daysSince): ?string
     {
         return match (true) {
             $daysSince === null => null,
-            $daysSince === 0 => 'Lari hari ini',
-            $daysSince === 1 => 'Kemarin lari',
-            default => "Sudah {$daysSince} hari",
+            $daysSince === 0 => 'Ran today',
+            $daysSince === 1 => 'Ran yesterday',
+            default => "{$daysSince} days ago",
         };
     }
 }

@@ -35,10 +35,17 @@ final readonly class RarityScorer
      *  +3 PR set
      *  +2 negative split
      *  +2 long run (>=12km)
+     *  +2 executed a planned Tempo/Interval session at or faster than its prescribed pace
      *  +1 first distance bracket
      *  +1 per badge earned
      *  +1 zone discipline (<10% Z3+ on >=10km)
      *  +1 weekly consistency (>=3 runs this week)
+     *
+     * Added 2026-08-10 (Slice 7): the quality-execution point. Before it, the
+     * non-distance/non-PR ceiling was 8 — a well-executed easy run could
+     * already reach Rare, but never Epic/Legendary without distance or a PR.
+     * This gives a well-executed *quality* run (Slice 6's `PlannedSession`)
+     * its own path to the top tiers, raising that ceiling to 10.
      *
      * @param  array<int, string>  $badges
      */
@@ -62,6 +69,9 @@ final readonly class RarityScorer
         if ($distance >= BadgeEvaluator::LONG_SLOW_DISTANCE_THRESHOLD_M) {
             $score += 2;
         }
+        if ($context->qualitySessionPaceMet) {
+            $score += 2;
+        }
         if ($context->isFirstDistanceBracket) {
             $score += 1;
         }
@@ -79,20 +89,24 @@ final readonly class RarityScorer
     /**
      * Map a point total to a rarity tier.
      *
-     * Tiers: 0-2 Biasa, 3-4 Berkesan, 5-6 Langka, 7-8 Istimewa, 9+ Legendaris
+     * Tiers: 0-4 Common, 5-6 Uncommon, 7-8 Rare, 9 Epic, 10+ Legendary
      *
-     * Fitted against 155 real runs rather than chosen: the boundaries are the
-     * closest integers that stop Langka being the most common tier. It settles
-     * at 18.1% of cards, and is stable whether the athlete's max HR is read
-     * before or after ingest corrects it.
+     * Refitted 2026-08-10 against `run:compare-recalibration`'s output on the
+     * 127-run demo corpus (this was last fitted against 155 runs at 18.1%
+     * Rare; the old bands had since drifted to Uncommon modal at 31.5% over
+     * Common's 24.4% on this corpus). The new cutoffs are read straight off
+     * that run's recomputed score percentiles (p50=4, p75=6, p90=8, p95=9),
+     * landing at Common 50%, Uncommon 25%, Rare 15%, Epic 5%, Legendary 5% —
+     * Common is modal again, and Rare sits in the same order of magnitude as
+     * the original 18.1% fit.
      */
     public function fromScore(int $score): Rarity
     {
         return match (true) {
-            $score >= 9 => Rarity::Legendary,
-            $score >= 7 => Rarity::Epic,
-            $score >= 5 => Rarity::Rare,
-            $score >= 3 => Rarity::Uncommon,
+            $score >= 10 => Rarity::Legendary,
+            $score >= 9 => Rarity::Epic,
+            $score >= 7 => Rarity::Rare,
+            $score >= 5 => Rarity::Uncommon,
             default => Rarity::Common,
         };
     }

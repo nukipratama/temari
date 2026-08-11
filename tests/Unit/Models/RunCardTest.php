@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 use App\Enums\Badge;
 use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\RunCard;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
@@ -67,13 +69,45 @@ it('badgeCountsForUser scopes to the given user', function (): void {
     expect(RunCard::badgeCountsForUser($user->id)[Badge::AnakPagi->value])->toBe(0);
 });
 
+it('allBadgeCountsForUser counts every badge case, not just tracked ones', function (): void {
+    $user = User::factory()->create();
+    RunCard::factory()->for(Activity::factory()->for($user))->create([
+        'badges' => [Badge::Kilat->value, Badge::AnakPagi->value],
+    ]);
+
+    $counts = RunCard::allBadgeCountsForUser($user->id);
+
+    expect($counts[Badge::Kilat->value])->toBe(1)
+        ->and($counts[Badge::AnakPagi->value])->toBe(1)
+        ->and($counts)->toHaveCount(count(Badge::cases()));
+});
+
+it('allBadgeCountsForUser scopes to a date range when given one', function (): void {
+    $user = User::factory()->create();
+    $inRange = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($inRange)->create(['start_date_local' => '2026-06-15 07:00:00']);
+    RunCard::factory()->for($inRange)->create(['badges' => [Badge::Kilat->value]]);
+
+    $outOfRange = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($outOfRange)->create(['start_date_local' => '2026-01-01 07:00:00']);
+    RunCard::factory()->for($outOfRange)->create(['badges' => [Badge::Kilat->value]]);
+
+    $counts = RunCard::allBadgeCountsForUser(
+        $user->id,
+        Carbon::parse('2026-06-01'),
+        Carbon::parse('2026-06-30'),
+    );
+
+    expect($counts[Badge::Kilat->value])->toBe(1);
+});
+
 it('casts badges to an array', function (): void {
     $card = RunCard::factory()->make([
         'activity_id' => 1,
-        'badges' => ['hari_panas', 'negative_split'],
+        'badges' => ['heat_tamer', 'negative_split'],
     ]);
 
-    expect($card->badges)->toBe(['hari_panas', 'negative_split']);
+    expect($card->badges)->toBe(['heat_tamer', 'negative_split']);
 });
 
 it('belongs to an activity and enforces one card per activity', function (): void {

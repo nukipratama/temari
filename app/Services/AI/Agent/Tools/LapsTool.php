@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\Agent\Tools;
 
 use App\Services\Run\Ingest\KmSplitBuilder;
+use App\Services\Run\Metrics\IntervalDetector;
 use App\Services\Run\Metrics\PaceCalculator;
 
 final class LapsTool extends ActivityTool
@@ -15,13 +16,6 @@ final class LapsTool extends ActivityTool
      * and handing the model a table that long is what invites reciting it.
      */
     private const int MAX_ROWS = 20;
-
-    /**
-     * How far apart (sec/km) the quickest and slowest lap must sit before the
-     * fast/slow alternation is read as deliberate. A rep sits a minute or more
-     * off its recovery; anything tighter is ordinary drift over manual laps.
-     */
-    private const float REP_PACE_GAP_SEC = 45.0;
 
     /** A lap under this fraction of the run's own median lap distance reads as a stop. */
     private const float PAUSE_DISTANCE_RATIO = 0.25;
@@ -35,15 +29,15 @@ final class LapsTool extends ActivityTool
 
     public function description(): string
     {
-        return 'Lap sesuai yang dipencet/direkam jam, satu baris per lap dan panjangnya belum tentu '
-            .'1 km, plus lap tercepat dan terlambat. Kalau lap-nya berulang cepat-pelan, rep_count '
-            .'(jumlah lap cepat) dan recovery_sec (lama tiap jeda di antaranya, detik) ikut muncul; '
-            .'kalau gak muncul berarti lap-nya gak berpola. Kalau bukan interval tapi ada beberapa lap '
-            .'yang jauh lebih pendek dari lap normalnya, pause_count dan paused_laps (nomor lap-nya) '
-            .'ikut muncul, itu tandanya sempat berhenti (lampu merah, nyeberang), bukan capek. '
-            .'Balikannya kosong kalau lap-nya cuma auto-split per km, karena sesi itu udah kebaca utuh '
-            .'dari get_km_splits. Di sesi dengan lap kebanyakan, baris lap-nya dilewat dan yang tersisa '
-            .'cuma temuannya.';
+        return "Laps as pressed/recorded by the watch, one row per lap and a lap isn't necessarily "
+            .'1 km, plus the fastest and slowest lap. If the laps alternate fast-slow, rep_count '
+            .'(number of fast laps) and recovery_sec (the length of each gap between them, in '
+            ."seconds) show up too; if they don't, the laps have no pattern. If it's not an interval "
+            .'session but some laps are much shorter than the session\'s normal lap, pause_count and '
+            .'paused_laps (their lap numbers) show up instead, that\'s a sign of a brief stop (red '
+            .'light, crossing), not fatigue. Comes back empty if the laps are just auto-splits per '
+            ."km, since that session's already fully covered by get_km_splits. On sessions with a lot "
+            .'of laps, the lap rows are skipped and only the findings remain.';
     }
 
     /** @return array<string, mixed> */
@@ -161,33 +155,12 @@ final class LapsTool extends ActivityTool
     }
 
     /**
-     * Positions of the work laps, when the laps repeat a fast/slow structure at
-     * all: at least two quick laps, none of them back to back, and a spread wide
-     * enough that the split into quick and easy means something. An even set of
-     * manual laps comes back empty, which is the reading "no structure here".
-     *
      * @param  array<int, float>  $paces
      * @return list<int>
      */
     private static function reps(array $paces): array
     {
-        if (count($paces) < 3 || max($paces) - min($paces) < self::REP_PACE_GAP_SEC) {
-            return [];
-        }
-
-        $threshold = (min($paces) + max($paces)) / 2;
-        $work = array_keys(array_filter($paces, fn (float $pace): bool => $pace <= $threshold));
-        if (count($work) < 2) {
-            return [];
-        }
-
-        foreach ($work as $position) {
-            if (in_array($position + 1, $work, true)) {
-                return [];
-            }
-        }
-
-        return $work;
+        return IntervalDetector::detect($paces);
     }
 
     /**

@@ -10,20 +10,20 @@ import EmptyRunsState from './EmptyRunsState';
 
 const HERO_COPY: Record<StravaSyncState, { headline: string; copy: string }> = {
     disconnected: {
-        headline: 'Sambungin Strava dulu',
-        copy: 'Aku baca lari kamu langsung dari Strava. Sambungin dulu biar kartu pertamamu mulai jalan.',
+        headline: 'Connect Strava first',
+        copy: 'I read your runs straight from Strava. Connect it first to get your first card going.',
     },
     revoked: {
-        headline: 'Sambungan Strava putus',
-        copy: 'Token Strava kamu udah gak aktif. Sambungin lagi yuk biar lari baru kebaca.',
+        headline: 'Strava connection lost',
+        copy: "Your Strava token isn't active anymore. Reconnect so new runs can be read.",
     },
     syncing: {
-        headline: 'Lari kamu lagi ditarik dari Strava',
-        copy: 'Sebentar ya, begitu lari pertamamu masuk, aku langsung baca dan kartunya muncul.',
+        headline: 'Your runs are being pulled from Strava',
+        copy: "Hang tight, the moment your first run comes in, I'll read it and the card will show up.",
     },
     ready: {
-        headline: 'Belum nemu lari baru',
-        copy: 'Kalau kamu baru kelar lari, coba sync lagi biar langsung kebaca.',
+        headline: 'No new runs found yet',
+        copy: 'If you just finished a run, try syncing again so it gets picked up.',
     },
 };
 
@@ -48,16 +48,18 @@ function expectHeroContent(state: StravaSyncState) {
 }
 
 function expectActionLinks() {
-    expect(screen.getByText('Sambil nungguin')).toBeInTheDocument();
+    expect(screen.getByText('While you wait')).toBeInTheDocument();
 
-    const kartu = screen.getByText('Cek koleksi yang legendaris').closest('a');
-    expect(kartu).toHaveAttribute('href', '/kartu');
+    const kartu = screen
+        .getByText('Check out the legendary collection')
+        .closest('a');
+    expect(kartu).toHaveAttribute('href', '/cards');
 
-    const aksesori = screen.getByText('Dandanin Temari').closest('a');
-    expect(aksesori).toHaveAttribute('href', '/aksesori');
+    const aksesori = screen.getByText('Dress up Temari').closest('a');
+    expect(aksesori).toHaveAttribute('href', '/accessories');
 
-    const aktivitas = screen.getByText('Lihat rekap lari kamu').closest('a');
-    expect(aktivitas).toHaveAttribute('href', '/aktivitas');
+    const aktivitas = screen.getByText('See your run recap').closest('a');
+    expect(aktivitas).toHaveAttribute('href', '/activities');
 }
 
 describe('EmptyRunsState', () => {

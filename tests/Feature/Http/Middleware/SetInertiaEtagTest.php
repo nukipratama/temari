@@ -56,7 +56,7 @@ it('tags a full Inertia page visit with an ETag and a revalidate-always private 
     $activity = etagSeedRun($user);
 
     $this->actingAs($user);
-    $response = etagVisit("/aktivitas/{$activity->id}")->assertSuccessful();
+    $response = etagVisit("/activities/{$activity->id}")->assertSuccessful();
 
     expect($response->headers->get('ETag'))->not->toBeNull()
         ->and($response->headers->get('Cache-Control'))->toContain('private')
@@ -69,7 +69,7 @@ it('answers a replayed ETag with an empty 304 on every tagged route', function (
     $activity = etagSeedRun($user);
     $this->actingAs($user);
 
-    foreach (['/aktivitas', '/kalender', "/aktivitas/{$activity->id}"] as $url) {
+    foreach (['/activities', '/calendar', "/activities/{$activity->id}"] as $url) {
         $etag = etagVisit($url)->assertSuccessful()->headers->get('ETag');
 
         $revalidated = etagVisit($url, $etag);
@@ -86,10 +86,10 @@ it('never answers one user with another user\'s 304 on a shared URL', function (
     etagSeedRun($bob);
 
     $this->actingAs($alice);
-    $aliceEtag = etagVisit('/kalender')->assertSuccessful()->headers->get('ETag');
+    $aliceEtag = etagVisit('/calendar')->assertSuccessful()->headers->get('ETag');
 
     $this->actingAs($bob);
-    $bobResponse = etagVisit('/kalender', $aliceEtag)->assertSuccessful();
+    $bobResponse = etagVisit('/calendar', $aliceEtag)->assertSuccessful();
 
     expect($bobResponse->getStatusCode())->toBe(200)
         ->and($bobResponse->headers->get('ETag'))->not->toBe($aliceEtag)
@@ -101,11 +101,11 @@ it('misses when the page data moves', function (): void {
     $activity = etagSeedRun($user);
     $this->actingAs($user);
 
-    $etag = etagVisit('/aktivitas')->assertSuccessful()->headers->get('ETag');
+    $etag = etagVisit('/activities')->assertSuccessful()->headers->get('ETag');
 
     $activity->detail->update(['name' => 'Lari sore yang beda']);
 
-    expect(etagVisit('/aktivitas', $etag)->assertSuccessful()->getStatusCode())->toBe(200);
+    expect(etagVisit('/activities', $etag)->assertSuccessful()->getStatusCode())->toBe(200);
 });
 
 it('misses when a shared prop moves even though the page data did not', function (): void {
@@ -113,11 +113,11 @@ it('misses when a shared prop moves even though the page data did not', function
     etagSeedRun($user);
     $this->actingAs($user);
 
-    $etag = etagVisit('/kalender')->assertSuccessful()->headers->get('ETag');
+    $etag = etagVisit('/calendar')->assertSuccessful()->headers->get('ETag');
 
     $user->forceFill(['name' => 'Nama Baru'])->save();
 
-    expect(etagVisit('/kalender', $etag)->assertSuccessful()->getStatusCode())->toBe(200);
+    expect(etagVisit('/calendar', $etag)->assertSuccessful()->getStatusCode())->toBe(200);
 });
 
 it('never serves a stale flash from a 304', function (): void {
@@ -126,14 +126,14 @@ it('never serves a stale flash from a 304', function (): void {
     $this->actingAs($user);
 
     $flashed = $this->withSession(['success' => 'Sinkron jalan.'])
-        ->get('/kalender', ['X-Inertia' => 'true', 'X-Inertia-Version' => currentInertiaVersion()])
+        ->get('/calendar', ['X-Inertia' => 'true', 'X-Inertia-Version' => currentInertiaVersion()])
         ->assertSuccessful();
 
     expect($flashed->getContent())->toContain('Sinkron jalan.');
 
     $this->flushSession();
 
-    $quiet = etagVisit('/kalender', $flashed->headers->get('ETag'))->assertSuccessful();
+    $quiet = etagVisit('/calendar', $flashed->headers->get('ETag'))->assertSuccessful();
 
     expect($quiet->getStatusCode())->toBe(200)
         ->and($quiet->getContent())->not->toContain('Sinkron jalan.');
@@ -143,7 +143,7 @@ it('keeps a partial reload out of every cache and leaves it untagged', function 
     $user = User::factory()->create();
     $activity = etagSeedRun($user);
 
-    $response = $this->actingAs($user)->get("/aktivitas/{$activity->id}", [
+    $response = $this->actingAs($user)->get("/activities/{$activity->id}", [
         'X-Inertia' => 'true',
         'X-Inertia-Version' => currentInertiaVersion(),
         'X-Inertia-Partial-Component' => 'Runs/Show',
@@ -158,7 +158,7 @@ it('leaves the initial HTML document untagged', function (): void {
     $user = User::factory()->create();
     etagSeedRun($user);
 
-    $response = $this->actingAs($user)->get('/kalender')->assertSuccessful();
+    $response = $this->actingAs($user)->get('/calendar')->assertSuccessful();
 
     expect($response->headers->get('ETag'))->toBeNull();
 });
@@ -178,7 +178,7 @@ it('does not tag a non-200 Inertia response', function (): void {
 
     $this->actingAs($user);
 
-    $response = etagVisit("/aktivitas/{$activity->id}");
+    $response = etagVisit("/activities/{$activity->id}");
 
     expect($response->getStatusCode())->toBe(404)
         ->and($response->headers->get('ETag'))->toBeNull();

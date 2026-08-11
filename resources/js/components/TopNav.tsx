@@ -7,7 +7,7 @@ import StravaSyncBadge from '@/components/StravaSyncBadge';
 import UserMenu from '@/components/UserMenu';
 import { cn } from '@/lib/cn';
 
-type TabId = 'hari-ini' | 'koleksi' | 'riwayat' | 'aku';
+type TabId = 'hari-ini' | 'koleksi' | 'riwayat' | 'plan' | 'aku';
 
 interface NavItem {
     id: TabId;
@@ -17,24 +17,30 @@ interface NavItem {
 }
 
 const ITEMS: ReadonlyArray<NavItem> = [
-    { id: 'hari-ini', label: 'Hari Ini', href: '/', prefixes: ['/'] },
+    { id: 'hari-ini', label: 'Today', href: '/', prefixes: ['/'] },
     {
         id: 'koleksi',
-        label: 'Koleksi',
-        href: '/kartu',
-        prefixes: ['/koleksi', '/kartu', '/aksesori', '/rekor', '/target'],
+        label: 'Collection',
+        href: '/cards',
+        prefixes: ['/cards', '/accessories', '/records', '/goals'],
     },
     {
         id: 'riwayat',
-        label: 'Riwayat',
-        href: '/aktivitas',
-        prefixes: ['/riwayat', '/aktivitas', '/kalender'],
+        label: 'History',
+        href: '/activities',
+        prefixes: ['/activities', '/calendar'],
+    },
+    {
+        id: 'plan',
+        label: 'Plan',
+        href: '/plan',
+        prefixes: ['/plan'],
     },
     {
         id: 'aku',
-        label: 'Aku',
-        href: '/profil',
-        prefixes: ['/aku', '/profil', '/pengaturan'],
+        label: 'Me',
+        href: '/profile',
+        prefixes: ['/profile', '/settings', '/race'],
     },
 ];
 
@@ -62,7 +68,7 @@ export default function TopNav() {
                 <div className="flex items-center gap-12">
                     <Link
                         href="/"
-                        aria-label="Beranda"
+                        aria-label="Home"
                         className="focus-ring rounded"
                     >
                         <BrandMark />

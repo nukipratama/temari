@@ -12,7 +12,7 @@ import { tabIconPop } from '@/lib/motion';
 import { activeTabFromUrl } from './TopNav';
 
 interface NavItem {
-    id: 'hari-ini' | 'koleksi' | 'riwayat' | 'aku';
+    id: 'hari-ini' | 'koleksi' | 'riwayat' | 'plan' | 'aku';
     label: string;
     icon: string;
     href: string;
@@ -21,23 +21,29 @@ interface NavItem {
 const ITEMS: ReadonlyArray<NavItem> = [
     {
         id: 'hari-ini',
-        label: 'Hari Ini',
+        label: 'Today',
         icon: 'mdi:weather-sunset-up',
         href: '/',
     },
     {
         id: 'koleksi',
-        label: 'Koleksi',
+        label: 'Collection',
         icon: 'mdi:cards-outline',
-        href: '/kartu',
+        href: '/cards',
     },
     {
         id: 'riwayat',
-        label: 'Riwayat',
+        label: 'History',
         icon: 'mdi:history',
-        href: '/aktivitas',
+        href: '/activities',
     },
-    { id: 'aku', label: 'Aku', icon: 'mdi:account-outline', href: '/profil' },
+    {
+        id: 'plan',
+        label: 'Plan',
+        icon: 'mdi:calendar-check-outline',
+        href: '/plan',
+    },
+    { id: 'aku', label: 'Me', icon: 'mdi:account-outline', href: '/profile' },
 ];
 
 /**

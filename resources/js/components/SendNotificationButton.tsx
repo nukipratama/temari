@@ -13,7 +13,7 @@ import { usePendingPost } from '@/hooks/usePendingPost';
 import { formatDurationHMS } from '@/lib/pace';
 
 /**
- * The manual "Kirim notifikasi" pill shared by run/weekly/monthly recap
+ * The manual "Send notification" pill shared by run/weekly/monthly recap
  * surfaces: force-pushes the Done narration at `url` and shows a spinner while
  * in flight. The push is channel-neutral — the server fans it out to every
  * channel the user has wired (Telegram if connected, web push if subscribed) —
@@ -50,10 +50,10 @@ export default function SendNotificationButton({
                     size="sm"
                     className="opacity-60"
                     onClick={() => setEnableOpen(true)}
-                    aria-label="Nyalain notifikasi dulu buat kirim"
+                    aria-label="Turn on notifications to send"
                 >
                     <Icon icon="mdi:send" width={15} height={15} aria-hidden />
-                    Kirim notifikasi
+                    Send notification
                 </PillButton>
                 <EnableNotificationsModal
                     open={enableOpen}
@@ -63,11 +63,11 @@ export default function SendNotificationButton({
         );
     }
 
-    let label = 'Kirim notifikasi';
+    let label = 'Send notification';
     if (cooling) {
         label = formatDurationHMS(cooldownRemaining);
     } else if (sending) {
-        label = 'Lagi ngirim…';
+        label = 'Sending…';
     }
 
     return (
@@ -80,7 +80,7 @@ export default function SendNotificationButton({
                 onClick={() => guard(send)}
                 aria-label={cooldownAriaLabel(
                     cooldownRemaining,
-                    'kirim notifikasi',
+                    'sending a notification',
                 )}
             >
                 <Icon

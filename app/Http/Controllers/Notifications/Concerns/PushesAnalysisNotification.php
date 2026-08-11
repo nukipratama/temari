@@ -27,7 +27,7 @@ trait PushesAnalysisNotification
         }
 
         if (! new Cooldown(Cooldown::notificationKey($analysis->id), Cooldown::NOTIFICATION_WINDOW_SECONDS)->attempt()) {
-            return back()->with('info', 'Notifikasinya baru saja dikirim. Tunggu sebentar sebelum kirim ulang.');
+            return back()->with('info', 'That notification just went out. Wait a bit before resending.');
         }
 
         $user->notify(new AnalysisReadyNotification($analysis, force: true));

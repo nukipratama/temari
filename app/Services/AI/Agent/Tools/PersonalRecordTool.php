@@ -25,10 +25,10 @@ final class PersonalRecordTool extends NoArgumentTool
 
     public function description(): string
     {
-        return 'PR yang lagi kamu rayakan: kategori, catatan waktunya, kapan dipecahkan, plus PR '
-            .'sebelumnya di kategori yang sama dan selisihnya (delta_sec positif = lebih cepat '
-            .'sekarang). is_strongest_event true berarti kategori ini yang paling menonjol dari '
-            .'semua jaraknya. Kalau previous_* gak muncul, ini PR pertama di kategori itu.';
+        return "The PR you're celebrating: category, its time, when it was set, plus the previous "
+            .'PR in the same category and the difference (delta_sec positive = faster now). '
+            .'is_strongest_event true means this category is the strongest of all their distances. '
+            .'If previous_* is missing, this is the first PR in that category.';
     }
 
     /** @return array<string, mixed> */

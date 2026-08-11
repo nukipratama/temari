@@ -59,6 +59,7 @@ for (const vp of selected) {
     } catch (e) {
       errors.push(`[navfail] ${path} :: ${e.message}`);
       console.log(`  FAIL ${name} (${path}): ${e.message}`);
+      await page.goto('about:blank').catch(() => {}); // reset, or the failure cascades into the next page
     }
   }
   console.log(errors.length ? `  JS errors:\n   ${errors.join('\n   ')}` : '  JS errors: none');

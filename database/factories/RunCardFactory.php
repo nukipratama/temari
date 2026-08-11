@@ -23,7 +23,7 @@ class RunCardFactory extends Factory
             'activity_id' => Activity::factory(),
             'rarity' => fake()->randomElement(Rarity::cases()),
             'badges' => fake()->randomElements(
-                ['hari_panas', 'pejuang_hujan', 'anak_pagi', 'long_slow_distance', 'negative_split', 'tahan_diri'],
+                ['heat_tamer', 'rain_warrior', 'early_bird', 'long_slow_distance', 'negative_split', 'held_back'],
                 fake()->numberBetween(0, 3),
             ),
             'special_move' => fake()->randomElement([

@@ -4,17 +4,17 @@ import { CTA, MOOD_EMOJI } from './copy';
 
 describe('copy constants', () => {
     it('exposes the canonical CTA verbs', () => {
-        expect(CTA.buka).toBe('Buka');
-        expect(CTA.semua).toBe('Semua');
-        expect(CTA.sambungin).toBe('Sambungin');
-        expect(CTA.putus).toBe('Putus');
-        expect(CTA.pasang).toBe('Pasang');
-        expect(CTA.lagiDipake).toBe('Lagi dipake');
-        expect(CTA.bacaUlang).toBe('Baca ulang');
-        expect(CTA.mintaTemariBacain).toBe('Minta Temari bacain');
-        expect(CTA.sipMulai).toBe('Sip, mulai');
-        expect(CTA.cobaLagi).toBe('Coba lagi');
-        expect(CTA.batal).toBe('Batal');
+        expect(CTA.buka).toBe('Open');
+        expect(CTA.semua).toBe('See all');
+        expect(CTA.sambungin).toBe('Connect');
+        expect(CTA.putus).toBe('Disconnect');
+        expect(CTA.pasang).toBe('Equip');
+        expect(CTA.lagiDipake).toBe('Equipped');
+        expect(CTA.bacaUlang).toBe('Reread');
+        expect(CTA.mintaTemariBacain).toBe('Ask Temari to read it');
+        expect(CTA.sipMulai).toBe("Let's go");
+        expect(CTA.cobaLagi).toBe('Try again');
+        expect(CTA.batal).toBe('Cancel');
     });
 
     it('covers every expected CTA key', () => {
@@ -36,17 +36,24 @@ describe('copy constants', () => {
     });
 
     it('maps each mood to its emoji', () => {
-        expect(MOOD_EMOJI.nyala).toBe('🔥');
-        expect(MOOD_EMOJI.enteng).toBe('🌸');
-        expect(MOOD_EMOJI.oleng).toBe('⚡');
-        expect(MOOD_EMOJI.lemes).toBe('💧');
-        expect(MOOD_EMOJI.mumet).toBe('🌀');
-        expect(MOOD_EMOJI.adem).toBe('🍃');
+        expect(MOOD_EMOJI.blazing).toBe('🔥');
+        expect(MOOD_EMOJI.easy).toBe('🌸');
+        expect(MOOD_EMOJI.wobbly).toBe('⚡');
+        expect(MOOD_EMOJI.gassed).toBe('💧');
+        expect(MOOD_EMOJI.overloaded).toBe('🌀');
+        expect(MOOD_EMOJI.chill).toBe('🍃');
     });
 
     it('covers every expected mood key', () => {
         expect(Object.keys(MOOD_EMOJI).sort()).toEqual(
-            ['adem', 'enteng', 'lemes', 'mumet', 'nyala', 'oleng'].sort(),
+            [
+                'chill',
+                'easy',
+                'gassed',
+                'overloaded',
+                'blazing',
+                'wobbly',
+            ].sort(),
         );
     });
 });

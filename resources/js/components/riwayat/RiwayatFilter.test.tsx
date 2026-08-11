@@ -8,22 +8,27 @@ import RiwayatFilter from './RiwayatFilter';
 type Range = '8w' | '12w';
 
 const RANGE_OPTIONS = [
-    { value: '8w' as const, label: '8 minggu' },
-    { value: '12w' as const, label: '12 minggu', hint: 'default' },
+    { value: '8w' as const, label: '8 weeks' },
+    { value: '12w' as const, label: '12 weeks', hint: 'default' },
 ];
 
 const MOOD_OPTIONS: ReadonlyArray<MoodOption> = [
-    { mood: 'nyala', label: 'Nyala', hint: 'pr', swatchClass: 'bg-mood-nyala' },
     {
-        mood: 'lemes',
-        label: 'Lemes',
+        mood: 'blazing',
+        label: 'Blazing',
+        hint: 'pr',
+        swatchClass: 'bg-mood-blazing',
+    },
+    {
+        mood: 'gassed',
+        label: 'Gassed',
         hint: 'strain',
-        swatchClass: 'bg-mood-lemes',
+        swatchClass: 'bg-mood-gassed',
     },
 ];
 
 function openPanel() {
-    fireEvent.click(screen.getByRole('button', { name: /buka filter/i }));
+    fireEvent.click(screen.getByRole('button', { name: /open filter/i }));
 }
 
 describe('RiwayatFilter', () => {
@@ -33,19 +38,20 @@ describe('RiwayatFilter', () => {
                 range={{
                     value: '12w',
                     options: RANGE_OPTIONS,
-                    hrefFor: (v) => `/aktivitas?range=${v}`,
+                    hrefFor: (v) => `/activities?range=${v}`,
                     only: ['runs'],
                 }}
             />,
         );
         openPanel();
 
-        const link = screen.getByRole('link', { name: /8 minggu/i });
-        expect(link).toHaveAttribute('href', '/aktivitas?range=8w');
+        const link = screen.getByRole('link', { name: /8 weeks/i });
+        expect(link).toHaveAttribute('href', '/activities?range=8w');
         // The active option is marked, not duplicated as a link target.
-        expect(
-            screen.getByRole('link', { name: /12 minggu/i }),
-        ).toHaveAttribute('aria-current', 'true');
+        expect(screen.getByRole('link', { name: /12 weeks/i })).toHaveAttribute(
+            'aria-current',
+            'true',
+        );
     });
 
     it('toggles a mood and fires onReset', () => {
@@ -54,7 +60,7 @@ describe('RiwayatFilter', () => {
         render(
             <RiwayatFilter
                 mood={{
-                    selected: new Set(['nyala']),
+                    selected: new Set(['blazing']),
                     options: MOOD_OPTIONS,
                     onToggle,
                 }}
@@ -63,8 +69,8 @@ describe('RiwayatFilter', () => {
         );
         openPanel();
 
-        fireEvent.click(screen.getByRole('button', { name: /lemes/i }));
-        expect(onToggle).toHaveBeenCalledWith('lemes');
+        fireEvent.click(screen.getByRole('button', { name: /gassed/i }));
+        expect(onToggle).toHaveBeenCalledWith('gassed');
 
         fireEvent.click(screen.getByRole('button', { name: /reset/i }));
         expect(onReset).toHaveBeenCalled();
@@ -74,7 +80,7 @@ describe('RiwayatFilter', () => {
         render(
             <RiwayatFilter
                 mood={{
-                    selected: new Set(['nyala']),
+                    selected: new Set(['blazing']),
                     options: MOOD_OPTIONS,
                     onToggle: vi.fn(),
                 }}
@@ -82,11 +88,10 @@ describe('RiwayatFilter', () => {
         );
         openPanel();
 
-        expect(screen.getByRole('button', { name: /nyala/i })).toHaveAttribute(
-            'aria-pressed',
-            'true',
-        );
-        expect(screen.getByRole('button', { name: /lemes/i })).toHaveAttribute(
+        expect(
+            screen.getByRole('button', { name: /blazing/i }),
+        ).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: /gassed/i })).toHaveAttribute(
             'aria-pressed',
             'false',
         );
@@ -98,7 +103,7 @@ describe('RiwayatFilter', () => {
                 range={{
                     value: '12w',
                     options: RANGE_OPTIONS,
-                    hrefFor: (v) => `/aktivitas?range=${v}`,
+                    hrefFor: (v) => `/activities?range=${v}`,
                 }}
                 mood={{
                     selected: new Set(),
@@ -120,11 +125,11 @@ describe('RiwayatFilter', () => {
                 range={{
                     value: '12w',
                     options: RANGE_OPTIONS,
-                    hrefFor: (v) => `/aktivitas?range=${v}`,
+                    hrefFor: (v) => `/activities?range=${v}`,
                 }}
             />,
         );
-        const trigger = screen.getByRole('button', { name: /buka filter/i });
+        const trigger = screen.getByRole('button', { name: /open filter/i });
         openPanel();
         fireEvent.keyDown(document, { key: 'Escape' });
         expect(document.activeElement).toBe(trigger);
@@ -186,10 +191,10 @@ describe('RiwayatFilter', () => {
                 range={{
                     value: '12w',
                     options: RANGE_OPTIONS,
-                    hrefFor: (v) => `/aktivitas?range=${v}`,
+                    hrefFor: (v) => `/activities?range=${v}`,
                 }}
                 mood={{
-                    selected: new Set(['nyala']),
+                    selected: new Set(['blazing']),
                     options: MOOD_OPTIONS,
                     onToggle: vi.fn(),
                 }}
@@ -203,7 +208,7 @@ describe('RiwayatFilter', () => {
 
         // range + 1 mood + distance
         expect(
-            screen.getByRole('button', { name: /buka filter/i }),
+            screen.getByRole('button', { name: /open filter/i }),
         ).toHaveTextContent('3');
     });
 
@@ -215,7 +220,7 @@ describe('RiwayatFilter', () => {
                 range={{
                     value: '8w',
                     options: RANGE_OPTIONS,
-                    hrefFor: (v) => `/aktivitas?range=${v}`,
+                    hrefFor: (v) => `/activities?range=${v}`,
                 }}
                 distance={{
                     value: '0-5',
@@ -226,7 +231,7 @@ describe('RiwayatFilter', () => {
         );
 
         expect(
-            screen.getByRole('button', { name: /buka filter/i }),
+            screen.getByRole('button', { name: /open filter/i }),
         ).toHaveTextContent('1');
     });
 });

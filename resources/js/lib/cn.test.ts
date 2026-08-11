@@ -40,4 +40,19 @@ describe('cn', () => {
         );
         expect(cn('text-label-small', 'text-lg')).toBe('text-lg');
     });
+
+    it('keeps display/headline/quote/stat scale tokens alongside a text color', () => {
+        // These also bundle no color (see StatTile's `lg` size, which combined
+        // text-stat with a color before this fix and silently lost text-stat).
+        expect(cn('text-display-2xl', 'text-ink')).toBe(
+            'text-display-2xl text-ink',
+        );
+        expect(cn('text-headline-sm', 'text-cream')).toBe(
+            'text-headline-sm text-cream',
+        );
+        expect(cn('text-quote-lg', 'text-ink-2')).toBe(
+            'text-quote-lg text-ink-2',
+        );
+        expect(cn('text-stat', 'text-cream')).toBe('text-stat text-cream');
+    });
 });

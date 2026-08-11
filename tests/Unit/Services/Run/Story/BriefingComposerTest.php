@@ -121,9 +121,9 @@ it('labels the streak from days since the last run', function (string $lastRun, 
 
     expect($result->streakLabel)->toBe($label);
 })->with([
-    'yesterday' => ['2026-05-17', 'Kemarin lari'],
-    '3 days ago' => ['2026-05-15', 'Sudah 3 hari'],
-    '8 days ago' => ['2026-05-10', 'Sudah 8 hari'],
+    'yesterday' => ['2026-05-17', 'Ran yesterday'],
+    '3 days ago' => ['2026-05-15', '3 days ago'],
+    '8 days ago' => ['2026-05-10', '8 days ago'],
 ]);
 
 it('returns a null streak label when the user has never run', function (): void {
@@ -134,7 +134,7 @@ it('returns a null streak label when the user has never run', function (): void 
     expect($result->streakLabel)->toBeNull();
 });
 
-it('labels recovery hours as "X jam" under 72h and "Y hari" at 72h and beyond', function (int $hoursAgo, string $label): void {
+it('labels recovery hours as "Xh" under 72h and "Y days" at 72h and beyond', function (int $hoursAgo, string $label): void {
     // hoursSinceLastRun measures against Carbon::now() when $asOf is "today" on
     // the wall clock (else it bumps to end-of-day), so freeze "now" to asOf
     // itself to get exact hour control.
@@ -152,10 +152,10 @@ it('labels recovery hours as "X jam" under 72h and "Y hari" at 72h and beyond', 
 
     expect($result->recoveryHoursLabel)->toBe($label);
 })->with([
-    '10 hours ago' => [10, '10 jam'],
-    '71 hours ago (just under the day boundary)' => [71, '71 jam'],
-    'exactly 72 hours ago (day boundary)' => [72, '3 hari'],
-    '100 hours ago' => [100, '4 hari'],
+    '10 hours ago' => [10, '10h'],
+    '71 hours ago (just under the day boundary)' => [71, '71h'],
+    'exactly 72 hours ago (day boundary)' => [72, '3 days'],
+    '100 hours ago' => [100, '4 days'],
 ]);
 
 it('returns a null recovery hours label when the user has never run', function (): void {
@@ -181,5 +181,5 @@ it('computes non-LLM fields (vibe label, streak, mood) without an LLM call', fun
         ->and($result->mood)->toBeString()->not->toBeEmpty()
         ->and($result->sigilPattern)->toBeString()->not->toBeEmpty()
         ->and($result->recoveryLabel)->toBeString()->not->toBeEmpty()
-        ->and($result->streakLabel)->toBe('Lari hari ini');
+        ->and($result->streakLabel)->toBe('Ran today');
 });

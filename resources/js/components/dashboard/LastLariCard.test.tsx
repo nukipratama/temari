@@ -8,7 +8,7 @@ import LastLariCard from './LastLariCard';
 const richRun: ActivityDetail = {
     id: 1,
     activity_id: 99,
-    name: 'Pagi negatif-split',
+    name: 'Negative-split morning',
     start_date_local: '2026-05-20T07:00',
     distance: 5280,
     elapsed_time: 2400,
@@ -41,20 +41,20 @@ describe('LastLariCard', () => {
             <LastLariCard
                 run={richRun}
                 pose="proud"
-                note={{ oneline: 'Sesi yang mantap.', mood: 'nyala' }}
+                note={{ oneline: 'A solid session.', mood: 'blazing' }}
             />,
         );
-        expect(screen.getByText('Pagi negatif-split')).toBeInTheDocument();
+        expect(screen.getByText('Negative-split morning')).toBeInTheDocument();
         expect(screen.getByText(/Gelora Bung Karno/)).toBeInTheDocument();
-        expect(screen.getByText('Sesi yang mantap.')).toBeInTheDocument();
+        expect(screen.getByText('A solid session.')).toBeInTheDocument();
         // pace renders as a value (not the "—" fallback).
         expect(screen.getAllByText(/\/km$/).length).toBeGreaterThan(0);
-        expect(screen.getByText('Lihat detail lari →')).toBeInTheDocument();
+        expect(screen.getByText('View run detail →')).toBeInTheDocument();
     });
 
-    it('uses the "Lari" name fallback and em-dash placeholders for a bare run', () => {
+    it('uses the "Run" name fallback and em-dash placeholders for a bare run', () => {
         render(<LastLariCard run={bareRun} pose="observational" note={null} />);
-        expect(screen.getByText('Lari')).toBeInTheDocument();
+        expect(screen.getByText('Run')).toBeInTheDocument();
         expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
         expect(screen.queryByText(/Gelora/)).not.toBeInTheDocument();
     });
@@ -62,7 +62,7 @@ describe('LastLariCard', () => {
     it('links to the activity detail page', () => {
         render(<LastLariCard run={richRun} pose="proud" note={null} />);
         const link = screen.getByRole('link');
-        expect(link).toHaveAttribute('href', '/aktivitas/99');
+        expect(link).toHaveAttribute('href', '/activities/99');
     });
 
     it('shows the run start time in the subline', () => {
@@ -71,7 +71,7 @@ describe('LastLariCard', () => {
             <LastLariCard
                 run={richRun}
                 pose="proud"
-                note={{ oneline: 'x', mood: 'mumet' }}
+                note={{ oneline: 'x', mood: 'overloaded' }}
             />,
         );
         expect(screen.getByText('07.00')).toBeInTheDocument();

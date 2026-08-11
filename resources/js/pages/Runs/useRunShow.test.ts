@@ -31,7 +31,7 @@ const runCard: RunCardDetail = {
     id: 1,
     activity_id: 99,
     rarity: 'epic',
-    special_move: 'Paru-paru Baja',
+    special_move: 'Iron Lungs',
     badges: ['negative_split'],
     edition: { index: 3, total: 5 },
     flavor_analysis: {
@@ -43,7 +43,7 @@ const runCard: RunCardDetail = {
         subject_id: 1,
         discriminator: null,
     },
-    public_share_url: '/aktivitas/255',
+    public_share_url: '/activities/255',
 };
 
 const storyLine: StoryLine = {
@@ -51,7 +51,7 @@ const storyLine: StoryLine = {
     user_id: 1,
     activity_id: 99,
     kind: 'post_run',
-    mood: 'nyala',
+    mood: 'blazing',
     speech: null,
     sigil_pattern: 'ssss',
     for_date: null,
@@ -62,7 +62,7 @@ function hookProps(overrides: Partial<Parameters<typeof useRunShow>[0]> = {}) {
         detail,
         card: runCard,
         storyLine,
-        moodFallback: 'adem' as const,
+        moodFallback: 'chill' as const,
         relativeEffort: null,
         ...overrides,
     };
@@ -71,14 +71,14 @@ function hookProps(overrides: Partial<Parameters<typeof useRunShow>[0]> = {}) {
 describe('useRunShow', () => {
     it('uses the story-line mood over the fallback when present', () => {
         const { result } = renderHook(() => useRunShow(hookProps()));
-        expect(result.current.mood).toBe('nyala');
+        expect(result.current.mood).toBe('blazing');
     });
 
     it('falls back to moodFallback when there is no story line', () => {
         const { result } = renderHook(() =>
-            useRunShow(hookProps({ storyLine: null, moodFallback: 'oleng' })),
+            useRunShow(hookProps({ storyLine: null, moodFallback: 'wobbly' })),
         );
-        expect(result.current.mood).toBe('oleng');
+        expect(result.current.mood).toBe('wobbly');
     });
 
     it('formats km, pace, hr, and trimp from the detail', () => {
@@ -89,7 +89,7 @@ describe('useRunShow', () => {
         expect(result.current.trimp).toBe(70);
     });
 
-    it('maps a relative-effort band to its "vs biasanya" sub-line', () => {
+    it('maps a relative-effort band to its "vs usual" sub-line', () => {
         const { result } = renderHook(() =>
             useRunShow(
                 hookProps({
@@ -102,7 +102,7 @@ describe('useRunShow', () => {
                 }),
             ),
         );
-        expect(result.current.effortSub).toBe('lebih berat dari biasanya');
+        expect(result.current.effortSub).toBe('harder than usual');
     });
 
     it('omits the effort sub-line when the band is null', () => {
@@ -186,9 +186,9 @@ describe('useRunShow', () => {
         const { result: withCard } = renderHook(() => useRunShow(hookProps()));
         expect(withCard.current.shareData).toMatchObject({
             id: 1,
-            name: 'Paru-paru Baja',
-            shareUrl: '/aktivitas/255',
-            mood: 'nyala',
+            name: 'Iron Lungs',
+            shareUrl: '/activities/255',
+            mood: 'blazing',
         });
 
         const { result: withoutCard } = renderHook(() =>

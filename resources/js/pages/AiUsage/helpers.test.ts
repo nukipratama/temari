@@ -16,19 +16,19 @@ beforeEach(() => {
 });
 
 describe('fmt', () => {
-    it('groups thousands the Indonesian way', () => {
-        expect(fmt(1234567)).toBe('1.234.567');
+    it('groups thousands with a comma', () => {
+        expect(fmt(1234567)).toBe('1,234,567');
     });
 });
 
 describe('formatCost', () => {
     it('renders a narrow currency symbol with two decimals', () => {
-        expect(formatCost(0.05, 'USD')).toBe('$0,05');
-        expect(formatCost(1234.5, 'USD')).toBe('$1.234,50');
+        expect(formatCost(0.05, 'USD')).toBe('$0.05');
+        expect(formatCost(1234.5, 'USD')).toBe('$1,234.50');
     });
 
     it('follows the budget currency rather than assuming dollars', () => {
-        expect(formatCost(1234.5, 'IDR')).toBe('Rp\u00a01.234,50');
+        expect(formatCost(1234.5, 'IDR')).toBe('Rp\u00a01,234.50');
     });
 });
 
@@ -105,10 +105,10 @@ describe('PRESETS', () => {
 
 describe('day labels', () => {
     it('formats a day key as day + short month', () => {
-        expect(formatDayLabel('2026-05-18')).toBe('18 Mei');
+        expect(formatDayLabel('2026-05-18')).toBe('May 18');
     });
 
     it('formats a day key as short weekday + day for the dense axis', () => {
-        expect(formatDayLabelShort('2026-05-18')).toBe('Sen, 18');
+        expect(formatDayLabelShort('2026-05-18')).toBe('18 Mon');
     });
 });

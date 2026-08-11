@@ -13,8 +13,8 @@ final class TerrainTool extends ActivityTool
 
     public function description(): string
     {
-        return 'Medan lari ini: total elevation gain (meter), tanjakan tercuram (persen), dan '
-            .'grade-adjusted pace. Panggil kalau pace melambat dan kamu curiga tanjakan penyebabnya.';
+        return "This run's terrain: total elevation gain (meters), steepest climb (percent), and "
+            .'grade-adjusted pace. Call this when the pace slows and you suspect a climb is the cause.';
     }
 
     /** @return array<string, mixed> */

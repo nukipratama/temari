@@ -88,11 +88,11 @@ describe('StatTile', () => {
             <StatTile
                 value="x"
                 label="y"
-                sub="lemes banget"
+                sub="totally gassed"
                 subVariant="quote"
             />,
         );
-        const sub = screen.getByText('lemes banget');
+        const sub = screen.getByText('totally gassed');
         expect(sub).toHaveClass('italic');
         expect(container.querySelector('.font-display')).not.toBeNull();
     });

@@ -7,10 +7,13 @@ import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
 import {
     atlHint,
+    atlTone,
     ctlHint,
     monotonyHint,
+    monotonyTone,
     strainHint,
-} from '@/pages/HariIni/helpers';
+    strainTone,
+} from '@/pages/Today/helpers';
 
 export default function KondisiCard({
     load,
@@ -23,35 +26,35 @@ export default function KondisiCard({
         color: string;
     }> = [
         {
-            label: 'Fondasi',
+            label: 'Fitness',
             value: load?.ctl_42d != null ? load.ctl_42d.toFixed(1) : '—',
             hint: ctlHint(load?.ctl_42d),
             color: 'text-leaf',
         },
         {
-            label: 'Kelelahan',
+            label: 'Fatigue',
             value: load?.atl_7d != null ? load.atl_7d.toFixed(1) : '—',
             hint: atlHint(load?.atl_7d),
-            color: 'text-ink-2',
+            color: atlTone(load?.atl_7d),
         },
         {
-            label: 'Beban',
+            label: 'Strain',
             value:
                 load?.strain != null ? Math.round(load.strain).toString() : '—',
             hint: strainHint(load?.strain),
-            color: 'text-horizon',
+            color: strainTone(load?.strain),
         },
         {
-            label: 'Variasi',
+            label: 'Monotony',
             value: load?.monotony != null ? load.monotony.toFixed(2) : '—',
             hint: monotonyHint(load?.monotony),
-            color: 'text-leaf',
+            color: monotonyTone(load?.monotony),
         },
     ];
     return (
         <Card as="section" padding="md" className="flex h-full flex-col gap-3">
             <SectionLabel dot className="mb-0">
-                Kondisi · {snapshot ? '7 hari' : 'belum cukup data'}
+                Condition · {snapshot ? '7 days' : 'not enough data yet'}
             </SectionLabel>
             {rows.map(({ label, value, hint, color }) => (
                 <div
@@ -77,10 +80,10 @@ export default function KondisiCard({
                 </div>
             ))}
             <Link
-                href="/aktivitas"
+                href="/activities"
                 className="focus-ring mt-auto rounded pt-1 text-label-micro text-horizon-deep hover:text-ember-deep"
             >
-                Detail teknis →
+                Technical detail →
             </Link>
         </Card>
     );

@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\File;
 
 /**
- * Keeps the design-system docs honest. The Daybreak palette / type scale drifted
+ * Keeps the design-system docs honest. The Threadwork palette / type scale drifted
  * badly once (CLAUDE.md + README described a removed emerald/terracotta system);
  * these guards fail CI the moment the docs and `app.css @theme` diverge again.
  * In the `structure` group so they run in the fast pre-coverage gate.
@@ -15,7 +15,7 @@ it('documents every color/text token family from app.css', function (): void {
     $doc = File::get(base_path('docs/design-tokens.md'));
 
     // First segment after `--color-` / `--text-` is the token family
-    // (e.g. --color-mood-nyala -> "mood", --text-display-2xl -> "display").
+    // (e.g. --color-mood-blazing -> "mood", --text-display-2xl -> "display").
     preg_match_all('/--(?:color|text)-([a-z0-9]+)/', $css, $matches);
     $families = collect($matches[1])->unique()->sort()->values();
 

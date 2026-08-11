@@ -12,16 +12,16 @@ final class FormStatus
     public static function label(?array $load): string
     {
         if ($load === null) {
-            return 'Belum kebaca';
+            return 'Not read yet';
         }
 
         // Mirror of resources/js/lib/formStatus.ts LABELS (keep both in sync).
         return match ($load['form_status']) {
-            'fresh' => 'Lagi seger',
-            'optimal' => 'Pas banget',
-            'fatigued' => 'Mulai capek',
-            'overreaching' => 'Kelewatan',
-            default => 'Pas banget',
+            'fresh' => 'Feeling Fresh',
+            'optimal' => 'Right on Track',
+            'fatigued' => 'Getting Tired',
+            'overreaching' => 'Overreaching',
+            default => 'Right on Track',
         };
     }
 

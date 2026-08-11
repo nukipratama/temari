@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { THREADWORK } from '@/lib/chartTokens';
 
 interface Particle {
     id: number;
@@ -13,15 +14,15 @@ interface Particle {
     duration: number;
 }
 
-// Daybreak palette spread (leaf, ember, citrus, horizon, citrus-deep, mumet).
-// Mirrors app.css @theme; Chart/SVG-style particle fills can't read CSS vars.
+// Threadwork palette spread. Mirrors app.css @theme; Chart/SVG-style particle
+// fills can't read CSS vars.
 const COLORS = [
-    '#6B8E6F',
-    '#C4623F',
-    '#D9B23A',
-    '#E8A076',
-    '#B8941E',
-    '#7B5BB6',
+    THREADWORK.leaf,
+    THREADWORK.ember,
+    THREADWORK.citrus,
+    THREADWORK.horizon,
+    THREADWORK.citrusDeep,
+    THREADWORK.overloaded,
 ];
 
 interface ConfettiBurstProps {

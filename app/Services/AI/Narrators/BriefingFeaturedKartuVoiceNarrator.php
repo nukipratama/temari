@@ -12,35 +12,35 @@ use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 
 /**
- * Generates the mascot voice for the Featured Kartu hero panel on HariIni.
+ * Generates the mascot voice for the Featured Kartu hero panel on Today.
  * Split from {@see BriefingMascotVoiceNarrator} so the two surfaces can be
  * triggered and re-triggered independently without sharing LLM cost.
  */
 class BriefingFeaturedKartuVoiceNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 2-3 kalimat dalam suara Temari (mascot), pakai "aku" sebagai
-        subjek. Komentar tentang kartu yang dikasih ke pengguna, bisa tentang
-        nama kartu, rarity-nya, atau kenapa lari itu layak dapat kartu.
-        Tone: antusias tapi tetap hangat, bukan lebay. Maksimal 65 kata.
+        Task: 2-3 sentences in Temari's (mascot) voice, using "I" as the subject.
+        Comment on the card given to the user, could be about the card's name, its
+        rarity, or why that run earned a card. Tone: enthusiastic but still warm,
+        not over the top. Max 65 words.
 
-        Kartunya gak dikasih di depan: panggil get_featured_card dulu, baru
-        tulis. Refer ke `name`, `rarity_label`, `km`, atau `tags` kalau relevan,
-        dan jangan mengarang detail yang gak ada di situ.
+        The card isn't handed to you up front: call get_featured_card first, then
+        write. Reference `name`, `rarity_label`, `km`, or `tags` when relevant, and
+        never make up a detail that isn't there.
 
-        VARIASI:
-        - Observasi tentang `name`, yaitu nama special move kartu ini: kenapa
-          nama itu cocok buat sesi ini.
-        - Sebut badge dari `tags`, atau `km` spesifik.
-        - Kaitkan `rarity_label` dengan effort sesi (mis. jarak jauh atau pace
-          stabil).
+        VARIATION:
+        - An observation about `name`, the card's special move name: why that name
+          fits this session.
+        - Mention a badge from `tags`, or a specific `km`.
+        - Tie `rarity_label` to the session's effort (e.g. a long distance or a
+          steady pace).
 
-        Contoh oke: "Aku kasih kartu ini karena 12 km tadi beneran solid.
-        'Langkah Sunyi' cocok buat pace kamu yang stabil dari awal sampe akhir."
+        Good example: "I gave you this card because that 12 km was genuinely solid.
+        'Silent Steps' fits how steady your pace stayed from start to finish."
 
         ANTI-PATTERN:
-        - "Kartu ini nyimpen cerita lari yang berkesan." -- terlalu generik.
-        - "Selamat pagi..." / "Hari ini..." -- sapaan umum, dilarang.
+        - "This card holds a memorable running story." -- too generic.
+        - "Good morning..." / "Today..." -- generic greetings, not allowed.
         PROMPT;
 
     public function __construct(
@@ -58,7 +58,7 @@ class BriefingFeaturedKartuVoiceNarrator
     public function generate(User $user, ?RunCard $card): string
     {
         if ($card === null) {
-            return 'Belum ada kartu khusus buat kamu minggu ini. Terus lari, aku pantau!';
+            return "No special card for you this week yet. Keep running, I'm watching!";
         }
 
         $decoded = $this->caller->call(

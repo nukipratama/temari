@@ -64,22 +64,22 @@ export async function login(page) {
 }
 
 // The demo user may have a pending card reveal overlaying every page. The sealed
-// dialog still renders a "Tutup" button — click it once to clear it server-side.
+// dialog still renders a "Close" button — click it once to clear it server-side.
 // CardReveal is lazy-loaded (see AppShell.tsx), so it isn't in the DOM yet right
 // after login: an instant isVisible() check races the chunk load and misses it,
 // leaving the reveal stuck open for the rest of the run. Wait for it instead.
 export async function dismissReveal(page) {
-  const dialog = page.getByRole('dialog', { name: /kartu baru/i });
+  const dialog = page.getByRole('dialog', { name: /new card/i });
   const appeared = await dialog.waitFor({ state: 'visible', timeout: 2000 }).then(() => true).catch(() => false);
   if (appeared) {
-    await page.getByRole('button', { name: /tutup/i }).first().click().catch(() => {});
+    await page.getByRole('button', { name: /close/i }).first().click().catch(() => {});
     await page.waitForTimeout(800);
   }
 }
 
 // Chromium can't rasterize a screenshot taller than ~32,767 physical pixels —
 // past that it doesn't throw, it silently writes a 0-byte file. A long
-// unpaginated list (e.g. /aktivitas with enough seeded runs) times deviceScaleFactor
+// unpaginated list (e.g. /activities with enough seeded runs) times deviceScaleFactor
 // 3 on mobile crosses that with room to spare. Guard it explicitly instead of
 // shipping a broken capture with no failure signal.
 const MAX_CANVAS_PX = 32000;
@@ -99,13 +99,13 @@ export async function fullPageScreenshot(page, path, shotOpts) {
 // URI patterns that are not screenshotable pages (apis, webhooks, auth handshakes, assets).
 const SKIP = [
   /^api\//, /^auth\//, /^strava\/(webhook|sync)/, /^logout$/, /^client-errors$/,
-  /^ai-usage$/, /^_/, /^up$/, /^storage\//, /\{.*\}.*\{/, // multi-param = not a simple page
+  /^ai-usage$/, /^devtools/, /^_/, /^up$/, /^storage\//, /\{.*\}.*\{/, // multi-param = not a simple page
 ];
 
 /**
  * Enumerate GET page routes from Laravel itself. Returns [{ name, uri, path }]
  * where {param} routes are resolved to a real id by scraping the first matching
- * link off the list page (so /aktivitas/{activity} -> /aktivitas/126, live).
+ * link off the list page (so /activities/{activity} -> /activities/126, live).
  * Unresolvable param routes are dropped (and logged — usually means thin data,
  * so re-run `artisan demo:seed`).
  */
@@ -128,7 +128,7 @@ export async function discoverPageRoutes(page) {
       pages.push({ name: uri === '/' || uri === '' ? 'hari-ini' : uri.replaceAll('/', '-'), path: `/${uri}` });
       continue;
     }
-    // Single-param page: resolve the id from the list page (e.g. aktivitas/{activity}).
+    // Single-param page: resolve the id from the list page (e.g. activities/{activity}).
     const base = uri.split('/{')[0];
     await page.goto(`${BASE}/${base}`, { waitUntil: 'networkidle' }).catch(() => {});
     const href = await page.locator(`a[href^="/${base}/"]`).first().getAttribute('href').catch(() => null);

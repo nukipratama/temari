@@ -60,13 +60,13 @@ export default function UsageFilters({
                 >
                     <DateField
                         id="from"
-                        label="Dari"
+                        label="From"
                         value={fromInput}
                         onChange={setFromInput}
                     />
                     <DateField
                         id="to"
-                        label="Sampai"
+                        label="To"
                         value={toInput}
                         onChange={setToInput}
                     />
@@ -81,7 +81,7 @@ export default function UsageFilters({
 
                     <PillButton type="submit" tone="sky" size="sm">
                         <Icon icon="mdi:filter-variant" aria-hidden />
-                        <span>Terapkan</span>
+                        <span>Apply</span>
                     </PillButton>
 
                     <div className="ml-auto flex flex-wrap gap-2">
@@ -98,8 +98,8 @@ export default function UsageFilters({
             </Card>
 
             <p className="mt-3 text-xs text-ink-3">
-                Rentang aktif:{' '}
-                <span className="font-semibold text-ink">{from}</span> sampai{' '}
+                Active range:{' '}
+                <span className="font-semibold text-ink">{from}</span> to{' '}
                 <span className="font-semibold text-ink">{to}</span>
                 {kind && (
                     <>
@@ -127,14 +127,14 @@ function KindFilter({
             htmlFor="kind-filter"
             className="flex flex-col gap-1 font-mono text-xs font-bold uppercase tracking-wider text-ink-2"
         >
-            Jenis
+            Kind
             <select
                 id="kind-filter"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 className="rounded-xl border border-line bg-surface-sunken px-3 py-2 text-sm font-medium text-ink focus:border-leaf focus:outline-none"
             >
-                <option value="">Semua</option>
+                <option value="">All</option>
                 {kinds.map((k) => (
                     <option key={k.value} value={k.value}>
                         {k.label}

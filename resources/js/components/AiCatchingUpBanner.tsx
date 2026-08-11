@@ -31,8 +31,8 @@ export default function AiCatchingUpBanner() {
                     aria-hidden
                 />
                 <p className="flex-1 font-sans text-sm leading-relaxed text-ink">
-                    Masih diproses di belakang layar. Balik lagi nanti ya,
-                    narasinya nyusul otomatis.
+                    Still processing in the background. Check back in a bit, the
+                    narration will catch up automatically.
                 </p>
             </div>
         </div>

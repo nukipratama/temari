@@ -7,14 +7,14 @@ import { cn } from '@/lib/cn';
 import { fmt, formatCost } from '@/pages/AiUsage/helpers';
 
 const COLUMNS = [
-    'Jenis',
-    'Panggilan',
+    'Kind',
+    'Calls',
     'Prompt',
     'Completion',
     'Total',
-    'Biaya',
+    'Cost',
     'Latency (avg/max)',
-    'Terpotong',
+    'Truncated',
 ];
 
 export default function KindTable({
@@ -26,7 +26,7 @@ export default function KindTable({
         <DataTable
             icon="mdi:shape"
             title="Breakdown per Kind"
-            subtitle="Jenis analisis yang paling banyak makan token."
+            subtitle="Analysis kinds eating the most tokens."
             tone="brand"
             columns={COLUMNS}
             minWidth={760}
@@ -55,7 +55,7 @@ function AgentSummary({ row }: Readonly<{ row: UsageRow }>) {
     // absent entirely on a payload rendered before they existed.
     const parts = [
         typeof row.avg_steps === 'number'
-            ? `${row.avg_steps.toFixed(1)} langkah`
+            ? `${row.avg_steps.toFixed(1)} steps`
             : null,
         typeof row.cached_pct === 'number'
             ? `${row.cached_pct.toFixed(0)}% cache`
@@ -87,7 +87,7 @@ function KindCells({
     const latencyLabel =
         row.avg_latency_ms === null
             ? '—'
-            : `${fmt(Math.round(row.avg_latency_ms / 1000))} / ${fmt(Math.round((row.max_latency_ms ?? row.avg_latency_ms) / 1000))} dtk`;
+            : `${fmt(Math.round(row.avg_latency_ms / 1000))} / ${fmt(Math.round((row.max_latency_ms ?? row.avg_latency_ms) / 1000))} s`;
 
     return (
         <>
@@ -97,7 +97,7 @@ function KindCells({
                 <ProgressBar
                     value={share}
                     size="sm"
-                    ariaLabel={`${(share * 100).toFixed(1)}% dari total`}
+                    ariaLabel={`${(share * 100).toFixed(1)}% of total`}
                     className="mt-1 max-w-[160px]"
                 />
             </td>
@@ -112,7 +112,7 @@ function KindCells({
             <td
                 className={cn(
                     'px-5 py-3 font-medium',
-                    truncatedRate > 1 ? 'text-mood-lemes' : 'text-ink-2',
+                    truncatedRate > 1 ? 'text-mood-gassed' : 'text-ink-2',
                 )}
             >
                 {row.truncated_calls > 0

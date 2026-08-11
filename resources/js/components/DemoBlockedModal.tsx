@@ -21,15 +21,16 @@ export default function DemoBlockedModal({
         <TemariNudgeModal
             open={open}
             onClose={onClose}
-            title="Telegram-nya lagi istirahat dulu"
+            title="Telegram's taking a break for now"
             body={
                 <>
-                    Ini kan masih demo, jadi Telegram aku matiin biar bot
-                    bareng-bareng ini gak kepencet orang lain. Sambungin
-                    Strava-mu sendiri, nanti notif beneran masuk ke HP kamu.
+                    This is still the demo, so I&apos;ve switched off Telegram
+                    here, that keeps this shared bot from getting tapped by
+                    someone else. Connect your own Strava and you&apos;ll get
+                    real notifications on your phone.
                 </>
             }
-            primaryLabel="Sambungkan dengan Strava"
+            primaryLabel="Connect Strava"
             primaryIcon="mdi:strava"
             primaryClassName="bg-strava-orange text-white hover:bg-strava-orange-hover"
             onPrimary={() => router.post('/logout')}

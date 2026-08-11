@@ -25,10 +25,10 @@ final class PastYouTool extends ActivityTool
 
     public function description(): string
     {
-        return 'Lari serupa milik pengguna sendiri di masa lalu, buat dibandingkan dengan sesi ini. '
-            .'pace_diff_sec dan time_diff_sec positif = sekarang lebih cepat, negatif = lebih pelan; '
-            .'hr_diff_bpm positif = HR lebih tinggi sekarang. Kalau past_you gak muncul, gak ada '
-            .'tandingan yang layak, dan kalau begitu jangan mengarang perbandingan masa lalu.';
+        return "A similar run of the user's own from the past, to compare against this session. "
+            .'pace_diff_sec and time_diff_sec positive = faster now, negative = slower; hr_diff_bpm '
+            ."positive = HR is higher now. If past_you is missing, there's no good match, and in "
+            .'that case never make up a comparison to the past.';
     }
 
     /** @return array<string, mixed> */

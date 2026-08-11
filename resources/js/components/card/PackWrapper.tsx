@@ -4,7 +4,7 @@ import { motion, useMotionValue, useTransform } from 'framer-motion';
 
 import type { Rarity } from '@/types/inertia';
 
-import { BunnyGlyph } from '@/components/BrandMark';
+import { TemariGlyph } from '@/components/BrandMark';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 import { RARITY_HEX } from '@/lib/runcard';
@@ -97,7 +97,7 @@ export default function PackWrapper({
             onKeyDown={handleKeyDown}
             tabIndex={0}
             role="button"
-            aria-label="Tarik atau ketuk buat buka kartu"
+            aria-label="Drag or tap to open card"
             initial={{ opacity: 1 }}
             exit={{
                 opacity: 0,
@@ -132,7 +132,7 @@ export default function PackWrapper({
                             key={id}
                             className={i % 2 === 0 ? 'rotate-6' : '-rotate-6'}
                         >
-                            <BunnyGlyph size={34} tone="ink" />
+                            <TemariGlyph size={34} tone="ink" />
                         </span>
                     ))}
                 </div>
@@ -180,14 +180,14 @@ export default function PackWrapper({
                 aria-hidden
                 className="absolute left-4 top-3 inline-flex items-center gap-1.5 rounded-full bg-sky px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-cream shadow-lg"
             >
-                Tarik <span aria-hidden>→</span>
+                Pull <span aria-hidden>→</span>
             </span>
 
             <Eyebrow
                 token="micro"
                 className="absolute inset-x-0 bottom-5 text-center text-ink/60"
             >
-                Tarik atau ketuk buat buka
+                Drag or tap to open
             </Eyebrow>
         </motion.div>
     );

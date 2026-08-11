@@ -16,7 +16,7 @@ use App\Models\ActivityDetail;
  * to anyone else.
  *
  * Bands are semantic (not presentation): the UI/narrator maps them onto the
- * Daybreak mood register and Indonesian copy.
+ * Threadwork mood register and Indonesian copy.
  */
 class RelativeEffort
 {

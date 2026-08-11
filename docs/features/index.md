@@ -15,16 +15,18 @@ One walkthrough per user-facing area — what it does and where it lives in the 
 _Pages_
 - [[dashboard]] — the "Hari Ini" home (greeting, Kata Temari, vitals, featured kartu, suggestion)
 - [[run-history]] — Jejak/Kalender, weekly snapshots, filters, journey strip
-- [[run-detail]] — single run: four-lens, route map, splits, HR zones, AI insights
-- [[profile]] — Aku, persona, profile voice
+- [[run-detail]] — single run: story + adaptive claims lenses, route map, splits, HR zones
+- [[profile]] — persona, profile voice
 - [[settings]] — Pengaturan hub (Telegram toggles, HR-zone entry, account deletion)
 - [[settings-hr-zones]] — Zona HR (Karvonen zones)
 - [[ai-usage]] — token usage dashboard (ops-gated)
+- [[race-projection]] — Race, the goal race and fitted-Riegel finish-time projection, plus the 90-day fitness trend
+- [[plan-periodizer]] — Plan, the deterministic periodizer, readiness clamp, and volume redistribution
 
 _Collection_
-- [[cards-collection]] — Koleksi/Kartu, rarities, badges, special moves
+- [[cards-collection]] — Collection/Cards, rarities, badges, special moves
 - [[records]] — Rekor, PRs, progression chart
-- [[targets-accessories]] — Target + Aksesori, unlock collection
+- [[targets-accessories]] — Accessories (with live unlock progress) + the badge board
 
 _Systems_
 - [[recaps]] — weekly/monthly/persona narratives across the app

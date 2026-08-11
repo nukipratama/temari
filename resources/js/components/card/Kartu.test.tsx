@@ -48,6 +48,35 @@ describe('Kartu', () => {
         expect(screen.getByText(symbol)).toBeInTheDocument();
     });
 
+    it.each([
+        ['common', 1],
+        ['uncommon', 2],
+        ['rare', 3],
+        ['epic', 4],
+        ['legendary', 5],
+    ] satisfies [Rarity, number][])(
+        'scales the thread-band accent stitch count for %s',
+        (rarity, count) => {
+            const { container } = render(
+                <Kartu
+                    name="x"
+                    km="1"
+                    durasi="1:00"
+                    trimp={1}
+                    rarity={rarity}
+                />,
+            );
+            expect(container.querySelectorAll('line').length).toBe(count);
+        },
+    );
+
+    it('drops the thread-band accent on compact grid tiles', () => {
+        const { container } = render(
+            <Kartu name="x" km="1" durasi="1:00" trimp={1} compact />,
+        );
+        expect(container.querySelectorAll('line').length).toBe(0);
+    });
+
     it('renders the edition mark when provided', () => {
         render(
             <Kartu
@@ -95,7 +124,7 @@ describe('Kartu', () => {
         const { container } = render(
             <Kartu name="x" km="1" durasi="1:00" trimp={1} size="lg" />,
         );
-        // Without polyline RouteGlyph falls back to the bunny glyph variant.
+        // Without polyline RouteGlyph falls back to the glyph variant.
         expect(
             container.querySelector('[data-variant="glyph"]'),
         ).not.toBeNull();
@@ -131,7 +160,12 @@ describe('Kartu', () => {
                 km="1"
                 durasi="1:00"
                 trimp={1}
-                badges={['negative_split', 'rajin', 'keras', 'berturut']}
+                badges={[
+                    'negative_split',
+                    'habit_forming',
+                    'all_out',
+                    'streak',
+                ]}
                 size="md"
                 compact
             />,
@@ -139,9 +173,9 @@ describe('Kartu', () => {
 
         expect(screen.getByText('Negative Split')).toBeInTheDocument();
         // The rest are dropped; the detail view still shows every badge.
-        expect(screen.queryByText('Rajin')).not.toBeInTheDocument();
-        expect(screen.queryByText('Keras')).not.toBeInTheDocument();
-        expect(screen.queryByText('Berturut')).not.toBeInTheDocument();
+        expect(screen.queryByText('Habit Forming')).not.toBeInTheDocument();
+        expect(screen.queryByText('All Out')).not.toBeInTheDocument();
+        expect(screen.queryByText('Streak')).not.toBeInTheDocument();
     });
 
     it('shows every badge when not a compact thumbnail', () => {
@@ -151,12 +185,17 @@ describe('Kartu', () => {
                 km="1"
                 durasi="1:00"
                 trimp={1}
-                badges={['negative_split', 'rajin', 'keras', 'berturut']}
+                badges={[
+                    'negative_split',
+                    'habit_forming',
+                    'all_out',
+                    'streak',
+                ]}
                 size="md"
             />,
         );
 
-        expect(screen.getByText('Berturut')).toBeInTheDocument();
+        expect(screen.getByText('Streak')).toBeInTheDocument();
     });
 
     it('renders badge pips at the compact (md) size too (same full block as the share card)', () => {
@@ -186,7 +225,7 @@ describe('Kartu', () => {
         );
         expect(screen.getByText('Negative Split')).toBeInTheDocument();
         // Description lives in the title attribute, not visible DOM text.
-        expect(screen.queryByText(/malah lebih ngebut/)).toBeNull();
+        expect(screen.queryByText(/second half faster/)).toBeNull();
     });
 
     it('exposes the mood via the TRIMP badge aria-label', () => {
@@ -196,12 +235,12 @@ describe('Kartu', () => {
                 km="1"
                 durasi="1:00"
                 trimp={1}
-                mood="nyala"
+                mood="blazing"
                 size="lg"
             />,
         );
         // Mood rides on the TRIMP "power" badge pip as an accessible label.
-        expect(screen.getByLabelText('Vibe Nyala')).toBeInTheDocument();
+        expect(screen.getByLabelText('Vibe Blazing')).toBeInTheDocument();
     });
 
     it('shows a mood pip with aria-label but no visible label text on the compact tier', () => {
@@ -211,12 +250,12 @@ describe('Kartu', () => {
                 km="1"
                 durasi="1:00"
                 trimp={1}
-                mood="lemes"
+                mood="gassed"
                 size="md"
             />,
         );
-        expect(screen.getByLabelText('Vibe Lemes')).toBeInTheDocument();
-        expect(screen.queryByText('Lemes')).toBeNull();
+        expect(screen.getByLabelText('Vibe Gassed')).toBeInTheDocument();
+        expect(screen.queryByText('Gassed')).toBeNull();
     });
 
     it('shows a labeled stat grid on the full tier', () => {
@@ -321,7 +360,7 @@ describe('Kartu', () => {
         // StatGrid renders nothing (returns null).
         render(<Kartu name="x" km="1" durasi="" trimp={1} size="lg" />);
         expect(screen.queryByText('Pace')).toBeNull();
-        expect(screen.queryByText('Durasi')).toBeNull();
+        expect(screen.queryByText('Duration')).toBeNull();
     });
 
     it('hides the stat grid below the sm breakpoint (not the DOM) when hideStats is set', () => {

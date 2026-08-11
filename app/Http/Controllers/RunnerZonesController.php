@@ -23,7 +23,7 @@ class RunnerZonesController extends Controller
         $user = $request->user();
         $profile = RunnerProfile::query()->where('user_id', $user->id)->first();
 
-        return Inertia::render('Pengaturan/ZonaHR', [
+        return Inertia::render('Settings/HrZones', [
             'profile' => $user->hrProfile(),
             'hasCustomProfile' => $profile !== null,
             'source' => $profile !== null ? $profile->source : 'default',
@@ -58,7 +58,7 @@ class RunnerZonesController extends Controller
             ],
         );
 
-        return back()->with('success', 'Zona HR kamu udah kesimpen. Dipakai ke semua lari berikutnya.');
+        return back()->with('success', 'Your HR zones are saved, and will apply to every run from here on.');
     }
 
     /**
@@ -73,7 +73,7 @@ class RunnerZonesController extends Controller
 
         $user->runnerProfile()->delete();
 
-        return back()->with('success', 'Zona HR kamu balik ke standar.');
+        return back()->with('success', 'Your HR zones are back to the default.');
     }
 
     /**
@@ -91,12 +91,12 @@ class RunnerZonesController extends Controller
         abort_unless($this->canSyncFromStrava($user), 403);
 
         if (! $config->boolean(AppConfigKey::StravaEnabled)) {
-            return back()->with('info', 'Tarikan dari Strava lagi dijeda sebentar. Nanti ketarik lagi otomatis.');
+            return back()->with('info', 'Pulling from Strava is paused for now. It\'ll pick back up automatically.');
         }
 
         SyncZonesJob::dispatchSync($user->id, force: true);
 
-        return back()->with('success', 'Zona kamu udah disinkron ulang dari Strava.');
+        return back()->with('success', 'Your zones have been re-synced from Strava.');
     }
 
     private function canSyncFromStrava(User $user): bool

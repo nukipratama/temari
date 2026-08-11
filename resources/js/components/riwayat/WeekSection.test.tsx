@@ -5,10 +5,10 @@ import { describe, expect, it, vi } from 'vitest';
 import type {
     WeekBucket,
     RunWithDetail,
-} from '@/pages/Riwayat/useJejakFilters';
+} from '@/pages/Activities/useJejakFilters';
 import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
 
-import { run } from '@/pages/Riwayat/runFixture';
+import { run } from '@/pages/Activities/runFixture';
 import { makeUser, setMockPage } from '@/test/setup';
 
 import WeekSection from './WeekSection';
@@ -25,7 +25,7 @@ function recapAnalysis(
     return {
         id: 1,
         status: 'done',
-        content: 'Minggu konsisten.',
+        content: 'Consistent week.',
         type: 'weekly_recap',
         subject_type: 'weekly_snapshot',
         subject_id: 7,
@@ -113,7 +113,7 @@ describe('WeekSection', () => {
 
         expect(screen.getByText('4 run')).toBeInTheDocument();
         expect(screen.getByText('35.5 km')).toBeInTheDocument();
-        expect(screen.getByText(/Minggu konsisten/)).toBeInTheDocument();
+        expect(screen.getByText(/Consistent week/)).toBeInTheDocument();
     });
 
     it('shows the live bucket totals (not a stale snapshot) for the in-progress week', () => {
@@ -141,10 +141,10 @@ describe('WeekSection', () => {
 
     it('renders the form-status chip label for every FormStatus value', () => {
         const labels: Record<string, string> = {
-            fresh: 'Lagi seger',
-            optimal: 'Pas banget',
-            fatigued: 'Mulai capek',
-            overreaching: 'Kelewatan',
+            fresh: 'Feeling Fresh',
+            optimal: 'Right on Track',
+            fatigued: 'Getting Tired',
+            overreaching: 'Overreaching',
         };
         for (const status of [
             'fresh',
@@ -184,9 +184,9 @@ describe('WeekSection', () => {
             />,
         );
 
-        expect(screen.queryByText('Variasi')).not.toBeInTheDocument();
+        expect(screen.queryByText('Monotony')).not.toBeInTheDocument();
         expect(screen.queryByText('Drift')).not.toBeInTheDocument();
-        expect(screen.queryByText('Lelah')).not.toBeInTheDocument();
+        expect(screen.queryByText('Fatigue')).not.toBeInTheDocument();
     });
 
     // Monotony ≥ 1.5 and decoupling ≥ 8% are the runner-relevant alarm thresholds.
@@ -202,10 +202,10 @@ describe('WeekSection', () => {
         );
 
         expect(screen.getByText('2.10').parentElement).toHaveClass(
-            'bg-mood-lemes/15',
+            'bg-mood-gassed/15',
         );
         expect(screen.getByText('9.4%').parentElement).toHaveClass(
-            'bg-mood-lemes/15',
+            'bg-mood-gassed/15',
         );
     });
 
@@ -224,9 +224,9 @@ describe('WeekSection', () => {
             );
 
             expect(
-                screen.getByText(/3 lari lain di minggu ini gak cocok/),
+                screen.getByText(/3 other runs this week don't match/),
             ).toBeInTheDocument();
-            expect(screen.getByText('1 dari 4 run')).toBeInTheDocument();
+            expect(screen.getByText('1 of 4 run')).toBeInTheDocument();
         });
 
         it('says nothing when the filter hid nothing', () => {
@@ -241,7 +241,7 @@ describe('WeekSection', () => {
             );
 
             expect(
-                screen.queryByText(/gak cocok sama filternya/),
+                screen.queryByText(/don't match the filter/),
             ).not.toBeInTheDocument();
         });
 
@@ -257,7 +257,7 @@ describe('WeekSection', () => {
             );
 
             expect(
-                screen.queryByText(/gak cocok sama filternya/),
+                screen.queryByText(/don't match the filter/),
             ).not.toBeInTheDocument();
         });
 
@@ -275,7 +275,7 @@ describe('WeekSection', () => {
             );
 
             expect(
-                screen.queryByText(/gak cocok sama filternya/),
+                screen.queryByText(/don't match the filter/),
             ).not.toBeInTheDocument();
         });
 
@@ -291,7 +291,7 @@ describe('WeekSection', () => {
             );
 
             expect(
-                screen.queryByText(/gak cocok sama filternya/),
+                screen.queryByText(/don't match the filter/),
             ).not.toBeInTheDocument();
         });
     });
@@ -310,7 +310,7 @@ describe('WeekSection', () => {
                 />,
             );
 
-            fireEvent.click(screen.getByText('Kirim notifikasi'));
+            fireEvent.click(screen.getByText('Send notification'));
             expect(router.post).not.toHaveBeenCalled();
         });
 
@@ -333,9 +333,9 @@ describe('WeekSection', () => {
                 />,
             );
 
-            fireEvent.click(screen.getByText('Kirim notifikasi'));
+            fireEvent.click(screen.getByText('Send notification'));
             expect(router.post).toHaveBeenCalledWith(
-                '/rekap-mingguan/7/kirim',
+                '/recaps/weekly/7/send',
                 {},
                 expect.objectContaining({ preserveScroll: true }),
             );
@@ -359,10 +359,10 @@ describe('WeekSection', () => {
             );
 
             expect(
-                screen.queryByText('Kirim notifikasi'),
+                screen.queryByText('Send notification'),
             ).not.toBeInTheDocument();
             expect(
-                screen.getByText(/Minggu ini kamu lari 4x sejauh 35.5 km/),
+                screen.getByText(/You ran 4x this week for 35.5 km/),
             ).toBeInTheDocument();
         });
 
@@ -388,7 +388,7 @@ describe('WeekSection', () => {
             );
 
             expect(
-                screen.getByText(/Belum ada data minggu ini, sabar ya/),
+                screen.getByText(/No data for this week yet, hang tight/),
             ).toBeInTheDocument();
         });
     });

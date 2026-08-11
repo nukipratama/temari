@@ -13,7 +13,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 uses(RefreshDatabase::class);
 
 it('requires authentication', function (): void {
-    $this->get('/rekor')->assertRedirect('/login');
+    $this->get('/records')->assertRedirect('/login');
 });
 
 it('renders the PR ledger', function (): void {
@@ -24,10 +24,10 @@ it('renders the PR ledger', function (): void {
         'value_sec' => 1500.0,
     ]);
 
-    $this->actingAs($user)->get('/rekor')
+    $this->actingAs($user)->get('/records')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Koleksi/Rekor')
+            ->component('Collection/Records')
             ->has('personalRecords', 1)
             ->where('personalRecords.0.category', '5km'));
 });
@@ -35,10 +35,10 @@ it('renders the PR ledger', function (): void {
 it('shows empty PR ledger when the user has none', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/rekor')
+    $this->actingAs($user)->get('/records')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Koleksi/Rekor')
+            ->component('Collection/Records')
             ->where('personalRecords', []));
 });
 
@@ -46,10 +46,10 @@ it('surfaces a VDOT fitness estimate from a distance PR', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1500.0]);
 
-    $this->actingAs($user)->get('/rekor')
+    $this->actingAs($user)->get('/records')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Koleksi/Rekor'));
+            ->component('Collection/Records'));
 });
 
 it('computes hero scoreboard extras + progression series for a distance PR with splits', function (): void {
@@ -97,10 +97,10 @@ it('computes hero scoreboard extras + progression series for a distance PR with 
         ]);
     }
 
-    $this->actingAs($user)->get('/rekor')
+    $this->actingAs($user)->get('/records')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Koleksi/Rekor')
+            ->component('Collection/Records')
             ->where('featuredExtras.pr_id', fn (int $id): bool => $id > 0)
             ->where('featuredExtras.location_name', 'Senayan')
             ->where('featuredExtras.target_sec', 1_740)
@@ -118,7 +118,7 @@ it('returns null milestone target when the PR value_sec is non-positive', functi
         'value_sec' => 0,
     ]);
 
-    $this->actingAs($user)->get('/rekor')
+    $this->actingAs($user)->get('/records')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('featuredExtras.target_sec', null)
@@ -132,7 +132,7 @@ it('milestoneFor rounds hour-scale times down to the next 5-minute increment', f
         'value_sec' => 7_500, // 2:05:00 → target 2:00:00 (7200), delta 5:00 (300)
     ]);
 
-    $this->actingAs($user)->get('/rekor')
+    $this->actingAs($user)->get('/records')
         ->assertInertia(fn (Assert $page) => $page
             ->where('featuredExtras.target_sec', 7_200)
             ->where('featuredExtras.delta_sec', 300));
@@ -145,7 +145,7 @@ it('milestoneFor rounds sub-10-minute times down to the next 15s increment', fun
         'value_sec' => 300, // 5:00 → target 4:45 (285), delta 15
     ]);
 
-    $this->actingAs($user)->get('/rekor')
+    $this->actingAs($user)->get('/records')
         ->assertInertia(fn (Assert $page) => $page
             ->where('featuredExtras.target_sec', 285)
             ->where('featuredExtras.delta_sec', 15));
@@ -158,7 +158,7 @@ it('skips milestone + progression for effort PRs (non-distance categories)', fun
         'value_sec' => 320,
     ]);
 
-    $this->actingAs($user)->get('/rekor')
+    $this->actingAs($user)->get('/records')
         ->assertInertia(fn (Assert $page) => $page
             ->where('featuredExtras.target_sec', null));
 });

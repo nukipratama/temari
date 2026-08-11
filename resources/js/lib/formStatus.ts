@@ -3,10 +3,10 @@ import type { FormStatus, Tone } from '@/types/inertia';
 // Mirrors App\Services\Run\Story\FormStatus::label/tone.
 
 const LABELS: Record<FormStatus, string> = {
-    fresh: 'Lagi seger',
-    optimal: 'Pas banget',
-    fatigued: 'Mulai capek',
-    overreaching: 'Kelewatan',
+    fresh: 'Feeling Fresh',
+    optimal: 'Right on Track',
+    fatigued: 'Getting Tired',
+    overreaching: 'Overreaching',
 };
 
 const TONES: Record<FormStatus, Tone> = {

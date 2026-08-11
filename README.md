@@ -1,12 +1,12 @@
 # Temari
 
-A self-hosted, Strava-connected personal running dashboard with a built-in companion (**Temari**) that narrates each run. UI in Bahasa Indonesia. Containerized end-to-end — Laravel Sail in dev, FrankenPHP behind a Cloudflare Tunnel in prod — and continuously deployed to a single self-hosted host on every merge to `main`.
+A self-hosted, Strava-connected personal running dashboard with a built-in companion (**Temari**) that narrates each run. Containerized end-to-end — Laravel Sail in dev, FrankenPHP behind a Cloudflare Tunnel in prod — and continuously deployed to a single self-hosted host on every merge to `main`.
 
-> **Status**: Live in prod. Strava OAuth + activity sync, briefing/verdict narration (Azure OpenAI with rule-based fallback), training-load (CTL/ATL/Form), per-run RunCards, weekly snapshots, and the Temari mascot are all shipping. Daybreak palette (pre-dawn peach `horizon` + cream paper + navy `sky`), intentionally far from Strava orange. Light-mode only.
+> **Status**: Live in prod. Strava OAuth + activity sync, briefing/verdict narration (Azure OpenAI with rule-based fallback), training-load (CTL/ATL/Form), per-run RunCards, weekly snapshots, and the Temari mascot are all shipping. Threadwork palette (gold `horizon` + warm linen canvas + deep indigo `sky`), intentionally far from Strava orange. Light-mode only.
 
 ## What it is
 
-Temari ("running buddy") turns your Strava runs into something you look forward to opening. Each run is ingested and scored with proper running metrics — pace, splits, HR zones, training load — then dealt as a collectible **kartu** with a rarity and a vibe, and narrated by **Temari**, a mascot companion who reads your day back to you in a warm, Indonesian-first voice.
+Temari ("running buddy") turns your Strava runs into something you look forward to opening. Each run is ingested and scored with proper running metrics — pace, splits, HR zones, training load — then dealt as a collectible **card** with a rarity and a vibe, and narrated by **Temari**, a ball-bodied mascot companion — built from hand-wound thread, its coverage growing with your training season — who reads your day back to you in a warm, casual voice.
 
 It is deliberately **not** a Strava clone. The run-tracker core is correct and honest, but the point is the companion layer on top: it's built for the solo runner who finds raw dashboards cold and wants their training to feel like a story. Single-tenant and self-hosted by design.
 

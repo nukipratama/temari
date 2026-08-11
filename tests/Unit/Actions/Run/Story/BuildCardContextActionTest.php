@@ -3,8 +3,13 @@
 declare(strict_types=1);
 
 use App\Actions\Run\Story\BuildCardContextAction;
+use App\Enums\PaceBand;
+use App\Enums\PrCategory;
+use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PersonalRecord;
+use App\Models\PlannedSession;
 use App\Models\RunnerProfile;
 use App\Models\User;
 use App\Services\Run\Story\CardContext;
@@ -200,7 +205,62 @@ it('leaves the athlete max HR unresolved when the run has no average HR', functi
     expect(cardContextFor($activity, $detail)->athleteMaxHr)->toBeNull();
 });
 
-it('resolves the whole history in two queries', function (): void {
+it('flags qualitySessionPaceMet when the run beats its planned tempo pace', function (): void {
+    $user = User::factory()->create();
+    RunnerProfile::factory()->for($user)->create(['max_hr' => 193, 'resting_hr' => 50]);
+    PersonalRecord::factory()->for($user)->create([
+        'category' => PrCategory::Km5,
+        'value_sec' => 1_200, // 5K in 20:00 -> a fast VDOT, so threshold pace is well under 300 sec/km
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-05-15',
+        'session_type' => SessionType::Tempo,
+        'pace_band' => PaceBand::Threshold,
+    ]);
+    [$activity, $detail] = cardContextSubject($user, [
+        'moving_time' => 1_000, // 5km in 1000s = 200 sec/km, fast enough to beat threshold pace
+    ]);
+
+    expect(cardContextFor($activity, $detail)->qualitySessionPaceMet)->toBeTrue();
+});
+
+it('does not flag qualitySessionPaceMet when the run misses its planned tempo pace', function (): void {
+    $user = User::factory()->create();
+    RunnerProfile::factory()->for($user)->create(['max_hr' => 193, 'resting_hr' => 50]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-05-15',
+        'session_type' => SessionType::Tempo,
+        'pace_band' => PaceBand::Threshold,
+    ]);
+    [$activity, $detail] = cardContextSubject($user, [
+        'moving_time' => 3_000, // 5km in 3000s = 600 sec/km, far slower than threshold pace
+    ]);
+
+    expect(cardContextFor($activity, $detail)->qualitySessionPaceMet)->toBeFalse();
+});
+
+it('does not flag qualitySessionPaceMet when no planned session exists for the date', function (): void {
+    $user = User::factory()->create();
+    RunnerProfile::factory()->for($user)->create(['max_hr' => 193, 'resting_hr' => 50]);
+    [$activity, $detail] = cardContextSubject($user);
+
+    expect(cardContextFor($activity, $detail)->qualitySessionPaceMet)->toBeFalse();
+});
+
+it('does not flag qualitySessionPaceMet for a planned easy or rest session, only tempo/interval', function (): void {
+    $user = User::factory()->create();
+    RunnerProfile::factory()->for($user)->create(['max_hr' => 193, 'resting_hr' => 50]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-05-15',
+        'session_type' => SessionType::Easy,
+        'pace_band' => PaceBand::Easy,
+    ]);
+    [$activity, $detail] = cardContextSubject($user, ['moving_time' => 1_000]);
+
+    expect(cardContextFor($activity, $detail)->qualitySessionPaceMet)->toBeFalse();
+});
+
+it('resolves the whole history in three queries when no planned session exists for the date', function (): void {
     $user = User::factory()->create();
     RunnerProfile::factory()->for($user)->create(['max_hr' => 193, 'resting_hr' => 50]);
     [$activity, $detail] = cardContextSubject($user, ['average_heartrate' => 150]);
@@ -213,5 +273,5 @@ it('resolves the whole history in two queries', function (): void {
 
     cardContextFor($activity, $detail);
 
-    expect($queries)->toBe(2);
+    expect($queries)->toBe(3);
 });

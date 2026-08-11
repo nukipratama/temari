@@ -30,8 +30,9 @@ export default function AiOutageBanner() {
                     aria-hidden
                 />
                 <p className="flex-1 font-sans text-sm leading-relaxed text-ink">
-                    Temari lagi istirahat sebentar. Narasinya nggak ilang kok,
-                    nyusul otomatis pas dia balik.
+                    Temari&apos;s resting for a bit. The narration isn&apos;t
+                    gone, it&apos;ll catch up automatically once
+                    generation&apos;s back.
                 </p>
             </div>
         </div>

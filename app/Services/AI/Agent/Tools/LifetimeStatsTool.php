@@ -32,15 +32,16 @@ final class LifetimeStatsTool extends UserTool
 
     public function description(): string
     {
-        return 'Riwayat pengguna secara keseluruhan: nama, total lari dan km, lari terjauh, sudah '
-            .'berapa bulan lari, jumlah PR, aksesori yang kebuka dari total, streak mingguan, jam '
-            .'favorit larinya, apakah Strava-nya nyambung, dan form_status terakhir. Mulai dari sini.';
+        return "The user's whole running history: name, total runs and km, longest run, how many "
+            .'months they\'ve been running, PR count, accessories unlocked out of the total, weekly '
+            ."streak, their favorite time to run, whether Strava's connected, and the latest "
+            .'form_status. Start here.';
     }
 
     /** @return array<string, mixed> */
     public function handle(array $arguments): array
     {
-        // The cached aggregate /kalender also reads, so the two surfaces cannot drift.
+        // The cached aggregate /calendar also reads, so the two surfaces cannot drift.
         $lifetime = $this->lifetimeStats->forUser($this->user);
         $firstRunAt = $lifetime['first_run_at'];
 
@@ -79,7 +80,7 @@ final class LifetimeStatsTool extends UserTool
             return null;
         }
 
-        $buckets = ['pagi' => 0, 'siang' => 0, 'sore' => 0, 'malam' => 0];
+        $buckets = ['morning' => 0, 'midday' => 0, 'evening' => 0, 'night' => 0];
         foreach ($byHour as $hour => $count) {
             $buckets[self::timeBucket((int) $hour)] += (int) $count;
         }
@@ -90,10 +91,10 @@ final class LifetimeStatsTool extends UserTool
     private static function timeBucket(int $hour): string
     {
         return match (true) {
-            $hour >= 4 && $hour < 10 => 'pagi',
-            $hour >= 10 && $hour < 15 => 'siang',
-            $hour >= 15 && $hour < 19 => 'sore',
-            default => 'malam',
+            $hour >= 4 && $hour < 10 => 'morning',
+            $hour >= 10 && $hour < 15 => 'midday',
+            $hour >= 15 && $hour < 19 => 'evening',
+            default => 'night',
         };
     }
 }
