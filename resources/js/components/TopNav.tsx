@@ -22,7 +22,7 @@ const ITEMS: ReadonlyArray<NavItem> = [
         id: 'koleksi',
         label: 'Collection',
         href: '/cards',
-        prefixes: ['/cards', '/accessories', '/records', '/goals'],
+        prefixes: ['/cards', '/accessories', '/records', '/badges'],
     },
     {
         id: 'riwayat',

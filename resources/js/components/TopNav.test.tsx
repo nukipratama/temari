@@ -100,6 +100,15 @@ describe('TopNav', () => {
         expect(screen.queryByLabelText(/Open menu/)).not.toBeInTheDocument();
     });
 
+    it('highlights Collection for the /badges page', () => {
+        setMockPage(user(), '/badges');
+        render(<TopNav />);
+        expect(screen.getByText('Collection')).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+    });
+
     it('highlights Me for the nested /settings settings pages', () => {
         setMockPage(user(), '/settings/zones');
         render(<TopNav />);
