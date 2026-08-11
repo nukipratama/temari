@@ -8,50 +8,9 @@ import type { SharedProps } from '@/types/inertia';
 
 import { cn } from '@/lib/cn';
 import { tabIconPop } from '@/lib/motion';
+import { activeTabFromUrl, ITEMS } from '@/lib/nav';
 
-import { activeTabFromUrl } from './TopNav';
-
-interface NavItem {
-    id: 'hari-ini' | 'koleksi' | 'riwayat' | 'plan' | 'aku';
-    label: string;
-    icon: string;
-    href: string;
-}
-
-const ITEMS: ReadonlyArray<NavItem> = [
-    {
-        id: 'hari-ini',
-        label: 'Today',
-        icon: 'mdi:weather-sunset-up',
-        href: '/',
-    },
-    {
-        id: 'koleksi',
-        label: 'Collection',
-        icon: 'mdi:cards-outline',
-        href: '/cards',
-    },
-    {
-        id: 'riwayat',
-        label: 'History',
-        icon: 'mdi:history',
-        href: '/activities',
-    },
-    {
-        id: 'plan',
-        label: 'Plan',
-        icon: 'mdi:calendar-check-outline',
-        href: '/plan',
-    },
-    { id: 'aku', label: 'Me', icon: 'mdi:account-outline', href: '/profile' },
-];
-
-/**
- * Tapping the tab you are already on should scroll back to the top, the way
- * every native tab bar behaves. Without this it falls through to a plain Inertia
- * visit: a full round trip, a remount, and a scroll reset — the same work as
- * switching tabs, for a destination you never left.
- */
+// Tapping the active tab scrolls to top instead of a full Inertia round-trip to the same page.
 function scrollToTop(event: MouseEvent<Element>) {
     event.preventDefault();
     const reduced = window.matchMedia(

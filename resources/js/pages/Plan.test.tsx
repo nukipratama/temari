@@ -2,7 +2,26 @@ import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { stubSyncAnimationFrame } from '@/test/setup';
+
 import Plan from './Plan';
+
+// framer-motion's prefers-reduced-motion check is a module-level singleton
+// that lazily initializes once and never re-checks: it must be forced before
+// this file's first render, or a later per-test override has no effect. This
+// file's fake system time (below) also makes the real animation-frame loop
+// count-ups otherwise depend on unreliable within a single worker, so render
+// every count-up here as an instant snap to its target instead of a tween.
+window.matchMedia = ((query: string) => ({
+    matches: query === '(prefers-reduced-motion)',
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+})) as unknown as typeof window.matchMedia;
 
 const TODAY = '2026-08-10';
 
@@ -51,8 +70,24 @@ function lastDeleteCall() {
 }
 
 describe('Plan', () => {
+    it('coach-marks the week schedule on a first visit', () => {
+        window.localStorage.clear();
+        stubSyncAnimationFrame();
+        render(
+            <Plan
+                race={null}
+                sessionsPerWeek={4}
+                season={SEASON}
+                weeks={[WEEK()]}
+            />,
+        );
+        expect(
+            screen.getByRole('dialog', { name: "The week's yours" }),
+        ).toBeInTheDocument();
+    });
+
     beforeEach(() => {
-        vi.useFakeTimers();
+        vi.useFakeTimers({ toFake: ['Date'] });
         vi.setSystemTime(new Date(`${TODAY}T08:00:00`));
     });
 

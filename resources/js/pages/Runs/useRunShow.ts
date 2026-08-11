@@ -184,6 +184,7 @@ export function useRunShow({
         pose,
         km,
         pace,
+        paceSec,
         hr,
         trimp,
         effortSub,

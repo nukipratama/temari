@@ -1,4 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
+import { motion } from 'framer-motion';
 import { type ReactNode } from 'react';
 
 import type {
@@ -22,7 +23,9 @@ import GradientText from '@/components/ui/GradientText';
 import HeroPanel from '@/components/ui/HeroPanel';
 import PageContainer from '@/components/ui/PageContainer';
 import SectionLabel from '@/components/ui/SectionLabel';
+import { useCountUp } from '@/hooks/useCountUp';
 import { appLayout } from '@/layouts/appLayout';
+import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatNaiveIdDate } from '@/lib/pace';
 import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
@@ -118,7 +121,7 @@ export default function Records({
                 <CollectionHeader
                     active="rekor"
                     eyebrow={eyebrow}
-                    headline1="So far,"
+                    headline1="So far"
                     headline2="your personal best."
                     activeCount={String(personalRecords.length)}
                 />
@@ -142,7 +145,8 @@ function HeroScoreboard({
     extras,
 }: Readonly<{ pr: ExtendedPR; extras: FeaturedExtras | null }>) {
     const category = PR_CATEGORY_LABELS[pr.category] ?? pr.category;
-    const time = formatPrValue(pr.category, pr.value_sec);
+    const timeSecCount = useCountUp(pr.value_sec);
+    const time = formatPrValue(pr.category, Math.round(timeSecCount));
     const runName = pr.activity?.detail?.name ?? 'Run';
     const splits = extras?.splits_pace_sec ?? [];
     const partialPace = extras?.splits_partial_pace_sec ?? null;
@@ -153,94 +157,95 @@ function HeroScoreboard({
     const deltaSec = extras?.delta_sec ?? null;
 
     return (
-        <HeroPanel className="mt-8 lg:px-14 lg:py-12">
-            {/* Two-row layout:
-                Row 1 — oversized time + Temari quote, balanced side-by-side.
-                Row 2 — captions (Type / Date / Location / Weather), full width.
-                Row 3 — splits, full width.
-               The previous 1.4fr_1fr split left the right column with just a
-               180px mascot + a max-w-sm card, ringed by a sea of empty sky.  */}
-            <div className="relative grid grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_minmax(320px,_360px)] lg:gap-12">
-                <div>
-                    <div className="mb-5 flex flex-wrap items-center gap-2">
-                        <Chip tone="onSky">{category}</Chip>
+        <div data-coachmark="collection-records-hero">
+            <HeroPanel className="mt-8 lg:px-14 lg:py-12">
+                {/* Two-row layout: time+quote, then full-width captions/splits. */}
+                <div className="relative grid grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_minmax(320px,_360px)] lg:gap-12">
+                    <div>
+                        <div className="mb-5 flex flex-wrap items-center gap-2">
+                            <Chip tone="onSky">{category}</Chip>
+                        </div>
+                        <GradientText
+                            preset="cream-sun"
+                            fontSize="clamp(64px, 14vw, 200px)"
+                            className="block font-sans font-bold leading-[0.85] tracking-[-0.05em] tabular-nums"
+                        >
+                            {time}
+                        </GradientText>
                     </div>
-                    <GradientText
-                        preset="cream-sun"
-                        fontSize="clamp(64px, 14vw, 200px)"
-                        className="block font-sans font-bold leading-[0.85] tracking-[-0.05em] tabular-nums"
-                    >
-                        {time}
-                    </GradientText>
-                </div>
-                <div className="flex flex-col items-center gap-4 lg:items-stretch">
-                    <div className="flex justify-center">
-                        <Temari pose="glow" size={160} />
+                    <div className="flex flex-col items-center gap-4 lg:items-stretch">
+                        <div className="flex justify-center">
+                            <Temari pose="glow" size={160} />
+                        </div>
+                        {pr.context_analysis &&
+                            pr.context_analysis.status !== 'pending' && (
+                                <div className="rounded-2xl border border-cream/[0.12] bg-cream/[0.06] px-5 py-4 backdrop-blur">
+                                    <AnalysisStatus
+                                        analysis={pr.context_analysis}
+                                        inertiaReloadProps={['personalRecords']}
+                                        allowReanalyze={false}
+                                        showTimestamp={false}
+                                        renderContent={(text) => (
+                                            <p className="font-display text-quote-lg italic text-cream">
+                                                “
+                                                {renderBold(
+                                                    stripEdgeQuotes(text),
+                                                )}
+                                                ”
+                                            </p>
+                                        )}
+                                    />
+                                </div>
+                            )}
                     </div>
-                    {pr.context_analysis &&
-                        pr.context_analysis.status !== 'pending' && (
-                            <div className="rounded-2xl border border-cream/[0.12] bg-cream/[0.06] px-5 py-4 backdrop-blur">
-                                <AnalysisStatus
-                                    analysis={pr.context_analysis}
-                                    inertiaReloadProps={['personalRecords']}
-                                    allowReanalyze={false}
-                                    showTimestamp={false}
-                                    renderContent={(text) => (
-                                        <p className="font-display text-quote-lg italic text-cream">
-                                            “{renderBold(stripEdgeQuotes(text))}
-                                            ”
-                                        </p>
-                                    )}
-                                />
-                            </div>
-                        )}
                 </div>
-            </div>
-            <div className="relative mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                <Caption label="Type" value={runName} />
-                <Caption
-                    label="Date"
-                    value={formatNaiveIdDate(pr.set_at, 'long')}
-                />
-                <Caption
-                    label="Location"
-                    value={
-                        location ??
-                        (pr.activity_id ? (
-                            <Link
-                                href={activityUrl({
-                                    activity_id: pr.activity_id,
-                                })}
-                                className="focus-ring-on-sky rounded text-cream underline-offset-2 hover:underline"
-                            >
-                                View run details
-                            </Link>
-                        ) : (
-                            '—'
-                        ))
-                    }
-                />
-                {tempo != null && (
+                <div className="relative mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                    <Caption label="Type" value={runName} />
                     <Caption
-                        label="Weather"
-                        value={`${Math.round(tempo)}°C${humidity != null ? ` · ${Math.round(humidity)}% humidity` : ''}`}
+                        label="Date"
+                        value={formatNaiveIdDate(pr.set_at, 'long')}
+                    />
+                    <Caption
+                        label="Location"
+                        value={
+                            location ??
+                            (pr.activity_id ? (
+                                <Link
+                                    href={activityUrl({
+                                        activity_id: pr.activity_id,
+                                    })}
+                                    className="focus-ring-on-sky rounded text-cream underline-offset-2 hover:underline"
+                                >
+                                    View run details
+                                </Link>
+                            ) : (
+                                '—'
+                            ))
+                        }
+                    />
+                    {tempo != null && (
+                        <Caption
+                            label="Weather"
+                            value={`${Math.round(tempo)}°C${humidity != null ? ` · ${Math.round(humidity)}% humidity` : ''}`}
+                        />
+                    )}
+                </div>
+                <SplitsSparkline
+                    paceSec={splits}
+                    partialPaceSec={partialPace}
+                    className="relative mt-5"
+                />
+                {targetSec != null && deltaSec != null && deltaSec > 0 && (
+                    <MilestoneStrip
+                        targetSec={targetSec}
+                        deltaSec={deltaSec}
+                        currentSec={pr.value_sec}
+                        distanceLabel={category}
+                        className="relative mt-6"
                     />
                 )}
-            </div>
-            <SplitsSparkline
-                paceSec={splits}
-                partialPaceSec={partialPace}
-                className="relative mt-5"
-            />
-            {targetSec != null && deltaSec != null && deltaSec > 0 && (
-                <MilestoneStrip
-                    targetSec={targetSec}
-                    deltaSec={deltaSec}
-                    distanceLabel={category}
-                    className="relative mt-6"
-                />
-            )}
-        </HeroPanel>
+            </HeroPanel>
+        </div>
     );
 }
 
@@ -261,22 +266,30 @@ function Caption({
 }
 
 function TrophyWall({ records }: Readonly<{ records: ExtendedPR[] }>) {
+    const count = Math.round(useCountUp(records.length));
     return (
-        <section className="mt-8">
+        <section data-coachmark="collection-trophy-wall" className="mt-8">
             <header className="mb-4 flex items-baseline justify-between">
                 <div className="flex items-baseline gap-3">
                     <h2 className="font-display text-headline-md text-ink">
                         Trophy wall ·{' '}
                         <em className="italic text-horizon-deep">distance</em>
                     </h2>
-                    <Chip tone="horizon">{records.length} PR</Chip>
+                    <Chip tone="horizon">{count} PR</Chip>
                 </div>
             </header>
-            <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+            <motion.div
+                variants={staggerContainer}
+                initial="hidden"
+                animate="visible"
+                className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4"
+            >
                 {records.map((r) => (
-                    <Medallion key={r.id} pr={r} />
+                    <motion.div key={r.id} variants={fadeInUp}>
+                        <Medallion pr={r} />
+                    </motion.div>
                 ))}
-            </div>
+            </motion.div>
         </section>
     );
 }
@@ -301,6 +314,7 @@ const PACE_FILLER_KEYS = [
 ] as const;
 
 function PaceTicker({ records }: Readonly<{ records: ExtendedPR[] }>) {
+    const count = Math.round(useCountUp(records.length));
     return (
         <section className="mt-8">
             <header className="mb-4 flex items-baseline justify-between">
@@ -311,7 +325,7 @@ function PaceTicker({ records }: Readonly<{ records: ExtendedPR[] }>) {
                             best efforts
                         </em>
                     </h2>
-                    <Chip>{records.length} PR</Chip>
+                    <Chip>{count} PR</Chip>
                 </div>
             </header>
             <div className="relative overflow-hidden rounded-2xl bg-ink p-1.5 text-cream">
@@ -323,9 +337,16 @@ function PaceTicker({ records }: Readonly<{ records: ExtendedPR[] }>) {
                             'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(245,240,228,0.02) 3px, rgba(245,240,228,0.02) 4px)',
                     }}
                 />
-                <div className="relative grid gap-1 sm:grid-cols-2 lg:grid-cols-4">
+                <motion.div
+                    variants={staggerContainer}
+                    initial="hidden"
+                    animate="visible"
+                    className="relative grid gap-1 sm:grid-cols-2 lg:grid-cols-4"
+                >
                     {records.map((r) => (
-                        <PaceCell key={r.id} pr={r} />
+                        <motion.div key={r.id} variants={fadeInUp}>
+                            <PaceCell pr={r} />
+                        </motion.div>
                     ))}
                     {PACE_FILLER_KEYS.slice(
                         0,
@@ -337,7 +358,7 @@ function PaceTicker({ records }: Readonly<{ records: ExtendedPR[] }>) {
                             className="rounded-xl bg-sky/10"
                         />
                     ))}
-                </div>
+                </motion.div>
             </div>
         </section>
     );

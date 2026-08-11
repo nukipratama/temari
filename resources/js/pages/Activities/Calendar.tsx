@@ -1,9 +1,12 @@
 import { Icon } from '@iconify/react';
 import { Head, Link } from '@inertiajs/react';
-import { memo, type ReactNode } from 'react';
+import { motion } from 'framer-motion';
+import { memo, useRef, type ReactNode } from 'react';
 
 import type { AnalysisPayload, Mood } from '@/types/inertia';
 
+import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
+import CoachMark from '@/components/onboarding/CoachMark';
 import RiwayatFilter from '@/components/riwayat/RiwayatFilter';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import SendNotificationButton from '@/components/SendNotificationButton';
@@ -12,6 +15,7 @@ import Temari from '@/components/temari/Temari';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
+import { useCountUp } from '@/hooks/useCountUp';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
@@ -24,6 +28,7 @@ import {
     MOOD_SOFT_FILL,
     moodSigilColor,
 } from '@/lib/mood';
+import { fadeInUp } from '@/lib/motion';
 import { formatPace, formatShortDateId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 import { activityUrl } from '@/lib/routes';
@@ -92,12 +97,14 @@ export default function Calendar({
         toggleMood,
         resetFilter,
     } = useKalender({ cells, month, todayMonth });
+    const gridRef = useRef<HTMLDivElement>(null);
 
     return (
         <>
             <Head title={`History · Calendar · ${monthLabel}`} />
             <PageContainer>
                 <header className="mb-8 min-w-0">
+                    <TodayHistoryTabs active="history" className="mb-5" />
                     <PageHero eyebrow={<LifetimeEyebrow lifetime={lifetime} />}>
                         Every run,
                         <br />
@@ -142,36 +149,62 @@ export default function Calendar({
                 {/* All 7 weekday columns fit at every width: phones get a calendar-first
                     view (date + mood dot per cell, run stats deferred to the day drill-in),
                     lg+ gets the full km/pace/HR cells. No horizontal scroll. */}
-                <div className="overflow-hidden rounded-2xl border border-line/70 bg-surface-warm">
-                    <CalendarHeader />
-                    {weeks.map((week) => (
-                        <WeekRowView
-                            key={week.weekStart}
-                            week={week}
-                            todayQuote={todayQuote}
-                            moodFilter={moodFilter}
-                        />
-                    ))}
+                {/* The ref/data-coachmark anchor lives on this stable wrapper, not on
+                    the keyed motion.div below: CoachMark's anchor tracking sets up its
+                    IntersectionObserver once and never re-attaches, so a `key={month}`
+                    remount on the ref'd element itself would detach it from the DOM the
+                    observer is still watching, dropping the mark for the rest of the visit. */}
+                <div ref={gridRef} data-coachmark="calendar-grid">
+                    <motion.div
+                        key={month}
+                        initial="hidden"
+                        animate="visible"
+                        variants={fadeInUp}
+                        className="overflow-hidden rounded-2xl border border-line/70 bg-surface-warm shadow-sm"
+                    >
+                        <CalendarHeader />
+                        {weeks.map((week) => (
+                            <WeekRowView
+                                key={week.weekStart}
+                                week={week}
+                                todayQuote={todayQuote}
+                                moodFilter={moodFilter}
+                            />
+                        ))}
+                    </motion.div>
                 </div>
+                <CoachMark
+                    id="calendar-grid"
+                    anchorRef={gridRef}
+                    placement="top"
+                    title="Tap any day"
+                    body="Days you ran open straight into the run itself."
+                />
             </PageContainer>
         </>
     );
 }
 
 function LifetimeEyebrow({ lifetime }: Readonly<{ lifetime?: LifetimeStats }>) {
-    const stats: string[] = [];
-    if (lifetime && lifetime.total_runs > 0) {
-        stats.push(
-            `${lifetime.total_runs} runs`,
-            `${lifetime.total_km.toFixed(0)} km`,
-        );
-        if (lifetime.first_run_at) {
-            stats.push(`since ${formatShortDateId(lifetime.first_run_at)}`);
-        }
-    }
+    const hasLifetime = Boolean(lifetime && lifetime.total_runs > 0);
+    const totalRuns = useCountUp(lifetime?.total_runs ?? 0);
+    const totalKm = useCountUp(lifetime?.total_km ?? 0);
+
     return (
         <Eyebrow token="hero" tone="ink-2" className="mb-3.5 lg:text-xs">
-            {['History', ...stats].join(' · ')}
+            History
+            {hasLifetime && (
+                <>
+                    {' · '}
+                    {Math.round(totalRuns)} runs · {totalKm.toFixed(0)} km
+                    {lifetime?.first_run_at && (
+                        <>
+                            {' · since '}
+                            {formatShortDateId(lifetime.first_run_at)}
+                        </>
+                    )}
+                </>
+            )}
         </Eyebrow>
     );
 }
@@ -277,7 +310,8 @@ function MonthNav({
             {showTodayButton && (
                 <Link
                     href="/calendar"
-                    className="focus-ring ml-1 rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1 text-xs font-semibold text-leaf-deep transition hover:border-leaf hover:bg-leaf/15"
+                    aria-label="Jump to current month"
+                    className="pressable focus-ring ml-1 rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1 text-xs font-semibold text-leaf-deep transition hover:border-leaf hover:bg-leaf/15"
                 >
                     Today
                 </Link>
@@ -296,7 +330,7 @@ function NavButton({
             href={href}
             aria-label={label}
             preserveScroll
-            className="focus-ring flex h-9 w-9 items-center justify-center rounded-full border border-line/60 text-ink-2 transition hover:border-line hover:bg-surface-warm hover:text-ink"
+            className="pressable focus-ring flex h-9 w-9 items-center justify-center rounded-full border border-line/60 text-ink-2 transition hover:border-line hover:bg-surface-warm hover:text-ink"
         >
             <Icon icon={icon} width={18} height={18} aria-hidden />
         </Link>
@@ -398,7 +432,7 @@ const DayCellView = memo(function DayCellView({
         filteredOut && 'opacity-30',
         hasRun && cell.mood && !filteredOut
             ? MOOD_SOFT_FILL[cell.mood]
-            : 'bg-surface-elev',
+            : 'bg-surface-card',
     );
 
     const inner = (
@@ -466,7 +500,7 @@ const DayCellView = memo(function DayCellView({
         return (
             <Link
                 href={activityUrl({ activity_id: cell.activity_id })}
-                className={cn(cellChrome, 'focus-ring')}
+                className={cn(cellChrome, 'pressable focus-ring')}
                 aria-label={ariaLabel}
             >
                 {inner}
@@ -555,7 +589,10 @@ function TodayCell({
         return (
             <Link
                 href={activityUrl({ activity_id: cell.activity_id })}
-                className={cn(chrome, 'focus-ring-on-sky hover:bg-sky-2')}
+                className={cn(
+                    chrome,
+                    'pressable focus-ring-on-sky hover:bg-sky-2',
+                )}
                 aria-label={ariaLabel}
             >
                 {inner}
@@ -574,7 +611,7 @@ function Legend({ className }: Readonly<{ className?: string }>) {
     return (
         <div
             className={cn(
-                'flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-line/60 bg-surface-warm/40 px-4 py-3',
+                'flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-line/60 bg-surface-warm/40 px-4 py-3 shadow-sm',
                 className,
             )}
         >

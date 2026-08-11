@@ -1,5 +1,7 @@
 import { Icon } from '@iconify/react';
 import { Head, usePage } from '@inertiajs/react';
+import { motion } from 'framer-motion';
+import { useRef } from 'react';
 
 import type {
     Mood,
@@ -11,6 +13,8 @@ import type {
 import JourneyStrip, {
     type JourneyMatchData,
 } from '@/components/aktivitas/JourneyStrip';
+import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
+import CoachMark from '@/components/onboarding/CoachMark';
 import ActiveFilterChips from '@/components/riwayat/ActiveFilterChips';
 import {
     RangeWidenedNote,
@@ -32,6 +36,7 @@ import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
 import { appLayout } from '@/layouts/appLayout';
+import { fadeInUp, staggerContainer } from '@/lib/motion';
 
 import {
     DEFAULT_SORT,
@@ -83,6 +88,7 @@ export default function RunsIndex({
     weeklySnapshots,
     journeyMatch = null,
 }: Readonly<RunsIndexProps>) {
+    const filterRef = useRef<HTMLDivElement>(null);
     const {
         buckets,
         snapshotsByWeek,
@@ -103,12 +109,21 @@ export default function RunsIndex({
     });
 
     const hasRuns = runs.length > 0;
+    // Keying on the active filters replays the results reveal when they change.
+    const resultsKey = [
+        rangeFilter,
+        sortMode,
+        moodFilter.join(','),
+        distanceFilter ?? '',
+        weekFilter ?? '',
+    ].join('|');
 
     return (
         <>
             <Head title="History · Log" />
             <PageContainer>
                 <header className="flex flex-col gap-5">
+                    <TodayHistoryTabs active="history" />
                     <PageHero
                         eyebrow={
                             anyFilterActive
@@ -123,7 +138,19 @@ export default function RunsIndex({
                     </PageHero>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <RiwayatTabs active="jejak" />
-                        <RiwayatFilter {...sections} onReset={resetFilters} />
+                        <div ref={filterRef} data-coachmark="history-filters">
+                            <RiwayatFilter
+                                {...sections}
+                                onReset={resetFilters}
+                            />
+                        </div>
+                        <CoachMark
+                            id="history-filters"
+                            anchorRef={filterRef}
+                            placement="bottom"
+                            title="Filter the log"
+                            body="When the list gets long, narrow it down by mood, distance, or week."
+                        />
                     </div>
                     <ActiveFilterChips
                         chips={chips}
@@ -145,7 +172,13 @@ export default function RunsIndex({
                 )}
 
                 {hasRuns && (
-                    <div className="space-y-8">
+                    <motion.div
+                        key={resultsKey}
+                        initial="hidden"
+                        animate="visible"
+                        variants={staggerContainer}
+                        className="space-y-8"
+                    >
                         {rangeAutoWidened && (
                             <RangeWidenedNote rangeFilter={rangeFilter} />
                         )}
@@ -153,29 +186,35 @@ export default function RunsIndex({
                             <RunsTruncatedNote maxRuns={maxRuns} />
                         )}
                         {ranked ? (
-                            <RankedList
-                                runs={runs}
-                                notes={notes}
-                                moods={moods}
-                                sort={sortMode}
-                            />
-                        ) : (
-                            buckets.map((bucket) => (
-                                <WeekSection
-                                    key={bucket.weekStart}
-                                    bucket={bucket}
-                                    snapshot={
-                                        snapshotsByWeek.get(
-                                            bucket.weekEnding,
-                                        ) ?? null
-                                    }
+                            <motion.div variants={fadeInUp}>
+                                <RankedList
+                                    runs={runs}
                                     notes={notes}
                                     moods={moods}
-                                    filtered={anyFilterActive}
+                                    sort={sortMode}
                                 />
+                            </motion.div>
+                        ) : (
+                            buckets.map((bucket) => (
+                                <motion.div
+                                    key={bucket.weekStart}
+                                    variants={fadeInUp}
+                                >
+                                    <WeekSection
+                                        bucket={bucket}
+                                        snapshot={
+                                            snapshotsByWeek.get(
+                                                bucket.weekEnding,
+                                            ) ?? null
+                                        }
+                                        notes={notes}
+                                        moods={moods}
+                                        filtered={anyFilterActive}
+                                    />
+                                </motion.div>
                             ))
                         )}
-                    </div>
+                    </motion.div>
                 )}
                 {/* A filtered view that matched nothing is a different story from
                     a genuinely empty history, so it gets its own state with a way

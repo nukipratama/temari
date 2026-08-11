@@ -104,7 +104,31 @@ it('has no `from` prop when there is no intended deep link', function (): void {
         ->assertInertia(fn (Assert $page) => $page->component('Auth/Login')->where('from', null));
 });
 
-it('returns to the intended deep link after a successful strava callback', function (): void {
+it('sends a fresh connection to onboarding, ignoring an intended deep link', function (): void {
+    $stravaUser = Mockery::mock(SocialiteUser::class);
+    $stravaUser->token = 'access-token';
+    $stravaUser->refreshToken = 'refresh-token';
+    $stravaUser->expiresIn = 21600;
+    $stravaUser->shouldReceive('getId')->andReturn('424242');
+    $stravaUser->shouldReceive('getName')->andReturn('Deep Link');
+    $stravaUser->shouldReceive('getEmail')->andReturn('deep@example.test');
+    $stravaUser->shouldReceive('getAvatar')->andReturn('https://strava.test/d.png');
+
+    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
+
+    $this->withSession(['url.intended' => url('/activities/42')])
+        ->get(route('auth.strava.callback'))
+        ->assertRedirect(route('onboarding.show'));
+
+    $this->assertAuthenticated();
+});
+
+it('returns an existing, already-onboarded user to their intended deep link', function (): void {
+    $existingUser = User::factory()->create();
+    StravaConnection::factory()->for($existingUser)->create([
+        'strava_athlete_id' => 424242,
+    ]);
+
     $stravaUser = Mockery::mock(SocialiteUser::class);
     $stravaUser->token = 'access-token';
     $stravaUser->refreshToken = 'refresh-token';
@@ -140,7 +164,7 @@ it('creates a new user from the strava callback and logs them in', function (): 
 
     $response = $this->get(route('auth.strava.callback'));
 
-    $response->assertRedirect(route('dashboard'))
+    $response->assertRedirect(route('onboarding.show'))
         ->assertCookie(Auth::guard()->getRecallerName());
 
     expect(session()->getId())->not->toBe($sessionIdBefore);
@@ -185,7 +209,7 @@ it('still connects on a fresh connect while the strava kill switch is off, witho
 
     mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
 
-    $this->get(route('auth.strava.callback'))->assertRedirect(route('dashboard'));
+    $this->get(route('auth.strava.callback'))->assertRedirect(route('onboarding.show'));
 
     $this->assertAuthenticated();
     $connection = StravaConnection::where('strava_athlete_id', 551122)->firstOrFail();
@@ -210,7 +234,7 @@ it('stores only the granted scopes and logs when a required scope is declined', 
 
     // Strava reports only `read` was granted; activity:read_all + profile:read_all declined.
     $this->get(route('auth.strava.callback', ['scope' => 'read']))
-        ->assertRedirect(route('dashboard'));
+        ->assertRedirect(route('onboarding.show'));
 
     $connection = StravaConnection::where('strava_athlete_id', 555111)->firstOrFail();
     expect($connection->scopes)->toBe('read');

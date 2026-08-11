@@ -14,7 +14,7 @@ import type {
     StoryLine,
 } from '@/types/inertia';
 
-import { setMockPage } from '@/test/setup';
+import { setMockPage, stubSyncAnimationFrame } from '@/test/setup';
 
 import RunsShow from './Show';
 
@@ -165,6 +165,15 @@ function renderShow(
 }
 
 describe('Runs/Show', () => {
+    it('coach-marks the share action on a first visit', () => {
+        window.localStorage.clear();
+        stubSyncAnimationFrame();
+        renderShow();
+        expect(
+            screen.getByRole('dialog', { name: 'Share the card' }),
+        ).toBeInTheDocument();
+    });
+
     it('renders run name in the sky hero', () => {
         renderShow();
         expect(screen.getAllByText('Morning Run').length).toBeGreaterThan(0);
@@ -429,10 +438,13 @@ describe('Runs/Show', () => {
         expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     });
 
-    it('shows elevation gain as the ELEVATION hero tile, not a secondary ASCENT tile', () => {
+    it('shows elevation gain as the ELEVATION hero tile, not a secondary ASCENT tile', async () => {
         renderShow();
         expect(screen.getByText('ELEVATION')).toBeInTheDocument();
-        expect(screen.getByText('120')).toBeInTheDocument();
+        // The tile value count-ups from 0 on mount, so its final text lands async.
+        await waitFor(() =>
+            expect(screen.getByText('120')).toBeInTheDocument(),
+        );
         expect(screen.queryByText('ASCENT')).not.toBeInTheDocument();
     });
 

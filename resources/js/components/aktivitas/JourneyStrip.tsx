@@ -1,5 +1,6 @@
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
 import { formatShortDateTimeId, formatPace } from '@/lib/pace';
 
@@ -36,25 +37,22 @@ export default function JourneyStrip({
     match,
     className,
 }: Readonly<JourneyStripProps>) {
+    // Hooks must run before the early return below: match can flip from null to a value.
+    const countedTotalKm = useCountUp(match?.total_km ?? 0);
+
     if (match === null) return null;
 
-    const {
-        first,
-        current,
-        pace_improvement_sec,
-        hr_improvement_bpm,
-        total_km,
-    } = match;
+    const { first, current, pace_improvement_sec, hr_improvement_bpm } = match;
 
     return (
-        <Card as="section" padding="lg" className={className}>
+        <Card as="section" padding="lg" className={cn('shadow-sm', className)}>
             <Eyebrow as="h3" token="hero" tone="ink-2">
                 You vs Your First Run
             </Eyebrow>
             <p className="mt-2 font-sans text-sm leading-relaxed text-ink">
                 Total{' '}
                 <span className="font-semibold text-horizon-deep">
-                    {total_km.toFixed(1)} km
+                    {countedTotalKm.toFixed(1)} km
                 </span>{' '}
                 logged since your first run
                 {first.date && (

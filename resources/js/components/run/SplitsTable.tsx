@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { motion } from 'framer-motion';
 
 import type { StreamSummaryPartial, StreamSummaryPerKm } from '@/types/inertia';
 
@@ -6,6 +7,7 @@ import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
+import { countUpEase, fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatKm, formatPace } from '@/lib/pace';
 import {
     barRowFill,
@@ -40,7 +42,7 @@ export default function SplitsTable({
     }));
 
     return (
-        <Card as="section" padding="lg" className={className}>
+        <Card as="section" padding="lg" className={cn('shadow-sm', className)}>
             <header className="mb-1.5 flex flex-wrap items-baseline justify-between gap-3">
                 <SectionLabel>Splits per km</SectionLabel>
                 {fastest != null && fastestKm != null && (
@@ -64,15 +66,21 @@ export default function SplitsTable({
             {/* The -mx-3/px-3 bleed lives on this wrapper, not per row: nested inside
                 a row it would bleed left of the scrollable viewport's origin and get
                 clipped there, cutting off the highlight's rounded corner. */}
-            <div className="-mx-3 flex flex-col gap-1 overflow-x-auto px-3">
+            <motion.div
+                variants={staggerContainer}
+                initial="hidden"
+                animate="visible"
+                className="-mx-3 flex flex-col gap-1 overflow-x-auto px-3"
+            >
                 {keyedRows.map(({ row, key }, idx) => {
                     const sec = paceSecOf(row);
                     const isFast = sec != null && sec === fastest;
                     const pctWidth = computeBarWidth(sec, fastest, slowest);
                     const rowFill = barRowFill(isFast, idx);
                     return (
-                        <div
+                        <motion.div
                             key={key}
+                            variants={fadeInUp}
                             className={cn(
                                 'grid',
                                 ROW_GRID,
@@ -86,12 +94,18 @@ export default function SplitsTable({
                                 KM {row.km ?? '?'}
                             </Eyebrow>
                             <div className="h-2.5 overflow-hidden rounded bg-sky/[0.06] lg:h-3">
-                                <div
+                                <motion.div
                                     className={cn(
-                                        'h-full rounded',
+                                        'h-full origin-left rounded',
                                         isFast ? 'bg-horizon' : 'bg-sky',
                                     )}
                                     style={{ width: `${pctWidth}%` }}
+                                    initial={{ scaleX: 0 }}
+                                    animate={{ scaleX: 1 }}
+                                    transition={{
+                                        duration: 0.6,
+                                        ease: countUpEase,
+                                    }}
                                 />
                             </div>
                             <div className="text-right font-sans text-sm font-semibold tabular-nums text-ink">
@@ -109,11 +123,11 @@ export default function SplitsTable({
                                 />
                                 {row.avg_cadence_spm ?? '—'}
                             </div>
-                        </div>
+                        </motion.div>
                     );
                 })}
                 {partial && <SplitPartialRow partial={partial} />}
-            </div>
+            </motion.div>
         </Card>
     );
 }

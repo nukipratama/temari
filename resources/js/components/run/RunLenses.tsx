@@ -163,7 +163,7 @@ export default function RunLenses({
                 <Card
                     as="article"
                     padding="lg"
-                    className="border-l-[3px] border-l-leaf"
+                    className="border-l-[3px] border-l-leaf shadow-sm"
                 >
                     <div className="mb-2.5 flex items-center gap-2">
                         <Icon
@@ -196,7 +196,7 @@ export default function RunLenses({
                     <Card
                         as="article"
                         padding="lg"
-                        className="border-l-[3px] border-l-ember"
+                        className="border-l-[3px] border-l-ember shadow-sm"
                     >
                         <div className="mb-2.5 flex items-center gap-2">
                             <Icon

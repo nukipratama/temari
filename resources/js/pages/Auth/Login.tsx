@@ -1,13 +1,17 @@
 import { Icon } from '@iconify/react';
 import { Head, useForm, usePage } from '@inertiajs/react';
+import { lazy, Suspense } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
 import BrandMark from '@/components/BrandMark';
-import KartuMini from '@/components/card/KartuMini';
 import TemariProto from '@/components/temari/TemariProto';
 import PillButton from '@/components/ui/PillButton';
 import { bareLayout } from '@/layouts/BareShell';
+
+// Lazy: KartuMini's rarity-chrome glyphs statically import framer-motion,
+// which this route's entry-chunk budget must stay clear of.
+const KartuMini = lazy(() => import('@/components/card/KartuMini'));
 
 interface LoginProps {
     authStravaUrl: string;
@@ -204,15 +208,24 @@ function FormSide({
             </ul>
 
             <div className="flex w-full max-w-[480px] items-center gap-4 rounded-2xl border border-cream-deep bg-cream px-4 py-4 2xl:max-w-[560px]">
-                <KartuMini
-                    name="10K Sunrise"
-                    rarity="legendary"
-                    mood="blazing"
-                    date="12 Jun"
-                    edition={{ index: 3, total: 12 }}
-                    polyline="~s{d@ofekSoRaMcPdMg@b^zFtV?bN{FtVf@b^bPdMnRaMlIqTdHqFfQcAfQcP?g[gQcPgQcAeHqFmIqT"
-                    className="shadow-md"
-                />
+                <Suspense
+                    fallback={
+                        <div
+                            aria-hidden
+                            className="h-[150px] w-[140px] flex-none rounded-[12px] bg-cream-deep"
+                        />
+                    }
+                >
+                    <KartuMini
+                        name="10K Sunrise"
+                        rarity="legendary"
+                        mood="blazing"
+                        date="12 Jun"
+                        edition={{ index: 3, total: 12 }}
+                        polyline="~s{d@ofekSoRaMcPdMg@b^zFtV?bN{FtVf@b^bPdMnRaMlIqTdHqFfQcAfQcP?g[gQcPgQcAeHqFmIqT"
+                        className="shadow-sm"
+                    />
+                </Suspense>
                 <div>
                     <p className="font-sans text-sm font-semibold text-ink">
                         This is a real card, not a mockup

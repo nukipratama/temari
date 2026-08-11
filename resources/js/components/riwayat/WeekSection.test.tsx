@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type {
@@ -80,7 +80,7 @@ beforeEach(() => {
 });
 
 describe('WeekSection', () => {
-    it('falls back to the bucket totals when the week has no snapshot', () => {
+    it('falls back to the bucket totals when the week has no snapshot', async () => {
         render(
             <WeekSection
                 bucket={bucket([run(101, 'Pagi'), run(102, 'Sore')])}
@@ -91,13 +91,16 @@ describe('WeekSection', () => {
             />,
         );
 
-        expect(screen.getByText('2 run')).toBeInTheDocument();
+        // Header stats count up from 0, so wait for them to settle.
+        await waitFor(() =>
+            expect(screen.getByText('2 run')).toBeInTheDocument(),
+        );
         expect(screen.getByText('10.0 km')).toBeInTheDocument();
         expect(screen.getByText('100 TRIMP')).toBeInTheDocument();
         expect(screen.getAllByTestId('run-row').length).toBe(2);
     });
 
-    it('shows the snapshot totals (not the range-truncated bucket count) when a snapshot exists', () => {
+    it('shows the snapshot totals (not the range-truncated bucket count) when a snapshot exists', async () => {
         // Only 1 of the week's runs falls inside rangeStart, but the WeeklySnapshot
         // (computed independently of the range filter) says the week had 4 runs /
         // 35.5 km — the header must agree with that, not the truncated bucket.
@@ -111,12 +114,14 @@ describe('WeekSection', () => {
             />,
         );
 
-        expect(screen.getByText('4 run')).toBeInTheDocument();
+        await waitFor(() =>
+            expect(screen.getByText('4 run')).toBeInTheDocument(),
+        );
         expect(screen.getByText('35.5 km')).toBeInTheDocument();
         expect(screen.getByText(/Consistent week/)).toBeInTheDocument();
     });
 
-    it('shows the live bucket totals (not a stale snapshot) for the in-progress week', () => {
+    it('shows the live bucket totals (not a stale snapshot) for the in-progress week', async () => {
         // The snapshot for the current week is recomputed by a queued listener,
         // so right after a fresh sync it can lag behind the runs this request
         // just fetched live. The header must reflect what's actually rendered.
@@ -135,7 +140,9 @@ describe('WeekSection', () => {
             />,
         );
 
-        expect(screen.getByText('2 run')).toBeInTheDocument();
+        await waitFor(() =>
+            expect(screen.getByText('2 run')).toBeInTheDocument(),
+        );
         expect(screen.getByText('10.0 km')).toBeInTheDocument();
     });
 

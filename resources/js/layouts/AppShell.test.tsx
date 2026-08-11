@@ -88,13 +88,30 @@ describe('AppShell', () => {
             </AppShell>,
         );
         expect(screen.getByText('child content')).toBeInTheDocument();
-        ['Today', 'Collection', 'History', 'Me'].forEach((label) => {
+        ['Today', 'Collection', 'Plan', 'Me'].forEach((label) => {
             expect(screen.getAllByText(label).length).toBeGreaterThan(0);
         });
         // <main> keeps bottom clearance for the fixed mobile bottom nav (cleared on lg).
         const main = document.getElementById('main-content');
         expect(main?.className).toContain('pb-28');
         expect(main?.className).toContain('lg:pb-0');
+    });
+
+    it('mounts the route progress bar as shell chrome, idle by default', () => {
+        setMockPage({
+            auth: { user: andiUser },
+            flash: {},
+            demoLoginEnabled: false,
+        });
+        render(
+            <AppShell>
+                <p>child content</p>
+            </AppShell>,
+        );
+        expect(screen.getByTestId('route-progress-bar')).toHaveAttribute(
+            'data-phase',
+            'idle',
+        );
     });
 
     // The shell owns the cross-page banners; pages no longer render them, so

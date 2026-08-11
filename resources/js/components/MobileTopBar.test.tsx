@@ -11,10 +11,6 @@ describe('MobileTopBar', () => {
         expect(screen.getByLabelText('Home')).toHaveAttribute('href', '/');
     });
 
-    // Roots show identity, pushed screens show a way out — the native split.
-    // Note the third case: /calendar, /records, /accessories and /goals resolve to a
-    // tab too, but are reached through in-page tab strips, so they are siblings
-    // rather than pushes and must keep the brand mark.
     it.each([
         ['Runs/Show', '/activities', 'History'],
         ['Settings/HrZones', '/settings', 'Settings'],
@@ -30,8 +26,6 @@ describe('MobileTopBar', () => {
         },
     );
 
-    // Settings sits in this list, not the pushed one: it is one tap from the
-    // Me tab and from the avatar menu on every page, so it behaves as a root.
     it.each([
         'Today',
         'Collection/Cards',
@@ -40,6 +34,7 @@ describe('MobileTopBar', () => {
         'Activities/Calendar',
         'Collection/Records',
         'Settings/Index',
+        'Race',
     ])('keeps the brand mark and shows no back button on %s', (component) => {
         setMockPage({}, '/x', component);
         render(<MobileTopBar />);
@@ -48,8 +43,6 @@ describe('MobileTopBar', () => {
         expect(screen.queryByLabelText(/^Back to/)).not.toBeInTheDocument();
     });
 
-    // A notification deep link opens the run detail cold, with nothing behind
-    // it, so back has to be a real href rather than history.back().
     it('points back at a real url rather than relying on history', () => {
         setMockPage({}, '/activities/123', 'Runs/Show');
         render(<MobileTopBar />);
@@ -80,8 +73,6 @@ describe('MobileTopBar', () => {
         ).toBeInTheDocument();
     });
 
-    // Installed as a PWA the page runs edge-to-edge, so this bar has to pad
-    // itself past the notch or content slides under the status bar.
     it('pads the top by the safe-area inset so content clears the notch', () => {
         const { container } = render(<MobileTopBar />);
         expect(container.querySelector('header')).toHaveClass(

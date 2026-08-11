@@ -1,8 +1,11 @@
+import { motion } from 'framer-motion';
 import { lazy, Suspense, useMemo } from 'react';
 
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Skeleton from '@/components/ui/Skeleton';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { cn } from '@/lib/cn';
+import { countUpEase } from '@/lib/motion';
 import { formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
 
 // Chart.js core + its scale/element registration live inside this lazy module,
@@ -48,6 +51,7 @@ export default function ProgressionChart({
     category,
     className,
 }: Readonly<ProgressionChartProps>) {
+    const reducedMotion = useReducedMotion();
     const chartLabel = category
         ? `Best time progression chart ${category}`
         : 'Best time progression chart';
@@ -138,9 +142,12 @@ export default function ProgressionChart({
         const xMin = xOffsets.length > 0 ? xOffsets[0] : 0;
         const lastX = xOffsets.length > 0 ? xOffsets.at(-1)! : 0;
         const xMax = lastX > xMin ? lastX : xMin + 1;
+        const animation: false | { duration: number; easing: 'easeOutQuart' } =
+            reducedMotion ? false : { duration: 800, easing: 'easeOutQuart' };
         return {
             responsive: true,
             maintainAspectRatio: false,
+            animation,
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -188,7 +195,7 @@ export default function ProgressionChart({
                 },
             },
         };
-    }, [weeks, xOffsets]);
+    }, [weeks, xOffsets, reducedMotion]);
 
     if (weeks.length === 0) {
         return (
@@ -200,10 +207,14 @@ export default function ProgressionChart({
     }
 
     return (
-        <div
+        <motion.div
             role="img"
             aria-label={`${chartLabel}. ${summarySentence}`}
             className={cn('h-[260px] sm:h-[300px]', className)}
+            initial={{ opacity: 0, scaleY: 0.92 }}
+            animate={{ opacity: 1, scaleY: 1 }}
+            transition={{ duration: 0.6, ease: countUpEase }}
+            style={{ transformOrigin: 'bottom' }}
         >
             <span className="sr-only">{summarySentence}</span>
             <Suspense
@@ -211,6 +222,6 @@ export default function ProgressionChart({
             >
                 <Line data={data} options={options} />
             </Suspense>
-        </div>
+        </motion.div>
     );
 }

@@ -18,6 +18,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DevtoolsIndexController;
 use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\NotificationTestController;
+use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
@@ -79,6 +80,16 @@ Route::get('/auth/strava/redirect', [StravaAuthController::class, 'redirect'])->
 Route::get('/auth/strava/callback', [StravaAuthController::class, 'callback'])->name('auth.strava.callback');
 
 Route::middleware(['auth'])->group(function (): void {
+    // Reachable regardless of onboarding status: the wizard itself, and
+    // logout (a user stuck mid-wizard must still be able to sign out).
+    Route::get('/onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
+    Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
+
+    Route::post('/logout', [StravaAuthController::class, 'logout'])
+        ->name('auth.logout');
+});
+
+Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::get('/', DashboardController::class)->name('dashboard');
 
     // Conditional GET on the three history-read pages: the same URL is genuinely
@@ -156,9 +167,6 @@ Route::middleware(['auth'])->group(function (): void {
     Route::post('/strava/sync', SyncController::class)
         ->middleware('throttle:strava-sync')
         ->name('strava.sync');
-
-    Route::post('/logout', [StravaAuthController::class, 'logout'])
-        ->name('auth.logout');
 
     // Legacy 301 redirects — keep deep links working from external bookmarks.
     Route::permanentRedirect('/runs', '/activities');

@@ -63,13 +63,13 @@ describe('Login', () => {
         expect(formMock.post).toHaveBeenCalledWith('/auth/demo');
     });
 
-    it('shows a real sample Kartu as concrete proof of the product', () => {
+    it('shows a real sample Kartu as concrete proof of the product', async () => {
         render(<Login authStravaUrl="/x" />);
         expect(
             screen.getByText('This is a real card, not a mockup'),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('img', { name: '10K Sunrise' }),
+            await screen.findByRole('img', { name: '10K Sunrise' }),
         ).toBeInTheDocument();
     });
 });

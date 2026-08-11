@@ -33,6 +33,7 @@ _Systems_
 - [[gamification]] — milestones, unlocks, rarities, special moves engine
 - [[vibe-and-mood]] — the daily vibe matrix + run mood that drive Temari's tone and the featured kartu
 - [[strava-connect]] — OAuth, sync, webhook
+- [[onboarding]] — first-connect wizard, the DB-backed gate, and the coach-mark mechanism
 - [[telegram-notifications]] — link a Telegram account, the master switch and channel mutes, post-run + weekly-recap push
 - [[streak-reminders]] — Saturday nudges for at-risk weekly streaks, on any wired channel
 - [[temari-mascot]] — poses, accessories, vibes

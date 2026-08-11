@@ -1,8 +1,8 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { makeUser, setMockPage } from '@/test/setup';
+import { makeUser, setMockPage, stubSyncAnimationFrame } from '@/test/setup';
 
 import Calendar, {
     dominantMoodOf,
@@ -106,6 +106,15 @@ const BASE_PROPS = {
 };
 
 describe('Calendar', () => {
+    it('coach-marks the month grid on a first visit', () => {
+        window.localStorage.clear();
+        stubSyncAnimationFrame();
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        expect(
+            screen.getByRole('dialog', { name: 'Tap any day' }),
+        ).toBeInTheDocument();
+    });
+
     it('renders the month label and short weekday headers', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
@@ -126,7 +135,7 @@ describe('Calendar', () => {
         }
     });
 
-    it('renders the lifetime stats eyebrow when lifetime data is provided', () => {
+    it('renders the lifetime stats eyebrow when lifetime data is provided', async () => {
         render(
             <Calendar
                 {...BASE_PROPS}
@@ -138,7 +147,10 @@ describe('Calendar', () => {
                 }}
             />,
         );
-        expect(screen.getByText(/63 runs/i)).toBeInTheDocument();
+        // Runs/km tally up from 0 (tier-2 count-up), so wait for them to settle.
+        await waitFor(() =>
+            expect(screen.getByText(/63 runs/i)).toBeInTheDocument(),
+        );
         expect(screen.getByText(/544 km/i)).toBeInTheDocument();
         expect(screen.getByText(/since 19 feb 2026/i)).toBeInTheDocument();
     });
@@ -185,7 +197,9 @@ describe('Calendar', () => {
 
     it('renders the navy "Today" badge on today\'s cell', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        expect(screen.getByText('Today')).toBeInTheDocument();
+        expect(
+            screen.getByText('Today', { selector: 'span' }),
+        ).toBeInTheDocument();
     });
 
     it('marks today with a persistent dot next to the day number, not color alone', () => {
@@ -212,7 +226,7 @@ describe('Calendar', () => {
     it('hides the "Today" jump-back when already on the current month', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
-            screen.queryByRole('link', { name: 'Today' }),
+            screen.queryByRole('link', { name: 'Jump to current month' }),
         ).not.toBeInTheDocument();
     });
 
@@ -225,10 +239,9 @@ describe('Calendar', () => {
                 todayMonth="2026-05"
             />,
         );
-        expect(screen.getByRole('link', { name: 'Today' })).toHaveAttribute(
-            'href',
-            '/calendar',
-        );
+        expect(
+            screen.getByRole('link', { name: 'Jump to current month' }),
+        ).toHaveAttribute('href', '/calendar');
     });
 
     it('renders prev / next nav buttons with correct hrefs', () => {

@@ -1,7 +1,4 @@
-import { Icon } from '@iconify/react';
-import { Link } from '@inertiajs/react';
-
-import { cn } from '@/lib/cn';
+import SectionTabs, { type SectionTabItem } from '@/components/ui/SectionTabs';
 
 export type RiwayatTab = 'jejak' | 'kalender';
 
@@ -10,16 +7,16 @@ interface RiwayatTabsProps {
     className?: string;
 }
 
-const TABS = [
+const TABS: ReadonlyArray<SectionTabItem<RiwayatTab>> = [
     {
-        id: 'jejak' as const,
-        label: 'Jejak',
+        id: 'jejak',
+        label: 'Feed',
         href: '/activities',
         icon: 'mdi:shoe-print',
     },
     {
-        id: 'kalender' as const,
-        label: 'Kalender',
+        id: 'kalender',
+        label: 'Calendar',
         href: '/calendar',
         icon: 'mdi:calendar-blank-outline',
     },
@@ -29,27 +26,5 @@ export default function RiwayatTabs({
     active,
     className,
 }: Readonly<RiwayatTabsProps>) {
-    return (
-        <nav
-            aria-label="Sub-tab"
-            className={cn('flex flex-wrap gap-1.5', className)}
-        >
-            {TABS.map((tab) => (
-                <Link
-                    key={tab.id}
-                    href={tab.href}
-                    aria-current={active === tab.id ? 'page' : undefined}
-                    className={cn(
-                        'focus-ring inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] transition',
-                        active === tab.id
-                            ? 'bg-sky text-cream font-semibold shadow-sm'
-                            : 'bg-transparent text-ink-2 hover:bg-sky/[0.06]',
-                    )}
-                >
-                    <Icon icon={tab.icon} width={14} height={14} aria-hidden />
-                    {tab.label}
-                </Link>
-            ))}
-        </nav>
-    );
+    return <SectionTabs tabs={TABS} active={active} className={className} />;
 }

@@ -10,6 +10,7 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { usePopover } from '@/hooks/usePopover';
 import { cn } from '@/lib/cn';
+import { fadeInUp } from '@/lib/motion';
 import { filterOptionVariants } from '@/lib/variants';
 
 export interface RangeOption<V extends string> {
@@ -144,10 +145,10 @@ export default function RiwayatFilter<
                 aria-expanded={open}
                 aria-label="Open filter"
                 className={cn(
-                    'focus-ring inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium transition lg:text-sm',
+                    'pressable focus-ring inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium transition lg:text-sm',
                     totalActive > 0
                         ? 'border-sky/40 bg-sky/[0.06] text-sky'
-                        : 'border-line/60 bg-surface-elev text-ink-2 hover:bg-surface-warm',
+                        : 'border-line/60 bg-surface-card text-ink-2 hover:bg-surface-warm',
                 )}
             >
                 <Icon
@@ -182,6 +183,9 @@ export default function RiwayatFilter<
             )}
             {open && (
                 <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    variants={fadeInUp}
                     // Drag is started by the grab handle rather than the sheet
                     // body: the body scrolls, and a drag that competes with a
                     // scroll makes both feel broken. The handle is `lg:hidden`,

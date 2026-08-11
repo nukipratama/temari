@@ -1,10 +1,10 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { EquippedAccessories } from '@/types/inertia';
 
-import { setMockPage } from '@/test/setup';
+import { setMockPage, stubSyncAnimationFrame } from '@/test/setup';
 
 import Accessories from './Accessories';
 
@@ -52,6 +52,20 @@ beforeEach(() => {
 });
 
 describe('Collection/Accessories', () => {
+    it('coach-marks the dress-up preview on a first visit', () => {
+        window.localStorage.clear();
+        stubSyncAnimationFrame();
+        render(
+            <Accessories
+                items={[item('accessory.medal_gold', 'medal', true, false)]}
+                equipped={emptyEquipped}
+            />,
+        );
+        expect(
+            screen.getByRole('dialog', { name: 'Try things on' }),
+        ).toBeInTheDocument();
+    });
+
     it('renders headers + equipped slot labels when nothing is equipped', () => {
         const items = [
             item('accessory.headband_epic', 'headband', false, false),
@@ -134,7 +148,7 @@ describe('Collection/Accessories', () => {
         expect(screen.getByText('accessory.shoes_basic')).toBeInTheDocument();
     });
 
-    it('shows live progress numbers on a locked item', () => {
+    it('shows live progress numbers on a locked item', async () => {
         const items = [
             {
                 ...item('accessory.medal_gold', 'medal', false, false),
@@ -144,9 +158,12 @@ describe('Collection/Accessories', () => {
             },
         ];
         render(<Accessories items={items} equipped={emptyEquipped} />);
-        expect(
-            screen.getByText((_, el) => el?.textContent === '2/5'),
-        ).toBeInTheDocument();
+        // The current-value count-up tweens from 0 on mount.
+        await waitFor(() =>
+            expect(
+                screen.getByText((_, el) => el?.textContent === '2/5'),
+            ).toBeInTheDocument(),
+        );
         expect(screen.getByText('PR')).toBeInTheDocument();
     });
 

@@ -1,5 +1,6 @@
 import { Icon } from '@iconify/react';
 import { Head, Link, usePage } from '@inertiajs/react';
+import { motion } from 'framer-motion';
 import { useState } from 'react';
 
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
@@ -16,8 +17,10 @@ import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
+import { useCountUp } from '@/hooks/useCountUp';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
+import { fadeInUp, staggerContainer } from '@/lib/motion';
 import {
     formatDurationHMS,
     formatPace,
@@ -93,6 +96,20 @@ export default function Profile({
     if (firstRunShort) eyebrowParts.push(`running since ${firstRunShort}`);
     if (monthsSinceFirstRun !== null)
         eyebrowParts.push(`${monthsSinceFirstRun} months`);
+
+    const totalKmCount = useCountUp(stats.total_km);
+    const totalRunsCount = useCountUp(stats.total_runs);
+    const longestRunCount = useCountUp(stats.longest_run_km);
+    const vdotCount = useCountUp(fitness?.vdot ?? 0);
+    const thresholdPaceCount = useCountUp(fitness?.threshold_pace_sec ?? 0);
+    const easyPaceCount = useCountUp(fitness?.training_paces?.easy ?? 0);
+    const marathonPaceCount = useCountUp(
+        fitness?.training_paces?.marathon ?? 0,
+    );
+    const tempoPaceCount = useCountUp(fitness?.training_paces?.threshold ?? 0);
+    const intervalPaceCount = useCountUp(
+        fitness?.training_paces?.interval ?? 0,
+    );
 
     return (
         <>
@@ -185,65 +202,81 @@ export default function Profile({
                             </div>
                         )}
                     </div>
-                    <div className="mb-6">
+                    <div className="mb-6" data-coachmark="profile-persona">
                         <SectionLabel onSky size="micro">
                             Persona · last 12 weeks
                         </SectionLabel>
                         <PersonaBar mix={personaMix} onSky />
                     </div>
-                    <div className="grid grid-cols-2 gap-5 sm:grid-cols-5 justify-items-center">
-                        <StatTile
-                            tone="plainSky"
-                            size="md"
-                            align="center"
-                            label="Total km"
-                            value={stats.total_km.toFixed(1)}
-                            unit="km"
-                        />
-                        <StatTile
-                            tone="plainSky"
-                            size="md"
-                            align="center"
-                            label="Total runs"
-                            value={stats.total_runs.toString()}
-                            unit="runs"
-                        />
-                        <StatTile
-                            tone="plainSky"
-                            size="md"
-                            align="center"
-                            label="Longest run"
-                            value={stats.longest_run_km.toFixed(2)}
-                            unit="km"
-                        />
-                        {fitness?.vdot != null && (
+                    <motion.div
+                        variants={staggerContainer}
+                        initial="hidden"
+                        animate="visible"
+                        data-coachmark="profile-stats"
+                        className="grid grid-cols-2 gap-5 sm:grid-cols-5 justify-items-center"
+                    >
+                        <motion.div variants={fadeInUp}>
                             <StatTile
                                 tone="plainSky"
                                 size="md"
                                 align="center"
-                                label="VDOT"
-                                value={fitness.vdot.toFixed(1)}
-                                explainerKey="vdot"
+                                label="Total km"
+                                value={totalKmCount.toFixed(1)}
+                                unit="km"
                             />
+                        </motion.div>
+                        <motion.div variants={fadeInUp}>
+                            <StatTile
+                                tone="plainSky"
+                                size="md"
+                                align="center"
+                                label="Total runs"
+                                value={Math.round(totalRunsCount).toString()}
+                                unit="runs"
+                            />
+                        </motion.div>
+                        <motion.div variants={fadeInUp}>
+                            <StatTile
+                                tone="plainSky"
+                                size="md"
+                                align="center"
+                                label="Longest run"
+                                value={longestRunCount.toFixed(2)}
+                                unit="km"
+                            />
+                        </motion.div>
+                        {fitness?.vdot != null && (
+                            <motion.div variants={fadeInUp}>
+                                <StatTile
+                                    tone="plainSky"
+                                    size="md"
+                                    align="center"
+                                    label="VDOT"
+                                    value={vdotCount.toFixed(1)}
+                                    explainerKey="vdot"
+                                />
+                            </motion.div>
                         )}
                         {fitness?.threshold_pace_sec != null && (
-                            <StatTile
-                                tone="plainSky"
-                                size="md"
-                                align="center"
-                                label="Threshold pace"
-                                value={formatPace(fitness.threshold_pace_sec)}
-                                unit="/km"
-                                explainerKey="threshold_pace"
-                            />
+                            <motion.div variants={fadeInUp}>
+                                <StatTile
+                                    tone="plainSky"
+                                    size="md"
+                                    align="center"
+                                    label="Threshold pace"
+                                    value={formatPace(thresholdPaceCount)}
+                                    unit="/km"
+                                    explainerKey="threshold_pace"
+                                />
+                            </motion.div>
                         )}
-                    </div>
+                    </motion.div>
                 </HeroPanel>
 
                 <section className="mt-6">
                     <Link
                         href="/race"
-                        className="focus-ring flex items-center justify-between gap-3 rounded-xl border border-line bg-cream px-4 py-3.5 transition hover:border-horizon/60"
+                        className="focus-ring pressable flex items-center justify-between gap-3 rounded-xl border border-line bg-cream px-4 py-3.5 shadow-sm transition hover:border-horizon/60"
                     >
                         <span className="flex items-center gap-2 text-sm font-semibold text-ink">
                             <Icon
@@ -263,53 +296,58 @@ export default function Profile({
                 {fitness?.training_paces && (
                     <section className="mt-10">
                         <SectionLabel>Training · pace targets</SectionLabel>
-                        <Card className="mt-3">
-                            <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
-                                <StatTile
-                                    tone="cream"
-                                    size="sm"
-                                    align="center"
-                                    label="Easy"
-                                    value={formatPace(
-                                        fitness.training_paces.easy,
-                                    )}
-                                    unit="/km"
-                                    explainerKey="pace_easy"
-                                />
-                                <StatTile
-                                    tone="cream"
-                                    size="sm"
-                                    align="center"
-                                    label="Marathon"
-                                    value={formatPace(
-                                        fitness.training_paces.marathon,
-                                    )}
-                                    unit="/km"
-                                    explainerKey="pace_marathon"
-                                />
-                                <StatTile
-                                    tone="cream"
-                                    size="sm"
-                                    align="center"
-                                    label="Tempo"
-                                    value={formatPace(
-                                        fitness.training_paces.threshold,
-                                    )}
-                                    unit="/km"
-                                    explainerKey="pace_tempo"
-                                />
-                                <StatTile
-                                    tone="cream"
-                                    size="sm"
-                                    align="center"
-                                    label="Interval"
-                                    value={formatPace(
-                                        fitness.training_paces.interval,
-                                    )}
-                                    unit="/km"
-                                    explainerKey="pace_interval"
-                                />
-                            </div>
+                        <Card className="mt-3 shadow-sm">
+                            <motion.div
+                                variants={staggerContainer}
+                                initial="hidden"
+                                animate="visible"
+                                className="grid grid-cols-2 gap-5 sm:grid-cols-4"
+                            >
+                                <motion.div variants={fadeInUp}>
+                                    <StatTile
+                                        tone="cream"
+                                        size="sm"
+                                        align="center"
+                                        label="Easy"
+                                        value={formatPace(easyPaceCount)}
+                                        unit="/km"
+                                        explainerKey="pace_easy"
+                                    />
+                                </motion.div>
+                                <motion.div variants={fadeInUp}>
+                                    <StatTile
+                                        tone="cream"
+                                        size="sm"
+                                        align="center"
+                                        label="Marathon"
+                                        value={formatPace(marathonPaceCount)}
+                                        unit="/km"
+                                        explainerKey="pace_marathon"
+                                    />
+                                </motion.div>
+                                <motion.div variants={fadeInUp}>
+                                    <StatTile
+                                        tone="cream"
+                                        size="sm"
+                                        align="center"
+                                        label="Tempo"
+                                        value={formatPace(tempoPaceCount)}
+                                        unit="/km"
+                                        explainerKey="pace_tempo"
+                                    />
+                                </motion.div>
+                                <motion.div variants={fadeInUp}>
+                                    <StatTile
+                                        tone="cream"
+                                        size="sm"
+                                        align="center"
+                                        label="Interval"
+                                        value={formatPace(intervalPaceCount)}
+                                        unit="/km"
+                                        explainerKey="pace_interval"
+                                    />
+                                </motion.div>
+                            </motion.div>
                         </Card>
                     </section>
                 )}
@@ -347,78 +385,92 @@ function ProgressionSection({
     const delta = Math.max(0, worst - best);
     const label = PR_CATEGORY_LABELS[series.category] ?? series.category;
 
+    const worstCount = useCountUp(worst);
+    const bestCount = useCountUp(best);
+    const deltaCount = useCountUp(delta);
+
     return (
-        <Card as="section" padding="lg" className="mt-10">
-            {tabs.length > 1 && (
-                <div
-                    className="mb-6 flex flex-wrap items-center gap-2"
-                    role="tablist"
-                    aria-label="Choose distance"
-                >
-                    <Eyebrow
-                        as="span"
-                        token="micro"
-                        tone="ink-2"
-                        className="mr-1"
+        <div data-coachmark="profile-progression" className="mt-10">
+            <Card as="section" padding="lg" className="shadow-sm">
+                {tabs.length > 1 && (
+                    <div
+                        className="mb-6 flex flex-wrap items-center gap-2"
+                        role="tablist"
+                        aria-label="Choose distance"
                     >
-                        Distance
-                    </Eyebrow>
-                    {tabs.map((c) => (
-                        <button
-                            key={c}
-                            type="button"
-                            role="tab"
-                            aria-selected={c === selected}
-                            onClick={() => setSelected(c)}
-                            className={cn(
-                                'focus-ring inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-label-micro transition',
-                                c === selected
-                                    ? 'border-horizon bg-horizon/10 text-horizon-deep'
-                                    : 'border-line text-ink-3 hover:border-horizon/60 hover:text-ink',
-                            )}
+                        <Eyebrow
+                            as="span"
+                            token="micro"
+                            tone="ink-2"
+                            className="mr-1"
                         >
-                            {PROGRESSION_TAB_LABEL[c]}
-                        </button>
-                    ))}
-                </div>
-            )}
-            <div className="grid grid-cols-1 items-start gap-7 lg:grid-cols-[1fr_1.4fr]">
-                <div>
-                    <SectionLabel>Journey · {label}</SectionLabel>
-                    <p className="font-display text-headline-sm text-ink">
-                        Then{' '}
-                        <em className="italic">{formatDurationHMS(worst)}</em>,
-                        now{' '}
-                        <em className="italic text-horizon-deep">
-                            {formatDurationHMS(best)}
-                        </em>
-                    </p>
-                    {delta > 0 && (
-                        <p className="mt-3 font-display text-sm italic leading-relaxed text-ink-2">
-                            &ldquo;{formatDurationHMS(delta)} faster over{' '}
-                            {series.weeks.length} weeks.&rdquo;
+                            Distance
+                        </Eyebrow>
+                        {tabs.map((c) => (
+                            <button
+                                key={c}
+                                type="button"
+                                role="tab"
+                                aria-selected={c === selected}
+                                onClick={() => setSelected(c)}
+                                className={cn(
+                                    'focus-ring inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-label-micro transition',
+                                    c === selected
+                                        ? 'border-horizon bg-horizon/10 text-horizon-deep'
+                                        : 'border-line text-ink-3 hover:border-horizon/60 hover:text-ink',
+                                )}
+                            >
+                                {PROGRESSION_TAB_LABEL[c]}
+                            </button>
+                        ))}
+                    </div>
+                )}
+                <div className="grid grid-cols-1 items-start gap-7 lg:grid-cols-[1fr_1.4fr]">
+                    <div>
+                        <SectionLabel>Journey · {label}</SectionLabel>
+                        <p className="font-display text-headline-sm text-ink">
+                            Then{' '}
+                            <em className="italic">
+                                {formatDurationHMS(Math.round(worstCount))}
+                            </em>
+                            , now{' '}
+                            <em className="italic text-horizon-deep">
+                                {formatDurationHMS(Math.round(bestCount))}
+                            </em>
                         </p>
-                    )}
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                        <Chip>&minus;{formatDurationHMS(delta)} total</Chip>
-                        {series.goal_sec != null && (
-                            <Chip tone="horizon">
-                                Goal: Sub-{formatDurationHMS(series.goal_sec)}
-                            </Chip>
+                        {delta > 0 && (
+                            <p className="mt-3 font-display text-sm italic leading-relaxed text-ink-2">
+                                &ldquo;
+                                {formatDurationHMS(Math.round(deltaCount))}{' '}
+                                faster over {series.weeks.length} weeks.&rdquo;
+                            </p>
                         )}
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                            <Chip>
+                                &minus;
+                                {formatDurationHMS(Math.round(deltaCount))}{' '}
+                                total
+                            </Chip>
+                            {series.goal_sec != null && (
+                                <Chip tone="horizon">
+                                    Goal: Sub-
+                                    {formatDurationHMS(series.goal_sec)}
+                                </Chip>
+                            )}
+                        </div>
+                    </div>
+                    <div>
+                        <ProgressionChart
+                            key={selected}
+                            weeks={series.weeks}
+                            timesSec={series.times_sec}
+                            goalSec={series.goal_sec}
+                            category={label}
+                        />
                     </div>
                 </div>
-                <div>
-                    <ProgressionChart
-                        key={selected}
-                        weeks={series.weeks}
-                        timesSec={series.times_sec}
-                        goalSec={series.goal_sec}
-                        category={label}
-                    />
-                </div>
-            </div>
-        </Card>
+            </Card>
+        </div>
     );
 }
 

@@ -1,10 +1,12 @@
 import { Icon } from '@iconify/react';
 import { Head, usePage } from '@inertiajs/react';
+import { motion } from 'framer-motion';
 import {
     memo,
     useCallback,
     useDeferredValue,
     useMemo,
+    useRef,
     useState,
     type ReactNode,
 } from 'react';
@@ -29,6 +31,7 @@ import ConfettiBurst from '@/components/ConfettiBurst';
 import ExpandableQuote from '@/components/dashboard/ExpandableQuote';
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
 import MotionLink from '@/components/MotionLink';
+import CoachMark from '@/components/onboarding/CoachMark';
 import StravaSyncButton from '@/components/StravaSyncButton';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Card from '@/components/ui/Card';
@@ -37,7 +40,7 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
-import { pressShrink } from '@/lib/motion';
+import { fadeInUp } from '@/lib/motion';
 import { activityUrl } from '@/lib/routes';
 import {
     RARITY_LABELS,
@@ -91,9 +94,13 @@ export default function Cards({
     featuredCard,
     rarityCounts,
 }: Readonly<CardsProps>) {
-    const [burstKey, setBurstKey] = useState<string | null>(null);
+    const [burst, setBurst] = useState<{
+        key: string;
+        legendary: boolean;
+    } | null>(null);
     const [search, setSearch] = useState('');
     const [sortBy, setSortBy] = useState<SortMode>('date');
+    const gridRef = useRef<HTMLDivElement>(null);
     // Defer the heavy grid filter/sort + per-card derived-stat passes off the
     // keystroke so typing in the search box stays responsive on large collections.
     const deferredSearch = useDeferredValue(search);
@@ -135,7 +142,10 @@ export default function Cards({
 
     const triggerBurstFor = useCallback((rarity: Rarity, id: number) => {
         if (rarity === 'epic' || rarity === 'legendary') {
-            setBurstKey(`card-${id}-${Date.now()}`);
+            setBurst({
+                key: `card-${id}-${Date.now()}`,
+                legendary: rarity === 'legendary',
+            });
         }
     }, []);
 
@@ -145,21 +155,42 @@ export default function Cards({
                 <EmptyState />
             </div>
         ) : (
-            <div className="mt-6 grid grid-cols-2 gap-3.5 md:grid-cols-3 xl:grid-cols-4">
-                {grid.map((card) => (
-                    <CardCell
-                        key={card.id}
-                        card={card}
-                        onTap={triggerBurstFor}
-                    />
-                ))}
+            // The ref/data-coachmark anchor lives on this stable wrapper, not on
+            // the keyed motion.div below: CoachMark's anchor tracking sets up its
+            // IntersectionObserver once and never re-attaches, so a `key={sortBy}`
+            // remount on the ref'd element itself would detach it from the DOM the
+            // observer is still watching, dropping the mark for the rest of the visit.
+            <div
+                ref={gridRef}
+                data-coachmark="collection-grid"
+                className="mt-6"
+            >
+                <motion.div
+                    key={sortBy}
+                    variants={fadeInUp}
+                    initial="hidden"
+                    animate="visible"
+                    className="grid grid-cols-2 gap-3.5 md:grid-cols-3 xl:grid-cols-4"
+                >
+                    {grid.map((card) => (
+                        <CardCell
+                            key={card.id}
+                            card={card}
+                            onTap={triggerBurstFor}
+                        />
+                    ))}
+                </motion.div>
             </div>
         );
 
     return (
         <>
             <Head title="Collection · Cards" />
-            <ConfettiBurst burstKey={burstKey} />
+            <ConfettiBurst
+                burstKey={burst?.key ?? null}
+                count={burst?.legendary ? 45 : 30}
+                durationMs={burst?.legendary ? 3200 : 2500}
+            />
             <PageContainer>
                 <CollectionHeader
                     active="kartu"
@@ -169,7 +200,11 @@ export default function Cards({
                     activeCount={String(totalKartu)}
                 />
 
-                {featuredCard && <SlimBanner featured={featuredCard} />}
+                {featuredCard && (
+                    <div data-coachmark="collection-featured">
+                        <SlimBanner featured={featuredCard} />
+                    </div>
+                )}
 
                 <RarityFilter
                     selected={selectedRarity}
@@ -181,6 +216,13 @@ export default function Cards({
                 />
 
                 {gridBody}
+                <CoachMark
+                    id="collection-grid"
+                    anchorRef={gridRef}
+                    placement="top"
+                    title="Tap a card"
+                    body="Each one opens the run it came from."
+                />
 
                 {rarityCounts.legendary === 0 && <LegendaryTease />}
             </PageContainer>
@@ -253,6 +295,7 @@ function RarityFilter({
     return (
         <nav
             aria-label="Filter cards"
+            data-coachmark="collection-filter"
             className="mt-8 flex flex-wrap items-center gap-2"
         >
             <Eyebrow as="span" token="micro" tone="ink-2" className="mr-1.5">
@@ -333,7 +376,6 @@ function FilterPill({
         <MotionLink
             href={href}
             aria-current={active ? 'page' : undefined}
-            whileTap={pressShrink}
             className={cn(
                 'inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition',
                 active
@@ -376,7 +418,6 @@ const CardCell = memo(function CardCell({
     return (
         <MotionLink
             href={activityUrl(card)}
-            whileTap={pressShrink}
             onClick={() => onTap(card.rarity, card.id)}
             className="mx-auto block w-full max-w-[300px] focus-visible:ring-2 focus-visible:ring-horizon focus-visible:ring-offset-2 focus-visible:outline-none"
         >

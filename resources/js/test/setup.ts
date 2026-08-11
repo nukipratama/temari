@@ -104,6 +104,16 @@ export function makeUser(overrides: Record<string, unknown> = {}) {
     };
 }
 
+// Layout-positioned UI (coach marks) parks its first paint behind a rAF, which
+// jsdom never runs on its own. The global afterEach unstub clears this again.
+export function stubSyncAnimationFrame() {
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+        cb(performance.now());
+        return 1;
+    });
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+}
+
 // Safe default fetch: any test that renders a component which fires fetch on
 // mount/interaction but doesn't stub it gets a 404 Response instead of a real
 // network call. A real Response satisfies both shapes the codebase reads off
@@ -193,16 +203,45 @@ vi.mock('@inertiajs/react', async () => {
             delete: vi.fn(),
             reload: vi.fn(),
             visit: vi.fn(),
+            on: vi.fn(() => vi.fn()),
         },
         usePoll: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
     };
 });
 
 // jsdom stubs for browser APIs not implemented in the test environment.
+// observe() replays the real API's first delivery, which components rely on
+// for their initial measurement.
 globalThis.ResizeObserver = class ResizeObserver {
-    observe = vi.fn();
+    constructor(private readonly callback: ResizeObserverCallback) {}
+
+    observe = vi.fn(() => {
+        this.callback([], this);
+    });
+
     unobserve = vi.fn();
     disconnect = vi.fn();
+};
+
+// jsdom has no viewport, so every observed element counts as on screen.
+globalThis.IntersectionObserver = class IntersectionObserver {
+    constructor(private readonly callback: IntersectionObserverCallback) {}
+
+    root = null;
+    rootMargin = '';
+    scrollMargin = '';
+    thresholds = [];
+
+    observe = vi.fn((target: Element) => {
+        this.callback(
+            [{ target, isIntersecting: true } as IntersectionObserverEntry],
+            this,
+        );
+    });
+
+    unobserve = vi.fn();
+    disconnect = vi.fn();
+    takeRecords = vi.fn(() => []);
 };
 
 // jsdom has no layout engine, so scrollIntoView isn't implemented at all

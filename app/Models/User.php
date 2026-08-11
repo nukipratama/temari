@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use NotificationChannels\WebPush\HasPushSubscriptions;
 use Illuminate\Support\Str;
@@ -24,6 +25,7 @@ use Override;
  * @property bool $is_demo
  * @property bool $is_admin
  * @property int|null $pending_reveal_card_id
+ * @property Carbon|null $onboarded_at
  */
 // `is_admin` is deliberately NOT fillable: it is a privilege flag granted only
 // via the `user:set-admin` command, never through mass assignment.
@@ -61,7 +63,14 @@ class User extends Authenticatable
         return [
             'is_demo' => 'boolean',
             'is_admin' => 'boolean',
+            'onboarded_at' => 'datetime',
         ];
+    }
+
+    public function markOnboarded(): void
+    {
+        $this->onboarded_at = now();
+        $this->save();
     }
 
     /**

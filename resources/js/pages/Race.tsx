@@ -1,9 +1,11 @@
 import { Head, router } from '@inertiajs/react';
+import { motion } from 'framer-motion';
 import { type FormEvent, useState } from 'react';
 
 import CtlTrendChart, {
     type CtlTrendPoint,
 } from '@/components/race/CtlTrendChart';
+import PlanRaceTabs from '@/components/race/PlanRaceTabs';
 import Card from '@/components/ui/Card';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import PageContainer from '@/components/ui/PageContainer';
@@ -11,8 +13,10 @@ import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
+import { useCountUp } from '@/hooks/useCountUp';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
+import { fadeInUp } from '@/lib/motion';
 import { formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
 
 interface RacePayload {
@@ -77,6 +81,11 @@ export default function Race({
     const [name, setName] = useState(race?.name ?? '');
     const [processing, setProcessing] = useState(false);
 
+    const daysUntilCount = useCountUp(race ? daysUntil(race.race_date) : 0);
+    const lowSecCount = useCountUp(projection?.low_sec ?? 0);
+    const highSecCount = useCountUp(projection?.high_sec ?? 0);
+    const predictedSecCount = useCountUp(projection?.predicted_sec ?? 0);
+
     const submit = (event: FormEvent) => {
         event.preventDefault();
         router.post(
@@ -99,22 +108,25 @@ export default function Race({
         <>
             <Head title="Race" />
             <PageContainer>
-                <header>
-                    <PageHero eyebrow="Race">
-                        {race
-                            ? 'Your race, on the calendar.'
-                            : 'Give the plan something to aim at.'}
-                    </PageHero>
-                    <p className="mt-2 max-w-xl font-sans text-sm leading-relaxed text-ink-2">
-                        Set a race and Temari projects a realistic finish time
-                        from your own PRs, then tracks your fitness trend
-                        against it.
-                    </p>
+                <header className="flex flex-col gap-5">
+                    <PlanRaceTabs active="race" />
+                    <div>
+                        <PageHero eyebrow="Race">
+                            {race
+                                ? 'Your race, on the calendar.'
+                                : 'Give the plan something to aim at.'}
+                        </PageHero>
+                        <p className="mt-2 max-w-xl font-sans text-sm leading-relaxed text-ink-2">
+                            Set a race and Temari projects a realistic finish
+                            time from your own PRs, then tracks your fitness
+                            trend against it.
+                        </p>
+                    </div>
                 </header>
 
                 {race && (
-                    <section className="mt-8">
-                        <Card padding="lg">
+                    <section className="mt-8" data-coachmark="race-goal">
+                        <Card padding="lg" className="shadow-sm">
                             <div className="flex flex-wrap items-start justify-between gap-4">
                                 <div>
                                     <SectionLabel>
@@ -127,7 +139,7 @@ export default function Race({
                                         )}
                                     </p>
                                     <p className="mt-1 text-sm text-ink-2">
-                                        {daysUntil(race.race_date)} days to go
+                                        {Math.round(daysUntilCount)} days to go
                                     </p>
                                 </div>
                                 <div className="flex flex-wrap gap-4">
@@ -152,23 +164,30 @@ export default function Race({
                             </div>
 
                             {projection && (
-                                <div className="mt-6 border-t border-line pt-6">
+                                <motion.div
+                                    initial="hidden"
+                                    animate="visible"
+                                    variants={fadeInUp}
+                                    className="mt-6 border-t border-line pt-6"
+                                >
                                     <SectionLabel size="micro">
                                         Projected finish
                                     </SectionLabel>
                                     <p className="font-display text-headline-sm text-ink">
-                                        {formatDurationHMS(projection.low_sec)}{' '}
+                                        {formatDurationHMS(
+                                            Math.round(lowSecCount),
+                                        )}{' '}
                                         &ndash;{' '}
                                         <em className="italic text-horizon-deep">
                                             {formatDurationHMS(
-                                                projection.high_sec,
+                                                Math.round(highSecCount),
                                             )}
                                         </em>
                                     </p>
                                     <p className="mt-2 text-sm text-ink-2">
                                         Best estimate{' '}
                                         {formatDurationHMS(
-                                            projection.predicted_sec,
+                                            Math.round(predictedSecCount),
                                         )}
                                         , from{' '}
                                         {projection.sample_size === 1
@@ -178,7 +197,7 @@ export default function Race({
                                         {CONFIDENCE_COPY[projection.confidence]}
                                         ).
                                     </p>
-                                </div>
+                                </motion.div>
                             )}
                             {!projection && (
                                 <p className="mt-6 border-t border-line pt-6 text-sm text-ink-2">
@@ -200,11 +219,11 @@ export default function Race({
                     />
                 )}
 
-                <section className="mt-10">
+                <section className="mt-10" data-coachmark="race-form">
                     <SectionLabel>
                         {race ? 'Edit your race' : 'Set your race'}
                     </SectionLabel>
-                    <Card padding="lg" className="mt-3">
+                    <Card padding="lg" className="mt-3 shadow-sm">
                         <form
                             onSubmit={submit}
                             className="grid grid-cols-1 gap-5 sm:grid-cols-2"
@@ -357,9 +376,9 @@ export default function Race({
                     </Card>
                 </section>
 
-                <section className="mt-10">
+                <section className="mt-10" data-coachmark="race-fitness-trend">
                     <SectionLabel>Fitness · last 90 days</SectionLabel>
-                    <Card padding="lg" className="mt-3">
+                    <Card padding="lg" className="mt-3 shadow-sm">
                         <CtlTrendChart trend={ctlTrend} />
                     </Card>
                 </section>

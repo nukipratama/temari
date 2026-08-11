@@ -1,10 +1,12 @@
 import { Icon } from '@iconify/react';
+import { motion } from 'framer-motion';
 
 import type { StreamSummaryLap } from '@/types/inertia';
 
 import Card from '@/components/ui/Card';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
+import { countUpEase, fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatDurationHMS, formatPace } from '@/lib/pace';
 import {
     barRowFill,
@@ -30,7 +32,7 @@ export default function LapsGraph({
             : null;
 
     return (
-        <Card as="section" padding="lg" className={className}>
+        <Card as="section" padding="lg" className={cn('shadow-sm', className)}>
             <header className="mb-1.5 flex flex-wrap items-baseline justify-between gap-3">
                 <SectionLabel>Laps</SectionLabel>
                 {fastest != null && fastestLap != null && (
@@ -50,13 +52,19 @@ export default function LapsGraph({
             {/* The -mx-3/px-3 bleed lives on this wrapper, not per row: nested inside
                 a row it would bleed left of the scrollable viewport's origin and get
                 clipped there, cutting off the highlight's rounded corner. */}
-            <div className="-mx-3 flex flex-col gap-1 overflow-x-auto px-3">
+            <motion.div
+                variants={staggerContainer}
+                initial="hidden"
+                animate="visible"
+                className="-mx-3 flex flex-col gap-1 overflow-x-auto px-3"
+            >
                 {laps.map((lap, idx) => {
                     const sec = paceSecOf(lap);
                     const isFast = sec != null && sec === fastest;
                     return (
-                        <div
+                        <motion.div
                             key={`lap-${lap.lap}`}
+                            variants={fadeInUp}
                             className={cn(
                                 'grid',
                                 ROW_GRID,
@@ -72,13 +80,19 @@ export default function LapsGraph({
                                 aria-label={`Lap ${lap.lap}, ${lap.distance_m} m, ${lap.pace} per km`}
                                 className="h-2.5 overflow-hidden rounded bg-sky/[0.06] lg:h-3"
                             >
-                                <div
+                                <motion.div
                                     className={cn(
-                                        'h-full rounded',
+                                        'h-full origin-left rounded',
                                         isFast ? 'bg-horizon' : 'bg-sky',
                                     )}
                                     style={{
                                         width: `${computeBarWidth(sec, fastest, slowest)}%`,
+                                    }}
+                                    initial={{ scaleX: 0 }}
+                                    animate={{ scaleX: 1 }}
+                                    transition={{
+                                        duration: 0.6,
+                                        ease: countUpEase,
                                     }}
                                 />
                             </div>
@@ -106,10 +120,10 @@ export default function LapsGraph({
                                 />
                                 {lap.avg_cadence_spm ?? '—'}
                             </div>
-                        </div>
+                        </motion.div>
                     );
                 })}
-            </div>
+            </motion.div>
         </Card>
     );
 }

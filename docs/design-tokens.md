@@ -87,6 +87,56 @@ mapping is encoded in the role utilities below (`.text-prose`, `.text-stat`, `.t
 
 App is **light-mode only** — no `.dark` is applied to `<html>`, no `*-dark` tokens.
 
+## Motion
+
+Three tiers, built from `framer-motion` variants in
+[lib/motion.ts](../resources/js/lib/motion.ts) (declarative-only: `Variants` / `Transition`
+constants, no functions or branches) plus the `.pressable` CSS primitive below. Every tier sits
+inside the app-wide `<MotionConfig reducedMotion="user">`
+([AppShell.tsx](../resources/js/layouts/AppShell.tsx)): a transform property (scale, x/y, rotate)
+reduces to an instant snap under the user's OS reduced-motion setting, while `opacity` keeps
+animating — the one cue a reduced-motion user still gets.
+`MotionConfig` only reaches motion *components*, so anything animating imperatively — the
+stat count-ups ([useCountUp.ts](../resources/js/hooks/useCountUp.ts)), the SVG glyph draw-ins,
+the confetti burst — reads the same preference itself through
+[useReducedMotion](../resources/js/hooks/useReducedMotion.ts) and snaps to its end state.
+
+1. **Global / subtle** — press feedback and route transitions; present everywhere, never opt-in.
+   `pressShrink` (scale 0.97 + 70% opacity dip, 150ms) is the one convention both
+   [MotionLink](../resources/js/components/MotionLink.tsx) (default `whileTap`) and `.pressable`
+   (its CSS `active:` state) implement, so a framer-driven link and a plain button feel identical.
+   `routeProgressBar` drives [RouteProgressBar](../resources/js/components/RouteProgressBar.tsx),
+   a thin top bar mounted as a **sibling** of AppShell's `<main>`, never a wrapper around it — that
+   element is deliberately unkeyed (keying it once caused 25 card remounts on Collection). It's
+   gated on Inertia's own `visit.showProgress` flag, so background/partial reloads (AI-analysis
+   polling, card-reveal `only` refreshes) never light the bar.
+2. **Data reveal** — a page's first showing of real data, not every render. Stat count-ups
+   (`useCountUp` + `countUpEase`, an ease-out curve with no overshoot — a tallying number should
+   land exactly on target), chart/route draw-ins (`drawIn`, SVG `pathLength` 0→1), and staggered
+   group reveals (`staggerContainer` wrapping `fadeInUp` children).
+3. **Celebratory** — unlocks, PRs, streaks: the existing celebration overlays
+   ([CardReveal](../resources/js/components/card/CardReveal.tsx),
+   [AksesoriUnlockModal](../resources/js/components/celebrations/AksesoriUnlockModal.tsx),
+   [UnlockToast](../resources/js/components/temari/UnlockToast.tsx)) and the mascot's
+   `idleByMood` / fidget keyframes in `lib/motion.ts`. Reserved for moments that are actually
+   earned — never layer tier 3 onto routine navigation or data loading.
+
+## Elevation
+
+No new shadow tokens — Tailwind's default `shadow-*` scale, used at three fixed steps mapped to
+how far a surface floats above `surface` / `surface-card`:
+
+| Step | Class | Surface | Use |
+|---|---|---|---|
+| Resting | `shadow-sm` | `surface-card` / `surface-warm` | Cards in the normal document flow (list rows, summary cards) |
+| Floating | `shadow-lg` | `surface-elev` | Popovers, dropdown menus, toasts, tooltips — overlays content without being modal |
+| Overlay | `shadow-2xl` | `cream` / `sky-deep` | Full modals and takeover sheets (share card, unlock modal, kartu mount) |
+
+`surface-elev` is reserved for the floating step — never use it for a resting card (that's
+`surface-card` / `surface-warm`). Pair each shadow step with its matching surface token rather
+than mixing tiers (a `shadow-2xl` modal on a resting `surface-warm` background reads as
+inconsistent depth).
+
 ## Component utilities
 
 Reusable atomic classes in the `@layer components` block of [app.css](../resources/css/app.css),
