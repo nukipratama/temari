@@ -96,6 +96,10 @@ inside the app-wide `<MotionConfig reducedMotion="user">`
 ([AppShell.tsx](../resources/js/layouts/AppShell.tsx)): a transform property (scale, x/y, rotate)
 reduces to an instant snap under the user's OS reduced-motion setting, while `opacity` keeps
 animating — the one cue a reduced-motion user still gets.
+`MotionConfig` only reaches motion *components*, so anything animating imperatively — the
+stat count-ups ([useCountUp.ts](../resources/js/hooks/useCountUp.ts)), the SVG glyph draw-ins,
+the confetti burst — reads the same preference itself through
+[useReducedMotion](../resources/js/hooks/useReducedMotion.ts) and snaps to its end state.
 
 1. **Global / subtle** — press feedback and route transitions; present everywhere, never opt-in.
    `pressShrink` (scale 0.97 + 70% opacity dip, 150ms) is the one convention both

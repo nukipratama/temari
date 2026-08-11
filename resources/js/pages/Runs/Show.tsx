@@ -1,7 +1,7 @@
 import { Icon } from '@iconify/react';
 import { Head, Link, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 
 import type {
     Activity,
@@ -13,6 +13,7 @@ import type {
 
 import Kartu from '@/components/card/Kartu';
 import KartuMount from '@/components/card/KartuMount';
+import CoachMark from '@/components/onboarding/CoachMark';
 import DetailTiles from '@/components/run/DetailTiles';
 import LapsGraph from '@/components/run/LapsGraph';
 import MapWeatherPanel from '@/components/run/MapWeatherPanel';
@@ -108,6 +109,7 @@ export default function RunsShow({
     relativeEffort,
 }: Readonly<ShowProps>) {
     const notificationsReachable = useNotificationsReachable();
+    const shareRef = useRef<HTMLDivElement>(null);
     const {
         summary,
         perKm,
@@ -452,6 +454,7 @@ export default function RunsShow({
                                     />
                                 </div>
                                 <div
+                                    ref={shareRef}
                                     data-coachmark="run-share"
                                     className="mt-4 flex flex-wrap gap-2"
                                 >
@@ -490,6 +493,13 @@ export default function RunsShow({
                                             : 'Replay card reveal'}
                                     </PillButton>
                                 </div>
+                                <CoachMark
+                                    id="run-share"
+                                    anchorRef={shareRef}
+                                    placement="top"
+                                    title="Share the card"
+                                    body="I'll turn this run into an image you can send anywhere."
+                                />
                                 {replayError && (
                                     <p
                                         role="status"

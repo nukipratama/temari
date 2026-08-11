@@ -2,8 +2,9 @@ import type { FormDataConvertible } from '@inertiajs/core';
 
 import { Head, Link, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
+import CoachMark from '@/components/onboarding/CoachMark';
 import PlanRaceTabs from '@/components/race/PlanRaceTabs';
 import TemariProto, { type SeasonPhase } from '@/components/temari/TemariProto';
 import Card from '@/components/ui/Card';
@@ -116,6 +117,7 @@ export default function Plan({
     season,
 }: Readonly<PlanProps>) {
     const [regenerating, setRegenerating] = useState(false);
+    const scheduleRef = useRef<HTMLDivElement>(null);
     const today = todayLocalIso();
     const seasonPhase = currentSeasonPhase(weeks);
 
@@ -266,6 +268,7 @@ export default function Plan({
                 )}
 
                 <div
+                    ref={scheduleRef}
                     data-coachmark="plan-week-schedule"
                     className="mt-8 flex flex-col gap-8"
                 >
@@ -443,6 +446,13 @@ export default function Plan({
                         </section>
                     ))}
                 </div>
+                <CoachMark
+                    id="plan-week-schedule"
+                    anchorRef={scheduleRef}
+                    placement="top"
+                    title="The week's yours"
+                    body="Tap any upcoming day to swap the session, move it, or take it off."
+                />
             </PageContainer>
         </>
     );

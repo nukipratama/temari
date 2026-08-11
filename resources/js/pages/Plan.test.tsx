@@ -2,6 +2,8 @@ import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { stubSyncAnimationFrame } from '@/test/setup';
+
 import Plan from './Plan';
 
 // framer-motion's prefers-reduced-motion check is a module-level singleton
@@ -68,8 +70,24 @@ function lastDeleteCall() {
 }
 
 describe('Plan', () => {
+    it('coach-marks the week schedule on a first visit', () => {
+        window.localStorage.clear();
+        stubSyncAnimationFrame();
+        render(
+            <Plan
+                race={null}
+                sessionsPerWeek={4}
+                season={SEASON}
+                weeks={[WEEK()]}
+            />,
+        );
+        expect(
+            screen.getByRole('dialog', { name: "The week's yours" }),
+        ).toBeInTheDocument();
+    });
+
     beforeEach(() => {
-        vi.useFakeTimers();
+        vi.useFakeTimers({ toFake: ['Date'] });
         vi.setSystemTime(new Date(`${TODAY}T08:00:00`));
     });
 

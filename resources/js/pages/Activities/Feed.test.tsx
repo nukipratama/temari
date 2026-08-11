@@ -2,7 +2,7 @@ import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { makeUser, setMockPage } from '@/test/setup';
+import { makeUser, setMockPage, stubSyncAnimationFrame } from '@/test/setup';
 
 import RunsIndex from './Feed';
 import { run } from './runFixture';
@@ -27,6 +27,25 @@ beforeEach(() => {
 });
 
 describe('Activities/Feed', () => {
+    it('coach-marks the filter control on a first visit', () => {
+        window.localStorage.clear();
+        stubSyncAnimationFrame();
+        render(
+            <RunsIndex
+                runs={[run(101, 'Morning', '2026-05-19T06:00:00')]}
+                rangeFilter="8w"
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+        expect(
+            screen.getByRole('dialog', { name: 'Filter the log' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/narrow it down by mood, distance, or week/),
+        ).toBeInTheDocument();
+    });
+
     it('renders the empty state when no runs exist', () => {
         render(
             <RunsIndex

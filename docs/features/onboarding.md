@@ -3,7 +3,7 @@ title: Onboarding wizard + coach-mark mechanism
 description: The two-step post-connect wizard, its DB-backed gate, and the reusable coach-mark anchoring mechanism.
 tags: [feature, onboarding]
 status: living
-reviewed: 2026-08-11
+reviewed: 2026-08-12
 code_refs:
   - app/Http/Controllers/OnboardingController.php
   - app/Http/Middleware/EnsureOnboarded.php
@@ -41,9 +41,13 @@ A minimal two-step wizard shown once, right after a user's *first* Strava connec
 
 ## Coach-mark mechanism
 
-[useCoachMark](../../resources/js/hooks/useCoachMark.ts) + [CoachMark](../../resources/js/components/onboarding/CoachMark.tsx) are a general-purpose "point at any DOM element, dismiss once, never show again for this user" primitive — not wired into any product page yet. Dismissal is localStorage-persisted, keyed per signed-in user id so a shared/demo browser can't leak one account's dismissals into another's. `CoachMark` takes an external `anchorRef` and portals a positioned callout next to it (`top`/`bottom`/`left`/`right`), closing on Escape/outside-click via the existing `usePopover` primitive.
+[useCoachMark](../../resources/js/hooks/useCoachMark.ts) + [CoachMark](../../resources/js/components/onboarding/CoachMark.tsx) are a general-purpose "point at any DOM element, dismiss once, never show again for this user" primitive. Dismissal is localStorage-persisted, keyed per signed-in user id so a shared/demo browser can't leak one account's dismissals into another's. `CoachMark` takes an external `anchorRef` and portals a positioned callout next to it (`top`/`bottom`/`left`/`right`), closing on Escape/outside-click via the existing `usePopover` primitive.
 
-Per-page coach-mark *copy and placement* is intentionally deferred to a later integration slice, once every redesigned page exists to carry a stable anchor for it to point at.
+### Where marks are mounted
+
+One mark per page, at the anchor that teaches a genuinely non-obvious interaction — [Today.tsx:119](../../resources/js/pages/Today.tsx#L119) (a run mints a card), [Activities/Feed.tsx:147](../../resources/js/pages/Activities/Feed.tsx#L147) (the filter sheet), [Activities/Calendar.tsx:171](../../resources/js/pages/Activities/Calendar.tsx#L171) (a day opens its run), [Runs/Show.tsx:496](../../resources/js/pages/Runs/Show.tsx#L496) (the card shares as an image), [Plan.tsx:449](../../resources/js/pages/Plan.tsx#L449) (upcoming days are editable), [Collection/Cards.tsx:210](../../resources/js/pages/Collection/Cards.tsx#L210) (a card opens its run), and [Collection/Accessories.tsx:188](../../resources/js/pages/Collection/Accessories.tsx#L188) (equipping updates the preview). The remaining `data-coachmark` anchors stay unmounted on purpose: where the surrounding copy or a control's own label already explains the interaction, a callout is noise, and two marks competing on one page fight each other (an outside click on either dismisses the other).
+
+**A mark must render after its anchor in tree order.** React attaches a parent's ref only once its children's layout effects have run, so a mark nested inside — or placed before — its anchor measures a null element on mount and silently never appears.
 
 ## See also
 

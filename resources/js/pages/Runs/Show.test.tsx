@@ -14,7 +14,7 @@ import type {
     StoryLine,
 } from '@/types/inertia';
 
-import { setMockPage } from '@/test/setup';
+import { setMockPage, stubSyncAnimationFrame } from '@/test/setup';
 
 import RunsShow from './Show';
 
@@ -165,6 +165,15 @@ function renderShow(
 }
 
 describe('Runs/Show', () => {
+    it('coach-marks the share action on a first visit', () => {
+        window.localStorage.clear();
+        stubSyncAnimationFrame();
+        renderShow();
+        expect(
+            screen.getByRole('dialog', { name: 'Share the card' }),
+        ).toBeInTheDocument();
+    });
+
     it('renders run name in the sky hero', () => {
         renderShow();
         expect(screen.getAllByText('Morning Run').length).toBeGreaterThan(0);

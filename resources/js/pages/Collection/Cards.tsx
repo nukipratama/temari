@@ -6,6 +6,7 @@ import {
     useCallback,
     useDeferredValue,
     useMemo,
+    useRef,
     useState,
     type ReactNode,
 } from 'react';
@@ -30,6 +31,7 @@ import ConfettiBurst from '@/components/ConfettiBurst';
 import ExpandableQuote from '@/components/dashboard/ExpandableQuote';
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
 import MotionLink from '@/components/MotionLink';
+import CoachMark from '@/components/onboarding/CoachMark';
 import StravaSyncButton from '@/components/StravaSyncButton';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Card from '@/components/ui/Card';
@@ -98,6 +100,7 @@ export default function Cards({
     } | null>(null);
     const [search, setSearch] = useState('');
     const [sortBy, setSortBy] = useState<SortMode>('date');
+    const gridRef = useRef<HTMLDivElement>(null);
     // Defer the heavy grid filter/sort + per-card derived-stat passes off the
     // keystroke so typing in the search box stays responsive on large collections.
     const deferredSearch = useDeferredValue(search);
@@ -154,6 +157,7 @@ export default function Cards({
         ) : (
             <motion.div
                 key={sortBy}
+                ref={gridRef}
                 data-coachmark="collection-grid"
                 variants={fadeInUp}
                 initial="hidden"
@@ -203,6 +207,13 @@ export default function Cards({
                 />
 
                 {gridBody}
+                <CoachMark
+                    id="collection-grid"
+                    anchorRef={gridRef}
+                    placement="top"
+                    title="Tap a card"
+                    body="Each one opens the run it came from."
+                />
 
                 {rarityCounts.legendary === 0 && <LegendaryTease />}
             </PageContainer>

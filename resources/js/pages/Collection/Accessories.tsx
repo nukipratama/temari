@@ -1,11 +1,12 @@
 import { Icon } from '@iconify/react';
 import { Head, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import type { EquippedSlot, Rarity } from '@/types/inertia';
 
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
+import CoachMark from '@/components/onboarding/CoachMark';
 import TemariProto, {
     type TemariEquipped,
 } from '@/components/temari/TemariProto';
@@ -85,6 +86,7 @@ export default function Accessories({
     items,
     equipped,
 }: Readonly<AccessoriesProps>) {
+    const equipRef = useRef<HTMLDivElement>(null);
     const unlockedCount = items.filter((i) => i.unlocked).length;
     const eyebrow = `Collection · ${unlockedCount} / ${items.length} accessories`;
 
@@ -128,6 +130,7 @@ export default function Accessories({
 
                 <HeroPanel className="mt-8 lg:px-14 lg:py-12">
                     <div
+                        ref={equipRef}
                         data-coachmark="collection-equip"
                         className="grid grid-cols-1 items-center gap-8 lg:gap-10 lg:grid-cols-[220px_1fr]"
                     >
@@ -182,6 +185,13 @@ export default function Accessories({
                         </div>
                     </div>
                 </HeroPanel>
+                <CoachMark
+                    id="collection-equip"
+                    anchorRef={equipRef}
+                    placement="bottom"
+                    title="Try things on"
+                    body="Pick anything below and I'll wear it right away."
+                />
 
                 {SLOT_ORDER.map((slot) =>
                     itemsBySlot[slot].length > 0 ? (

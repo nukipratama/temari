@@ -1,11 +1,12 @@
 import { Icon } from '@iconify/react';
 import { Head, Link } from '@inertiajs/react';
 import { motion } from 'framer-motion';
-import { memo, type ReactNode } from 'react';
+import { memo, useRef, type ReactNode } from 'react';
 
 import type { AnalysisPayload, Mood } from '@/types/inertia';
 
 import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
+import CoachMark from '@/components/onboarding/CoachMark';
 import RiwayatFilter from '@/components/riwayat/RiwayatFilter';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import SendNotificationButton from '@/components/SendNotificationButton';
@@ -96,6 +97,7 @@ export default function Calendar({
         toggleMood,
         resetFilter,
     } = useKalender({ cells, month, todayMonth });
+    const gridRef = useRef<HTMLDivElement>(null);
 
     return (
         <>
@@ -149,6 +151,8 @@ export default function Calendar({
                     lg+ gets the full km/pace/HR cells. No horizontal scroll. */}
                 <motion.div
                     key={month}
+                    ref={gridRef}
+                    data-coachmark="calendar-grid"
                     initial="hidden"
                     animate="visible"
                     variants={fadeInUp}
@@ -164,6 +168,13 @@ export default function Calendar({
                         />
                     ))}
                 </motion.div>
+                <CoachMark
+                    id="calendar-grid"
+                    anchorRef={gridRef}
+                    placement="top"
+                    title="Tap any day"
+                    body="Days you ran open straight into the run itself."
+                />
             </PageContainer>
         </>
     );
@@ -416,7 +427,7 @@ const DayCellView = memo(function DayCellView({
         filteredOut && 'opacity-30',
         hasRun && cell.mood && !filteredOut
             ? MOOD_SOFT_FILL[cell.mood]
-            : 'bg-surface-elev',
+            : 'bg-surface-card',
     );
 
     const inner = (

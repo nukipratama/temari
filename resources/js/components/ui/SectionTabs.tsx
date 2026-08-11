@@ -1,6 +1,6 @@
 import { Icon } from '@iconify/react';
 import { Link } from '@inertiajs/react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { cn } from '@/lib/cn';
 
@@ -19,6 +19,28 @@ interface SectionTabsProps<TId extends string> {
     className?: string;
 }
 
+type Fade = 'none' | 'start' | 'end' | 'both';
+
+const FADE_CLASS: Record<Fade, string | undefined> = {
+    none: undefined,
+    start: '[mask-image:linear-gradient(to_right,transparent_0,#000_28px)]',
+    end: '[mask-image:linear-gradient(to_right,#000_calc(100%_-_28px),transparent_100%)]',
+    both: '[mask-image:linear-gradient(to_right,transparent_0,#000_28px,#000_calc(100%_-_28px),transparent_100%)]',
+};
+
+function fadeFor(nav: HTMLElement): Fade {
+    const overflow = nav.scrollWidth - nav.clientWidth;
+    if (overflow <= 0) {
+        return 'none';
+    }
+    const start = nav.scrollLeft > 1;
+    const end = nav.scrollLeft < overflow - 1;
+    if (start && end) {
+        return 'both';
+    }
+    return start ? 'start' : 'end';
+}
+
 /** Sub-tab strip for a top-level nav item that folds in a second page (e.g. Today/History). */
 export default function SectionTabs<TId extends string>({
     tabs,
@@ -27,6 +49,24 @@ export default function SectionTabs<TId extends string>({
     className,
 }: Readonly<SectionTabsProps<TId>>) {
     const navRef = useRef<HTMLElement>(null);
+    const [fade, setFade] = useState<Fade>('none');
+
+    useEffect(() => {
+        const nav = navRef.current;
+        if (!nav) {
+            return;
+        }
+        const sync = () => setFade(fadeFor(nav));
+        nav.addEventListener('scroll', sync, { passive: true });
+        // ResizeObserver delivers a first callback on observe(), which doubles as
+        // the initial measurement.
+        const observer = new ResizeObserver(sync);
+        observer.observe(nav);
+        return () => {
+            nav.removeEventListener('scroll', sync);
+            observer.disconnect();
+        };
+    }, [tabs, active]);
 
     // scrollIntoView (not a manual scrollLeft calc) covers both edges of the active tab.
     useEffect(() => {
@@ -46,6 +86,7 @@ export default function SectionTabs<TId extends string>({
             aria-label="Sub-tab"
             className={cn(
                 'scrollbar-hide flex gap-1.5 overflow-x-auto',
+                FADE_CLASS[fade],
                 className,
             )}
         >
