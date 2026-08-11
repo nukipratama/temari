@@ -1,9 +1,12 @@
+import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 
 import type { Rarity } from '@/types/inertia';
 
 import { TemariGlyph } from '@/components/BrandMark';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { cn } from '@/lib/cn';
+import { drawIn } from '@/lib/motion';
 import { projectPolyline } from '@/lib/route';
 
 interface RouteGlyphProps {
@@ -41,6 +44,7 @@ export default function RouteGlyph({
     distanceKm,
     className,
 }: Readonly<RouteGlyphProps>) {
+    const reducedMotion = useReducedMotion();
     const stroke = color ?? `var(--color-rarity-${rarity})`;
     const fill = color
         ? `color-mix(in oklab, ${color} 14%, transparent)`
@@ -69,15 +73,17 @@ export default function RouteGlyph({
                 preserveAspectRatio="xMidYMid meet"
                 className={cn('block h-full w-full', className)}
             >
-                <path
+                <motion.path
                     d={d}
                     fill={fill}
                     stroke={stroke}
                     strokeWidth={strokeWidth}
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    opacity={0.95}
                     style={{ filter: `drop-shadow(0 0 1.5px ${stroke})` }}
+                    initial={reducedMotion ? false : 'hidden'}
+                    animate="visible"
+                    variants={drawIn}
                 />
             </svg>
         );

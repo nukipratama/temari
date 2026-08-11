@@ -18,8 +18,8 @@ const TIME_CLASS = {
 } as const;
 
 const GAP_CLASS = {
-    sm: 'flex h-full flex-col gap-2',
-    lg: 'flex h-full flex-col gap-3',
+    sm: 'flex h-full flex-col gap-2 shadow-sm',
+    lg: 'flex h-full flex-col gap-3 shadow-sm',
 } as const;
 
 export default function PrCard({
