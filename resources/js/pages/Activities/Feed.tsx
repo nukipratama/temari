@@ -1,5 +1,6 @@
 import { Icon } from '@iconify/react';
 import { Head, usePage } from '@inertiajs/react';
+import { motion } from 'framer-motion';
 
 import type {
     Mood,
@@ -33,6 +34,7 @@ import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
 import { appLayout } from '@/layouts/appLayout';
+import { fadeInUp, staggerContainer } from '@/lib/motion';
 
 import {
     DEFAULT_SORT,
@@ -104,6 +106,15 @@ export default function RunsIndex({
     });
 
     const hasRuns = runs.length > 0;
+    // Remounts the results block on a filter/sort/week change, replaying the
+    // tier-1 stagger reveal so a narrowed view visibly resettles.
+    const resultsKey = [
+        rangeFilter,
+        sortMode,
+        moodFilter.join(','),
+        distanceFilter ?? '',
+        weekFilter ?? '',
+    ].join('|');
 
     return (
         <>
@@ -147,7 +158,13 @@ export default function RunsIndex({
                 )}
 
                 {hasRuns && (
-                    <div className="space-y-8">
+                    <motion.div
+                        key={resultsKey}
+                        initial="hidden"
+                        animate="visible"
+                        variants={staggerContainer}
+                        className="space-y-8"
+                    >
                         {rangeAutoWidened && (
                             <RangeWidenedNote rangeFilter={rangeFilter} />
                         )}
@@ -155,29 +172,35 @@ export default function RunsIndex({
                             <RunsTruncatedNote maxRuns={maxRuns} />
                         )}
                         {ranked ? (
-                            <RankedList
-                                runs={runs}
-                                notes={notes}
-                                moods={moods}
-                                sort={sortMode}
-                            />
-                        ) : (
-                            buckets.map((bucket) => (
-                                <WeekSection
-                                    key={bucket.weekStart}
-                                    bucket={bucket}
-                                    snapshot={
-                                        snapshotsByWeek.get(
-                                            bucket.weekEnding,
-                                        ) ?? null
-                                    }
+                            <motion.div variants={fadeInUp}>
+                                <RankedList
+                                    runs={runs}
                                     notes={notes}
                                     moods={moods}
-                                    filtered={anyFilterActive}
+                                    sort={sortMode}
                                 />
+                            </motion.div>
+                        ) : (
+                            buckets.map((bucket) => (
+                                <motion.div
+                                    key={bucket.weekStart}
+                                    variants={fadeInUp}
+                                >
+                                    <WeekSection
+                                        bucket={bucket}
+                                        snapshot={
+                                            snapshotsByWeek.get(
+                                                bucket.weekEnding,
+                                            ) ?? null
+                                        }
+                                        notes={notes}
+                                        moods={moods}
+                                        filtered={anyFilterActive}
+                                    />
+                                </motion.div>
                             ))
                         )}
-                    </div>
+                    </motion.div>
                 )}
                 {/* A filtered view that matched nothing is a different story from
                     a genuinely empty history, so it gets its own state with a way

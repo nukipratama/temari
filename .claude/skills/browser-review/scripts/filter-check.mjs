@@ -29,7 +29,7 @@ await page.goto(`/activities`, { waitUntil: 'networkidle' });
 const unfiltered = await rows();
 console.log(`UNFILTERED rows=${unfiltered}`);
 
-await page.getByLabel('Buka filter').click();
+await page.getByLabel('Open filter').click();
 await moodButton('Blazing').click();
 await page.waitForTimeout(2000);
 
@@ -47,13 +47,13 @@ await page.goto(page.url(), { waitUntil: 'networkidle' });
 console.log(`AFTER_RELOAD rows=${await rows()} SURVIVES=${(await rows()) === filtered}`);
 
 // Pressed state comes back from the server prop.
-await page.getByLabel('Buka filter').click();
+await page.getByLabel('Open filter').click();
 console.log(`PRESSED_AFTER_RELOAD=${await moodButton('Blazing').getAttribute('aria-pressed')}`);
 
 // A mood the user has none of shows the no-match state, not the onboarding one.
 await page.goto(`/activities?mood=gassed`, { waitUntil: 'networkidle' });
 console.log(`NO_MATCH rows=${await rows()}`);
-console.log(`NO_MATCH_STATE=${await page.getByText('Gak ada lari yang cocok.').isVisible()}`);
+console.log(`NO_MATCH_STATE=${await page.getByText('No runs match.').isVisible()}`);
 await page.getByRole('button', { name: /Reset filter/ }).click();
 await page.waitForTimeout(2000);
 console.log(`AFTER_RESET rows=${await rows()} search="${new URL(page.url()).search}"`);

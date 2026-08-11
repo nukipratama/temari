@@ -13,6 +13,7 @@ import RunListRow, { type RunNote } from '@/components/run/RunListRow';
 import SendNotificationButton from '@/components/SendNotificationButton';
 import Temari from '@/components/temari/Temari';
 import Card from '@/components/ui/Card';
+import { useCountUp } from '@/hooks/useCountUp';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { cn } from '@/lib/cn';
 import { formStatusLabel } from '@/lib/formStatus';
@@ -87,6 +88,13 @@ const WeekSection = memo(function WeekSection({
             ? Math.max(0, weekTotal - bucket.runs.length)
             : 0;
 
+    // Tallies from 0 on first reveal — count-up applies only to the plain
+    // "N run" display; the hidden-count "X of Y run" copy stays static so two
+    // tweening numbers never share one string.
+    const countedRunCount = useCountUp(runCount);
+    const countedTotalKm = useCountUp(totalKm);
+    const countedTrimp = useCountUp(trimpLabel);
+
     return (
         <Card
             as="section"
@@ -103,14 +111,17 @@ const WeekSection = memo(function WeekSection({
                         label={
                             hiddenCount > 0
                                 ? `${bucket.runs.length} of ${weekTotal} run`
-                                : `${runCount} run`
+                                : `${Math.round(countedRunCount)} run`
                         }
                     />
                     <Stat
                         icon="mdi:map-marker-distance"
-                        label={`${totalKm.toFixed(1)} km`}
+                        label={`${countedTotalKm.toFixed(1)} km`}
                     />
-                    <Stat icon="mdi:fire" label={`${trimpLabel} TRIMP`} />
+                    <Stat
+                        icon="mdi:fire"
+                        label={`${Math.round(countedTrimp)} TRIMP`}
+                    />
                     {snapshot && <WeeklyStatusChips snapshot={snapshot} />}
                 </div>
             </header>

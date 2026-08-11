@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
@@ -126,7 +126,7 @@ describe('Calendar', () => {
         }
     });
 
-    it('renders the lifetime stats eyebrow when lifetime data is provided', () => {
+    it('renders the lifetime stats eyebrow when lifetime data is provided', async () => {
         render(
             <Calendar
                 {...BASE_PROPS}
@@ -138,7 +138,10 @@ describe('Calendar', () => {
                 }}
             />,
         );
-        expect(screen.getByText(/63 runs/i)).toBeInTheDocument();
+        // Runs/km tally up from 0 (tier-2 count-up), so wait for them to settle.
+        await waitFor(() =>
+            expect(screen.getByText(/63 runs/i)).toBeInTheDocument(),
+        );
         expect(screen.getByText(/544 km/i)).toBeInTheDocument();
         expect(screen.getByText(/since 19 feb 2026/i)).toBeInTheDocument();
     });
