@@ -185,7 +185,9 @@ describe('Calendar', () => {
 
     it('renders the navy "Today" badge on today\'s cell', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        expect(screen.getByText('Today')).toBeInTheDocument();
+        expect(
+            screen.getByText('Today', { selector: 'span' }),
+        ).toBeInTheDocument();
     });
 
     it('marks today with a persistent dot next to the day number, not color alone', () => {
@@ -212,7 +214,7 @@ describe('Calendar', () => {
     it('hides the "Today" jump-back when already on the current month', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
-            screen.queryByRole('link', { name: 'Today' }),
+            screen.queryByRole('link', { name: 'Jump to current month' }),
         ).not.toBeInTheDocument();
     });
 
@@ -225,10 +227,9 @@ describe('Calendar', () => {
                 todayMonth="2026-05"
             />,
         );
-        expect(screen.getByRole('link', { name: 'Today' })).toHaveAttribute(
-            'href',
-            '/calendar',
-        );
+        expect(
+            screen.getByRole('link', { name: 'Jump to current month' }),
+        ).toHaveAttribute('href', '/calendar');
     });
 
     it('renders prev / next nav buttons with correct hrefs', () => {

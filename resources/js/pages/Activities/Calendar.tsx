@@ -4,6 +4,7 @@ import { memo, type ReactNode } from 'react';
 
 import type { AnalysisPayload, Mood } from '@/types/inertia';
 
+import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
 import RiwayatFilter from '@/components/riwayat/RiwayatFilter';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import SendNotificationButton from '@/components/SendNotificationButton';
@@ -98,6 +99,7 @@ export default function Calendar({
             <Head title={`History · Calendar · ${monthLabel}`} />
             <PageContainer>
                 <header className="mb-8 min-w-0">
+                    <TodayHistoryTabs active="history" className="mb-5" />
                     <PageHero eyebrow={<LifetimeEyebrow lifetime={lifetime} />}>
                         Every run,
                         <br />
@@ -277,6 +279,7 @@ function MonthNav({
             {showTodayButton && (
                 <Link
                     href="/calendar"
+                    aria-label="Jump to current month"
                     className="focus-ring ml-1 rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1 text-xs font-semibold text-leaf-deep transition hover:border-leaf hover:bg-leaf/15"
                 >
                     Today
