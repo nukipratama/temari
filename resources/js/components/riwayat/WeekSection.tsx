@@ -88,9 +88,7 @@ const WeekSection = memo(function WeekSection({
             ? Math.max(0, weekTotal - bucket.runs.length)
             : 0;
 
-    // Tallies from 0 on first reveal — count-up applies only to the plain
-    // "N run" display; the hidden-count "X of Y run" copy stays static so two
-    // tweening numbers never share one string.
+    // hiddenCount > 0 shows two numbers in one string, so it skips count-up.
     const countedRunCount = useCountUp(runCount);
     const countedTotalKm = useCountUp(totalKm);
     const countedTrimp = useCountUp(trimpLabel);

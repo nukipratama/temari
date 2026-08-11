@@ -106,8 +106,7 @@ export default function RunsIndex({
     });
 
     const hasRuns = runs.length > 0;
-    // Remounts the results block on a filter/sort/week change, replaying the
-    // tier-1 stagger reveal so a narrowed view visibly resettles.
+    // Keying on the active filters replays the results reveal when they change.
     const resultsKey = [
         rangeFilter,
         sortMode,

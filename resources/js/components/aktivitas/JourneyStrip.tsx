@@ -37,8 +37,7 @@ export default function JourneyStrip({
     match,
     className,
 }: Readonly<JourneyStripProps>) {
-    // Called unconditionally (before the early return below) since `match`
-    // can flip from null to a value on the same mounted instance.
+    // Hooks must run before the early return below: match can flip from null to a value.
     const countedTotalKm = useCountUp(match?.total_km ?? 0);
 
     if (match === null) return null;

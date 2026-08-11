@@ -91,8 +91,7 @@ describe('WeekSection', () => {
             />,
         );
 
-        // The header stats tally up from 0 (tier-2 count-up), so wait for them
-        // to settle rather than asserting the target value synchronously.
+        // Header stats count up from 0, so wait for them to settle.
         await waitFor(() =>
             expect(screen.getByText('2 run')).toBeInTheDocument(),
         );

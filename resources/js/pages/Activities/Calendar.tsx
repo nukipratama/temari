@@ -171,8 +171,6 @@ export default function Calendar({
 
 function LifetimeEyebrow({ lifetime }: Readonly<{ lifetime?: LifetimeStats }>) {
     const hasLifetime = Boolean(lifetime && lifetime.total_runs > 0);
-    // Called unconditionally so the count-up tallies once real lifetime data
-    // arrives, matching useCountUp's own "starts from 0 on mount" contract.
     const totalRuns = useCountUp(lifetime?.total_runs ?? 0);
     const totalKm = useCountUp(lifetime?.total_km ?? 0);
 
