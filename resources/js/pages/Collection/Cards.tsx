@@ -1,5 +1,6 @@
 import { Icon } from '@iconify/react';
 import { Head, usePage } from '@inertiajs/react';
+import { motion } from 'framer-motion';
 import {
     memo,
     useCallback,
@@ -37,6 +38,7 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
+import { fadeInUp } from '@/lib/motion';
 import { activityUrl } from '@/lib/routes';
 import {
     RARITY_LABELS,
@@ -90,7 +92,10 @@ export default function Cards({
     featuredCard,
     rarityCounts,
 }: Readonly<CardsProps>) {
-    const [burstKey, setBurstKey] = useState<string | null>(null);
+    const [burst, setBurst] = useState<{
+        key: string;
+        legendary: boolean;
+    } | null>(null);
     const [search, setSearch] = useState('');
     const [sortBy, setSortBy] = useState<SortMode>('date');
     // Defer the heavy grid filter/sort + per-card derived-stat passes off the
@@ -134,7 +139,10 @@ export default function Cards({
 
     const triggerBurstFor = useCallback((rarity: Rarity, id: number) => {
         if (rarity === 'epic' || rarity === 'legendary') {
-            setBurstKey(`card-${id}-${Date.now()}`);
+            setBurst({
+                key: `card-${id}-${Date.now()}`,
+                legendary: rarity === 'legendary',
+            });
         }
     }, []);
 
@@ -144,7 +152,14 @@ export default function Cards({
                 <EmptyState />
             </div>
         ) : (
-            <div className="mt-6 grid grid-cols-2 gap-3.5 md:grid-cols-3 xl:grid-cols-4">
+            <motion.div
+                key={`${sortBy}-${deferredSearch}`}
+                data-coachmark="collection-grid"
+                variants={fadeInUp}
+                initial="hidden"
+                animate="visible"
+                className="mt-6 grid grid-cols-2 gap-3.5 md:grid-cols-3 xl:grid-cols-4"
+            >
                 {grid.map((card) => (
                     <CardCell
                         key={card.id}
@@ -152,13 +167,17 @@ export default function Cards({
                         onTap={triggerBurstFor}
                     />
                 ))}
-            </div>
+            </motion.div>
         );
 
     return (
         <>
             <Head title="Collection · Cards" />
-            <ConfettiBurst burstKey={burstKey} />
+            <ConfettiBurst
+                burstKey={burst?.key ?? null}
+                count={burst?.legendary ? 45 : 30}
+                durationMs={burst?.legendary ? 3200 : 2500}
+            />
             <PageContainer>
                 <CollectionHeader
                     active="kartu"
@@ -168,7 +187,11 @@ export default function Cards({
                     activeCount={String(totalKartu)}
                 />
 
-                {featuredCard && <SlimBanner featured={featuredCard} />}
+                {featuredCard && (
+                    <div data-coachmark="collection-featured">
+                        <SlimBanner featured={featuredCard} />
+                    </div>
+                )}
 
                 <RarityFilter
                     selected={selectedRarity}
@@ -252,6 +275,7 @@ function RarityFilter({
     return (
         <nav
             aria-label="Filter cards"
+            data-coachmark="collection-filter"
             className="mt-8 flex flex-wrap items-center gap-2"
         >
             <Eyebrow as="span" token="micro" tone="ink-2" className="mr-1.5">

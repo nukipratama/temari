@@ -1,5 +1,6 @@
 import { Icon } from '@iconify/react';
 import { Head, router } from '@inertiajs/react';
+import { motion } from 'framer-motion';
 import { useState } from 'react';
 
 import type { EquippedSlot, Rarity } from '@/types/inertia';
@@ -15,6 +16,7 @@ import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
 import ProgressBar from '@/components/ui/ProgressBar';
 import SectionLabel from '@/components/ui/SectionLabel';
+import { useCountUp } from '@/hooks/useCountUp';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import {
@@ -27,6 +29,7 @@ import {
     keyToPreviewEquipped,
 } from '@/lib/equippedAccessories';
 import { formatGoalNumber, goalProgressRatio } from '@/lib/goalProgress';
+import { fadeInUp } from '@/lib/motion';
 import { RARITY_TEXT } from '@/lib/runcard';
 
 type Slot = EquippedSlot;
@@ -124,7 +127,10 @@ export default function Accessories({
                 />
 
                 <HeroPanel className="mt-8 lg:px-14 lg:py-12">
-                    <div className="grid grid-cols-1 items-center gap-8 lg:gap-10 lg:grid-cols-[220px_1fr]">
+                    <div
+                        data-coachmark="collection-equip"
+                        className="grid grid-cols-1 items-center gap-8 lg:gap-10 lg:grid-cols-[220px_1fr]"
+                    >
                         <div className="flex justify-center">
                             <TemariProto
                                 pose="proud"
@@ -218,9 +224,17 @@ function SlotSection({
     const hasHiddenLocked = locked.length > 0;
 
     return (
-        <section className="mt-8">
+        <motion.section
+            variants={fadeInUp}
+            initial="hidden"
+            animate="visible"
+            className="mt-8"
+        >
             <SectionLabel>{SLOT_LABEL[slot]}</SectionLabel>
-            <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">
+            <div
+                data-coachmark="collection-accessories-grid"
+                className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4"
+            >
                 {unlocked.map((item) => (
                     <AksesoriCard
                         key={item.unlock_key}
@@ -260,7 +274,7 @@ function SlotSection({
                         : `+${locked.length} locked`}
                 </PillButton>
             )}
-        </section>
+        </motion.section>
     );
 }
 
@@ -270,13 +284,15 @@ function AksesoriCard({
 }: Readonly<{ item: AccessoriesItem; onEquip: (key: string) => void }>) {
     const locked = !item.unlocked;
     const preview = keyToPreviewEquipped(item.unlock_key);
+    const currentCount = useCountUp(item.current);
     let cardBorder: string;
     if (item.equipped) {
-        cardBorder = 'border-[1.5px] border-horizon bg-horizon/[0.08]';
+        cardBorder =
+            'border-[1.5px] border-horizon bg-horizon/[0.08] shadow-sm';
     } else if (locked) {
         cardBorder = 'border-2 border-dashed border-cream-deep bg-cream/40';
     } else {
-        cardBorder = 'border border-cream-deep bg-cream';
+        cardBorder = 'border border-cream-deep bg-cream shadow-sm';
     }
     return (
         <article
@@ -330,7 +346,7 @@ function AksesoriCard({
                         <div className="mt-2">
                             <div className="mb-1 flex items-baseline justify-between font-mono text-[11px] tabular-nums text-ink-3">
                                 <span>
-                                    {formatGoalNumber(item.current)}
+                                    {formatGoalNumber(currentCount)}
                                     <span className="text-ink-3">/</span>
                                     {formatGoalNumber(item.target)}
                                 </span>
