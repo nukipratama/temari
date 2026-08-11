@@ -48,11 +48,17 @@ describe('TemariProto', () => {
         expect(hasStar).toBe(true);
     });
 
+    it('renders no headband bow when nothing is equipped', () => {
+        const { container } = render(<TemariProto pose="proud" />);
+        const bow = container.querySelector('g[transform="translate(60, 22)"]');
+        expect(bow).toBeFalsy();
+    });
+
     it('renders an aura layer when equipped.aura is set', () => {
         const { container } = render(
             <TemariProto equipped={{ aura: 'pemanasan' }} />,
         );
-        // Gradient id is now uniquified per instance (useId suffix), so match by prefix.
+        // Gradient id is uniquified per instance (useId suffix), so match by prefix.
         expect(
             container.querySelector('radialGradient[id^="temari-aura-grad"]'),
         ).toBeInTheDocument();
@@ -63,7 +69,7 @@ describe('TemariProto', () => {
             <TemariProto pose="proud" equipped={{ medal: 'none' }} />,
         );
         const transformed = Array.from(container.querySelectorAll('g')).find(
-            (g) => g.getAttribute('transform') === 'translate(60, 70)',
+            (g) => g.getAttribute('transform') === 'translate(60, 78)',
         );
         expect(transformed).toBeFalsy();
     });
@@ -71,7 +77,7 @@ describe('TemariProto', () => {
     it('renders no medal when nothing is equipped', () => {
         const { container } = render(<TemariProto pose="proud" />);
         const medalGroup = Array.from(container.querySelectorAll('g')).find(
-            (g) => g.getAttribute('transform') === 'translate(60, 70)',
+            (g) => g.getAttribute('transform') === 'translate(60, 78)',
         );
         expect(medalGroup).toBeFalsy();
     });
@@ -82,56 +88,47 @@ describe('TemariProto', () => {
         expect(outer.style.width).toBe('200px');
     });
 
-    it('renders the full-body viewBox with torso and legs', () => {
+    it('renders the ball-form viewBox', () => {
         const { container } = render(<TemariProto />);
         const svg = container.querySelector('svg');
-        expect(svg?.getAttribute('viewBox')).toBe('0 -24 120 158');
+        expect(svg?.getAttribute('viewBox')).toBe('0 -4 120 140');
     });
 
-    it('renders kaus layer when equipped.kaus is set', () => {
+    it('renders the shirt band when equipped.kaus is set', () => {
         const { container } = render(
             <TemariProto equipped={{ kaus: 'hujan' }} />,
         );
-        // The kaus layer should render with the "hujan" fill color (#5E89B5)
-        const paths = Array.from(container.querySelectorAll('path'));
-        const hasKaus = paths.some((p) => p.getAttribute('fill') === '#5E89B5');
-        expect(hasKaus).toBe(true);
+        const rects = Array.from(container.querySelectorAll('rect'));
+        const hasBand = rects.some((r) => r.getAttribute('fill') === '#5E89B5');
+        expect(hasBand).toBe(true);
     });
 
-    it('renders celana layer when equipped.celana is set', () => {
+    it('renders the shorts band when equipped.celana is set', () => {
         const { container } = render(
             <TemariProto equipped={{ celana: 'split' }} />,
         );
-        // The celana layer should render with the "split" fill color (#2c355c)
-        const paths = Array.from(container.querySelectorAll('path'));
-        const hasCelana = paths.some(
-            (p) => p.getAttribute('fill') === '#2c355c',
-        );
-        expect(hasCelana).toBe(true);
+        const rects = Array.from(container.querySelectorAll('rect'));
+        const hasBand = rects.some((r) => r.getAttribute('fill') === '#2c355c');
+        expect(hasBand).toBe(true);
     });
 
-    it('renders sepatu layer when equipped.sepatu is set', () => {
+    it('renders the trailing ribbon when equipped.sepatu is set', () => {
         const { container } = render(
             <TemariProto equipped={{ sepatu: 'legendaris' }} />,
         );
-        // The sepatu layer should render with the "legendaris" upper color (#D9B23A)
         const paths = Array.from(container.querySelectorAll('path'));
-        const hasSepatu = paths.some(
-            (p) => p.getAttribute('fill') === '#D9B23A',
+        const hasRibbon = paths.some(
+            (p) => p.getAttribute('stroke') === '#D9B23A',
         );
-        expect(hasSepatu).toBe(true);
+        expect(hasRibbon).toBe(true);
     });
 
-    it('renders a shaded limb and fist on each arm', () => {
+    it('renders two resting tendrils when not holding', () => {
         const { container } = render(<TemariProto pose="proud" />);
-        const limbs = Array.from(container.querySelectorAll('path')).filter(
-            (p) => p.getAttribute('stroke') === 'url(#fur-arm-grad)',
+        const tips = Array.from(container.querySelectorAll('circle')).filter(
+            (c) => c.getAttribute('r') === '1.6',
         );
-        const fists = Array.from(container.querySelectorAll('circle')).filter(
-            (c) => c.getAttribute('fill') === 'url(#fur-fist-grad)',
-        );
-        expect(limbs).toHaveLength(2);
-        expect(fists).toHaveLength(2);
+        expect(tips).toHaveLength(2);
     });
 
     it.each(['holding', 'reading'] as const)(
@@ -141,6 +138,11 @@ describe('TemariProto', () => {
             expect(
                 container.querySelector('#temari-book-glow'),
             ).toBeInTheDocument();
+            // Resting tendrils are replaced by the book grip in held poses.
+            const restingTips = Array.from(
+                container.querySelectorAll('circle'),
+            ).filter((c) => c.getAttribute('r') === '1.6');
+            expect(restingTips).toHaveLength(0);
         },
     );
 
@@ -179,11 +181,54 @@ describe('TemariProto', () => {
             <TemariProto equipped={{ medal: 'platina' }} />,
         );
         const medalGroup = Array.from(container.querySelectorAll('g')).find(
-            (g) => g.getAttribute('transform') === 'translate(60, 70)',
+            (g) => g.getAttribute('transform') === 'translate(60, 78)',
         );
         expect(medalGroup).toBeTruthy();
         const rings = Array.from(medalGroup!.querySelectorAll('circle'));
-        const glowRing = rings.find((c) => c.getAttribute('r') === '9.5');
+        const glowRing = rings.find((c) => c.getAttribute('r') === '8');
         expect(glowRing).toBeTruthy();
+    });
+
+    it('falls back to the default thread texture when no season phase is given', () => {
+        const { container } = render(<TemariProto />);
+        const stroked = Array.from(
+            container.querySelectorAll('ellipse'),
+        ).filter((e) => e.getAttribute('fill') === 'none');
+        expect(stroked.length).toBeGreaterThan(0);
+    });
+
+    it('renders denser thread coverage for peak than for base', () => {
+        const base = render(<TemariProto seasonPhase="base" />);
+        const peak = render(<TemariProto seasonPhase="peak" />);
+        const countBands = (container: HTMLElement) =>
+            Array.from(container.querySelectorAll('ellipse')).filter(
+                (e) =>
+                    e.getAttribute('fill') === 'none' &&
+                    e.getAttribute('stroke'),
+            ).length;
+        expect(countBands(peak.container)).toBeGreaterThan(
+            countBands(base.container),
+        );
+    });
+
+    it('adds a rested shine for the taper phase without dropping coverage', () => {
+        const peak = render(<TemariProto seasonPhase="peak" />);
+        const taper = render(<TemariProto seasonPhase="taper" />);
+        const countBands = (container: HTMLElement) =>
+            Array.from(container.querySelectorAll('ellipse')).filter(
+                (e) =>
+                    e.getAttribute('fill') === 'none' &&
+                    e.getAttribute('stroke'),
+            ).length;
+        // Same band count as peak (no regression)...
+        expect(countBands(taper.container)).toBe(countBands(peak.container));
+        // ...plus an extra highlight-gradient ellipse for the shine treatment.
+        const shineEllipses = (container: HTMLElement) =>
+            Array.from(container.querySelectorAll('ellipse')).filter(
+                (e) => e.getAttribute('fill') === 'url(#ball-highlight)',
+            ).length;
+        expect(shineEllipses(taper.container)).toBeGreaterThan(
+            shineEllipses(peak.container),
+        );
     });
 });

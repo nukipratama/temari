@@ -105,7 +105,7 @@ beforeEach(() => {
         },
         configurable: true,
     });
-    // jsdom never fires image load; resolve immediately so loadBunny settles.
+    // jsdom never fires image load; resolve immediately so loadTemari settles.
     class FakeImage {
         onload: (() => void) | null = null;
         onerror: (() => void) | null = null;
@@ -434,10 +434,10 @@ describe('drawShareCard — edge / branch cases', () => {
     });
 
     it.each(['kartu', 'rute'] as Layout[])(
-        'draws the %s layout without a mascot/bunny when SVG glyph decode fails',
+        'draws the %s layout without a mascot/glyph when SVG glyph decode fails',
         async (layout) => {
-            // Image that always errors -> loadBunny resolves null -> the hero
-            // (kartu) skips its mascot and the rute brand lockup omits the bunny.
+            // Image that always errors -> loadTemari resolves null -> the hero
+            // (kartu) skips its mascot and the rute brand lockup omits the glyph.
             class FailingImage {
                 onload: (() => void) | null = null;
                 onerror: (() => void) | null = null;

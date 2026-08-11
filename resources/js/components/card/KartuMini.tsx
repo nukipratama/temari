@@ -28,7 +28,7 @@ interface KartuMiniProps {
 
 /**
  * Compact mini-TCG tile: the same dark-frame language as the full card at
- * 140px. Bright art window with the route hero + a tiny corner bunny, a dark
+ * 140px. Bright art window with the route hero + a tiny corner glyph, a dark
  * stat block with the rarity ribbon, name, and edition/date.
  */
 export default function KartuMini({

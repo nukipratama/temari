@@ -95,7 +95,7 @@ describe('Kartu', () => {
         const { container } = render(
             <Kartu name="x" km="1" durasi="1:00" trimp={1} size="lg" />,
         );
-        // Without polyline RouteGlyph falls back to the bunny glyph variant.
+        // Without polyline RouteGlyph falls back to the glyph variant.
         expect(
             container.querySelector('[data-variant="glyph"]'),
         ).not.toBeNull();

@@ -29,14 +29,22 @@ a dressed-up wrapper.
 ## The two core components
 
 [TemariProto.tsx](../../resources/js/components/temari/TemariProto.tsx) is the
-hand-drawn SVG body — a single ~950-line component. Its `pose` prop (the
+hand-drawn SVG body — a ball-bodied character (Slice 9b), styled after a
+temari 手鞠 hand-wound thread ball, with a face on its surface and short
+thread-tendril stubs at its base instead of limbs. Its `pose` prop (the
 `TemariPose` union: `proud`, `pumped`, `excited`, `holding`, `reading`,
-`wobble`, `observational`, `glow`) drives ear tilt, eye shape, mouth, arm swing,
-and a per-pose CSS animation (`POSE_ANIM`). It also paints equipped gear from an
-`equipped` object: headband, medal, kaus, celana, sepatu, aura — each keyed into
-its own palette table. `holding`/`reading` poses grip a book; `pumped`/`excited`/
-`glow` (and any aura) add sparkles. It's `memo`'d with a field-level comparator
-so a fresh inline `equipped={{...}}` doesn't rebuild the whole tree.
+`wobble`, `observational`, `glow`) drives eye shape, mouth, a small face-tilt,
+tendril splay, and a per-pose CSS animation (`POSE_ANIM`) that bounces/rocks
+the whole ball. It also paints equipped gear from an `equipped` object:
+headband (a bow at the crown), medal (a loop-and-coin), kaus/celana/sepatu
+(shirt/shorts thread bands and a trailing ribbon), aura — each keyed into its
+own palette table. `holding`/`reading` poses curl the tendrils around a book;
+`pumped`/`excited`/`glow` (and any aura) add sparkles. An optional
+`seasonPhase` prop (`base`/`build`/`peak`/`taper`) overlays a discrete
+thread-coverage pattern — only the [[plan-periodizer]] Plan tab's season
+summary passes it, so the mascot stays phase-agnostic everywhere else. It's
+`memo`'d with a field-level comparator so a fresh inline `equipped={{...}}`
+doesn't rebuild the whole tree.
 
 [Temari.tsx](../../resources/js/components/temari/Temari.tsx) is the **wrapper you
 almost always use**. It reads `equippedAccessories` from the globally-shared
