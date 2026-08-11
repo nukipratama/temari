@@ -47,6 +47,24 @@ class RunCardImageRenderer
 
     private const int PANEL_PAD = 34;
 
+    /** Thread-band accent placement (Slice 9c): a short strip hugging the card
+     * border from inside, along the bottom edge. Not centered — the `kartu`
+     * layout's badge row (see `kartuMiddle()`) sits right up against this
+     * same border with no spare margin, and up to 3 real badge labels (e.g.
+     * "Long Slow Distance" + "Negative Split" + "Rain Warrior") can extend
+     * past x=720; BAND_X is pushed right of that so the strip stays clear of
+     * every layout's content and of the bottom-right "temari.app" wordmark
+     * (which starts around x=1010). */
+    private const float BAND_X = 760.0;
+
+    private const float BAND_Y = 566.0;
+
+    private const float BAND_W = 120.0;
+
+    private const float BAND_H = 20.0;
+
+    private const float BAND_LEAN = 0.09;
+
     // Threadwork colorways (kept literal so the SVG is fully self-contained).
     // `sky` is the card body fill, `skyDeep` the canvas-margin fill outside
     // it, `sky2` the inset-panel fill (route panel / stat grid cells), and
@@ -119,12 +137,14 @@ class RunCardImageRenderer
             'stats' => $this->statsGrid($detail, $km, $cream, $inkOnSky, $sky2),
             default => $this->ruteMiddle($km, $detail, $rarity, $cream, $inkOnSky, $sky2, $badges),
         };
+        $threadBand = $this->threadBandTicks($rarity, $card->rarity->bandCount());
 
         return <<<SVG
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" font-family="sans-serif">
   <rect width="1200" height="630" fill="{$skyDeep}"/>
   <rect x="40" y="40" width="1120" height="550" rx="36" fill="{$sky}" stroke="{$rarity}" stroke-width="5"/>
+  {$threadBand}
 
   <text x="90" y="118" font-size="26" font-weight="700" letter-spacing="6" fill="{$rarity}">{$rarityLabel}</text>
   <text x="88" y="188" font-size="62" font-weight="700" fill="{$cream}">{$name}</text>
@@ -135,6 +155,56 @@ class RunCardImageRenderer
   <text x="1150" y="575" font-size="24" font-weight="700" letter-spacing="1" fill="{$inkOnSky}" text-anchor="end">temari.app</text>
 </svg>
 SVG;
+    }
+
+    /**
+     * Thread-band accent (Slice 9c): a small stitched cluster along the
+     * card border's bottom edge (see `BAND_X` for why it's off-center),
+     * additive to the existing rarity border — not a re-hue. `$bandCount`
+     * stitches lean one way; from 4 bands on, a
+     * second set leans the other way and crosses the rest (the "elaborate
+     * interwoven" look epic/legendary get). Shared across every `$layout`
+     * since it's emitted once in {@see self::buildSvg()}. Mirrors the
+     * client's `threadBandLines()` ({@see resources/js/lib/runcard.ts}), a
+     * different runtime so the geometry is hand-ported rather than shared.
+     */
+    private function threadBandTicks(string $color, int $bandCount): string
+    {
+        $primaryX = match (min($bandCount, 3)) {
+            1 => [0.5],
+            2 => [0.32, 0.68],
+            default => [0.18, 0.5, 0.82],
+        };
+        $crossX = match (max($bandCount - 3, 0)) {
+            1 => [0.36],
+            2 => [0.22, 0.6],
+            default => [],
+        };
+
+        [$x0, $y0, $w, $h, $lean] = [self::BAND_X, self::BAND_Y, self::BAND_W, self::BAND_H, self::BAND_LEAN];
+
+        $lines = [];
+        foreach ($primaryX as $nx) {
+            $lines[] = $this->threadBandLine($x0 + ($nx - $lean) * $w, $y0 + $h, $x0 + ($nx + $lean) * $w, $y0, $color, 0.95);
+        }
+        foreach ($crossX as $nx) {
+            $lines[] = $this->threadBandLine($x0 + ($nx - $lean) * $w, $y0, $x0 + ($nx + $lean) * $w, $y0 + $h, $color, 0.6);
+        }
+
+        return implode("\n  ", $lines);
+    }
+
+    private function threadBandLine(float $x1, float $y1, float $x2, float $y2, string $color, float $opacity): string
+    {
+        return sprintf(
+            '<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="4" stroke-linecap="round" opacity="%.2f"/>',
+            $x1,
+            $y1,
+            $x2,
+            $y2,
+            $color,
+            $opacity,
+        );
     }
 
     /**

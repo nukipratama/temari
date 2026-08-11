@@ -3,7 +3,13 @@ import type { CardEdition, Mood, Rarity, ZonePct } from '@/types/inertia';
 import { THREADWORK, hrZone } from '@/lib/chartTokens';
 import { moodSigilColor } from '@/lib/mood';
 import { projectPolyline } from '@/lib/route';
-import { RARITY_HEX, RARITY_LABELS, RARITY_SYMBOL } from '@/lib/runcard';
+import {
+    RARITY_BAND_COUNT,
+    RARITY_HEX,
+    RARITY_LABELS,
+    RARITY_SYMBOL,
+    threadBandLines,
+} from '@/lib/runcard';
 
 const HR_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const;
 
@@ -243,13 +249,16 @@ function roundRectPathCorners(
  * body edge-to-edge with a vivid rarity border and the same bright inward
  * bloom on every rarity (matches the in-app Kartu's `.kartu-glow`). No
  * surrounding backdrop — rounded corners reveal the same navy, so it reads
- * as a full-bleed card rather than a floating one.
+ * as a full-bleed card rather than a floating one. Also draws the
+ * thread-band accent (Slice 9c) hugging the border's bottom-center, additive
+ * to the border above rather than a re-hue.
  */
 function drawCardFrame(
     ctx: CanvasRenderingContext2D,
     w: number,
     h: number,
     rarityCol: string,
+    rarity: Rarity,
     pal: Palette,
 ): void {
     const border = 12;
@@ -271,6 +280,39 @@ function drawCardFrame(
     );
     ctx.stroke();
     ctx.shadowBlur = 0;
+    drawThreadBandTicks(ctx, w, h, rarityCol, rarity);
+}
+
+/**
+ * Thread-band rarity accent (Slice 9c): a small stitched cluster centered on
+ * the frame's bottom edge, just inside the border stroke — clear of every
+ * template's own content, which stays within its own inner margin, and of
+ * `drawDateFooter`'s bottom-left placement. Density scales with tier via
+ * `threadBandLines` (shared with the React card glyph and the server SVG
+ * renderer, so all three surfaces draw the identical pattern).
+ */
+function drawThreadBandTicks(
+    ctx: CanvasRenderingContext2D,
+    w: number,
+    h: number,
+    color: string,
+    rarity: Rarity,
+): void {
+    const boxW = 170;
+    const boxH = 20;
+    const x0 = w / 2 - boxW / 2;
+    const y0 = h - 34;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = color;
+    for (const l of threadBandLines(RARITY_BAND_COUNT[rarity])) {
+        ctx.globalAlpha = l.opacity;
+        ctx.beginPath();
+        ctx.moveTo(x0 + l.x1 * boxW, y0 + l.y1 * boxH);
+        ctx.lineTo(x0 + l.x2 * boxW, y0 + l.y2 * boxH);
+        ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
 }
 
 /**
@@ -675,7 +717,7 @@ function drawRute(d: DrawCtx): void {
     const story = cfg.format === 'story';
     const rarityCol = C.rarity[k.rarity] ?? C.line;
     paintGlow(ctx, w / 2, h * 0.38, w * 0.5);
-    drawCardFrame(ctx, w, h, rarityCol, pal);
+    drawCardFrame(ctx, w, h, rarityCol, k.rarity, pal);
     drawBrand(ctx, w - PAD, PAD, pal.isDark, temari);
     drawRarityFlag(ctx, PAD, PAD, k.rarity);
 
@@ -1392,7 +1434,7 @@ function drawHero(d: DrawCtx): void {
     const moodCol = moodSigilColor(k.mood);
 
     paintGlow(ctx, w / 2, h * 0.36, w * 0.5);
-    drawCardFrame(ctx, w, h, rarityCol, pal);
+    drawCardFrame(ctx, w, h, rarityCol, k.rarity, pal);
 
     const cx = 0;
     const cy = 0;
@@ -1461,7 +1503,7 @@ function drawStats(d: DrawCtx): void {
     const rarityCol = C.rarity[k.rarity] ?? C.line;
 
     paintGlow(ctx, w / 2, h * 0.3, w * 0.5);
-    drawCardFrame(ctx, w, h, rarityCol, pal);
+    drawCardFrame(ctx, w, h, rarityCol, k.rarity, pal);
     drawBrand(ctx, w - PAD, PAD, pal.isDark, temari);
     drawRarityFlag(ctx, PAD, PAD, k.rarity);
 

@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import type { CardEdition, Mood, Rarity, ZonePct } from '@/types/inertia';
 
 import RouteGlyph from '@/components/card/RouteGlyph';
+import ThreadBandGlyph from '@/components/card/ThreadBandGlyph';
 import ZoneBar from '@/components/card/ZoneBar';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
@@ -271,6 +272,27 @@ export default function Kartu({
                     )}
                 </div>
             </div>
+
+            {/* Thread-band rarity accent (Slice 9c) — a small stitched cluster
+                hugging the border's bottom edge, additive to the rarity
+                border/glow above rather than a re-hue. Sits inside the
+                card's own border padding so it never collides with the stat
+                block's content, whatever height that content happens to be.
+                Dropped on `compact` grid tiles — the same cramped-corner
+                territory that once collided the EditionMark into the
+                RarityChip (see the art-window comment above). */}
+            {!compact && (
+                <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center"
+                >
+                    <ThreadBandGlyph
+                        rarity={rarity}
+                        width={isFull ? 72 : 56}
+                        height={8}
+                    />
+                </div>
+            )}
         </div>
     );
 }

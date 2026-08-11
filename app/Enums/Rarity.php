@@ -53,4 +53,21 @@ enum Rarity: string
             self::Legendary => '#f5a623',
         };
     }
+
+    /**
+     * Thread-band accent density (Slice 9c) for the card's rarity chrome —
+     * additive texture on top of the existing border/glow, not a re-hue.
+     * Mirrored in the client's `RARITY_BAND_COUNT`
+     * ({@see resources/js/lib/runcard.ts}).
+     */
+    public function bandCount(): int
+    {
+        return match ($this) {
+            self::Common => 1,
+            self::Uncommon => 2,
+            self::Rare => 3,
+            self::Epic => 4,
+            self::Legendary => 5,
+        };
+    }
 }

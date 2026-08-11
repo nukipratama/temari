@@ -57,4 +57,25 @@ describe('KartuMini', () => {
         // Art zone always contains the mascot SVG.
         expect(container.querySelector('svg')).not.toBeNull();
     });
+
+    it.each([
+        ['common', 1],
+        ['uncommon', 2],
+        ['rare', 3],
+        ['epic', 4],
+        ['legendary', 5],
+    ] satisfies [Rarity, number][])(
+        'scales the thread-band accent stitch count for %s',
+        (rarity, count) => {
+            const { container } = render(
+                <KartuMini name="x" rarity={rarity} />,
+            );
+            // Scoped to the thread-band's own <div aria-hidden> wrapper — the
+            // mascot glyph in the art zone (a <span aria-hidden>) also draws
+            // its own unrelated <line> elements.
+            expect(
+                container.querySelectorAll('div[aria-hidden] line').length,
+            ).toBe(count);
+        },
+    );
 });
