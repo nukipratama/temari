@@ -53,6 +53,14 @@ import {
 // Carries the ~1200-line canvas engine; fetched on the Bagikan tap.
 const ShareCardModal = lazy(() => import('@/components/card/ShareCardModal'));
 
+function countDisplay(
+    hasValue: number | null,
+    tweened: number,
+    format: (n: number) => string,
+): string {
+    return hasValue != null ? format(tweened) : '—';
+}
+
 type DetailedActivity = Activity & {
     detail: ActivityDetail;
 };
@@ -107,8 +115,6 @@ export default function RunsShow({
         partialSplit,
         mood,
         pose,
-        km,
-        distanceKm,
         paceSec,
         hr,
         trimp,
@@ -119,20 +125,29 @@ export default function RunsShow({
         shareData,
     } = useRunShow({ detail, card, storyLine, moodFallback, relativeEffort });
 
-    const distanceKmCount = useCountUp(distanceKm ?? 0);
+    const distanceKmCount = useCountUp(
+        detail.distance != null ? detail.distance / 1000 : 0,
+    );
     const paceSecCount = useCountUp(paceSec ?? 0);
     const hrCount = useCountUp(hr ?? 0);
     const trimpCount = useCountUp(trimp ?? 0);
     const elevationCount = useCountUp(detail.total_elevation_gain ?? 0);
 
-    const kmDisplay = distanceKm != null ? distanceKmCount.toFixed(2) : km;
-    const paceDisplay = paceSec != null ? formatPace(paceSecCount) : '—';
-    const hrDisplay = hr != null ? `${Math.round(hrCount)}` : '—';
-    const trimpDisplay = trimp != null ? `${Math.round(trimpCount)}` : '—';
-    const elevationDisplay =
-        detail.total_elevation_gain != null
-            ? `${Math.round(elevationCount)}`
-            : '—';
+    const kmDisplay = countDisplay(detail.distance, distanceKmCount, (n) =>
+        n.toFixed(2),
+    );
+    const paceDisplay = countDisplay(paceSec, paceSecCount, formatPace);
+    const hrDisplay = countDisplay(hr, hrCount, (n) => `${Math.round(n)}`);
+    const trimpDisplay = countDisplay(
+        trimp,
+        trimpCount,
+        (n) => `${Math.round(n)}`,
+    );
+    const elevationDisplay = countDisplay(
+        detail.total_elevation_gain ?? null,
+        elevationCount,
+        (n) => `${Math.round(n)}`,
+    );
 
     const [resyncing, resync] = usePendingPost(
         `/activities/${activity.id}/resync`,
