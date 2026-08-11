@@ -6,55 +6,7 @@ import BrandMark from '@/components/BrandMark';
 import StravaSyncBadge from '@/components/StravaSyncBadge';
 import UserMenu from '@/components/UserMenu';
 import { cn } from '@/lib/cn';
-
-type TabId = 'hari-ini' | 'koleksi' | 'riwayat' | 'plan' | 'aku';
-
-interface NavItem {
-    id: TabId;
-    label: string;
-    href: string;
-    prefixes: ReadonlyArray<string>;
-}
-
-const ITEMS: ReadonlyArray<NavItem> = [
-    { id: 'hari-ini', label: 'Today', href: '/', prefixes: ['/'] },
-    {
-        id: 'koleksi',
-        label: 'Collection',
-        href: '/cards',
-        prefixes: ['/cards', '/accessories', '/records', '/goals'],
-    },
-    {
-        id: 'riwayat',
-        label: 'History',
-        href: '/activities',
-        prefixes: ['/activities', '/calendar'],
-    },
-    {
-        id: 'plan',
-        label: 'Plan',
-        href: '/plan',
-        prefixes: ['/plan'],
-    },
-    {
-        id: 'aku',
-        label: 'Me',
-        href: '/profile',
-        prefixes: ['/profile', '/settings', '/race'],
-    },
-];
-
-export function activeTabFromUrl(url: string): TabId | null {
-    const path = url.split('?')[0];
-    if (path === '/') return 'hari-ini';
-    for (const item of ITEMS) {
-        if (item.id === 'hari-ini') continue;
-        if (item.prefixes.some((p) => path === p || path.startsWith(`${p}/`))) {
-            return item.id;
-        }
-    }
-    return null;
-}
+import { activeTabFromUrl, ITEMS, type NavItem } from '@/lib/nav';
 
 export default function TopNav() {
     const { url, props } = usePage<SharedProps>();
