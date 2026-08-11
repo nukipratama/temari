@@ -10,13 +10,13 @@ interface RiwayatTabsProps {
 const TABS: ReadonlyArray<SectionTabItem<RiwayatTab>> = [
     {
         id: 'jejak',
-        label: 'Jejak',
+        label: 'Feed',
         href: '/activities',
         icon: 'mdi:shoe-print',
     },
     {
         id: 'kalender',
-        label: 'Kalender',
+        label: 'Calendar',
         href: '/calendar',
         icon: 'mdi:calendar-blank-outline',
     },
