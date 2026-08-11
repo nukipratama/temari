@@ -68,6 +68,9 @@ export default function Today({
     const weekRuns = useCountUp(snapshot?.runs ?? 0);
     const weekKm = useCountUp(snapshot?.distance_km ?? 0);
     const weekTrimp = useCountUp(snapshot?.weekly_trimp ?? 0);
+    const weekRunsDisplay = snapshot ? Math.round(weekRuns).toString() : '—';
+    const weekKmDisplay = snapshot ? weekKm.toFixed(1) : '—';
+    const weekTrimpDisplay = snapshot ? Math.round(weekTrimp).toString() : '—';
 
     return (
         <>
@@ -113,31 +116,15 @@ export default function Today({
                                     <div className="grid grid-cols-3 gap-3">
                                         <KpiTile
                                             label="Runs"
-                                            value={
-                                                snapshot
-                                                    ? Math.round(
-                                                          weekRuns,
-                                                      ).toString()
-                                                    : '—'
-                                            }
+                                            value={weekRunsDisplay}
                                         />
                                         <KpiTile
                                             label="KM"
-                                            value={
-                                                snapshot
-                                                    ? weekKm.toFixed(1)
-                                                    : '—'
-                                            }
+                                            value={weekKmDisplay}
                                         />
                                         <KpiTile
                                             label="TRIMP"
-                                            value={
-                                                snapshot
-                                                    ? Math.round(
-                                                          weekTrimp,
-                                                      ).toString()
-                                                    : '—'
-                                            }
+                                            value={weekTrimpDisplay}
                                             explainerKey="trimp"
                                         />
                                     </div>
