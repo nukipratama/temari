@@ -99,6 +99,59 @@ export const RARITY_HEX: Record<Rarity, string> = {
     legendary: '#f5a623',
 };
 
+// Thread-band accent density (Slice 9c) — mirrors App\Enums\Rarity::bandCount().
+// Additive rarity chrome, not a re-hue: more stitches at higher tiers.
+export const RARITY_BAND_COUNT: Record<Rarity, number> = {
+    common: 1,
+    uncommon: 2,
+    rare: 3,
+    epic: 4,
+    legendary: 5,
+};
+
+/** A single thread-band stitch, normalized to a 0..1 x 0..1 unit box. */
+export interface ThreadBandLine {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    opacity: number;
+}
+
+// Hand-placed stitch positions per count rather than an evenly-divided loop,
+// so 1-3 stitches read as a deliberate, balanced cluster instead of bunching
+// at one edge. From 4 on, a second set leans the opposite way and crosses
+// the rest — the "elaborate interwoven" look the top two tiers get. Mirrored
+// by hand in RunCardImageRenderer.php (different runtime, same geometry).
+const THREAD_BAND_PRIMARY_X: Record<number, number[]> = {
+    1: [0.5],
+    2: [0.32, 0.68],
+    3: [0.18, 0.5, 0.82],
+};
+const THREAD_BAND_CROSS_X: Record<number, number[]> = {
+    1: [0.36],
+    2: [0.22, 0.6],
+};
+
+/**
+ * Thread-band stitch geometry for a tier's band count (1-5). Shared by the
+ * React card glyph ({@see ThreadBandGlyph}) and the canvas share-card
+ * renderer so both draw the identical pattern from one source.
+ */
+export function threadBandLines(count: number): ThreadBandLine[] {
+    const primaryCount = Math.min(count, 3);
+    const crossCount = Math.max(count - 3, 0);
+    const lean = 0.09;
+    const lines: ThreadBandLine[] = [];
+    for (const x of THREAD_BAND_PRIMARY_X[primaryCount] ?? []) {
+        lines.push({ x1: x - lean, y1: 1, x2: x + lean, y2: 0, opacity: 0.95 });
+    }
+    for (const x of THREAD_BAND_CROSS_X[crossCount] ?? []) {
+        lines.push({ x1: x - lean, y1: 0, x2: x + lean, y2: 1, opacity: 0.6 });
+    }
+    return lines;
+}
+
 export const RARITY_TEXT: Record<Rarity, string> = {
     common: 'text-rarity-common',
     uncommon: 'text-rarity-uncommon',

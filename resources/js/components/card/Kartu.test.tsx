@@ -48,6 +48,35 @@ describe('Kartu', () => {
         expect(screen.getByText(symbol)).toBeInTheDocument();
     });
 
+    it.each([
+        ['common', 1],
+        ['uncommon', 2],
+        ['rare', 3],
+        ['epic', 4],
+        ['legendary', 5],
+    ] satisfies [Rarity, number][])(
+        'scales the thread-band accent stitch count for %s',
+        (rarity, count) => {
+            const { container } = render(
+                <Kartu
+                    name="x"
+                    km="1"
+                    durasi="1:00"
+                    trimp={1}
+                    rarity={rarity}
+                />,
+            );
+            expect(container.querySelectorAll('line').length).toBe(count);
+        },
+    );
+
+    it('drops the thread-band accent on compact grid tiles', () => {
+        const { container } = render(
+            <Kartu name="x" km="1" durasi="1:00" trimp={1} compact />,
+        );
+        expect(container.querySelectorAll('line').length).toBe(0);
+    });
+
     it('renders the edition mark when provided', () => {
         render(
             <Kartu

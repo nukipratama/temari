@@ -36,3 +36,15 @@ it('exposes the Threadwork rarity hex tints', function (): void {
         ->and(Rarity::Epic->hexColor())->toBe('#a855f7')
         ->and(Rarity::Legendary->hexColor())->toBe('#f5a623');
 });
+
+/*
+ * Parity guard: these counts are mirrored in resources/js/lib/runcard.ts
+ * (RARITY_BAND_COUNT) and RunCardImageRenderer's SVG thread-band ticks.
+ */
+it('scales the thread-band accent count from 1 (common) to 5 (legendary)', function (): void {
+    expect(Rarity::Common->bandCount())->toBe(1)
+        ->and(Rarity::Uncommon->bandCount())->toBe(2)
+        ->and(Rarity::Rare->bandCount())->toBe(3)
+        ->and(Rarity::Epic->bandCount())->toBe(4)
+        ->and(Rarity::Legendary->bandCount())->toBe(5);
+});

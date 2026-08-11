@@ -5,6 +5,7 @@ import type { ActivityDetail } from '@/types/inertia';
 import {
     BADGE_ABILITY,
     BADGE_LABELS,
+    RARITY_BAND_COUNT,
     RARITY_LABELS,
     RARITY_ORDER,
     avgCadenceFromDetail,
@@ -12,6 +13,7 @@ import {
     badgeName,
     fastestKmFromDetail,
     kartuPropsFromDetail,
+    threadBandLines,
     zonePctFromDetail,
 } from './runcard';
 
@@ -50,6 +52,39 @@ describe('RARITY_LABELS', () => {
             epic: 'Epic',
             legendary: 'Legendary',
         });
+    });
+});
+
+// Parity guard: mirrored in App\Enums\Rarity::bandCount() (see RarityTest.php).
+describe('RARITY_BAND_COUNT', () => {
+    it('scales from 1 (common) to 5 (legendary)', () => {
+        expect(RARITY_BAND_COUNT).toEqual({
+            common: 1,
+            uncommon: 2,
+            rare: 3,
+            epic: 4,
+            legendary: 5,
+        });
+    });
+});
+
+describe('threadBandLines', () => {
+    it('draws one stitch leaning the same way for count 1', () => {
+        const lines = threadBandLines(1);
+        expect(lines).toHaveLength(1);
+        expect(lines[0]).toMatchObject({ y1: 1, y2: 0 });
+    });
+
+    it('adds a second, opposite-leaning crossing set from count 4 on', () => {
+        const epic = threadBandLines(4);
+        const legendary = threadBandLines(5);
+        expect(epic).toHaveLength(4);
+        expect(legendary).toHaveLength(5);
+
+        const crossing = (lines: ReturnType<typeof threadBandLines>) =>
+            lines.filter((l) => l.y1 === 0);
+        expect(crossing(epic)).toHaveLength(1);
+        expect(crossing(legendary)).toHaveLength(2);
     });
 });
 

@@ -192,6 +192,26 @@ it('defaults render() to the original rute/navy look when called with no explici
     expect($defaultSvg)->toBe($explicitSvg);
 });
 
+it('scales the thread-band accent line count with rarity tier', function (): void {
+    $svgFor = function (string $rarity): string {
+        $card = makeRunCard([
+            'distance' => 5_280,
+        ], ['rarity' => $rarity, 'special_move' => 'Langkah Mantap']);
+
+        return (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+            ->invoke(app(RunCardImageRenderer::class), $card);
+    };
+
+    // Common = 1 stitch, Legendary = 5 (3 primary + 2 crossing) — count the
+    // <line> elements the thread-band accent draws (distinct from the
+    // route/badge/stat markup, which uses <rect>/<text>/<polyline>, never <line>).
+    expect(substr_count($svgFor('common'), '<line '))->toBe(1)
+        ->and(substr_count($svgFor('uncommon'), '<line '))->toBe(2)
+        ->and(substr_count($svgFor('rare'), '<line '))->toBe(3)
+        ->and(substr_count($svgFor('epic'), '<line '))->toBe(4)
+        ->and(substr_count($svgFor('legendary'), '<line '))->toBe(5);
+});
+
 it('paints a different card-body fill for each colorway', function (): void {
     $card = makeRunCard([
         'distance' => 5_280,

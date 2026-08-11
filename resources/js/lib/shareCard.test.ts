@@ -920,3 +920,34 @@ describe('stats template', () => {
         );
     });
 });
+
+describe('thread-band accent (Slice 9c)', () => {
+    const layouts: Layout[] = ['kartu', 'rute', 'stats'];
+
+    it.each(layouts)(
+        'draws one stroke segment per band, scaling from common (1) to legendary (5) on the %s layout',
+        async (layout) => {
+            const draw = async (rarity: ShareKartuData['rarity']) => {
+                const ctx = makeCtx();
+                const canvas = {
+                    width: 0,
+                    height: 0,
+                    getContext: () => ctx,
+                } as unknown as HTMLCanvasElement;
+                await drawShareCard(canvas, {
+                    kartu: { ...kartu, rarity },
+                    layout,
+                    format: 'story',
+                });
+                return ctx.moveTo.mock.calls.length;
+            };
+
+            // Every other moveTo call in a render pass is rarity-independent
+            // (frame path, route, text metrics, ...), so the moveTo count
+            // delta between tiers isolates the thread-band ticks: 5 - 1 = 4.
+            const common = await draw('common');
+            const legendary = await draw('legendary');
+            expect(legendary - common).toBe(4);
+        },
+    );
+});

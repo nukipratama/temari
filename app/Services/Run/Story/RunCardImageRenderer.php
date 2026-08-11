@@ -119,12 +119,14 @@ class RunCardImageRenderer
             'stats' => $this->statsGrid($detail, $km, $cream, $inkOnSky, $sky2),
             default => $this->ruteMiddle($km, $detail, $rarity, $cream, $inkOnSky, $sky2, $badges),
         };
+        $threadBand = $this->threadBandTicks($rarity, $card->rarity->bandCount());
 
         return <<<SVG
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" font-family="sans-serif">
   <rect width="1200" height="630" fill="{$skyDeep}"/>
   <rect x="40" y="40" width="1120" height="550" rx="36" fill="{$sky}" stroke="{$rarity}" stroke-width="5"/>
+  {$threadBand}
 
   <text x="90" y="118" font-size="26" font-weight="700" letter-spacing="6" fill="{$rarity}">{$rarityLabel}</text>
   <text x="88" y="188" font-size="62" font-weight="700" fill="{$cream}">{$name}</text>
@@ -135,6 +137,63 @@ class RunCardImageRenderer
   <text x="1150" y="575" font-size="24" font-weight="700" letter-spacing="1" fill="{$inkOnSky}" text-anchor="end">temari.app</text>
 </svg>
 SVG;
+    }
+
+    /**
+     * Thread-band accent (Slice 9c): a small stitched cluster centered on the
+     * card border's bottom edge, additive to the existing rarity border —
+     * not a re-hue. `$bandCount` stitches lean one way; from 4 bands on, a
+     * second set leans the other way and crosses the rest (the "elaborate
+     * interwoven" look epic/legendary get). Shared across every `$layout`
+     * since it's emitted once in {@see self::buildSvg()}. Mirrors the
+     * client's `threadBandLines()` ({@see resources/js/lib/runcard.ts}), a
+     * different runtime so the geometry is hand-ported rather than shared.
+     */
+    private function threadBandTicks(string $color, int $bandCount): string
+    {
+        $primaryX = match (min($bandCount, 3)) {
+            1 => [0.5],
+            2 => [0.32, 0.68],
+            default => [0.18, 0.5, 0.82],
+        };
+        $crossX = match (max($bandCount - 3, 0)) {
+            1 => [0.36],
+            2 => [0.22, 0.6],
+            default => [],
+        };
+
+        // A short strip hugging the border from inside, clear of the card
+        // body's own content (which stays within the 36px margin the
+        // layouts already reserve) and of the bottom-right "temari.app"
+        // wordmark.
+        $x0 = 540.0;
+        $y0 = 566.0;
+        $w = 120.0;
+        $h = 20.0;
+        $lean = 0.09;
+
+        $lines = [];
+        foreach ($primaryX as $nx) {
+            $lines[] = $this->threadBandLine($x0 + ($nx - $lean) * $w, $y0 + $h, $x0 + ($nx + $lean) * $w, $y0, $color, 0.95);
+        }
+        foreach ($crossX as $nx) {
+            $lines[] = $this->threadBandLine($x0 + ($nx - $lean) * $w, $y0, $x0 + ($nx + $lean) * $w, $y0 + $h, $color, 0.6);
+        }
+
+        return implode("\n  ", $lines);
+    }
+
+    private function threadBandLine(float $x1, float $y1, float $x2, float $y2, string $color, float $opacity): string
+    {
+        return sprintf(
+            '<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="4" stroke-linecap="round" opacity="%.2f"/>',
+            $x1,
+            $y1,
+            $x2,
+            $y2,
+            $color,
+            $opacity,
+        );
     }
 
     /**

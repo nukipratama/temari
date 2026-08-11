@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import type { CardEdition, Mood, Rarity } from '@/types/inertia';
 
 import RouteGlyph from '@/components/card/RouteGlyph';
+import ThreadBandGlyph from '@/components/card/ThreadBandGlyph';
 import Temari from '@/components/temari/Temari';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
@@ -134,6 +135,21 @@ export default function KartuMini({
                         {date != null && date !== '' && <span>{date}</span>}
                     </div>
                 )}
+            </div>
+
+            {/* Thread-band rarity accent (Slice 9c) — mirrors Kartu's, scaled
+                down for the mini tile. Additive to the rarity border above,
+                not a re-hue. */}
+            <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center"
+            >
+                <ThreadBandGlyph
+                    rarity={rarity}
+                    color={rarityHex}
+                    width={44}
+                    height={5}
+                />
             </div>
         </div>
     );
