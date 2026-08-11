@@ -77,6 +77,10 @@ class StravaAuthController extends Controller
             SyncZonesJob::dispatch($user->id);
         }
 
+        if ($isFreshConnection) {
+            return redirect()->route('onboarding.show');
+        }
+
         return redirect()->intended(route('dashboard'));
     }
 

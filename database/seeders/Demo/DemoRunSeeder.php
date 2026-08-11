@@ -401,6 +401,12 @@ class DemoRunSeeder
             ],
         );
 
+        // The demo account is a fully-populated showcase, not a new signup —
+        // heals to onboarded on every re-seed so it never lands in the wizard.
+        if ($user->onboarded_at === null) {
+            $user->markOnboarded();
+        }
+
         // updateOrCreate so re-seeds converge: expiry + revoked_at heal to a healthy ACTIVE connection.
         StravaConnection::query()->updateOrCreate(
             ['user_id' => $user->id],
