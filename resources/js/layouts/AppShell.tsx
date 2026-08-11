@@ -11,6 +11,7 @@ import ErrorBanner from '@/components/ErrorBanner';
 import FlashNotice from '@/components/FlashNotice';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import MobileTopBar from '@/components/MobileTopBar';
+import RouteProgressBar from '@/components/RouteProgressBar';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
 import UnlockToast from '@/components/temari/UnlockToast';
@@ -52,6 +53,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
             {/* MobileTopBar carries the safe-area padding for this branch, so
             nothing is needed here — see its pt-[max(...)]. */}
             <div className="min-h-screen bg-cream-deep text-ink">
+                <RouteProgressBar />
                 <a
                     href="#main-content"
                     className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-leaf focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg"

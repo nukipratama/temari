@@ -97,6 +97,23 @@ describe('AppShell', () => {
         expect(main?.className).toContain('lg:pb-0');
     });
 
+    it('mounts the route progress bar as shell chrome, idle by default', () => {
+        setMockPage({
+            auth: { user: andiUser },
+            flash: {},
+            demoLoginEnabled: false,
+        });
+        render(
+            <AppShell>
+                <p>child content</p>
+            </AppShell>,
+        );
+        expect(screen.getByTestId('route-progress-bar')).toHaveAttribute(
+            'data-phase',
+            'idle',
+        );
+    });
+
     // The shell owns the cross-page banners; pages no longer render them, so
     // this is the only place their mounting is asserted.
     it('mounts the Strava zone reconnect banner as shell chrome', () => {

@@ -9,7 +9,6 @@ import MoodChip from '@/components/ui/MoodChip';
 import { cn } from '@/lib/cn';
 import { MOOD_LABEL } from '@/lib/mood';
 import { moodFromActivity } from '@/lib/moodFromActivity';
-import { pressShrink } from '@/lib/motion';
 import {
     formatDurationHMS,
     formatKm,
@@ -53,7 +52,6 @@ function RunListRow({
     return (
         <MotionLink
             href={activityUrl(detail)}
-            whileTap={pressShrink}
             className="flex items-start gap-4 border-b border-line px-5 py-4 text-sm transition last:border-b-0 hover:bg-surface"
         >
             <Temari
