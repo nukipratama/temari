@@ -223,6 +223,27 @@ globalThis.ResizeObserver = class ResizeObserver {
     disconnect = vi.fn();
 };
 
+// jsdom has no viewport, so every observed element counts as on screen.
+globalThis.IntersectionObserver = class IntersectionObserver {
+    constructor(private readonly callback: IntersectionObserverCallback) {}
+
+    root = null;
+    rootMargin = '';
+    scrollMargin = '';
+    thresholds = [];
+
+    observe = vi.fn((target: Element) => {
+        this.callback(
+            [{ target, isIntersecting: true } as IntersectionObserverEntry],
+            this,
+        );
+    });
+
+    unobserve = vi.fn();
+    disconnect = vi.fn();
+    takeRecords = vi.fn(() => []);
+};
+
 // jsdom has no layout engine, so scrollIntoView isn't implemented at all
 // (not even as a no-op) — calling it throws "is not a function".
 Element.prototype.scrollIntoView = vi.fn();

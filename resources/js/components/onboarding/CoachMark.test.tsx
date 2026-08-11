@@ -4,9 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
 
-import CoachMark from './CoachMark';
+import CoachMark, { type CoachMarkPlacement } from './CoachMark';
 
-function Harness({ id = 'welcome-tile' }: Readonly<{ id?: string }>) {
+function Harness({
+    id = 'welcome-tile',
+    placement,
+}: Readonly<{ id?: string; placement?: CoachMarkPlacement }>) {
     const anchorRef = useRef<HTMLButtonElement>(null);
     return (
         <div>
@@ -14,6 +17,7 @@ function Harness({ id = 'welcome-tile' }: Readonly<{ id?: string }>) {
             <CoachMark
                 id={id}
                 anchorRef={anchorRef}
+                placement={placement}
                 title="This is new"
                 body="Explains the thing."
             />
@@ -79,6 +83,30 @@ describe('CoachMark', () => {
         await waitFor(() =>
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
         );
+    });
+
+    it('stays hidden while its anchor is off screen', () => {
+        vi.stubGlobal(
+            'IntersectionObserver',
+            class {
+                observe = vi.fn();
+                unobserve = vi.fn();
+                disconnect = vi.fn();
+                takeRecords = vi.fn(() => []);
+            },
+        );
+
+        render(<Harness />);
+
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('keeps itself inside the viewport whatever the placement asks for', () => {
+        render(<Harness placement="left" />);
+
+        const dialog = screen.getByRole('dialog');
+        expect(dialog.style.left).toBe('12px');
+        expect(dialog.style.top).toBe('12px');
     });
 
     it('renders nothing once already dismissed for this user', () => {
