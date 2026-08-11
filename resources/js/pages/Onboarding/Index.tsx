@@ -63,9 +63,9 @@ export default function OnboardingIndex() {
                         variants={fadeInUp}
                         initial="hidden"
                         animate="visible"
-                        className="flex flex-col items-center gap-5 py-10 text-center"
+                        className="flex flex-col items-center gap-3 py-2 text-center sm:gap-5 sm:py-10"
                     >
-                        <Temari pose="glow" size={140} animate />
+                        <Temari pose="glow" size={112} animate />
                         <PageHero
                             size="lg"
                             eyebrow="Step 1 of 2 · Welcome"
