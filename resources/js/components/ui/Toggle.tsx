@@ -35,14 +35,14 @@ export default function Toggle({
             disabled={disabled}
             onClick={() => onChange(!checked)}
             className={cn(
-                'focus-ring relative h-6 w-11 shrink-0 rounded-full transition',
+                'focus-ring pressable relative h-6 w-11 shrink-0 rounded-full motion-safe:transition-colors motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.34,1.1,0.64,1)]',
                 checked ? 'bg-horizon' : 'bg-cream-deep',
                 disabled && 'cursor-not-allowed opacity-50',
             )}
         >
             <span
                 className={cn(
-                    'absolute top-0.5 h-5 w-5 rounded-full bg-white transition',
+                    'absolute top-0.5 h-5 w-5 rounded-full bg-white motion-safe:transition-[left] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.34,1.1,0.64,1)]',
                     checked ? 'left-[1.375rem]' : 'left-0.5',
                 )}
             />
