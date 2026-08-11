@@ -1,11 +1,11 @@
 import { Icon } from '@iconify/react';
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { useRef, useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
 import BrandMark from '@/components/BrandMark';
 import KartuMini from '@/components/card/KartuMini';
+import TemariProto from '@/components/temari/TemariProto';
 import PillButton from '@/components/ui/PillButton';
 import { bareLayout } from '@/layouts/BareShell';
 
@@ -109,18 +109,6 @@ function RouteEcho() {
 }
 
 function HeroSide() {
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const [playing, setPlaying] = useState(false);
-    // Click-to-play with sound: the click is the user gesture browsers require to
-    // allow audio, so the narrated ad plays unmuted. No autoplay (it's a 2.5min story).
-    // Only hide the overlay after play() resolves — if the browser rejects the call
-    // (e.g. interrupted by a second click) the button stays visible so the user can retry.
-    const playIntro = () => {
-        videoRef.current
-            ?.play()
-            .then(() => setPlaying(true))
-            .catch(() => {});
-    };
     return (
         <div
             className="relative flex flex-col items-center justify-center overflow-hidden px-8 pb-12 pt-24 text-cream sm:px-12 lg:px-16 lg:py-[54px]"
@@ -138,37 +126,8 @@ function HeroSide() {
             </div>
 
             <div className="relative z-10 w-full max-w-[560px] text-center xl:max-w-[620px]">
-                <div className="relative overflow-hidden rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.45)] ring-1 ring-cream/15">
-                    <video
-                        ref={videoRef}
-                        src="/videos/intro.mp4"
-                        poster="/videos/intro-poster.jpg"
-                        controls={playing}
-                        playsInline
-                        preload="metadata"
-                        className="block aspect-video w-full bg-sky-deep"
-                        onEnded={() => setPlaying(false)}
-                    >
-                        <track kind="captions" />
-                    </video>
-                    {!playing && (
-                        <button
-                            type="button"
-                            onClick={playIntro}
-                            aria-label="Play intro video"
-                            className="focus-ring-on-sky group absolute inset-0 flex items-center justify-center bg-sky-deep/25 transition hover:bg-sky-deep/10"
-                        >
-                            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-cream/95 shadow-lg transition group-hover:scale-105">
-                                <Icon
-                                    icon="mdi:play"
-                                    width={32}
-                                    height={32}
-                                    className="ml-1 text-sky"
-                                    aria-hidden
-                                />
-                            </span>
-                        </button>
-                    )}
+                <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl bg-sky-deep shadow-[0_24px_60px_rgba(0,0,0,0.45)] ring-1 ring-cream/15">
+                    <TemariProto pose="glow" tone="sky" size={200} animate />
                 </div>
                 <h1 className="mt-7 font-display italic text-display-lg text-cream sm:text-display-xl">
                     <span className="block whitespace-nowrap">Your Run,</span>

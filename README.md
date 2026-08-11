@@ -6,7 +6,7 @@ A self-hosted, Strava-connected personal running dashboard with a built-in compa
 
 ## What it is
 
-Temari ("running buddy") turns your Strava runs into something you look forward to opening. Each run is ingested and scored with proper running metrics — pace, splits, HR zones, training load — then dealt as a collectible **card** with a rarity and a vibe, and narrated by **Temari**, a mascot companion who reads your day back to you in a warm, casual voice.
+Temari ("running buddy") turns your Strava runs into something you look forward to opening. Each run is ingested and scored with proper running metrics — pace, splits, HR zones, training load — then dealt as a collectible **card** with a rarity and a vibe, and narrated by **Temari**, a ball-bodied mascot companion — built from hand-wound thread, its coverage growing with your training season — who reads your day back to you in a warm, casual voice.
 
 It is deliberately **not** a Strava clone. The run-tracker core is correct and honest, but the point is the companion layer on top: it's built for the solo runner who finds raw dashboards cold and wants their training to feel like a story. Single-tenant and self-hosted by design.
 
