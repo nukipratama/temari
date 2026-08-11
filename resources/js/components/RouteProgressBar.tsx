@@ -29,9 +29,15 @@ export default function RouteProgressBar() {
             }
         });
         const offFinish = router.on('finish', (event) => {
-            if (event.detail.visit.showProgress) {
-                setPhase('done');
+            const { visit } = event.detail;
+            if (!visit.showProgress) {
+                return;
             }
+            // A visit that was interrupted or cancelled (e.g. superseded by
+            // a second navigation before it finished) still fires `finish`
+            // — only a truly completed one earns the fill-and-fade "done"
+            // flourish, matching Inertia's own bundled progress bar.
+            setPhase(visit.completed ? 'done' : 'idle');
         });
 
         return () => {

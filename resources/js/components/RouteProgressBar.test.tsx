@@ -1,14 +1,18 @@
 import type { GlobalEvent } from '@inertiajs/core';
 
 import { router } from '@inertiajs/react';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import RouteProgressBar from './RouteProgressBar';
 
-function visitEvent(showProgress: boolean): GlobalEvent<'start' | 'finish'> {
+function visitEvent(
+    overrides: Partial<{ showProgress: boolean; completed: boolean }> = {},
+): GlobalEvent<'start' | 'finish'> {
     return {
-        detail: { visit: { showProgress } },
+        detail: {
+            visit: { showProgress: true, completed: true, ...overrides },
+        },
     } as unknown as GlobalEvent<'start' | 'finish'>;
 }
 
@@ -38,7 +42,7 @@ describe('RouteProgressBar', () => {
     it('enters the loading phase when a full navigation starts', () => {
         render(<RouteProgressBar />);
         act(() => {
-            registeredCallback('start')(visitEvent(true));
+            registeredCallback('start')(visitEvent({ showProgress: true }));
         });
         expect(screen.getByTestId('route-progress-bar')).toHaveAttribute(
             'data-phase',
@@ -49,7 +53,7 @@ describe('RouteProgressBar', () => {
     it('ignores a background/partial reload (showProgress: false)', () => {
         render(<RouteProgressBar />);
         act(() => {
-            registeredCallback('start')(visitEvent(false));
+            registeredCallback('start')(visitEvent({ showProgress: false }));
         });
         expect(screen.getByTestId('route-progress-bar')).toHaveAttribute(
             'data-phase',
@@ -57,17 +61,55 @@ describe('RouteProgressBar', () => {
         );
     });
 
-    it('moves to done when a full navigation finishes', () => {
+    it('moves to done when a full navigation completes', () => {
         render(<RouteProgressBar />);
         act(() => {
-            registeredCallback('start')(visitEvent(true));
+            registeredCallback('start')(visitEvent({ showProgress: true }));
         });
         act(() => {
-            registeredCallback('finish')(visitEvent(true));
+            registeredCallback('finish')(
+                visitEvent({ showProgress: true, completed: true }),
+            );
         });
         expect(screen.getByTestId('route-progress-bar')).toHaveAttribute(
             'data-phase',
             'done',
+        );
+    });
+
+    it('resets straight to idle when a visit is interrupted or cancelled, not done', () => {
+        render(<RouteProgressBar />);
+        act(() => {
+            registeredCallback('start')(visitEvent({ showProgress: true }));
+        });
+        act(() => {
+            registeredCallback('finish')(
+                visitEvent({ showProgress: true, completed: false }),
+            );
+        });
+        // A superseded/cancelled visit still fires `finish`, but it never
+        // actually finished — it should not get the "done" fill-and-fade.
+        expect(screen.getByTestId('route-progress-bar')).toHaveAttribute(
+            'data-phase',
+            'idle',
+        );
+    });
+
+    it('auto-resets to idle once the "done" animation finishes', async () => {
+        render(<RouteProgressBar />);
+        act(() => {
+            registeredCallback('start')(visitEvent({ showProgress: true }));
+        });
+        act(() => {
+            registeredCallback('finish')(
+                visitEvent({ showProgress: true, completed: true }),
+            );
+        });
+        await waitFor(() =>
+            expect(screen.getByTestId('route-progress-bar')).toHaveAttribute(
+                'data-phase',
+                'idle',
+            ),
         );
     });
 
