@@ -193,6 +193,7 @@ vi.mock('@inertiajs/react', async () => {
             delete: vi.fn(),
             reload: vi.fn(),
             visit: vi.fn(),
+            on: vi.fn(() => vi.fn()),
         },
         usePoll: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
     };

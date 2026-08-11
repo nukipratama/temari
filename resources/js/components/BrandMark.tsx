@@ -82,6 +82,23 @@ export function TemariGlyph({
                     fill="black"
                     opacity="0.12"
                 />
+                {/* Thin trim lines echo the full mascot's wound-thread band edges */}
+                <rect
+                    x="8"
+                    y="34.5"
+                    width="84"
+                    height="1"
+                    fill="black"
+                    opacity="0.14"
+                />
+                <rect
+                    x="8"
+                    y="46"
+                    width="84"
+                    height="1"
+                    fill="black"
+                    opacity="0.14"
+                />
             </g>
 
             <circle cx="38" cy="62" r="4.5" fill={features} />

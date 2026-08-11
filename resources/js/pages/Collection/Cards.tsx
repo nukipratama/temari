@@ -37,7 +37,6 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
-import { pressShrink } from '@/lib/motion';
 import { activityUrl } from '@/lib/routes';
 import {
     RARITY_LABELS,
@@ -333,7 +332,6 @@ function FilterPill({
         <MotionLink
             href={href}
             aria-current={active ? 'page' : undefined}
-            whileTap={pressShrink}
             className={cn(
                 'inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition',
                 active
@@ -376,7 +374,6 @@ const CardCell = memo(function CardCell({
     return (
         <MotionLink
             href={activityUrl(card)}
-            whileTap={pressShrink}
             onClick={() => onTap(card.rarity, card.id)}
             className="mx-auto block w-full max-w-[300px] focus-visible:ring-2 focus-visible:ring-horizon focus-visible:ring-offset-2 focus-visible:outline-none"
         >

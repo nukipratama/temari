@@ -322,6 +322,13 @@ function TemariProto({
     // id (matching the other invariant defs below) is safe — unlike the aura
     // gradient, which really does differ per instance and needs useId.
     const ballClipId = `temari-ball-clip-${useId()}`;
+    // Same reasoning, and same multi-instance-page caveat as the aura
+    // gradient below (see AuraLayer's comment): several TemariProto
+    // instances render on one page (e.g. the Accessories catalog grid), so
+    // this needs useId too — a literal id would let the DOM's first-mounted
+    // mask silently win for every instance, which happens to be harmless
+    // here since the geometry is identical, but is fragile to rely on.
+    const faceMaskId = `temari-face-mask-${useId()}`;
 
     let rootAnim: CSSProperties['animation'] = 'none';
     if (animate !== false) {
@@ -381,13 +388,13 @@ function TemariProto({
                         x2="62%"
                         y2="100%"
                     >
-                        <stop offset="0%" stopColor="#fff" stopOpacity="0.28" />
+                        <stop offset="0%" stopColor="#fff" stopOpacity="0.16" />
                         <stop offset="34%" stopColor="#fff" stopOpacity="0" />
                         <stop offset="64%" stopColor="#000" stopOpacity="0" />
                         <stop
                             offset="100%"
                             stopColor="#000"
-                            stopOpacity="0.34"
+                            stopOpacity="0.22"
                         />
                     </linearGradient>
                     {/* Metallic coin sheen — diagonal highlight → shade */}
@@ -427,6 +434,16 @@ function TemariProto({
                     <clipPath id={ballClipId}>
                         <circle cx="60" cy="64" r="40" />
                     </clipPath>
+                    <mask id={faceMaskId}>
+                        <rect
+                            x="0"
+                            y="0"
+                            width={viewW}
+                            height={viewH}
+                            fill="#fff"
+                        />
+                        <ellipse cx="60" cy="61" rx="19" ry="15" fill="#000" />
+                    </mask>
                 </defs>
 
                 {/* Aura (behind everything) */}
@@ -464,11 +481,13 @@ function TemariProto({
                         fill="url(#ball-highlight)"
                     />
                     <g clipPath={`url(#${ballClipId})`}>
-                        {seasonPhase ? (
-                            <SeasonCoverage phase={seasonPhase} />
-                        ) : (
-                            <DefaultThreadTexture />
-                        )}
+                        <g mask={`url(#${faceMaskId})`}>
+                            {seasonPhase ? (
+                                <SeasonCoverage phase={seasonPhase} />
+                            ) : (
+                                <DefaultThreadTexture />
+                            )}
+                        </g>
                         <ShirtBand colors={kausColors} emblem={emblemColor} />
                         <ShortsBand colors={celanaColors} />
                     </g>
@@ -555,42 +574,48 @@ function AuraLayer({
 
 // ── Default thread texture (no season phase given) ──────────────────
 
+const DEFAULT_THREAD_BANDS = [
+    {
+        stroke: THREAD_JEWEL.crimson,
+        ry: 12,
+        width: 2.6,
+        opacity: 0.5,
+        rotate: -22,
+    },
+    { stroke: THREAD_JEWEL.gold, ry: 17, width: 2.2, opacity: 0.5, rotate: 20 },
+    {
+        stroke: THREAD_JEWEL.emerald,
+        ry: 24,
+        width: 1.8,
+        opacity: 0.35,
+        rotate: -52,
+    },
+    {
+        stroke: THREAD_JEWEL.indigo,
+        ry: 40,
+        width: 1.6,
+        opacity: 0.3,
+        rotate: 70,
+    },
+];
+
 function DefaultThreadTexture() {
     return (
         <>
-            <ellipse
-                cx="60"
-                cy="64"
-                rx="40"
-                ry="14"
-                fill="none"
-                stroke={THREAD_JEWEL.crimson}
-                strokeWidth="2"
-                opacity="0.4"
-                transform="rotate(-18 60 64)"
-            />
-            <ellipse
-                cx="60"
-                cy="64"
-                rx="40"
-                ry="18"
-                fill="none"
-                stroke={THREAD_JEWEL.gold}
-                strokeWidth="2"
-                opacity="0.4"
-                transform="rotate(24 60 64)"
-            />
-            <ellipse
-                cx="60"
-                cy="64"
-                rx="40"
-                ry="40"
-                fill="none"
-                stroke={THREAD_JEWEL.indigo}
-                strokeWidth="1.6"
-                opacity="0.3"
-                transform="rotate(70 60 64)"
-            />
+            {DEFAULT_THREAD_BANDS.map((band) => (
+                <ellipse
+                    key={band.stroke}
+                    cx="60"
+                    cy="64"
+                    rx="40"
+                    ry={band.ry}
+                    fill="none"
+                    stroke={band.stroke}
+                    strokeWidth={band.width}
+                    opacity={band.opacity}
+                    transform={`rotate(${band.rotate} 60 64)`}
+                />
+            ))}
         </>
     );
 }
@@ -667,6 +692,7 @@ function ShirtBand({
                 stroke={c.trim}
                 strokeWidth="1.4"
             />
+            <RibLines y={[36, 44]} stroke={c.trim} />
             <circle
                 cx="60"
                 cy="40"
@@ -706,7 +732,29 @@ function ShortsBand({
             />
             <rect x="20" y="84" width="2" height="14" fill={c.stripe} />
             <rect x="98" y="84" width="2" height="14" fill={c.stripe} />
+            <RibLines y={[91]} stroke={c.stripe} />
         </g>
+    );
+}
+
+// Faint horizontal rib lines suggesting a knit/weave rather than flat
+// plastic — shared by ShirtBand and ShortsBand.
+function RibLines({ y, stroke }: Readonly<{ y: number[]; stroke: string }>) {
+    return (
+        <>
+            {y.map((yPos) => (
+                <line
+                    key={yPos}
+                    x1="16"
+                    y1={yPos}
+                    x2="104"
+                    y2={yPos}
+                    stroke={stroke}
+                    strokeWidth="0.5"
+                    opacity="0.3"
+                />
+            ))}
+        </>
     );
 }
 
@@ -775,9 +823,23 @@ function MedalLayer({
 }: Readonly<{ medal: { coin: string; glow: string; ring: boolean } }>) {
     return (
         <g>
-            {/* Ribbon loop from the crown down to the coin */}
-            <path d="M 56 24 L 58.5 75 L 60 75 L 58 24 Z" fill="#A8512C" />
-            <path d="M 64 24 L 61.5 75 L 60 75 L 62 24 Z" fill="#C4623F" />
+            {/* Ribbon loop from the crown down to the coin — curved out to
+                the ball's flanks, clear of the eyes/mouth and starting below
+                the headband bow instead of colliding with it */}
+            <path
+                d="M 46 29 Q 34 55 53 77"
+                fill="none"
+                stroke="#A8512C"
+                strokeWidth="2.6"
+                strokeLinecap="round"
+            />
+            <path
+                d="M 74 29 Q 86 55 67 77"
+                fill="none"
+                stroke="#C4623F"
+                strokeWidth="2.6"
+                strokeLinecap="round"
+            />
             <g transform="translate(60, 78)">
                 <circle
                     cx="0"
@@ -839,6 +901,11 @@ function MedalLayer({
 
 // ── Trailing ribbon (shoes) ────────────────────────────────────────────
 
+// Two flowing ribbon streamers picking up where the tendrils leave off —
+// deliberately just two (not three) so the base reads as thread trailing
+// behind the ball, not a tripod of legs. The tips taper into a small
+// rounded sole rather than a stark dot, keeping the "shoe" read without
+// looking like an eye.
 function ShoeRibbon({
     colors,
 }: Readonly<{
@@ -852,49 +919,38 @@ function ShoeRibbon({
     return (
         <g>
             <path
-                d="M 44 102 Q 38 112 32 120"
+                d="M 40 96 Q 33 108 29 120"
                 stroke={shoe.upper}
-                strokeWidth="4"
+                strokeWidth="3.2"
                 fill="none"
                 strokeLinecap="round"
             />
             <path
-                d="M 60 104 Q 60 116 60 124"
+                d="M 80 96 Q 87 108 91 120"
+                stroke={shoe.upper}
+                strokeWidth="3.2"
+                fill="none"
+                strokeLinecap="round"
+            />
+            <ellipse
+                cx="29"
+                cy="121"
+                rx="2.6"
+                ry="1.6"
+                fill={shoe.sole}
                 stroke={shoe.accent}
-                strokeWidth="4"
-                fill="none"
-                strokeLinecap="round"
+                strokeWidth="0.4"
+                transform="rotate(-18 29 121)"
             />
-            <path
-                d="M 76 102 Q 82 112 88 120"
-                stroke={shoe.upper}
-                strokeWidth="4"
-                fill="none"
-                strokeLinecap="round"
-            />
-            <circle
-                cx="32"
-                cy="120"
-                r="2.4"
+            <ellipse
+                cx="91"
+                cy="121"
+                rx="2.6"
+                ry="1.6"
                 fill={shoe.sole}
-                stroke={OUTLINE}
-                strokeWidth="0.5"
-            />
-            <circle
-                cx="60"
-                cy="124"
-                r="2.4"
-                fill={shoe.sole}
-                stroke={OUTLINE}
-                strokeWidth="0.5"
-            />
-            <circle
-                cx="88"
-                cy="120"
-                r="2.4"
-                fill={shoe.sole}
-                stroke={OUTLINE}
-                strokeWidth="0.5"
+                stroke={shoe.accent}
+                strokeWidth="0.4"
+                transform="rotate(18 91 121)"
             />
         </g>
     );
@@ -907,12 +963,16 @@ function ShoeRibbon({
 function Tendrils({ splay }: Readonly<{ splay: number }>) {
     return (
         <>
-            <Tendril x={31} y={90} curl={1} splay={splay} />
-            <Tendril x={89} y={90} curl={-1} splay={splay} />
+            <Tendril x={33} y={88} curl={1} splay={splay} />
+            <Tendril x={87} y={88} curl={-1} splay={splay} />
         </>
     );
 }
 
+// Short, tucked-in thread-end stubs — deliberately brief so they read as
+// wisps of unwound thread at the ball's base, not limbs. Kept unjointed
+// (no terminal dot) so they hand off cleanly into the shoe ribbon below
+// instead of reading as a separate jointed "leg" segment.
 function Tendril({
     x,
     y,
@@ -920,15 +980,14 @@ function Tendril({
     splay,
 }: Readonly<{ x: number; y: number; curl: number; splay: number }>) {
     return (
-        <g transform={`translate(${x}, ${y}) rotate(${splay * curl})`}>
+        <g transform={`translate(${x}, ${y}) rotate(${splay * curl * 0.6})`}>
             <path
-                d={`M 0 0 Q ${4 * curl} 3 ${3 * curl} 7 Q ${1 * curl} 10 ${4 * curl} 12`}
+                d={`M 0 0 Q ${3 * curl} 3 ${2 * curl} 7`}
                 fill="none"
                 stroke={CORE_DARK}
-                strokeWidth="2.6"
+                strokeWidth="2.2"
                 strokeLinecap="round"
             />
-            <circle cx={4 * curl} cy="12" r="1.6" fill={CORE_DARK} />
         </g>
     );
 }
