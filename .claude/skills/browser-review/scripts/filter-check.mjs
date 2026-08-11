@@ -25,7 +25,7 @@ await dismissReveal(page).catch(() => {});
 const rows = () => page.locator('a[href^="/activities/"]').count();
 const moodButton = (name) => page.locator(`[aria-pressed]`, { hasText: name }).first();
 
-await page.goto(`/activities`, { waitUntil: 'networkidle' });
+await page.goto(`${BASE}/activities`, { waitUntil: 'networkidle' });
 const unfiltered = await rows();
 console.log(`UNFILTERED rows=${unfiltered}`);
 
@@ -51,7 +51,7 @@ await page.getByLabel('Open filter').click();
 console.log(`PRESSED_AFTER_RELOAD=${await moodButton('Blazing').getAttribute('aria-pressed')}`);
 
 // A mood the user has none of shows the no-match state, not the onboarding one.
-await page.goto(`/activities?mood=gassed`, { waitUntil: 'networkidle' });
+await page.goto(`${BASE}/activities?mood=gassed`, { waitUntil: 'networkidle' });
 console.log(`NO_MATCH rows=${await rows()}`);
 console.log(`NO_MATCH_STATE=${await page.getByText('No runs match.').isVisible()}`);
 await page.getByRole('button', { name: /Reset filter/ }).click();

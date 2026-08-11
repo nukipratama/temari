@@ -24,7 +24,7 @@ export default function ResumeFilterChip({
                 type="button"
                 onClick={onDismiss}
                 aria-label="Forget last filter"
-                className="focus-ring rounded px-1 text-xs font-medium text-ink-3 hover:text-ink-2"
+                className="pressable focus-ring rounded px-1 text-xs font-medium text-ink-3 hover:text-ink-2"
             >
                 <Icon icon="mdi:close" width={13} height={13} aria-hidden />
             </button>
