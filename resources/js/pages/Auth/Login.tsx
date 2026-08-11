@@ -211,7 +211,7 @@ function FormSide({
                     date="12 Jun"
                     edition={{ index: 3, total: 12 }}
                     polyline="~s{d@ofekSoRaMcPdMg@b^zFtV?bN{FtVf@b^bPdMnRaMlIqTdHqFfQcAfQcP?g[gQcPgQcAeHqFmIqT"
-                    className="shadow-md"
+                    className="shadow-sm"
                 />
                 <div>
                     <p className="font-sans text-sm font-semibold text-ink">

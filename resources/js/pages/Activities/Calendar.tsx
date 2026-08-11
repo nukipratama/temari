@@ -427,7 +427,7 @@ const DayCellView = memo(function DayCellView({
         filteredOut && 'opacity-30',
         hasRun && cell.mood && !filteredOut
             ? MOOD_SOFT_FILL[cell.mood]
-            : 'bg-surface-elev',
+            : 'bg-surface-card',
     );
 
     const inner = (
