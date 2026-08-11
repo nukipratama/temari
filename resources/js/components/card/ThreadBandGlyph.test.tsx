@@ -5,16 +5,12 @@ import ThreadBandGlyph from './ThreadBandGlyph';
 
 describe('ThreadBandGlyph', () => {
     it('draws 1 stitch for common', () => {
-        const { container } = render(
-            <ThreadBandGlyph rarity="common" color="#7d8694" />,
-        );
+        const { container } = render(<ThreadBandGlyph rarity="common" />);
         expect(container.querySelectorAll('line').length).toBe(1);
     });
 
     it('draws 3 stitches for rare, all leaning the same way', () => {
-        const { container } = render(
-            <ThreadBandGlyph rarity="rare" color="#2f81f7" />,
-        );
+        const { container } = render(<ThreadBandGlyph rarity="rare" />);
         const lines = container.querySelectorAll('line');
         expect(lines.length).toBe(3);
         for (const line of lines) {
@@ -24,9 +20,7 @@ describe('ThreadBandGlyph', () => {
     });
 
     it('draws 5 crossing stitches for legendary, the extra 2 leaning the other way', () => {
-        const { container } = render(
-            <ThreadBandGlyph rarity="legendary" color="#f5a623" />,
-        );
+        const { container } = render(<ThreadBandGlyph rarity="legendary" />);
         const lines = [...container.querySelectorAll('line')];
         expect(lines.length).toBe(5);
         const crossing = lines.filter(
@@ -35,10 +29,8 @@ describe('ThreadBandGlyph', () => {
         expect(crossing.length).toBe(2);
     });
 
-    it('strokes every stitch with the given rarity color', () => {
-        const { container } = render(
-            <ThreadBandGlyph rarity="epic" color="#a855f7" />,
-        );
+    it('strokes every stitch with the rarity tint', () => {
+        const { container } = render(<ThreadBandGlyph rarity="epic" />);
         for (const line of container.querySelectorAll('line')) {
             expect(line.getAttribute('stroke')).toBe('#a855f7');
         }

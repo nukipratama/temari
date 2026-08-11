@@ -144,12 +144,7 @@ export default function KartuMini({
                 aria-hidden
                 className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center"
             >
-                <ThreadBandGlyph
-                    rarity={rarity}
-                    color={rarityHex}
-                    width={44}
-                    height={5}
-                />
+                <ThreadBandGlyph rarity={rarity} width={44} height={5} />
             </div>
         </div>
     );

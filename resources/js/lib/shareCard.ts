@@ -304,8 +304,8 @@ function drawThreadBandTicks(
     const y0 = h - 34;
     ctx.lineCap = 'round';
     ctx.lineWidth = 5;
+    ctx.strokeStyle = color;
     for (const l of threadBandLines(RARITY_BAND_COUNT[rarity])) {
-        ctx.strokeStyle = color;
         ctx.globalAlpha = l.opacity;
         ctx.beginPath();
         ctx.moveTo(x0 + l.x1 * boxW, y0 + l.y1 * boxH);

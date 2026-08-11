@@ -47,6 +47,24 @@ class RunCardImageRenderer
 
     private const int PANEL_PAD = 34;
 
+    /** Thread-band accent placement (Slice 9c): a short strip hugging the card
+     * border from inside, along the bottom edge. Not centered — the `kartu`
+     * layout's badge row (see `kartuMiddle()`) sits right up against this
+     * same border with no spare margin, and up to 3 real badge labels (e.g.
+     * "Long Slow Distance" + "Negative Split" + "Rain Warrior") can extend
+     * past x=720; BAND_X is pushed right of that so the strip stays clear of
+     * every layout's content and of the bottom-right "temari.app" wordmark
+     * (which starts around x=1010). */
+    private const float BAND_X = 760.0;
+
+    private const float BAND_Y = 566.0;
+
+    private const float BAND_W = 120.0;
+
+    private const float BAND_H = 20.0;
+
+    private const float BAND_LEAN = 0.09;
+
     // Threadwork colorways (kept literal so the SVG is fully self-contained).
     // `sky` is the card body fill, `skyDeep` the canvas-margin fill outside
     // it, `sky2` the inset-panel fill (route panel / stat grid cells), and
@@ -140,9 +158,10 @@ SVG;
     }
 
     /**
-     * Thread-band accent (Slice 9c): a small stitched cluster centered on the
-     * card border's bottom edge, additive to the existing rarity border —
-     * not a re-hue. `$bandCount` stitches lean one way; from 4 bands on, a
+     * Thread-band accent (Slice 9c): a small stitched cluster along the
+     * card border's bottom edge (see `BAND_X` for why it's off-center),
+     * additive to the existing rarity border — not a re-hue. `$bandCount`
+     * stitches lean one way; from 4 bands on, a
      * second set leans the other way and crosses the rest (the "elaborate
      * interwoven" look epic/legendary get). Shared across every `$layout`
      * since it's emitted once in {@see self::buildSvg()}. Mirrors the
@@ -162,15 +181,7 @@ SVG;
             default => [],
         };
 
-        // A short strip hugging the border from inside, clear of the card
-        // body's own content (which stays within the 36px margin the
-        // layouts already reserve) and of the bottom-right "temari.app"
-        // wordmark.
-        $x0 = 540.0;
-        $y0 = 566.0;
-        $w = 120.0;
-        $h = 20.0;
-        $lean = 0.09;
+        [$x0, $y0, $w, $h, $lean] = [self::BAND_X, self::BAND_Y, self::BAND_W, self::BAND_H, self::BAND_LEAN];
 
         $lines = [];
         foreach ($primaryX as $nx) {

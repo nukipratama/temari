@@ -288,7 +288,6 @@ export default function Kartu({
                 >
                     <ThreadBandGlyph
                         rarity={rarity}
-                        color={rarityHex}
                         width={isFull ? 72 : 56}
                         height={8}
                     />
