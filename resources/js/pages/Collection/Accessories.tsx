@@ -284,7 +284,6 @@ function AksesoriCard({
 }: Readonly<{ item: AccessoriesItem; onEquip: (key: string) => void }>) {
     const locked = !item.unlocked;
     const preview = keyToPreviewEquipped(item.unlock_key);
-    const currentCount = useCountUp(item.current);
     let cardBorder: string;
     if (item.equipped) {
         cardBorder =
@@ -342,26 +341,7 @@ function AksesoriCard({
                     <p className="font-display text-xs italic text-ink-3">
                         {item.criteria}
                     </p>
-                    {item.target > 0 && (
-                        <div className="mt-2">
-                            <div className="mb-1 flex items-baseline justify-between font-mono text-[11px] tabular-nums text-ink-3">
-                                <span>
-                                    {formatGoalNumber(currentCount)}
-                                    <span className="text-ink-3">/</span>
-                                    {formatGoalNumber(item.target)}
-                                </span>
-                                <span>{item.unit}</span>
-                            </div>
-                            <ProgressBar
-                                value={goalProgressRatio(
-                                    item.current,
-                                    item.target,
-                                )}
-                                tone="sky"
-                                ariaLabel={`${item.name}: ${formatGoalNumber(item.current)}/${formatGoalNumber(item.target)} ${item.unit}`}
-                            />
-                        </div>
-                    )}
+                    {item.target > 0 && <AccessoryProgress item={item} />}
                 </div>
             )}
             {!locked && item.equipped && (
@@ -397,6 +377,27 @@ function AksesoriCard({
                 </PillButton>
             )}
         </article>
+    );
+}
+
+function AccessoryProgress({ item }: Readonly<{ item: AccessoriesItem }>) {
+    const currentCount = useCountUp(item.current);
+    return (
+        <div className="mt-2">
+            <div className="mb-1 flex items-baseline justify-between font-mono text-[11px] tabular-nums text-ink-3">
+                <span>
+                    {formatGoalNumber(currentCount)}
+                    <span className="text-ink-3">/</span>
+                    {formatGoalNumber(item.target)}
+                </span>
+                <span>{item.unit}</span>
+            </div>
+            <ProgressBar
+                value={goalProgressRatio(item.current, item.target)}
+                tone="sky"
+                ariaLabel={`${item.name}: ${formatGoalNumber(item.current)}/${formatGoalNumber(item.target)} ${item.unit}`}
+            />
+        </div>
     );
 }
 

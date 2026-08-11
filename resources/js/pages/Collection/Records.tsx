@@ -121,7 +121,7 @@ export default function Records({
                 <CollectionHeader
                     active="rekor"
                     eyebrow={eyebrow}
-                    headline1="So far,"
+                    headline1="So far"
                     headline2="your personal best."
                     activeCount={String(personalRecords.length)}
                 />

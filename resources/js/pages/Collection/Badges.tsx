@@ -68,7 +68,7 @@ export default function Badges({
                 <CollectionHeader
                     active="badges"
                     eyebrow={eyebrow}
-                    headline1="Every badge,"
+                    headline1="Every badge"
                     headline2="earned and still out there."
                     activeCount={`${unlockedCount} / ${items.length}`}
                 />
