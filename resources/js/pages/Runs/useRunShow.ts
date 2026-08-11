@@ -78,6 +78,7 @@ export function useRunShow({
     const pose: TemariPose = MOOD_TO_POSE[mood];
 
     const km = formatKm(detail.distance);
+    const distanceKm = detail.distance != null ? detail.distance / 1000 : null;
     const paceSec = paceSecPerKm(detail.elapsed_time, detail.distance);
     const pace = paceSec != null ? formatPace(paceSec) : '—';
     const hr =
@@ -183,7 +184,9 @@ export function useRunShow({
         mood,
         pose,
         km,
+        distanceKm,
         pace,
+        paceSec,
         hr,
         trimp,
         effortSub,

@@ -1,5 +1,6 @@
 import { Icon } from '@iconify/react';
 import { usePage } from '@inertiajs/react';
+import { motion } from 'framer-motion';
 import { type ReactNode } from 'react';
 
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
@@ -12,6 +13,7 @@ import {
     cooldownAriaLabel,
     useCooldownCountdown,
 } from '@/hooks/useCooldownCountdown';
+import { fadeInUp } from '@/lib/motion';
 import { formatDurationHMS, formatRelativeId } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 
@@ -143,7 +145,12 @@ export default function AnalysisStatus({
             hrZonesChangedAt,
         );
         return (
-            <div className="flex flex-col gap-1">
+            <motion.div
+                variants={fadeInUp}
+                initial="hidden"
+                animate="visible"
+                className="flex flex-col gap-1"
+            >
                 <div
                     className={`${TEXT_SIZE[size]} whitespace-pre-line text-ink`}
                 >
@@ -179,7 +186,7 @@ export default function AnalysisStatus({
                     </button>
                 )}
                 {rateLimited && <RateLimitedNote />}
-            </div>
+            </motion.div>
         );
     }
 

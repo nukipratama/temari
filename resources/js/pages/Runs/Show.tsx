@@ -1,5 +1,6 @@
 import { Icon } from '@iconify/react';
 import { Head, Link, router } from '@inertiajs/react';
+import { motion } from 'framer-motion';
 import { lazy, Suspense, useState } from 'react';
 
 import type {
@@ -31,12 +32,14 @@ import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
+import { useCountUp } from '@/hooks/useCountUp';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { usePendingPost } from '@/hooks/usePendingPost';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { postJson } from '@/lib/http';
-import { formatIdDate, formatShortDateTimeId } from '@/lib/pace';
+import { fadeInUp, staggerContainer } from '@/lib/motion';
+import { formatIdDate, formatPace, formatShortDateTimeId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 import { activityUrl } from '@/lib/routes';
 import { BADGE_ABILITY, badgeName } from '@/lib/runcard';
@@ -105,7 +108,8 @@ export default function RunsShow({
         mood,
         pose,
         km,
-        pace,
+        distanceKm,
+        paceSec,
         hr,
         trimp,
         effortSub,
@@ -114,6 +118,21 @@ export default function RunsShow({
         rarityLabel,
         shareData,
     } = useRunShow({ detail, card, storyLine, moodFallback, relativeEffort });
+
+    const distanceKmCount = useCountUp(distanceKm ?? 0);
+    const paceSecCount = useCountUp(paceSec ?? 0);
+    const hrCount = useCountUp(hr ?? 0);
+    const trimpCount = useCountUp(trimp ?? 0);
+    const elevationCount = useCountUp(detail.total_elevation_gain ?? 0);
+
+    const kmDisplay = distanceKm != null ? distanceKmCount.toFixed(2) : km;
+    const paceDisplay = paceSec != null ? formatPace(paceSecCount) : '—';
+    const hrDisplay = hr != null ? `${Math.round(hrCount)}` : '—';
+    const trimpDisplay = trimp != null ? `${Math.round(trimpCount)}` : '—';
+    const elevationDisplay =
+        detail.total_elevation_gain != null
+            ? `${Math.round(elevationCount)}`
+            : '—';
 
     const [resyncing, resync] = usePendingPost(
         `/activities/${activity.id}/resync`,
@@ -212,62 +231,76 @@ export default function RunsShow({
                                         </h1>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 justify-items-center">
-                                    <StatTile
-                                        tone="plainSky"
-                                        size="md"
-                                        align="center"
-                                        label="DISTANCE"
-                                        value={km}
-                                        unit="km"
-                                    />
-                                    <StatTile
-                                        tone="plainSky"
-                                        size="md"
-                                        align="center"
-                                        label="DURATION"
-                                        value={kartuProps.durasi}
-                                    />
-                                    <StatTile
-                                        tone="plainSky"
-                                        size="md"
-                                        align="center"
-                                        label="PACE"
-                                        value={pace}
-                                        unit="/km"
-                                    />
-                                    <StatTile
-                                        tone="plainSky"
-                                        size="md"
-                                        align="center"
-                                        label="HR"
-                                        value={hr != null ? `${hr}` : '—'}
-                                        unit="bpm"
-                                    />
-                                    <StatTile
-                                        tone="plainSky"
-                                        size="md"
-                                        align="center"
-                                        label="TRIMP"
-                                        value={trimp != null ? `${trimp}` : '—'}
-                                        unit="Edwards"
-                                        sub={effortSub}
-                                        explainerKey="trimp"
-                                    />
-                                    <StatTile
-                                        tone="plainSky"
-                                        size="md"
-                                        align="center"
-                                        label="ELEVATION"
-                                        value={
-                                            detail.total_elevation_gain != null
-                                                ? `${Math.round(detail.total_elevation_gain)}`
-                                                : '—'
-                                        }
-                                        unit="m"
-                                        explainerKey="ascent"
-                                    />
-                                </div>
+                                <motion.div
+                                    data-coachmark="run-hero-stats"
+                                    variants={staggerContainer}
+                                    initial="hidden"
+                                    animate="visible"
+                                    className="grid grid-cols-2 gap-5 sm:grid-cols-3 justify-items-center"
+                                >
+                                    <motion.div variants={fadeInUp}>
+                                        <StatTile
+                                            tone="plainSky"
+                                            size="md"
+                                            align="center"
+                                            label="DISTANCE"
+                                            value={kmDisplay}
+                                            unit="km"
+                                        />
+                                    </motion.div>
+                                    <motion.div variants={fadeInUp}>
+                                        <StatTile
+                                            tone="plainSky"
+                                            size="md"
+                                            align="center"
+                                            label="DURATION"
+                                            value={kartuProps.durasi}
+                                        />
+                                    </motion.div>
+                                    <motion.div variants={fadeInUp}>
+                                        <StatTile
+                                            tone="plainSky"
+                                            size="md"
+                                            align="center"
+                                            label="PACE"
+                                            value={paceDisplay}
+                                            unit="/km"
+                                        />
+                                    </motion.div>
+                                    <motion.div variants={fadeInUp}>
+                                        <StatTile
+                                            tone="plainSky"
+                                            size="md"
+                                            align="center"
+                                            label="HR"
+                                            value={hrDisplay}
+                                            unit="bpm"
+                                        />
+                                    </motion.div>
+                                    <motion.div variants={fadeInUp}>
+                                        <StatTile
+                                            tone="plainSky"
+                                            size="md"
+                                            align="center"
+                                            label="TRIMP"
+                                            value={trimpDisplay}
+                                            unit="Edwards"
+                                            sub={effortSub}
+                                            explainerKey="trimp"
+                                        />
+                                    </motion.div>
+                                    <motion.div variants={fadeInUp}>
+                                        <StatTile
+                                            tone="plainSky"
+                                            size="md"
+                                            align="center"
+                                            label="ELEVATION"
+                                            value={elevationDisplay}
+                                            unit="m"
+                                            explainerKey="ascent"
+                                        />
+                                    </motion.div>
+                                </motion.div>
 
                                 {/* YOU VS PAST YOU — inline in hero */}
                                 {pastYou && (
@@ -349,7 +382,10 @@ export default function RunsShow({
                 {/* KARTU — its own section. The card sits in a slim sky mount sized
                     to fit it (not a full hero panel); actions + lore live on the right. */}
                 {card && (
-                    <section className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,340px)_1fr] lg:items-start">
+                    <section
+                        data-coachmark="run-kartu"
+                        className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,340px)_1fr] lg:items-start"
+                    >
                         <KartuMount>
                             <Kartu
                                 name={card.special_move}
@@ -400,7 +436,10 @@ export default function RunsShow({
                                         )}
                                     />
                                 </div>
-                                <div className="mt-4 flex flex-wrap gap-2">
+                                <div
+                                    data-coachmark="run-share"
+                                    className="mt-4 flex flex-wrap gap-2"
+                                >
                                     <PillButton
                                         tone="sky"
                                         size="sm"
@@ -451,7 +490,10 @@ export default function RunsShow({
                             {/* Kenapa [rarity] — always shown (even with no badges):
                                 rarity is a composite score, so a badge-less card still
                                 deserves an honest explanation instead of a blank. */}
-                            <Card padding="md" className="flex flex-col gap-4">
+                            <Card
+                                padding="md"
+                                className="flex flex-col gap-4 shadow-sm"
+                            >
                                 <SectionLabel>
                                     Why this earned {rarityLabel}
                                 </SectionLabel>
@@ -490,7 +532,7 @@ export default function RunsShow({
                 )}
 
                 {/* WHAT TEMARI SAYS */}
-                <section className="mt-8">
+                <section data-coachmark="run-narration" className="mt-8">
                     <header className="mb-4 flex items-center gap-3.5">
                         <Temari
                             pose="observational"
