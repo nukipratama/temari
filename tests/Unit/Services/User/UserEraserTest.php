@@ -94,6 +94,27 @@ it('counts the orphans it would remove without removing them', function (): void
         ->and(User::query()->whereKey($user->id)->exists())->toBeTrue();
 });
 
+it('reaches a retired-type row the KnownAnalysisTypeScope hides from default queries', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    DB::table('ai_analyses')->insert([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => 'run_insight_technical',
+        'discriminator' => null,
+        'status' => 'done',
+        'content' => '{}',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    expect(app(UserEraser::class)->orphanCounts($user)['ai_analyses'])->toBe(1);
+
+    app(UserEraser::class)->erase($user);
+
+    expect(DB::table('ai_analyses')->where('subject_id', $activity->id)->count())->toBe(0);
+});
+
 it('leaves another user narration and endpoints alone', function (): void {
     $user = User::factory()->create();
     $bystander = User::factory()->create();

@@ -50,7 +50,7 @@ Briefing and analysis narration is LLM-backed via Azure OpenAI through openai-ph
 
 ## Environment toggles
 
-- `DEMO_LOGIN_ENABLED` (default `false`): renders the "Coba versi demo" button on `/login` that signs in as the seeded demo user. Plumbed via [config/demo.php](config/demo.php) to Inertia shared `demoLoginEnabled`. Loaded in prod from the host `.env` via [compose.prod.yaml](compose.prod.yaml) `env_file:` ([ci.yml](.github/workflows/ci.yml) rolls the services, it does not inject these values).
+- `DEMO_LOGIN_ENABLED` (default `true`): renders the "Coba versi demo" button on `/login` that signs in as the seeded demo user. Plumbed via [config/demo.php](config/demo.php) to Inertia shared `demoLoginEnabled`. Loaded in prod from the host `.env` via [compose.prod.yaml](compose.prod.yaml) `env_file:` ([ci.yml](.github/workflows/ci.yml) rolls the services, it does not inject these values).
 
 ## Secrets
 

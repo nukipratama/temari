@@ -9,6 +9,7 @@ use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
+use App\Models\Scopes\KnownAnalysisTypeScope;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
@@ -121,7 +122,10 @@ final readonly class UserEraser
 
     /**
      * All `ai_analyses` rows owned by the user: their activity / card /
-     * snapshot / personal-record subjects, plus the user-keyed ones.
+     * snapshot / personal-record subjects, plus the user-keyed ones. Opts out
+     * of {@see KnownAnalysisTypeScope} so a retired-type row (e.g. one of the
+     * old per-lens RunInsight types) is still reached and removed rather than
+     * silently surviving the user's own erasure.
      *
      * @param  Collection<int, int>  $activityIds
      * @param  Collection<int, int>  $cardIds
@@ -136,7 +140,7 @@ final readonly class UserEraser
         Collection $snapshotIds,
         Collection $personalRecordIds,
     ): Builder {
-        return Analysis::query()->where(function (Builder $query) use ($userId, $activityIds, $cardIds, $snapshotIds, $personalRecordIds): void {
+        return Analysis::query()->withoutGlobalScope(KnownAnalysisTypeScope::class)->where(function (Builder $query) use ($userId, $activityIds, $cardIds, $snapshotIds, $personalRecordIds): void {
             $query
                 ->where(fn (Builder $q) => $q->where('subject_type', Activity::class)->whereIn('subject_id', $activityIds))
                 ->orWhere(fn (Builder $q) => $q->where('subject_type', RunCard::class)->whereIn('subject_id', $cardIds))

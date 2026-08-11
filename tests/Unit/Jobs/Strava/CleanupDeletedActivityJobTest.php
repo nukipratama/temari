@@ -19,6 +19,7 @@ use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Strava\StravaClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -98,6 +99,32 @@ it('deletes the run, recomputes the week, rebuilds PRs, and purges orphaned narr
         ->and(Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $survivor->id)->exists())->toBeTrue()
         // The deleted card's CardFlavor analysis is purged too.
         ->and(Analysis::query()->where('subject_type', RunCard::class)->where('subject_id', $doomedCard->id)->exists())->toBeFalse();
+});
+
+it('purges a retired-type row too, not just the ones KnownAnalysisTypeScope shows by default', function (): void {
+    $user = User::factory()->create();
+    $doomed = makeCleanupRun($user, 7_010, 5_000, now()->startOfWeek()->addDay());
+    fakeStravaConfirms404($user, 7_010);
+
+    DB::table('ai_analyses')->insert([
+        'subject_type' => Activity::class,
+        'subject_id' => $doomed->id,
+        'analysis_type' => 'run_insight_technical',
+        'discriminator' => null,
+        'status' => 'done',
+        'content' => '{}',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    new CleanupDeletedActivityJob($user->id, 7_010)->handle(
+        app(WeeklyAggregator::class),
+        app(PersonalRecords::class),
+        app(StravaClient::class),
+        app(AnalysisService::class),
+    );
+
+    expect(DB::table('ai_analyses')->where('subject_id', $doomed->id)->count())->toBe(0);
 });
 
 it('prunes a now-empty weekly snapshot when the deleted run was the last one', function (): void {

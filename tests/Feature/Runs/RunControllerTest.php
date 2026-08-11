@@ -997,6 +997,39 @@ it('does not run the past-you match or the relative-effort baseline on an insigh
     }
 });
 
+/**
+ * Regression for the prod bug where Slice 3 (#559) consolidated
+ * RunInsightTechnical/Splits/Zones into one RunInsight case without a cleanup
+ * migration for the pre-consolidation rows: those retired-type rows survive
+ * under their old string values, which the AnalysisType enum cast throws a
+ * ValueError on the moment it is hydrated and read.
+ */
+it('renders the run detail page past orphaned pre-consolidation RunInsight rows', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
+
+    foreach (['run_insight_technical', 'run_insight_splits', 'run_insight_zones'] as $retiredType) {
+        DB::table('ai_analyses')->insert([
+            'subject_type' => Activity::class,
+            'subject_id' => $activity->id,
+            'analysis_type' => $retiredType,
+            'discriminator' => null,
+            'status' => 'done',
+            'content' => '{}',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    $this->actingAs($user)->get("/activities/{$activity->id}")
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Runs/Show')
+            ->where('runInsight.type', AnalysisType::RunInsight->value)
+            ->where('runInsight.status', 'pending'));
+});
+
 it('still resolves the card payload on the card-only partial reload', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
