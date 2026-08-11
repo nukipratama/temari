@@ -103,26 +103,26 @@ export default function Today({
                 ) : (
                     <>
                         {featured && (
-                            <div
-                                ref={featuredRef}
-                                data-coachmark="today-featured-card"
-                            >
-                                <FeaturedKartuPanel
-                                    featured={featured}
-                                    featuredKartuVoice={
-                                        briefing.featuredKartuVoice
-                                    }
+                            <>
+                                <div
+                                    ref={featuredRef}
+                                    data-coachmark="today-featured-card"
+                                >
+                                    <FeaturedKartuPanel
+                                        featured={featured}
+                                        featuredKartuVoice={
+                                            briefing.featuredKartuVoice
+                                        }
+                                    />
+                                </div>
+                                <CoachMark
+                                    id="today-featured-card"
+                                    anchorRef={featuredRef}
+                                    placement="bottom"
+                                    title="Every run gets a card"
+                                    body="This one's my pick of your recent runs, and the rest are waiting in Collection."
                                 />
-                            </div>
-                        )}
-                        {featured && (
-                            <CoachMark
-                                id="today-featured-card"
-                                anchorRef={featuredRef}
-                                placement="bottom"
-                                title="Every run gets a card"
-                                body="This one's my pick of your recent runs, and the rest are waiting in Collection."
-                            />
+                            </>
                         )}
 
                         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">

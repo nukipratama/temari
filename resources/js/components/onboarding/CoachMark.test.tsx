@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useRef } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { makeUser, setMockPage } from '@/test/setup';
+import { makeUser, setMockPage, stubSyncAnimationFrame } from '@/test/setup';
 
 import CoachMark, { type CoachMarkPlacement } from './CoachMark';
 
@@ -28,16 +28,7 @@ function Harness({
 beforeEach(() => {
     window.localStorage.clear();
     setMockPage({ auth: { user: makeUser({ id: 3 }) } });
-    // Ensure rAF runs synchronously so the initial position lands in the same render.
-    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
-        cb(performance.now());
-        return 1;
-    });
-    vi.stubGlobal('cancelAnimationFrame', () => {});
-});
-
-afterEach(() => {
-    vi.unstubAllGlobals();
+    stubSyncAnimationFrame();
 });
 
 describe('CoachMark', () => {

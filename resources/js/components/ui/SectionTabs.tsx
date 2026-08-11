@@ -19,20 +19,26 @@ interface SectionTabsProps<TId extends string> {
     className?: string;
 }
 
-const FADE_CLASS = {
+type Fade = 'none' | 'start' | 'end' | 'both';
+
+const FADE_CLASS: Record<Fade, string | undefined> = {
+    none: undefined,
     start: '[mask-image:linear-gradient(to_right,transparent_0,#000_28px)]',
     end: '[mask-image:linear-gradient(to_right,#000_calc(100%_-_28px),transparent_100%)]',
     both: '[mask-image:linear-gradient(to_right,transparent_0,#000_28px,#000_calc(100%_-_28px),transparent_100%)]',
-} as const;
+};
 
-function fadeClass(start: boolean, end: boolean): string | undefined {
+function fadeFor(nav: HTMLElement): Fade {
+    const overflow = nav.scrollWidth - nav.clientWidth;
+    if (overflow <= 0) {
+        return 'none';
+    }
+    const start = nav.scrollLeft > 1;
+    const end = nav.scrollLeft < overflow - 1;
     if (start && end) {
-        return FADE_CLASS.both;
+        return 'both';
     }
-    if (start) {
-        return FADE_CLASS.start;
-    }
-    return end ? FADE_CLASS.end : undefined;
+    return start ? 'start' : 'end';
 }
 
 /** Sub-tab strip for a top-level nav item that folds in a second page (e.g. Today/History). */
@@ -43,20 +49,14 @@ export default function SectionTabs<TId extends string>({
     className,
 }: Readonly<SectionTabsProps<TId>>) {
     const navRef = useRef<HTMLElement>(null);
-    const [fade, setFade] = useState({ start: false, end: false });
+    const [fade, setFade] = useState<Fade>('none');
 
     useEffect(() => {
         const nav = navRef.current;
         if (!nav) {
             return;
         }
-        const sync = () => {
-            const overflow = nav.scrollWidth - nav.clientWidth;
-            setFade({
-                start: overflow > 0 && nav.scrollLeft > 1,
-                end: overflow > 0 && nav.scrollLeft < overflow - 1,
-            });
-        };
+        const sync = () => setFade(fadeFor(nav));
         nav.addEventListener('scroll', sync, { passive: true });
         // ResizeObserver delivers a first callback on observe(), which doubles as
         // the initial measurement.
@@ -86,7 +86,7 @@ export default function SectionTabs<TId extends string>({
             aria-label="Sub-tab"
             className={cn(
                 'scrollbar-hide flex gap-1.5 overflow-x-auto',
-                fadeClass(fade.start, fade.end),
+                FADE_CLASS[fade],
                 className,
             )}
         >
