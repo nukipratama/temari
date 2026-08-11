@@ -146,7 +146,7 @@ function HeroScoreboard({
 }: Readonly<{ pr: ExtendedPR; extras: FeaturedExtras | null }>) {
     const category = PR_CATEGORY_LABELS[pr.category] ?? pr.category;
     const timeSecCount = useCountUp(pr.value_sec);
-    const time = formatPrValue(pr.category, timeSecCount);
+    const time = formatPrValue(pr.category, Math.round(timeSecCount));
     const runName = pr.activity?.detail?.name ?? 'Run';
     const splits = extras?.splits_pace_sec ?? [];
     const partialPace = extras?.splits_partial_pace_sec ?? null;
@@ -159,12 +159,7 @@ function HeroScoreboard({
     return (
         <div data-coachmark="collection-records-hero">
             <HeroPanel className="mt-8 lg:px-14 lg:py-12">
-                {/* Two-row layout:
-                Row 1 — oversized time + Temari quote, balanced side-by-side.
-                Row 2 — captions (Type / Date / Location / Weather), full width.
-                Row 3 — splits, full width.
-               The previous 1.4fr_1fr split left the right column with just a
-               180px mascot + a max-w-sm card, ringed by a sea of empty sky.  */}
+                {/* Two-row layout: time+quote, then full-width captions/splits. */}
                 <div className="relative grid grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_minmax(320px,_360px)] lg:gap-12">
                     <div>
                         <div className="mb-5 flex flex-wrap items-center gap-2">

@@ -153,7 +153,7 @@ export default function Cards({
             </div>
         ) : (
             <motion.div
-                key={`${sortBy}-${deferredSearch}`}
+                key={sortBy}
                 data-coachmark="collection-grid"
                 variants={fadeInUp}
                 initial="hidden"

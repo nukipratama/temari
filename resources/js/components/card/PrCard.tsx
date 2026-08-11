@@ -18,8 +18,8 @@ const TIME_CLASS = {
 } as const;
 
 const GAP_CLASS = {
-    sm: 'flex h-full flex-col gap-2 shadow-sm',
-    lg: 'flex h-full flex-col gap-3 shadow-sm',
+    sm: 'flex h-full flex-col gap-2',
+    lg: 'flex h-full flex-col gap-3',
 } as const;
 
 export default function PrCard({
@@ -50,14 +50,17 @@ export default function PrCard({
             <LinkCard
                 href={activityUrl({ activity_id: activityId })}
                 padding={size === 'lg' ? 'lg' : 'md'}
-                className={GAP_CLASS[size]}
+                className={`${GAP_CLASS[size]} shadow-sm`}
             >
                 {body}
             </LinkCard>
         );
     }
     return (
-        <Card padding={size === 'lg' ? 'lg' : 'md'} className={GAP_CLASS[size]}>
+        <Card
+            padding={size === 'lg' ? 'lg' : 'md'}
+            className={`${GAP_CLASS[size]} shadow-sm`}
+        >
             {body}
         </Card>
     );
