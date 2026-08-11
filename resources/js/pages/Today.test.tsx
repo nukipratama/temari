@@ -8,7 +8,7 @@ import type {
     WeeklySnapshot,
 } from '@/types/inertia';
 
-import { makeUser, setMockPage } from '@/test/setup';
+import { makeUser, setMockPage, stubSyncAnimationFrame } from '@/test/setup';
 
 import Today from './Today';
 
@@ -476,5 +476,23 @@ describe('Today', () => {
         );
         expect(screen.getByText('Easy pace today.')).toBeInTheDocument();
         expect(screen.getByText(/Hold zone 2/)).toBeInTheDocument();
+    });
+    it('coach-marks the featured card on a first visit', () => {
+        window.localStorage.clear();
+        stubSyncAnimationFrame();
+        render(
+            <Today
+                briefing={briefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[detailWithCard]}
+            />,
+        );
+        expect(
+            screen.getByRole('dialog', { name: 'Every run gets a card' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/my pick of your recent runs/),
+        ).toBeInTheDocument();
     });
 });

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { Activity, ActivityDetail, RunCard } from '@/types/inertia';
 
-import { setMockPage } from '@/test/setup';
+import { setMockPage, stubSyncAnimationFrame } from '@/test/setup';
 
 import Cards from './Cards';
 
@@ -78,6 +78,25 @@ beforeEach(() => {
 });
 
 describe('Collection/Cards', () => {
+    it('coach-marks the card grid on a first visit', () => {
+        window.localStorage.clear();
+        stubSyncAnimationFrame();
+        render(
+            <Cards
+                cards={{
+                    ...emptyCards(),
+                    data: [cardWithRel(1, 'epic', 'Epic Kick')],
+                }}
+                selectedRarity={null}
+                featuredCard={null}
+                rarityCounts={rarityCounts}
+            />,
+        );
+        expect(
+            screen.getByRole('dialog', { name: 'Tap a card' }),
+        ).toBeInTheDocument();
+    });
+
     it('renders the EmptyState when no cards and no featured card, with a sync CTA', () => {
         render(
             <Cards

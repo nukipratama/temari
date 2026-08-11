@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { EquippedAccessories } from '@/types/inertia';
 
-import { setMockPage } from '@/test/setup';
+import { setMockPage, stubSyncAnimationFrame } from '@/test/setup';
 
 import Accessories from './Accessories';
 
@@ -52,6 +52,20 @@ beforeEach(() => {
 });
 
 describe('Collection/Accessories', () => {
+    it('coach-marks the dress-up preview on a first visit', () => {
+        window.localStorage.clear();
+        stubSyncAnimationFrame();
+        render(
+            <Accessories
+                items={[item('accessory.medal_gold', 'medal', true, false)]}
+                equipped={emptyEquipped}
+            />,
+        );
+        expect(
+            screen.getByRole('dialog', { name: 'Try things on' }),
+        ).toBeInTheDocument();
+    });
+
     it('renders headers + equipped slot labels when nothing is equipped', () => {
         const items = [
             item('accessory.headband_epic', 'headband', false, false),

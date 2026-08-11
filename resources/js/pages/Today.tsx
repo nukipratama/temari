@@ -1,5 +1,5 @@
 import { Head, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import type {
     ActivityDetail,
@@ -19,6 +19,7 @@ import LastLariCard, {
 import TemariVoiceCard from '@/components/dashboard/TemariVoiceCard';
 import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
 import VitalChips from '@/components/dashboard/VitalChips';
+import CoachMark from '@/components/onboarding/CoachMark';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import PageContainer from '@/components/ui/PageContainer';
@@ -50,6 +51,7 @@ export default function Today({
 }: Readonly<TodayProps>) {
     const { props } = usePage<SharedProps & TodayProps>();
     const firstName = props.auth.user?.first_name ?? '';
+    const featuredRef = useRef<HTMLDivElement>(null);
     const pose: TemariPose =
         VIBE_TO_POSE[briefing.vibeState] ?? 'observational';
 
@@ -101,9 +103,25 @@ export default function Today({
                 ) : (
                     <>
                         {featured && (
-                            <FeaturedKartuPanel
-                                featured={featured}
-                                featuredKartuVoice={briefing.featuredKartuVoice}
+                            <div
+                                ref={featuredRef}
+                                data-coachmark="today-featured-card"
+                            >
+                                <FeaturedKartuPanel
+                                    featured={featured}
+                                    featuredKartuVoice={
+                                        briefing.featuredKartuVoice
+                                    }
+                                />
+                            </div>
+                        )}
+                        {featured && (
+                            <CoachMark
+                                id="today-featured-card"
+                                anchorRef={featuredRef}
+                                placement="bottom"
+                                title="Every run gets a card"
+                                body="This one's my pick of your recent runs, and the rest are waiting in Collection."
                             />
                         )}
 

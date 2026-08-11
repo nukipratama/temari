@@ -57,8 +57,9 @@ export default function SectionTabs<TId extends string>({
                 end: overflow > 0 && nav.scrollLeft < overflow - 1,
             });
         };
-        sync();
         nav.addEventListener('scroll', sync, { passive: true });
+        // ResizeObserver delivers a first callback on observe(), which doubles as
+        // the initial measurement.
         const observer = new ResizeObserver(sync);
         observer.observe(nav);
         return () => {

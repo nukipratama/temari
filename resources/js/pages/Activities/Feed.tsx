@@ -1,6 +1,7 @@
 import { Icon } from '@iconify/react';
 import { Head, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
+import { useRef } from 'react';
 
 import type {
     Mood,
@@ -13,6 +14,7 @@ import JourneyStrip, {
     type JourneyMatchData,
 } from '@/components/aktivitas/JourneyStrip';
 import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
+import CoachMark from '@/components/onboarding/CoachMark';
 import ActiveFilterChips from '@/components/riwayat/ActiveFilterChips';
 import {
     RangeWidenedNote,
@@ -86,6 +88,7 @@ export default function RunsIndex({
     weeklySnapshots,
     journeyMatch = null,
 }: Readonly<RunsIndexProps>) {
+    const filterRef = useRef<HTMLDivElement>(null);
     const {
         buckets,
         snapshotsByWeek,
@@ -135,7 +138,19 @@ export default function RunsIndex({
                     </PageHero>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <RiwayatTabs active="jejak" />
-                        <RiwayatFilter {...sections} onReset={resetFilters} />
+                        <div ref={filterRef} data-coachmark="history-filters">
+                            <RiwayatFilter
+                                {...sections}
+                                onReset={resetFilters}
+                            />
+                        </div>
+                        <CoachMark
+                            id="history-filters"
+                            anchorRef={filterRef}
+                            placement="left"
+                            title="Filter the log"
+                            body="When the list gets long, narrow it down by mood, distance, or week."
+                        />
                     </div>
                     <ActiveFilterChips
                         chips={chips}

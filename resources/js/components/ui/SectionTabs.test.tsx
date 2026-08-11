@@ -48,7 +48,9 @@ describe('SectionTabs', () => {
             if (descriptor) {
                 Object.defineProperty(HTMLElement.prototype, prop, descriptor);
             } else {
-                delete (HTMLElement.prototype as unknown as Record<string, unknown>)[prop];
+                delete (
+                    HTMLElement.prototype as unknown as Record<string, unknown>
+                )[prop];
             }
         }
         savedDescriptors.clear();
