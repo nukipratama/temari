@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import JourneyStrip from './JourneyStrip';
@@ -9,7 +9,7 @@ describe('JourneyStrip', () => {
         expect(container.firstChild).toBeNull();
     });
 
-    it('renders heading, total km, and both improvements when present', () => {
+    it('renders heading, total km, and both improvements when present', async () => {
         render(
             <JourneyStrip
                 match={{
@@ -34,7 +34,10 @@ describe('JourneyStrip', () => {
             />,
         );
         expect(screen.getByText(/You vs Your First Run/i)).toBeInTheDocument();
-        expect(screen.getByText(/80\.4 km/)).toBeInTheDocument();
+        // Total km tallies up from 0 (tier-2 count-up), so wait for it to settle.
+        await waitFor(() =>
+            expect(screen.getByText(/80\.4 km/)).toBeInTheDocument(),
+        );
         const paceSpan = screen.getByText(/60 sec\/km faster/);
         expect(paceSpan).toBeInTheDocument();
         expect(paceSpan).toHaveClass('text-leaf-deep');
