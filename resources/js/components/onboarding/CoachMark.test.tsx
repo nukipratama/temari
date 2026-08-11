@@ -40,7 +40,7 @@ describe('CoachMark', () => {
     it('renders the title and body anchored near the target element', () => {
         render(<Harness />);
 
-        expect(screen.getByRole('tooltip')).toBeInTheDocument();
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
         expect(screen.getByText('This is new')).toBeInTheDocument();
         expect(screen.getByText('Explains the thing.')).toBeInTheDocument();
     });
@@ -49,11 +49,11 @@ describe('CoachMark', () => {
         const { unmount } = render(<Harness />);
 
         fireEvent.click(screen.getByRole('button', { name: 'Got it' }));
-        expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
         unmount();
         render(<Harness />);
-        expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     it('dismisses on Escape', async () => {
@@ -62,7 +62,7 @@ describe('CoachMark', () => {
         fireEvent.keyDown(document, { key: 'Escape' });
 
         await waitFor(() =>
-            expect(screen.queryByRole('tooltip')).not.toBeInTheDocument(),
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
         );
     });
 
@@ -77,7 +77,7 @@ describe('CoachMark', () => {
         fireEvent.pointerDown(screen.getByTestId('outside'));
 
         await waitFor(() =>
-            expect(screen.queryByRole('tooltip')).not.toBeInTheDocument(),
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
         );
     });
 
@@ -86,7 +86,7 @@ describe('CoachMark', () => {
 
         render(<Harness />);
 
-        expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     it('renders nothing for a different coach-mark id sharing the page', () => {
@@ -94,6 +94,6 @@ describe('CoachMark', () => {
 
         render(<Harness id="another-tile" />);
 
-        expect(screen.getByRole('tooltip')).toBeInTheDocument();
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 });

@@ -31,7 +31,10 @@ class OnboardingController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if ($request->filled('race_date')) {
+        // A retried submit must not create a second active race (RaceGoal allows only one).
+        $hasActiveRace = RaceGoal::query()->where('user_id', $user->id)->active()->exists();
+
+        if ($request->filled('race_date') && ! $hasActiveRace) {
             RaceGoal::query()->create([
                 'user_id' => $user->id,
                 'race_date' => $request->validated('race_date'),

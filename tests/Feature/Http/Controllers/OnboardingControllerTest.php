@@ -93,6 +93,17 @@ it('rejects a partial goal submission and does not onboard the user', function (
         ->and(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
 
+it('does not create a second active race on a retried submit', function (): void {
+    $user = User::factory()->needsOnboarding()->create();
+
+    $this->actingAs($user)->post('/onboarding', onboardingGoalPayload())->assertRedirect(route('dashboard'));
+    // Simulate a retried/double submit after the user is already onboarded.
+    $user->refresh();
+    $this->actingAs($user)->post('/onboarding', onboardingGoalPayload())->assertRedirect(route('dashboard'));
+
+    expect(RaceGoal::query()->where('user_id', $user->id)->active()->count())->toBe(1);
+});
+
 it('lets an already-onboarded user reach the rest of the app', function (): void {
     $user = User::factory()->create();
 

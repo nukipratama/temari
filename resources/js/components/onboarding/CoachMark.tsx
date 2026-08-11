@@ -111,7 +111,8 @@ export default function CoachMark({
     return createPortal(
         <div
             ref={containerRef}
-            role="tooltip"
+            role="dialog"
+            aria-label={title}
             style={style}
             className={cn(
                 'z-50 w-64 rounded-2xl border border-line bg-surface-elev p-4 shadow-lg',
