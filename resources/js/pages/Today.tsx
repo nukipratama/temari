@@ -12,15 +12,19 @@ import type {
 
 import FeaturedKartuPanel from '@/components/dashboard/FeaturedKartuPanel';
 import KondisiCard from '@/components/dashboard/KondisiCard';
+import KpiTile from '@/components/dashboard/KpiTile';
 import LastLariCard, {
     type LastRunNote,
 } from '@/components/dashboard/LastLariCard';
 import TemariVoiceCard from '@/components/dashboard/TemariVoiceCard';
+import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
 import VitalChips from '@/components/dashboard/VitalChips';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
+import SectionLabel from '@/components/ui/SectionLabel';
+import { useCountUp } from '@/hooks/useCountUp';
 import { appLayout } from '@/layouts/appLayout';
 import { formatTimeId, formatWeekdayDateId } from '@/lib/pace';
 import { VIBE_TO_POSE, poseForRun } from '@/lib/temariPose';
@@ -61,12 +65,16 @@ export default function Today({
     const dateLine = `${formatWeekdayDateId(now)} · ${formatTimeId(now)} · ${briefing.vibeLabel}`;
     const vibeSubtitle = vibeSubtitleFor(briefing.vibeLabel);
 
+    const weekRuns = useCountUp(snapshot?.runs ?? 0);
+    const weekKm = useCountUp(snapshot?.distance_km ?? 0);
+    const weekTrimp = useCountUp(snapshot?.weekly_trimp ?? 0);
+
     return (
         <>
             <Head title="Today" />
             <PageContainer>
-                {/* HEADLINE */}
                 <header className="mb-8">
+                    <TodayHistoryTabs active="today" className="mb-5" />
                     <PageHero size="2xl" eyebrow={dateLine}>
                         Hey, {firstName}
                         <br />
@@ -89,7 +97,6 @@ export default function Today({
                     </>
                 ) : (
                     <>
-                        {/* HERO CARD */}
                         {featured && (
                             <FeaturedKartuPanel
                                 featured={featured}
@@ -97,31 +104,75 @@ export default function Today({
                             />
                         )}
 
-                        {/* VITAL CHIPS — below hero, full width 3-up */}
-                        <section className="mt-6">
-                            <VitalChips briefing={briefing} load={load} />
-                        </section>
+                        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+                            <div className="flex flex-col gap-6">
+                                <section>
+                                    <SectionLabel dot dotClass="bg-leaf">
+                                        This week
+                                    </SectionLabel>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <KpiTile
+                                            label="Runs"
+                                            value={
+                                                snapshot
+                                                    ? Math.round(
+                                                          weekRuns,
+                                                      ).toString()
+                                                    : '—'
+                                            }
+                                        />
+                                        <KpiTile
+                                            label="KM"
+                                            value={
+                                                snapshot
+                                                    ? weekKm.toFixed(1)
+                                                    : '—'
+                                            }
+                                        />
+                                        <KpiTile
+                                            label="TRIMP"
+                                            value={
+                                                snapshot
+                                                    ? Math.round(
+                                                          weekTrimp,
+                                                      ).toString()
+                                                    : '—'
+                                            }
+                                            explainerKey="trimp"
+                                        />
+                                    </div>
+                                </section>
 
-                        {/* 3-UP */}
-                        <section className="mt-8 grid gap-4 lg:grid-cols-3">
-                            {lastRun && (
-                                <LastLariCard
-                                    run={lastRun}
-                                    pose={poseForRun(
-                                        lastRun,
-                                        recentMoods[lastRun.activity_id] ??
-                                            null,
+                                <VitalChips briefing={briefing} load={load} />
+
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    {lastRun && (
+                                        <LastLariCard
+                                            run={lastRun}
+                                            pose={poseForRun(
+                                                lastRun,
+                                                recentMoods[
+                                                    lastRun.activity_id
+                                                ] ?? null,
+                                            )}
+                                            note={lastRunNote}
+                                        />
                                     )}
-                                    note={lastRunNote}
+                                    <KondisiCard
+                                        load={load}
+                                        snapshot={snapshot}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="lg:sticky lg:top-8 lg:self-start">
+                                <TemariVoiceCard
+                                    briefing={briefing}
+                                    pose={pose}
+                                    lastRun={lastRun}
                                 />
-                            )}
-                            <TemariVoiceCard
-                                briefing={briefing}
-                                pose={pose}
-                                lastRun={lastRun}
-                            />
-                            <KondisiCard load={load} snapshot={snapshot} />
-                        </section>
+                            </div>
+                        </div>
                     </>
                 )}
             </PageContainer>

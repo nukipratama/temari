@@ -11,6 +11,7 @@ import type {
 import JourneyStrip, {
     type JourneyMatchData,
 } from '@/components/aktivitas/JourneyStrip';
+import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
 import ActiveFilterChips from '@/components/riwayat/ActiveFilterChips';
 import {
     RangeWidenedNote,
@@ -109,6 +110,7 @@ export default function RunsIndex({
             <Head title="History · Log" />
             <PageContainer>
                 <header className="flex flex-col gap-5">
+                    <TodayHistoryTabs active="history" />
                     <PageHero
                         eyebrow={
                             anyFilterActive
