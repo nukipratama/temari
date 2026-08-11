@@ -6,11 +6,10 @@ import { setMockPage } from '@/test/setup';
 import MobileBottomNav from './MobileBottomNav';
 
 describe('MobileBottomNav', () => {
-    it('renders all five primary tabs with their labels', () => {
+    it('renders all four primary tabs with their labels', () => {
         render(<MobileBottomNav />);
         expect(screen.getByText('Today')).toBeInTheDocument();
         expect(screen.getByText('Collection')).toBeInTheDocument();
-        expect(screen.getByText('History')).toBeInTheDocument();
         expect(screen.getByText('Plan')).toBeInTheDocument();
         expect(screen.getByText('Me')).toBeInTheDocument();
     });
@@ -27,9 +26,9 @@ describe('MobileBottomNav', () => {
 
     it('links each tab to its target path', () => {
         render(<MobileBottomNav />);
-        expect(screen.getByText('History').closest('a')).toHaveAttribute(
+        expect(screen.getByText('Today').closest('a')).toHaveAttribute(
             'href',
-            '/activities',
+            '/',
         );
         expect(screen.getByText('Plan').closest('a')).toHaveAttribute(
             'href',

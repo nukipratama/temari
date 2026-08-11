@@ -15,9 +15,9 @@ import { cn } from '@/lib/cn';
  * button instead of the brand mark.
  *
  * Deliberately an explicit map rather than something derived from
- * `activeTabFromUrl`: `/calendar`, `/records`, `/accessories` and `/badges` all
- * resolve to a tab too, but they are reached through in-page tab strips, so
- * they are siblings of their tab root and must keep the brand mark.
+ * `activeTabFromUrl`: `/calendar`, `/records`, `/accessories`, `/badges` and
+ * `/race` all resolve to a tab too, but they are reached through in-page tab
+ * strips, so they are siblings of their tab root and must keep the brand mark.
  *
  * `HrZones` points at `/settings`, not the `/profile` its old in-page
  * breadcrumb used — that link read "Me · Settings" as a trail but skipped

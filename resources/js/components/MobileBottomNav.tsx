@@ -8,43 +8,7 @@ import type { SharedProps } from '@/types/inertia';
 
 import { cn } from '@/lib/cn';
 import { tabIconPop } from '@/lib/motion';
-
-import { activeTabFromUrl } from './TopNav';
-
-interface NavItem {
-    id: 'hari-ini' | 'koleksi' | 'riwayat' | 'plan' | 'aku';
-    label: string;
-    icon: string;
-    href: string;
-}
-
-const ITEMS: ReadonlyArray<NavItem> = [
-    {
-        id: 'hari-ini',
-        label: 'Today',
-        icon: 'mdi:weather-sunset-up',
-        href: '/',
-    },
-    {
-        id: 'koleksi',
-        label: 'Collection',
-        icon: 'mdi:cards-outline',
-        href: '/cards',
-    },
-    {
-        id: 'riwayat',
-        label: 'History',
-        icon: 'mdi:history',
-        href: '/activities',
-    },
-    {
-        id: 'plan',
-        label: 'Plan',
-        icon: 'mdi:calendar-check-outline',
-        href: '/plan',
-    },
-    { id: 'aku', label: 'Me', icon: 'mdi:account-outline', href: '/profile' },
-];
+import { activeTabFromUrl, ITEMS } from '@/lib/nav';
 
 /**
  * Tapping the tab you are already on should scroll back to the top, the way

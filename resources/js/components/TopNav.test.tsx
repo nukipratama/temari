@@ -19,11 +19,10 @@ beforeEach(() => {
 });
 
 describe('TopNav', () => {
-    it('renders the 5 primary tabs', () => {
+    it('renders the 4 primary tabs', () => {
         render(<TopNav />);
         expect(screen.getByText('Today')).toBeInTheDocument();
         expect(screen.getByText('Collection')).toBeInTheDocument();
-        expect(screen.getByText('History')).toBeInTheDocument();
         expect(screen.getByText('Plan')).toBeInTheDocument();
         expect(screen.getByText('Me')).toBeInTheDocument();
     });
@@ -37,19 +36,41 @@ describe('TopNav', () => {
         );
     });
 
-    it('highlights the active tab from the current URL', () => {
+    // History (/activities, /calendar) folded into Today as a second tab —
+    // there is no standalone "History" nav entry any more.
+    it('highlights Today for the /activities page', () => {
         setMockPage(user(), '/activities');
         render(<TopNav />);
-        expect(screen.getByText('History')).toHaveAttribute(
+        expect(screen.getByText('Today')).toHaveAttribute(
             'aria-current',
             'page',
         );
-        expect(screen.getByText('Today')).not.toHaveAttribute('aria-current');
+    });
+
+    it('highlights Today for the /calendar page', () => {
+        setMockPage(user(), '/calendar');
+        render(<TopNav />);
+        expect(screen.getByText('Today')).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+    });
+
+    // Race (/race) folded into Plan as a second tab — it no longer lumps
+    // under Me.
+    it('highlights Plan for the /race page', () => {
+        setMockPage(user(), '/race');
+        render(<TopNav />);
+        expect(screen.getByText('Plan')).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+        expect(screen.getByText('Me')).not.toHaveAttribute('aria-current');
     });
 
     it('gives tab links and the brand link a keyboard focus ring', () => {
         render(<TopNav />);
-        const tab = screen.getByText('History').closest('a');
+        const tab = screen.getByText('Plan').closest('a');
         expect(tab?.className).toMatch(/focus-ring/);
         const brand = screen.getByLabelText('Home');
         expect(brand.className).toMatch(/focus-ring/);

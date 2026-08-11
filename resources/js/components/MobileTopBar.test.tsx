@@ -12,9 +12,9 @@ describe('MobileTopBar', () => {
     });
 
     // Roots show identity, pushed screens show a way out — the native split.
-    // Note the third case: /calendar, /records, /accessories and /goals resolve to a
-    // tab too, but are reached through in-page tab strips, so they are siblings
-    // rather than pushes and must keep the brand mark.
+    // Note the third case: /calendar, /records, /accessories, /badges and
+    // /race resolve to a tab too, but are reached through in-page tab strips,
+    // so they are siblings rather than pushes and must keep the brand mark.
     it.each([
         ['Runs/Show', '/activities', 'History'],
         ['Settings/HrZones', '/settings', 'Settings'],
@@ -40,6 +40,7 @@ describe('MobileTopBar', () => {
         'Activities/Calendar',
         'Collection/Records',
         'Settings/Index',
+        'Race',
     ])('keeps the brand mark and shows no back button on %s', (component) => {
         setMockPage({}, '/x', component);
         render(<MobileTopBar />);
