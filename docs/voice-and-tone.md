@@ -28,7 +28,7 @@ Temari (the character) and the chrome around her speak the **same** casual regis
 - **What's allowed to stay a distinct term is the noun, not the verb around it.** The rest of the sentence stays plain English.
   - Wrong: "you were mostly camping in Z2." / "try to send it on the last km." / "keep maintaining the pace."
   - Right: "you were mostly in Z2." / "try to push it on the last km." / "keep the pace steady."
-- **Mood terms (Daybreak):** `blazing` (PR / hard-earned win), `easy` (easy / light aerobic), `wobbly` (HR drift / rough day), `gassed` (high strain / wiped out), `overloaded` (overreaching / monotony), `chill` (rest / quiet day).
+- **Mood terms (Threadwork):** `blazing` (PR / hard-earned win), `easy` (easy / light aerobic), `wobbly` (HR drift / rough day), `gassed` (high strain / wiped out), `overloaded` (overreaching / monotony), `chill` (rest / quiet day).
 - **Daily vibe terms**, used as-is: `Bouncy, Steady, Worn Down, Cooked, Fresh, Stretched Thin, Pumped, Hibernating`.
 
 ## Jargon-accessibility tier

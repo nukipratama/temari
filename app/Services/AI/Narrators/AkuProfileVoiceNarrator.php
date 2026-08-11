@@ -34,7 +34,7 @@ class AkuProfileVoiceNarrator
         sentences, max 110 words) for the profile page, using "I" as the subject.
         Output ONE field: profile_voice.
 
-        Daybreak mood vocabulary: %s.
+        Threadwork mood vocabulary: %s.
 
         This is one whole reading of who the user is as a runner, not two things
         stitched together. The rule: the mood spread is the CLAIM, the history
