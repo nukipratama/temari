@@ -41,13 +41,13 @@ export const ITEMS: ReadonlyArray<NavItem> = [
 
 export function activeTabFromUrl(url: string): TabId | null {
     const path = url.split('?')[0];
-    for (const item of ITEMS) {
-        const matches = item.prefixes.some((prefix) =>
-            prefix === '/'
-                ? path === '/'
-                : path === prefix || path.startsWith(`${prefix}/`),
-        );
-        if (matches) return item.id;
-    }
-    return null;
+    return (
+        ITEMS.find((item) =>
+            item.prefixes.some((prefix) =>
+                prefix === '/'
+                    ? path === '/'
+                    : path === prefix || path.startsWith(`${prefix}/`),
+            ),
+        )?.id ?? null
+    );
 }
