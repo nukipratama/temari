@@ -12,7 +12,7 @@
 @source '../**/*.ts';
 
 @theme {
-    /* Daybreak typography — three families, each with one job:
+    /* Threadwork typography — three families, each with one job:
        Fraunces italic for display/voice (Temari quotes, page headlines),
        Plus Jakarta Sans for prose/UI (the readable default), and JetBrains
        Mono for telemetry only (numbers, stats, uppercase metadata labels).
@@ -25,7 +25,7 @@
     --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
     --font-collectible: 'Oswald', 'Plus Jakarta Sans', system-ui, sans-serif;
 
-    /* ─── Daybreak display-type scale ────────────────────────────────
+    /* ─── Threadwork display-type scale ────────────────────────────────
        Fluid clamp() so editorial type scales smoothly instead of
        stair-stepping at sm/lg. Each token bundles line-height +
        letter-spacing so one utility class lands the full spec.
@@ -330,7 +330,7 @@ body {
 
 /* Reusable atomic component classes — the duplicated combos that recur
    across the UI. `@apply`-built so they compose with token utilities and
-   stay in sync with the Daybreak theme. */
+   stay in sync with the Threadwork theme. */
 @layer components {
     /* Focus ring on cream surfaces (the app default). */
     .focus-ring {

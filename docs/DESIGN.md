@@ -3,7 +3,7 @@ title: temari — System Design
 description: Apex overview of what temari is, its design principles, subsystems, and data lifecycle
 tags: [architecture, moc]
 status: living
-reviewed: 2026-07-07
+reviewed: 2026-08-11
 code_refs:
   - app/Services/Run/Ingest/ActivityPipeline.php
   - app/Services/AI/AnalysisService.php
@@ -15,11 +15,11 @@ code_refs:
 
 # temari — System Design
 
-The home/hub for the knowledge base. README explains how to *operate* the app; this explains how it's *built and why*. For detail, follow the section maps: [[architecture/index|Architecture]] · [[decisions/index|Decisions (ADRs)]] · [[features/index|Features]] · [[marketing/index|Marketing]].
+The home/hub for the knowledge base. README explains how to *operate* the app; this explains how it's *built and why*. For detail, follow the section maps: [[architecture/index|Architecture]] · [[decisions/index|Decisions (ADRs)]] · [[features/index|Features]].
 
 ## What it is
 
-A personal running companion: it connects to Strava, ingests each run, computes proper running metrics, turns runs into collectible gamified cards, and narrates them with an AI mascot ("Temari") in a warm, casual voice. The gimmick (cards, vibes, mascot narration) is the point, layered on a correct run-tracker core — but user-facing surfaces and narration inputs aren't mutually exclusive: any running metric shown directly to the runner (VDOT, threshold pace, training paces, …) can still be something Temari reads and speaks to.
+A personal running companion: it connects to Strava, ingests each run, computes proper running metrics, turns runs into collectible gamified cards, and narrates them with an AI mascot — Temari, a ball-bodied character built from hand-wound thread bands — in a warm, casual voice. The gimmick (cards, vibes, mascot narration) is the point, layered on a correct run-tracker core — but user-facing surfaces and narration inputs aren't mutually exclusive: any running metric shown directly to the runner (VDOT, threshold pace, training paces, …) can still be something Temari reads and speaks to.
 
 ## Core design principles
 

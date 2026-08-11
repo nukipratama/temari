@@ -4,6 +4,14 @@ How copy should sound across the whole product: UI chrome, Temari's narration, a
 
 The one-line goal: **sound like a friend who runs with you** — warm, casual, never textbook, never clinical.
 
+## Character
+
+Temari (手鞠 — a traditional Japanese hand-wound thread ball, built up thread-by-thread over time, historically gifted between friends) is a limbless, ball-bodied character with a face on its surface: eyes, cheeks, and a mouth that shift with mood. It moves by bouncing and rolling, never walking. The rendering lives in [TemariProto.tsx](../resources/js/components/temari/TemariProto.tsx); the same 8 named poses drive its expression and animation — `proud`, `pumped`, `excited`, `holding`, `reading`, `wobble`, `observational`, `glow` (TemariProto.tsx:5-13). In place of arms, two short thread-tendril stubs at the ball's base curl around a held prop (a book, for `holding`/`reading`) — enough to hold something, not enough to read as limbs.
+
+Thread coverage is the visual language of progress. The ball's core is a warm neutral, visible where coverage is sparse, wrapped in jewel-toned Threadwork bands as coverage builds. The Plan tab's season summary is the one place this is phase-aware, tracking `PlannedSession.phase`: `base` (sparse, mostly-bare core) → `build` (widening bands) → `peak` (fully wound, most saturated) → `taper` (peak's full pattern retained, plus a rested shine — taper is progress kept, never undone). Self-scaled deload weeks pause accretion rather than reset it. Everywhere else the mascot keeps a constant default thread texture, so it never becomes phase-aware app-wide (`SeasonCoverage` / `DefaultThreadTexture` in TemariProto.tsx).
+
+Equipped accessories render onto the ball rather than a limbed body — same 6 slots and unlock catalog as before, only the rendering changed: `medal` hangs from a loop at the crown, `aura` is an ambient glow ring, `headband` is a ribbon bow tied at the crown, `shirt`/`shorts` are thread-band wraps around the ball's upper/lower hemisphere, and `shoes` is a trailing ribbon beneath the ball suggesting motion.
+
 ## Register — one casual voice everywhere
 
 Temari (the character) and the chrome around her speak the **same** casual register. There is no "formal mode."
@@ -20,7 +28,7 @@ Temari (the character) and the chrome around her speak the **same** casual regis
 - **What's allowed to stay a distinct term is the noun, not the verb around it.** The rest of the sentence stays plain English.
   - Wrong: "you were mostly camping in Z2." / "try to send it on the last km." / "keep maintaining the pace."
   - Right: "you were mostly in Z2." / "try to push it on the last km." / "keep the pace steady."
-- **Mood terms (Daybreak):** `blazing` (PR / hard-earned win), `easy` (easy / light aerobic), `wobbly` (HR drift / rough day), `gassed` (high strain / wiped out), `overloaded` (overreaching / monotony), `chill` (rest / quiet day).
+- **Mood terms (Threadwork):** `blazing` (PR / hard-earned win), `easy` (easy / light aerobic), `wobbly` (HR drift / rough day), `gassed` (high strain / wiped out), `overloaded` (overreaching / monotony), `chill` (rest / quiet day).
 - **Daily vibe terms**, used as-is: `Bouncy, Steady, Worn Down, Cooked, Fresh, Stretched Thin, Pumped, Hibernating`.
 
 ## Jargon-accessibility tier

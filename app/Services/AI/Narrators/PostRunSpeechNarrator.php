@@ -52,7 +52,7 @@ class PostRunSpeechNarrator
         it, don't guess.
 
         Open from the highlight, not from a status update or small talk. Match the
-        tone to the mood in the `mood` field (Daybreak code), following the mood
+        tone to the mood in the `mood` field (Threadwork code), following the mood
         calibration in the persona.
 
         On rain: if weather_rain is true, check weather_rain_source. "observed" is

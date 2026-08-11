@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
 
 class Temari
 {
-    // Daybreak mood vocabulary — see [README handoff §Mood Vocabulary].
+    // Threadwork mood vocabulary — see [README handoff §Mood Vocabulary].
     public const MOOD_NYALA = 'blazing';     // PR / hard win
 
     public const MOOD_ENTENG = 'easy';   // easy run / negative split
