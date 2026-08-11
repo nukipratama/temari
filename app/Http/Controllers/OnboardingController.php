@@ -9,6 +9,7 @@ use App\Models\RaceGoal;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -31,17 +32,26 @@ class OnboardingController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        // A retried submit must not create a second active race (RaceGoal allows only one).
-        $hasActiveRace = RaceGoal::query()->where('user_id', $user->id)->active()->exists();
+        if ($request->filled('race_date')) {
+            // Locked check-then-create: a retried/double submit racing itself
+            // must not create a second active race (RaceGoal allows only one).
+            DB::transaction(function () use ($user, $request): void {
+                $hasActiveRace = RaceGoal::query()
+                    ->where('user_id', $user->id)
+                    ->active()
+                    ->lockForUpdate()
+                    ->exists();
 
-        if ($request->filled('race_date') && ! $hasActiveRace) {
-            RaceGoal::query()->create([
-                'user_id' => $user->id,
-                'race_date' => $request->validated('race_date'),
-                'distance_m' => $request->validated('distance_m'),
-                'goal_time_sec' => $request->validated('goal_time_sec'),
-                'name' => $request->validated('name'),
-            ]);
+                if (! $hasActiveRace) {
+                    RaceGoal::query()->create([
+                        'user_id' => $user->id,
+                        'race_date' => $request->validated('race_date'),
+                        'distance_m' => $request->validated('distance_m'),
+                        'goal_time_sec' => $request->validated('goal_time_sec'),
+                        'name' => $request->validated('name'),
+                    ]);
+                }
+            });
         }
 
         $user->markOnboarded();

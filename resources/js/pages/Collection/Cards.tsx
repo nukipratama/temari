@@ -155,23 +155,32 @@ export default function Cards({
                 <EmptyState />
             </div>
         ) : (
-            <motion.div
-                key={sortBy}
+            // The ref/data-coachmark anchor lives on this stable wrapper, not on
+            // the keyed motion.div below: CoachMark's anchor tracking sets up its
+            // IntersectionObserver once and never re-attaches, so a `key={sortBy}`
+            // remount on the ref'd element itself would detach it from the DOM the
+            // observer is still watching, dropping the mark for the rest of the visit.
+            <div
                 ref={gridRef}
                 data-coachmark="collection-grid"
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="mt-6 grid grid-cols-2 gap-3.5 md:grid-cols-3 xl:grid-cols-4"
+                className="mt-6"
             >
-                {grid.map((card) => (
-                    <CardCell
-                        key={card.id}
-                        card={card}
-                        onTap={triggerBurstFor}
-                    />
-                ))}
-            </motion.div>
+                <motion.div
+                    key={sortBy}
+                    variants={fadeInUp}
+                    initial="hidden"
+                    animate="visible"
+                    className="grid grid-cols-2 gap-3.5 md:grid-cols-3 xl:grid-cols-4"
+                >
+                    {grid.map((card) => (
+                        <CardCell
+                            key={card.id}
+                            card={card}
+                            onTap={triggerBurstFor}
+                        />
+                    ))}
+                </motion.div>
+            </div>
         );
 
     return (

@@ -55,11 +55,11 @@ import {
 const ShareCardModal = lazy(() => import('@/components/card/ShareCardModal'));
 
 function countDisplay(
-    hasValue: number | null,
+    raw: number | null,
     tweened: number,
     format: (n: number) => string,
 ): string {
-    return hasValue != null ? format(tweened) : '—';
+    return raw != null ? format(tweened) : '—';
 }
 
 type DetailedActivity = Activity & {

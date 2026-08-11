@@ -149,25 +149,30 @@ export default function Calendar({
                 {/* All 7 weekday columns fit at every width: phones get a calendar-first
                     view (date + mood dot per cell, run stats deferred to the day drill-in),
                     lg+ gets the full km/pace/HR cells. No horizontal scroll. */}
-                <motion.div
-                    key={month}
-                    ref={gridRef}
-                    data-coachmark="calendar-grid"
-                    initial="hidden"
-                    animate="visible"
-                    variants={fadeInUp}
-                    className="overflow-hidden rounded-2xl border border-line/70 bg-surface-warm shadow-sm"
-                >
-                    <CalendarHeader />
-                    {weeks.map((week) => (
-                        <WeekRowView
-                            key={week.weekStart}
-                            week={week}
-                            todayQuote={todayQuote}
-                            moodFilter={moodFilter}
-                        />
-                    ))}
-                </motion.div>
+                {/* The ref/data-coachmark anchor lives on this stable wrapper, not on
+                    the keyed motion.div below: CoachMark's anchor tracking sets up its
+                    IntersectionObserver once and never re-attaches, so a `key={month}`
+                    remount on the ref'd element itself would detach it from the DOM the
+                    observer is still watching, dropping the mark for the rest of the visit. */}
+                <div ref={gridRef} data-coachmark="calendar-grid">
+                    <motion.div
+                        key={month}
+                        initial="hidden"
+                        animate="visible"
+                        variants={fadeInUp}
+                        className="overflow-hidden rounded-2xl border border-line/70 bg-surface-warm shadow-sm"
+                    >
+                        <CalendarHeader />
+                        {weeks.map((week) => (
+                            <WeekRowView
+                                key={week.weekStart}
+                                week={week}
+                                todayQuote={todayQuote}
+                                moodFilter={moodFilter}
+                            />
+                        ))}
+                    </motion.div>
+                </div>
                 <CoachMark
                     id="calendar-grid"
                     anchorRef={gridRef}
