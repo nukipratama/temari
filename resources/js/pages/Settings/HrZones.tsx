@@ -130,6 +130,8 @@ export default function HrZones({
     const pageProps = usePage<{ errors?: Record<string, string> }>().props;
     const errors = pageProps.errors ?? {};
     const hasZoneError = Object.keys(errors).some((k) => k.startsWith('zones'));
+    const zoneFieldInvalid = (index: number, field: 'lo' | 'hi') =>
+        errors[`zones.${index}.${field}`] !== undefined;
     const zonesErrorId = useId();
     const [processing, setProcessing] = useState(false);
     const [justSaved, setJustSaved] = useState(false);
@@ -189,6 +191,9 @@ export default function HrZones({
                 onFinish: () => setProcessing(false),
                 onSuccess: () => {
                     setJustSaved(true);
+                    if (savedFlashTimeoutRef.current !== null) {
+                        window.clearTimeout(savedFlashTimeoutRef.current);
+                    }
                     savedFlashTimeoutRef.current = window.setTimeout(
                         () => setJustSaved(false),
                         SAVED_FLASH_MS,
@@ -341,7 +346,7 @@ export default function HrZones({
                             bound, so there are no gaps.
                         </p>
                         <div className="grid gap-3">
-                            {ZONE_KEYS.map((key) => (
+                            {ZONE_KEYS.map((key, index) => (
                                 <div
                                     key={key}
                                     className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3"
@@ -358,7 +363,7 @@ export default function HrZones({
                                         label={`${key} lower bound`}
                                         testId={`zone-${key}-lo`}
                                         value={zones[key].lo}
-                                        invalid={hasZoneError}
+                                        invalid={zoneFieldInvalid(index, 'lo')}
                                         describedBy={
                                             hasZoneError
                                                 ? zonesErrorId
@@ -382,7 +387,10 @@ export default function HrZones({
                                             label={`${key} upper bound`}
                                             testId={`zone-${key}-hi`}
                                             value={zones[key].hi}
-                                            invalid={hasZoneError}
+                                            invalid={zoneFieldInvalid(
+                                                index,
+                                                'hi',
+                                            )}
                                             describedBy={
                                                 hasZoneError
                                                     ? zonesErrorId
@@ -405,7 +413,7 @@ export default function HrZones({
                                     initial="hidden"
                                     animate="visible"
                                     exit="hidden"
-                                    className="mt-3 font-sans text-xs text-ember-deep"
+                                    className="mt-3 rounded-lg border border-ember/30 bg-ember/[0.08] px-3 py-2 font-sans text-xs text-ember-deep"
                                 >
                                     Some zones don't line up. Double-check the
                                     upper and lower bounds.
