@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
@@ -125,7 +125,7 @@ describe('Profile', () => {
         expect(screen.queryByText(/Training/)).not.toBeInTheDocument();
     });
 
-    it('renders VDOT, threshold pace and the Training pace-target block when fitness is provided', () => {
+    it('renders VDOT, threshold pace and the Training pace-target block when fitness is provided', async () => {
         render(
             <Profile
                 identity={identity}
@@ -144,7 +144,10 @@ describe('Profile', () => {
             />,
         );
         expect(screen.getByText('VDOT')).toBeInTheDocument();
-        expect(screen.getByText('52.3')).toBeInTheDocument();
+        // VDOT counts up from 0, so its target text settles asynchronously.
+        await waitFor(() =>
+            expect(screen.getByText('52.3')).toBeInTheDocument(),
+        );
         expect(screen.getByText('Threshold pace')).toBeInTheDocument();
         expect(screen.getByText(/Training/)).toBeInTheDocument();
         expect(screen.getByText('Easy')).toBeInTheDocument();

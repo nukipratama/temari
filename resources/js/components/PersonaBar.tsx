@@ -1,9 +1,12 @@
+import { motion } from 'framer-motion';
+
 import type { Mood } from '@/types/inertia';
 
 import Card from '@/components/ui/Card';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import { cn } from '@/lib/cn';
 import { MOOD_FILL, MOOD_LABEL } from '@/lib/mood';
+import { countUpEase } from '@/lib/motion';
 
 export interface PersonaSlice {
     mood: Mood;
@@ -53,11 +56,21 @@ export default function PersonaBar({
                     onSky && 'ring-1 ring-cream/15',
                 )}
             >
-                {mix.map((slice) => (
-                    <div
+                {mix.map((slice, index) => (
+                    <motion.div
                         key={slice.mood}
-                        className={cn('h-full', MOOD_FILL[slice.mood])}
+                        className={cn(
+                            'h-full origin-left',
+                            MOOD_FILL[slice.mood],
+                        )}
                         style={{ width: `${slice.percent}%` }}
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: 1 }}
+                        transition={{
+                            duration: 0.6,
+                            delay: index * 0.06,
+                            ease: countUpEase,
+                        }}
                         aria-label={`${MOOD_LABEL[slice.mood]} ${slice.percent}%`}
                     />
                 ))}

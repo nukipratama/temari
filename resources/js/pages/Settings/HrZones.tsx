@@ -1,6 +1,7 @@
 import { Icon } from '@iconify/react';
 import { Head, router, usePage } from '@inertiajs/react';
-import { useId, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import StravaAction from '@/components/StravaAction';
 import BackLink from '@/components/ui/BackLink';
@@ -13,6 +14,9 @@ import SectionLabel from '@/components/ui/SectionLabel';
 import { usePendingPost } from '@/hooks/usePendingPost';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
+import { fadeInUp } from '@/lib/motion';
+
+const SAVED_FLASH_MS = 2000;
 
 const ZONE_KEYS = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const;
 type ZoneKey = (typeof ZONE_KEYS)[number];
@@ -128,6 +132,16 @@ export default function HrZones({
     const hasZoneError = Object.keys(errors).some((k) => k.startsWith('zones'));
     const zonesErrorId = useId();
     const [processing, setProcessing] = useState(false);
+    const [justSaved, setJustSaved] = useState(false);
+    const savedFlashTimeoutRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (savedFlashTimeoutRef.current !== null) {
+                window.clearTimeout(savedFlashTimeoutRef.current);
+            }
+        };
+    }, []);
 
     const applyDerived = () => {
         setZones(deriveZones(maxHr, restingHr));
@@ -173,6 +187,13 @@ export default function HrZones({
                 preserveScroll: true,
                 onStart: () => setProcessing(true),
                 onFinish: () => setProcessing(false),
+                onSuccess: () => {
+                    setJustSaved(true);
+                    savedFlashTimeoutRef.current = window.setTimeout(
+                        () => setJustSaved(false),
+                        SAVED_FLASH_MS,
+                    );
+                },
             },
         );
     };
@@ -270,7 +291,7 @@ export default function HrZones({
                     )}
                 </header>
 
-                <Card as="section" padding="lg" className="mt-8">
+                <Card as="section" padding="lg" className="mt-8 shadow-sm">
                     <SectionLabel>Max & Resting HR</SectionLabel>
                     <div className="grid gap-5 sm:grid-cols-2">
                         <NumberField
@@ -312,50 +333,31 @@ export default function HrZones({
                     </p>
                 </Card>
 
-                <Card as="section" padding="lg" className="mt-6">
-                    <SectionLabel>Your zones</SectionLabel>
-                    <p className="mb-4 font-sans text-xs text-ink-3">
-                        Each upper bound should match the next zone's lower
-                        bound, so there are no gaps.
-                    </p>
-                    <div className="grid gap-3">
-                        {ZONE_KEYS.map((key) => (
-                            <div
-                                key={key}
-                                className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3"
-                            >
-                                <Eyebrow
-                                    as="span"
-                                    token="micro"
-                                    tone="ink-2"
-                                    className="truncate"
+                <div data-coachmark="hrzones-editor" className="mt-6">
+                    <Card as="section" padding="lg" className="shadow-sm">
+                        <SectionLabel>Your zones</SectionLabel>
+                        <p className="mb-4 font-sans text-xs text-ink-3">
+                            Each upper bound should match the next zone's lower
+                            bound, so there are no gaps.
+                        </p>
+                        <div className="grid gap-3">
+                            {ZONE_KEYS.map((key) => (
+                                <div
+                                    key={key}
+                                    className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3"
                                 >
-                                    {ZONE_LABEL[key]}
-                                </Eyebrow>
-                                <BoundaryInput
-                                    label={`${key} lower bound`}
-                                    testId={`zone-${key}-lo`}
-                                    value={zones[key].lo}
-                                    invalid={hasZoneError}
-                                    describedBy={
-                                        hasZoneError ? zonesErrorId : undefined
-                                    }
-                                    onChange={(v) => editBoundary(key, 'lo', v)}
-                                />
-                                {key === 'Z5' ? (
-                                    <span
-                                        data-testid="zone-Z5-hi"
-                                        aria-label="Z5 upper bound: unbounded"
-                                        title="The top zone has no upper bound"
-                                        className="flex h-[38px] w-20 items-center justify-center rounded-lg border border-cream-deep bg-surface-sunken font-mono text-sm text-ink-3"
+                                    <Eyebrow
+                                        as="span"
+                                        token="micro"
+                                        tone="ink-2"
+                                        className="truncate"
                                     >
-                                        ∞
-                                    </span>
-                                ) : (
+                                        {ZONE_LABEL[key]}
+                                    </Eyebrow>
                                     <BoundaryInput
-                                        label={`${key} upper bound`}
-                                        testId={`zone-${key}-hi`}
-                                        value={zones[key].hi}
+                                        label={`${key} lower bound`}
+                                        testId={`zone-${key}-lo`}
+                                        value={zones[key].lo}
                                         invalid={hasZoneError}
                                         describedBy={
                                             hasZoneError
@@ -363,30 +365,64 @@ export default function HrZones({
                                                 : undefined
                                         }
                                         onChange={(v) =>
-                                            editBoundary(key, 'hi', v)
+                                            editBoundary(key, 'lo', v)
                                         }
                                     />
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                    {hasZoneError && (
-                        <p
-                            id={zonesErrorId}
-                            role="alert"
-                            className="mt-3 font-sans text-xs text-ember-deep"
-                        >
-                            Some zones don't line up. Double-check the upper and
-                            lower bounds.
-                        </p>
-                    )}
-                </Card>
+                                    {key === 'Z5' ? (
+                                        <span
+                                            data-testid="zone-Z5-hi"
+                                            aria-label="Z5 upper bound: unbounded"
+                                            title="The top zone has no upper bound"
+                                            className="flex h-[38px] w-20 items-center justify-center rounded-lg border border-cream-deep bg-surface-sunken font-mono text-sm text-ink-3"
+                                        >
+                                            ∞
+                                        </span>
+                                    ) : (
+                                        <BoundaryInput
+                                            label={`${key} upper bound`}
+                                            testId={`zone-${key}-hi`}
+                                            value={zones[key].hi}
+                                            invalid={hasZoneError}
+                                            describedBy={
+                                                hasZoneError
+                                                    ? zonesErrorId
+                                                    : undefined
+                                            }
+                                            onChange={(v) =>
+                                                editBoundary(key, 'hi', v)
+                                            }
+                                        />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                        <AnimatePresence>
+                            {hasZoneError && (
+                                <motion.p
+                                    id={zonesErrorId}
+                                    role="alert"
+                                    variants={fadeInUp}
+                                    initial="hidden"
+                                    animate="visible"
+                                    exit="hidden"
+                                    className="mt-3 font-sans text-xs text-ember-deep"
+                                >
+                                    Some zones don't line up. Double-check the
+                                    upper and lower bounds.
+                                </motion.p>
+                            )}
+                        </AnimatePresence>
+                    </Card>
+                </div>
 
                 <p className="mt-5 font-sans text-sm text-ink-2">
                     These zones apply to every run from now on.
                 </p>
 
-                <div className="mt-5">
+                <div
+                    className="mt-5 flex items-center gap-3"
+                    data-coachmark="hrzones-save"
+                >
                     <PillButton
                         tone="sky"
                         onClick={submit}
@@ -400,6 +436,26 @@ export default function HrZones({
                         />
                         Save zones
                     </PillButton>
+                    <AnimatePresence>
+                        {justSaved && (
+                            <motion.span
+                                variants={fadeInUp}
+                                initial="hidden"
+                                animate="visible"
+                                exit="hidden"
+                                role="status"
+                                className="inline-flex items-center gap-1.5 text-sm font-semibold text-leaf-deep"
+                            >
+                                <Icon
+                                    icon="mdi:check-circle-outline"
+                                    width={16}
+                                    height={16}
+                                    aria-hidden
+                                />
+                                Saved
+                            </motion.span>
+                        )}
+                    </AnimatePresence>
                 </div>
             </PageContainer>
         </>
@@ -432,7 +488,12 @@ function NumberField({
             >
                 {label}
             </Eyebrow>
-            <span className="flex items-center gap-2 rounded-xl border border-cream-deep bg-cream px-4 py-2.5 focus-within:border-horizon">
+            <span
+                className={cn(
+                    'flex items-center gap-2 rounded-xl border bg-cream px-4 py-2.5 motion-safe:transition-colors motion-safe:duration-150 focus-within:border-horizon',
+                    error ? 'border-ember-deep' : 'border-cream-deep',
+                )}
+            >
                 <input
                     type="number"
                     inputMode="numeric"
@@ -491,7 +552,10 @@ function BoundaryInput({
             data-testid={testId}
             value={Number.isNaN(value) ? '' : value}
             onChange={(e) => onChange(Number.parseInt(e.target.value, 10))}
-            className="focus-ring w-20 rounded-lg border border-cream-deep bg-cream px-3 py-2 text-center font-mono text-sm font-semibold tabular-nums text-ink focus:border-horizon"
+            className={cn(
+                'focus-ring w-20 rounded-lg border bg-cream px-3 py-2 text-center font-mono text-sm font-semibold tabular-nums text-ink motion-safe:transition-colors motion-safe:duration-150 focus:border-horizon',
+                invalid ? 'border-ember-deep' : 'border-cream-deep',
+            )}
         />
     );
 }

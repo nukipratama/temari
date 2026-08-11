@@ -77,10 +77,10 @@ export default function Settings({
                     model with two questions — what gets sent, and where it goes —
                     and splitting those across "Notifications", "Push" and
                     "Telegram" made them look unrelated. */}
-                <section>
+                <section data-coachmark="settings-notifications">
                     <SectionLabel>Notifications</SectionLabel>
                     <div className="mt-3">
-                        <Card padding="lg">
+                        <Card padding="lg" className="shadow-sm">
                             <NotificationPrefsPanel
                                 prefs={notificationPrefs}
                                 telegram={telegram}
@@ -90,10 +90,10 @@ export default function Settings({
                     </div>
                 </section>
 
-                <section className="mt-10">
+                <section className="mt-10" data-coachmark="settings-hr-zones">
                     <SectionLabel>Running</SectionLabel>
                     <div className="mt-3">
-                        <Card padding="lg">
+                        <Card padding="lg" className="shadow-sm">
                             <SettingsRow
                                 icon="mdi:heart-pulse"
                                 label="HR zones"
@@ -107,7 +107,7 @@ export default function Settings({
                 <section className="mt-10">
                     <SectionLabel>Account</SectionLabel>
                     <div className="mt-3">
-                        <Card padding="lg">
+                        <Card padding="lg" className="shadow-sm">
                             <DeleteAccountPanel />
                         </Card>
                     </div>
