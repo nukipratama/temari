@@ -26,6 +26,8 @@ interface CoachMarkProps {
 
 const GAP = 12;
 const MARGIN = 12;
+// The mobile bottom nav is fixed over the page below `lg`.
+const BOTTOM_INSET = 76;
 const WIDTH = 256;
 const FALLBACK_HEIGHT = 150;
 
@@ -69,7 +71,7 @@ function fitsOnScreen(
         left >= MARGIN &&
         left + WIDTH <= window.innerWidth - MARGIN &&
         top >= MARGIN &&
-        top + height <= window.innerHeight - MARGIN
+        top + height <= window.innerHeight - BOTTOM_INSET
     );
 }
 
@@ -88,7 +90,11 @@ function positionFor(
     return {
         position: 'fixed',
         left: clamp(chosen.left, MARGIN, window.innerWidth - WIDTH - MARGIN),
-        top: clamp(chosen.top, MARGIN, window.innerHeight - height - MARGIN),
+        top: clamp(
+            chosen.top,
+            MARGIN,
+            window.innerHeight - height - BOTTOM_INSET,
+        ),
     };
 }
 

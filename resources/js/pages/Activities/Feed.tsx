@@ -147,7 +147,7 @@ export default function RunsIndex({
                         <CoachMark
                             id="history-filters"
                             anchorRef={filterRef}
-                            placement="left"
+                            placement="bottom"
                             title="Filter the log"
                             body="When the list gets long, narrow it down by mood, distance, or week."
                         />
