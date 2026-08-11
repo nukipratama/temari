@@ -3,7 +3,7 @@ title: Strava connection (OAuth, sync, webhook)
 description: Connecting Strava, the manual "Sync now" button, and the live push webhook.
 tags: [feature, strava]
 status: living
-reviewed: 2026-07-29
+reviewed: 2026-08-11
 code_refs:
   - resources/js/pages/Auth/Login.tsx
   - app/Http/Controllers/Auth/StravaAuthController.php
@@ -41,7 +41,7 @@ Socialite drives the handshake in [StravaAuthController](../../app/Http/Controll
 
 - `redirect()` requests scopes `read` and `activity:read_all`.
 - `callback()` reads the *granted* scopes from Strava's `scope` query param (not what we asked for), then `upsertUser()` creates-or-updates the `User` + [StravaConnection](../../app/Models/StravaConnection.php) keyed on `strava_athlete_id`. A partial grant still saves but logs `strava.scopes.partial`.
-- On a *first-ever* connection it dispatches `SyncActivitiesJob` immediately so the dashboard isn't empty before the hourly poll; re-logins skip the backfill (the per-user lock makes a redundant dispatch harmless anyway).
+- On a *first-ever* connection it dispatches `SyncActivitiesJob` immediately so the dashboard isn't empty before the hourly poll, then redirects to the [[onboarding]] wizard instead of the dashboard; re-logins skip the backfill and land straight on `dashboard` (the per-user lock makes a redundant sync dispatch harmless anyway).
 - `logout()` clears the session — it does **not** revoke the Strava token.
 
 Routes: `auth.strava.redirect` / `auth.strava.callback` in [web.php](../../routes/web.php).

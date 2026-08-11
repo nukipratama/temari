@@ -24,6 +24,7 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'avatar_url' => fake()->imageUrl(192, 192, 'people'),
             'is_demo' => false,
+            'onboarded_at' => now(),
             'remember_token' => Str::random(10),
         ];
     }
@@ -36,6 +37,11 @@ class UserFactory extends Factory
     public function demo(): static
     {
         return $this->state(['is_demo' => true]);
+    }
+
+    public function needsOnboarding(): static
+    {
+        return $this->state(['onboarded_at' => null]);
     }
 
     public function admin(): static
