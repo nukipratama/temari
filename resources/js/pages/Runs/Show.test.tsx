@@ -429,10 +429,13 @@ describe('Runs/Show', () => {
         expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     });
 
-    it('shows elevation gain as the ELEVATION hero tile, not a secondary ASCENT tile', () => {
+    it('shows elevation gain as the ELEVATION hero tile, not a secondary ASCENT tile', async () => {
         renderShow();
         expect(screen.getByText('ELEVATION')).toBeInTheDocument();
-        expect(screen.getByText('120')).toBeInTheDocument();
+        // The tile value count-ups from 0 on mount, so its final text lands async.
+        await waitFor(() =>
+            expect(screen.getByText('120')).toBeInTheDocument(),
+        );
         expect(screen.queryByText('ASCENT')).not.toBeInTheDocument();
     });
 
