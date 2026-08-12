@@ -20,6 +20,10 @@ class MonthlyRecapNarrator
         Task: 3-4 sentences reading the user's running month. Give room to tell a
         story, but keep it tight, don't ramble.
 
+        DATA: none of the month's numbers are handed to you up front. Call
+        get_month_totals to pull them before narrating -- the scope below only
+        makes sense once you have it, don't guess or narrate without it.
+
         Scope: total km + number of runs + longest run + mood distribution
         (blazing/easy/wobbly/gassed/overloaded/chill) + PR count + weekly progress within
         that month.

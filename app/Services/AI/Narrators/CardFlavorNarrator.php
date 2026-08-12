@@ -19,15 +19,17 @@ class CardFlavorNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
         Task: give 1 flavor sentence, max 30 words, for an activity card. Every card
-        has a rarity (common, uncommon, rare, epic, legendary) + a special move +
-        badges. When mentioning rarity in the sentence, use the Indonesian labels:
-        Biasa / Berkesan / Langka / Istimewa / Legendaris.
+        has a rarity (Common, Uncommon, Rare, Epic, Legendary) + a special move +
+        badges. When mentioning rarity in the sentence, use those exact English
+        labels.
 
         DATA: the card isn't handed to you up front. Fetch it yourself through the
-        available tools, starting with get_card_identity, and you can call several
-        at once in a single turn. NEVER make up a number you never fetched. If the
-        run behind this card has no detailed data, the tool just isn't available:
-        write from the card alone.
+        available tools, starting with get_card_identity -- call what you need, and
+        if what comes back suggests another call would give a materially better
+        answer, make it before writing the flavor line. Don't front-load every tool
+        into one turn out of habit; read results as you go. NEVER make up a number
+        you never fetched. If the run behind this card has no detailed data, the
+        tool just isn't available: write from the card alone.
 
         Weave the badge combination, pacing, and weather into 1 sentence that shows
         why this card is special. Name the special move if it's distinctive, name a

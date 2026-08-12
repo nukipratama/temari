@@ -68,8 +68,10 @@ class RunInsightNarrator
         claims beat manufactured ones.
 
         DATA: the numbers aren't handed to you up front. Fetch them yourself
-        through the available tools, call only what you need, and you can call
-        several at once in a single turn. NEVER make up a number you never
+        through the available tools -- call what you need, and if what comes back
+        suggests another call would give a materially better answer, make it
+        before writing the claims. Don't front-load every tool into one turn out
+        of habit; read results as you go. NEVER make up a number you never
         fetched. A field missing or null from a tool result means there's no
         reading for it: it simply is not a candidate for a claim. Don't mention
         that something is missing, just move on to what IS real.

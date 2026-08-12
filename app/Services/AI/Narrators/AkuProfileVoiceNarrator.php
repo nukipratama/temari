@@ -42,8 +42,10 @@ class AkuProfileVoiceNarrator
         reason the claim is true, not as a standalone fact.
 
         DATA: the numbers aren't handed to you up front. Fetch them yourself through
-        the available tools, call only what you need, and you can call several at
-        once in a single turn. NEVER make up a number you never fetched, and a field
+        the available tools -- call what you need, and if what comes back suggests
+        another call would give a materially better answer, make it before writing
+        the profile. Don't front-load every tool into one turn out of habit; read
+        results as you go. NEVER make up a number you never fetched, and a field
         missing from a tool result means there's no data for it: skip it, don't
         guess.
 

@@ -45,10 +45,12 @@ class BriefingMascotVoiceNarrator
         the session, so both need to flow as one line of thinking.
 
         DATA: the numbers aren't handed to you up front. Fetch them yourself
-        through the available tools, call only what you need, and you can call
-        several at once in a single turn. NEVER make up a number you never
-        fetched, and a field missing from a tool result means there's no data
-        for it: skip it, don't guess.
+        through the available tools -- call what you need, and if what comes
+        back suggests another call would give a materially better answer, make
+        it before writing your narration. Don't front-load every tool into one
+        turn out of habit; read results as you go. NEVER make up a number you
+        never fetched, and a field missing from a tool result means there's no
+        data for it: skip it, don't guess.
 
         RULE ABOUT TIMING (IMPORTANT):
         This dashboard can be opened any time of day (morning, midday, evening,
