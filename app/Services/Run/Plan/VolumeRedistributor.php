@@ -16,11 +16,22 @@ use App\Enums\DistanceBand;
  * folds in automatically, since the caller excludes it from `$eligibleDays`
  * and its now-fixed (clamped) output from the target the same way a
  * completed run would be. Never mutates stored rows.
+ *
+ * Redistribution is capped at {@see self::MAX_SCALE}: past that the week's
+ * remaining volume is written off rather than crammed.
  */
 final class VolumeRedistributor
 {
     /** @var list<DistanceBand> nearest-band bucketing order, smallest first */
     private const array BUCKETS = [DistanceBand::Short, DistanceBand::Medium, DistanceBand::Long];
+
+    /**
+     * Ceiling on how far missed volume may inflate the days that remain. A
+     * week missed until Friday would otherwise land its whole target on two
+     * days, which is exactly the cram week the conservative clamps exist to
+     * prevent; volume past this cap is dropped rather than carried.
+     */
+    public const float MAX_SCALE = 1.35;
 
     /**
      * @param  array<string, DistanceBand>  $eligibleDays  date => original band, for the week's remaining unpinned non-past training days
@@ -42,7 +53,7 @@ final class VolumeRedistributor
             return $eligibleDays;
         }
 
-        $scale = max(0.0, $remainingTargetKm) / $originalTotalKm;
+        $scale = min(self::MAX_SCALE, max(0.0, $remainingTargetKm) / $originalTotalKm);
 
         $result = $eligibleDays;
         foreach ($trainingDays as $date => $originalBand) {

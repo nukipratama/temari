@@ -26,12 +26,22 @@ it('returns the input unchanged when the original total km is zero, avoiding a d
 
 it('scales training days proportionally toward the remaining target and re-buckets to the nearest band', function (): void {
     $eligible = ['2026-08-11' => DistanceBand::Short, '2026-08-13' => DistanceBand::Medium];
-    // original total = 5 + 10 = 15; target = 30 -> scale x2: 10 -> Medium, 20 -> Long.
+    // original total = 5 + 10 = 15; target = 20 -> scale x1.33: 6.7 stays Short, 13.3 rounds to Long.
 
-    $result = VolumeRedistributor::redistribute($eligible, 30.0, BAND_KM);
+    $result = VolumeRedistributor::redistribute($eligible, 20.0, BAND_KM);
 
-    expect($result['2026-08-11'])->toBe(DistanceBand::Medium)
+    expect($result['2026-08-11'])->toBe(DistanceBand::Short)
         ->and($result['2026-08-13'])->toBe(DistanceBand::Long);
+});
+
+it('caps how far missed volume may inflate the days that remain', function (): void {
+    $eligible = ['2026-08-11' => DistanceBand::Short, '2026-08-13' => DistanceBand::Short];
+    // original total = 10; an uncapped x4 would make both days Long — the cap holds them at 6.75 km.
+
+    $result = VolumeRedistributor::redistribute($eligible, 40.0, BAND_KM);
+
+    expect($result)->toBe($eligible)
+        ->and(VolumeRedistributor::MAX_SCALE)->toBeLessThan(4.0);
 });
 
 it('never scales below zero when the target is negative', function (): void {
