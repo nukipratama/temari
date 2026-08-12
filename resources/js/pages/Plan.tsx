@@ -64,12 +64,9 @@ interface PlanProps {
     weeks: PlanWeek[];
     season: SeasonSummary;
     adaptation: PlanAdaptation | null;
+    /** Served from App\Support\TrainingDisclaimer, shared with the legal pages. */
+    disclaimer: string;
 }
-
-// Prescriptive numbers, not clinical ones. Shown on every render, never
-// behind a disclosure, so the framing can't be missed.
-const DISCLAIMER =
-    'Temari prescribes from your own data, not from a medical assessment. These numbers are training guidance, not medical advice. Pain, illness or injury is a conversation for a doctor, not a plan engine.';
 
 const STATUS_LABEL: Record<string, string> = {
     done: 'Done',
@@ -124,6 +121,7 @@ export default function Plan({
     weeks,
     season,
     adaptation,
+    disclaimer,
 }: Readonly<PlanProps>) {
     const [regenerating, setRegenerating] = useState(false);
     const scheduleRef = useRef<HTMLDivElement>(null);
@@ -244,7 +242,7 @@ export default function Plan({
                         </Card>
                     )}
                     <p className="mt-3 text-xs leading-relaxed text-ink-3">
-                        {DISCLAIMER}
+                        {disclaimer}
                     </p>
                 </section>
 

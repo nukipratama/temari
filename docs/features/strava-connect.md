@@ -44,7 +44,7 @@ Socialite drives the handshake in [StravaAuthController](../../app/Http/Controll
 - On a *first-ever* connection it dispatches `SyncActivitiesJob` immediately so the dashboard isn't empty before the hourly poll, then redirects to the [[onboarding]] wizard instead of the dashboard; re-logins skip the backfill and land straight on `dashboard` (the per-user lock makes a redundant sync dispatch harmless anyway). That backfill is unbounded on purpose and still cheap: the walk pages 200 activity *summaries* per read and stores the athlete's whole history from them, so it costs a handful of Strava calls rather than two per run — see [[run-ingest-pipeline]].
 - `logout()` clears the session — it does **not** revoke the Strava token.
 
-Routes: `auth.strava.redirect` / `auth.strava.callback` in [web.php](../../routes/web.php).
+Routes: `auth.strava.redirect` / `auth.strava.callback` in [web.php](../../routes/web.php), both behind `throttle:strava-oauth` (10/min per IP, defined in [AppServiceProvider](../../app/Providers/AppServiceProvider.php)). This is the account-creation path and it is open to anyone, so it cannot key off a user id the way `strava-sync` and `analysis-trigger` do; it stays IP-keyed even for a signed-in reconnect. Terms, privacy, AI-use and the training disclaimer are linked from the login page footer so a stranger can read them before connecting — see [[legal-pages]].
 
 ## Manual sync ("Sync sekarang")
 

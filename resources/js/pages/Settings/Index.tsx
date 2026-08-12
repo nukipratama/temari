@@ -48,6 +48,38 @@ interface SettingsProps {
     testCooldownSeconds?: number | null;
 }
 
+const LEGAL_ROWS: ReadonlyArray<{
+    href: string;
+    icon: string;
+    label: string;
+    description: string;
+}> = [
+    {
+        href: '/terms',
+        icon: 'mdi:file-document-outline',
+        label: 'Terms of use',
+        description: 'What Temari is, what it costs, and what it promises.',
+    },
+    {
+        href: '/privacy',
+        icon: 'mdi:lock-outline',
+        label: 'Privacy policy',
+        description: 'What is stored, who else sees it, what deletion removes.',
+    },
+    {
+        href: '/ai-use',
+        icon: 'mdi:robot-outline',
+        label: 'How Temari uses AI',
+        description: 'What is sent to the model, and what it never does.',
+    },
+    {
+        href: '/training-disclaimer',
+        icon: 'mdi:heart-pulse',
+        label: 'Training disclaimer',
+        description: 'Why the plan is specific, and when to ignore it.',
+    },
+];
+
 const TELEGRAM_DEFAULT: TelegramPayload = {
     connected: false,
     username: null,
@@ -130,6 +162,23 @@ export default function Settings({
                         </div>
                     </section>
                 ) : null}
+
+                <section className="mt-10">
+                    <SectionLabel>The fine print</SectionLabel>
+                    <div className="mt-3">
+                        <Card padding="lg">
+                            {LEGAL_ROWS.map((row) => (
+                                <SettingsRow
+                                    key={row.href}
+                                    icon={row.icon}
+                                    label={row.label}
+                                    description={row.description}
+                                    href={row.href}
+                                />
+                            ))}
+                        </Card>
+                    </div>
+                </section>
 
                 <section className="mt-10">
                     <SectionLabel>Account</SectionLabel>

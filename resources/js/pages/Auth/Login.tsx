@@ -37,6 +37,16 @@ const PILLARS: ReadonlyArray<{ icon: string; label: string; desc: string }> = [
     },
 ];
 
+// Plain anchors, not Inertia <Link>: these are the pages a stranger reads
+// before deciding to connect a Strava account, so they must survive the SPA
+// runtime failing to boot at all.
+const LEGAL_LINKS: ReadonlyArray<{ href: string; label: string }> = [
+    { href: '/terms', label: 'Terms' },
+    { href: '/privacy', label: 'Privacy' },
+    { href: '/ai-use', label: 'How Temari uses AI' },
+    { href: '/training-disclaimer', label: 'Training disclaimer' },
+];
+
 const HERO_GRADIENT =
     'linear-gradient(180deg, var(--color-sky-deep) 0%, var(--color-sky) 38%, var(--color-sky-2) 62%, oklch(58% 0.10 38) 82%, var(--color-horizon-deep) 100%)';
 
@@ -313,6 +323,21 @@ function FormSide({
             <p className="text-center text-label-micro text-ink-3">
                 I'll see you on the other side of that button. 🐾
             </p>
+
+            <nav
+                aria-label="Legal"
+                className="flex flex-wrap justify-center gap-x-4 gap-y-1"
+            >
+                {LEGAL_LINKS.map((link) => (
+                    <a
+                        key={link.href}
+                        href={link.href}
+                        className="font-sans text-xs text-ink-3 underline underline-offset-2 hover:text-ink-2"
+                    >
+                        {link.label}
+                    </a>
+                ))}
+            </nav>
         </div>
     );
 }

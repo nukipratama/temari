@@ -37,6 +37,20 @@ describe('Login', () => {
         expect(screen.getByText('Try the demo')).toBeInTheDocument();
     });
 
+    it('lets a stranger read the legal pages before connecting anything', () => {
+        render(<Login authStravaUrl="/x" />);
+
+        const nav = screen.getByRole('navigation', { name: 'Legal' });
+        expect(nav).toHaveTextContent('Terms');
+        expect(nav).toHaveTextContent('Privacy');
+        expect(nav).toHaveTextContent('How Temari uses AI');
+        expect(nav).toHaveTextContent('Training disclaimer');
+        expect(screen.getByRole('link', { name: 'Privacy' })).toHaveAttribute(
+            'href',
+            '/privacy',
+        );
+    });
+
     it('renders the brand hero + 3 onboarding pillars in Temari first-person voice', () => {
         render(<Login authStravaUrl="/x" />);
         expect(screen.getByText('Temari')).toBeInTheDocument();

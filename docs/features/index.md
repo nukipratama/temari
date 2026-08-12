@@ -19,6 +19,7 @@ _Pages_
 - [[profile]] — persona, profile voice
 - [[settings]] — Pengaturan hub (Telegram toggles, HR-zone entry, account deletion)
 - [[settings-hr-zones]] — Zona HR (Karvonen zones)
+- [[legal-pages]] — the four public documents (terms, privacy, AI use, training disclaimer)
 - [[ai-usage]] — token usage dashboard (ops-gated)
 - [[race-projection]] — Race, the goal race and fitted-Riegel finish-time projection, plus the 90-day fitness trend
 - [[plan-periodizer]] — Plan, the deterministic periodizer, readiness clamp, and volume redistribution

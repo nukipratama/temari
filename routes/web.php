@@ -16,6 +16,7 @@ use App\Http\Controllers\CardController;
 use App\Http\Controllers\ClientErrorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DevtoolsIndexController;
+use App\Http\Controllers\LegalController;
 use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\NotificationTestController;
 use App\Http\Controllers\OnboardingController;
@@ -61,6 +62,13 @@ Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle'])
 Route::post('/client-errors', ClientErrorController::class)
     ->middleware('throttle:client-errors')
     ->name('client-errors');
+
+// Public and unauthenticated on purpose: someone deciding whether to connect
+// their Strava has to be able to read these before there is an account.
+Route::get('/terms', [LegalController::class, 'terms'])->name('legal.terms');
+Route::get('/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
+Route::get('/ai-use', [LegalController::class, 'aiUse'])->name('legal.ai-use');
+Route::get('/training-disclaimer', [LegalController::class, 'trainingDisclaimer'])->name('legal.training-disclaimer');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
