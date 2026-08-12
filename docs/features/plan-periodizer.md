@@ -3,7 +3,7 @@ title: Plan — deterministic periodizer and the Plan tab
 description: The rules-only training periodizer that fills the Plan tab, its two modes, the render-time readiness clamp, and the render-time volume redistribution
 tags: [feature, run]
 status: living
-reviewed: 2026-08-10
+reviewed: 2026-08-13
 code_refs:
   - app/Services/Run/Plan/Periodizer.php
   - app/Services/Run/Plan/PhaseSchedule.php
@@ -13,6 +13,10 @@ code_refs:
   - app/Services/Run/Plan/ReadinessClamp.php
   - app/Services/Run/Plan/VolumeRedistributor.php
   - app/Services/Run/Plan/SeasonService.php
+  - app/Services/Run/Plan/SessionMatcher.php
+  - app/Services/Run/Plan/PlanAdapter.php
+  - app/Enums/AdaptationReason.php
+  - app/Models/PlanAdaptation.php
   - app/Models/PlannedSession.php
   - app/Models/Season.php
   - app/Models/SeasonGoal.php
@@ -48,6 +52,8 @@ Each regeneration deletes every unpinned row across the *full* 12-week horizon b
 
 ## Readiness clamp — render-time, deterministic, not a narrator
 
+This is the *within-the-day* half of the readiness reaction; the *within-the-week* half (a real deload) is in "Reacting to what actually happened" below.
+
 [ReadinessClamp::apply()](app/Services/Run/Plan/ReadinessClamp.php) compares a stored session's implied intensity against the CURRENT [ReadinessCeiling](app/Services/Run/Metrics/ReadinessCeiling.php) and, when the stored session asks for more than the ceiling allows, returns a downgraded view plus one of a handful of short templated strings (e.g. *"Your form dipped, so today's the easy version instead."*) — this is a rule-driven downgrade message, never an LLM call, never a new `AnalysisType`. [PlanController::index()](app/Http/Controllers/PlanController.php) applies it to **today's row only**: a future day's readiness isn't knowable today, and clamping a whole training block by this moment's fatigue would defeat periodization. The stored row is never mutated — only the rendered payload reflects the clamp.
 
 Quality work (Tempo/Interval) needs the optimistic `QualityOk` ceiling; a Long day only needs `ModerateOk` (it's a volume day, not an intensity one); Easy needs the floor above `Rest`.
@@ -55,6 +61,26 @@ Quality work (Tempo/Interval) needs the optimistic `QualityOk` ceiling; a Long d
 ## Volume redistribution — a recompute, not a day-swap
 
 Rather than moving a specific day's volume to another specific day (which risks an awkward doubled-up load), every `/plan` read recomputes the current week's remaining unpinned, non-past training days from `(week's target km) - (already completed) - (pinned days' km) - (today's now-fixed km)`, spread proportionally by each day's existing relative band weighting, then re-bucketed to the nearest band — see [VolumeRedistributor::redistribute()](app/Services/Run/Plan/VolumeRedistributor.php). A readiness-clamped day's lost volume folds in automatically: it's excluded from the eligible pool and its (now smaller) fixed contribution is what gets subtracted from the target, the same way a completed run would be. This, too, is render-only.
+
+The scale factor is capped at `VolumeRedistributor::MAX_SCALE`. A week missed until Friday would otherwise land its whole target on the two days that remain, which is the cram week the rest of the engine's clamps exist to prevent; past the cap the volume is **written off rather than carried**. Volume never crosses a week boundary either — a missed week becomes a re-entry deload (below), not a debt added to the next one.
+
+## Reacting to what actually happened
+
+The three sections above are all *render-time* reactions within one week. The generation-time reaction is [PlanAdapter](app/Services/Run/Plan/PlanAdapter.php), which [Periodizer::regenerate()](app/Services/Run/Plan/Periodizer.php) consults before it builds a single week.
+
+**Matching runs to sessions.** [SessionMatcher](app/Services/Run/Plan/SessionMatcher.php) grades each past day on km actually run against km prescribed, not on "was there any activity": at or above `DONE_FRACTION` the session is `done`, above `PARTIAL_FRACTION` it's `partial`, otherwise `missed` (see [PlannedSessionStatus](app/Enums/PlannedSessionStatus.php)). A rest day asks for nothing, so it always reads `done`. `weekAdherence()` reduces a week to the completed share of its *elapsed* sessions, which is the number the adapter reacts to. One range query serves the whole rendered plan.
+
+**One decision per week, safety first.** [PlanAdapter::decide()](app/Services/Run/Plan/PlanAdapter.php) is pure and returns exactly one [AdaptationReason](app/Enums/AdaptationReason.php), evaluated in priority order: readiness bottoming out at `Rest`, then monotony at Foster's injury-risk threshold, then weekly strain past a multiple of CTL, then a mostly-missed week, and only then race-pace feedback. Chasing a goal time can therefore never talk the plan past a red flag.
+
+**A real deload, not a note.** The first four reasons rewrite the current week's phase to [PlanPhase::Deload](app/Enums/PlanPhase.php) before any row is built. That is structural in both directions at once: `WeekPlanBuilder` emits no quality slots for a `Deload` week, and because `volumeMultipliers()` is recomputed at render from the *stored* phase sequence, the week's km drop to `previous build's final multiplier * 0.65` with no separate scale factor to keep in sync. A `Taper` week is exempt — it is already a planned reduction counting down to race day.
+
+**A missed week comes back smaller.** Adherence below `MISSED_WEEK_ADHERENCE` produces the same deload rather than carrying the missed volume forward. Simulated end to end in [tests/Feature/Plan/MissedWeekAdaptationTest.php](tests/Feature/Plan/MissedWeekAdaptationTest.php): a 4-session, 28.3 km build week with nothing logged against it is followed by a 16.6 km deload week carrying zero quality sessions.
+
+**The race goal moves the sessions.** With an active race, [RiegelProjector](app/Services/Run/Metrics/RiegelProjector.php)'s projected finish is compared to the stored `goal_time_sec`. Outside `RACE_GAP_MARGIN` in either direction the adapter returns a `quality_delta`, which `WeekPlanBuilder::build()` applies to every week's quality block: behind the goal adds a session (capped, and only when the week has enough sessions to absorb it), inside the goal removes one. `Deload` and `Taper` weeks are exempt in both directions. Season-goal generation deliberately keeps using the unadapted `qualitySlotCount()`, so a mid-season adaptation doesn't move the goalposts it was scored against.
+
+**Recorded, not recomputed.** The verdict is written to a [PlanAdaptation](app/Models/PlanAdaptation.php) row, `unique(user_id, week_start)`. `/plan` reads that row rather than re-deciding, so a deload triggered on Monday still explains itself on Thursday after the athlete's readiness has recovered. The copy lives on the enum ([AdaptationReason::headline()/detail()](app/Enums/AdaptationReason.php)), never in the database.
+
+**Prescriptive, not clinical.** The Plan tab renders a standing not-medical-advice disclaimer on every load, adaptation or not ([Plan.tsx](resources/js/pages/Plan.tsx)). The tone gets to be assertive about numbers precisely because the clamps above stay in force underneath it.
 
 ## Render-time km — never frozen into the row
 
