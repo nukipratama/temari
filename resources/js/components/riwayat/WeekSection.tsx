@@ -97,7 +97,7 @@ const WeekSection = memo(function WeekSection({
         <Card
             as="section"
             padding="none"
-            className="overflow-hidden shadow-sm transition"
+            className="overflow-hidden transition"
         >
             <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-cream-deep bg-cream-deep/40 px-5 py-4">
                 <div className="font-display text-lg italic text-ink">

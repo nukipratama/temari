@@ -137,6 +137,15 @@ how far a surface floats above `surface` / `surface-card`:
 than mixing tiers (a `shadow-2xl` modal on a resting `surface-warm` background reads as
 inconsistent depth).
 
+The resting step ships inside `cardVariants` ([variants.ts](../resources/js/lib/variants.ts)), so
+`Card` and `LinkCard` carry it already — do not re-apply `shadow-sm` at a call site. The `empty`
+tone is the sole opt-out: a dashed placeholder is not a surface that rests on the page. A
+hand-rolled dashed state on another tone opts out the same way, with `shadow-none`.
+
+Elevation applies once per stack. A tile nested inside a card ([StatTile](../resources/js/components/ui/StatTile.tsx))
+stays flat — the card it sits in already carries the resting step, so a second shadow reads as
+depth the layout doesn't have.
+
 ## Component utilities
 
 Reusable atomic classes in the `@layer components` block of [app.css](../resources/css/app.css),

@@ -21,13 +21,13 @@ const statTileVariants = cva('', {
             // Bare tile on a sky (dark) panel: on-sky label/unit + cream value.
             plainSky: '',
             // Paper surface with a hairline border.
-            card: 'rounded-xl border border-line bg-surface-card',
-            cream: 'rounded-xl bg-cream',
-            creamDeep: 'rounded-xl bg-cream-deep',
+            card: 'rounded-2xl border border-line bg-surface-card',
+            cream: 'rounded-2xl bg-cream',
+            creamDeep: 'rounded-2xl bg-cream-deep',
             // Sunken neutral well used inside chart cards.
-            sunken: 'rounded-xl bg-line/20',
+            sunken: 'rounded-2xl bg-line/20',
             // Glass tile on a sky (dark) panel.
-            sky: 'rounded-xl border border-cream/[0.12] bg-cream/[0.06]',
+            sky: 'rounded-2xl border border-cream/[0.12] bg-cream/[0.06]',
         },
         size: {
             sm: '',

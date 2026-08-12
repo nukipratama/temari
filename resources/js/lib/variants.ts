@@ -12,14 +12,14 @@ import { cva } from 'class-variance-authority';
  */
 
 /** Card surface tone + padding. Mirrors TONE_CLASS / PADDING_CLASS in components/ui/Card.tsx. */
-export const cardVariants = cva('', {
+export const cardVariants = cva('shadow-sm', {
     variants: {
         tone: {
             cream: 'rounded-2xl border border-line bg-surface-card',
             'cream-deep': 'rounded-2xl border border-line bg-cream-deep',
             'sky-glass':
                 'rounded-2xl border border-cream/[0.12] bg-cream/[0.06] backdrop-blur',
-            empty: 'rounded-2xl border border-dashed border-cream-deep bg-cream/40',
+            empty: 'rounded-2xl border border-dashed border-cream-deep bg-cream/40 shadow-none',
         },
         padding: {
             none: '',

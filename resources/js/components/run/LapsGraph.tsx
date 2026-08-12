@@ -32,7 +32,7 @@ export default function LapsGraph({
             : null;
 
     return (
-        <Card as="section" padding="lg" className={cn('shadow-sm', className)}>
+        <Card as="section" padding="lg" className={className}>
             <header className="mb-1.5 flex flex-wrap items-baseline justify-between gap-3">
                 <SectionLabel>Laps</SectionLabel>
                 {fastest != null && fastestLap != null && (
