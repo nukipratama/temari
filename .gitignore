@@ -37,6 +37,9 @@ Thumbs.db
 # Pest TIA dependency graph — normally under $HOME, this is its no-HOME fallback
 /.pest/
 
+# Written per-worktree by scripts/worktree-setup.sh (git dir mount + GIT_DIR)
+/compose.override.yaml
+
 # Infection log
 /storage/infection.log
 

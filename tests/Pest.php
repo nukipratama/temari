@@ -47,14 +47,16 @@ pest()->extend(TestCase::class)->in('Feature', 'Unit');
 | and File::allFiles() produce no coverage edges, so nothing would otherwise
 | link a newly added class to the 1:1 structure gate that should fail on it.
 |
-| The is_dir() guard is what keeps parallel worktrees working. A worktree's
-| .git is a *file* pointing at a host path outside the container's bind mount,
-| so git cannot resolve the repo there — and TIA panics on that rather than
-| degrading, which would break every Pest run in a worktree.
+| The guard is what keeps parallel worktrees working. A worktree's .git is a
+| *file* pointing at a host path outside the container's bind mount, so git
+| cannot resolve the repo there — and TIA panics on that rather than degrading,
+| which would break every Pest run in a worktree. scripts/worktree-setup.sh
+| mounts the shared git dir and exports GIT_DIR to restore it; a worktree whose
+| stack predates that override still falls through to TIA off.
 |
 */
 
-if (is_dir(dirname(__DIR__).'/.git')) {
+if (is_dir(dirname(__DIR__).'/.git') || is_dir((string) getenv('GIT_DIR'))) {
     pest()->tia()->locally()->watch([
         'app/**/*.php' => 'tests/Unit/Architecture',
         'tests/**/*.php' => 'tests/Unit/Architecture',
