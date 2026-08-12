@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\Telegram\TelegramLinkToken;
 use App\Support\Cooldown;
+use App\Support\DataUseStatement;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -19,6 +20,10 @@ class SettingsController extends Controller
         $user = $request->user();
 
         return Inertia::render('Settings/Index', [
+            'dataUse' => [
+                'headline' => DataUseStatement::HEADLINE,
+                'points' => DataUseStatement::points(),
+            ],
             'telegram' => $this->resolveTelegram($user, $telegramLinkToken),
             'notificationPrefs' => $this->resolveNotificationPrefs($user),
             // Lets the test button render a countdown instead of failing on a
