@@ -102,6 +102,12 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute($perMinute)->by($key);
         });
 
+        // Account creation path. Anyone on the internet can reach it, and the
+        // callback spends a Strava token exchange plus, on a first connect, a
+        // whole history backfill against the app-wide Strava budget. IP-keyed
+        // because there is no user to key by until it succeeds.
+        RateLimiter::for('strava-oauth', fn (Request $request): Limit => Limit::perMinute(10)->by((string) $request->ip()));
+
         // "Sync now" button. The orchestrator lock already de-dupes overlapping
         // syncs; this just keeps an impatient tapper from flooding the queue.
         RateLimiter::for('strava-sync', function (Request $request): Limit {

@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Socialite\Two\InvalidStateException;
 use Laravel\Socialite\Two\User as SocialiteUser;
@@ -440,6 +441,15 @@ it('encrypts the page object written to history state', function (): void {
 
     expect($page)->toBeArray()
         ->and($page['encryptHistory'] ?? false)->toBeTrue();
+});
+
+it('throttles both strava oauth endpoints, the open account-creation path', function (): void {
+    foreach (['auth.strava.redirect', 'auth.strava.callback'] as $name) {
+        $route = Route::getRoutes()->getByName($name);
+
+        expect($route)->not->toBeNull()
+            ->and($route->gatherMiddleware())->toContain('throttle:strava-oauth');
+    }
 });
 
 it('blocks guests from the dashboard', function (): void {

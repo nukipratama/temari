@@ -76,8 +76,13 @@ Route::middleware('guest')->group(function (): void {
 // The callback upserts by athlete id, so a logged-in user re-authing just refreshes
 // their existing connection. Keeping these out of the `guest` group is what lets the
 // reconnect flow reach the redirect/callback at all instead of bouncing to dashboard.
-Route::get('/auth/strava/redirect', [StravaAuthController::class, 'redirect'])->name('auth.strava.redirect');
-Route::get('/auth/strava/callback', [StravaAuthController::class, 'callback'])->name('auth.strava.callback');
+// Throttled per IP: this is the account-creation path, open to anyone, and the
+// callback spends a Strava token exchange (plus a history backfill on a first
+// connect) before any session exists to key a limit by.
+Route::middleware('throttle:strava-oauth')->group(function (): void {
+    Route::get('/auth/strava/redirect', [StravaAuthController::class, 'redirect'])->name('auth.strava.redirect');
+    Route::get('/auth/strava/callback', [StravaAuthController::class, 'callback'])->name('auth.strava.callback');
+});
 
 Route::middleware(['auth'])->group(function (): void {
     // Reachable regardless of onboarding status: the wizard itself, and
