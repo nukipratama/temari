@@ -16,6 +16,8 @@ interface SectionTabsProps<TId extends string> {
     active: TId;
     /** Active tab's count chip only — sibling counts would need extra queries per page load. */
     activeCount?: string;
+    /** Cream-on-dark treatment for use on a HeroPanel/sky background. */
+    onSky?: boolean;
     className?: string;
 }
 
@@ -46,6 +48,7 @@ export default function SectionTabs<TId extends string>({
     tabs,
     active,
     activeCount,
+    onSky = false,
     className,
 }: Readonly<SectionTabsProps<TId>>) {
     const navRef = useRef<HTMLElement>(null);
@@ -99,9 +102,14 @@ export default function SectionTabs<TId extends string>({
                         aria-current={isActive ? 'page' : undefined}
                         className={cn(
                             'focus-ring inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-[13px] transition',
-                            isActive
-                                ? 'bg-sky text-cream font-semibold shadow-sm'
-                                : 'bg-transparent text-ink-2 hover:bg-sky/[0.06]',
+                            isActive &&
+                                (onSky
+                                    ? 'bg-cream text-sky font-semibold shadow-sm'
+                                    : 'bg-sky text-cream font-semibold shadow-sm'),
+                            !isActive &&
+                                (onSky
+                                    ? 'bg-transparent text-ink-on-sky hover:bg-cream/10 hover:text-cream'
+                                    : 'bg-transparent text-ink-2 hover:bg-sky/[0.06]'),
                         )}
                     >
                         <Icon
@@ -114,7 +122,14 @@ export default function SectionTabs<TId extends string>({
                         {isActive &&
                             activeCount != null &&
                             activeCount !== '' && (
-                                <span className="rounded-full bg-horizon/25 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-[0.06em] text-horizon">
+                                <span
+                                    className={cn(
+                                        'rounded-full px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-[0.06em]',
+                                        onSky
+                                            ? 'bg-sky/15 text-sky'
+                                            : 'bg-horizon/25 text-horizon',
+                                    )}
+                                >
                                     {activeCount}
                                 </span>
                             )}

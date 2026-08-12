@@ -4,6 +4,7 @@ export type TodayHistoryTab = 'today' | 'history';
 
 interface TodayHistoryTabsProps {
     active: TodayHistoryTab;
+    onSky?: boolean;
     className?: string;
 }
 
@@ -19,7 +20,15 @@ const TABS: ReadonlyArray<SectionTabItem<TodayHistoryTab>> = [
 
 export default function TodayHistoryTabs({
     active,
+    onSky = false,
     className,
 }: Readonly<TodayHistoryTabsProps>) {
-    return <SectionTabs tabs={TABS} active={active} className={className} />;
+    return (
+        <SectionTabs
+            tabs={TABS}
+            active={active}
+            onSky={onSky}
+            className={className}
+        />
+    );
 }

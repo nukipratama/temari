@@ -9,6 +9,7 @@ import Temari from '@/components/temari/Temari';
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import SectionLabel from '@/components/ui/SectionLabel';
+import { cn } from '@/lib/cn';
 
 const HERO: Record<
     StravaSyncState,
@@ -57,7 +58,12 @@ const ACTIONS = [
     },
 ] as const;
 
-export default function EmptyRunsState() {
+export default function EmptyRunsState({
+    onSky = false,
+}: Readonly<{
+    /** Cream-on-dark treatment for use on a HeroPanel/sky background. */
+    onSky?: boolean;
+}> = {}) {
     const { stravaSync } = usePage<SharedProps>().props;
     const state: StravaSyncState = stravaSync?.state ?? 'disconnected';
     const hero = HERO[state];
@@ -89,10 +95,20 @@ export default function EmptyRunsState() {
                     <Eyebrow token="hero" tone="horizon" className="mb-3">
                         {hero.eyebrow}
                     </Eyebrow>
-                    <h2 className="font-display text-display-sm text-ink">
+                    <h2
+                        className={cn(
+                            'font-display text-display-sm',
+                            onSky ? 'text-cream' : 'text-ink',
+                        )}
+                    >
                         {hero.headline}
                     </h2>
-                    <p className="mx-auto mt-3 max-w-sm font-display text-quote-sm italic leading-relaxed text-ink-2">
+                    <p
+                        className={cn(
+                            'mx-auto mt-3 max-w-sm font-display text-quote-sm italic leading-relaxed',
+                            onSky ? 'text-ink-on-sky' : 'text-ink-2',
+                        )}
+                    >
                         &ldquo;{hero.copy}&rdquo;
                     </p>
                 </div>
@@ -101,32 +117,59 @@ export default function EmptyRunsState() {
             </div>
 
             {/* While you wait */}
-            <Card padding="md" className="w-full max-w-md">
-                <SectionLabel>While you wait</SectionLabel>
+            <Card
+                tone={onSky ? 'sky-glass' : 'cream'}
+                padding="md"
+                className="w-full max-w-md"
+            >
+                <SectionLabel onSky={onSky}>While you wait</SectionLabel>
                 <div className="mt-3 flex flex-col gap-2">
                     {ACTIONS.map(({ icon, title, desc, href }) => (
                         <Link
                             key={title}
                             href={href}
-                            className="focus-ring flex items-center gap-3 rounded-xl bg-surface-card px-4 py-3"
+                            className={cn(
+                                'focus-ring flex items-center gap-3 rounded-xl px-4 py-3',
+                                onSky ? 'bg-cream/[0.08]' : 'bg-surface-card',
+                            )}
                         >
                             <span
                                 aria-hidden
-                                className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-horizon/[0.14] text-horizon-deep"
+                                className={cn(
+                                    'flex h-8 w-8 flex-none items-center justify-center rounded-lg',
+                                    onSky
+                                        ? 'bg-cream/10 text-horizon'
+                                        : 'bg-horizon/[0.14] text-horizon-deep',
+                                )}
                             >
                                 <Icon icon={icon} width={16} height={16} />
                             </span>
                             <div className="min-w-0 flex-1">
-                                <div className="text-[13px] font-semibold text-ink">
+                                <div
+                                    className={cn(
+                                        'text-[13px] font-semibold',
+                                        onSky ? 'text-cream' : 'text-ink',
+                                    )}
+                                >
                                     {title}
                                 </div>
-                                <div className="mt-0.5 font-mono text-[11px] text-ink-3">
+                                <div
+                                    className={cn(
+                                        'mt-0.5 font-mono text-[11px]',
+                                        onSky
+                                            ? 'text-ink-on-sky'
+                                            : 'text-ink-3',
+                                    )}
+                                >
                                     {desc}
                                 </div>
                             </div>
                             <span
                                 aria-hidden
-                                className="font-mono text-[14px] text-ink-3"
+                                className={cn(
+                                    'font-mono text-[14px]',
+                                    onSky ? 'text-ink-on-sky' : 'text-ink-3',
+                                )}
                             >
                                 ›
                             </span>

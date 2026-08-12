@@ -18,7 +18,13 @@ import {
 export default function KondisiCard({
     load,
     snapshot,
-}: Readonly<{ load: TrainingLoad | null; snapshot: WeeklySnapshot | null }>) {
+    onSky = false,
+}: Readonly<{
+    load: TrainingLoad | null;
+    snapshot: WeeklySnapshot | null;
+    /** Cream-on-dark treatment for use on a HeroPanel/sky background. */
+    onSky?: boolean;
+}>) {
     const rows: ReadonlyArray<{
         label: string;
         value: string;
@@ -52,20 +58,38 @@ export default function KondisiCard({
         },
     ];
     return (
-        <Card as="section" padding="md" className="flex h-full flex-col gap-3">
-            <SectionLabel dot className="mb-0">
+        <Card
+            as="section"
+            tone={onSky ? 'sky-glass' : 'cream'}
+            padding="md"
+            className="flex h-full flex-col gap-3"
+        >
+            <SectionLabel dot onSky={onSky} className="mb-0">
                 Condition · {snapshot ? '7 days' : 'not enough data yet'}
             </SectionLabel>
             {rows.map(({ label, value, hint, color }) => (
                 <div
                     key={label}
-                    className="flex items-baseline justify-between py-1.5 border-b border-cream-deep last:border-b-0"
+                    className={cn(
+                        'flex items-baseline justify-between py-1.5 border-b last:border-b-0',
+                        onSky ? 'border-cream/15' : 'border-cream-deep',
+                    )}
                 >
                     <div>
-                        <div className="text-[13px] font-medium text-ink">
+                        <div
+                            className={cn(
+                                'text-[13px] font-medium',
+                                onSky ? 'text-cream' : 'text-ink',
+                            )}
+                        >
                             {label}
                         </div>
-                        <div className="font-display text-xs italic text-ink-3">
+                        <div
+                            className={cn(
+                                'font-display text-xs italic',
+                                onSky ? 'text-ink-on-sky' : 'text-ink-3',
+                            )}
+                        >
                             {hint}
                         </div>
                     </div>
@@ -81,7 +105,12 @@ export default function KondisiCard({
             ))}
             <Link
                 href="/activities"
-                className="focus-ring mt-auto rounded pt-1 text-label-micro text-horizon-deep hover:text-ember-deep"
+                className={cn(
+                    'focus-ring mt-auto rounded pt-1 text-label-micro',
+                    onSky
+                        ? 'text-horizon hover:text-cream'
+                        : 'text-horizon-deep hover:text-ember-deep',
+                )}
             >
                 Technical detail →
             </Link>

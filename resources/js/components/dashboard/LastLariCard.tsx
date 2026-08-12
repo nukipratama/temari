@@ -9,6 +9,7 @@ import LinkCard from '@/components/ui/LinkCard';
 import MoodChip from '@/components/ui/MoodChip';
 import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
+import { cn } from '@/lib/cn';
 import {
     formatKm,
     formatPace,
@@ -33,10 +34,13 @@ export default function LastLariCard({
     run,
     pose,
     note,
+    onSky = false,
 }: Readonly<{
     run: ActivityDetail;
     pose: TemariPose;
     note?: LastRunNote | null;
+    /** Cream-on-dark treatment for use on a HeroPanel/sky background. */
+    onSky?: boolean;
 }>) {
     const km = formatKm(run.distance);
     const paceSec = paceSecPerKm(run.elapsed_time, run.distance);
@@ -56,22 +60,28 @@ export default function LastLariCard({
     return (
         <LinkCard
             href={activityUrl(run)}
+            tone={onSky ? 'sky-glass' : 'cream'}
             padding="md"
             className="flex h-full flex-col gap-3"
         >
-            <SectionLabel dot className="mb-0">
+            <SectionLabel dot onSky={onSky} className="mb-0">
                 Last run · {dateLabel}
             </SectionLabel>
             <div className="flex items-start gap-3">
                 <Temari pose={pose} size={48} />
                 <div className="min-w-0 flex-1">
-                    <div className="font-display text-2xl leading-tight tracking-[-0.01em] text-ink">
+                    <div
+                        className={cn(
+                            'font-display text-2xl leading-tight tracking-[-0.01em]',
+                            onSky ? 'text-cream' : 'text-ink',
+                        )}
+                    >
                         {run.name ?? 'Run'}
                     </div>
                     {dateUpper && (
                         <Eyebrow
                             token="micro"
-                            tone="ink-2"
+                            tone={onSky ? 'ink-on-sky' : 'ink-2'}
                             className="mt-1 flex flex-wrap items-center gap-x-2"
                         >
                             <span>{dateUpper}</span>
@@ -92,7 +102,7 @@ export default function LastLariCard({
                     {(locationShort || weatherLabel) && (
                         <Eyebrow
                             token="micro"
-                            tone="ink-2"
+                            tone={onSky ? 'ink-on-sky' : 'ink-2'}
                             className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5"
                         >
                             {locationShort && (
@@ -116,39 +126,56 @@ export default function LastLariCard({
             </div>
             <div className="grid grid-cols-3 gap-3">
                 <StatTile
-                    tone="plain"
+                    tone={onSky ? 'plainSky' : 'plain'}
                     size="lg"
                     align="center"
                     label="KM"
                     value={km}
-                    valueClassName="font-black tracking-tight text-ink"
+                    valueClassName={cn(
+                        'font-black tracking-tight',
+                        onSky ? 'text-cream' : 'text-ink',
+                    )}
                 />
                 <StatTile
-                    tone="plain"
+                    tone={onSky ? 'plainSky' : 'plain'}
                     size="lg"
                     align="center"
                     label="PACE"
                     value={paceSec != null ? `${formatPace(paceSec)}/km` : '—'}
-                    valueClassName="font-black tracking-tight text-ink"
+                    valueClassName={cn(
+                        'font-black tracking-tight',
+                        onSky ? 'text-cream' : 'text-ink',
+                    )}
                 />
                 <StatTile
-                    tone="plain"
+                    tone={onSky ? 'plainSky' : 'plain'}
                     size="lg"
                     align="center"
                     label="TRIMP"
                     value={trimp != null ? String(trimp) : '—'}
                     explainerKey="trimp"
-                    valueClassName="font-black tracking-tight text-ink"
+                    valueClassName={cn(
+                        'font-black tracking-tight',
+                        onSky ? 'text-cream' : 'text-ink',
+                    )}
                 />
             </div>
             {note && (
-                <div className="flex items-start gap-2 px-3 text-sm leading-relaxed text-ink-2">
+                <div
+                    className={cn(
+                        'flex items-start gap-2 px-3 text-sm leading-relaxed',
+                        onSky ? 'text-ink-on-sky' : 'text-ink-2',
+                    )}
+                >
                     <Icon
                         icon="mdi:comment-quote-outline"
                         width={14}
                         height={14}
                         aria-hidden
-                        className="mt-0.5 shrink-0 text-leaf-deep"
+                        className={cn(
+                            'mt-0.5 shrink-0',
+                            onSky ? 'text-leaf' : 'text-leaf-deep',
+                        )}
                     />
                     <p className="min-w-0">{renderBold(note.oneline)}</p>
                 </div>
@@ -156,7 +183,7 @@ export default function LastLariCard({
             <Eyebrow
                 as="span"
                 token="micro"
-                tone="horizon-deep"
+                tone={onSky ? 'horizon' : 'horizon-deep'}
                 className="mt-auto"
             >
                 View run detail →

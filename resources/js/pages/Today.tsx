@@ -16,21 +16,25 @@ import KpiTile from '@/components/dashboard/KpiTile';
 import LastLariCard, {
     type LastRunNote,
 } from '@/components/dashboard/LastLariCard';
-import TemariVoiceCard from '@/components/dashboard/TemariVoiceCard';
+import TodayHeroBanner from '@/components/dashboard/TodayHeroBanner';
 import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
 import VitalChips from '@/components/dashboard/VitalChips';
 import CoachMark from '@/components/onboarding/CoachMark';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
 import { type TemariPose } from '@/components/temari/TemariProto';
+import HeroPanel from '@/components/ui/HeroPanel';
 import PageContainer from '@/components/ui/PageContainer';
-import PageHero from '@/components/ui/PageHero';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { useCountUp } from '@/hooks/useCountUp';
 import { appLayout } from '@/layouts/appLayout';
 import { formatTimeId, formatWeekdayDateId } from '@/lib/pace';
 import { VIBE_TO_POSE, poseForRun } from '@/lib/temariPose';
 
-import { featuredCardFor, vibeSubtitleFor } from './Today/helpers';
+import {
+    featuredCardFor,
+    vibeSubtitleFor,
+    weekRangeLabel,
+} from './Today/helpers';
 
 interface TodayProps {
     briefing: BriefingResult;
@@ -77,78 +81,77 @@ export default function Today({
     return (
         <>
             <Head title="Today" />
-            <PageContainer>
-                <header className="mb-8">
-                    <TodayHistoryTabs active="today" className="mb-5" />
-                    <PageHero size="2xl" eyebrow={dateLine}>
-                        Hey, {firstName}
-                        <br />
-                        <span className="italic text-horizon">
-                            {vibeSubtitle}
-                        </span>
-                    </PageHero>
-                </header>
+            <HeroPanel className="rounded-none px-0 py-8 sm:px-0 sm:py-10">
+                <PageContainer>
+                    <TodayHistoryTabs active="today" onSky className="mb-5" />
+                    <TodayHeroBanner
+                        firstName={firstName}
+                        dateLine={dateLine}
+                        vibeSubtitle={vibeSubtitle}
+                        briefing={briefing}
+                        pose={pose}
+                        lastRun={lastRun}
+                    />
 
-                {recentRuns.length === 0 ? (
-                    <>
-                        <TemariVoiceCard
-                            briefing={briefing}
-                            pose={pose}
-                            lastRun={lastRun}
-                        />
-                        <div className="mt-6">
-                            <EmptyRunsState />
+                    {recentRuns.length === 0 ? (
+                        <div className="mt-8">
+                            <EmptyRunsState onSky />
                         </div>
-                    </>
-                ) : (
-                    <>
-                        {featured && (
-                            <>
-                                <div
-                                    ref={featuredRef}
-                                    data-coachmark="today-featured-card"
-                                >
-                                    <FeaturedKartuPanel
-                                        featured={featured}
-                                        featuredKartuVoice={
-                                            briefing.featuredKartuVoice
-                                        }
+                    ) : (
+                        <>
+                            {featured && (
+                                <div className="mt-8">
+                                    <div
+                                        ref={featuredRef}
+                                        data-coachmark="today-featured-card"
+                                    >
+                                        <FeaturedKartuPanel
+                                            featured={featured}
+                                            featuredKartuVoice={
+                                                briefing.featuredKartuVoice
+                                            }
+                                        />
+                                    </div>
+                                    <CoachMark
+                                        id="today-featured-card"
+                                        anchorRef={featuredRef}
+                                        placement="bottom"
+                                        title="Every run gets a card"
+                                        body="This one's my pick of your recent runs, and the rest are waiting in Collection."
                                     />
                                 </div>
-                                <CoachMark
-                                    id="today-featured-card"
-                                    anchorRef={featuredRef}
-                                    placement="bottom"
-                                    title="Every run gets a card"
-                                    body="This one's my pick of your recent runs, and the rest are waiting in Collection."
-                                />
-                            </>
-                        )}
+                            )}
 
-                        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-                            <div className="flex flex-col gap-6">
+                            <div className="mt-8 flex flex-col gap-6">
                                 <section>
-                                    <SectionLabel dot dotClass="bg-leaf">
-                                        This week
+                                    <SectionLabel dot dotClass="bg-leaf" onSky>
+                                        This week · {weekRangeLabel(now)}
                                     </SectionLabel>
                                     <div className="grid grid-cols-3 gap-3">
                                         <KpiTile
                                             label="Runs"
                                             value={weekRunsDisplay}
+                                            onSky
                                         />
                                         <KpiTile
                                             label="KM"
                                             value={weekKmDisplay}
+                                            onSky
                                         />
                                         <KpiTile
                                             label="TRIMP"
                                             value={weekTrimpDisplay}
                                             explainerKey="trimp"
+                                            onSky
                                         />
                                     </div>
                                 </section>
 
-                                <VitalChips briefing={briefing} load={load} />
+                                <VitalChips
+                                    briefing={briefing}
+                                    load={load}
+                                    onSky
+                                />
 
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     {lastRun && (
@@ -161,26 +164,20 @@ export default function Today({
                                                 ] ?? null,
                                             )}
                                             note={lastRunNote}
+                                            onSky
                                         />
                                     )}
                                     <KondisiCard
                                         load={load}
                                         snapshot={snapshot}
+                                        onSky
                                     />
                                 </div>
                             </div>
-
-                            <div className="lg:sticky lg:top-8 lg:self-start">
-                                <TemariVoiceCard
-                                    briefing={briefing}
-                                    pose={pose}
-                                    lastRun={lastRun}
-                                />
-                            </div>
-                        </div>
-                    </>
-                )}
-            </PageContainer>
+                        </>
+                    )}
+                </PageContainer>
+            </HeroPanel>
         </>
     );
 }

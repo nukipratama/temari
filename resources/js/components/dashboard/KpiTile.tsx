@@ -13,6 +13,8 @@ interface KpiTileProps {
     tone?: Tone;
     /** When set, renders a `(?)` button next to the label that opens a metric glossary popover. */
     explainerKey?: MetricKey;
+    /** Cream-on-dark treatment for use on a HeroPanel/sky background. */
+    onSky?: boolean;
 }
 
 const TONE_CLASS: Record<Tone, string> = {
@@ -22,16 +24,36 @@ const TONE_CLASS: Record<Tone, string> = {
     neutral: 'text-ink',
 };
 
+const TONE_CLASS_ON_SKY: Record<Tone, string> = {
+    positive: 'text-mood-easy',
+    warning: 'text-mood-blazing',
+    alert: 'text-mood-gassed',
+    neutral: 'text-cream',
+};
+
 export default function KpiTile({
     label,
     value,
     sub,
     tone = 'neutral',
     explainerKey,
+    onSky = false,
 }: Readonly<KpiTileProps>) {
     return (
-        <div className="rounded-2xl border border-line bg-surface-card p-3 sm:p-4">
-            <div className="flex items-center gap-1 font-mono text-[12px] font-bold uppercase tracking-wider text-ink-2 sm:text-xs">
+        <div
+            className={cn(
+                'rounded-2xl border p-3 sm:p-4',
+                onSky
+                    ? 'border-cream/[0.12] bg-cream/[0.06]'
+                    : 'border-line bg-surface-card',
+            )}
+        >
+            <div
+                className={cn(
+                    'flex items-center gap-1 font-mono text-[12px] font-bold uppercase tracking-wider sm:text-xs',
+                    onSky ? 'text-ink-on-sky' : 'text-ink-2',
+                )}
+            >
                 <span>{label}</span>
                 {explainerKey && (
                     <MetricExplainer metricKey={explainerKey} size="xs" />
@@ -40,13 +62,20 @@ export default function KpiTile({
             <div
                 className={cn(
                     'mt-1.5 font-mono text-2xl font-bold tabular-nums sm:mt-2 sm:text-3xl',
-                    TONE_CLASS[tone],
+                    onSky ? TONE_CLASS_ON_SKY[tone] : TONE_CLASS[tone],
                 )}
             >
                 {value}
             </div>
             {sub != null && (
-                <div className="mt-1 text-xs text-ink-3">{sub}</div>
+                <div
+                    className={cn(
+                        'mt-1 text-xs',
+                        onSky ? 'text-ink-on-sky' : 'text-ink-3',
+                    )}
+                >
+                    {sub}
+                </div>
             )}
         </div>
     );
