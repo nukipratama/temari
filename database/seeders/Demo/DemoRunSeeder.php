@@ -6,6 +6,7 @@ namespace Database\Seeders\Demo;
 
 use App\Actions\Gamification\GrantEligibleUnlocksAction;
 use App\Actions\Run\Story\ResolveFeaturedKartuAction;
+use App\Enums\IngestState;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
@@ -439,6 +440,7 @@ class DemoRunSeeder
             [
                 'fetched_at' => $blueprint->startsAt->copy()->addHour(),
                 'analyzed_at' => $blueprint->startsAt->copy()->addHour(),
+                'ingest_state' => IngestState::Detailed,
                 'detail_fail_count' => 0,
             ],
         );
