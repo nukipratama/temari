@@ -137,3 +137,56 @@ it('tags every produced row with the phase it was built for', function (): void 
         expect($row['phase'])->toBe(PlanPhase::Peak);
     }
 });
+
+function qualityCount(array $rows): int
+{
+    return collect($rows)
+        ->filter(fn (array $r): bool => in_array($r['session_type'], [SessionType::Tempo, SessionType::Interval], true))
+        ->count();
+}
+
+it('adds a quality session when race-pace feedback asks for more', function (): void {
+    $before = $this->builder->build($this->monday, PlanPhase::Build, 6, [], null, true);
+    $after = $this->builder->build($this->monday, PlanPhase::Build, 6, [], null, true, null, 1);
+
+    expect(qualityCount($before))->toBe(2)
+        ->and(qualityCount($after))->toBe(3);
+});
+
+it('drops a quality session when race-pace feedback asks for less', function (): void {
+    $before = $this->builder->build($this->monday, PlanPhase::Build, 6, [], null, true);
+    $after = $this->builder->build($this->monday, PlanPhase::Build, 6, [], null, true, null, -1);
+
+    expect(qualityCount($before))->toBe(2)
+        ->and(qualityCount($after))->toBe(1);
+});
+
+it('drops the week to zero quality when asked for less than it already carries', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Base, 4, [], null, false, null, -1);
+
+    expect(qualityCount($rows))->toBe(0);
+});
+
+it('refuses to add a quality session to a week too short to absorb it', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 4, [], null, true, null, 1);
+
+    expect(qualityCount($rows))->toBe(1);
+});
+
+it('never lets race-pace feedback add quality work to a taper or a deload', function (): void {
+    $taper = $this->builder->build($this->monday, PlanPhase::Taper, 6, [], 10_000.0, false, null, 1);
+    $deload = $this->builder->build($this->monday, PlanPhase::Deload, 6, [], null, true, null, 1);
+
+    expect(qualityCount($taper))->toBe(2)
+        ->and(qualityCount($deload))->toBe(0);
+});
+
+it('caps the quality block even when feedback keeps asking for more', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 6, [], null, true, null, 5);
+
+    expect(qualityCount($rows))->toBe(3);
+});
+
+it('leaves the season-goal slot count on the unadapted phase baseline', function (): void {
+    expect($this->builder->qualitySlotCount(PlanPhase::Build, 6, null, true))->toBe(2);
+});

@@ -51,12 +51,31 @@ interface PlanWeek {
     days: PlanDay[];
 }
 
+interface PlanAdaptation {
+    reason: string;
+    headline: string;
+    detail: string;
+    deload: boolean;
+}
+
 interface PlanProps {
     race: { race_date: string; name: string | null } | null;
     sessionsPerWeek: number;
     weeks: PlanWeek[];
     season: SeasonSummary;
+    adaptation: PlanAdaptation | null;
 }
+
+// Prescriptive numbers, not clinical ones. Shown on every render, never
+// behind a disclosure, so the framing can't be missed.
+const DISCLAIMER =
+    'Temari prescribes from your own data, not from a medical assessment. These numbers are training guidance, not medical advice. Pain, illness or injury is a conversation for a doctor, not a plan engine.';
+
+const STATUS_LABEL: Record<string, string> = {
+    done: 'Done',
+    partial: 'Partial',
+    missed: 'Missed',
+};
 
 const SESSION_TYPE_LABEL: Record<string, string> = {
     easy: 'Easy',
@@ -104,6 +123,7 @@ export default function Plan({
     sessionsPerWeek,
     weeks,
     season,
+    adaptation,
 }: Readonly<PlanProps>) {
     const [regenerating, setRegenerating] = useState(false);
     const scheduleRef = useRef<HTMLDivElement>(null);
@@ -202,6 +222,31 @@ export default function Plan({
                         </PillButton>
                     </div>
                 </header>
+
+                <section className="mt-8" data-testid="plan-adaptation">
+                    {adaptation && (
+                        <Card padding="sm" className="flex flex-col gap-1.5">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <SectionLabel>This week</SectionLabel>
+                                <Chip
+                                    tone={
+                                        adaptation.deload
+                                            ? 'neutral'
+                                            : 'horizon'
+                                    }
+                                >
+                                    {adaptation.headline}
+                                </Chip>
+                            </div>
+                            <p className="text-sm leading-relaxed text-ink">
+                                {adaptation.detail}
+                            </p>
+                        </Card>
+                    )}
+                    <p className="mt-3 text-xs leading-relaxed text-ink-3">
+                        {DISCLAIMER}
+                    </p>
+                </section>
 
                 <section className="mt-8">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -352,13 +397,10 @@ export default function Plan({
                                                             day.session_type !==
                                                                 'rest' && (
                                                                 <p className="mt-0.5 text-xs text-ink-3">
-                                                                    {day.status ===
-                                                                    'done'
-                                                                        ? 'Done'
-                                                                        : day.status ===
-                                                                            'missed'
-                                                                          ? 'Missed'
-                                                                          : ''}
+                                                                    {STATUS_LABEL[
+                                                                        day
+                                                                            .status
+                                                                    ] ?? ''}
                                                                 </p>
                                                             )}
                                                     </div>

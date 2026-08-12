@@ -43,10 +43,17 @@ final class WeekPlanBuilder
     /** Races at/above this distance get race-pace-specific (marathon band) quality work in Peak/Taper. */
     private const float MARATHON_DISTANCE_THRESHOLD_M = 30_000.0;
 
+    /** Ceiling on quality sessions per week once race-pace feedback asks for more. */
+    private const int MAX_QUALITY_SLOTS = 3;
+
+    /** A week with fewer sessions than this has no room to absorb an extra quality day. */
+    private const int MIN_SESSIONS_FOR_EXTRA_QUALITY = 5;
+
     /**
      * @param  array<string, true>  $pinnedDates  Y-m-d dates already fixed by the user; never assigned a row here
      * @param  Carbon  $notBefore  dates earlier than this (a past day within the current week) are skipped too —
      *                             regeneration only ever writes today-forward, so past days stay untouched
+     * @param  int  $qualityDelta  race-pace feedback from {@see PlanAdapter}: +1 adds a quality session, -1 drops one
      * @return array<string, array{phase: PlanPhase, session_type: SessionType, distance_band: DistanceBand, pace_band: ?PaceBand}> keyed by Y-m-d
      */
     public function build(
@@ -57,13 +64,14 @@ final class WeekPlanBuilder
         ?float $raceDistanceM,
         bool $selfScaled,
         ?Carbon $notBefore = null,
+        int $qualityDelta = 0,
     ): array {
         $sessionsPerWeek = max(self::MIN_SESSIONS, min(self::MAX_SESSIONS, $sessionsPerWeek));
         $trainingOffsets = self::DAY_TEMPLATES[$sessionsPerWeek];
         $longOffset = end($trainingOffsets);
         $isMarathonDistance = $raceDistanceM !== null && $raceDistanceM >= self::MARATHON_DISTANCE_THRESHOLD_M;
 
-        $qualitySlots = $this->qualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled);
+        $qualitySlots = $this->qualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $qualityDelta);
         $longSlot = $this->longSlot($phase, $isMarathonDistance);
 
         // Non-long training offsets, in date order — the pool quality work is
@@ -173,13 +181,59 @@ final class WeekPlanBuilder
     {
         $isMarathonDistance = $raceDistanceM !== null && $raceDistanceM >= self::MARATHON_DISTANCE_THRESHOLD_M;
 
-        return count($this->qualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled));
+        return count($this->qualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, 0));
     }
 
     /**
      * @return list<array{session_type: SessionType, distance_band: DistanceBand, pace_band: PaceBand}>
      */
-    private function qualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled): array
+    private function qualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled, int $qualityDelta): array
+    {
+        return self::withQualityDelta(
+            $this->phaseQualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled),
+            $phase,
+            $sessionsPerWeek,
+            $qualityDelta,
+        );
+    }
+
+    /**
+     * Race-pace feedback resizes the week's quality block. Deload and Taper
+     * are exempt in both directions: neither exists to carry quality work,
+     * and a taper's whole job is arriving fresh. Adding is further gated on
+     * the week having enough sessions to absorb it, so a 3-day week never
+     * turns into two-thirds quality.
+     *
+     * @param  list<array{session_type: SessionType, distance_band: DistanceBand, pace_band: PaceBand}>  $slots
+     * @return list<array{session_type: SessionType, distance_band: DistanceBand, pace_band: PaceBand}>
+     */
+    private static function withQualityDelta(array $slots, PlanPhase $phase, int $sessionsPerWeek, int $qualityDelta): array
+    {
+        if ($qualityDelta === 0 || in_array($phase, [PlanPhase::Deload, PlanPhase::Taper], true)) {
+            return $slots;
+        }
+
+        $ceiling = $sessionsPerWeek >= self::MIN_SESSIONS_FOR_EXTRA_QUALITY ? self::MAX_QUALITY_SLOTS : count($slots);
+        $target = max(0, min($ceiling, count($slots) + $qualityDelta));
+
+        if ($target <= count($slots)) {
+            return array_slice($slots, 0, $target);
+        }
+
+        return [
+            ...$slots,
+            ...array_fill(0, $target - count($slots), [
+                'session_type' => SessionType::Tempo,
+                'distance_band' => DistanceBand::Medium,
+                'pace_band' => PaceBand::Threshold,
+            ]),
+        ];
+    }
+
+    /**
+     * @return list<array{session_type: SessionType, distance_band: DistanceBand, pace_band: PaceBand}>
+     */
+    private function phaseQualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled): array
     {
         if ($phase === PlanPhase::Deload) {
             return [];
