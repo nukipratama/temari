@@ -301,6 +301,71 @@ body {
     }
 }
 
+/* Login hero: route trace draw-in + a slow breathing glow, plus a shared
+   fade-in-up for both panes' content. Plain CSS, not framer-motion --
+   bareLayout/Login is a deliberately motion-library-free route (see
+   scripts/check-entry-chunks.mjs), so this can't reuse lib/motion.ts. */
+@keyframes route-draw {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.route-echo-path {
+    /* pathLength="1" on the element normalizes total length to 1, so the
+       dash math is exact regardless of the curve's actual geometry. */
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: route-draw 2.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.route-echo-path:nth-child(2) {
+    animation-delay: 0.45s;
+}
+
+.route-echo-path:nth-child(3) {
+    animation-delay: 0.9s;
+}
+
+@keyframes hero-glow-breathe {
+    0%,
+    100% {
+        opacity: 0.85;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.04);
+    }
+}
+
+.hero-glow {
+    animation: hero-glow-breathe 7s ease-in-out infinite;
+}
+
+@keyframes login-fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.login-fade-in-up {
+    animation: login-fade-in-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .route-echo-path,
+    .hero-glow,
+    .login-fade-in-up {
+        animation: none;
+    }
+}
+
 /* Hide native scrollbar — used on horizontal strips where explicit
    arrow buttons or swipe are the scroll affordance, so the native bar
    would just be visual noise. */

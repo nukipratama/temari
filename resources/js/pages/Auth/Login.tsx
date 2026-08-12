@@ -1,6 +1,5 @@
 import { Icon } from '@iconify/react';
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { motion, type Variants } from 'framer-motion';
 import { lazy, Suspense } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
@@ -8,9 +7,7 @@ import type { SharedProps } from '@/types/inertia';
 import BrandMark from '@/components/BrandMark';
 import TemariProto from '@/components/temari/TemariProto';
 import PillButton from '@/components/ui/PillButton';
-import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { bareLayout } from '@/layouts/BareShell';
-import { drawIn, fadeInUp } from '@/lib/motion';
 
 // Lazy: KartuMini's rarity-chrome glyphs statically import framer-motion,
 // which this route's entry-chunk budget must stay clear of.
@@ -49,13 +46,6 @@ const SUN_GLOW =
 const FORM_CARD_SHADOW =
     '0 20px 50px rgba(36,28,84,0.06), 0 0 0 1px rgba(36,28,84,0.06)';
 
-// Slower cadence than the shared staggerContainer (tuned for quick KPI
-// reveals) — a route being traced across the hero should read as unhurried.
-const ROUTE_STAGGER: Variants = {
-    hidden: {},
-    visible: { transition: { staggerChildren: 0.45, delayChildren: 0.3 } },
-};
-
 // Strava button keeps #FC4C02 brand orange and the official Strava glyph per their guidelines.
 export default function Login({
     authStravaUrl,
@@ -89,69 +79,59 @@ export default function Login({
 function RouteEcho() {
     // Faint GPS-trace style curves behind the hero content. Calls back to running
     // brand without competing with the headline. Each traces itself in once on
-    // mount (drawIn), staggered slowly so it reads as a route being laid down,
-    // not a pop-in; skipped under prefers-reduced-motion.
-    const reducedMotion = useReducedMotion();
+    // mount, staggered slowly (route-draw + :nth-child delays in app.css) so it
+    // reads as a route being laid down, not a pop-in. Plain CSS, not
+    // framer-motion -- this route's entry-chunk budget stays clear of it (see
+    // scripts/check-entry-chunks.mjs); prefers-reduced-motion is handled there too.
     return (
-        <motion.svg
+        <svg
             aria-hidden
             className="pointer-events-none absolute inset-0 h-full w-full"
             viewBox="0 0 800 800"
             preserveAspectRatio="xMidYMid slice"
             fill="none"
-            initial={reducedMotion ? false : 'hidden'}
-            animate="visible"
-            variants={ROUTE_STAGGER}
         >
-            <motion.path
+            <path
+                className="route-echo-path"
+                pathLength={1}
                 d="M-40,640 Q180,440 380,540 T880,320"
                 stroke="white"
                 strokeWidth="1.5"
                 strokeLinecap="round"
                 strokeOpacity="0.08"
-                variants={drawIn}
             />
-            <motion.path
+            <path
+                className="route-echo-path"
+                pathLength={1}
                 d="M-40,540 Q140,340 340,420 T820,220"
                 stroke="white"
                 strokeWidth="1.2"
                 strokeLinecap="round"
                 strokeOpacity="0.06"
-                variants={drawIn}
             />
-            <motion.path
+            <path
+                className="route-echo-path"
+                pathLength={1}
                 d="M-40,740 Q220,560 460,640 T920,460"
                 stroke="white"
                 strokeWidth="1.8"
                 strokeLinecap="round"
                 strokeOpacity="0.07"
-                variants={drawIn}
             />
-        </motion.svg>
+        </svg>
     );
 }
 
 function HeroSide() {
-    const reducedMotion = useReducedMotion();
     return (
         <div
             className="relative flex flex-col items-center justify-center overflow-hidden px-8 pb-12 pt-24 text-cream sm:px-12 lg:px-16 lg:py-[54px]"
             style={{ background: HERO_GRADIENT }}
         >
-            <motion.span
+            <span
                 aria-hidden
-                className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[560px] -translate-x-1/2 -translate-y-1/2 blur-sm"
+                className="hero-glow pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[560px] -translate-x-1/2 -translate-y-1/2 blur-sm"
                 style={{ background: SUN_GLOW }}
-                animate={
-                    reducedMotion
-                        ? undefined
-                        : { opacity: [0.85, 1, 0.85], scale: [1, 1.04, 1] }
-                }
-                transition={
-                    reducedMotion
-                        ? undefined
-                        : { duration: 7, repeat: Infinity, ease: 'easeInOut' }
-                }
             />
             <RouteEcho />
 
@@ -159,12 +139,7 @@ function HeroSide() {
                 <BrandMark tone="cream" />
             </div>
 
-            <motion.div
-                className="relative z-10 w-full max-w-[560px] text-center xl:max-w-[620px]"
-                initial={reducedMotion ? false : 'hidden'}
-                animate="visible"
-                variants={fadeInUp}
-            >
+            <div className="login-fade-in-up relative z-10 w-full max-w-[560px] text-center xl:max-w-[620px]">
                 <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl bg-sky-deep shadow-[0_24px_60px_rgba(0,0,0,0.45)] ring-1 ring-cream/15">
                     <TemariProto pose="glow" tone="sky" size={200} animate />
                 </div>
@@ -178,7 +153,7 @@ function HeroSide() {
                     “Hi, I'm Temari. From now on, I'll be with you on every
                     run.”
                 </p>
-            </motion.div>
+            </div>
         </div>
     );
 }
@@ -198,14 +173,8 @@ function FormSide({
     demoPending,
     info = null,
 }: Readonly<FormSideProps>) {
-    const reducedMotion = useReducedMotion();
     return (
-        <motion.div
-            className="flex flex-col items-center justify-center gap-7 bg-cream px-8 py-12 sm:px-12 lg:px-[100px] lg:py-20"
-            initial={reducedMotion ? false : 'hidden'}
-            animate="visible"
-            variants={fadeInUp}
-        >
+        <div className="login-fade-in-up flex flex-col items-center justify-center gap-7 bg-cream px-8 py-12 sm:px-12 lg:px-[100px] lg:py-20">
             {info && (
                 <div
                     role="status"
@@ -344,7 +313,7 @@ function FormSide({
             <p className="text-center text-label-micro text-ink-3">
                 I'll see you on the other side of that button. 🐾
             </p>
-        </motion.div>
+        </div>
     );
 }
 
