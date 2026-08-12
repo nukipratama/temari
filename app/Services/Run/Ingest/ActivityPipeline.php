@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Ingest;
 
 use App\Actions\Gamification\DetectActivityMilestonesAction;
+use App\Enums\IngestState;
 use App\Events\ActivityIngested;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
@@ -123,6 +124,7 @@ class ActivityPipeline
         DB::transaction(function () use ($activity, $detailModel): void {
             $activity->update([
                 'analyzed_at' => now(),
+                'ingest_state' => IngestState::Detailed,
                 'detail_fail_count' => 0,
             ]);
 

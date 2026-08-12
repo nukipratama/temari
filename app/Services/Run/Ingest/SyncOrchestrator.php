@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Services\Run\Ingest;
 
 use Throwable;
+use App\Enums\IngestState;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\Analytics\StravaSyncLog;
 use App\Models\User;
 use App\Services\Strava\ActivityFetcher;
+use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\StravaClient;
 use App\Support\Config\AppConfig;
@@ -27,6 +29,8 @@ class SyncOrchestrator
     public function __construct(
         private readonly ActivityFetcher $fetcher,
         private readonly StravaClient $client,
+        private readonly SummaryIngest $summaryIngest,
+        private readonly WeeklyAggregator $weeklyAggregator,
         private readonly ?AppConfig $config = null,
     ) {
     }
@@ -50,23 +54,25 @@ class SyncOrchestrator
         }
 
         try {
-            $newIds = $this->fetcher->fetchNewExternalIds($connection, $since);
-            if ($newIds === []) {
-                $this->logSync($user->id, 'success', 0);
+            ['summaries' => $summaries, 'api_calls' => $apiCalls] = $this->fetcher->fetchNewSummaries($connection, $since);
+            if ($summaries === []) {
+                $this->logSync($user->id, 'success', 0, $apiCalls);
 
                 return 0;
             }
 
-            $inserted = $this->insertActivityRows($user->id, $newIds);
+            $inserted = $this->summaryIngest->store($user->id, $summaries);
+            $this->rebuildAggregates($user, $summaries);
 
-            Log::info('strava-sync inserted activity stubs', [
+            Log::info('strava-sync stored activity summaries', [
                 'user_id' => $user->id,
                 'inserted' => $inserted,
+                'api_calls' => $apiCalls,
             ]);
 
             Pulse::record('strava_sync', 'inserted', $inserted)->sum()->count();
 
-            $this->logSync($user->id, 'success', $inserted);
+            $this->logSync($user->id, 'success', $inserted, $apiCalls);
 
             return $inserted;
         } catch (StravaConnectionRevokedException $e) {
@@ -76,7 +82,7 @@ class SyncOrchestrator
             // token-refresh-failure path).
             $connection->markRevoked();
             Pulse::record('strava_revoked', 'api_401')->count();
-            $this->logSync($user->id, 'error', 0, $e->getMessage());
+            $this->logSync($user->id, 'error', 0, 0, $e->getMessage());
             Log::warning('strava-sync revoked connection after API 401', [
                 'user_id' => $user->id,
                 'reason' => $e->getMessage(),
@@ -84,7 +90,7 @@ class SyncOrchestrator
 
             return 0;
         } catch (Throwable $e) {
-            $this->logSync($user->id, 'error', 0, $e->getMessage());
+            $this->logSync($user->id, 'error', 0, 0, $e->getMessage());
 
             throw $e;
         } finally {
@@ -116,7 +122,7 @@ class SyncOrchestrator
         }
 
         try {
-            $this->insertActivityRows($user->id, [$externalId]);
+            $this->insertStub($user->id, $externalId);
 
             $activity = Activity::query()
                 ->withStubs()
@@ -152,7 +158,7 @@ class SyncOrchestrator
 
             return true;
         } catch (Throwable $e) {
-            $this->logSync($user->id, 'error', 0, $e->getMessage());
+            $this->logSync($user->id, 'error', 0, 0, $e->getMessage());
 
             throw $e;
         }
@@ -162,39 +168,55 @@ class SyncOrchestrator
      * Source of truth for the Strava kill-switch on the sync side — entry points
      * (command, job, webhook) can skip eagerly, but every sync path bottoms out
      * here so a missed guard still fails safe. Resolved lazily so the heavily
-     * unit-tested constructor signature stays two-arg.
+     * unit-tested constructor signature keeps its collaborators up front.
      */
     private function stravaEnabled(): bool
     {
         return ($this->config ?? app(AppConfig::class))->boolean(AppConfigKey::StravaEnabled);
     }
 
-    private function logSync(int $userId, string $status, int $activitiesSynced, ?string $error = null): void
+    /**
+     * Roll the weekly snapshots forward from the oldest run this sync stored, so
+     * a first-connect backfill lands its whole history in one pass instead of
+     * once per ingested activity.
+     *
+     * @param  list<array<string, mixed>>  $summaries  oldest-first
+     */
+    private function rebuildAggregates(User $user, array $summaries): void
+    {
+        $start = $summaries[0]['start_date_local'] ?? $summaries[0]['start_date'] ?? null;
+        if (! is_string($start) || $start === '') {
+            return;
+        }
+
+        $this->weeklyAggregator->rebuildForwardFrom($user, CarbonImmutable::parse($start));
+    }
+
+    private function logSync(int $userId, string $status, int $activitiesSynced, int $apiCalls = 0, ?string $error = null): void
     {
         // Rate-limit headroom is only meaningful after a successful API call.
         $remaining = $error === null ? $this->client->rateLimitRemaining($userId) : null;
 
-        StravaSyncLog::log($userId, $status, $activitiesSynced, 0, $error, $remaining);
+        StravaSyncLog::log($userId, $status, $activitiesSynced, $apiCalls, $error, $remaining);
     }
 
     /**
-     * @param  list<int>  $externalIds  already sorted ascending (oldest first)
+     * The webhook carries only an activity id, so this path inserts a bare stub
+     * and lets the ingest job fetch detail + streams.
      */
-    private function insertActivityRows(int $userId, array $externalIds): int
+    private function insertStub(int $userId, int $externalId): void
     {
         $now = now();
-        $rows = array_map(fn (int $id): array => [
+
+        DB::transaction(fn (): int => (int) Activity::query()->insertOrIgnore([[
             'user_id' => $userId,
-            'strava_external_id' => $id,
+            'strava_external_id' => $externalId,
+            'ingest_state' => IngestState::Summary->value,
             'fetched_at' => $now,
             'analyzed_at' => null,
             'detail_fail_count' => 0,
             'created_at' => $now,
             'updated_at' => $now,
-        ], $externalIds);
-
-        return DB::transaction(
-            fn (): int => (int) Activity::query()->insertOrIgnore($rows)
-        );
+        ]]));
     }
 }
