@@ -32,7 +32,7 @@ return [
         'target' => 1,
         'unit' => 'PR',
     ],
-    'accessory.medal_gold' => [
+    'accessory.medal_silver' => [
         'title' => 'Log your 5th PR',
         'description' => 'Log 5 PRs total.',
         'slot' => 'medal',
@@ -40,7 +40,7 @@ return [
         'target' => 5,
         'unit' => 'PR',
     ],
-    'accessory.medal_silver' => [
+    'accessory.medal_gold' => [
         'title' => 'Log your 10th PR',
         'description' => 'Log 10 PRs total.',
         'slot' => 'medal',

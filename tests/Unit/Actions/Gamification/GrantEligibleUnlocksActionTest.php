@@ -65,7 +65,7 @@ it('short-circuits once every accessory has been unlocked', function (): void {
     expect(($this->engine)($user))->toBe([]);
 });
 
-it('grants medal_gold once five PRs are recorded', function (): void {
+it('grants medal_silver once five PRs are recorded', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->count(5)->state(new Sequence(
         ['category' => '1km'],
@@ -76,7 +76,7 @@ it('grants medal_gold once five PRs are recorded', function (): void {
     ))->create();
 
     expect(($this->engine)($user))
-        ->toContain('accessory.medal_gold');
+        ->toContain('accessory.medal_silver');
 });
 
 it('grants headband_legendary from a Legendaris run card', function (): void {

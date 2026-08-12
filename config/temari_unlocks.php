@@ -30,19 +30,19 @@ return [
         'icon' => 'mdi:medal',
         'description' => 'A brass medal for your first PR.',
     ],
-    'accessory.medal_gold' => [
-        'name' => 'Gold Medal',
-        'slot' => 'medal',
-        'rarity' => 'uncommon',
-        'icon' => 'mdi:medal-outline',
-        'description' => 'A thin gold medal for 5 total PRs.',
-    ],
     'accessory.medal_silver' => [
         'name' => 'Silver Medal',
         'slot' => 'medal',
+        'rarity' => 'uncommon',
+        'icon' => 'mdi:medal-outline',
+        'description' => 'A thin silver medal for 5 total PRs.',
+    ],
+    'accessory.medal_gold' => [
+        'name' => 'Gold Medal',
+        'slot' => 'medal',
         'rarity' => 'rare',
         'icon' => 'mdi:medal',
-        'description' => "A silver medal once you've logged 10 PRs.",
+        'description' => "A gold medal once you've logged 10 PRs.",
     ],
     'accessory.medal_platinum' => [
         'name' => 'Platinum Medal',

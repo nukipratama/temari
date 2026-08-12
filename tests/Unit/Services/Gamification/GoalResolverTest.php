@@ -106,8 +106,8 @@ it('counts PRs toward the medal goals and caps current at target', function (): 
     $byId = goalsById($this->resolver, $user);
 
     expect($byId['accessory.medal_first']['current'])->toBe(1)   // capped at target 1
-        ->and($byId['accessory.medal_gold']['current'])->toBe(5)   // capped at target 5
-        ->and($byId['accessory.medal_silver']['current'])->toBe(6)  // below target 10
+        ->and($byId['accessory.medal_silver']['current'])->toBe(5)   // capped at target 5
+        ->and($byId['accessory.medal_gold']['current'])->toBe(6)  // below target 10
         ->and($byId['accessory.medal_platinum']['current'])->toBe(6); // below target 20
 });
 
@@ -258,7 +258,7 @@ it('completedCount counts only completed goals', function (): void {
 
 it('closestToCompletion ranks in-progress goals by pct and excludes completed ones', function (): void {
     $user = User::factory()->create();
-    // 5 PRs feed medal_gold (5/5 = 100%) but it is NOT unlocked, so it leads.
+    // 5 PRs feed medal_silver (5/5 = 100%) but it is NOT unlocked, so it leads.
     // The completed medal_first must not appear at all.
     UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_first']);
     PersonalRecord::factory()->for($user)->count(5)->sequence(
@@ -273,7 +273,7 @@ it('closestToCompletion ranks in-progress goals by pct and excludes completed on
 
     // Highest-pct in-progress goal first.
     expect($closest[0]['is_completed'])->toBeFalse()
-        ->and($closest[0]['id'])->toBe('accessory.medal_gold');
+        ->and($closest[0]['id'])->toBe('accessory.medal_silver');
 
     // The completed goal never shows up, even under a limit large enough to fit it.
     $ids = collect($closest)->pluck('id');
@@ -323,7 +323,8 @@ it('carries the catalog rarity onto each goal', function (): void {
 
     // From config/temari_unlocks.php.
     expect($byId['accessory.medal_first']['rarity'])->toBe('common')
-        ->and($byId['accessory.medal_gold']['rarity'])->toBe('uncommon');
+        ->and($byId['accessory.medal_silver']['rarity'])->toBe('uncommon')
+        ->and($byId['accessory.medal_gold']['rarity'])->toBe('rare');
 });
 
 it('resolves the catalog once per TTL instead of re-querying on every call', function (): void {
