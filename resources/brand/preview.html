@@ -1,0 +1,106 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Temari — mark concepts</title>
+<style>
+  :root { --ink:#1a1812; --paper:#f5f0e4; }
+  body { margin:0; padding:48px 40px 90px; background:var(--paper); color:var(--ink);
+         font:14px/1.5 ui-sans-serif,system-ui,-apple-system,sans-serif; }
+  h1 { font-size:20px; font-weight:650; margin:0 0 4px; letter-spacing:-.01em; }
+  h2 { font-size:15px; font-weight:650; margin:56px 0 4px; letter-spacing:-.01em; }
+  p.sub { margin:0 0 32px; color:#6e6452; max-width:64ch; }
+  .row { display:flex; align-items:center; gap:36px; padding:24px 0; border-top:1px solid #d8d0ba; }
+  .name { width:132px; flex:none; font-weight:600; font-size:13px; }
+  .name span { display:block; font-weight:400; color:#6e6452; font-size:12px; margin-top:3px; }
+  .big { width:132px; flex:none; }
+  .sizes { display:flex; align-items:center; gap:22px; }
+  svg { display:block; }
+  .inv { background:var(--ink); border-radius:14px; padding:14px; display:flex; }
+  .inv svg { color:var(--paper); }
+  .heads { display:flex; gap:36px; padding-left:168px; color:#6e6452; font-size:11px;
+           letter-spacing:.06em; text-transform:uppercase; margin-bottom:4px; }
+
+  .pal { margin-top:26px; }
+  .palhead { display:flex; align-items:baseline; gap:12px; margin-bottom:12px; }
+  .palhead b { font-size:13px; }
+  .palhead code { font-size:11px; color:#6e6452; }
+  .swatches { display:flex; gap:5px; margin-left:auto; }
+  .sw { width:20px; height:20px; border-radius:5px; border:1px solid #0002; }
+  .grid { display:flex; gap:14px; flex-wrap:wrap; }
+  .tile { width:96px; height:96px; border-radius:16px; display:flex;
+          align-items:center; justify-content:center; }
+</style>
+
+<h1>Temari — identity mark concepts</h1>
+<p class="sub">Part 1 is monochrome on purpose: a mark has to hold up on silhouette before colour
+flatters it. The 18&nbsp;px column is the real test — that is nav size.
+Part 2 answers the colour question: every mark now has a <code>.mark-base</code> part (your past
+self) and a <code>.mark-lead</code> part (where you are now), so an accent can land on the leading
+element alone.</p>
+
+<div class="heads"><div style="width:132px">132</div><div>48</div><div>28</div><div>18</div><div>on ink</div></div>
+<div id="rows"></div>
+
+<h2>Part 2 — colour</h2>
+<p class="sub">Same six marks, two-tone. Accent on <code>.mark-lead</code> only. Each palette shown
+on paper and reversed on ink, because the mark has to work in the nav bar and on a share card.</p>
+<div id="pals"></div>
+
+<script>
+const marks = [
+  ['m1','Offset loop','outer lap went further than the inner one'],
+  ['m2','Split ahead','top half rotated ahead of the bottom'],
+  ['m3','Nested arcs','three laps, each longer than the last'],
+  ['m4','Track lane','a track with an unfinished inner lane'],
+  ['m5','Stride gap','two strides, one displaced forward'],
+  ['m6','Overtake','a loop whose head passes its own start'],
+];
+const body = {
+  m1: '<path class="l" d="M62.31 16.17 A36 36 0 1 1 37.69 16.17"/><path class="b" d="M55.81 34.03 A17 17 0 1 1 39.07 63.02"/>',
+  m2: '<g transform="rotate(-22 50 50)"><path class="l" d="M16.52 44.10 A34 34 0 0 1 83.48 44.10"/></g><path class="b" d="M83.48 55.90 A34 34 0 0 1 16.52 55.90"/>',
+  m3: '<path class="l" d="M50 14 A36 36 0 1 1 32 18.82"/><path class="b" d="M50 25 A25 25 0 1 1 28.35 62.5"/><path class="b" d="M50 36 A14 14 0 0 1 62.12 57"/>',
+  m4: '<rect class="b" x="13.5" y="29.5" width="73" height="41" rx="20.5"/><path class="l" d="M37 43.5 H55 A6.5 6.5 0 0 1 55 56.5 H45"/>',
+  m5: '<path class="b" d="M30 74 A34 34 0 0 1 30 26"/><g transform="translate(11 -9)"><path class="l" d="M56 26 A34 34 0 0 1 56 74"/></g>',
+  m6: '<path class="b" d="M38 19.4 A33 33 0 1 1 26.6 72"/><path class="l" d="M28 30 L38 19.4 L48.6 29.4"/>',
+};
+const svg = (k, size, base, lead) =>
+  `<svg viewBox="0 0 100 100" width="${size}" height="${size}" fill="none"
+     stroke-width="9" stroke-linecap="round" stroke-linejoin="round"
+     style="--b:${base||'currentColor'};--l:${lead||'currentColor'}">
+     <style>.b{stroke:var(--b)}.l{stroke:var(--l)}</style>${body[k]}</svg>`;
+
+document.getElementById('rows').innerHTML = marks.map(([k, name, desc]) => `
+  <div class="row">
+    <div class="name">${name}<span>${desc}</span></div>
+    <div class="big">${svg(k,132)}</div>
+    <div class="sizes">
+      ${svg(k,48)}${svg(k,28)}${svg(k,18)}
+      <div class="inv">${svg(k,28)}</div>
+    </div>
+  </div>`).join('');
+
+const palettes = [
+  ['Incumbent, evolved', 'indigo + gold on cream — closest to what ships today',
+   {paper:'#f5f0e4', ink:'#241c54', accent:'#d9a53c', onDarkBase:'#f5f0e4', onDarkAccent:'#d9a53c'}],
+  ['Sharp',             'near-black + lime on bone — the most "keeps score" of the three',
+   {paper:'#f2efe6', ink:'#16150f', accent:'#b9ea2f', onDarkBase:'#f2efe6', onDarkAccent:'#b9ea2f'}],
+  ['Ember',             'ink + burnt orange on warm bone — athletic, closest to running-brand norms',
+   {paper:'#f6f1e8', ink:'#1c1613', accent:'#e4572e', onDarkBase:'#f6f1e8', onDarkAccent:'#f0805c'}],
+];
+
+document.getElementById('pals').innerHTML = palettes.map(([name, note, p]) => `
+  <div class="pal">
+    <div class="palhead"><b>${name}</b><code>${note}</code>
+      <div class="swatches">
+        <div class="sw" style="background:${p.paper}"></div>
+        <div class="sw" style="background:${p.ink}"></div>
+        <div class="sw" style="background:${p.accent}"></div>
+      </div>
+    </div>
+    <div class="grid">
+      ${marks.map(([k]) => `<div class="tile" style="background:${p.paper}">${svg(k,64,p.ink,p.accent)}</div>`).join('')}
+    </div>
+    <div class="grid" style="margin-top:10px">
+      ${marks.map(([k]) => `<div class="tile dark" style="background:${p.ink}">${svg(k,64,p.onDarkBase,p.onDarkAccent)}</div>`).join('')}
+    </div>
+  </div>`).join('');
+</script>

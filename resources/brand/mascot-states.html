@@ -1,0 +1,596 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Temari — mascot states &amp; slots</title>
+<style>
+  :root { --cream:#f5f0e4; --sky:#241c54; --ink:#1a1812; --ink3:#6e6452; --line:#d8d0ba; --sunken:#ece2ce; }
+  body { margin:0; padding:48px 40px 90px; background:var(--cream); color:var(--ink);
+         font:14px/1.5 ui-sans-serif,system-ui,-apple-system,sans-serif; }
+  h1 { font-size:20px; font-weight:650; margin:0 0 4px; }
+  h2 { font-size:14px; font-weight:650; margin:52px 0 4px; text-transform:uppercase;
+       letter-spacing:.08em; color:var(--ink3); }
+  p.sub { margin:0 0 28px; color:var(--ink3); max-width:70ch; }
+  .grid { display:flex; flex-wrap:wrap; gap:28px 24px; }
+  .cell { width:150px; }
+  .big { display:flex; justify-content:center; }
+  .sm { display:flex; align-items:center; justify-content:center; gap:12px; margin-top:12px; }
+  .chip { background:var(--sky); border-radius:11px; padding:8px; display:flex; }
+  .cap { font-size:11px; color:var(--ink3); text-align:center; margin-top:10px; }
+  .cap b { display:block; color:var(--ink); font-weight:600; font-size:12px; margin-bottom:2px; }
+  svg { display:block; }
+  .note { background:var(--sunken); border-radius:14px; padding:14px 18px; max-width:70ch;
+          font-size:13px; margin:16px 0 0; }
+</style>
+<h1>Temari — the ten states</h1>
+<p class="sub">Generated from <code>build-mascot.mjs</code>, so every face shares one geometry.
+The halo is a closed ring carrying mood through colour and weight — never a fill, so it never
+reads as a progress meter. Small row is 28&nbsp;px on cream and on indigo.</p>
+<div class="grid">
+    <div class="cell">
+      <div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — resting">
+  <defs><clipPath id="clip-resting"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#908a79" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-resting)"></g>
+  <path d="M34.5 40.0 L45.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 40.0 L54.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M43 63 Q50 67 57 63" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div>
+      <div class="sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — resting">
+  <defs><clipPath id="clip-resting-s"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#908a79" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-resting-s)"></g>
+  <path d="M34.5 40.0 L45.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 40.0 L54.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M43 63 Q50 67 57 63" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+<div class="chip"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — resting">
+  <defs><clipPath id="clip-resting-c"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#908a79" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-resting-c)"></g>
+  <path d="M34.5 40.0 L45.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 40.0 L54.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M43 63 Q50 67 57 63" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div></div>
+      <div class="cap"><b>resting</b>nothing to report</div>
+    </div>
+    <div class="cell">
+      <div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — pleased">
+  <defs><clipPath id="clip-pleased"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#2f8f63" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-pleased)"></g>
+  <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div>
+      <div class="sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — pleased">
+  <defs><clipPath id="clip-pleased-s"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#2f8f63" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-pleased-s)"></g>
+  <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+<div class="chip"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — pleased">
+  <defs><clipPath id="clip-pleased-c"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#2f8f63" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-pleased-c)"></g>
+  <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div></div>
+      <div class="cap"><b>pleased</b>you ran well</div>
+    </div>
+    <div class="cell">
+      <div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — impressed">
+  <defs><clipPath id="clip-impressed"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#2f8f63" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-impressed)"></g>
+  <path d="M34.5 36.0 L45.5 34.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 36.0 L54.5 34.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="5.3" fill="#241c54"/><circle cx="60" cy="50" r="5.3" fill="#241c54"/>
+  <ellipse cx="50" cy="62.5" rx="4" ry="5" fill="#241c54"/>
+</svg>
+</div>
+      <div class="sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — impressed">
+  <defs><clipPath id="clip-impressed-s"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#2f8f63" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-impressed-s)"></g>
+  <path d="M34.5 36.0 L45.5 34.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 36.0 L54.5 34.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="5.3" fill="#241c54"/><circle cx="60" cy="50" r="5.3" fill="#241c54"/>
+  <ellipse cx="50" cy="62.5" rx="4" ry="5" fill="#241c54"/>
+</svg>
+<div class="chip"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — impressed">
+  <defs><clipPath id="clip-impressed-c"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#2f8f63" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-impressed-c)"></g>
+  <path d="M34.5 36.0 L45.5 34.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 36.0 L54.5 34.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="5.3" fill="#241c54"/><circle cx="60" cy="50" r="5.3" fill="#241c54"/>
+  <ellipse cx="50" cy="62.5" rx="4" ry="5" fill="#241c54"/>
+</svg>
+</div></div>
+      <div class="cap"><b>impressed</b>better than expected</div>
+    </div>
+    <div class="cell">
+      <div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — hyped">
+  <defs><clipPath id="clip-hyped"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#af841b" stroke-width="8"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-hyped)"></g>
+  <path d="M34.5 35.0 L45.5 34.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 35.0 L54.5 34.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="5.3" fill="#241c54"/><circle cx="60" cy="50" r="5.3" fill="#241c54"/>
+  <path d="M42 61 Q50 71.5 58 61 Z" fill="#241c54"/>
+</svg>
+</div>
+      <div class="sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — hyped">
+  <defs><clipPath id="clip-hyped-s"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#af841b" stroke-width="8"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-hyped-s)"></g>
+  <path d="M34.5 35.0 L45.5 34.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 35.0 L54.5 34.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="5.3" fill="#241c54"/><circle cx="60" cy="50" r="5.3" fill="#241c54"/>
+  <path d="M42 61 Q50 71.5 58 61 Z" fill="#241c54"/>
+</svg>
+<div class="chip"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — hyped">
+  <defs><clipPath id="clip-hyped-c"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#af841b" stroke-width="8"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-hyped-c)"></g>
+  <path d="M34.5 35.0 L45.5 34.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 35.0 L54.5 34.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="5.3" fill="#241c54"/><circle cx="60" cy="50" r="5.3" fill="#241c54"/>
+  <path d="M42 61 Q50 71.5 58 61 Z" fill="#241c54"/>
+</svg>
+</div></div>
+      <div class="cap"><b>hyped</b>PR territory</div>
+    </div>
+    <div class="cell">
+      <div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — skeptical">
+  <defs><clipPath id="clip-skeptical"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#55488f" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-skeptical)"></g>
+  <path d="M34.5 34.5 L45.5 38.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 41.0 L54.5 41.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><path d="M55.8 50 H64.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M44 64 Q51 61.5 57 63.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div>
+      <div class="sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — skeptical">
+  <defs><clipPath id="clip-skeptical-s"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#55488f" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-skeptical-s)"></g>
+  <path d="M34.5 34.5 L45.5 38.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 41.0 L54.5 41.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><path d="M55.8 50 H64.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M44 64 Q51 61.5 57 63.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+<div class="chip"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — skeptical">
+  <defs><clipPath id="clip-skeptical-c"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#55488f" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-skeptical-c)"></g>
+  <path d="M34.5 34.5 L45.5 38.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 41.0 L54.5 41.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><path d="M55.8 50 H64.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M44 64 Q51 61.5 57 63.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div></div>
+      <div class="cap"><b>skeptical</b>not convinced</div>
+    </div>
+    <div class="cell">
+      <div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — unimpressed">
+  <defs><clipPath id="clip-unimpressed"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#938a78" stroke-width="5"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-unimpressed)"></g>
+  <path d="M34.5 41.0 L45.5 41.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 41.0 L54.5 41.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M35.8 50 H44.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/><path d="M55.8 50 H64.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M43.5 63.5 H56.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div>
+      <div class="sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — unimpressed">
+  <defs><clipPath id="clip-unimpressed-s"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#938a78" stroke-width="5"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-unimpressed-s)"></g>
+  <path d="M34.5 41.0 L45.5 41.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 41.0 L54.5 41.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M35.8 50 H44.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/><path d="M55.8 50 H64.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M43.5 63.5 H56.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+<div class="chip"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — unimpressed">
+  <defs><clipPath id="clip-unimpressed-c"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#938a78" stroke-width="5"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-unimpressed-c)"></g>
+  <path d="M34.5 41.0 L45.5 41.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 41.0 L54.5 41.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M35.8 50 H44.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/><path d="M55.8 50 H64.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M43.5 63.5 H56.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div></div>
+      <div class="cap"><b>unimpressed</b>three days off</div>
+    </div>
+    <div class="cell">
+      <div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — challenging">
+  <defs><clipPath id="clip-challenging"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#ae8430" stroke-width="9"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-challenging)"></g>
+  <path d="M34.5 36.5 L45.5 41.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 36.5 L54.5 41.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M44 64 Q52 67.5 58 61.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div>
+      <div class="sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — challenging">
+  <defs><clipPath id="clip-challenging-s"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#ae8430" stroke-width="9"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-challenging-s)"></g>
+  <path d="M34.5 36.5 L45.5 41.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 36.5 L54.5 41.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M44 64 Q52 67.5 58 61.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+<div class="chip"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — challenging">
+  <defs><clipPath id="clip-challenging-c"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#ae8430" stroke-width="9"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-challenging-c)"></g>
+  <path d="M34.5 36.5 L45.5 41.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 36.5 L54.5 41.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M44 64 Q52 67.5 58 61.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div></div>
+      <div class="cap"><b>challenging</b>daring you</div>
+    </div>
+    <div class="cell">
+      <div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — concerned">
+  <defs><clipPath id="clip-concerned"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#b23a4f" stroke-width="7"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-concerned)"></g>
+  <path d="M34.5 40.5 L45.5 36.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 40.5 L54.5 36.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M43.5 65.5 Q50 61.5 56.5 65.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div>
+      <div class="sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — concerned">
+  <defs><clipPath id="clip-concerned-s"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#b23a4f" stroke-width="7"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-concerned-s)"></g>
+  <path d="M34.5 40.5 L45.5 36.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 40.5 L54.5 36.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M43.5 65.5 Q50 61.5 56.5 65.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+<div class="chip"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — concerned">
+  <defs><clipPath id="clip-concerned-c"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#b23a4f" stroke-width="7"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-concerned-c)"></g>
+  <path d="M34.5 40.5 L45.5 36.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 40.5 L54.5 36.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M43.5 65.5 Q50 61.5 56.5 65.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div></div>
+      <div class="cap"><b>concerned</b>overreaching</div>
+    </div>
+    <div class="cell">
+      <div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — disappointed">
+  <defs><clipPath id="clip-disappointed"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#7a2030" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-disappointed)"></g>
+  <path d="M34.5 41.0 L45.5 38.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 41.0 L54.5 38.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M35.8 50 H44.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/><path d="M55.8 50 H64.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M42.5 66.5 Q50 60.5 57.5 66.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div>
+      <div class="sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — disappointed">
+  <defs><clipPath id="clip-disappointed-s"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#7a2030" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-disappointed-s)"></g>
+  <path d="M34.5 41.0 L45.5 38.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 41.0 L54.5 38.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M35.8 50 H44.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/><path d="M55.8 50 H64.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M42.5 66.5 Q50 60.5 57.5 66.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+<div class="chip"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — disappointed">
+  <defs><clipPath id="clip-disappointed-c"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#7a2030" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-disappointed-c)"></g>
+  <path d="M34.5 41.0 L45.5 38.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 41.0 L54.5 38.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M35.8 50 H44.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/><path d="M55.8 50 H64.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M42.5 66.5 Q50 60.5 57.5 66.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div></div>
+      <div class="cap"><b>disappointed</b>you skipped it again</div>
+    </div>
+    <div class="cell">
+      <div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — celebrating">
+  <defs><clipPath id="clip-celebrating"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#ae8430" stroke-width="9"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-celebrating)"></g>
+  <path d="M34.5 37.0 L45.5 35.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 37.0 L54.5 35.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="5.3" fill="#241c54"/><circle cx="60" cy="50" r="5.3" fill="#241c54"/>
+  <path d="M42 61 Q50 71.5 58 61 Z" fill="#241c54"/>
+</svg>
+</div>
+      <div class="sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — celebrating">
+  <defs><clipPath id="clip-celebrating-s"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#ae8430" stroke-width="9"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-celebrating-s)"></g>
+  <path d="M34.5 37.0 L45.5 35.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 37.0 L54.5 35.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="5.3" fill="#241c54"/><circle cx="60" cy="50" r="5.3" fill="#241c54"/>
+  <path d="M42 61 Q50 71.5 58 61 Z" fill="#241c54"/>
+</svg>
+<div class="chip"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — celebrating">
+  <defs><clipPath id="clip-celebrating-c"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#ae8430" stroke-width="9"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-celebrating-c)"></g>
+  <path d="M34.5 37.0 L45.5 35.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 37.0 L54.5 35.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="5.3" fill="#241c54"/><circle cx="60" cy="50" r="5.3" fill="#241c54"/>
+  <path d="M42 61 Q50 71.5 58 61 Z" fill="#241c54"/>
+</svg>
+</div></div>
+      <div class="cap"><b>celebrating</b>new PR</div>
+    </div></div>
+
+<h2>Centering check</h2>
+<p class="sub">Dashed red is the body centre line and the vertical axis. The face bounding box
+(brow top to mouth bottom) is the blue frame — its centre now lands on the body centre, with equal
+space above and below. Toggle the guides off by eye: the face should read as sitting in the middle,
+not riding high.</p>
+<div class="grid"><div class="cell"><div class="big" style="position:relative">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="132" height="132" role="img" aria-label="Temari — resting">
+  <defs><clipPath id="clip-g0"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#908a79" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-g0)"></g>
+  <path d="M34.5 40.0 L45.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 40.0 L54.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M43 63 Q50 67 57 63" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+
+    <svg viewBox="0 0 100 100" width="132" height="132" style="position:absolute;inset:0">
+      <path d="M6 52 H94" stroke="#c0392b" stroke-width="0.6" stroke-dasharray="3 2.5" fill="none"/>
+      <path d="M50 8 V96" stroke="#c0392b" stroke-width="0.6" stroke-dasharray="3 2.5" fill="none"/>
+      <rect x="30" y="39" width="40" height="26" fill="none" stroke="#2f81f7" stroke-width="0.6"/>
+    </svg></div>
+    <div class="cap"><b>resting</b></div></div><div class="cell"><div class="big" style="position:relative">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="132" height="132" role="img" aria-label="Temari — challenging">
+  <defs><clipPath id="clip-g1"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#ae8430" stroke-width="9"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-g1)"></g>
+  <path d="M34.5 36.5 L45.5 41.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 36.5 L54.5 41.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M44 64 Q52 67.5 58 61.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+
+    <svg viewBox="0 0 100 100" width="132" height="132" style="position:absolute;inset:0">
+      <path d="M6 52 H94" stroke="#c0392b" stroke-width="0.6" stroke-dasharray="3 2.5" fill="none"/>
+      <path d="M50 8 V96" stroke="#c0392b" stroke-width="0.6" stroke-dasharray="3 2.5" fill="none"/>
+      <rect x="30" y="39" width="40" height="26" fill="none" stroke="#2f81f7" stroke-width="0.6"/>
+    </svg></div>
+    <div class="cap"><b>challenging</b></div></div><div class="cell"><div class="big" style="position:relative">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="132" height="132" role="img" aria-label="Temari — celebrating">
+  <defs><clipPath id="clip-g2"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#ae8430" stroke-width="9"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-g2)"></g>
+  <path d="M34.5 37.0 L45.5 35.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 37.0 L54.5 35.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="5.3" fill="#241c54"/><circle cx="60" cy="50" r="5.3" fill="#241c54"/>
+  <path d="M42 61 Q50 71.5 58 61 Z" fill="#241c54"/>
+</svg>
+
+    <svg viewBox="0 0 100 100" width="132" height="132" style="position:absolute;inset:0">
+      <path d="M6 52 H94" stroke="#c0392b" stroke-width="0.6" stroke-dasharray="3 2.5" fill="none"/>
+      <path d="M50 8 V96" stroke="#c0392b" stroke-width="0.6" stroke-dasharray="3 2.5" fill="none"/>
+      <rect x="30" y="39" width="40" height="26" fill="none" stroke="#2f81f7" stroke-width="0.6"/>
+    </svg></div>
+    <div class="cap"><b>celebrating</b></div></div><div class="cell"><div class="big" style="position:relative">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="132" height="132" role="img" aria-label="Temari — unimpressed">
+  <defs><clipPath id="clip-g3"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#938a78" stroke-width="5"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-g3)"></g>
+  <path d="M34.5 41.0 L45.5 41.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 41.0 L54.5 41.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M35.8 50 H44.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/><path d="M55.8 50 H64.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M43.5 63.5 H56.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+
+    <svg viewBox="0 0 100 100" width="132" height="132" style="position:absolute;inset:0">
+      <path d="M6 52 H94" stroke="#c0392b" stroke-width="0.6" stroke-dasharray="3 2.5" fill="none"/>
+      <path d="M50 8 V96" stroke="#c0392b" stroke-width="0.6" stroke-dasharray="3 2.5" fill="none"/>
+      <rect x="30" y="39" width="40" height="26" fill="none" stroke="#2f81f7" stroke-width="0.6"/>
+    </svg></div>
+    <div class="cap"><b>unimpressed</b></div></div></div>
+
+<h2>The six wearable slots</h2>
+<p class="sub">Garments are drawn as flat bands clipped to the body circle, so they take the ball's
+curve automatically and can never escape the silhouette. Colours here are placeholders — each of
+the 25 catalogue items supplies its own.</p>
+<div class="grid">
+    <div class="cell">
+      <div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — resting">
+  <defs><clipPath id="clip-w0"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#908a79" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-w0)"><rect x="19" y="23" width="62" height="6" fill="#d9a53c"/><path d="M64 26 l6 -4 M64 26 l6.5 3" fill="none" stroke="#d9a53c" stroke-width="2.6" stroke-linecap="round"/></g>
+  <path d="M34.5 40.0 L45.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 40.0 L54.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M43 63 Q50 67 57 63" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div>
+      <div class="cap"><b>headband</b></div>
+    </div>
+    <div class="cell">
+      <div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — resting">
+  <defs><clipPath id="clip-w1"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#908a79" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-w1)"><rect x="19" y="69" width="62" height="6" fill="#2f8f63"/><path d="M45.5 69 L50 73 L54.5 69 Z" fill="#f5f0e4"/></g>
+  <path d="M34.5 40.0 L45.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 40.0 L54.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M43 63 Q50 67 57 63" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div>
+      <div class="cap"><b>shirt</b></div>
+    </div>
+    <div class="cell">
+      <div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — resting">
+  <defs><clipPath id="clip-w2"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#908a79" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-w2)"><rect x="19" y="75" width="62" height="7" fill="#241c54"/><path d="M50 75 V82" stroke="#f5f0e4" stroke-width="1.8"/></g>
+  <path d="M34.5 40.0 L45.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 40.0 L54.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M43 63 Q50 67 57 63" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div>
+      <div class="cap"><b>shorts</b></div>
+    </div>
+    <div class="cell">
+      <div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — resting">
+  <defs><clipPath id="clip-w3"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#908a79" stroke-width="6"/>
+<ellipse cx="36" cy="87" rx="8.5" ry="5" fill="#b23a4f"/><ellipse cx="64" cy="87" rx="8.5" ry="5" fill="#b23a4f"/>  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-w3)"></g>
+  <path d="M34.5 40.0 L45.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 40.0 L54.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M43 63 Q50 67 57 63" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div>
+      <div class="cap"><b>shoes</b></div>
+    </div>
+    <div class="cell">
+      <div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — resting">
+  <defs><clipPath id="clip-w4"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#908a79" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-w4)"></g>
+<path d="M43 69 L50 77 L57 69" fill="none" stroke="#b23a4f" stroke-width="3" stroke-linecap="round"/><circle cx="50" cy="85" r="6" fill="#d9a53c" stroke="#896826" stroke-width="1.6"/>  <path d="M34.5 40.0 L45.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 40.0 L54.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M43 63 Q50 67 57 63" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div>
+      <div class="cap"><b>medal</b></div>
+    </div>
+    <div class="cell">
+      <div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — resting">
+  <defs><clipPath id="clip-w5"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+<circle cx="50" cy="52" r="47" fill="none" stroke="#d9a53c" stroke-width="2.4"
+       stroke-dasharray="1.5 7" stroke-linecap="round" opacity="0.85"/>  <circle cx="50" cy="52" r="41" fill="none" stroke="#908a79" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-w5)"></g>
+  <path d="M34.5 40.0 L45.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 40.0 L54.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M43 63 Q50 67 57 63" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div>
+      <div class="cap"><b>aura</b></div>
+    </div></div>
+
+<h2>Fully equipped</h2>
+<div class="grid">
+  <div class="cell"><div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — challenging">
+  <defs><clipPath id="clip-all1"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+<circle cx="50" cy="52" r="47" fill="none" stroke="#d9a53c" stroke-width="2.4"
+       stroke-dasharray="1.5 7" stroke-linecap="round" opacity="0.85"/>  <circle cx="50" cy="52" r="41" fill="none" stroke="#ae8430" stroke-width="9"/>
+<ellipse cx="36" cy="87" rx="8.5" ry="5" fill="#b23a4f"/><ellipse cx="64" cy="87" rx="8.5" ry="5" fill="#b23a4f"/>  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-all1)"><rect x="19" y="23" width="62" height="6" fill="#d9a53c"/><path d="M64 26 l6 -4 M64 26 l6.5 3" fill="none" stroke="#d9a53c" stroke-width="2.6" stroke-linecap="round"/><rect x="19" y="69" width="62" height="6" fill="#2f8f63"/><path d="M45.5 69 L50 73 L54.5 69 Z" fill="#f5f0e4"/><rect x="19" y="75" width="62" height="7" fill="#241c54"/><path d="M50 75 V82" stroke="#f5f0e4" stroke-width="1.8"/></g>
+<path d="M43 69 L50 77 L57 69" fill="none" stroke="#b23a4f" stroke-width="3" stroke-linecap="round"/><circle cx="50" cy="85" r="6" fill="#d9a53c" stroke="#896826" stroke-width="1.6"/>  <path d="M34.5 36.5 L45.5 41.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 36.5 L54.5 41.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M44 64 Q52 67.5 58 61.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div><div class="cap"><b>all six</b>challenging</div></div>
+  <div class="cell"><div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — celebrating">
+  <defs><clipPath id="clip-all2"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#ae8430" stroke-width="9"/>
+<ellipse cx="36" cy="87" rx="8.5" ry="5" fill="#b23a4f"/><ellipse cx="64" cy="87" rx="8.5" ry="5" fill="#b23a4f"/>  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-all2)"><rect x="19" y="23" width="62" height="6" fill="#d9a53c"/><path d="M64 26 l6 -4 M64 26 l6.5 3" fill="none" stroke="#d9a53c" stroke-width="2.6" stroke-linecap="round"/><rect x="19" y="69" width="62" height="6" fill="#2f8f63"/><path d="M45.5 69 L50 73 L54.5 69 Z" fill="#f5f0e4"/><rect x="19" y="75" width="62" height="7" fill="#241c54"/><path d="M50 75 V82" stroke="#f5f0e4" stroke-width="1.8"/></g>
+<path d="M43 69 L50 77 L57 69" fill="none" stroke="#b23a4f" stroke-width="3" stroke-linecap="round"/><circle cx="50" cy="85" r="6" fill="#d9a53c" stroke="#896826" stroke-width="1.6"/>  <path d="M34.5 37.0 L45.5 35.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 37.0 L54.5 35.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="5.3" fill="#241c54"/><circle cx="60" cy="50" r="5.3" fill="#241c54"/>
+  <path d="M42 61 Q50 71.5 58 61 Z" fill="#241c54"/>
+</svg>
+</div><div class="cap"><b>no aura</b>celebrating</div></div>
+  <div class="cell"><div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Temari — resting">
+  <defs><clipPath id="clip-all3"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#908a79" stroke-width="6"/>
+<ellipse cx="36" cy="87" rx="8.5" ry="5" fill="#b23a4f"/><ellipse cx="64" cy="87" rx="8.5" ry="5" fill="#b23a4f"/>  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-all3)"><rect x="19" y="23" width="62" height="6" fill="#d9a53c"/><path d="M64 26 l6 -4 M64 26 l6.5 3" fill="none" stroke="#d9a53c" stroke-width="2.6" stroke-linecap="round"/></g>
+  <path d="M34.5 40.0 L45.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 40.0 L54.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M43 63 Q50 67 57 63" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div><div class="cap"><b>partial</b>resting</div></div>
+  <div class="cell"><div class="big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28" role="img" aria-label="Temari — unimpressed">
+  <defs><clipPath id="clip-all4"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+<circle cx="50" cy="52" r="47" fill="none" stroke="#d9a53c" stroke-width="2.4"
+       stroke-dasharray="1.5 7" stroke-linecap="round" opacity="0.85"/>  <circle cx="50" cy="52" r="41" fill="none" stroke="#938a78" stroke-width="5"/>
+<ellipse cx="36" cy="87" rx="8.5" ry="5" fill="#b23a4f"/><ellipse cx="64" cy="87" rx="8.5" ry="5" fill="#b23a4f"/>  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-all4)"><rect x="19" y="23" width="62" height="6" fill="#d9a53c"/><path d="M64 26 l6 -4 M64 26 l6.5 3" fill="none" stroke="#d9a53c" stroke-width="2.6" stroke-linecap="round"/><rect x="19" y="69" width="62" height="6" fill="#2f8f63"/><path d="M45.5 69 L50 73 L54.5 69 Z" fill="#f5f0e4"/><rect x="19" y="75" width="62" height="7" fill="#241c54"/><path d="M50 75 V82" stroke="#f5f0e4" stroke-width="1.8"/></g>
+<path d="M43 69 L50 77 L57 69" fill="none" stroke="#b23a4f" stroke-width="3" stroke-linecap="round"/><circle cx="50" cy="85" r="6" fill="#d9a53c" stroke="#896826" stroke-width="1.6"/>  <path d="M34.5 41.0 L45.5 41.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 41.0 L54.5 41.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M35.8 50 H44.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/><path d="M55.8 50 H64.2" fill="none" stroke="#241c54" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M43.5 63.5 H56.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div><div class="cap"><b>28px</b>all six</div></div>
+</div>
+<div class="note"><b>Watch the aura.</b> It sits at r=47 and the mood halo at r=40 — two concentric
+rings. Fully equipped, that reads as busy, and on a mood with a heavy halo (gold, weight 9) they
+start to compete. Worth deciding whether aura should suppress the mood halo while equipped.</div>

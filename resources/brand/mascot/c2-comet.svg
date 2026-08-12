@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Temari mascot concept 2 — comet">
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 68 Q10 53 20 38 Q34 18 56 20 Q84 22 84 50 Q84 80 55 84 Q32 87 20 68 Z"
+          fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+    <g fill="none" stroke="#d9a53c" stroke-width="4.5">
+      <path d="M14 44 H4"/>
+      <path d="M17 57 H7"/>
+    </g>
+    <g fill="#241c54">
+      <circle cx="45" cy="51" r="4.6"/>
+      <circle cx="66" cy="51" r="4.6"/>
+    </g>
+    <g fill="none" stroke="#241c54" stroke-width="4">
+      <path d="M39 41.5 L50.5 40.5"/>
+      <path d="M72 41.5 L60.5 40.5"/>
+      <path d="M48 65 Q56 69.5 64 64.5"/>
+    </g>
+  </g>
+</svg>

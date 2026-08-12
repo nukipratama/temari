@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" color="#1a1812" role="img" aria-label="Temari mark concept 1 — offset loop">
+  <g fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round">
+    <path class="mark-lead" d="M62.31 16.17 A36 36 0 1 1 37.69 16.17"/>
+    <path class="mark-base" d="M55.81 34.03 A17 17 0 1 1 39.07 63.02"/>
+  </g>
+</svg>

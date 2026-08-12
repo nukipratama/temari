@@ -1,0 +1,747 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Temari — key screens</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,600;1,9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--sky:#241c54;--sky-deep:#170f38;--sky-2:#362a73;--horizon:#d9a53c;--horizon-deep:#b98a2a;--cream:#f5f0e4;--cream-deep:#ece2ce;--ink:#1a1812;--ink-2:#3d362a;--ink-3:#6e6452;--ink-on-sky:#b0a3c9;--surface:#f5f0e4;--surface-card:#f5f0e4;--surface-elev:#faf6ec;--surface-warm:#f8f0dd;--surface-sunken:#ece2ce;--line:#d2c9b0;--line-strong:#c3b89c;--leaf:#2f8f63;--leaf-deep:#256f4d;--ember:#b23a4f;--ember-deep:#8d2c3d;--citrus:#c9971f;--citrus-deep:#a67c14;--stone:#a99f8a;--horizon-ink:#896826;--mood-blazing:#c9971f;--mood-easy:#2f8f63;--mood-wobbly:#b23a4f;--mood-gassed:#7a2030;--mood-overloaded:#6b3fa0;--mood-chill:#55488f;--mood-blazing-ink:#8b6815;--mood-easy-ink:#297b55;--mood-wobbly-ink:#b23a4f;--mood-gassed-ink:#7a2030;--mood-overloaded-ink:#6b3fa0;--mood-chill-ink:#55488f;--rarity-common:#7d8694;--rarity-uncommon:#2fb350;--rarity-rare:#2f81f7;--rarity-epic:#a855f7;--rarity-legendary:#f5a623;--rarity-common-ink:#676e7a;--rarity-uncommon-ink:#217d38;--rarity-rare-ink:#276bce;--rarity-epic-ink:#9049d4;--rarity-legendary-ink:#946415;--r-xs:6px;--r-sm:10px;--r-md:14px;--r-lg:18px;--r-xl:24px;--r-full:9999px;--s-1:4px;--s-2:8px;--s-3:12px;--s-4:16px;--s-5:20px;--s-6:24px;--s-8:32px;--s-10:40px;--s-12:48px;--s-16:64px;--pad-chip:4px 12px;--pad-panel:12px 16px;--pad-card:16px;--pad-hero:24px;--pad-page:48px 40px 80px;--e-e1:0 1px 2px rgba(58,45,20,0.06), 0 1px 1px rgba(58,45,20,0.04);--e-e2:0 4px 10px rgba(58,45,20,0.08), 0 2px 4px rgba(58,45,20,0.05);--e-e3:0 12px 28px rgba(58,45,20,0.12), 0 4px 10px rgba(58,45,20,0.07);--e-e4:0 24px 56px rgba(23,15,56,0.20), 0 8px 20px rgba(23,15,56,0.12);--font-sans:'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;--font-mono:'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;--font-display:'Fraunces', Georgia, serif}
+  *{box-sizing:border-box}
+  body{margin:0;padding:var(--pad-page);background:var(--surface-sunken);color:var(--ink);
+       font-family:var(--font-sans)}
+  h1{font-size:21px;font-weight:800;margin:0 0 4px;letter-spacing:-.01em}
+  p.lede{margin:0 0 34px;color:var(--ink-3);max-width:72ch;font-size:14px;line-height:1.55}
+  .rack{display:flex;gap:var(--s-8);flex-wrap:wrap;align-items:flex-start}
+  .phone{width:390px;height:800px;background:var(--surface);border-radius:var(--r-xl);
+         box-shadow:var(--e3);display:flex;flex-direction:column;overflow:hidden;
+         border:1px solid var(--line)}
+  .cap{width:390px;margin-top:12px;font-size:12px}
+  .cap b{display:block;font-weight:700;font-size:13px}
+  .cap span{color:var(--ink-3)}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;
+          padding:var(--s-4) var(--s-4) var(--s-3);flex:none}
+  .brand{display:flex;align-items:center;gap:var(--s-2);font-weight:800;font-size:16px;letter-spacing:-.02em}
+  .scroll{flex:1;overflow:hidden;padding:var(--s-1) var(--s-4) var(--s-3);display:flex;flex-direction:column;gap:var(--s-4)}
+  .tabbar{flex:none;display:flex;border-top:1px solid var(--line);background:var(--surface-elev)}
+  .tab{flex:1;text-align:center;padding:var(--s-3) 0 var(--s-4);font-size:11px;font-weight:600;
+       color:var(--ink-3);text-transform:lowercase}
+  .tab.on{color:var(--sky);font-weight:800}
+
+  /* home */
+  .verdict{padding:var(--s-2) 0 var(--s-1)}
+  .voice{font-family:var(--font-display);font-style:italic;font-weight:600;
+         font-size:27px;line-height:1.22;letter-spacing:-.01em}
+  .voice-by{display:flex;align-items:center;gap:var(--s-2);margin-top:12px;
+            font-size:11px;color:var(--ink-3);font-weight:600;letter-spacing:.06em}
+  .evidence{display:flex;flex-direction:column;gap:1px;background:var(--line);
+            border-radius:var(--r-md);overflow:hidden;box-shadow:var(--e1)}
+  .ev{background:var(--surface-card);padding:var(--pad-panel)}
+  .ev-label{font-size:11.5px;color:var(--ink-3);margin-bottom:5px}
+  .ev-nums{display:flex;align-items:baseline;gap:var(--s-2);font-family:var(--font-mono)}
+  .then{font-size:15px;color:var(--ink-3)}
+  .arrow{color:var(--ink-3);font-size:12px}
+  .now{font-size:19px;font-weight:700}
+  .delta{margin-left:auto;font-size:11.5px;font-weight:700;padding:var(--s-1) var(--s-2);
+         border-radius:var(--r-full)}
+  .delta.good{color:var(--mood-easy-ink);background:color-mix(in oklab,var(--mood-easy) 15%,transparent)}
+  .delta.flat{color:var(--ink-3);background:var(--surface-sunken)}
+  .today{background:var(--sky);border-radius:var(--r-md);padding:var(--pad-panel);box-shadow:var(--e2)}
+  .today-head{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-on-sky);font-weight:700}
+  .today-main{font-size:23px;font-weight:800;color:var(--cream);margin-top:6px;letter-spacing:-.02em}
+  .today-sub{font-size:12.5px;color:var(--ink-on-sky);margin-top:3px}
+
+  /* run detail */
+  .run-head{padding:var(--s-2) 0 0}
+  .run-dist{font-family:var(--font-mono);font-size:52px;font-weight:800;letter-spacing:-.04em;color:var(--sky)}
+  .run-dist span{font-size:19px;margin-left:6px;color:var(--horizon-ink)}
+  .run-meta{font-size:12px;color:var(--ink-3);margin-top:2px}
+  .pastyou{background:var(--surface-warm);border:1px solid var(--line);
+           border-radius:var(--r-md);padding:var(--pad-panel);box-shadow:var(--e1)}
+  .py-head{font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+           color:var(--ink-3);font-weight:700;margin-bottom:10px}
+  .py-grid{display:flex;align-items:center;gap:var(--s-4)}
+  .py-col{flex:1;text-align:center}
+  .py-col.now .py-val{color:var(--sky)}
+  .py-when{font-size:10.5px;color:var(--ink-3);font-weight:700;margin-bottom:6px;
+           text-transform:uppercase;letter-spacing:.08em}
+  .py-val{font-family:var(--font-mono);font-size:21px;font-weight:700;color:var(--ink-3)}
+  .py-k{font-size:9.5px;color:var(--ink-3);margin-bottom:7px;letter-spacing:.06em}
+  .py-mid{color:var(--horizon-ink);font-size:19px;font-weight:700}
+  .py-voice{display:flex;gap:var(--s-3);align-items:flex-start;margin-top:12px;
+            padding-top:var(--s-3);border-top:1px solid var(--line)}
+  .py-voice span{font-family:var(--font-display);font-style:italic;font-size:14px;line-height:1.4}
+  .panel{background:var(--surface-card);border:1px solid var(--line);
+         border-radius:var(--r-md);padding:var(--pad-panel);box-shadow:var(--e1)}
+  .panel-head{font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+              color:var(--ink-3);font-weight:700;margin-bottom:10px}
+  .routebox{width:100%;height:auto;display:block}
+  .splits{display:flex;align-items:flex-end;gap:var(--s-2);height:78px}
+  .split{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end}
+  .bar{width:100%;border-radius:var(--r-xs) var(--r-xs) 0 0}
+  .split span{font-size:9px;color:var(--ink-3);margin-top:4px;font-family:var(--font-mono)}
+
+  /* collection */
+  .chips{display:flex;gap:var(--s-2);flex-wrap:wrap}
+  .chip{font-size:11px;font-weight:600;padding:var(--pad-chip);border-radius:var(--r-full);
+        background:var(--surface-card);border:1px solid var(--line);color:var(--ink-3)}
+  .chip.on{background:var(--sky);color:var(--cream);border-color:var(--sky)}
+  .cardgrid{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-3)}
+  .cardcell{border-radius:var(--r-sm);overflow:hidden;box-shadow:var(--e1)}
+  .cardcell svg{display:block;width:100%;height:auto}
+
+  /* season */
+  .season-head{display:flex;align-items:center;gap:var(--s-4);padding:var(--s-1) 0}
+  .season-name{font-size:22px;font-weight:800;letter-spacing:-.02em}
+  .season-sub{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+  .track{display:flex;gap:var(--s-1);height:38px;align-items:stretch}
+  .wk{flex:1;background:var(--surface-sunken);border-radius:var(--r-xs)}
+  .wk.done{background:var(--horizon-ink)}
+  .wk.here{background:var(--sky);box-shadow:var(--e2)}
+  .phaserow{display:flex;justify-content:space-between;font-size:9.5px;
+            color:var(--ink-3);letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-top:-8px}
+  .sess{display:flex;align-items:center;gap:var(--s-3);padding:var(--s-2) 0;border-bottom:1px solid var(--line);font-size:13px}
+  .sess:last-child{border-bottom:0}
+  .sess-d{width:34px;font-size:10.5px;color:var(--ink-3);text-transform:uppercase;
+          font-weight:700;letter-spacing:.06em}
+  .sess-s{flex:1}
+  .sess-p{font-family:var(--font-mono);font-size:12px;color:var(--ink-3)}
+  .sess.done .sess-s{color:var(--ink-3)}
+  .sess.today{font-weight:800}
+  .sess.today .sess-d{color:var(--horizon-ink)}
+  .goals{display:flex;flex-direction:column;gap:var(--s-3)}
+  .goal-top{display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:5px}
+  .goal-pct{font-family:var(--font-mono);color:var(--ink-3)}
+  .goal-bar{height:7px;background:var(--surface-sunken);border-radius:var(--r-full);overflow:hidden}
+  .goal-bar i{display:block;height:100%;background:var(--horizon-ink);border-radius:var(--r-full)}
+</style>
+
+<h1>Key screens</h1>
+<p class="lede">Built in HTML against the real token set — every colour, radius, shadow and font
+here is a token, nothing is hand-picked. These are the four screens that set the system; the rest
+of the app derives from them. Phone frames are 390&nbsp;px, the narrow end of the range.</p>
+
+<div class="rack">
+  
+    <div>
+      <div class="phone">
+
+  <div class="topbar">
+    <div class="brand"><svg viewBox="0 0 100 100" width="22" height="22" fill="none" stroke-width="11" stroke-linecap="round">
+     <path stroke="var(--horizon-ink)" d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"/>
+     <path stroke="var(--sky)" d="M50 27 A23 23 0 1 1 30.09 61.5"/></svg><span>temari</span></div>
+    <div class="bell"></div>
+  </div>
+<div class="scroll">
+  <div class="verdict">
+    <div class="voice">you're faster than you were in march. clearly.</div>
+    <div class="voice-by"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="34" height="34" role="img" aria-label="Temari — challenging">
+  <defs><clipPath id="clip-hm"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#ae8430" stroke-width="9"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-hm)"></g>
+  <path d="M34.5 36.5 L45.5 41.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 36.5 L54.5 41.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M44 64 Q52 67.5 58 61.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+<span>temari</span></div>
+  </div>
+
+  <div class="evidence">
+    
+      <div class="ev">
+        <div class="ev-label">same route, same heat</div>
+        <div class="ev-nums">
+          <span class="then">5:41</span>
+          <span class="arrow">→</span>
+          <span class="now">5:12</span>
+          <span class="delta good">-29s/km</span>
+        </div>
+      </div>
+      <div class="ev">
+        <div class="ev-label">heart rate on your usual 8k</div>
+        <div class="ev-nums">
+          <span class="then">168</span>
+          <span class="arrow">→</span>
+          <span class="now">159</span>
+          <span class="delta good">-9 bpm</span>
+        </div>
+      </div>
+      <div class="ev">
+        <div class="ev-label">longest run</div>
+        <div class="ev-nums">
+          <span class="then">12.0</span>
+          <span class="arrow">→</span>
+          <span class="now">18.4</span>
+          <span class="delta good">+6.4 km</span>
+        </div>
+      </div>
+      <div class="ev">
+        <div class="ev-label">weeks since you faded after km 6</div>
+        <div class="ev-nums">
+          <span class="then">—</span>
+          <span class="arrow">→</span>
+          <span class="now">7</span>
+          <span class="delta flat">holding</span>
+        </div>
+      </div>
+  </div>
+
+  <div class="today">
+    <div class="today-head">today</div>
+    <div class="today-body">
+      <div class="today-main">easy 6k</div>
+      <div class="today-sub">legs are asking for it. keep it under 6:00.</div>
+    </div>
+  </div>
+</div>
+
+  <div class="tabbar">
+    <div class="tab on">home</div><div class="tab ">runs</div><div class="tab ">cards</div><div class="tab ">you</div>
+  </div></div>
+      <div class="cap"><b>Home</b><span>the verdict: am I getting better?</span></div>
+    </div>
+    <div>
+      <div class="phone">
+
+  <div class="topbar">
+    <div class="brand"><svg viewBox="0 0 100 100" width="22" height="22" fill="none" stroke-width="11" stroke-linecap="round">
+     <path stroke="var(--horizon-ink)" d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"/>
+     <path stroke="var(--sky)" d="M50 27 A23 23 0 1 1 30.09 61.5"/></svg><span>temari</span></div>
+    <div class="bell"></div>
+  </div>
+<div class="scroll">
+  <div class="run-head">
+    <div class="run-dist">8.2<span>km</span></div>
+    <div class="run-meta">this morning · 42:31 · 5:12 /km</div>
+  </div>
+
+  <div class="pastyou">
+    <div class="py-head">you've run this before</div>
+    <div class="py-grid">
+      <div class="py-col"><div class="py-when">14 mar</div>
+        <div class="py-val">5:41</div><div class="py-k">pace</div>
+        <div class="py-val">168</div><div class="py-k">avg hr</div></div>
+      <div class="py-mid">→</div>
+      <div class="py-col now"><div class="py-when">today</div>
+        <div class="py-val">5:12</div><div class="py-k">pace</div>
+        <div class="py-val">159</div><div class="py-k">avg hr</div></div>
+    </div>
+    <div class="py-voice"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="30" height="30" role="img" aria-label="Temari — impressed">
+  <defs><clipPath id="clip-rd"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#2f8f63" stroke-width="6"/>
+  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-rd)"></g>
+  <path d="M34.5 36.0 L45.5 34.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 36.0 L54.5 34.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="5.3" fill="#241c54"/><circle cx="60" cy="50" r="5.3" fill="#241c54"/>
+  <ellipse cx="50" cy="62.5" rx="4" ry="5" fill="#241c54"/>
+</svg>
+
+      <span>same route, same heat, and your heart's doing less work for more speed.</span></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">route</div>
+    <svg viewBox="0 0 100 64" class="routebox">
+      <path d="M10 46 C16 34 24 50 33 43 C42 36 44 20 55 17 C66 14 72 27 67 36 C62 45 50 44 47 50 C44 55 54 56 64 54 C74 51 82 44 90 47"
+        fill="var(--rarity-rare)" fill-opacity="0.14" stroke="var(--rarity-rare)" stroke-width="3.2"
+        stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">splits</div>
+    <div class="splits"><div class="split"><div class="bar" style="height:62%;background:var(--line-strong)"></div><span>1</span></div><div class="split"><div class="bar" style="height:71%;background:var(--line-strong)"></div><span>2</span></div><div class="split"><div class="bar" style="height:58%;background:var(--line-strong)"></div><span>3</span></div><div class="split"><div class="bar" style="height:66%;background:var(--line-strong)"></div><span>4</span></div><div class="split"><div class="bar" style="height:74%;background:var(--line-strong)"></div><span>5</span></div><div class="split"><div class="bar" style="height:80%;background:var(--line-strong)"></div><span>6</span></div><div class="split"><div class="bar" style="height:69%;background:var(--line-strong)"></div><span>7</span></div><div class="split"><div class="bar" style="height:90%;background:var(--rarity-rare)"></div><span>8</span></div></div>
+  </div>
+</div>
+
+  <div class="tabbar">
+    <div class="tab ">home</div><div class="tab on">runs</div><div class="tab ">cards</div><div class="tab ">you</div>
+  </div></div>
+      <div class="cap"><b>Run detail</b><span>past you as the hero, not a footnote</span></div>
+    </div>
+    <div>
+      <div class="phone">
+
+  <div class="topbar">
+    <div class="brand"><svg viewBox="0 0 100 100" width="22" height="22" fill="none" stroke-width="11" stroke-linecap="round">
+     <path stroke="var(--horizon-ink)" d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"/>
+     <path stroke="var(--sky)" d="M50 27 A23 23 0 1 1 30.09 61.5"/></svg><span>temari</span></div>
+    <div class="bell"></div>
+  </div>
+<div class="scroll">
+  <div class="chips">
+    <div class="chip on">all</div><div class="chip ">common</div><div class="chip ">rare</div><div class="chip ">epic</div><div class="chip ">legendary</div>
+  </div>
+  <div class="cardgrid">
+    <div class="cardcell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 440" width="100%" height="auto" role="img" aria-label="Run card — legendary">
+  <defs><clipPath id="foil-legendary-0"><rect x="0" y="0" width="300" height="440" rx="18"/></clipPath></defs>
+  <style>
+    .rt { stroke-dasharray: 1; stroke-dashoffset: 1;
+          animation: rt-draw 2.6s cubic-bezier(0.4,0,0.2,1) forwards; }
+    @keyframes rt-draw { to { stroke-dashoffset: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .rt { animation: none; stroke-dashoffset: 0; }
+    }
+  </style>
+  <g><rect x="1.7" y="1.7" width="296.6" height="436.6" rx="18" fill="#f5f0e4"/>
+    <g clip-path="url(#foil-legendary-0)"><path d="M-40 440 L40 0" stroke="#f5a623" stroke-width="9" opacity="0.05"/><path d="M2 440 L82 0" stroke="#f5a623" stroke-width="9" opacity="0.05"/><path d="M44 440 L124 0" stroke="#f5a623" stroke-width="9" opacity="0.05"/><path d="M86 440 L166 0" stroke="#f5a623" stroke-width="9" opacity="0.05"/><path d="M128 440 L208 0" stroke="#f5a623" stroke-width="9" opacity="0.05"/><path d="M170 440 L250 0" stroke="#f5a623" stroke-width="9" opacity="0.05"/><path d="M212 440 L292 0" stroke="#f5a623" stroke-width="9" opacity="0.05"/><path d="M254 440 L334 0" stroke="#f5a623" stroke-width="9" opacity="0.05"/><path d="M296 440 L376 0" stroke="#f5a623" stroke-width="9" opacity="0.05"/></g>
+    <rect x="1.7" y="1.7" width="296.6" height="436.6" rx="18" fill="none" stroke="#f5a623" stroke-width="3.4"/>
+    <rect x="10" y="10" width="280" height="420" rx="12" fill="none" stroke="#f5a623" stroke-width="1" opacity="0.6"/>
+    <g transform="translate(17 17) scale(1 1)">
+    <path d="M0 20 L0 5 Q0 0 5 0 L20 0" fill="none" stroke="#f5a623" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M0 27 L0 22" stroke="#f5a623" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M27 0 L22 0" stroke="#f5a623" stroke-width="2.8" stroke-linecap="round"/>
+    <circle cx="8" cy="8" r="2.2" fill="#f5a623"/></g><g transform="translate(283 17) scale(-1 1)">
+    <path d="M0 20 L0 5 Q0 0 5 0 L20 0" fill="none" stroke="#f5a623" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M0 27 L0 22" stroke="#f5a623" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M27 0 L22 0" stroke="#f5a623" stroke-width="2.8" stroke-linecap="round"/>
+    <circle cx="8" cy="8" r="2.2" fill="#f5a623"/></g><g transform="translate(17 423) scale(1 -1)">
+    <path d="M0 20 L0 5 Q0 0 5 0 L20 0" fill="none" stroke="#f5a623" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M0 27 L0 22" stroke="#f5a623" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M27 0 L22 0" stroke="#f5a623" stroke-width="2.8" stroke-linecap="round"/>
+    <circle cx="8" cy="8" r="2.2" fill="#f5a623"/></g><g transform="translate(283 423) scale(-1 -1)">
+    <path d="M0 20 L0 5 Q0 0 5 0 L20 0" fill="none" stroke="#f5a623" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M0 27 L0 22" stroke="#f5a623" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M27 0 L22 0" stroke="#f5a623" stroke-width="2.8" stroke-linecap="round"/>
+    <circle cx="8" cy="8" r="2.2" fill="#f5a623"/></g></g>
+
+  <text x="24" y="38" font-family="JetBrains Mono, ui-monospace, monospace" font-size="9.5"
+     font-weight="500" fill="#6e6452" text-anchor="start" letter-spacing="1.2">12 AUG 2026</text>
+  <text x="276" y="38" font-family="JetBrains Mono, ui-monospace, monospace" font-size="9.5"
+     font-weight="700" fill="#946415" text-anchor="end" letter-spacing="1.4">LEGENDARY</text>
+
+  <text x="22" y="106" font-family="JetBrains Mono, ui-monospace, monospace" font-size="64"
+     font-weight="800" fill="#241c54" text-anchor="start" letter-spacing="-2.5">8.2</text>
+  <text x="140" y="106" font-family="JetBrains Mono, ui-monospace, monospace" font-size="18"
+     font-weight="700" fill="#946415" text-anchor="start" letter-spacing="1">KM</text>
+
+  <svg x="24" y="122" width="252" height="161.3"
+     viewBox="0 0 100 64" preserveAspectRatio="xMidYMid meet"
+     data-variant="route" data-uid="legendary"><path class="rt" pathLength="1" d="M10 46 C16 34 24 50 33 43 C42 36 44 20 55 17 C66 14 72 27 67 36 C62 45 50 44 47 50 C44 55 54 56 64 54 C74 51 82 44 90 47" fill="#f5a623" fill-opacity="0.14"
+        stroke="#f5a623" stroke-width="2.28"
+        stroke-linecap="round" stroke-linejoin="round"
+        style="filter:drop-shadow(0 0 1.5px #f5a623)"/></svg>
+
+  <path d="M24 300 H276" stroke="#d2c9b0" stroke-width="1"/>
+  <text x="65" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">PACE</text><text x="65" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">5:12</text><text x="154" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">TIME</text><text x="154" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">42:31</text><text x="243" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">HR</text><text x="243" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">159</text>
+
+  <g><rect x="24" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="65" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">EARLY BIRD</text></g><g><rect x="113" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="154" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">Z2 MASTER</text></g><g><rect x="202" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="243" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">CLIMBER</text></g>
+
+  <rect x="24" y="382" width="252" height="26" rx="13" fill="#241c54"/>
+  <text x="150" y="399" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="11"
+     font-weight="800" fill="#f5f0e4" text-anchor="middle" letter-spacing="1.4">NEGATIVE SPLIT</text>
+
+  <text x="150" y="424" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="9"
+     font-weight="800" fill="#6e6452" text-anchor="middle" letter-spacing="1.2">temari</text>
+</svg>
+</div><div class="cardcell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 440" width="100%" height="auto" role="img" aria-label="Run card — rare">
+  <defs><clipPath id="foil-rare-1"><rect x="0" y="0" width="300" height="440" rx="18"/></clipPath></defs>
+  <style>
+    .rt { stroke-dasharray: 1; stroke-dashoffset: 1;
+          animation: rt-draw 2.6s cubic-bezier(0.4,0,0.2,1) forwards; }
+    @keyframes rt-draw { to { stroke-dashoffset: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .rt { animation: none; stroke-dashoffset: 0; }
+    }
+  </style>
+  <rect x="1.3" y="1.3" width="297.4" height="437.4" rx="18"
+      fill="#f5f0e4" stroke="#2f81f7" stroke-width="2.6"/><rect x="9" y="9" width="282" height="422" rx="13"
+      fill="none" stroke="#2f81f7" stroke-width="0.9" opacity="0.55"/>
+
+  <text x="24" y="38" font-family="JetBrains Mono, ui-monospace, monospace" font-size="9.5"
+     font-weight="500" fill="#6e6452" text-anchor="start" letter-spacing="1.2">12 AUG 2026</text>
+  <text x="276" y="38" font-family="JetBrains Mono, ui-monospace, monospace" font-size="9.5"
+     font-weight="700" fill="#276bce" text-anchor="end" letter-spacing="1.4">RARE</text>
+
+  <text x="22" y="106" font-family="JetBrains Mono, ui-monospace, monospace" font-size="64"
+     font-weight="800" fill="#241c54" text-anchor="start" letter-spacing="-2.5">8.2</text>
+  <text x="140" y="106" font-family="JetBrains Mono, ui-monospace, monospace" font-size="18"
+     font-weight="700" fill="#276bce" text-anchor="start" letter-spacing="1">KM</text>
+
+  <svg x="24" y="122" width="252" height="161.3"
+     viewBox="0 0 100 64" preserveAspectRatio="xMidYMid meet"
+     data-variant="route" data-uid="rare"><path class="rt" pathLength="1" d="M10 46 C16 34 24 50 33 43 C42 36 44 20 55 17 C66 14 72 27 67 36 C62 45 50 44 47 50 C44 55 54 56 64 54 C74 51 82 44 90 47" fill="#2f81f7" fill-opacity="0.14"
+        stroke="#2f81f7" stroke-width="2.28"
+        stroke-linecap="round" stroke-linejoin="round"
+        style="filter:drop-shadow(0 0 1.5px #2f81f7)"/></svg>
+
+  <path d="M24 300 H276" stroke="#d2c9b0" stroke-width="1"/>
+  <text x="65" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">PACE</text><text x="65" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">5:12</text><text x="154" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">TIME</text><text x="154" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">42:31</text><text x="243" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">HR</text><text x="243" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">159</text>
+
+  <g><rect x="24" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="65" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">EARLY BIRD</text></g><g><rect x="113" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="154" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">Z2 MASTER</text></g><g><rect x="202" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="243" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">CLIMBER</text></g>
+
+  <rect x="24" y="382" width="252" height="26" rx="13" fill="#241c54"/>
+  <text x="150" y="399" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="11"
+     font-weight="800" fill="#f5f0e4" text-anchor="middle" letter-spacing="1.4">NEGATIVE SPLIT</text>
+
+  <text x="150" y="424" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="9"
+     font-weight="800" fill="#6e6452" text-anchor="middle" letter-spacing="1.2">temari</text>
+</svg>
+</div><div class="cardcell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 440" width="100%" height="auto" role="img" aria-label="Run card — epic">
+  <defs><clipPath id="foil-epic-2"><rect x="0" y="0" width="300" height="440" rx="18"/></clipPath></defs>
+  <style>
+    .rt { stroke-dasharray: 1; stroke-dashoffset: 1;
+          animation: rt-draw 2.6s cubic-bezier(0.4,0,0.2,1) forwards; }
+    @keyframes rt-draw { to { stroke-dashoffset: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .rt { animation: none; stroke-dashoffset: 0; }
+    }
+  </style>
+  <rect x="1.5" y="1.5" width="297" height="437" rx="18"
+      fill="#f5f0e4" stroke="#a855f7" stroke-width="3"/><rect x="9" y="9" width="282" height="422" rx="13"
+      fill="none" stroke="#a855f7" stroke-width="0.9" opacity="0.5"/><g transform="translate(16 16) scale(1 1)">
+      <path d="M0 16 L0 4 Q0 0 4 0 L16 0" fill="none" stroke="#a855f7" stroke-width="2.4" stroke-linecap="round"/>
+      <circle cx="7" cy="7" r="1.8" fill="#a855f7"/></g><g transform="translate(284 16) scale(-1 1)">
+      <path d="M0 16 L0 4 Q0 0 4 0 L16 0" fill="none" stroke="#a855f7" stroke-width="2.4" stroke-linecap="round"/>
+      <circle cx="7" cy="7" r="1.8" fill="#a855f7"/></g><g transform="translate(16 424) scale(1 -1)">
+      <path d="M0 16 L0 4 Q0 0 4 0 L16 0" fill="none" stroke="#a855f7" stroke-width="2.4" stroke-linecap="round"/>
+      <circle cx="7" cy="7" r="1.8" fill="#a855f7"/></g><g transform="translate(284 424) scale(-1 -1)">
+      <path d="M0 16 L0 4 Q0 0 4 0 L16 0" fill="none" stroke="#a855f7" stroke-width="2.4" stroke-linecap="round"/>
+      <circle cx="7" cy="7" r="1.8" fill="#a855f7"/></g>
+
+  <text x="24" y="38" font-family="JetBrains Mono, ui-monospace, monospace" font-size="9.5"
+     font-weight="500" fill="#6e6452" text-anchor="start" letter-spacing="1.2">12 AUG 2026</text>
+  <text x="276" y="38" font-family="JetBrains Mono, ui-monospace, monospace" font-size="9.5"
+     font-weight="700" fill="#9049d4" text-anchor="end" letter-spacing="1.4">EPIC</text>
+
+  <text x="22" y="106" font-family="JetBrains Mono, ui-monospace, monospace" font-size="64"
+     font-weight="800" fill="#241c54" text-anchor="start" letter-spacing="-2.5">8.2</text>
+  <text x="140" y="106" font-family="JetBrains Mono, ui-monospace, monospace" font-size="18"
+     font-weight="700" fill="#9049d4" text-anchor="start" letter-spacing="1">KM</text>
+
+  <svg x="24" y="122" width="252" height="161.3"
+     viewBox="0 0 100 64" preserveAspectRatio="xMidYMid meet"
+     data-variant="route" data-uid="epic"><path class="rt" pathLength="1" d="M10 46 C16 34 24 50 33 43 C42 36 44 20 55 17 C66 14 72 27 67 36 C62 45 50 44 47 50 C44 55 54 56 64 54 C74 51 82 44 90 47" fill="#a855f7" fill-opacity="0.14"
+        stroke="#a855f7" stroke-width="2.28"
+        stroke-linecap="round" stroke-linejoin="round"
+        style="filter:drop-shadow(0 0 1.5px #a855f7)"/></svg>
+
+  <path d="M24 300 H276" stroke="#d2c9b0" stroke-width="1"/>
+  <text x="65" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">PACE</text><text x="65" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">5:12</text><text x="154" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">TIME</text><text x="154" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">42:31</text><text x="243" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">HR</text><text x="243" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">159</text>
+
+  <g><rect x="24" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="65" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">EARLY BIRD</text></g><g><rect x="113" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="154" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">Z2 MASTER</text></g><g><rect x="202" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="243" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">CLIMBER</text></g>
+
+  <rect x="24" y="382" width="252" height="26" rx="13" fill="#241c54"/>
+  <text x="150" y="399" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="11"
+     font-weight="800" fill="#f5f0e4" text-anchor="middle" letter-spacing="1.4">NEGATIVE SPLIT</text>
+
+  <text x="150" y="424" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="9"
+     font-weight="800" fill="#6e6452" text-anchor="middle" letter-spacing="1.2">temari</text>
+</svg>
+</div><div class="cardcell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 440" width="100%" height="auto" role="img" aria-label="Run card — common">
+  <defs><clipPath id="foil-common-3"><rect x="0" y="0" width="300" height="440" rx="18"/></clipPath></defs>
+  <style>
+    .rt { stroke-dasharray: 1; stroke-dashoffset: 1;
+          animation: rt-draw 2.6s cubic-bezier(0.4,0,0.2,1) forwards; }
+    @keyframes rt-draw { to { stroke-dashoffset: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .rt { animation: none; stroke-dashoffset: 0; }
+    }
+  </style>
+  <rect x="0.8" y="0.8" width="298.4" height="438.4" rx="18"
+      fill="#f5f0e4" stroke="#7d8694" stroke-width="1.6"/>
+
+  <text x="24" y="38" font-family="JetBrains Mono, ui-monospace, monospace" font-size="9.5"
+     font-weight="500" fill="#6e6452" text-anchor="start" letter-spacing="1.2">12 AUG 2026</text>
+  <text x="276" y="38" font-family="JetBrains Mono, ui-monospace, monospace" font-size="9.5"
+     font-weight="700" fill="#676e7a" text-anchor="end" letter-spacing="1.4">COMMON</text>
+
+  <text x="22" y="106" font-family="JetBrains Mono, ui-monospace, monospace" font-size="64"
+     font-weight="800" fill="#241c54" text-anchor="start" letter-spacing="-2.5">8.2</text>
+  <text x="140" y="106" font-family="JetBrains Mono, ui-monospace, monospace" font-size="18"
+     font-weight="700" fill="#676e7a" text-anchor="start" letter-spacing="1">KM</text>
+
+  <svg x="24" y="122" width="252" height="161.3"
+     viewBox="0 0 100 64" preserveAspectRatio="xMidYMid meet"
+     data-variant="pace" data-uid="common"><rect x="8.0" y="34.4"
+          width="7.0" height="21.6" rx="1" fill="#7d8694"
+          opacity="0.4"/><rect x="16.6" y="26.7"
+          width="7.0" height="29.3" rx="1" fill="#7d8694"
+          opacity="0.4"/><rect x="25.1" y="41.0"
+          width="7.0" height="15.0" rx="1" fill="#7d8694"
+          opacity="0.4"/><rect x="33.7" y="21.2"
+          width="7.0" height="34.8" rx="1" fill="#7d8694"
+          opacity="0.4"/><rect x="42.2" y="16.8"
+          width="7.0" height="39.2" rx="1" fill="#7d8694"
+          opacity="0.4"/><rect x="50.8" y="31.1"
+          width="7.0" height="24.9" rx="1" fill="#7d8694"
+          opacity="0.4"/><rect x="59.3" y="45.4"
+          width="7.0" height="10.6" rx="1" fill="#7d8694"
+          opacity="0.4"/><rect x="67.9" y="19.0"
+          width="7.0" height="37.0" rx="1" fill="#7d8694"
+          opacity="0.4"/><rect x="76.4" y="11.3"
+          width="7.0" height="44.7" rx="1" fill="#7d8694"
+          opacity="0.4"/><rect x="85.0" y="8.0"
+          width="7.0" height="48.0" rx="1" fill="#7d8694"
+          opacity="0.9"/></svg>
+
+  <path d="M24 300 H276" stroke="#d2c9b0" stroke-width="1"/>
+  <text x="65" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">PACE</text><text x="65" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">5:12</text><text x="154" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">TIME</text><text x="154" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">42:31</text><text x="243" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">HR</text><text x="243" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">159</text>
+
+  <g><rect x="24" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="65" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">EARLY BIRD</text></g><g><rect x="113" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="154" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">Z2 MASTER</text></g><g><rect x="202" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="243" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">CLIMBER</text></g>
+
+  <rect x="24" y="382" width="252" height="26" rx="13" fill="#241c54"/>
+  <text x="150" y="399" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="11"
+     font-weight="800" fill="#f5f0e4" text-anchor="middle" letter-spacing="1.4">NEGATIVE SPLIT</text>
+
+  <text x="150" y="424" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="9"
+     font-weight="800" fill="#6e6452" text-anchor="middle" letter-spacing="1.2">temari</text>
+</svg>
+</div><div class="cardcell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 440" width="100%" height="auto" role="img" aria-label="Run card — uncommon">
+  <defs><clipPath id="foil-uncommon-4"><rect x="0" y="0" width="300" height="440" rx="18"/></clipPath></defs>
+  <style>
+    .rt { stroke-dasharray: 1; stroke-dashoffset: 1;
+          animation: rt-draw 2.6s cubic-bezier(0.4,0,0.2,1) forwards; }
+    @keyframes rt-draw { to { stroke-dashoffset: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .rt { animation: none; stroke-dashoffset: 0; }
+    }
+  </style>
+  <rect x="1.1" y="1.1" width="297.8" height="437.8" rx="18"
+      fill="#f5f0e4" stroke="#2fb350" stroke-width="2.2"/><path d="M11 11 h13 M11 11 v13" stroke="#2fb350" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M289 11 h-13 M289 11 v13" stroke="#2fb350" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M11 429 h13 M11 429 v-13" stroke="#2fb350" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M289 429 h-13 M289 429 v-13" stroke="#2fb350" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+  <text x="24" y="38" font-family="JetBrains Mono, ui-monospace, monospace" font-size="9.5"
+     font-weight="500" fill="#6e6452" text-anchor="start" letter-spacing="1.2">12 AUG 2026</text>
+  <text x="276" y="38" font-family="JetBrains Mono, ui-monospace, monospace" font-size="9.5"
+     font-weight="700" fill="#217d38" text-anchor="end" letter-spacing="1.4">UNCOMMON</text>
+
+  <text x="22" y="106" font-family="JetBrains Mono, ui-monospace, monospace" font-size="64"
+     font-weight="800" fill="#241c54" text-anchor="start" letter-spacing="-2.5">8.2</text>
+  <text x="140" y="106" font-family="JetBrains Mono, ui-monospace, monospace" font-size="18"
+     font-weight="700" fill="#217d38" text-anchor="start" letter-spacing="1">KM</text>
+
+  <svg x="24" y="122" width="252" height="161.3"
+     viewBox="0 0 100 64" preserveAspectRatio="xMidYMid meet"
+     data-variant="route" data-uid="uncommon"><path class="rt" pathLength="1" d="M10 46 C16 34 24 50 33 43 C42 36 44 20 55 17 C66 14 72 27 67 36 C62 45 50 44 47 50 C44 55 54 56 64 54 C74 51 82 44 90 47" fill="#2fb350" fill-opacity="0.14"
+        stroke="#2fb350" stroke-width="2.28"
+        stroke-linecap="round" stroke-linejoin="round"
+        style="filter:drop-shadow(0 0 1.5px #2fb350)"/></svg>
+
+  <path d="M24 300 H276" stroke="#d2c9b0" stroke-width="1"/>
+  <text x="65" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">PACE</text><text x="65" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">5:12</text><text x="154" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">TIME</text><text x="154" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">42:31</text><text x="243" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">HR</text><text x="243" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">159</text>
+
+  <g><rect x="24" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="65" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">EARLY BIRD</text></g><g><rect x="113" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="154" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">Z2 MASTER</text></g><g><rect x="202" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="243" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">CLIMBER</text></g>
+
+  <rect x="24" y="382" width="252" height="26" rx="13" fill="#241c54"/>
+  <text x="150" y="399" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="11"
+     font-weight="800" fill="#f5f0e4" text-anchor="middle" letter-spacing="1.4">NEGATIVE SPLIT</text>
+
+  <text x="150" y="424" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="9"
+     font-weight="800" fill="#6e6452" text-anchor="middle" letter-spacing="1.2">temari</text>
+</svg>
+</div><div class="cardcell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 440" width="100%" height="auto" role="img" aria-label="Run card — rare">
+  <defs><clipPath id="foil-rare-5"><rect x="0" y="0" width="300" height="440" rx="18"/></clipPath></defs>
+  <style>
+    .rt { stroke-dasharray: 1; stroke-dashoffset: 1;
+          animation: rt-draw 2.6s cubic-bezier(0.4,0,0.2,1) forwards; }
+    @keyframes rt-draw { to { stroke-dashoffset: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .rt { animation: none; stroke-dashoffset: 0; }
+    }
+  </style>
+  <rect x="1.3" y="1.3" width="297.4" height="437.4" rx="18"
+      fill="#f5f0e4" stroke="#2f81f7" stroke-width="2.6"/><rect x="9" y="9" width="282" height="422" rx="13"
+      fill="none" stroke="#2f81f7" stroke-width="0.9" opacity="0.55"/>
+
+  <text x="24" y="38" font-family="JetBrains Mono, ui-monospace, monospace" font-size="9.5"
+     font-weight="500" fill="#6e6452" text-anchor="start" letter-spacing="1.2">12 AUG 2026</text>
+  <text x="276" y="38" font-family="JetBrains Mono, ui-monospace, monospace" font-size="9.5"
+     font-weight="700" fill="#276bce" text-anchor="end" letter-spacing="1.4">RARE</text>
+
+  <text x="22" y="106" font-family="JetBrains Mono, ui-monospace, monospace" font-size="64"
+     font-weight="800" fill="#241c54" text-anchor="start" letter-spacing="-2.5">8.2</text>
+  <text x="140" y="106" font-family="JetBrains Mono, ui-monospace, monospace" font-size="18"
+     font-weight="700" fill="#276bce" text-anchor="start" letter-spacing="1">KM</text>
+
+  <svg x="24" y="122" width="252" height="161.3"
+     viewBox="0 0 100 64" preserveAspectRatio="xMidYMid meet"
+     data-variant="route" data-uid="rare"><path class="rt" pathLength="1" d="M10 46 C16 34 24 50 33 43 C42 36 44 20 55 17 C66 14 72 27 67 36 C62 45 50 44 47 50 C44 55 54 56 64 54 C74 51 82 44 90 47" fill="#2f81f7" fill-opacity="0.14"
+        stroke="#2f81f7" stroke-width="2.28"
+        stroke-linecap="round" stroke-linejoin="round"
+        style="filter:drop-shadow(0 0 1.5px #2f81f7)"/></svg>
+
+  <path d="M24 300 H276" stroke="#d2c9b0" stroke-width="1"/>
+  <text x="65" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">PACE</text><text x="65" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">5:12</text><text x="154" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">TIME</text><text x="154" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">42:31</text><text x="243" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">HR</text><text x="243" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
+     font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">159</text>
+
+  <g><rect x="24" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="65" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">EARLY BIRD</text></g><g><rect x="113" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="154" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">Z2 MASTER</text></g><g><rect x="202" y="350" width="82" height="21" rx="10.5" fill="#ece2ce"/>
+      <text x="243" y="364.5" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
+     font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="0.6">CLIMBER</text></g>
+
+  <rect x="24" y="382" width="252" height="26" rx="13" fill="#241c54"/>
+  <text x="150" y="399" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="11"
+     font-weight="800" fill="#f5f0e4" text-anchor="middle" letter-spacing="1.4">NEGATIVE SPLIT</text>
+
+  <text x="150" y="424" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="9"
+     font-weight="800" fill="#6e6452" text-anchor="middle" letter-spacing="1.2">temari</text>
+</svg>
+</div>
+  </div>
+</div>
+
+  <div class="tabbar">
+    <div class="tab ">home</div><div class="tab ">runs</div><div class="tab on">cards</div><div class="tab ">you</div>
+  </div></div>
+      <div class="cap"><b>Collection</b><span>one card system, rarity in the frame</span></div>
+    </div>
+    <div>
+      <div class="phone">
+
+  <div class="topbar">
+    <div class="brand"><svg viewBox="0 0 100 100" width="22" height="22" fill="none" stroke-width="11" stroke-linecap="round">
+     <path stroke="var(--horizon-ink)" d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"/>
+     <path stroke="var(--sky)" d="M50 27 A23 23 0 1 1 30.09 61.5"/></svg><span>temari</span></div>
+    <div class="bell"></div>
+  </div>
+<div class="scroll">
+  <div class="season-head">
+    <div class="season-mascot"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="76" height="76" role="img" aria-label="Temari — challenging">
+  <defs><clipPath id="clip-se"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#ae8430" stroke-width="9"/>
+<ellipse cx="36" cy="87" rx="8.5" ry="5" fill="#b23a4f"/><ellipse cx="64" cy="87" rx="8.5" ry="5" fill="#b23a4f"/>  <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
+  <g clip-path="url(#clip-se)"><rect x="19" y="23" width="62" height="6" fill="#d9a53c"/><path d="M64 26 l6 -4 M64 26 l6.5 3" fill="none" stroke="#d9a53c" stroke-width="2.6" stroke-linecap="round"/></g>
+  <path d="M34.5 36.5 L45.5 41.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M65.5 36.5 L54.5 41.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+  <circle cx="40" cy="50" r="4.4" fill="#241c54"/><circle cx="60" cy="50" r="4.4" fill="#241c54"/>
+  <path d="M44 64 Q52 67.5 58 61.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
+</svg>
+</div>
+    <div>
+      <div class="season-name">autumn block</div>
+      <div class="season-sub">week 7 of 12 · build</div>
+    </div>
+  </div>
+
+  <div class="track">
+    <div class="wk done " data-p="base"></div><div class="wk done " data-p="base"></div><div class="wk done " data-p="base"></div><div class="wk done " data-p="build"></div><div class="wk done " data-p="build"></div><div class="wk done " data-p="build"></div><div class="wk done here" data-p="build"></div><div class="wk  " data-p="build"></div><div class="wk  " data-p="peak"></div><div class="wk  " data-p="peak"></div><div class="wk  " data-p="peak"></div><div class="wk  " data-p="taper"></div>
+  </div>
+  <div class="phaserow"><span>base</span><span>build</span><span>peak</span><span>taper</span></div>
+
+  <div class="panel">
+    <div class="panel-head">this week</div>
+    
+      <div class="sess done">
+        <div class="sess-d">mon</div>
+        <div class="sess-s">rest</div>
+        <div class="sess-p"></div>
+      </div>
+      <div class="sess done">
+        <div class="sess-d">tue</div>
+        <div class="sess-s">easy 6k</div>
+        <div class="sess-p">5:48</div>
+      </div>
+      <div class="sess today">
+        <div class="sess-d">wed</div>
+        <div class="sess-s">intervals 5×800</div>
+        <div class="sess-p">4:38</div>
+      </div>
+      <div class="sess ">
+        <div class="sess-d">thu</div>
+        <div class="sess-s">rest</div>
+        <div class="sess-p"></div>
+      </div>
+      <div class="sess ">
+        <div class="sess-d">fri</div>
+        <div class="sess-s">easy 8k</div>
+        <div class="sess-p"></div>
+      </div>
+      <div class="sess ">
+        <div class="sess-d">sun</div>
+        <div class="sess-s">long 16k</div>
+        <div class="sess-p"></div>
+      </div>
+  </div>
+
+  <div class="goals">
+    
+      <div class="goal">
+        <div class="goal-top"><span>sub-50 10k</span><span class="goal-pct">78%</span></div>
+        <div class="goal-bar"><i style="width:78%"></i></div>
+      </div>
+      <div class="goal">
+        <div class="goal-top"><span>500 km season</span><span class="goal-pct">61%</span></div>
+        <div class="goal-bar"><i style="width:61%"></i></div>
+      </div>
+      <div class="goal">
+        <div class="goal-top"><span>15 runs in build</span><span class="goal-pct">93%</span></div>
+        <div class="goal-bar"><i style="width:93%"></i></div>
+      </div>
+  </div>
+</div>
+
+  <div class="tabbar">
+    <div class="tab ">home</div><div class="tab ">runs</div><div class="tab ">cards</div><div class="tab on">you</div>
+  </div></div>
+      <div class="cap"><b>Season</b><span>where you are in the block</span></div>
+    </div>
+</div>

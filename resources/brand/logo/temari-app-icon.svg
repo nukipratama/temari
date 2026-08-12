@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Temari app icon">
+  <rect width="1024" height="1024" fill="#241c54"/>
+  <g transform="translate(232 232) scale(5.6)" fill="none" stroke-width="9.5" stroke-linecap="round">
+    <path stroke="#d9a53c" d="M50 14 A36 36 0 1 1 32 18.82"/>
+    <path stroke="#f5f0e4" d="M50 25 A25 25 0 1 1 28.35 62.5"/>
+    <path stroke="#f5f0e4" d="M50 36 A14 14 0 0 1 62.12 57"/>
+  </g>
+</svg>

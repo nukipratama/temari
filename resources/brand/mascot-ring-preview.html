@@ -1,0 +1,143 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Temari — what does the ring mean?</title>
+<style>
+  :root { --cream:#f5f0e4; --sky:#241c54; --gold:#d9a53c; --ink:#1a1812; --ink3:#6e6452;
+          --sunken:#ece2ce; --leaf:#2f8f63; --ember:#b23a4f; }
+  body { margin:0; padding:48px 40px 90px; background:var(--cream); color:var(--ink);
+         font:14px/1.5 ui-sans-serif,system-ui,-apple-system,sans-serif; }
+  h1 { font-size:20px; font-weight:650; margin:0 0 4px; }
+  h2 { font-size:14px; font-weight:650; margin:46px 0 4px; }
+  h2 small { font-weight:400; color:var(--ink3); text-transform:none; letter-spacing:0; }
+  p.sub { margin:0 0 22px; color:var(--ink3); max-width:72ch; }
+  .strip { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-end; }
+  .cell { text-align:center; }
+  .cap { font-size:11px; color:var(--ink3); margin-top:8px; max-width:120px; }
+  .cap b { display:block; color:var(--ink); font-weight:600; }
+  svg { display:block; }
+  .note { background:var(--sunken); border-radius:14px; padding:14px 18px; max-width:72ch;
+          font-size:13px; margin-top:14px; }
+  hr { border:0; border-top:1px solid #d8d0ba; margin:44px 0 0; }
+</style>
+
+<h1>What does the ring encode?</h1>
+<p class="sub">The ring is already a gauge — it has a start, a sweep and an end, and people read
+that as data whether or not we mean it. Four options below that don't depend on being in a
+training season, plus one that stops it being a gauge at all.</p>
+
+<h2>The ring as a gauge <small>— same character, five fill levels</small></h2>
+<div class="strip" id="fills"></div>
+
+<hr>
+
+<h2>Option A — how you compare to your own best <small>(recommended)</small></h2>
+<p class="sub">Your current rolling fitness against the highest it has ever been. Full ring means
+you are in the best shape of your life; a gap means there is ground to make back. This is the
+app's entire thesis rendered on the character — the mascot literally wears the answer to "am I
+getting better". It can fall, but a training partner who keeps score <em>should</em> show it
+when you slip.</p>
+<div class="strip" id="optA"></div>
+
+<h2>Option B — the next distance milestone</h2>
+<p class="sub">Lifetime kilometres toward the next round number. Only ever climbs, never resets,
+works from your first run, and needs no training context at all. The safest option — and the
+dullest, since it can sit visually unchanged for weeks.</p>
+<div class="strip" id="optB"></div>
+
+<h2>Option C — closing on a personal record</h2>
+<p class="sub">How near you are to your PR at whichever distance you run most. Directly on-theme —
+you versus your past self — and it has a real payoff moment when it completes. Downside: it is
+only meaningful if you are actually chasing a time, and it sits near-full forever once you set a
+PR you cannot beat.</p>
+<div class="strip" id="optC"></div>
+
+<h2>Option D — not a gauge at all</h2>
+<p class="sub">Make it a <em>complete</em> ring rather than a partial arc, and let it carry mood
+through colour and weight instead of fill. Because it is closed, nobody reads it as a progress
+meter — which removes the problem rather than solving it. The character still ties to the mark,
+and the ring becomes expressive rather than informational.</p>
+<div class="strip" id="optD"></div>
+<div class="note"><b>Worth knowing:</b> D is the only option with no data dependency, so the mascot
+renders identically for a brand-new user with zero runs. Every other option has an empty state
+where the ring is nearly bare — which is the exact moment a new user forms their first impression.</div>
+
+<script>
+const SKY='#241c54', CREAM='#f5f0e4', GOLD='#d9a53c', TRACK='#ece2ce',
+      LEAF='#2f8f63', EMBER='#b23a4f', VIOLET='#6b3fa0';
+const CX=50, CY=55, R=40, SPAN=330, START=90;
+const pt = d => [ (CX + R*Math.cos(d*Math.PI/180)).toFixed(2),
+                  (CY - R*Math.sin(d*Math.PI/180)).toFixed(2) ];
+function arc(frac, color=GOLD, w=7) {
+  if (frac <= 0.004) return '';
+  const sweep = SPAN * Math.min(frac,1);
+  const [x0,y0]=pt(START), [x1,y1]=pt(START-sweep);
+  return `<path d="M${x0} ${y0} A${R} ${R} 0 ${sweep>180?1:0} 1 ${x1} ${y1}"
+    fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/>`;
+}
+const track = () => {
+  const [x0,y0]=pt(START), [x1,y1]=pt(START-SPAN);
+  return `<path d="M${x0} ${y0} A${R} ${R} 0 1 1 ${x1} ${y1}"
+    fill="none" stroke="${TRACK}" stroke-width="7" stroke-linecap="round"/>`;
+};
+const halo = (color, w) => `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none"
+    stroke="${color}" stroke-width="${w}"/>`;
+function face(cx, cy, s, expr) {
+  const L=cx-s, R2=cx+s, w=3.8;
+  const g=d=>`<path d="${d}" fill="none" stroke="${SKY}" stroke-width="${w}" stroke-linecap="round"/>`;
+  const eye=x=>`<circle cx="${x}" cy="${cy}" r="4.4" fill="${SKY}"/>`;
+  const lid=x=>`<path d="M${x-4.2} ${cy} H${x+4.2}" stroke="${SKY}" stroke-width="4.4" stroke-linecap="round"/>`;
+  if (expr==='challenging')
+    return g(`M${L-5.5} ${cy-13} L${L+5.5} ${cy-8.5}`)+g(`M${R2+5.5} ${cy-13} L${R2-5.5} ${cy-8.5}`)
+      +eye(L)+eye(R2)+g(`M${cx-6} ${cy+14} Q${cx+2} ${cy+17.5} ${cx+8} ${cy+11.5}`);
+  if (expr==='unimpressed')
+    return g(`M${L-5.5} ${cy-9} L${L+5.5} ${cy-9}`)+g(`M${R2-5.5} ${cy-9} L${R2+5.5} ${cy-9}`)
+      +lid(L)+lid(R2)+g(`M${cx-6.5} ${cy+13.5} H${cx+6.5}`);
+  if (expr==='celebrating')
+    return g(`M${L-5.5} ${cy-13} L${L+5.5} ${cy-14.5}`)+g(`M${R2+5.5} ${cy-13} L${R2-5.5} ${cy-14.5}`)
+      +eye(L)+eye(R2)+`<path d="M${cx-8} ${cy+11} Q${cx} ${cy+21} ${cx+8} ${cy+11} Z" fill="${SKY}"/>`;
+  if (expr==='concerned')
+    return g(`M${L-5.5} ${cy-13.5} L${L+5.5} ${cy-9.5}`)+g(`M${R2+5.5} ${cy-13.5} L${R2-5.5} ${cy-9.5}`)
+      +eye(L)+eye(R2)+g(`M${cx-6.5} ${cy+15.5} Q${cx} ${cy+11.5} ${cx+6.5} ${cy+15.5}`);
+  return g(`M${L-5.5} ${cy-10} L${L+5.5} ${cy-11}`)+g(`M${R2+5.5} ${cy-10} L${R2-5.5} ${cy-11}`)
+    +eye(L)+eye(R2)+g(`M${cx-7} ${cy+13} Q${cx} ${cy+17} ${cx+7} ${cy+13}`);
+}
+const body = `<circle cx="50" cy="55" r="28" fill="${CREAM}" stroke="${SKY}" stroke-width="4.5"/>`;
+const draw = (ringSvg, expr='resting', size=112) =>
+  `<svg viewBox="0 0 100 100" width="${size}" height="${size}">${ringSvg}${body}${face(50,54,10,expr)}</svg>`;
+const gauge = (f, c=GOLD) => track()+arc(f,c);
+
+const put = (id, rows) => document.getElementById(id).innerHTML = rows.map(
+  ([ring, expr, title, sub]) => `<div class="cell">${draw(ring, expr)}
+    <div class="cap"><b>${title}</b>${sub||''}</div></div>`).join('');
+
+put('fills', [0,0.25,0.5,0.75,1].map(f => [gauge(f), 'resting', Math.round(f*100)+'%', '']));
+
+put('optA', [
+  [gauge(0.42, EMBER), 'concerned',   'off your best', 'a way back to where you were'],
+  [gauge(0.71),        'resting',     'closing',       'most of the way there'],
+  [gauge(0.93),        'challenging', 'near best',     'within reach'],
+  [gauge(1,   LEAF),   'celebrating', 'all-time best', 'fittest you have ever been'],
+]);
+
+put('optB', [
+  [gauge(0.08), 'resting',     '42 / 500 km', 'first month'],
+  [gauge(0.46), 'resting',     '230 / 500 km','halfway'],
+  [gauge(0.88), 'challenging', '440 / 500 km','closing in'],
+  [gauge(1, LEAF), 'celebrating','500 km',    'milestone hit'],
+]);
+
+put('optC', [
+  [gauge(0.55), 'resting',     '5k · 24:10',  'PR is 22:38'],
+  [gauge(0.82), 'challenging', '5k · 23:05',  'getting close'],
+  [gauge(0.97), 'challenging', '5k · 22:44',  'six seconds off'],
+  [gauge(1, GOLD), 'celebrating','new PR',    '22:31'],
+]);
+
+put('optD', [
+  [halo(TRACK, 6),  'resting',      'calm',      'nothing to report'],
+  [halo(LEAF, 7),   'celebrating',  'good day',  'you ran well'],
+  [halo(GOLD, 9),   'challenging',  'fired up',  'PR territory'],
+  [halo(EMBER, 7),  'concerned',    'watch it',  'overreaching'],
+  [halo(VIOLET, 6), 'unimpressed',  'flat',      'three days off'],
+]);
+</script>
