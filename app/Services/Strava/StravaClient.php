@@ -28,13 +28,13 @@ class StravaClient
 
     // Strava enforces rate limits per CLIENT (the whole app), not per athlete, so
     // these buckets are keyed globally and shared across every connected user. The
-    // values are Strava's Read limits (200 / 15min, 2000 / day); they bind before
-    // the Overall limits (400 / 4000) because all of our calls are reads.
-    private const int RATE_LIMIT_15MIN_MAX = 200;
+    // values are Strava's current Read limits (100 / 15min, 1000 / day); they bind
+    // before the Overall limits because all of our calls are reads.
+    private const int RATE_LIMIT_15MIN_MAX = 100;
 
     private const int RATE_LIMIT_15MIN_DECAY = 15 * 60;
 
-    private const int RATE_LIMIT_DAILY_MAX = 2000;
+    private const int RATE_LIMIT_DAILY_MAX = 1000;
 
     private const int RATE_LIMIT_DAILY_DECAY = 24 * 60 * 60;
 
