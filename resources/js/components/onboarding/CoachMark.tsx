@@ -117,9 +117,12 @@ export default function CoachMark({
     const containerRef = useRef<HTMLDivElement>(null);
     const [anchorOnScreen, setAnchorOnScreen] = useState(false);
     const [style, setStyle] = useState<CSSProperties | null>(null);
+    const [closed, setClosed] = useState(false);
 
-    const shown = visible && anchorOnScreen;
-    usePopover(shown, containerRef, dismiss);
+    const shown = visible && anchorOnScreen && !closed;
+    // Outside click / Escape just hides it for this visit — only the explicit
+    // "Got it" button below persists the dismissal via useCoachMark.
+    usePopover(shown, containerRef, () => setClosed(true));
 
     useEffect(() => {
         const anchor = anchorRef.current;

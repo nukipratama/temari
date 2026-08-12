@@ -51,18 +51,25 @@ describe('CoachMark', () => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
-    it('dismisses on Escape', async () => {
-        render(<Harness />);
+    it('closes on Escape but does not persist as dismissed', async () => {
+        const { unmount } = render(<Harness />);
 
         fireEvent.keyDown(document, { key: 'Escape' });
 
         await waitFor(() =>
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
         );
+        expect(
+            window.localStorage.getItem('temari:coachmark:3:welcome-tile'),
+        ).toBeNull();
+
+        unmount();
+        render(<Harness />);
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
-    it('dismisses on a pointerdown outside the coach-mark', async () => {
-        render(
+    it('closes on a pointerdown outside the coach-mark but does not persist as dismissed', async () => {
+        const { unmount } = render(
             <div>
                 <Harness />
                 <div data-testid="outside">outside</div>
@@ -74,6 +81,13 @@ describe('CoachMark', () => {
         await waitFor(() =>
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
         );
+        expect(
+            window.localStorage.getItem('temari:coachmark:3:welcome-tile'),
+        ).toBeNull();
+
+        unmount();
+        render(<Harness />);
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
     it('stays hidden while its anchor is off screen', () => {
