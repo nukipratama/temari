@@ -38,11 +38,11 @@ function VoiceContent({ text }: Readonly<{ text: string }>) {
 
     return (
         <div className="space-y-2.5">
-            <h3 className="font-display text-display-xs leading-tight tracking-[-0.01em] text-cream">
+            <h3 className="font-display text-display-xs leading-tight tracking-[-0.01em] text-ink">
                 {renderBold(title)}
             </h3>
             {body !== '' && (
-                <p className="font-sans text-sm leading-relaxed text-ink-on-sky">
+                <p className="font-sans text-sm leading-relaxed text-ink-2">
                     {renderBold(body)}
                 </p>
             )}
@@ -60,9 +60,8 @@ interface TodayHeroBannerProps {
 }
 
 /**
- * Today's full-width hero: the day's greeting plus Temari's forward-looking
- * guidance for it, on the page's HeroPanel background. Always on-sky —
- * this is the only place it's used.
+ * Today's full-width banner: the day's greeting plus Temari's forward-looking
+ * guidance for it, merged into one block instead of a separate sidebar card.
  */
 export default function TodayHeroBanner({
     firstName,
@@ -96,13 +95,13 @@ export default function TodayHeroBanner({
 
     return (
         <div className="flex flex-col gap-6">
-            <PageHero size="2xl" eyebrow={dateLine} onSky>
+            <PageHero size="2xl" eyebrow={dateLine}>
                 Hey, {firstName}
                 <br />
                 <span className="italic text-horizon">{vibeSubtitle}</span>
             </PageHero>
             <div className="flex flex-col gap-3">
-                <SectionLabel dot onSky className="mb-0">
+                <SectionLabel dot className="mb-0">
                     Today from Temari
                 </SectionLabel>
                 <div className="flex items-start gap-3">
@@ -112,7 +111,6 @@ export default function TodayHeroBanner({
                             analysis={briefing.mascotVoice}
                             inertiaReloadProps={['briefing']}
                             allowReanalyze={false}
-                            onSky
                             renderContent={(text) => (
                                 <VoiceContent text={text} />
                             )}
@@ -121,7 +119,7 @@ export default function TodayHeroBanner({
                 </div>
                 {weatherChipLabel && (
                     <div className="flex flex-wrap gap-1.5">
-                        <Chip tone="onSky">{weatherChipLabel}</Chip>
+                        <Chip>{weatherChipLabel}</Chip>
                     </div>
                 )}
                 {!paused && (
@@ -133,7 +131,7 @@ export default function TodayHeroBanner({
                             cooldownRemaining,
                             'asking for another take',
                         )}
-                        className="focus-ring inline-flex items-center self-start gap-1 rounded text-xs text-ink-on-sky transition-colors hover:text-cream disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-on-sky"
+                        className="focus-ring inline-flex items-center self-start gap-1 rounded text-xs text-ink-3 transition-colors hover:text-leaf-deep disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-3"
                     >
                         <Icon icon="mdi:auto-awesome" aria-hidden />
                         <span>{label}</span>
