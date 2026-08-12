@@ -174,6 +174,18 @@ describe('Runs/Show', () => {
         ).toBeInTheDocument();
     });
 
+    it('says nothing about hydration when the run is already detailed', () => {
+        renderShow();
+        expect(screen.queryByText(/still filling this run in/i)).toBeNull();
+    });
+
+    it('explains the thin page while the deeper fetch is queued', () => {
+        renderShow({ awaitingDetail: true });
+        expect(
+            screen.getByText(/still filling this run in/i),
+        ).toBeInTheDocument();
+    });
+
     it('renders run name in the sky hero', () => {
         renderShow();
         expect(screen.getAllByText('Morning Run').length).toBeGreaterThan(0);

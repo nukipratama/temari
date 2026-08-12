@@ -17,6 +17,7 @@ import CoachMark from '@/components/onboarding/CoachMark';
 import DetailTiles from '@/components/run/DetailTiles';
 import LapsGraph from '@/components/run/LapsGraph';
 import MapWeatherPanel from '@/components/run/MapWeatherPanel';
+import RunHydratingNotice from '@/components/run/RunHydratingNotice';
 import RunLenses from '@/components/run/RunLenses';
 import SplitsTable from '@/components/run/SplitsTable';
 import SendNotificationButton from '@/components/SendNotificationButton';
@@ -80,6 +81,8 @@ interface PastYouMatch {
 interface ShowProps {
     activity: DetailedActivity;
     detail: ActivityDetail;
+    /** This view queued the run's detail + streams fetch; the page is still thin. */
+    awaitingDetail?: boolean;
     card: RunCardDetail | null;
     storyLine: StoryLine | null;
     speechAnalysis: AnalysisPayload;
@@ -98,6 +101,7 @@ interface ShowProps {
 export default function RunsShow({
     activity,
     detail,
+    awaitingDetail = false,
     card,
     storyLine,
     speechAnalysis,
@@ -190,6 +194,8 @@ export default function RunsShow({
                 >
                     History · Log
                 </BackLink>
+
+                <RunHydratingNotice hydrating={awaitingDetail} />
 
                 <div className="mb-5 flex flex-wrap gap-2">
                     <StravaAction>
