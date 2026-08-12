@@ -22,7 +22,6 @@ import VitalChips from '@/components/dashboard/VitalChips';
 import CoachMark from '@/components/onboarding/CoachMark';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
 import { type TemariPose } from '@/components/temari/TemariProto';
-import HeroPanel from '@/components/ui/HeroPanel';
 import PageContainer from '@/components/ui/PageContainer';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { useCountUp } from '@/hooks/useCountUp';
@@ -81,103 +80,85 @@ export default function Today({
     return (
         <>
             <Head title="Today" />
-            <HeroPanel className="rounded-none px-0 py-8 sm:px-0 sm:py-10">
-                <PageContainer>
-                    <TodayHistoryTabs active="today" onSky className="mb-5" />
-                    <TodayHeroBanner
-                        firstName={firstName}
-                        dateLine={dateLine}
-                        vibeSubtitle={vibeSubtitle}
-                        briefing={briefing}
-                        pose={pose}
-                        lastRun={lastRun}
-                    />
+            <PageContainer>
+                <TodayHistoryTabs active="today" className="mb-5" />
+                <TodayHeroBanner
+                    firstName={firstName}
+                    dateLine={dateLine}
+                    vibeSubtitle={vibeSubtitle}
+                    briefing={briefing}
+                    pose={pose}
+                    lastRun={lastRun}
+                />
 
-                    {recentRuns.length === 0 ? (
-                        <div className="mt-8">
-                            <EmptyRunsState onSky />
-                        </div>
-                    ) : (
-                        <>
-                            {featured && (
-                                <div className="mt-8">
-                                    <div
-                                        ref={featuredRef}
-                                        data-coachmark="today-featured-card"
-                                    >
-                                        <FeaturedKartuPanel
-                                            featured={featured}
-                                            featuredKartuVoice={
-                                                briefing.featuredKartuVoice
-                                            }
-                                        />
-                                    </div>
-                                    <CoachMark
-                                        id="today-featured-card"
-                                        anchorRef={featuredRef}
-                                        placement="bottom"
-                                        title="Every run gets a card"
-                                        body="This one's my pick of your recent runs, and the rest are waiting in Collection."
+                {recentRuns.length === 0 ? (
+                    <div className="mt-8">
+                        <EmptyRunsState />
+                    </div>
+                ) : (
+                    <>
+                        {featured && (
+                            <div className="mt-8">
+                                <div
+                                    ref={featuredRef}
+                                    data-coachmark="today-featured-card"
+                                >
+                                    <FeaturedKartuPanel
+                                        featured={featured}
+                                        featuredKartuVoice={
+                                            briefing.featuredKartuVoice
+                                        }
                                     />
                                 </div>
-                            )}
-
-                            <div className="mt-8 flex flex-col gap-6">
-                                <section>
-                                    <SectionLabel dot dotClass="bg-leaf" onSky>
-                                        This week · {weekRangeLabel(now)}
-                                    </SectionLabel>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <KpiTile
-                                            label="Runs"
-                                            value={weekRunsDisplay}
-                                            onSky
-                                        />
-                                        <KpiTile
-                                            label="KM"
-                                            value={weekKmDisplay}
-                                            onSky
-                                        />
-                                        <KpiTile
-                                            label="TRIMP"
-                                            value={weekTrimpDisplay}
-                                            explainerKey="trimp"
-                                            onSky
-                                        />
-                                    </div>
-                                </section>
-
-                                <VitalChips
-                                    briefing={briefing}
-                                    load={load}
-                                    onSky
+                                <CoachMark
+                                    id="today-featured-card"
+                                    anchorRef={featuredRef}
+                                    placement="bottom"
+                                    title="Every run gets a card"
+                                    body="This one's my pick of your recent runs, and the rest are waiting in Collection."
                                 />
+                            </div>
+                        )}
 
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    {lastRun && (
-                                        <LastLariCard
-                                            run={lastRun}
-                                            pose={poseForRun(
-                                                lastRun,
-                                                recentMoods[
-                                                    lastRun.activity_id
-                                                ] ?? null,
-                                            )}
-                                            note={lastRunNote}
-                                            onSky
-                                        />
-                                    )}
-                                    <KondisiCard
-                                        load={load}
-                                        snapshot={snapshot}
-                                        onSky
+                        <div className="mt-8 flex flex-col gap-6">
+                            <section>
+                                <SectionLabel dot dotClass="bg-leaf">
+                                    This week · {weekRangeLabel(now)}
+                                </SectionLabel>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <KpiTile
+                                        label="Runs"
+                                        value={weekRunsDisplay}
+                                    />
+                                    <KpiTile label="KM" value={weekKmDisplay} />
+                                    <KpiTile
+                                        label="TRIMP"
+                                        value={weekTrimpDisplay}
+                                        explainerKey="trimp"
                                     />
                                 </div>
+                            </section>
+
+                            <VitalChips briefing={briefing} load={load} />
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                {lastRun && (
+                                    <LastLariCard
+                                        run={lastRun}
+                                        pose={poseForRun(
+                                            lastRun,
+                                            recentMoods[lastRun.activity_id] ??
+                                                null,
+                                        )}
+                                        note={lastRunNote}
+                                    />
+                                )}
+                                <KondisiCard load={load} snapshot={snapshot} />
                             </div>
-                        </>
-                    )}
-                </PageContainer>
-            </HeroPanel>
+                        </div>
+                    </>
+                )}
+            </PageContainer>
         </>
     );
 }
