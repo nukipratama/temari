@@ -11,26 +11,15 @@ import Card from '@/components/ui/Card';
 import Chip, { type ChipTone } from '@/components/ui/Chip';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
+import GoalCard, { type Goal } from '@/components/ui/GoalCard';
 import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
-import ProgressBar from '@/components/ui/ProgressBar';
 import SectionLabel from '@/components/ui/SectionLabel';
-import { useCountUp } from '@/hooks/useCountUp';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
-import { formatGoalNumber, goalProgressRatio } from '@/lib/goalProgress';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatNaiveIdDate, formatPace, todayLocalIso } from '@/lib/pace';
 import { currentSeasonPhase } from '@/lib/seasonPhase';
-
-interface SeasonGoal {
-    id: number;
-    title: string;
-    current: number;
-    target: number;
-    unit: string;
-    is_completed: boolean;
-}
 
 interface SeasonSummary {
     starts_at: string;
@@ -38,7 +27,7 @@ interface SeasonSummary {
     week_index: number;
     total_weeks: number;
     is_race_oriented: boolean;
-    goals: SeasonGoal[];
+    goals: Goal[];
 }
 
 interface PlanDay {
@@ -251,8 +240,12 @@ export default function Plan({
                         className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5"
                     >
                         {season.goals.map((goal) => (
-                            <motion.div key={goal.id} variants={fadeInUp}>
-                                <SeasonGoalCard goal={goal} />
+                            <motion.div
+                                key={goal.id}
+                                variants={fadeInUp}
+                                className="h-full"
+                            >
+                                <GoalCard goal={goal} />
                             </motion.div>
                         ))}
                     </motion.div>
@@ -308,7 +301,7 @@ export default function Plan({
                                             <Card
                                                 padding="sm"
                                                 className={cn(
-                                                    'flex flex-wrap items-center justify-between gap-3 shadow-sm',
+                                                    'flex flex-wrap items-center justify-between gap-3',
                                                     day.date === today &&
                                                         'border-horizon',
                                                 )}
@@ -455,37 +448,6 @@ export default function Plan({
                 />
             </PageContainer>
         </>
-    );
-}
-
-function SeasonGoalCard({ goal }: Readonly<{ goal: SeasonGoal }>) {
-    const current = useCountUp(goal.current);
-
-    return (
-        <Card
-            padding="sm"
-            className={cn(
-                'flex flex-col gap-2 shadow-sm',
-                goal.is_completed && 'border-horizon/30 bg-horizon/[0.06]',
-            )}
-        >
-            <p className="text-sm font-semibold text-ink">{goal.title}</p>
-            <div className="mt-auto">
-                <div className="mb-1 flex items-baseline justify-between font-mono text-[11px] tabular-nums text-ink-3">
-                    <span>
-                        {formatGoalNumber(current)}
-                        <span className="text-ink-3">/</span>
-                        {formatGoalNumber(goal.target)}
-                    </span>
-                    <span>{goal.unit}</span>
-                </div>
-                <ProgressBar
-                    value={goalProgressRatio(goal.current, goal.target)}
-                    tone={goal.is_completed ? 'horizon' : 'sky'}
-                    ariaLabel={`${goal.title}: ${formatGoalNumber(goal.current)}/${formatGoalNumber(goal.target)} ${goal.unit}`}
-                />
-            </div>
-        </Card>
     );
 }
 

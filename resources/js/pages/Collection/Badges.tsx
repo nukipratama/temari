@@ -111,9 +111,8 @@ function BadgeCard({ item }: Readonly<{ item: BadgeBoardItem }>) {
             padding="md"
             className={cn(
                 'flex h-full flex-col items-center gap-2 text-center',
-                locked
-                    ? 'border-2 border-dashed border-cream-deep bg-cream/40'
-                    : 'shadow-sm',
+                locked &&
+                    'border-2 border-dashed border-cream-deep bg-cream/40 shadow-none',
             )}
         >
             <span className={cn('text-3xl', locked && 'grayscale')} aria-hidden>

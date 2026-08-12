@@ -515,10 +515,7 @@ export default function RunsShow({
                             {/* Kenapa [rarity] — always shown (even with no badges):
                                 rarity is a composite score, so a badge-less card still
                                 deserves an honest explanation instead of a blank. */}
-                            <Card
-                                padding="md"
-                                className="flex flex-col gap-4 shadow-sm"
-                            >
+                            <Card padding="md" className="flex flex-col gap-4">
                                 <SectionLabel>
                                     Why this earned {rarityLabel}
                                 </SectionLabel>

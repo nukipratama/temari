@@ -296,7 +296,7 @@ export default function HrZones({
                     )}
                 </header>
 
-                <Card as="section" padding="lg" className="mt-8 shadow-sm">
+                <Card as="section" padding="lg" className="mt-8">
                     <SectionLabel>Max & Resting HR</SectionLabel>
                     <div className="grid gap-5 sm:grid-cols-2">
                         <NumberField
@@ -339,7 +339,7 @@ export default function HrZones({
                 </Card>
 
                 <div data-coachmark="hrzones-editor" className="mt-6">
-                    <Card as="section" padding="lg" className="shadow-sm">
+                    <Card as="section" padding="lg">
                         <SectionLabel>Your zones</SectionLabel>
                         <p className="mb-4 font-sans text-xs text-ink-3">
                             Each upper bound should match the next zone's lower

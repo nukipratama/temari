@@ -80,7 +80,7 @@ export default function Settings({
                 <section data-coachmark="settings-notifications">
                     <SectionLabel>Notifications</SectionLabel>
                     <div className="mt-3">
-                        <Card padding="lg" className="shadow-sm">
+                        <Card padding="lg">
                             <NotificationPrefsPanel
                                 prefs={notificationPrefs}
                                 telegram={telegram}
@@ -93,7 +93,7 @@ export default function Settings({
                 <section className="mt-10" data-coachmark="settings-hr-zones">
                     <SectionLabel>Running</SectionLabel>
                     <div className="mt-3">
-                        <Card padding="lg" className="shadow-sm">
+                        <Card padding="lg">
                             <SettingsRow
                                 icon="mdi:heart-pulse"
                                 label="HR zones"
@@ -107,7 +107,7 @@ export default function Settings({
                 <section className="mt-10">
                     <SectionLabel>Account</SectionLabel>
                     <div className="mt-3">
-                        <Card padding="lg" className="shadow-sm">
+                        <Card padding="lg">
                             <DeleteAccountPanel />
                         </Card>
                     </div>

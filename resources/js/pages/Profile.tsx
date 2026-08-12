@@ -296,7 +296,7 @@ export default function Profile({
                 {fitness?.training_paces && (
                     <section className="mt-10">
                         <SectionLabel>Training · pace targets</SectionLabel>
-                        <Card className="mt-3 shadow-sm">
+                        <Card className="mt-3">
                             <motion.div
                                 variants={staggerContainer}
                                 initial="hidden"
@@ -391,7 +391,7 @@ function ProgressionSection({
 
     return (
         <div data-coachmark="profile-progression" className="mt-10">
-            <Card as="section" padding="lg" className="shadow-sm">
+            <Card as="section" padding="lg">
                 {tabs.length > 1 && (
                     <div
                         className="mb-6 flex flex-wrap items-center gap-2"
