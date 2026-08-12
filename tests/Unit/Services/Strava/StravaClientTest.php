@@ -284,6 +284,23 @@ it('throws StravaRateLimitedException naming the exhausted bucket and retry-afte
     Http::assertNothingSent();
 });
 
+it('sends API reads to the configured base URL', function (): void {
+    config(['services.strava.api_base_url' => 'https://api-v3.strava.com']);
+
+    Http::fake([
+        'api-v3.strava.com/*' => Http::response(['ok' => true]),
+    ]);
+
+    $connection = StravaConnection::factory()->create([
+        'access_token' => 'valid-access',
+        'token_expires_at' => Carbon::now()->addHours(5),
+    ]);
+
+    new StravaClient()->get($connection, '/athlete');
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://api-v3.strava.com/athlete');
+});
+
 it('records hits against both rate limit buckets per request', function (): void {
     Http::fake([
         'www.strava.com/api/v3/*' => Http::response(['ok' => true]),

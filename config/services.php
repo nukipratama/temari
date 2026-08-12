@@ -39,6 +39,9 @@ return [
         'client_id' => env('STRAVA_CLIENT_ID'),
         'client_secret' => env('STRAVA_CLIENT_SECRET'),
         'redirect' => null,
+        // Strava moves the REST host to https://api-v3.strava.com on 2027-01-04;
+        // the cutover is this value, not a code change.
+        'api_base_url' => env('STRAVA_API_BASE_URL', 'https://www.strava.com/api/v3'),
         // Shared secret echoed back to Strava during the webhook subscription
         // handshake (GET /strava/webhook?hub.verify_token=...).
         'webhook_verify_token' => env('STRAVA_WEBHOOK_VERIFY_TOKEN'),
