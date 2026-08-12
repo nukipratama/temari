@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { MotionConfig } from 'framer-motion';
+
 import AiCatchingUpBanner from '@/components/AiCatchingUpBanner';
 import AiOutageBanner from '@/components/AiOutageBanner';
 import ErrorBanner from '@/components/ErrorBanner';
@@ -17,15 +19,17 @@ export default function BareShell({ children }: Readonly<BareShellProps>) {
     useSwipeBack();
 
     return (
-        // No MobileTopBar here, so this shell pads for the notch itself.
-        <div className="min-h-screen bg-cream-deep pt-[env(safe-area-inset-top)] text-ink">
-            <ErrorBanner />
-            <StravaZoneReconnectBanner />
-            <AiOutageBanner />
-            <AiCatchingUpBanner />
-            <StravaPausedBanner />
-            {children}
-        </div>
+        <MotionConfig reducedMotion="user">
+            {/* No MobileTopBar here, so this shell pads for the notch itself. */}
+            <div className="min-h-screen bg-cream-deep pt-[env(safe-area-inset-top)] text-ink">
+                <ErrorBanner />
+                <StravaZoneReconnectBanner />
+                <AiOutageBanner />
+                <AiCatchingUpBanner />
+                <StravaPausedBanner />
+                {children}
+            </div>
+        </MotionConfig>
     );
 }
 
