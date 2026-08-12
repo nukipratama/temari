@@ -24,6 +24,7 @@ The app's home (`/`). It greets the runner by name, hands them Temari's read on 
 
 - **AI narration** — every voice block (greeting, Temari's daily voice, featured-kartu voice) is an `Analysis` row from the [[ai-pipeline]].
 - **Training metrics** — `load` comes from `TrainingLoad::summary`. See [[training-load-metrics]].
+- **Past You** — `pastYouTrend` comes from `PastYouTrendBuilder::build`. See [[past-you-engine]].
 - **Gamification** — the featured kartu is picked by rarity rank. See [[gamification]].
 - **Dawn-shift** — surface tints drift by time of day via `useDawnShift`. See [[frontend-architecture]].
 
@@ -33,13 +34,17 @@ The app's home (`/`). It greets the runner by name, hands them Temari's read on 
 
 ## Kata Temari (hero banner)
 
-The whole page sits on a full-bleed dark [HeroPanel](resources/js/components/ui/HeroPanel.tsx) background. [TodayHeroBanner](resources/js/components/dashboard/TodayHeroBanner.tsx) is a full-width banner merged with the greeting at the top of it — Temari's mascot beside "Today from Temari". It renders **one** LLM block (`briefing.mascotVoice`) through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx), so it shows the spinner / retry / "Reread" states from the [[ai-pipeline]]. The text is parsed on `\n\n`: the first paragraph is the session title (display type), the rest is Temari's reasoning and her caveat. A weather chip from the last run and an "Another take" re-trigger (`useAnalysisTrigger`) sit under it. It renders whether or not the user has runs yet, and stays purely forward-looking (today's plan) — [LastLariCard](resources/js/components/dashboard/LastLariCard.tsx) owns any backward-looking recap of the last completed run.
+The whole page sits on a full-bleed dark [HeroPanel](resources/js/components/ui/HeroPanel.tsx) background. [TodayHeroBanner](resources/js/components/dashboard/TodayHeroBanner.tsx) is a full-width banner merged with the greeting at the top of it — Temari's mascot beside "Today from Temari". It renders **one** LLM block (`briefing.mascotVoice`) through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx), so it shows the spinner / retry / "Reread" states from the [[ai-pipeline]]. The text is parsed on `\n\n`: the first paragraph is the session title (display type), the rest is Temari's reasoning and her caveat. A weather chip from the last run and an "Another take" re-trigger (`useAnalysisTrigger`) sit under it. It renders whether or not the user has runs yet, and stays purely forward-looking (today's plan) — [LastLariCard](resources/js/components/dashboard/LastLariCard.tsx) owns the backward-looking recap of the last *completed run*, and [PastYouTrendCard](resources/js/components/dashboard/PastYouTrendCard.tsx) owns the backward-looking read across the last few weeks.
 
 That block used to be two separately billed calls (a mascot voice plus a session suggestion); they were merged into one voice so the dashboard speaks once. The whole briefing object is assembled server-side by [BriefingComposer::compose](app/Services/Run/Story/BriefingComposer.php#L24) — **two** Analysis rows now: the daily voice and the featured-kartu voice (the latter keyed on a separate discriminator so re-picking the featured card doesn't rebill the other). Each is its own [[ai-pipeline]] block with independent retry. The signals their prompts read come from the context builders in [[ai-narration-internals]]; the vibe that colours Temari's tone is [[vibe-and-mood]].
 
 ## Vital chips
 
 [VitalChips](resources/js/components/dashboard/VitalChips.tsx) is a 3-up row: **Vibe** (the `vibeLabel` word, e.g. "Membara" — `load.form`'s magnitude only drives the hidden `<meter>` gauge, not visible text), **Kesiapan** (`load.form` signed, with `formStatusLabel`), and **Recovery** (`recoveryHoursLabel` / streak / recovery label). The Vibe and Kesiapan chips carry a `MetricExplainer` tooltip. `load` is the `TrainingLoad::summary` payload. All three values use a fluid font-size clamp (`text-stat-fluid` for the numeric two, a local word clamp for Vibe) tuned against the narrowest supported width (iPhone SE, 320px) so real values never silently truncate in the 1/3-width tile.
+
+## Past You verdict
+
+[PastYouTrendCard](resources/js/components/dashboard/PastYouTrendCard.tsx) renders the `pastYouTrend` prop built by [PastYouTrendBuilder](app/Services/Run/Story/PastYouTrendBuilder.php): one verdict headline (`improving` / `plateaued` / `slipped`) over the 2 to 4 matched pairs it was computed from, each linking to the run it was measured on. The fourth outcome, `not_enough_history`, renders the Past You empty state instead of a headline, so the USP never claims a reading it does not have. The prop is deferred behind a closure like the rest, and the matching reads summary fields only, so it works across un-hydrated history. Full mechanics: [[past-you-engine]].
 
 ## Featured kartu
 
