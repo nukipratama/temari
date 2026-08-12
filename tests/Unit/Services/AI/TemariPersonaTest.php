@@ -11,15 +11,22 @@ beforeEach(function (): void {
 /*
  * MANUAL VOICE SPOT-CHECK (run after meaningful persona edits):
  *  - Hit /dashboard logged in as a user with recent activity and read the
- *    Briefing Temari card. Voice should be first-person Temari ("I" /
- *    "you"), warm, casual global running-app register, no profanity/ALL CAPS.
+ *    Briefing Temari card. Voice should be first-person ("I" / "you"), dry,
+ *    lowercase-leaning, and anchored on a number that moved. No corporate
+ *    cheer, no exclamation point on an ordinary day, no profanity/ALL CAPS.
  *  - Open a recent run at /aktivitas/{id} and read all 4 thread entries
  *    (run story, technical translation, split highlight, HR zone). Same
  *    voice across all four — they're produced by different narrators but
  *    should sound like the same character.
  *  - Open /aktivitas + /kalender and read the weekly recap narrative + trend caption.
+ *    The week-over-week comparison is the centrepiece, not a footnote.
  *  - Open /rekor and read the PR context flavor lines.
  *  - Open /kartu and read the card flavor on the spotlight card.
+ *
+ *  What counts as drift now, beyond stiffness: praise handed out by default,
+ *  a warm closer bolted onto a block whose numbers didn't earn one, or a
+ *  coast that got named twice. Lowercase is a SOFT tendency, so output that
+ *  varies its capitalization between blocks is correct, not a regression.
  *
  *  Voice drift = persona prompt needs tightening. Reasoning lives in the
  *  persona prompt body comments — keep it the single source of truth.
@@ -29,10 +36,40 @@ it('exposes the full persona system message', function (): void {
     expect($this->prompt)->toBeString()->not->toBe('');
 });
 
-it('introduces Temari in first person as the companion for every run', function (): void {
+it('introduces Temari in first person as the partner who keeps score', function (): void {
     expect($this->prompt)
-        ->toContain("I'm Temari")
-        ->toContain('runs alongside you');
+        ->toContain("I'm temari")
+        ->toContain('I keep score');
+});
+
+it('pins the only opponent to the user themselves, never another runner', function (): void {
+    expect($this->prompt)
+        ->toContain('# Keeping score')
+        ->toContain('The only opponent is a past version of the user')
+        ->toContain('no percentiles, no cross-user anything');
+});
+
+it('lets Temari name a coast, but never when the data explains it', function (): void {
+    // The register shift is only safe if the hard exclusion list travels with
+    // it: calling a fatigued or overreaching runner lazy is the failure mode
+    // this whole section exists to prevent.
+    expect($this->prompt)
+        ->toContain('# Calling a coast')
+        ->toContain('NEVER call it a coast when the data gives a real reason')
+        ->toContain('the first run back after a break');
+});
+
+it('keeps Temari a friend rather than software', function (): void {
+    expect($this->prompt)
+        ->toContain('NEVER call myself an AI')
+        ->toContain('never explain how I work');
+});
+
+it('bans corporate cheer outright and rations exclamation points', function (): void {
+    expect($this->prompt)
+        ->toContain('No corporate cheer')
+        ->toContain("you've got this")
+        ->toContain('Exclamation points are effectively banned');
 });
 
 it('locks the address forms — I for Temari, you for the user', function (): void {

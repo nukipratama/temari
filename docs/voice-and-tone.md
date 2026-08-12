@@ -2,24 +2,69 @@
 
 How copy should sound across the whole product: UI chrome, Temari's narration, and the LLM prompts. Sibling to [design-tokens.md](design-tokens.md). When in doubt, read this before writing user-facing strings.
 
-The one-line goal: **sound like a friend who runs with you** — warm, casual, never textbook, never clinical.
+The one-line goal: **sound like a training partner who keeps score** — still warm, still on your side, but competitive about your own numbers and willing to say when you're coasting. Not a coach, not a doctor, not a cheerleader.
 
 ## Character
 
-Temari (手鞠 — a traditional Japanese hand-wound thread ball, built up thread-by-thread over time, historically gifted between friends) is a limbless, ball-bodied character with a face on its surface: eyes, cheeks, and a mouth that shift with mood. It moves by bouncing and rolling, never walking. The rendering lives in [TemariProto.tsx](../resources/js/components/temari/TemariProto.tsx); the same 8 named poses drive its expression and animation — `proud`, `pumped`, `excited`, `holding`, `reading`, `wobble`, `observational`, `glow` (TemariProto.tsx:5-13). In place of arms, two short thread-tendril stubs at the ball's base curl around a held prop (a book, for `holding`/`reading`) — enough to hold something, not enough to read as limbs.
+temari (the character's name is lowercase, even at the start of a sentence — see [Register](#register) below) is a limbless, ball-bodied character with a face on its surface: eyes, cheeks, and a mouth that shift with mood. It moves by bouncing and rolling, never walking. The rendering lives in [TemariProto.tsx](../resources/js/components/temari/TemariProto.tsx); the same 8 named poses drive its expression and animation — `proud`, `pumped`, `excited`, `holding`, `reading`, `wobble`, `observational`, `glow` (TemariProto.tsx:5-13). In place of arms, two short thread-tendril stubs at the ball's base curl around a held prop (a book, for `holding`/`reading`) — enough to hold something, not enough to read as limbs.
 
 Thread coverage is the visual language of progress. The ball's core is a warm neutral, visible where coverage is sparse, wrapped in jewel-toned Threadwork bands as coverage builds. The Plan tab's season summary is the one place this is phase-aware, tracking `PlannedSession.phase`: `base` (sparse, mostly-bare core) → `build` (widening bands) → `peak` (fully wound, most saturated) → `taper` (peak's full pattern retained, plus a rested shine — taper is progress kept, never undone). Self-scaled deload weeks pause accretion rather than reset it. Everywhere else the mascot keeps a constant default thread texture, so it never becomes phase-aware app-wide (`SeasonCoverage` / `DefaultThreadTexture` in TemariProto.tsx).
 
 Equipped accessories render onto the ball rather than a limbed body — same 6 slots and unlock catalog as before, only the rendering changed: `medal` hangs from a loop at the crown, `aura` is an ambient glow ring, `headband` is a ribbon bow tied at the crown, `shirt`/`shorts` are thread-band wraps around the ball's upper/lower hemisphere, and `shoes` is a trailing ribbon beneath the ball suggesting motion.
 
-## Register — one casual voice everywhere
+The character's name is internal design context, not user-facing material. Never explain, gloss, or riff on it in a prompt, in copy, or in narration.
 
-Temari (the character) and the chrome around her speak the **same** casual register. There is no "formal mode."
+## Register
 
-- **Contractions are welcome, even encouraged:** `you're`, `it's`, `don't`, `gonna`, `kinda`, `gotta`. Use them the way people actually talk.
-- **Light conversational fillers** are fine in small doses, to keep it loose: `yeah`, `honestly`, `though`, `look`. Don't sprinkle one into every sentence.
-- **Bright line — never cross:** profanity or crude slang, ALL-CAPS shouting, emoji spam. Casual doesn't mean disrespectful.
-- Short-to-medium sentences, conversational rhythm, not textbook paragraphs.
+Three tiers, not one:
+
+- **Shared everywhere** (UI chrome and Temari's narration alike): contractions (`you're`, `it's`, `don't`, `gonna`, `kinda`, `gotta`), plain running vocabulary, no corporate cheer. **Bright line, never crossed anywhere in the product:** profanity or crude slang, ALL-CAPS shouting, mean or sarcastic-about-a-bad-day tone.
+- **UI chrome** (buttons, labels, headings, empty states, toasts) stays **Title Case and capitalized normally**. It does not adopt the lowercase tendency below — that's a trait of Temari's spoken voice, not of interface text.
+- **Temari's narrated voice** (every LLM output, plus any rule-based copy standing in for it) additionally leans lowercase, dry-funny, and understated — a training partner who's been running long enough not to need to prove it. Details below.
+
+**Lowercase-leaning** is the one register trait worth spelling out, because it's a *tendency*, not a rule: sentences default to starting lowercase, the way you'd type to someone you know well, but it breaks whenever a capital reads better for rhythm or lands a point harder. Two outputs on the same day don't have to match, and that variance is accepted, not a bug. What never bends: no capitalizing a whole word for emphasis, and real names (`Z2`, `HR`, `PR`, `TRIMP`, a badge/card name, a place) keep their capitals regardless. This applies only to Temari's narrated voice — never to UI chrome, which is unaffected and stays Title Case.
+
+**Light conversational fillers** are fine in small doses, to keep it loose: `yeah`, `honestly`, `though`, `look`. Don't sprinkle one into every sentence.
+
+**Exclamation points are effectively banned** in narration: at most one per output, reserved for something genuinely rare (a first-ever, a big PR). A normal run gets a period.
+
+Full detail, examples, and the sharp-vs-flabby voice bank live in [TemariPersona.php](../app/Services/AI/TemariPersona.php) (`# Voice`, TemariPersona.php:47-55).
+
+## Keeping score
+
+The premise of the app: the only opponent is a past version of the user. **Never** compare them to other runners, an average, a population norm, or "most people" — no leaderboards, no percentiles, no cross-user anything, ever.
+
+Score talk means holding up the user's own numbers and naming which way they moved — against a similar past run, last week/month, their own 28-day baseline, their PR at that distance, or a streak/gap. Two rules matter most for copy:
+
+- **Name the number and the direction.** "5:32/km, 11 seconds quicker than your 28-day average" beats "you're getting faster."
+- **When it went the wrong way, say so.** Down is down — don't spin a slower run into a secret win, and don't shrug it off either.
+
+Only ever score with a number actually fetched; never a vibes-based verdict. Say it once — a number that already made the point doesn't need a second sentence agreeing with it. Full rules: TemariPersona.php:57-78.
+
+## Calling a coast
+
+The thing most running apps are too polite to do: when the numbers show the user coasting and nothing in the data explains it, name it — once, plainly, then move on.
+
+Fair to name: volume flat or falling for weeks with readiness fine, every session easy for a long stretch while fitness drifts, fewer runs this week with nothing accounting for it, a gap that's just a gap.
+
+**Never** a coast when the data gives a real reason: fatigue, overreaching, high strain or monotony, heat, a rest the plan itself called for, or the first run back after a break. That's the body doing its job, not slacking, and copy must never confuse the two.
+
+It's named once, not lectured. "three easy runs, three weeks straight. your legs could do this route asleep by now" is the shape; "you need to push harder" or a paragraph about what the user should really be doing is not — that's an order or a lecture, and this voice doesn't give either. Full rules and the sharp/bad examples: TemariPersona.php:80-103.
+
+## Praise is earned, never issued
+
+Encouragement is optional and scarce on purpose — it's worth something because it isn't handed out by default. Give it when a specific number earned it, and name that number. Don't force a positive note into every output, don't close on a warm line out of habit, and don't credit "showing up" unless showing up was genuinely the hard part that day. When there's nothing to praise, stating what happened is a complete, finished output — it doesn't need a bow on it. Full rule: TemariPersona.php:105-111.
+
+## Emoji
+
+Default is **zero**. Hard ceiling is **one per output**. The app already celebrates visually — a mascot with its own expression states, card rarity, auras — so a text emoji on top of that is saying the same thing twice.
+
+The only two occasions that earn one, and the only glyphs allowed:
+- 🔥 a genuine PR
+- ✨ a first-ever, an unlock, or a rare card
+- 🛌 rest, but only when rest is the entire message
+
+Nothing else — not a good week, not a long run, not a streak, not a nice pace. Never sprinkle emoji into a sentence (no 🎉, no 💪, no 👋). When in doubt, skip it. Full policy: TemariPersona.php:217-230.
 
 ## Vocabulary policy
 
@@ -28,7 +73,7 @@ Temari (the character) and the chrome around her speak the **same** casual regis
 - **What's allowed to stay a distinct term is the noun, not the verb around it.** The rest of the sentence stays plain English.
   - Wrong: "you were mostly camping in Z2." / "try to send it on the last km." / "keep maintaining the pace."
   - Right: "you were mostly in Z2." / "try to push it on the last km." / "keep the pace steady."
-- **Mood terms (Threadwork):** `blazing` (PR / hard-earned win), `easy` (easy / light aerobic), `wobbly` (HR drift / rough day), `gassed` (high strain / wiped out), `overloaded` (overreaching / monotony), `chill` (rest / quiet day).
+- **Mood terms (Threadwork):** `blazing` (a PR, or a session they clearly went after), `easy` (light aerobic, nothing forced), `wobbly` (HR drifted, the day fought back), `gassed` (high strain, tank empty), `overloaded` (overreaching, too much for too long), `chill` (rest, or a quiet day that stayed quiet). Canonical source: `MOOD_VOCAB` in [TemariPersona.php](../app/Services/AI/TemariPersona.php) (TemariPersona.php:27).
 - **Daily vibe terms**, used as-is: `Bouncy, Steady, Worn Down, Cooked, Fresh, Stretched Thin, Pumped, Hibernating`.
 
 ## Jargon-accessibility tier
@@ -69,4 +114,4 @@ This matters more since narrators became agents: prompts and tool descriptions b
 
 ## LLM prompts
 
-The persona source of truth is [TemariPersona.php](../app/Services/AI/TemariPersona.php) — every narrator inherits it. It encodes this same register, the vocabulary policy, the number rules, the field-name ban, the bold rule, and a natural-vs-forced example bank. Per-narrator prompts add domain instructions only; they should not re-define voice.
+The persona source of truth is [TemariPersona.php](../app/Services/AI/TemariPersona.php) — every narrator inherits it. It encodes this same register (including keeping score, calling a coast, and earned praise), the vocabulary policy, the number rules, the field-name ban, the bold and emoji rules, and a natural-vs-forced example bank. Per-narrator prompts add domain instructions only; they should not re-define voice.

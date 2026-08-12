@@ -29,8 +29,8 @@ a dressed-up wrapper.
 ## The two core components
 
 [TemariProto.tsx](../../resources/js/components/temari/TemariProto.tsx) is the
-hand-drawn SVG body — a ball-bodied character (Slice 9b), styled after a
-temari 手鞠 hand-wound thread ball, with a face on its surface and short
+hand-drawn SVG body — a ball-bodied character (Slice 9b) wound from thread
+bands, with a face on its surface and short
 thread-tendril stubs at its base instead of limbs. Its `pose` prop (the
 `TemariPose` union: `proud`, `pumped`, `excited`, `holding`, `reading`,
 `wobble`, `observational`, `glow`) drives eye shape, mouth, a small face-tilt,

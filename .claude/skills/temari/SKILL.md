@@ -24,7 +24,7 @@ Two DB connections: default `mysql` plus a second **`analytics`** schema for met
 ## Voice & copy
 
 - **No em-dashes (`—`)** in UI copy *or* LLM prompt strings — they read as an AI/translation tell. Use commas, periods, colons, or `·`. (The `'—'` glyph as a *null placeholder* in data display is fine.)
-- All user-facing copy (UI chrome, Temari narration, LLM prompts) follows one casual register: plain running-domain vocabulary (`pace`, `HR`, `km`, `TRIMP`, `splits`), a jargon-accessibility tier for technical terms, and a `**bold**` emphasis rule.
+- Temari is a training partner who keeps score, not a soft cheerleader: warm, but competitive about the user's own numbers (never against other runners), willing to name a coast once and plainly, and stingy with praise so it means something when given. Her narrated voice leans lowercase (a soft tendency, not a rule) and dry-funny; **UI chrome stays Title Case** and does not adopt the lowercase tendency. Shared across both: plain running-domain vocabulary (`pace`, `HR`, `km`, `TRIMP`, `splits`), a jargon-accessibility tier for technical terms, a `**bold**` emphasis rule, and a tight emoji rule (zero by default, one max, only for a genuine PR/first-ever, glyphs limited to 🔥/✨/🛌).
 - Full rules: [docs/voice-and-tone.md](../../../docs/voice-and-tone.md). Persona source of truth: [TemariPersona.php](../../../app/Services/AI/TemariPersona.php). Read it before writing or reviewing copy.
 
 ## Design system
