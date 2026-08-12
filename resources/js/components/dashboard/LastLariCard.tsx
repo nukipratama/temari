@@ -132,7 +132,10 @@ export default function LastLariCard({
                     label="KM"
                     value={km}
                     valueClassName={cn(
-                        'font-black tracking-tight',
+                        // `lg`'s fixed 32px (StatTile's default for this size)
+                        // overlaps adjacent values in this 3-up row below
+                        // ~375px -- swap in the fluid variant tuned for it.
+                        'font-black tracking-tight text-stat-fluid-lg',
                         onSky ? 'text-cream' : 'text-ink',
                     )}
                 />
@@ -143,7 +146,10 @@ export default function LastLariCard({
                     label="PACE"
                     value={paceSec != null ? `${formatPace(paceSec)}/km` : '—'}
                     valueClassName={cn(
-                        'font-black tracking-tight',
+                        // `lg`'s fixed 32px (StatTile's default for this size)
+                        // overlaps adjacent values in this 3-up row below
+                        // ~375px -- swap in the fluid variant tuned for it.
+                        'font-black tracking-tight text-stat-fluid-lg',
                         onSky ? 'text-cream' : 'text-ink',
                     )}
                 />
@@ -155,7 +161,10 @@ export default function LastLariCard({
                     value={trimp != null ? String(trimp) : '—'}
                     explainerKey="trimp"
                     valueClassName={cn(
-                        'font-black tracking-tight',
+                        // `lg`'s fixed 32px (StatTile's default for this size)
+                        // overlaps adjacent values in this 3-up row below
+                        // ~375px -- swap in the fluid variant tuned for it.
+                        'font-black tracking-tight text-stat-fluid-lg',
                         onSky ? 'text-cream' : 'text-ink',
                     )}
                 />
