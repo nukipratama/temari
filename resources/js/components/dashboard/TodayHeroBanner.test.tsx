@@ -9,7 +9,7 @@ import type {
 
 import { setMockPage } from '@/test/setup';
 
-import TemariVoiceCard from './TemariVoiceCard';
+import TodayHeroBanner from './TodayHeroBanner';
 
 function payload(content: string): AnalysisPayload {
     return {
@@ -59,15 +59,23 @@ const runWithWeather: ActivityDetail = {
     weather_rain_detected: false,
 };
 
-describe('TemariVoiceCard', () => {
-    it('renders the section label and a title-only voice', () => {
+const GREETING = {
+    firstName: 'Ada',
+    dateLine: 'Tue, Aug 11 · 08.00 · Pumped',
+    vibeSubtitle: "you're feeling pumped.",
+};
+
+describe('TodayHeroBanner', () => {
+    it('renders the greeting alongside the section label and a title-only voice', () => {
         render(
-            <TemariVoiceCard
+            <TodayHeroBanner
+                {...GREETING}
                 briefing={briefingWith('“Just an easy run today.”')}
                 pose="observational"
                 lastRun={null}
             />,
         );
+        expect(screen.getByText(/Hey, Ada/)).toBeInTheDocument();
         expect(screen.getByText('Today from Temari')).toBeInTheDocument();
         expect(
             screen.getByText(/Just an easy run today\./),
@@ -76,7 +84,8 @@ describe('TemariVoiceCard', () => {
 
     it('splits the merged voice into a session title and Temari’s reasoning', () => {
         render(
-            <TemariVoiceCard
+            <TodayHeroBanner
+                {...GREETING}
                 briefing={briefingWith(
                     'Light tempo today.\n\nYour last two sessions were both easy, so keep the pace in zone 2 for 40 minutes.',
                 )}
@@ -92,7 +101,8 @@ describe('TemariVoiceCard', () => {
 
     it('renders a weather chip from the last run', () => {
         render(
-            <TemariVoiceCard
+            <TodayHeroBanner
+                {...GREETING}
                 briefing={briefingWith('Light tempo.')}
                 pose="observational"
                 lastRun={runWithWeather}
@@ -103,7 +113,8 @@ describe('TemariVoiceCard', () => {
 
     it('emits no chip when there is no last run', () => {
         render(
-            <TemariVoiceCard
+            <TodayHeroBanner
+                {...GREETING}
                 briefing={briefingWith('Light tempo.')}
                 pose="observational"
                 lastRun={null}
@@ -114,7 +125,8 @@ describe('TemariVoiceCard', () => {
 
     it('flips "Another take" to its pending label when triggered', async () => {
         render(
-            <TemariVoiceCard
+            <TodayHeroBanner
+                {...GREETING}
                 briefing={briefingWith('Light tempo.')}
                 pose="observational"
                 lastRun={null}
@@ -137,7 +149,8 @@ describe('TemariVoiceCard', () => {
 
     it('disables "Another take" and shows a countdown while on cooldown', () => {
         render(
-            <TemariVoiceCard
+            <TodayHeroBanner
+                {...GREETING}
                 briefing={briefingWith('Light tempo.', {
                     retry_after_seconds: 900,
                 })}
@@ -155,7 +168,8 @@ describe('TemariVoiceCard', () => {
     it('hides the "Another take" button when AI is globally paused', () => {
         setMockPage({ aiPaused: true });
         render(
-            <TemariVoiceCard
+            <TodayHeroBanner
+                {...GREETING}
                 briefing={briefingWith('Light tempo.')}
                 pose="observational"
                 lastRun={null}
@@ -170,7 +184,8 @@ describe('TemariVoiceCard', () => {
         const longBody =
             'Keep the pace in zone 2 for the full forty minutes, '.repeat(4);
         render(
-            <TemariVoiceCard
+            <TodayHeroBanner
+                {...GREETING}
                 briefing={briefingWith(`Light tempo today.\n\n${longBody}`)}
                 pose="observational"
                 lastRun={null}

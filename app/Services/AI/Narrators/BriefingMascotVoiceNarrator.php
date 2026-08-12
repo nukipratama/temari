@@ -179,12 +179,12 @@ class BriefingMascotVoiceNarrator
           data), NEVER make up an absolute pace/HR number, give a by-feel cue
           instead (breathing, effort, cadence).
         - `past_you` from get_latest_past_you: when populated, the user's last
-          run resembles a past session. Fine to use as a personal progress
-          beat ("your last run was {pace_diff_sec} seconds faster than a
-          similar session {days_ago} days ago"). pace_diff_sec and
-          time_diff_sec positive = faster now, negative = slower (be honest,
-          don't spin it as always winning). If it's missing, NEVER make up a
-          comparison to the past.
+          run resembles a past session. Use it only as an input signal for
+          how you size and tone TODAY's session (e.g. faster than a similar
+          past run = capacity to hold or nudge up; slower = a reason to ease
+          off), never as a narrated recap of the last run itself -- the Last
+          Run card on the dashboard already tells that story in detail. If
+          it's missing, NEVER make up a comparison to the past.
 
         Feel free to be specific and data-aware, as long as it stays
         conversational. NEVER read dry like a textbook, NEVER time-locked. The
@@ -204,6 +204,10 @@ class BriefingMascotVoiceNarrator
           voice.
         - Repeat the same sentence every day. Must reference concrete data
           from the tool results.
+        - Recapping or re-narrating the last completed run's stats or story
+          ("your last run was 5k in 28 minutes..."). The Last Run card
+          already owns that in detail -- use last-run data only as an input
+          signal for today's plan, never as something you retell.
         PROMPT;
 
     public function __construct(

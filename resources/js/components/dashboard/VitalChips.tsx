@@ -39,7 +39,13 @@ const VIBE_SUB: Record<string, string> = {
 export default function VitalChips({
     briefing,
     load,
-}: Readonly<{ briefing: BriefingResult; load: TrainingLoad | null }>) {
+    onSky = false,
+}: Readonly<{
+    briefing: BriefingResult;
+    load: TrainingLoad | null;
+    /** Cream-on-dark treatment for use on a HeroPanel/sky background. */
+    onSky?: boolean;
+}>) {
     // Vibe's value is just the label word — pairing it with the emoji inline
     // read richer, but "emoji + longest label" (e.g. "Hibernating") never fit one
     // line in the narrow 3-up mobile tile, and forcing the emoji onto its own
@@ -58,6 +64,7 @@ export default function VitalChips({
                 tone="horizon"
                 wordValue
                 explainerKey="vibe_vs_mood"
+                onSky={onSky}
                 gauge={
                     load?.form != null
                         ? {
@@ -77,6 +84,7 @@ export default function VitalChips({
                 sub={load ? formStatusLabel(load.form_status) : ''}
                 tone="leaf"
                 explainerKey="form"
+                onSky={onSky}
                 gauge={
                     load?.form != null
                         ? {
@@ -102,6 +110,7 @@ export default function VitalChips({
                 tone="ink"
                 explainerKey="recovery"
                 recoveryTone={briefing.recoveryTone}
+                onSky={onSky}
                 gauge={
                     briefing.recoveryHours != null
                         ? {
@@ -147,7 +156,8 @@ function VitalGauge({
     tone,
     bipolar,
     anchors,
-}: Readonly<GaugeConfig>) {
+    onSky = false,
+}: Readonly<GaugeConfig & { onSky?: boolean }>) {
     const clamped = Math.min(Math.max(value, min), max);
     const pct = ((clamped - min) / (max - min)) * 100;
     // Bipolar (Readiness): fill grows from the zero mark; leaf when positive, ember when negative.
@@ -166,7 +176,10 @@ function VitalGauge({
             />
             <div
                 aria-hidden
-                className="relative h-1.5 w-full overflow-hidden rounded-full bg-sky/[0.08]"
+                className={cn(
+                    'relative h-1.5 w-full overflow-hidden rounded-full',
+                    onSky ? 'bg-cream/[0.12]' : 'bg-sky/[0.08]',
+                )}
             >
                 <div
                     className={cn(
@@ -180,12 +193,20 @@ function VitalGauge({
                 />
                 {bipolar && (
                     <div
-                        className="absolute inset-y-[-1px] w-px bg-ink-3/40"
+                        className={cn(
+                            'absolute inset-y-[-1px] w-px',
+                            onSky ? 'bg-cream/40' : 'bg-ink-3/40',
+                        )}
                         style={{ left: `${zeroPct}%` }}
                     />
                 )}
             </div>
-            <div className="mt-1 flex justify-between font-mono text-[11px] tabular-nums text-ink-3">
+            <div
+                className={cn(
+                    'mt-1 flex justify-between font-mono text-[11px] tabular-nums',
+                    onSky ? 'text-ink-on-sky' : 'text-ink-3',
+                )}
+            >
                 <span>{anchors[0]}</span>
                 <span>{anchors[1]}</span>
             </div>
@@ -228,6 +249,7 @@ function VitalChip({
     gauge,
     recoveryTone,
     wordValue = false,
+    onSky = false,
 }: Readonly<{
     label: string;
     value: string;
@@ -237,6 +259,8 @@ function VitalChip({
     gauge?: GaugeConfig;
     recoveryTone?: RecoveryTone;
     wordValue?: boolean;
+    /** Cream-on-dark treatment for use on a HeroPanel/sky background. */
+    onSky?: boolean;
 }>) {
     // Color the tiny label dot, not the number — keeps the page from feeling
     // like a paint-store sample card while still tagging the metric's family.
@@ -246,19 +270,31 @@ function VitalChip({
         ink: 'bg-ink-3',
     }[tone];
     const valueClass = {
-        horizon: 'text-horizon-deep',
+        horizon: onSky ? 'text-horizon' : 'text-horizon-deep',
         leaf: 'text-leaf',
-        ink: 'text-ink',
+        ink: onSky ? 'text-cream' : 'text-ink',
     }[tone];
     let middleBand: ReactNode = null;
     if (gauge) {
-        middleBand = <VitalGauge {...gauge} />;
+        middleBand = <VitalGauge {...gauge} onSky={onSky} />;
     } else if (recoveryTone) {
         middleBand = <RecoveryRail tone={recoveryTone} />;
     }
     return (
-        <div className="flex h-full flex-col justify-between rounded-xl border border-line bg-surface-card px-3.5 py-4">
-            <SectionLabel dot dotClass={dotClass} className="mb-1">
+        <div
+            className={cn(
+                'flex h-full flex-col justify-between rounded-xl border px-3.5 py-4',
+                onSky
+                    ? 'border-cream/[0.12] bg-cream/[0.06]'
+                    : 'border-line bg-surface-card',
+            )}
+        >
+            <SectionLabel
+                dot
+                dotClass={dotClass}
+                onSky={onSky}
+                className="mb-1"
+            >
                 {/* Tighten the tracking + icon gap at the narrowest width so the
                     longest label ("Readiness") keeps its (?) icon inside the tile at
                     320px; both relax back to the full spec from sm up. */}
@@ -296,7 +332,12 @@ function VitalChip({
                 </div>
                 {middleBand}
                 {sub !== '' && (
-                    <div className="mt-1 font-display text-xs italic text-ink-3">
+                    <div
+                        className={cn(
+                            'mt-1 font-display text-xs italic',
+                            onSky ? 'text-ink-on-sky' : 'text-ink-3',
+                        )}
+                    >
                         {sub}
                     </div>
                 )}

@@ -10,9 +10,13 @@ import { moodFromActivity } from '@/lib/moodFromActivity';
 import {
     formatDurationHMS,
     formatKm,
+    formatMonthDayId,
     formatNaiveRelativeId,
     formatShortWeekdayDateId,
+    isoDateLocal,
+    mondayOf,
     parseNaiveLocalDate,
+    sundayOf,
 } from '@/lib/pace';
 import {
     RARITY_LABELS,
@@ -111,6 +115,17 @@ export function formatSignedForm(form: number): string {
 
 export function vibeSubtitleFor(label: string): string {
     return `you're feeling ${label.toLowerCase()}.`;
+}
+
+/** "Aug 11–17" (same month) or "Aug 31–Sep 6" (crossing a month boundary). */
+export function weekRangeLabel(now: Date): string {
+    const monday = mondayOf(isoDateLocal(now));
+    const sunday = sundayOf(monday);
+    if (monday.getMonth() === sunday.getMonth()) {
+        const month = monday.toLocaleDateString('en-US', { month: 'short' });
+        return `${month} ${monday.getDate()}–${sunday.getDate()}`;
+    }
+    return `${formatMonthDayId(monday)}–${formatMonthDayId(sunday)}`;
 }
 
 export const MOOD_UPPER: Record<Mood, string> = {
