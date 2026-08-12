@@ -49,7 +49,10 @@ Strava's terms bar using its data to train AI models. Temari sends run stats to 
 
 - **2026-06-30** — standard API access requires a paid Strava subscription. Account-level, no code hook.
 - **2026-09-01** — club endpoints removed, Explore Segments restricted. No-op here, see above.
-- **2027-01-04** — the REST host moves to `api-v3.strava.com`. Already a config value, `STRAVA_API_BASE_URL`; see [[strava-client]] for the cutover.
+- **2027-01-04** — `api-v3.strava.com` starts serving. It is **not the deadline it looks like**: it is the date the replacement host becomes *available*, and Strava has announced no shutdown date for `www.strava.com/api/v3`. The host is already a config value, `STRAVA_API_BASE_URL`, defaulting to the host that answers today; see [[strava-client]] before flipping it.
+- **2027-06-01** — access tokens must be sent in request headers rather than form params, and `oauth/deauthorize` is retired in favour of `oauth/revoke`. Both are no-ops here: API reads authenticate with a bearer header via `withToken()` ([StravaClient](app/Services/Strava/StravaClient.php#L63)), and Temari never calls `oauth/deauthorize` at all — a revocation is something the athlete does on Strava's side, which we detect from a 401 ([VerifyStravaRevocationJob](app/Jobs/Strava/VerifyStravaRevocationJob.php#L52)).
+
+The dates above are from Strava's [V3 API changelog](https://developers.strava.com/docs/changelog/), which is the thing to re-read before acting on any of them.
 
 ## See also
 
