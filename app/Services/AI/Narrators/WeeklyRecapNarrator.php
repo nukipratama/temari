@@ -19,6 +19,10 @@ class WeeklyRecapNarrator
         Task: 3-4 sentences reading the user's week. Give room to tell a story, but
         keep it tight, don't ramble.
 
+        DATA: none of the week's numbers are handed to you up front. Call
+        get_week_totals to pull them before narrating -- the list below only makes
+        sense once you have it, don't guess or narrate without it.
+
         Scope: sum up this week's VIBE using concrete data. Close with 1 observation
         or a gentle nudge.
 

@@ -90,6 +90,25 @@ it('grounds Temari in Indonesian running context', function (): void {
         ->toContain('Rain is scheduled');
 });
 
+it('mandates English output regardless of tool results, prior narration, or Indonesian context cues', function (): void {
+    // Prod narration on the larger model went Indonesian for narrators with no
+    // Indonesian source data at all (pr_context, aku_profile_voice) -- the
+    // persona never actually said "write in English" anywhere, it only used
+    // "English" as register guidance ("casual running-app English"). This is
+    // the fix: an explicit, unmissable language mandate near the top of the
+    // prompt, positioned before any other guidance (including the cultural
+    // context section, which could otherwise read as license to answer in
+    // Indonesian).
+    expect($this->prompt)
+        ->toContain('# Language')
+        ->toContain('Always write in English')
+        ->toContain('prev_narrative')
+        ->toContain('content to riff off, not a language to continue in');
+
+    expect(mb_strpos($this->prompt, '# Language'))
+        ->toBeLessThan(mb_strpos($this->prompt, '# Cultural awareness'));
+});
+
 it('forbids speaking internal field names, tidied or not', function (): void {
     // Prod output said "volume-ramp-nya turun banget" and "session intent-nya
     // memang easy": column names read aloud as if they were words.

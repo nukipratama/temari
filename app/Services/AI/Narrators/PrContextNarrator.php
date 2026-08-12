@@ -17,6 +17,10 @@ class PrContextNarrator
     private const string SYSTEM_PROMPT = <<<'PROMPT'
         Task: 1-2 flavor sentences for a Personal Record, max 35 words.
 
+        DATA: the record itself isn't handed to you up front. Call get_record to
+        pull it before writing the flavor line, and get_weather too when the
+        conditions might be worth mentioning. Don't guess or narrate without them.
+
         Highlight the delta from the previous PR if there is one (state how many
         seconds faster). If this is the first PR in that category, celebrate it as a
         "first-ever PR". If the gap is big (>30 seconds), call it out as a big leap.

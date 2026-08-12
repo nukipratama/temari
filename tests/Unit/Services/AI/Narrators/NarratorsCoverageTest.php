@@ -1103,10 +1103,17 @@ it('BriefingMascotVoiceNarrator leaves prev_narrative null on the first day', fu
 
 // ── Prompt wording guards (slice 8 polish) ────────────────────────────
 
-/** Read a narrator's private SYSTEM_PROMPT constant for wording assertions. */
+/**
+ * Read a narrator's private SYSTEM_PROMPT constant for wording assertions.
+ * AkuProfileVoiceNarrator names its constant SYSTEM_PROMPT_TEMPLATE instead
+ * (it's formatted with the mood vocabulary at call time), so fall back to that.
+ */
 function narratorPrompt(string $class): string
 {
-    return (string) new ReflectionClass($class)->getConstant('SYSTEM_PROMPT');
+    $reflection = new ReflectionClass($class);
+    $name = $reflection->hasConstant('SYSTEM_PROMPT') ? 'SYSTEM_PROMPT' : 'SYSTEM_PROMPT_TEMPLATE';
+
+    return (string) $reflection->getConstant($name);
 }
 
 /**
@@ -1339,3 +1346,52 @@ it('RunInsightNarrator prompt steers toward plain, natural phrasing while keepin
 // treats a missing reading as simply not a claim candidate" above, plus the
 // anchor-falsifiability tests, which now enforce it deterministically instead
 // of trusting prompt wording.
+
+// Prod data (830 real rows) showed these five narrators' prompts training the
+// model to front-load every tool into one turn and stop, landing on exactly 2
+// steps regardless of a 4-8 step budget -- confirmed not a maxSteps/AgentLoop
+// bug (that loop genuinely supports more). The fix is prompt wording, not code.
+it('invites iterative tool follow-up instead of front-loading everything into one turn', function (string $class): void {
+    // Heredoc line-wraps mid-phrase, so compare on whitespace-normalized text
+    // rather than the raw string with its literal line breaks.
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt($class));
+
+    expect($prompt)
+        ->not->toContain('call several at once in a single turn')
+        ->toContain("Don't front-load every tool into one turn out of habit");
+})->with([
+    'RunInsightNarrator' => [RunInsightNarrator::class],
+    'PostRunSpeechNarrator' => [PostRunSpeechNarrator::class],
+    'AkuProfileVoiceNarrator' => [AkuProfileVoiceNarrator::class],
+    'CardFlavorNarrator' => [CardFlavorNarrator::class],
+    'BriefingMascotVoiceNarrator' => [BriefingMascotVoiceNarrator::class],
+]);
+
+// The same prod audit found a different problem for these three: 6-27% of
+// live calls answered with zero tool calls despite having a toolbox, because
+// the prompt's "Scope"/data list reads as if the numbers were already given
+// rather than something to go fetch. None of the three previously named their
+// tool anywhere in the prompt.
+it('tells the model to call its tool for data that is never handed to it in context', function (string $class, string $toolName): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt($class));
+
+    expect($prompt)
+        ->toContain($toolName)
+        ->toContain('handed to you up front');
+})->with([
+    'WeeklyRecapNarrator' => [WeeklyRecapNarrator::class, 'get_week_totals'],
+    'MonthlyRecapNarrator' => [MonthlyRecapNarrator::class, 'get_month_totals'],
+    'PrContextNarrator' => [PrContextNarrator::class, 'get_record'],
+]);
+
+it('CardFlavorNarrator prompt names rarity in English, not Indonesian', function (): void {
+    $prompt = narratorPrompt(CardFlavorNarrator::class);
+
+    expect($prompt)
+        ->toContain('Common, Uncommon, Rare, Epic, Legendary')
+        ->not->toContain('Biasa')
+        ->not->toContain('Berkesan')
+        ->not->toContain('Langka')
+        ->not->toContain('Istimewa')
+        ->not->toContain('Legendaris');
+});
