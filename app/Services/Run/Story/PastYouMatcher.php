@@ -9,9 +9,21 @@ use Illuminate\Database\Eloquent\Collection;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 
-// Match rules: same pace-band, distance ±500m absolute, temp ±3°C (missing
-// on either side passes), ≥21 days apart. Of qualifying candidates, prefer
-// the oldest.
+/**
+ * Every comparison this class makes is between two runs of the same user.
+ *
+ * Two selections sit on the same rules. {@see findMatch} serves the run-detail
+ * panel and prefers the *oldest* qualifying run, so the contrast reads as
+ * progress. {@see bestMatch} serves the home-screen trend and prefers the
+ * *most similar* run, so the deltas it feeds the verdict are not noise from a
+ * poorly comparable pairing.
+ *
+ * Hard rules: same pace band, distance ±500m absolute, 21 to 365 days apart,
+ * and (for {@see bestMatch}) elevation within 15 m/km when both sides know it.
+ * Temperature ±3°C additionally gates {@see findMatch}; the trend path uses
+ * season instead, because `weather_temp_c` needs the detail pipeline and a
+ * summary-state run has to stay a valid candidate.
+ */
 class PastYouMatcher
 {
     public const string BAND_RECOVERY = 'recovery';
@@ -24,7 +36,7 @@ class PastYouMatcher
 
     private const int TEMP_TOLERANCE_C = 3;
 
-    private const int MIN_GAP_DAYS = 21;
+    public const int MIN_GAP_DAYS = 21;
 
     /**
      * Oldest a comparison run may be. Without a ceiling the oldest-first pick
@@ -32,7 +44,23 @@ class PastYouMatcher
      * five years ago" compares the runner to a different person. A year keeps the
      * contrast wide enough to feel like progress and close enough to be theirs.
      */
-    private const int MAX_GAP_DAYS = 365;
+    public const int MAX_GAP_DAYS = 365;
+
+    /** A hilly run and a flat one at the same pace are not the same performance. */
+    private const float ELEVATION_TOLERANCE_M_PER_KM = 15.0;
+
+    /** Heart-rate gap at which two runs stop reading as the same kind of session. */
+    private const float HR_SATURATION_BPM = 25.0;
+
+    private const float WEIGHT_DISTANCE = 0.30;
+
+    private const float WEIGHT_HEARTRATE = 0.25;
+
+    private const float WEIGHT_ELEVATION = 0.20;
+
+    private const float WEIGHT_TIME_OF_DAY = 0.15;
+
+    private const float WEIGHT_SEASON = 0.10;
 
     /** Pace-band edges in sec/km. */
     private const int RECOVERY_PACE_FLOOR_SEC = 450; // > 7:30/km
@@ -160,6 +188,106 @@ class PastYouMatcher
             $secPerKm >= self::EASY_PACE_FLOOR_SEC => self::BAND_EASY,
             default => self::BAND_THRESHOLD,
         };
+    }
+
+    /**
+     * The most comparable run in $candidates, or null when none qualifies.
+     * Ties break to the older run, keeping {@see findMatch}'s contrast bias.
+     *
+     * @param  list<ComparableRun>  $candidates
+     */
+    public function bestMatch(ComparableRun $current, array $candidates): ?PastYouComparison
+    {
+        $best = null;
+        $bestScore = 0.0;
+
+        foreach ($candidates as $candidate) {
+            $score = $this->similarity($current, $candidate);
+            if ($score === null) {
+                continue;
+            }
+
+            if ($best === null
+                || $score > $bestScore
+                || ($score === $bestScore && $candidate->startedAt->lt($best->startedAt))) {
+                $best = $candidate;
+                $bestScore = $score;
+            }
+        }
+
+        return $best === null ? null : PastYouComparison::between($current, $best, $bestScore);
+    }
+
+    /**
+     * How comparable two runs are on 0..1, reading only fields the Strava
+     * summary payload carries. Null when a hard rule rejects the pairing.
+     *
+     * Pace itself is not scored: the pace band already establishes that the two
+     * are the same kind of session, and the pace gap *within* the band is the
+     * signal the verdict is measuring, so rewarding similarity there would bury
+     * the very change this is asked to detect. Heart rate is scored softly for
+     * the same reason.
+     */
+    public function similarity(ComparableRun $current, ComparableRun $past): ?float
+    {
+        $daysApart = $past->daysBefore($current);
+        if ($daysApart < self::MIN_GAP_DAYS || $daysApart > self::MAX_GAP_DAYS) {
+            return null;
+        }
+
+        if ($this->paceBand($past->paceSecPerKm) !== $this->paceBand($current->paceSecPerKm)) {
+            return null;
+        }
+
+        $distanceGap = abs($current->distanceM - $past->distanceM);
+        if ($distanceGap > self::DISTANCE_TOLERANCE_M) {
+            return null;
+        }
+
+        $axes = [[self::WEIGHT_DISTANCE, 1.0 - $distanceGap / self::DISTANCE_TOLERANCE_M]];
+
+        if ($current->averageHeartrate !== null && $past->averageHeartrate !== null) {
+            $hrGap = abs($current->averageHeartrate - $past->averageHeartrate);
+            $axes[] = [self::WEIGHT_HEARTRATE, max(0.0, 1.0 - $hrGap / self::HR_SATURATION_BPM)];
+        }
+
+        $currentElevation = $current->elevationPerKm();
+        $pastElevation = $past->elevationPerKm();
+        if ($currentElevation !== null && $pastElevation !== null) {
+            $elevationGap = abs($currentElevation - $pastElevation);
+            if ($elevationGap > self::ELEVATION_TOLERANCE_M_PER_KM) {
+                return null;
+            }
+            $axes[] = [self::WEIGHT_ELEVATION, 1.0 - $elevationGap / self::ELEVATION_TOLERANCE_M_PER_KM];
+        }
+
+        $axes[] = [self::WEIGHT_TIME_OF_DAY, 1.0 - $this->timeOfDayGap($current, $past) / (12 * 60)];
+        $axes[] = [self::WEIGHT_SEASON, 1.0 - $this->seasonGap($current, $past) / 6];
+
+        $weighted = 0.0;
+        $totalWeight = 0.0;
+        foreach ($axes as [$weight, $score]) {
+            $weighted += $weight * $score;
+            $totalWeight += $weight;
+        }
+
+        return $weighted / $totalWeight;
+    }
+
+    /** Minutes apart on the clock, wrapping midnight, so 23:30 and 00:30 read as an hour. */
+    private function timeOfDayGap(ComparableRun $current, ComparableRun $past): float
+    {
+        $gap = abs($current->minuteOfDay() - $past->minuteOfDay());
+
+        return (float) min($gap, 24 * 60 - $gap);
+    }
+
+    /** Months apart on the calendar ring, the summary-safe stand-in for the temperature gate. */
+    private function seasonGap(ComparableRun $current, ComparableRun $past): float
+    {
+        $gap = abs($current->month() - $past->month());
+
+        return (float) min($gap, 12 - $gap);
     }
 
     private function isWithinTempTolerance(ActivityDetail $current, ActivityDetail $past): bool
