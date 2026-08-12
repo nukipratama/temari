@@ -7,7 +7,7 @@ reviewed: 2026-07-29
 code_refs:
   - resources/js/pages/Today.tsx
   - app/Http/Controllers/DashboardController.php
-  - resources/js/components/dashboard/TemariVoiceCard.tsx
+  - resources/js/components/dashboard/TodayHeroBanner.tsx
   - resources/js/components/dashboard/VitalChips.tsx
   - resources/js/components/dashboard/FeaturedKartuPanel.tsx
   - resources/js/components/dashboard/LastLariCard.tsx
@@ -31,9 +31,9 @@ The app's home (`/`). It greets the runner by name, hands them Temari's read on 
 
 `Today` builds the eyebrow line from `formatWeekdayDateId` + `formatTimeId` + the briefing's `vibeLabel`, and the `<h1>` reads "Halo, {firstName}" over an italic `vibeSubtitle`. The vibe drives Temari's `pose` (`VIBE_TO_POSE`). The greeting prose itself comes from the server: `DashboardController::resolveGreeting` returns today's cached `StoryLine` (kind `daily_greeting`) or generates it via the `Temari` story service.
 
-## Kata Temari (briefing card)
+## Kata Temari (hero banner)
 
-Directly under the headline sits [TemariVoiceCard](resources/js/components/dashboard/TemariVoiceCard.tsx) — Temari's mascot beside "Kata Temari hari ini". It renders **one** LLM block (`briefing.mascotVoice`) through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx), so it shows the spinner / retry / "Baca ulang" states from the [[ai-pipeline]]. The text is parsed on `\n\n`: the first paragraph is the session title (display type), the rest is Temari's reasoning and her caveat. A weather chip from the last run and a "Saran lain" re-trigger (`useAnalysisTrigger`) sit under it. It renders whether or not the user has runs yet.
+The whole page sits on a full-bleed dark [HeroPanel](resources/js/components/ui/HeroPanel.tsx) background. [TodayHeroBanner](resources/js/components/dashboard/TodayHeroBanner.tsx) is a full-width banner merged with the greeting at the top of it — Temari's mascot beside "Today from Temari". It renders **one** LLM block (`briefing.mascotVoice`) through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx), so it shows the spinner / retry / "Reread" states from the [[ai-pipeline]]. The text is parsed on `\n\n`: the first paragraph is the session title (display type), the rest is Temari's reasoning and her caveat. A weather chip from the last run and an "Another take" re-trigger (`useAnalysisTrigger`) sit under it. It renders whether or not the user has runs yet, and stays purely forward-looking (today's plan) — [LastLariCard](resources/js/components/dashboard/LastLariCard.tsx) owns any backward-looking recap of the last completed run.
 
 That block used to be two separately billed calls (a mascot voice plus a session suggestion); they were merged into one voice so the dashboard speaks once. The whole briefing object is assembled server-side by [BriefingComposer::compose](app/Services/Run/Story/BriefingComposer.php#L24) — **two** Analysis rows now: the daily voice and the featured-kartu voice (the latter keyed on a separate discriminator so re-picking the featured card doesn't rebill the other). Each is its own [[ai-pipeline]] block with independent retry. The signals their prompts read come from the context builders in [[ai-narration-internals]]; the vibe that colours Temari's tone is [[vibe-and-mood]].
 
@@ -52,7 +52,7 @@ When there are runs, [FeaturedKartuPanel](resources/js/components/dashboard/Feat
 
 ## Empty state
 
-When `recentRuns.length === 0`, the page swaps everything below the Kata Temari card for `EmptyRunsState` — connect Strava and run, see [[strava-connect]].
+When `recentRuns.length === 0`, the page swaps everything below the hero banner for `EmptyRunsState` — connect Strava and run, see [[strava-connect]].
 
 ## Notes / gotchas
 
