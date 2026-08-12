@@ -58,7 +58,7 @@ export function parseViewports() {
 }
 
 export async function login(page) {
-  await page.goto(`${BASE}/login`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/login`, { waitUntil: 'load' });
   await page.getByRole('button', { name: /demo/i }).first().click({ timeout: 8000 });
   await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 15000 });
 }
@@ -73,7 +73,7 @@ export async function dismissReveal(page) {
   const appeared = await dialog.waitFor({ state: 'visible', timeout: 2000 }).then(() => true).catch(() => false);
   if (appeared) {
     await page.getByRole('button', { name: /close/i }).first().click().catch(() => {});
-    await page.waitForTimeout(800);
+    await dialog.waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {});
   }
 }
 
@@ -130,7 +130,7 @@ export async function discoverPageRoutes(page) {
     }
     // Single-param page: resolve the id from the list page (e.g. activities/{activity}).
     const base = uri.split('/{')[0];
-    await page.goto(`${BASE}/${base}`, { waitUntil: 'networkidle' }).catch(() => {});
+    await page.goto(`${BASE}/${base}`, { waitUntil: 'load' }).catch(() => {});
     const href = await page.locator(`a[href^="/${base}/"]`).first().getAttribute('href').catch(() => null);
     if (href && new RegExp(`^/${base}/[^/]+$`).test(href)) {
       pages.push({ name: `${base}-detail`, path: href });

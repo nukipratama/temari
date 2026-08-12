@@ -24,44 +24,71 @@ const browser = await chromium.launch({
   args: ['--no-sandbox', '--disable-dev-shm-usage'],
 });
 
+const CONCURRENCY = 3;
+const capture = (page, errors) => {
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(`[console] ${page.url()} :: ${m.text()}`); });
+  page.on('pageerror', (e) => errors.push(`[pageerror] ${page.url()} :: ${e.message}`));
+};
+
+// Route discovery and the demo login both only depend on the account/route
+// table, not the viewport — do each once (on the first viewport) and reuse.
+let routes;
+let authCookies;
+
 for (const vp of selected) {
   const def = VIEWPORT_DEFS[vp];
   const dir = `${OUT}/${vp}`;
   const errors = [];
-  const context = await browser.newContext(def);
-  const page = await context.newPage();
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(`[console] ${page.url()} :: ${m.text()}`); });
-  page.on('pageerror', (e) => errors.push(`[pageerror] ${page.url()} :: ${e.message}`));
+  const context = await browser.newContext({ ...def, reducedMotion: 'reduce' });
+  const bootPage = await context.newPage();
+  capture(bootPage, errors);
 
   console.log(`\n=== ${vp} (${def.viewport.width}x${def.viewport.height}) ===`);
   // Guest login page first, then authenticate and discover the rest.
-  await page.goto(`${BASE}/login`, { waitUntil: 'networkidle' });
-  await fullPageScreenshot(page, `${dir}/00-login-full.${EXT}`, SHOT);
-  await login(page);
-  await dismissReveal(page);
-  const routes = await discoverPageRoutes(page);
-  console.log(`  discovered ${routes.length} pages`);
+  await bootPage.goto(`${BASE}/login`, { waitUntil: 'load' });
+  await fullPageScreenshot(bootPage, `${dir}/00-login-full.${EXT}`, SHOT);
+  if (!authCookies) {
+    await login(bootPage);
+    await dismissReveal(bootPage);
+    routes = await discoverPageRoutes(bootPage);
+    console.log(`  discovered ${routes.length} pages`);
+    ({ cookies: authCookies } = await context.storageState());
+  } else {
+    // Reuse the session from the first viewport instead of clicking through
+    // login again; dismissReveal is a server-side mutation on the shared
+    // demo account, so it's already cleared and doesn't need repeating.
+    await context.addCookies(authCookies);
+  }
+  await bootPage.close();
 
   const seen = new Set();
-  let i = 1;
-  for (const { name, path } of routes) {
-    try {
-      await page.goto(`${BASE}${path}`, { waitUntil: 'networkidle', timeout: 20000 });
-      const landed = new URL(page.url()).pathname;
-      if (seen.has(landed)) { continue; }            // dedupe redirects to an already-shot page
-      seen.add(landed);
-      await page.waitForTimeout(800);
-      const idx = String(i).padStart(2, '0');
-      await page.screenshot({ path: `${dir}/${idx}-${name}-viewport.${EXT}`, fullPage: false, ...SHOT });
-      await fullPageScreenshot(page, `${dir}/${idx}-${name}-full.${EXT}`, SHOT);
-      console.log(`  shot ${idx}-${name} (${path})`);
-      i++;
-    } catch (e) {
-      errors.push(`[navfail] ${path} :: ${e.message}`);
-      console.log(`  FAIL ${name} (${path}): ${e.message}`);
-      await page.goto('about:blank').catch(() => {}); // reset, or the failure cascades into the next page
+  let next = 0;
+  const worker = async () => {
+    const page = await context.newPage();
+    capture(page, errors);
+    while (next < routes.length) {
+      const idx = next++;
+      const { name, path } = routes[idx];
+      try {
+        await page.goto(`${BASE}${path}`, { waitUntil: 'load', timeout: 20000 });
+        const landed = new URL(page.url()).pathname;
+        if (seen.has(landed)) { continue; }            // dedupe redirects to an already-shot page
+        seen.add(landed);
+        await page.waitForTimeout(150);
+        const label = String(idx + 1).padStart(2, '0');
+        await page.screenshot({ path: `${dir}/${label}-${name}-viewport.${EXT}`, fullPage: false, ...SHOT });
+        await fullPageScreenshot(page, `${dir}/${label}-${name}-full.${EXT}`, SHOT);
+        console.log(`  shot ${label}-${name} (${path})`);
+      } catch (e) {
+        errors.push(`[navfail] ${path} :: ${e.message}`);
+        console.log(`  FAIL ${name} (${path}): ${e.message}`);
+        await page.goto('about:blank').catch(() => {}); // reset, or the failure cascades into the next page
+      }
     }
-  }
+    await page.close();
+  };
+  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+
   console.log(errors.length ? `  JS errors:\n   ${errors.join('\n   ')}` : '  JS errors: none');
   await context.close();
 }
