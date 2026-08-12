@@ -62,7 +62,7 @@ Threshold and cooldown are tunable `app_config` keys with code defaults in [AppC
 
 [`guardRateLimit()`](app/Services/Strava/StravaClient.php#L226) checks two Laravel `RateLimiter` buckets (a short 15-min window and a daily one) before hitting both. The keys from [`rateLimitKey()`](app/Services/Strava/StravaClient.php#L248) carry **no `user_id`** — the budget is app-wide because Strava meters per OAuth client, not per athlete (the [[strava-circuit-breaker-rate-limit]] ADR is the rationale). Exhaustion records a `strava_rate_limited` Pulse event and throws `StravaRateLimitedException`.
 
-The ceilings are Strava's current published **Read** limits, 100 per 15 min and 1,000 per day, app-wide. The [[strava-circuit-breaker-rate-limit]] ADR quotes the older 200 / 2,000 pair, which is what Strava published when that decision was recorded; the code is the live number.
+The ceilings are **this app's own Read allocation, 200 per 15 min and 2,000 per day**, read off its Strava API dashboard, with Overall limits of 400 / 4,000 sitting above them. Strava's public docs quote a lower 100 / 1,000 default for new applications; that is **not** this app's allocation, so don't lower the constants on a docs reading. The dashboard is the source of truth, and the [[strava-circuit-breaker-rate-limit]] ADR records the same pair.
 
 > **Gotcha:** [`rateLimitRemaining(int $userId)`](app/Services/Strava/StravaClient.php#L136) still takes a `$userId` for call-site compatibility but **ignores it** for keying — every athlete sees the same shared headroom. Do not reintroduce the id into the key. Note the local guard's exhaustion and a real upstream `429` both surface as `StravaRateLimitedException`; only the local one is preventable by us.
 

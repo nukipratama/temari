@@ -269,7 +269,7 @@ it('throws StravaRateLimitedException naming the exhausted bucket and retry-afte
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    for ($i = 0; $i < 100; $i++) {
+    for ($i = 0; $i < 200; $i++) {
         RateLimiter::hit('strava-api:15min', 15 * 60);
     }
 
@@ -284,7 +284,7 @@ it('throws StravaRateLimitedException naming the exhausted bucket and retry-afte
     Http::assertNothingSent();
 });
 
-it('allows the last request under Strava\'s published read ceilings', function (): void {
+it('allows the last request under this app\'s read allocation', function (): void {
     Http::fake([
         '*' => Http::response(['ok' => true]),
     ]);
@@ -293,17 +293,17 @@ it('allows the last request under Strava\'s published read ceilings', function (
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    for ($i = 0; $i < 99; $i++) {
+    for ($i = 0; $i < 199; $i++) {
         RateLimiter::hit('strava-api:15min', 15 * 60);
     }
-    for ($i = 0; $i < 999; $i++) {
+    for ($i = 0; $i < 1999; $i++) {
         RateLimiter::hit('strava-api:daily', 24 * 60 * 60);
     }
 
     new StravaClient()->get($connection, 'athlete');
 
-    expect(RateLimiter::attempts('strava-api:15min'))->toBe(100)
-        ->and(RateLimiter::attempts('strava-api:daily'))->toBe(1000);
+    expect(RateLimiter::attempts('strava-api:15min'))->toBe(200)
+        ->and(RateLimiter::attempts('strava-api:daily'))->toBe(2000);
 });
 
 it('sends API reads to the configured base URL', function (): void {
@@ -350,7 +350,7 @@ it('shares one rate-limit budget across all athletes (per client, not per athlet
     new StravaClient()->get($athleteB, 'athlete');
 
     // Both athletes' calls land in the same shared bucket: Strava's limit is
-    // per client, so two athletes consume two of the app's 100/15min, not one each.
+    // per client, so two athletes consume two of the app's 200/15min, not one each.
     expect(RateLimiter::attempts('strava-api:15min'))->toBe(2)
         ->and(RateLimiter::attempts('strava-api:daily'))->toBe(2);
 });
