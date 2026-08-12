@@ -23,17 +23,17 @@ const PILLARS: ReadonlyArray<{ icon: string; label: string; desc: string }> = [
     {
         icon: 'mdi:link-variant',
         label: 'I read 📖',
-        desc: 'Your Strava connects automatically',
+        desc: "I'll sync straight from your Strava, no extra steps.",
     },
     {
         icon: 'mdi:cards-outline',
         label: 'I record ✍️',
-        desc: 'Every run gets its own card',
+        desc: 'Every run earns its own card, win or easy day.',
     },
     {
         icon: 'mdi:hand-heart-outline',
         label: "I'm here for you 🫶",
-        desc: 'Consistency, not speed',
+        desc: 'I care that you showed up, not how fast you went.',
     },
 ];
 
@@ -62,7 +62,7 @@ export default function Login({
     return (
         <>
             <Head title="Log in · Temari" />
-            <div className="grid grid-cols-1 min-h-screen lg:grid-cols-[1.05fr_1fr]">
+            <div className="grid grid-cols-1 min-h-screen lg:grid-cols-[1.15fr_1fr]">
                 <HeroSide />
                 <FormSide
                     authStravaUrl={stravaUrl}
@@ -78,7 +78,11 @@ export default function Login({
 
 function RouteEcho() {
     // Faint GPS-trace style curves behind the hero content. Calls back to running
-    // brand without competing with the headline. Pure SVG, no animation, very low opacity.
+    // brand without competing with the headline. Each traces itself in once on
+    // mount, staggered slowly (route-draw + :nth-child delays in app.css) so it
+    // reads as a route being laid down, not a pop-in. Plain CSS, not
+    // framer-motion -- this route's entry-chunk budget stays clear of it (see
+    // scripts/check-entry-chunks.mjs); prefers-reduced-motion is handled there too.
     return (
         <svg
             aria-hidden
@@ -88,6 +92,8 @@ function RouteEcho() {
             fill="none"
         >
             <path
+                className="route-echo-path"
+                pathLength={1}
                 d="M-40,640 Q180,440 380,540 T880,320"
                 stroke="white"
                 strokeWidth="1.5"
@@ -95,6 +101,8 @@ function RouteEcho() {
                 strokeOpacity="0.08"
             />
             <path
+                className="route-echo-path"
+                pathLength={1}
                 d="M-40,540 Q140,340 340,420 T820,220"
                 stroke="white"
                 strokeWidth="1.2"
@@ -102,6 +110,8 @@ function RouteEcho() {
                 strokeOpacity="0.06"
             />
             <path
+                className="route-echo-path"
+                pathLength={1}
                 d="M-40,740 Q220,560 460,640 T920,460"
                 stroke="white"
                 strokeWidth="1.8"
@@ -120,7 +130,7 @@ function HeroSide() {
         >
             <span
                 aria-hidden
-                className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[560px] -translate-x-1/2 -translate-y-1/2 blur-sm"
+                className="hero-glow pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[560px] -translate-x-1/2 -translate-y-1/2 blur-sm"
                 style={{ background: SUN_GLOW }}
             />
             <RouteEcho />
@@ -129,7 +139,7 @@ function HeroSide() {
                 <BrandMark tone="cream" />
             </div>
 
-            <div className="relative z-10 w-full max-w-[560px] text-center xl:max-w-[620px]">
+            <div className="login-fade-in-up relative z-10 w-full max-w-[560px] text-center xl:max-w-[620px]">
                 <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl bg-sky-deep shadow-[0_24px_60px_rgba(0,0,0,0.45)] ring-1 ring-cream/15">
                     <TemariProto pose="glow" tone="sky" size={200} animate />
                 </div>
@@ -164,7 +174,7 @@ function FormSide({
     info = null,
 }: Readonly<FormSideProps>) {
     return (
-        <div className="flex flex-col items-center justify-center gap-9 bg-cream px-8 py-12 sm:px-12 lg:px-[100px] lg:py-20">
+        <div className="login-fade-in-up flex flex-col items-center justify-center gap-7 bg-cream px-8 py-12 sm:px-12 lg:px-[100px] lg:py-20">
             {info && (
                 <div
                     role="status"
@@ -246,7 +256,7 @@ function FormSide({
                     Welcome.
                 </h2>
                 <p className="mt-2.5 font-sans text-sm leading-relaxed text-ink-2">
-                    Connect your Strava first. Temari's waiting inside.
+                    Connect your Strava first. I'm waiting inside.
                 </p>
 
                 <a
@@ -301,7 +311,7 @@ function FormSide({
             </div>
 
             <p className="text-center text-label-micro text-ink-3">
-                Made with ♥ by runners, for runners
+                I'll see you on the other side of that button. 🐾
             </p>
         </div>
     );
