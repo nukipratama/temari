@@ -195,6 +195,12 @@ internalising:
 
 CI passes `--no-tia` on both Pest steps: a narrowed run would quietly shrink the 95% coverage gate.
 
+TIA works in **worktrees** too, but only because `worktree-setup.sh` writes a `compose.override.yaml`
+that mounts the shared git dir and exports `GIT_DIR` — a worktree's `.git` is a *file* pointing at a
+host path outside the bind mount, and TIA panics on an unresolvable repo rather than degrading. A
+worktree stack brought up without that override falls through to TIA off (the `tests/Pest.php` guard),
+which is degraded but not broken. Each worktree records its own graph from cold on first run.
+
 **Dev commands:**
 - After changing a PHP enum exposed to TS: `./vendor/bin/sail artisan typescript:enums` (`--check` mirrors CI).
 - Local UI/demo data (deterministic, no LLM tokens, no Strava HTTP): `./vendor/bin/sail artisan demo:seed`. Idempotent, re-run any time to converge. It only upserts the current blueprint set, so to purge rows from retired blueprints do a full reset: `./vendor/bin/sail artisan migrate:fresh` then `demo:seed`.
@@ -211,7 +217,8 @@ to bind off an unmodified `.env`. No changes needed to `compose.yaml` or `.githo
 the pre-commit hook's `docker compose ps` check already resolves per-cwd correctly.
 
 Workflow: `EnterWorktree name=<slice>` → `./scripts/worktree-setup.sh <slot 1|2|3>` (its own
-`APP_PORT`/`VITE_PORT` off a static slot table — main stays 7001/7002, slots use 701x/702x — then
+`APP_PORT`/`VITE_PORT` off a static slot table — main stays 7001/7002, slots use 701x/702x — writes
+an untracked `compose.override.yaml` mounting the shared git dir so TIA works, then
 brings the stack up itself and fixes cache-volume ownership) → `vendor/` is empty on a
 fresh worktree, so `vendor/bin/sail` doesn't exist yet: install once with plain
 `docker compose exec -T app composer install`, then `./vendor/bin/sail npm ci` (`sail` works for
