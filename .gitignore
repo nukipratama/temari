@@ -34,6 +34,9 @@ Thumbs.db
 # Rector cache dir
 /.rector-cache/
 
+# Pest TIA dependency graph — normally under $HOME, this is its no-HOME fallback
+/.pest/
+
 # Infection log
 /storage/infection.log
 

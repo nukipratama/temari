@@ -38,6 +38,7 @@ services:
             - 'node_modules:/var/www/html/node_modules'
             - 'composer-cache:/var/cache/composer'
             - 'npm-cache:/var/cache/npm'
+            - 'pest-tia:/home/www-data/.pest'
         networks:
             - sail
         depends_on:
@@ -105,6 +106,8 @@ volumes:
     sail-redis:
         driver: local
     node_modules:
+        driver: local
+    pest-tia:
         driver: local
     composer-cache:
         name: temari_composer_cache

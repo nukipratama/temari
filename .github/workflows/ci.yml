@@ -109,8 +109,11 @@ jobs:
       - name: Stub .env for file-scanning tests
         run: cp .env.example .env
 
+      # --no-tia on both Pest steps: TIA is a local fast-feedback tool, and a
+      # graph-narrowed run would silently shrink both this gate and the coverage
+      # gate below. CI stays exhaustive.
       - name: Class/test 1:1 structure check
-        run: ./vendor/bin/pest --group=structure
+        run: ./vendor/bin/pest --no-tia --group=structure
 
       - name: Tests
         env:
@@ -135,7 +138,7 @@ jobs:
 
           echo "Running Pest${coverage_flag:+ with coverage (--min=95)}"
 
-          ./vendor/bin/pest --parallel --processes="$(nproc)" $coverage_flag \
+          ./vendor/bin/pest --no-tia --parallel --processes="$(nproc)" $coverage_flag \
             --exclude-group=structure \
             --fail-on-warning --fail-on-notice \
             --fail-on-deprecation --fail-on-risky \
