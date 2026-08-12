@@ -28,6 +28,7 @@ Everything runs in Docker via **Sail** (no host PHP/Node). Stop at the first fai
 ./vendor/bin/sail up -d                      # start the stack
 ./vendor/bin/sail pest --group=structure     # fast 1:1 + aggregate structural gate (run first)
 ./vendor/bin/sail bin pest --filter=Name     # a single test / file while iterating
+./vendor/bin/sail bin pest --no-tia ...      # force real execution (TIA replays unchanged tests from cache)
 ./vendor/bin/sail bin pest --parallel        # full PHP suite
 ./vendor/bin/sail npm run test               # frontend (Vitest); `test:coverage` for the 95% gate
 ./vendor/bin/sail npm run build              # build assets (`npm run dev` for HMR)

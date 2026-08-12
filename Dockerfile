@@ -19,6 +19,9 @@ FROM node@sha256:2bdb65ed1dab192432bc31c95f94155ca5ad7fc1392fb7eb7526ab682fa5bf1
 FROM dunglas/frankenphp@${FRANKENPHP_DIGEST} AS dev
 WORKDIR /var/www/html
 
+# pcov is dev-stage only: Pest 5's TIA engine cannot build its test→source
+# dependency graph without a coverage driver. The runtime stage below stays
+# driver-free.
 RUN install-php-extensions \
         pdo_mysql \
         redis \
@@ -27,13 +30,15 @@ RUN install-php-extensions \
         gmp \
         opcache \
         pcntl \
-        imagick
+        imagick \
+        pcov
 
 # librsvg is ImageMagick's SVG delegate — without it Imagick can't rasterise the
 # server-rendered run-card SVG to PNG (for the Telegram post-run photo + OG image).
 # font-dejavu + fontconfig let librsvg actually render the card's text (name/km);
 # without a font the SVG <text> comes out blank.
-RUN apk add --no-cache librsvg font-dejavu fontconfig
+# git is TIA's changed-file source; Pest hard-fails "requires git" without it.
+RUN apk add --no-cache librsvg font-dejavu fontconfig git
 
 # Harden ImageMagick over the stock "open" alpine policy — deny network/scripting
 # coders the run-card rasteriser never uses. SVG/PNG stay enabled (see the file).
@@ -52,8 +57,10 @@ RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -sf /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
 # Caddy needs writable dirs for its PKI module even when auto_https is off.
-RUN mkdir -p /data/caddy /config/caddy /config/psysh \
-    && chown -R www-data:www-data /data/caddy /config/caddy /config/psysh
+# ~/.pest holds TIA's dependency graph; it must exist here so the named volume
+# compose mounts over it inherits www-data ownership instead of being root's.
+RUN mkdir -p /data/caddy /config/caddy /config/psysh /home/www-data/.pest \
+    && chown -R www-data:www-data /data/caddy /config/caddy /config/psysh /home/www-data/.pest
 
 COPY docker/Caddyfile.dev /etc/frankenphp/Caddyfile
 COPY docker/php.dev.ini /usr/local/etc/php/conf.d/zz-app.ini

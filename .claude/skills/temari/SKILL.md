@@ -181,6 +181,20 @@ Then run `./vendor/bin/sail composer check` and fix anything red.
 ```
 Code quality (pint/phpstan/rector/tsc) runs on **pre-commit**; coverage runs in **CI**.
 
+**Pest 5 TIA is on for every local run** (`pest()->tia()->locally()` in [tests/Pest.php](../../../tests/Pest.php), backed by
+pcov in the dev image). Unaffected tests are **replayed from a cached dependency graph** rather than
+executed, so a run after a small change costs a fraction of the full suite. Two consequences worth
+internalising:
+
+- A green `--filter=Name` with nothing changed is a *cached* pass, not a fresh execution. Pass
+  **`--no-tia`** when you need to genuinely re-run, or `--fresh` to discard the graph and re-record.
+- TIA is coverage-driven, so tests that read the filesystem (`File::allFiles`, `glob`) record no
+  edges. `tests/Unit/Architecture` is therefore pinned to run on any `app/`, `tests/`, `docs/` or
+  `resources/css/` change via the `watch()` map — extend that map when adding another scanning test,
+  or the gate silently stops firing.
+
+CI passes `--no-tia` on both Pest steps: a narrowed run would quietly shrink the 95% coverage gate.
+
 **Dev commands:**
 - After changing a PHP enum exposed to TS: `./vendor/bin/sail artisan typescript:enums` (`--check` mirrors CI).
 - Local UI/demo data (deterministic, no LLM tokens, no Strava HTTP): `./vendor/bin/sail artisan demo:seed`. Idempotent, re-run any time to converge. It only upserts the current blueprint set, so to purge rows from retired blueprints do a full reset: `./vendor/bin/sail artisan migrate:fresh` then `demo:seed`.

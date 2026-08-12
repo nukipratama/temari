@@ -34,6 +34,36 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)->in('Feature', 'Unit');
 
+/*
+|--------------------------------------------------------------------------
+| Test Impact Analysis
+|--------------------------------------------------------------------------
+|
+| TIA replays unaffected tests from a pcov-recorded dependency graph, so a
+| local run only executes what a change actually touched. CI passes --no-tia
+| and stays exhaustive — a narrowed run would break the 95% coverage gate.
+|
+| The watch list covers the tests that read the filesystem directly. glob()
+| and File::allFiles() produce no coverage edges, so nothing would otherwise
+| link a newly added class to the 1:1 structure gate that should fail on it.
+|
+| The is_dir() guard is what keeps parallel worktrees working. A worktree's
+| .git is a *file* pointing at a host path outside the container's bind mount,
+| so git cannot resolve the repo there — and TIA panics on that rather than
+| degrading, which would break every Pest run in a worktree.
+|
+*/
+
+if (is_dir(dirname(__DIR__).'/.git')) {
+    pest()->tia()->locally()->watch([
+        'app/**/*.php' => 'tests/Unit/Architecture',
+        'tests/**/*.php' => 'tests/Unit/Architecture',
+        'docs/**/*.md' => 'tests/Unit/Architecture',
+        'resources/css/**' => 'tests/Unit/Architecture',
+        'resources/js/types/generated.ts' => 'tests/Feature/Console/GenerateTypeScriptEnumsCommandTest.php',
+    ]);
+}
+
 pest()->beforeEach(function (): void {
     Http::preventStrayRequests();
     // The local Azure call throttle shares one rate-limit bucket across every
