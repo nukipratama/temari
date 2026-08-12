@@ -20,8 +20,6 @@ use Laravel\Pulse\Facades\Pulse;
 
 class StravaClient
 {
-    private const string API_BASE_URL = 'https://www.strava.com/api/v3';
-
     private const string TOKEN_URL = 'https://www.strava.com/oauth/token';
 
     private const int REFRESH_BUFFER_SECONDS = 60;
@@ -30,8 +28,10 @@ class StravaClient
 
     // Strava enforces rate limits per CLIENT (the whole app), not per athlete, so
     // these buckets are keyed globally and shared across every connected user. The
-    // values are Strava's Read limits (200 / 15min, 2000 / day); they bind before
-    // the Overall limits (400 / 4000) because all of our calls are reads.
+    // values are this app's own Read allocation per its Strava API dashboard
+    // (200 / 15min, 2000 / day), not the lower 100 / 1000 default the public
+    // docs quote; they bind before the Overall limits (400 / 4000) because all
+    // of our calls are reads.
     private const int RATE_LIMIT_15MIN_MAX = 200;
 
     private const int RATE_LIMIT_15MIN_DECAY = 15 * 60;
@@ -61,7 +61,7 @@ class StravaClient
         $this->guardRateLimit();
 
         try {
-            $response = Http::baseUrl(self::API_BASE_URL)
+            $response = Http::baseUrl(self::apiBaseUrl())
                 ->withToken($connection->access_token)
                 ->get($path, $query);
         } catch (ConnectionException $e) {
@@ -101,6 +101,11 @@ class StravaClient
         $breaker->recordSuccess();
 
         return $response->throw();
+    }
+
+    public static function apiBaseUrl(): string
+    {
+        return rtrim((string) config('services.strava.api_base_url'), '/');
     }
 
     private function breaker(): StravaCircuitBreaker

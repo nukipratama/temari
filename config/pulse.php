@@ -213,7 +213,7 @@ return [
             // Collapse Strava's per-activity URLs into one labeled row so a slow
             // Strava call is visible instead of scattered across hundreds of IDs.
             'groups' => [
-                '#^https://www\.strava\.com/api/v3/.*#' => 'strava.com/api/v3/*',
+                '#^https://(www\.strava\.com/api/v3|api-v3\.strava\.com)/.*#' => 'strava.com/api/v3/*',
                 '#^https://www\.strava\.com/oauth/token.*#' => 'strava.com/oauth/token',
             ],
         ],

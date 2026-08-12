@@ -39,6 +39,10 @@ return [
         'client_id' => env('STRAVA_CLIENT_ID'),
         'client_secret' => env('STRAVA_CLIENT_SECRET'),
         'redirect' => null,
+        // https://api-v3.strava.com starts serving on 2027-01-04 and does not
+        // resolve before then; Strava has announced no shutdown date for this
+        // host. Cutting over is this value, not a code change.
+        'api_base_url' => env('STRAVA_API_BASE_URL', 'https://www.strava.com/api/v3'),
         // Shared secret echoed back to Strava during the webhook subscription
         // handshake (GET /strava/webhook?hub.verify_token=...).
         'webhook_verify_token' => env('STRAVA_WEBHOOK_VERIFY_TOKEN'),

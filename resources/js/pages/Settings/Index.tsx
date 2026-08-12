@@ -35,7 +35,13 @@ interface TelegramPayload {
     connect_url: string | null;
 }
 
+interface DataUsePayload {
+    headline: string;
+    points: string[];
+}
+
 interface SettingsProps {
+    dataUse?: DataUsePayload;
     telegram?: TelegramPayload;
     notificationPrefs?: NotificationPrefs;
     /** Seconds left on the test-send cooldown, or null when it is not cooling. */
@@ -55,6 +61,7 @@ const PREFS_DEFAULT: NotificationPrefs = {
 };
 
 export default function Settings({
+    dataUse,
     telegram = TELEGRAM_DEFAULT,
     notificationPrefs = PREFS_DEFAULT,
     testCooldownSeconds = null,
@@ -103,6 +110,26 @@ export default function Settings({
                         </Card>
                     </div>
                 </section>
+
+                {dataUse ? (
+                    <section className="mt-10">
+                        <SectionLabel>{dataUse.headline}</SectionLabel>
+                        <div className="mt-3">
+                            <Card padding="lg">
+                                <ul className="flex flex-col gap-4">
+                                    {dataUse.points.map((point) => (
+                                        <li
+                                            key={point}
+                                            className="text-sm leading-relaxed text-ink-2"
+                                        >
+                                            {point}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </Card>
+                        </div>
+                    </section>
+                ) : null}
 
                 <section className="mt-10">
                     <SectionLabel>Account</SectionLabel>

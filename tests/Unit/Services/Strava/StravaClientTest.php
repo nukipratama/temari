@@ -284,6 +284,45 @@ it('throws StravaRateLimitedException naming the exhausted bucket and retry-afte
     Http::assertNothingSent();
 });
 
+it('allows the last request under this app\'s read allocation', function (): void {
+    Http::fake([
+        '*' => Http::response(['ok' => true]),
+    ]);
+
+    $connection = StravaConnection::factory()->create([
+        'token_expires_at' => Carbon::now()->addHours(5),
+    ]);
+
+    for ($i = 0; $i < 199; $i++) {
+        RateLimiter::hit('strava-api:15min', 15 * 60);
+    }
+    for ($i = 0; $i < 1999; $i++) {
+        RateLimiter::hit('strava-api:daily', 24 * 60 * 60);
+    }
+
+    new StravaClient()->get($connection, 'athlete');
+
+    expect(RateLimiter::attempts('strava-api:15min'))->toBe(200)
+        ->and(RateLimiter::attempts('strava-api:daily'))->toBe(2000);
+});
+
+it('sends API reads to the configured base URL', function (): void {
+    config(['services.strava.api_base_url' => 'https://api-v3.strava.com']);
+
+    Http::fake([
+        'api-v3.strava.com/*' => Http::response(['ok' => true]),
+    ]);
+
+    $connection = StravaConnection::factory()->create([
+        'access_token' => 'valid-access',
+        'token_expires_at' => Carbon::now()->addHours(5),
+    ]);
+
+    new StravaClient()->get($connection, '/athlete');
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://api-v3.strava.com/athlete');
+});
+
 it('records hits against both rate limit buckets per request', function (): void {
     Http::fake([
         'www.strava.com/api/v3/*' => Http::response(['ok' => true]),
