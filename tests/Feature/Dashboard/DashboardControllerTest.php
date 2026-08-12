@@ -6,6 +6,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\Run\Story\PastYouTrendBuilder;
 use App\Models\WeeklySnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -203,7 +204,23 @@ it('still returns every dashboard prop on a full page load', function (): void {
             ->has('briefing')
             ->has('snapshot')
             ->has('recentRuns', 1)
-            ->has('recentMoods'));
+            ->has('recentMoods')
+            ->has('pastYouTrend'));
+});
+
+it('ships the Past You verdict as its own outcome when history is too thin', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Today')
+            ->where('pastYouTrend.verdict', 'not_enough_history')
+            ->where('pastYouTrend.comparison_count', 0)
+            ->where('pastYouTrend.window_days', PastYouTrendBuilder::WINDOW_DAYS)
+            ->etc());
 });
 
 /**

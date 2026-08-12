@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type {
     ActivityDetail,
     BriefingResult,
+    PastYouTrend,
     TrainingLoad,
     WeeklySnapshot,
 } from '@/types/inertia';
@@ -130,7 +131,59 @@ beforeEach(() => {
     });
 });
 
+const pastYouTrend: PastYouTrend = {
+    verdict: 'improving',
+    window_days: 42,
+    comparison_count: 2,
+    comparisons: [
+        {
+            direction: 'better',
+            days_apart: 120,
+            similarity: 0.9,
+            pace_delta_sec: 12,
+            hr_delta_bpm: -6,
+            current: {
+                activity_id: 100,
+                date: '2026-05-21',
+                km: 10,
+                pace_sec_per_km: 420,
+                average_heartrate: 152,
+                elevation_gain_m: 50,
+                ingest_state: 'summary',
+            },
+            past: {
+                activity_id: 40,
+                date: '2026-01-21',
+                km: 10,
+                pace_sec_per_km: 432,
+                average_heartrate: 158,
+                elevation_gain_m: 50,
+                ingest_state: 'summary',
+            },
+        },
+    ],
+    mean_pace_delta_sec: 10,
+    mean_hr_delta_bpm: -5,
+    fitness_delta_ctl: 2.4,
+    pace_consistency_now: null,
+    pace_consistency_then: null,
+    relative_effort_band: null,
+};
+
 describe('Today', () => {
+    it('renders the Past You verdict when the backend shipped one', () => {
+        render(
+            <Today
+                briefing={briefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[richRun]}
+                pastYouTrend={pastYouTrend}
+            />,
+        );
+        expect(screen.getByText('You are getting faster')).toBeInTheDocument();
+    });
+
     it('renders the editorial greeting with first name + vibe subtitle', () => {
         render(
             <Today

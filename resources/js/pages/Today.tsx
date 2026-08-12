@@ -5,6 +5,7 @@ import type {
     ActivityDetail,
     BriefingResult,
     Mood,
+    PastYouTrend,
     SharedProps,
     TrainingLoad,
     WeeklySnapshot,
@@ -16,6 +17,7 @@ import KpiTile from '@/components/dashboard/KpiTile';
 import LastLariCard, {
     type LastRunNote,
 } from '@/components/dashboard/LastLariCard';
+import PastYouTrendCard from '@/components/dashboard/PastYouTrendCard';
 import TodayHeroBanner from '@/components/dashboard/TodayHeroBanner';
 import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
 import VitalChips from '@/components/dashboard/VitalChips';
@@ -42,6 +44,7 @@ interface TodayProps {
     recentRuns: ActivityDetail[];
     lastRunNote?: LastRunNote | null;
     recentMoods?: Record<number, Mood>;
+    pastYouTrend?: PastYouTrend | null;
 }
 
 export default function Today({
@@ -51,6 +54,7 @@ export default function Today({
     recentRuns,
     lastRunNote = null,
     recentMoods = {},
+    pastYouTrend = null,
 }: Readonly<TodayProps>) {
     const { props } = usePage<SharedProps & TodayProps>();
     const firstName = props.auth.user?.first_name ?? '';
@@ -140,6 +144,10 @@ export default function Today({
                             </section>
 
                             <VitalChips briefing={briefing} load={load} />
+
+                            {pastYouTrend && (
+                                <PastYouTrendCard trend={pastYouTrend} />
+                            )}
 
                             <div className="grid gap-4 sm:grid-cols-2">
                                 {lastRun && (
