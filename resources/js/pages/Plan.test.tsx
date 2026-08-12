@@ -77,6 +77,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
                 weeks={[WEEK()]}
             />,
@@ -97,7 +98,13 @@ describe('Plan', () => {
 
     it('shows an empty state with no weeks generated yet', () => {
         render(
-            <Plan race={null} sessionsPerWeek={3} season={SEASON} weeks={[]} />,
+            <Plan
+                race={null}
+                sessionsPerWeek={3}
+                adaptation={null}
+                season={SEASON}
+                weeks={[]}
+            />,
         );
 
         expect(screen.getByText('No plan yet.')).toBeInTheDocument();
@@ -108,6 +115,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
                 weeks={[WEEK()]}
             />,
@@ -123,6 +131,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
                 weeks={[
                     WEEK({
@@ -145,6 +154,7 @@ describe('Plan', () => {
             <Plan
                 race={{ race_date: '2026-12-06', name: 'Jakarta 10K' }}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
                 weeks={[]}
             />,
@@ -158,7 +168,13 @@ describe('Plan', () => {
 
     it('offers to set a race when there is none', () => {
         render(
-            <Plan race={null} sessionsPerWeek={3} season={SEASON} weeks={[]} />,
+            <Plan
+                race={null}
+                sessionsPerWeek={3}
+                adaptation={null}
+                season={SEASON}
+                weeks={[]}
+            />,
         );
 
         expect(
@@ -171,6 +187,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
                 weeks={[WEEK()]}
             />,
@@ -186,6 +203,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
                 weeks={[WEEK()]}
             />,
@@ -202,6 +220,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
                 weeks={[WEEK({ days: [DAY({ pinned: true })] })]}
             />,
@@ -217,6 +236,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
                 weeks={[WEEK()]}
             />,
@@ -232,6 +252,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
                 weeks={[
                     WEEK({
@@ -262,6 +283,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
                 weeks={[WEEK()]}
             />,
@@ -277,6 +299,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
                 weeks={[WEEK({ days: [DAY({ session_type: 'rest' })] })]}
             />,
@@ -292,6 +315,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
                 weeks={[WEEK()]}
             />,
@@ -307,6 +331,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
                 weeks={[WEEK()]}
             />,
@@ -324,6 +349,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={{
                     ...SEASON,
                     week_index: 3,
@@ -344,6 +370,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={{
                     ...SEASON,
                     goals: [
@@ -374,6 +401,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
                 weeks={[WEEK({ type: 'history', week_start: '2026-07-27' })]}
             />,
@@ -389,6 +417,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
                 weeks={[WEEK({ phase: 'peak' })]}
             />,
@@ -406,6 +435,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
                 weeks={[
                     WEEK({
@@ -428,9 +458,71 @@ describe('Plan', () => {
 
     it('falls back to the base season phase when no current week exists', () => {
         render(
-            <Plan race={null} sessionsPerWeek={4} season={SEASON} weeks={[]} />,
+            <Plan
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={null}
+                season={SEASON}
+                weeks={[]}
+            />,
         );
 
         expect(screen.getByText('Base')).toBeInTheDocument();
+    });
+
+    it('always shows the not-medical-advice disclaimer, adaptation or not', () => {
+        render(
+            <Plan
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={null}
+                season={SEASON}
+                weeks={[]}
+            />,
+        );
+
+        expect(screen.getByText(/not medical advice/)).toBeInTheDocument();
+    });
+
+    it("explains this week's adaptation when the periodizer recorded one", () => {
+        render(
+            <Plan
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={{
+                    reason: 'missed_week',
+                    headline: 'deload week',
+                    detail: "you finished 20% of last week's sessions. this week comes back smaller, not doubled.",
+                    deload: true,
+                }}
+                season={SEASON}
+                weeks={[WEEK()]}
+            />,
+        );
+
+        expect(screen.getByText('deload week')).toBeInTheDocument();
+        expect(
+            screen.getByText(/comes back smaller, not doubled/),
+        ).toBeInTheDocument();
+    });
+
+    it('labels a partially completed history session', () => {
+        render(
+            <Plan
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={null}
+                season={SEASON}
+                weeks={[
+                    WEEK({
+                        week_start: '2026-07-27',
+                        type: 'history',
+                        days: [DAY({ status: 'partial' })],
+                    }),
+                ]}
+            />,
+        );
+
+        expect(screen.getByText('Partial')).toBeInTheDocument();
     });
 });

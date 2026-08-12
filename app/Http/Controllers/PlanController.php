@@ -11,6 +11,7 @@ use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\ActivityDetail;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Season;
@@ -27,6 +28,7 @@ use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PhaseSchedule;
 use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\SeasonService;
+use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\VolumeRedistributor;
 use App\Services\Run\Story\BriefingContext;
@@ -59,6 +61,7 @@ class PlanController extends Controller
         SeasonService $seasonService,
         SeasonGoalResolver $seasonGoalResolver,
         GrantSeasonUnlocksAction $grantSeasonUnlocks,
+        SessionMatcher $sessionMatcher,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -74,6 +77,8 @@ class PlanController extends Controller
         $grantSeasonUnlocks($user, $season, $seasonCtx);
         $seasonPayload = $this->seasonPayload($season, $seasonGoalResolver->forSeason($user, $season, $seasonCtx), $today);
 
+        $adaptationPayload = $this->adaptationPayload($user, $currentWeekStart);
+
         $sessions = PlannedSession::query()
             ->where('user_id', $user->id)
             ->whereBetween('date', [$rangeStart->toDateString(), $rangeEnd->toDateString()])
@@ -86,6 +91,7 @@ class PlanController extends Controller
                 'sessionsPerWeek' => $baseline->forUser($user, $today)['sessions_per_week'],
                 'weeks' => [],
                 'season' => $seasonPayload,
+                'adaptation' => $adaptationPayload,
             ]);
         }
 
@@ -118,6 +124,17 @@ class PlanController extends Controller
         $currentWeekKey = $currentWeekStart->toDateString();
         $currentWeekMultiplier = $multiplierByWeek[$currentWeekKey] ?? 1.0;
         $bandKmThisWeek = $this->bandKmFor($baselineData['long_run_km'], $currentWeekMultiplier);
+
+        $plannedKmByDate = [];
+        foreach ($sessions as $s) {
+            $weekKey = $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
+            $plannedKmByDate[$s->date->toDateString()] = DistanceBandKm::kmFor(
+                $s->distance_band,
+                $baselineData['long_run_km'],
+                $multiplierByWeek[$weekKey] ?? 1.0,
+            );
+        }
+        $statuses = $sessionMatcher->statuses($user, $plannedKmByDate, $today);
 
         // Readiness clamp: TODAY's row only — a future day's readiness isn't
         // knowable today, so clamping never reaches past this one row.
@@ -156,6 +173,7 @@ class PlanController extends Controller
                     $baselineData['long_run_km'],
                     $multiplierByWeek[$weekStartKey] ?? 1.0,
                     $paces,
+                    $statuses[$s->date->toDateString()] ?? PlannedSessionStatus::Planned,
                 ))->all(),
             ];
         }
@@ -165,6 +183,7 @@ class PlanController extends Controller
             'sessionsPerWeek' => $baselineData['sessions_per_week'],
             'weeks' => $weeks,
             'season' => $seasonPayload,
+            'adaptation' => $adaptationPayload,
         ]);
     }
 
@@ -323,6 +342,7 @@ class PlanController extends Controller
         float $longRunKm,
         float $multiplier,
         ?array $paces,
+        PlannedSessionStatus $status,
     ): array {
         $isToday = $s->date->isSameDay($today);
 
@@ -346,33 +366,27 @@ class PlanController extends Controller
             'pace_sec_per_km' => ($paceBand !== null && $paces !== null) ? ($paces[$paceBand->value] ?? null) : null,
             'distance_km' => DistanceBandKm::kmFor($band, $longRunKm, $multiplier),
             'pinned' => $s->pinned,
-            'status' => $this->statusFor($s, $today),
+            'status' => $status->value,
             'clamp_note' => $isToday ? ($clamp['note'] ?? null) : null,
         ];
     }
 
-    private function statusFor(PlannedSession $session, Carbon $today): string
+    /**
+     * @return array{reason: string, headline: string, detail: string, deload: bool}|null
+     */
+    private function adaptationPayload(User $user, Carbon $currentWeekStart): ?array
     {
-        if (! $session->date->isBefore($today)) {
-            return PlannedSessionStatus::Planned->value;
-        }
-        if ($session->session_type === SessionType::Rest) {
-            return PlannedSessionStatus::Done->value;
-        }
+        $adaptation = PlanAdaptation::query()
+            ->where('user_id', $user->id)
+            ->where('week_start', $currentWeekStart->toDateString())
+            ->first();
 
-        return $this->hasActivityOn($session->user_id, $session->date)
-            ? PlannedSessionStatus::Done->value
-            : PlannedSessionStatus::Missed->value;
-    }
-
-    private function hasActivityOn(int $userId, Carbon $date): bool
-    {
-        return ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
-            ->where('activities.user_id', $userId)
-            ->whereNotNull('activity_details.start_date_local')
-            ->whereBetween('activity_details.start_date_local', [$date->copy()->startOfDay(), $date->copy()->endOfDay()])
-            ->exists();
+        return $adaptation === null ? null : [
+            'reason' => $adaptation->reason->value,
+            'headline' => $adaptation->reason->headline(),
+            'detail' => $adaptation->reason->detail($adaptation->adherence_pct),
+            'deload' => $adaptation->deload,
+        ];
     }
 
     private function completedKmInRange(User $user, Carbon $from, Carbon $to): float
