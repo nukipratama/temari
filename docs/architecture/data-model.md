@@ -70,7 +70,7 @@ TokenUsage / StravaSyncLog ── standalone on `analytics`, user_id column only
 
 ## The AnalyzedScope gotcha
 
-[AnalyzedScope](app/Models/Scopes/AnalyzedScope.php) is a global scope on [Activity](app/Models/Activity.php) that forces `analyzed_at IS NOT NULL`, hiding un-ingested Strava stubs from every default query. The ingest pipeline (and only it) opts out via the `withStubs`/`pendingIngest` scopes. Any "where are my activities?" surprise traces here first.
+[AnalyzedScope](app/Models/Scopes/AnalyzedScope.php) is a global scope on [Activity](app/Models/Activity.php) that forces `analyzed_at IS NOT NULL`, hiding un-ingested Strava stubs from every default query. The ingest pipeline (and only it) opts out via the `withStubs`/`pendingIngest` scopes. Any "where are my activities?" surprise traces here first. Visibility is separate from completeness: `ingest_state` ([IngestState](app/Enums/IngestState.php)) marks a visible row as `summary` or `detailed`, filtered by the `summaryOnly`/`detailed` local scopes — see [[run-ingest-pipeline]].
 
 ## AI + analytics rows
 

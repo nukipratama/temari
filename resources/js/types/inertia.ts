@@ -260,6 +260,7 @@ export interface Activity {
     user_id: number;
     name?: string;
     analyzed_at: string | null;
+    ingest_state?: 'summary' | 'detailed';
     detail?: ActivityDetail;
     run_card?: RunCard;
 }

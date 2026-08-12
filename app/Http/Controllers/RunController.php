@@ -14,6 +14,7 @@ use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Ingest\DetailHydrator;
 use App\Services\Run\JejakQuery;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\RelativeEffort;
@@ -290,7 +291,7 @@ class RunController extends Controller
         );
     }
 
-    public function show(Request $request, Activity $activity, PastYouMatcher $matcher, RelativeEffort $relativeEffort, CardPresenter $cards): Response
+    public function show(Request $request, Activity $activity, PastYouMatcher $matcher, RelativeEffort $relativeEffort, CardPresenter $cards, DetailHydrator $hydrator): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -299,6 +300,8 @@ class RunController extends Controller
         $activity->loadMissing(['detail', 'runCard']);
         $detail = $activity->detail;
         abort_if($detail === null, 404, 'Activity not yet analyzed.');
+
+        $hydrator->hydrate($activity->id);
 
         if ($detail->start_lat !== null
             && $detail->location_resolved_at === null
@@ -351,7 +354,14 @@ class RunController extends Controller
                 $payloadFor(AnalysisType::PostRunSpeech),
             ),
             'runInsight' => fn (): array => $payloadFor(AnalysisType::RunInsight),
-            'pastYou' => fn (): ?array => $matcher->findMatch($activity, $detail),
+            'pastYou' => function () use ($matcher, $hydrator, $activity, $detail): ?array {
+                $match = $matcher->findMatch($activity, $detail);
+                if ($match !== null) {
+                    $hydrator->hydrate($match['past']->activity_id);
+                }
+
+                return $match;
+            },
             'relativeEffort' => fn (): ?array => $relativeEffort->forRun($activity, $detail),
         ]);
     }
