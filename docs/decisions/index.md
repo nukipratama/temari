@@ -22,6 +22,7 @@ ADRs grouped by the problem they solve, for easier navigation than a flat timeli
 | **Data isolation** | [[analytics-db-separate-connection]] (metering outlives app resets); [[date-cast-utc-shift]] (UTC off-by-one guard) |
 | **Async / resilience** | [[chained-narration]] (connected narration threads); [[strava-circuit-breaker-rate-limit]] (per-client rate-limit guard); [[narrow-trusted-proxy-headers]] (proxy trust behind tunnel); [[trust-all-proxies-cloudflare]] *(superseded)*; [[deferred-recap-windowing]] (window-gated generation) |
 | **AI routing** | [[azure-openai-routing]] (per-narrator-kind deployment selection); [[narration-agents-on-openai-php]] (SDK seam + tool calling); [[demo-user-billing-exclusion]] (demo user omitted from auto-billing); [[demo-triggers-served-rule-based]] (demo triggers filled rule-based) |
+| **Notifications** | [[inbox-is-an-always-on-channel]] (the inbox as an unmuteable third channel) |
 | **Ops / deploy** | [[fixed-session-cookie]] (stable cookie name); [[defer-config-cache]] (config cache timing); [[telegram-account-linking]] (signed deep-link token) |
 | **Design / branding** | [[temari-keeps-score-persona]] (voice: friend → training partner who keeps score); [[thread-ball-character-rebrand]] (bunny/Daybreak → thread-ball/Threadwork) *(persona half superseded)* |
 
@@ -49,6 +50,9 @@ _Infra & Strava_
 - [[narrow-trusted-proxy-headers]] — trust only X-Forwarded-For/Proto/Port; trustHosts rejected because a Host allowlist would fail the healthcheck
 - [[defer-config-cache]] — config:cache only at deploy time, never at build or in CI tests
 - [[telegram-account-linking]] — link Telegram via a signed deep-link token; prod webhook, dev long-poll
+
+_Notifications_
+- [[inbox-is-an-always-on-channel]] — the notification centre is a router channel that is never unwired and never muted
 
 _Design_
 - [[thread-ball-character-rebrand]] — full character replacement (bunny → thread-ball) and palette rename (Daybreak → Threadwork), tying the visual identity to the training arc *(its persona stance superseded by [[temari-keeps-score-persona]]; the visual decisions still stand)*
