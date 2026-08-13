@@ -142,7 +142,7 @@ class RunCardImageRenderer
         $middle = match ($layout) {
             'kartu' => $this->kartuMiddle($km, $detail, $rarity, $text, $inkOnSky, $badges),
             'stats' => $this->statsMiddle($detail, $km, $text, $inkOnSky, $sunken, $rarity, $badges),
-            default => $this->ruteMiddle($km, $detail, $rarity, $text, $inkOnSky, $sunken, $badges),
+            default => $this->ruteMiddle($km, $detail, $rarity, $text, $inkOnSky, $badges),
         };
         $footer = $this->footer($detail, $rarity, $card->rarity->bandCount(), $inkOnSky, $pal['divider']);
 
@@ -219,7 +219,6 @@ SVG;
         string $rarity,
         string $text,
         string $inkOnSky,
-        string $sunken,
         array $badges,
     ): string {
         $points = $this->projector->project(
@@ -229,7 +228,7 @@ SVG;
             self::PANEL_PAD,
         );
 
-        $panel = $this->routePanel($points, $rarity, $sunken, $inkOnSky);
+        $panel = $this->routePanel($points, $rarity, $inkOnSky);
         $kmSvg = $this->kmHero($km, $rarity, $inkOnSky, 1320, 170, false);
         $stats = $this->statsRow($detail, $text, $inkOnSky, 1470, 1526);
         $badgeSvg = $this->badgeRow($badges, $rarity, $text, 1578);
@@ -583,31 +582,27 @@ SVG;
     }
 
     /**
-     * The route as poster art in a bright pearl window (`rute` only), or a
-     * placeholder when the card has no drawable GPS track.
+     * The route drawn straight onto the card ground as poster art (`rute`
+     * only), matching the client canvas, or a placeholder when the card has no
+     * drawable GPS track.
      */
-    private function routePanel(?string $points, string $rarity, string $sunken, string $inkOnSky): string
+    private function routePanel(?string $points, string $rarity, string $inkOnSky): string
     {
         [$x, $y, $w, $h] = [self::PAD, self::PANEL_Y, self::CONTENT_W, self::PANEL_H];
-
-        $frame = <<<SVG
-<rect x="{$x}" y="{$y}" width="{$w}" height="{$h}" rx="40" fill="{$sunken}" stroke="{$rarity}" stroke-opacity="0.35" stroke-width="3"/>
-SVG;
 
         if ($points === null) {
             $cx = $x + intdiv($w, 2);
             $cy = $y + intdiv($h, 2);
             $sans = self::FONT_SANS;
 
-            return $frame.<<<SVG
-
+            return <<<SVG
+<rect x="{$x}" y="{$y}" width="{$w}" height="{$h}" rx="40" fill="none" stroke="{$inkOnSky}" stroke-opacity="0.25" stroke-width="2" stroke-dasharray="12 10"/>
   <text x="{$cx}" y="{$cy}" font-family="{$sans}" font-size="34" fill="{$inkOnSky}" text-anchor="middle">Route unavailable</text>
 SVG;
         }
 
-        return $frame.<<<SVG
-
-  <g transform="translate({$x},{$y})">
+        return <<<SVG
+<g transform="translate({$x},{$y})">
     <polyline points="{$points}" fill="none" stroke="{$rarity}" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"/>
   </g>
 SVG;
