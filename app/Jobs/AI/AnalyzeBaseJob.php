@@ -162,7 +162,8 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      *
      * Under the spend ceiling the rows are served from the deterministic filler,
      * matching what dispatch would have done had the ceiling been hit a moment
-     * earlier. Every other pause reverts them to Pending (never Failed, and
+     * earlier — except a row that arrived Failed, which keeps its fault and its
+     * dead-letter visibility. Every other pause reverts them to Pending (never Failed, and
      * before markProcessing, so no `attempts` burn) for ai:self-heal to
      * re-dispatch once generation resumes.
      *

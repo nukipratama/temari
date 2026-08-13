@@ -469,6 +469,37 @@ it('degrades every row of a group, and never overwrites one already billed for',
     Bus::assertNotDispatched(AnalyzeActivityJob::class);
 });
 
+it('leaves a Failed row Failed past the ceiling while its Pending sibling degrades', function (): void {
+    $activity = Activity::factory()->create();
+    ActivityDetail::factory()->create(['activity_id' => $activity->id, 'distance' => 8000]);
+    Analysis::factory()->failed('narator meledak')->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::RunInsight,
+        'discriminator' => null,
+    ]);
+    breachTheCeiling();
+
+    $this->service->requestActivityGroup($activity);
+
+    $rows = Analysis::query()
+        ->where('subject_id', $activity->id)
+        ->get()
+        ->keyBy(fn (Analysis $row): string => $row->analysis_type->value);
+
+    // The broken block keeps its fault (and its dead-letter visibility); the
+    // untouched sibling still gets content, so this is an exclusion, not a
+    // whole-group opt-out.
+    expect($rows['run_insight']->status)->toBe(AnalysisStatus::Failed)
+        ->and($rows['run_insight']->error)->toBe('narator meledak')
+        ->and($rows['run_insight']->content)->toBeNull()
+        ->and($rows['post_run_speech']->status)->toBe(AnalysisStatus::Done)
+        ->and($rows['post_run_speech']->content)->toBe(
+            app(RuleBasedNarrationFiller::class)->fillFor($rows['post_run_speech']),
+        );
+    expect(app(CostCeilingLedger::class)->today()['degradedFills'])->toBe(1);
+});
+
 it('records the trip time and the degraded-fill count for /ai-usage', function (): void {
     $this->freezeTime();
     breachTheCeiling();
