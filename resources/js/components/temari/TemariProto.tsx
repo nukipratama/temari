@@ -40,7 +40,7 @@ export type TemariPose =
     | TemariExpression;
 
 export interface TemariEquipped {
-    headband?: 'ember' | 'epik' | 'legendaris' | null;
+    headband?: 'ember' | 'rare' | 'epik' | 'legendaris' | null;
     medal?: 'pertama' | 'emas' | 'perak' | 'platina' | 'none';
     kaus?: 'pemula' | 'pagi' | 'hujan' | 'legendaris' | null;
     celana?: 'ringan' | 'jarak' | 'split' | 'maraton' | null;
@@ -304,6 +304,7 @@ interface ItemSpec {
 
 const HEADBAND_ITEMS: Record<string, ItemSpec> = {
     ember: { color: '#2fb350' },
+    rare: { color: '#2f81f7' },
     epik: { color: '#a855f7', detail: 'crownStud' },
     legendaris: { color: '#f5a623', detail: 'crownStud' },
 };

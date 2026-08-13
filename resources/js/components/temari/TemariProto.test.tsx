@@ -8,6 +8,15 @@ import {
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import {
+    mapAura,
+    mapCelana,
+    mapHeadband,
+    mapKaus,
+    mapMedal,
+    mapSepatu,
+} from '@/lib/equippedAccessories';
+
 import TemariProto, {
     TEMARI_EXPRESSIONS,
     type TemariEquipped,
@@ -82,39 +91,29 @@ function paintedColors(container: HTMLElement): Set<string> {
     return colors;
 }
 
-/** unlock key → the TemariEquipped slot/variant lib/equippedAccessories.ts maps it to. */
-const VARIANT_SOURCE: Array<[keyof TemariEquipped, string, string]> = [
-    ['headband', 'ember', 'accessory.headband_uncommon'],
-    ['headband', 'epik', 'accessory.headband_epic'],
-    ['headband', 'legendaris', 'accessory.headband_legendary'],
-    ['medal', 'pertama', 'accessory.medal_first'],
-    ['medal', 'perak', 'accessory.medal_silver'],
-    ['medal', 'emas', 'accessory.medal_gold'],
-    ['medal', 'platina', 'accessory.medal_platinum'],
-    ['kaus', 'pemula', 'accessory.shirt_beginner'],
-    ['kaus', 'pagi', 'accessory.shirt_early_bird'],
-    ['kaus', 'hujan', 'accessory.shirt_rain_warrior'],
-    ['kaus', 'legendaris', 'accessory.shirt_legendary'],
-    ['celana', 'ringan', 'accessory.shorts_lightweight'],
-    ['celana', 'jarak', 'accessory.shorts_explorer'],
-    ['celana', 'split', 'accessory.shorts_negative_split'],
-    ['celana', 'maraton', 'accessory.shorts_marathon'],
-    ['sepatu', 'basic', 'accessory.shoes_basic'],
-    ['sepatu', 'cepat', 'accessory.shoes_speed'],
-    ['sepatu', 'tahan', 'accessory.shoes_rugged'],
-    ['sepatu', 'legendaris', 'accessory.shoes_legendary'],
-    ['aura', 'pemanasan', 'accessory.aura_warmup'],
-    ['aura', 'gerah', 'accessory.aura_heatwave'],
-    ['aura', 'tenang', 'accessory.aura_calm'],
-    ['aura', 'jagoan', 'accessory.aura_champion'],
-    ['aura', 'angin', 'accessory.aura_windrunner'],
+/**
+ * Catalogue slot → the TemariEquipped field it lands in, and the real mapper
+ * lib/equippedAccessories.ts uses to get there. Driving the colour tests
+ * through the actual mappers rather than a hand-written table is what makes a
+ * lossy map (two unlock keys collapsing onto one variant) a test failure: it
+ * shipped for four headbands against three variants, so `RARITY.rare` blue was
+ * unreachable and two items in the same slot drew the same object.
+ */
+const SLOT_MAPPERS: Array<{
+    slot: string;
+    field: keyof TemariEquipped;
+    map: (key: string) => string;
+}> = [
+    { slot: 'headband', field: 'headband', map: (k) => String(mapHeadband(k)) },
+    { slot: 'shirt', field: 'kaus', map: (k) => String(mapKaus(k)) },
+    { slot: 'shorts', field: 'celana', map: (k) => String(mapCelana(k)) },
+    { slot: 'shoes', field: 'sepatu', map: (k) => String(mapSepatu(k)) },
+    { slot: 'medal', field: 'medal', map: (k) => String(mapMedal(k)) },
+    { slot: 'aura', field: 'aura', map: (k) => String(mapAura(k)) },
 ];
 
 const COLOR_BY_KEY: Record<string, string> = Object.fromEntries(
-    (ITEMS as Array<{ key: string; colour: string }>).map((item) => [
-        item.key,
-        item.colour,
-    ]),
+    ITEMS.map((item) => [item.key, item.colour]),
 );
 
 describe('TemariProto — parity with the brand generator', () => {
@@ -154,13 +153,24 @@ describe('TemariProto — parity with the brand generator', () => {
         );
     });
 
-    it.each(VARIANT_SOURCE)(
-        'paints %s/%s with the swept catalogue colour',
-        (slot, variant, key) => {
-            const { container } = render(
-                <TemariProto equipped={{ [slot]: variant }} />,
-            );
-            expect([...paintedColors(container)]).toContain(COLOR_BY_KEY[key]);
+    it.each(SLOT_MAPPERS)(
+        'draws every $slot in the catalogue as its own object',
+        ({ slot, field, map }) => {
+            const items = ITEMS.filter((item) => item.slot === slot);
+            expect(items.length).toBeGreaterThan(0);
+
+            const variants = items.map((item) => map(item.key));
+            expect(new Set(variants).size).toBe(items.length);
+
+            const painted = items.map((item, i) => {
+                const { container } = render(
+                    <TemariProto equipped={{ [field]: variants[i] }} />,
+                );
+                const colors = paintedColors(container);
+                expect([...colors]).toContain(COLOR_BY_KEY[item.key]);
+                return COLOR_BY_KEY[item.key];
+            });
+            expect(new Set(painted).size).toBe(items.length);
         },
     );
 
