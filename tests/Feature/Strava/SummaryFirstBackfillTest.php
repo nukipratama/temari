@@ -123,10 +123,47 @@ it('renders the run-detail page for a summary-only run and queues its hydration'
         ->assertInertia(fn ($page) => $page
             ->component('Runs/Show')
             ->where('activity.ingest_state', IngestState::Summary->value)
+            ->where('awaitingDetail', true)
             ->where('card', null)
             ->where('relativeEffort', null));
 
     Bus::assertDispatched(IngestActivityJob::class, fn (IngestActivityJob $job): bool => $job->activityId === $activity->id);
+});
+
+it('does not claim a run is still filling in once it is detailed', function (): void {
+    Bus::fake();
+
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['revoked_at' => null]);
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create();
+
+    $this->actingAs($user)
+        ->get(route('activities.show', $activity))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('awaitingDetail', false));
+
+    Bus::assertNotDispatched(IngestActivityJob::class);
+});
+
+it('does not promise a demo run will fill itself in, since nothing is coming for it', function (): void {
+    Bus::fake();
+
+    $user = User::factory()->create(['is_demo' => true]);
+    StravaConnection::factory()->for($user)->create(['revoked_at' => null]);
+    $activity = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'stream_summary' => null,
+        'trimp_edwards' => null,
+        'splits_metric' => null,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('activities.show', $activity))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('awaitingDetail', false));
+
+    Bus::assertNotDispatched(IngestActivityJob::class);
 });
 
 it('renders the feed and calendar for a summary-only run without inventing a zero effort', function (): void {

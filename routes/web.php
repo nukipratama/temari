@@ -16,6 +16,7 @@ use App\Http\Controllers\CardController;
 use App\Http\Controllers\ClientErrorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DevtoolsIndexController;
+use App\Http\Controllers\LegalController;
 use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\NotificationTestController;
 use App\Http\Controllers\OnboardingController;
@@ -62,6 +63,13 @@ Route::post('/client-errors', ClientErrorController::class)
     ->middleware('throttle:client-errors')
     ->name('client-errors');
 
+// Public and unauthenticated on purpose: someone deciding whether to connect
+// their Strava has to be able to read these before there is an account.
+Route::get('/terms', [LegalController::class, 'terms'])->name('legal.terms');
+Route::get('/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
+Route::get('/ai-use', [LegalController::class, 'aiUse'])->name('legal.ai-use');
+Route::get('/training-disclaimer', [LegalController::class, 'trainingDisclaimer'])->name('legal.training-disclaimer');
+
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
     // Throttled like the other public POSTs to blunt session-creation spam; it
@@ -76,8 +84,13 @@ Route::middleware('guest')->group(function (): void {
 // The callback upserts by athlete id, so a logged-in user re-authing just refreshes
 // their existing connection. Keeping these out of the `guest` group is what lets the
 // reconnect flow reach the redirect/callback at all instead of bouncing to dashboard.
-Route::get('/auth/strava/redirect', [StravaAuthController::class, 'redirect'])->name('auth.strava.redirect');
-Route::get('/auth/strava/callback', [StravaAuthController::class, 'callback'])->name('auth.strava.callback');
+// Throttled per IP: this is the account-creation path, open to anyone, and the
+// callback spends a Strava token exchange (plus a history backfill on a first
+// connect) before any session exists to key a limit by.
+Route::middleware('throttle:strava-oauth')->group(function (): void {
+    Route::get('/auth/strava/redirect', [StravaAuthController::class, 'redirect'])->name('auth.strava.redirect');
+    Route::get('/auth/strava/callback', [StravaAuthController::class, 'callback'])->name('auth.strava.callback');
+});
 
 Route::middleware(['auth'])->group(function (): void {
     // Reachable regardless of onboarding status: the wizard itself, and

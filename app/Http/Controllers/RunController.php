@@ -301,7 +301,7 @@ class RunController extends Controller
         $detail = $activity->detail;
         abort_if($detail === null, 404, 'Activity not yet analyzed.');
 
-        $hydrator->hydrate($activity->id);
+        $awaitingDetail = $hydrator->hydrate($activity->id);
 
         if ($detail->start_lat !== null
             && $detail->location_resolved_at === null
@@ -335,6 +335,10 @@ class RunController extends Controller
             // above, so a closure would defer nothing.
             'activity' => $activity,
             'detail' => $detail,
+            // True only when this view queued the deeper fetch, so the notice
+            // promising "it fills itself in" is never shown to a run nothing is
+            // coming for (demo data, a revoked connection, an already-detailed row).
+            'awaitingDetail' => $awaitingDetail,
             'card' => fn (): ?array => $this->cardPayload($cards, $activity->runCard, $user),
             'storyLine' => fn (): ?StoryLine => StoryLine::query()
                 ->where('activity_id', $activity->id)

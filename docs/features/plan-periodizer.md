@@ -80,7 +80,7 @@ The three sections above are all *render-time* reactions within one week. The ge
 
 **Recorded, not recomputed.** The verdict is written to a [PlanAdaptation](app/Models/PlanAdaptation.php) row, `unique(user_id, week_start)`. `/plan` reads that row rather than re-deciding, so a deload triggered on Monday still explains itself on Thursday after the athlete's readiness has recovered. The copy lives on the enum ([AdaptationReason::headline()/detail()](app/Enums/AdaptationReason.php)), never in the database.
 
-**Prescriptive, not clinical.** The Plan tab renders a standing not-medical-advice disclaimer on every load, adaptation or not ([Plan.tsx](resources/js/pages/Plan.tsx)). The tone gets to be assertive about numbers precisely because the clamps above stay in force underneath it.
+**Prescriptive, not clinical.** The Plan tab renders a standing not-medical-advice disclaimer on every load, adaptation or not ([Plan.tsx](resources/js/pages/Plan.tsx)). Its wording is served from [TrainingDisclaimer](app/Support/TrainingDisclaimer.php) rather than held locally, so the public [[legal-pages]] and this tab cannot drift into two different positions. The tone gets to be assertive about numbers precisely because the clamps above stay in force underneath it.
 
 ## Render-time km — never frozen into the row
 

@@ -35,6 +35,22 @@ describe('Settings', () => {
         expect(screen.getByText('Delete account')).toBeInTheDocument();
     });
 
+    it('links out to the four legal pages', () => {
+        render(<Settings />);
+
+        expect(screen.getByText('The fine print')).toBeInTheDocument();
+        for (const [label, href] of [
+            ['Terms of use', '/terms'],
+            ['Privacy policy', '/privacy'],
+            ['How Temari uses AI', '/ai-use'],
+            ['Training disclaimer', '/training-disclaimer'],
+        ]) {
+            expect(
+                screen.getByRole('link', { name: new RegExp(label) }),
+            ).toHaveAttribute('href', href);
+        }
+    });
+
     it('renders the data-use statement the server hands it', () => {
         render(
             <Settings

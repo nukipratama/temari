@@ -32,6 +32,7 @@ use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\VolumeRedistributor;
 use App\Services\Run\Story\BriefingContext;
+use App\Support\TrainingDisclaimer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -92,6 +93,7 @@ class PlanController extends Controller
                 'weeks' => [],
                 'season' => $seasonPayload,
                 'adaptation' => $adaptationPayload,
+                'disclaimer' => TrainingDisclaimer::TEXT,
             ]);
         }
 
@@ -184,6 +186,7 @@ class PlanController extends Controller
             'weeks' => $weeks,
             'season' => $seasonPayload,
             'adaptation' => $adaptationPayload,
+            'disclaimer' => TrainingDisclaimer::TEXT,
         ]);
     }
 
