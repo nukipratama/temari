@@ -30,7 +30,7 @@ Named route: `cards.index`. All cards link to their respective `route('activitie
 - **Gamification engine** — rarities, badges, and special moves are assigned by [[gamification]] during ingest.
 - **AI narration** — the featured card flavor and the "Kenapa [rarity]" explanations come from `Analysis` rows ([[ai-pipeline]]).
 - **Data model** — `RunCard`, `Activity`, `Rarity` enum, edition numbering in [[data-model]].
-- **Share** — `public_share_url` is a signed route; the share image is generated client-side on a canvas.
+- **Share** — `public_share_url` is a signed route. There are **two** share-image renderers: [shareCard.ts](../../resources/js/lib/shareCard.ts) draws the image the user downloads on a client canvas, and [RunCardImageRenderer](../../app/Services/Run/Story/RunCardImageRenderer.php) builds the same card as an SVG rasterised through Imagick + librsvg for the post-run Telegram photo. Both render the `story` format at 1080x1920 and name the same three font families, which is why the server image needs those fonts installed (see [resources/brand/fonts/README.md](../../resources/brand/fonts/README.md)). They are separate runtimes with hand-ported geometry, so they can drift; [RunCardImageRendererTest](../../tests/Unit/Services/Run/Story/RunCardImageRendererTest.php) pins the parts that must stay in step.
 
 ## The grid (`/cards`)
 
