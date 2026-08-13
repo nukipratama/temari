@@ -1,15 +1,17 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { COLOR, MOOD, contrast, inkOn } from './build-tokens.mjs';
+import { COLOR, MOOD, PAPER, contrast, inkOn } from './build-tokens.mjs';
 
 const SKY = COLOR.sky, CREAM = COLOR.cream, GOLD = COLOR.horizon, GOLD_D = COLOR['horizon-ink'];
 const CX = 50, CY = 52, BODY_R = 31, HALO_R = 41, AURA_R = 47;
 const EYE_Y = 50, EYE_S = 10;
 
 // halo: [colour, stroke width] — reuses the app's mood tokens
-/* The halo conveys mood, so every colour must clear 3:1 on cream — including
+/* The halo conveys mood, so every colour must clear 3:1 on paper — including
    `neutral`, since the ring is structural. Sourced from the mood tokens and
-   darkened only where needed, so a token change propagates instead of drifting. */
-const legible = (c) => (contrast(c, COLOR.cream) >= 3 ? c : inkOn(c, COLOR.cream, 3));
+   darkened only where needed, so a token change propagates instead of drifting.
+   PAPER is the darkest ground dawn-shift can render, not the default cream:
+   four of these sat at ~2.8:1 after dark while targeting cream alone. */
+const legible = (c) => (contrast(c, PAPER) >= 3 ? c : inkOn(c, PAPER, 3));
 const HALO = {
   neutral:  [legible(COLOR.line), 6],
   easy:     [legible(MOOD.easy), 6],

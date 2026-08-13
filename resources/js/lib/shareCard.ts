@@ -101,7 +101,7 @@ const C = {
     skyDeep: PALETTE.skyDeep,
     surfaceCard: '#f5f0e4',
     surfaceSunken: '#ece2ce',
-    line: '#d2c9b0',
+    line: '#cec5ad',
     inkOnSky: '#b0a3c9',
     rarity: RARITY_HEX,
     // Ember colorway's dark bg/surface: the app.css `--color-ember`/`-deep`

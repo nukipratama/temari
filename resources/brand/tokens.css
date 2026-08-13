@@ -24,7 +24,7 @@
     --color-surface-elev: #faf6ec;
     --color-surface-warm: #f8f0dd;
     --color-surface-sunken: #ece2ce;
-    --color-line: #d2c9b0;
+    --color-line: #cec5ad;
     --color-line-strong: #c3b89c;
     --color-leaf: #2f8f63;
     --color-leaf-deep: #256f4d;
@@ -33,7 +33,7 @@
     --color-citrus: #c9971f;
     --color-citrus-deep: #a67c14;
     --color-stone: #a99f8a;
-    --color-horizon-ink: #896826;
+    --color-horizon-ink: #836424;
 
     /* mood — vivid for fills, -ink for text on paper (derived, >=4.5:1) */
     --color-mood-blazing: #c9971f;
@@ -42,8 +42,8 @@
     --color-mood-gassed: #7a2030;
     --color-mood-overloaded: #6b3fa0;
     --color-mood-chill: #55488f;
-    --color-mood-blazing-ink: #8b6815;
-    --color-mood-easy-ink: #297b55;
+    --color-mood-blazing-ink: #846314;
+    --color-mood-easy-ink: #277652;
     --color-mood-wobbly-ink: #b23a4f;
     --color-mood-gassed-ink: #7a2030;
     --color-mood-overloaded-ink: #6b3fa0;
@@ -55,11 +55,11 @@
     --color-rarity-rare: #2f81f7;
     --color-rarity-epic: #a855f7;
     --color-rarity-legendary: #f5a623;
-    --color-rarity-common-ink: #676e7a;
-    --color-rarity-uncommon-ink: #217d38;
-    --color-rarity-rare-ink: #276bce;
-    --color-rarity-epic-ink: #9049d4;
-    --color-rarity-legendary-ink: #946415;
+    --color-rarity-common-ink: #626974;
+    --color-rarity-uncommon-ink: #207836;
+    --color-rarity-rare-ink: #2567c4;
+    --color-rarity-epic-ink: #8945ca;
+    --color-rarity-legendary-ink: #8d6014;
 
     /* spacing — NEW, no scale existed */
     --spacing-1: 4px;

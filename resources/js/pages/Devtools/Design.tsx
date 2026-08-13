@@ -11,6 +11,7 @@ import {
     type SurfaceRow,
     auditContrast,
     auditSurface,
+    collectSurfaceGrounds,
     collectTokenNames,
     groupColorFamilies,
     readTokenValues,
@@ -141,9 +142,17 @@ export default function Design() {
         const names = collectTokenNames(document.styleSheets);
         return readTokenValues(names, document.documentElement);
     }, []);
-    const contrast = useMemo<ContrastRow[]>(
-        () => auditContrast(tokens),
+    const grounds = useMemo(
+        () =>
+            collectSurfaceGrounds(
+                document.styleSheets,
+                tokens['--color-surface'] ?? '',
+            ),
         [tokens],
+    );
+    const contrast = useMemo<ContrastRow[]>(
+        () => auditContrast(tokens, grounds),
+        [tokens, grounds],
     );
     const [surfaces, setSurfaces] = useState<SurfaceRow[]>([]);
     const probesRef = useRef<HTMLDivElement | null>(null);
@@ -326,7 +335,7 @@ export default function Design() {
 
                     <Section
                         title="Contrast audit"
-                        note="Run client-side against the live values. Text pairs need 4.5:1, a meaningful graphic 3:1, a separator 1.4:1. A fill too light to carry 3:1 itself is drawn with its -ink outline, and the outline is what gets tested."
+                        note={`Run client-side against the live values. Text pairs need 4.5:1, a meaningful graphic 3:1, a separator 1.4:1. A fill too light to carry 3:1 itself is drawn with its -ink outline, and the outline is what gets tested. Anything sitting on paper is scored on all ${grounds.length} grounds dawn-shift can render and reported at its worst, named after the pair.`}
                     >
                         <table className="w-full max-w-[760px] border-collapse font-sans text-xs">
                             <thead>

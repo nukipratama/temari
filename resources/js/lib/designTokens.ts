@@ -11,9 +11,16 @@
  */
 
 const ROOT_SELECTOR = /(^|,)\s*:root\b/;
+const GROUND_SELECTOR = /body\[data-time-of-day=['"]?([a-z0-9-]+)['"]?\]/i;
 
 interface StyleSheetLike {
     readonly cssRules?: ArrayLike<unknown> | null;
+}
+
+/** A paper the app can render: the base surface, or one dawn-shift overrides it to. */
+export interface Ground {
+    name: string;
+    value: string;
 }
 
 function collectFromRule(rule: unknown, into: Set<string>): void {
@@ -65,6 +72,64 @@ export function collectTokenNames(
     }
 
     return [...names].sort();
+}
+
+function collectGroundsFromRule(
+    rule: unknown,
+    into: Map<string, string>,
+): void {
+    const { style, selectorText } = rule as {
+        style?: CSSStyleDeclaration;
+        selectorText?: string;
+    };
+
+    const match = selectorText ? GROUND_SELECTOR.exec(selectorText) : null;
+    if (style && match) {
+        const surface = style.getPropertyValue('--color-surface').trim();
+        if (surface !== '') {
+            into.set(match[1], surface);
+        }
+    }
+
+    const nested = (rule as { cssRules?: ArrayLike<unknown> | null }).cssRules;
+    if (nested) {
+        for (const child of Array.from(nested)) {
+            collectGroundsFromRule(child, into);
+        }
+    }
+}
+
+/**
+ * Every ground `--color-surface` can take, read back out of the parsed
+ * stylesheet: the base value plus one per `body[data-time-of-day]` rule
+ * dawn-shift declares. Scraped rather than listed, so a sixth bucket added to
+ * [useDawnShift](../hooks/useDawnShift.ts) is audited the moment its CSS lands.
+ */
+export function collectSurfaceGrounds(
+    sheets: Iterable<StyleSheetLike> | ArrayLike<StyleSheetLike>,
+    base: string,
+): Ground[] {
+    const found = new Map<string, string>();
+
+    for (const sheet of Array.from(sheets as ArrayLike<StyleSheetLike>)) {
+        let rules: ArrayLike<unknown> | null | undefined;
+        try {
+            rules = sheet.cssRules;
+        } catch {
+            continue;
+        }
+        if (!rules) {
+            continue;
+        }
+        for (const rule of Array.from(rules)) {
+            collectGroundsFromRule(rule, found);
+        }
+    }
+
+    return [
+        { name: 'day', value: base },
+        ...[...found.entries()].map(([name, value]) => ({ name, value })),
+    ];
 }
 
 /** Resolve each token against an element, so cascaded overrides are included. */
@@ -194,22 +259,47 @@ const PAIRS: ReadonlyArray<[string, string, string, number]> = [
     ['line', 'surface', 'Separator', 1.4],
 ];
 
+const PAPER = '--color-surface';
+
+/**
+ * Scores one pair. A pair whose ground is `--color-surface` is scored against
+ * every dawn-shift ground and reported at its worst, because that is the paper
+ * the token has to survive — auditing only the midday value is what let eight
+ * `-ink` tokens ship at 4.3:1 after dark.
+ */
 function row(
     values: Record<string, string>,
+    grounds: ReadonlyArray<Ground>,
     fg: string,
     bg: string,
     use: string,
     min: number,
     outlined = false,
 ): ContrastRow {
-    const ratio = contrastRatio(values[fg] ?? '', values[bg] ?? '');
+    const against =
+        bg === PAPER
+            ? grounds
+            : [{ name: '', value: values[bg] ?? '' } satisfies Ground];
+
+    const worst = against
+        .map((ground) => ({
+            ground,
+            ratio: contrastRatio(values[fg] ?? '', ground.value),
+        }))
+        .reduce((a, b) => {
+            if (a.ratio === null) {
+                return a;
+            }
+            return b.ratio === null || b.ratio < a.ratio ? b : a;
+        });
+
     return {
         use,
         fg,
-        bg,
+        bg: worst.ground.name === '' ? bg : `${bg} · ${worst.ground.name}`,
         min,
-        ratio,
-        pass: ratio !== null && ratio >= min,
+        ratio: worst.ratio,
+        pass: worst.ratio !== null && worst.ratio >= min,
         ...(outlined ? { outlined } : {}),
     };
 }
@@ -221,16 +311,17 @@ function row(
  * uncommon green), its `-ink` outline is what gets tested instead, which is the
  * rule that lets those two keep their vibrancy.
  */
-export function auditContrast(values: Record<string, string>): ContrastRow[] {
+export function auditContrast(
+    values: Record<string, string>,
+    grounds: ReadonlyArray<Ground>,
+): ContrastRow[] {
     const rows = PAIRS.filter(
         ([fg, bg]) =>
             values[`--color-${fg}`] !== undefined &&
             values[`--color-${bg}`] !== undefined,
     ).map(([fg, bg, use, min]) =>
-        row(values, `--color-${fg}`, `--color-${bg}`, use, min),
+        row(values, grounds, `--color-${fg}`, `--color-${bg}`, use, min),
     );
-
-    const paper = '--color-surface';
 
     for (const inkToken of Object.keys(values).sort()) {
         const fillToken = inkToken.replace(/-ink$/, '');
@@ -244,16 +335,17 @@ export function auditContrast(values: Record<string, string>): ContrastRow[] {
         }
 
         const label = fillToken.slice('--color-'.length);
-        rows.push(row(values, inkToken, paper, `${label} label`, 4.5));
+        rows.push(row(values, grounds, inkToken, PAPER, `${label} label`, 4.5));
 
-        const fillRatio = contrastRatio(values[fillToken], values[paper] ?? '');
+        const fill = row(values, grounds, fillToken, PAPER, `${label} fill`, 3);
         rows.push(
-            fillRatio !== null && fillRatio >= 3
-                ? row(values, fillToken, paper, `${label} fill`, 3)
+            fill.pass
+                ? fill
                 : row(
                       values,
+                      grounds,
                       inkToken,
-                      paper,
+                      PAPER,
                       `${label} fill outline`,
                       3,
                       true,
