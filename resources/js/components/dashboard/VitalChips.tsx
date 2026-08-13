@@ -270,7 +270,7 @@ function VitalChip({
         ink: 'bg-ink-3',
     }[tone];
     const valueClass = {
-        horizon: onSky ? 'text-horizon' : 'text-horizon-deep',
+        horizon: onSky ? 'text-horizon' : 'text-horizon-ink',
         leaf: 'text-leaf',
         ink: onSky ? 'text-cream' : 'text-ink',
     }[tone];

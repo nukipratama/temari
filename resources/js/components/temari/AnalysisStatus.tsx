@@ -95,9 +95,11 @@ const TEXT_SIZE: Record<AnalysisStatusSize, string> = {
 /** Widths of the stacked skeleton bars shown while a block is queued/processing. */
 const SKELETON_WIDTHS = ['w-full', 'w-[70%]', 'w-[85%]'];
 
-function RateLimitedNote() {
+function RateLimitedNote({ onSky }: Readonly<{ onSky: boolean }>) {
     return (
-        <span className="text-xs text-horizon-deep">
+        <span
+            className={`text-xs ${onSky ? 'text-horizon' : 'text-horizon-ink'}`}
+        >
             Easy there, Temari&apos;s overwhelmed. Try again in a bit.
         </span>
     );
@@ -185,7 +187,7 @@ export default function AnalysisStatus({
                         </span>
                     </button>
                 )}
-                {rateLimited && <RateLimitedNote />}
+                {rateLimited && <RateLimitedNote onSky={onSky} />}
             </motion.div>
         );
     }
@@ -237,7 +239,7 @@ export default function AnalysisStatus({
         return (
             <div className="flex flex-col gap-1.5">
                 <UnavailableNote size={size} />
-                {rateLimited && <RateLimitedNote />}
+                {rateLimited && <RateLimitedNote onSky={onSky} />}
                 {canTrigger && (
                     <button
                         type="button"

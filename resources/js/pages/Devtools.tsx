@@ -52,7 +52,7 @@ export default function Devtools() {
                             >
                                 <span
                                     aria-hidden
-                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-horizon/[0.18] text-horizon-deep"
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-horizon/[0.18] text-horizon-ink"
                                 >
                                     <Icon
                                         icon={link.icon}

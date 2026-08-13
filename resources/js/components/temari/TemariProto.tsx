@@ -102,23 +102,24 @@ const EYE_R = CX + EYE_S;
 
 const SKY = '#241c54';
 const CREAM = '#f5f0e4';
-const GOLD_INK = '#896826';
+const GOLD_INK = '#836424';
 const INK = '#1a1812';
 const LACE = '#b23a4f';
 
 /**
  * Mood halo, one entry per drawn state. Values are the mood/line/stone tokens
- * already darkened to clear 3:1 on cream — the ring is structural, so a token
- * that fails bare is not usable raw. TemariProto.test.tsx recomputes them from
- * build-tokens.mjs, so a token move fails the suite instead of drifting.
+ * already darkened to clear 3:1 on the darkest ground dawn-shift can render —
+ * the ring is structural, so a token that fails bare is not usable raw.
+ * TemariProto.test.tsx recomputes them from build-tokens.mjs, so a token move
+ * fails the suite instead of drifting.
  */
 const HALO: Record<string, { color: string; width: number }> = {
-    neutral: { color: '#908a79', width: 6 },
+    neutral: { color: '#8b8575', width: 6 },
     easy: { color: '#2f8f63', width: 6 },
-    blazing: { color: '#af841b', width: 8 },
-    gold: { color: '#ae8430', width: 9 },
+    blazing: { color: '#a87e1a', width: 8 },
+    gold: { color: '#a77f2e', width: 9 },
     chill: { color: '#55488f', width: 6 },
-    stone: { color: '#938a78', width: 5 },
+    stone: { color: '#8d8473', width: 5 },
     wobbly: { color: '#b23a4f', width: 7 },
     gassed: { color: '#7a2030', width: 6 },
 };

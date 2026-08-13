@@ -110,10 +110,31 @@ export function inkOn(hex, bg, target = 4.5) {
   return hex;
 }
 
-const PAPER = COLOR.surface;
+/* dawn-shift re-declares --color-surface per body[data-time-of-day] (app.css,
+   @layer base). Paper is therefore not one colour but five, and an -ink token
+   derived against the lightest of them is under AA on the other four. */
+export const GROUNDS = {
+  day:     COLOR.surface,
+  dawn:    '#f0ebdb',
+  morning: '#f8f2df',
+  dusk:    '#f4ead5',
+  night:   '#eee8d9',
+};
+
+/** The ground a token has to survive: the darkest paper dawn-shift can render. */
+export const PAPER = Object.values(GROUNDS).reduce((a, b) => (lum(a) <= lum(b) ? a : b));
+
+/** Worst ratio a foreground scores across every ground, and where it scored it. */
+export function worstOnPaper(fg) {
+  return Object.entries(GROUNDS)
+    .map(([ground, bg]) => ({ ground, ratio: contrast(fg, bg) }))
+    .reduce((a, b) => (a.ratio <= b.ratio ? a : b));
+}
+
 const RARITY_INK = Object.fromEntries(Object.entries(RARITY).map(([k, v]) => [k, inkOn(v, PAPER)]));
 const MOOD_INK = Object.fromEntries(Object.entries(MOOD).map(([k, v]) => [k, inkOn(v, PAPER)]));
 COLOR['horizon-ink'] = inkOn(COLOR.horizon, PAPER);
+COLOR.line = inkOn(COLOR.line, PAPER, 1.4);
 
 const PAIRS = [
   // text on paper — must clear 4.5
@@ -135,35 +156,34 @@ const PAIRS = [
   ['line', 'surface', 'separator', 1.4],
 ];
 
+/* A pair whose ground is `surface` is scored on every dawn-shift ground and
+   reported at its worst, so a token that only clears AA at midday fails here. */
+const scored = (fg, hex, bg, use, min, extra = {}) => {
+  if (bg !== 'surface') {
+    const ratio = contrast(hex, COLOR[bg]);
+    return { fg, bg, use, min, ratio, pass: ratio >= min, ...extra };
+  }
+  const { ground, ratio } = worstOnPaper(hex);
+  return { fg, bg: `surface · ${ground}`, use, min, ratio, pass: ratio >= min, ...extra };
+};
+
 export function audit() {
-  const rows = PAIRS.map(([fg, bg, use, min]) => {
-    const r = contrast(COLOR[fg], COLOR[bg]);
-    return { fg, bg, use, min, ratio: r, pass: r >= min };
-  });
+  const rows = PAIRS.map(([fg, bg, use, min]) => scored(fg, COLOR[fg], bg, use, min));
   /* Fills: a light fill can't reach 3:1 on paper without losing the vibrancy that
      makes a legendary pull feel legendary. WCAG 1.4.11 is satisfied by the object's
      *edge*, so the rule is: any fill under 3:1 must be drawn with its -ink outline,
      and the outline is what gets tested. */
-  const fill = (family, k, vivid, ink) => {
-    const r = contrast(vivid, PAPER);
-    if (r >= 3.0) {
-      return { fg: `${family}-${k}`, bg: 'surface', use: `${family} dot (fill)`,
-               min: 3.0, ratio: r, pass: true };
+  const fill = (family, k, vivid, ink) =>
+    worstOnPaper(vivid).ratio >= 3.0
+      ? scored(`${family}-${k}`, vivid, 'surface', `${family} dot (fill)`, 3.0)
+      : scored(`${family}-${k} + outline`, ink, 'surface',
+               `${family} dot (needs outline)`, 3.0, { outlined: true });
+
+  for (const [family, vivid, inks] of [['rarity', RARITY, RARITY_INK], ['mood', MOOD, MOOD_INK]]) {
+    for (const [k, v] of Object.entries(vivid)) {
+      rows.push(fill(family, k, v, inks[k]));
+      rows.push(scored(`${family}-${k}-ink`, inks[k], 'surface', `${family} label (text)`, 4.5));
     }
-    const ro = contrast(ink, PAPER);
-    return { fg: `${family}-${k} + outline`, bg: 'surface',
-             use: `${family} dot (needs outline)`, min: 3.0, ratio: ro, pass: ro >= 3.0,
-             outlined: true };
-  };
-  for (const [k, v] of Object.entries(RARITY)) {
-    rows.push(fill('rarity', k, v, RARITY_INK[k]));
-    rows.push({ fg: `rarity-${k}-ink`, bg: 'surface', use: 'rarity label (text)', min: 4.5,
-                ratio: contrast(RARITY_INK[k], PAPER), pass: contrast(RARITY_INK[k], PAPER) >= 4.5 });
-  }
-  for (const [k, v] of Object.entries(MOOD)) {
-    rows.push(fill('mood', k, v, MOOD_INK[k]));
-    rows.push({ fg: `mood-${k}-ink`, bg: 'surface', use: 'mood label (text)', min: 4.5,
-                ratio: contrast(MOOD_INK[k], PAPER), pass: contrast(MOOD_INK[k], PAPER) >= 4.5 });
   }
   return rows;
 }

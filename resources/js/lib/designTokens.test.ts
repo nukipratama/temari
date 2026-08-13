@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
     auditContrast,
     auditSurface,
+    collectSurfaceGrounds,
     collectTokenNames,
     contrastRatio,
     groupColorFamilies,
@@ -18,6 +19,16 @@ function styleRule(selectorText: string, properties: string[]) {
         style: {
             length: properties.length,
             item: (i: number) => properties[i],
+        } as unknown as CSSStyleDeclaration,
+    };
+}
+
+function groundRule(selectorText: string, surface: string) {
+    return {
+        selectorText,
+        style: {
+            getPropertyValue: (name: string) =>
+                name === '--color-surface' ? surface : '',
         } as unknown as CSSStyleDeclaration,
     };
 }
@@ -129,30 +140,98 @@ describe('contrast maths', () => {
     });
 });
 
+describe('collectSurfaceGrounds', () => {
+    it('scrapes every dawn-shift ground and keeps the base as day', () => {
+        const grounds = collectSurfaceGrounds(
+            [
+                {
+                    cssRules: [
+                        {
+                            cssRules: [
+                                groundRule(
+                                    "body[data-time-of-day='dawn']",
+                                    '#f0ebdb',
+                                ),
+                                groundRule(
+                                    "body[data-time-of-day='night']",
+                                    '#eee8d9',
+                                ),
+                            ],
+                        },
+                    ],
+                },
+            ],
+            '#f5f0e4',
+        );
+
+        expect(grounds).toEqual([
+            { name: 'day', value: '#f5f0e4' },
+            { name: 'dawn', value: '#f0ebdb' },
+            { name: 'night', value: '#eee8d9' },
+        ]);
+    });
+
+    it('ignores a time-of-day rule that does not redeclare the surface', () => {
+        const grounds = collectSurfaceGrounds(
+            [
+                {
+                    cssRules: [groundRule("body[data-time-of-day='dusk']", '')],
+                },
+            ],
+            '#f5f0e4',
+        );
+
+        expect(grounds).toEqual([{ name: 'day', value: '#f5f0e4' }]);
+    });
+
+    it('skips a cross-origin sheet instead of throwing', () => {
+        const grounds = collectSurfaceGrounds(
+            [
+                {
+                    get cssRules(): never {
+                        throw new Error('SecurityError');
+                    },
+                },
+            ],
+            '#f5f0e4',
+        );
+
+        expect(grounds).toEqual([{ name: 'day', value: '#f5f0e4' }]);
+    });
+});
+
 describe('auditContrast', () => {
     const paper = { '--color-surface': '#f5f0e4' };
+    const day = [{ name: 'day', value: '#f5f0e4' }];
+    const allDay = [...day, { name: 'night', value: '#eee8d9' }];
 
     it('passes body text on paper and fails an ink that is too light', () => {
-        const rows = auditContrast({
-            ...paper,
-            '--color-ink': '#1a1812',
-            '--color-ink-2': '#cccccc',
-        });
+        const rows = auditContrast(
+            {
+                ...paper,
+                '--color-ink': '#1a1812',
+                '--color-ink-2': '#cccccc',
+            },
+            day,
+        );
 
         expect(rows.find((r) => r.use === 'Body text')?.pass).toBe(true);
         expect(rows.find((r) => r.use === 'Secondary text')?.pass).toBe(false);
     });
 
     it('skips a pair whose tokens are not in the live set', () => {
-        expect(auditContrast(paper)).toEqual([]);
+        expect(auditContrast(paper, day)).toEqual([]);
     });
 
     it('checks a dark fill as a fill, and its -ink member as text', () => {
-        const rows = auditContrast({
-            ...paper,
-            '--color-mood-gassed': '#7a2030',
-            '--color-mood-gassed-ink': '#7a2030',
-        });
+        const rows = auditContrast(
+            {
+                ...paper,
+                '--color-mood-gassed': '#7a2030',
+                '--color-mood-gassed-ink': '#7a2030',
+            },
+            day,
+        );
 
         expect(rows.map((r) => r.use)).toEqual([
             'mood-gassed label',
@@ -163,16 +242,49 @@ describe('auditContrast', () => {
     });
 
     it('tests the outline instead when a fill is too light to reach 3:1', () => {
-        const rows = auditContrast({
-            ...paper,
-            '--color-rarity-legendary': '#f5a623',
-            '--color-rarity-legendary-ink': '#946415',
-        });
+        const rows = auditContrast(
+            {
+                ...paper,
+                '--color-rarity-legendary': '#f5a623',
+                '--color-rarity-legendary-ink': '#946415',
+            },
+            day,
+        );
         const fill = rows.find((r) => r.use.endsWith('fill outline'));
 
         expect(fill?.outlined).toBe(true);
         expect(fill?.fg).toBe('--color-rarity-legendary-ink');
         expect(fill?.pass).toBe(true);
+    });
+
+    it('reports a paper pair at its worst ground, not at midday', () => {
+        const values = {
+            ...paper,
+            '--color-horizon': '#d9a53c',
+            '--color-horizon-ink': '#896826',
+        };
+
+        expect(
+            auditContrast(values, day).find((r) => r.use === 'Gold as text'),
+        ).toMatchObject({ bg: '--color-surface · day', pass: true });
+        expect(
+            auditContrast(values, allDay).find((r) => r.use === 'Gold as text'),
+        ).toMatchObject({ bg: '--color-surface · night', pass: false });
+    });
+
+    it('leaves a pair whose ground is not paper on its own background', () => {
+        const rows = auditContrast(
+            {
+                ...paper,
+                '--color-cream': '#f5f0e4',
+                '--color-sky': '#241c54',
+            },
+            allDay,
+        );
+
+        expect(rows.find((r) => r.use === 'Text on indigo')?.bg).toBe(
+            '--color-sky',
+        );
     });
 });
 

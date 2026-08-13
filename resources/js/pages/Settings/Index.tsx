@@ -108,7 +108,7 @@ export default function Settings({
                 <header className="mb-8">
                     <PageHero eyebrow="Settings">
                         Set up Temari,{' '}
-                        <em className="italic text-horizon-deep">your way.</em>
+                        <em className="italic text-horizon-ink">your way.</em>
                     </PageHero>
                 </header>
 

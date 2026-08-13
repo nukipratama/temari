@@ -32,7 +32,7 @@ export default function PrCard({
 }: Readonly<PrCardProps>) {
     const body = (
         <>
-            <Eyebrow token="hero" tone="horizon-deep">
+            <Eyebrow token="hero" tone="horizon-ink">
                 {category}
             </Eyebrow>
             <div className={TIME_CLASS[size]}>{time}</div>

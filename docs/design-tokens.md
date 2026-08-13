@@ -75,6 +75,17 @@ is the only member allowed to carry **text or an icon**. `text-rarity-legendary`
 always wrong; it is `text-rarity-legendary-ink`. This is the single most common way the palette
 gets misused, and it is what the audit on `/devtools/design` exists to catch.
 
+**Paper is five colours, not one.** dawn-shift re-declares `--color-surface` per
+`body[data-time-of-day]` ([app.css](../resources/css/app.css):555), so the ground an `-ink`
+token lands on ranges from `#f8f2df` (morning) down to `#eee8d9` (night). Every derived value
+therefore targets the **darkest** ground ([build-tokens.mjs](../resources/brand/build-tokens.mjs):125),
+and every audit scores a paper pair on all five and reports its **worst** — the generator's
+([build-tokens.mjs](../resources/brand/build-tokens.mjs):161), the client-side one behind
+`/devtools/design` ([designTokens.ts](../resources/js/lib/designTokens.ts):270), and the CI guard
+([DesignTokenContrastTest.php](../tests/Unit/Architecture/DesignTokenContrastTest.php)). Deriving
+against the default alone is what once put eight `-ink` tokens at ~4.3:1 after dark while all
+three audits reported a pass.
+
 **The outline rule.** Two fills (legendary gold, uncommon green) cannot reach even 3:1 on paper
 without losing the vibrancy that makes a legendary pull feel legendary. WCAG 1.4.11 is satisfied
 by an object's *edge*, so those keep their fill and are drawn with a **2px `-ink` outline** — the
@@ -83,7 +94,7 @@ edge carries the contrast. Never darken them instead.
 | Family | Tokens | Role |
 |---|---|---|
 | Sky | `sky`, `sky-deep`, `sky-2` (`#241c54`) | Structure, dark hero panels (the only "dark" surface). Deep indigo. |
-| Horizon | `horizon`, `horizon-deep`, `horizon-ink` (`#d9a53c` gold) | Primary CTA, "earned" / PR state, Temari accent. `horizon-ink` for gold **as text**. |
+| Horizon | `horizon`, `horizon-deep`, `horizon-ink` (`#d9a53c` gold) | Primary CTA, "earned" / PR state, Temari accent. `horizon-ink` for gold **as text**; `horizon-deep` is a *fill* (hover state, gradient stop, chart point) and reaches only 2.6:1 on paper, so `text-horizon-deep` is always wrong. |
 | Cream | `cream`, `cream-deep` (`#f5f0e4`) | Paper / secondary surface, on-dark text. Warm linen canvas. |
 | Ink | `ink` / `ink-2` / `ink-3` (+ `ink-on-sky`) | 3-tier text contrast (primary / supporting / meta); `ink-on-sky` = muted label on a dark sky panel |
 | Surface | `surface`, `surface-card`, `surface-elev`, `surface-warm`, `surface-sunken` | App surfaces (dawn-shift drifts `surface`); `surface-card` = the one linen every card shares; `surface-elev` = floating UI only |
@@ -269,7 +280,8 @@ plain `Record` lookups; do **not** fold those into cva.
 
 ## Common pitfalls
 
-- **Using a fill colour as a label.** `text-mood-blazing` / `text-rarity-legendary` fail contrast on paper. Reach for the `-ink` member. This is exactly the bug the fill/text split exists to prevent, and it happened once inside the generator itself.
+- **Using a fill colour as a label.** `text-mood-blazing` / `text-rarity-legendary` / `text-horizon-deep` fail contrast on paper. Reach for the `-ink` member. This is exactly the bug the fill/text split exists to prevent, and it happened once inside the generator itself.
+- **Checking contrast against the default surface only.** Paper drifts with dawn-shift; a token that clears AA at midday can be under it after dark. Score against every ground and take the worst.
 - **Darkening a light fill instead of outlining it.** Legendary gold and uncommon green stay vivid and take a 2px `-ink` outline; the edge carries the contrast.
 - **Raw Tailwind colors, default shadows, off-scale radii.** Every utility must resolve to a token. Enforced in CI by [scripts/check-raw-palette.mjs](../scripts/check-raw-palette.mjs).
 - **`text-ink-3` on body prose.** `ink-3` is for labels/timestamps/metadata only, never wrapping a `<p>` of running text. Sweep `grep text-ink-3` before merging.

@@ -132,7 +132,7 @@ export default function RunsIndex({
                         }
                     >
                         Every run{' '}
-                        <em className="not-italic text-horizon-deep">
+                        <em className="not-italic text-horizon-ink">
                             has a story.
                         </em>
                     </PageHero>

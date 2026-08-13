@@ -227,7 +227,7 @@ function WeeklyStatusChips({
                 </span>
             )}
             {snapshot.form !== null && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-horizon/15 px-2.5 py-0.5 text-xs font-semibold text-horizon-deep">
+                <span className="inline-flex items-center gap-1 rounded-full bg-horizon/15 px-2.5 py-0.5 text-xs font-semibold text-horizon-ink">
                     Readiness {snapshot.form >= 0 ? '+' : ''}
                     {snapshot.form.toFixed(1)}
                 </span>

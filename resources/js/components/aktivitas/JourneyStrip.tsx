@@ -51,7 +51,7 @@ export default function JourneyStrip({
             </Eyebrow>
             <p className="mt-2 font-sans text-sm leading-relaxed text-ink">
                 Total{' '}
-                <span className="font-semibold text-horizon-deep">
+                <span className="font-semibold text-horizon-ink">
                     {countedTotalKm.toFixed(1)} km
                 </span>{' '}
                 logged since your first run

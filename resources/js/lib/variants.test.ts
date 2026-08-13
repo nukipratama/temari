@@ -86,7 +86,7 @@ describe('pillButtonVariants', () => {
 describe('chipVariants', () => {
     it.each([
         ['neutral', 'text-ink-2'],
-        ['horizon', 'text-horizon-deep'],
+        ['horizon', 'text-horizon-ink'],
         ['leaf', 'text-leaf'],
         ['sky', 'text-sky'],
         ['onSky', 'text-cream/80'],

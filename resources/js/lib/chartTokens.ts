@@ -14,7 +14,7 @@ export const PALETTE = {
     emberDeep: '#8d2c3d',
     horizon: '#d9a53c',
     horizonDeep: '#b98a2a',
-    horizonInk: '#896826',
+    horizonInk: '#836424',
     overloaded: '#6b3fa0',
     citrus: '#c9971f',
     citrusDeep: '#a67c14',
