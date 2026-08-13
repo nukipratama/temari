@@ -3,11 +3,11 @@ import { type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { cardVariants } from '@/lib/variants';
 
-export type CardTone = 'card' | 'onSky' | 'empty';
+export type CardTone = 'card' | 'sky' | 'onSky' | 'empty';
 export type CardPadding = 'none' | 'panel' | 'card' | 'hero';
 
 interface CardProps {
-    /** Default 'card' — the one card surface; 'onSky' for a dark panel. */
+    /** Default 'card' — the one card surface; 'sky' is the dark panel itself, 'onSky' a card mounted on one. */
     tone?: CardTone;
     /** Default 'card' — the --pad-card role. */
     padding?: CardPadding;
