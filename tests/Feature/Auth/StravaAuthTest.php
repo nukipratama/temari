@@ -9,6 +9,8 @@ use App\Models\StravaConnection;
 use App\Models\User;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
+use App\Support\DataUseStatement;
+use App\Support\TrainingDisclaimer;
 use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\RequestException;
@@ -33,6 +35,36 @@ it('shows the login page to guests', function (): void {
     $this->get(route('login'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->component('Auth/Login')->has('authStravaUrl'));
+});
+
+it('hands the landing page its legal copy from the single source, not a retype', function (): void {
+    $this->get(route('login'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Auth/Login')
+            ->where('dataUse.headline', DataUseStatement::HEADLINE)
+            ->where('dataUse.points', DataUseStatement::points())
+            ->where('trainingDisclaimer.headline', TrainingDisclaimer::HEADLINE)
+            ->where('trainingDisclaimer.text', TrainingDisclaimer::TEXT)
+            ->etc());
+});
+
+it('fails honestly when the ip-keyed oauth throttle trips', function (): void {
+    // The one uncapped Strava spender: no session exists until the callback, so
+    // the limit is per IP. A bare framework 429 would strand the visitor with no
+    // idea what happened or whether retrying is safe.
+    foreach (range(1, 10) as $ignored) {
+        mockStravaDriver(function ($driver): void {
+            $driver->shouldReceive('scopes')->andReturnSelf();
+            $driver->shouldReceive('redirect')->andReturn(redirect('https://www.strava.com/oauth/authorize?fake'));
+        });
+        $this->get(route('auth.strava.redirect'))->assertRedirect();
+    }
+
+    $this->get(route('auth.strava.redirect'))
+        ->assertStatus(429)
+        ->assertSee('Too many tries, too fast')
+        ->assertSee('Wait a minute and start the connect over');
 });
 
 it('redirects authenticated users away from login', function (): void {
