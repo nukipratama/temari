@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Enums\Badge;
 use App\Enums\Rarity;
 use App\Actions\Gamification\GrantEligibleUnlocksAction;
+use App\Enums\NotificationKind;
 use App\Models\Activity;
+use App\Models\InboxNotification;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\User;
@@ -208,4 +210,47 @@ it('falls back to the key + default icon when the config entry omits name and ic
         'icon' => 'mdi:medal',
         'is_major' => false,
     ]);
+});
+
+describe('the inbox record', function (): void {
+    // The flash only ever reached a user who happened to be mid-request, and
+    // only for the first of a batch. An unlock granted during a background
+    // ingest was celebrated to nobody.
+    it('records every new unlock in the inbox, session or not', function (): void {
+        $user = User::factory()->create();
+        PersonalRecord::factory()->for($user)->create();
+
+        ($this->engine)($user);
+
+        expect(InboxNotification::query()->where('user_id', $user->id)->pluck('dedupe_key')->all())
+            ->toBe(['unlock:accessory.medal_first']);
+    });
+
+    it('carries the celebration payload the toast uses, so it can be replayed', function (): void {
+        $user = User::factory()->create();
+        PersonalRecord::factory()->for($user)->create();
+
+        ($this->engine)($user);
+
+        $row = InboxNotification::query()->firstOrFail();
+        $catalog = (array) config('temari_unlocks');
+
+        expect($row->kind)->toBe(NotificationKind::Unlock)
+            ->and($row->payload)->toEqual([
+                'unlock_key' => 'accessory.medal_first',
+                'name' => $catalog['accessory.medal_first']['name'],
+                'icon' => $catalog['accessory.medal_first']['icon'],
+                'is_major' => false,
+            ])
+            ->and($row->title)->toBe('Unlocked: '.$catalog['accessory.medal_first']['name']);
+    });
+
+    it('leaves the demo inbox alone', function (): void {
+        $user = User::factory()->create(['is_demo' => true]);
+        PersonalRecord::factory()->for($user)->create();
+
+        ($this->engine)($user);
+
+        expect(InboxNotification::query()->count())->toBe(0);
+    });
 });
