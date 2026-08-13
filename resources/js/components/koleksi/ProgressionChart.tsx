@@ -21,14 +21,14 @@ interface ProgressionChartProps {
     className?: string;
 }
 
-// Threadwork tokens resolved to the hex Chart.js needs (it paints to canvas and
+// Design tokens resolved to the hex Chart.js needs (it paints to canvas and
 // can't read the CSS custom properties). Keep in sync with the @theme block in
 // resources/css/app.css. `#RRGGBBAA` suffixes are the token color at a set alpha.
 const CHART_TOKENS = {
     horizon: '#d9a53c', // --color-horizon (best-time line + area fill)
     horizonDeep: '#b98a2a', // --color-horizon-deep (point fill)
     cream: '#f5f0e4', // --color-cream (point border)
-    citrus: '#d9b23a', // --color-citrus (goal line / PR accent)
+    citrus: '#c9971f', // --color-citrus (goal line / PR accent)
     ink2: '#3d362a', // --color-ink-2 (axis ticks)
     ink3: '#6e6452', // --color-ink-3 (grid line)
 } as const;

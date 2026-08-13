@@ -50,8 +50,8 @@ export default function UsageFilters({
         <>
             <Card
                 as="section"
-                tone="cream"
-                padding="sm"
+                tone="card"
+                padding="panel"
                 className="bg-surface-elev"
             >
                 <form

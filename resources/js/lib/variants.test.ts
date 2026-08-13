@@ -11,28 +11,36 @@ import {
 } from './variants';
 
 describe('cardVariants', () => {
-    it('applies the default cream tone (tonal surface + border) + md padding', () => {
+    it('applies the one card surface, radius, elevation and pad role by default', () => {
         const cls = cardVariants();
         expect(cls).toContain('bg-surface-card');
         expect(cls).toContain('border-line');
-        expect(cls).toContain('py-5');
+        expect(cls).toContain('rounded-md');
+        expect(cls).toContain('shadow-e1');
+        expect(cls).toContain('pad-card');
     });
 
     it.each([
-        ['cream', 'bg-surface-card'],
-        ['cream-deep', 'bg-cream-deep'],
-        ['sky-glass', 'backdrop-blur'],
+        ['card', 'bg-surface-card'],
+        ['onSky', 'backdrop-blur'],
         ['empty', 'border-dashed'],
     ] as const)('renders tone %s', (tone, expected) => {
         expect(cardVariants({ tone })).toContain(expected);
     });
 
-    it('emits no padding utilities for padding="none"', () => {
-        expect(cardVariants({ padding: 'none' })).not.toContain('py-');
+    it('keeps every tone on the same radius', () => {
+        for (const tone of ['card', 'onSky', 'empty'] as const) {
+            expect(cardVariants({ tone })).toContain('rounded-md');
+        }
     });
 
-    it('honours padding="sm"', () => {
-        expect(cardVariants({ padding: 'sm' })).toContain('py-3.5');
+    it('emits no padding utility for padding="none"', () => {
+        expect(cardVariants({ padding: 'none' })).not.toContain('pad-');
+    });
+
+    it('names a --pad-* role rather than a number', () => {
+        expect(cardVariants({ padding: 'panel' })).toContain('pad-panel');
+        expect(cardVariants({ padding: 'hero' })).toContain('pad-hero');
     });
 });
 

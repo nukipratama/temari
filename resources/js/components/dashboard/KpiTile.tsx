@@ -42,7 +42,7 @@ export default function KpiTile({
     return (
         <div
             className={cn(
-                'rounded-2xl border p-3 shadow-sm sm:px-4 sm:py-3.5',
+                'rounded-lg border p-3 shadow-e1 sm:px-4 sm:py-3.5',
                 onSky
                     ? 'border-cream/[0.12] bg-cream/[0.06]'
                     : 'border-line bg-surface-card',

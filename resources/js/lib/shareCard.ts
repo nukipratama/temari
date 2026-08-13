@@ -1,6 +1,6 @@
 import type { CardEdition, Mood, Rarity, ZonePct } from '@/types/inertia';
 
-import { THREADWORK, hrZone } from '@/lib/chartTokens';
+import { PALETTE, hrZone } from '@/lib/chartTokens';
 import { moodSigilColor } from '@/lib/mood';
 import { projectPolyline } from '@/lib/route';
 import {
@@ -86,28 +86,28 @@ const DIMS: Record<Format, { w: number; h: number }> = {
 
 const PAD = 92;
 
-// Threadwork palette as literal hex (canvas can't read CSS vars). Brand hues
-// reference the shared THREADWORK bridge so they can't drift; the rest are
+// Palette as literal hex (canvas can't read CSS vars). Brand hues
+// reference the shared PALETTE bridge so they can't drift; the rest are
 // canvas-only shades that mirror the @theme block in app.css.
 const C = {
-    horizon: THREADWORK.horizon,
-    horizonDeep: THREADWORK.horizonDeep,
-    ink: THREADWORK.ink,
+    horizon: PALETTE.horizon,
+    horizonDeep: PALETTE.horizonDeep,
+    ink: PALETTE.ink,
     ink2: '#3d362a',
     ink3: '#6e6452',
     cream: '#f5f0e4',
     creamDeep: '#ece2ce',
-    sky: THREADWORK.sky,
-    skyDeep: THREADWORK.skyDeep,
+    sky: PALETTE.sky,
+    skyDeep: PALETTE.skyDeep,
     surfaceCard: '#f5f0e4',
     surfaceSunken: '#ece2ce',
-    line: '#ddd4bd',
+    line: '#d2c9b0',
     inkOnSky: '#b0a3c9',
     rarity: RARITY_HEX,
     // Ember colorway's dark bg/surface: the app.css `--color-ember`/`-deep`
-    // hue (#c4623f) carried down to canvas-background darkness, the same way
+    // hue (#b23a4f) carried down to canvas-background darkness, the same way
     // `horizon` sits far above `sky`/`skyDeep` in lightness.
-    emberDark: '#2a160f',
+    emberDark: '#2a1017',
 };
 
 // Every card gets the SAME bright border bloom regardless of rarity — unlike
@@ -421,8 +421,6 @@ function ensureFonts(): Promise<void> {
             '500 120px "JetBrains Mono"',
             '600 120px "Plus Jakarta Sans"',
             '700 120px "Plus Jakarta Sans"',
-            '600 120px "Oswald"',
-            '700 120px "Oswald"',
         ];
         fontsReady = Promise.all(specs.map((s) => document.fonts.load(s)))
             .then(() => document.fonts.ready)
@@ -606,7 +604,7 @@ function ruteKmRow(
     y += (story ? 24 : 12) + gapBonus;
     const kmSize = story ? 190 : 128;
     if (draw) {
-        ctx.font = `700 ${kmSize}px "Oswald"`;
+        ctx.font = `700 ${kmSize}px "JetBrains Mono"`;
         ctx.fillStyle = rarityCol;
         ctx.textAlign = 'left';
         ctx.fillText(k.km, PAD, y + kmSize * 0.8);
@@ -617,7 +615,7 @@ function ruteKmRow(
         ctx.fillText('KM', PAD + kmW + 20, y + kmSize * 0.5);
         ctx.letterSpacing = '0px';
         if (k.edition) {
-            ctx.font = '600 48px "Oswald"';
+            ctx.font = '600 48px "JetBrains Mono"';
             ctx.fillStyle = pal.meta;
             ctx.textAlign = 'right';
             ctx.fillText(
@@ -1047,13 +1045,13 @@ function drawHeroBlock(s: HeroBlock): number {
 }
 
 /**
- * Special-move name in condensed Oswald, centred over the dark block. The wrap
+ * Special-move name, centred over the dark block. The wrap
  * count is identical in the measure + draw passes so sizing is stable.
  */
 function heroNameRow(s: HeroBlock, y: number): number {
     const { ctx, k, box, story, draw, pal } = s;
     const nameSize = story ? box.w * 0.099 : box.w * 0.084;
-    ctx.font = `700 ${nameSize}px "Oswald"`;
+    ctx.font = `800 ${nameSize}px "Plus Jakarta Sans"`;
     ctx.letterSpacing = '-1px'; // condensed + tight = athletic
     ctx.textAlign = 'center';
     const lines = wrapText(ctx, k.name.toUpperCase(), box.w - 28).slice(0, 2);
@@ -1079,7 +1077,7 @@ function heroKmRow(s: HeroBlock, y: number): number {
     const gap = 16;
     y += kmSize * 0.92 + (s.gapBonus ?? 0);
     if (draw) {
-        ctx.font = `700 ${kmSize}px "Oswald"`;
+        ctx.font = `700 ${kmSize}px "JetBrains Mono"`;
         ctx.letterSpacing = '-1px';
         const kmW = ctx.measureText(k.km).width;
         ctx.letterSpacing = '0px';
@@ -1088,7 +1086,7 @@ function heroKmRow(s: HeroBlock, y: number): number {
         const startX = box.x + box.w / 2 - (kmW + gap + sufW) / 2;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
-        ctx.font = `700 ${kmSize}px "Oswald"`;
+        ctx.font = `700 ${kmSize}px "JetBrains Mono"`;
         ctx.letterSpacing = '-1px';
         ctx.fillStyle = rarityCol;
         ctx.fillText(k.km, startX, y);
@@ -1508,7 +1506,7 @@ function drawStats(d: DrawCtx): void {
     drawRarityFlag(ctx, PAD, PAD, k.rarity);
 
     const nameSize = story ? w * 0.088 : w * 0.076;
-    ctx.font = `700 ${nameSize}px "Oswald"`;
+    ctx.font = `800 ${nameSize}px "Plus Jakarta Sans"`;
     ctx.letterSpacing = '-1px';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
@@ -1559,10 +1557,10 @@ function drawStats(d: DrawCtx): void {
         ctx.letterSpacing = '0px';
 
         let vSize = valueSize;
-        ctx.font = `700 ${vSize}px "Oswald"`;
+        ctx.font = `700 ${vSize}px "JetBrains Mono"`;
         while (vSize > 28 && ctx.measureText(cell.value).width > maxValueW) {
             vSize -= 3;
-            ctx.font = `700 ${vSize}px "Oswald"`;
+            ctx.font = `700 ${vSize}px "JetBrains Mono"`;
         }
         ctx.fillStyle = C.ink;
         ctx.fillText(cell.value, x + cellW / 2, y + cellH * 0.74);

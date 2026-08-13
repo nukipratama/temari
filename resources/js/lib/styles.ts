@@ -12,10 +12,10 @@ export function emberGlowStyle(
     };
 }
 
-/** RGB tuples for the Threadwork glow palette. */
+/** RGB tuples for the glow palette. */
 export const GLOW_COLORS = {
     ember: { r: 217, g: 165, b: 60 },
-    leaf: { r: 107, g: 142, b: 111 },
+    leaf: { r: 47, g: 143, b: 99 },
     horizon: { r: 217, g: 165, b: 60 },
     sky: { r: 36, g: 28, b: 84 },
 } as const;

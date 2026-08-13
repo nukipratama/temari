@@ -178,7 +178,7 @@ export default function PackWrapper({
             {/* Zip-strip tab — the visual pull affordance; stays crisp while peeling. */}
             <span
                 aria-hidden
-                className="absolute left-4 top-3 inline-flex items-center gap-1.5 rounded-full bg-sky px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-cream shadow-lg"
+                className="absolute left-4 top-3 inline-flex items-center gap-1.5 rounded-full bg-sky px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-cream shadow-e2"
             >
                 Pull <span aria-hidden>→</span>
             </span>

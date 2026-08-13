@@ -26,8 +26,8 @@ export default function InlineNote({
 }: Readonly<InlineNoteProps>) {
     return (
         <Card
-            tone="cream-deep"
-            padding="sm"
+            tone="card"
+            padding="panel"
             className={cn('flex items-center gap-2.5', className)}
         >
             <Icon

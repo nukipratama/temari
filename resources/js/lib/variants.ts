@@ -11,26 +11,30 @@ import { cva } from 'class-variance-authority';
  * `Record` lookups and are not folded in here.
  */
 
-/** Card surface tone + padding. Mirrors TONE_CLASS / PADDING_CLASS in components/ui/Card.tsx. */
-export const cardVariants = cva('shadow-sm', {
+/**
+ * The card system. One surface treatment — `surface-card` on a `line` border at
+ * the `md` radius with the resting `e1` elevation — in three states: the card
+ * itself, the same card mounted on a dark sky panel, and the dashed placeholder
+ * that stands in for a card that has no content yet. Padding names the `--pad-*`
+ * role it wants rather than a number.
+ */
+export const cardVariants = cva('rounded-md', {
     variants: {
         tone: {
-            cream: 'rounded-2xl border border-line bg-surface-card',
-            'cream-deep': 'rounded-2xl border border-line bg-cream-deep',
-            'sky-glass':
-                'rounded-2xl border border-cream/[0.12] bg-cream/[0.06] backdrop-blur',
-            empty: 'rounded-2xl border border-dashed border-cream-deep bg-cream/40 shadow-none',
+            card: 'border border-line bg-surface-card shadow-e1',
+            onSky: 'border border-cream/[0.12] bg-cream/[0.06] backdrop-blur',
+            empty: 'border border-dashed border-line-strong bg-surface-card/40',
         },
         padding: {
             none: '',
-            sm: 'px-4 py-3.5',
-            md: 'px-5 py-5',
-            lg: 'px-6 py-6',
+            panel: 'pad-panel',
+            card: 'pad-card',
+            hero: 'pad-hero',
         },
     },
     defaultVariants: {
-        tone: 'cream',
-        padding: 'md',
+        tone: 'card',
+        padding: 'card',
     },
 });
 
@@ -83,7 +87,7 @@ export const pillButtonVariants = cva(
 
 /** Chip tone + size. Mirrors TONE_CLASS + size ternary in components/ui/Chip.tsx. */
 export const chipVariants = cva(
-    'inline-flex items-center gap-1 whitespace-nowrap rounded-full text-label-micro font-semibold tracking-[0.08em]',
+    'pad-chip inline-flex items-center gap-1 whitespace-nowrap rounded-full text-label-micro font-semibold tracking-[0.08em]',
     {
         variants: {
             tone: {
@@ -94,8 +98,8 @@ export const chipVariants = cva(
                 onSky: 'bg-cream/10 text-cream/80',
             },
             size: {
-                sm: 'px-[9px] py-[3px] text-[11px]',
-                md: 'px-[11px] py-[5px] text-[12px]',
+                sm: 'text-[11px]',
+                md: 'text-[12px]',
             },
         },
         defaultVariants: {

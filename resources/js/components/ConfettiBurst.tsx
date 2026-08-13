@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { THREADWORK } from '@/lib/chartTokens';
+import { PALETTE } from '@/lib/chartTokens';
 
 interface Particle {
     id: number;
@@ -14,15 +14,15 @@ interface Particle {
     duration: number;
 }
 
-// Threadwork palette spread. Mirrors app.css @theme; Chart/SVG-style particle
+// Palette spread. Mirrors app.css @theme; Chart/SVG-style particle
 // fills can't read CSS vars.
 const COLORS = [
-    THREADWORK.leaf,
-    THREADWORK.ember,
-    THREADWORK.citrus,
-    THREADWORK.horizon,
-    THREADWORK.citrusDeep,
-    THREADWORK.overloaded,
+    PALETTE.leaf,
+    PALETTE.ember,
+    PALETTE.citrus,
+    PALETTE.horizon,
+    PALETTE.citrusDeep,
+    PALETTE.overloaded,
 ];
 
 interface ConfettiBurstProps {

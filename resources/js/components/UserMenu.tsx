@@ -52,7 +52,7 @@ export default function UserMenu({ name, avatarUrl }: Readonly<UserMenuProps>) {
                 />
             </button>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+10px)] z-40 w-52 overflow-hidden rounded-2xl border border-cream-deep bg-surface-elev shadow-lg">
+                <div className="absolute right-0 top-[calc(100%+10px)] z-40 w-52 overflow-hidden rounded-lg border border-cream-deep bg-surface-elev shadow-e2">
                     <div className="border-b border-cream-deep px-4 py-3">
                         <div className="text-label-micro font-semibold text-ink-3">
                             Signed in as

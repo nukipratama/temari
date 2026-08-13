@@ -176,7 +176,7 @@ export default function CoachMark({
             aria-label={title}
             style={style}
             className={cn(
-                'z-50 w-64 rounded-2xl border border-line bg-surface-elev p-4 shadow-lg',
+                'z-50 w-64 rounded-lg border border-line bg-surface-elev p-4 shadow-e2',
                 className,
             )}
         >

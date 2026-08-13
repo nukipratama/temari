@@ -44,7 +44,7 @@ export default function DataTable<T>({
             ) : (
                 <div className="relative mt-4">
                     <Card
-                        tone="cream"
+                        tone="card"
                         padding="none"
                         className="overflow-x-auto bg-surface-elev"
                     >

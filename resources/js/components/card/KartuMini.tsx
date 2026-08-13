@@ -119,7 +119,7 @@ export default function KartuMini({
                         {RARITY_LABELS[rarity]}
                     </Eyebrow>
                 </div>
-                <div className="mt-0.5 line-clamp-2 font-collectible text-[12px] font-semibold uppercase leading-[1.06] tracking-[0.01em] text-cream">
+                <div className="mt-0.5 line-clamp-2 font-sans text-[12px] font-extrabold uppercase leading-[1.06] tracking-[0.01em] text-cream">
                     {name}
                 </div>
                 {(edition != null || (date != null && date !== '')) && (

@@ -179,7 +179,7 @@ function HeroScoreboard({
                         </div>
                         {pr.context_analysis &&
                             pr.context_analysis.status !== 'pending' && (
-                                <div className="rounded-2xl border border-cream/[0.12] bg-cream/[0.06] px-5 py-4 backdrop-blur">
+                                <div className="rounded-lg border border-cream/[0.12] bg-cream/[0.06] px-5 py-4 backdrop-blur">
                                     <AnalysisStatus
                                         analysis={pr.context_analysis}
                                         inertiaReloadProps={['personalRecords']}
@@ -328,7 +328,7 @@ function PaceTicker({ records }: Readonly<{ records: ExtendedPR[] }>) {
                     <Chip>{count} PR</Chip>
                 </div>
             </header>
-            <div className="relative overflow-hidden rounded-2xl bg-ink p-1.5 text-cream">
+            <div className="relative overflow-hidden rounded-lg bg-ink p-1.5 text-cream">
                 <span
                     aria-hidden
                     className="pointer-events-none absolute inset-0"

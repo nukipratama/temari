@@ -23,7 +23,7 @@ export default function GoalCard({ goal }: Readonly<{ goal: Goal }>) {
 
     return (
         <Card
-            padding="sm"
+            padding="panel"
             className={cn(
                 'flex h-full flex-col gap-2',
                 goal.is_completed && 'border-horizon/30 bg-horizon/[0.06]',

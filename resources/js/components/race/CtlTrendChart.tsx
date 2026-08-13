@@ -25,7 +25,7 @@ interface CtlTrendChartProps {
     className?: string;
 }
 
-// Threadwork tokens resolved to hex — Chart.js paints to canvas and can't read
+// Design tokens resolved to hex — Chart.js paints to canvas and can't read
 // CSS custom properties. Keep in sync with the @theme block in app.css.
 const CHART_TOKENS = {
     horizon: '#d9a53c', // --color-horizon (CTL / fitness — the slow line)

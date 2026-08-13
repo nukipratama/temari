@@ -1,5 +1,5 @@
 /**
- * Canonical Threadwork hex values for use inside Chart.js / inline-SVG, which
+ * Canonical palette hex values for use inside Chart.js / inline-SVG, which
  * cannot read CSS `var(--color-*)` tokens off a `<canvas>`. These MUST mirror
  * the `@theme` block in [resources/css/app.css](../../css/app.css); treat that
  * file as source of truth and keep this bridge in sync when a token moves.
@@ -7,23 +7,24 @@
  * Use the named exports (never loose hex) so a chart series reads as
  * "ember" / "leaf" at the call site and recolors with the palette.
  */
-export const THREADWORK = {
-    leaf: '#6b8e6f',
-    leafDeep: '#4f6c54',
-    ember: '#c4623f',
-    emberDeep: '#a35030',
+export const PALETTE = {
+    leaf: '#2f8f63',
+    leafDeep: '#256f4d',
+    ember: '#b23a4f',
+    emberDeep: '#8d2c3d',
     horizon: '#d9a53c',
     horizonDeep: '#b98a2a',
+    horizonInk: '#896826',
     overloaded: '#6b3fa0',
-    citrus: '#d9b23a',
-    citrusDeep: '#b8941e',
-    stone: '#8e8579',
+    citrus: '#c9971f',
+    citrusDeep: '#a67c14',
+    stone: '#a99f8a',
     sky: '#241c54',
     skyDeep: '#170f38',
     ink: '#1a1812',
 } as const;
 
-export type ThreadworkColor = keyof typeof THREADWORK;
+export type PaletteColor = keyof typeof PALETTE;
 
 /**
  * HR-zone fills. Z1 (recovery / warm-up) is a bright cool teal so the ramp reads

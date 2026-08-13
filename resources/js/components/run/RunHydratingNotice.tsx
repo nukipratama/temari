@@ -49,7 +49,7 @@ export default function RunHydratingNotice({
     return (
         <div
             role="status"
-            className="mb-5 flex items-start gap-3 rounded-2xl border border-line bg-surface-sunken px-4 py-3"
+            className="mb-5 flex items-start gap-3 rounded-lg border border-line bg-surface-sunken px-4 py-3"
         >
             <Icon
                 icon="mdi:progress-download"

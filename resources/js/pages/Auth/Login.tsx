@@ -150,7 +150,7 @@ function HeroSide() {
             </div>
 
             <div className="login-fade-in-up relative z-10 w-full max-w-[560px] text-center xl:max-w-[620px]">
-                <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl bg-sky-deep shadow-[0_24px_60px_rgba(0,0,0,0.45)] ring-1 ring-cream/15">
+                <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-lg bg-sky-deep shadow-[0_24px_60px_rgba(0,0,0,0.45)] ring-1 ring-cream/15">
                     <TemariProto pose="glow" tone="sky" size={200} animate />
                 </div>
                 <h1 className="mt-7 font-display italic text-display-lg text-cream sm:text-display-xl">
@@ -188,7 +188,7 @@ function FormSide({
             {info && (
                 <div
                     role="status"
-                    className="flex w-full max-w-[480px] items-start gap-2.5 rounded-2xl border border-leaf/30 bg-leaf/[0.08] px-4 py-3 font-sans text-[13px] leading-relaxed text-ink-2 2xl:max-w-[560px]"
+                    className="flex w-full max-w-[480px] items-start gap-2.5 rounded-lg border border-leaf/30 bg-leaf/[0.08] px-4 py-3 font-sans text-[13px] leading-relaxed text-ink-2 2xl:max-w-[560px]"
                 >
                     <Icon
                         icon="mdi:check-circle-outline"
@@ -227,7 +227,7 @@ function FormSide({
                 ))}
             </ul>
 
-            <div className="flex w-full max-w-[480px] items-center gap-4 rounded-2xl border border-cream-deep bg-cream px-4 py-4 2xl:max-w-[560px]">
+            <div className="flex w-full max-w-[480px] items-center gap-4 rounded-lg border border-cream-deep bg-cream px-4 py-4 2xl:max-w-[560px]">
                 <Suspense
                     fallback={
                         <div
@@ -243,7 +243,7 @@ function FormSide({
                         date="12 Jun"
                         edition={{ index: 3, total: 12 }}
                         polyline="~s{d@ofekSoRaMcPdMg@b^zFtV?bN{FtVf@b^bPdMnRaMlIqTdHqFfQcAfQcP?g[gQcPgQcAeHqFmIqT"
-                        className="shadow-sm"
+                        className="shadow-e1"
                     />
                 </Suspense>
                 <div>
@@ -259,7 +259,7 @@ function FormSide({
             </div>
 
             <div
-                className="w-full max-w-[480px] rounded-2xl bg-cream px-9 py-10 2xl:max-w-[560px]"
+                className="w-full max-w-[480px] rounded-lg bg-cream px-9 py-10 2xl:max-w-[560px]"
                 style={{ boxShadow: FORM_CARD_SHADOW }}
             >
                 <h2 className="font-display italic text-display-xs text-ink">

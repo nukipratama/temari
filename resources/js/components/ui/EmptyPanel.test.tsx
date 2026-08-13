@@ -22,7 +22,7 @@ describe('EmptyPanel', () => {
         );
         expect(screen.getByText('Belum ada data')).toBeInTheDocument();
         expect(container.firstElementChild).toHaveClass('border-dashed');
-        expect(container.firstElementChild).toHaveClass('border-cream-deep');
+        expect(container.firstElementChild).toHaveClass('border-line-strong');
         expect(container.firstElementChild).not.toHaveClass('border-2');
     });
 

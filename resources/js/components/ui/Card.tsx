@@ -3,13 +3,13 @@ import { type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { cardVariants } from '@/lib/variants';
 
-export type CardTone = 'cream' | 'cream-deep' | 'sky-glass' | 'empty';
-export type CardPadding = 'sm' | 'md' | 'lg' | 'none';
+export type CardTone = 'card' | 'onSky' | 'empty';
+export type CardPadding = 'none' | 'panel' | 'card' | 'hero';
 
 interface CardProps {
-    /** Default 'cream' — cream surface + cream-deep border on the page bg. */
+    /** Default 'card' — the one card surface; 'onSky' for a dark panel. */
     tone?: CardTone;
-    /** Default 'md' — px-5 py-5. */
+    /** Default 'card' — the --pad-card role. */
     padding?: CardPadding;
     /** Render as <section> when the card is a top-level page block. */
     as?: 'div' | 'section' | 'article' | 'aside';
@@ -18,8 +18,8 @@ interface CardProps {
 }
 
 export default function Card({
-    tone = 'cream',
-    padding = 'md',
+    tone = 'card',
+    padding = 'card',
     as: Component = 'div',
     className,
     children,

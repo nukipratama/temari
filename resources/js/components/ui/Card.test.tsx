@@ -13,9 +13,8 @@ describe('Card', () => {
     });
 
     it.each([
-        ['cream', 'bg-surface-card'],
-        ['cream-deep', 'bg-cream-deep'],
-        ['sky-glass', 'bg-cream/[0.06]'],
+        ['card', 'bg-surface-card'],
+        ['onSky', 'bg-cream/[0.06]'],
         ['empty', 'border-dashed'],
     ] satisfies [CardTone, string][])(
         'renders tone %s with its surface class',
@@ -32,10 +31,10 @@ describe('Card', () => {
         expect((container.firstChild as HTMLElement).tagName).toBe('SECTION');
     });
 
-    it('honours padding="sm"', () => {
-        const { container } = render(<Card padding="sm">x</Card>);
+    it('honours padding="panel"', () => {
+        const { container } = render(<Card padding="panel">x</Card>);
         expect((container.firstChild as HTMLElement).className).toMatch(
-            /py-3\.5/,
+            /pad-panel/,
         );
     });
 
