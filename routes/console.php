@@ -112,3 +112,10 @@ Schedule::command('weather:backfill')->dailyAt('03:30')->withoutOverlapping(55);
 // breaks it. Demo excluded (checked inside the command); the streak_reminders
 // claim table makes a same-week re-run a no-op, not a second push.
 Schedule::command('streak:remind')->weeklyOn(Carbon::SATURDAY, '18:00');
+
+// Monday 00:00: settle the week that just closed — mint a rest token every 4th
+// streak week, or spend one to forgive a runless week. Must run before
+// ai:weekly-recap (00:01), which reads consecutiveWeekStreak() and would
+// otherwise narrate a streak that this command is about to restore. No LLM and
+// no Strava call.
+Schedule::command('streak:settle')->weeklyOn(1, '00:00');
