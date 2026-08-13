@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\NotificationPreference;
 use App\Models\TelegramConnection;
 use App\Models\User;
+use App\Support\DataUseStatement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -14,6 +15,14 @@ it('renders the settings page for an authenticated user', function (): void {
     $this->actingAs(User::factory()->create())->get('/settings')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->component('Settings/Index'));
+});
+
+it('hands the page the shared data-use statement', function (): void {
+    $this->actingAs(User::factory()->create())->get('/settings')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('dataUse.headline', DataUseStatement::HEADLINE)
+            ->where('dataUse.points', DataUseStatement::points()));
 });
 
 it('requires auth', function (): void {

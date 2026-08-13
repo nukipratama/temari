@@ -35,6 +35,7 @@ _AI narration_
 
 _External integrations_
 - [[strava-client]] — circuit breaker state machine, rate buckets, token refresh
+- [[strava-data-compliance]] — the endpoints we call, cross-user isolation, dated API obligations
 - [[geo-reverse-geocoding]] — Nominatim resolver, cache, 1 req/s lock
 - [[weather-integration]] — Open-Meteo forecast/archive routing, cache TTLs, rain threshold
 

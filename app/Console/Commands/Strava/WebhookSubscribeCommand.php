@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands\Strava;
 
 use App\Actions\Strava\ProbeStravaWebhookAction;
+use App\Services\Strava\StravaClient;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -21,7 +22,10 @@ use Illuminate\Support\Facades\Http;
 #[Description('Create, view, or delete the Strava webhook push subscription.')]
 class WebhookSubscribeCommand extends Command
 {
-    private const string SUBSCRIPTIONS_URL = 'https://www.strava.com/api/v3/push_subscriptions';
+    private static function subscriptionsUrl(): string
+    {
+        return StravaClient::apiBaseUrl().'/push_subscriptions';
+    }
 
     public function handle(): int
     {
@@ -102,7 +106,7 @@ class WebhookSubscribeCommand extends Command
 
         $this->info('Self-verify passed: callback echoed the challenge.');
 
-        $response = Http::asForm()->post(self::SUBSCRIPTIONS_URL, [
+        $response = Http::asForm()->post(self::subscriptionsUrl(), [
             'client_id' => $clientId,
             'client_secret' => $clientSecret,
             'callback_url' => $callbackUrl,
@@ -164,7 +168,7 @@ class WebhookSubscribeCommand extends Command
         $response = Http::withQueryParameters([
             'client_id' => $clientId,
             'client_secret' => $clientSecret,
-        ])->delete(self::SUBSCRIPTIONS_URL.'/'.$id);
+        ])->delete(self::subscriptionsUrl().'/'.$id);
 
         if ($response->failed()) {
             $this->error("Could not delete subscription {$id} ({$response->status()}): {$response->body()}");
@@ -185,7 +189,7 @@ class WebhookSubscribeCommand extends Command
      */
     private function fetchSubscriptions(string $clientId, string $clientSecret): ?array
     {
-        $response = Http::get(self::SUBSCRIPTIONS_URL, [
+        $response = Http::get(self::subscriptionsUrl(), [
             'client_id' => $clientId,
             'client_secret' => $clientSecret,
         ]);

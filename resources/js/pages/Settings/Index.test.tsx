@@ -35,6 +35,21 @@ describe('Settings', () => {
         expect(screen.getByText('Delete account')).toBeInTheDocument();
     });
 
+    it('renders the data-use statement the server hands it', () => {
+        render(
+            <Settings
+                dataUse={{
+                    headline: 'Your data',
+                    points: ['Inference only, never training.'],
+                }}
+            />,
+        );
+        expect(screen.getByText('Your data')).toBeInTheDocument();
+        expect(
+            screen.getByText('Inference only, never training.'),
+        ).toBeInTheDocument();
+    });
+
     // The page used to open with a bare <h1>Pengaturan</h1>, the only screen in
     // the app not using the editorial header every other page shares.
     it('opens with the editorial header rather than a bare title', () => {

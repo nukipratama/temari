@@ -46,6 +46,8 @@ pest()->extend(TestCase::class)->in('Feature', 'Unit');
 | The watch list covers the tests that read the filesystem directly. glob()
 | and File::allFiles() produce no coverage edges, so nothing would otherwise
 | link a newly added class to the 1:1 structure gate that should fail on it.
+| The compliance sweeps read the route table the same way, so a new route has
+| to re-run them.
 |
 | The guard is what keeps parallel worktrees working. A worktree's .git is a
 | *file* pointing at a host path outside the container's bind mount, so git
@@ -63,6 +65,7 @@ if (is_dir(dirname(__DIR__).'/.git') || is_dir((string) getenv('GIT_DIR'))) {
         'docs/**/*.md' => 'tests/Unit/Architecture',
         'resources/css/**' => 'tests/Unit/Architecture',
         'resources/js/types/generated.ts' => 'tests/Feature/Console/GenerateTypeScriptEnumsCommandTest.php',
+        'routes/**/*.php' => 'tests/Feature/Compliance',
     ]);
 }
 
