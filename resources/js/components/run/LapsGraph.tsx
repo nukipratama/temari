@@ -36,7 +36,7 @@ export default function LapsGraph({
             <header className="mb-1.5 flex flex-wrap items-baseline justify-between gap-3">
                 <SectionLabel>Laps</SectionLabel>
                 {fastest != null && fastestLap != null && (
-                    <p className="font-display text-sm italic text-ink-2">
+                    <p className="font-display text-quote-sm italic text-ink-2">
                         Fastest at lap {fastestLap},{' '}
                         <span className="font-semibold text-horizon-ink">
                             {formatPace(fastest)}/km

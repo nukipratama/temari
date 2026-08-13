@@ -165,7 +165,7 @@ export default function RunsIndex({
                     )}
                 </header>
 
-                <JourneyStrip match={journeyMatch} className="mt-6 mb-6" />
+                <JourneyStrip match={journeyMatch} className="mt-8" />
 
                 {weekFilter !== null && (
                     <WeekFocusNote weekEnding={weekFilter} />
@@ -177,7 +177,7 @@ export default function RunsIndex({
                         initial="hidden"
                         animate="visible"
                         variants={staggerContainer}
-                        className="space-y-8"
+                        className="mt-8 space-y-8"
                     >
                         {rangeAutoWidened && (
                             <RangeWidenedNote rangeFilter={rangeFilter} />
@@ -250,7 +250,7 @@ function RankedList({
     return (
         <Card as="section" padding="none" className="overflow-hidden">
             <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-cream-deep bg-cream-deep/40 px-5 py-4">
-                <div className="font-display text-lg italic text-ink">
+                <div className="font-display text-headline-xs italic text-ink">
                     {label}
                 </div>
                 <Eyebrow token="micro" tone="ink-3">
@@ -314,7 +314,7 @@ function EmptyState() {
                     </BackLink>
                 </>
             }
-            className="flex flex-col items-center"
+            className="mt-8 flex flex-col items-center"
         />
     );
 }
@@ -329,10 +329,10 @@ function NoFilterMatchState({ onReset }: Readonly<{ onReset: () => void }>) {
         <Card
             tone="empty"
             padding="hero"
-            className="flex flex-col items-center text-center"
+            className="mt-8 flex flex-col items-center text-center"
         >
             <Temari pose="observational" size={112} animate={false} />
-            <p className="mt-4 font-display text-2xl italic text-ink-2">
+            <p className="mt-4 font-display text-headline-sm italic text-ink-2">
                 No runs match.
             </p>
             <p className="mt-2 font-sans text-sm text-ink-2">

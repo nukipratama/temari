@@ -12,6 +12,7 @@ import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import SendNotificationButton from '@/components/SendNotificationButton';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
+import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
@@ -33,6 +34,7 @@ import { formatPace, formatShortDateId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 import { activityUrl } from '@/lib/routes';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
+import { cardVariants } from '@/lib/variants';
 
 import {
     isFilteredOut,
@@ -160,7 +162,10 @@ export default function Calendar({
                         initial="hidden"
                         animate="visible"
                         variants={fadeInUp}
-                        className="overflow-hidden rounded-lg border border-line/70 bg-surface-warm shadow-e1"
+                        className={cn(
+                            cardVariants({ padding: 'none' }),
+                            'overflow-hidden',
+                        )}
                     >
                         <CalendarHeader />
                         {weeks.map((week) => (
@@ -235,11 +240,13 @@ function MonthlyRecapCard({
 }>) {
     const notificationsReachable = useNotificationsReachable();
     return (
-        <section
-            className="mb-4 rounded-lg border border-line bg-surface-warm p-4 shadow-e1 sm:p-5"
+        <Card
+            as="section"
+            padding="card"
+            className="mb-4"
             aria-label={`Temari's notes for ${monthLabel}`}
         >
-            <div className="font-mono text-xs font-bold uppercase tracking-wider text-ink-2">
+            <div className="text-label-small text-ink-2">
                 Temari's notes · {monthLabel}
             </div>
             <div className="mt-2 flex items-start gap-3.5">
@@ -277,7 +284,7 @@ function MonthlyRecapCard({
                     )}
                 </div>
             </div>
-        </section>
+        </Card>
     );
 }
 
@@ -611,7 +618,8 @@ function Legend({ className }: Readonly<{ className?: string }>) {
     return (
         <div
             className={cn(
-                'flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-line/60 bg-surface-warm/40 px-4 py-3 shadow-e1',
+                cardVariants({ padding: 'panel' }),
+                'flex flex-wrap items-center gap-x-5 gap-y-2',
                 className,
             )}
         >

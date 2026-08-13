@@ -132,10 +132,10 @@ describe('DetailTiles', () => {
         // count that would otherwise strand CADENCE alone in the 2-column grid.
         renderTiles({}, {});
         expect(
-            screen.getByText('CADENCE').closest('div.rounded-xl'),
+            screen.getByText('CADENCE').closest('div.rounded-lg'),
         ).toHaveClass('col-span-2');
         expect(
-            screen.getByText('AVG HR').closest('div.rounded-xl'),
+            screen.getByText('AVG HR').closest('div.rounded-lg'),
         ).not.toHaveClass('col-span-2');
     });
 
@@ -143,7 +143,7 @@ describe('DetailTiles', () => {
         // Default fixture yields 4 tiles (AVG HR, MAX HR, CADENCE, DECOUPLING).
         renderTiles();
         expect(
-            screen.getByText('DECOUPLING').closest('div.rounded-xl'),
+            screen.getByText('DECOUPLING').closest('div.rounded-lg'),
         ).not.toHaveClass('col-span-2');
     });
 

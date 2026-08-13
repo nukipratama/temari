@@ -66,7 +66,7 @@ export default function JourneyStrip({
                 )}
                 .
             </p>
-            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5 font-display text-base italic">
+            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5 font-display text-quote-md italic">
                 {pace_improvement_sec !== null && (
                     <span
                         className={cn(
@@ -131,12 +131,7 @@ function PaceLine({
             ? formatPace(summary.pace_sec_per_km)
             : null;
     return (
-        <p
-            className={cn(
-                'mt-3 text-[12px] leading-relaxed text-ink-2',
-                className,
-            )}
-        >
+        <p className={cn('mt-3 text-xs leading-relaxed text-ink-2', className)}>
             <span className="font-semibold text-ink">{label}:</span>{' '}
             {summary.name ?? 'Run'}{' '}
             {summary.distance_km !== null && (

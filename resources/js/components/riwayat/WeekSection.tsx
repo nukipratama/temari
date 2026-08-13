@@ -100,7 +100,7 @@ const WeekSection = memo(function WeekSection({
             className="overflow-hidden transition"
         >
             <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-cream-deep bg-cream-deep/40 px-5 py-4">
-                <div className="font-display text-lg italic text-ink">
+                <div className="font-display text-headline-xs italic text-ink">
                     {bucket.label}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs tabular-nums">
@@ -125,7 +125,7 @@ const WeekSection = memo(function WeekSection({
             </header>
 
             {hiddenCount > 0 && (
-                <p className="flex items-center gap-2 border-b border-cream-deep bg-cream-deep/10 px-5 py-2.5 font-sans text-[12px] text-ink-3">
+                <p className="flex items-center gap-2 border-b border-cream-deep bg-cream-deep/10 px-5 py-2.5 font-sans text-xs text-ink-3">
                     <Icon
                         icon="mdi:eye-off-outline"
                         width={14}
@@ -266,9 +266,7 @@ function MetricChip({
                     : 'bg-cream-deep/60 text-ink-2',
             )}
         >
-            <span className="font-mono font-bold text-[11px] uppercase tracking-wider text-ink-2">
-                {label}
-            </span>
+            <span className="text-label-micro text-ink-2">{label}</span>
             <span className="tabular-nums">{value}</span>
             {explainerKey && (
                 <MetricExplainer metricKey={explainerKey} size="xs" />
