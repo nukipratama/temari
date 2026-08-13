@@ -78,10 +78,10 @@ gets misused, and it is what the audit on `/devtools/design` exists to catch.
 **Paper is five colours, not one.** dawn-shift re-declares `--color-surface` per
 `body[data-time-of-day]` ([app.css](../resources/css/app.css):555), so the ground an `-ink`
 token lands on ranges from `#f8f2df` (morning) down to `#eee8d9` (night). Every derived value
-therefore targets the **darkest** ground ([build-tokens.mjs](../resources/brand/build-tokens.mjs):113),
+therefore targets the **darkest** ground ([build-tokens.mjs](../resources/brand/build-tokens.mjs):125),
 and every audit scores a paper pair on all five and reports its **worst** — the generator's
-([build-tokens.mjs](../resources/brand/build-tokens.mjs):158), the client-side one behind
-`/devtools/design` ([designTokens.ts](../resources/js/lib/designTokens.ts):258), and the CI guard
+([build-tokens.mjs](../resources/brand/build-tokens.mjs):161), the client-side one behind
+`/devtools/design` ([designTokens.ts](../resources/js/lib/designTokens.ts):270), and the CI guard
 ([DesignTokenContrastTest.php](../tests/Unit/Architecture/DesignTokenContrastTest.php)). Deriving
 against the default alone is what once put eight `-ink` tokens at ~4.3:1 after dark while all
 three audits reported a pass.
