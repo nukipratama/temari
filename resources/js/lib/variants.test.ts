@@ -255,7 +255,14 @@ describe('inputVariants', () => {
     });
 
     it('tightens padding for the inline sm field', () => {
-        expect(inputVariants({ size: 'sm' })).toContain('px-2.5 py-1.5');
+        expect(inputVariants({ size: 'sm' })).toContain('px-2.5 py-1');
         expect(inputVariants({ size: 'md' })).toContain('px-3 py-2');
+    });
+});
+
+describe('inline control row geometry', () => {
+    it('lands the sm field and the outline chip on the same min height', () => {
+        expect(inputVariants({ size: 'sm' })).toContain('min-h-8');
+        expect(outlineChipVariants()).toContain('min-h-8');
     });
 });

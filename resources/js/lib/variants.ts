@@ -202,7 +202,7 @@ export const filterOptionVariants = cva(
  * `horizon-deep` CTA fill.
  */
 export const outlineChipVariants = cva(
-    'focus-ring inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-label-micro transition',
+    'focus-ring inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 py-1.5 text-label-micro transition',
     {
         variants: {
             selected: {
@@ -217,14 +217,17 @@ export const outlineChipVariants = cva(
 /**
  * Text/number/date field. `rounded-sm` is the radius scale's input corner, so
  * a field never picks up a card's `md` or a pill's `full`. `sm` is the inline
- * field that sits in a row of controls; `md` is the labelled form field.
+ * field that sits in a row of controls, and shares `min-h-8` with
+ * {@link outlineChipVariants} so the two line up: a coarse pointer forces
+ * every field to 16px (see the iOS zoom note in app.css), which would
+ * otherwise leave a field taller than the pills beside it.
  */
 export const inputVariants = cva(
     'focus-ring w-full border border-line bg-surface rounded-sm text-ink',
     {
         variants: {
             size: {
-                sm: 'px-2.5 py-1.5 text-sm',
+                sm: 'min-h-8 px-2.5 py-1 text-sm',
                 md: 'px-3 py-2 text-sm',
             },
         },
