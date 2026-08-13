@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\InboxNotification;
 use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\User;
@@ -31,6 +32,7 @@ beforeEach(function (): void {
     $this->victimCard = RunCard::factory()->for($this->victimActivity)->create();
     $this->victimSession = PlannedSession::factory()->for($this->victim)->create();
     $this->victimSnapshot = WeeklySnapshot::factory()->for($this->victim)->create();
+    $this->victimNotification = InboxNotification::factory()->for($this->victim)->create();
 });
 
 /**
@@ -53,6 +55,7 @@ it('refuses every authenticated route that is handed another user\'s resource id
         'activity' => fn (): int => $this->victimActivity->id,
         'card' => fn (): int => $this->victimCard->id,
         'plannedSession' => fn (): int => $this->victimSession->id,
+        'notification' => fn (): int => $this->victimNotification->id,
         'snapshot' => fn (): int => $this->victimSnapshot->id,
         'subjectId' => fn (): int => $this->victimActivity->id,
     ];
