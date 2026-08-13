@@ -466,6 +466,6 @@ it('shows the dashboard to authenticated users', function (): void {
         ->get(route('dashboard'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Today')
+            ->component('Home')
             ->where('auth.user.name', 'Ada Lovelace'));
 });

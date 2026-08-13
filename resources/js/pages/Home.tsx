@@ -1,4 +1,4 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 
 import type {
@@ -6,7 +6,6 @@ import type {
     BriefingResult,
     Mood,
     PastYouTrend,
-    SharedProps,
     TrainingLoad,
     WeeklySnapshot,
 } from '@/types/inertia';
@@ -17,27 +16,23 @@ import KpiTile from '@/components/dashboard/KpiTile';
 import LastLariCard, {
     type LastRunNote,
 } from '@/components/dashboard/LastLariCard';
-import PastYouTrendCard from '@/components/dashboard/PastYouTrendCard';
-import TodayHeroBanner from '@/components/dashboard/TodayHeroBanner';
 import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
 import VitalChips from '@/components/dashboard/VitalChips';
+import EvidenceList from '@/components/home/EvidenceList';
+import NoVerdictPanel from '@/components/home/NoVerdictPanel';
+import TodaySession from '@/components/home/TodaySession';
+import VerdictHero from '@/components/home/VerdictHero';
 import CoachMark from '@/components/onboarding/CoachMark';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
-import { type TemariPose } from '@/components/temari/TemariProto';
 import PageContainer from '@/components/ui/PageContainer';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { useCountUp } from '@/hooks/useCountUp';
 import { appLayout } from '@/layouts/appLayout';
-import { formatTimeId, formatWeekdayDateId } from '@/lib/pace';
-import { VIBE_TO_POSE, poseForRun } from '@/lib/temariPose';
+import { poseForRun } from '@/lib/temariPose';
 
-import {
-    featuredCardFor,
-    vibeSubtitleFor,
-    weekRangeLabel,
-} from './Today/helpers';
+import { featuredCardFor, weekRangeLabel } from './Home/helpers';
 
-interface TodayProps {
+interface HomeProps {
     briefing: BriefingResult;
     load: TrainingLoad | null;
     snapshot: WeeklySnapshot | null;
@@ -47,7 +42,12 @@ interface TodayProps {
     pastYouTrend?: PastYouTrend | null;
 }
 
-export default function Today({
+/**
+ * The home screen answers one question: am I getting better? The verdict and
+ * the matched pairs behind it lead; today's session follows; everything the
+ * dashboard used to open with sits below as supporting detail.
+ */
+export default function Home({
     briefing,
     load,
     snapshot,
@@ -55,12 +55,8 @@ export default function Today({
     lastRunNote = null,
     recentMoods = {},
     pastYouTrend = null,
-}: Readonly<TodayProps>) {
-    const { props } = usePage<SharedProps & TodayProps>();
-    const firstName = props.auth.user?.first_name ?? '';
+}: Readonly<HomeProps>) {
     const featuredRef = useRef<HTMLDivElement>(null);
-    const pose: TemariPose =
-        VIBE_TO_POSE[briefing.vibeState] ?? 'observational';
 
     const featured = featuredCardFor(
         recentRuns,
@@ -69,10 +65,8 @@ export default function Today({
     );
     const lastRun = recentRuns[0] ?? null;
 
-    // Freeze the date/time line at mount (lazy init) so it isn't recomputed impurely on every render.
+    // Frozen at mount (lazy init) so the week label isn't recomputed impurely on every render.
     const [now] = useState(() => new Date());
-    const dateLine = `${formatWeekdayDateId(now)} · ${formatTimeId(now)} · ${briefing.vibeLabel}`;
-    const vibeSubtitle = vibeSubtitleFor(briefing.vibeLabel);
 
     const weekRuns = useCountUp(snapshot?.runs ?? 0);
     const weekKm = useCountUp(snapshot?.distance_km ?? 0);
@@ -81,50 +75,43 @@ export default function Today({
     const weekKmDisplay = snapshot ? weekKm.toFixed(1) : '—';
     const weekTrimpDisplay = snapshot ? Math.round(weekTrimp).toString() : '—';
 
+    const hasRuns = recentRuns.length > 0;
+    const judged =
+        pastYouTrend !== null && pastYouTrend.verdict !== 'not_enough_history'
+            ? pastYouTrend.verdict
+            : null;
+
     return (
         <>
-            <Head title="Today" />
+            <Head title="Home" />
             <PageContainer>
                 <TodayHistoryTabs active="today" className="mb-5" />
-                <TodayHeroBanner
-                    firstName={firstName}
-                    dateLine={dateLine}
-                    vibeSubtitle={vibeSubtitle}
-                    briefing={briefing}
-                    pose={pose}
-                    lastRun={lastRun}
-                />
 
-                {recentRuns.length === 0 ? (
-                    <div className="mt-8">
-                        <EmptyRunsState />
-                    </div>
+                {!hasRuns ? (
+                    <EmptyRunsState />
                 ) : (
                     <>
-                        {featured && (
-                            <div className="mt-8">
-                                <div
-                                    ref={featuredRef}
-                                    data-coachmark="today-featured-card"
-                                >
-                                    <FeaturedKartuPanel
-                                        featured={featured}
-                                        featuredKartuVoice={
-                                            briefing.featuredKartuVoice
-                                        }
-                                    />
-                                </div>
-                                <CoachMark
-                                    id="today-featured-card"
-                                    anchorRef={featuredRef}
-                                    placement="bottom"
-                                    title="Every run gets a card"
-                                    body="This one's my pick of your recent runs, and the rest are waiting in Collection."
-                                />
+                        {pastYouTrend !== null && (
+                            <div className="flex flex-col gap-4">
+                                {judged !== null ? (
+                                    <>
+                                        <VerdictHero
+                                            trend={pastYouTrend}
+                                            verdict={judged}
+                                        />
+                                        <EvidenceList trend={pastYouTrend} />
+                                    </>
+                                ) : (
+                                    <NoVerdictPanel trend={pastYouTrend} />
+                                )}
                             </div>
                         )}
 
-                        <div className="mt-8 flex flex-col gap-6">
+                        <div className="mt-6">
+                            <TodaySession briefing={briefing} />
+                        </div>
+
+                        <div className="mt-10 flex flex-col gap-6">
                             <section>
                                 <SectionLabel dot dotClass="bg-leaf">
                                     This week · {weekRangeLabel(now)}
@@ -145,10 +132,6 @@ export default function Today({
 
                             <VitalChips briefing={briefing} load={load} />
 
-                            {pastYouTrend && (
-                                <PastYouTrendCard trend={pastYouTrend} />
-                            )}
-
                             <div className="grid gap-4 sm:grid-cols-2">
                                 {lastRun && (
                                     <LastLariCard
@@ -163,6 +146,29 @@ export default function Today({
                                 )}
                                 <KondisiCard load={load} snapshot={snapshot} />
                             </div>
+
+                            {featured && (
+                                <section>
+                                    <div
+                                        ref={featuredRef}
+                                        data-coachmark="today-featured-card"
+                                    >
+                                        <FeaturedKartuPanel
+                                            featured={featured}
+                                            featuredKartuVoice={
+                                                briefing.featuredKartuVoice
+                                            }
+                                        />
+                                    </div>
+                                    <CoachMark
+                                        id="today-featured-card"
+                                        anchorRef={featuredRef}
+                                        placement="bottom"
+                                        title="Every run gets a card"
+                                        body="This one's my pick of your recent runs, and the rest are waiting in Collection."
+                                    />
+                                </section>
+                            )}
                         </div>
                     </>
                 )}
@@ -171,4 +177,4 @@ export default function Today({
     );
 }
 
-Today.layout = appLayout;
+Home.layout = appLayout;

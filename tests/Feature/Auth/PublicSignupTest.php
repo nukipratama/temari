@@ -120,7 +120,7 @@ it('carries a stranger from OAuth to a working dashboard on summary data alone',
 
     $this->actingAs($user)->get(route('dashboard'))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->component('Today'));
+        ->assertInertia(fn (Assert $page) => $page->component('Home'));
 
     $this->actingAs($user)->get(route('activities.index'))->assertOk();
 });

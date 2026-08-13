@@ -94,8 +94,9 @@ beside the verdict; they never change it.
 - `WINDOW_DAYS` is 42, chosen to line up with the CTL time constant already used
   as this codebase's fitness horizon. 28 and 90 are equally defensible and the
   choice has not been made by product.
-- What the UI *says* for `not_enough_history` beyond "nothing comparable yet" is
-  undecided; the backend only guarantees the outcome is distinguishable.
+- ~~What the UI *says* for `not_enough_history`~~ — settled in the home-screen
+  rebuild: `comparison_count` 0 and 1 get different copy, and a single pair is
+  still rendered as evidence so a near miss reads as one. See [[dashboard]].
 
 ## See also
 

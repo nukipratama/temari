@@ -1,4 +1,4 @@
-import type { FeaturedCard } from '@/pages/Today/helpers';
+import type { FeaturedCard } from '@/pages/Home/helpers';
 import type { AnalysisPayload } from '@/types/inertia';
 
 import FeaturedCardHero from '@/components/card/FeaturedCardHero';

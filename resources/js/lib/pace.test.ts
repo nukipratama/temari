@@ -15,8 +15,6 @@ import {
     formatRelativeId,
     formatShortDateTimeId,
     formatShortWeekdayDateId,
-    formatTimeId,
-    formatWeekdayDateId,
     formatWeekdayDayId,
     isoDateLocal,
     isoDaysAgoLocal,
@@ -297,14 +295,6 @@ describe('parsePaceSec', () => {
 describe('date/time format variants', () => {
     // 11 May 2026 is a Monday at 08:30 local.
     const d = new Date(2026, 4, 11, 8, 30);
-
-    it('formatWeekdayDateId: long weekday + day + long month', () => {
-        expect(formatWeekdayDateId(d)).toBe('Monday, May 11');
-    });
-
-    it('formatTimeId: zero-padded hour + minute', () => {
-        expect(formatTimeId(d)).toBe('08:30 AM');
-    });
 
     it('formatShortWeekdayDateId: short weekday + day + short month', () => {
         expect(formatShortWeekdayDateId(d)).toBe('Mon, May 11');

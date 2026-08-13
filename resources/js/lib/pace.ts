@@ -166,23 +166,6 @@ export function formatNaiveIdDate(
     return idDateFromDate(d, format);
 }
 
-/** "Monday, May 11" — long weekday + numeric day + long month, no year. */
-export function formatWeekdayDateId(date: Date): string {
-    return date.toLocaleDateString('en-US', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-    });
-}
-
-/** "08:30 AM" — zero-padded hour and minute. */
-export function formatTimeId(date: Date): string {
-    return date.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-    });
-}
-
 /** "Mon, May 11" — short weekday + numeric day + short month. */
 export function formatShortWeekdayDateId(date: Date): string {
     return date.toLocaleDateString('en-US', {

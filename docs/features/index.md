@@ -13,7 +13,7 @@ One walkthrough per user-facing area — what it does and where it lives in the 
 ## Notes
 
 _Pages_
-- [[dashboard]] — the "Hari Ini" home (greeting, Kata Temari, vitals, featured kartu, suggestion)
+- [[dashboard]] — the home screen: the Past You verdict and its evidence, today's session, then vitals / last run / kartu
 - [[run-history]] — Jejak/Kalender, weekly snapshots, filters, journey strip
 - [[run-detail]] — single run: story + adaptive claims lenses, route map, splits, HR zones
 - [[run-qa]] — ask about this run: run-derived suggested questions, an answer scoped to that one activity

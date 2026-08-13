@@ -20,7 +20,7 @@ it('renders every authenticated page for a fresh user', function (string $route,
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->component($component));
 })->with([
-    'dashboard' => ['dashboard', 'Today'],
+    'dashboard' => ['dashboard', 'Home'],
     'activities' => ['activities.index', 'Activities/Feed'],
     'calendar' => ['calendar', 'Activities/Calendar'],
     'cards' => ['cards.index', 'Collection/Cards'],

@@ -18,7 +18,6 @@ import {
     shortenLocation,
     strainHint,
     strainTone,
-    vibeSubtitleFor,
 } from './helpers';
 
 function runWith(
@@ -60,12 +59,6 @@ describe('formatSignedForm', () => {
 
     it('keeps the - sign for negative form', () => {
         expect(formatSignedForm(-1.7)).toBe('-1.7');
-    });
-});
-
-describe('vibeSubtitleFor', () => {
-    it('lowercases the vibe label and wraps it in "you\'re feeling …"', () => {
-        expect(vibeSubtitleFor('Fired Up')).toBe("you're feeling fired up.");
     });
 });
 

@@ -22,6 +22,7 @@ export const cardVariants = cva('rounded-md', {
     variants: {
         tone: {
             card: 'border border-line bg-surface-card shadow-e1',
+            sky: 'border border-sky bg-sky text-cream shadow-e2',
             onSky: 'border border-cream/[0.12] bg-cream/[0.06] backdrop-blur',
             empty: 'border border-dashed border-line-strong bg-surface-card/40',
         },

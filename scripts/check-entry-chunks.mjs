@@ -60,7 +60,7 @@ const ENTRY_ALLOWED = ['rolldown-runtime', 'app', 'react-vendor'];
  */
 const ROUTE_BUDGETS_KB = [
     { name: 'Login', src: 'resources/js/pages/Auth/Login.tsx', budgetKb: 160 },
-    { name: 'Today', src: 'resources/js/pages/Today.tsx', budgetKb: 240 },
+    { name: 'Home', src: 'resources/js/pages/Home.tsx', budgetKb: 240 },
     { name: 'Runs/Show', src: 'resources/js/pages/Runs/Show.tsx', budgetKb: 245 },
     { name: 'Profile', src: 'resources/js/pages/Profile.tsx', budgetKb: 230 },
 ];

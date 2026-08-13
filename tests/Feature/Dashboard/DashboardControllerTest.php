@@ -25,7 +25,7 @@ it('renders for a user with no synced activities', function (): void {
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Today')
+            ->component('Home')
             ->where('auth.user.first_name', explode(' ', (string) $user->name)[0])
             ->where('load', null)
             ->where('recentRuns', []));
@@ -79,7 +79,7 @@ it('renders KPIs + recent runs when the user has training-load history', functio
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Today')
+            ->component('Home')
             ->has('load.weekly_trimp')
             ->has('load.form')
             ->has('snapshot')
@@ -131,7 +131,7 @@ it('does not ship the unused trendAnalysis or weeklyRecap props', function (): v
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Today')
+            ->component('Home')
             ->missing('trendAnalysis')
             ->missing('weeklyRecap'));
 });
@@ -183,7 +183,7 @@ it('does not fetch recent runs or weekly snapshots on a briefing-only partial re
     expect($recentRunFetches)->toBeEmpty()
         ->and($snapshotReads)->toBeEmpty();
 
-    $response->assertJsonPath('component', 'Today');
+    $response->assertJsonPath('component', 'Home');
     // The one prop the poll does name still has to resolve.
     $response->assertJsonPath('props.briefing.mood', fn (mixed $mood): bool => is_string($mood));
     foreach (['load', 'snapshot', 'recentRuns', 'lastRunNote', 'recentMoods'] as $skipped) {
@@ -200,7 +200,7 @@ it('still returns every dashboard prop on a full page load', function (): void {
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Today')
+            ->component('Home')
             ->has('briefing')
             ->has('snapshot')
             ->has('recentRuns', 1)
@@ -216,7 +216,7 @@ it('ships the Past You verdict as its own outcome when history is too thin', fun
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Today')
+            ->component('Home')
             ->where('pastYouTrend.verdict', 'not_enough_history')
             ->where('pastYouTrend.comparison_count', 0)
             ->where('pastYouTrend.window_days', PastYouTrendBuilder::WINDOW_DAYS)
@@ -237,7 +237,7 @@ function briefingOnlyHeaders(object $actingAs): array
     return [
         'X-Inertia' => 'true',
         'X-Inertia-Version' => inertiaVersionFor($actingAs, '/'),
-        'X-Inertia-Partial-Component' => 'Today',
+        'X-Inertia-Partial-Component' => 'Home',
         'X-Inertia-Partial-Data' => 'briefing',
     ];
 }

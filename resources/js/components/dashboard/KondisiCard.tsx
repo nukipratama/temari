@@ -13,7 +13,7 @@ import {
     monotonyTone,
     strainHint,
     strainTone,
-} from '@/pages/Today/helpers';
+} from '@/pages/Home/helpers';
 
 export default function KondisiCard({
     load,

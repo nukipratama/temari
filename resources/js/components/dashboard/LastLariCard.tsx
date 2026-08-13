@@ -23,7 +23,7 @@ import {
     formatIdDateUpper,
     formatWeather,
     shortenLocation,
-} from '@/pages/Today/helpers';
+} from '@/pages/Home/helpers';
 
 export interface LastRunNote {
     oneline: string;
