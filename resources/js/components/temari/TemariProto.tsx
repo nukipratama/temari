@@ -40,12 +40,19 @@ export type TemariPose =
     | TemariExpression;
 
 export interface TemariEquipped {
-    headband?: 'ember' | 'rare' | 'epik' | 'legendaris' | null;
-    medal?: 'pertama' | 'emas' | 'perak' | 'platina' | 'none';
-    kaus?: 'pemula' | 'pagi' | 'hujan' | 'legendaris' | null;
-    celana?: 'ringan' | 'jarak' | 'split' | 'maraton' | null;
-    sepatu?: 'basic' | 'cepat' | 'tahan' | 'legendaris' | null;
-    aura?: 'pemanasan' | 'gerah' | 'tenang' | 'jagoan' | 'angin' | true | null;
+    headband?: 'uncommon' | 'rare' | 'epic' | 'legendary' | null;
+    medal?: 'first' | 'gold' | 'silver' | 'platinum' | 'none';
+    shirt?: 'beginner' | 'earlyBird' | 'rainWarrior' | 'legendary' | null;
+    shorts?: 'lightweight' | 'explorer' | 'negativeSplit' | 'marathon' | null;
+    shoes?: 'basic' | 'speed' | 'rugged' | 'legendary' | null;
+    aura?:
+        | 'warmup'
+        | 'heatwave'
+        | 'calm'
+        | 'champion'
+        | 'windrunner'
+        | true
+        | null;
 }
 
 /**
@@ -303,46 +310,46 @@ interface ItemSpec {
 }
 
 const HEADBAND_ITEMS: Record<string, ItemSpec> = {
-    ember: { color: '#2fb350' },
+    uncommon: { color: '#2fb350' },
     rare: { color: '#2f81f7' },
-    epik: { color: '#a855f7', detail: 'crownStud' },
-    legendaris: { color: '#f5a623', detail: 'crownStud' },
+    epic: { color: '#a855f7', detail: 'crownStud' },
+    legendary: { color: '#f5a623', detail: 'crownStud' },
 };
 
 const MEDAL_ITEMS: Record<string, ItemSpec> = {
-    pertama: { color: '#a98f6b' },
-    perak: { color: '#b9c0c9', detail: 'medalStar' },
-    emas: { color: '#d9a53c', detail: 'medalStar' },
-    platina: { color: '#dfe6f2', detail: 'medalRing' },
+    first: { color: '#a98f6b' },
+    silver: { color: '#b9c0c9', detail: 'medalStar' },
+    gold: { color: '#d9a53c', detail: 'medalStar' },
+    platinum: { color: '#dfe6f2', detail: 'medalRing' },
 };
 
-const KAUS_ITEMS: Record<string, ItemSpec> = {
-    pemula: { color: '#a99f8a' },
-    pagi: { color: '#2f8f63', detail: 'sunrise' },
-    hujan: { color: '#2f81f7', detail: 'rain' },
-    legendaris: { color: '#f5a623' },
+const SHIRT_ITEMS: Record<string, ItemSpec> = {
+    beginner: { color: '#a99f8a' },
+    earlyBird: { color: '#2f8f63', detail: 'sunrise' },
+    rainWarrior: { color: '#2f81f7', detail: 'rain' },
+    legendary: { color: '#f5a623' },
 };
 
-const CELANA_ITEMS: Record<string, ItemSpec> = {
-    ringan: { color: '#a99f8a' },
-    jarak: { color: '#256f4d' },
-    split: { color: '#2f81f7', detail: 'splitPanel' },
-    maraton: { color: '#a855f7' },
+const SHORTS_ITEMS: Record<string, ItemSpec> = {
+    lightweight: { color: '#a99f8a' },
+    explorer: { color: '#256f4d' },
+    negativeSplit: { color: '#2f81f7', detail: 'splitPanel' },
+    marathon: { color: '#a855f7' },
 };
 
-const SEPATU_ITEMS: Record<string, ItemSpec> = {
+const SHOES_ITEMS: Record<string, ItemSpec> = {
     basic: { color: '#a99f8a' },
-    cepat: { color: '#b23a4f', detail: 'speedStripe' },
-    tahan: { color: '#256f4d', detail: 'lugs' },
-    legendaris: { color: '#f5a623', detail: 'speedStripe' },
+    speed: { color: '#b23a4f', detail: 'speedStripe' },
+    rugged: { color: '#256f4d', detail: 'lugs' },
+    legendary: { color: '#f5a623', detail: 'speedStripe' },
 };
 
 const AURA_ITEMS: Record<string, { color: string; dash: string }> = {
-    pemanasan: { color: '#d9a53c', dash: '1.5 7' },
-    gerah: { color: '#8d2c3d', dash: '3 5' },
-    tenang: { color: '#55488f', dash: '0.1 6' },
-    jagoan: { color: '#a855f7', dash: '999' },
-    angin: { color: '#2f81f7', dash: '14 6' },
+    warmup: { color: '#d9a53c', dash: '1.5 7' },
+    heatwave: { color: '#8d2c3d', dash: '3 5' },
+    calm: { color: '#55488f', dash: '0.1 6' },
+    champion: { color: '#a855f7', dash: '999' },
+    windrunner: { color: '#2f81f7', dash: '14 6' },
 };
 
 // ── Season coverage (Plan tab season summary only) ───────────────────
@@ -711,7 +718,7 @@ function SeasonCoverage({ phase }: Readonly<{ phase: SeasonPhase }>) {
 function resolveAuraKey(equipped: TemariEquipped | null): string | null {
     if (!equipped?.aura) return null;
     if (typeof equipped.aura === 'string') return equipped.aura;
-    return 'pemanasan';
+    return 'warmup';
 }
 
 function itemFor(
@@ -743,18 +750,18 @@ function TemariProto({
     const [browOuter, browInner] = spec.brow;
     const [browROuter, browRInner] = spec.browR ?? spec.brow;
 
-    const headband = itemFor(HEADBAND_ITEMS, equipped?.headband, 'ember');
-    const kaus = itemFor(KAUS_ITEMS, equipped?.kaus, 'pemula');
-    const celana = itemFor(CELANA_ITEMS, equipped?.celana, 'ringan');
-    const sepatu = itemFor(SEPATU_ITEMS, equipped?.sepatu, 'basic');
+    const headband = itemFor(HEADBAND_ITEMS, equipped?.headband, 'uncommon');
+    const shirt = itemFor(SHIRT_ITEMS, equipped?.shirt, 'beginner');
+    const shorts = itemFor(SHORTS_ITEMS, equipped?.shorts, 'lightweight');
+    const shoes = itemFor(SHOES_ITEMS, equipped?.shoes, 'basic');
     const medal =
         !equipped?.medal || equipped.medal === 'none'
             ? null
-            : itemFor(MEDAL_ITEMS, equipped.medal, 'pertama');
+            : itemFor(MEDAL_ITEMS, equipped.medal, 'first');
 
     const auraKey = resolveAuraKey(equipped);
     const aura =
-        auraKey === null ? null : (AURA_ITEMS[auraKey] ?? AURA_ITEMS.pemanasan);
+        auraKey === null ? null : (AURA_ITEMS[auraKey] ?? AURA_ITEMS.warmup);
 
     // Several instances render on one page (the accessory catalogue grid), so
     // the clip needs a per-instance id even though the geometry is identical.
@@ -777,7 +784,7 @@ function TemariProto({
                 stroke={halo.color}
                 strokeWidth={halo.width}
             />
-            {sepatu !== null && <Shoes item={sepatu} />}
+            {shoes !== null && <Shoes item={shoes} />}
             <circle
                 data-part="body"
                 cx={CX}
@@ -792,8 +799,8 @@ function TemariProto({
                     <SeasonCoverage phase={seasonPhase} />
                 )}
                 {headband !== null && <Headband item={headband} />}
-                {kaus !== null && <Shirt item={kaus} />}
-                {celana !== null && <Shorts item={celana} />}
+                {shirt !== null && <Shirt item={shirt} />}
+                {shorts !== null && <Shorts item={shorts} />}
             </g>
             {medal !== null && <Medal item={medal} />}
             <Brow x={EYE_L} outerY={browOuter} innerY={browInner} side="l" />
@@ -867,9 +874,9 @@ function equippedEqual(
     return (
         a.headband === b.headband &&
         a.medal === b.medal &&
-        a.kaus === b.kaus &&
-        a.celana === b.celana &&
-        a.sepatu === b.sepatu &&
+        a.shirt === b.shirt &&
+        a.shorts === b.shorts &&
+        a.shoes === b.shoes &&
         a.aura === b.aura
     );
 }

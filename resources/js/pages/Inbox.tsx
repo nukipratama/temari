@@ -8,7 +8,7 @@ import type {
     UnlockFlash,
 } from '@/types/inertia';
 
-import AksesoriUnlockModal from '@/components/celebrations/AksesoriUnlockModal';
+import AccessoryUnlockModal from '@/components/celebrations/AccessoryUnlockModal';
 import InboxRow from '@/components/inbox/InboxRow';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import PageContainer from '@/components/ui/PageContainer';
@@ -184,7 +184,7 @@ export default function Inbox({
                 )}
             </PageContainer>
 
-            <AksesoriUnlockModal
+            <AccessoryUnlockModal
                 unlock={unlockReplay}
                 onClose={() => setUnlockReplay(null)}
             />

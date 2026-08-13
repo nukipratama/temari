@@ -10,7 +10,7 @@ code_refs:
   - app/Http/Controllers/AksesoriController.php
   - app/Http/Controllers/BadgeBoardController.php
   - resources/js/components/temari/TemariProto.tsx
-  - resources/js/components/celebrations/AksesoriUnlockModal.tsx
+  - resources/js/components/celebrations/AccessoryUnlockModal.tsx
   - resources/js/components/koleksi/KoleksiTabs.tsx
 ---
 
@@ -42,7 +42,7 @@ The [AksesoriController](../../app/Http/Controllers/AksesoriController.php) `ind
 
 ### Unlock celebration
 
-When a run earns a *major* accessory, [AksesoriUnlockModal](../../resources/js/components/celebrations/AksesoriUnlockModal.tsx) (mounted globally) pops with Temari wearing the new item and a CTA that routes to `/accessories`. It only opens when the unlock flash carries `is_major`. The unlock itself is granted upstream during ingest — see [[gamification]].
+When a run earns a *major* accessory, [AccessoryUnlockModal](../../resources/js/components/celebrations/AccessoryUnlockModal.tsx) (mounted globally) pops with Temari wearing the new item and a CTA that routes to `/accessories`. It only opens when the unlock flash carries `is_major`. The unlock itself is granted upstream during ingest — see [[gamification]].
 
 ## Badge board (`/badges`)
 

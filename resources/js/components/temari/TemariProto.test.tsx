@@ -10,11 +10,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
     mapAura,
-    mapCelana,
     mapHeadband,
-    mapKaus,
     mapMedal,
-    mapSepatu,
+    mapShirt,
+    mapShoes,
+    mapShorts,
 } from '@/lib/equippedAccessories';
 
 import TemariProto, {
@@ -105,9 +105,9 @@ const SLOT_MAPPERS: Array<{
     map: (key: string) => string;
 }> = [
     { slot: 'headband', field: 'headband', map: (k) => String(mapHeadband(k)) },
-    { slot: 'shirt', field: 'kaus', map: (k) => String(mapKaus(k)) },
-    { slot: 'shorts', field: 'celana', map: (k) => String(mapCelana(k)) },
-    { slot: 'shoes', field: 'sepatu', map: (k) => String(mapSepatu(k)) },
+    { slot: 'shirt', field: 'shirt', map: (k) => String(mapShirt(k)) },
+    { slot: 'shorts', field: 'shorts', map: (k) => String(mapShorts(k)) },
+    { slot: 'shoes', field: 'shoes', map: (k) => String(mapShoes(k)) },
     { slot: 'medal', field: 'medal', map: (k) => String(mapMedal(k)) },
     { slot: 'aura', field: 'aura', map: (k) => String(mapAura(k)) },
 ];
@@ -135,12 +135,12 @@ describe('TemariProto — parity with the brand generator', () => {
 
     it('covers every wearable slot the generator defines', () => {
         const equipped: TemariEquipped = {
-            headband: 'legendaris',
-            kaus: 'hujan',
-            celana: 'split',
-            sepatu: 'tahan',
-            medal: 'emas',
-            aura: 'jagoan',
+            headband: 'legendary',
+            shirt: 'rainWarrior',
+            shorts: 'negativeSplit',
+            shoes: 'rugged',
+            medal: 'gold',
+            aura: 'champion',
         };
         const { container } = render(<TemariProto equipped={equipped} />);
         const worn = render(
@@ -180,7 +180,7 @@ describe('TemariProto — parity with the brand generator', () => {
     it('keeps the headband inside the clip circle it is drawn against', () => {
         const clipR = 31 - 2.2;
         const { container } = render(
-            <TemariProto equipped={{ headband: 'legendaris' }} />,
+            <TemariProto equipped={{ headband: 'legendary' }} />,
         );
         const clipped = container.querySelector('g[clip-path]');
 
@@ -195,7 +195,7 @@ describe('TemariProto — parity with the brand generator', () => {
 
     it('places the character so the exported bounds land inside the viewBox', () => {
         const { container } = render(
-            <TemariProto pose="celebrating" equipped={{ aura: 'jagoan' }} />,
+            <TemariProto pose="celebrating" equipped={{ aura: 'champion' }} />,
         );
         const transform = container
             .querySelector('svg g[transform]')
@@ -324,7 +324,7 @@ describe('TemariProto', () => {
 
     it('renders the medal when one is equipped', () => {
         const { container } = render(
-            <TemariProto equipped={{ medal: 'emas' }} />,
+            <TemariProto equipped={{ medal: 'gold' }} />,
         );
         expect(
             container.querySelector('[data-slot="medal"]'),
@@ -336,7 +336,7 @@ describe('TemariProto', () => {
             <TemariProto equipped={{ aura: true }} />,
         ).container;
         const named = render(
-            <TemariProto equipped={{ aura: 'pemanasan' }} />,
+            <TemariProto equipped={{ aura: 'warmup' }} />,
         ).container;
         expect(
             flagged.querySelector('[data-slot="aura"]')?.getAttribute('stroke'),
@@ -353,7 +353,7 @@ describe('TemariProto', () => {
     it('falls back to the slot default for an unknown variant', () => {
         const unknown = render(
             <TemariProto
-                equipped={{ kaus: 'bukan-varian' as TemariEquipped['kaus'] }}
+                equipped={{ shirt: 'not-a-variant' as TemariEquipped['shirt'] }}
             />,
         ).container;
         expect([...paintedColors(unknown)]).toContain(

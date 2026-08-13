@@ -6,8 +6,11 @@ import {
     BADGE_ABILITY,
     BADGE_LABELS,
     RARITY_BAND_COUNT,
+    RARITY_HEADBAND,
+    RARITY_INK,
     RARITY_LABELS,
     RARITY_ORDER,
+    RARITY_TEXT,
     avgCadenceFromDetail,
     badgeEmblem,
     badgeName,
@@ -52,6 +55,36 @@ describe('RARITY_LABELS', () => {
             epic: 'Epic',
             legendary: 'Legendary',
         });
+    });
+});
+
+// The fill-vs-text rule from docs/design-tokens.md, as a test: the vivid value
+// is the fill, the `-ink` value is the only one that may carry text on paper.
+// Shipping `text-rarity-legendary` on a cream surface is the bug this catches.
+describe('rarity text colours', () => {
+    it('keeps RARITY_TEXT on the vivid fill, for the card frame only', () => {
+        RARITY_ORDER.forEach((r) => {
+            expect(RARITY_TEXT[r]).toBe(`text-rarity-${r}`);
+        });
+    });
+
+    it('gives RARITY_INK the -ink variant for every tier', () => {
+        RARITY_ORDER.forEach((r) => {
+            expect(RARITY_INK[r]).toBe(`text-rarity-${r}-ink`);
+        });
+    });
+});
+
+describe('RARITY_HEADBAND', () => {
+    it('gives every tier from rare up its own headband variant', () => {
+        expect(RARITY_HEADBAND.rare).toBe('rare');
+        expect(RARITY_HEADBAND.epic).toBe('epic');
+        expect(RARITY_HEADBAND.legendary).toBe('legendary');
+    });
+
+    it('collapses only the two cheapest tiers, since there are four variants for five tiers', () => {
+        expect(new Set(Object.values(RARITY_HEADBAND)).size).toBe(4);
+        expect(RARITY_HEADBAND.common).toBe(RARITY_HEADBAND.uncommon);
     });
 });
 

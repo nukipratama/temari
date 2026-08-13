@@ -38,10 +38,10 @@ Served by the `index` method of [CardController](../../app/Http/Controllers/Card
 
 That presenter is the single owner of the card shape. It holds the rarity counts, both edition strategies (a bulk index map for the grid, one aggregate query for a single card), the column whitelist that keeps internal columns out of Inertia, the mood fallback, and the `CardFlavor` payload. The grid, the card's full view on [[run-detail]], and the pending-reveal shared prop in [GamificationProps](../../app/Services/Inertia/GamificationProps.php) all read it, so the three can't drift apart.
 
-The page component [KoleksiKartu](../../resources/js/pages/Collection/Cards.tsx) renders:
+The page component [Cards](../../resources/js/pages/Collection/Cards.tsx) renders:
 
 - A **featured banner** (`SlimBanner` → [FeaturedCardHero](../../resources/js/components/card/FeaturedCardHero.tsx)) showing the headline card. With no rarity filter the controller's `featuredCard` method picks by `FIELD(rarity, 'legendary', …)` then newest — so the rarest recent card leads. Its Temari flavor line streams through [AnalysisStatus](../../resources/js/components/temari/AnalysisStatus.tsx) (see [[ai-pipeline]]).
-- A **rarity filter** (`RarityFilter`) — pills per rarity with live counts, plus a client-side search box and a sort selector (Terbaru / Tingkat / Nama). Search + sort run on the already-loaded page via a `useDeferredValue` pass so typing stays smooth.
+- A **rarity filter** (`RarityFilter`) — pills per rarity with live counts, plus a client-side search box and a sort selector (Newest / Rarity / Name). Search + sort run on the already-loaded page via a `useDeferredValue` pass so typing stays smooth.
 - The **card grid** — each cell is a [Kartu](../../resources/js/components/card/Kartu.tsx), the full card face: route glyph ([RouteGlyph](../../resources/js/components/card/RouteGlyph.tsx)), HR-zone bar ([ZoneBar](../../resources/js/components/card/ZoneBar.tsx)), badges, and stats. ([KartuMini](../../resources/js/components/card/KartuMini.tsx) is the compact variant used elsewhere, e.g. the dashboard.)
 - A **legendary tease** card when the user owns zero legendaries, hinting how to unlock one.
 

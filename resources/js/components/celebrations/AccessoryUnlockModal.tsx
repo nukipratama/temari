@@ -9,7 +9,7 @@ import TemariProto from '@/components/temari/TemariProto';
 import { useModal } from '@/hooks/useModal';
 import { keyToPreviewEquipped } from '@/lib/equippedAccessories';
 
-interface AksesoriUnlockModalProps {
+interface AccessoryUnlockModalProps {
     unlock: UnlockFlash | null;
     onClose: () => void;
 }
@@ -19,13 +19,13 @@ interface AksesoriUnlockModalProps {
  * the takeover (AppShell passes only major grants, the inbox passes a replay the
  * user asked for).
  */
-export default function AksesoriUnlockModal({
+export default function AccessoryUnlockModal({
     unlock,
     onClose,
-}: Readonly<AksesoriUnlockModalProps>) {
+}: Readonly<AccessoryUnlockModalProps>) {
     const equipped = unlock
         ? keyToPreviewEquipped(unlock.unlock_key)
-        : { headband: 'epik' as const };
+        : { headband: 'epic' as const };
     const panelRef = useRef<HTMLDivElement>(null);
 
     useModal(unlock !== null, panelRef, onClose);
@@ -39,7 +39,7 @@ export default function AksesoriUnlockModal({
         <AnimatePresence>
             {unlock !== null && (
                 <motion.div
-                    key="aksesori-backdrop"
+                    key="accessory-backdrop"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -50,11 +50,11 @@ export default function AksesoriUnlockModal({
                     }}
                 >
                     <motion.div
-                        key="aksesori-panel"
+                        key="accessory-panel"
                         ref={panelRef}
                         role="dialog"
                         aria-modal="true"
-                        aria-labelledby="aksesori-unlock-title"
+                        aria-labelledby="accessory-unlock-title"
                         initial={{ opacity: 0, y: 24, scale: 0.97 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 16, scale: 0.97 }}
@@ -120,7 +120,7 @@ export default function AksesoriUnlockModal({
                                 ★ New accessory
                             </div>
                             <h2
-                                id="aksesori-unlock-title"
+                                id="accessory-unlock-title"
                                 className="mb-6 font-display text-[36px] leading-[0.95] tracking-[-0.02em] text-cream"
                             >
                                 <em className="italic text-horizon">

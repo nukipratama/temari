@@ -85,7 +85,7 @@ export default function SplitsSparkline({
                     {formatPace(first)} → {formatPace(last)}
                 </div>
             </header>
-            <div className="flex h-[72px] items-end gap-1.5">
+            <div className="flex items-end gap-1.5">
                 {bars.map((b, i) => {
                     // Widen the floor->ceiling spread (22%..100%) so small pace
                     // differences are still visible rather than a flat wall.
@@ -97,15 +97,20 @@ export default function SplitsSparkline({
                             key={`${b.from}-${b.to}`}
                             className="flex min-w-0 flex-1 flex-col items-center gap-1.5"
                         >
-                            <div
-                                className={cn(
-                                    'w-full min-h-[8px] rounded-sm transition-opacity',
-                                    isBest ? 'bg-horizon' : 'bg-cream/35',
-                                )}
-                                style={{ height: `${heightPct}%` }}
-                                aria-label={`Km ${kmLabel(b)}: ${formatPace(b.pace)}`}
-                                title={`Km ${kmLabel(b)} · ${formatPace(b.pace)}/km`}
-                            />
+                            {/* The bar's percentage height needs a definite track to
+                                resolve against; on an auto-height flex column it
+                                collapses to the min-height floor. */}
+                            <div className="flex h-[72px] w-full items-end">
+                                <div
+                                    className={cn(
+                                        'w-full min-h-[8px] rounded-sm transition-opacity',
+                                        isBest ? 'bg-horizon' : 'bg-cream/35',
+                                    )}
+                                    style={{ height: `${heightPct}%` }}
+                                    aria-label={`Km ${kmLabel(b)}: ${formatPace(b.pace)}`}
+                                    title={`Km ${kmLabel(b)} · ${formatPace(b.pace)}/km`}
+                                />
+                            </div>
                             <div
                                 className={cn(
                                     'font-mono text-[11px] tabular-nums text-ink-on-sky',
@@ -125,12 +130,14 @@ export default function SplitsSparkline({
                     // Fixed height (out of scale), dashed cream ghost, visible "remainder" key
                     // since the sparkline has no legend.
                     <div className="ml-1 flex min-w-0 flex-1 flex-col items-center gap-1.5">
-                        <div
-                            className="min-h-[8px] w-full rounded-sm border border-dashed border-cream/30 bg-cream/12"
-                            style={{ height: '38%' }}
-                            aria-label={`Remainder: ${formatPace(partialPaceSec)}/km`}
-                            title={`Remainder · ${formatPace(partialPaceSec)}/km`}
-                        />
+                        <div className="flex h-[72px] w-full items-end">
+                            <div
+                                className="min-h-[8px] w-full rounded-sm border border-dashed border-cream/30 bg-cream/12"
+                                style={{ height: '38%' }}
+                                aria-label={`Remainder: ${formatPace(partialPaceSec)}/km`}
+                                title={`Remainder · ${formatPace(partialPaceSec)}/km`}
+                            />
+                        </div>
                         <div className="font-mono text-[11px] italic text-ink-on-sky">
                             remainder
                         </div>

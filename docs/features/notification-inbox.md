@@ -12,7 +12,7 @@ code_refs:
   - resources/js/pages/Inbox.tsx
   - resources/js/components/inbox/InboxRow.tsx
   - resources/js/components/NotificationBell.tsx
-  - resources/js/components/celebrations/AksesoriUnlockModal.tsx
+  - resources/js/components/celebrations/AccessoryUnlockModal.tsx
 ---
 
 # Notification inbox
@@ -51,7 +51,7 @@ Two row kinds carry enough to re-run the celebration they are a record of:
   full-screen `CardReveal` mounted in [AppShell](../../resources/js/layouts/AppShell.tsx#L93)
   plays again. Same endpoint and same sequence the run detail page uses.
 - **Unlock** rows carry the celebration verbatim, so the page hands it straight back to
-  [AksesoriUnlockModal](../../resources/js/components/celebrations/AksesoriUnlockModal.tsx) — the
+  [AccessoryUnlockModal](../../resources/js/components/celebrations/AccessoryUnlockModal.tsx) — the
   same takeover that played at grant time. The modal no longer gates itself on `is_major`: the
   caller owns that call, so AppShell still only takes over for a major grant while a replay the
   user explicitly asked for always gets the full thing.

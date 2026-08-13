@@ -6,7 +6,7 @@ import type { SharedProps, UnlockFlash } from '@/types/inertia';
 
 import AiCatchingUpBanner from '@/components/AiCatchingUpBanner';
 import AiOutageBanner from '@/components/AiOutageBanner';
-import AksesoriUnlockModal from '@/components/celebrations/AksesoriUnlockModal';
+import AccessoryUnlockModal from '@/components/celebrations/AccessoryUnlockModal';
 import ErrorBanner from '@/components/ErrorBanner';
 import FlashNotice from '@/components/FlashNotice';
 import MobileBottomNav from '@/components/MobileBottomNav';
@@ -84,7 +84,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
 
                 <MobileBottomNav />
                 {/* Celebration overlays are sequenced, not stacked: CardReveal (a pack
-                reveal) takes priority over the aksesori-unlock modal, which in turn
+                reveal) takes priority over the accessory-unlock modal, which in turn
                 takes priority over the UnlockToast, so a sync that fires more than
                 one celebration plays them back-to-back instead of all at once. */}
                 {!pending && majorUnlock === null && <UnlockToast />}
@@ -93,7 +93,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                         <CardReveal pending={pending} />
                     </Suspense>
                 )}
-                <AksesoriUnlockModal
+                <AccessoryUnlockModal
                     unlock={pending ? null : majorUnlock}
                     onClose={() => setMajorUnlock(null)}
                 />

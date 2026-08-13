@@ -9,7 +9,7 @@ import TemariProto, { type TemariProtoProps } from './TemariProto';
 /**
  * The mascot as the signed-in user has dressed it — reads the globally-shared
  * `equippedAccessories` and renders TemariProto with them, so a hard-earned
- * headband/medal shows up everywhere Temari appears, not just on the Aksesori
+ * headband/medal shows up everywhere Temari appears, not just on the Accessories
  * page. Use this for any ambient mascot. Sites that must show a *specific*
  * accessory (the equip-picker preview, the just-unlocked celebration) render
  * TemariProto directly with an explicit `equipped`.
