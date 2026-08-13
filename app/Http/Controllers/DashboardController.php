@@ -64,7 +64,7 @@ class DashboardController extends Controller
                 ->get();
         };
 
-        return Inertia::render('Today', [
+        return Inertia::render('Home', [
             'briefing' => fn (): BriefingResult => $briefingComposer->compose($user, $today),
             'load' => fn (): ?array => $trainingLoad->summary($user, $today),
             'snapshot' => fn (): ?WeeklySnapshot => WeeklySnapshot::query()
