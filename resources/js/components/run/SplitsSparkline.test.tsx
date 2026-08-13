@@ -25,6 +25,36 @@ describe('SplitsSparkline', () => {
         expect(screen.getByLabelText(/Km 3:/)).toBeInTheDocument();
     });
 
+    // A percentage height only resolves against a parent with a definite height.
+    // These bars once sat in an auto-height flex column, so every one of them
+    // collapsed to the 8px min-height floor and the chart read as a flat row.
+    it('hangs every bar in a definite-height track so its percentage resolves', () => {
+        render(
+            <SplitsSparkline paceSec={[380, 360, 345]} partialPaceSec={300} />,
+        );
+        const bars = [
+            ...screen.getAllByLabelText(/^Km \d/),
+            screen.getByLabelText(/^Remainder:/),
+        ];
+        expect(bars).toHaveLength(4);
+        for (const bar of bars) {
+            expect((bar as HTMLElement).style.height).toMatch(/%$/);
+            expect(bar.parentElement?.className).toContain('h-[72px]');
+        }
+    });
+
+    it('scales bar height with pace, fastest km tallest', () => {
+        render(<SplitsSparkline paceSec={[400, 370, 340]} />);
+        const heights = [1, 2, 3].map((km) =>
+            Number.parseFloat(
+                screen.getByLabelText(new RegExp(`^Km ${km}:`)).style.height,
+            ),
+        );
+        expect(heights[0]).toBeLessThan(heights[1]);
+        expect(heights[1]).toBeLessThan(heights[2]);
+        expect(heights[2]).toBe(100);
+    });
+
     it('buckets long runs into averaged segments instead of one bar per km', () => {
         const marathon = Array.from({ length: 42 }, (_, i) => 460 + i);
         render(<SplitsSparkline paceSec={marathon} />);
