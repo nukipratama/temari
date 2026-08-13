@@ -1,6 +1,10 @@
 import { Head } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import TemariProto, {
+    TEMARI_EXPRESSIONS,
+    type TemariEquipped,
+} from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
 import {
     type ContrastRow,
@@ -16,6 +20,26 @@ import { cardVariants } from '@/lib/variants';
 
 const CARD_TONES = ['card', 'onSky', 'empty'] as const;
 const CARD_PADDINGS = ['panel', 'card', 'hero'] as const;
+
+const SLOT_SPECIMENS: ReadonlyArray<[string, TemariEquipped]> = [
+    ['headband', { headband: 'legendaris' }],
+    ['shirt', { kaus: 'hujan' }],
+    ['shorts', { celana: 'split' }],
+    ['shoes', { sepatu: 'tahan' }],
+    ['medal', { medal: 'platina' }],
+    ['aura', { aura: 'angin' }],
+];
+
+const FULLY_EQUIPPED: TemariEquipped = {
+    headband: 'legendaris',
+    kaus: 'hujan',
+    celana: 'split',
+    sepatu: 'tahan',
+    medal: 'platina',
+    aura: 'angin',
+};
+
+const SEASON_PHASES = ['base', 'build', 'peak', 'taper'] as const;
 
 const TYPE_SPECIMENS: ReadonlyArray<[string, string, string]> = [
     ['display-lg', 'font-display italic text-display-lg', 'Eight point two'],
@@ -57,6 +81,20 @@ function Swatch({ name, value }: Readonly<{ name: string; value: string }>) {
                 {name.replace('--color-', '')}
             </div>
             <div className="text-meta">{value}</div>
+        </div>
+    );
+}
+
+function Specimen({
+    label,
+    children,
+}: Readonly<{ label: string; children: React.ReactNode }>) {
+    return (
+        <div className="w-[124px]">
+            <div className="flex h-[112px] items-center justify-center">
+                {children}
+            </div>
+            <div className="mt-1 text-center text-meta">{label}</div>
         </div>
     );
 }
@@ -410,11 +448,103 @@ export default function Design() {
                     </Section>
 
                     <Section
-                        title="Mascot, cards and screens"
-                        note="Lands with S2.2, alongside the rebuilt mascot and card art. The sections mount here so they read against the same live token set."
+                        title="Mascot faces"
+                        note="The ten drawn states, generated from one geometry so every face shares a skull. The halo carries mood through colour and weight and is always a closed ring, never a fill, so it can't be misread as a progress meter."
+                    >
+                        <div className="flex flex-wrap gap-2.5">
+                            {TEMARI_EXPRESSIONS.map((expression) => (
+                                <Specimen key={expression} label={expression}>
+                                    <TemariProto
+                                        pose={expression}
+                                        size={96}
+                                        animate={false}
+                                    />
+                                </Specimen>
+                            ))}
+                        </div>
+                    </Section>
+
+                    <Section
+                        title="Mascot on sky"
+                        note="The one dark placement. Only the silhouette outline swaps; the face stays indigo because it sits on the cream body either way."
+                    >
+                        <div className="flex flex-wrap gap-2.5 rounded-md bg-sky pad-card">
+                            {(
+                                [
+                                    'resting',
+                                    'challenging',
+                                    'celebrating',
+                                ] as const
+                            ).map((expression) => (
+                                <Specimen key={expression} label={expression}>
+                                    <TemariProto
+                                        pose={expression}
+                                        tone="sky"
+                                        size={96}
+                                        animate={false}
+                                    />
+                                </Specimen>
+                            ))}
+                        </div>
+                    </Section>
+
+                    <Section
+                        title="Wearable slots"
+                        note="Six slots, 25 catalogue items. Garments are flat bands clipped to the body circle, so they take the ball's curve for free and can never escape the silhouette. Colour carries rarity, a small detail carries the theme."
+                    >
+                        <div className="flex flex-wrap gap-2.5">
+                            {SLOT_SPECIMENS.map(([slot, equipped]) => (
+                                <Specimen key={slot} label={slot}>
+                                    <TemariProto
+                                        size={96}
+                                        equipped={equipped}
+                                        animate={false}
+                                    />
+                                </Specimen>
+                            ))}
+                            <Specimen label="all six">
+                                <TemariProto
+                                    pose="challenging"
+                                    size={96}
+                                    equipped={FULLY_EQUIPPED}
+                                    animate={false}
+                                />
+                            </Specimen>
+                            <Specimen label="all six · 28px">
+                                <TemariProto
+                                    pose="challenging"
+                                    size={28}
+                                    equipped={FULLY_EQUIPPED}
+                                    animate={false}
+                                />
+                            </Specimen>
+                        </div>
+                    </Section>
+
+                    <Section
+                        title="Season coverage"
+                        note="Plan tab only. Discrete rather than procedural: each phase is a fixed band set at rising density, and taper keeps peak's coverage and adds a rested shine instead of unwinding it."
+                    >
+                        <div className="flex flex-wrap gap-2.5">
+                            {SEASON_PHASES.map((phase) => (
+                                <Specimen key={phase} label={phase}>
+                                    <TemariProto
+                                        pose="observational"
+                                        size={96}
+                                        seasonPhase={phase}
+                                        animate={false}
+                                    />
+                                </Specimen>
+                            ))}
+                        </div>
+                    </Section>
+
+                    <Section
+                        title="Cards and screens"
+                        note="Mounts here so the card art reads against the same live token set as everything above."
                     >
                         <div className="rounded-md border border-dashed border-line-strong pad-hero text-meta">
-                            Reserved for S2.2
+                            Reserved for the card art slice
                         </div>
                     </Section>
                 </div>

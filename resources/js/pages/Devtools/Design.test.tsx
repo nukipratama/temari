@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { TEMARI_EXPRESSIONS } from '@/components/temari/TemariProto';
+
 import Design from './Design';
 
 const TOKENS: Record<string, string> = {
@@ -95,10 +97,34 @@ describe('Devtools/Design', () => {
         ).toBeInTheDocument();
     });
 
-    it('leaves a hook for the S2.2 mascot, card and screen sections', () => {
+    it('renders every mascot face, slot and season phase against the live tokens', () => {
+        cleanup = declareTokens();
+        const { container } = render(<Design />);
+
+        for (const heading of [
+            'Mascot faces',
+            'Mascot on sky',
+            'Wearable slots',
+            'Season coverage',
+        ]) {
+            expect(
+                screen.getByRole('heading', { name: heading }),
+            ).toBeInTheDocument();
+        }
+
+        for (const expression of TEMARI_EXPRESSIONS) {
+            expect(
+                container.querySelector(`[data-expression="${expression}"]`),
+            ).toBeInTheDocument();
+        }
+    });
+
+    it('leaves a hook for the card art sections', () => {
         cleanup = declareTokens();
         render(<Design />);
 
-        expect(screen.getByText('Reserved for S2.2')).toBeInTheDocument();
+        expect(
+            screen.getByText('Reserved for the card art slice'),
+        ).toBeInTheDocument();
     });
 });
