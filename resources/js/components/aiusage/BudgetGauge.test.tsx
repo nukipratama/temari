@@ -10,6 +10,8 @@ function budget(overrides: Partial<Budget> = {}): Budget {
         todayCost: 0.02,
         dailyCeiling: 0.1,
         currency: 'USD',
+        trippedAt: null,
+        degradedFills: 0,
         ...overrides,
     };
 }
@@ -51,6 +53,48 @@ describe('BudgetGauge', () => {
 
         expect(
             screen.getByText('Over the daily limit by $0.05.'),
+        ).toBeInTheDocument();
+    });
+
+    it('says nothing about degradation while the ceiling has not tripped', () => {
+        render(<BudgetGauge budget={budget()} />);
+
+        expect(screen.queryByText(/rule-based/i)).not.toBeInTheDocument();
+    });
+
+    it('names the trip time and the rule-based block count once tripped', () => {
+        render(
+            <BudgetGauge
+                budget={budget({
+                    todayCost: 5.4,
+                    dailyCeiling: 5,
+                    trippedAt: '2026-08-14T14:32:07+07:00',
+                    degradedFills: 12,
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByText(
+                'Ceiling tripped 14:32 · 12 blocks served rule-based',
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('singularises the count for a lone degraded block', () => {
+        render(
+            <BudgetGauge
+                budget={budget({
+                    trippedAt: '2026-08-14T09:05:00+07:00',
+                    degradedFills: 1,
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByText(
+                'Ceiling tripped 09:05 · 1 block served rule-based',
+            ),
         ).toBeInTheDocument();
     });
 

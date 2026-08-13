@@ -158,14 +158,26 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      * Refuse to bill while generation is paused (cost ceiling / AI off / Azure
      * unset). The cap is otherwise enforced only at dispatch time, so a job
      * dispatched just before the ceiling tripped would still call the LLM; this
-     * closes that window. Reverts the given rows to Pending (never Failed, and
-     * before markProcessing, so no `attempts` burn) and returns true to tell
-     * handle() to stop; ai:self-heal re-dispatches once generation resumes.
+     * closes that window. Returns true to tell handle() to stop.
+     *
+     * Under the spend ceiling the rows are served from the deterministic filler,
+     * matching what dispatch would have done had the ceiling been hit a moment
+     * earlier. Every other pause reverts them to Pending (never Failed, and
+     * before markProcessing, so no `attempts` burn) for ai:self-heal to
+     * re-dispatch once generation resumes.
      *
      * @param  iterable<Analysis>  $rows
      */
     protected function haltForPausedGeneration(AnalysisService $service, iterable $rows): bool
     {
+        if ($service->costCeilingDegraded()) {
+            foreach ($rows as $row) {
+                $service->degradeToRuleBased($row);
+            }
+
+            return true;
+        }
+
         if (! $service->generationPaused()) {
             return false;
         }

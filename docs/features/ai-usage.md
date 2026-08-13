@@ -3,7 +3,7 @@ title: AI usage dashboard
 description: The ops-gated token-usage and cost dashboard — by kind, user and deployment, with daily spend against a ceiling.
 tags: [feature, ai]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-08-14
 code_refs:
   - resources/js/pages/AiUsage.tsx
   - resources/js/pages/AiUsage/helpers.ts
@@ -14,6 +14,7 @@ code_refs:
   - resources/js/components/aiusage/UsageFilters.tsx
   - resources/js/components/aiusage/UsageKpis.tsx
   - resources/js/components/aiusage/BudgetGauge.tsx
+  - app/Services/AI/CostCeilingLedger.php
   - resources/js/components/aiusage/DailyChart.tsx
   - resources/js/components/aiusage/AttentionArea.tsx
   - resources/js/components/aiusage/DeploymentTable.tsx
@@ -32,7 +33,7 @@ code_refs:
 
 ## System dependencies
 
-- **Cost ceiling** — spend is bounded by [[idempotent-dispatch-cost-ceiling]] (dispatch-time) and the execution-time guard in `AnalyzeBaseJob`.
+- **Cost ceiling** — spend is bounded by [[idempotent-dispatch-cost-ceiling]] (dispatch-time) and the execution-time guard in `AnalyzeBaseJob`. Past the ceiling narration is served rule-based rather than paused, per [[cost-ceiling-degrades-to-rule-based]].
 - **Analytics DB** — metering rows live on the separate `analytics` connection; see [[analytics-db]].
 - **AI pipeline** — all analyses are produced by [[ai-pipeline]].
 
@@ -41,7 +42,7 @@ code_refs:
 [AiUsage.tsx](../../resources/js/pages/AiUsage.tsx) is pure composition; each block below is its own component under [components/aiusage/](../../resources/js/components/aiusage/AttentionArea.tsx), and the shared formatting and payload shapes live in [helpers.ts](../../resources/js/pages/AiUsage/helpers.ts) / [types.ts](../../resources/js/pages/AiUsage/types.ts). For a chosen date window it renders:
 
 - **KPI tiles** via [UsageKpis](../../resources/js/components/aiusage/UsageKpis.tsx) over [KpiTile](../../resources/js/components/dashboard/KpiTile.tsx) — total tokens, estimated cost, prompt tokens (and prompt share), plus a fourth tile.
-- A **budget gauge** ([BudgetGauge](../../resources/js/components/aiusage/BudgetGauge.tsx)) comparing the window's spend against the configured daily ceiling.
+- A **budget gauge** ([BudgetGauge](../../resources/js/components/aiusage/BudgetGauge.tsx)) comparing the window's spend against the configured daily ceiling, plus — once the ceiling has tripped today — the trip time and how many blocks were served rule-based as a result, recorded by [CostCeilingLedger](../../app/Services/AI/CostCeilingLedger.php).
 - Breakdown tables: **by kind** ([KindTable](../../resources/js/components/aiusage/KindTable.tsx), which narrator/analysis), **by user** ([UserTable](../../resources/js/components/aiusage/UserTable.tsx)), and **by deployment** ([DeploymentTable](../../resources/js/components/aiusage/DeploymentTable.tsx), which Azure model deployment served the call). All three share the generic [DataTable](../../resources/js/components/ui/DataTable.tsx) shell, which takes its empty state from the caller.
 - Each **by kind** row carries an agent summary line under its name — `3.5 langkah · 71% cache · 18% reasoning`. Every narrator is a tool-calling agent, so one row can span several model turns: without the step count an expensive block is indistinguishable from a chatty one. The line is **absent, not zeroed**, for kinds whose rows predate those columns, since zero would read as "never cached, never reasoned" rather than "never measured".
 - A **daily** series for the spend-over-time view ([DailyChart](../../resources/js/components/aiusage/DailyChart.tsx)).

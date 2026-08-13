@@ -5,7 +5,9 @@ import ProgressBar from '@/components/ui/ProgressBar';
 import { formatCost } from '@/pages/AiUsage/helpers';
 
 export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
-    const { todayCost, dailyCeiling, currency } = budget;
+    const { todayCost, dailyCeiling, currency, trippedAt, degradedFills } =
+        budget;
+    const trippedTime = trippedAt?.slice(11, 16);
     const hasCeiling = dailyCeiling !== null && dailyCeiling > 0;
     const ratio = hasCeiling ? todayCost / dailyCeiling : 0;
     const overBudget = hasCeiling && ratio > 1;
@@ -52,6 +54,13 @@ export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
                 <p className="mt-2 text-xs font-semibold text-mood-gassed">
                     Over the daily limit by{' '}
                     {formatCost(todayCost - dailyCeiling, currency)}.
+                </p>
+            )}
+
+            {trippedTime !== undefined && (
+                <p className="mt-2 font-mono text-xs text-ink-2 tabular-nums">
+                    Ceiling tripped {trippedTime} · {degradedFills} block
+                    {degradedFills === 1 ? '' : 's'} served rule-based
                 </p>
             )}
 

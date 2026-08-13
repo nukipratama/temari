@@ -7,11 +7,14 @@ use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Jobs\AI\AnalyzeRowJob;
 use App\Models\AI\Analysis;
+use App\Models\AI\TokenUsage;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use Illuminate\Contracts\Queue\Job as JobContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
@@ -150,6 +153,26 @@ it('reverts the row to Pending without billing when generation is paused', funct
     expect($fresh->status)->toBe(AnalysisStatus::Pending)
         ->and($fresh->attempts)->toBe(0)  // never reached markProcessing
         ->and($fresh->content)->toBeNull();
+});
+
+it('serves the row rule-based without billing when the spend ceiling tripped mid-flight', function (): void {
+    // Azure stays configured, so the only stop is the budget: the row must not
+    // rest Pending waiting for a resume that cannot come before midnight.
+    config(['azure_openai.daily_cost_ceiling' => 1.0]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
+    TokenUsage::query()->create([
+        'kind' => 'briefing', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
+        'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
+    ]);
+    $row = makeRowForRowJobTest();
+
+    fakeSuccessRowJob($row->id)->handle(app(AnalysisService::class));
+
+    $fresh = $row->fresh();
+    expect($fresh->status)->toBe(AnalysisStatus::Done)
+        ->and($fresh->attempts)->toBe(0)
+        ->and($fresh->content)->toBe(app(RuleBasedNarrationFiller::class)->fillFor($fresh))
+        ->and($fresh->content)->not->toBe('generated');
 });
 
 it('marks row Failed without rethrowing for UnavailableException', function (): void {
