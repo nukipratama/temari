@@ -16,6 +16,8 @@ code_refs:
 
 **Status:** Accepted (documented 2026-07-04). Supersedes the "no self-healing" stance of [[per-block-manual-retry]].
 
+> **One claim below has since gone stale (noted 2026-08-14).** "`RuleBasedNarrationFiller` is now demo-seed-only" was true when this was written; it is not now. Three production paths reach the filler on real accounts: the narration age cutoff ([[twelve-week-narration-cutoff]]), the Azure content-filter fallback in [AnalyzeRowJob.php:49](app/Jobs/AI/AnalyzeRowJob.php#L49) / [AnalyzeGroupJob.php:135](app/Jobs/AI/AnalyzeGroupJob.php#L135), and the public demo's triggers ([[demo-triggers-served-rule-based]]). The *decision* this note records still holds exactly as written: a **paused** block is still never templated, it rests honestly `Pending`. The filler is now reached where the app has decided not to bill at all, which is a different thing from being unable to bill right now.
+
 ## Context
 
 [[per-block-manual-retry]] chose "failed blocks are never auto-retried, no self-healing" to keep LLM spend predictable. Two problems surfaced under that model:
