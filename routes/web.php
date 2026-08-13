@@ -15,6 +15,7 @@ use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CardController;
 use App\Http\Controllers\ClientErrorController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DevtoolsDesignController;
 use App\Http\Controllers\DevtoolsIndexController;
 use App\Http\Controllers\LegalController;
 use App\Http\Controllers\NotificationPreferenceController;
@@ -219,6 +220,7 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 // line speed; generous enough to not trip Pulse's live-polling requests.
 Route::middleware(['throttle:60,1', 'devtools'])->group(function (): void {
     Route::get('/devtools', DevtoolsIndexController::class)->name('devtools.index');
+    Route::get('/devtools/design', DevtoolsDesignController::class)->name('devtools.design');
     Route::get('/ai-usage', [TokenUsageController::class, 'show'])->name('ai-usage');
     Route::post('/ai-usage/recover', [TokenUsageController::class, 'recover'])->name('ai-usage.recover');
     Route::post('/ai-usage/users/{userId}/retry-failed', [TokenUsageController::class, 'retryFailed'])

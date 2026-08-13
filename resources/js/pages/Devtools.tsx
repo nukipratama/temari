@@ -10,6 +10,12 @@ interface DevtoolsLink {
 
 const LINKS: ReadonlyArray<DevtoolsLink> = [
     {
+        icon: 'mdi:palette-swatch-outline',
+        label: 'Design',
+        desc: 'The token set, type specimens, and the contrast audit read live.',
+        href: '/devtools/design',
+    },
+    {
         icon: 'mdi:currency-usd',
         label: 'AI Usage',
         desc: 'Token spend, budget gauge, and self-heal panel.',
@@ -42,7 +48,7 @@ export default function Devtools() {
                         <li key={link.href}>
                             <a
                                 href={link.href}
-                                className="flex items-center gap-4 rounded-2xl border border-cream-deep bg-cream px-5 py-4 transition hover:border-horizon/40"
+                                className="flex items-center gap-4 rounded-lg border border-cream-deep bg-cream px-5 py-4 transition hover:border-horizon/40"
                             >
                                 <span
                                     aria-hidden
