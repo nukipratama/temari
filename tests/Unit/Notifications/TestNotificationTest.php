@@ -40,11 +40,11 @@ it('routes to the inbox alone over a revoked connection', function (): void {
     expect(new TestNotification()->via($user))->toBe([InAppChannel::class]);
 });
 
-it('routes nowhere for the demo user', function (): void {
+it('routes the demo user to the inbox alone, never outbound', function (): void {
     $user = User::factory()->create(['is_demo' => true]);
     TelegramConnection::factory()->for($user)->create();
 
-    expect(new TestNotification()->via($user))->toBe([]);
+    expect(new TestNotification()->via($user))->toBe([InAppChannel::class]);
 });
 
 it('routes to web push when the user has a subscription', function (): void {

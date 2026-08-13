@@ -14,6 +14,11 @@ interface AccessoryUnlockModalProps {
     onClose: () => void;
 }
 
+/**
+ * Opens for any unlock it is handed: the caller decides whether this one earns
+ * the takeover (AppShell passes only major grants, the inbox passes a replay the
+ * user asked for).
+ */
 export default function AccessoryUnlockModal({
     unlock,
     onClose,
@@ -22,9 +27,8 @@ export default function AccessoryUnlockModal({
         ? keyToPreviewEquipped(unlock.unlock_key)
         : { headband: 'epic' as const };
     const panelRef = useRef<HTMLDivElement>(null);
-    const isOpen = unlock?.is_major === true;
 
-    useModal(isOpen, panelRef, onClose);
+    useModal(unlock !== null, panelRef, onClose);
 
     const handleEquip = () => {
         onClose();
@@ -33,7 +37,7 @@ export default function AccessoryUnlockModal({
 
     return (
         <AnimatePresence>
-            {unlock !== null && unlock.is_major && (
+            {unlock !== null && (
                 <motion.div
                     key="accessory-backdrop"
                     initial={{ opacity: 0 }}

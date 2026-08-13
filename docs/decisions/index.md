@@ -22,7 +22,7 @@ ADRs grouped by the problem they solve, for easier navigation than a flat timeli
 | **Data isolation** | [[analytics-db-separate-connection]] (metering outlives app resets); [[date-cast-utc-shift]] (UTC off-by-one guard) |
 | **Async / resilience** | [[chained-narration]] (connected narration threads); [[strava-circuit-breaker-rate-limit]] (per-client rate-limit guard); [[narrow-trusted-proxy-headers]] (proxy trust behind tunnel); [[trust-all-proxies-cloudflare]] *(superseded)*; [[deferred-recap-windowing]] (window-gated generation) |
 | **AI routing** | [[azure-openai-routing]] (per-narrator-kind deployment selection); [[narration-agents-on-openai-php]] (SDK seam + tool calling); [[demo-user-billing-exclusion]] (demo user omitted from auto-billing); [[demo-triggers-served-rule-based]] (demo triggers filled rule-based); [[scoped-run-qa-not-an-analysis-row]] (Q&A scoped by construction, stored outside the row model) |
-| **Notifications** | [[inbox-is-an-always-on-channel]] (the inbox as an unmuteable third channel) |
+| **Notifications** | [[inbox-is-an-always-on-channel]] (the inbox as an unmuteable third channel); [[demo-notifications-are-inbox-only]] (demo routed to the record, never to an interruption) |
 | **Ops / deploy** | [[fixed-session-cookie]] (stable cookie name); [[defer-config-cache]] (config cache timing); [[telegram-account-linking]] (signed deep-link token) |
 | **Design / branding** | [[temari-keeps-score-persona]] (voice: friend → training partner who keeps score); [[thread-ball-character-rebrand]] (bunny/Daybreak → thread-ball/Threadwork) *(persona half superseded)* |
 
@@ -54,6 +54,7 @@ _Infra & Strava_
 
 _Notifications_
 - [[inbox-is-an-always-on-channel]] — the notification centre is a router channel that is never unwired and never muted
+- [[demo-notifications-are-inbox-only]] — the demo identity has no outbound channel, so the public demo's inbox is populated while nothing leaves the app
 
 _Design_
 - [[thread-ball-character-rebrand]] — full character replacement (bunny → thread-ball) and palette rename (Daybreak → Threadwork), tying the visual identity to the training arc *(its persona stance superseded by [[temari-keeps-score-persona]]; the visual decisions still stand)*

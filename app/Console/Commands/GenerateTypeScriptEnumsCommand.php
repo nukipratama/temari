@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use Override;
+use App\Enums\NotificationKind;
 use App\Enums\PrCategory;
 use App\Enums\Rarity;
 use App\Services\AI\AnalysisStatus;
@@ -33,6 +34,7 @@ final class GenerateTypeScriptEnumsCommand extends Command
         PrCategory::class,
         AnalysisStatus::class,
         AnalysisType::class,
+        NotificationKind::class,
     ];
 
     public function handle(): int

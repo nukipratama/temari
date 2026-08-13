@@ -55,12 +55,12 @@ it('routes to both channels when both are wired', function (): void {
     expect(streakVia($user))->toBe([InAppChannel::class, TelegramChannel::class, IdempotentWebPushChannel::class]);
 });
 
-it('routes nowhere for the demo user', function (): void {
+it('routes the demo user to the inbox alone, never outbound', function (): void {
     $user = User::factory()->create(['is_demo' => true]);
     TelegramConnection::factory()->for($user)->create();
     subscribeToPush($user);
 
-    expect(streakVia($user))->toBe([]);
+    expect(streakVia($user))->toBe([InAppChannel::class]);
 });
 
 it('routes to the inbox alone with no outbound channel wired', function (): void {

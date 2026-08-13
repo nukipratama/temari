@@ -20,7 +20,8 @@ use NotificationChannels\WebPush\WebPushMessage;
  * notification channels work without waiting for a run. Channel-agnostic by
  * design: `via()` fans out to every wired channel (Telegram if connected, web
  * push if subscribed), so the single "Send test notification" action reaches
- * every channel the user has. Never sends on the shared demo identity.
+ * every channel the user has. The shared demo identity resolves to the inbox
+ * alone, so a test send there never leaves the app.
  */
 class TestNotification extends Notification implements ShouldQueue
 {
@@ -38,10 +39,6 @@ class TestNotification extends Notification implements ShouldQueue
      */
     public function via(User $notifiable): array
     {
-        if ($notifiable->is_demo) {
-            return [];
-        }
-
         return app(ChannelRouter::class)->channelsFor($notifiable);
     }
 

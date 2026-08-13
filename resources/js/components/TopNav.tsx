@@ -3,6 +3,7 @@ import { Link, usePage } from '@inertiajs/react';
 import type { SharedProps } from '@/types/inertia';
 
 import BrandMark from '@/components/BrandMark';
+import NotificationBell from '@/components/NotificationBell';
 import StravaSyncBadge from '@/components/StravaSyncBadge';
 import UserMenu from '@/components/UserMenu';
 import { cn } from '@/lib/cn';
@@ -41,10 +42,13 @@ export default function TopNav() {
                 <div className="flex items-center gap-3.5">
                     <StravaSyncBadge sync={stravaSync} />
                     {user && (
-                        <UserMenu
-                            name={user.name}
-                            avatarUrl={user.avatar_url}
-                        />
+                        <>
+                            <NotificationBell />
+                            <UserMenu
+                                name={user.name}
+                                avatarUrl={user.avatar_url}
+                            />
+                        </>
                     )}
                 </div>
             </div>

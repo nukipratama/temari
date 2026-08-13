@@ -53,13 +53,14 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
     public function via(User $notifiable): array
     {
         $eligibility = app(NotificationEligibility::class);
-        if (! $eligibility->isNotifiable($this->analysis) || $notifiable->is_demo) {
+        if (! $eligibility->isNotifiable($this->analysis)) {
             return [];
         }
 
-        // Where the user can be reached, including their per-channel mutes. A
-        // forced send may skip the *whether* gates below, but never this one:
-        // muting a channel is a routing decision, not a per-message one.
+        // Where the user can be reached, including their per-channel mutes and
+        // the demo identity's inbox-only routing. A forced send may skip the
+        // *whether* gates below, but never this one: muting a channel is a
+        // routing decision, not a per-message one.
         $channels = app(ChannelRouter::class)->channelsFor($notifiable);
 
         // A manual push bypasses the recency + opt-in gates; the automatic path

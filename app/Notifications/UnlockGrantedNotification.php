@@ -46,10 +46,6 @@ class UnlockGrantedNotification extends Notification implements ShouldQueue
      */
     public function via(User $notifiable): array
     {
-        if ($notifiable->is_demo) {
-            return [];
-        }
-
         return app(ChannelRouter::class)->inAppOnly();
     }
 

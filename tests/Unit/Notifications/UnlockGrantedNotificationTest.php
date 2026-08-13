@@ -33,10 +33,10 @@ it('routes to the inbox only, even for a user wired on every outbound channel', 
         ->toBe([InAppChannel::class]);
 });
 
-it('routes nowhere for the demo user', function (): void {
+it('routes the demo user to the inbox, like everyone else', function (): void {
     $user = User::factory()->create(['is_demo' => true]);
 
-    expect(new UnlockGrantedNotification(unlockCelebration())->via($user))->toBe([]);
+    expect(new UnlockGrantedNotification(unlockCelebration())->via($user))->toBe([InAppChannel::class]);
 });
 
 // The payload is the flash payload verbatim, so the same takeover component can

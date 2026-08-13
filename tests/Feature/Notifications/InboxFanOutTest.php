@@ -116,3 +116,17 @@ it('carries enough payload to replay the card reveal weeks later', function (): 
 
     expect($user->fresh()->pending_reveal_card_id)->toBe($card->id);
 });
+
+// The public demo is the shop window: the notification centre has to be
+// populated there, and nothing may leave the app on the shared identity.
+it('records the demo inbox row and sends nothing outbound', function (): void {
+    expectPushSends(0);
+    $demo = fullyWiredUser();
+    $demo->forceFill(['is_demo' => true])->save();
+    $analysis = postRunAnalysisFor($demo->fresh());
+
+    $demo->fresh()->notify(new AnalysisReadyNotification($analysis));
+
+    Http::assertNothingSent();
+    expect(InboxNotification::query()->where('user_id', $demo->id)->count())->toBe(1);
+});
