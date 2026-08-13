@@ -12,3 +12,6 @@ export const ANALYSIS_STATUS_VALUES = ['pending', 'queued', 'processing', 'done'
 
 export type AnalysisType = 'briefing_mascot_voice' | 'briefing_featured_kartu_voice' | 'post_run_speech' | 'run_insight' | 'weekly_recap' | 'pr_context' | 'card_flavor' | 'aku_profile_voice' | 'monthly_recap';
 export const ANALYSIS_TYPE_VALUES = ['briefing_mascot_voice', 'briefing_featured_kartu_voice', 'post_run_speech', 'run_insight', 'weekly_recap', 'pr_context', 'card_flavor', 'aku_profile_voice', 'monthly_recap'] as const;
+
+export type NotificationKind = 'post_run' | 'weekly_recap' | 'monthly_recap' | 'streak_reminder' | 'unlock' | 'test';
+export const NOTIFICATION_KIND_VALUES = ['post_run', 'weekly_recap', 'monthly_recap', 'streak_reminder', 'unlock', 'test'] as const;

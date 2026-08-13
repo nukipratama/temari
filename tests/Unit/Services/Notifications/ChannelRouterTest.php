@@ -142,6 +142,14 @@ describe('scopeReachable', function (): void {
         expect(User::query()->where($this->router->scopeReachable(...))->count())->toBe(0);
     });
 
+    it('excludes the demo identity even when it is fully wired', function (): void {
+        $demo = userWithTelegram();
+        $demo->forceFill(['is_demo' => true])->save();
+        $demo->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
+
+        expect(User::query()->where($this->router->scopeReachable(...))->count())->toBe(0);
+    });
+
     // The query filter and the per-user check must not disagree, or the command
     // selects users the notification then refuses to send to.
     it('agrees with channelsFor for every combination', function (): void {
@@ -152,10 +160,12 @@ describe('scopeReachable', function (): void {
         $muted = userWithTelegram();
         NotificationPreference::factory()->for($muted)->create(['telegram_enabled' => false]);
         $none = User::factory()->create();
+        $demo = userWithTelegram();
+        $demo->forceFill(['is_demo' => true])->save();
 
         $selected = User::query()->where($this->router->scopeReachable(...))->pluck('id')->all();
 
-        foreach ([$both, $telegramOnly, $pushOnly, $muted, $none] as $user) {
+        foreach ([$both, $telegramOnly, $pushOnly, $muted, $none, $demo] as $user) {
             expect(in_array($user->id, $selected, true))
                 ->toBe($this->router->canReach($user->fresh()));
         }
@@ -185,5 +195,17 @@ describe('the in-app inbox', function (): void {
     // inbox counted, both would think every user is reachable.
     it('does not make canReach trivially true', function (): void {
         expect($this->router->canReach(User::factory()->create()))->toBeFalse();
+    });
+
+    // The public demo shows the notification centre populated. It is still never
+    // interrupted: a visitor must not be able to spend the shared identity's
+    // Telegram thread or lock screen.
+    it('is the demo identity\'s only channel, wired or not', function (): void {
+        $demo = userWithTelegram();
+        $demo->forceFill(['is_demo' => true])->save();
+        $demo->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
+
+        expect($this->router->channelsFor($demo->fresh()))->toBe([InAppChannel::class])
+            ->and($this->router->canReach($demo->fresh()))->toBeFalse();
     });
 });
