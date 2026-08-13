@@ -29,6 +29,10 @@ use Illuminate\Database\Eloquent\Builder;
  * {@see self::channelsFor()} always includes it while {@see self::canReach()}
  * and {@see self::scopeReachable()} stay about the outbound channels.
  *
+ * The shared demo identity is the one user with no outbound channel at all,
+ * decided here rather than re-derived in each notification's `via()`. It still
+ * gets the inbox, so the public demo shows a populated notification centre.
+ *
  * This answers *where*, never *whether*. Per-type opt-in and recency stay with
  * `NotificationEligibility` and the notifications themselves, because those are
  * per-message questions and this is a routing one. That split is also why a
@@ -108,7 +112,7 @@ final readonly class ChannelRouter
     {
         $telegramConfigured = $this->telegramConfigured();
 
-        $query->where(function (Builder $reachable) use ($telegramConfigured): void {
+        $query->where('is_demo', false)->where(function (Builder $reachable) use ($telegramConfigured): void {
             if ($telegramConfigured) {
                 $reachable->where(function (Builder $viaTelegram): void {
                     $viaTelegram
@@ -136,6 +140,14 @@ final readonly class ChannelRouter
      */
     private function outboundChannelsFor(User $user): array
     {
+        // The shared demo identity is never interrupted: a visitor could
+        // otherwise spend someone else's Telegram thread or lock screen. The
+        // inbox still records everything, so the demo shows the notification
+        // centre populated rather than blank.
+        if ($user->is_demo) {
+            return [];
+        }
+
         $channels = [];
 
         if ($this->telegramReachable($user)) {

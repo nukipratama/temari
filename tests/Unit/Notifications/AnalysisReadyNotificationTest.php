@@ -62,11 +62,14 @@ it('routes to the Telegram channel for a connected, opted-in, recent run', funct
     expect(viaFor(postRunAnalysis($user), $user))->toBe([InAppChannel::class, TelegramChannel::class]);
 });
 
-it('routes nowhere for the demo user', function (): void {
+// The public demo shows the notification centre populated, so it is routed to
+// the inbox. It is never interrupted: no Telegram thread, no lock screen, even
+// with a connection wired onto the shared identity.
+it('routes the demo user to the inbox alone, never outbound', function (): void {
     $user = User::factory()->create(['is_demo' => true]);
     TelegramConnection::factory()->for($user)->create();
 
-    expect(viaFor(postRunAnalysis($user), $user))->toBe([]);
+    expect(viaFor(postRunAnalysis($user), $user))->toBe([InAppChannel::class]);
 });
 
 it('routes nowhere when the notification master switch is off', function (): void {
@@ -163,11 +166,11 @@ it('force reaches web push even without Telegram', function (): void {
     expect(viaFor(postRunAnalysis($user), $user, force: true))->toBe([InAppChannel::class, IdempotentWebPushChannel::class]);
 });
 
-it('force still routes nowhere at all for the demo user', function (): void {
+it('force still reaches no outbound channel for the demo user', function (): void {
     $demo = User::factory()->create(['is_demo' => true]);
     TelegramConnection::factory()->for($demo)->create();
 
-    expect(viaFor(postRunAnalysis($demo), $demo, force: true))->toBe([]);
+    expect(viaFor(postRunAnalysis($demo), $demo, force: true))->toBe([InAppChannel::class]);
 });
 
 it('force reaches no outbound channel over a revoked connection', function (): void {
