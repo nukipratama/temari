@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 
@@ -13,13 +13,13 @@ import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
+import LinkCard from '@/components/ui/LinkCard';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';
 import { appLayout } from '@/layouts/appLayout';
-import { cn } from '@/lib/cn';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 import {
     formatDurationHMS,
@@ -29,6 +29,7 @@ import {
 } from '@/lib/pace';
 import { PR_CATEGORY_LABELS } from '@/lib/pr';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
+import { outlineChipVariants } from '@/lib/variants';
 
 interface IdentityPayload {
     name: string;
@@ -129,9 +130,7 @@ export default function Profile({
                     >
                         {firstName ? `${firstName} Runner,` : 'Runner,'}
                         <br />
-                        <em className="italic text-horizon-deep">
-                            your story.
-                        </em>
+                        <em className="italic text-horizon-ink">your story.</em>
                     </PageHero>
                 </header>
 
@@ -273,25 +272,23 @@ export default function Profile({
                     </motion.div>
                 </HeroPanel>
 
-                <section className="mt-6">
-                    <Link
-                        href="/race"
-                        className="focus-ring pressable flex items-center justify-between gap-3 rounded-xl border border-line bg-cream px-4 py-3.5 shadow-e1 transition hover:border-horizon/60"
-                    >
-                        <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-                            <Icon
-                                icon="mdi:flag-checkered"
-                                width={16}
-                                height={16}
-                                aria-hidden
-                            />
-                            Got a race coming up?
-                        </span>
-                        <span className="text-label-micro text-ink-3">
-                            Set your race &rarr;
-                        </span>
-                    </Link>
-                </section>
+                <LinkCard
+                    href="/race"
+                    className="pressable mt-10 flex items-center justify-between gap-3 transition hover:border-horizon/60"
+                >
+                    <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+                        <Icon
+                            icon="mdi:flag-checkered"
+                            width={16}
+                            height={16}
+                            aria-hidden
+                        />
+                        Got a race coming up?
+                    </span>
+                    <span className="text-label-micro text-ink-3">
+                        Set your race &rarr;
+                    </span>
+                </LinkCard>
 
                 {fitness?.training_paces && (
                     <section className="mt-10">
@@ -413,12 +410,9 @@ function ProgressionSection({
                                 role="tab"
                                 aria-selected={c === selected}
                                 onClick={() => setSelected(c)}
-                                className={cn(
-                                    'focus-ring inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-label-micro transition',
-                                    c === selected
-                                        ? 'border-horizon bg-horizon/10 text-horizon-deep'
-                                        : 'border-line text-ink-3 hover:border-horizon/60 hover:text-ink',
-                                )}
+                                className={outlineChipVariants({
+                                    selected: c === selected,
+                                })}
                             >
                                 {PROGRESSION_TAB_LABEL[c]}
                             </button>
@@ -434,7 +428,7 @@ function ProgressionSection({
                                 {formatDurationHMS(Math.round(worstCount))}
                             </em>
                             , now{' '}
-                            <em className="italic text-horizon-deep">
+                            <em className="italic text-horizon-ink">
                                 {formatDurationHMS(Math.round(bestCount))}
                             </em>
                         </p>
