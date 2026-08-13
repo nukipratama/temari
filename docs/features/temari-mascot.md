@@ -87,7 +87,7 @@ use**. It reads `equippedAccessories` from the globally-shared Inertia props (bu
 [GamificationProps.php](../../app/Services/Inertia/GamificationProps.php)), maps them with
 `serverToEquipped` ([equippedAccessories.ts](../../resources/js/lib/equippedAccessories.ts)), and
 renders `TemariProto`. So a hard-earned headband shows up *everywhere* Temari appears, not just on
-the Aksesori page. Use `TemariProto` directly only when a *specific* accessory must show (the equip
+the Accessories page. Use `TemariProto` directly only when a *specific* accessory must show (the equip
 preview, the just-unlocked celebration). See [[targets-accessories]].
 
 ## Season coverage

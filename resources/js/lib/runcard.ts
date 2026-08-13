@@ -1,4 +1,7 @@
-import type { TemariPose } from '@/components/temari/TemariProto';
+import type {
+    TemariEquipped,
+    TemariPose,
+} from '@/components/temari/TemariProto';
 import type { ActivityDetail, Rarity, ZonePct } from '@/types/inertia';
 
 import {
@@ -179,14 +182,19 @@ export const RARITY_TINT: Record<Rarity, string> = {
 };
 
 // Headband color driven by rarity — wired to TemariProto's `equipped.headband`.
-export const RARITY_HEADBAND: Record<Rarity, 'ember' | 'epik' | 'legendaris'> =
-    {
-        common: 'ember',
-        uncommon: 'ember',
-        rare: 'epik',
-        epic: 'legendaris',
-        legendary: 'legendaris',
-    };
+// Four headband variants over five tiers, so one pair has to share: the two
+// cheapest tiers do, and every tier from `rare` up gets its own hue matching
+// its `--color-rarity-*` token.
+export const RARITY_HEADBAND: Record<
+    Rarity,
+    NonNullable<TemariEquipped['headband']>
+> = {
+    common: 'uncommon',
+    uncommon: 'uncommon',
+    rare: 'rare',
+    epic: 'epic',
+    legendary: 'legendary',
+};
 
 // Mascot pose driven by rarity — reinforces the tier hierarchy on cards and detail page.
 export const RARITY_POSE: Record<Rarity, TemariPose> = {

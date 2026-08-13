@@ -61,8 +61,8 @@ export function equippedToKeys(
 //
 // Single source of truth for mapping the server-side unlock key strings
 // (e.g. `accessory.headband_legendary`) to the typed TemariEquipped
-// variants (e.g. `legendaris`). Shared by Temari.tsx, Aksesori.tsx, and
-// AksesoriUnlockModal.tsx.
+// variants (e.g. `legendary`). Shared by Temari.tsx, Collection/Accessories.tsx
+// and AccessoryUnlockModal.tsx.
 //
 // Keys follow the pattern `accessory.{slot}_{suffix}`. The variant is
 // extracted by splitting on `.` and then looking up the last segment in a
@@ -77,41 +77,41 @@ function variantMap<V>(map: Record<string, V>): Record<string, V> {
 /** Key-suffix → variant for each slot. The suffix is the full segment after `accessory.`. */
 const VARIANT_MAPS = {
     headband: variantMap<TemariEquipped['headband']>({
-        headband_legendary: 'legendaris',
-        headband_epic: 'epik',
+        headband_legendary: 'legendary',
+        headband_epic: 'epic',
         headband_rare: 'rare',
-        headband_uncommon: 'ember',
+        headband_uncommon: 'uncommon',
     }),
     medal: variantMap<TemariEquipped['medal']>({
-        medal_platinum: 'platina',
-        medal_silver: 'perak',
-        medal_gold: 'emas',
-        medal_first: 'pertama',
+        medal_platinum: 'platinum',
+        medal_silver: 'silver',
+        medal_gold: 'gold',
+        medal_first: 'first',
     }),
-    shirt: variantMap<TemariEquipped['kaus']>({
-        shirt_legendary: 'legendaris',
-        shirt_rain_warrior: 'hujan',
-        shirt_early_bird: 'pagi',
-        shirt_beginner: 'pemula',
+    shirt: variantMap<TemariEquipped['shirt']>({
+        shirt_legendary: 'legendary',
+        shirt_rain_warrior: 'rainWarrior',
+        shirt_early_bird: 'earlyBird',
+        shirt_beginner: 'beginner',
     }),
-    shorts: variantMap<TemariEquipped['celana']>({
-        shorts_marathon: 'maraton',
-        shorts_negative_split: 'split',
-        shorts_explorer: 'jarak',
-        shorts_lightweight: 'ringan',
+    shorts: variantMap<TemariEquipped['shorts']>({
+        shorts_marathon: 'marathon',
+        shorts_negative_split: 'negativeSplit',
+        shorts_explorer: 'explorer',
+        shorts_lightweight: 'lightweight',
     }),
-    shoes: variantMap<TemariEquipped['sepatu']>({
-        shoes_legendary: 'legendaris',
-        shoes_rugged: 'tahan',
-        shoes_speed: 'cepat',
+    shoes: variantMap<TemariEquipped['shoes']>({
+        shoes_legendary: 'legendary',
+        shoes_rugged: 'rugged',
+        shoes_speed: 'speed',
         shoes_basic: 'basic',
     }),
     aura: variantMap<TemariEquipped['aura']>({
-        aura_champion: 'jagoan',
-        aura_calm: 'tenang',
-        aura_heatwave: 'gerah',
-        aura_warmup: 'pemanasan',
-        aura_windrunner: 'angin',
+        aura_champion: 'champion',
+        aura_calm: 'calm',
+        aura_heatwave: 'heatwave',
+        aura_warmup: 'warmup',
+        aura_windrunner: 'windrunner',
     }),
 };
 
@@ -123,32 +123,32 @@ function suffixOf(key: string): string {
 
 export function mapHeadband(key: string | null): TemariEquipped['headband'] {
     if (!key) return null;
-    return VARIANT_MAPS.headband[suffixOf(key)] ?? 'ember';
+    return VARIANT_MAPS.headband[suffixOf(key)] ?? 'uncommon';
 }
 
 export function mapMedal(key: string | null): TemariEquipped['medal'] {
     if (!key) return 'none';
-    return VARIANT_MAPS.medal[suffixOf(key)] ?? 'pertama';
+    return VARIANT_MAPS.medal[suffixOf(key)] ?? 'first';
 }
 
-export function mapKaus(key: string | null): TemariEquipped['kaus'] {
+export function mapShirt(key: string | null): TemariEquipped['shirt'] {
     if (!key) return null;
-    return VARIANT_MAPS.shirt[suffixOf(key)] ?? 'pemula';
+    return VARIANT_MAPS.shirt[suffixOf(key)] ?? 'beginner';
 }
 
-export function mapCelana(key: string | null): TemariEquipped['celana'] {
+export function mapShorts(key: string | null): TemariEquipped['shorts'] {
     if (!key) return null;
-    return VARIANT_MAPS.shorts[suffixOf(key)] ?? 'ringan';
+    return VARIANT_MAPS.shorts[suffixOf(key)] ?? 'lightweight';
 }
 
-export function mapSepatu(key: string | null): TemariEquipped['sepatu'] {
+export function mapShoes(key: string | null): TemariEquipped['shoes'] {
     if (!key) return null;
     return VARIANT_MAPS.shoes[suffixOf(key)] ?? 'basic';
 }
 
 export function mapAura(key: string | null): TemariEquipped['aura'] {
     if (!key) return null;
-    return VARIANT_MAPS.aura[suffixOf(key)] ?? 'pemanasan';
+    return VARIANT_MAPS.aura[suffixOf(key)] ?? 'warmup';
 }
 
 /**
@@ -160,17 +160,13 @@ export function serverToEquipped(ea: EquippedAccessories): TemariEquipped {
     return {
         headband: mapHeadband(ea.headband),
         medal: mapMedal(ea.medal),
-        kaus: mapKaus(ea.shirt),
-        celana: mapCelana(ea.shorts),
-        sepatu: mapSepatu(ea.shoes),
+        shirt: mapShirt(ea.shirt),
+        shorts: mapShorts(ea.shorts),
+        shoes: mapShoes(ea.shoes),
         aura: mapAura(ea.aura),
     };
 }
 
-/**
- * Converts a single unlock key into a TemariEquipped that shows only the
- * relevant slot. Used by AksesoriUnlockModal and the Aksesori card previews.
- */
 /** Slot prefixes in priority order (longest first to avoid partial matches). */
 const SLOT_PREFIXES = [
     'headband',
@@ -189,32 +185,25 @@ const SLOT_MAPPER: Record<
 > = {
     headband: (key) => mapHeadband(key),
     medal: (key) => mapMedal(key),
-    shirt: (key) => mapKaus(key),
-    shorts: (key) => mapCelana(key),
-    shoes: (key) => mapSepatu(key),
+    shirt: (key) => mapShirt(key),
+    shorts: (key) => mapShorts(key),
+    shoes: (key) => mapShoes(key),
     aura: (key) => mapAura(key),
 };
 
-/** Slots where the default is `{ medal: 'none' }` (slots other than medal are absent/null). */
-const SLOT_KEYS: Record<SlotName, keyof TemariEquipped> = {
-    headband: 'headband',
-    medal: 'medal',
-    shirt: 'kaus',
-    shorts: 'celana',
-    shoes: 'sepatu',
-    aura: 'aura',
-};
-
+/**
+ * Converts a single unlock key into a TemariEquipped that shows only the
+ * relevant slot. Used by AccessoryUnlockModal and the accessory card previews.
+ */
 export function keyToPreviewEquipped(key: string): TemariEquipped {
     const base: TemariEquipped = { medal: 'none' };
     const suffix = suffixOf(key);
 
     for (const prefix of SLOT_PREFIXES) {
         if (suffix.startsWith(prefix + '_') || suffix === prefix) {
-            const slotKey = SLOT_KEYS[prefix];
-            return { ...base, [slotKey]: SLOT_MAPPER[prefix](key) };
+            return { ...base, [prefix]: SLOT_MAPPER[prefix](key) };
         }
     }
 
-    return { headband: 'epik' };
+    return { headband: 'epic' };
 }

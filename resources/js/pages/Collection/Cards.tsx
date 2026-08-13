@@ -193,7 +193,7 @@ export default function Cards({
             />
             <PageContainer>
                 <CollectionHeader
-                    active="kartu"
+                    active="cards"
                     eyebrow={eyebrow}
                     headline1="All your cards"
                     headline2="from Temari."

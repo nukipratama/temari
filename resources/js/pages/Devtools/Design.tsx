@@ -22,21 +22,21 @@ const CARD_TONES = ['card', 'onSky', 'empty'] as const;
 const CARD_PADDINGS = ['panel', 'card', 'hero'] as const;
 
 const SLOT_SPECIMENS: ReadonlyArray<[string, TemariEquipped]> = [
-    ['headband', { headband: 'legendaris' }],
-    ['shirt', { kaus: 'hujan' }],
-    ['shorts', { celana: 'split' }],
-    ['shoes', { sepatu: 'tahan' }],
-    ['medal', { medal: 'platina' }],
-    ['aura', { aura: 'angin' }],
+    ['headband', { headband: 'legendary' }],
+    ['shirt', { shirt: 'rainWarrior' }],
+    ['shorts', { shorts: 'negativeSplit' }],
+    ['shoes', { shoes: 'rugged' }],
+    ['medal', { medal: 'platinum' }],
+    ['aura', { aura: 'windrunner' }],
 ];
 
 const FULLY_EQUIPPED: TemariEquipped = {
-    headband: 'legendaris',
-    kaus: 'hujan',
-    celana: 'split',
-    sepatu: 'tahan',
-    medal: 'platina',
-    aura: 'angin',
+    headband: 'legendary',
+    shirt: 'rainWarrior',
+    shorts: 'negativeSplit',
+    shoes: 'rugged',
+    medal: 'platinum',
+    aura: 'windrunner',
 };
 
 const SEASON_PHASES = ['base', 'build', 'peak', 'taper'] as const;

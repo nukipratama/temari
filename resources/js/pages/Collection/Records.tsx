@@ -119,7 +119,7 @@ export default function Records({
             <Head title="Collection · PRs" />
             <PageContainer>
                 <CollectionHeader
-                    active="rekor"
+                    active="records"
                     eyebrow={eyebrow}
                     headline1="So far"
                     headline2="your personal best."

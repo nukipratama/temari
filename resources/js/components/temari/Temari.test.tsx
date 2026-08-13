@@ -43,12 +43,12 @@ describe('Temari', () => {
         expect(protoSpy).toHaveBeenCalledWith(
             expect.objectContaining({
                 equipped: {
-                    headband: 'legendaris',
-                    medal: 'emas',
-                    kaus: 'hujan',
-                    celana: 'split',
-                    sepatu: 'cepat',
-                    aura: 'jagoan',
+                    headband: 'legendary',
+                    medal: 'gold',
+                    shirt: 'rainWarrior',
+                    shorts: 'negativeSplit',
+                    shoes: 'speed',
+                    aura: 'champion',
                 },
             }),
         );
@@ -69,11 +69,11 @@ describe('Temari', () => {
         expect(protoSpy).toHaveBeenCalledWith(
             expect.objectContaining({
                 equipped: {
-                    headband: 'epik',
+                    headband: 'epic',
                     medal: 'none',
-                    kaus: null,
-                    celana: null,
-                    sepatu: null,
+                    shirt: null,
+                    shorts: null,
+                    shoes: null,
                     aura: null,
                 },
             }),

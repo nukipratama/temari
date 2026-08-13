@@ -237,7 +237,7 @@ describe('AppShell', () => {
         expect(screen.getByTestId('mobile-top-bar')).toBeInTheDocument();
     });
 
-    it('shows AksesoriUnlockModal and dismisses it when a major unlock is flashed', async () => {
+    it('shows AccessoryUnlockModal and dismisses it when a major unlock is flashed', async () => {
         setMockPage({
             auth: { user: andiUser },
             flash: {
@@ -262,7 +262,7 @@ describe('AppShell', () => {
         });
     });
 
-    it('defers the aksesori-unlock modal while a CardReveal pack is pending, so they never stack', async () => {
+    it('defers the accessory-unlock modal while a CardReveal pack is pending, so they never stack', async () => {
         setMockPage({
             auth: { user: andiUser },
             flash: {
@@ -283,7 +283,7 @@ describe('AppShell', () => {
         );
         // CardReveal (the pack) takes priority: it's shown...
         expect(await screen.findByText('Syncing in')).toBeInTheDocument();
-        // ...and the aksesori modal is held back, even though a major unlock fired.
+        // ...and the accessory modal is held back, even though a major unlock fired.
         expect(
             screen.queryByText(/Ikat Kepala Istimewa/),
         ).not.toBeInTheDocument();

@@ -23,9 +23,9 @@ import { cn } from '@/lib/cn';
 import {
     mapHeadband,
     mapMedal,
-    mapKaus,
-    mapCelana,
-    mapSepatu,
+    mapShirt,
+    mapShorts,
+    mapShoes,
     mapAura,
     keyToPreviewEquipped,
 } from '@/lib/equippedAccessories';
@@ -90,14 +90,14 @@ export default function Accessories({
     const unlockedCount = items.filter((i) => i.unlocked).length;
     const eyebrow = `Collection · ${unlockedCount} / ${items.length} accessories`;
 
-    const aksesoriCount = `${unlockedCount} / ${items.length}`;
+    const accessoryCount = `${unlockedCount} / ${items.length}`;
 
     const previewEquipped: TemariEquipped = {
         headband: equipped.headband ? mapHeadband(equipped.headband) : null,
         medal: mapMedal(equipped.medal),
-        kaus: mapKaus(equipped.shirt),
-        celana: mapCelana(equipped.shorts),
-        sepatu: mapSepatu(equipped.shoes),
+        shirt: mapShirt(equipped.shirt),
+        shorts: mapShorts(equipped.shorts),
+        shoes: mapShoes(equipped.shoes),
         aura: mapAura(equipped.aura),
     };
 
@@ -121,11 +121,11 @@ export default function Accessories({
             <Head title="Collection · Accessories" />
             <PageContainer>
                 <CollectionHeader
-                    active="aksesori"
+                    active="accessories"
                     eyebrow={eyebrow}
                     headline1="Dress up Temari"
                     headline2="with what you've unlocked."
-                    activeCount={aksesoriCount}
+                    activeCount={accessoryCount}
                 />
 
                 <HeroPanel className="mt-8 lg:px-14 lg:py-12">
@@ -246,7 +246,7 @@ function SlotSection({
                 className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4"
             >
                 {unlocked.map((item) => (
-                    <AksesoriCard
+                    <AccessoryCard
                         key={item.unlock_key}
                         item={item}
                         onEquip={onEquip}
@@ -260,7 +260,7 @@ function SlotSection({
                             showLocked ? 'contents' : 'hidden sm:contents'
                         }
                     >
-                        <AksesoriCard item={item} onEquip={onEquip} />
+                        <AccessoryCard item={item} onEquip={onEquip} />
                     </div>
                 ))}
             </div>
@@ -288,7 +288,7 @@ function SlotSection({
     );
 }
 
-function AksesoriCard({
+function AccessoryCard({
     item,
     onEquip,
 }: Readonly<{ item: AccessoriesItem; onEquip: (key: string) => void }>) {

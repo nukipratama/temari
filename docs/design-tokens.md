@@ -199,7 +199,7 @@ the confetti burst — reads the same preference itself through
    group reveals (`staggerContainer` wrapping `fadeInUp` children).
 3. **Celebratory** — unlocks, PRs, streaks: the existing celebration overlays
    ([CardReveal](../resources/js/components/card/CardReveal.tsx),
-   [AksesoriUnlockModal](../resources/js/components/celebrations/AksesoriUnlockModal.tsx),
+   [AccessoryUnlockModal](../resources/js/components/celebrations/AccessoryUnlockModal.tsx),
    [UnlockToast](../resources/js/components/temari/UnlockToast.tsx)) and the mascot's
    `idleByMood` / fidget keyframes in `lib/motion.ts`. Reserved for moments that are actually
    earned — never layer tier 3 onto routine navigation or data loading.
