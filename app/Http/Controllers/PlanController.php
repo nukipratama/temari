@@ -93,6 +93,7 @@ class PlanController extends Controller
                 'weeks' => [],
                 'season' => $seasonPayload,
                 'adaptation' => $adaptationPayload,
+                'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
                 'disclaimer' => TrainingDisclaimer::TEXT,
             ]);
         }
@@ -186,6 +187,7 @@ class PlanController extends Controller
             'weeks' => $weeks,
             'season' => $seasonPayload,
             'adaptation' => $adaptationPayload,
+            'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
             'disclaimer' => TrainingDisclaimer::TEXT,
         ]);
     }

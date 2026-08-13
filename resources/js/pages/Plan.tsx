@@ -1,5 +1,6 @@
 import type { FormDataConvertible } from '@inertiajs/core';
 
+import { Icon } from '@iconify/react';
 import { Head, Link, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { useRef, useState } from 'react';
@@ -20,6 +21,7 @@ import { cn } from '@/lib/cn';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatNaiveIdDate, formatPace, todayLocalIso } from '@/lib/pace';
 import { currentSeasonPhase } from '@/lib/seasonPhase';
+import { inputVariants, outlineChipVariants } from '@/lib/variants';
 
 interface SeasonSummary {
     starts_at: string;
@@ -65,6 +67,7 @@ interface PlanProps {
     season: SeasonSummary;
     adaptation: PlanAdaptation | null;
     /** Served from App\Support\TrainingDisclaimer, shared with the legal pages. */
+    disclaimerHeadline: string;
     disclaimer: string;
 }
 
@@ -100,6 +103,16 @@ const PHASE_TONE: Record<string, ChipTone> = {
 
 const BAND_ORDER = ['short', 'medium', 'long'] as const;
 
+const ADAPTATION_DOT: Record<string, string> = {
+    steady: 'bg-leaf',
+    low_readiness: 'bg-sky',
+    high_monotony: 'bg-sky',
+    high_strain: 'bg-sky',
+    missed_week: 'bg-sky',
+    behind_race_pace: 'bg-horizon',
+    ahead_of_race_pace: 'bg-horizon',
+};
+
 // The mascot's thread coverage builds up as the season progresses — deload
 // weeks pause accretion rather than reset it, so a deload week borrows the
 // last non-deload phase's coverage instead of rendering its own.
@@ -121,6 +134,7 @@ export default function Plan({
     weeks,
     season,
     adaptation,
+    disclaimerHeadline,
     disclaimer,
 }: Readonly<PlanProps>) {
     const [regenerating, setRegenerating] = useState(false);
@@ -221,32 +235,46 @@ export default function Plan({
                     </div>
                 </header>
 
-                <section className="mt-8" data-testid="plan-adaptation">
+                <section className="mt-10" data-testid="plan-adaptation">
                     {adaptation && (
-                        <Card padding="panel" className="flex flex-col gap-1.5">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <SectionLabel>This week</SectionLabel>
-                                <Chip
-                                    tone={
-                                        adaptation.deload
-                                            ? 'neutral'
-                                            : 'horizon'
-                                    }
-                                >
-                                    {adaptation.headline}
-                                </Chip>
-                            </div>
-                            <p className="text-sm leading-relaxed text-ink">
+                        <Card>
+                            <SectionLabel
+                                dot
+                                dotClass={
+                                    ADAPTATION_DOT[adaptation.reason] ??
+                                    (adaptation.deload
+                                        ? 'bg-sky'
+                                        : 'bg-horizon')
+                                }
+                                className="mb-2"
+                            >
+                                This week
+                            </SectionLabel>
+                            <p className="font-display text-headline-sm italic text-ink">
+                                {adaptation.headline}
+                            </p>
+                            <p className="mt-2 text-sm leading-relaxed text-ink-2">
                                 {adaptation.detail}
                             </p>
                         </Card>
                     )}
-                    <p className="mt-3 text-xs leading-relaxed text-ink-3">
-                        {disclaimer}
-                    </p>
+                    <Card padding="panel" className={cn(adaptation && 'mt-3')}>
+                        <p className="text-label-micro text-ink-2">
+                            {disclaimerHeadline}
+                        </p>
+                        <p className="mt-2 text-sm leading-relaxed text-ink-2">
+                            {disclaimer}
+                        </p>
+                        <Link
+                            href="/training-disclaimer"
+                            className="focus-ring mt-2 inline-block text-sm text-ink-2 underline underline-offset-2 hover:text-ink"
+                        >
+                            What the plan can and cannot see
+                        </Link>
+                    </Card>
                 </section>
 
-                <section className="mt-8">
+                <section className="mt-10">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <SectionLabel>
                             Season · Week {season.week_index} of{' '}
@@ -299,14 +327,14 @@ export default function Plan({
                         pose="proud"
                         title="No plan yet."
                         body="Hit Regenerate and Temari will lay out the weeks ahead."
-                        className="mt-8"
+                        className="mt-10"
                     />
                 )}
 
                 <div
                     ref={scheduleRef}
                     data-coachmark="plan-week-schedule"
-                    className="mt-8 flex flex-col gap-8"
+                    className="mt-10 flex flex-col gap-10"
                 >
                     {weeks.map((week) => (
                         <section key={week.week_start}>
@@ -376,13 +404,14 @@ export default function Plan({
                                                                 </span>
                                                             )}
                                                             {day.pinned && (
-                                                                <span
-                                                                    className="ml-1.5 text-ink-3"
-                                                                    title="Pinned"
+                                                                <Icon
+                                                                    icon="mdi:pin"
+                                                                    width={13}
+                                                                    height={13}
+                                                                    role="img"
                                                                     aria-label="Pinned"
-                                                                >
-                                                                    📌
-                                                                </span>
+                                                                    className="ml-1.5 inline-block align-baseline text-ink-3"
+                                                                />
                                                             )}
                                                         </p>
                                                         {day.clamp_note && (
@@ -415,7 +444,7 @@ export default function Plan({
                                                                         day,
                                                                     )
                                                                 }
-                                                                className="focus-ring rounded-full border border-line px-2.5 py-1 text-label-micro text-ink-3 hover:border-horizon/60 hover:text-ink"
+                                                                className={outlineChipVariants()}
                                                             >
                                                                 Resize
                                                             </button>
@@ -425,7 +454,7 @@ export default function Plan({
                                                             onClick={() =>
                                                                 toggleBlock(day)
                                                             }
-                                                            className="focus-ring rounded-full border border-line px-2.5 py-1 text-label-micro text-ink-3 hover:border-horizon/60 hover:text-ink"
+                                                            className={outlineChipVariants()}
                                                         >
                                                             {day.session_type ===
                                                             'rest'
@@ -437,7 +466,12 @@ export default function Plan({
                                                             onClick={() =>
                                                                 togglePin(day)
                                                             }
-                                                            className="focus-ring rounded-full border border-line px-2.5 py-1 text-label-micro text-ink-3 hover:border-horizon/60 hover:text-ink"
+                                                            className={outlineChipVariants(
+                                                                {
+                                                                    selected:
+                                                                        day.pinned,
+                                                                },
+                                                            )}
                                                         >
                                                             {day.pinned
                                                                 ? 'Unpin'
@@ -457,7 +491,12 @@ export default function Plan({
                                                                         .value,
                                                                 )
                                                             }
-                                                            className="focus-ring rounded-full border border-line bg-surface px-2 py-1 text-label-micro text-ink-3"
+                                                            className={cn(
+                                                                inputVariants({
+                                                                    size: 'sm',
+                                                                }),
+                                                                'w-auto',
+                                                            )}
                                                         />
                                                         <button
                                                             type="button"
@@ -465,7 +504,10 @@ export default function Plan({
                                                                 deleteDay(day)
                                                             }
                                                             aria-label={`Delete ${day.date}`}
-                                                            className="focus-ring rounded-full border border-line px-2.5 py-1 text-label-micro text-ink-3 hover:border-ember hover:text-ember"
+                                                            className={cn(
+                                                                outlineChipVariants(),
+                                                                'hover:border-ember hover:text-ember-deep',
+                                                            )}
                                                         >
                                                             Delete
                                                         </button>

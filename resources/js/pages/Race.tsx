@@ -18,6 +18,7 @@ import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
+import { inputVariants, outlineChipVariants } from '@/lib/variants';
 
 interface RacePayload {
     id: number;
@@ -178,7 +179,7 @@ export default function Race({
                                             Math.round(lowSecCount),
                                         )}{' '}
                                         &ndash;{' '}
-                                        <em className="italic text-horizon-deep">
+                                        <em className="italic text-horizon-ink">
                                             {formatDurationHMS(
                                                 Math.round(highSecCount),
                                             )}
@@ -242,7 +243,7 @@ export default function Race({
                                     onChange={(e) => setName(e.target.value)}
                                     maxLength={120}
                                     placeholder="Jakarta Half 2026"
-                                    className="mt-1.5 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus-ring"
+                                    className={cn(inputVariants(), 'mt-1.5')}
                                 />
                             </div>
                             <div>
@@ -260,7 +261,7 @@ export default function Race({
                                     onChange={(e) =>
                                         setRaceDate(e.target.value)
                                     }
-                                    className="mt-1.5 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus-ring"
+                                    className={cn(inputVariants(), 'mt-1.5')}
                                 />
                             </div>
 
@@ -276,12 +277,10 @@ export default function Race({
                                             onClick={() =>
                                                 setDistanceKm(preset.km)
                                             }
-                                            className={cn(
-                                                'focus-ring rounded-full border px-3 py-1.5 text-label-micro transition',
-                                                distanceKm === preset.km
-                                                    ? 'border-horizon bg-horizon/10 text-horizon-deep'
-                                                    : 'border-line text-ink-3 hover:border-horizon/60 hover:text-ink',
-                                            )}
+                                            className={outlineChipVariants({
+                                                selected:
+                                                    distanceKm === preset.km,
+                                            })}
                                         >
                                             {preset.label}
                                         </button>
@@ -300,7 +299,10 @@ export default function Race({
                                                 )
                                             }
                                             aria-label="Custom distance in kilometers"
-                                            className="w-20 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink focus-ring"
+                                            className={cn(
+                                                inputVariants({ size: 'sm' }),
+                                                'w-20',
+                                            )}
                                         />
                                         <span className="text-sm text-ink-3">
                                             km
@@ -323,7 +325,10 @@ export default function Race({
                                             setHours(Number(e.target.value))
                                         }
                                         aria-label="Hours"
-                                        className="w-16 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink focus-ring"
+                                        className={cn(
+                                            inputVariants({ size: 'sm' }),
+                                            'w-16',
+                                        )}
                                     />
                                     <span className="text-sm text-ink-3">
                                         hr
@@ -337,7 +342,10 @@ export default function Race({
                                             setMinutes(Number(e.target.value))
                                         }
                                         aria-label="Minutes"
-                                        className="w-16 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink focus-ring"
+                                        className={cn(
+                                            inputVariants({ size: 'sm' }),
+                                            'w-16',
+                                        )}
                                     />
                                     <span className="text-sm text-ink-3">
                                         min
@@ -351,7 +359,10 @@ export default function Race({
                                             setSeconds(Number(e.target.value))
                                         }
                                         aria-label="Seconds"
-                                        className="w-16 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink focus-ring"
+                                        className={cn(
+                                            inputVariants({ size: 'sm' }),
+                                            'w-16',
+                                        )}
                                     />
                                     <span className="text-sm text-ink-3">
                                         sec
