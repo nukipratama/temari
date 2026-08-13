@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeActivityJob;
+use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
+use App\Jobs\AI\AnalyzePrContextJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -29,6 +31,14 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Bus::fake();
+    // The briefing cases key off a literal 2026-05-18 day. Pin the clock to it
+    // so they stay inside the narration age cutoff as wall time moves on; the
+    // cases below that need another date set their own.
+    Carbon::setTestNow('2026-05-18 05:30:00');
+});
+
+afterEach(function (): void {
+    Carbon::setTestNow();
 });
 
 it('rejects unknown analysis types with 422', function (): void {
@@ -764,6 +774,86 @@ it('still dispatches a real billed job for a non-demo user on the same block', f
         ->assertSuccessful();
 
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
+});
+
+// ── trigger → narration age cutoff ──────────────────────────────────────────
+//
+// card_flavor and pr_context are not chained, so nothing else stops a manual
+// "Baca ulang" on a years-old run from billing exactly what the ingest-side
+// cutoff routed to the rule-based filler.
+
+/** @return array{0: RunCard, 1: PersonalRecord} */
+function subjectsForRunAged(User $user, int $days): array
+{
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::now()->subDays($days),
+    ]);
+
+    return [
+        RunCard::factory()->for($activity)->create(),
+        PersonalRecord::factory()->for($user)->create(['activity_id' => $activity->id]),
+    ];
+}
+
+it('serves a manual retry rule-based when the run is past the narration cutoff', function (): void {
+    config()->set('ai.backfill_max_age_days', 84);
+    $user = User::factory()->create();
+    [$card, $record] = subjectsForRunAged($user, 200);
+
+    foreach (["card_flavor/{$card->id}", "pr_context/{$record->id}"] as $path) {
+        $response = $this->actingAs($user)
+            ->postJson("/api/analyses/{$path}/trigger")
+            ->assertSuccessful()
+            ->assertJson(['status' => 'done']);
+
+        expect($response->json('content'))->toBeString()->not->toBeEmpty();
+    }
+
+    Bus::assertNothingDispatched();
+});
+
+it('still bills a manual retry on a run just inside the cutoff', function (): void {
+    config()->set('ai.backfill_max_age_days', 84);
+    $user = User::factory()->create();
+    [$card, $record] = subjectsForRunAged($user, 83);
+
+    $this->actingAs($user)->postJson("/api/analyses/card_flavor/{$card->id}/trigger")->assertSuccessful();
+    $this->actingAs($user)->postJson("/api/analyses/pr_context/{$record->id}/trigger")->assertSuccessful();
+
+    Bus::assertDispatched(AnalyzeCardFlavorJob::class);
+    Bus::assertDispatched(AnalyzePrContextJob::class);
+});
+
+it('never overwrites narration a too-old run was already billed for', function (): void {
+    config()->set('ai.backfill_max_age_days', 84);
+    $user = User::factory()->create();
+    [$card] = subjectsForRunAged($user, 200);
+    Analysis::factory()->done('narasi asli yang sudah dibayar')->create([
+        'subject_type' => RunCard::class,
+        'subject_id' => $card->id,
+        'analysis_type' => AnalysisType::CardFlavor,
+        'discriminator' => null,
+    ]);
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/card_flavor/{$card->id}/trigger")
+        ->assertSuccessful()
+        ->assertJson(['content' => 'narasi asli yang sudah dibayar']);
+
+    Bus::assertNothingDispatched();
+});
+
+it('serves a hand-crafted briefing trigger for a long-past day rule-based', function (): void {
+    config()->set('ai.backfill_max_age_days', 84);
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=2019-03-05")
+        ->assertSuccessful()
+        ->assertJson(['status' => 'done']);
+
+    Bus::assertNothingDispatched();
 });
 
 // ── trigger → zone recompute: the branch that reads the user's CURRENT zones ──

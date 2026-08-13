@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisSubjectAuthorizer;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\ChainResolver;
 use App\Services\Run\Metrics\SummaryRecomputer;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -25,6 +26,7 @@ class AnalysisController extends Controller
         AnalysisService $service,
         SummaryRecomputer $summaries,
         ChainResolver $chains,
+        BackfillAgeGate $ages,
         string $type,
         int $subjectId,
     ): JsonResponse {
@@ -50,6 +52,15 @@ class AnalysisController extends Controller
         if ($service->shouldServeRuleBased($user)) {
             return $this->payload(
                 $service->requestRuleBased($analysisType->subjectType(), $subjectId, $analysisType, $discriminator),
+                $analysisType,
+                $subjectId,
+                $discriminator,
+            );
+        }
+
+        if ($ages->blocksManualTrigger($analysisType, $subjectId, $discriminator)) {
+            return $this->payload(
+                $service->requestRuleBased($analysisType->subjectType(), $subjectId, $analysisType, $discriminator, refillDone: false),
                 $analysisType,
                 $subjectId,
                 $discriminator,
