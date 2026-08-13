@@ -108,6 +108,30 @@ describe('Race', () => {
         });
     });
 
+    it('refuses to submit a goal time the server would reject outright', () => {
+        render(<Race race={null} projection={null} ctlTrend={[]} />);
+
+        fireEvent.change(screen.getByLabelText('Minutes'), {
+            target: { value: '0' },
+        });
+
+        expect(screen.getByRole('button', { name: 'Set race' })).toBeDisabled();
+        expect(
+            screen.getByText('Goal time has to be at least 5 minutes.'),
+        ).toBeInTheDocument();
+    });
+
+    it('stops the date picker short of a race day the server would reject', () => {
+        render(<Race race={null} projection={null} ctlTrend={[]} />);
+
+        const min = screen.getByLabelText('Race day').getAttribute('min') ?? '';
+
+        expect(min).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(new Date(`${min}T23:59:59`).getTime()).toBeGreaterThan(
+            Date.now(),
+        );
+    });
+
     it('sends a null name when left blank', () => {
         render(<Race race={null} projection={null} ctlTrend={[]} />);
 

@@ -36,12 +36,19 @@ beforeEach(function (): void {
 });
 
 /**
+ * Every route that answers a signed-in user. `onboarded` counts alongside `auth`
+ * so `/`, which drops `auth` to branch guest-vs-dashboard in the controller,
+ * stays in the sweep instead of silently falling out of it.
+ *
  * @return list<RegisteredRoute>
  */
 function authenticatedRoutes(): array
 {
     return collect(Route::getRoutes()->getRoutes())
-        ->filter(fn (RegisteredRoute $route): bool => in_array('auth', $route->gatherMiddleware(), true))
+        ->filter(fn (RegisteredRoute $route): bool => array_intersect(
+            ['auth', 'onboarded'],
+            $route->gatherMiddleware(),
+        ) !== [])
         ->reject(fn (RegisteredRoute $route): bool => str_starts_with(
             ltrim((string) $route->getAction('controller'), '\\'),
             RedirectController::class,

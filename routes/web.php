@@ -16,7 +16,6 @@ use App\Http\Controllers\BadgeBoardController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CardController;
 use App\Http\Controllers\ClientErrorController;
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DevtoolsDesignController;
 use App\Http\Controllers\DevtoolsIndexController;
 use App\Http\Controllers\InboxController;
@@ -28,6 +27,7 @@ use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
 use App\Http\Controllers\RekorController;
+use App\Http\Controllers\RootController;
 use App\Http\Controllers\RunController;
 use App\Http\Controllers\RunnerZonesController;
 use App\Http\Controllers\SettingsController;
@@ -74,6 +74,8 @@ Route::get('/privacy', [LegalController::class, 'privacy'])->name('legal.privacy
 Route::get('/ai-use', [LegalController::class, 'aiUse'])->name('legal.ai-use');
 Route::get('/training-disclaimer', [LegalController::class, 'trainingDisclaimer'])->name('legal.training-disclaimer');
 
+Route::get('/', RootController::class)->middleware('onboarded')->name('dashboard');
+
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
     // Throttled like the other public POSTs to blunt session-creation spam; it
@@ -107,8 +109,6 @@ Route::middleware(['auth'])->group(function (): void {
 });
 
 Route::middleware(['auth', 'onboarded'])->group(function (): void {
-    Route::get('/', DashboardController::class)->name('dashboard');
-
     // Conditional GET on the three history-read pages: the same URL is genuinely
     // revisited (filter/tab toggling, month paging, deep links back into a past
     // run) and their payloads are the largest in the app.

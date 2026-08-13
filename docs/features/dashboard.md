@@ -22,7 +22,7 @@ code_refs:
 
 The app's home (`/`). It answers one question, **"am I getting better?"**, with a verdict and the evidence behind it, then shows today's session. Everything the page used to open with (vitals, last run, training load, featured kartu) sits below that as supporting detail. Server entry is [DashboardController](app/Http/Controllers/DashboardController.php) (`__invoke`), rendering the [Home](resources/js/pages/Home.tsx) page.
 
-**Navigation:** `route('dashboard')` → `/`. Named route: `dashboard`.
+**Navigation:** `route('dashboard')` → `/`. Named route: `dashboard`. `/` is dispatched by [RootController](app/Http/Controllers/RootController.php), which branches on auth: a guest gets the landing page ([[landing]]) and a signed-in user is delegated here. `route('dashboard')` therefore resolves for guests too — it answers with the landing page rather than a redirect.
 
 ## System dependencies
 

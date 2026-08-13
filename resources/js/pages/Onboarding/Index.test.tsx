@@ -79,6 +79,68 @@ describe('Onboarding/Index', () => {
         });
     });
 
+    it('sets the promise before the ask: what landed, and what is still coming', () => {
+        setMockPage({ auth: { user: makeUser() } });
+
+        render(<OnboardingIndex />);
+
+        expect(
+            screen.getByText(/Every run Strava already has for you is landing/),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/is fetched per run, the first time you open it/),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/what every run you do from here gets measured/),
+        ).toBeInTheDocument();
+    });
+
+    it('refuses to submit a goal time the server would reject outright', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        fireEvent.change(screen.getByLabelText('Race day'), {
+            target: { value: '2026-12-25' },
+        });
+        fireEvent.change(screen.getByLabelText('Minutes'), {
+            target: { value: '0' },
+        });
+
+        expect(
+            screen.getByRole('button', { name: 'Set my goal & finish' }),
+        ).toBeDisabled();
+        expect(
+            screen.getByText('Goal time has to be at least 5 minutes.'),
+        ).toBeInTheDocument();
+    });
+
+    it('stops the date picker short of a race day the server would reject', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        const min = screen.getByLabelText('Race day').getAttribute('min') ?? '';
+
+        expect(min).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(new Date(`${min}T23:59:59`).getTime()).toBeGreaterThan(
+            Date.now(),
+        );
+    });
+
+    it('surfaces a server field error next to the field that caused it', () => {
+        setMockPage({
+            auth: { user: makeUser() },
+            errors: { race_date: 'Race day has to be in the future.' },
+        });
+        render(<OnboardingIndex />);
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        expect(
+            screen.getByText('Race day has to be in the future.'),
+        ).toBeInTheDocument();
+    });
+
     it('skips with an empty payload regardless of unsaved form input', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
