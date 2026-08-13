@@ -87,7 +87,9 @@ export default function DetailTiles({
             value: `${decoupling >= 0 ? '+' : ''}${decoupling.toFixed(1)}%`,
             sub: heatExplainsIt
                 ? `normal, it was ${Math.round(detail.weather_temp_c as number)}°C out`
-                : 'breathing drifted in the second half',
+                : decouplingHigh
+                  ? 'breathing drifted in the second half'
+                  : 'breathing held steady to the end',
             warn: decouplingHigh && !heatExplainsIt,
             metricKey: 'decoupling',
         });

@@ -121,6 +121,24 @@ describe('DetailTiles', () => {
         expect(screen.getByText('+4.5%')).toHaveClass('text-ink');
     });
 
+    it('reads a small decoupling as steady rather than as drift', () => {
+        renderTiles({ weather_temp_c: 20 }, { decoupling_pct: 4.5 });
+        expect(
+            screen.getByText('breathing held steady to the end'),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText('breathing drifted in the second half'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('reads a decoupling of near zero as steady on a hot run too', () => {
+        renderTiles({ weather_temp_c: 32 }, { decoupling_pct: 0.5 });
+        expect(
+            screen.getByText('breathing held steady to the end'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/normal, it was/)).not.toBeInTheDocument();
+    });
+
     it('skips the decoupling tile when its value is not a finite number (no "NaN%")', () => {
         renderTiles({}, { decoupling_pct: Number.NaN });
         expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
