@@ -580,7 +580,7 @@ function Detail({ kind }: Readonly<{ kind: DetailKind }>) {
                 />
             );
         default:
-            return <circle cx={CX + 14} cy={26} r={2.4} fill={CREAM} />;
+            return <circle cx={CX} cy={26} r={2.4} fill={CREAM} />;
     }
 }
 
@@ -590,11 +590,6 @@ function Headband({ item }: Readonly<{ item: ItemSpec }>) {
     return (
         <>
             <Band y={23} height={6} fill={item.color} />
-            <Stroke
-                d={`M${CX + 14} 26 l6 -4 M${CX + 14} 26 l6.5 3`}
-                width={2.6}
-                color={item.color}
-            />
             {item.detail !== undefined && <Detail kind={item.detail} />}
         </>
     );

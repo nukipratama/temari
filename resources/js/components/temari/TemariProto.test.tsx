@@ -164,6 +164,25 @@ describe('TemariProto — parity with the brand generator', () => {
         },
     );
 
+    // The band sits at y=23..29, where the clip circle is at its narrowest.
+    // A knot drawn outward from there was sheared mid-stroke, and the crown
+    // stud was shaved to a crescent; both are cheap to reintroduce by eye.
+    it('keeps the headband inside the clip circle it is drawn against', () => {
+        const clipR = 31 - 2.2;
+        const { container } = render(
+            <TemariProto equipped={{ headband: 'legendaris' }} />,
+        );
+        const clipped = container.querySelector('g[clip-path]');
+
+        expect(clipped?.querySelectorAll('path')).toHaveLength(0);
+
+        const stud = clipped?.querySelector('circle');
+        const at = (name: string) => Number(stud?.getAttribute(name));
+        expect(
+            Math.hypot(at('cx') - 50, at('cy') - 52) + at('r'),
+        ).toBeLessThanOrEqual(clipR);
+    });
+
     it('places the character so the exported bounds land inside the viewBox', () => {
         const { container } = render(
             <TemariProto pose="celebrating" equipped={{ aura: 'jagoan' }} />,

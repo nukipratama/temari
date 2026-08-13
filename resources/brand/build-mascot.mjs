@@ -73,8 +73,10 @@ const MOUTHS = {
 const band = (y, h, fill) => `<rect x="${CX - BODY_R}" y="${y}" width="${BODY_R * 2}" height="${h}" fill="${fill}"/>`;
 
 const SLOTS = {
-  headband: { layer: 'garment', art: (c = GOLD) =>
-    band(23, 6, c) + stroke(`M${CX + 14} 26 l6 -4 M${CX + 14} 26 l6.5 3`, 2.6, c) },
+  /* No knot: the band sits at y=23..29 where the clip circle is at its
+     narrowest, and a knot drawn outward from there is sheared mid-stroke.
+     Anything that does fit lands below the band, on the forehead. */
+  headband: { layer: 'garment', art: (c = GOLD) => band(23, 6, c) },
 
   shirt: { layer: 'garment', art: (c = MOOD.easy) =>
     band(69, 6, c) + `<path d="M${CX - 4.5} 69 L${CX} 73 L${CX + 4.5} 69 Z" fill="${CREAM}"/>` },

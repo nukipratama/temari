@@ -18,7 +18,7 @@ const DETAIL = {
   speedStripe: tick(`M${CX - 18} 87 h8 M${CX + 10} 87 h8`, 2),
   lugs: tick(`M${CX - 18} 90 v2 M${CX - 14} 90.5 v2 M${CX - 10} 90 v2
               M${CX + 10} 90 v2 M${CX + 14} 90.5 v2 M${CX + 18} 90 v2`, 1.6, COLOR.ink),
-  crownStud: `<circle cx="${CX + 14}" cy="26" r="2.4" fill="${COLOR.cream}"/>`,
+  crownStud: `<circle cx="${CX}" cy="26" r="2.4" fill="${COLOR.cream}"/>`,
   medalStar: `<circle cx="${CX}" cy="85" r="2.6" fill="${COLOR.sky}" opacity="0.55"/>`,
   medalRing: `<circle cx="${CX}" cy="85" r="3.4" fill="none" stroke="${COLOR.sky}"
      stroke-width="1.3" opacity="0.5"/>`,
