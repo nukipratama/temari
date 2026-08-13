@@ -109,7 +109,7 @@ export default function KondisiCard({
                     'focus-ring mt-auto rounded pt-1 text-label-micro',
                     onSky
                         ? 'text-horizon hover:text-cream'
-                        : 'text-horizon-deep hover:text-ember-deep',
+                        : 'text-horizon-ink hover:text-ember-deep',
                 )}
             >
                 Technical detail →

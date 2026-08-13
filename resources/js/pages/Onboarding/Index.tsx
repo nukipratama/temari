@@ -158,7 +158,7 @@ export default function OnboardingIndex() {
                                                 className={cn(
                                                     'focus-ring rounded-full border px-3 py-1.5 text-label-micro transition',
                                                     distanceKm === preset.km
-                                                        ? 'border-horizon bg-horizon/10 text-horizon-deep'
+                                                        ? 'border-horizon bg-horizon/10 text-horizon-ink'
                                                         : 'border-line text-ink-3 hover:border-horizon/60 hover:text-ink',
                                                 )}
                                             >

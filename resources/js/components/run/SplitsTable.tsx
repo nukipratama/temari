@@ -48,7 +48,7 @@ export default function SplitsTable({
                 {fastest != null && fastestKm != null && (
                     <p className="font-display text-sm italic text-ink-2">
                         Fastest at km {fastestKm},{' '}
-                        <span className="font-semibold text-horizon-deep">
+                        <span className="font-semibold text-horizon-ink">
                             {formatPace(fastest)}/km
                         </span>
                     </p>

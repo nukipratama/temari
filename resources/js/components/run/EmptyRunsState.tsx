@@ -139,7 +139,7 @@ export default function EmptyRunsState({
                                     'flex h-8 w-8 flex-none items-center justify-center rounded-lg',
                                     onSky
                                         ? 'bg-cream/10 text-horizon'
-                                        : 'bg-horizon/[0.14] text-horizon-deep',
+                                        : 'bg-horizon/[0.14] text-horizon-ink',
                                 )}
                             >
                                 <Icon icon={icon} width={16} height={16} />

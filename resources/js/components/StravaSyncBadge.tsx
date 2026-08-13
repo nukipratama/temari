@@ -96,7 +96,7 @@ function resolveBadge(
                 label: isCompact ? 'Sync' : 'Syncing',
                 ariaLabel: 'Strava syncing',
                 icon: 'mdi:sync',
-                iconClass: 'text-horizon-deep animate-spin',
+                iconClass: 'text-horizon-ink animate-spin',
             };
         case 'revoked':
             return {

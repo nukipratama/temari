@@ -38,7 +38,7 @@ describe('Eyebrow', () => {
         ['ink-2', 'text-ink-2'],
         ['ink-3', 'text-ink-3'],
         ['horizon', 'text-horizon'],
-        ['horizon-deep', 'text-horizon-deep'],
+        ['horizon-ink', 'text-horizon-ink'],
         ['ink-on-sky', 'text-ink-on-sky'],
         ['cream', 'text-cream'],
     ] as const)('renders tone="%s"', (tone, expected) => {

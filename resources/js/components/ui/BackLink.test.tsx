@@ -25,7 +25,7 @@ describe('BackLink', () => {
         );
         expect(
             screen.getByRole('link', { name: /back to today/i }).className,
-        ).toMatch(/text-horizon-deep/);
+        ).toMatch(/text-horizon-ink/);
     });
 
     it('passes spacing className through', () => {

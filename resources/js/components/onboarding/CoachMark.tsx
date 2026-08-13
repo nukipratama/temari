@@ -187,7 +187,7 @@ export default function CoachMark({
             <button
                 type="button"
                 onClick={dismiss}
-                className="focus-ring mt-3 text-label-micro text-horizon-deep"
+                className="focus-ring mt-3 text-label-micro text-horizon-ink"
             >
                 Got it
             </button>

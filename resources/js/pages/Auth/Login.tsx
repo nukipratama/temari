@@ -208,7 +208,7 @@ function FormSide({
                     >
                         <span
                             aria-hidden
-                            className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-horizon/[0.18] text-horizon-deep"
+                            className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-horizon/[0.18] text-horizon-ink"
                         >
                             <Icon
                                 icon={pillar.icon}

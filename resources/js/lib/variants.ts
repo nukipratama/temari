@@ -93,7 +93,7 @@ export const chipVariants = cva(
         variants: {
             tone: {
                 neutral: 'bg-ink/[0.06] text-ink-2',
-                horizon: 'bg-horizon/[0.18] text-horizon-deep',
+                horizon: 'bg-horizon/[0.18] text-horizon-ink',
                 leaf: 'bg-leaf/[0.18] text-leaf',
                 sky: 'bg-sky/[0.08] text-sky',
                 onSky: 'bg-cream/10 text-cream/80',
@@ -206,7 +206,7 @@ export const eyebrowVariants = cva('', {
             'ink-2': 'text-ink-2',
             'ink-3': 'text-ink-3',
             horizon: 'text-horizon',
-            'horizon-deep': 'text-horizon-deep',
+            'horizon-ink': 'text-horizon-ink',
             'ink-on-sky': 'text-ink-on-sky',
             cream: 'text-cream',
         },

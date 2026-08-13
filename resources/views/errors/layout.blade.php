@@ -19,7 +19,7 @@
             --ink-2: #3d362a;
             --ink-3: #6e6452;
             --horizon: #d9a53c;
-            --horizon-deep: #b98a2a;
+            --horizon-ink: #836424;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -44,7 +44,7 @@
             font-size: 88px;
             line-height: 1;
             font-weight: 500;
-            color: var(--horizon-deep);
+            color: var(--horizon-ink);
         }
         .title {
             font-family: 'Fraunces', Georgia, serif;

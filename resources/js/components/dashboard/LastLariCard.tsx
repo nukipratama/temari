@@ -192,7 +192,7 @@ export default function LastLariCard({
             <Eyebrow
                 as="span"
                 token="micro"
-                tone={onSky ? 'horizon' : 'horizon-deep'}
+                tone={onSky ? 'horizon' : 'horizon-ink'}
                 className="mt-auto"
             >
                 View run detail →

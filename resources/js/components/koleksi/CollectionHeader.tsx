@@ -22,7 +22,7 @@ export default function CollectionHeader({
         <header className="flex flex-col gap-5">
             <PageHero eyebrow={eyebrow}>
                 {headline1},<br />
-                <em className="italic text-horizon-deep">{headline2}</em>
+                <em className="italic text-horizon-ink">{headline2}</em>
             </PageHero>
             <div data-coachmark="collection-tabs">
                 <KoleksiTabs active={active} activeCount={activeCount} />
