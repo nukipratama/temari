@@ -7,6 +7,7 @@ import {
     contrastRatio,
     groupColorFamilies,
     luminance,
+    normalizeShadow,
     readTokenValues,
     tokensWithPrefix,
 } from './designTokens';
@@ -175,8 +176,32 @@ describe('auditContrast', () => {
     });
 });
 
+describe('normalizeShadow', () => {
+    it('drops the transparent ring placeholders a shadow utility composes through', () => {
+        expect(
+            normalizeShadow(
+                'rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(58, 45, 20, 0.06) 0px 1px 2px 0px',
+            ),
+        ).toBe('rgba(58, 45, 20, 0.06) 0px 1px 2px 0px');
+    });
+});
+
 describe('auditSurface', () => {
     const reference = { radii: ['14px', '18px'], shadows: ['0 1px 2px red'] };
+
+    it('matches a utility-composed shadow against the token it came from', () => {
+        expect(
+            auditSurface(
+                'card',
+                {
+                    borderRadius: '14px',
+                    boxShadow:
+                        'rgba(0, 0, 0, 0) 0px 0px 0px 0px, 0 1px 2px red',
+                },
+                reference,
+            ).shadowOnScale,
+        ).toBe(true);
+    });
 
     it('accepts a surface that lands on both scales', () => {
         expect(

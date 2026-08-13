@@ -277,6 +277,20 @@ function normalize(value: string): string {
 }
 
 /**
+ * A shadow utility composes through Tailwind's ring/inset variables, so a
+ * `shadow-e1` element computes to the token's two layers preceded by four fully
+ * transparent placeholders. Dropping those is what lets a rendered surface be
+ * compared against the token it was supposed to use.
+ */
+export function normalizeShadow(value: string): string {
+    return normalize(value)
+        .split(/,(?![^(]*\))/)
+        .map(normalize)
+        .filter((layer) => !/^rgba\(0, ?0, ?0, ?0\)( 0px)+$/.test(layer))
+        .join(', ');
+}
+
+/**
  * Checks a rendered surface against the scales. A card that picked its corner
  * from a Tailwind default instead of `--radius-*` shows up here as a failure
  * rather than as an inconsistency nobody notices. Both sides are computed
@@ -289,7 +303,7 @@ export function auditSurface(
     reference: { radii: ReadonlyArray<string>; shadows: ReadonlyArray<string> },
 ): SurfaceRow {
     const radius = normalize(computed.borderRadius);
-    const shadow = normalize(computed.boxShadow);
+    const shadow = normalizeShadow(computed.boxShadow);
 
     return {
         name,
@@ -299,6 +313,6 @@ export function auditSurface(
         shadowOnScale:
             shadow === 'none' ||
             shadow === '' ||
-            reference.shadows.map(normalize).includes(shadow),
+            reference.shadows.map(normalizeShadow).includes(shadow),
     };
 }
