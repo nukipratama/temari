@@ -10,6 +10,7 @@ use App\Models\ActivityDetail;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Services\AI\Narrators\BriefingFeaturedKartuVoiceNarrator;
+use App\Services\Run\Metrics\RelativeEffort;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use OpenAI\Testing\ClientFake;
 
@@ -30,7 +31,7 @@ beforeEach(function (): void {
 function bootFeaturedKartuNarrator(string $jsonContent): array
 {
     $client = new ClientFake([fakeAzureResponse($jsonContent)]);
-    $narrator = new BriefingFeaturedKartuVoiceNarrator(fakeStructuredCaller($client));
+    $narrator = new BriefingFeaturedKartuVoiceNarrator(fakeStructuredCaller($client), app(RelativeEffort::class));
 
     return ['narrator' => $narrator, 'client' => $client];
 }
@@ -77,7 +78,7 @@ it('returns a fallback line and skips the LLM when there is no featured card', f
     );
 
     expect($narrator->generate($user, null))
-        ->toBe("No special card for you this week yet. Keep running, I'm watching!");
+        ->toBe('no card this week yet. nothing has earned one so far.');
     $client->assertNothingSent();
 });
 

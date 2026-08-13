@@ -23,7 +23,7 @@ ADRs grouped by the problem they solve, for easier navigation than a flat timeli
 | **Async / resilience** | [[chained-narration]] (connected narration threads); [[strava-circuit-breaker-rate-limit]] (per-client rate-limit guard); [[narrow-trusted-proxy-headers]] (proxy trust behind tunnel); [[trust-all-proxies-cloudflare]] *(superseded)*; [[deferred-recap-windowing]] (window-gated generation) |
 | **AI routing** | [[azure-openai-routing]] (per-narrator-kind deployment selection); [[narration-agents-on-openai-php]] (SDK seam + tool calling); [[demo-user-billing-exclusion]] (demo user omitted from auto-billing); [[demo-triggers-served-rule-based]] (demo triggers filled rule-based) |
 | **Ops / deploy** | [[fixed-session-cookie]] (stable cookie name); [[defer-config-cache]] (config cache timing); [[telegram-account-linking]] (signed deep-link token) |
-| **Design / branding** | [[thread-ball-character-rebrand]] (bunny/Daybreak → thread-ball/Threadwork) |
+| **Design / branding** | [[temari-keeps-score-persona]] (voice: friend → training partner who keeps score); [[thread-ball-character-rebrand]] (bunny/Daybreak → thread-ball/Threadwork) *(persona half superseded)* |
 
 ## Timeline
 
@@ -51,4 +51,5 @@ _Infra & Strava_
 - [[telegram-account-linking]] — link Telegram via a signed deep-link token; prod webhook, dev long-poll
 
 _Design_
-- [[thread-ball-character-rebrand]] — full character replacement (bunny → thread-ball) and palette rename (Daybreak → Threadwork), tying the visual identity to the training arc
+- [[thread-ball-character-rebrand]] — full character replacement (bunny → thread-ball) and palette rename (Daybreak → Threadwork), tying the visual identity to the training arc *(its persona stance superseded by [[temari-keeps-score-persona]]; the visual decisions still stand)*
+- [[temari-keeps-score-persona]] — the voice shifts from a soft warm friend to a training partner who holds up the runner's own numbers and names a coast

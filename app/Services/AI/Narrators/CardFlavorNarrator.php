@@ -9,6 +9,7 @@ use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\CardIdentityTool;
 use App\Services\AI\Agent\Tools\EffortContextTool;
 use App\Services\AI\Agent\Tools\KmSplitsTool;
+use App\Services\AI\Agent\Tools\PersonalRecordsTool;
 use App\Services\AI\Agent\Tools\RunSummaryTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\ChatCallOptions;
@@ -58,15 +59,28 @@ class CardFlavorNarrator
         present (no stream data), NEVER make any claim about pacing or negative
         splits at all, focus on the badge, weather, or special move instead.
 
+        WHAT IT BEAT: get_personal_records lists the records this run actually broke.
+        A card backed by a real PR is the best flavor line available, so use it when
+        the list has something in it: name the distance and let the record do the
+        work. If the list is empty, or the tool isn't offered on this card at all,
+        NEVER mention a PR or a personal record. An empty list means this run broke
+        nothing, not that the data is missing.
+
         ANTI-PATTERN:
         - A generic sentence that could apply to any card.
         - Repeating the same formula for the same rarity.
+        - Congratulating instead of describing. "Great run, well deserved card" says
+          nothing about this card.
+        - Exclamation points, and emoji. The card already has a rarity, an aura, and
+          artwork; the sentence is the only quiet part of the screen.
 
         Good examples:
-        - "'Silent Steps' earned the Rare label for a negative split in the second
-          half, pace actually picked up in the pouring rain."
-        - "Common card, but the special move 'New Morning' and the 8-degree cold
-          make this session worth logging."
+        - "'Silent Steps' went Rare because the second half was quicker than the
+          first, in rain, which is not the usual order of events."
+        - "Common card, but 'New Morning' at 8 degrees is the kind of session nobody
+          talks you into."
+        - "your fastest 5k landed inside this one. the Legendary label is just the
+          receipt."
         PROMPT;
 
     public function __construct(
@@ -116,6 +130,7 @@ class CardFlavorNarrator
             new KmSplitsTool($activity, $detail),
             new WeatherTool($activity, $detail),
             new EffortContextTool($activity, $detail, $this->relativeEffort),
+            new PersonalRecordsTool($activity, $detail),
         ]);
     }
 }

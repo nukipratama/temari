@@ -303,6 +303,50 @@ export interface TrainingLoad {
     strain: number;
 }
 
+export type TrendVerdict =
+    'improving' | 'plateaued' | 'slipped' | 'not_enough_history';
+
+export type TrendDirection = 'better' | 'flat' | 'worse';
+
+/** One side of a Past You pair, as `ComparableRun::toArray()` ships it. */
+export interface ComparableRun {
+    activity_id: number;
+    date: string;
+    km: number;
+    pace_sec_per_km: number;
+    average_heartrate: number | null;
+    elevation_gain_m: number | null;
+    ingest_state: 'summary' | 'detailed';
+}
+
+/** One matched pair, as `PastYouComparison::toArray()` ships it. */
+export interface PastYouComparison {
+    direction: TrendDirection;
+    days_apart: number;
+    similarity: number;
+    /** Positive when the recent run is faster. */
+    pace_delta_sec: number;
+    /** Negative when the recent run's average heart rate is lower. */
+    hr_delta_bpm: number | null;
+    current: ComparableRun;
+    past: ComparableRun;
+}
+
+/** `PastYouTrend::toArray()`. Every supporting reading stays null until the
+ *  detail pipeline has hydrated the runs the verdict was built from. */
+export interface PastYouTrend {
+    verdict: TrendVerdict;
+    window_days: number;
+    comparison_count: number;
+    comparisons: PastYouComparison[];
+    mean_pace_delta_sec: number | null;
+    mean_hr_delta_bpm: number | null;
+    fitness_delta_ctl: number | null;
+    pace_consistency_now: string | null;
+    pace_consistency_then: string | null;
+    relative_effort_band: string | null;
+}
+
 /** One `weekly_snapshots` row, shipped whole (`WeeklySnapshot::toArray()`). */
 export interface WeeklySnapshot {
     id: number;

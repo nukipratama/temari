@@ -69,24 +69,24 @@ final readonly class RuleBasedNarrationFiller
     private function briefingMascotVoice(int $seed): string
     {
         return $this->select([
-            "Easy tempo, 35-45 minutes.\n\nYour rhythm's read steady these past few weeks and there hasn't been a quality session since last week, so today I think there's room for a tempo. 10-minute easy warmup, 15-20 minute tempo a bit faster than your average pace, then cooldown, cadence at 175+.\n\nWhat to watch: if HR climbs fast even at an easy pace, back off to a 15-25 minute run-walk or stop at the cooldown. If the weather's hot or you're still feeling wiped, resting isn't a loss either.",
-            "Easy run, 30-40 minutes.\n\nYour last two sessions read heavy and recovery hasn't been long, that's why I'm putting easy on today. Hold around your normal pace, breathing should still allow talking, cadence at 170+ so your steps stay light.\n\nWhat to watch: if your legs feel heavy or HR climbs oddly early on, that's a sign recovery isn't done yet. Backing off to a brisk 20-minute walk is fine.",
-            "Easy long run, 8-12 km.\n\nYour km's been climbing slightly and consistently this week, I think it'd feel good to close it out with one long session. Conversational pace, don't get tempted to chase a time, bring water if it's hot.\n\nWhat to watch: a long distance needs a steady pace. If km 5 already feels forced, cut it to 6-8 km. Better short and clean than long and messy.",
-            "Rest today.\n\nYou've been going non-stop the past few days and I can see the load piling up, so I'm not suggesting a run today. Light mobility or a relaxed 20-minute walk is enough to make your legs feel light again.\n\nWhat to watch: if you're still feeling heavy tomorrow, add one more day. Rest is part of training, not skipping it.",
-            "Easy run, 25-30 minutes.\n\nYou're just back after a few days off, so I want to start short to get the rhythm going again. Keep it slow, effort by feel, don't even look at the pace.\n\nWhat to watch: the biggest temptation after time off is to go straight back to fast. If your breathing gets heavy before minute 15, ease off or add some walking.",
-            "Base run, 5-7 km.\n\nYou've been consistent this week and your condition reads safe, so today's about holding the rhythm that's already working. Pace around your average, one steady block with no need to shift gears.\n\nWhat to watch: a session like this is easy to accidentally turn into a tempo halfway through. If you feel like pushing, save it for next time.",
+            "Easy tempo, 35-45 minutes.\n\nnothing quality has gone into the log since last week and your rhythm's been flat and steady the whole time, so today's the day to break that up. 10 minutes easy to warm up, 15-20 minutes a bit quicker than your usual pace, then cool down. cadence 175+.\n\nWhat to watch: if HR climbs fast at easy pace, drop it to a 15-25 minute run-walk and stop at the cooldown. Brutal heat is reason enough to run the whole thing easy instead.",
+            "Easy run, 30-40 minutes.\n\nyour last two sessions both read heavy and the gap since then is short, so today is easy, and I mean actually easy. hold your normal pace, breathing loose enough to talk, cadence 170+ so the steps stay light.\n\nWhat to watch: legs still heavy or HR up early means the recovery isn't finished. A brisk 20-minute walk covers the day.",
+            "Long run, 8-12 km easy.\n\nYour weekly distance has crept up every week this month, and this is the session that closes it out. conversational pace the whole way, don't go chasing a time, take water if it's hot.\n\nWhat to watch: if km 5 already feels like work, cut it at 6-8. short and clean beats long and ugly.",
+            "Rest today.\n\nyou've run every day of this stretch and the load is stacked higher than anything you've been carrying. no run from me today. light mobility, or a 20-minute walk if you want the legs moving.\n\nWhat to watch: still heavy tomorrow, take another one. A zero today is what keeps the rest of the week.",
+            "Easy run, 25-30 minutes.\n\nfirst one back after a few days off, so this one is short on purpose. slow, effort by feel, don't look at the pace at all.\n\nWhat to watch: the classic move after time off is picking up exactly where you left off. If the breathing gets heavy before minute 15, ease off or walk a bit.",
+            "Base run, 5-7 km.\n\nYou've hit every session you meant to this week and nothing in the numbers says back off, so today just holds the rhythm that's already working. your average pace, one steady block, no gear changes.\n\nWhat to watch: a run like this turns into a tempo halfway through if you let it. Save the push for a day it's actually on the plan.",
         ], $seed);
     }
 
     private function briefingFeaturedKartuVoice(int $seed): string
     {
         return $this->select([
-            "This card holds a run worth remembering. Open it again whenever you need a push.",
-            "One card stood out this week. Keep it as a reminder that you've got this.",
-            'This card is proof of a session worth remembering. No harm in showing it off.',
-            "This one's worth a second look. Sometimes it's easy to forget how far you've come.",
-            'This card is a record of a session that was out of the ordinary. Save it for a day you need the reminder.',
-            "One card stood out from the rest of the week. Show it off, so it sticks that you've got this.",
+            'One card out of this week reads different from the rest. It earned the slot.',
+            "This one came out of a session you actually went after. It's in the collection now.",
+            "Everything else this week was routine. This card wasn't.",
+            'Of every run you logged this week, this is the one worth a second look.',
+            "This card holds a session you'd have forgotten by Friday. Now you won't.",
+            'One run stood out this week, and the card is the receipt.',
         ], $seed);
     }
 
@@ -99,7 +99,7 @@ final readonly class RuleBasedNarrationFiller
     {
         $detail = $this->detailFor($activityId);
         if ($detail === null) {
-            return 'Done. This is the kind of consistency I like to see.';
+            return "Done. That one's in the log.";
         }
         $km = DistanceFormatter::kmString($detail->distance) ?? '?';
 
@@ -109,18 +109,18 @@ final readonly class RuleBasedNarrationFiller
         $baseSeed = (int) crc32('post_run_speech_'.$activityId);
 
         $base = $this->select([
-            "That's {$km} km done. Pace held up all the way to the end, nice.",
-            "Finished {$km} km. Your rhythm was clean, I like it.",
-            "{$km} km in the books. This kind of consistency is what builds progress.",
-            "{$km} km done. Breathing stayed controlled, the run read easy.",
-            "Got {$km} km today. No rush, but it got done, that's what matters.",
-            "Another {$km} km in the log. Slow but regular, that's what makes the difference.",
-            "{$km} km wrapped up. The effort read just right, not forced, not too easy either.",
-            "{$km} km logged. Runs like this are what add up to progress.",
-            "{$km} km wrapped today. Simple, but getting it done is what counts.",
-            "{$km} km session done. Show up, run, go home, that's enough.",
-            "{$km} km, wrapped up clean. Nothing to fix here.",
-            "Today's log: {$km} km. It's the small ones like this that make the habit stick.",
+            "{$km} km, logged. Pace held all the way to the end.",
+            "{$km} km. The rhythm never wobbled once.",
+            "Finished {$km} km. Breathing stayed under control the whole way through.",
+            "{$km} km in the log. Nothing dramatic, nothing sloppy.",
+            "{$km} km today. Not fast. Still on the board.",
+            "Another {$km} km on the pile.",
+            "{$km} km, and the effort read about right. Not forced, not coasting either.",
+            "{$km} km down. The week's total just moved.",
+            "{$km} km. Showed up, ran it, went home.",
+            "{$km} km, clean. Nothing in here to fix.",
+            "Today's line in the log: {$km} km.",
+            "{$km} km. How did the legs feel by the end of that one?",
         ], $baseSeed);
 
         return $base . $this->postRunCoda($detail, $activityId);
@@ -135,12 +135,12 @@ final readonly class RuleBasedNarrationFiller
     {
         $codas = [];
         if (StreamSummary::fromArray($detail->stream_summary)->negativeSplit() === true) {
-            $codas[] = ' Second half actually got faster, nice.';
+            $codas[] = ' Second half actually got faster, which is the harder way to run it.';
         }
         if ($detail->weather_rain_detected === true) {
-            $codas[] = ' Ran straight through the rain, respect.';
+            $codas[] = ' In the rain, too.';
         } elseif ($detail->weather_temp_c !== null && $detail->weather_temp_c >= 31) {
-            $codas[] = " And that was in {$detail->weather_temp_c} degrees, brutal heat.";
+            $codas[] = " That was at {$detail->weather_temp_c} degrees, so it cost more than the pace lets on.";
         }
 
         return $codas === [] ? '' : $codas[abs($seed) % count($codas)];
@@ -167,46 +167,46 @@ final readonly class RuleBasedNarrationFiller
         $snapshot = WeeklySnapshot::query()->find($snapshotId);
         if ($snapshot === null || $snapshot->runs === null || $snapshot->runs < 1) {
             return $this->select([
-                "Your rhythm was pretty steady this week. Volume was reasonable, recovery got taken care of too.",
-                "This week's volume was fine, not too much but not empty either. A healthy balance.",
-                'Another week wrapped. Your distance and frequency made sense, just keep going steady.',
-                'A consistent week, no drama. Sometimes this is exactly what\'s needed, a steady climb.',
-                "This week was a bit quiet on running, that's fine. Sometimes the body just needs a pause.",
-                'Not much movement this week. Ease back in slowly, no need to jump straight back to a lot.',
-                "A week that leaned more toward rest. Recovery's part of training too.",
+                "Nothing in the log this week. A gap is a gap, I'm not going to call it anything else.",
+                'A blank week. The counter sits at zero and next week starts from there.',
+                'Quiet week. The log stayed exactly where you left it.',
+                "No runs this week. I'm not dressing that up.",
+                'Empty week. Easing back in gets you further than trying to win it all back in one session.',
+                "This week didn't get a run in it. The next one is still open.",
+                'No entries this week. Starting small again gets you back quicker than starting big.',
             ], $snapshotId);
         }
 
         $km = DecimalFormatter::decimal((float) $snapshot->distance_km);
         $runs = $snapshot->runs;
         $closer = match ($snapshot->form_status) {
-            'fresh' => "Feeling fresh, there's room to build up gradually.",
-            'optimal' => 'Right in the sweet spot, keep this rhythm going.',
-            'fatigued' => 'Starting to feel the fatigue, work in some recovery next week.',
-            'overreaching' => "Load's gotten high, don't forget to rest enough.",
-            default => 'Keep it steady, nice and slow.',
+            'fresh' => "You're fresh, with room to add a little on top of that.",
+            'optimal' => "That's the range where the work actually banks.",
+            'fatigued' => 'The fatigue is showing. Bank some recovery next week.',
+            'overreaching' => "Your load is above what you've been carrying lately. Worth pulling something back.",
+            default => "Steady. That's the read.",
         };
 
         return $this->select([
             "{$km} km across {$runs} runs this week. {$closer}",
-            "This week added up to {$km} km from {$runs} sessions. {$closer}",
-            "{$runs} runs, {$km} km total. {$closer}",
-            "This week: {$km} km across {$runs} runs. {$closer}",
-            "{$km} km logged, {$runs} sessions. {$closer}",
-            "{$runs} sessions this week, {$km} km total. {$closer}",
+            "{$runs} sessions, {$km} km on the board. {$closer}",
+            "{$km} km this week, spread over {$runs} runs. {$closer}",
+            "{$runs} runs, {$km} km. {$closer}",
+            "The week came to {$km} km from {$runs} sessions. {$closer}",
+            "{$km} km logged, {$runs} times out the door. {$closer}",
         ], $snapshotId);
     }
 
     private function prContext(int $seed): string
     {
         return $this->select([
-            "This PR is the result of consistency over the past few weeks, not luck.",
-            "This isn't luck, it's hard work that added up slowly.",
-            'New PR! Every second shaved off is proof of training that never stopped.',
-            "A new record's unlocked. You've been paying the price slowly, this is the payoff.",
-            "This record didn't come out of nowhere. It's the sum of sessions you put in quietly.",
-            'New PR logged. The number\'s just the marker, the work was already done.',
-            "The time shaved off looks small on screen, but it's huge in effort. Congrats.",
+            "That's a new PR. The old number held until today, and now it doesn't.",
+            'New best at that distance. Nothing about it was luck.',
+            "You beat your own number. That's the only record that counts here.",
+            'PR. The seconds you took off were bought weeks ago, in sessions that felt like nothing at the time.',
+            "That's the new mark. Everything from here gets measured against it.",
+            'New PR on the board. The old one had been sitting there a while.',
+            "The gap looks small written down. It wasn't small to run.",
         ], $seed);
     }
 
@@ -221,7 +221,7 @@ final readonly class RuleBasedNarrationFiller
     {
         $card = RunCard::query()->with('activity.detail')->find($cardId);
         if ($card === null) {
-            return 'This card was born from a quiet but solid session.';
+            return 'A quiet session, filed anyway.';
         }
 
         $move = $card->special_move;
@@ -254,39 +254,39 @@ final readonly class RuleBasedNarrationFiller
      */
     private const array FLAVOR_POOLS = [
         'common' => [
-            '"{move}" might be ordinary, but you still saw it through to the end.',
-            'A calm {km} km run, logged because consistency is worth something.',
-            'No drama in "{move}", just a clean rhythm.',
-            'A quiet "{move}" session, but you finished it whole.',
-            "An ordinary {km} km run, but a clean one, that's enough.",
+            '"{move}" was routine start to finish. Not every card needs to be a story.',
+            'A flat {km} km. It goes on the pile with the rest.',
+            'No drama in "{move}". The rhythm just held.',
+            '"{move}", filed. Ordinary weeks are built out of runs like this.',
+            '{km} km, clean and unremarkable. Both of those are true.',
         ],
         'uncommon' => [
-            '"{move}" felt right, there\'s something about this session that sticks.',
-            'A memorable {km} km run, not just a number.',
-            'There\'s a moment in "{move}" worth remembering again.',
-            '"{move}" holds one moment that sticks with you.',
-            "A {km} km run that's more than just a log entry.",
+            '"{move}" had something in it the routine ones don\'t.',
+            'A {km} km run that reads a notch above your usual.',
+            'One stretch of "{move}" is the whole reason this card exists.',
+            '"{move}" didn\'t go the way your usual sessions go.',
+            "{km} km, and not the forgettable kind.",
         ],
         'rare' => [
-            '"{move}" doesn\'t come around often, hang onto it.',
-            "A rare {km} km run that doesn't happen every week.",
-            'Something about "{move}" makes this session different from the usual.',
-            '"{move}" doesn\'t show up every week, make sure it\'s logged.',
-            "A {km} km run that's pretty rare for you.",
+            '"{move}" doesn\'t turn up often. Worth knowing that.',
+            "A {km} km run you don't put together most weeks.",
+            'Something in "{move}" separates it from the rest of the month.',
+            '"{move}" is the rare one, and the log agrees.',
+            '{km} km at a level you reach maybe once in a stretch.',
         ],
         'epic' => [
-            '"{move}" is exceptional, the hard work reads clearly.',
-            "A {km} km run worth showing off, this wasn't just any session.",
-            '"{move}" is on another level, you\'re leveling up.',
-            '"{move}" shows you\'re stepping up a level.',
-            'A {km} km run that means business, worth showing off.',
+            '"{move}" sat well above your usual gear.',
+            'A {km} km run that took real work, and it shows.',
+            '"{move}" is the kind of session that shifts what normal means for you.',
+            '"{move}" was you at the top of your current range.',
+            "{km} km that cost you something. That's why the card looks like this.",
         ],
         'legendary' => [
-            '"{move}" is legendary, a session you\'ll be talking about for a while.',
-            'A {km} km run that goes into your running history books.',
-            '"{move}" is a once-in-a-while kind of progress, celebrate it.',
-            '"{move}" is going to be a story you keep retelling.',
-            'A {km} km run that goes into your running history.',
+            '"{move}" is one you\'ll still be referencing months from now.',
+            'A {km} km run that goes straight into your own history.',
+            '"{move}" is the outlier. Every other card sits under it.',
+            '"{move}" reset the ceiling.',
+            "{km} km. There's no ordinary version of this one.",
         ],
     ];
 
@@ -303,22 +303,22 @@ final readonly class RuleBasedNarrationFiller
         }
 
         $clauses = [
-            Badge::NegativeSplit->value => 'Second half actually picked up even more.',
-            Badge::HariPanas->value => 'And that was in the middle of a scorcher.',
-            Badge::PejuangHujan->value => "Not even the rain could stop you.",
-            Badge::AnakPagi->value => 'Headed out while the world was still quiet.',
-            Badge::LongSlowDistance->value => 'Long distance, patience held.',
-            Badge::TahanDiri->value => 'Pace held back cleanly from the start.',
-            Badge::AnakMalam->value => 'The later it got, the more you kept going.',
-            Badge::Pendaki->value => 'Big elevation, extra effort.',
-            Badge::PertamaKali->value => "A first step you won't forget.",
-            Badge::Kilat->value => 'Sub-5 pace per km, fast.',
-            Badge::Jauh->value => 'Half marathon and up, serious distance.',
-            Badge::Z2Master->value => 'Mostly in Z2, seriously patient.',
-            Badge::AnakDingin->value => 'Dead of early morning, but the energy was already on.',
-            Badge::Keras->value => 'HR stayed high start to finish.',
-            Badge::Santai->value => 'Genuinely easy, HR kept low.',
-            Badge::LawanAngin->value => "Strong wind didn't slow you down.",
+            Badge::NegativeSplit->value => 'Second half came in faster than the first.',
+            Badge::HariPanas->value => 'Run in the worst heat of the day.',
+            Badge::PejuangHujan->value => 'Ran it in the rain.',
+            Badge::AnakPagi->value => 'Out the door before the city woke up.',
+            Badge::LongSlowDistance->value => "Long, slow, and you didn't rush it.",
+            Badge::TahanDiri->value => 'Pace held back from the first km.',
+            Badge::AnakMalam->value => 'Logged well after dark.',
+            Badge::Pendaki->value => 'Serious elevation on this one.',
+            Badge::PertamaKali->value => 'First of its kind in your log.',
+            Badge::Kilat->value => 'Sub-5 per km.',
+            Badge::Jauh->value => 'Half marathon distance and up.',
+            Badge::Z2Master->value => 'Mostly Z2, which takes discipline to hold.',
+            Badge::AnakDingin->value => "Early enough that the air hadn't warmed up yet.",
+            Badge::Keras->value => 'HR stayed high from start to finish.',
+            Badge::Santai->value => 'Genuinely easy. HR never climbed.',
+            Badge::LawanAngin->value => 'Headwind the whole way.',
         ];
 
         // Highlight one of the card's badges, chosen by seed so multi-badge
@@ -342,26 +342,26 @@ final readonly class RuleBasedNarrationFiller
     private function akuProfileVoice(int $seed): string
     {
         return $this->select([
-            "Your runs lean more **chill** than pushed, and it shows in how it adds up: slow, regular, never a big jump. The type who builds a base patiently. Keep the rhythm going, I'm tracking all of it here.",
-            "Your mood spread leans **easy** and the numbers back it up: you keep coming back without any drama, week after week. This kind of consistency is what makes progress last, so no need to rush the ramp-up.",
-            "You're the type who picks routine over flash, and your weekly streak proves it. Base first, speed follows. Whenever you want to slip in a bigger session, you've already got the foundation for it.",
-            "Lately **blazing** shows up more often than the quieter months before, and the records you've picked up follow that same direction. You're in a bold phase right now. Keep one easy run in the mix so it doesn't run away from you.",
-            "Your running mood mixes **blazing** and **wobbly**, and your longest distance reads like it was born on the bold days. You like to push, that's a good thing. One relaxed session in between will make the hard ones feel lighter.",
-            "Your pattern reads disciplined: mostly **chill**, occasionally pushed, and your total km builds up from that, not from one heroic run. A healthy way to build. Just keep going steady.",
-            "You're just getting started and the mix is still thin, but you've already come back again and again. To me, that's already a story. We'll build it slowly, so the persona reading actually has substance later.",
+            "You lean **chill** far more than pushed, and the log backs it up: regular, unhurried, never a big jump. That's a base built the slow way. The open question is when you decide to spend it.",
+            "Your mood spread sits on **easy** and stays there. You keep coming back week after week, which is the part that's hard to fake. The faster end of your range has been quiet for a while though.",
+            "You pick routine over flash, and your weekly streak is the proof. Base first, speed later. The foundation for a harder session is already sitting there, unused.",
+            "**blazing** turns up more often now than it did in the quieter months, and your records moved the same direction. You're in a bold phase. Keep one easy run in the mix so the phase lasts.",
+            "Your runs split between **blazing** days and wobbly ones, and your longest distance came out of the bold end. You like to push. The easy days are what make the hard ones repeatable.",
+            "The pattern reads disciplined: mostly **chill**, pushed on occasion, and your total built out of steady volume rather than one heroic run. Nothing in here is accidental.",
+            "You're early and the mix is still thin, but you've come back more than once already. That's a start with a number attached. The reading gets sharper the more you feed it.",
         ], $seed);
     }
 
     private function monthlyRecap(int $seed): string
     {
         return $this->select([
-            "Your rhythm kept going this month. Not forcing it, not disappearing either. The kind of consistent I like to see.",
-            'A full month of regular running. Volume made sense, effort stayed controlled too. A solid month.',
-            'A month with no meaningful skips. You showed up, ran, went home. A healthy pattern.',
-            "This month you chose consistency over intensity. And that's a good choice.",
-            "This month you kept showing up even when you weren't always fast. Consistent presence is worth a lot.",
-            "A clean month without much drama. Volume stayed on track, effort wasn't forced. Solid.",
-            'This month leaned more patient than pushing hard. The right strategy for the long run.',
+            "The rhythm held all month. You didn't force it and you didn't disappear either.",
+            'A full month of regular running. The volume made sense and the effort stayed in hand.',
+            'No real gaps this month. Showed up, ran, went home, repeatedly.',
+            "This month traded intensity for consistency. That's a trade, not a free win.",
+            "You kept showing up this month without being fast about it. The total says what the paces didn't.",
+            'A clean month. Volume on track, effort never forced, nothing to untangle.',
+            'This month leaned patient. That works right up until patient turns into a habit.',
         ], $seed);
     }
 }
