@@ -15,8 +15,10 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
-it('redirects unauthenticated users to login', function (): void {
-    $this->get('/')->assertRedirect('/login');
+it('never renders the dashboard to a guest', function (): void {
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login'));
 });
 
 it('renders for a user with no synced activities', function (): void {

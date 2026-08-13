@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-it('returns a redirect for the guest homepage', function (): void {
+it('returns the landing page for the guest homepage', function (): void {
     $response = $this->get('/');
 
-    $response->assertRedirect();
+    $response->assertSuccessful();
 });

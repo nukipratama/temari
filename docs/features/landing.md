@@ -1,10 +1,11 @@
 ---
 title: Landing page + stranger signup
-description: The public surface at /login that sells "you vs past you" before it asks for Strava access, and the honest failure paths around it.
+description: The public surface at / and /login that sells "you vs past you" before it asks for Strava access, and the honest failure paths around it.
 tags: [feature, onboarding]
 status: living
 reviewed: 2026-08-13
 code_refs:
+  - app/Http/Controllers/RootController.php
   - app/Http/Controllers/Auth/LoginController.php
   - app/Http/Controllers/Auth/StravaAuthController.php
   - app/Support/DataUseStatement.php
@@ -17,7 +18,7 @@ code_refs:
 
 # Landing page
 
-`/login` is the only page a stranger sees, so it is the landing page, not a sign-in form. It carries the product premise in full before the Strava button appears: **every run is measured against your own comparable history**, which is [[past-you-engine]] stated in prose. No leaderboards and no cross-user read is a Strava platform requirement as much as a product line, so the copy states it as a promise rather than a feature.
+A stranger sees exactly one page, at either of two urls, so it is the landing page and not a sign-in form. `/` is a single route that branches on auth in [RootController](../../app/Http/Controllers/RootController.php) — a guest is served the landing render, a signed-in user is served the dashboard — so the front door needs no redirect hop and no second url. `/login` stays as the addressable door for the sign-in itself (post-logout, an expired session's `url.intended`, a bookmark) and renders the same page. It carries the product premise in full before the Strava button appears: **every run is measured against your own comparable history**, which is [[past-you-engine]] stated in prose. No leaderboards and no cross-user read is a Strava platform requirement as much as a product line, so the copy states it as a promise rather than a feature.
 
 ## It explains before it asks
 
@@ -46,7 +47,7 @@ The four legal links stay **plain `<a>` anchors**, not Inertia `<Link>`s: they a
 
 ## Budget
 
-This page is the only route an unauthenticated visitor loads, so [check-entry-chunks.mjs](../../scripts/check-entry-chunks.mjs) holds its cold first paint under a gzipped budget and `bareLayout` is kept framer-motion-free. The hero's route-trace and glow animations are therefore plain CSS keyframes in [app.css](../../resources/css/app.css), and `KartuMini` is behind `lazy()` because its rarity chrome imports framer-motion statically.
+This page is the only one an unauthenticated visitor loads, so [check-entry-chunks.mjs](../../scripts/check-entry-chunks.mjs) — which budgets by page source file, not by url, and therefore covers both entry points from one entry — holds its cold first paint under a gzipped budget and `bareLayout` is kept framer-motion-free. The hero's route-trace and glow animations are therefore plain CSS keyframes in [app.css](../../resources/css/app.css), and `KartuMini` is behind `lazy()` because its rarity chrome imports framer-motion statically.
 
 ## See also
 

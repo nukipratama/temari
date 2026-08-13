@@ -73,8 +73,10 @@ it('redirects authenticated users away from login', function (): void {
         ->assertRedirect(route('dashboard'));
 });
 
-it('redirects unauthenticated visitors from root to login', function (): void {
-    $this->get('/')->assertRedirect(route('login'));
+it('serves the landing page to unauthenticated visitors at root', function (): void {
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login'));
 });
 
 it('renders dashboard for authenticated visitors at root', function (): void {
@@ -484,8 +486,10 @@ it('throttles both strava oauth endpoints, the open account-creation path', func
     }
 });
 
-it('blocks guests from the dashboard', function (): void {
-    $this->get(route('dashboard'))->assertRedirect(route('login'));
+it('answers the dashboard url with the landing page for guests', function (): void {
+    $this->get(route('dashboard'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login'));
 });
 
 it('shows the dashboard to authenticated users', function (): void {
