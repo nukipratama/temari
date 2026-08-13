@@ -19,6 +19,7 @@ use App\Http\Controllers\ClientErrorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DevtoolsDesignController;
 use App\Http\Controllers\DevtoolsIndexController;
+use App\Http\Controllers\InboxController;
 use App\Http\Controllers\LegalController;
 use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\NotificationTestController;
@@ -153,6 +154,8 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::post('/api/accessories/equip', [AksesoriController::class, 'equip'])
         ->name('api.accessories.equip');
     Route::get('/badges', [BadgeBoardController::class, 'index'])->name('badges');
+
+    Route::get('/inbox', InboxController::class)->name('inbox');
 
     Route::get('/profile', ProfileController::class)->name('profile');
 

@@ -10,6 +10,7 @@ import CoachMark from '@/components/onboarding/CoachMark';
 import TemariProto, {
     type TemariEquipped,
 } from '@/components/temari/TemariProto';
+import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
@@ -23,15 +24,15 @@ import { cn } from '@/lib/cn';
 import {
     mapHeadband,
     mapMedal,
-    mapKaus,
-    mapCelana,
-    mapSepatu,
+    mapShirt,
+    mapShorts,
+    mapShoes,
     mapAura,
     keyToPreviewEquipped,
 } from '@/lib/equippedAccessories';
 import { formatGoalNumber, goalProgressRatio } from '@/lib/goalProgress';
 import { fadeInUp } from '@/lib/motion';
-import { RARITY_TEXT } from '@/lib/runcard';
+import { RARITY_INK } from '@/lib/runcard';
 
 type Slot = EquippedSlot;
 
@@ -90,14 +91,14 @@ export default function Accessories({
     const unlockedCount = items.filter((i) => i.unlocked).length;
     const eyebrow = `Collection · ${unlockedCount} / ${items.length} accessories`;
 
-    const aksesoriCount = `${unlockedCount} / ${items.length}`;
+    const accessoryCount = `${unlockedCount} / ${items.length}`;
 
     const previewEquipped: TemariEquipped = {
         headband: equipped.headband ? mapHeadband(equipped.headband) : null,
         medal: mapMedal(equipped.medal),
-        kaus: mapKaus(equipped.shirt),
-        celana: mapCelana(equipped.shorts),
-        sepatu: mapSepatu(equipped.shoes),
+        shirt: mapShirt(equipped.shirt),
+        shorts: mapShorts(equipped.shorts),
+        shoes: mapShoes(equipped.shoes),
         aura: mapAura(equipped.aura),
     };
 
@@ -121,11 +122,11 @@ export default function Accessories({
             <Head title="Collection · Accessories" />
             <PageContainer>
                 <CollectionHeader
-                    active="aksesori"
+                    active="accessories"
                     eyebrow={eyebrow}
                     headline1="Dress up Temari"
                     headline2="with what you've unlocked."
-                    activeCount={aksesoriCount}
+                    activeCount={accessoryCount}
                 />
 
                 <HeroPanel className="mt-8 lg:px-14 lg:py-12">
@@ -157,9 +158,12 @@ export default function Accessories({
                             </h2>
                             <ul className="grid gap-2 sm:grid-cols-2">
                                 {SLOT_ORDER.map((slot) => (
-                                    <li
+                                    <Card
+                                        as="li"
                                         key={slot}
-                                        className="flex items-center justify-between rounded-xl bg-cream/[0.06] px-4 py-3"
+                                        tone="onSky"
+                                        padding="panel"
+                                        className="flex items-center justify-between"
                                     >
                                         <Eyebrow
                                             as="span"
@@ -175,7 +179,7 @@ export default function Accessories({
                                                 items,
                                             )}
                                         </span>
-                                    </li>
+                                    </Card>
                                 ))}
                             </ul>
                             <p className="mt-5 max-w-md font-display text-sm italic leading-relaxed text-cream/75">
@@ -238,15 +242,15 @@ function SlotSection({
             variants={fadeInUp}
             initial="hidden"
             animate="visible"
-            className="mt-8"
+            className="mt-10"
         >
             <SectionLabel>{SLOT_LABEL[slot]}</SectionLabel>
             <div
                 data-coachmark="collection-accessories-grid"
-                className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4"
+                className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
             >
                 {unlocked.map((item) => (
-                    <AksesoriCard
+                    <AccessoryCard
                         key={item.unlock_key}
                         item={item}
                         onEquip={onEquip}
@@ -260,7 +264,7 @@ function SlotSection({
                             showLocked ? 'contents' : 'hidden sm:contents'
                         }
                     >
-                        <AksesoriCard item={item} onEquip={onEquip} />
+                        <AccessoryCard item={item} onEquip={onEquip} />
                     </div>
                 ))}
             </div>
@@ -269,7 +273,7 @@ function SlotSection({
                     tone="outline"
                     size="sm"
                     onClick={() => setShowLocked((s) => !s)}
-                    className="mt-3.5 gap-1.5 px-4 py-2 text-xs font-semibold sm:hidden"
+                    className="mt-4 gap-1.5 px-4 py-2 text-xs font-semibold sm:hidden"
                 >
                     <Icon
                         icon={
@@ -288,26 +292,20 @@ function SlotSection({
     );
 }
 
-function AksesoriCard({
+function AccessoryCard({
     item,
     onEquip,
 }: Readonly<{ item: AccessoriesItem; onEquip: (key: string) => void }>) {
     const locked = !item.unlocked;
     const preview = keyToPreviewEquipped(item.unlock_key);
-    let cardBorder: string;
-    if (item.equipped) {
-        cardBorder =
-            'border-[1.5px] border-horizon bg-horizon/[0.08] shadow-e1';
-    } else if (locked) {
-        cardBorder = 'border-2 border-dashed border-cream-deep bg-cream/40';
-    } else {
-        cardBorder = 'border border-cream-deep bg-cream shadow-e1';
-    }
     return (
-        <article
+        <Card
+            as="article"
+            tone={locked ? 'empty' : 'card'}
+            padding="card"
             className={cn(
-                'relative flex flex-col items-center gap-3 rounded-lg px-5 py-5 text-center transition',
-                cardBorder,
+                'relative flex flex-col items-center gap-3 text-center transition',
+                item.equipped && 'border-horizon bg-horizon/[0.08]',
             )}
         >
             {item.equipped && (
@@ -335,9 +333,8 @@ function AksesoriCard({
             <div>
                 <h3
                     className={cn(
-                        'font-display text-xl leading-tight tracking-[-0.01em]',
-                        RARITY_TEXT[item.rarity],
-                        'text-ink',
+                        'font-display text-headline-xs',
+                        RARITY_INK[item.rarity],
                     )}
                 >
                     {item.name}
@@ -386,7 +383,7 @@ function AksesoriCard({
                     Equip
                 </PillButton>
             )}
-        </article>
+        </Card>
     );
 }
 

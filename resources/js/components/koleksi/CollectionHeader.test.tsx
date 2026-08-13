@@ -7,7 +7,7 @@ describe('CollectionHeader', () => {
     it('renders the eyebrow and two-line headline', () => {
         render(
             <CollectionHeader
-                active="kartu"
+                active="cards"
                 eyebrow="Koleksi"
                 headline1="Kartu-kartu"
                 headline2="larimu"
@@ -23,7 +23,7 @@ describe('CollectionHeader', () => {
     it('renders the sub-tabs with the given tab marked active', () => {
         render(
             <CollectionHeader
-                active="rekor"
+                active="records"
                 eyebrow="Koleksi"
                 headline1="Your best"
                 headline2="times"
@@ -41,7 +41,7 @@ describe('CollectionHeader', () => {
     it('forwards the activeCount chip to the active sub-tab', () => {
         render(
             <CollectionHeader
-                active="kartu"
+                active="cards"
                 eyebrow="Koleksi"
                 headline1="Your"
                 headline2="cards"

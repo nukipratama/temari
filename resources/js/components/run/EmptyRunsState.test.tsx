@@ -55,8 +55,8 @@ function expectActionLinks() {
         .closest('a');
     expect(kartu).toHaveAttribute('href', '/cards');
 
-    const aksesori = screen.getByText('Dress up Temari').closest('a');
-    expect(aksesori).toHaveAttribute('href', '/accessories');
+    const accessories = screen.getByText('Dress up Temari').closest('a');
+    expect(accessories).toHaveAttribute('href', '/accessories');
 
     const aktivitas = screen.getByText('See your run recap').closest('a');
     expect(aktivitas).toHaveAttribute('href', '/activities');

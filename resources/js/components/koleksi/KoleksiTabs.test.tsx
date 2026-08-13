@@ -5,7 +5,7 @@ import KoleksiTabs from './KoleksiTabs';
 
 describe('KoleksiTabs', () => {
     it('renders all four sub-tab labels', () => {
-        render(<KoleksiTabs active="kartu" />);
+        render(<KoleksiTabs active="cards" />);
         expect(screen.getByText('Cards')).toBeInTheDocument();
         expect(screen.getByText('Records')).toBeInTheDocument();
         expect(screen.getByText('Accessories')).toBeInTheDocument();
@@ -13,7 +13,7 @@ describe('KoleksiTabs', () => {
     });
 
     it('marks only the active tab with aria-current', () => {
-        render(<KoleksiTabs active="aksesori" />);
+        render(<KoleksiTabs active="accessories" />);
         expect(screen.getByText('Accessories').closest('a')).toHaveAttribute(
             'aria-current',
             'page',
@@ -33,7 +33,7 @@ describe('KoleksiTabs', () => {
     });
 
     it('renders no count chip when activeCount is omitted', () => {
-        render(<KoleksiTabs active="kartu" />);
+        render(<KoleksiTabs active="cards" />);
         expect(
             screen
                 .getByText('Cards')

@@ -1,6 +1,6 @@
 import SectionTabs, { type SectionTabItem } from '@/components/ui/SectionTabs';
 
-export type KoleksiTab = 'kartu' | 'rekor' | 'aksesori' | 'badges';
+export type KoleksiTab = 'cards' | 'records' | 'accessories' | 'badges';
 
 interface KoleksiTabsProps {
     active: KoleksiTab;
@@ -10,15 +10,15 @@ interface KoleksiTabsProps {
 }
 
 const TABS: ReadonlyArray<SectionTabItem<KoleksiTab>> = [
-    { id: 'kartu', label: 'Cards', href: '/cards', icon: 'mdi:cards-outline' },
+    { id: 'cards', label: 'Cards', href: '/cards', icon: 'mdi:cards-outline' },
     {
-        id: 'rekor',
+        id: 'records',
         label: 'Records',
         href: '/records',
         icon: 'mdi:trophy-outline',
     },
     {
-        id: 'aksesori',
+        id: 'accessories',
         label: 'Accessories',
         href: '/accessories',
         icon: 'mdi:tshirt-crew-outline',

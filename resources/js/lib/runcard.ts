@@ -1,4 +1,7 @@
-import type { TemariPose } from '@/components/temari/TemariProto';
+import type {
+    TemariEquipped,
+    TemariPose,
+} from '@/components/temari/TemariProto';
 import type { ActivityDetail, Rarity, ZonePct } from '@/types/inertia';
 
 import {
@@ -152,12 +155,23 @@ export function threadBandLines(count: number): ThreadBandLine[] {
     return lines;
 }
 
+// The vivid fill as a text colour. Only legible on the card's dark frame —
+// on paper use RARITY_INK.
 export const RARITY_TEXT: Record<Rarity, string> = {
     common: 'text-rarity-common',
     uncommon: 'text-rarity-uncommon',
     rare: 'text-rarity-rare',
     epic: 'text-rarity-epic',
     legendary: 'text-rarity-legendary',
+};
+
+// The only rarity colours allowed to carry text or an icon on paper.
+export const RARITY_INK: Record<Rarity, string> = {
+    common: 'text-rarity-common-ink',
+    uncommon: 'text-rarity-uncommon-ink',
+    rare: 'text-rarity-rare-ink',
+    epic: 'text-rarity-epic-ink',
+    legendary: 'text-rarity-legendary-ink',
 };
 
 // Static literal Tailwind class maps (so JIT picks them up) for the rarity
@@ -179,14 +193,19 @@ export const RARITY_TINT: Record<Rarity, string> = {
 };
 
 // Headband color driven by rarity — wired to TemariProto's `equipped.headband`.
-export const RARITY_HEADBAND: Record<Rarity, 'ember' | 'epik' | 'legendaris'> =
-    {
-        common: 'ember',
-        uncommon: 'ember',
-        rare: 'epik',
-        epic: 'legendaris',
-        legendary: 'legendaris',
-    };
+// Four headband variants over five tiers, so one pair has to share: the two
+// cheapest tiers do, and every tier from `rare` up gets its own hue matching
+// its `--color-rarity-*` token.
+export const RARITY_HEADBAND: Record<
+    Rarity,
+    NonNullable<TemariEquipped['headband']>
+> = {
+    common: 'uncommon',
+    uncommon: 'uncommon',
+    rare: 'rare',
+    epic: 'epic',
+    legendary: 'legendary',
+};
 
 // Mascot pose driven by rarity — reinforces the tier hierarchy on cards and detail page.
 export const RARITY_POSE: Record<Rarity, TemariPose> = {

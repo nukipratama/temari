@@ -89,7 +89,7 @@ export default function Badges({
                     variants={staggerContainer}
                     initial="hidden"
                     animate="visible"
-                    className="mt-4 grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4"
+                    className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
                 >
                     {items.map((item) => (
                         <motion.div key={item.key} variants={fadeInUp}>
@@ -108,31 +108,24 @@ function BadgeCard({ item }: Readonly<{ item: BadgeBoardItem }>) {
 
     return (
         <Card
+            tone={locked ? 'empty' : 'card'}
             padding="card"
-            className={cn(
-                'flex h-full flex-col items-center gap-2 text-center',
-                locked &&
-                    'border-2 border-dashed border-cream-deep bg-cream/40 shadow-none',
-            )}
+            className="flex h-full flex-col items-center gap-2 text-center"
         >
             <span className={cn('text-3xl', locked && 'grayscale')} aria-hidden>
                 {locked ? '🔒' : emblem}
             </span>
-            <h3 className="font-display text-lg leading-tight tracking-[-0.01em] text-ink">
-                {name}
-            </h3>
-            {locked ? (
-                <p className="mt-auto font-display text-xs italic text-ink-3">
-                    {ability}
-                </p>
-            ) : (
-                <>
-                    <p className="font-sans text-sm text-ink-2">{ability}</p>
-                    <div className="mt-auto flex items-baseline gap-3 font-mono text-xs text-ink-3">
-                        <span>Lifetime {item.lifetime_count}</span>
-                        <span>This season {item.season_count}</span>
-                    </div>
-                </>
+            <h3 className="font-display text-headline-xs text-ink">{name}</h3>
+            <p className="font-sans text-sm text-ink-2">{ability}</p>
+            {!locked && (
+                <div className="mt-auto flex items-baseline gap-3">
+                    <Eyebrow as="span" token="micro" tone="ink-3">
+                        Lifetime {item.lifetime_count}
+                    </Eyebrow>
+                    <Eyebrow as="span" token="micro" tone="ink-3">
+                        This season {item.season_count}
+                    </Eyebrow>
+                </div>
             )}
         </Card>
     );

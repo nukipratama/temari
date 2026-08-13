@@ -245,12 +245,12 @@ describe('the inbox record', function (): void {
             ->and($row->title)->toBe('Unlocked: '.$catalog['accessory.medal_first']['name']);
     });
 
-    it('leaves the demo inbox alone', function (): void {
+    it('records the demo unlock too, so the public demo inbox is not blank', function (): void {
         $user = User::factory()->create(['is_demo' => true]);
         PersonalRecord::factory()->for($user)->create();
 
         ($this->engine)($user);
 
-        expect(InboxNotification::query()->count())->toBe(0);
+        expect(InboxNotification::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
     });
 });

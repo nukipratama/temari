@@ -16,6 +16,7 @@ import SplitsSparkline from '@/components/run/SplitsSparkline';
 import StravaSyncButton from '@/components/StravaSyncButton';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
+import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
@@ -119,7 +120,7 @@ export default function Records({
             <Head title="Collection · PRs" />
             <PageContainer>
                 <CollectionHeader
-                    active="rekor"
+                    active="records"
                     eyebrow={eyebrow}
                     headline1="So far"
                     headline2="your personal best."
@@ -179,7 +180,7 @@ function HeroScoreboard({
                         </div>
                         {pr.context_analysis &&
                             pr.context_analysis.status !== 'pending' && (
-                                <div className="rounded-lg border border-cream/[0.12] bg-cream/[0.06] px-5 py-4 backdrop-blur">
+                                <Card tone="onSky" padding="card">
                                     <AnalysisStatus
                                         analysis={pr.context_analysis}
                                         inertiaReloadProps={['personalRecords']}
@@ -195,7 +196,7 @@ function HeroScoreboard({
                                             </p>
                                         )}
                                     />
-                                </div>
+                                </Card>
                             )}
                     </div>
                 </div>
@@ -268,7 +269,7 @@ function Caption({
 function TrophyWall({ records }: Readonly<{ records: ExtendedPR[] }>) {
     const count = Math.round(useCountUp(records.length));
     return (
-        <section data-coachmark="collection-trophy-wall" className="mt-8">
+        <section data-coachmark="collection-trophy-wall" className="mt-10">
             <header className="mb-4 flex items-baseline justify-between">
                 <div className="flex items-baseline gap-3">
                     <h2 className="font-display text-headline-md text-ink">
@@ -282,7 +283,7 @@ function TrophyWall({ records }: Readonly<{ records: ExtendedPR[] }>) {
                 variants={staggerContainer}
                 initial="hidden"
                 animate="visible"
-                className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4"
+                className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
             >
                 {records.map((r) => (
                     <motion.div key={r.id} variants={fadeInUp}>
@@ -316,19 +317,19 @@ const PACE_FILLER_KEYS = [
 function PaceTicker({ records }: Readonly<{ records: ExtendedPR[] }>) {
     const count = Math.round(useCountUp(records.length));
     return (
-        <section className="mt-8">
+        <section className="mt-10">
             <header className="mb-4 flex items-baseline justify-between">
                 <div className="flex items-baseline gap-3">
                     <h2 className="font-display text-headline-md text-ink">
                         Pace ticker ·{' '}
-                        <em className="italic text-rarity-rare">
+                        <em className="italic text-rarity-rare-ink">
                             best efforts
                         </em>
                     </h2>
                     <Chip>{count} PR</Chip>
                 </div>
             </header>
-            <div className="relative overflow-hidden rounded-lg bg-ink p-1.5 text-cream">
+            <div className="relative overflow-hidden rounded-md bg-ink p-1.5 text-cream">
                 <span
                     aria-hidden
                     className="pointer-events-none absolute inset-0"
@@ -355,7 +356,7 @@ function PaceTicker({ records }: Readonly<{ records: ExtendedPR[] }>) {
                         <div
                             key={k}
                             aria-hidden
-                            className="rounded-xl bg-sky/10"
+                            className="rounded-md bg-sky/10"
                         />
                     ))}
                 </motion.div>
@@ -369,7 +370,7 @@ function PaceCell({ pr }: Readonly<{ pr: ExtendedPR }>) {
     const time = formatPrValue(pr.category, pr.value_sec);
     const runName = pr.activity?.detail?.name ?? 'Run';
     return (
-        <div className="flex flex-col gap-2 rounded-xl bg-sky/40 px-5 py-5">
+        <div className="pad-card flex flex-col gap-2 rounded-md bg-sky/40">
             <SectionLabel
                 dot
                 dotClass="bg-rarity-rare shadow-[0_0_8px_var(--color-rarity-rare)]"
@@ -377,9 +378,7 @@ function PaceCell({ pr }: Readonly<{ pr: ExtendedPR }>) {
             >
                 {category}
             </SectionLabel>
-            <div className="font-sans text-[40px] font-bold leading-none tabular-nums tracking-[-0.03em] text-cream sm:text-5xl">
-                {time}
-            </div>
+            <div className="text-stat text-cream">{time}</div>
             <div className="border-t border-cream/10 pt-2.5">
                 <div className="font-sans text-xs text-cream/85">{runName}</div>
                 <Eyebrow token="micro" tone="ink-on-sky">
