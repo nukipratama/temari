@@ -194,6 +194,44 @@ export const filterOptionVariants = cva(
     },
 );
 
+/**
+ * Bordered pill — the hairline-outlined counterpart to
+ * {@link toggleButtonVariants}'s solid fill, for a selectable filter (race
+ * distance presets, the Rekor progression tabs) or an inline row action (the
+ * Plan tab's per-day controls). Gold-on-paper is `horizon-ink`, never the
+ * `horizon-deep` CTA fill.
+ */
+export const outlineChipVariants = cva(
+    'focus-ring inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-label-micro transition',
+    {
+        variants: {
+            selected: {
+                true: 'border-horizon bg-horizon/10 text-horizon-ink',
+                false: 'border-line text-ink-3 hover:border-horizon/60 hover:text-ink',
+            },
+        },
+        defaultVariants: { selected: false },
+    },
+);
+
+/**
+ * Text/number/date field. `rounded-sm` is the radius scale's input corner, so
+ * a field never picks up a card's `md` or a pill's `full`. `sm` is the inline
+ * field that sits in a row of controls; `md` is the labelled form field.
+ */
+export const inputVariants = cva(
+    'focus-ring w-full border border-line bg-surface rounded-sm text-ink',
+    {
+        variants: {
+            size: {
+                sm: 'px-2.5 py-1.5 text-sm',
+                md: 'px-3 py-2 text-sm',
+            },
+        },
+        defaultVariants: { size: 'md' },
+    },
+);
+
 /** Eyebrow's type tier, one of the `.text-label-*` role utilities in app.css. */
 export const eyebrowVariants = cva('', {
     variants: {

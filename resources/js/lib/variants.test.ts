@@ -5,6 +5,8 @@ import {
     chipVariants,
     filterOptionVariants,
     iconButtonVariants,
+    inputVariants,
+    outlineChipVariants,
     pillButtonVariants,
     rarityVariants,
     toggleButtonVariants,
@@ -211,5 +213,49 @@ describe('rarityVariants', () => {
         expect(rarityVariants.border()).toContain('border-rarity-epic');
         expect(rarityVariants.flag()).toContain('bg-rarity-epic');
         expect(rarityVariants.corner()).toContain('border-t-rarity-epic');
+    });
+});
+
+describe('outlineChipVariants', () => {
+    it('draws the unselected state as a hairline outline on the meta tier', () => {
+        const cls = outlineChipVariants();
+        expect(cls).toContain('border-line');
+        expect(cls).toContain('text-ink-3');
+        expect(cls).toContain('rounded-full');
+        expect(cls).toContain('focus-ring');
+    });
+
+    it('carries gold as text on the -ink member, never the CTA fill', () => {
+        const cls = outlineChipVariants({ selected: true });
+        expect(cls).toContain('border-horizon');
+        expect(cls).toContain('text-horizon-ink');
+        expect(cls).not.toContain('text-horizon-deep');
+    });
+
+    it('keeps both states on the same geometry', () => {
+        for (const selected of [true, false]) {
+            expect(outlineChipVariants({ selected })).toContain('px-3 py-1.5');
+        }
+    });
+});
+
+describe('inputVariants', () => {
+    it('uses the radius scale’s input corner, not a card or pill corner', () => {
+        const cls = inputVariants();
+        expect(cls).toContain('rounded-sm');
+        expect(cls).not.toContain('rounded-md');
+        expect(cls).not.toContain('rounded-full');
+    });
+
+    it('carries the shared field surface and focus-ring', () => {
+        const cls = inputVariants();
+        expect(cls).toContain('bg-surface');
+        expect(cls).toContain('border-line');
+        expect(cls).toContain('focus-ring');
+    });
+
+    it('tightens padding for the inline sm field', () => {
+        expect(inputVariants({ size: 'sm' })).toContain('px-2.5 py-1.5');
+        expect(inputVariants({ size: 'md' })).toContain('px-3 py-2');
     });
 });
