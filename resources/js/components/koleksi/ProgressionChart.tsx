@@ -218,7 +218,7 @@ export default function ProgressionChart({
         >
             <span className="sr-only">{summarySentence}</span>
             <Suspense
-                fallback={<Skeleton className="h-full w-full rounded-xl" />}
+                fallback={<Skeleton className="h-full w-full rounded-md" />}
             >
                 <Line data={data} options={options} />
             </Suspense>

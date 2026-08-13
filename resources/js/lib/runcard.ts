@@ -73,14 +73,6 @@ export const BADGE_ABILITY: Record<string, string> = {
     headwind: 'Pushed through strong wind, 20 km/h or more.',
 };
 
-export const RARITY_BORDER: Record<Rarity, string> = {
-    common: 'border-rarity-common',
-    uncommon: 'border-rarity-uncommon',
-    rare: 'border-rarity-rare',
-    epic: 'border-rarity-epic',
-    legendary: 'border-rarity-legendary',
-};
-
 // Escalating "set symbol" glyph per rarity (circle to star), TCG-style. Colored
 // via RARITY_TEXT. Mirrored as RARITY_SYMBOL in lib/shareCard.ts for the canvas.
 export const RARITY_SYMBOL: Record<Rarity, string> = {
