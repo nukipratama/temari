@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Enums\IngestState;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
+use App\Services\Run\Story\ComparableRun;
 use App\Services\Run\Story\PastYouMatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -267,4 +269,115 @@ it('prefers a run inside the window over an older one', function (): void {
     $match = app(PastYouMatcher::class)->findMatch($current->activity, $current);
 
     expect($match['days_ago'])->toBe(300);
+});
+
+function matcherRun(
+    string $date,
+    float $paceSecPerKm,
+    float $distanceM = 10_000.0,
+    ?float $hr = 155.0,
+    ?float $elevationM = 50.0,
+    int $activityId = 1,
+): ComparableRun {
+    return new ComparableRun(
+        activityId: $activityId,
+        startedAt: Carbon::parse($date),
+        distanceM: $distanceM,
+        movingTimeSec: (int) round($paceSecPerKm * $distanceM / 1000),
+        paceSecPerKm: $paceSecPerKm,
+        averageHeartrate: $hr,
+        elevationGainM: $elevationM,
+        ingestState: IngestState::Summary,
+    );
+}
+
+it('scores a perfectly comparable pair at the top of the scale', function (): void {
+    $matcher = new PastYouMatcher();
+    $current = matcherRun('2026-06-15 06:00:00', 420.0);
+    $past = matcherRun('2025-06-15 06:00:00', 430.0);
+
+    expect($matcher->similarity($current, $past))->toEqualWithDelta(1.0, 0.0001);
+});
+
+it('rejects a pairing that breaks a hard rule, reading only summary fields', function (ComparableRun $past): void {
+    $matcher = new PastYouMatcher();
+    $current = matcherRun('2026-06-15 06:00:00', 420.0);
+
+    expect($matcher->similarity($current, $past))->toBeNull();
+})->with([
+    'too recent' => fn (): ComparableRun => matcherRun('2026-06-01 06:00:00', 420.0),
+    'older than the ceiling' => fn (): ComparableRun => matcherRun('2025-05-01 06:00:00', 420.0),
+    'different pace band' => fn (): ComparableRun => matcherRun('2026-01-15 06:00:00', 460.0),
+    'too far off on distance' => fn (): ComparableRun => matcherRun('2026-01-15 06:00:00', 420.0, 10_501.0),
+    'a hill run against a flat one' => fn (): ComparableRun => matcherRun('2026-01-15 06:00:00', 420.0, 10_000.0, 155.0, 220.0),
+]);
+
+it('scores a summary-state run with no heart rate or elevation', function (): void {
+    $matcher = new PastYouMatcher();
+    $current = matcherRun('2026-06-15 06:00:00', 420.0, 10_000.0, null, null);
+    $past = matcherRun('2026-01-15 06:00:00', 430.0, 10_000.0, null, null);
+
+    expect($matcher->similarity($current, $past))->toBeFloat()->toBeGreaterThan(0.0);
+});
+
+it('penalises a pairing run at a very different hour', function (): void {
+    $matcher = new PastYouMatcher();
+    $current = matcherRun('2026-06-15 06:00:00', 420.0);
+    $morning = matcherRun('2026-01-15 06:00:00', 420.0);
+    $evening = matcherRun('2026-01-15 18:00:00', 420.0);
+
+    expect($matcher->similarity($current, $morning))
+        ->toBeGreaterThan($matcher->similarity($current, $evening));
+});
+
+it('treats midnight as a wrap-around rather than a twelve-hour gap', function (): void {
+    $matcher = new PastYouMatcher();
+    $current = matcherRun('2026-06-15 23:30:00', 420.0);
+    $nearby = matcherRun('2026-01-15 00:30:00', 420.0);
+    $distant = matcherRun('2026-01-15 11:30:00', 420.0);
+
+    expect($matcher->similarity($current, $nearby))
+        ->toBeGreaterThan($matcher->similarity($current, $distant));
+});
+
+it('prefers a pairing from the same season', function (): void {
+    $matcher = new PastYouMatcher();
+    $current = matcherRun('2026-06-15 06:00:00', 420.0);
+    $sameSeason = matcherRun('2025-07-15 06:00:00', 420.0);
+    $offSeason = matcherRun('2025-12-15 06:00:00', 420.0);
+
+    expect($matcher->similarity($current, $sameSeason))
+        ->toBeGreaterThan($matcher->similarity($current, $offSeason));
+});
+
+it('picks the most comparable candidate, not the nearest in time', function (): void {
+    $matcher = new PastYouMatcher();
+    $current = matcherRun('2026-06-15 06:00:00', 420.0);
+    $comparison = $matcher->bestMatch($current, [
+        matcherRun('2026-05-01 18:00:00', 420.0, 10_450.0, 155.0, 50.0, 11),
+        matcherRun('2025-07-10 06:00:00', 430.0, 10_000.0, 155.0, 50.0, 12),
+    ]);
+
+    expect($comparison)->not->toBeNull()
+        ->and($comparison->past->activityId)->toBe(12)
+        ->and($comparison->paceDeltaSec)->toBe(10.0);
+});
+
+it('breaks a tie towards the older run', function (): void {
+    $matcher = new PastYouMatcher();
+    $current = matcherRun('2026-06-15 06:00:00', 420.0);
+    $comparison = $matcher->bestMatch($current, [
+        matcherRun('2026-04-15 06:00:00', 420.0, 10_000.0, 155.0, 50.0, 21),
+        matcherRun('2025-08-15 06:00:00', 420.0, 10_000.0, 155.0, 50.0, 22),
+    ]);
+
+    expect($comparison->past->activityId)->toBe(22);
+});
+
+it('finds no best match when nothing qualifies', function (): void {
+    $matcher = new PastYouMatcher();
+    $current = matcherRun('2026-06-15 06:00:00', 420.0);
+
+    expect($matcher->bestMatch($current, [matcherRun('2026-06-10 06:00:00', 420.0)]))->toBeNull()
+        ->and($matcher->bestMatch($current, []))->toBeNull();
 });

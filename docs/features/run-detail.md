@@ -28,7 +28,7 @@ location-resolve job when the run has GPS but no resolved place name.
 
 ## System dependencies
 
-- **AI narration** — the story + adaptive-claims lenses, card flavor, and Past You context are all `Analysis` rows from the [[ai-pipeline]].
+- **AI narration** — the story + adaptive-claims lenses and card flavor are all `Analysis` rows from the [[ai-pipeline]]; the narrators read Past You through a tool, but the match itself is computed, not narrated. See [[past-you-engine]].
 - **Ingestion** — `detail` / `stream_summary` are populated by the [[run-ingest-pipeline]].
 - **Geo** — location name is resolved by [[geo-reverse-geocoding]].
 - **Weather** — conditions come from [[weather-integration]].
@@ -41,7 +41,10 @@ The top section is a sky-toned `HeroPanel`: the mascot in a mood-derived pose
 (jarak / durasi / pace / HR / TRIMP). The **"Past You"** comparison is inlined
 right here in the hero — `RunController::show` calls a `PastYouMatcher` and
 passes a `pastYou` match (pace + HR delta vs a similar run N days ago) with a
-link to that older run.
+link to that older run. `findMatch` deliberately picks the **oldest** qualifying
+run so the contrast reads as progress; the home screen's trend verdict runs off
+the same matcher but picks the most *comparable* run instead. Both selections,
+and the verdict's outcomes, are [[past-you-engine]].
 
 To the right (below the stats on mobile, since the hero grid stacks under the
 `lg` breakpoint), [MapWeatherPanel](../../resources/js/components/run/MapWeatherPanel.tsx) shows
