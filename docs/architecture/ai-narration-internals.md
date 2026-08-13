@@ -40,7 +40,7 @@ Each tool is bound to its subject at construction and declares an argument-free 
 
 **What still travels in the context** is whatever no tool could serve: a value the *call itself* carries rather than the database (post-run speech's `mood`), plus the continuity line, which stays in the prompt because the content-filter retry has to be able to strip it.
 
-A toolbox is built per call, so it can be shorter when the subject is thinner — a card whose activity has no detail row is offered only `get_card_identity`, rather than four tools that would answer null to everything.
+A toolbox is built per call, so it can be shorter when the subject is thinner — a card whose activity has no detail row is offered only `get_card_identity`, rather than four tools that would answer null to everything. The same applies by ingest state: [RunQuestionNarrator](app/Services/AI/Narrators/RunQuestionNarrator.php) drops the splits, laps, zone and terrain reads on a `summary`-state run and keeps the run summary plus the history reads, since the stream pipeline has not run yet. See [[run-qa]].
 
 ### The briefing family
 

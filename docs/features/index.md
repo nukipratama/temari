@@ -16,6 +16,7 @@ _Pages_
 - [[dashboard]] — the "Hari Ini" home (greeting, Kata Temari, vitals, featured kartu, suggestion)
 - [[run-history]] — Jejak/Kalender, weekly snapshots, filters, journey strip
 - [[run-detail]] — single run: story + adaptive claims lenses, route map, splits, HR zones
+- [[run-qa]] — ask about this run: run-derived suggested questions, an answer scoped to that one activity
 - [[profile]] — persona, profile voice
 - [[settings]] — Pengaturan hub (Telegram toggles, HR-zone entry, account deletion)
 - [[settings-hr-zones]] — Zona HR (Karvonen zones)
