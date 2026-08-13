@@ -43,10 +43,12 @@ import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { activityUrl } from '@/lib/routes';
 import {
+    RARITY_DOT,
     RARITY_LABELS,
     RARITY_ORDER,
     kartuPropsFromDetail,
 } from '@/lib/runcard';
+import { toggleButtonVariants } from '@/lib/variants';
 
 interface FeaturedCardPayload {
     id: number;
@@ -151,9 +153,7 @@ export default function Cards({
 
     const gridBody: ReactNode =
         grid.length === 0 ? (
-            <div className="mt-6">
-                <EmptyState />
-            </div>
+            <EmptyState />
         ) : (
             // The ref/data-coachmark anchor lives on this stable wrapper, not on
             // the keyed motion.div below: CoachMark's anchor tracking sets up its
@@ -170,7 +170,7 @@ export default function Cards({
                     variants={fadeInUp}
                     initial="hidden"
                     animate="visible"
-                    className="grid grid-cols-2 gap-3.5 md:grid-cols-3 xl:grid-cols-4"
+                    className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4"
                 >
                     {grid.map((card) => (
                         <CardCell
@@ -333,14 +333,14 @@ function RarityFilter({
                         onChange={(e) => onSearchChange(e.target.value)}
                         placeholder="Search cards..."
                         aria-label="Search cards"
-                        className="w-36 rounded-full border border-cream-deep bg-cream py-1.5 pl-8 pr-3 text-xs text-ink placeholder:text-ink-3 focus:border-horizon focus:outline-none sm:w-44"
+                        className="w-36 rounded-full border border-line bg-surface-card py-1.5 pl-8 pr-3 text-xs text-ink placeholder:text-ink-3 focus:border-horizon focus:outline-none sm:w-44"
                     />
                 </div>
                 <select
                     value={sortBy}
                     onChange={(e) => onSortChange(e.target.value as SortMode)}
                     aria-label="Sort"
-                    className="rounded-full border border-cream-deep bg-cream px-3 py-1.5 text-xs font-medium text-ink-2 focus:border-horizon focus:outline-none"
+                    className="rounded-full border border-line bg-surface-card px-3 py-1.5 text-xs font-medium text-ink-2 focus:border-horizon focus:outline-none"
                 >
                     {SORT_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -352,14 +352,6 @@ function RarityFilter({
         </nav>
     );
 }
-
-const RARITY_DOT: Record<Rarity, string> = {
-    common: 'bg-rarity-common',
-    uncommon: 'bg-rarity-uncommon',
-    rare: 'bg-rarity-rare',
-    epic: 'bg-rarity-epic',
-    legendary: 'bg-rarity-legendary',
-};
 
 function FilterPill({
     href,
@@ -377,10 +369,9 @@ function FilterPill({
             href={href}
             aria-current={active ? 'page' : undefined}
             className={cn(
-                'inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition',
-                active
-                    ? 'bg-sky text-cream font-semibold'
-                    : 'bg-sky/[0.06] text-ink-2 hover:bg-sky/[0.12]',
+                toggleButtonVariants({ size: 'sm', selected: active }),
+                'gap-1.5',
+                active && 'font-semibold',
             )}
         >
             {dot && (
@@ -470,13 +461,16 @@ function LegendaryTease() {
             tone="empty"
             as="section"
             padding="hero"
-            className="mt-8 flex flex-col items-start gap-5 sm:flex-row sm:items-center"
+            className="mt-10 flex flex-col items-start gap-5 sm:flex-row sm:items-center"
         >
-            <div className="flex h-28 w-20 items-center justify-center rounded-lg border-2 border-dashed border-rarity-legendary bg-rarity-legendary/[0.06] font-display text-4xl italic text-rarity-legendary">
+            <div className="flex h-28 w-20 items-center justify-center rounded-md border-2 border-dashed border-rarity-legendary bg-rarity-legendary/[0.06] font-display text-4xl italic text-rarity-legendary-ink">
                 ?
             </div>
             <div className="flex-1">
-                <Eyebrow token="micro" className="mb-1.5 text-rarity-legendary">
+                <Eyebrow
+                    token="micro"
+                    className="mb-1.5 text-rarity-legendary-ink"
+                >
                     ★ Legendary · not unlocked yet
                 </Eyebrow>
                 <p className="font-display text-sm italic leading-relaxed text-ink-2">

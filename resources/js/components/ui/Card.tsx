@@ -11,8 +11,8 @@ interface CardProps {
     tone?: CardTone;
     /** Default 'card' — the --pad-card role. */
     padding?: CardPadding;
-    /** Render as <section> when the card is a top-level page block. */
-    as?: 'div' | 'section' | 'article' | 'aside';
+    /** Render as <section> when the card is a top-level page block, <li> inside a list. */
+    as?: 'div' | 'section' | 'article' | 'aside' | 'li';
     className?: string;
     children: ReactNode;
 }

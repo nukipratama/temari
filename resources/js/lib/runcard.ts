@@ -155,12 +155,23 @@ export function threadBandLines(count: number): ThreadBandLine[] {
     return lines;
 }
 
+// The vivid fill as a text colour. Only legible on the card's dark frame —
+// on paper use RARITY_INK.
 export const RARITY_TEXT: Record<Rarity, string> = {
     common: 'text-rarity-common',
     uncommon: 'text-rarity-uncommon',
     rare: 'text-rarity-rare',
     epic: 'text-rarity-epic',
     legendary: 'text-rarity-legendary',
+};
+
+// The only rarity colours allowed to carry text or an icon on paper.
+export const RARITY_INK: Record<Rarity, string> = {
+    common: 'text-rarity-common-ink',
+    uncommon: 'text-rarity-uncommon-ink',
+    rare: 'text-rarity-rare-ink',
+    epic: 'text-rarity-epic-ink',
+    legendary: 'text-rarity-legendary-ink',
 };
 
 // Static literal Tailwind class maps (so JIT picks them up) for the rarity
