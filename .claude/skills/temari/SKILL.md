@@ -1,6 +1,6 @@
 ---
 name: temari
-description: Project conventions and domain map for the temari repo — Threadwork design tokens, voice rules, the AI narrator/analysis pipeline, the 1:1 test convention with its aggregate suites, and the sail toolchain. Use when writing UI, AI narration, or tests in this codebase, or when unsure where a change wires in.
+description: Project conventions and domain map for the temari repo — design tokens, voice rules, the AI narrator/analysis pipeline, the 1:1 test convention with its aggregate suites, and the sail toolchain. Use when writing UI, AI narration, or tests in this codebase, or when unsure where a change wires in.
 ---
 
 # temari conventions
@@ -29,32 +29,44 @@ Two DB connections: default `mysql` plus a second **`analytics`** schema for met
 
 ## Design system
 
-Palette is **Threadwork** (thread/embroidery jewel tones on a warm linen canvas). Tokens live in
-the `@theme` block of [resources/css/app.css](../../../resources/css/app.css); full reference
-(colors, type scale, fonts, gradients, spacing) in
-[docs/design-tokens.md](../../../docs/design-tokens.md). Use the **semantic token families, never
-raw Tailwind colors** like `lime-500`:
+Jewel tones on a warm linen canvas. Tokens live in the `@theme` block of
+[resources/css/app.css](../../../resources/css/app.css), which is *generated* by
+[build-tokens.mjs](../../../resources/brand/build-tokens.mjs); full reference (colors, type scale,
+fonts, radius, elevation, spacing) in [docs/design-tokens.md](../../../docs/design-tokens.md).
+Use the **semantic token families, never raw Tailwind colors** like `lime-500`:
 
 - `sky` (`#241c54`) / `sky-deep` (`#170f38`) / `sky-2` (`#362a73`) — structure, dark hero panels, the only "dark" surface. Deep indigo thread.
 - `horizon` / `horizon-deep` (`#d9a53c` gold) — primary CTA, "earned"/PR state, Temari accent. Gold thread.
 - `cream` / `cream-deep` (`#f5f0e4`) — paper / secondary surface and borders. Warm linen canvas.
 - `ink` / `ink-2` / `ink-3` — the 3-tier text-contrast scale (see below).
-- `surface` / `surface-elev` / `surface-warm` / `surface-sunken` + `line` — app surfaces (dawn-shift drifts `surface`).
-- `mood-{blazing,easy,wobbly,gassed,overloaded,chill}` (each with a pastel `-bg` variant) — calendar cells + mood badges. Each remapped to a thread jewel tone.
-- `rarity-{common,uncommon,rare,epic,legendary}` — card rarity.
+- `surface` / `surface-card` / `surface-elev` / `surface-warm` / `surface-sunken` + `line` / `line-strong` — app surfaces (dawn-shift drifts `surface`).
+- `mood-{blazing,easy,wobbly,gassed,overloaded,chill}` (each with a pastel `-bg` cell tint and an `-ink` label variant) — calendar cells + mood badges.
+- `rarity-{common,uncommon,rare,epic,legendary}` (each with an `-ink` label variant) — card rarity.
 - semantic hues `leaf` / `leaf-deep`, `ember` / `ember-deep`, `citrus` / `citrus-deep`, `stone`.
 - `strava-orange` / `strava-orange-hover` — reserved, never themed (see below).
 
-`citrus` mustard (`#d9b23a`) is reserved for PR / legendaris celebrations only. App is
+`citrus` (`#c9971f`) is reserved for PR / legendary celebrations only. App is
 **light-mode only** (no `*-dark` tokens; `.dark` is never applied).
+
+**Fill vs text.** Every saturated family ships as a pair: the vivid value is the fill (dots,
+frames, strokes, tinted cells), the derived `-ink` value is the only member allowed to carry text
+or an icon on paper. `text-rarity-legendary` is always wrong; it is `text-rarity-legendary-ink`.
+The two fills too light to reach 3:1 (legendary gold, uncommon green) keep their vibrancy and are
+drawn with a 2px `-ink` outline rather than being darkened.
+
+**Radius, elevation, spacing** are scales now, not call-site guesses: `rounded-md` (14px) is the
+card corner, `shadow-e1`..`e4` is resting → floating → sheet → modal (warm-tinted, never
+Tailwind's neutral defaults), and padding names a role (`.pad-chip` / `.pad-panel` / `.pad-card` /
+`.pad-hero` / `.pad-page`). `npm run check:palette` rejects raw palette shades, default shadows and
+off-scale radii; `/devtools/design` renders the whole set plus a live contrast audit read out of
+the shipped CSS.
 
 ### Strava brand mark — hands off
 
 The "Connect with Strava" button (and any Strava brand mark) is never restyled. Strava brand
-orange `#FC4C02` / hover `#E34402` are reserved via `--color-strava-orange` tokens. `ember` shares
-a hue family with Strava orange, so within any card that **displays the Strava brand mark** the
-warm accent is *not* used: switch the local context to neutral (`surface-sunken` + `ink`) so the
-brand mark gets breathing room. Strava can revoke API access for brand-guideline violations.
+orange `#FC4C02` / hover `#E34402` are reserved via `--color-strava-orange` tokens. Within any card
+that **displays the Strava brand mark**, keep other warm accents off it: switch the local context
+to neutral (`surface-sunken` + `ink`) so the brand mark gets breathing room. Strava can revoke API access for brand-guideline violations.
 
 ### CTA contrast rule (WCAG)
 
@@ -62,7 +74,7 @@ brand mark gets breathing room. Strava can revoke API access for brand-guideline
 [`PillButton`](../../../resources/js/components/ui/PillButton.tsx) presets:
 - `horizon` bg → `text-sky` (dark indigo on gold passes comfortably); hover darkens to `horizon-deep`.
 - `sky` / `sky-deep` bg (dark indigo) → `text-cream` / white text (passes ~13:1); hover darkens to `sky-deep`.
-- `leaf-deep` (`#4f6c54`) bg → white text (passes AA ~4.9:1); used for dense "retry"/action chips. No darker leaf token exists, so darken on hover with `hover:opacity-90`, not a hue jump.
+- `leaf-deep` (`#256f4d`) / `ember-deep` (`#8d2c3d`) bg → `text-cream` (both pass AA); used for dense "retry"/action chips. No darker step exists, so darken on hover with `hover:opacity-90`, not a hue jump.
 - Never put white text on `horizon`/`citrus`/`cream` (all too light).
 
 ### Gradient primitives
@@ -88,19 +100,18 @@ user's local time. Light mode only — never auto-flips to dark mode.
 
 - `text-ink` (`#1a1812`) — **primary text**: body paragraphs, headings, button labels, KPI values. Default for any prose the user reads.
 - `text-ink-2` (`#3d362a`) — **supporting body**: page subtitles, briefing suggestion lines, descriptive paragraphs adjacent to a primary statement.
-- `text-ink-3` (`#7a6f5c`) — **labels-above-values, timestamps, footnotes, table column headers, secondary metadata**. Smallest contrast tier, never use for body prose.
+- `text-ink-3` (`#6e6452`) — **labels-above-values, timestamps, footnotes, table column headers, secondary metadata**. Smallest contrast tier, never use for body prose.
 
 Sweep `grep text-ink-3` before merging — if it's wrapping a `<p>` of running prose, it's probably wrong.
 
 ### Typography & fonts
 
-Three app families + one card-scoped face (all loaded via Google Fonts in
+Three families (all loaded via Google Fonts in
 [app.blade.php](../../../resources/views/app.blade.php)): **Fraunces** italic is
 `font-display` (headlines + Temari voice/quotes); **Plus Jakarta Sans** is `font-sans`, the default
-family for body/UI/numbers/buttons; **JetBrains Mono** is `font-mono`, reserved for *small uppercase
-metadata labels only* (section labels, chips, stat-tile / kartu captions, timestamps). **Oswald** is
-`font-collectible`, used **only on the Kartu** (TCG nameplate, hero KM number, edition number) — never
-a global default. Because `font-sans` is Tailwind's default, every small uppercase label must carry an
+family for body/UI/buttons; **JetBrains Mono** is `font-mono`, for *numbers, stats and small
+uppercase metadata labels* (section labels, chips, stat-tile / kartu captions, timestamps). Oswald
+(`font-collectible`) is retired: the Kartu uses the same stack as everything else. Because `font-sans` is Tailwind's default, every small uppercase label must carry an
 **explicit `font-mono`** (or the `.text-label-micro` / `.text-label-small` utilities) or it falls back to
 the sans. Keep `tabular-nums` on numeric / stat displays.
 The scale is fluid `clamp()` tokens in `app.css` (`text-display-*`, `text-headline-*`,
@@ -124,7 +135,7 @@ The scale is fluid `clamp()` tokens in `app.css` (`text-display-*`, `text-headli
 - Subsection → next: `mt-6`
 - `<h2>` → content: `mt-3`
 - Page header → first section: `mt-8`
-- Hero card padding: `p-6`; data card padding: `p-4`; chip/pill: `px-3 py-1`
+- Card padding names a role, never a number: `.pad-hero` (24px) for hero cards, `.pad-card` (16px) for data cards, `.pad-panel` (12/16px) for dense rows, `.pad-chip` for chips and pills
 
 ## AI narration pipeline
 
