@@ -26,11 +26,9 @@ describe('AksesoriUnlockModal', () => {
         expect(container.firstChild).toBeNull();
     });
 
-    it('renders nothing when unlock is not major', () => {
-        const { container } = render(
-            <AksesoriUnlockModal unlock={minorUnlock} onClose={vi.fn()} />,
-        );
-        expect(container.firstChild).toBeNull();
+    it('opens for a minor unlock too, because the caller owns that call', () => {
+        render(<AksesoriUnlockModal unlock={minorUnlock} onClose={vi.fn()} />);
+        expect(screen.getByText(/Minor Thing/)).toBeInTheDocument();
     });
 
     it('renders the unlock name for a major unlock', () => {

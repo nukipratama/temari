@@ -4,6 +4,7 @@ import { Link, usePage } from '@inertiajs/react';
 import type { SharedProps } from '@/types/inertia';
 
 import BrandMark from '@/components/BrandMark';
+import NotificationBell from '@/components/NotificationBell';
 import StravaSyncBadge from '@/components/StravaSyncBadge';
 import UserMenu from '@/components/UserMenu';
 import { useScrolled } from '@/hooks/useScrolled';
@@ -57,7 +58,13 @@ export default function MobileTopBar() {
             <div className="flex items-center gap-2">
                 <StravaSyncBadge sync={stravaSync} density="compact" />
                 {user && (
-                    <UserMenu name={user.name} avatarUrl={user.avatar_url} />
+                    <>
+                        <NotificationBell density="compact" />
+                        <UserMenu
+                            name={user.name}
+                            avatarUrl={user.avatar_url}
+                        />
+                    </>
                 )}
             </div>
         </header>

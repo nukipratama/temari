@@ -1,8 +1,18 @@
 // Generated from the PHP enums — see generated.ts (`php artisan typescript:enums`).
 // Imported for local use below and re-exported so consumers keep importing from here.
-import type { AnalysisStatus, AnalysisType, Rarity } from './generated';
+import type {
+    AnalysisStatus,
+    AnalysisType,
+    NotificationKind,
+    Rarity,
+} from './generated';
 
-export type { AnalysisStatus, AnalysisType, Rarity } from './generated';
+export type {
+    AnalysisStatus,
+    AnalysisType,
+    NotificationKind,
+    Rarity,
+} from './generated';
 
 export type Mood =
     'blazing' | 'easy' | 'wobbly' | 'gassed' | 'overloaded' | 'chill';
@@ -69,6 +79,26 @@ export interface UnlockFlash {
     name: string;
     icon: string;
     is_major: boolean;
+}
+
+/**
+ * One row of the notification centre, flattened by `InboxController` so the
+ * page never reads the raw `payload` blob. `run_card_id` and `unlock` are the
+ * replay handles: either one re-runs the celebration this row is a record of,
+ * rather than describing it.
+ */
+export interface InboxItem {
+    id: number;
+    kind: NotificationKind;
+    title: string;
+    body: string | null;
+    /** True instant (ISO-8601 with offset), not a naive wall-clock date. */
+    created_at: string | null;
+    read_at: string | null;
+    url: string | null;
+    run_card_id: number | null;
+    rarity: Rarity | null;
+    unlock: UnlockFlash | null;
 }
 
 /**
