@@ -48,6 +48,17 @@ uppercase labels via `.text-label-micro` / `.text-label-small`). Keep `tabular-n
 numeric / stat display. Rule of thumb: **mono = numbers/labels · sans = prose · serif italic =
 display/voice**.
 
+**Exemption — the Kartu art layer.** The collectible card's rarity label, TRIMP number and
+edition number are **sans**, and stay that way. The card is art, not UI chrome: its type is
+composed into the illustration rather than tokenised, and the two surfaces that draw a full-size
+Kartu — the DOM [Kartu.tsx](../resources/js/components/card/Kartu.tsx#L328) and the `kartu` layout
+of the canvas share renderer [shareCard.ts](../resources/js/lib/shareCard.ts#L816) — draw all three
+identically, so "fixing" one desyncs a pair that was converged on purpose. The boundary is exactly
+that art layer: [KartuMini.tsx](../resources/js/components/card/KartuMini.tsx#L111), the `rute` /
+`stats` share layouts, and the server story card
+[RunCardImageRenderer.php](../app/Services/Run/Story/RunCardImageRenderer.php#L204) all stay mono,
+and the mono-for-numbers-and-uppercase-metadata rule is absolute everywhere else in the app.
+
 Loaded via Google Fonts `<link>` in [app.blade.php](../resources/views/app.blade.php).
 
 ## Type scale
