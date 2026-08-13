@@ -10,7 +10,6 @@ import { cn } from '@/lib/cn';
 import { MOOD_FILL, MOOD_LABEL, moodSigilColor } from '@/lib/mood';
 import {
     BADGE_ABILITY,
-    RARITY_BORDER,
     RARITY_HEX,
     RARITY_LABELS,
     RARITY_SYMBOL,
@@ -18,6 +17,7 @@ import {
     badgeEmblem,
     badgeName,
 } from '@/lib/runcard';
+import { rarityVariants } from '@/lib/variants';
 
 /** Secondary telemetry shown in the stat block. */
 export interface KartuStats {
@@ -152,7 +152,7 @@ export default function Kartu({
             className={cn(
                 'relative flex aspect-[5/7] flex-col overflow-hidden rounded-[16px] bg-sky-deep',
                 isFull ? 'border-[3px] p-1.5' : 'border-2 p-1',
-                RARITY_BORDER[rarity],
+                rarityVariants.border({ rarity }),
                 'kartu-glow',
                 className,
             )}

@@ -74,6 +74,40 @@ describe('MilestoneStrip', () => {
         expect(container.firstChild).toHaveClass('relative', 'mt-6');
     });
 
+    it('keeps the horizon accent over the onSky card surface', () => {
+        const { container } = render(
+            <MilestoneStrip
+                targetSec={3000}
+                deltaSec={90}
+                currentSec={3090}
+                distanceLabel="10K"
+            />,
+        );
+
+        expect(container.firstChild).toHaveClass(
+            'rounded-md',
+            'pad-card',
+            'border-horizon/40',
+            'bg-horizon/[0.12]',
+        );
+        expect(container.firstChild).not.toHaveClass('bg-cream/[0.06]');
+    });
+
+    it('overrides the progress track to a cream tint for the sky panel', () => {
+        render(
+            <MilestoneStrip
+                targetSec={3000}
+                deltaSec={90}
+                currentSec={3090}
+                distanceLabel="10K"
+            />,
+        );
+
+        const track = screen.getByRole('progressbar');
+        expect(track).toHaveClass('bg-cream/15');
+        expect(track).not.toHaveClass('bg-sky/[0.06]');
+    });
+
     it('treats a non-positive currentSec as zero progress', async () => {
         render(
             <MilestoneStrip

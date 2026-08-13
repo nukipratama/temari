@@ -255,10 +255,9 @@ export const eyebrowVariants = cva('', {
 });
 
 /**
- * Rarity → border + corner-flag scale. Mirrors RARITY_BORDER (lib/runcard.ts)
- * plus the per-component flag treatments in card/Kartu.tsx (RARITY_FLAG_BG)
- * and card/KartuMini.tsx (RARITY_CORNER). Exposed as three slots so each card
- * surface can opt into the part it renders.
+ * Rarity → border + flag + corner scale, the one source of truth for the card
+ * surfaces. `border` backs card/Kartu.tsx and card/KartuMini.tsx; `flag` and
+ * `corner` are the remaining two slots a card surface can opt into.
  */
 export const rarityVariants = {
     border: cva('', {

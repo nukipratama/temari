@@ -34,11 +34,17 @@ RUN install-php-extensions \
         pcov
 
 # librsvg is ImageMagick's SVG delegate — without it Imagick can't rasterise the
-# server-rendered run-card SVG to PNG (for the Telegram post-run photo + OG image).
-# font-dejavu + fontconfig let librsvg actually render the card's text (name/km);
-# without a font the SVG <text> comes out blank.
+# server-rendered run-card SVG to PNG for the Telegram post-run photo.
+# fontconfig is how librsvg resolves the SVG's font-family names; font-dejavu is
+# the fallback, font-jetbrains-mono one of the three families the card names.
 # git is TIA's changed-file source; Pest hard-fails "requires git" without it.
-RUN apk add --no-cache librsvg font-dejavu fontconfig git
+RUN apk add --no-cache librsvg font-dejavu font-jetbrains-mono fontconfig git
+
+# Fraunces + Plus Jakarta Sans are not packaged for Alpine, so they ship in the
+# repo. Without them the card's name and prose fall back to DejaVu and stop
+# matching the client-rendered share image. See resources/brand/fonts/README.md.
+COPY resources/brand/fonts/*.ttf /usr/share/fonts/temari/
+RUN fc-cache -f
 
 # Harden ImageMagick over the stock "open" alpine policy — deny network/scripting
 # coders the run-card rasteriser never uses. SVG/PNG stay enabled (see the file).
@@ -132,10 +138,16 @@ RUN install-php-extensions \
         imagick
 
 # librsvg is ImageMagick's SVG delegate — without it Imagick can't rasterise the
-# server-rendered run-card SVG to PNG (for the Telegram post-run photo + OG image).
-# font-dejavu + fontconfig let librsvg actually render the card's text (name/km);
-# without a font the SVG <text> comes out blank.
-RUN apk add --no-cache librsvg font-dejavu fontconfig
+# server-rendered run-card SVG to PNG for the Telegram post-run photo.
+# fontconfig is how librsvg resolves the SVG's font-family names; font-dejavu is
+# the fallback, font-jetbrains-mono one of the three families the card names.
+RUN apk add --no-cache librsvg font-dejavu font-jetbrains-mono fontconfig
+
+# Fraunces + Plus Jakarta Sans are not packaged for Alpine, so they ship in the
+# repo. Without them the card's name and prose fall back to DejaVu and stop
+# matching the client-rendered share image. See resources/brand/fonts/README.md.
+COPY resources/brand/fonts/*.ttf /usr/share/fonts/temari/
+RUN fc-cache -f
 
 # Harden ImageMagick over the stock "open" alpine policy — deny network/scripting
 # coders the run-card rasteriser never uses. SVG/PNG stay enabled (see the file).

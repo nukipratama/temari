@@ -9,13 +9,13 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 import { moodSigilColor } from '@/lib/mood';
 import {
-    RARITY_BORDER,
     RARITY_HEX,
     RARITY_LABELS,
     RARITY_POSE,
     RARITY_SYMBOL,
     RARITY_TEXT,
 } from '@/lib/runcard';
+import { rarityVariants } from '@/lib/variants';
 
 interface KartuMiniProps {
     name: string;
@@ -65,7 +65,7 @@ export default function KartuMini({
             style={rootStyle}
             className={cn(
                 'relative flex w-[140px] flex-none flex-col overflow-hidden rounded-[12px] border-[1.5px] bg-sky-deep p-1',
-                RARITY_BORDER[rarity],
+                rarityVariants.border({ rarity }),
                 className,
             )}
         >

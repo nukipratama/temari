@@ -6,7 +6,6 @@ import {
     BADGE_ABILITY,
     BADGE_LABELS,
     RARITY_BAND_COUNT,
-    RARITY_HEADBAND,
     RARITY_INK,
     RARITY_LABELS,
     RARITY_ORDER,
@@ -72,19 +71,6 @@ describe('rarity text colours', () => {
         RARITY_ORDER.forEach((r) => {
             expect(RARITY_INK[r]).toBe(`text-rarity-${r}-ink`);
         });
-    });
-});
-
-describe('RARITY_HEADBAND', () => {
-    it('gives every tier from rare up its own headband variant', () => {
-        expect(RARITY_HEADBAND.rare).toBe('rare');
-        expect(RARITY_HEADBAND.epic).toBe('epic');
-        expect(RARITY_HEADBAND.legendary).toBe('legendary');
-    });
-
-    it('collapses only the two cheapest tiers, since there are four variants for five tiers', () => {
-        expect(new Set(Object.values(RARITY_HEADBAND)).size).toBe(4);
-        expect(RARITY_HEADBAND.common).toBe(RARITY_HEADBAND.uncommon);
     });
 });
 

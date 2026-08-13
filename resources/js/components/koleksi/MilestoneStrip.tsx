@@ -3,6 +3,7 @@ import ProgressBar from '@/components/ui/ProgressBar';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
+import { cardVariants } from '@/lib/variants';
 
 interface MilestoneStripProps {
     /** Target time the user is chasing, in seconds. */
@@ -31,7 +32,8 @@ export default function MilestoneStrip({
     return (
         <div
             className={cn(
-                'flex flex-col gap-3 rounded-lg border border-horizon/40 bg-horizon/[0.12] px-6 py-4',
+                cardVariants({ tone: 'onSky', padding: 'card' }),
+                'flex flex-col gap-3 border-horizon/40 bg-horizon/[0.12]',
                 className,
             )}
         >
@@ -45,10 +47,9 @@ export default function MilestoneStrip({
                         {distanceLabel}
                     </div>
                 </div>
-                <div className="font-mono text-[11px] uppercase tracking-[0.08em] text-cream/70">
-                    <span className="font-bold text-horizon">{deltaLabel}</span>{' '}
-                    to go
-                </div>
+                <Eyebrow token="micro" tone="ink-on-sky">
+                    <span className="text-horizon">{deltaLabel}</span> to go
+                </Eyebrow>
             </div>
             <div className="flex items-center gap-3">
                 <ProgressBar
@@ -56,7 +57,7 @@ export default function MilestoneStrip({
                     tone="horizon"
                     size="sm"
                     ariaLabel={`${pctDisplay}% of the way to sub-${targetLabel} ${distanceLabel}`}
-                    className="flex-1"
+                    className="flex-1 bg-cream/15"
                 />
                 <span className="font-mono text-[11px] font-bold tabular-nums text-horizon">
                     {pctDisplay}%
