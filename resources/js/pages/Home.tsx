@@ -30,7 +30,7 @@ import { useCountUp } from '@/hooks/useCountUp';
 import { appLayout } from '@/layouts/appLayout';
 import { poseForRun } from '@/lib/temariPose';
 
-import { featuredCardFor, weekRangeLabel } from './Today/helpers';
+import { featuredCardFor, weekRangeLabel } from './Home/helpers';
 
 interface HomeProps {
     briefing: BriefingResult;

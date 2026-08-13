@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { FeaturedCard } from '@/pages/Today/helpers';
+import type { FeaturedCard } from '@/pages/Home/helpers';
 import type { AnalysisPayload } from '@/types/inertia';
 
 import FeaturedKartuPanel from './FeaturedKartuPanel';

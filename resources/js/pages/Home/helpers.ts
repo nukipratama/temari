@@ -113,10 +113,6 @@ export function formatSignedForm(form: number): string {
     return form >= 0 ? `+${form.toFixed(1)}` : form.toFixed(1);
 }
 
-export function vibeSubtitleFor(label: string): string {
-    return `you're feeling ${label.toLowerCase()}.`;
-}
-
 /** "Aug 11–17" (same month) or "Aug 31–Sep 6" (crossing a month boundary). */
 export function weekRangeLabel(now: Date): string {
     const monday = mondayOf(isoDateLocal(now));

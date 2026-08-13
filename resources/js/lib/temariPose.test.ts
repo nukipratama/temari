@@ -2,12 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { ActivityDetail } from '@/types/inertia';
 
-import {
-    MOOD_TO_POSE,
-    VIBE_TO_POSE,
-    poseForFormStatus,
-    poseForRun,
-} from './temariPose';
+import { MOOD_TO_POSE, poseForFormStatus, poseForRun } from './temariPose';
 
 function runWith(overrides: Partial<ActivityDetail>): ActivityDetail {
     return {
@@ -28,19 +23,6 @@ describe('MOOD_TO_POSE', () => {
         expect(MOOD_TO_POSE.blazing).toBe('proud');
         expect(MOOD_TO_POSE.easy).toBe('excited');
         expect(MOOD_TO_POSE.chill).toBe('reading');
-    });
-});
-
-describe('VIBE_TO_POSE', () => {
-    it('maps known vibe states to poses', () => {
-        expect(VIBE_TO_POSE.pumped).toBe('pumped');
-        expect(VIBE_TO_POSE.bouncy).toBe('excited');
-        expect(VIBE_TO_POSE.fresh).toBe('proud');
-        expect(VIBE_TO_POSE.hibernating).toBe('reading');
-    });
-
-    it('has no entry for an unknown vibe (caller falls back)', () => {
-        expect(VIBE_TO_POSE.mysterious).toBeUndefined();
     });
 });
 

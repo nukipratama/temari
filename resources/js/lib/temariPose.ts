@@ -12,17 +12,6 @@ export const MOOD_TO_POSE: Record<Mood, TemariPose> = {
     chill: 'reading',
 };
 
-export const VIBE_TO_POSE: Record<string, TemariPose> = {
-    pumped: 'pumped',
-    bouncy: 'excited',
-    fresh: 'proud',
-    steady: 'observational',
-    cooked: 'wobble',
-    worn_down: 'wobble',
-    stretched_thin: 'wobble',
-    hibernating: 'reading',
-};
-
 // Prefer the persisted backend mood when the caller has it; only fall back to
 // the frontend heuristic for runs with no post-run StoryLine yet.
 export function poseForRun(

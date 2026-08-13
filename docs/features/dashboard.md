@@ -78,6 +78,6 @@ When `recentRuns.length === 0`, the page renders `EmptyRunsState` alone — conn
 ## Notes / gotchas
 
 - `pastYouTrend` is a **plain (eager) closure**, not `Inertia::defer()`, so the verdict is present at first paint rather than popping in after it. That is deliberate now that it is the page's hero — but it means the dashboard's response time includes `PastYouTrendBuilder::build`, whose `TrainingLoad::ctlTrend` call is **uncached** (`summary()` is cached, `ctlTrend()` is not). If the dashboard gets slower, look there first.
-- [Today.tsx](resources/js/pages/Today.tsx) (the previous dashboard) and [TodayHeroBanner](resources/js/components/dashboard/TodayHeroBanner.tsx) / [PastYouTrendCard](resources/js/components/dashboard/PastYouTrendCard.tsx) are **still in the tree but no longer mounted on any route**. Whether they are kept or deleted is an open product question, not an oversight.
+- The previous dashboard (`Today.tsx`), its hero banner and the standalone `PastYouTrendCard` were **deleted** in the same change, along with the exports only they used (`vibeSubtitleFor`, `VIBE_TO_POSE`, `formatWeekdayDateId`, `formatTimeId`). Git history has them if a comparison is ever wanted. The shared helper module moved with the page: `pages/Today/helpers.ts` is now [pages/Home/helpers.ts](resources/js/pages/Home/helpers.ts).
 - The weekly recap narrative lives on [[run-history]]/Jejak and [[recaps]], not the dashboard.
 - Every Temari voice block routes through the [[ai-pipeline]]; see [[data-model]] for `Analysis`, `WeeklySnapshot`, and `StoryLine`.
