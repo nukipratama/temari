@@ -79,7 +79,7 @@ const VARIANT_MAPS = {
     headband: variantMap<TemariEquipped['headband']>({
         headband_legendary: 'legendaris',
         headband_epic: 'epik',
-        headband_rare: 'epik',
+        headband_rare: 'rare',
         headband_uncommon: 'ember',
     }),
     medal: variantMap<TemariEquipped['medal']>({
