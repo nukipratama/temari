@@ -102,6 +102,19 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute($perMinute)->by($key);
         });
 
+        // "Ask about this run". Every accepted question is a full agent run, so
+        // this is tighter than the analysis trigger, which mostly no-ops on an
+        // already-Done row. A rate limit, not a cost cap: app-wide spend is the
+        // daily_cost_ceiling's job.
+        RateLimiter::for('run-question', function (Request $request): Limit {
+            $perMinute = max(1, (int) config('ai.run_question_rate_limit_per_minute', 4));
+            $key = $request->user()?->id !== null
+                ? (string) $request->user()->id
+                : (string) $request->ip();
+
+            return Limit::perMinute($perMinute)->by($key);
+        });
+
         // Account creation path. Anyone on the internet can reach it, and the
         // callback spends a Strava token exchange plus, on a first connect, a
         // whole history backfill against the app-wide Strava budget. IP-keyed
