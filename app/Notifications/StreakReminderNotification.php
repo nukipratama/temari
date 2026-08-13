@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Notifications;
 
+use App\Enums\NotificationKind;
 use App\Models\User;
+use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\Notifications\ChannelRouter;
 use Illuminate\Bus\Queueable;
@@ -72,6 +74,16 @@ class StreakReminderNotification extends Notification implements ShouldQueue
             // High urgency: the nudge is time-boxed to the rest of the week, so
             // the OS deferring it under Low Power Mode would defeat the point.
             ->options(['urgency' => 'high']);
+    }
+
+    public function toInbox(User $notifiable): InboxMessage
+    {
+        return new InboxMessage(
+            kind: NotificationKind::StreakReminder,
+            title: $this->title(),
+            body: $this->body(),
+            payload: ['streak_weeks' => $this->streakWeeks, 'url' => route('dashboard')],
+        );
     }
 
     private function title(): string

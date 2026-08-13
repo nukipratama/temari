@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use Throwable;
+use App\Enums\NotificationKind;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Notifications\Channels\IdempotentWebPushChannel;
 use App\Notifications\Channels\TelegramChannel;
+use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\RunCardImageRenderer;
@@ -59,9 +61,6 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
         // forced send may skip the *whether* gates below, but never this one:
         // muting a channel is a routing decision, not a per-message one.
         $channels = app(ChannelRouter::class)->channelsFor($notifiable);
-        if ($channels === []) {
-            return [];
-        }
 
         // A manual push bypasses the recency + opt-in gates; the automatic path
         // keeps the recency gate and the channel-neutral master-switch opt-in.
@@ -100,6 +99,31 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
             ->options(['urgency' => 'high']);
     }
 
+    /**
+     * The inbox row. Keyed on the analysis rather than the notification id so a
+     * re-analysis ("Baca ulang", ai:self-heal) or a manual force-send updates
+     * nothing instead of stacking a second row for the same run.
+     */
+    public function toInbox(User $notifiable): ?InboxMessage
+    {
+        $kind = NotificationKind::forAnalysisType($this->analysis->analysis_type);
+        if ($kind === null) {
+            return null;
+        }
+
+        $presenter = app(AnalysisMessagePresenter::class);
+
+        return new InboxMessage(
+            kind: $kind,
+            title: $presenter->title($this->analysis),
+            body: trim((string) $this->analysis->content),
+            payload: $this->inboxPayload($presenter),
+            subjectType: $this->analysis->subject_type,
+            subjectId: $this->analysis->subject_id,
+            dedupeKey: 'analysis:' . $this->analysis->id,
+        );
+    }
+
     /** The idempotency key shared by every channel: the analysis id. */
     public function deliveryKey(): int
     {
@@ -109,6 +133,35 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
     public function forcesDelivery(): bool
     {
         return $this->force;
+    }
+
+    /**
+     * What the inbox needs to replay this weeks later. A post-run row carries the
+     * card id, which the existing `api.cards.replay` endpoint re-arms into a full
+     * reveal, plus the rarity so the list can style the row without a join.
+     * Everything else is a deep link.
+     *
+     * @return array<string, mixed>
+     */
+    private function inboxPayload(AnalysisMessagePresenter $presenter): array
+    {
+        $payload = [
+            'analysis_id' => $this->analysis->id,
+            'url' => $presenter->url($this->analysis),
+        ];
+
+        if ($this->analysis->analysis_type !== AnalysisType::PostRunSpeech) {
+            return $payload;
+        }
+
+        $card = RunCard::query()->where('activity_id', $this->analysis->subject_id)->first();
+
+        return [
+            ...$payload,
+            'activity_id' => $this->analysis->subject_id,
+            'run_card_id' => $card?->id,
+            'rarity' => $card?->rarity->value,
+        ];
     }
 
     /**

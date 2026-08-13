@@ -7,6 +7,7 @@ namespace App\Services\Notifications;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Notifications\Channels\IdempotentWebPushChannel;
+use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Channels\TelegramChannel;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
  * Every call site shares this one check rather than each re-deriving its own
  * answer, which is how "reachable" quietly drifts out of sync between callers.
  *
- * Two conditions per channel, and they are different kinds of thing:
+ * Two conditions per **outbound** channel, and they are different kinds of thing:
  *
  * - **Wired** — is there a live connection or subscription at all, and is the
  *   app configured to use it. Infrastructure.
@@ -23,6 +24,10 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * A muted channel stays wired: the Telegram link is not revoked and the push
  * subscription is not deleted, so un-muting is one tap with no re-auth.
+ *
+ * The in-app inbox has neither condition. It is always reachable, so
+ * {@see self::channelsFor()} always includes it while {@see self::canReach()}
+ * and {@see self::scopeReachable()} stay about the outbound channels.
  *
  * This answers *where*, never *whether*. Per-type opt-in and recency stay with
  * `NotificationEligibility` and the notifications themselves, because those are
@@ -33,27 +38,36 @@ final readonly class ChannelRouter
 {
     /**
      * Channels the user can be reached on, as Laravel channel class-strings.
+     * The inbox always leads: it needs no wiring, carries no mute, and is the
+     * record the other channels are notifications *of*.
      *
      * @return list<class-string>
      */
     public function channelsFor(User $user): array
     {
-        $channels = [];
-
-        if ($this->telegramReachable($user)) {
-            $channels[] = TelegramChannel::class;
-        }
-
-        if ($this->pushReachable($user)) {
-            $channels[] = IdempotentWebPushChannel::class;
-        }
-
-        return $channels;
+        return [InAppChannel::class, ...$this->outboundChannelsFor($user)];
     }
 
+    /**
+     * The inbox alone, for a notification that is a record rather than an
+     * interruption. Still routed here so channel class-strings stay in one place.
+     *
+     * @return list<class-string>
+     */
+    public function inAppOnly(): array
+    {
+        return [InAppChannel::class];
+    }
+
+    /**
+     * Whether Temari can reach *out* to the user. Deliberately not
+     * `channelsFor() !== []`, which the always-on inbox would make trivially
+     * true: the callers asking this ("can the test send prove anything", "is
+     * this user worth a streak nudge") are asking about the outbound channels.
+     */
     public function canReach(User $user): bool
     {
-        return $this->channelsFor($user) !== [];
+        return $this->outboundChannelsFor($user) !== [];
     }
 
     public function telegramReachable(User $user): bool
@@ -83,9 +97,10 @@ final readonly class ChannelRouter
      * Query-level equivalent of {@see self::canReach()}, for callers that select
      * users in bulk rather than checking one.
      *
-     * `StreakRemindCommand` needs this: without it the command enqueues a
-     * notification per candidate and each `via()` returns an empty array, which
-     * is silent no-op work every Saturday rather than a visible failure.
+     * `StreakRemindCommand` needs this: the nudge is time-boxed to the rest of
+     * the week, so it is only worth sending to someone an outbound channel can
+     * actually interrupt. A user reachable on the inbox alone would read it days
+     * later, when it is no longer true.
      *
      * @param  Builder<User>  $query
      */
@@ -114,6 +129,24 @@ final readonly class ChannelRouter
                     );
             });
         });
+    }
+
+    /**
+     * @return list<class-string>
+     */
+    private function outboundChannelsFor(User $user): array
+    {
+        $channels = [];
+
+        if ($this->telegramReachable($user)) {
+            $channels[] = TelegramChannel::class;
+        }
+
+        if ($this->pushReachable($user)) {
+            $channels[] = IdempotentWebPushChannel::class;
+        }
+
+        return $channels;
     }
 
     private function telegramConfigured(): bool

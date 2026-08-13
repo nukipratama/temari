@@ -121,6 +121,18 @@ class User extends Authenticatable
     }
 
     /**
+     * The notification inbox, newest first. Named apart from the `Notifiable`
+     * trait's own `notifications()`, which expects the framework's
+     * DatabaseNotification schema rather than ours.
+     *
+     * @return HasMany<InboxNotification, $this>
+     */
+    public function inboxNotifications(): HasMany
+    {
+        return $this->hasMany(InboxNotification::class)->latest();
+    }
+
+    /**
      * Fixed public contract for heart-rate and cadence settings. Returns the
      * stored runner_profiles row when present, otherwise the config('runner.*')
      * defaults in the identical shape so callers cannot tell the difference.

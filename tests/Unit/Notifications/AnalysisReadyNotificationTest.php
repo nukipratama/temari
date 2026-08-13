@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\NotificationKind;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -9,8 +10,10 @@ use App\Models\NotificationPreference;
 use App\Models\RunCard;
 use App\Models\TelegramConnection;
 use App\Models\User;
+use App\Models\WeeklySnapshot;
 use App\Notifications\AnalysisReadyNotification;
 use App\Notifications\Channels\IdempotentWebPushChannel;
+use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\AI\AnalysisType;
@@ -45,12 +48,18 @@ function viaFor(Analysis $analysis, User $user, bool $force = false): array
 }
 
 // --- via() gating (automatic path) -----------------------------------------
+//
+// The two gates are different kinds of thing, and the inbox splits them apart.
+// A *whether* gate (demo, master switch, recency) suppresses the notification
+// entirely, so nothing is recorded either. A *where* gate (no connection,
+// revoked, muted, no bot token) only removes an outbound channel, and the inbox
+// still keeps the record.
 
 it('routes to the Telegram channel for a connected, opted-in, recent run', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();
 
-    expect(viaFor(postRunAnalysis($user), $user))->toBe([TelegramChannel::class]);
+    expect(viaFor(postRunAnalysis($user), $user))->toBe([InAppChannel::class, TelegramChannel::class]);
 });
 
 it('routes nowhere for the demo user', function (): void {
@@ -68,25 +77,25 @@ it('routes nowhere when the notification master switch is off', function (): voi
     expect(viaFor(postRunAnalysis($user), $user))->toBe([]);
 });
 
-it('routes nowhere without a connection', function (): void {
+it('routes to the inbox alone without a connection', function (): void {
     $user = User::factory()->create();
 
-    expect(viaFor(postRunAnalysis($user), $user))->toBe([]);
+    expect(viaFor(postRunAnalysis($user), $user))->toBe([InAppChannel::class]);
 });
 
-it('routes nowhere over a revoked connection', function (): void {
+it('routes to the inbox alone over a revoked connection', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->revoked()->create();
 
-    expect(viaFor(postRunAnalysis($user), $user))->toBe([]);
+    expect(viaFor(postRunAnalysis($user), $user))->toBe([InAppChannel::class]);
 });
 
-it('routes nowhere when the bot token is unconfigured', function (): void {
+it('routes to the inbox alone when the bot token is unconfigured', function (): void {
     config(['services.telegram.bot_token' => '']);
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();
 
-    expect(viaFor(postRunAnalysis($user), $user))->toBe([]);
+    expect(viaFor(postRunAnalysis($user), $user))->toBe([InAppChannel::class]);
 });
 
 it('routes nowhere for an automatic push older than the max age', function (): void {
@@ -104,7 +113,7 @@ it('force routes to Telegram even when opted out', function (): void {
     TelegramConnection::factory()->for($user)->create();
     NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
 
-    expect(viaFor(postRunAnalysis($user), $user, force: true))->toBe([TelegramChannel::class]);
+    expect(viaFor(postRunAnalysis($user), $user, force: true))->toBe([InAppChannel::class, TelegramChannel::class]);
 });
 
 it('force bypasses the recency gate for an old run', function (): void {
@@ -113,14 +122,14 @@ it('force bypasses the recency gate for an old run', function (): void {
     TelegramConnection::factory()->for($user)->create();
     NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
 
-    expect(viaFor(postRunAnalysis($user, daysAgo: 10), $user, force: true))->toBe([TelegramChannel::class]);
+    expect(viaFor(postRunAnalysis($user, daysAgo: 10), $user, force: true))->toBe([InAppChannel::class, TelegramChannel::class]);
 });
 
 it('routes to web push for a subscribed user with a recent analysis', function (): void {
     $user = User::factory()->create();
     $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
 
-    expect(viaFor(postRunAnalysis($user), $user))->toBe([IdempotentWebPushChannel::class]);
+    expect(viaFor(postRunAnalysis($user), $user))->toBe([InAppChannel::class, IdempotentWebPushChannel::class]);
 });
 
 it('routes nowhere to web push when the notification master switch is off', function (): void {
@@ -136,7 +145,7 @@ it('routes to both channels when Telegram and web push are both wired', function
     TelegramConnection::factory()->for($user)->create();
     $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
 
-    expect(viaFor(postRunAnalysis($user), $user))->toBe([TelegramChannel::class, IdempotentWebPushChannel::class]);
+    expect(viaFor(postRunAnalysis($user), $user))->toBe([InAppChannel::class, TelegramChannel::class, IdempotentWebPushChannel::class]);
 });
 
 it('does not route to web push for an old automatic analysis (recency)', function (): void {
@@ -151,17 +160,21 @@ it('force reaches web push even without Telegram', function (): void {
     $user = User::factory()->create();
     $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
 
-    expect(viaFor(postRunAnalysis($user), $user, force: true))->toBe([IdempotentWebPushChannel::class]);
+    expect(viaFor(postRunAnalysis($user), $user, force: true))->toBe([InAppChannel::class, IdempotentWebPushChannel::class]);
 });
 
-it('force still routes nowhere for the demo user or a revoked connection', function (): void {
+it('force still routes nowhere at all for the demo user', function (): void {
     $demo = User::factory()->create(['is_demo' => true]);
     TelegramConnection::factory()->for($demo)->create();
-    expect(viaFor(postRunAnalysis($demo), $demo, force: true))->toBe([]);
 
+    expect(viaFor(postRunAnalysis($demo), $demo, force: true))->toBe([]);
+});
+
+it('force reaches no outbound channel over a revoked connection', function (): void {
     $revoked = User::factory()->create();
     TelegramConnection::factory()->for($revoked)->revoked()->create();
-    expect(viaFor(postRunAnalysis($revoked), $revoked, force: true))->toBe([]);
+
+    expect(viaFor(postRunAnalysis($revoked), $revoked, force: true))->toBe([InAppChannel::class]);
 });
 
 // --- toTelegram() message building -----------------------------------------
@@ -223,6 +236,73 @@ it('builds a web push message with the dynamic title, body, tap-through url, and
         ->and($message->getOptions())->toBe(['urgency' => 'high']);
 });
 
+// --- toInbox() ---------------------------------------------------------------
+
+it('keys the inbox row on the analysis, so a re-analysis or a force send adds no second row', function (): void {
+    $user = User::factory()->create();
+    $analysis = postRunAnalysis($user, 'Pace konsisten.');
+
+    $automatic = new AnalysisReadyNotification($analysis)->toInbox($user);
+    $forced = new AnalysisReadyNotification($analysis, force: true)->toInbox($user);
+
+    expect($automatic->dedupeKey)->toBe('analysis:'.$analysis->id)
+        ->and($forced->dedupeKey)->toBe($automatic->dedupeKey)
+        ->and($automatic->kind)->toBe(NotificationKind::PostRun)
+        ->and($automatic->body)->toBe('Pace konsisten.')
+        ->and($automatic->subjectType)->toBe(Activity::class)
+        ->and($automatic->subjectId)->toBe($analysis->subject_id);
+});
+
+it('carries the card id and rarity so the reveal can be replayed', function (): void {
+    $user = User::factory()->create();
+    $analysis = postRunAnalysis($user);
+    $card = RunCard::factory()->create(['activity_id' => $analysis->subject_id, 'rarity' => 'epic']);
+
+    expect(new AnalysisReadyNotification($analysis)->toInbox($user)->payload)->toBe([
+        'analysis_id' => $analysis->id,
+        'url' => route('activities.show', $analysis->subject_id),
+        'activity_id' => $analysis->subject_id,
+        'run_card_id' => $card->id,
+        'rarity' => 'epic',
+    ]);
+});
+
+it('leaves the card fields null when the run has no card', function (): void {
+    $user = User::factory()->create();
+    $payload = new AnalysisReadyNotification(postRunAnalysis($user))->toInbox($user)->payload;
+
+    expect($payload['run_card_id'])->toBeNull()
+        ->and($payload['rarity'])->toBeNull();
+});
+
+it('carries only the deep link for a recap, which has no card to reveal', function (): void {
+    $user = User::factory()->create();
+    $snapshot = WeeklySnapshot::factory()->for($user)->create();
+    $analysis = Analysis::factory()->done('solid week.')->create([
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snapshot->id,
+        'discriminator' => null,
+    ]);
+
+    $message = new AnalysisReadyNotification($analysis)->toInbox($user);
+
+    expect($message->kind)->toBe(NotificationKind::WeeklyRecap)
+        ->and($message->payload)->toHaveKeys(['analysis_id', 'url'])
+        ->and($message->payload)->not->toHaveKey('run_card_id');
+});
+
+it('has no inbox message for an analysis type that never notifies', function (): void {
+    $analysis = Analysis::factory()->done('flavor.')->create([
+        'analysis_type' => AnalysisType::CardFlavor,
+        'subject_type' => RunCard::class,
+        'subject_id' => RunCard::factory()->create()->id,
+        'discriminator' => null,
+    ]);
+
+    expect(new AnalysisReadyNotification($analysis)->toInbox(User::factory()->create()))->toBeNull();
+});
+
 /**
  * A fake renderer returning dummy PNG bytes (or throwing) — the real renderer has
  * its own Imagick suite; this only needs "photo when render succeeds, text when not."
@@ -251,7 +331,7 @@ it('will not force a send to a muted channel, even though force skips the opt-in
     ]);
 
     // notifications_enabled is off too, and force would normally override that.
-    expect(viaFor(postRunAnalysis($user), $user->fresh(), force: true))->toBe([]);
+    expect(viaFor(postRunAnalysis($user), $user->fresh(), force: true))->toBe([InAppChannel::class]);
 });
 
 it('forces past the master-switch opt-in when the channel is not muted', function (): void {
@@ -262,7 +342,7 @@ it('forces past the master-switch opt-in when the channel is not muted', functio
         'telegram_enabled' => true,
     ]);
 
-    expect(viaFor(postRunAnalysis($user), $user->fresh(), force: true))->toBe([TelegramChannel::class]);
+    expect(viaFor(postRunAnalysis($user), $user->fresh(), force: true))->toBe([InAppChannel::class, TelegramChannel::class]);
 });
 
 it('sends on the surviving channel when only one is muted', function (): void {
@@ -271,5 +351,5 @@ it('sends on the surviving channel when only one is muted', function (): void {
     $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
     NotificationPreference::factory()->for($user)->create(['telegram_enabled' => false]);
 
-    expect(viaFor(postRunAnalysis($user), $user->fresh()))->toBe([IdempotentWebPushChannel::class]);
+    expect(viaFor(postRunAnalysis($user), $user->fresh()))->toBe([InAppChannel::class, IdempotentWebPushChannel::class]);
 });

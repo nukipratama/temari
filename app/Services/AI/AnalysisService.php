@@ -230,9 +230,9 @@ class AnalysisService
         // Fan out a notification for the notifiable types. Suppressed under
         // withoutDispatching (demo seed); the notification's via() owns every guard
         // (demo / recency / opt-in / channel wired) and the channel owns idempotency,
-        // so an unwired or opted-out user resolves to no channels and nothing is
-        // enqueued. afterCommit so the queued send can't run before the row it reads
-        // is committed.
+        // so a demo or opted-out user resolves to no channels at all while an
+        // unwired one still gets the inbox record. afterCommit so the queued send
+        // can't run before the row it reads is committed.
         if (! $this->dispatchSuppressed && $this->eligibility->isNotifiable($row)) {
             $this->eligibility->resolveUser($row)?->notify(
                 new AnalysisReadyNotification($row)->afterCommit(),
