@@ -89,7 +89,7 @@ function insightHasContent(insight: AnalysisPayload): boolean {
 function ClaimLine({ claim }: Readonly<{ claim: RunInsightClaim }>) {
     return (
         <div className="flex flex-col gap-1.5">
-            <p className="font-sans text-[15px] leading-relaxed text-ink">
+            <p className="font-sans text-quote-sm leading-relaxed text-ink">
                 {renderBold(claim.text)}
             </p>
             {(claim.value ?? claim.delta) && (
@@ -185,7 +185,7 @@ export default function RunLenses({
                         allowReanalyze={!isChainHead}
                         showTimestamp={false}
                         renderContent={(text) => (
-                            <p className="font-sans text-[15px] leading-relaxed text-ink">
+                            <p className="font-sans text-quote-sm leading-relaxed text-ink">
                                 {renderBold(text)}
                             </p>
                         )}

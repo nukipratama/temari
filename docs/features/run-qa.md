@@ -15,6 +15,8 @@ code_refs:
   - app/Jobs/AI/AnswerRunQuestionJob.php
   - app/Models/AI/RunQuestion.php
   - routes/web.php
+  - resources/js/components/run/AskAboutRun.tsx
+  - resources/js/hooks/useRunQuestions.ts
 ---
 
 # Ask about this run
@@ -83,6 +85,28 @@ marked `done` in the same request — no job, no Azure call. It answers the
 suggested questions directly and falls back to the run's headline reading for
 free text. Deterministic, so re-asking returns the same words. Same stance as
 [[demo-triggers-served-rule-based]].
+
+## The panel
+
+[AskAboutRun](../../resources/js/components/run/AskAboutRun.tsx) renders this on
+the run page, directly under the promoted Past You band ([[run-detail]]).
+Because answers land later, it is not a request/response form:
+[useRunQuestions](../../resources/js/hooks/useRunQuestions.ts) appends the
+`201` row in its `queued` state, polls `index()` while anything is unsettled,
+and stops after a bounded number of polls into a "still working" state with a
+manual re-check, so a stuck answer degrades into a visible wait rather than an
+endless spinner or a lie.
+
+Each refusal gets its own line: the `429` says the asking is too fast without
+quoting a number the env can change, the `409` says generation is paused and
+that nothing was sent, and a `422` asks for a rephrase. A `failed` row offers
+to refill the box, matching the terminal-failure model above rather than
+implying a retry that does not exist. Suggestions already asked in this thread
+are dropped so they stay starting points.
+
+The panel is the only place a summary-state run is announced: the seeds already
+collapse to `Baseline` on their own, but the smaller toolbox is said out loud
+in the UI rather than left for the reader to infer from a thinner answer.
 
 ## Storage
 

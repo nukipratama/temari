@@ -410,7 +410,7 @@ describe('Runs/Show', () => {
         expect(screen.getByText('0.8 KM')).toBeInTheDocument();
     });
 
-    it('renders the past-you strip when journeyMatch is present', () => {
+    it('promotes the past-you comparison into the hero when a match exists', () => {
         renderShow({
             pastYou: {
                 past: { start_date_local: '2026-04-01T07:00' },
@@ -420,6 +420,36 @@ describe('Runs/Show', () => {
             },
         });
         expect(screen.getByText(/30 days ago/)).toBeInTheDocument();
+        expect(screen.getByText('You vs past you')).toBeInTheDocument();
+        expect(screen.getByText(/sec\/km faster/)).toBeInTheDocument();
+    });
+
+    it('omits the past-you band entirely when there is no match', () => {
+        renderShow({ pastYou: null });
+        expect(screen.queryByText('You vs past you')).not.toBeInTheDocument();
+    });
+
+    it('offers the per-run ask panel', () => {
+        renderShow({});
+        expect(screen.getByText('Ask about this run')).toBeInTheDocument();
+        expect(
+            screen.getByPlaceholderText('Ask anything about this run'),
+        ).toBeInTheDocument();
+    });
+
+    it('tells the ask panel the toolbox is thin on a summary-only run', () => {
+        renderShow({
+            activity: {
+                id: 99,
+                user_id: 1,
+                analyzed_at: '2026-05-10',
+                ingest_state: 'summary',
+                detail,
+            },
+        });
+        expect(
+            screen.getByText(/no splits,\s+zones or terrain yet/),
+        ).toBeInTheDocument();
     });
 
     it('falls back to "Run" when detail.name is null', () => {

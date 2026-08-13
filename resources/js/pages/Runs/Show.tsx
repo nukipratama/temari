@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { lazy, Suspense, useRef, useState } from 'react';
 
@@ -14,9 +14,11 @@ import type {
 import Kartu from '@/components/card/Kartu';
 import KartuMount from '@/components/card/KartuMount';
 import CoachMark from '@/components/onboarding/CoachMark';
+import AskAboutRun from '@/components/run/AskAboutRun';
 import DetailTiles from '@/components/run/DetailTiles';
 import LapsGraph from '@/components/run/LapsGraph';
 import MapWeatherPanel from '@/components/run/MapWeatherPanel';
+import PastYouHero, { type PastYouMatch } from '@/components/run/PastYouHero';
 import RunHydratingNotice from '@/components/run/RunHydratingNotice';
 import RunLenses from '@/components/run/RunLenses';
 import SplitsTable from '@/components/run/SplitsTable';
@@ -43,7 +45,6 @@ import { postJson } from '@/lib/http';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatIdDate, formatPace, formatShortDateTimeId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
-import { activityUrl } from '@/lib/routes';
 import { BADGE_ABILITY, badgeName } from '@/lib/runcard';
 
 import {
@@ -66,17 +67,6 @@ function countDisplay(
 type DetailedActivity = Activity & {
     detail: ActivityDetail;
 };
-
-interface PastYouMatch {
-    past: {
-        start_date_local: string | null;
-        activity_id?: number | null;
-        name?: string | null;
-    };
-    pace_diff_sec: number;
-    hr_diff_bpm: number | null;
-    days_ago: number;
-}
 
 interface ShowProps {
     activity: DetailedActivity;
@@ -324,90 +314,37 @@ export default function RunsShow({
                                         />
                                     </motion.div>
                                 </motion.div>
-
-                                {/* YOU VS PAST YOU — inline in hero */}
-                                {pastYou && (
-                                    <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-cream/15 bg-cream/[0.08] px-4 py-3 backdrop-blur-sm">
-                                        <div className="min-w-0">
-                                            <Eyebrow
-                                                token="micro"
-                                                className="text-cream/60"
-                                            >
-                                                You vs {pastYou.days_ago} days
-                                                ago
-                                            </Eyebrow>
-                                            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-cream/90">
-                                                <span
-                                                    className={cn(
-                                                        'font-bold tabular-nums',
-                                                        pastYou.pace_diff_sec ===
-                                                            0
-                                                            ? 'text-cream'
-                                                            : pastYou.pace_diff_sec >
-                                                                0
-                                                              ? 'text-leaf'
-                                                              : 'text-citrus',
-                                                    )}
-                                                >
-                                                    {pastYou.pace_diff_sec === 0
-                                                        ? 'Same pace'
-                                                        : `${Math.abs(Math.round(pastYou.pace_diff_sec))} sec/km ${pastYou.pace_diff_sec > 0 ? 'faster' : 'slower'}`}
-                                                </span>
-                                                {pastYou.hr_diff_bpm !==
-                                                    null && (
-                                                    <span
-                                                        className={cn(
-                                                            'font-bold tabular-nums',
-                                                            pastYou.hr_diff_bpm ===
-                                                                0
-                                                                ? 'text-cream'
-                                                                : pastYou.hr_diff_bpm <
-                                                                    0
-                                                                  ? 'text-leaf'
-                                                                  : 'text-citrus',
-                                                        )}
-                                                    >
-                                                        {pastYou.hr_diff_bpm ===
-                                                        0
-                                                            ? 'Same HR'
-                                                            : `${Math.abs(Math.round(pastYou.hr_diff_bpm))} bpm ${pastYou.hr_diff_bpm < 0 ? 'lower' : 'higher'}`}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        {pastYou.past.activity_id != null && (
-                                            <Link
-                                                href={activityUrl({
-                                                    activity_id:
-                                                        pastYou.past
-                                                            .activity_id,
-                                                })}
-                                                className="focus-ring-on-sky inline-flex shrink-0 items-center gap-1 rounded-full border border-cream/20 px-3 py-1.5 text-label-micro text-cream/70 transition hover:border-cream/40 hover:text-cream"
-                                            >
-                                                View
-                                                <Icon
-                                                    icon="mdi:arrow-right"
-                                                    width={12}
-                                                    height={12}
-                                                    aria-hidden
-                                                />
-                                            </Link>
-                                        )}
-                                    </div>
-                                )}
                             </div>
 
                             <MapWeatherPanel detail={detail} className="flex" />
                         </div>
+
+                        {/* YOU VS PAST YOU — the page's headline claim, so it
+                            spans the full hero rather than sitting beside the
+                            stats. */}
+                        <PastYouHero
+                            match={pastYou}
+                            className={
+                                pastYou
+                                    ? 'mt-7 border-t border-cream/15 pt-7'
+                                    : undefined
+                            }
+                        />
                     </HeroPanel>
                 </section>
+
+                <AskAboutRun
+                    activityId={activity.id}
+                    summaryOnly={activity.ingest_state === 'summary'}
+                    className="mt-8"
+                />
 
                 {/* KARTU — its own section. The card sits in a slim sky mount sized
                     to fit it (not a full hero panel); actions + lore live on the right. */}
                 {card && (
                     <section
                         data-coachmark="run-kartu"
-                        className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,340px)_1fr] lg:items-start"
+                        className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,340px)_1fr] lg:items-start"
                     >
                         <KartuMount>
                             <Kartu
@@ -563,7 +500,7 @@ export default function RunsShow({
                 )}
 
                 {/* WHAT TEMARI SAYS */}
-                <section data-coachmark="run-narration" className="mt-8">
+                <section data-coachmark="run-narration" className="mt-10">
                     <header className="mb-4 flex items-center gap-3.5">
                         <Temari
                             pose="observational"
@@ -607,7 +544,7 @@ export default function RunsShow({
                     as="footer"
                     token="micro"
                     tone="ink-3"
-                    className="mt-8"
+                    className="mt-10"
                 >
                     Auto-synced from Strava ·{' '}
                     {formatIdDate(activity.analyzed_at ?? null, 'long')}

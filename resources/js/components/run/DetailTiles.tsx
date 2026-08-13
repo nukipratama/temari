@@ -1,9 +1,8 @@
 import type { MetricKey } from '@/lib/metricGlossary';
 import type { ActivityDetail, StreamSummary } from '@/types/inertia';
 
-import MetricExplainer from '@/components/MetricExplainer';
 import EmptyPanel from '@/components/ui/EmptyPanel';
-import Eyebrow from '@/components/ui/Eyebrow';
+import StatTile from '@/components/ui/StatTile';
 import { cn } from '@/lib/cn';
 
 // Mirrors the "hot run" threshold used across the backend narration (e.g.
@@ -88,7 +87,9 @@ export default function DetailTiles({
             value: `${decoupling >= 0 ? '+' : ''}${decoupling.toFixed(1)}%`,
             sub: heatExplainsIt
                 ? `normal, it was ${Math.round(detail.weather_temp_c as number)}°C out`
-                : 'breathing drifted in the second half',
+                : decouplingHigh
+                  ? 'breathing drifted in the second half'
+                  : 'breathing held steady to the end',
             warn: decouplingHigh && !heatExplainsIt,
             metricKey: 'decoupling',
         });
@@ -106,44 +107,23 @@ export default function DetailTiles({
     return (
         <div className="grid grid-cols-2 gap-2.5">
             {tiles.map((t, i) => (
-                <div
+                <StatTile
                     key={t.label}
+                    tone="cream"
+                    size="sm"
+                    label={t.label}
+                    value={t.value}
+                    sub={t.sub}
+                    explainerKey={t.metricKey}
+                    valueClassName={t.warn ? 'text-ember' : 'text-ink'}
+                    // A lone trailing tile in this 2-column grid would otherwise
+                    // waste half the row — span it across both columns instead.
                     className={cn(
-                        'rounded-xl border border-cream-deep bg-cream px-4 py-3.5 shadow-e1',
-                        // A lone trailing tile in this 2-column grid would otherwise
-                        // waste half the row — span it across both columns instead.
                         i === tiles.length - 1 &&
                             tiles.length % 2 === 1 &&
                             'col-span-2',
                     )}
-                >
-                    <Eyebrow
-                        token="micro"
-                        tone="ink-2"
-                        className="mb-1.5 inline-flex items-center gap-1"
-                    >
-                        {t.label}
-                        {t.metricKey && (
-                            <MetricExplainer
-                                metricKey={t.metricKey}
-                                size="xs"
-                            />
-                        )}
-                    </Eyebrow>
-                    <div
-                        className={cn(
-                            'font-sans font-bold leading-none tabular-nums tracking-[-0.01em] text-[22px]',
-                            t.warn ? 'text-ember' : 'text-ink',
-                        )}
-                    >
-                        {t.value}
-                    </div>
-                    {t.sub && (
-                        <div className="mt-1.5 font-sans text-[11px] leading-snug text-ink-3">
-                            {t.sub}
-                        </div>
-                    )}
-                </div>
+                />
             ))}
         </div>
     );

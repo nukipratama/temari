@@ -121,6 +121,24 @@ describe('DetailTiles', () => {
         expect(screen.getByText('+4.5%')).toHaveClass('text-ink');
     });
 
+    it('reads a small decoupling as steady rather than as drift', () => {
+        renderTiles({ weather_temp_c: 20 }, { decoupling_pct: 4.5 });
+        expect(
+            screen.getByText('breathing held steady to the end'),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText('breathing drifted in the second half'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('reads a decoupling of near zero as steady on a hot run too', () => {
+        renderTiles({ weather_temp_c: 32 }, { decoupling_pct: 0.5 });
+        expect(
+            screen.getByText('breathing held steady to the end'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/normal, it was/)).not.toBeInTheDocument();
+    });
+
     it('skips the decoupling tile when its value is not a finite number (no "NaN%")', () => {
         renderTiles({}, { decoupling_pct: Number.NaN });
         expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
@@ -132,10 +150,10 @@ describe('DetailTiles', () => {
         // count that would otherwise strand CADENCE alone in the 2-column grid.
         renderTiles({}, {});
         expect(
-            screen.getByText('CADENCE').closest('div.rounded-xl'),
+            screen.getByText('CADENCE').closest('div.rounded-lg'),
         ).toHaveClass('col-span-2');
         expect(
-            screen.getByText('AVG HR').closest('div.rounded-xl'),
+            screen.getByText('AVG HR').closest('div.rounded-lg'),
         ).not.toHaveClass('col-span-2');
     });
 
@@ -143,7 +161,7 @@ describe('DetailTiles', () => {
         // Default fixture yields 4 tiles (AVG HR, MAX HR, CADENCE, DECOUPLING).
         renderTiles();
         expect(
-            screen.getByText('DECOUPLING').closest('div.rounded-xl'),
+            screen.getByText('DECOUPLING').closest('div.rounded-lg'),
         ).not.toHaveClass('col-span-2');
     });
 

@@ -142,9 +142,7 @@ function Cell({
             <div className={cn('text-ink', emphasize && 'font-bold')}>
                 {value}
             </div>
-            <div className="font-mono font-bold text-[11px] uppercase tracking-wide text-ink-2">
-                {unit}
-            </div>
+            <div className="text-label-micro text-ink-2">{unit}</div>
         </div>
     );
 }
