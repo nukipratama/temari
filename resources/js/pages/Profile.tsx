@@ -276,7 +276,7 @@ export default function Profile({
                 <section className="mt-6">
                     <Link
                         href="/race"
-                        className="focus-ring pressable flex items-center justify-between gap-3 rounded-xl border border-line bg-cream px-4 py-3.5 shadow-sm transition hover:border-horizon/60"
+                        className="focus-ring pressable flex items-center justify-between gap-3 rounded-xl border border-line bg-cream px-4 py-3.5 shadow-e1 transition hover:border-horizon/60"
                     >
                         <span className="flex items-center gap-2 text-sm font-semibold text-ink">
                             <Icon
@@ -391,7 +391,7 @@ function ProgressionSection({
 
     return (
         <div data-coachmark="profile-progression" className="mt-10">
-            <Card as="section" padding="lg">
+            <Card as="section" padding="hero">
                 {tabs.length > 1 && (
                     <div
                         className="mb-6 flex flex-wrap items-center gap-2"

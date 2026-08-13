@@ -162,7 +162,7 @@ export default function RunLenses({
             <div className="flex flex-col gap-3.5">
                 <Card
                     as="article"
-                    padding="lg"
+                    padding="hero"
                     className="border-l-[3px] border-l-leaf"
                 >
                     <div className="mb-2.5 flex items-center gap-2">
@@ -195,7 +195,7 @@ export default function RunLenses({
                 {insightHasContent(insight) && (
                     <Card
                         as="article"
-                        padding="lg"
+                        padding="hero"
                         className="border-l-[3px] border-l-ember"
                     >
                         <div className="mb-2.5 flex items-center gap-2">

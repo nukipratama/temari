@@ -119,7 +119,7 @@ export default function Settings({
                 <section data-coachmark="settings-notifications">
                     <SectionLabel>Notifications</SectionLabel>
                     <div className="mt-3">
-                        <Card padding="lg">
+                        <Card padding="hero">
                             <NotificationPrefsPanel
                                 prefs={notificationPrefs}
                                 telegram={telegram}
@@ -132,7 +132,7 @@ export default function Settings({
                 <section className="mt-10" data-coachmark="settings-hr-zones">
                     <SectionLabel>Running</SectionLabel>
                     <div className="mt-3">
-                        <Card padding="lg">
+                        <Card padding="hero">
                             <SettingsRow
                                 icon="mdi:heart-pulse"
                                 label="HR zones"
@@ -147,7 +147,7 @@ export default function Settings({
                     <section className="mt-10">
                         <SectionLabel>{dataUse.headline}</SectionLabel>
                         <div className="mt-3">
-                            <Card padding="lg">
+                            <Card padding="hero">
                                 <ul className="flex flex-col gap-4">
                                     {dataUse.points.map((point) => (
                                         <li
@@ -166,7 +166,7 @@ export default function Settings({
                 <section className="mt-10">
                     <SectionLabel>The fine print</SectionLabel>
                     <div className="mt-3">
-                        <Card padding="lg">
+                        <Card padding="hero">
                             {LEGAL_ROWS.map((row) => (
                                 <SettingsRow
                                     key={row.href}
@@ -183,7 +183,7 @@ export default function Settings({
                 <section className="mt-10">
                     <SectionLabel>Account</SectionLabel>
                     <div className="mt-3">
-                        <Card padding="lg">
+                        <Card padding="hero">
                             <DeleteAccountPanel />
                         </Card>
                     </div>

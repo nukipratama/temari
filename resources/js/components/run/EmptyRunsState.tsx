@@ -118,8 +118,8 @@ export default function EmptyRunsState({
 
             {/* While you wait */}
             <Card
-                tone={onSky ? 'sky-glass' : 'cream'}
-                padding="md"
+                tone={onSky ? 'onSky' : 'card'}
+                padding="card"
                 className="w-full max-w-md"
             >
                 <SectionLabel onSky={onSky}>While you wait</SectionLabel>

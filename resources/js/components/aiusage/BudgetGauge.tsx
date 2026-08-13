@@ -14,8 +14,8 @@ export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
     return (
         <Card
             as="section"
-            tone="cream"
-            padding="md"
+            tone="card"
+            padding="card"
             className="mt-6 bg-surface-elev"
         >
             <div className="flex flex-wrap items-baseline justify-between gap-2">

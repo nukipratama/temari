@@ -45,7 +45,7 @@ export default function JourneyStrip({
     const { first, current, pace_improvement_sec, hr_improvement_bpm } = match;
 
     return (
-        <Card as="section" padding="lg" className={className}>
+        <Card as="section" padding="hero" className={className}>
             <Eyebrow as="h3" token="hero" tone="ink-2">
                 You vs Your First Run
             </Eyebrow>

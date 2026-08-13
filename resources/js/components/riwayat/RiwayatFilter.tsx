@@ -206,9 +206,9 @@ export default function RiwayatFilter<
                         // able to grow as filters are added, where a 288px popover
                         // anchored to a top-right trigger gets cramped and sits at
                         // the far end of the screen from the thumb.
-                        'fixed inset-x-0 bottom-0 z-40 max-h-[80vh] overflow-y-auto rounded-t-2xl border border-line bg-surface-elev pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg',
+                        'fixed inset-x-0 bottom-0 z-40 max-h-[80vh] overflow-y-auto rounded-t-lg border border-line bg-surface-elev pb-[max(1rem,env(safe-area-inset-bottom))] shadow-e2',
                         // Desktop: the original anchored popover.
-                        'lg:absolute lg:inset-x-auto lg:right-0 lg:bottom-auto lg:top-[calc(100%+8px)] lg:max-h-none lg:w-72 lg:overflow-hidden lg:rounded-2xl lg:pb-0',
+                        'lg:absolute lg:inset-x-auto lg:right-0 lg:bottom-auto lg:top-[calc(100%+8px)] lg:max-h-none lg:w-72 lg:overflow-hidden lg:rounded-lg lg:pb-0',
                     )}
                 >
                     {/* Grab handle: the affordance that says "this sheet is

@@ -24,7 +24,7 @@ export default function EmptyPanel({
     return (
         <Card
             tone="empty"
-            padding="lg"
+            padding="hero"
             className={cn('text-center', className)}
         >
             {pose && <Temari pose={pose} size={128} animate />}

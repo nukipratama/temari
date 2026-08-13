@@ -328,7 +328,7 @@ function NoFilterMatchState({ onReset }: Readonly<{ onReset: () => void }>) {
     return (
         <Card
             tone="empty"
-            padding="lg"
+            padding="hero"
             className="flex flex-col items-center text-center"
         >
             <Temari pose="observational" size={112} animate={false} />

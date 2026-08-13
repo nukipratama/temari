@@ -84,7 +84,7 @@ export default function TemariNudgeModal({
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.96, y: 8 }}
                         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                        className="flex w-full max-w-sm flex-col overflow-hidden rounded-3xl bg-cream shadow-2xl"
+                        className="flex w-full max-w-sm flex-col overflow-hidden rounded-xl bg-cream shadow-e4"
                     >
                         <div className="flex justify-start px-3 pt-3">
                             <button

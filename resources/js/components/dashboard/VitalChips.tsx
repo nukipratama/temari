@@ -283,7 +283,7 @@ function VitalChip({
     return (
         <div
             className={cn(
-                'flex h-full flex-col justify-between rounded-2xl border px-3.5 py-4 shadow-sm sm:px-4 sm:py-3.5',
+                'flex h-full flex-col justify-between rounded-lg border px-3.5 py-4 shadow-e1 sm:px-4 sm:py-3.5',
                 onSky
                     ? 'border-cream/[0.12] bg-cream/[0.06]'
                     : 'border-line bg-surface-card',

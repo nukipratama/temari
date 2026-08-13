@@ -215,7 +215,7 @@ export default function Kartu({
                 {/* Special-move name (rarity now floats on the art window) */}
                 <div
                     className={cn(
-                        'font-collectible font-semibold uppercase leading-[1.02] tracking-[0.01em] text-cream',
+                        'font-sans font-extrabold uppercase leading-[1.02] tracking-[0.01em] text-cream',
                         SIZE_NAME[size],
                         hideName && 'hidden sm:block',
                     )}
@@ -228,7 +228,7 @@ export default function Kartu({
                 <div className="mt-1 flex items-baseline justify-center gap-1">
                     <span
                         className={cn(
-                            'font-collectible font-bold tabular-nums leading-none',
+                            'font-mono font-bold tabular-nums leading-none',
                             RARITY_TEXT[rarity],
                             SIZE_KM[size],
                         )}

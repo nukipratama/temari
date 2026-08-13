@@ -101,7 +101,7 @@ export default function OnboardingIndex() {
                             later from Plan.
                         </p>
 
-                        <Card padding="lg" className="mt-6">
+                        <Card padding="hero" className="mt-6">
                             <form
                                 onSubmit={submitGoal}
                                 className="grid grid-cols-1 gap-5 sm:grid-cols-2"

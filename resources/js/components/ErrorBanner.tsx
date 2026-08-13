@@ -31,7 +31,7 @@ export default function ErrorBanner() {
         <div className="px-4 pt-4 lg:px-8">
             <div
                 role="alert"
-                className="mx-auto flex max-w-page-2xl items-start gap-3 rounded-2xl border border-ember/30 bg-ember/[0.08] px-4 py-3"
+                className="mx-auto flex max-w-page-2xl items-start gap-3 rounded-lg border border-ember/30 bg-ember/[0.08] px-4 py-3"
             >
                 <Icon
                     icon="mdi:alert-circle-outline"

@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import { THREADWORK, hrZone } from './chartTokens';
+import { PALETTE, hrZone } from './chartTokens';
 
-describe('THREADWORK chart token bridge', () => {
-    it('mirrors the canonical Threadwork hex values from app.css @theme', () => {
-        expect(THREADWORK.leaf).toBe('#6b8e6f');
-        expect(THREADWORK.ember).toBe('#c4623f');
-        expect(THREADWORK.overloaded).toBe('#6b3fa0');
-        expect(THREADWORK.horizon).toBe('#d9a53c');
-        expect(THREADWORK.citrus).toBe('#d9b23a');
+describe('PALETTE chart token bridge', () => {
+    it('mirrors the canonical hex values from app.css @theme', () => {
+        expect(PALETTE.leaf).toBe('#2f8f63');
+        expect(PALETTE.ember).toBe('#b23a4f');
+        expect(PALETTE.overloaded).toBe('#6b3fa0');
+        expect(PALETTE.horizon).toBe('#d9a53c');
+        expect(PALETTE.citrus).toBe('#c9971f');
     });
 
     it('exposes every value as a 6-digit lowercase hex', () => {
-        for (const value of Object.values(THREADWORK)) {
+        for (const value of Object.values(PALETTE)) {
             expect(value).toMatch(/^#[0-9a-f]{6}$/);
         }
     });

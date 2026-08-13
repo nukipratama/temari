@@ -126,7 +126,7 @@ export default function Race({
 
                 {race && (
                     <section className="mt-8" data-coachmark="race-goal">
-                        <Card padding="lg">
+                        <Card padding="hero">
                             <div className="flex flex-wrap items-start justify-between gap-4">
                                 <div>
                                     <SectionLabel>
@@ -223,7 +223,7 @@ export default function Race({
                     <SectionLabel>
                         {race ? 'Edit your race' : 'Set your race'}
                     </SectionLabel>
-                    <Card padding="lg" className="mt-3">
+                    <Card padding="hero" className="mt-3">
                         <form
                             onSubmit={submit}
                             className="grid grid-cols-1 gap-5 sm:grid-cols-2"
@@ -378,7 +378,7 @@ export default function Race({
 
                 <section className="mt-10" data-coachmark="race-fitness-trend">
                     <SectionLabel>Fitness · last 90 days</SectionLabel>
-                    <Card padding="lg" className="mt-3">
+                    <Card padding="hero" className="mt-3">
                         <CtlTrendChart trend={ctlTrend} />
                     </Card>
                 </section>

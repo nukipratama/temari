@@ -2,7 +2,7 @@
 
 A self-hosted, Strava-connected personal running dashboard with a built-in companion (**Temari**) that narrates each run. Containerized end-to-end — Laravel Sail in dev, FrankenPHP behind a Cloudflare Tunnel in prod — and continuously deployed to a single self-hosted host on every merge to `main`.
 
-> **Status**: Live in prod. Strava OAuth + activity sync, briefing/verdict narration (Azure OpenAI with rule-based fallback), training-load (CTL/ATL/Form), per-run RunCards, weekly snapshots, and the Temari mascot are all shipping. Threadwork palette (gold `horizon` + warm linen canvas + deep indigo `sky`), intentionally far from Strava orange. Light-mode only.
+> **Status**: Live in prod. Strava OAuth + activity sync, briefing/verdict narration (Azure OpenAI with rule-based fallback), training-load (CTL/ATL/Form), per-run RunCards, weekly snapshots, and the Temari mascot are all shipping. design-token palette (gold `horizon` + warm linen canvas + deep indigo `sky`), intentionally far from Strava orange. Light-mode only.
 
 ## What it is
 

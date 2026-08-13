@@ -58,7 +58,7 @@ export default function AksesoriUnlockModal({
                             duration: 0.35,
                             ease: [0.22, 1, 0.36, 1],
                         }}
-                        className="relative w-full max-w-[390px] overflow-hidden rounded-t-3xl sm:rounded-3xl"
+                        className="relative w-full max-w-[390px] overflow-hidden rounded-t-xl sm:rounded-xl"
                         style={{
                             background:
                                 'linear-gradient(170deg, var(--color-sky-deep) 0%, var(--color-sky) 45%, oklch(58% 0.10 38) 90%, var(--color-horizon-deep) 100%)',

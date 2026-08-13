@@ -42,7 +42,7 @@ export default function SplitsTable({
     }));
 
     return (
-        <Card as="section" padding="lg" className={className}>
+        <Card as="section" padding="hero" className={className}>
             <header className="mb-1.5 flex flex-wrap items-baseline justify-between gap-3">
                 <SectionLabel>Splits per km</SectionLabel>
                 {fastest != null && fastestKm != null && (

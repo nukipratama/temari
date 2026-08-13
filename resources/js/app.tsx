@@ -87,6 +87,6 @@ void createInertiaApp({
         warmTabChunks();
     },
     // AppShell's own <RouteProgressBar> replaces Inertia's built-in bar with
-    // one styled from the Threadwork tokens and driven by lib/motion.ts.
+    // one styled from the design tokens and driven by lib/motion.ts.
     progress: false,
 });

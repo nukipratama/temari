@@ -297,16 +297,16 @@ function AksesoriCard({
     let cardBorder: string;
     if (item.equipped) {
         cardBorder =
-            'border-[1.5px] border-horizon bg-horizon/[0.08] shadow-sm';
+            'border-[1.5px] border-horizon bg-horizon/[0.08] shadow-e1';
     } else if (locked) {
         cardBorder = 'border-2 border-dashed border-cream-deep bg-cream/40';
     } else {
-        cardBorder = 'border border-cream-deep bg-cream shadow-sm';
+        cardBorder = 'border border-cream-deep bg-cream shadow-e1';
     }
     return (
         <article
             className={cn(
-                'relative flex flex-col items-center gap-3 rounded-2xl px-5 py-5 text-center transition',
+                'relative flex flex-col items-center gap-3 rounded-lg px-5 py-5 text-center transition',
                 cardBorder,
             )}
         >
@@ -326,7 +326,7 @@ function AksesoriCard({
                 {locked && (
                     <span
                         aria-hidden
-                        className="absolute -right-1 bottom-1 flex h-7 w-7 items-center justify-center rounded-full bg-ink-3 text-cream shadow-sm"
+                        className="absolute -right-1 bottom-1 flex h-7 w-7 items-center justify-center rounded-full bg-ink-3 text-cream shadow-e1"
                     >
                         <Icon icon="mdi:lock-outline" width={14} height={14} />
                     </span>

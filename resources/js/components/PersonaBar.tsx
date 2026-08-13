@@ -30,8 +30,8 @@ export default function PersonaBar({
         if (onSky) {
             return (
                 <Card
-                    tone="sky-glass"
-                    padding="md"
+                    tone="onSky"
+                    padding="card"
                     className={cn('text-center', className)}
                 >
                     <p className="font-display text-base italic text-cream/85">

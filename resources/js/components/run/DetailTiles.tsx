@@ -109,7 +109,7 @@ export default function DetailTiles({
                 <div
                     key={t.label}
                     className={cn(
-                        'rounded-xl border border-cream-deep bg-cream px-4 py-3.5 shadow-sm',
+                        'rounded-xl border border-cream-deep bg-cream px-4 py-3.5 shadow-e1',
                         // A lone trailing tile in this 2-column grid would otherwise
                         // waste half the row — span it across both columns instead.
                         i === tiles.length - 1 &&

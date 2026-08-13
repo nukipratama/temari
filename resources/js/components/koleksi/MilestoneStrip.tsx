@@ -31,7 +31,7 @@ export default function MilestoneStrip({
     return (
         <div
             className={cn(
-                'flex flex-col gap-3 rounded-2xl border border-horizon/40 bg-horizon/[0.12] px-6 py-4',
+                'flex flex-col gap-3 rounded-lg border border-horizon/40 bg-horizon/[0.12] px-6 py-4',
                 className,
             )}
         >

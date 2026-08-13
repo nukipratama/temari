@@ -104,8 +104,8 @@ export default function SectionTabs<TId extends string>({
                             'focus-ring inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-[13px] transition',
                             isActive &&
                                 (onSky
-                                    ? 'bg-cream text-sky font-semibold shadow-sm'
-                                    : 'bg-sky text-cream font-semibold shadow-sm'),
+                                    ? 'bg-cream text-sky font-semibold shadow-e1'
+                                    : 'bg-sky text-cream font-semibold shadow-e1'),
                             !isActive &&
                                 (onSky
                                     ? 'bg-transparent text-ink-on-sky hover:bg-cream/10 hover:text-cream'

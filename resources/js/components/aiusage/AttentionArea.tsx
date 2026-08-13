@@ -70,7 +70,7 @@ function RecoverBar() {
     }
 
     return (
-        <div className="mt-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface-elev p-4">
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-surface-elev p-4">
             <p className="text-sm text-ink-2">
                 Just recovered from an outage? Recover every stuck block at
                 once.
@@ -159,7 +159,7 @@ function AttentionGroupRow({
     }, {});
 
     return (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface-elev p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-surface-elev p-4">
             <div className="min-w-0">
                 <p className="truncate font-medium text-ink">
                     {group.user_name}

@@ -222,7 +222,7 @@ export default function ShareCardModal({
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.96, y: 8 }}
                     transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                    className="flex w-full max-w-md flex-col overflow-hidden rounded-3xl bg-cream shadow-2xl"
+                    className="flex w-full max-w-md flex-col overflow-hidden rounded-xl bg-cream shadow-e4"
                     style={{ maxHeight: '92dvh' }}
                 >
                     {/* Header — pinned. */}
@@ -257,7 +257,7 @@ export default function ShareCardModal({
                             width={1080}
                             height={format === 'story' ? 1920 : 1080}
                             aria-label={`Preview of ${kartu.name}`}
-                            className="block rounded-2xl"
+                            className="block rounded-lg"
                             style={{
                                 maxWidth: '100%',
                                 maxHeight: '52vh',

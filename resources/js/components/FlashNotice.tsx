@@ -66,7 +66,7 @@ export default function FlashNotice() {
         <div className="px-4 pt-4 lg:px-8">
             <div
                 role={style.role}
-                className={`mx-auto flex max-w-page-2xl items-start gap-3 rounded-2xl border px-4 py-3 ${style.frame}`}
+                className={`mx-auto flex max-w-page-2xl items-start gap-3 rounded-lg border px-4 py-3 ${style.frame}`}
             >
                 <Icon
                     icon={style.icon}

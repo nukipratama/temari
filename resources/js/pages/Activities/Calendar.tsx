@@ -160,7 +160,7 @@ export default function Calendar({
                         initial="hidden"
                         animate="visible"
                         variants={fadeInUp}
-                        className="overflow-hidden rounded-2xl border border-line/70 bg-surface-warm shadow-sm"
+                        className="overflow-hidden rounded-lg border border-line/70 bg-surface-warm shadow-e1"
                     >
                         <CalendarHeader />
                         {weeks.map((week) => (
@@ -236,7 +236,7 @@ function MonthlyRecapCard({
     const notificationsReachable = useNotificationsReachable();
     return (
         <section
-            className="mb-4 rounded-2xl border border-line bg-surface-warm p-4 shadow-sm sm:p-5"
+            className="mb-4 rounded-lg border border-line bg-surface-warm p-4 shadow-e1 sm:p-5"
             aria-label={`Temari's notes for ${monthLabel}`}
         >
             <div className="font-mono text-xs font-bold uppercase tracking-wider text-ink-2">
@@ -611,7 +611,7 @@ function Legend({ className }: Readonly<{ className?: string }>) {
     return (
         <div
             className={cn(
-                'flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-line/60 bg-surface-warm/40 px-4 py-3 shadow-sm',
+                'flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-line/60 bg-surface-warm/40 px-4 py-3 shadow-e1',
                 className,
             )}
         >

@@ -60,8 +60,8 @@ export default function LastLariCard({
     return (
         <LinkCard
             href={activityUrl(run)}
-            tone={onSky ? 'sky-glass' : 'cream'}
-            padding="sm"
+            tone={onSky ? 'onSky' : 'card'}
+            padding="panel"
             className="flex h-full flex-col gap-3"
         >
             <SectionLabel dot onSky={onSky} className="mb-0">

@@ -16,7 +16,7 @@ export default function KartuMount({
     return (
         <div
             className={cn(
-                'relative flex w-full items-center justify-center overflow-hidden rounded-3xl p-3',
+                'relative flex w-full items-center justify-center overflow-hidden rounded-xl p-3',
                 className,
             )}
             style={{
@@ -24,7 +24,7 @@ export default function KartuMount({
                     'linear-gradient(165deg, var(--color-sky-deep), var(--color-sky-2))',
             }}
         >
-            <div className="relative w-full rounded-2xl shadow-2xl">
+            <div className="relative w-full rounded-lg shadow-e4">
                 {children}
             </div>
         </div>

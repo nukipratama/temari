@@ -14,7 +14,7 @@ export default function FlashBanner({
     }
 
     return (
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface-elev px-4 py-3 text-sm text-ink">
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-line bg-surface-elev px-4 py-3 text-sm text-ink">
             <span>{message}</span>
             <button
                 type="button"

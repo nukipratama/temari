@@ -8,9 +8,9 @@ import { type CardPadding, type CardTone } from './Card';
 
 interface LinkCardProps {
     href: string;
-    /** Default 'cream'. */
+    /** Default 'card'. */
     tone?: CardTone;
-    /** Default 'md' — px-5 py-5. */
+    /** Default 'card' — the --pad-card role. */
     padding?: CardPadding;
     onClick?: MouseEventHandler<Element>;
     className?: string;
@@ -19,8 +19,8 @@ interface LinkCardProps {
 
 export default function LinkCard({
     href,
-    tone = 'cream',
-    padding = 'md',
+    tone = 'card',
+    padding = 'card',
     onClick,
     className,
     children,

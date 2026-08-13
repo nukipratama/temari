@@ -469,7 +469,7 @@ function LegendaryTease() {
         <Card
             tone="empty"
             as="section"
-            padding="lg"
+            padding="hero"
             className="mt-8 flex flex-col items-start gap-5 sm:flex-row sm:items-center"
         >
             <div className="flex h-28 w-20 items-center justify-center rounded-lg border-2 border-dashed border-rarity-legendary bg-rarity-legendary/[0.06] font-display text-4xl italic text-rarity-legendary">

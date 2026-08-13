@@ -1,6 +1,6 @@
 import type { Mood } from '@/types/inertia';
 
-import { THREADWORK } from '@/lib/chartTokens';
+import { PALETTE } from '@/lib/chartTokens';
 
 export const MOOD_FACE: Record<Mood, string> = {
     blazing: '✨',
@@ -92,7 +92,7 @@ export function moodSigilColor(mood: Mood): string {
         case 'wobbly':
             return '#b23a4f';
         case 'overloaded':
-            return THREADWORK.overloaded;
+            return PALETTE.overloaded;
         case 'chill':
         default:
             return '#55488f';

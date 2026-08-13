@@ -36,7 +36,7 @@ export default function RingkasanCard({
     return (
         <section
             className={cn(
-                'rounded-2xl border border-line bg-surface-warm p-4 shadow-sm sm:p-5',
+                'rounded-lg border border-line bg-surface-warm p-4 shadow-e1 sm:p-5',
                 className,
             )}
             aria-label="Temari's notes this week"

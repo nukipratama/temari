@@ -67,7 +67,7 @@ export default function PastYouTrendCard({
     const meanPace = trend.mean_pace_delta_sec;
 
     return (
-        <Card as="section" padding="lg">
+        <Card as="section" padding="hero">
             <SectionLabel dot dotClass="bg-horizon">
                 You vs Past You · last {trend.window_days} days
             </SectionLabel>

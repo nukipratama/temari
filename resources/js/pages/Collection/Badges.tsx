@@ -108,7 +108,7 @@ function BadgeCard({ item }: Readonly<{ item: BadgeBoardItem }>) {
 
     return (
         <Card
-            padding="md"
+            padding="card"
             className={cn(
                 'flex h-full flex-col items-center gap-2 text-center',
                 locked &&

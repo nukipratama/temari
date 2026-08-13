@@ -223,7 +223,7 @@ export default function Plan({
 
                 <section className="mt-8" data-testid="plan-adaptation">
                     {adaptation && (
-                        <Card padding="sm" className="flex flex-col gap-1.5">
+                        <Card padding="panel" className="flex flex-col gap-1.5">
                             <div className="flex flex-wrap items-center gap-2">
                                 <SectionLabel>This week</SectionLabel>
                                 <Chip
@@ -342,7 +342,7 @@ export default function Plan({
                                             variants={fadeInUp}
                                         >
                                             <Card
-                                                padding="sm"
+                                                padding="panel"
                                                 className={cn(
                                                     'flex flex-wrap items-center justify-between gap-3',
                                                     day.date === today &&

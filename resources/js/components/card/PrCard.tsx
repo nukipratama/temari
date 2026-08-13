@@ -49,7 +49,7 @@ export default function PrCard({
         return (
             <LinkCard
                 href={activityUrl({ activity_id: activityId })}
-                padding={size === 'lg' ? 'lg' : 'md'}
+                padding={size === 'lg' ? 'hero' : 'card'}
                 className={GAP_CLASS[size]}
             >
                 {body}
@@ -57,7 +57,10 @@ export default function PrCard({
         );
     }
     return (
-        <Card padding={size === 'lg' ? 'lg' : 'md'} className={GAP_CLASS[size]}>
+        <Card
+            padding={size === 'lg' ? 'hero' : 'card'}
+            className={GAP_CLASS[size]}
+        >
             {body}
         </Card>
     );
