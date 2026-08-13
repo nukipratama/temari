@@ -18,6 +18,7 @@ import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
+import { earliestRaceDate, goalTimeError } from '@/lib/raceGoal';
 import { inputVariants, outlineChipVariants } from '@/lib/variants';
 
 interface RacePayload {
@@ -87,6 +88,9 @@ export default function Race({
     const highSecCount = useCountUp(projection?.high_sec ?? 0);
     const predictedSecCount = useCountUp(projection?.predicted_sec ?? 0);
 
+    const goalTimeSec = hours * 3_600 + minutes * 60 + seconds;
+    const goalTimeIssue = goalTimeError(goalTimeSec);
+
     const submit = (event: FormEvent) => {
         event.preventDefault();
         router.post(
@@ -94,7 +98,7 @@ export default function Race({
             {
                 race_date: raceDate,
                 distance_m: Math.round(distanceKm * 1000),
-                goal_time_sec: hours * 3_600 + minutes * 60 + seconds,
+                goal_time_sec: goalTimeSec,
                 name: name.trim() === '' ? null : name.trim(),
             },
             {
@@ -257,6 +261,7 @@ export default function Race({
                                     id="race_date"
                                     type="date"
                                     required
+                                    min={earliestRaceDate()}
                                     value={raceDate}
                                     onChange={(e) =>
                                         setRaceDate(e.target.value)
@@ -368,13 +373,23 @@ export default function Race({
                                         sec
                                     </span>
                                 </div>
+                                {goalTimeIssue && (
+                                    <p
+                                        role="alert"
+                                        className="mt-1.5 font-sans text-xs text-ember-deep"
+                                    >
+                                        {goalTimeIssue}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="sm:col-span-2">
                                 <PillButton
                                     type="submit"
                                     tone="horizon"
-                                    disabled={processing}
+                                    disabled={
+                                        processing || goalTimeIssue !== null
+                                    }
                                 >
                                     {processing
                                         ? 'Saving…'
