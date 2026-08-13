@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Controllers\Api\RunQuestionController;
 use App\Http\Controllers\Api\CardReplayController;
 use App\Http\Controllers\Api\CardSeenController;
+use App\Http\Controllers\Api\NotificationReadController;
 use App\Http\Controllers\Auth\DemoAuthController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
@@ -203,6 +204,10 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
         ->name('api.cards.seen');
     Route::post('/api/cards/{card}/replay', CardReplayController::class)
         ->name('api.cards.replay');
+
+    Route::post('/api/notifications/{notification}/read', NotificationReadController::class)
+        ->whereNumber('notification')
+        ->name('api.notifications.read');
 
     Route::get('/api/analyses/{type}/{subjectId}', [AnalysisController::class, 'show'])
         ->whereNumber('subjectId')

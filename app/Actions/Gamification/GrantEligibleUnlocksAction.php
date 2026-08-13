@@ -6,6 +6,7 @@ namespace App\Actions\Gamification;
 
 use App\Models\User;
 use App\Models\UserUnlock;
+use App\Notifications\UnlockGrantedNotification;
 use App\Services\Gamification\GamificationContext;
 use App\Services\Gamification\GoalResolver;
 use Illuminate\Support\Carbon;
@@ -70,24 +71,44 @@ class GrantEligibleUnlocksAction
 
         UserUnlock::query()->insert($rows);
 
+        $celebrations = array_values(array_filter(array_map($this->celebration(...), $new)));
+
+        // Every new unlock goes to the inbox, so one granted during a background
+        // ingest is still there to be celebrated later.
+        foreach ($celebrations as $celebration) {
+            $user->notify(new UnlockGrantedNotification($celebration));
+        }
+
         // Flash the first new unlock for the toast on the next request.
         // Session::isStarted() guards background jobs / CLI ingests, which
         // have no session and would crash here.
-        if (Session::isStarted()) {
-            $firstKey = $new[0];
-            $catalog = config('temari_unlocks', []);
-            $def = is_array($catalog) ? ($catalog[$firstKey] ?? null) : null;
-            if (is_array($def)) {
-                Session::flash('unlock', [
-                    'unlock_key' => $firstKey,
-                    'name' => $def['name'] ?? $firstKey,
-                    'icon' => $def['icon'] ?? 'mdi:medal',
-                    'is_major' => \in_array($firstKey, self::MAJOR_KEYS, true),
-                ]);
-            }
+        if (Session::isStarted() && $celebrations !== []) {
+            Session::flash('unlock', $celebrations[0]);
         }
 
         return $new;
+    }
+
+    /**
+     * The celebration payload shared by the immediate toast and the inbox row,
+     * or null for a key with no catalog entry.
+     *
+     * @return array{unlock_key: string, name: string, icon: string, is_major: bool}|null
+     */
+    private function celebration(string $key): ?array
+    {
+        $catalog = config('temari_unlocks', []);
+        $def = is_array($catalog) ? ($catalog[$key] ?? null) : null;
+        if (! is_array($def)) {
+            return null;
+        }
+
+        return [
+            'unlock_key' => $key,
+            'name' => (string) ($def['name'] ?? $key),
+            'icon' => (string) ($def['icon'] ?? 'mdi:medal'),
+            'is_major' => \in_array($key, self::MAJOR_KEYS, true),
+        ];
     }
 
     /**

@@ -16,7 +16,7 @@ code_refs:
 
 # Streak reminders
 
-Every Saturday at 18:00, `streak:remind` checks every user Temari can reach on **any** notification channel who hasn't turned notifications off. If the user has a live streak but hasn't run yet this week, it dispatches a nudge: one message per user, per at-risk week, no repeats.
+Every Saturday at 18:00, `streak:remind` checks every user Temari can reach on an **outbound** channel (Telegram or web push) who hasn't turned notifications off. The nudge is time-boxed to the rest of the week, so it deliberately does not go to someone reachable only in the in-app inbox, who would read it days late (see [[inbox-is-an-always-on-channel]]). If the user has a live streak but hasn't run yet this week, it dispatches a nudge: one message per user, per at-risk week, no repeats.
 
 There is no dedicated streak toggle — the nudge is governed by the single `notifications_enabled` master switch ([NotificationPreference](../../app/Models/NotificationPreference.php)), the same one that gates the post-run story and both recaps. It used to ride on `weekly_recap`, a coupling the UI never named; the master switch's own description names the streak nudge out loud, so the behaviour is chosen rather than inherited. A missing preference row means all-on.
 
@@ -31,7 +31,7 @@ There is no dedicated streak toggle — the nudge is governed by the single `not
 
 > The command iterates **users, not Telegram connections**. Iterating connections (as it did before web push existed) silently excluded anyone who only had phone push enabled, so they got weekly recaps but never a streak nudge.
 
-The notification's `via()` re-checks the guards at send time (not demo, `notifications_enabled` still true) and fans out to whichever channels are live: [TelegramChannel](../../app/Notifications/Channels/TelegramChannel.php) and/or [IdempotentWebPushChannel](../../app/Notifications/Channels/IdempotentWebPushChannel.php). Both carry the same title → body pair, with web push at `Urgency: high` (the nudge is time-boxed to the rest of the week, so an OS deferral under Low Power Mode would defeat it):
+The notification's `via()` re-checks the guards at send time (not demo, `notifications_enabled` still true) and fans out to the in-app inbox ([InAppChannel](../../app/Notifications/Channels/InAppChannel.php), always) plus whichever outbound channels are live: [TelegramChannel](../../app/Notifications/Channels/TelegramChannel.php) and/or [IdempotentWebPushChannel](../../app/Notifications/Channels/IdempotentWebPushChannel.php). The outbound pair carry the same title → body pair, with web push at `Urgency: high` (the nudge is time-boxed to the rest of the week, so an OS deferral under Low Power Mode would defeat it):
 
 > 🔥 Streak lari {n} minggu kamu lagi di ujung
 >
@@ -41,7 +41,7 @@ The tap-through points at the dashboard. See [[telegram-notifications]] for the 
 
 ## Idempotency
 
-- `streak_reminders` table has a unique `(user_id, week_ending)` constraint — the same user in the same at-risk week can only receive one reminder, even if the command runs multiple times or the cron host restarts mid-iteration. A user wired on both channels is still one claim, one notification (fanned out to two channels).
+- `streak_reminders` table has a unique `(user_id, week_ending)` constraint — the same user in the same at-risk week can only receive one reminder, even if the command runs multiple times or the cron host restarts mid-iteration. A user wired on both outbound channels is still one claim, one notification (fanned out to the inbox and both of them).
 - The notification's `via()` re-checks channel status and opt-in at send time, so a user who disconnects between dispatch and execution is never pestered.
 
 ## Schedule rationale

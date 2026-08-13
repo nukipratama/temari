@@ -103,6 +103,8 @@ export interface SharedProps {
     telegramConnected?: boolean;
     /** Whether the auth user has at least one browser push subscription. */
     webPushSubscribed?: boolean;
+    /** How many of the auth user's inbox notifications are still unread. */
+    unreadNotifications?: number;
     /** The public VAPID key the browser needs to subscribe to web push; '' when unconfigured. */
     webPushPublicKey?: string;
     /** True when the auth user's Strava connection is live but lacks the `profile:read_all` scope needed for HR-zone sync. */

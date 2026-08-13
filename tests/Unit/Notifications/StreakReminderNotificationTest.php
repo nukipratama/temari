@@ -6,6 +6,7 @@ use App\Models\NotificationPreference;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Notifications\Channels\IdempotentWebPushChannel;
+use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\StreakReminderNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -34,7 +35,7 @@ it('routes to Telegram for a connected, opted-in user', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();
 
-    expect(streakVia($user))->toBe([TelegramChannel::class]);
+    expect(streakVia($user))->toBe([InAppChannel::class, TelegramChannel::class]);
 });
 
 // The gap this closes: a push-only user used to get recaps but never streak
@@ -43,7 +44,7 @@ it('routes to web push for a subscribed user with no Telegram connection', funct
     $user = User::factory()->create();
     subscribeToPush($user);
 
-    expect(streakVia($user))->toBe([IdempotentWebPushChannel::class]);
+    expect(streakVia($user))->toBe([InAppChannel::class, IdempotentWebPushChannel::class]);
 });
 
 it('routes to both channels when both are wired', function (): void {
@@ -51,7 +52,7 @@ it('routes to both channels when both are wired', function (): void {
     TelegramConnection::factory()->for($user)->create();
     subscribeToPush($user);
 
-    expect(streakVia($user))->toBe([TelegramChannel::class, IdempotentWebPushChannel::class]);
+    expect(streakVia($user))->toBe([InAppChannel::class, TelegramChannel::class, IdempotentWebPushChannel::class]);
 });
 
 it('routes nowhere for the demo user', function (): void {
@@ -62,8 +63,8 @@ it('routes nowhere for the demo user', function (): void {
     expect(streakVia($user))->toBe([]);
 });
 
-it('routes nowhere with no channel wired', function (): void {
-    expect(streakVia(User::factory()->create()))->toBe([]);
+it('routes to the inbox alone with no outbound channel wired', function (): void {
+    expect(streakVia(User::factory()->create()))->toBe([InAppChannel::class]);
 });
 
 it('routes to web push only over a revoked Telegram connection', function (): void {
@@ -71,14 +72,14 @@ it('routes to web push only over a revoked Telegram connection', function (): vo
     TelegramConnection::factory()->for($user)->revoked()->create();
     subscribeToPush($user);
 
-    expect(streakVia($user))->toBe([IdempotentWebPushChannel::class]);
+    expect(streakVia($user))->toBe([InAppChannel::class, IdempotentWebPushChannel::class]);
 });
 
-it('routes nowhere over a revoked connection with no push subscription', function (): void {
+it('routes to the inbox alone over a revoked connection with no push subscription', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->revoked()->create();
 
-    expect(streakVia($user))->toBe([]);
+    expect(streakVia($user))->toBe([InAppChannel::class]);
 });
 
 // The nudge is governed by the master switch, which names it in its own
@@ -97,7 +98,7 @@ it('still routes when the master switch is on', function (): void {
     TelegramConnection::factory()->for($user)->create();
     NotificationPreference::factory()->for($user)->create(['notifications_enabled' => true]);
 
-    expect(streakVia($user))->toBe([TelegramChannel::class]);
+    expect(streakVia($user))->toBe([InAppChannel::class, TelegramChannel::class]);
 });
 
 it('builds a keyless Telegram message naming the streak length', function (): void {

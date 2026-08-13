@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Notifications;
 
+use App\Enums\NotificationKind;
 use App\Models\User;
+use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\Telegram\TelegramReplies;
 use App\Services\Notifications\ChannelRouter;
@@ -46,6 +48,15 @@ class TestNotification extends Notification implements ShouldQueue
     public function toTelegram(User $notifiable): TelegramMessage
     {
         return new TelegramMessage(text: TelegramReplies::test());
+    }
+
+    public function toInbox(User $notifiable): InboxMessage
+    {
+        return new InboxMessage(
+            kind: NotificationKind::Test,
+            title: '🔔 Test notification',
+            body: TelegramReplies::test(),
+        );
     }
 
     public function toWebPush(User $notifiable, Notification $notification): WebPushMessage

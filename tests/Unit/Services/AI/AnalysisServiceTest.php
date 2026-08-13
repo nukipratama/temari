@@ -15,6 +15,7 @@ use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Notifications\AnalysisReadyNotification;
+use App\Notifications\Channels\InAppChannel;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -884,7 +885,7 @@ it('resumes generation for free once the config breaker resets (env fixed)', fun
         ->and($this->service->pauseReason())->toBeNull();
 });
 
-it('markDone does not notify when Telegram is unconfigured', function (): void {
+it('markDone reaches the inbox alone when Telegram is unconfigured', function (): void {
     config(['services.telegram.bot_token' => null, 'services.telegram.notify_max_age_days' => 14]);
     Notification::fake();
     $user = User::factory()->create();
@@ -900,7 +901,11 @@ it('markDone does not notify when Telegram is unconfigured', function (): void {
 
     $this->service->markDone($row, 'Rekap.');
 
-    Notification::assertNothingSent();
+    Notification::assertSentTo(
+        $user,
+        AnalysisReadyNotification::class,
+        fn (AnalysisReadyNotification $notification): bool => $notification->via($user) === [InAppChannel::class],
+    );
 });
 
 it('requestRuleBased fills a row from the filler without dispatching or cooling', function (): void {
