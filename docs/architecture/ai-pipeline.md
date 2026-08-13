@@ -25,7 +25,9 @@ code_refs:
 
 # AI narration pipeline
 
-Every piece of AI-written copy in the app is one row in the `ai_analyses` table, modelled by [Analysis](app/Models/AI/Analysis.php). A row is identified by `(subject_type, subject_id, analysis_type, discriminator)` and carries a `status`, the generated `content`, and bookkeeping (`attempts`, `queued_at`, `generated_at`, `error`). The pipeline's job is to move that row through its lifecycle and fill `content` exactly once per intended regeneration. See [[data-model]] for the table.
+Every piece of AI-written *narration* in the app is one row in the `ai_analyses` table, modelled by [Analysis](app/Models/AI/Analysis.php). A row is identified by `(subject_type, subject_id, analysis_type, discriminator)` and carries a `status`, the generated `content`, and bookkeeping (`attempts`, `queued_at`, `generated_at`, `error`). The pipeline's job is to move that row through its lifecycle and fill `content` exactly once per intended regeneration. See [[data-model]] for the table.
+
+The one AI surface **outside** this model is the scoped per-run Q&A ([[run-qa]]): a run accumulates many questions with different text, which the one-row-per-key model cannot hold, so it stores its own rows and dispatches its own job. It still reuses the narrator, the agent loop and the metering described here — see [[scoped-run-qa-not-an-analysis-row]].
 
 ## The shape
 
@@ -112,3 +114,4 @@ Two distinct things still produce content without the LLM:
 - [[run-ingest-pipeline]] — what triggers the post-ingest cascade that calls `request()`.
 - [[analytics-db]] — `ai_token_usages` metering that backs the daily cost ceiling.
 - [[data-model]] — the `ai_analyses` table.
+- [[run-qa]] — the one AI surface that reuses this machinery without using the row model.

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AksesoriController;
 use App\Http\Controllers\Api\AnalysisController;
+use App\Http\Controllers\Api\RunQuestionController;
 use App\Http\Controllers\Api\CardReplayController;
 use App\Http\Controllers\Api\CardSeenController;
 use App\Http\Controllers\Api\NotificationReadController;
@@ -215,6 +216,14 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
         ->whereNumber('subjectId')
         ->middleware('throttle:analysis-trigger')
         ->name('api.analyses.trigger');
+
+    Route::get('/api/activities/{activity}/questions', [RunQuestionController::class, 'index'])
+        ->whereNumber('activity')
+        ->name('api.activities.questions.index');
+    Route::post('/api/activities/{activity}/questions', [RunQuestionController::class, 'store'])
+        ->whereNumber('activity')
+        ->middleware('throttle:run-question')
+        ->name('api.activities.questions.store');
 
 });
 

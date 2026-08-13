@@ -19,6 +19,13 @@ return [
     // clicks Analisis ulang across multiple analyses in rapid succession.
     'rate_limit_per_minute' => (int) env('AI_RATE_LIMIT_PER_MINUTE', 8),
 
+    // Per-user ceiling (sliding minute) on "ask about this run". Lower than the
+    // trigger limit above: every accepted question is a real tool-calling agent
+    // run, where a trigger usually collapses to a no-op on an already-Done row.
+    // Still a rate limit, not a cost cap — app-wide spend stays the
+    // azure_openai.daily_cost_ceiling's job.
+    'run_question_rate_limit_per_minute' => (int) env('AI_RUN_QUESTION_RATE_LIMIT_PER_MINUTE', 4),
+
     // Activities ingested with `start_date_local` more than this many hours
     // ago are treated as backfill — their auto-cascade gets staggered so a
     // Strava connect+backfill doesn't burst hundreds of LLM calls at once.

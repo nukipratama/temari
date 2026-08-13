@@ -161,6 +161,13 @@ follows `WeeklyRecap` / `PrContext` / `CardFlavor`. Let `Name` = StudlyCase, `sn
 
 Then run `./vendor/bin/sail composer check` and fix anything red.
 
+**Not every AI surface is a narrated block.** The scoped per-run Q&A stores its own
+`run_questions` rows and dispatches its own job instead of using the Analysis row model —
+one run holds many questions, which `(subject, type, discriminator)` cannot key. It still
+goes through `StructuredChatCaller` and a bound-at-construction toolbox, so persona,
+budget, retries and metering are unchanged. See `docs/decisions/scoped-run-qa-not-an-analysis-row.md`
+before reaching for a new `AnalysisType` on anything user-initiated and free-form.
+
 ## Testing
 
 - **1:1 class↔test.** Every concrete class has a `{Name}Test.php`, or is exempt in [tests/Unit/Architecture/EveryClassHasATestTest.php](../../../tests/Unit/Architecture/EveryClassHasATestTest.php). Frontend: co-located `{name}.test.tsx`, guarded by [resources/js/test/structure.test.ts](../../../resources/js/test/structure.test.ts).
