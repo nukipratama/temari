@@ -61,6 +61,18 @@ it('queues the question and hands back the pending exchange', function (): void 
     expect(RunQuestion::query()->sole()->user_id)->toBe($user->id);
 });
 
+it('trims the question before storing it', function (): void {
+    $user = User::factory()->create();
+    $activity = runFor($user);
+
+    $this->actingAs($user)
+        ->postJson("/api/activities/{$activity->id}/questions", ['question' => '  why did my HR drift?  '])
+        ->assertCreated()
+        ->assertJson(['question' => 'why did my HR drift?']);
+
+    expect(RunQuestion::query()->sole()->question)->toBe('why did my HR drift?');
+});
+
 it('rejects a question with no substance', function (): void {
     $user = User::factory()->create();
     $activity = runFor($user);

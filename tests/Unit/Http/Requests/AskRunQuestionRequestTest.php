@@ -27,13 +27,6 @@ it('accepts a question that fits the column', function (): void {
     expect(Validator::make(['question' => $question], askRules())->fails())->toBeFalse();
 });
 
-it('trims the question it hands the controller', function (): void {
-    $request = AskRunQuestionRequest::create('/', 'POST', ['question' => '  why did my HR drift?  ']);
-    $request->setContainer(app())->validateResolved();
-
-    expect($request->question())->toBe('why did my HR drift?');
-});
-
-it('authorizes everyone, leaving ownership to the controller', function (): void {
-    expect(new AskRunQuestionRequest()->authorize())->toBeTrue();
+it('refuses a request that carries no authenticated user', function (): void {
+    expect(new AskRunQuestionRequest()->authorize())->toBeFalse();
 });
