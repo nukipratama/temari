@@ -163,7 +163,7 @@ final readonly class RuleBasedRunInsights
 
         $claims[] = [
             'anchor' => 'metric:grade',
-            'text' => "The steepest stretch of this run was a real climb, worth the extra effort it took.",
+            'text' => 'The steepest stretch of this run was a genuine climb, not a bump.',
             'value' => DecimalFormatter::trimmed($grade).'%',
             'delta' => null,
         ];
@@ -209,7 +209,7 @@ final readonly class RuleBasedRunInsights
 
         $claims[] = [
             'anchor' => 'metric:pace_variability',
-            'text' => 'Pace varied a fair bit through this run, worth aiming for more consistency next time.',
+            'text' => 'Your pace swung around a fair bit through this run, the splits never settled.',
             'value' => null,
             'delta' => null,
         ];

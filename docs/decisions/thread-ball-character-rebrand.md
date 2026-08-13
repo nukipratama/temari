@@ -2,7 +2,8 @@
 title: Rebrand Temari from bunny/Daybreak to a thread-ball character
 description: Full character replacement (bunny → ball-bodied thread character) and palette rename (Daybreak → Threadwork), tying the visual identity to the training arc; rarity hex and the accessory data model stay unchanged.
 tags: [decision, design]
-status: accepted
+status: superseded
+superseded_by: temari-keeps-score-persona
 reviewed: 2026-08-11
 code_refs:
   - resources/js/components/temari/TemariProto.tsx
@@ -14,6 +15,8 @@ code_refs:
 ---
 
 # Rebrand Temari from bunny/Daybreak to a thread-ball character
+
+> **Partially superseded (2026-08-13) by [[temari-keeps-score-persona]].** Only the *persona* stance below is replaced: the "friend who runs alongside you" framing this note cites as the reason the character kept a face and an expression carrier. Temari is now a training partner who keeps score. Everything else here still stands and is the current design: the ball-bodied form, the 8 pose names, thread coverage as the season-phase progress language, the accessory rendering-vs-data-model split, the unchanged rarity hex ladder, and the Threadwork palette.
 
 **Status:** Accepted (documented 2026-08-11, resolved in a full `/grilling` session 2026-08-10/11).
 

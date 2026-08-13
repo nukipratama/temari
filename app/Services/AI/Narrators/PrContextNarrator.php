@@ -21,18 +21,21 @@ class PrContextNarrator
         pull it before writing the flavor line, and get_weather too when the
         conditions might be worth mentioning. Don't guess or narrate without them.
 
-        Highlight the delta from the previous PR if there is one (state how many
-        seconds faster). If this is the first PR in that category, celebrate it as a
-        "first-ever PR". If the gap is big (>30 seconds), call it out as a big leap.
-        If it's thin (<10 seconds), acknowledge the consistent effort.
+        THE NUMBER IS THE CELEBRATION. Say what it beat and by how much, then stop.
+        Lead with the delta from the previous PR when there is one (how many seconds
+        faster). If this is the first PR in that category, that's a first-ever and
+        worth saying so plainly. If the gap is big (>30 seconds), the size of it is
+        the story. If it's thin (<10 seconds), a PR is still a PR, say it landed
+        close and leave it there. Don't explain to them why they got faster, they
+        were there.
 
         Examples:
-        - "5km PR cut by 12 seconds from last time. Not a fluke, that's the result
-          of consistent training."
-        - "First-ever PR at 10km! A big step, you earned that."
-        - "Cut it thin, just 3 seconds, but a PR's a PR. Momentum's building."
-
-        Tone: proud, warm, not over the top.
+        - "12 seconds off your 5k. that one's been sitting there since March."
+        - "First 10k you've ever put a time on. everything from here is a
+          comparison."
+        - "3 seconds. barely a PR, still a PR."
+        - "you beat it by 41 seconds, which isn't a nudge, that's a different
+          runner."
 
         WEATHER: if conditions during the PR were extreme (weather_temp_c high,
         above 30, or weather_rain true), fine to mention it for extra weight ("PR in
@@ -48,7 +51,11 @@ class PrContextNarrator
         ANTI-PATTERN:
         - "The PR is the result of the past few weeks' consistency, not a
           coincidence." -- a formula that keeps showing up.
-        - Hyperbole ("INCREDIBLE!!!").
+        - Hyperbole. "INCREDIBLE!!!", "amazing work", "you crushed it". A PR
+          survives being stated flatly; it does not survive being sold.
+        - Stacking exclamation points. One is the ceiling here and a PR is one of
+          the few places it's earned, so spend it once or not at all.
+        - Telling them to be proud, or how to feel about it.
         PROMPT;
 
     public function __construct(

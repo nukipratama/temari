@@ -84,13 +84,13 @@ it('appends the headwind badge coda', function (): void {
 
     $flavor = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::CardFlavor, $card->id));
 
-    expect($flavor)->toContain("Strong wind didn't slow you down.");
+    expect($flavor)->toContain('Headwind the whole way.');
 });
 
 it('falls back to a flat line when the card is missing', function (): void {
     $flavor = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::CardFlavor, 999_999));
 
-    expect($flavor)->toBe('This card was born from a quiet but solid session.');
+    expect($flavor)->toBe('A quiet session, filed anyway.');
 });
 
 it('varies the ecosystem briefing voices by seed deterministically', function (): void {
@@ -134,7 +134,7 @@ it('keeps the subject-only seed when the discriminator is null', function (): vo
     // non-discriminated determinism (and the first-variant default) is preserved.
     $copy = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, 0, null));
 
-    expect($copy)->toBe('Your rhythm kept going this month. Not forcing it, not disappearing either. The kind of consistent I like to see.');
+    expect($copy)->toBe("The rhythm held all month. You didn't force it and you didn't disappear either.");
 });
 
 it('returns deterministic copy for every subject-free analysis arm', function (AnalysisType $type, string $expected): void {
@@ -142,12 +142,12 @@ it('returns deterministic copy for every subject-free analysis arm', function (A
 
     expect($copy)->toBe($expected);
 })->with([
-    'briefing mascot voice' => [AnalysisType::BriefingMascotVoice, "Easy tempo, 35-45 minutes.\n\nYour rhythm's read steady these past few weeks and there hasn't been a quality session since last week, so today I think there's room for a tempo. 10-minute easy warmup, 15-20 minute tempo a bit faster than your average pace, then cooldown, cadence at 175+.\n\nWhat to watch: if HR climbs fast even at an easy pace, back off to a 15-25 minute run-walk or stop at the cooldown. If the weather's hot or you're still feeling wiped, resting isn't a loss either."],
+    'briefing mascot voice' => [AnalysisType::BriefingMascotVoice, "Easy tempo, 35-45 minutes.\n\nnothing quality has gone into the log since last week and your rhythm's been flat and steady the whole time, so today's the day to break that up. 10 minutes easy to warm up, 15-20 minutes a bit quicker than your usual pace, then cool down. cadence 175+.\n\nWhat to watch: if HR climbs fast at easy pace, drop it to a 15-25 minute run-walk and stop at the cooldown. Brutal heat is reason enough to run the whole thing easy instead."],
     'run insight (no detail)' => [AnalysisType::RunInsight, '[]'],
-    'weekly recap' => [AnalysisType::WeeklyRecap, 'Your rhythm was pretty steady this week. Volume was reasonable, recovery got taken care of too.'],
-    'pr context' => [AnalysisType::PrContext, 'This PR is the result of consistency over the past few weeks, not luck.'],
-    'aku profile voice' => [AnalysisType::AkuProfileVoice, "Your runs lean more **chill** than pushed, and it shows in how it adds up: slow, regular, never a big jump. The type who builds a base patiently. Keep the rhythm going, I'm tracking all of it here."],
-    'monthly recap' => [AnalysisType::MonthlyRecap, 'Your rhythm kept going this month. Not forcing it, not disappearing either. The kind of consistent I like to see.'],
+    'weekly recap' => [AnalysisType::WeeklyRecap, "Nothing in the log this week. A gap is a gap, I'm not going to call it anything else."],
+    'pr context' => [AnalysisType::PrContext, "That's a new PR. The old number held until today, and now it doesn't."],
+    'aku profile voice' => [AnalysisType::AkuProfileVoice, "You lean **chill** far more than pushed, and the log backs it up: regular, unhurried, never a big jump. That's a base built the slow way. The open question is when you decide to spend it."],
+    'monthly recap' => [AnalysisType::MonthlyRecap, "The rhythm held all month. You didn't force it and you didn't disappear either."],
 ]);
 
 it('weaves the run distance into the post-run speech', function (): void {
@@ -177,7 +177,7 @@ it('does not cycle the post-run speech in lockstep with consecutive activity ids
 it('falls back to a flat post-run speech when the activity detail is missing', function (): void {
     $speech = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PostRunSpeech, 999_999));
 
-    expect($speech)->toBe('Done. This is the kind of consistency I like to see.');
+    expect($speech)->toBe("Done. That one's in the log.");
 });
 
 it('reads the run-insight claims off the run itself, not a seeded variant', function (): void {
@@ -260,8 +260,8 @@ it('omits the badge coda when the card carries only unknown badges', function ()
 
     // Known badge appends a coda sentence; unknown badge appends nothing, so the
     // bare-base copy is strictly shorter than its sibling's badge-decorated copy.
-    expect($withCoda)->toContain('Sub-5 pace per km, fast.')
-        ->and($withoutCoda)->not->toContain('Sub-5 pace per km, fast.');
+    expect($withCoda)->toContain('Sub-5 per km.')
+        ->and($withoutCoda)->not->toContain('Sub-5 per km.');
 });
 
 it('keeps all copy free of em-dashes', function (): void {
