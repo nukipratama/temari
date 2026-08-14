@@ -45,24 +45,24 @@ class IdempotentWebPushChannel
         try {
             $this->channel->send($notifiable, $notification);
         } catch (Throwable $e) {
-            if ($deliveryKey !== null && ! $force) {
-                $this->claim->release($deliveryKey, self::CHANNEL);
+            if ($deliveryKey !== null) {
+                $this->record(fn () => $this->claim->markFailed($deliveryKey, self::CHANNEL, $e->getMessage()), $deliveryKey);
             }
 
             throw $e;
         }
 
-        if ($force && $deliveryKey !== null) {
-            $this->recordForcedClaim($deliveryKey);
+        if ($deliveryKey !== null) {
+            $this->record(fn () => $this->claim->markSent($deliveryKey, self::CHANNEL), $deliveryKey);
         }
     }
 
-    private function recordForcedClaim(int $deliveryKey): void
+    private function record(callable $write, int $deliveryKey): void
     {
         try {
-            $this->claim->claim($deliveryKey, self::CHANNEL);
+            $write();
         } catch (Throwable $e) {
-            Log::warning('webpush.force_send.claim_failed', [
+            Log::warning('webpush.delivery_record.failed', [
                 'delivery_key' => $deliveryKey,
                 'reason' => $e->getMessage(),
             ]);

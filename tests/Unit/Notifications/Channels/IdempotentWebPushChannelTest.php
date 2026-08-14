@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\NotificationDeliveryStatus;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Notifications\AnalysisReadyNotification;
@@ -41,7 +42,7 @@ it('is idempotent — a second send for the same analysis does not re-deliver', 
     // The `->once()` expectation asserts the package channel delivered a single time.
 });
 
-it('releases the claim when delivery throws so a retry can resend', function (): void {
+it('settles the claim as failed with its error so a retry can resend', function (): void {
     $analysis = Analysis::factory()->create();
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldReceive('send')->andThrow(new RuntimeException('push boom'));
@@ -49,7 +50,13 @@ it('releases the claim when delivery throws so a retry can resend', function ():
     expect(fn () => idempotentChannel($inner)->send(User::factory()->create(), new AnalysisReadyNotification($analysis)))
         ->toThrow(RuntimeException::class);
 
-    $this->assertDatabaseMissing('notification_deliveries', ['analysis_id' => $analysis->id, 'channel' => 'webpush']);
+    $this->assertDatabaseHas('notification_deliveries', [
+        'analysis_id' => $analysis->id,
+        'channel' => 'webpush',
+        'status' => NotificationDeliveryStatus::Failed->value,
+        'error' => 'push boom',
+    ]);
+    expect(app(NotificationDeliveryClaim::class)->claim($analysis->id, 'webpush'))->toBeTrue();
 });
 
 it('re-delivers a forced send even when the analysis was already claimed', function (): void {
