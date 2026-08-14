@@ -135,7 +135,7 @@ return [
         'description' => 'Shorts for pulling off 3 negative splits.',
     ],
     'accessory.shorts_marathon' => [
-        'name' => 'Marathon Shorts',
+        'name' => 'Half Marathon Shorts',
         'slot' => 'shorts',
         'rarity' => 'epic',
         'icon' => 'mdi:lingerie',
