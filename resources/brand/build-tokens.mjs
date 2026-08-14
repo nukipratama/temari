@@ -33,7 +33,7 @@ const COLOR = {
   // semantic accents
   leaf: '#2f8f63', 'leaf-deep': '#256f4d',
   ember: '#b23a4f', 'ember-deep': '#8d2c3d',
-  citrus: '#c9971f', 'citrus-deep': '#a67c14',
+  citrus: '#c9971f',
   stone: '#a99f8a',
 };
 
@@ -138,7 +138,12 @@ const RARITY_INK = Object.fromEntries(
 const MOOD_INK = Object.fromEntries(
   Object.entries(MOOD).map(([k, v]) => [k, inkOn(v, inkGrounds(`mood-${k}`))]),
 );
-COLOR['horizon-ink'] = inkOn(COLOR.horizon, inkGrounds('horizon'));
+/* Accent families that carry text. `-deep` is a CTA fill and stays one; the
+   `-ink` member is what a label reaches for. */
+const INK_FAMILIES = ['horizon', 'leaf', 'ember', 'citrus'];
+for (const family of INK_FAMILIES) {
+  COLOR[`${family}-ink`] = inkOn(COLOR[family], inkGrounds(family));
+}
 COLOR.line = inkOn(COLOR.line, GROUNDS, 1.4);
 
 const PAIRS = [
@@ -146,7 +151,6 @@ const PAIRS = [
   ['ink', 'paper', 'body text', 4.5],
   ['ink-2', 'paper', 'secondary text', 4.5],
   ['ink-3', 'paper', 'meta text', 4.5],
-  ['horizon-ink', 'paper', 'gold as text', 4.5],
   // text on dark
   ['cream', 'sky', 'text on indigo', 4.5],
   ['ink-on-sky', 'sky', 'muted on indigo', 4.5],
@@ -176,6 +180,10 @@ const scored = (fg, hex, bg, use, min, extra = {}) => {
 
 export function audit() {
   const rows = PAIRS.map(([fg, bg, use, min]) => scored(fg, COLOR[fg], bg, use, min));
+  for (const family of INK_FAMILIES) {
+    rows.push(scored(`${family}-ink`, COLOR[`${family}-ink`], 'paper', `${family} label (text)`, 4.5,
+                     { grounds: inkGrounds(family) }));
+  }
   /* Fills: a light fill can't reach 3:1 on paper without losing the vibrancy that
      makes a legendary pull feel legendary. WCAG 1.4.11 is satisfied by the object's
      *edge*, so the rule is: any fill under 3:1 must be drawn with its -ink outline,
@@ -316,8 +324,11 @@ four families to three.</p>
 <h2>Text</h2>
 <div class="row">${['ink', 'ink-2', 'ink-3', 'ink-on-sky'].map((k) => sw(k, COLOR[k])).join('')}</div>
 
-<h2>Accent</h2>
-<div class="row">${['horizon', 'horizon-deep', 'leaf', 'leaf-deep', 'ember', 'ember-deep', 'citrus', 'citrus-deep', 'stone'].map((k) => sw(k, COLOR[k])).join('')}</div>
+<h2>Accent — fill vs text</h2>
+<p class="sub">The vivid value is the fill; <code>-deep</code> is the fill for a dark CTA. Only the
+derived <code>-ink</code> member carries a label.</p>
+<div class="row">${['horizon', 'horizon-deep', 'leaf', 'leaf-deep', 'ember', 'ember-deep', 'citrus', 'stone'].map((k) => sw(k, COLOR[k])).join('')}</div>
+<div class="row" style="margin-top:10px">${INK_FAMILIES.map((k) => sw(`${k}-ink`, COLOR[`${k}-ink`])).join('')}</div>
 
 <h2>Mood — fill vs text</h2>
 <div class="row">${Object.entries(MOOD).map(([k, v]) => sw(k, v)).join('')}</div>

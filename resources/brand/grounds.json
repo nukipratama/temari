@@ -47,7 +47,10 @@
   ],
   "__tint": "Heaviest bg-<family>/<alpha> tint a component paints under text-<family>-ink. Composited over the darkest paper, it is the real ground that chip prints on. Derived from resources/js; DesignTokenContrastTest fails when this drifts from the source.",
   "tint": {
+    "citrus": 0.15,
+    "ember": 0.18,
     "horizon": 0.18,
+    "leaf": 0.18,
     "mood-blazing": 0.15,
     "mood-easy": 0.15,
     "mood-gassed": 0.15,

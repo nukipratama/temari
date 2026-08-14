@@ -31,9 +31,11 @@
     --color-ember: #b23a4f;
     --color-ember-deep: #8d2c3d;
     --color-citrus: #c9971f;
-    --color-citrus-deep: #a67c14;
     --color-stone: #a99f8a;
     --color-horizon-ink: #775a21;
+    --color-leaf-ink: #216446;
+    --color-ember-ink: #973143;
+    --color-citrus-ink: #785a13;
 
     /* mood — vivid for fills, -bg for the tinted cell, -ink for text (derived, >=4.5:1) */
     --color-mood-blazing: #c9971f;

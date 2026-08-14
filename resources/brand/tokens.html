@@ -3,7 +3,7 @@
 <title>Threadwork v2 — tokens</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,600&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
-  :root{--sky:#241c54;--sky-deep:#170f38;--sky-2:#362a73;--horizon:#d9a53c;--horizon-deep:#b98a2a;--cream:#f5f0e4;--cream-deep:#ece2ce;--ink:#1a1812;--ink-2:#3d362a;--ink-3:#6e6452;--ink-on-sky:#b0a3c9;--surface:#f5f0e4;--surface-card:#f5f0e4;--surface-elev:#faf6ec;--surface-warm:#f8f0dd;--surface-sunken:#ece2ce;--line:#c9c0a9;--line-strong:#c3b89c;--leaf:#2f8f63;--leaf-deep:#256f4d;--ember:#b23a4f;--ember-deep:#8d2c3d;--citrus:#c9971f;--citrus-deep:#a67c14;--stone:#a99f8a;--horizon-ink:#775a21;
+  :root{--sky:#241c54;--sky-deep:#170f38;--sky-2:#362a73;--horizon:#d9a53c;--horizon-deep:#b98a2a;--cream:#f5f0e4;--cream-deep:#ece2ce;--ink:#1a1812;--ink-2:#3d362a;--ink-3:#6e6452;--ink-on-sky:#b0a3c9;--surface:#f5f0e4;--surface-card:#f5f0e4;--surface-elev:#faf6ec;--surface-warm:#f8f0dd;--surface-sunken:#ece2ce;--line:#c9c0a9;--line-strong:#c3b89c;--leaf:#2f8f63;--leaf-deep:#256f4d;--ember:#b23a4f;--ember-deep:#8d2c3d;--citrus:#c9971f;--stone:#a99f8a;--horizon-ink:#775a21;--leaf-ink:#216446;--ember-ink:#973143;--citrus-ink:#785a13;
         --r-xs:6px;--r-sm:10px;--r-md:14px;--r-lg:18px;--r-xl:24px;--r-full:9999px;
         --e-e1:0 1px 2px rgba(58,45,20,0.06), 0 1px 1px rgba(58,45,20,0.04);--e-e2:0 4px 10px rgba(58,45,20,0.08), 0 2px 4px rgba(58,45,20,0.05);--e-e3:0 12px 28px rgba(58,45,20,0.12), 0 4px 10px rgba(58,45,20,0.07);--e-e4:0 24px 56px rgba(23,15,56,0.20), 0 8px 20px rgba(23,15,56,0.12)}
   body{margin:0;padding:var(--pad-page);background:var(--surface);color:var(--ink);
@@ -42,7 +42,7 @@ elevation are new</b> — their absence is why surfaces read inconsistently toda
 four families to three.</p>
 
 <div class="banner ok">
-  <b>Contrast audit:</b> 34/34 pass.
+  <b>Contrast audit:</b> 37/37 pass.
   No failures.
 </div>
 
@@ -80,7 +80,9 @@ four families to three.</p>
       <div class="chip" style="background:#b0a3c9"></div>
       <div class="lbl">ink-on-sky<span>#b0a3c9</span></div></div></div>
 
-<h2>Accent</h2>
+<h2>Accent — fill vs text</h2>
+<p class="sub">The vivid value is the fill; <code>-deep</code> is the fill for a dark CTA. Only the
+derived <code>-ink</code> member carries a label.</p>
 <div class="row"><div class="sw">
       <div class="chip" style="background:#d9a53c"></div>
       <div class="lbl">horizon<span>#d9a53c</span></div></div><div class="sw">
@@ -96,10 +98,17 @@ four families to three.</p>
       <div class="lbl">ember-deep<span>#8d2c3d</span></div></div><div class="sw">
       <div class="chip" style="background:#c9971f"></div>
       <div class="lbl">citrus<span>#c9971f</span></div></div><div class="sw">
-      <div class="chip" style="background:#a67c14"></div>
-      <div class="lbl">citrus-deep<span>#a67c14</span></div></div><div class="sw">
       <div class="chip" style="background:#a99f8a"></div>
       <div class="lbl">stone<span>#a99f8a</span></div></div></div>
+<div class="row" style="margin-top:10px"><div class="sw">
+      <div class="chip" style="background:#775a21"></div>
+      <div class="lbl">horizon-ink<span>#775a21</span></div></div><div class="sw">
+      <div class="chip" style="background:#216446"></div>
+      <div class="lbl">leaf-ink<span>#216446</span></div></div><div class="sw">
+      <div class="chip" style="background:#973143"></div>
+      <div class="lbl">ember-ink<span>#973143</span></div></div><div class="sw">
+      <div class="chip" style="background:#785a13"></div>
+      <div class="lbl">citrus-ink<span>#785a13</span></div></div></div>
 
 <h2>Mood — fill vs text</h2>
 <div class="row"><div class="sw">
@@ -195,9 +204,6 @@ carries the contrast, the fill keeps its vibrancy. Bare on the left, correct on 
       <td>meta text</td><td><code>ink-3</code> on <code>cream-deep</code></td>
       <td class="num">4.53</td><td class="num">4.5</td>
       <td>pass</td></tr><tr class="">
-      <td>gold as text</td><td><code>horizon-ink</code> on <code>cream-deep</code></td>
-      <td class="num">5.00</td><td class="num">4.5</td>
-      <td>pass</td></tr><tr class="">
       <td>text on indigo</td><td><code>cream</code> on <code>sky</code></td>
       <td class="num">13.49</td><td class="num">4.5</td>
       <td>pass</td></tr><tr class="">
@@ -221,6 +227,18 @@ carries the contrast, the fill keeps its vibrancy. Bare on the left, correct on 
       <td>pass</td></tr><tr class="">
       <td>separator</td><td><code>line</code> on <code>cream-deep</code></td>
       <td class="num">1.41</td><td class="num">1.4</td>
+      <td>pass</td></tr><tr class="">
+      <td>horizon label (text)</td><td><code>horizon-ink</code> on <code>horizon/0.18 on paper</code></td>
+      <td class="num">4.54</td><td class="num">4.5</td>
+      <td>pass</td></tr><tr class="">
+      <td>leaf label (text)</td><td><code>leaf-ink</code> on <code>leaf/0.18 on paper</code></td>
+      <td class="num">4.55</td><td class="num">4.5</td>
+      <td>pass</td></tr><tr class="">
+      <td>ember label (text)</td><td><code>ember-ink</code> on <code>ember/0.18 on paper</code></td>
+      <td class="num">4.52</td><td class="num">4.5</td>
+      <td>pass</td></tr><tr class="">
+      <td>citrus label (text)</td><td><code>citrus-ink</code> on <code>citrus/0.15 on paper</code></td>
+      <td class="num">4.52</td><td class="num">4.5</td>
       <td>pass</td></tr><tr class="">
       <td>rarity dot (needs outline)</td><td><code>rarity-common + outline</code> on <code>cream-deep</code></td>
       <td class="num">4.51</td><td class="num">3</td>
