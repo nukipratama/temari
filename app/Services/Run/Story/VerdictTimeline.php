@@ -29,8 +29,8 @@ class VerdictTimeline implements VerdictNarrator
      * end. Both briefing narrators call this, twice a day.
      *
      * The three conditions are what the PHP loop used to enforce implicitly:
-     * an un-ingested stub was dropped because {@see AnalyzedScope} nulled the
-     * `activity` relation, a detail with no start date was skipped after
+     * an un-ingested stub was dropped because {@see \App\Models\Scopes\AnalyzedScope}
+     * nulled the `activity` relation, a detail with no start date was skipped after
      * hydration, and a run whose speech was missing or blank was skipped after a
      * second query. The scope does not reach a join from `story_lines`, so
      * `analyzed_at` is asserted here directly.
