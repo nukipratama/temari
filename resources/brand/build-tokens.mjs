@@ -1,5 +1,7 @@
 import { writeFileSync } from 'node:fs';
 
+import { contrast, darkest, groundsForInk, paperGrounds } from './grounds.mjs';
+
 /* Threadwork v2 — the token set the current app is missing.
    Colour was already largely defined; radius and elevation were not, which is
    the main reason surfaces read inconsistently. Type drops from 4 families to 3. */
@@ -38,6 +40,13 @@ const COLOR = {
 const MOOD = {
   blazing: '#c9971f', easy: '#2f8f63', wobbly: '#b23a4f',
   gassed: '#7a2030', overloaded: '#6b3fa0', chill: '#55488f',
+};
+
+/* Tinted cell behind a mood chip. Only that mood's own -ink lands here, so it
+   is a ground for one family rather than paper for all of them. */
+const MOOD_BG = {
+  'mood-blazing-bg': '#f3e6c2', 'mood-easy-bg': '#d7ecdf', 'mood-wobbly-bg': '#f0d3d8',
+  'mood-gassed-bg': '#e3c2c7', 'mood-overloaded-bg': '#ded0ee', 'mood-chill-bg': '#dcd8ee',
 };
 
 const RARITY = {
@@ -86,63 +95,49 @@ const FONT = {
 // A saturated colour cannot be both a fill and text on cream. Vivid values stay
 // for fills/dots/strokes; each family also gets an `-ink` variant, darkened until it
 // clears 4.5:1 on paper, for labels and icons. Derived, so it cannot drift.
-const srgb = (h) => {
-  const n = parseInt(h.slice(1), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
-    const c = v / 255;
-    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  });
-};
-const lum = (h) => { const [r, g, b] = srgb(h); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
-export const contrast = (a, b) => {
-  const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
-  return (x + 0.05) / (y + 0.05);
-};
-
 const toRgb = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 const toHex = (a) => '#' + a.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('');
-/** Darken until the colour clears `target` against `bg`. */
-export function inkOn(hex, bg, target = 4.5) {
+/** Darken until the colour clears `target` against every ground in `grounds`. */
+export function inkOn(hex, grounds, target = 4.5) {
+  const against = Object.values(grounds);
   for (let f = 1; f > 0; f -= 0.0025) {
     const c = toHex(toRgb(hex).map((v) => v * f));
-    if (contrast(c, bg) >= target) return c;
+    if (against.every((bg) => contrast(c, bg) >= target)) return c;
   }
   return hex;
 }
 
-/* dawn-shift re-declares --color-surface per body[data-time-of-day] (app.css,
-   @layer base). Paper is therefore not one colour but five, and an -ink token
-   derived against the lightest of them is under AA on the other four. */
-export const GROUNDS = {
-  day:     COLOR.surface,
-  dawn:    '#f0ebdb',
-  morning: '#f8f2df',
-  dusk:    '#f4ead5',
-  night:   '#eee8d9',
-};
+/* Read out of app.css and resources/js rather than written down here — see
+   resources/brand/grounds.mjs. */
+export const GROUNDS = paperGrounds();
 
-/** The ground a token has to survive: the darkest paper dawn-shift can render. */
-export const PAPER = Object.values(GROUNDS).reduce((a, b) => (lum(a) <= lum(b) ? a : b));
+/** The ground a token has to survive: the darkest paper the app can render. */
+export const PAPER = darkest(GROUNDS);
 
-/** Worst ratio a foreground scores across every ground, and where it scored it. */
-export function worstOnPaper(fg) {
-  return Object.entries(GROUNDS)
+/** Worst ratio a foreground scores across a ground set, and where it scored it. */
+export function worstOn(fg, grounds = GROUNDS) {
+  return Object.entries(grounds)
     .map(([ground, bg]) => ({ ground, ratio: contrast(fg, bg) }))
     .reduce((a, b) => (a.ratio <= b.ratio ? a : b));
 }
 
-const RARITY_INK = Object.fromEntries(Object.entries(RARITY).map(([k, v]) => [k, inkOn(v, PAPER)]));
-const MOOD_INK = Object.fromEntries(Object.entries(MOOD).map(([k, v]) => [k, inkOn(v, PAPER)]));
-COLOR['horizon-ink'] = inkOn(COLOR.horizon, PAPER);
-COLOR.line = inkOn(COLOR.line, PAPER, 1.4);
+const inkGrounds = (family) => groundsForInk(family, { ...COLOR, ...MOOD_BG }, GROUNDS);
+
+const RARITY_INK = Object.fromEntries(
+  Object.entries(RARITY).map(([k, v]) => [k, inkOn(v, inkGrounds(`rarity-${k}`))]),
+);
+const MOOD_INK = Object.fromEntries(
+  Object.entries(MOOD).map(([k, v]) => [k, inkOn(v, inkGrounds(`mood-${k}`))]),
+);
+COLOR['horizon-ink'] = inkOn(COLOR.horizon, inkGrounds('horizon'));
+COLOR.line = inkOn(COLOR.line, GROUNDS, 1.4);
 
 const PAIRS = [
   // text on paper — must clear 4.5
-  ['ink', 'surface', 'body text', 4.5],
-  ['ink-2', 'surface', 'secondary text', 4.5],
-  ['ink-3', 'surface', 'meta text', 4.5],
-  ['ink-3', 'surface-sunken', 'meta on sunken', 4.5],
-  ['horizon-ink', 'surface', 'gold as text', 4.5],
+  ['ink', 'paper', 'body text', 4.5],
+  ['ink-2', 'paper', 'secondary text', 4.5],
+  ['ink-3', 'paper', 'meta text', 4.5],
+  ['horizon-ink', 'paper', 'gold as text', 4.5],
   // text on dark
   ['cream', 'sky', 'text on indigo', 4.5],
   ['ink-on-sky', 'sky', 'muted on indigo', 4.5],
@@ -153,18 +148,21 @@ const PAIRS = [
   ['cream', 'sky-2', 'text on sky-2', 4.5],
   // non-text UI — 3.0 for meaningful graphics, 1.4 for separators
   ['horizon', 'sky', 'gold mark on indigo', 3.0],
-  ['line', 'surface', 'separator', 1.4],
+  ['line', 'paper', 'separator', 1.4],
 ];
 
-/* A pair whose ground is `surface` is scored on every dawn-shift ground and
-   reported at its worst, so a token that only clears AA at midday fails here. */
+/* A pair whose ground is `paper` is scored on every ground the app can paint
+   under text — every dawn-shift surface and every background grounds.json calls
+   paper — and reported at its worst, so a token that only clears AA on the
+   lightest of them fails here. */
 const scored = (fg, hex, bg, use, min, extra = {}) => {
-  if (bg !== 'surface') {
+  if (bg !== 'paper') {
     const ratio = contrast(hex, COLOR[bg]);
     return { fg, bg, use, min, ratio, pass: ratio >= min, ...extra };
   }
-  const { ground, ratio } = worstOnPaper(hex);
-  return { fg, bg: `surface · ${ground}`, use, min, ratio, pass: ratio >= min, ...extra };
+  const { ground, ratio } = worstOn(hex, extra.grounds ?? GROUNDS);
+  const { grounds, ...rest } = extra;
+  return { fg, bg: ground, use, min, ratio, pass: ratio >= min, ...rest };
 };
 
 export function audit() {
@@ -174,15 +172,16 @@ export function audit() {
      *edge*, so the rule is: any fill under 3:1 must be drawn with its -ink outline,
      and the outline is what gets tested. */
   const fill = (family, k, vivid, ink) =>
-    worstOnPaper(vivid).ratio >= 3.0
-      ? scored(`${family}-${k}`, vivid, 'surface', `${family} dot (fill)`, 3.0)
-      : scored(`${family}-${k} + outline`, ink, 'surface',
+    worstOn(vivid).ratio >= 3.0
+      ? scored(`${family}-${k}`, vivid, 'paper', `${family} dot (fill)`, 3.0)
+      : scored(`${family}-${k} + outline`, ink, 'paper',
                `${family} dot (needs outline)`, 3.0, { outlined: true });
 
   for (const [family, vivid, inks] of [['rarity', RARITY, RARITY_INK], ['mood', MOOD, MOOD_INK]]) {
     for (const [k, v] of Object.entries(vivid)) {
       rows.push(fill(family, k, v, inks[k]));
-      rows.push(scored(`${family}-${k}-ink`, inks[k], 'surface', `${family} label (text)`, 4.5));
+      rows.push(scored(`${family}-${k}-ink`, inks[k], 'paper', `${family} label (text)`, 4.5,
+                       { grounds: inkGrounds(`${family}-${k}`) }));
     }
   }
   return rows;
@@ -193,6 +192,7 @@ export { RARITY_INK, MOOD_INK, COLOR, MOOD, RARITY, RADIUS, SHADOW, FONT, SPACE,
 /** Token maps as a :root block, for previews that can't use Tailwind's @theme. */
 export function rootVars() {
   const all = { ...Object.fromEntries(Object.entries(COLOR).map(([k, v]) => [k, v])),
+    ...MOOD_BG,
     ...Object.fromEntries(Object.entries(MOOD).map(([k, v]) => [`mood-${k}`, v])),
     ...Object.fromEntries(Object.entries(MOOD_INK).map(([k, v]) => [`mood-${k}-ink`, v])),
     ...Object.fromEntries(Object.entries(RARITY).map(([k, v]) => [`rarity-${k}`, v])),
@@ -218,8 +218,9 @@ ${Object.entries(FONT).map(([k, v]) => line(`font-${k}`, v)).join('\n')}
     /* colour */
 ${Object.entries(COLOR).map(([k, v]) => line(`color-${k}`, v)).join('\n')}
 
-    /* mood — vivid for fills, -ink for text on paper (derived, >=4.5:1) */
+    /* mood — vivid for fills, -bg for the tinted cell, -ink for text (derived, >=4.5:1) */
 ${Object.entries(MOOD).map(([k, v]) => line(`color-mood-${k}`, v)).join('\n')}
+${Object.entries(MOOD_BG).map(([k, v]) => line(`color-${k}`, v)).join('\n')}
 ${Object.entries(MOOD_INK).map(([k, v]) => line(`color-mood-${k}-ink`, v)).join('\n')}
 
     /* rarity — vivid for fills, -ink for text on paper (derived, >=4.5:1) */
