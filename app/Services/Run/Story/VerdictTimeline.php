@@ -23,17 +23,9 @@ class VerdictTimeline implements VerdictNarrator
     /**
      * The user's most recent narrated runs, newest first.
      *
-     * Every filter is in the query so the LIMIT can be too. It used to load the
-     * user's entire post-run history — hydrating each activity detail's
-     * `stream_summary` JSON along with it — sort in PHP, and slice five off the
-     * end. Both briefing narrators call this, twice a day.
-     *
-     * The three conditions are what the PHP loop used to enforce implicitly:
-     * an un-ingested stub was dropped because {@see \App\Models\Scopes\AnalyzedScope}
-     * nulled the `activity` relation, a detail with no start date was skipped after
-     * hydration, and a run whose speech was missing or blank was skipped after a
-     * second query. The scope does not reach a join from `story_lines`, so
-     * `analyzed_at` is asserted here directly.
+     * Every filter is in the query so the LIMIT can be too.
+     * {@see \App\Models\Scopes\AnalyzedScope} does not reach a join from
+     * `story_lines`, so `analyzed_at` is asserted here directly.
      *
      * @return list<VerdictTimelineItem>
      */
