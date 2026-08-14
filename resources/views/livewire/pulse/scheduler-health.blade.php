@@ -11,18 +11,18 @@
         @else
             <div class="space-y-2">
                 @foreach ($tasks as $task)
-                    <div class="rounded-lg p-2 ring-1 ring-gray-900/5 dark:ring-gray-100/10">
+                    <div class="rounded-sm bg-surface-sunken p-2">
                         <div class="flex items-center justify-between gap-2">
                             <div class="flex items-center gap-2 min-w-0">
                                 <span @class([
                                     'inline-block h-2 w-2 rounded-full shrink-0',
-                                    'bg-rose-500' => $task['status'] === 'failed',
-                                    'bg-amber-500' => $task['status'] === 'late',
-                                    'bg-emerald-500' => $task['status'] === 'ok',
+                                    'bg-ember' => $task['status'] === 'failed',
+                                    'bg-horizon' => $task['status'] === 'late',
+                                    'bg-leaf' => $task['status'] === 'ok',
                                 ])></span>
                                 <div class="min-w-0">
-                                    <div class="truncate text-sm font-bold text-gray-900 dark:text-gray-100">{{ $task['command'] }}</div>
-                                    <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                    <div class="truncate text-sm font-bold text-ink">{{ $task['command'] }}</div>
+                                    <div class="text-label-micro text-ink-3">
                                         @if ($task['lastRunAt'])
                                             ran {{ $task['lastRunAt']->diffForHumans() }}
                                         @else
@@ -35,17 +35,17 @@
                                 </div>
                             </div>
                             <div @class([
-                                'shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                                'bg-rose-500/10 text-rose-600 dark:text-rose-400' => $task['status'] === 'failed',
-                                'bg-amber-500/10 text-amber-600 dark:text-amber-400' => $task['status'] === 'late',
-                                'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' => $task['status'] === 'ok',
+                                'shrink-0 rounded-full px-2 py-0.5 text-label-micro',
+                                'bg-ember/15 text-ember-deep' => $task['status'] === 'failed',
+                                'bg-horizon/25 text-ink' => $task['status'] === 'late',
+                                'bg-leaf/10 text-leaf-deep' => $task['status'] === 'ok',
                             ])>
                                 {{ $task['status'] }}
                             </div>
                         </div>
 
                         @if ($task['status'] === 'failed' && $task['failureMessage'])
-                            <div class="mt-1 truncate text-[11px] text-rose-600 dark:text-rose-400" title="{{ $task['failureMessage'] }}">
+                            <div class="mt-1 truncate text-[11px] text-ember-deep" title="{{ $task['failureMessage'] }}">
                                 {{ $task['failureMessage'] }}
                             </div>
                         @endif
