@@ -562,7 +562,7 @@ describe('Runs/Show', () => {
         renderShow({}, { telegramConnected: true });
         fireEvent.click(screen.getByText('Send notification'));
         expect(router.post).toHaveBeenCalledWith(
-            '/activities/99/kirim',
+            '/activities/99/send',
             {},
             expect.objectContaining({
                 preserveScroll: true,
