@@ -80,7 +80,7 @@ it('appends a badge coda when the card carries a known badge', function (): void
 });
 
 it('appends the headwind badge coda', function (): void {
-    $card = seededCard(Rarity::Uncommon, 'Wind Breaker', [Badge::LawanAngin->value]);
+    $card = seededCard(Rarity::Uncommon, 'Wind Breaker', [Badge::Headwind->value]);
 
     $flavor = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::CardFlavor, $card->id));
 
@@ -251,7 +251,7 @@ it('uses km-less flavor templates when the card has no distance', function (): v
 });
 
 it('omits the badge coda when the card carries only unknown badges', function (): void {
-    $known = seededCard(Rarity::Rare, 'Sesi Dikenal', [Badge::Kilat->value]);
+    $known = seededCard(Rarity::Rare, 'Sesi Dikenal', [Badge::Speedster->value]);
     $unknown = seededCard(Rarity::Rare, 'Sesi Misteri', ['not_a_real_badge']);
     $filler = app(RuleBasedNarrationFiller::class);
 

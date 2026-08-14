@@ -57,8 +57,8 @@ class CorrectForecastWeatherCommand extends Command
     }
 
     /**
-     * Only the weather columns are touched here. RunCard badges (PejuangHujan,
-     * HariPanas, LawanAngin, ...) are derived once at unlock time and are never
+     * Only the weather columns are touched here. RunCard badges (RainWarrior,
+     * HeatTamer, Headwind, ...) are derived once at unlock time and are never
      * recomputed retroactively: stripping an earned badge because the archive
      * later disagrees with the forecast would revoke an unlocked accessory,
      * which is worse UX than a slightly-stale badge.
