@@ -100,6 +100,9 @@ Stack is up, PHP deps installed, both the app and analytics schemas migrated.
 Composer/npm caches are shared across worktrees, so installs after the first
 one should be faster.
 
+/devtools, /ai-usage, /horizon and /pulse sit behind HTTP Basic — any username,
+password = DEVTOOLS_PASSWORD from this worktree's .env (seeded from .env.example).
+
 The PHP suites are ready now (they use their own self-initializing
 mysql_test/redis_test). To also load pages in a browser:
   ./vendor/bin/sail npm ci
