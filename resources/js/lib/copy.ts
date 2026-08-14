@@ -34,13 +34,3 @@ export const CTA = {
     /** Cancel / back out of a flow. */
     batal: 'Cancel',
 } as const;
-
-/** Mood-keyed emoji palette. Currently unwired; see the emoji rule in docs/voice-and-tone.md before using it. */
-export const MOOD_EMOJI = {
-    blazing: '🔥',
-    easy: '🌸',
-    wobbly: '⚡',
-    gassed: '💧',
-    overloaded: '🌀',
-    chill: '🍃',
-} as const;
