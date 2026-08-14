@@ -321,7 +321,7 @@ const MEDAL_ITEMS: Record<string, ItemSpec> = {
     first: { color: '#a98f6b' },
     silver: { color: '#b9c0c9', detail: 'medalStar' },
     gold: { color: '#d9a53c', detail: 'medalStar' },
-    platinum: { color: '#dfe6f2', detail: 'medalRing' },
+    platinum: { color: '#d8f0ff', detail: 'medalRing' },
 };
 
 const SHIRT_ITEMS: Record<string, ItemSpec> = {

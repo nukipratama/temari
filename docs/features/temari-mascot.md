@@ -96,6 +96,18 @@ per-pose CSS animation only (`POSE_ANIM`, keyframes in `app.css`), never framer-
 mascot renders on Login inside the framer-motion-free `bareLayout`. It's `memo`'d with a
 field-level comparator so a fresh inline `equipped={{...}}` doesn't rebuild the whole tree.
 
+The catalogue lives twice for the same reason the geometry does: `MEDAL_ITEMS` and its four
+siblings in [TemariProto.tsx](../../resources/js/components/temari/TemariProto.tsx) mirror `ITEMS`
+in [build-accessories.mjs](../../resources/brand/build-accessories.mjs), and
+[TemariProto.test.tsx](../../resources/js/components/temari/TemariProto.test.tsx) pins each
+rendered fill against the generator's value, so a colour moved on one side fails the suite. The
+tightest pair is **medal silver vs platinum**: they are one neutral ramp at two lightnesses, so
+hue and chroma contribute almost nothing to the separation. Platinum was pushed cool (`#d8f0ff`,
+L\*93.5 / a\*−4.9 / b\*−9.9) to widen it — ΔE00 9.15 → 12.01 against silver, ΔE76 13.75 → 17.23 —
+which is close to the ceiling a cool push can buy before the disc stops reading as metal. It
+separates cleanly at the 96 px equip preview; at the 34 px mini the disc is ~3 px across and no
+colour choice carries a tier distinction there. Re-neutralising it collapses the pair back.
+
 [Temari.tsx](../../resources/js/components/temari/Temari.tsx) is the **wrapper you almost always
 use**. It reads `equippedAccessories` from the globally-shared Inertia props (built in
 [GamificationProps.php](../../app/Services/Inertia/GamificationProps.php)), maps them with

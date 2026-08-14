@@ -33,7 +33,7 @@ const ITEMS = [
   ['accessory.medal_first', 'medal', 'common', 'First Medal', '#a98f6b', null],
   ['accessory.medal_silver', 'medal', 'uncommon', 'Silver Medal', '#b9c0c9', DETAIL.medalStar],
   ['accessory.medal_gold', 'medal', 'rare', 'Gold Medal', COLOR.horizon, DETAIL.medalStar],
-  ['accessory.medal_platinum', 'medal', 'epic', 'Platinum Medal', '#dfe6f2', DETAIL.medalRing],
+  ['accessory.medal_platinum', 'medal', 'epic', 'Platinum Medal', '#d8f0ff', DETAIL.medalRing],
   // headband — named by rarity, so the loot ladder is the theme
   ['accessory.headband_uncommon', 'headband', 'uncommon', 'Uncommon Headband', RARITY.uncommon, null],
   ['accessory.headband_rare', 'headband', 'rare', 'Rare Headband', RARITY.rare, null],
