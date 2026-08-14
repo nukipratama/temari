@@ -3,7 +3,7 @@ title: Temari mascot
 description: The character that voices the app — faces from mood/vibe and equipped gear from shared props
 tags: [feature, temari]
 status: living
-reviewed: 2026-08-13
+reviewed: 2026-08-14
 code_refs:
   - resources/js/components/temari/Temari.tsx
   - resources/js/components/temari/TemariProto.tsx
@@ -63,6 +63,20 @@ whose colour and stroke weight carry the mood. The halo is never a fill, so it c
 a progress meter, and its colours come from the mood tokens darkened only where the raw token
 misses 3:1 on cream.
 
+**An equipped aura suppresses the mood halo.** The two rings are concentric and, under the heaviest
+halo (`gold`, weight 9), leave a 0.3-unit gap — measured in the running app that is 0.11 CSS px at
+the 34 px dashboard mini and still only 0.30 CSS px at the 96 px equip preview, so the pair fused
+into one thick smear at *every* size rather than reading as two signals. The aura is the earned,
+deliberate ring and takes precedence; the ambient mood ring returns the moment the aura comes off,
+so no signal is permanently lost. The rule lives in one place per side — `mascot()`'s `showHalo` in
+[build-mascot.mjs](../../resources/brand/build-mascot.mjs) and the `aura === null` guard in
+[TemariProto.tsx](../../resources/js/components/temari/TemariProto.tsx) — and is proven identical
+by the parity block in
+[TemariProto.test.tsx](../../resources/js/components/temari/TemariProto.test.tsx), which diffs an
+aura-equipped render of every face against `mascot(state, { wearing: ['aura'] })`. Placement is
+deliberately *not* re-derived: `BOUNDS` stays the union of the bare halo and the equipped aura, so
+equipping an aura never resizes the character.
+
 The eight original pose names (`proud`, `pumped`, `excited`, `holding`, `reading`, `wobble`,
 `observational`, `glow`) are still valid `pose` values and resolve to the face carrying the same
 read, so [temariPose.ts](../../resources/js/lib/temariPose.ts) and every call site are untouched.
@@ -74,13 +88,25 @@ The resolved face is exposed as `data-expression` on the root element.
 `tone`, `equipped`, `animate`, `dropShadow`, `seasonPhase` and `className`. It paints the six
 equipped slots: `headband` / `shirt` / `shorts` as flat bands clipped to the body circle (so they
 take the ball's curve for free and can never escape the silhouette), `shoes` under the body,
-`medal` on a lace over it, and `aura` as a dashed ring outside the halo. Colour carries rarity and
-a small detail carries the theme, so two rare items in the same slot still read as different
+`medal` on a lace over it, and `aura` as a dashed ring *in place of* the halo. Colour carries rarity
+and a small detail carries the theme, so two rare items in the same slot still read as different
 objects — those values were swept for separation and are not re-pickable casually. `tone` selects
 the silhouette outline (indigo on cream surfaces, cream on the one sky-panel placement). Motion is
 per-pose CSS animation only (`POSE_ANIM`, keyframes in `app.css`), never framer-motion, because the
 mascot renders on Login inside the framer-motion-free `bareLayout`. It's `memo`'d with a
 field-level comparator so a fresh inline `equipped={{...}}` doesn't rebuild the whole tree.
+
+The catalogue lives twice for the same reason the geometry does: `MEDAL_ITEMS` and its four
+siblings in [TemariProto.tsx](../../resources/js/components/temari/TemariProto.tsx) mirror `ITEMS`
+in [build-accessories.mjs](../../resources/brand/build-accessories.mjs), and
+[TemariProto.test.tsx](../../resources/js/components/temari/TemariProto.test.tsx) pins each
+rendered fill against the generator's value, so a colour moved on one side fails the suite. The
+tightest pair is **medal silver vs platinum**: they are one neutral ramp at two lightnesses, so
+hue and chroma contribute almost nothing to the separation. Platinum was pushed cool (`#d8f0ff`,
+L\*93.5 / a\*−4.9 / b\*−9.9) to widen it — ΔE00 9.15 → 12.01 against silver, ΔE76 13.75 → 17.23 —
+which is close to the ceiling a cool push can buy before the disc stops reading as metal. It
+separates cleanly at the 96 px equip preview; at the 34 px mini the disc is ~3 px across and no
+colour choice carries a tier distinction there. Re-neutralising it collapses the pair back.
 
 [Temari.tsx](../../resources/js/components/temari/Temari.tsx) is the **wrapper you almost always
 use**. It reads `equippedAccessories` from the globally-shared Inertia props (built in

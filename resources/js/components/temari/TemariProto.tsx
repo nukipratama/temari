@@ -321,7 +321,7 @@ const MEDAL_ITEMS: Record<string, ItemSpec> = {
     first: { color: '#a98f6b' },
     silver: { color: '#b9c0c9', detail: 'medalStar' },
     gold: { color: '#d9a53c', detail: 'medalStar' },
-    platinum: { color: '#dfe6f2', detail: 'medalRing' },
+    platinum: { color: '#d8f0ff', detail: 'medalRing' },
 };
 
 const SHIRT_ITEMS: Record<string, ItemSpec> = {
@@ -776,15 +776,17 @@ function TemariProto({
     const character = (
         <g transform={PLACE_TRANSFORM}>
             {aura !== null && <Aura color={aura.color} dash={aura.dash} />}
-            <circle
-                data-part="halo"
-                cx={CX}
-                cy={CY}
-                r={HALO_R}
-                fill="none"
-                stroke={halo.color}
-                strokeWidth={halo.width}
-            />
+            {aura === null && (
+                <circle
+                    data-part="halo"
+                    cx={CX}
+                    cy={CY}
+                    r={HALO_R}
+                    fill="none"
+                    stroke={halo.color}
+                    strokeWidth={halo.width}
+                />
+            )}
             {shoes !== null && <Shoes item={shoes} />}
             <circle
                 data-part="body"

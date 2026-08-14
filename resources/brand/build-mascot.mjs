@@ -118,10 +118,12 @@ export function mascot(state, { size = 100, halo = true, wearing = [], id = stat
     .map((w) => SLOTS[w.slot].art(w.colour) + (w.detail ?? ''))
     .join('');
   const clip = `clip-${id}`;
+  const aura = of('aura');
+  const showHalo = halo && aura === '';
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}" role="img" aria-label="Temari — ${state}">
   <defs><clipPath id="${clip}"><circle cx="${CX}" cy="${CY}" r="${BODY_R - 2.2}"/></clipPath></defs>
-${of('aura')}${halo ? `  <circle cx="${CX}" cy="${CY}" r="${HALO_R}" fill="none" stroke="${hc}" stroke-width="${hw}"/>\n` : ''}${of('under')}  <circle cx="${CX}" cy="${CY}" r="${BODY_R}" fill="${CREAM}" stroke="${SKY}" stroke-width="4.5"/>
+${aura}${showHalo ? `  <circle cx="${CX}" cy="${CY}" r="${HALO_R}" fill="none" stroke="${hc}" stroke-width="${hw}"/>\n` : ''}${of('under')}  <circle cx="${CX}" cy="${CY}" r="${BODY_R}" fill="${CREAM}" stroke="${SKY}" stroke-width="4.5"/>
   <g clip-path="url(#${clip})">${of('garment')}</g>
 ${of('over')}  ${brow(L, bo, bi, 'l')}
   ${brow(R, ro, ri, 'r')}
@@ -221,9 +223,19 @@ the 25 catalogue items supplies its own.</p>
   <div class="cell"><div class="big">${mascot('resting', { size: 104, wearing: ['headband','shoes'], id: 'all3' })}</div><div class="cap"><b>partial</b>resting</div></div>
   <div class="cell"><div class="big">${mascot('unimpressed', { size: 28, wearing: SLOT_NAMES, id: 'all4' })}</div><div class="cap"><b>28px</b>all six</div></div>
 </div>
-<div class="note"><b>Watch the aura.</b> It sits at r=47 and the mood halo at r=40 — two concentric
-rings. Fully equipped, that reads as busy, and on a mood with a heavy halo (gold, weight 9) they
-start to compete. Worth deciding whether aura should suppress the mood halo while equipped.</div>
+
+<h2>Aura suppresses the halo</h2>
+<p class="sub">The aura sits at r=47 and the mood halo at r=41. Under the heaviest halo (gold,
+weight 9) the two rings leave a 0.3-unit gap: 0.11 CSS px at the app's 34&nbsp;px dashboard mini and
+still only 0.30 CSS px at the 96&nbsp;px equip preview, so they fused into one thick smear at every
+shipped size rather than reading as two signals. So an equipped aura suppresses the mood halo: it is
+the earned, deliberate ring, and the ambient one returns the moment the aura comes off. Left column
+has the aura on, right has it off.</p>
+<div class="grid">${['challenging','celebrating','concerned']
+  .map((n, i) => `<div class="cell" style="width:230px">
+    <div class="sm">${mascot(n, { size: 104, wearing: ['aura'], id: 'sup' + i })}${mascot(n, { size: 104, id: 'sup-off' + i })}</div>
+    <div class="sm">${mascot(n, { size: 26, wearing: ['aura'], id: 'sup26' + i })}${mascot(n, { size: 26, id: 'sup26-off' + i })}</div>
+    <div class="cap"><b>${n}</b>104&nbsp;px and 26&nbsp;px</div></div>`).join('')}</div>
 `;
 }
 
