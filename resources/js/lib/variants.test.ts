@@ -27,6 +27,7 @@ describe('cardVariants', () => {
 
     it.each([
         ['card', 'bg-surface-card'],
+        ['sky', 'bg-sky'],
         ['onSky', 'backdrop-blur'],
         ['empty', 'border-dashed'],
     ] as const)('renders tone %s', (tone, expected) => {
@@ -34,7 +35,7 @@ describe('cardVariants', () => {
     });
 
     it('keeps every tone on the same radius', () => {
-        for (const tone of ['card', 'onSky', 'empty'] as const) {
+        for (const tone of ['card', 'sky', 'onSky', 'empty'] as const) {
             expect(tokens(cardVariants({ tone }))).toContain('rounded-md');
         }
     });

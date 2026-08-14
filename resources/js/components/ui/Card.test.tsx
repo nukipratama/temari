@@ -13,6 +13,7 @@ describe('Card', () => {
 
     it.each([
         ['card', 'bg-surface-card'],
+        ['sky', 'bg-sky'],
         ['onSky', 'bg-cream/[0.06]'],
         ['empty', 'border-dashed'],
     ] satisfies [CardTone, string][])(
