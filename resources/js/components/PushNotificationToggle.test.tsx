@@ -87,6 +87,6 @@ it('offers only the off switch when already subscribed', async () => {
         await screen.findByRole('button', { name: /Turn off/ }),
     ).toBeInTheDocument();
     expect(
-        screen.queryByRole('button', { name: /Kirim tes/ }),
+        screen.queryByRole('button', { name: /Send test notification/ }),
     ).not.toBeInTheDocument();
 });

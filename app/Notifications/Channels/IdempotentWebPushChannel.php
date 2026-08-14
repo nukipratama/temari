@@ -16,7 +16,7 @@ use NotificationChannels\WebPush\WebPushChannel;
  * (a "Baca ulang" re-analysis, ai:self-heal) — never double-pushes. Notifications
  * that expose no int `deliveryKey()` (streak / test) send without a claim.
  *
- * A notification whose `forcesDelivery()` is true — the manual "Kirim notifikasi"
+ * A notification whose `forcesDelivery()` is true — the manual "Send notification"
  * buttons — skips the claim and records it after a successful send, matching
  * {@see TelegramChannel}. On a hard send failure the claim is released so the
  * notification's retry can genuinely resend rather than being deduped against its

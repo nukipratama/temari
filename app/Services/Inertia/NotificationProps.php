@@ -11,7 +11,7 @@ use App\Support\SharedPropCacheKey;
 use Closure;
 
 /**
- * Per-channel reachability for the "Kirim notifikasi" affordances. The UI
+ * Per-channel reachability for the "Send notification" affordances. The UI
  * combines the two into a single enabled/disabled decision, so they are
  * deliberately shipped as separate facts rather than one boolean. Plus the
  * unread inbox count, which needs no reachability question of its own: the
@@ -55,12 +55,12 @@ final readonly class NotificationProps
     }
 
     /**
-     * Whether a "Kirim notifikasi" affordance can actually deliver over Telegram.
+     * Whether a "Send notification" affordance can actually deliver over Telegram.
      *
      * This means wired **and** un-muted, not merely connected. A muted channel
      * would otherwise leave the button looking live while the send silently goes
      * nowhere — worse than the disabled state, which at least points at
-     * Pengaturan.
+     * Settings.
      */
     private function telegramConnectedFor(?User $user): bool
     {

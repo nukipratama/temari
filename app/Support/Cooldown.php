@@ -38,7 +38,7 @@ final readonly class Cooldown
      */
     public const int NOTIFICATION_WINDOW_SECONDS = 300;
 
-    /** "Kirim notifikasi tes" — short, because it is a setup-time debug tool. */
+    /** "Send test notification" — short, because it is a setup-time debug tool. */
     public const int TEST_WINDOW_SECONDS = 60;
 
     public function __construct(private string $key, private int $window = self::WINDOW_SECONDS)

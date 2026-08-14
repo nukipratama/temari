@@ -23,9 +23,9 @@ import { formatDurationHMS } from '@/lib/pace';
  *
  * A user with no channel wired (`reachable={false}`) still sees the pill, muted
  * — so the feature is discoverable instead of hidden. A tap opens the
- * {@see EnableNotificationsModal} nudge pointing at Pengaturan, the same for a
+ * {@see EnableNotificationsModal} nudge pointing at Settings, the same for a
  * real user and the shared demo account (the demo-write modal only guards the
- * actual channel writes in Pengaturan, not this discovery surface).
+ * actual channel writes in Settings, not this discovery surface).
  */
 export default function SendNotificationButton({
     url,
