@@ -375,46 +375,74 @@ function paintedPanelText(array $tokens): array
     $painted = [];
 
     foreach (componentSources() as $source) {
-        preg_match_all('/\'[^\']*\'|"[^"]*"|`[^`]*`/s', $source, $literals);
+        // A quoted literal cannot span a raw newline, but a naive `'[^']*'`
+        // does: an apostrophe in JSX text ("Temari's") opens a match that runs
+        // to the next one, swallowing whole subtrees and pairing a background
+        // in one element with text in another.
+        preg_match_all('/\'[^\'\n]*\'|"[^"\n]*"|`[^`]*`/s', $source, $literals);
 
         foreach ($literals[0] as $literal) {
-            preg_match_all(
-                '/\bbg-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\/(?:\[([0-9.]+)\]|([0-9]{1,3}))(?![\w\-.])/',
-                $literal,
-                $panels,
-                PREG_SET_ORDER,
-            );
-            $keys = [];
-            foreach ($panels as $match) {
-                if (isset($tokens[$match[1]])) {
-                    $alpha = ($match[2] ?? '') !== '' ? (float) $match[2] : (float) $match[3] / 100;
-                    $keys[] = alphaSpec($match[1], $alpha);
-                }
-            }
-            if ($keys === []) {
+            // No Tailwind class holds an angle or curly bracket, so this drops
+            // what is left of a mis-paired line.
+            if (preg_match('/[<>{}]/', $literal) === 1) {
                 continue;
             }
 
             preg_match_all(
-                '/\btext-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)(?:\/(?:\[([0-9.]+)\]|([0-9]{1,3})))?(?![\w-])/',
+                '/(?:^|[\s\'"`])((?:[a-z0-9-]+:)*)bg-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\/(?:\[([0-9.]+)\]|([0-9]{1,3}))(?![\w\-.])/',
+                $literal,
+                $panels,
+                PREG_SET_ORDER,
+            );
+            if ($panels === []) {
+                continue;
+            }
+
+            preg_match_all(
+                '/(?:^|[\s\'"`])((?:[a-z0-9-]+:)*)text-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)(?:\/(?:\[([0-9.]+)\]|([0-9]{1,3})))?(?![\w-])/',
                 $literal,
                 $texts,
                 PREG_SET_ORDER,
             );
+
             $labels = [];
             foreach ($texts as $match) {
-                if (! isset($tokens[$match[1]])) {
+                if (! isset($tokens[$match[2]])) {
                     continue;
                 }
-                $bracket = $match[2] ?? '';
-                $plain = $match[3] ?? '';
-                $labels[] = $bracket === '' && $plain === ''
-                    ? $match[1]
-                    : alphaSpec($match[1], $bracket !== '' ? (float) $bracket : (float) $plain / 100);
+                $bracket = $match[3] ?? '';
+                $plain = $match[4] ?? '';
+                $labels[] = [
+                    'variant' => $match[1],
+                    'spec' => $bracket === '' && $plain === ''
+                        ? $match[2]
+                        : alphaSpec($match[2], $bracket !== '' ? (float) $bracket : (float) $plain / 100),
+                ];
             }
 
-            foreach (array_unique($keys) as $key) {
-                $painted[$key] = [...($painted[$key] ?? []), ...$labels];
+            foreach ($panels as $panel) {
+                if (! isset($tokens[$panel[2]])) {
+                    continue;
+                }
+                $alpha = ($panel[3] ?? '') !== '' ? (float) $panel[3] : (float) $panel[4] / 100;
+                $key = alphaSpec($panel[2], $alpha);
+
+                // A `hover:bg-*` tint is painted in the hover state, so the text
+                // on it is the `hover:text-*` the same element declares, not the
+                // base one it replaces.
+                $sameState = array_values(array_filter(
+                    $labels,
+                    fn (array $l): bool => $l['variant'] === $panel[1],
+                ));
+                $applicable = $sameState !== [] ? $sameState : array_values(array_filter(
+                    $labels,
+                    fn (array $l): bool => $l['variant'] === '',
+                ));
+
+                $painted[$key] = [
+                    ...($painted[$key] ?? []),
+                    ...array_column($applicable, 'spec'),
+                ];
             }
         }
     }

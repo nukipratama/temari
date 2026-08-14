@@ -171,8 +171,7 @@
         "cream",
         "cream/0.8",
         "cream/0.85",
-        "horizon",
-        "ink-on-sky"
+        "horizon"
       ]
     },
     "cream/0.12": {
@@ -322,8 +321,7 @@
         ]
       },
       "text": [
-        "ink-2",
-        "ink-3"
+        "ink-2"
       ]
     },
     "ink/0.05": {
@@ -333,7 +331,7 @@
         ]
       },
       "text": [
-        "ink-3"
+        "ink-2"
       ]
     },
     "ink/0.06": {
@@ -382,9 +380,6 @@
         ]
       },
       "text": [
-        "ink",
-        "ink-2",
-        "ink-3",
         "leaf-ink"
       ]
     },
@@ -404,9 +399,6 @@
         ]
       },
       "text": [
-        "ink",
-        "ink-2",
-        "ink-3",
         "leaf-ink"
       ]
     },
@@ -436,8 +428,7 @@
         ]
       },
       "text": [
-        "ink",
-        "ink-3"
+        "ink"
       ]
     },
     "line/0.6": {
@@ -447,8 +438,7 @@
         ]
       },
       "text": [
-        "ink",
-        "ink-3"
+        "ink"
       ]
     },
     "mood-blazing/0.15": {
@@ -632,10 +622,7 @@
         ]
       },
       "text": [
-        "ink",
-        "ink-2",
-        "ink-3",
-        "leaf-ink"
+        "ink-2"
       ]
     },
     "surface-warm/0.6": {
@@ -650,12 +637,5 @@
     }
   },
   "__belowAa": "Panel/text pairs that are under 4.5:1 today, pinned at the ratio they measure. Every one is text-ink-3 — the meta tier is derived to land exactly on 4.5:1 on paper, so any tint over that paper puts it under. Recorded rather than waived: the set has to match what the audit finds and each ratio has to match to 2dp, so a new failure, a worse one, or a fixed one still listed all go red.",
-  "belowAa": {
-    "line/0.6 + ink-3": 3.72,
-    "leaf/0.15 + ink-3": 3.89,
-    "line/0.4 + ink-3": 3.96,
-    "leaf/0.1 + ink-3": 4.09,
-    "ink/0.05 + ink-3": 4.12,
-    "ink/0.04 + ink-3": 4.2
-  }
+  "belowAa": {}
 }

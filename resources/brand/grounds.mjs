@@ -205,12 +205,28 @@ export function enumerateInkTints(dir = COMPONENT_DIR) {
 }
 
 const PANEL =
-  /\bbg-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\/(?:\[([0-9.]+)\]|([0-9]{1,3}))(?![\w\-.])/g;
+  /(?:^|[\s'"`])((?:[a-z0-9-]+:)*)bg-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\/(?:\[([0-9.]+)\]|([0-9]{1,3}))(?![\w\-.])/g;
 const TEXT =
-  /\btext-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)(?:\/(?:\[([0-9.]+)\]|([0-9]{1,3})))?(?![\w-])/g;
+  /(?:^|[\s'"`])((?:[a-z0-9-]+:)*)text-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)(?:\/(?:\[([0-9.]+)\]|([0-9]{1,3})))?(?![\w-])/g;
 
 const alphaOf = (bracket, plain) =>
   bracket === undefined ? Number(plain) / 100 : Number(bracket);
+
+/**
+ * String literals, the way the language delimits them.
+ *
+ * A quoted literal cannot span a raw newline, but a naive `'[^']*'` does: an
+ * apostrophe in JSX text ("Temari's") opens a match that runs to the next one,
+ * swallowing whole subtrees and pairing a background in one element with text
+ * in another. Bounding the quoted forms to a single line kills that, and the
+ * bracket check drops what is left of a mis-paired line, since no Tailwind
+ * class contains an angle or curly bracket.
+ */
+const LITERAL = /'[^'\n]*'|"[^"\n]*"|`[^`]*`/g;
+
+function isClassString(literal) {
+  return !/[<>{}]/.test(literal);
+}
 
 /**
  * Every `bg-<token>/<alpha>` the components paint, as `token/alpha`.
@@ -225,7 +241,7 @@ export function enumerateAlphaPanels(dir = COMPONENT_DIR, tokens = readColorToke
   const sites = {};
   for (const file of sourceFiles(dir)) {
     const rel = path.relative(path.dirname(path.dirname(dir)), file);
-    for (const [, name, bracket, plain] of stripComments(
+    for (const [, , name, bracket, plain] of stripComments(
       readFileSync(file, 'utf8'),
     ).matchAll(PANEL)) {
       if (tokens[name] === undefined) continue;
@@ -252,24 +268,41 @@ export function enumeratePanelText(dir = COMPONENT_DIR, tokens = readColorTokens
   const painted = {};
   for (const file of sourceFiles(dir)) {
     for (const [literal] of stripComments(readFileSync(file, 'utf8')).matchAll(
-      /'[^']*'|"[^"]*"|`[^`]*`/g,
+      LITERAL,
     )) {
+      if (!isClassString(literal)) continue;
+
       const panels = [...literal.matchAll(PANEL)]
-        .filter(([, name]) => tokens[name] !== undefined)
-        .map(([, name, bracket, plain]) => `${name}/${alphaOf(bracket, plain)}`);
+        .filter(([, , name]) => tokens[name] !== undefined)
+        .map(([, variant, name, bracket, plain]) => ({
+          variant,
+          spec: `${name}/${alphaOf(bracket, plain)}`,
+        }));
       if (panels.length === 0) continue;
 
       const texts = [...literal.matchAll(TEXT)]
-        .filter(([, name]) => tokens[name] !== undefined)
-        .map(([, name, bracket, plain]) =>
-          bracket === undefined && plain === undefined
-            ? name
-            : `${name}/${alphaOf(bracket, plain)}`,
-        );
+        .filter(([, , name]) => tokens[name] !== undefined)
+        .map(([, variant, name, bracket, plain]) => ({
+          variant,
+          spec:
+            bracket === undefined && plain === undefined
+              ? name
+              : `${name}/${alphaOf(bracket, plain)}`,
+        }));
 
-      for (const panel of new Set(panels)) {
-        painted[panel] ??= new Set();
-        for (const text of texts) painted[panel].add(text);
+      for (const panel of panels) {
+        // A `hover:bg-*` tint is painted in the hover state, so the text on it
+        // is the `hover:text-*` the same element declares — not the base one it
+        // replaces. Reading them as a pair is what flagged five call sites that
+        // swap both at once and never show one over the other.
+        const sameState = texts.filter((t) => t.variant === panel.variant);
+        const applicable =
+          sameState.length > 0
+            ? sameState
+            : texts.filter((t) => t.variant === '');
+
+        painted[panel.spec] ??= new Set();
+        for (const text of applicable) painted[panel.spec].add(text.spec);
       }
     }
   }
