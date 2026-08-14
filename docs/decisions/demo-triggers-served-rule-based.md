@@ -15,6 +15,8 @@ code_refs:
 
 **Status:** Accepted (documented 2026-07-28)
 
+> **One premise below is superseded (noted 2026-08-14) by [[cost-ceiling-degrades-to-rule-based]].** The Context lists "a manual trigger deliberately fires past the AI cost ceiling" among the reasons this decision was needed. It no longer does — `generationPaused()` folds the ceiling in and [AnalysisController::trigger](app/Http/Controllers/Api/AnalysisController.php#L24) refuses with a 409. The decision itself is unaffected: the demo branch still sits *ahead* of that guard, so a demo trigger is still served rule-based and still cannot bill.
+
 ## Context
 
 [[demo-user-billing-exclusion]] held the demo account out of every recurring

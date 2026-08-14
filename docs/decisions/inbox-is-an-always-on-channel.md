@@ -19,6 +19,8 @@ code_refs:
 
 **Status:** Accepted (documented 2026-08-13)
 
+> **One consequence below is superseded (noted 2026-08-14) by [[demo-notifications-are-inbox-only]].** The note says the demo account still receives nothing and its inbox stays empty. [ChannelRouter::channelsFor](app/Services/Notifications/ChannelRouter.php#L50) now always leads with `InAppChannel`, and only `outboundChannelsFor()` excludes the demo — so the demo inbox does fill, it just never sends outbound. The always-on-channel decision this note records is unchanged.
+
 ## Context
 
 Everything Temari said was write-once and read-never. A post-run story reached
