@@ -190,7 +190,7 @@ it('reads the run-insight claims off the run itself, not a seeded variant', func
         'stream_summary' => ['decoupling_pct' => 6.5],
     ]);
 
-    $expected = app(RuleBasedRunInsights::class)->claims($detail->fresh());
+    $expected = RuleBasedRunInsights::claims($detail->fresh());
     $insight = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::RunInsight, $activity->id));
 
     expect($expected)->not->toBe([])

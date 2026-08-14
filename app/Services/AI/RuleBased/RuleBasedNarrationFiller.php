@@ -32,11 +32,6 @@ use App\Services\Run\Metrics\StreamSummary;
  */
 final readonly class RuleBasedNarrationFiller
 {
-    public function __construct(
-        private RuleBasedRunInsights $runInsights,
-    ) {
-    }
-
     public function fillFor(Analysis $row): string
     {
         $seed = $this->seedFor($row);
@@ -162,7 +157,7 @@ final readonly class RuleBasedNarrationFiller
     private function runInsight(int $activityId): string
     {
         $detail = $this->detailFor($activityId);
-        $claims = $detail === null ? [] : $this->runInsights->claims($detail);
+        $claims = $detail === null ? [] : RuleBasedRunInsights::claims($detail);
 
         return (string) json_encode($claims, JSON_THROW_ON_ERROR);
     }
