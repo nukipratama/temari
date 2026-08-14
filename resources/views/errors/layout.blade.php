@@ -19,7 +19,7 @@
             --ink-2: #3d362a;
             --ink-3: #6e6452;
             --horizon: #d9a53c;
-            --horizon-ink: #836424;
+            --horizon-ink: #775a21;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
