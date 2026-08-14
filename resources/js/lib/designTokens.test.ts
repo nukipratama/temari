@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import GROUND_KINDS from '../../brand/grounds.json';
 import {
     auditContrast,
     auditSurface,
-    collectSurfaceGrounds,
+    collectPaperGrounds,
     collectTokenNames,
     contrastRatio,
     groupColorFamilies,
@@ -140,9 +141,16 @@ describe('contrast maths', () => {
     });
 });
 
-describe('collectSurfaceGrounds', () => {
-    it('scrapes every dawn-shift ground and keeps the base as day', () => {
-        const grounds = collectSurfaceGrounds(
+describe('collectPaperGrounds', () => {
+    const paperValues = Object.fromEntries(
+        GROUND_KINDS.paper.map((name, i) => [
+            `--color-${name}`,
+            `#00000${i}`.slice(0, 7),
+        ]),
+    );
+
+    it('carries every classified paper ground alongside the dawn-shift ones', () => {
+        const grounds = collectPaperGrounds(
             [
                 {
                     cssRules: [
@@ -161,31 +169,46 @@ describe('collectSurfaceGrounds', () => {
                     ],
                 },
             ],
-            '#f5f0e4',
+            paperValues,
         );
 
-        expect(grounds).toEqual([
-            { name: 'day', value: '#f5f0e4' },
-            { name: 'dawn', value: '#f0ebdb' },
-            { name: 'night', value: '#eee8d9' },
+        expect(grounds.map((g) => g.name)).toEqual([
+            ...GROUND_KINDS.paper,
+            'surface · dawn',
+            'surface · night',
         ]);
     });
 
+    it('reaches past --color-surface and its dawn-shift drifts', () => {
+        // The S2.9 blind spot in one assertion: cream-deep is the ground
+        // AppShell paints and the one the old scrape could never see.
+        const grounds = collectPaperGrounds([], paperValues);
+
+        expect(grounds.map((g) => g.name)).toContain('cream-deep');
+    });
+
+    it('keeps a classified ground the stylesheet no longer resolves, so it scores as a failure', () => {
+        const grounds = collectPaperGrounds([], {});
+
+        expect(grounds.every((g) => g.value === '')).toBe(true);
+        expect(grounds).not.toHaveLength(0);
+    });
+
     it('ignores a time-of-day rule that does not redeclare the surface', () => {
-        const grounds = collectSurfaceGrounds(
+        const grounds = collectPaperGrounds(
             [
                 {
                     cssRules: [groundRule("body[data-time-of-day='dusk']", '')],
                 },
             ],
-            '#f5f0e4',
+            paperValues,
         );
 
-        expect(grounds).toEqual([{ name: 'day', value: '#f5f0e4' }]);
+        expect(grounds.map((g) => g.name)).toEqual(GROUND_KINDS.paper);
     });
 
     it('skips a cross-origin sheet instead of throwing', () => {
-        const grounds = collectSurfaceGrounds(
+        const grounds = collectPaperGrounds(
             [
                 {
                     get cssRules(): never {
@@ -193,10 +216,10 @@ describe('collectSurfaceGrounds', () => {
                     },
                 },
             ],
-            '#f5f0e4',
+            paperValues,
         );
 
-        expect(grounds).toEqual([{ name: 'day', value: '#f5f0e4' }]);
+        expect(grounds.map((g) => g.name)).toEqual(GROUND_KINDS.paper);
     });
 });
 
@@ -266,10 +289,31 @@ describe('auditContrast', () => {
 
         expect(
             auditContrast(values, day).find((r) => r.use === 'Gold as text'),
-        ).toMatchObject({ bg: '--color-surface · day', pass: true });
+        ).toMatchObject({ bg: 'paper · day', pass: true });
         expect(
             auditContrast(values, allDay).find((r) => r.use === 'Gold as text'),
-        ).toMatchObject({ bg: '--color-surface · night', pass: false });
+        ).toMatchObject({ bg: 'paper · night', pass: false });
+    });
+
+    it("scores a family's ink on its own tinted cell, not only on paper", () => {
+        const values = {
+            ...paper,
+            '--color-mood-wobbly': '#b23a4f',
+            '--color-mood-wobbly-bg': '#f0d3d8',
+        };
+        const label = (ink: string) =>
+            auditContrast(
+                { ...values, '--color-mood-wobbly-ink': ink },
+                day,
+            ).find((r) => r.use === 'mood-wobbly label');
+
+        // Clears 5.11:1 on day paper, 4.16:1 on the cell it is actually printed
+        // on. Scoring paper alone is what let it ship.
+        expect(label('#b23a4f')).toMatchObject({
+            bg: 'paper · mood-wobbly-bg',
+            pass: false,
+        });
+        expect(label('#a9374b')?.pass).toBe(true);
     });
 
     it('leaves a pair whose ground is not paper on its own background', () => {

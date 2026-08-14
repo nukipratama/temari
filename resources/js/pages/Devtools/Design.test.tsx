@@ -8,8 +8,15 @@ import Design from './Design';
 const TOKENS: Record<string, string> = {
     '--color-ink': '#1a1812',
     '--color-surface': '#f5f0e4',
+    // Every ground grounds.json calls paper, because the audit scores each one.
+    '--color-cream': '#f5f0e4',
+    '--color-cream-deep': '#ece2ce',
+    '--color-surface-card': '#f5f0e4',
+    '--color-surface-elev': '#faf6ec',
+    '--color-surface-sunken': '#ece2ce',
+    '--color-surface-warm': '#f8f0dd',
     '--color-rarity-legendary': '#f5a623',
-    '--color-rarity-legendary-ink': '#946415',
+    '--color-rarity-legendary-ink': '#885c13',
     '--radius-md': '14px',
     '--shadow-e1': '0 1px 2px rgba(58, 45, 20, 0.06)',
     '--spacing-4': '16px',
