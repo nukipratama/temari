@@ -6,7 +6,7 @@ status: living
 reviewed: 2026-06-20
 code_refs:
   - resources/js/pages/Collection/Records.tsx
-  - app/Http/Controllers/RekorController.php
+  - app/Http/Controllers/RecordsController.php
   - resources/js/components/collection/MilestoneStrip.tsx
   - resources/js/components/card/PrCard.tsx
   - resources/js/components/run/SplitsSparkline.tsx
@@ -26,7 +26,7 @@ code_refs:
 
 ## What the controller assembles
 
-The single-action [RekorController](../../app/Http/Controllers/RekorController.php) loads the user's `PersonalRecord` rows (with just the activity-detail columns it needs), attaches each row's `PrContext` AI analysis, and ships two props:
+The single-action [RecordsController](../../app/Http/Controllers/RecordsController.php) loads the user's `PersonalRecord` rows (with just the activity-detail columns it needs), attaches each row's `PrContext` AI analysis, and ships two props:
 
 - `personalRecords` — each PR row plus its `context_analysis` payload.
 - `featuredExtras` — the standout PR's splits, weather, location, and goal delta, built by `PrScoreboardBuilder` off `pickFeaturedPr`.

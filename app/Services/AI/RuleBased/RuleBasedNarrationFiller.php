@@ -27,7 +27,7 @@ use App\Services\Run\Metrics\StreamSummary;
  * Output is deterministic and Temari-voiced. Where the subject's real data is
  * available it drives the copy (run insight via {@see RuleBasedRunInsights}
  * so a seeded demo shows the run's real numbers), falling back to seeded
- * variants only when the subject row is missing. A "Baca ulang" gets real LLM
+ * variants only when the subject row is missing. A "Reread" gets real LLM
  * output whenever the subject is inside the narration age cutoff.
  */
 final readonly class RuleBasedNarrationFiller
@@ -104,7 +104,7 @@ final readonly class RuleBasedNarrationFiller
         $km = DistanceFormatter::kmString($detail->distance) ?? '?';
 
         // Hashed (not the bare, sequential activityId), or a run of consecutive
-        // activities — exactly what the Riwayat feed shows side by side — walks
+        // activities — exactly what the History feed shows side by side — walks
         // the pool in lockstep and repeats the identical line every N-th run.
         $baseSeed = (int) crc32('post_run_speech_'.$activityId);
 

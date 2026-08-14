@@ -71,7 +71,7 @@ Every narrator now reads rather than receives. What remains in any context is on
 - the **time-of-day bucket** (`early_morning` / `morning` / `midday` / `evening` / `night`) so a morning briefing reads differently from an evening one ([`bucketFor`](app/Services/Run/Story/BriefingContext.php#L212));
 - **consecutive weeks active** — a streak proxy reusing the `WeeklySnapshot` rows we already keep, since we don't track a day-level streak ([`countConsecutiveActiveWeeks`](app/Services/Run/Story/BriefingContext.php#L196)).
 
-Recovery hours is "hours since the most recent activity start", sharper than days-since for a mid-day briefing — now computed by [RecoveryWindow::forUser](app/Services/Run/Story/RecoveryWindow.php#L35) and passed in. `BriefingContext::forUser` is called from [WeekStateTool::handle](app/Services/AI/Agent/Tools/WeekStateTool.php#L48), one of the agent tools [BriefingMascotVoiceNarrator](app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php) reads from; the rendered surface is the [[dashboard]] Kata Temari card.
+Recovery hours is "hours since the most recent activity start", sharper than days-since for a mid-day briefing — now computed by [RecoveryWindow::forUser](app/Services/Run/Story/RecoveryWindow.php#L35) and passed in. `BriefingContext::forUser` is called from [WeekStateTool::handle](app/Services/AI/Agent/Tools/WeekStateTool.php#L48), one of the agent tools [BriefingMascotVoiceNarrator](app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php) reads from; the rendered surface is the [[dashboard]] mascot-voice block.
 
 ### MetricsContext (briefing call envelope)
 

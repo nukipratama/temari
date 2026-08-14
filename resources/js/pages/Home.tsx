@@ -11,12 +11,12 @@ import type {
 } from '@/types/inertia';
 
 import FeaturedKartuPanel from '@/components/dashboard/FeaturedKartuPanel';
-import KondisiCard from '@/components/dashboard/KondisiCard';
 import KpiTile from '@/components/dashboard/KpiTile';
 import LastRunCard, {
     type LastRunNote,
 } from '@/components/dashboard/LastRunCard';
 import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
+import TrainingLoadCard from '@/components/dashboard/TrainingLoadCard';
 import VitalChips from '@/components/dashboard/VitalChips';
 import EvidenceList from '@/components/home/EvidenceList';
 import NoVerdictPanel from '@/components/home/NoVerdictPanel';
@@ -145,7 +145,10 @@ export default function Home({
                                         note={lastRunNote}
                                     />
                                 )}
-                                <KondisiCard load={load} snapshot={snapshot} />
+                                <TrainingLoadCard
+                                    load={load}
+                                    snapshot={snapshot}
+                                />
                             </div>
 
                             {featured && (

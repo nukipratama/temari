@@ -192,7 +192,7 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
      * The run-insight analysis this group persists: its content is a JSON-
      * encoded claims list (possibly `[]` when nothing survived falsifiability
      * checking — see {@see RunInsightNarrator}). Reused verbatim from an
-     * already-Done row when present (so a cerita-only re-dispatch does not
+     * already-Done row when present (so a story-only re-dispatch does not
      * re-bill the insight LLM); otherwise generated fresh.
      */
     private function resolveInsight(Activity $activity, ActivityDetail $detail): string

@@ -16,7 +16,7 @@ return [
     ],
 
     // Per-user trigger ceiling (sliding minute). Catches the case where a user
-    // clicks Analisis ulang across multiple analyses in rapid succession.
+    // clicks Reread across multiple analyses in rapid succession.
     'rate_limit_per_minute' => (int) env('AI_RATE_LIMIT_PER_MINUTE', 8),
 
     // Per-user ceiling (sliding minute) on "ask about this run". Lower than the

@@ -56,7 +56,7 @@ class Analysis extends Model
     /**
      * Max real LLM executions before ai:self-heal gives up on a Failed row and
      * dead-letters it for a manual retry. `attempts` bumps once per job run
-     * (markProcessing) and resets to 0 on invalidate, so a manual "Baca ulang"
+     * (markProcessing) and resets to 0 on invalidate, so a manual "Reread"
      * re-arms the budget; capped no-op dispatches never touch it.
      */
     public const int MAX_SELF_HEAL_ATTEMPTS = 3;
@@ -205,7 +205,7 @@ class Analysis extends Model
 
     /**
      * Opens this row's re-trigger cooldown window. Called from
-     * {@see \App\Services\AI\AnalysisService::markDone()} so a "Baca ulang"
+     * {@see \App\Services\AI\AnalysisService::markDone()} so a "Reread"
      * can't re-fire the LLM for the same block until the window elapses.
      */
     public function startCooldown(): void

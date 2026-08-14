@@ -414,7 +414,7 @@ class ActivityPipeline
      * Recompute a single activity's `stream_summary` / `trimp_edwards` from its
      * ALREADY-STORED streams using the user's CURRENT heart-rate zones, then
      * rebuild that week's snapshot forward. Forward-only: makes ZERO Strava HTTP
-     * calls, so a user-initiated "Baca ulang" can refresh one block with new
+     * calls, so a user-initiated "Reread" can refresh one block with new
      * zones without re-ingesting from Strava. No-op when the activity has no
      * stored streams or no detail row.
      *

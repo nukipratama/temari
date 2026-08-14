@@ -184,7 +184,7 @@ class DemoRunSeeder
      * scheduler. Adds one modest synthetic run for today (skipping two rest days
      * a week so the streak looks human) and re-stages + rule-based-fills today's
      * date-keyed narration, so the demo never goes stale or renders an empty
-     * "Belum dibaca" when the date rolls. Zero LLM tokens (runs under
+     * an empty, un-narrated block when the date rolls. Zero LLM tokens (runs under
      * withoutDispatching + the filler), so the demo-billing exclusion holds.
      *
      * @param  Closure(string): void|null  $log  optional reporter (command::info etc.)
@@ -214,7 +214,7 @@ class DemoRunSeeder
 
             // Re-stage the date-keyed surfaces (briefing set, greeting, trend,
             // weekly persona) against today's discriminator — the line that kills
-            // "Belum dibaca" once the calendar day moves past the seed day.
+            // an empty, un-narrated block once the calendar day moves past the seed day.
             $this->stagePendingAnalyses($user);
 
             // Backfill inside withoutDispatching so markDone's Telegram fan-out
@@ -316,11 +316,11 @@ class DemoRunSeeder
             );
         }
         // Mirrors DailyBriefingCommand so the dashboard's Temari voice card is
-        // filled and never renders "Belum dibaca".
+        // filled and never renders as empty.
         $this->analysisService->requestBriefing($user, $today);
-        // The weekly-featured-card voice ("Kartu dari Temari minggu ini" on the
+        // The weekly-featured-card voice (the featured-card quote on the
         // dashboard hero) has its own job and is never auto-requested by ingest,
-        // so the demo must stage it here or the hero falls back to "Belum dibaca".
+        // so the demo must stage it here or the hero falls back to empty.
         // Keyed by the featured card id (matching BriefingComposer) so the staged
         // quote lines up with the card the hero actually shows.
         $featuredCard = ($this->featuredKartu)($user);

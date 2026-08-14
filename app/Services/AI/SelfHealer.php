@@ -77,7 +77,7 @@ class SelfHealer
      * (invalidate:false) re-kicks the group; AnalyzeActivityJob then walks
      * forward. Unlike the Pending-only chain advance, a Failed-under-budget group
      * is auto-retried here too, so the biggest silent-rot class self-heals
-     * instead of waiting on the run page's manual "Coba lagi"; the attempts
+     * instead of waiting on the run page's manual "Try again"; the attempts
      * budget still caps re-billing and dead-letters a terminally-broken group.
      * Demo is excluded (its per-activity rows are seeded Done, and this never
      * auto-bills a demo LLM call) to match the other five families.

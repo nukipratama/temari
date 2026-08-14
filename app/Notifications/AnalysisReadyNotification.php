@@ -102,7 +102,7 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
 
     /**
      * The inbox row. Keyed on the analysis rather than the notification id so a
-     * re-analysis ("Baca ulang", ai:self-heal) or a manual force-send updates
+     * re-analysis ("Reread", ai:self-heal) or a manual force-send updates
      * nothing instead of stacking a second row for the same run.
      */
     public function toInbox(User $notifiable): ?InboxMessage

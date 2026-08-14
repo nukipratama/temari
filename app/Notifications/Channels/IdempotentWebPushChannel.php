@@ -13,7 +13,7 @@ use NotificationChannels\WebPush\WebPushChannel;
 /**
  * Wraps the package {@see WebPushChannel} with the shared per-(analysis, channel)
  * delivery claim, so a queued retry — or a fresh notify() for the same analysis
- * (a "Baca ulang" re-analysis, ai:self-heal) — never double-pushes. Notifications
+ * (a "Reread" re-analysis, ai:self-heal) — never double-pushes. Notifications
  * that expose no int `deliveryKey()` (streak / test) send without a claim.
  *
  * A notification whose `forcesDelivery()` is true — the manual "Send notification"

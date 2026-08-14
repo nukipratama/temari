@@ -21,7 +21,7 @@ use App\Services\Run\Story\MoodMix;
 use Illuminate\Support\Carbon;
 
 /**
- * The Aku page's single Temari voice ("Kata Temari tentang kamu"): one LLM call
+ * The Aku page's single Temari voice ("What Temari says about you"): one LLM call
  * that reads who the runner is from their mood mix and backs that reading with
  * their own history.
  */

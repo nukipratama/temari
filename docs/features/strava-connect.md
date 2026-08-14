@@ -35,7 +35,7 @@ Strava is the only identity in the app — there is no email/password. Signing i
 
 ## Connect (OAuth)
 
-The login screen is the front door. [Login.tsx](../../resources/js/pages/Auth/Login.tsx) renders a Strava-branded button whose `href` is the server-issued `authStravaUrl`; it is a plain `<a>` full navigation, not an Inertia visit (the brand mark and "Sambungkan dengan Strava" label are a deliberate product decision, see the comment in the page).
+The login screen is the front door. [Login.tsx](../../resources/js/pages/Auth/Login.tsx) renders a Strava-branded button whose `href` is the server-issued `authStravaUrl`; it is a plain `<a>` full navigation, not an Inertia visit (the brand mark and "Connect with Strava" label are a deliberate product decision, see the comment in the page).
 
 Socialite drives the handshake in [StravaAuthController](../../app/Http/Controllers/Auth/StravaAuthController.php):
 

@@ -162,7 +162,7 @@ class RunController extends Controller
     /**
      * The latest completed week the recap chain actually narrates (runs > 0,
      * not the in-progress week, not a zero-run rest week — either would steal
-     * the head and hide "Baca ulang" on the real latest recap). Only the head
+     * the head and hide "Reread" on the real latest recap). Only the head
      * may regenerate, so re-narrating mid-history can't desync later links.
      *
      * Queried independently of the caller's own week range: a `week` deep link
@@ -349,7 +349,7 @@ class RunController extends Controller
             // instead of diverging into a frontend heuristic.
             'moodFallback' => fn (): string => Temari::moodForActivityOrDefault($activity),
             // Per-activity narration is a connected + chained kind: only the chain
-            // head (the user's latest run) may regenerate ("Baca ulang"); historical
+            // head (the user's latest run) may regenerate ("Reread"); historical
             // runs are resume-only, so re-narrating mid-history can't desync the
             // later runs that quoted their old narrative.
             'isChainHead' => fn (): bool => Activity::latestIdForUser($user->id) === $activity->id,

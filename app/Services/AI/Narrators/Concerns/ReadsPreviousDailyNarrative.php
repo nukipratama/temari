@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * Steady-state continuity for the daily per-user narrators (daily greeting +
- * "Kata Temari" mascot voice). Reads the user's most recent earlier Done
+ * the Temari mascot voice). Reads the user's most recent earlier Done
  * narrative of the same kind so today's line continues yesterday's thread. The
  * daily subjects are keyed by a user id + a 'Y-m-d' discriminator, so "previous"
  * is the latest Done row whose discriminator is before the current day.

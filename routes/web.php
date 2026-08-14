@@ -26,7 +26,7 @@ use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
-use App\Http\Controllers\RekorController;
+use App\Http\Controllers\RecordsController;
 use App\Http\Controllers\RootController;
 use App\Http\Controllers\RunController;
 use App\Http\Controllers\RunnerZonesController;
@@ -141,7 +141,7 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     // Catatan merged into Activities — keep deep links working.
     Route::permanentRedirect('/catatan', '/activities');
 
-    Route::get('/records', RekorController::class)->name('records');
+    Route::get('/records', RecordsController::class)->name('records');
 
     Route::get('/race', [RaceController::class, 'index'])->name('race');
     Route::post('/race', [RaceController::class, 'store'])->name('race.store');

@@ -10,7 +10,7 @@ return new class () extends Migration {
     /**
      * Composite index for the hot "this user's analyzed runs" filter
      * (`WHERE user_id = ? AND analyzed_at IS NOT NULL`) that the calendar,
-     * rekor and dashboard pages all run. The standalone `analyzed_at` index
+     * records and dashboard pages all run. The standalone `analyzed_at` index
      * and the `user_id` FK index can't serve that combined predicate as
      * efficiently as a composite leading with `user_id`.
      */

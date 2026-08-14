@@ -88,7 +88,7 @@
 
     /* Same tuning as --text-stat-fluid (floor + coefficient proven against a
        real 320px render), capped at --text-stat's 32px ceiling instead of
-       40px: for StatTile `lg` used in a narrow 3-up row (LastLariCard's
+       40px: for StatTile `lg` used in a narrow 3-up row (LastRunCard's
        KM/PACE/TRIMP), where the fixed 32px overlapped adjacent values below
        ~375px. `lg`'s other/wider uses are untouched -- this is an explicit
        opt-in via valueClassName, not a change to `--text-stat` itself. */

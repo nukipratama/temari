@@ -15,7 +15,7 @@ code_refs:
   - resources/js/components/dashboard/VitalChips.tsx
   - resources/js/components/dashboard/FeaturedKartuPanel.tsx
   - resources/js/components/dashboard/LastRunCard.tsx
-  - resources/js/components/dashboard/KondisiCard.tsx
+  - resources/js/components/dashboard/TrainingLoadCard.tsx
 ---
 
 # Dashboard
@@ -68,7 +68,7 @@ Everything under here supports the verdict rather than competing with it, in thi
 - **This week** — a 3-up of runs / km / TRIMP from the latest `WeeklySnapshot`, count-up animated.
 - [VitalChips](resources/js/components/dashboard/VitalChips.tsx) — a 3-up row: **Vibe** (the `vibeLabel` word — `load.form`'s magnitude only drives the hidden `<meter>` gauge, not visible text), **Readiness** (`load.form` signed, with `formStatusLabel`), and **Break** (`recoveryHoursLabel` / streak / recovery label). All three values use a fluid font-size clamp tuned against the narrowest supported width (iPhone SE, 320px) so real values never silently truncate in the 1/3-width tile.
 - [LastRunCard](resources/js/components/dashboard/LastRunCard.tsx) — the most recent run (`recentRuns[0]`) as a `LinkCard` to its detail page, with km / pace / TRIMP tiles and an optional post-run note one-liner (`lastRunNote`, from `PostRunNoteReader::forActivity`). Temari's pose comes from `poseForRun`.
-- [KondisiCard](resources/js/components/dashboard/KondisiCard.tsx) — training load read-out: **Fitness** (CTL 42d), **Fatigue** (ATL 7d), **Strain**, **Monotony**, each with a plain-language hint. Links out to `/activities`. See [[run-history]] for the weekly metrics this mirrors.
+- [TrainingLoadCard](resources/js/components/dashboard/TrainingLoadCard.tsx) — training load read-out: **Fitness** (CTL 42d), **Fatigue** (ATL 7d), **Strain**, **Monotony**, each with a plain-language hint. Links out to `/activities`. See [[run-history]] for the weekly metrics this mirrors.
 - [FeaturedKartuPanel](resources/js/components/dashboard/FeaturedKartuPanel.tsx) — `FeaturedCardHero` + a full `Kartu`, picked client-side by `featuredCardFor(recentRuns, briefing.featuredCardId)`. Its voice line (`briefing.featuredKartuVoice`) is another `AnalysisStatus` block, here `onSky` and `allowReanalyze={false}`. The controller deliberately selects `summary_polyline` + `stream_summary` on `recentRuns` so this hero can draw the route, zone bar, and pace-shape. It carries the onboarding coach mark. See [[cards-collection]].
 
 ## Empty state

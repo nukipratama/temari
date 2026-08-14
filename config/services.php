@@ -60,7 +60,7 @@ return [
         'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
         // Automatic post-run pushes older than this are skipped, so a big Strava
         // backfill doesn't spam months of old runs to Telegram. The manual
-        // "Kirim ke Telegram" push on a run's detail page bypasses this.
+        // "Send notification" push on a run's detail page bypasses this.
         'notify_max_age_days' => (int) env('TELEGRAM_NOTIFY_MAX_AGE_DAYS', 3),
     ],
 

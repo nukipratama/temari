@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class RekorController extends Controller
+class RecordsController extends Controller
 {
     public function __construct(
         private readonly PrScoreboardBuilder $scoreboardBuilder,

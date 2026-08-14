@@ -120,8 +120,8 @@ class CompareRecalibrationCommand extends Command
             $detail->laps(),
         ));
 
-        $this->bump($tallies['pace']['stored'], PaceConsistency::label($stored->paceVariabilitySec()) ?? 'tidak ada');
-        $this->bump($tallies['pace']['recomputed'], PaceConsistency::label($recomputed->paceVariabilitySec()) ?? 'tidak ada');
+        $this->bump($tallies['pace']['stored'], PaceConsistency::label($stored->paceVariabilitySec()) ?? 'none');
+        $this->bump($tallies['pace']['recomputed'], PaceConsistency::label($recomputed->paceVariabilitySec()) ?? 'none');
 
         $tallies['negative_split']['stored'] += $stored->negativeSplit() === true ? 1 : 0;
         $tallies['negative_split']['recomputed'] += $recomputed->negativeSplit() === true ? 1 : 0;
@@ -144,9 +144,9 @@ class CompareRecalibrationCommand extends Command
         // bucket rather than reading properties off null.
         $tallies['badges']['stored'] += $card === null ? 0 : count((array) $card->badges);
         $tallies['badges']['recomputed'] += count($badges);
-        $this->bump($tallies['rarity']['stored'], $card === null ? 'tidak ada kartu' : $card->rarity->value);
+        $this->bump($tallies['rarity']['stored'], $card === null ? 'no card' : $card->rarity->value);
         $this->bump($tallies['rarity']['recomputed'], $this->rarityScorer->fromScore($score)->value);
-        $this->bump($tallies['move']['stored'], $card === null ? 'tidak ada kartu' : $card->special_move);
+        $this->bump($tallies['move']['stored'], $card === null ? 'no card' : $card->special_move);
         $this->bump($tallies['move']['recomputed'], $this->specialMoves->pick($recomputed, [
             'distance_m' => $detail->distance,
             'pr_set' => $card !== null && $card->pr_set,
