@@ -7,11 +7,14 @@ use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Jobs\AI\AnalyzeRowJob;
 use App\Models\AI\Analysis;
+use App\Models\AI\TokenUsage;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use Illuminate\Contracts\Queue\Job as JobContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
@@ -150,6 +153,46 @@ it('reverts the row to Pending without billing when generation is paused', funct
     expect($fresh->status)->toBe(AnalysisStatus::Pending)
         ->and($fresh->attempts)->toBe(0)  // never reached markProcessing
         ->and($fresh->content)->toBeNull();
+});
+
+/** Azure stays configured, so the budget is the only thing stopping this job. */
+function breachTheCeilingForRowJobTest(): void
+{
+    config(['azure_openai.daily_cost_ceiling' => 1.0]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
+    TokenUsage::query()->create([
+        'kind' => 'briefing', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
+        'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
+    ]);
+}
+
+it('serves the row rule-based without billing when the spend ceiling tripped mid-flight', function (): void {
+    breachTheCeilingForRowJobTest();
+    $row = makeRowForRowJobTest();
+
+    fakeSuccessRowJob($row->id)->handle(app(AnalysisService::class));
+
+    $fresh = $row->fresh();
+    expect($fresh->status)->toBe(AnalysisStatus::Done)
+        ->and($fresh->attempts)->toBe(0)
+        ->and($fresh->content)->toBe(app(RuleBasedNarrationFiller::class)->fillFor($fresh))
+        ->and($fresh->content)->not->toBe('generated');
+});
+
+it('leaves a Failed row Failed when the spend ceiling tripped mid-flight', function (): void {
+    breachTheCeilingForRowJobTest();
+    // Still under the retry budget, so the spent-budget halt above it cannot be
+    // what settles this row: it reaches the pause guard as a genuine fault.
+    $row = makeRowForRowJobTest();
+    $row->update(['status' => AnalysisStatus::Failed, 'error' => 'narator meledak', 'attempts' => 1]);
+
+    fakeSuccessRowJob($row->id)->handle(app(AnalysisService::class));
+
+    $fresh = $row->fresh();
+    expect($fresh->status)->toBe(AnalysisStatus::Failed)
+        ->and($fresh->error)->toBe('narator meledak')
+        ->and($fresh->content)->toBeNull()
+        ->and($fresh->attempts)->toBe(1);
 });
 
 it('marks row Failed without rethrowing for UnavailableException', function (): void {

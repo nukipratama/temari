@@ -6,6 +6,7 @@ use App\Models\AI\TokenUsage;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\User\UserEraser;
+use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\TokenUsageReport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -163,6 +164,19 @@ it('surfaces a configured daily ceiling and today cost in the budget block', fun
 
     expect($result['budget']['dailyCeiling'])->toBe(5.0)
         ->and($result['budget']['todayCost'])->toBe(2.50);
+});
+
+it('carries the ceiling trip and the rule-based fill count into the budget block', function () use ($range): void {
+    $ledger = app(CostCeilingLedger::class);
+    $ledger->recordTrip();
+    $ledger->recordDegradedFill();
+    $ledger->recordDegradedFill();
+
+    [$from, $to] = $range();
+    $result = $this->report->build($from, $to, null);
+
+    expect($result['budget']['trippedAt'])->toBe(Carbon::now()->toIso8601String())
+        ->and($result['budget']['degradedFills'])->toBe(2);
 });
 
 

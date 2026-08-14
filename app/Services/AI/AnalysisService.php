@@ -45,6 +45,7 @@ class AnalysisService
         private readonly AzureConfigCircuitBreaker $configBreaker,
         private readonly MaintainerAlerter $alerter,
         private readonly ChainResolver $chains,
+        private readonly CostCeilingLedger $ceilingLedger,
     ) {
     }
 
@@ -271,11 +272,15 @@ class AnalysisService
         $row = $this->upsertRow($subjectType, $subjectId, $type, $discriminator);
         $justCreated = $row->wasRecentlyCreated;
 
-        // Generation paused (cost ceiling / AI off / Azure unset / demo seed):
-        // stay honest -> a fresh row rests Pending for the empty state, an existing
-        // Done keeps its real prose. Never substitute a template; ai:self-heal
-        // resumes it once generation is back (demo flat-fills via its own seeder).
+        // Generation paused (AI off / Azure unset / broken / demo seed): stay
+        // honest -> a fresh row rests Pending for the empty state, an existing
+        // Done keeps its real prose, and ai:self-heal resumes it once generation
+        // is back. The spend ceiling is the one pause that degrades instead.
         if (! $this->autoDispatchEnabled()) {
+            if ($this->costCeilingDegraded()) {
+                $this->degradeToRuleBased($row);
+            }
+
             return $row;
         }
 
@@ -313,6 +318,12 @@ class AnalysisService
         $anyJustCreated = $rows->contains(fn (Analysis $row): bool => $row->wasRecentlyCreated);
 
         if (! $this->autoDispatchEnabled()) {
+            if ($this->costCeilingDegraded()) {
+                foreach ($rows as $row) {
+                    $this->degradeToRuleBased($row);
+                }
+            }
+
             return;
         }
 
@@ -576,10 +587,12 @@ class AnalysisService
     }
 
     /**
-     * True when LLM generation is paused for everyone right now: daily cost
-     * ceiling hit, the AiEnabled kill-switch off, Azure unconfigured, or a
-     * demo-seed suppression. ai:self-heal early-exits on it and the analyze jobs
-     * refuse to bill on it; a paused row rests Pending until generation resumes.
+     * True when nothing may be billed to the LLM for anyone right now: daily
+     * cost ceiling hit, the AiEnabled kill-switch off, Azure unconfigured, or a
+     * demo-seed suppression. ai:self-heal early-exits on it, manual triggers are
+     * refused on it, and the analyze jobs refuse to bill on it. Rows rest Pending
+     * until generation resumes, except under the ceiling, which serves them from
+     * the filler instead ({@see self::costCeilingDegraded()}).
      */
     public function generationPaused(): bool
     {
@@ -618,16 +631,62 @@ class AnalysisService
 
     private function autoDispatchEnabled(): bool
     {
+        return $this->dispatchAllowedIgnoringBudget() && ! $this->dailyCostCeilingExceeded();
+    }
+
+    /**
+     * Every auto-dispatch condition except the daily spend ceiling: the
+     * withoutDispatching suppression, the AiEnabled kill switch, the
+     * `ai.auto_dispatch` env switch, a configured Azure URI + key, and an
+     * untripped config breaker (it half-opens after a cooldown, so a fixed env
+     * auto-resumes via the next dispatch/self-heal for free).
+     */
+    private function dispatchAllowedIgnoringBudget(): bool
+    {
         return ! $this->dispatchSuppressed
             && $this->config->boolean(AppConfigKey::AiEnabled)
             && (bool) config('ai.auto_dispatch', true)
             && filled(config('azure_openai.uri'))
             && filled(config('azure_openai.api_key'))
-            && ! $this->dailyCostCeilingExceeded()
-            // A tripped config breaker pauses generation (rows stay Pending, no
-            // attempt burn); it half-opens after a cooldown so a fixed env
-            // auto-resumes via the next dispatch/self-heal for free.
             && $this->configBreaker->allowsRequest();
+    }
+
+    /**
+     * True when the daily spend ceiling is the *only* reason nothing may be
+     * billed right now. Every other stop is a fault or an explicit switch, which
+     * a Pending row honestly represents and ai:self-heal resumes for free; the
+     * budget instead resolves on a clock, so waiting buys nothing and the block
+     * is served from the deterministic filler.
+     */
+    public function costCeilingDegraded(): bool
+    {
+        return $this->dispatchAllowedIgnoringBudget() && $this->dailyCostCeilingExceeded();
+    }
+
+    /**
+     * Serve a row from the deterministic filler because the spend ceiling is
+     * hit. Filled under {@see self::withoutDispatching()} so no job is queued, no
+     * cooldown starts and no notification claims a narration that was never
+     * written.
+     *
+     * Two statuses are left alone. An already-Done row keeps the real prose it
+     * was billed for. A Failed row is a genuine fault (content filter, malformed
+     * response, spent retry budget) that the bounded self-heal and the /ai-usage
+     * dead-letter exist to surface, so it stays Failed with its "Coba lagi"
+     * rather than hiding a break behind plausible content — on a day the ceiling
+     * trips repeatedly, filling it would erase that signal every time.
+     */
+    public function degradeToRuleBased(Analysis $row): void
+    {
+        if ($row->status === AnalysisStatus::Done || $row->status === AnalysisStatus::Failed) {
+            return;
+        }
+
+        $this->withoutDispatching(function () use ($row): void {
+            $this->markDone($row, app(RuleBasedNarrationFiller::class)->fillFor($row));
+        });
+
+        $this->ceilingLedger->recordDegradedFill();
     }
 
     /**
@@ -656,6 +715,7 @@ class AnalysisService
             'today_cost' => $todayCost,
             'ceiling' => (float) $ceiling,
         ]);
+        $this->ceilingLedger->recordTrip();
 
         return true;
     }

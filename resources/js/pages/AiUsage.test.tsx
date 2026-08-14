@@ -113,7 +113,13 @@ const baseProps: AiUsageProps = {
         { value: 'briefing', label: 'BriefingMascotVoice' },
         { value: 'run-insight', label: 'RunInsightTechnical' },
     ],
-    budget: { todayCost: 0.02, dailyCeiling: 0.1, currency: 'USD' },
+    budget: {
+        todayCost: 0.02,
+        dailyCeiling: 0.1,
+        currency: 'USD',
+        trippedAt: null,
+        degradedFills: 0,
+    },
     deadLettered: [],
     failedUnderBudget: [],
     nyangkut: [],
@@ -235,6 +241,8 @@ describe('AiUsage page', () => {
                     todayCost: 1000,
                     dailyCeiling: 5000,
                     currency: 'IDR',
+                    trippedAt: null,
+                    degradedFills: 0,
                 }}
             />,
         );

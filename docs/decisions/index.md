@@ -18,7 +18,7 @@ ADRs grouped by the problem they solve, for easier navigation than a flat timeli
 
 | Pattern | ADRs |
 |---|---|
-| **Cost guards** | [[idempotent-dispatch-cost-ceiling]] (dispatch-time + daily ceiling); [[twelve-week-narration-cutoff]] (per-signup backfill depth); [[bounded-self-heal-and-dead-letter]] (execution-time + bounded retry); [[narration-agents-on-openai-php]] (per-block agent budget); [[per-block-manual-retry]] *(superseded)* |
+| **Cost guards** | [[idempotent-dispatch-cost-ceiling]] (dispatch-time + daily ceiling) *(pause half superseded)*; [[cost-ceiling-degrades-to-rule-based]] (a hit budget degrades, every other stop pauses); [[twelve-week-narration-cutoff]] (per-signup backfill depth); [[bounded-self-heal-and-dead-letter]] (execution-time + bounded retry); [[narration-agents-on-openai-php]] (per-block agent budget); [[per-block-manual-retry]] *(superseded)* |
 | **Data isolation** | [[analytics-db-separate-connection]] (metering outlives app resets); [[date-cast-utc-shift]] (UTC off-by-one guard) |
 | **Ingest** | [[summary-first-ingest]] (whole history from paged summaries, detail hydrated on demand) |
 | **Async / resilience** | [[chained-narration]] (connected narration threads); [[strava-circuit-breaker-rate-limit]] (per-client rate-limit guard); [[narrow-trusted-proxy-headers]] (proxy trust behind tunnel); [[trust-all-proxies-cloudflare]] *(superseded)*; [[deferred-recap-windowing]] (window-gated generation) |
@@ -32,7 +32,8 @@ ADRs grouped by the problem they solve, for easier navigation than a flat timeli
 _AI cost & flow_
 - [[per-block-manual-retry]] — failed AI blocks never auto-retry; retry is manual, to keep LLM cost predictable *(superseded by [[bounded-self-heal-and-dead-letter]])*
 - [[bounded-self-heal-and-dead-letter]] — paused blocks stay honestly Pending; failed blocks get a bounded auto-retry, then a per-user dead-letter
-- [[idempotent-dispatch-cost-ceiling]] — re-runnable schedulers don't re-bill; a daily USD ceiling caps spend
+- [[idempotent-dispatch-cost-ceiling]] — re-runnable schedulers don't re-bill; a daily USD ceiling caps spend *(its "rows stay Pending past the ceiling" half superseded by [[cost-ceiling-degrades-to-rule-based]])*
+- [[cost-ceiling-degrades-to-rule-based]] — a hit daily budget serves rule-based content instead of pausing; every other stop still pauses; default ceiling $5/day
 - [[azure-openai-routing]] — per-narrator-kind Azure deployment selection via config/env
 - [[chained-narration]] — connected narration threads via prev_narrative + afterDone + resume sweep
 - [[deferred-recap-windowing]] — recap rows are Pending until the week/month window closes

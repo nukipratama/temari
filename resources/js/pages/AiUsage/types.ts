@@ -66,6 +66,9 @@ export interface Budget {
     todayCost: number;
     dailyCeiling: number | null;
     currency: string;
+    /** ISO8601 local time the ceiling first tripped today; null if it hasn't. */
+    trippedAt: string | null;
+    degradedFills: number;
 }
 
 export interface DeadLetterBlock {
