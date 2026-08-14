@@ -15,6 +15,8 @@ import {
     strainTone,
 } from '@/pages/Home/helpers';
 
+const NO_HR_HINT = 'no HR on these runs';
+
 export default function KondisiCard({
     load,
     snapshot,
@@ -25,6 +27,13 @@ export default function KondisiCard({
     /** Cream-on-dark treatment for use on a HeroPanel/sky background. */
     onSky?: boolean;
 }>) {
+    // A run with no heart-rate stream scores no TRIMP, so strain and monotony
+    // come back unknown rather than zero. Say which it is.
+    const noHr = load !== null && load.strain === null ? NO_HR_HINT : '';
+    let scope = 'not enough data yet';
+    if (snapshot !== null) {
+        scope = load === null ? 'no HR data yet' : '7 days';
+    }
     const rows: ReadonlyArray<{
         label: string;
         value: string;
@@ -47,13 +56,13 @@ export default function KondisiCard({
             label: 'Strain',
             value:
                 load?.strain != null ? Math.round(load.strain).toString() : '—',
-            hint: strainHint(load?.strain),
+            hint: noHr === '' ? strainHint(load?.strain) : noHr,
             color: strainTone(load?.strain),
         },
         {
             label: 'Monotony',
             value: load?.monotony != null ? load.monotony.toFixed(2) : '—',
-            hint: monotonyHint(load?.monotony),
+            hint: noHr === '' ? monotonyHint(load?.monotony) : noHr,
             color: monotonyTone(load?.monotony),
         },
     ];
@@ -65,7 +74,7 @@ export default function KondisiCard({
             className="flex h-full flex-col gap-3"
         >
             <SectionLabel dot onSky={onSky} className="mb-0">
-                Condition · {snapshot ? '7 days' : 'not enough data yet'}
+                Condition · {scope}
             </SectionLabel>
             {rows.map(({ label, value, hint, color }) => (
                 <div

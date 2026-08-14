@@ -325,14 +325,17 @@ export interface StoryLine {
 
 export type FormStatus = 'fresh' | 'optimal' | 'fatigued' | 'overreaching';
 
+/** The three week-window fields are null when the week's runs carried no heart
+ *  rate, which is not the same as a zero. ATL/CTL/form are EWMAs over a year of
+ *  history and stay numbers through an unscored stretch. */
 export interface TrainingLoad {
     form: number;
     form_status: FormStatus;
     ctl_42d: number;
     atl_7d: number;
-    weekly_trimp: number;
-    monotony: number;
-    strain: number;
+    weekly_trimp: number | null;
+    monotony: number | null;
+    strain: number | null;
 }
 
 export type TrendVerdict =

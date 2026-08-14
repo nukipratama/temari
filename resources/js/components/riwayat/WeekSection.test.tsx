@@ -399,4 +399,23 @@ describe('WeekSection', () => {
             ).toBeInTheDocument();
         });
     });
+
+    it('shows an unknown TRIMP, not a zero, for a summary-only week', () => {
+        render(
+            <WeekSection
+                bucket={{ ...bucket(), totalTrimp: null }}
+                snapshot={snapshot({
+                    weekly_trimp: null,
+                    monotony: null,
+                    strain: null,
+                    is_current_week: false,
+                })}
+                notes={{}}
+                moods={{}}
+                filtered={false}
+            />,
+        );
+        expect(screen.getByText('— TRIMP')).toBeInTheDocument();
+        expect(screen.queryByText('0 TRIMP')).not.toBeInTheDocument();
+    });
 });

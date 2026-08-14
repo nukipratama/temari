@@ -57,6 +57,35 @@ describe('KondisiCard', () => {
         expect(screen.getAllByText('—').length).toBe(4);
     });
 
+    it('says the runs carried no HR instead of showing a zero strain', () => {
+        render(
+            <KondisiCard
+                load={{
+                    ...load,
+                    weekly_trimp: null,
+                    monotony: null,
+                    strain: null,
+                }}
+                snapshot={snapshot}
+            />,
+        );
+        // Fitness/Fatigue survive an unscored week; strain/monotony cannot.
+        expect(screen.getByText('42.0')).toBeInTheDocument();
+        expect(screen.getAllByText('—').length).toBe(2);
+        expect(screen.getAllByText('no HR on these runs').length).toBe(2);
+        expect(screen.queryByText('0')).not.toBeInTheDocument();
+        expect(screen.queryByText('0.00')).not.toBeInTheDocument();
+    });
+
+    it('names the missing HR when a week of runs scored nothing at all', () => {
+        render(<KondisiCard load={null} snapshot={snapshot} />);
+        expect(screen.getByText(/no HR data yet/)).toBeInTheDocument();
+        expect(
+            screen.queryByText(/not enough data yet/),
+        ).not.toBeInTheDocument();
+        expect(screen.getAllByText('—').length).toBe(4);
+    });
+
     // Regression: monotony 3.15 (the demo account's actual reading) used to
     // render Monotony in the same calm leaf/green as a safe 1.2 reading — the
     // riskiest state on the card looked the calmest. Strain tracks the same axis.

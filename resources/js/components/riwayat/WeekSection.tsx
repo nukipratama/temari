@@ -69,11 +69,10 @@ const WeekSection = memo(function WeekSection({
         useSnapshotTotals && snapshot.distance_km !== null
             ? snapshot.distance_km
             : bucket.totalKm;
-    const trimpLabel = Math.round(
+    const weekTrimp =
         useSnapshotTotals && snapshot.weekly_trimp !== null
             ? snapshot.weekly_trimp
-            : bucket.totalTrimp,
-    );
+            : bucket.totalTrimp;
 
     // Filtering removes non-matching runs outright, so a week silently loses the
     // context the old dimmed-row treatment used to convey. The WeeklySnapshot
@@ -91,7 +90,7 @@ const WeekSection = memo(function WeekSection({
     // hiddenCount > 0 shows two numbers in one string, so it skips count-up.
     const countedRunCount = useCountUp(runCount);
     const countedTotalKm = useCountUp(totalKm);
-    const countedTrimp = useCountUp(trimpLabel);
+    const countedTrimp = useCountUp(weekTrimp ?? 0);
 
     return (
         <Card
@@ -118,7 +117,11 @@ const WeekSection = memo(function WeekSection({
                     />
                     <Stat
                         icon="mdi:fire"
-                        label={`${Math.round(countedTrimp)} TRIMP`}
+                        label={
+                            weekTrimp === null
+                                ? '— TRIMP'
+                                : `${Math.round(countedTrimp)} TRIMP`
+                        }
                     />
                     {snapshot && <WeeklyStatusChips snapshot={snapshot} />}
                 </div>
