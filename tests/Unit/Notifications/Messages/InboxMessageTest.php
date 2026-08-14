@@ -19,7 +19,7 @@ it('defaults to a subject-less, payload-less, self-keyed message', function (): 
 it('carries the replay payload and subject it was built with', function (): void {
     $message = new InboxMessage(
         kind: NotificationKind::PostRun,
-        title: 'Your run is in! 🏁',
+        title: 'Your run is in.',
         body: 'steady one.',
         payload: ['run_card_id' => 9],
         subjectType: Activity::class,

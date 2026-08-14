@@ -231,7 +231,7 @@ export function formatShortDateId(iso: string | null | undefined): string {
     return `${Number(d)} ${ID_MONTH_SHORT[Number(m) - 1]} ${y}`;
 }
 
-// "06.52" — zero-padded HH.MM via NAIVE_DATETIME_RE (see parseNaiveLocalDate).
+// "06:52" — zero-padded HH:MM via NAIVE_DATETIME_RE (see parseNaiveLocalDate).
 // Null when the string carries no time component.
 export function formatNaiveTimeId(
     iso: string | null | undefined,
@@ -240,10 +240,10 @@ export function formatNaiveTimeId(
     const match = NAIVE_DATETIME_RE.exec(iso);
     if (!match?.[4]) return null;
     const [, , , , h, m] = match;
-    return `${h}.${m}`;
+    return `${h}:${m}`;
 }
 
-// "19 Feb 2026 · 06.52" — short date + naive wall-clock time. Drops the time
+// "19 Feb 2026 · 06:52" — short date + naive wall-clock time. Drops the time
 // half when the string is date-only.
 export function formatShortDateTimeId(iso: string | null | undefined): string {
     const date = formatShortDateId(iso);

@@ -65,7 +65,7 @@ describe('NoVerdictPanel', () => {
         ).toBeInTheDocument();
         expect(
             screen.getByText(
-                "run something twice and i'll tell you exactly what changed.",
+                "run something twice and I'll tell you exactly what changed.",
             ),
         ).toBeInTheDocument();
     });
@@ -77,7 +77,7 @@ describe('NoVerdictPanel', () => {
             screen.getByText('one match so far. not a trend yet.'),
         ).toBeInTheDocument();
         expect(
-            screen.getByText("one more comparable run and i'll call it."),
+            screen.getByText("one more comparable run and I'll call it."),
         ).toBeInTheDocument();
     });
 

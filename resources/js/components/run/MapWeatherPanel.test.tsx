@@ -34,7 +34,7 @@ describe('MapWeatherPanel', () => {
     it('renders temp + humidity + location when present', () => {
         render(<MapWeatherPanel detail={detail()} />);
         expect(screen.getByText(/32°/)).toBeInTheDocument();
-        expect(screen.getByText(/80% lembab/)).toBeInTheDocument();
+        expect(screen.getByText(/80% humidity/)).toBeInTheDocument();
         // Splits across two lines (place / province): "Senayan" then "Jakarta Pusat".
         expect(screen.getByText('Senayan')).toBeInTheDocument();
         expect(screen.getByText('Jakarta Pusat')).toBeInTheDocument();
@@ -46,7 +46,7 @@ describe('MapWeatherPanel', () => {
                 detail={detail({ weather_temp_c: null, location_name: null })}
             />,
         );
-        expect(screen.queryByText(/lembab/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/humidity/)).not.toBeInTheDocument();
         expect(screen.queryByText('Senayan')).not.toBeInTheDocument();
     });
 
@@ -55,7 +55,7 @@ describe('MapWeatherPanel', () => {
             <MapWeatherPanel detail={detail({ weather_humidity_pct: null })} />,
         );
         expect(screen.getByText(/32°/)).toBeInTheDocument();
-        expect(screen.queryByText(/lembab/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/humidity/)).not.toBeInTheDocument();
     });
 
     it('keeps a single-segment location on one line', () => {
@@ -82,18 +82,18 @@ describe('MapWeatherPanel', () => {
 
     it('hides the wind row when weather_wind_speed_kmh is absent', () => {
         render(<MapWeatherPanel detail={detail()} />);
-        expect(screen.queryByText(/km\/j/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/km\/h/)).not.toBeInTheDocument();
     });
 
     it('renders the wind row when weather_wind_speed_kmh is present', () => {
         render(
             <MapWeatherPanel detail={detail({ weather_wind_speed_kmh: 18 })} />,
         );
-        expect(screen.getByText(/18 km\/j/)).toBeInTheDocument();
+        expect(screen.getByText(/18 km\/h/)).toBeInTheDocument();
         expect(screen.queryByText(/gust/)).not.toBeInTheDocument();
     });
 
-    it('shows the gust reading when it clears the 8 km/j delta threshold', () => {
+    it('shows the gust reading when it clears the 8 km/h delta threshold', () => {
         render(
             <MapWeatherPanel
                 detail={detail({
@@ -105,7 +105,7 @@ describe('MapWeatherPanel', () => {
         expect(screen.getByText(/gust 30/)).toBeInTheDocument();
     });
 
-    it('hides the gust reading when it is within the 8 km/j delta threshold', () => {
+    it('hides the gust reading when it is within the 8 km/h delta threshold', () => {
         render(
             <MapWeatherPanel
                 detail={detail({
@@ -114,7 +114,7 @@ describe('MapWeatherPanel', () => {
                 })}
             />,
         );
-        expect(screen.getByText(/18 km\/j/)).toBeInTheDocument();
+        expect(screen.getByText(/18 km\/h/)).toBeInTheDocument();
         expect(screen.queryByText(/gust/)).not.toBeInTheDocument();
     });
 

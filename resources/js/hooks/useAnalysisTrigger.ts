@@ -21,7 +21,7 @@ export const RATE_LIMITED_ERROR = 'rate_limited';
 /** Server refusal status for a trigger posted while narration is paused. */
 const PAUSED_STATUS = 409;
 
-const MALFORMED_RESPONSE_ERROR = 'Respons tidak valid dari server';
+const MALFORMED_RESPONSE_ERROR = 'The server sent back something unreadable';
 
 /**
  * Minimal runtime shape check for a trigger response. The fetch body is

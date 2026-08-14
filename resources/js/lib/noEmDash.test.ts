@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CTA, MOOD_EMOJI } from './copy';
+import { CTA } from './copy';
 import { METRIC_GLOSSARY } from './metricGlossary';
 
 /**
@@ -29,7 +29,6 @@ function collectStrings(value: unknown, acc: string[]): void {
 
 const COPY_SOURCES: Record<string, unknown> = {
     'copy.ts (CTA)': CTA,
-    'copy.ts (MOOD_EMOJI)': MOOD_EMOJI,
     'metricGlossary.ts (METRIC_GLOSSARY)': METRIC_GLOSSARY,
 };
 

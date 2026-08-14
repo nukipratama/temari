@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CTA, MOOD_EMOJI } from './copy';
+import { CTA } from './copy';
 
 describe('copy constants', () => {
     it('exposes the canonical CTA verbs', () => {
@@ -31,28 +31,6 @@ describe('copy constants', () => {
                 'sambungin',
                 'semua',
                 'sipMulai',
-            ].sort(),
-        );
-    });
-
-    it('maps each mood to its emoji', () => {
-        expect(MOOD_EMOJI.blazing).toBe('🔥');
-        expect(MOOD_EMOJI.easy).toBe('🌸');
-        expect(MOOD_EMOJI.wobbly).toBe('⚡');
-        expect(MOOD_EMOJI.gassed).toBe('💧');
-        expect(MOOD_EMOJI.overloaded).toBe('🌀');
-        expect(MOOD_EMOJI.chill).toBe('🍃');
-    });
-
-    it('covers every expected mood key', () => {
-        expect(Object.keys(MOOD_EMOJI).sort()).toEqual(
-            [
-                'chill',
-                'easy',
-                'gassed',
-                'overloaded',
-                'blazing',
-                'wobbly',
             ].sort(),
         );
     });

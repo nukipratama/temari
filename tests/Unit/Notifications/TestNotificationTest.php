@@ -67,7 +67,7 @@ it('builds a titled, high-urgency web push test message', function (): void {
     $message = $notification->toWebPush(User::factory()->create(), $notification);
     $payload = $message->toArray();
 
-    expect($payload['title'])->toBe('🔔 Test notification')
+    expect($payload['title'])->toBe('Test notification')
         ->and($payload['body'])->toBe(TelegramReplies::test())
         ->and($message->getOptions())->toBe(['urgency' => 'high']);
 });
@@ -76,7 +76,7 @@ it('records the test in the inbox as well, so the send leaves a trace', function
     $message = new TestNotification()->toInbox(User::factory()->create());
 
     expect($message->kind)->toBe(NotificationKind::Test)
-        ->and($message->title)->toBe('🔔 Test notification')
+        ->and($message->title)->toBe('Test notification')
         ->and($message->body)->toBe(TelegramReplies::test())
         ->and($message->dedupeKey)->toBeNull();
 });

@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
 
-it('blocks a demo user from an Inertia notification-preference write with an Indonesian flash error', function (): void {
+it('blocks a demo user from an Inertia notification-preference write with a flash error', function (): void {
     $user = User::factory()->create(['is_demo' => true]);
 
     $this->actingAs($user)
@@ -23,7 +23,7 @@ it('blocks a demo user from an Inertia notification-preference write with an Ind
             'push_enabled' => true,
         ])
         ->assertRedirect()
-        ->assertSessionHasErrors(['demo' => 'Akun demo cuma bisa dilihat, gak bisa diubah.']);
+        ->assertSessionHasErrors(['demo' => 'The demo account is read-only. Nothing here can be changed.']);
 
     expect($user->notificationPreference()->exists())->toBeFalse();
 });
@@ -35,7 +35,7 @@ it('returns a JSON 403 to a plain fetch on the notification test endpoint from t
     $this->actingAs($user)
         ->postJson('/profile/notifications/test')
         ->assertStatus(403)
-        ->assertJson(['message' => 'Akun demo cuma bisa dilihat, gak bisa diubah.']);
+        ->assertJson(['message' => 'The demo account is read-only. Nothing here can be changed.']);
 });
 
 it('does not block a normal user from the same notification-preference write', function (): void {

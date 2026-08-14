@@ -17,12 +17,12 @@ it('formats a post-run message with the title line, a blank line, the content, a
     $analysis = Analysis::factory()->make([
         'analysis_type' => AnalysisType::PostRunSpeech,
         'subject_id' => 123, // no ActivityDetail → distance-less title
-        'content' => 'Pace kamu konsisten banget.',
+        'content' => 'Your pace held all the way.',
     ]);
 
     $message = new AnalysisMessagePresenter()->format($analysis);
 
-    expect($message)->toStartWith("🏃 Your run is in! 🏁\n\nPace kamu konsisten banget.")
+    expect($message)->toStartWith("Your run is in.\n\nYour pace held all the way.")
         ->and($message)->toContain('View run details: ' . route('activities.show', 123));
 });
 
@@ -66,12 +66,12 @@ it('omits HR from the metrics line on a strap-less run', function (): void {
 it('links a weekly recap to the run history page', function (): void {
     $analysis = Analysis::factory()->make([
         'analysis_type' => AnalysisType::WeeklyRecap,
-        'content' => 'Minggu ini 28 km.',
+        'content' => '28 km this week.',
     ]);
 
     $message = new AnalysisMessagePresenter()->format($analysis);
 
-    expect($message)->toStartWith("📊 Your weekly recap is ready\n\nMinggu ini 28 km.")
+    expect($message)->toStartWith("Your weekly recap is ready\n\n28 km this week.")
         ->and($message)->toContain('View history: ' . route('activities.index'));
 });
 
@@ -79,12 +79,12 @@ it('links a monthly recap to its month on the calendar', function (): void {
     $analysis = Analysis::factory()->make([
         'analysis_type' => AnalysisType::MonthlyRecap,
         'discriminator' => '2026-06',
-        'content' => 'Bulan ini 120 km.',
+        'content' => '120 km this month.',
     ]);
 
     $message = new AnalysisMessagePresenter()->format($analysis);
 
-    expect($message)->toStartWith("🗓️ Your June recap is ready\n\nBulan ini 120 km.")
+    expect($message)->toStartWith("Your June recap is ready\n\n120 km this month.")
         ->and($message)->toContain('View calendar: ' . route('calendar', ['month' => '2026-06']));
 });
 
@@ -98,7 +98,7 @@ it('builds a post-run title carrying the run distance', function (): void {
         'subject_id' => $activity->id,
     ]);
 
-    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('🏃 Your 8.2K run is in! 🏁');
+    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('Your 8.2K run is in.');
 });
 
 it('drops the ".0" so a whole-kilometre run reads as "5K"', function (): void {
@@ -109,7 +109,7 @@ it('drops the ".0" so a whole-kilometre run reads as "5K"', function (): void {
         'subject_id' => $activity->id,
     ]);
 
-    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('🏃 Your 5K run is in! 🏁');
+    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('Your 5K run is in.');
 });
 
 it('falls back to a distance-less post-run title when the activity has no detail', function (): void {
@@ -118,7 +118,7 @@ it('falls back to a distance-less post-run title when the activity has no detail
         'subject_id' => 999999,
     ]);
 
-    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('🏃 Your run is in! 🏁');
+    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('Your run is in.');
 });
 
 it('builds a monthly-recap title naming the month', function (): void {
@@ -127,7 +127,7 @@ it('builds a monthly-recap title naming the month', function (): void {
         'discriminator' => '2026-07',
     ]);
 
-    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('🗓️ Your July recap is ready');
+    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('Your July recap is ready');
 });
 
 it('falls back to the label when the monthly-recap discriminator is missing', function (): void {
@@ -136,13 +136,13 @@ it('falls back to the label when the monthly-recap discriminator is missing', fu
         'discriminator' => null,
     ]);
 
-    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('🗓️ Your monthly recap is ready');
+    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('Your monthly recap is ready');
 });
 
 it('uses the static label for the weekly recap title', function (): void {
     $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::WeeklyRecap]);
 
-    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('📊 Your weekly recap is ready');
+    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('Your weekly recap is ready');
 });
 
 // Tapping "your weekly recap is ready" should land on *that* week, the way the

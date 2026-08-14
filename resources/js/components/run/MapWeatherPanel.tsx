@@ -39,7 +39,7 @@ export default function MapWeatherPanel({
                                     tone="cream"
                                     className="mt-1"
                                 >
-                                    {Math.round(humidity)}% lembab
+                                    {Math.round(humidity)}% humidity
                                 </Eyebrow>
                             )}
                             {windSpeed != null && (
@@ -54,7 +54,7 @@ export default function MapWeatherPanel({
                                         height={11}
                                         aria-hidden
                                     />
-                                    {Math.round(windSpeed)} km/j
+                                    {Math.round(windSpeed)} km/h
                                     {showGust && (
                                         <span>· gust {Math.round(gust)}</span>
                                     )}

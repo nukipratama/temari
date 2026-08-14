@@ -121,9 +121,9 @@ const ADAPTATION_DOT: Record<string, string> = {
 // weeks pause accretion rather than reset it, so a deload week borrows the
 // last non-deload phase's coverage instead of rendering its own.
 const SEASON_VISUAL_CAPTION: Record<SeasonPhase, string> = {
-    base: 'Thread just getting started — sparse and loosely wound.',
+    base: 'Thread just getting started, sparse and loosely wound.',
     build: 'Coverage building, bands starting to lock in.',
-    peak: 'Fully wound — the most intricate the pattern gets.',
+    peak: 'Fully wound, the most intricate the pattern gets.',
     taper: 'Pattern held at full coverage, with a rested shine.',
 };
 

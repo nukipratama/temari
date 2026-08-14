@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
 
-function inboxMessage(string $title = 'Your run is in! 🏁'): InboxMessage
+function inboxMessage(string $title = 'Your run is in.'): InboxMessage
 {
     return new InboxMessage(
         kind: NotificationKind::PostRun,
@@ -47,7 +47,7 @@ it('ignores a second record for the same user and dedupe key', function (): void
 
     expect(InboxNotification::record($user, inboxMessage('a later title'), 'analysis:7'))->toBeFalse()
         ->and(InboxNotification::query()->count())->toBe(1)
-        ->and(InboxNotification::query()->value('title'))->toBe('Your run is in! 🏁');
+        ->and(InboxNotification::query()->value('title'))->toBe('Your run is in.');
 });
 
 it('lets two users share a dedupe key', function (): void {

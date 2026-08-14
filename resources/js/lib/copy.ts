@@ -1,16 +1,9 @@
 /**
  * Canonical UI verbs and microcopy for temari.
  *
- * Voice rules (see CLAUDE.md and memory feedback_no_em_dash):
- *  - Casual global running-app register (Strava/Nike-Run-Club-adjacent): neutral,
- *    warm, contractions fine, plain words over formal ones.
- *  - No em-dashes (—) or en-dashes (–) in copy or LLM prompts. Use comma, period,
- *    colon, or parentheses for pauses.
- *  - Running domain terms stay English (pace, split, TRIMP, threshold, etc.).
- *  - Mood values are still keyed by their Indonesian slugs (blazing / easy /
- *    wobbly / gassed / overloaded / chill) pending the DB key migration in a later slice.
- *  - Light emoji touch (1 per voice line) is welcome in mascot voice and empty
- *    states. Avoid emojis in headings, KPIs, table headers, nav labels.
+ * Voice is defined in docs/voice-and-tone.md, not here. The two rules that bite
+ * most often when writing UI chrome: chrome stays Title Case (the lowercase
+ * tendency belongs to Temari's narrated voice only), and no em-dashes.
  *
  * Import these constants instead of writing inline strings so the canonical
  * verb stays consistent across pages.
@@ -40,14 +33,4 @@ export const CTA = {
     cobaLagi: 'Try again',
     /** Cancel / back out of a flow. */
     batal: 'Cancel',
-} as const;
-
-/** Mood-keyed emoji palette (D5). One emoji per voice line, never on chips. */
-export const MOOD_EMOJI = {
-    blazing: '🔥',
-    easy: '🌸',
-    wobbly: '⚡',
-    gassed: '💧',
-    overloaded: '🌀',
-    chill: '🍃',
 } as const;

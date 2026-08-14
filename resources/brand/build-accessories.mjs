@@ -48,7 +48,7 @@ const ITEMS = [
   ['accessory.shorts_lightweight', 'shorts', 'common', 'Lightweight Shorts', COLOR.stone, null],
   ['accessory.shorts_explorer', 'shorts', 'uncommon', 'Explorer Shorts', COLOR['leaf-deep'], null],
   ['accessory.shorts_negative_split', 'shorts', 'rare', 'Negative Split Shorts', RARITY.rare, DETAIL.splitShorts],
-  ['accessory.shorts_marathon', 'shorts', 'epic', 'Marathon Shorts', RARITY.epic, null],
+  ['accessory.shorts_marathon', 'shorts', 'epic', 'Half Marathon Shorts', RARITY.epic, null],
   // shoes
   ['accessory.shoes_basic', 'shoes', 'common', 'Basic Shoes', COLOR.stone, null],
   ['accessory.shoes_speed', 'shoes', 'uncommon', 'Speed Shoes', MOOD.wobbly, DETAIL.speedStripe],
