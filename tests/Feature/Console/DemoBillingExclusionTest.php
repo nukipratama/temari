@@ -52,6 +52,7 @@ const NON_BILLING = [
     'geo:backfill-locations' => 'free Nominatim lookup, no LLM and no Strava call',
     'weather:correct-forecast' => 'free Open-Meteo lookup, no LLM and no Strava call',
     'weather:backfill' => 'free Open-Meteo lookup, no LLM and no Strava call',
+    'streak:settle' => 'reads weekly snapshots and writes rest-token rows, no LLM and no Strava call',
 ];
 
 /**

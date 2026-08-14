@@ -64,6 +64,8 @@ if (is_dir(dirname(__DIR__).'/.git') || is_dir((string) getenv('GIT_DIR'))) {
         'tests/**/*.php' => 'tests/Unit/Architecture',
         'docs/**/*.md' => 'tests/Unit/Architecture',
         'resources/css/**' => 'tests/Unit/Architecture',
+        'resources/views/**' => 'tests/Unit/Architecture',
+        'public/**' => 'tests/Unit/Architecture',
         'resources/js/types/generated.ts' => 'tests/Feature/Console/GenerateTypeScriptEnumsCommandTest.php',
         'routes/**/*.php' => 'tests/Feature/Compliance',
     ]);
