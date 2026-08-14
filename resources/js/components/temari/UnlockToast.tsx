@@ -48,7 +48,7 @@ export default function UnlockToast() {
                             icon={active.icon}
                             width={24}
                             height={24}
-                            className="text-citrus-deep"
+                            className="text-citrus-ink"
                             aria-hidden
                         />
                         <div>

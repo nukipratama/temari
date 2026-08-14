@@ -33,7 +33,7 @@
                 ])>
                     <div class="font-mono text-lg font-bold tabular-nums text-ink">{{ number_format($deadLettered) }}</div>
                     @if ($deadLettered > 0)
-                        <a href="{{ url('/ai-usage') }}" class="block text-label-micro text-ember-deep underline">
+                        <a href="{{ url('/ai-usage') }}" class="block text-label-micro text-ember-ink underline">
                             /ai-usage
                         </a>
                     @else
@@ -55,7 +55,7 @@
             <div class="text-label-micro text-ink-3 mb-1">AI generation</div>
             <div @class([
                 'rounded-sm p-2 text-xs font-semibold',
-                'bg-leaf/10 text-leaf-deep' => $pauseReason === null,
+                'bg-leaf/10 text-leaf-ink' => $pauseReason === null,
                 'bg-horizon/25 text-ink' => $pauseReason !== null,
             ])>
                 @switch($pauseReason)

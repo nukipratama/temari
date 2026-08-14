@@ -19,7 +19,7 @@ interface BackLinkProps {
 
 const TONE_CLASS: Record<BackLinkTone, string> = {
     muted: 'text-ink-2 hover:text-horizon-ink',
-    accent: 'text-horizon-ink hover:text-ember-deep',
+    accent: 'text-horizon-ink hover:text-ember-ink',
 };
 
 /**

@@ -113,7 +113,7 @@ function Verdict({ pass }: Readonly<{ pass: boolean }>) {
         <span
             className={cn(
                 'text-label-micro',
-                pass ? 'text-leaf-deep' : 'text-ember-deep',
+                pass ? 'text-leaf-ink' : 'text-ember-ink',
             )}
         >
             {pass ? 'pass' : 'fail'}
@@ -207,8 +207,8 @@ export default function Design() {
                             className={cn(
                                 'text-label-micro rounded-full pad-chip',
                                 contrastFails.length === 0
-                                    ? 'bg-leaf/[0.18] text-leaf-deep'
-                                    : 'bg-ember/[0.18] text-ember-deep',
+                                    ? 'bg-leaf/[0.18] text-leaf-ink'
+                                    : 'bg-ember/[0.18] text-ember-ink',
                             )}
                         >
                             contrast {contrast.length - contrastFails.length}/
@@ -218,8 +218,8 @@ export default function Design() {
                             className={cn(
                                 'text-label-micro rounded-full pad-chip',
                                 surfaceFails.length === 0
-                                    ? 'bg-leaf/[0.18] text-leaf-deep'
-                                    : 'bg-ember/[0.18] text-ember-deep',
+                                    ? 'bg-leaf/[0.18] text-leaf-ink'
+                                    : 'bg-ember/[0.18] text-ember-ink',
                             )}
                         >
                             surfaces {surfaces.length - surfaceFails.length}/
@@ -228,7 +228,7 @@ export default function Design() {
                     </div>
 
                     {names.length === 0 && (
-                        <p className="mt-6 font-sans text-xs text-ember-deep">
+                        <p className="mt-6 font-sans text-xs text-ember-ink">
                             No custom properties readable from
                             document.styleSheets.
                         </p>

@@ -74,8 +74,8 @@ export default function JourneyStrip({
                             pace_improvement_sec === 0
                                 ? 'text-ink-2'
                                 : pace_improvement_sec > 0
-                                  ? 'text-leaf-deep'
-                                  : 'text-ember-deep',
+                                  ? 'text-leaf-ink'
+                                  : 'text-ember-ink',
                         )}
                     >
                         {pace_improvement_sec === 0 ? (
@@ -96,8 +96,8 @@ export default function JourneyStrip({
                             hr_improvement_bpm === 0
                                 ? 'text-ink-2'
                                 : hr_improvement_bpm > 0
-                                  ? 'text-leaf-deep'
-                                  : 'text-ember-deep',
+                                  ? 'text-leaf-ink'
+                                  : 'text-ember-ink',
                         )}
                     >
                         {hr_improvement_bpm === 0 ? (

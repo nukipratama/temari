@@ -10,9 +10,9 @@ import { verdictHeadline, verdictSupport } from '@/lib/verdict';
 export type JudgedVerdict = Exclude<TrendVerdict, 'not_enough_history'>;
 
 const TONE: Record<JudgedVerdict, string> = {
-    improving: 'text-leaf-deep',
+    improving: 'text-leaf-ink',
     plateaued: 'text-ink',
-    slipped: 'text-ember-deep',
+    slipped: 'text-ember-ink',
 };
 
 const VERDICT_POSE: Record<JudgedVerdict, TemariPose> = {

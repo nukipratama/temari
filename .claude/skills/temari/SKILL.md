@@ -42,7 +42,7 @@ Use the **semantic token families, never raw Tailwind colors** like `lime-500`:
 - `surface` / `surface-card` / `surface-elev` / `surface-warm` / `surface-sunken` + `line` / `line-strong` — app surfaces (dawn-shift drifts `surface`).
 - `mood-{blazing,easy,wobbly,gassed,overloaded,chill}` (each with a pastel `-bg` cell tint and an `-ink` label variant) — calendar cells + mood badges.
 - `rarity-{common,uncommon,rare,epic,legendary}` (each with an `-ink` label variant) — card rarity.
-- semantic hues `leaf` / `leaf-deep`, `ember` / `ember-deep`, `citrus` / `citrus-deep`, `stone`.
+- semantic hues `leaf` / `leaf-deep` / `leaf-ink`, `ember` / `ember-deep` / `ember-ink`, `citrus` / `citrus-ink`, `stone` (`-deep` fills a dark CTA, `-ink` carries the label; `citrus` fills no CTA and has no `-deep`).
 - `strava-orange` / `strava-orange-hover` — reserved, never themed (see below).
 
 `citrus` (`#c9971f`) is reserved for PR / legendary celebrations only. App is
@@ -50,9 +50,11 @@ Use the **semantic token families, never raw Tailwind colors** like `lime-500`:
 
 **Fill vs text.** Every saturated family ships as a pair: the vivid value is the fill (dots,
 frames, strokes, tinted cells), the derived `-ink` value is the only member allowed to carry text
-or an icon on paper. `text-rarity-legendary` is always wrong; it is `text-rarity-legendary-ink`.
-The two fills too light to reach 3:1 (legendary gold, uncommon green) keep their vibrancy and are
-drawn with a 2px `-ink` outline rather than being darkened.
+or an icon on paper. `text-rarity-legendary` is always wrong; it is `text-rarity-legendary-ink`, and
+`text-leaf-deep` / `text-ember-deep` / `text-horizon-deep` are wrong the same way. The two fills too
+light to reach 3:1 (legendary gold, uncommon green) keep their vibrancy and are drawn with a 2px
+`-ink` outline rather than being darkened. On a **dark** ground the split inverts: the vivid fill is
+the readable label there (`text-leaf` on a sky panel), so an `onSky` branch keeps it.
 
 **Radius, elevation, spacing** are scales now, not call-site guesses: `rounded-md` (14px) is the
 card corner, `shadow-e1`..`e4` is resting → floating → sheet → modal (warm-tinted, never

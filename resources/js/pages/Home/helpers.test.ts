@@ -246,29 +246,29 @@ describe('monotonyHint', () => {
 
 describe('atlTone / strainTone / monotonyTone', () => {
     it('reads calm for null (nothing to warn about yet)', () => {
-        expect(atlTone(null)).toBe('text-leaf-deep');
-        expect(strainTone(null)).toBe('text-leaf-deep');
-        expect(monotonyTone(null)).toBe('text-leaf-deep');
+        expect(atlTone(null)).toBe('text-leaf-ink');
+        expect(strainTone(null)).toBe('text-leaf-ink');
+        expect(monotonyTone(null)).toBe('text-leaf-ink');
     });
 
     it('escalates atl from calm to alert with the same buckets as atlHint', () => {
-        expect(atlTone(10)).toBe('text-leaf-deep');
-        expect(atlTone(70)).toBe('text-citrus-deep');
-        expect(atlTone(100)).toBe('text-ember-deep');
+        expect(atlTone(10)).toBe('text-leaf-ink');
+        expect(atlTone(70)).toBe('text-citrus-ink');
+        expect(atlTone(100)).toBe('text-ember-ink');
     });
 
     it('escalates strain from calm to alert with the same buckets as strainHint', () => {
-        expect(strainTone(100)).toBe('text-leaf-deep');
-        expect(strainTone(300)).toBe('text-citrus-deep');
-        expect(strainTone(600)).toBe('text-ember-deep');
+        expect(strainTone(100)).toBe('text-leaf-ink');
+        expect(strainTone(300)).toBe('text-citrus-ink');
+        expect(strainTone(600)).toBe('text-ember-ink');
     });
 
     // Regression: monotony >2.0 is the same hard-flag threshold Readiness caps
     // a session for, but the Kondisi card used to render this row a fixed
     // leaf/green regardless of value — the loudest state read as the calmest.
     it('reads monotony >2.0 as alert, matching the Readiness hard-flag threshold', () => {
-        expect(monotonyTone(1.2)).toBe('text-leaf-deep');
-        expect(monotonyTone(1.7)).toBe('text-citrus-deep');
-        expect(monotonyTone(3.15)).toBe('text-ember-deep');
+        expect(monotonyTone(1.2)).toBe('text-leaf-ink');
+        expect(monotonyTone(1.7)).toBe('text-citrus-ink');
+        expect(monotonyTone(3.15)).toBe('text-ember-ink');
     });
 });

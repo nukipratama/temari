@@ -50,7 +50,7 @@ const SOURCE_INFO: Record<
     },
     strava: {
         icon: 'mdi:cloud-check-variant-outline',
-        iconClass: 'text-leaf-deep',
+        iconClass: 'text-leaf-ink',
         label: 'Synced from Strava',
         description:
             'These zones sync automatically from Strava. Edit them manually below if you want to set your own.',
@@ -413,7 +413,7 @@ export default function HrZones({
                                     initial="hidden"
                                     animate="visible"
                                     exit="hidden"
-                                    className="mt-3 rounded-lg border border-ember/30 bg-ember/[0.08] px-3 py-2 font-sans text-xs text-ember-deep"
+                                    className="mt-3 rounded-lg border border-ember/30 bg-ember/[0.08] px-3 py-2 font-sans text-xs text-ember-ink"
                                 >
                                     Some zones don't line up. Double-check the
                                     upper and lower bounds.
@@ -452,7 +452,7 @@ export default function HrZones({
                                 animate="visible"
                                 exit="hidden"
                                 role="status"
-                                className="inline-flex items-center gap-1.5 text-sm font-semibold text-leaf-deep"
+                                className="inline-flex items-center gap-1.5 text-sm font-semibold text-leaf-ink"
                             >
                                 <Icon
                                     icon="mdi:check-circle-outline"
@@ -524,7 +524,7 @@ function NumberField({
                 <span
                     id={errorId}
                     role="alert"
-                    className="mt-1 block font-sans text-xs text-ember-deep"
+                    className="mt-1 block font-sans text-xs text-ember-ink"
                 >
                     {error}
                 </span>

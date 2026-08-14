@@ -21,7 +21,7 @@ const COLORS = [
     PALETTE.ember,
     PALETTE.citrus,
     PALETTE.horizon,
-    PALETTE.citrusDeep,
+    PALETTE.citrusInk,
     PALETTE.overloaded,
 ];
 

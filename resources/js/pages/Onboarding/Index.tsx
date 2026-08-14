@@ -291,7 +291,7 @@ function FieldError({ message }: Readonly<{ message?: string | null }>) {
     }
 
     return (
-        <p role="alert" className="mt-1.5 font-sans text-xs text-ember-deep">
+        <p role="alert" className="mt-1.5 font-sans text-xs text-ember-ink">
             {message}
         </p>
     );

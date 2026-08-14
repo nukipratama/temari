@@ -123,14 +123,17 @@
     --color-ink-3: #6e6452;
     --color-ink-on-sky: #b0a3c9;
 
-    /* Semantic accent hues. The `-deep` member is the fill for a dark CTA;
-       the plain member is a fill, not a label colour. */
+    /* Semantic accent hues. The plain member is the fill; `-deep` is the fill
+       for a dark CTA (cream text on it); `-ink` is the only member a label or
+       icon may use. `citrus` has no `-deep`: it never fills a CTA. */
     --color-leaf: #2f8f63;
     --color-leaf-deep: #256f4d;
+    --color-leaf-ink: #216446;
     --color-ember: #b23a4f;
     --color-ember-deep: #8d2c3d;
+    --color-ember-ink: #973143;
     --color-citrus: #c9971f;
-    --color-citrus-deep: #a67c14;
+    --color-citrus-ink: #785a13;
     --color-stone: #a99f8a;
 
     /* Surface tier — warm linen canvas. dawn-shift drifts the base across

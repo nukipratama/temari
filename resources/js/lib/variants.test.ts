@@ -87,7 +87,7 @@ describe('chipVariants', () => {
     it.each([
         ['neutral', 'text-ink-2'],
         ['horizon', 'text-horizon-ink'],
-        ['leaf', 'text-leaf'],
+        ['leaf', 'text-leaf-ink'],
         ['sky', 'text-sky'],
         ['onSky', 'text-cream/80'],
     ] as const)('renders tone %s', (tone, expected) => {

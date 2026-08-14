@@ -115,7 +115,7 @@ export default function DetailTiles({
                     value={t.value}
                     sub={t.sub}
                     explainerKey={t.metricKey}
-                    valueClassName={t.warn ? 'text-ember-deep' : 'text-ink'}
+                    valueClassName={t.warn ? 'text-ember-ink' : 'text-ink'}
                     // A lone trailing tile in this 2-column grid would otherwise
                     // waste half the row — span it across both columns instead.
                     className={cn(

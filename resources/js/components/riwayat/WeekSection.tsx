@@ -22,7 +22,7 @@ import { poseForFormStatus } from '@/lib/temariPose';
 import { type WeekBucket } from '@/pages/Activities/useJejakFilters';
 
 const FORM_CHIP_CLASS: Record<FormStatus, string> = {
-    fresh: 'bg-leaf/15 text-leaf-deep',
+    fresh: 'bg-leaf/15 text-leaf-ink',
     optimal: 'bg-mood-easy/15 text-mood-easy-ink',
     fatigued: 'bg-mood-blazing/15 text-mood-blazing-ink',
     overreaching: 'bg-mood-gassed/15 text-mood-gassed-ink',
@@ -222,7 +222,7 @@ function WeeklyStatusChips({
                 />
             )}
             {snapshot.ctl_42d !== null && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-leaf/15 px-2.5 py-0.5 text-xs font-semibold text-leaf-deep">
+                <span className="inline-flex items-center gap-1 rounded-full bg-leaf/15 px-2.5 py-0.5 text-xs font-semibold text-leaf-ink">
                     Fitness {snapshot.ctl_42d.toFixed(1)}
                 </span>
             )}

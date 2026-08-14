@@ -530,7 +530,7 @@ export default function Plan({
                                                             aria-label={`Delete ${day.date}`}
                                                             className={cn(
                                                                 outlineChipVariants(),
-                                                                'hover:border-ember hover:text-ember-deep',
+                                                                'hover:border-ember hover:text-ember-ink',
                                                             )}
                                                         >
                                                             Delete

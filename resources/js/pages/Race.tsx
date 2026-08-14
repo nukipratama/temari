@@ -376,7 +376,7 @@ export default function Race({
                                 {goalTimeIssue && (
                                     <p
                                         role="alert"
-                                        className="mt-1.5 font-sans text-xs text-ember-deep"
+                                        className="mt-1.5 font-sans text-xs text-ember-ink"
                                     >
                                         {goalTimeIssue}
                                     </p>
