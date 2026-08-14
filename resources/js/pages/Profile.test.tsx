@@ -69,8 +69,9 @@ describe('Profile', () => {
         ];
         render(<Profile identity={identity} stats={stats} personaMix={mix} />);
         expect(screen.getByText(/Persona/)).toBeInTheDocument();
+        expect(screen.queryByText(/thinking it over/)).not.toBeInTheDocument();
         expect(
-            screen.queryByText(/Belum dibaca Temari/),
+            screen.queryByRole('button', { name: /Try again/ }),
         ).not.toBeInTheDocument();
     });
 

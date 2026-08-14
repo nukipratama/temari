@@ -53,7 +53,7 @@ import {
     type RunCardDetail,
 } from './useRunShow';
 
-// Carries the ~1200-line canvas engine; fetched on the Bagikan tap.
+// Carries the ~1200-line canvas engine; fetched on the share tap.
 const ShareCardModal = lazy(() => import('@/components/card/ShareCardModal'));
 
 function countDisplay(
@@ -455,9 +455,9 @@ export default function RunsShow({
                                 )}
                             </div>
 
-                            {/* Kenapa [rarity] — always shown (even with no badges):
-                                rarity is a composite score, so a badge-less card still
-                                deserves an honest explanation instead of a blank. */}
+                            {/* The rarity explainer is always shown, even with no
+                                badges: rarity is a composite score, so a badge-less
+                                card still deserves an honest reason, not a blank. */}
                             <Card
                                 padding="card"
                                 className="flex flex-col gap-4"

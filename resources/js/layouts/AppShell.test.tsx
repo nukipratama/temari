@@ -192,9 +192,12 @@ describe('AppShell', () => {
             </AppShell>,
         );
 
-        expect(
-            document.getElementById('main-content')?.className,
-        ).not.toContain('page-enter');
+        const main = document.getElementById('main-content');
+        expect(main).toHaveClass('pb-28', 'outline-none', 'lg:pb-0');
+        // Exactly those three: an enter animation would have to add a class
+        // here, and starting one at opacity 0 is what read as "old page ->
+        // blank -> fade in".
+        expect(main?.className.split(' ')).toHaveLength(3);
     });
 
     it('keeps the content region mounted across a partial reload of the same page', () => {

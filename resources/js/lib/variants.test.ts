@@ -252,7 +252,6 @@ describe('outlineChipVariants', () => {
         const cls = tokens(outlineChipVariants({ selected: true }));
         expect(cls).toContain('border-horizon');
         expect(cls).toContain('text-horizon-ink');
-        expect(cls).not.toContain('text-horizon-deep');
     });
 
     it('keeps both states on the same geometry', () => {

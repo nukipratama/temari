@@ -216,14 +216,14 @@ function LifetimeEyebrow({ lifetime }: Readonly<{ lifetime?: LifetimeStats }>) {
 
 /**
  * Temari's narrative recap for the viewed month, keyed to that month's
- * MonthlyRecap analysis. MonthlyRecap is a connected + chained kind: the
- * "Coba lagi" / "Minta Temari bacain" actions resume the chain from the
- * earliest unfilled month, and "Baca ulang" (regenerate) shows only on the
- * latest narrated month (`is_chain_head`). No rule-based fallback exists for
+ * MonthlyRecap analysis. MonthlyRecap is a connected + chained kind: the retry
+ * and resume actions pick the chain up from the earliest unfilled month, and
+ * regenerate shows only on the latest narrated month (`is_chain_head`). No
+ * rule-based fallback exists for
  * monthly, so unfilled months simply show the empty / resume state. The
  * still-running current month (`awaitingSchedule`) suppresses every trigger and
  * waits for the scheduler, so its incomplete recap can't be generated on demand.
- * Temari wears the month's dominant run mood, mirroring the weekly recap on Jejak.
+ * Temari wears the month's dominant run mood, mirroring the weekly recap on the feed.
  */
 function MonthlyRecapCard({
     recap,
