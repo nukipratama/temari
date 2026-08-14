@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Ingest;
 
+use App\Enums\StravaReadPriority;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 
@@ -12,6 +13,11 @@ use App\Models\Activity;
  * `/athlete/activities` summary. Called from the surfaces that make the deeper
  * data worth its two Strava reads: opening a run, and picking one as a Past You
  * comparison.
+ *
+ * These reads are user-driven and bursty (one per run opened, unlike a whole
+ * history costing a handful), so they queue at
+ * {@see StravaReadPriority::Background} and stop at the reserve floor rather
+ * than starving a freshly-finished run's webhook ingest.
  */
 class DetailHydrator
 {
@@ -33,7 +39,7 @@ class DetailHydrator
             return false;
         }
 
-        IngestActivityJob::dispatch($activityId);
+        IngestActivityJob::dispatch($activityId, StravaReadPriority::Background);
 
         return true;
     }

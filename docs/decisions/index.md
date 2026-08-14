@@ -21,7 +21,7 @@ ADRs grouped by the problem they solve, for easier navigation than a flat timeli
 | **Cost guards** | [[idempotent-dispatch-cost-ceiling]] (dispatch-time + daily ceiling) *(pause half superseded)*; [[cost-ceiling-degrades-to-rule-based]] (a hit budget degrades, every other stop pauses); [[twelve-week-narration-cutoff]] (per-signup backfill depth); [[bounded-self-heal-and-dead-letter]] (execution-time + bounded retry); [[narration-agents-on-openai-php]] (per-block agent budget); [[per-block-manual-retry]] *(superseded)* |
 | **Data isolation** | [[analytics-db-separate-connection]] (metering outlives app resets); [[date-cast-utc-shift]] (UTC off-by-one guard) |
 | **Ingest** | [[summary-first-ingest]] (whole history from paged summaries, detail hydrated on demand) |
-| **Async / resilience** | [[chained-narration]] (connected narration threads); [[strava-circuit-breaker-rate-limit]] (per-client rate-limit guard); [[narrow-trusted-proxy-headers]] (proxy trust behind tunnel); [[trust-all-proxies-cloudflare]] *(superseded)*; [[deferred-recap-windowing]] (window-gated generation) |
+| **Async / resilience** | [[chained-narration]] (connected narration threads); [[strava-circuit-breaker-rate-limit]] (per-client rate-limit guard); [[live-ingest-read-reserve]] (a quarter of that budget held for live ingest); [[narrow-trusted-proxy-headers]] (proxy trust behind tunnel); [[trust-all-proxies-cloudflare]] *(superseded)*; [[deferred-recap-windowing]] (window-gated generation) |
 | **AI routing** | [[azure-openai-routing]] (per-narrator-kind deployment selection); [[narration-agents-on-openai-php]] (SDK seam + tool calling); [[demo-user-billing-exclusion]] (demo user omitted from auto-billing); [[demo-triggers-served-rule-based]] (demo triggers filled rule-based); [[scoped-run-qa-not-an-analysis-row]] (Q&A scoped by construction, stored outside the row model) |
 | **Notifications** | [[inbox-is-an-always-on-channel]] (the inbox as an unmuteable third channel); [[demo-notifications-are-inbox-only]] (demo routed to the record, never to an interruption) |
 | **Ops / deploy** | [[fixed-session-cookie]] (stable cookie name); [[defer-config-cache]] (config cache timing); [[telegram-account-linking]] (signed deep-link token) |
@@ -50,6 +50,7 @@ _Data_
 _Infra & Strava_
 - [[summary-first-ingest]] — a connect stores the whole history from paged summaries; detail, streams and the story layer are hydrated only for runs someone opens
 - [[strava-circuit-breaker-rate-limit]] — Strava rate limit is per-client, so the guard key is global
+- [[live-ingest-read-reserve]] — browsing-driven hydration stops at 75% of each read bucket, on its own throttle key, so it cannot starve a fresh run's ingest
 - [[fixed-session-cookie]] — fixed cookie name + Redis prefixes, not APP_NAME-derived
 - [[trust-all-proxies-cloudflare]] — trust all proxies behind the Cloudflare tunnel *(superseded by [[narrow-trusted-proxy-headers]])*
 - [[narrow-trusted-proxy-headers]] — trust only X-Forwarded-For/Proto/Port; trustHosts rejected because a Host allowlist would fail the healthcheck

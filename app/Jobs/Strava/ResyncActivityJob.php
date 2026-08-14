@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs\Strava;
 
 use Throwable;
+use App\Enums\StravaReadPriority;
 use App\Models\Activity;
 use App\Services\AI\AnalysisService;
 use App\Services\Run\Ingest\ActivityPipeline;
@@ -57,7 +58,7 @@ class ResyncActivityJob implements ShouldQueue
                 ->when(fn (Throwable $e): bool => $e instanceof StravaRateLimitedException
                     || $e instanceof StravaCircuitOpenException)
                 ->backoff(self::RATE_LIMIT_BACKOFF_MINUTES)
-                ->by('strava-ingest'),
+                ->by(StravaReadPriority::Live->throttleKey()),
         ];
     }
 

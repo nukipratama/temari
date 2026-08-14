@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import RunHydratingNotice from './RunHydratingNotice';
@@ -73,9 +73,48 @@ describe('RunHydratingNotice', () => {
         setVisibility('visible');
         render(<RunHydratingNotice hydrating />);
 
-        vi.advanceTimersByTime(8000 * 40);
+        act(() => vi.advanceTimersByTime(8000 * 40));
 
         expect(reload).toHaveBeenCalledTimes(30);
+    });
+
+    it('warns that the deeper fetch queues behind runs finishing right now', () => {
+        render(<RunHydratingNotice hydrating />);
+
+        expect(screen.getByRole('status')).toHaveTextContent(
+            /queues behind runs finishing right now/i,
+        );
+    });
+
+    it('stops promising a self-refresh once it has stopped polling', () => {
+        setVisibility('visible');
+        render(<RunHydratingNotice hydrating />);
+
+        expect(screen.getByRole('status')).toHaveTextContent(
+            /this page refreshes itself/i,
+        );
+
+        act(() => vi.advanceTimersByTime(8000 * 40));
+
+        const notice = screen.getByRole('status');
+        expect(notice).not.toHaveTextContent(/this page refreshes itself/i);
+        expect(notice).toHaveTextContent(/i stopped reloading on your behalf/i);
+    });
+
+    it('offers a working manual check only after it has stopped polling', () => {
+        setVisibility('visible');
+        render(<RunHydratingNotice hydrating />);
+
+        expect(
+            screen.queryByRole('button', { name: /check again/i }),
+        ).toBeNull();
+
+        act(() => vi.advanceTimersByTime(8000 * 40));
+        reload.mockClear();
+
+        fireEvent.click(screen.getByRole('button', { name: /check again/i }));
+
+        expect(reload).toHaveBeenCalledTimes(1);
     });
 
     it('never polls when there is nothing to wait for', () => {
