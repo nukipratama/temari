@@ -71,8 +71,8 @@ it('keeps one user out of another user cached value', function (): void {
     SharedPropCacheKey::TelegramConnected->remember(1, fn (): bool => true);
     SharedPropCacheKey::TelegramConnected->remember(2, fn (): bool => false);
 
-    expect(Cache::get(SharedPropCacheKey::TelegramConnected->key(1)))->toBeTrue()
-        ->and(Cache::get(SharedPropCacheKey::TelegramConnected->key(2)))->toBeFalse();
+    expect(SharedPropCacheKey::TelegramConnected->remember(1, fn (): bool => false))->toBeTrue()
+        ->and(SharedPropCacheKey::TelegramConnected->remember(2, fn (): bool => true))->toBeFalse();
 });
 
 it('recomputes after a forget', function (): void {
@@ -97,5 +97,21 @@ it('forgets only the targeted user', function (): void {
     SharedPropCacheKey::EquippedAccessories->forget(1);
 
     expect(Cache::has(SharedPropCacheKey::EquippedAccessories->key(1)))->toBeFalse()
-        ->and(Cache::get(SharedPropCacheKey::EquippedAccessories->key(2)))->toBe('two');
+        ->and(SharedPropCacheKey::EquippedAccessories->remember(2, fn (): string => 'recomputed'))->toBe('two');
+});
+
+it('hands an int back as an int over redis, which stores numerics unserialized', function (): void {
+    config()->set('cache.default', 'redis');
+    Cache::purge();
+
+    Cache::put('shared-prop-store-probe', 5, 60);
+    expect(Cache::get('shared-prop-store-probe'))->toBe('5');
+    Cache::forget('shared-prop-store-probe');
+
+    SharedPropCacheKey::UnreadNotifications->forget(1);
+
+    expect(SharedPropCacheKey::UnreadNotifications->remember(1, fn (): int => 5))->toBe(5)
+        ->and(SharedPropCacheKey::UnreadNotifications->remember(1, fn (): int => 99))->toBe(5);
+
+    SharedPropCacheKey::UnreadNotifications->forget(1);
 });
