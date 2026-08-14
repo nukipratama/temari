@@ -11,6 +11,7 @@ use App\Models\AI\RunQuestion;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\Narrators\RunQuestionNarrator;
+use App\Services\AI\RunQuestion\RuleBasedRunAnswer;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
@@ -20,8 +21,9 @@ use Throwable;
  *
  * Not an {@see AnalyzeRowJob}: that hierarchy settles Analysis rows and draws on
  * their self-heal budget, neither of which a question has. What it does share is
- * the queue, the tries/backoff shape, and the refusal to bill while generation
- * is paused.
+ * the queue, the tries/backoff shape, the refusal to bill while generation is
+ * paused, and the fall back to {@see RuleBasedRunAnswer} when the daily spend
+ * ceiling is the only thing stopping it.
  */
 class AnswerRunQuestionJob implements ShouldQueue
 {
@@ -32,7 +34,6 @@ class AnswerRunQuestionJob implements ShouldQueue
     /** @var array<int, int> */
     public array $backoff = [10, 60];
 
-    /** Recorded when the ceiling or the kill switch trips between dispatch and run. */
     private const string PAUSED_ERROR = 'AI generation is paused.';
 
     public function __construct(public readonly int $runQuestionId)
@@ -47,6 +48,24 @@ class AnswerRunQuestionJob implements ShouldQueue
             return;
         }
 
+        $activity = Activity::query()->with('detail')->find($question->activity_id);
+        $detail = $activity?->detail;
+        if ($activity === null || $detail === null) {
+            $this->settleFailed($question, "Activity {$question->activity_id} not analyzed yet");
+
+            return;
+        }
+
+        if ($service->costCeilingDegraded()) {
+            $question->update([
+                'status' => AnalysisStatus::Done,
+                'answer' => RuleBasedRunAnswer::for($detail, $question->question),
+                'error' => null,
+            ]);
+
+            return;
+        }
+
         if ($service->generationPaused()) {
             $this->settleFailed($question, self::PAUSED_ERROR);
 
@@ -56,12 +75,6 @@ class AnswerRunQuestionJob implements ShouldQueue
         $question->update(['status' => AnalysisStatus::Processing]);
 
         try {
-            $activity = Activity::query()->with('detail')->find($question->activity_id);
-            $detail = $activity?->detail;
-            if ($activity === null || $detail === null) {
-                throw new UnavailableException("Activity {$question->activity_id} not analyzed yet");
-            }
-
             $question->update([
                 'status' => AnalysisStatus::Done,
                 'answer' => $narrator->generate($activity, $detail, $question->question),

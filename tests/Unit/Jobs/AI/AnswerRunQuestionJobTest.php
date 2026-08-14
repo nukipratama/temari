@@ -8,6 +8,7 @@ use App\Jobs\AI\AnswerRunQuestionJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\RunQuestion;
+use App\Models\AI\TokenUsage;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
@@ -15,6 +16,7 @@ use App\Services\AI\Narrators\RunQuestionNarrator;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
@@ -83,6 +85,27 @@ it('refuses to bill while generation is paused, and says so on the row', functio
 
     expect($row->refresh()->status)->toBe(AnalysisStatus::Failed)
         ->and($row->error)->toBe('AI generation is paused.');
+});
+
+it('serves the deterministic answer when the daily cost ceiling is the only stop', function (): void {
+    config([
+        'azure_openai.daily_cost_ceiling' => 1.0,
+        'azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]],
+    ]);
+    TokenUsage::query()->create([
+        'kind' => 'run_question', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
+        'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
+    ]);
+    $row = questionRow();
+
+    $narrator = Mockery::mock(RunQuestionNarrator::class);
+    $narrator->shouldNotReceive('generate');
+
+    new AnswerRunQuestionJob($row->id)->handle(app(AnalysisService::class), $narrator);
+
+    expect($row->refresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->error)->toBeNull()
+        ->and($row->answer)->toBeString()->not->toBeEmpty();
 });
 
 it('fails the question when the run has no detail to read', function (): void {
