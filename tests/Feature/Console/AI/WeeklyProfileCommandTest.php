@@ -34,7 +34,7 @@ it('refreshes the Kata Temari voice once, week-keyed and invalidate:false, for a
         ->assertSuccessful();
 
     // One request per user per week, not two: the week key is the refresh, so a
-    // mid-week "Baca ulang" is never re-billed by the scheduler.
+    // mid-week "Reread" is never re-billed by the scheduler.
     expect($captured)->toHaveCount(1);
 
     $voice = $captured[0];

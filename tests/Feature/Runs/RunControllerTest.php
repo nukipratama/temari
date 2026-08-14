@@ -416,7 +416,7 @@ describe('week deep link', function (): void {
                 ->where('weeklySnapshots.0.week_ending', fn (string $w): bool => str_starts_with($w, '2026-05-17')));
     });
 
-    // The head flag drives whether "Baca ulang" regenerates in place; getting it
+    // The head flag drives whether "Reread" regenerates in place; getting it
     // wrong on a stale deep link (an old weekly-recap notification, opened after
     // later weeks have closed) would expose a regenerate that actually targets a
     // different week server-side and desyncs the chain.
