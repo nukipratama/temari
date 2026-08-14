@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Aksesori dress-up surface (Daybreak handoff): one `equipped` flag
+ * Accessories dress-up surface (Daybreak handoff): one `equipped` flag
  * per unlock row. The server enforces "one equipped per slot" by
  * un-equipping siblings whose unlock_key shares the slot prefix
  * (headband_* / medali_* / pita_* / aura_*) on equip.

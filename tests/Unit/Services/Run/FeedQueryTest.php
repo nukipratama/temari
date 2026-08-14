@@ -2,38 +2,38 @@
 
 declare(strict_types=1);
 
-use App\Http\Requests\JejakFilterRequest;
+use App\Http\Requests\FeedFilterRequest;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\StoryLine;
 use App\Models\User;
-use App\Services\Run\JejakFilters;
-use App\Services\Run\JejakQuery;
+use App\Services\Run\FeedFilters;
+use App\Services\Run\FeedQuery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
-function jejakFiltersFor(User $user, string $query = ''): JejakFilters
+function feedFiltersFor(User $user, string $query = ''): FeedFilters
 {
-    return app(JejakQuery::class)->filtersFor(
+    return app(FeedQuery::class)->filtersFor(
         $user,
-        JejakFilterRequest::create('/activities'.($query === '' ? '' : '?'.$query)),
+        FeedFilterRequest::create('/activities'.($query === '' ? '' : '?'.$query)),
     );
 }
 
 /** @return array<int, string> */
-function jejakRunNames(User $user, string $query = ''): array
+function feedRunNames(User $user, string $query = ''): array
 {
-    $jejak = app(JejakQuery::class);
+    $feed = app(FeedQuery::class);
 
-    return $jejak->for($user, jejakFiltersFor($user, $query))
+    return $feed->for($user, feedFiltersFor($user, $query))
         ->get()
         ->map(fn (Activity $run): string => (string) $run->detail?->name)
         ->all();
 }
 
-function jejakRun(User $user, string $name, Carbon $date, ?float $distance = null, ?int $elapsedTime = null): Activity
+function feedRun(User $user, string $name, Carbon $date, ?float $distance = null, ?int $elapsedTime = null): Activity
 {
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
@@ -48,9 +48,9 @@ function jejakRun(User $user, string $name, Carbon $date, ?float $distance = nul
 
 it('keeps the requested range when it already reaches the newest run', function (): void {
     $user = User::factory()->create();
-    jejakRun($user, 'Recent', Carbon::now()->subDays(3));
+    feedRun($user, 'Recent', Carbon::now()->subDays(3));
 
-    $filters = jejakFiltersFor($user);
+    $filters = feedFiltersFor($user);
 
     expect($filters->range)->toBe('8w')
         ->and($filters->rangeAutoWidened)->toBeFalse()
@@ -58,7 +58,7 @@ it('keeps the requested range when it already reaches the newest run', function 
 });
 
 it('keeps the requested range when the user has no runs at all', function (): void {
-    $filters = jejakFiltersFor(User::factory()->create());
+    $filters = feedFiltersFor(User::factory()->create());
 
     expect($filters->range)->toBe('8w')
         ->and($filters->rangeAutoWidened)->toBeFalse();
@@ -66,9 +66,9 @@ it('keeps the requested range when the user has no runs at all', function (): vo
 
 it('widens to the smallest preset that reaches the newest run', function (int $daysAgo, string $expected): void {
     $user = User::factory()->create();
-    jejakRun($user, 'Old', Carbon::now()->subDays($daysAgo));
+    feedRun($user, 'Old', Carbon::now()->subDays($daysAgo));
 
-    $filters = jejakFiltersFor($user);
+    $filters = feedFiltersFor($user);
 
     expect($filters->range)->toBe($expected)
         ->and($filters->rangeAutoWidened)->toBeTrue();
@@ -81,16 +81,16 @@ it('widens to the smallest preset that reaches the newest run', function (int $d
 
 it('drops the lower bound entirely for the all range', function (): void {
     $user = User::factory()->create();
-    jejakRun($user, 'Ancient', Carbon::now()->subDays(900));
+    feedRun($user, 'Ancient', Carbon::now()->subDays(900));
 
-    expect(jejakFiltersFor($user, 'range=all')->rangeStart)->toBeNull();
+    expect(feedFiltersFor($user, 'range=all')->rangeStart)->toBeNull();
 });
 
 it('pins a week deep link to that week and suppresses the auto-widen flag', function (): void {
     $user = User::factory()->create();
-    jejakRun($user, 'Ancient', Carbon::now()->subDays(900));
+    feedRun($user, 'Ancient', Carbon::now()->subDays(900));
 
-    $filters = jejakFiltersFor($user, 'week=2026-06-17');
+    $filters = feedFiltersFor($user, 'week=2026-06-17');
 
     expect($filters->week?->toDateString())->toBe('2026-06-21')
         ->and($filters->rangeStart?->toDateString())->toBe('2026-06-15')
@@ -99,69 +99,69 @@ it('pins a week deep link to that week and suppresses the auto-widen flag', func
 
 it('bounds a week deep link on both sides', function (): void {
     $user = User::factory()->create();
-    jejakRun($user, 'In week', Carbon::parse('2026-06-21 23:30:00'));
-    jejakRun($user, 'Before week', Carbon::parse('2026-06-14 08:00:00'));
-    jejakRun($user, 'After week', Carbon::parse('2026-06-22 06:00:00'));
+    feedRun($user, 'In week', Carbon::parse('2026-06-21 23:30:00'));
+    feedRun($user, 'Before week', Carbon::parse('2026-06-14 08:00:00'));
+    feedRun($user, 'After week', Carbon::parse('2026-06-22 06:00:00'));
 
-    expect(jejakRunNames($user, 'week=2026-06-17'))->toBe(['In week']);
+    expect(feedRunNames($user, 'week=2026-06-17'))->toBe(['In week']);
 });
 
 it('filters by mood through the post-run story line', function (): void {
     $user = User::factory()->create();
-    $gassed = jejakRun($user, 'Lemes run', Carbon::now()->subDays(3));
-    jejakRun($user, 'No story line', Carbon::now()->subDays(4));
+    $gassed = feedRun($user, 'Lemes run', Carbon::now()->subDays(3));
+    feedRun($user, 'No story line', Carbon::now()->subDays(4));
     StoryLine::factory()->for($gassed)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'gassed']);
 
-    expect(jejakRunNames($user, 'mood=gassed'))->toBe(['Lemes run'])
-        ->and(jejakRunNames($user, 'mood=blazing'))->toBe([]);
+    expect(feedRunNames($user, 'mood=gassed'))->toBe(['Lemes run'])
+        ->and(feedRunNames($user, 'mood=blazing'))->toBe([]);
 });
 
 it('filters by distance band with an exclusive upper bound', function (): void {
     $user = User::factory()->create();
-    jejakRun($user, 'Five', Carbon::now()->subDays(3), 4999.0);
-    jejakRun($user, 'Ten', Carbon::now()->subDays(4), 5000.0);
+    feedRun($user, 'Five', Carbon::now()->subDays(3), 4999.0);
+    feedRun($user, 'Ten', Carbon::now()->subDays(4), 5000.0);
 
-    expect(jejakRunNames($user, 'dist=0-5'))->toBe(['Five'])
-        ->and(jejakRunNames($user, 'dist=5-10'))->toBe(['Ten']);
+    expect(feedRunNames($user, 'dist=0-5'))->toBe(['Five'])
+        ->and(feedRunNames($user, 'dist=5-10'))->toBe(['Ten']);
 });
 
 it('leaves an open-ended top band', function (): void {
     $user = User::factory()->create();
-    jejakRun($user, 'Ultra', Carbon::now()->subDays(3), 80000.0);
+    feedRun($user, 'Ultra', Carbon::now()->subDays(3), 80000.0);
 
-    expect(jejakRunNames($user, 'dist=21up'))->toBe(['Ultra']);
+    expect(feedRunNames($user, 'dist=21up'))->toBe(['Ultra']);
 });
 
 it('orders newest first by default', function (): void {
     $user = User::factory()->create();
-    jejakRun($user, 'First', Carbon::now()->subDays(4));
-    jejakRun($user, 'Second', Carbon::now()->subDays(3));
+    feedRun($user, 'First', Carbon::now()->subDays(4));
+    feedRun($user, 'Second', Carbon::now()->subDays(3));
 
-    expect(jejakRunNames($user))->toBe(['Second', 'First']);
+    expect(feedRunNames($user))->toBe(['Second', 'First']);
 });
 
 it('ranks by distance for the longest sort', function (): void {
     $user = User::factory()->create();
-    jejakRun($user, 'Short', Carbon::now()->subDays(3), 3000.0);
-    jejakRun($user, 'Long', Carbon::now()->subDays(4), 30000.0);
+    feedRun($user, 'Short', Carbon::now()->subDays(3), 3000.0);
+    feedRun($user, 'Long', Carbon::now()->subDays(4), 30000.0);
 
-    expect(jejakRunNames($user, 'sort=longest'))->toBe(['Long', 'Short']);
+    expect(feedRunNames($user, 'sort=longest'))->toBe(['Long', 'Short']);
 });
 
 it('ranks by pace for the fastest sort and drops runs with no pace', function (): void {
     $user = User::factory()->create();
-    jejakRun($user, 'Slow', Carbon::now()->subDays(3), 10000.0, 4000);
-    jejakRun($user, 'Fast', Carbon::now()->subDays(4), 10000.0, 3000);
-    jejakRun($user, 'No pace', Carbon::now()->subDays(5), 0.0, 0);
+    feedRun($user, 'Slow', Carbon::now()->subDays(3), 10000.0, 4000);
+    feedRun($user, 'Fast', Carbon::now()->subDays(4), 10000.0, 3000);
+    feedRun($user, 'No pace', Carbon::now()->subDays(5), 0.0, 0);
 
-    expect(jejakRunNames($user, 'sort=fastest'))->toBe(['Fast', 'Slow']);
+    expect(feedRunNames($user, 'sort=fastest'))->toBe(['Fast', 'Slow']);
 });
 
 it('never leaks another user\'s runs', function (): void {
     $user = User::factory()->create();
     $other = User::factory()->create();
-    jejakRun($user, 'Mine', Carbon::now()->subDays(3));
-    jejakRun($other, 'Theirs', Carbon::now()->subDays(3));
+    feedRun($user, 'Mine', Carbon::now()->subDays(3));
+    feedRun($other, 'Theirs', Carbon::now()->subDays(3));
 
-    expect(jejakRunNames($user))->toBe(['Mine']);
+    expect(feedRunNames($user))->toBe(['Mine']);
 });

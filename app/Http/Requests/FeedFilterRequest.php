@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
-use App\Services\Run\JejakFilters;
+use App\Services\Run\FeedFilters;
 use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Carbon;
 
 /**
- * Parses the Jejak listing's query string. Every accessor normalises rather
+ * Parses the Feed listing's query string. Every accessor normalises rather
  * than rejects: an unknown or malformed value widens the view instead of
  * erroring, so a stale or hand-edited URL still shows runs. That is why
  * {@see rules()} is empty.
  */
-class JejakFilterRequest extends FormRequest
+class FeedFilterRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -35,7 +35,7 @@ class JejakFilterRequest extends FormRequest
         $raw = $this->query('range');
         $candidate = is_string($raw) ? $raw : '';
 
-        if ($candidate === JejakFilters::RANGE_ALL || array_key_exists($candidate, JejakFilters::RANGE_DAYS)) {
+        if ($candidate === FeedFilters::RANGE_ALL || array_key_exists($candidate, FeedFilters::RANGE_DAYS)) {
             return $candidate;
         }
 
@@ -58,7 +58,7 @@ class JejakFilterRequest extends FormRequest
 
         return array_values(array_intersect(
             array_unique(explode(',', $raw)),
-            JejakFilters::MOODS,
+            FeedFilters::MOODS,
         ));
     }
 
@@ -88,7 +88,7 @@ class JejakFilterRequest extends FormRequest
     {
         $raw = $this->query('sort');
 
-        return is_string($raw) && in_array($raw, JejakFilters::SORTS, true) ? $raw : JejakFilters::SORT_NEWEST;
+        return is_string($raw) && in_array($raw, FeedFilters::SORTS, true) ? $raw : FeedFilters::SORT_NEWEST;
     }
 
     /** The selected distance band key, or null for "any distance". */
@@ -96,6 +96,6 @@ class JejakFilterRequest extends FormRequest
     {
         $raw = $this->query('dist');
 
-        return is_string($raw) && array_key_exists($raw, JejakFilters::DISTANCE_BANDS) ? $raw : null;
+        return is_string($raw) && array_key_exists($raw, FeedFilters::DISTANCE_BANDS) ? $raw : null;
     }
 }

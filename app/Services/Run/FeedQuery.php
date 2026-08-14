@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run;
 
-use App\Http\Requests\JejakFilterRequest;
+use App\Http\Requests\FeedFilterRequest;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\StoryLine;
@@ -12,9 +12,9 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
-class JejakQuery
+class FeedQuery
 {
-    public function filtersFor(User $user, JejakFilterRequest $request): JejakFilters
+    public function filtersFor(User $user, FeedFilterRequest $request): FeedFilters
     {
         $requestedRange = $request->range();
 
@@ -39,7 +39,7 @@ class JejakQuery
             $rangeAutoWidened = false;
         }
 
-        return new JejakFilters(
+        return new FeedFilters(
             range: $effectiveRange,
             rangeAutoWidened: $rangeAutoWidened,
             rangeStart: $rangeStart,
@@ -53,7 +53,7 @@ class JejakQuery
     /**
      * @return Builder<Activity>
      */
-    public function for(User $user, JejakFilters $filters): Builder
+    public function for(User $user, FeedFilters $filters): Builder
     {
         $query = Activity::query()
             ->where('user_id', $user->id)
@@ -70,7 +70,7 @@ class JejakQuery
                 }
 
                 if ($filters->distanceBand !== null) {
-                    [$min, $max] = JejakFilters::DISTANCE_BANDS[$filters->distanceBand];
+                    [$min, $max] = FeedFilters::DISTANCE_BANDS[$filters->distanceBand];
                     $q->where('distance', '>=', $min);
                     if ($max !== null) {
                         $q->where('distance', '<', $max);
@@ -122,20 +122,20 @@ class JejakQuery
     private function widenRangeToReach(string $requestedRange, ?int $latestRunDaysAgo): string
     {
         $alreadyReaches = $latestRunDaysAgo === null
-            || $requestedRange === JejakFilters::RANGE_ALL
-            || $latestRunDaysAgo <= JejakFilters::RANGE_DAYS[$requestedRange] - 1;
+            || $requestedRange === FeedFilters::RANGE_ALL
+            || $latestRunDaysAgo <= FeedFilters::RANGE_DAYS[$requestedRange] - 1;
 
         if ($alreadyReaches) {
             return $requestedRange;
         }
 
-        foreach (JejakFilters::RANGE_DAYS as $range => $days) {
+        foreach (FeedFilters::RANGE_DAYS as $range => $days) {
             if ($latestRunDaysAgo <= $days - 1) {
                 return $range;
             }
         }
 
-        return JejakFilters::RANGE_ALL;
+        return FeedFilters::RANGE_ALL;
     }
 
     /**
@@ -143,11 +143,11 @@ class JejakQuery
      */
     private function rangeStartFor(string $range): ?Carbon
     {
-        if ($range === JejakFilters::RANGE_ALL) {
+        if ($range === FeedFilters::RANGE_ALL) {
             return null;
         }
 
-        return Carbon::today()->subDays(JejakFilters::RANGE_DAYS[$range] - 1);
+        return Carbon::today()->subDays(FeedFilters::RANGE_DAYS[$range] - 1);
     }
 
     /**
@@ -160,7 +160,7 @@ class JejakQuery
      */
     private function applySort(Builder $query, string $sort): void
     {
-        if ($sort === JejakFilters::SORT_NEWEST) {
+        if ($sort === FeedFilters::SORT_NEWEST) {
             $query->orderByDesc('id');
 
             return;
@@ -169,7 +169,7 @@ class JejakQuery
         $query->join('activity_details as sort_detail', 'sort_detail.activity_id', '=', 'activities.id')
             ->select('activities.*');
 
-        if ($sort === JejakFilters::SORT_LONGEST) {
+        if ($sort === FeedFilters::SORT_LONGEST) {
             $query->orderByDesc('sort_detail.distance');
 
             return;

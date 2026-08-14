@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\AccountController;
-use App\Http\Controllers\AksesoriController;
+use App\Http\Controllers\AccessoryController;
 use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Controllers\Api\RunQuestionController;
 use App\Http\Controllers\Api\CardReplayController;
@@ -150,8 +150,8 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::post('/plan/regenerate', [PlanController::class, 'regenerate'])->name('plan.regenerate');
     Route::patch('/plan/sessions/{plannedSession}', [PlanController::class, 'update'])->name('plan.sessions.update');
     Route::delete('/plan/sessions/{plannedSession}', [PlanController::class, 'destroy'])->name('plan.sessions.destroy');
-    Route::get('/accessories', [AksesoriController::class, 'index'])->name('accessories');
-    Route::post('/api/accessories/equip', [AksesoriController::class, 'equip'])
+    Route::get('/accessories', [AccessoryController::class, 'index'])->name('accessories');
+    Route::post('/api/accessories/equip', [AccessoryController::class, 'equip'])
         ->name('api.accessories.equip');
     Route::get('/badges', [BadgeBoardController::class, 'index'])->name('badges');
 

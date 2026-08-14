@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\EquipAksesoriRequest;
+use App\Http\Requests\EquipAccessoryRequest;
 use App\Models\User;
 use App\Models\UserUnlock;
 use App\Services\Gamification\EquippedAccessories;
@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class AksesoriController extends Controller
+class AccessoryController extends Controller
 {
     public function __construct(
         private readonly EquippedAccessories $equipped,
@@ -73,7 +73,7 @@ class AksesoriController extends Controller
         ]);
     }
 
-    public function equip(EquipAksesoriRequest $request): RedirectResponse
+    public function equip(EquipAccessoryRequest $request): RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
