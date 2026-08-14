@@ -6,9 +6,9 @@ import { memo, useRef, type ReactNode } from 'react';
 import type { AnalysisPayload, Mood } from '@/types/inertia';
 
 import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
+import HistoryFilter from '@/components/history/HistoryFilter';
+import HistoryTabs from '@/components/history/HistoryTabs';
 import CoachMark from '@/components/onboarding/CoachMark';
-import RiwayatFilter from '@/components/riwayat/RiwayatFilter';
-import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import SendNotificationButton from '@/components/SendNotificationButton';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
@@ -117,7 +117,7 @@ export default function Calendar({
                 </header>
 
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                    <RiwayatTabs active="kalender" />
+                    <HistoryTabs active="calendar" />
                     <div className="flex flex-wrap items-center gap-2.5">
                         <MonthNav
                             label={monthLabel}
@@ -125,7 +125,7 @@ export default function Calendar({
                             nextMonth={nextMonth}
                             showTodayButton={!isCurrentMonth}
                         />
-                        <RiwayatFilter
+                        <HistoryFilter
                             mood={{
                                 selected: moodFilter,
                                 options: MOOD_FILTER_OPTIONS,

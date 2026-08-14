@@ -32,7 +32,7 @@ export interface FeaturedCard {
     name: string;
     subtitle: string;
     km: string;
-    durasi: string;
+    duration: string;
     trimp: string;
     rarity: Rarity;
     mood: Mood;
@@ -55,7 +55,7 @@ function toFeaturedCard(
         name: card.special_move,
         subtitle: `${RARITY_LABELS[card.rarity]} · ${formatNaiveRelativeId(r.start_date_local)}`,
         km: formatKm(r.distance),
-        durasi:
+        duration:
             r.elapsed_time != null ? formatDurationHMS(r.elapsed_time) : '—',
         trimp:
             r.trimp_edwards != null ? String(Math.round(r.trimp_edwards)) : '—',

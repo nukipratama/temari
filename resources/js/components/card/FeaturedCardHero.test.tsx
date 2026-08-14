@@ -39,7 +39,7 @@ describe('FeaturedCardHero', () => {
         expect(screen.getByText('★ Rare · 10.01 KM')).toBeInTheDocument();
     });
 
-    it('renders the stat cells when stats and durasi are provided', () => {
+    it('renders the stat cells when stats and duration are provided', () => {
         render(
             <FeaturedCardHero
                 {...baseProps}
@@ -49,7 +49,7 @@ describe('FeaturedCardHero', () => {
                     cadence: '178 spm',
                     fastestKm: '5:02/km',
                 }}
-                durasi="42:11"
+                duration="42:11"
             />,
         );
         expect(screen.getByText('PACE')).toBeInTheDocument();
@@ -64,7 +64,7 @@ describe('FeaturedCardHero', () => {
         expect(screen.getByText('5:02/km')).toBeInTheDocument();
     });
 
-    it('omits the stat <dl> entirely when no stats or durasi are provided', () => {
+    it('omits the stat <dl> entirely when no stats or duration are provided', () => {
         const { container } = render(<FeaturedCardHero {...baseProps} />);
         expect(container.querySelector('dl')).toBeNull();
     });

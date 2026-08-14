@@ -208,9 +208,9 @@ export default function HrZones({
             <Head title="Settings · HR Zones" />
             <PageContainer>
                 <header>
-                    {/* Now points at the real parent. It used to read as a trail
-                        ("Aku · Pengaturan") while hrefing straight to /profil,
-                        skipping the page it came from. */}
+                    {/* Points at the real parent. It used to read as a trail to
+                        the profile while hrefing straight past the page it came
+                        from. */}
                     <PageHero
                         size="md"
                         italic

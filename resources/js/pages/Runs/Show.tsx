@@ -267,7 +267,7 @@ export default function RunsShow({
                                             size="md"
                                             align="center"
                                             label="DURATION"
-                                            value={kartuProps.durasi}
+                                            value={kartuProps.duration}
                                         />
                                     </motion.div>
                                     <motion.div variants={fadeInUp}>
@@ -350,7 +350,7 @@ export default function RunsShow({
                             <Kartu
                                 name={card.special_move}
                                 km={kartuProps.km}
-                                durasi={kartuProps.durasi}
+                                duration={kartuProps.duration}
                                 trimp={kartuProps.trimp}
                                 rarity={card.rarity}
                                 mood={mood}

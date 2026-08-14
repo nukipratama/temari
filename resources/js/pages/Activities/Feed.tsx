@@ -12,19 +12,19 @@ import type {
 
 import JourneyStrip, {
     type JourneyMatchData,
-} from '@/components/aktivitas/JourneyStrip';
+} from '@/components/activities/JourneyStrip';
 import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
-import CoachMark from '@/components/onboarding/CoachMark';
-import ActiveFilterChips from '@/components/riwayat/ActiveFilterChips';
+import ActiveFilterChips from '@/components/history/ActiveFilterChips';
+import HistoryFilter from '@/components/history/HistoryFilter';
+import HistoryTabs from '@/components/history/HistoryTabs';
 import {
     RangeWidenedNote,
     RunsTruncatedNote,
     WeekFocusNote,
-} from '@/components/riwayat/InlineNote';
-import ResumeFilterChip from '@/components/riwayat/ResumeFilterChip';
-import RiwayatFilter from '@/components/riwayat/RiwayatFilter';
-import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
-import WeekSection from '@/components/riwayat/WeekSection';
+} from '@/components/history/InlineNote';
+import ResumeFilterChip from '@/components/history/ResumeFilterChip';
+import WeekSection from '@/components/history/WeekSection';
+import CoachMark from '@/components/onboarding/CoachMark';
 import RunListRow, { type RunNote } from '@/components/run/RunListRow';
 import StravaSyncButton from '@/components/StravaSyncButton';
 import Temari from '@/components/temari/Temari';
@@ -42,12 +42,12 @@ import {
     DEFAULT_SORT,
     SORT_OPTIONS,
     labelFor,
-    useJejakFilters,
+    useFeedFilters,
     type DistanceBand,
     type RangeFilterValue,
     type RunWithDetail,
     type SortMode,
-} from './useJejakFilters';
+} from './useFeedFilters';
 
 interface RunsIndexProps {
     runs: ReadonlyArray<RunWithDetail>;
@@ -98,7 +98,7 @@ export default function RunsIndex({
         resume,
         anyFilterActive,
         ranked,
-    } = useJejakFilters({
+    } = useFeedFilters({
         runs,
         weeklySnapshots,
         rangeFilter,
@@ -137,9 +137,9 @@ export default function RunsIndex({
                         </em>
                     </PageHero>
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <RiwayatTabs active="jejak" />
+                        <HistoryTabs active="feed" />
                         <div ref={filterRef} data-coachmark="history-filters">
-                            <RiwayatFilter
+                            <HistoryFilter
                                 {...sections}
                                 onReset={resetFilters}
                             />

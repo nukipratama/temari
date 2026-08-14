@@ -9,7 +9,7 @@ code_refs:
   - app/Http/Controllers/ProfileController.php
   - resources/js/components/PersonaBar.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
-  - resources/js/components/koleksi/ProgressionChart.tsx
+  - resources/js/components/collection/ProgressionChart.tsx
   - resources/js/components/temari/Temari.tsx
   - app/Services/Run/Metrics/VdotEstimator.php
   - app/Actions/Run/Metrics/EstimateThresholdAction.php
@@ -53,7 +53,7 @@ The "Persona" section renders [PersonaBar](resources/js/components/PersonaBar.ts
 
 ## Journey (progression)
 
-When `progressionByCategory` is non-empty, a tabbed section (5K / 10K / HM / FM) renders [ProgressionChart](resources/js/components/koleksi/ProgressionChart.tsx) alongside a "Then …, now …" best/worst readout and a goal chip. The series are built server-side by `ProfileController::buildProgressionByCategory` via `ProgressionSeriesBuilder`, over the four `PROGRESSION_CATEGORIES`.
+When `progressionByCategory` is non-empty, a tabbed section (5K / 10K / HM / FM) renders [ProgressionChart](resources/js/components/collection/ProgressionChart.tsx) alongside a "Then …, now …" best/worst readout and a goal chip. The series are built server-side by `ProfileController::buildProgressionByCategory` via `ProgressionSeriesBuilder`, over the four `PROGRESSION_CATEGORIES`.
 
 ## Not on this page
 

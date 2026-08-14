@@ -5,21 +5,21 @@ import { activeTabFromUrl, ITEMS } from './nav';
 describe('nav', () => {
     it('has 4 top-level items', () => {
         expect(ITEMS.map((item) => item.id)).toEqual([
-            'hari-ini',
-            'koleksi',
+            'today',
+            'collection',
             'plan',
-            'aku',
+            'me',
         ]);
     });
 
     it('resolves the root path to Today', () => {
-        expect(activeTabFromUrl('/')).toBe('hari-ini');
+        expect(activeTabFromUrl('/')).toBe('today');
     });
 
     it('folds History under Today', () => {
-        expect(activeTabFromUrl('/activities')).toBe('hari-ini');
-        expect(activeTabFromUrl('/activities/123')).toBe('hari-ini');
-        expect(activeTabFromUrl('/calendar')).toBe('hari-ini');
+        expect(activeTabFromUrl('/activities')).toBe('today');
+        expect(activeTabFromUrl('/activities/123')).toBe('today');
+        expect(activeTabFromUrl('/calendar')).toBe('today');
     });
 
     it('folds Race under Plan', () => {
@@ -28,16 +28,16 @@ describe('nav', () => {
     });
 
     it('resolves the Collection sub-pages, including /badges', () => {
-        expect(activeTabFromUrl('/cards')).toBe('koleksi');
-        expect(activeTabFromUrl('/accessories')).toBe('koleksi');
-        expect(activeTabFromUrl('/records')).toBe('koleksi');
-        expect(activeTabFromUrl('/badges')).toBe('koleksi');
+        expect(activeTabFromUrl('/cards')).toBe('collection');
+        expect(activeTabFromUrl('/accessories')).toBe('collection');
+        expect(activeTabFromUrl('/records')).toBe('collection');
+        expect(activeTabFromUrl('/badges')).toBe('collection');
     });
 
     it('no longer folds Race under Me', () => {
-        expect(activeTabFromUrl('/profile')).toBe('aku');
-        expect(activeTabFromUrl('/settings')).toBe('aku');
-        expect(activeTabFromUrl('/race')).not.toBe('aku');
+        expect(activeTabFromUrl('/profile')).toBe('me');
+        expect(activeTabFromUrl('/settings')).toBe('me');
+        expect(activeTabFromUrl('/race')).not.toBe('me');
     });
 
     it('ignores a query string when matching', () => {
@@ -49,6 +49,6 @@ describe('nav', () => {
     });
 
     it('does not treat every path as Today just because "/" is a prefix', () => {
-        expect(activeTabFromUrl('/cards')).not.toBe('hari-ini');
+        expect(activeTabFromUrl('/cards')).not.toBe('today');
     });
 });

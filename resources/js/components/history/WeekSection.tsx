@@ -7,7 +7,7 @@ import type {
     WeeklySnapshotWithRecap,
 } from '@/types/inertia';
 
-import RingkasanCard from '@/components/aktivitas/RingkasanCard';
+import SummaryCard from '@/components/activities/SummaryCard';
 import MetricExplainer from '@/components/MetricExplainer';
 import RunListRow, { type RunNote } from '@/components/run/RunListRow';
 import SendNotificationButton from '@/components/SendNotificationButton';
@@ -19,7 +19,7 @@ import { cn } from '@/lib/cn';
 import { formStatusLabel } from '@/lib/formStatus';
 import { type MetricKey } from '@/lib/metricGlossary';
 import { poseForFormStatus } from '@/lib/temariPose';
-import { type WeekBucket } from '@/pages/Activities/useJejakFilters';
+import { type WeekBucket } from '@/pages/Activities/useFeedFilters';
 
 const FORM_CHIP_CLASS: Record<FormStatus, string> = {
     fresh: 'bg-leaf/15 text-leaf-ink',
@@ -151,7 +151,7 @@ const WeekSection = memo(function WeekSection({
                             animate={false}
                         />
                         <div className="min-w-0 flex-1">
-                            <RingkasanCard
+                            <SummaryCard
                                 analysis={snapshot.recap_analysis}
                                 fallback={ruleBasedFallback(snapshot)}
                                 awaitingSchedule={snapshot.is_current_week}

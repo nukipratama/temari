@@ -5,7 +5,7 @@ import { useState } from 'react';
 
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
-import ProgressionChart from '@/components/koleksi/ProgressionChart';
+import ProgressionChart from '@/components/collection/ProgressionChart';
 import PersonaBar, { type PersonaSlice } from '@/components/PersonaBar';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';

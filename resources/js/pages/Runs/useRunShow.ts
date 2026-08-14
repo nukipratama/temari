@@ -130,7 +130,7 @@ export function useRunShow({
                       subtitle: kartuProps.subtitle,
                       date: shareDate,
                       km,
-                      durasi: kartuProps.durasi,
+                      duration: kartuProps.duration,
                       pace: paceSec != null ? formatPace(paceSec) : null,
                       trimp: kartuProps.trimp,
                       hr: hr != null ? `${hr} bpm` : null,

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { ActivityDetail } from '@/types/inertia';
 
-import LastLariCard from './LastLariCard';
+import LastRunCard from './LastRunCard';
 
 const richRun: ActivityDetail = {
     id: 1,
@@ -35,10 +35,10 @@ const bareRun: ActivityDetail = {
     weather_rain_detected: null,
 };
 
-describe('LastLariCard', () => {
+describe('LastRunCard', () => {
     it('renders name, location, pace, and an optional note', () => {
         render(
-            <LastLariCard
+            <LastRunCard
                 run={richRun}
                 pose="proud"
                 note={{ oneline: 'A solid session.', mood: 'blazing' }}
@@ -53,14 +53,14 @@ describe('LastLariCard', () => {
     });
 
     it('uses the "Run" name fallback and em-dash placeholders for a bare run', () => {
-        render(<LastLariCard run={bareRun} pose="observational" note={null} />);
+        render(<LastRunCard run={bareRun} pose="observational" note={null} />);
         expect(screen.getByText('Run')).toBeInTheDocument();
         expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
         expect(screen.queryByText(/Gelora/)).not.toBeInTheDocument();
     });
 
     it('links to the activity detail page', () => {
-        render(<LastLariCard run={richRun} pose="proud" note={null} />);
+        render(<LastRunCard run={richRun} pose="proud" note={null} />);
         const link = screen.getByRole('link');
         expect(link).toHaveAttribute('href', '/activities/99');
     });
@@ -68,7 +68,7 @@ describe('LastLariCard', () => {
     it('shows the run start time in the subline', () => {
         // start_date_local 07:00 renders as the as-recorded naive wall clock.
         render(
-            <LastLariCard
+            <LastRunCard
                 run={richRun}
                 pose="proud"
                 note={{ oneline: 'x', mood: 'overloaded' }}

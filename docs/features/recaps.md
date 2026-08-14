@@ -1,13 +1,13 @@
 ---
 title: Recaps (weekly / monthly / persona)
-description: Temari's narrative recaps surfaced across the app — weekly on Jejak, monthly on Kalender, persona/profile voice on Profile
+description: Temari's narrative recaps surfaced across the app — weekly on the Feed, monthly on the Calendar, persona/profile voice on Profile
 tags: [feature, recaps]
 status: living
 reviewed: 2026-06-20
 code_refs:
-  - resources/js/components/aktivitas/RingkasanCard.tsx
+  - resources/js/components/activities/SummaryCard.tsx
   - resources/js/pages/Activities/Feed.tsx
-  - resources/js/components/riwayat/WeekSection.tsx
+  - resources/js/components/history/WeekSection.tsx
   - resources/js/pages/Activities/Calendar.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
   - app/Http/Controllers/RunController.php
@@ -19,7 +19,7 @@ code_refs:
 
 Temari narrates the runner's history at three cadences — per **week**, per **month**, and a rolling **persona** read. This note covers where each narrative is *rendered* and which controller feeds it. The generation mechanics live in [[ai-pipeline]], the "don't generate the open period yet" rule in [[deferred-recap-windowing]], and the prev-link continuity in [[chained-narration]].
 
-**No dedicated route** — recaps render inline on [[run-history]] (Jejak/Kalender) and [[profile]] pages.
+**No dedicated route** — recaps render inline on [[run-history]] (Feed/Calendar) and [[profile]] pages.
 
 ## System dependencies
 
@@ -32,7 +32,7 @@ Every recap is an `Analysis` row surfaced through the shared [AnalysisStatus](re
 
 ## Weekly recap — on the run log (`/activities`)
 
-Rendered inside each [WeekSection](resources/js/components/riwayat/WeekSection.tsx) via [RingkasanCard](resources/js/components/aktivitas/RingkasanCard.tsx) (the "Temari's Notes" block beside a form-status-posed Temari). `RingkasanCard` is `chained`, forwards `isChainHead`, and keeps a rule-based `fallback` (`ruleBasedFallback`, alongside it — "You ran Nx this week for N km.") visible whenever `analysis.status !== 'done'`, so the block never looks empty.
+Rendered inside each [WeekSection](resources/js/components/history/WeekSection.tsx) via [SummaryCard](resources/js/components/activities/SummaryCard.tsx) (the "Temari's Notes" block beside a form-status-posed Temari). `SummaryCard` is `chained`, forwards `isChainHead`, and keeps a rule-based `fallback` (`ruleBasedFallback`, alongside it — "You ran Nx this week for N km.") visible whenever `analysis.status !== 'done'`, so the block never looks empty.
 
 [RunController](app/Http/Controllers/RunController.php) supplies it: each `WeeklySnapshot` is mapped with `recap_analysis` (from `recapAnalysesFor`, type `AnalysisType::WeeklyRecap`), `is_current_week` (the in-progress week → `awaitingSchedule`, trigger suppressed), and `is_chain_head` (`chainHeadId` = latest completed week with runs > 0, the only link that may regenerate).
 

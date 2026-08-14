@@ -5,7 +5,7 @@ import { makeUser, setMockPage } from '@/test/setup';
 
 import Profile from './Profile';
 
-vi.mock('@/components/koleksi/ProgressionChart', () => ({
+vi.mock('@/components/collection/ProgressionChart', () => ({
     default: () => <div data-testid="progression-chart" />,
 }));
 

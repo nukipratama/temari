@@ -10,20 +10,22 @@ const SAMPLE_POLYLINE = '_p~iF~ps|U_ulLnnqC_mqNvxq`@';
 describe('Kartu', () => {
     it('renders name and hero km', () => {
         render(
-            <Kartu name="Pejuang Subuh" km="8.4" durasi="42:11" trimp={68} />,
+            <Kartu name="Pejuang Subuh" km="8.4" duration="42:11" trimp={68} />,
         );
         expect(screen.getByText('Pejuang Subuh')).toBeInTheDocument();
         expect(screen.getByText('8.4')).toBeInTheDocument();
     });
 
     it('shows duration in the stat row on the full tier', () => {
-        render(<Kartu name="x" km="8.4" durasi="42:11" trimp={68} size="lg" />);
+        render(
+            <Kartu name="x" km="8.4" duration="42:11" trimp={68} size="lg" />,
+        );
         // duration joins the stat row only on the full tier
         expect(screen.getByText(/42:11/)).toBeInTheDocument();
     });
 
     it('shows the TRIMP number in the floating badge', () => {
-        render(<Kartu name="x" km="1" durasi="1:00" trimp={68} />);
+        render(<Kartu name="x" km="1" duration="1:00" trimp={68} />);
         // TRIMP is rendered as a number in the TRIMPBadge, not "TRIMP 68"
         expect(screen.getByText('68')).toBeInTheDocument();
     });
@@ -36,7 +38,7 @@ describe('Kartu', () => {
         'legendary',
     ] satisfies Rarity[])('renders the rarity set symbol for %s', (rarity) => {
         render(
-            <Kartu name="x" km="1" durasi="1:00" trimp={1} rarity={rarity} />,
+            <Kartu name="x" km="1" duration="1:00" trimp={1} rarity={rarity} />,
         );
         const symbol = {
             common: '●',
@@ -61,7 +63,7 @@ describe('Kartu', () => {
                 <Kartu
                     name="x"
                     km="1"
-                    durasi="1:00"
+                    duration="1:00"
                     trimp={1}
                     rarity={rarity}
                 />,
@@ -72,7 +74,7 @@ describe('Kartu', () => {
 
     it('drops the thread-band accent on compact grid tiles', () => {
         const { container } = render(
-            <Kartu name="x" km="1" durasi="1:00" trimp={1} compact />,
+            <Kartu name="x" km="1" duration="1:00" trimp={1} compact />,
         );
         expect(container.querySelectorAll('line').length).toBe(0);
     });
@@ -82,7 +84,7 @@ describe('Kartu', () => {
             <Kartu
                 name="x"
                 km="1"
-                durasi="1:00"
+                duration="1:00"
                 trimp={1}
                 edition={{ index: 3, total: 12 }}
             />,
@@ -99,7 +101,7 @@ describe('Kartu', () => {
             <Kartu
                 name="x"
                 km="1"
-                durasi="1:00"
+                duration="1:00"
                 trimp={1}
                 polyline={SAMPLE_POLYLINE}
             />,
@@ -115,14 +117,14 @@ describe('Kartu', () => {
     it('renders the art zone at all sizes including compact', () => {
         // RouteGlyph always renders an SVG in the art zone (route path or its glyph fallback).
         const { container } = render(
-            <Kartu name="x" km="1" durasi="1:00" trimp={1} size="md" />,
+            <Kartu name="x" km="1" duration="1:00" trimp={1} size="md" />,
         );
         expect(container.querySelector('svg')).not.toBeNull();
     });
 
     it('shows the route glyph fallback in the art zone when there is no route data', () => {
         const { container } = render(
-            <Kartu name="x" km="1" durasi="1:00" trimp={1} size="lg" />,
+            <Kartu name="x" km="1" duration="1:00" trimp={1} size="lg" />,
         );
         // Without polyline RouteGlyph falls back to the glyph variant.
         expect(
@@ -139,7 +141,7 @@ describe('Kartu', () => {
             <Kartu
                 name="x"
                 km="1"
-                durasi="1:00"
+                duration="1:00"
                 trimp={1}
                 polyline={SAMPLE_POLYLINE}
             />,
@@ -158,7 +160,7 @@ describe('Kartu', () => {
             <Kartu
                 name="x"
                 km="1"
-                durasi="1:00"
+                duration="1:00"
                 trimp={1}
                 badges={[
                     'negative_split',
@@ -183,7 +185,7 @@ describe('Kartu', () => {
             <Kartu
                 name="x"
                 km="1"
-                durasi="1:00"
+                duration="1:00"
                 trimp={1}
                 badges={[
                     'negative_split',
@@ -203,7 +205,7 @@ describe('Kartu', () => {
             <Kartu
                 name="x"
                 km="1"
-                durasi="1:00"
+                duration="1:00"
                 trimp={1}
                 badges={['negative_split']}
                 size="md"
@@ -217,7 +219,7 @@ describe('Kartu', () => {
             <Kartu
                 name="x"
                 km="1"
-                durasi="1:00"
+                duration="1:00"
                 trimp={1}
                 badges={['negative_split']}
                 size="lg"
@@ -233,7 +235,7 @@ describe('Kartu', () => {
             <Kartu
                 name="x"
                 km="1"
-                durasi="1:00"
+                duration="1:00"
                 trimp={1}
                 mood="blazing"
                 size="lg"
@@ -248,7 +250,7 @@ describe('Kartu', () => {
             <Kartu
                 name="x"
                 km="1"
-                durasi="1:00"
+                duration="1:00"
                 trimp={1}
                 mood="gassed"
                 size="md"
@@ -263,7 +265,7 @@ describe('Kartu', () => {
             <Kartu
                 name="x"
                 km="1"
-                durasi="1:00"
+                duration="1:00"
                 trimp={1}
                 size="lg"
                 stats={{
@@ -288,7 +290,7 @@ describe('Kartu', () => {
             <Kartu
                 name="x"
                 km="1"
-                durasi="1:00"
+                duration="1:00"
                 trimp={1}
                 size="lg"
                 zonePct={{ Z1: 20, Z2: 50, Z3: 30 }}
@@ -302,7 +304,7 @@ describe('Kartu', () => {
 
     it('omits the HR-zone bar when there is no zone data', () => {
         const { container } = render(
-            <Kartu name="x" km="1" durasi="1:00" trimp={1} size="lg" />,
+            <Kartu name="x" km="1" duration="1:00" trimp={1} size="lg" />,
         );
         expect(container.querySelector('[title^="Z"]')).toBeNull();
     });
@@ -312,7 +314,7 @@ describe('Kartu', () => {
             <Kartu
                 name="x"
                 km="1"
-                durasi="1:00"
+                duration="1:00"
                 trimp={1}
                 size="md"
                 stats={{ pace: '5:30/km', hr: '150 bpm' }}
@@ -329,7 +331,7 @@ describe('Kartu', () => {
             <Kartu
                 name="x"
                 km="1"
-                durasi="1:00"
+                duration="1:00"
                 trimp={1}
                 badges={['negative_split']}
                 size="lg"
@@ -345,7 +347,7 @@ describe('Kartu', () => {
             <Kartu
                 name="x"
                 km="1"
-                durasi="1:00"
+                duration="1:00"
                 trimp={1}
                 badges={['mystery_move']}
                 size="lg"
@@ -358,7 +360,7 @@ describe('Kartu', () => {
     it('omits the full-tier stat grid when no stat values are present', () => {
         // With no stats and a blank duration, every grid cell is filtered out so
         // StatGrid renders nothing (returns null).
-        render(<Kartu name="x" km="1" durasi="" trimp={1} size="lg" />);
+        render(<Kartu name="x" km="1" duration="" trimp={1} size="lg" />);
         expect(screen.queryByText('Pace')).toBeNull();
         expect(screen.queryByText('Duration')).toBeNull();
     });
@@ -371,7 +373,7 @@ describe('Kartu', () => {
             <Kartu
                 name="x"
                 km="1"
-                durasi="1:00"
+                duration="1:00"
                 trimp={1}
                 size="md"
                 hideStats

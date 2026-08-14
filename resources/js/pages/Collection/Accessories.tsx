@@ -5,7 +5,7 @@ import { useRef, useState } from 'react';
 
 import type { EquippedSlot, Rarity } from '@/types/inertia';
 
-import CollectionHeader from '@/components/koleksi/CollectionHeader';
+import CollectionHeader from '@/components/collection/CollectionHeader';
 import CoachMark from '@/components/onboarding/CoachMark';
 import TemariProto, {
     type TemariEquipped,

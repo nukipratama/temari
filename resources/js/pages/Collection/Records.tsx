@@ -10,8 +10,8 @@ import type {
 } from '@/types/inertia';
 
 import PrCard from '@/components/card/PrCard';
-import CollectionHeader from '@/components/koleksi/CollectionHeader';
-import MilestoneStrip from '@/components/koleksi/MilestoneStrip';
+import CollectionHeader from '@/components/collection/CollectionHeader';
+import MilestoneStrip from '@/components/collection/MilestoneStrip';
 import SplitsSparkline from '@/components/run/SplitsSparkline';
 import StravaSyncButton from '@/components/StravaSyncButton';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';

@@ -8,12 +8,12 @@ describe('CollectionHeader', () => {
         render(
             <CollectionHeader
                 active="cards"
-                eyebrow="Koleksi"
+                eyebrow="Collection"
                 headline1="Kartu-kartu"
                 headline2="larimu"
             />,
         );
-        expect(screen.getByText('Koleksi')).toBeInTheDocument();
+        expect(screen.getByText('Collection')).toBeInTheDocument();
         expect(
             screen.getByText('Kartu-kartu,', { exact: false }),
         ).toBeInTheDocument();
@@ -24,7 +24,7 @@ describe('CollectionHeader', () => {
         render(
             <CollectionHeader
                 active="records"
-                eyebrow="Koleksi"
+                eyebrow="Collection"
                 headline1="Your best"
                 headline2="times"
             />,
@@ -42,7 +42,7 @@ describe('CollectionHeader', () => {
         render(
             <CollectionHeader
                 active="cards"
-                eyebrow="Koleksi"
+                eyebrow="Collection"
                 headline1="Your"
                 headline2="cards"
                 activeCount="12"

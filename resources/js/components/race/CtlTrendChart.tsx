@@ -13,7 +13,7 @@ import { formatNaiveIdDate } from '@/lib/pace';
 // Chart.js core + its scale/element registration live inside this lazy module,
 // mirroring ProgressionChart so nothing chart-related enters this page's own
 // chunk either.
-const Line = lazy(() => import('@/components/koleksi/LineChart'));
+const Line = lazy(() => import('@/components/collection/LineChart'));
 
 export interface CtlTrendPoint {
     date: string;

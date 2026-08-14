@@ -58,8 +58,8 @@ function expectActionLinks() {
     const accessories = screen.getByText('Dress up Temari').closest('a');
     expect(accessories).toHaveAttribute('href', '/accessories');
 
-    const aktivitas = screen.getByText('See your run recap').closest('a');
-    expect(aktivitas).toHaveAttribute('href', '/activities');
+    const activities = screen.getByText('See your run recap').closest('a');
+    expect(activities).toHaveAttribute('href', '/activities');
 }
 
 describe('EmptyRunsState', () => {

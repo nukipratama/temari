@@ -307,7 +307,7 @@ export function buildCardStats(
 /** The shared `<Kartu>` prop bag derived from a run's detail. */
 export interface KartuPropsFromDetail {
     km: string;
-    durasi: string;
+    duration: string;
     trimp: string;
     subtitle: string | null;
     stats: CardStatStrings;
@@ -325,7 +325,7 @@ export interface KartuPropsOptions {
 }
 
 /**
- * Derive the `km/durasi/trimp/subtitle/stats/zonePct/paceShape` prop bag a
+ * Derive the `km/duration/trimp/subtitle/stats/zonePct/paceShape` prop bag a
  * `<Kartu>` renders from a run's detail, in one place. Every `<Kartu>` call site
  * feeds from this so the `… != null ? … : '—'` sentinels can't drift. `subtitle`
  * is `null` when detail is absent (callers that always have a detail get the
@@ -335,7 +335,7 @@ export function kartuPropsFromDetail(
     detail?: ActivityDetail | null,
     { durationFormat = 'hms' }: KartuPropsOptions = {},
 ): KartuPropsFromDetail {
-    const durasi =
+    const duration =
         detail?.elapsed_time == null
             ? '—'
             : durationFormat === 'hms'
@@ -343,7 +343,7 @@ export function kartuPropsFromDetail(
               : formatDuration(detail.elapsed_time);
     return {
         km: formatKm(detail?.distance),
-        durasi,
+        duration,
         trimp:
             detail?.trimp_edwards == null
                 ? '—'

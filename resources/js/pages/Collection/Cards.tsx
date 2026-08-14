@@ -27,9 +27,9 @@ import type {
 import FeaturedCardHero from '@/components/card/FeaturedCardHero';
 import Kartu from '@/components/card/Kartu';
 import KartuMount from '@/components/card/KartuMount';
+import CollectionHeader from '@/components/collection/CollectionHeader';
 import ConfettiBurst from '@/components/ConfettiBurst';
 import ExpandableQuote from '@/components/dashboard/ExpandableQuote';
-import CollectionHeader from '@/components/koleksi/CollectionHeader';
 import MotionLink from '@/components/MotionLink';
 import CoachMark from '@/components/onboarding/CoachMark';
 import StravaSyncButton from '@/components/StravaSyncButton';
@@ -253,7 +253,7 @@ function SlimBanner({ featured }: Readonly<{ featured: FeaturedCardPayload }>) {
             rarity={featured.rarity}
             km={kartuProps.km}
             stats={kartuProps.stats}
-            durasi={kartuProps.durasi}
+            duration={kartuProps.duration}
             badges={kartuProps.badges}
             polyline={kartuProps.polyline}
             ctaHref={activityUrl(featured)}
@@ -416,7 +416,7 @@ const CardCell = memo(function CardCell({
                 <Kartu
                     name={card.special_move}
                     km={derived.km}
-                    durasi={derived.durasi}
+                    duration={derived.duration}
                     trimp={derived.trimp}
                     rarity={card.rarity}
                     mood={card.mood}

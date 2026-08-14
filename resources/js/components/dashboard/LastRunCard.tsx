@@ -30,7 +30,7 @@ export interface LastRunNote {
     mood: Mood;
 }
 
-export default function LastLariCard({
+export default function LastRunCard({
     run,
     pose,
     note,

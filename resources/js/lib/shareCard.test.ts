@@ -25,7 +25,7 @@ const kartu: ShareKartuData = {
     subtitle: null,
     date: '30 Mei 2026\n06:30',
     km: '42.61',
-    durasi: '6 hr 8 min',
+    duration: '6 hr 8 min',
     pace: '5:48',
     trimp: '913',
     hr: '164 bpm',
@@ -289,7 +289,7 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, durasi: '39 min 10 sec extremely long' },
+            kartu: { ...kartu, duration: '39 min 10 sec extremely long' },
             layout: 'kartu',
             format: 'story',
         });
@@ -380,7 +380,7 @@ describe('drawShareCard — edge / branch cases', () => {
                 pace: null,
                 hr: null,
                 cadence: null,
-                durasi: '—',
+                duration: '—',
                 fastestKm: null,
             },
             layout: 'kartu',
@@ -557,7 +557,7 @@ describe('drawShareCard — edge / branch cases', () => {
                 pace: null,
                 hr: null,
                 cadence: null,
-                durasi: '—',
+                duration: '—',
                 fastestKm: null,
             },
             layout: 'rute',

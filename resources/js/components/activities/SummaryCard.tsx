@@ -4,7 +4,7 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { cn } from '@/lib/cn';
 import { renderBold } from '@/lib/richText';
 
-interface RingkasanCardProps {
+interface SummaryCardProps {
     analysis: AnalysisPayload;
     /** Used to refresh just the relevant props after a retry, matching the parent page. */
     inertiaReloadProps?: string[];
@@ -25,14 +25,14 @@ const DEFAULT_RELOAD_PROPS = ['weeklySnapshots', 'historicalSnapshots'];
  * looks empty. Reuses the central {@link AnalysisStatus} state machine for
  * spinner, retry button, error chip.
  */
-export default function RingkasanCard({
+export default function SummaryCard({
     analysis,
     inertiaReloadProps = DEFAULT_RELOAD_PROPS,
     fallback,
     awaitingSchedule = false,
     isChainHead = false,
     className,
-}: Readonly<RingkasanCardProps>) {
+}: Readonly<SummaryCardProps>) {
     return (
         <section
             className={cn(

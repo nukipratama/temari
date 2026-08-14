@@ -12,10 +12,10 @@ import {
     hrefWithFilters,
     labelFor,
     summariseQuery,
-    useJejakFilters,
+    useFeedFilters,
     type FilterState,
     type RunWithDetail,
-} from './useJejakFilters';
+} from './useFeedFilters';
 
 function state(overrides: Partial<FilterState> = {}): FilterState {
     return {
@@ -29,7 +29,7 @@ function state(overrides: Partial<FilterState> = {}): FilterState {
 }
 
 function hookProps(
-    overrides: Partial<Parameters<typeof useJejakFilters>[0]> = {},
+    overrides: Partial<Parameters<typeof useFeedFilters>[0]> = {},
 ) {
     return {
         runs: [] as ReadonlyArray<RunWithDetail>,
@@ -44,7 +44,7 @@ function hookProps(
 }
 
 describe('filterQuery', () => {
-    it('omits every default so the unfiltered view is a bare /aktivitas', () => {
+    it('omits every default so the unfiltered view is a bare /activities', () => {
         expect(filterQuery(state())).toEqual({});
     });
 
@@ -76,7 +76,7 @@ describe('filterQuery', () => {
 });
 
 describe('hrefWithFilters', () => {
-    it('stays a clean /aktivitas when nothing is filtered', () => {
+    it('stays a clean /activities when nothing is filtered', () => {
         expect(hrefWithFilters(state())).toBe('/activities');
     });
 
@@ -186,7 +186,7 @@ describe('groupByWeek', () => {
     });
 });
 
-describe('useJejakFilters', () => {
+describe('useFeedFilters', () => {
     const KEY = 'temari:riwayat:last-filter';
 
     afterEach(() => window.localStorage.clear());
@@ -197,7 +197,7 @@ describe('useJejakFilters', () => {
             week_ending: '2026-05-24T00:00:00Z',
         } as unknown as WeeklySnapshotWithRecap;
         const { result } = renderHook(() =>
-            useJejakFilters(
+            useFeedFilters(
                 hookProps({
                     runs: [run(101, 'Morning', '2026-05-19T06:00:00')],
                     weeklySnapshots: [snapshot],
@@ -210,7 +210,7 @@ describe('useJejakFilters', () => {
     });
 
     it('reports no active filter and the grouped mode by default', () => {
-        const { result } = renderHook(() => useJejakFilters(hookProps()));
+        const { result } = renderHook(() => useFeedFilters(hookProps()));
 
         expect(result.current.anyFilterActive).toBe(false);
         expect(result.current.ranked).toBe(false);
@@ -223,7 +223,7 @@ describe('useJejakFilters', () => {
         ['week', { weekFilter: '2026-05-17' }],
     ])('counts a %s filter as active', (_axis, override) => {
         const { result } = renderHook(() =>
-            useJejakFilters(hookProps(override)),
+            useFeedFilters(hookProps(override)),
         );
 
         expect(result.current.anyFilterActive).toBe(true);
@@ -231,7 +231,7 @@ describe('useJejakFilters', () => {
 
     it('does not count a widened range on its own as an active filter', () => {
         const { result } = renderHook(() =>
-            useJejakFilters(hookProps({ rangeFilter: '1y' })),
+            useFeedFilters(hookProps({ rangeFilter: '1y' })),
         );
 
         expect(result.current.anyFilterActive).toBe(false);
@@ -239,7 +239,7 @@ describe('useJejakFilters', () => {
 
     it('switches to the ranked mode, not a re-ordering, for a non-default sort', () => {
         const { result } = renderHook(() =>
-            useJejakFilters(hookProps({ sortMode: 'longest' })),
+            useFeedFilters(hookProps({ sortMode: 'longest' })),
         );
 
         expect(result.current.ranked).toBe(true);
@@ -247,7 +247,7 @@ describe('useJejakFilters', () => {
 
     it('emits one chip per active filter, in popover order', () => {
         const { result } = renderHook(() =>
-            useJejakFilters(
+            useFeedFilters(
                 hookProps({
                     weekFilter: '2026-05-17',
                     rangeFilter: '1y',
@@ -298,7 +298,7 @@ describe('useJejakFilters', () => {
         (key, expected) => {
             vi.mocked(router.get).mockReset();
             const { result } = renderHook(() =>
-                useJejakFilters(
+                useFeedFilters(
                     hookProps({
                         weekFilter: '2026-05-17',
                         rangeFilter: '1y',
@@ -324,10 +324,10 @@ describe('useJejakFilters', () => {
         },
     );
 
-    it('resets every axis back to a bare /aktivitas', () => {
+    it('resets every axis back to a bare /activities', () => {
         vi.mocked(router.get).mockReset();
         const { result } = renderHook(() =>
-            useJejakFilters(
+            useFeedFilters(
                 hookProps({
                     rangeFilter: '1y',
                     moodFilter: ['blazing'],
@@ -350,7 +350,7 @@ describe('useJejakFilters', () => {
     describe('sections', () => {
         it('builds a shareable href per range option, carrying the other filters', () => {
             const { result } = renderHook(() =>
-                useJejakFilters(hookProps({ moodFilter: ['blazing'] })),
+                useFeedFilters(hookProps({ moodFilter: ['blazing'] })),
             );
 
             expect(result.current.sections.range.hrefFor('1y')).toBe(
@@ -361,8 +361,8 @@ describe('useJejakFilters', () => {
         it('toggles a mood on and off through the url', () => {
             vi.mocked(router.get).mockReset();
             const { result, rerender } = renderHook(
-                (props: Parameters<typeof useJejakFilters>[0]) =>
-                    useJejakFilters(props),
+                (props: Parameters<typeof useFeedFilters>[0]) =>
+                    useFeedFilters(props),
                 {
                     initialProps: hookProps(),
                 },
@@ -388,7 +388,7 @@ describe('useJejakFilters', () => {
         it('clears the distance band when the active one is picked again', () => {
             vi.mocked(router.get).mockReset();
             const { result } = renderHook(() =>
-                useJejakFilters(hookProps({ distanceFilter: '21up' })),
+                useFeedFilters(hookProps({ distanceFilter: '21up' })),
             );
 
             act(() => result.current.sections.distance.onSelect('21up'));
@@ -409,7 +409,7 @@ describe('useJejakFilters', () => {
         it('omits the default sort from the url', () => {
             vi.mocked(router.get).mockReset();
             const { result } = renderHook(() =>
-                useJejakFilters(hookProps({ sortMode: 'longest' })),
+                useFeedFilters(hookProps({ sortMode: 'longest' })),
             );
 
             act(() => result.current.sections.sort.onSelect('newest'));
@@ -426,7 +426,7 @@ describe('useJejakFilters', () => {
     // silently pre-filtered list reads as a history that lost runs.
     describe('resume offer', () => {
         it('offers nothing when nothing was ever saved', () => {
-            const { result } = renderHook(() => useJejakFilters(hookProps()));
+            const { result } = renderHook(() => useFeedFilters(hookProps()));
 
             expect(result.current.resume).toBeNull();
         });
@@ -436,7 +436,7 @@ describe('useJejakFilters', () => {
                 KEY,
                 JSON.stringify({ mood: 'blazing', dist: '21up' }),
             );
-            const { result } = renderHook(() => useJejakFilters(hookProps()));
+            const { result } = renderHook(() => useFeedFilters(hookProps()));
 
             expect(result.current.resume?.summary).toBe(
                 'Half and up · Blazing',
@@ -445,7 +445,7 @@ describe('useJejakFilters', () => {
 
         it('offers nothing when the saved query summarises to nothing', () => {
             window.localStorage.setItem(KEY, JSON.stringify({ bogus: 'x' }));
-            const { result } = renderHook(() => useJejakFilters(hookProps()));
+            const { result } = renderHook(() => useFeedFilters(hookProps()));
 
             expect(result.current.resume).toBeNull();
         });
@@ -456,7 +456,7 @@ describe('useJejakFilters', () => {
                 KEY,
                 JSON.stringify({ mood: 'blazing' }),
             );
-            const { result } = renderHook(() => useJejakFilters(hookProps()));
+            const { result } = renderHook(() => useFeedFilters(hookProps()));
 
             expect(router.get).not.toHaveBeenCalled();
 
@@ -473,7 +473,7 @@ describe('useJejakFilters', () => {
                 KEY,
                 JSON.stringify({ mood: 'blazing' }),
             );
-            const { result } = renderHook(() => useJejakFilters(hookProps()));
+            const { result } = renderHook(() => useFeedFilters(hookProps()));
 
             act(() => result.current.resume!.dismiss());
 
@@ -487,7 +487,7 @@ describe('useJejakFilters', () => {
                 JSON.stringify({ mood: 'blazing' }),
             );
             const { result } = renderHook(() =>
-                useJejakFilters(hookProps({ moodFilter: ['easy'] })),
+                useFeedFilters(hookProps({ moodFilter: ['easy'] })),
             );
 
             expect(result.current.resume).toBeNull();

@@ -11,7 +11,7 @@ code_refs:
   - app/Http/Controllers/BadgeBoardController.php
   - resources/js/components/temari/TemariProto.tsx
   - resources/js/components/celebrations/AccessoryUnlockModal.tsx
-  - resources/js/components/koleksi/KoleksiTabs.tsx
+  - resources/js/components/collection/CollectionTabs.tsx
 ---
 
 # Accessories & the badge board
@@ -50,7 +50,7 @@ When a run earns a *major* accessory, [AccessoryUnlockModal](../../resources/js/
 
 [Badges](../../resources/js/pages/Collection/Badges.tsx) reuses `runcard.ts`'s existing `BADGE_LABELS`/`BADGE_ABILITY` maps for the 16 real badges' name/emblem/criterion text (no server-side duplicate catalog needed) and hardcodes its own display text for the one rest-day entry, since that has no `Badge` case to read from. Locked items show their criterion; earned items show both counts.
 
-`KoleksiTabs`'s 4th sub-tab is `badges` (was `target` → `/goals`, retired in Slice 7).
+`CollectionTabs`'s 4th sub-tab is `badges` (was `target` → `/goals`, retired in Slice 7).
 
 ## Notes
 

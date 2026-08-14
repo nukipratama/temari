@@ -17,9 +17,9 @@ describe('UserMenu', () => {
         expect(screen.getByText('Log out')).toBeInTheDocument();
     });
 
-    // Moved here from Aku: settings used to be a row at the bottom of that
-    // page, so reaching it meant leaving whatever you were doing. It now sits
-    // beside logout, one tap from every page on every layout.
+    // Moved here from the Me tab: settings used to be a row at the bottom of
+    // that page, so reaching it meant leaving whatever you were doing. It now
+    // sits beside logout, one tap from every page on every layout.
     it('links to the settings hub alongside logout', () => {
         render(<UserMenu name="Ada Lovelace" avatarUrl={null} />);
         fireEvent.click(screen.getByLabelText(/Open menu for Ada Lovelace/));

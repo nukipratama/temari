@@ -5,7 +5,7 @@ import { makeUser, setMockPage } from '@/test/setup';
 
 import Records from './Records';
 
-vi.mock('@/components/koleksi/MilestoneStrip', () => ({
+vi.mock('@/components/collection/MilestoneStrip', () => ({
     default: () => <div data-testid="milestone-strip" />,
 }));
 

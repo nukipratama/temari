@@ -37,7 +37,7 @@ describe('RunListRow', () => {
         expect(screen.getByText('Run')).toBeInTheDocument();
     });
 
-    it('links to /aktivitas/{activity_id}', () => {
+    it('links to /activities/{activity_id}', () => {
         render(<RunListRow detail={detail({ activity_id: 7 })} />);
         expect(screen.getByRole('link').getAttribute('href')).toBe(
             '/activities/7',

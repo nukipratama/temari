@@ -8,8 +8,8 @@ import type {
     WeeklySnapshotWithRecap,
 } from '@/types/inertia';
 
-import { type ActiveChip } from '@/components/riwayat/ActiveFilterChips';
-import { type RangeOption } from '@/components/riwayat/RiwayatFilter';
+import { type ActiveChip } from '@/components/history/ActiveFilterChips';
+import { type RangeOption } from '@/components/history/HistoryFilter';
 import { useLastFilter } from '@/hooks/useLastFilter';
 import { MOOD_FILTER_OPTIONS, MOOD_LABEL, MOOD_ORDER } from '@/lib/mood';
 import { formatIdDate, isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
@@ -60,9 +60,9 @@ export const DISTANCE_OPTIONS: ReadonlyArray<{
 
 /**
  * Must match JejakFilterRequest::range()'s fallback and the first entry of
- * RANGE_FILTER_OPTIONS (which RiwayatFilter treats as the implicit default).
+ * RANGE_FILTER_OPTIONS (which HistoryFilter treats as the implicit default).
  * When it drifts, every URL carries a redundant `range=` and the "clean
- * /aktivitas" case never happens.
+ * /activities" case never happens.
  */
 const DEFAULT_RANGE: RangeFilterValue = '8w';
 const RANGE_RELOAD_PROPS = [
@@ -241,7 +241,7 @@ export function groupByWeek(rows: ReadonlyArray<RunWithDetail>): WeekBucket[] {
     return buckets;
 }
 
-interface JejakFilterProps {
+interface FeedFilterProps {
     runs: ReadonlyArray<RunWithDetail>;
     weeklySnapshots: ReadonlyArray<WeeklySnapshotWithRecap>;
     rangeFilter: RangeFilterValue;
@@ -257,7 +257,7 @@ interface ResumeOffer {
     dismiss: () => void;
 }
 
-export function useJejakFilters({
+export function useFeedFilters({
     runs,
     weeklySnapshots,
     rangeFilter,
@@ -265,7 +265,7 @@ export function useJejakFilters({
     distanceFilter,
     sortMode,
     weekFilter,
-}: JejakFilterProps) {
+}: FeedFilterProps) {
     const buckets = useMemo<WeekBucket[]>(() => groupByWeek(runs), [runs]);
     const snapshotsByWeek = useMemo(() => {
         const map = new Map<string, WeeklySnapshotWithRecap>();
@@ -336,7 +336,7 @@ export function useJejakFilters({
         });
     }, [visitWithFilters]);
 
-    // Stable prop objects so toggling a mood doesn't hand RiwayatFilter a fresh
+    // Stable prop objects so toggling a mood doesn't hand HistoryFilter a fresh
     // `range` literal (which never changes here) on every keystroke/toggle.
     const rangeSection = useMemo(
         () => ({

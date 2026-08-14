@@ -12,7 +12,7 @@ code_refs:
   - app/Console/Commands/Weather/CorrectForecastWeatherCommand.php
   - app/Models/ActivityDetail.php
   - resources/js/pages/Runs/Show.tsx
-  - resources/js/components/dashboard/LastLariCard.tsx
+  - resources/js/components/dashboard/LastRunCard.tsx
   - app/Services/AI/Context/ActivityNarrationContext.php
 ---
 
@@ -47,7 +47,7 @@ It's written during ingest by [ActivityPipeline::lookupWeather](app/Services/Run
 All consumers read the stored columns; none call Open-Meteo.
 
 - **[[run-detail]]** — [MapWeatherPanel](resources/js/components/run/MapWeatherPanel.tsx) renders the temp / humidity / wind / location block beside the route map, on both mobile and desktop.
-- **[[dashboard]]** — the last-run weather chip on [LastLariCard](resources/js/components/dashboard/LastLariCard.tsx#L24), via the `formatWeather` helper. It is now the only consumer: the hero banner that also showed a weather chip was deleted with the old dashboard (see [[dashboard]]).
+- **[[dashboard]]** — the last-run weather chip on [LastRunCard](resources/js/components/dashboard/LastRunCard.tsx#L24), via the `formatWeather` helper. It is now the only consumer: the hero banner that also showed a weather chip was deleted with the old dashboard (see [[dashboard]]).
 - **[[ai-pipeline|AI narration]]** — temp and rain flow into [ActivityNarrationContext](app/Services/AI/Context/ActivityNarrationContext.php#L41) so Temari's run commentary can mention the conditions.
 
 ## Notes / gotchas

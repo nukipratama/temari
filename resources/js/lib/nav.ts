@@ -1,4 +1,4 @@
-export type TabId = 'hari-ini' | 'koleksi' | 'plan' | 'aku';
+export type TabId = 'today' | 'collection' | 'plan' | 'me';
 
 export interface NavItem {
     id: TabId;
@@ -10,14 +10,14 @@ export interface NavItem {
 
 export const ITEMS: ReadonlyArray<NavItem> = [
     {
-        id: 'hari-ini',
+        id: 'today',
         label: 'Today',
         href: '/',
         icon: 'mdi:weather-sunset-up',
         prefixes: ['/', '/activities', '/calendar'],
     },
     {
-        id: 'koleksi',
+        id: 'collection',
         label: 'Collection',
         href: '/cards',
         icon: 'mdi:cards-outline',
@@ -31,7 +31,7 @@ export const ITEMS: ReadonlyArray<NavItem> = [
         prefixes: ['/plan', '/race'],
     },
     {
-        id: 'aku',
+        id: 'me',
         label: 'Me',
         href: '/profile',
         icon: 'mdi:account-outline',

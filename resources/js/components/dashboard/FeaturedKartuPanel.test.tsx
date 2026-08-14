@@ -12,7 +12,7 @@ const featured: FeaturedCard = {
     name: 'Comeback Kid',
     subtitle: 'Epic · 2 days ago',
     km: '5.28',
-    durasi: '40:00',
+    duration: '40:00',
     trimp: '87',
     rarity: 'epic',
     mood: 'blazing',

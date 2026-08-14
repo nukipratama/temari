@@ -9,7 +9,7 @@ import {
     RANGE_FILTER_OPTIONS,
     labelFor,
     type RangeFilterValue,
-} from '@/pages/Activities/useJejakFilters';
+} from '@/pages/Activities/useFeedFilters';
 
 interface InlineNoteProps {
     icon: string;
