@@ -37,8 +37,10 @@ return [
 
     // An activity/week/month older than this gets the deterministic
     // rule-based filler instead of a real LLM call — nobody's checking back
-    // on narration for a year-old run, and it keeps backfill depth bounded.
-    'backfill_max_age_days' => (int) env('AI_BACKFILL_MAX_AGE_DAYS', 365),
+    // on narration for a run from last season, and it keeps backfill depth
+    // bounded. 12 weeks is a training block; beyond it a narrated run is
+    // history, not context. See docs/decisions/twelve-week-narration-cutoff.md.
+    'backfill_max_age_days' => (int) env('AI_BACKFILL_MAX_AGE_DAYS', 84),
 
     // Local ceiling on outbound Azure OpenAI calls, checked before every
     // request so concurrent workers self-throttle instead of firehosing

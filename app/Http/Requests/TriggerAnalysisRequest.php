@@ -10,6 +10,7 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\In;
 
 /**
  * Validates the loose inputs on the analysis-trigger endpoint: the `{type}`
@@ -61,7 +62,7 @@ class TriggerAnalysisRequest extends FormRequest
      * type stays permissive here so the `type` rule owns the failure and the
      * `unknown_analysis_type` contract below is what the caller sees.
      *
-     * @return list<string>
+     * @return list<string|In>
      */
     private function discriminatorRules(): array
     {

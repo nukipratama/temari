@@ -56,7 +56,7 @@ Saturday 18:00 gives the user a ~30-hour window (Saturday evening through Sunday
 
 ## Key dependencies
 
-- `WeeklySnapshot::consecutiveWeekStreak()` — walks backward through contiguous running weeks; returns 0 if the most recent run is older than last Sunday.
+- `WeeklySnapshot::consecutiveWeekStreak()` — walks backward through contiguous running weeks; returns 0 if the most recent run is older than last Sunday. A week a **rest token** was spent on is bridged rather than counted, so it neither breaks the run of weeks nor adds to it (see [[gamification]]). The nudge still fires for a user holding tokens: spending one is a fallback for a week they could not run, not a reason to skip warning them while they still can.
 - `NotificationPreference` — the channel-neutral master switch; the streak nudge reads `notifications_enabled`.
 - `TelegramConnection` — one of the two reachable channels; `isRevoked()` checks for a null `revoked_at`.
 

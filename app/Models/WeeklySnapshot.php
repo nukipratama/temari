@@ -83,6 +83,10 @@ class WeeklySnapshot extends Model
      * current or the immediately-prior week. If an entire week has closed since
      * the last run, the streak is broken and this returns 0 regardless of how
      * long the historical run was.
+     *
+     * A week a {@see StreakRestToken} was spent on is bridged rather than
+     * counted: it neither breaks the run of weeks nor adds to it, because the
+     * user did not run that week.
      */
     public static function consecutiveWeekStreak(int $userId): int
     {
@@ -98,10 +102,16 @@ class WeeklySnapshot extends Model
             return 0;
         }
 
+        $forgiven = StreakRestToken::forgivenWeekEndings($userId);
+
         // Weeks end on Sunday (see WeeklyAggregator). If the newest running week
         // is older than last week's ending, a full week has closed with no run.
-        $lastWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay()->subDays(7);
-        if ($weekEndings[0]->copy()->startOfDay()->lt($lastWeekEnding)) {
+        $oldestLiveWeek = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay()->subDays(7);
+        while (isset($forgiven[$oldestLiveWeek->toDateString()])) {
+            $oldestLiveWeek->subDays(7);
+        }
+
+        if ($weekEndings[0]->copy()->startOfDay()->lt($oldestLiveWeek)) {
             return 0;
         }
 
@@ -110,7 +120,12 @@ class WeeklySnapshot extends Model
 
         foreach (\array_slice($weekEndings, 1) as $weekEnding) {
             $current = $weekEnding->copy()->startOfDay();
-            if (! $previous->copy()->subDays(7)->equalTo($current)) {
+            $expected = $previous->copy()->subDays(7);
+            while (! $expected->equalTo($current) && isset($forgiven[$expected->toDateString()])) {
+                $expected->subDays(7);
+            }
+
+            if (! $expected->equalTo($current)) {
                 break;
             }
 
