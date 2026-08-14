@@ -21,7 +21,7 @@ Output tokens dominate LLM cost, and our narrator kinds span a wide value range:
 
 We decided routing is **config/env-only**, with a per-kind deployment map and a single primary fallback.
 
-In [config/azure_openai.php](config/azure_openai.php) the `narrators` array maps each narrator kind to a deployment name, and **every entry defaults to the general `AZURE_OPENAI_DEPLOYMENT`**. So an unset kind transparently uses the primary model; we only set a per-kind env var for the kinds we want to route elsewhere. In practice the primary is the cheap mini deployment, and only the high-value kinds (weekly/monthly recap, `pr_context`, `persona_summary`) get pointed at the stronger model. The exact mapping lives in config and is not duplicated here.
+In [config/azure_openai.php](config/azure_openai.php) the `narrators` array maps each narrator kind to a deployment name, and **every entry defaults to the general `AZURE_OPENAI_DEPLOYMENT`**. So an unset kind transparently uses the primary model; we only set a per-kind env var for the kinds we want to route elsewhere. In practice the primary is the cheap mini deployment, and only the high-value kinds (weekly/monthly recap, `pr_context`, `aku_profile_voice`) get pointed at the stronger model. The exact mapping lives in config and is not duplicated here.
 
 [AzureOpenAIClient::deploymentFor()](app/Services/AI/AzureOpenAIClient.php) reads `azure_openai.narrators.{kind}` and falls back to `azure_openai.deployment` when the kind is null/unmapped/empty. The resolved deployment is sent as the request body's `model` (Azure's OpenAI-compatible v1 surface selects by `model`, not URL path); host + API key are shared across all kinds.
 
