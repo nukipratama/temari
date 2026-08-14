@@ -184,7 +184,7 @@ export default function Accessories({
                             </ul>
                             <p className="mt-5 max-w-md font-display text-sm italic leading-relaxed text-cream/75">
                                 &ldquo;Every time you unlock something new, I'll
-                                have it ready right here.&rdquo; 🎀
+                                have it ready right here.&rdquo;
                             </p>
                         </div>
                     </div>

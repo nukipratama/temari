@@ -186,7 +186,7 @@ describe('verdictMetric', () => {
 describe('verdictHeadline', () => {
     it('names the month the improvement is measured from', () => {
         expect(verdictHeadline(trend())).toBe(
-            "you're faster than you were in march.",
+            "you're faster than you were in March.",
         );
     });
 
@@ -206,7 +206,7 @@ describe('verdictHeadline', () => {
             verdictHeadline(
                 trend({ verdict: 'slipped', mean_pace_delta_sec: -9 }),
             ),
-        ).toBe("you've slipped since march.");
+        ).toBe("you've slipped since March.");
     });
 
     it('calls a plateau without dressing it up', () => {
@@ -214,7 +214,7 @@ describe('verdictHeadline', () => {
             verdictHeadline(
                 trend({ verdict: 'plateaued', mean_pace_delta_sec: 0.4 }),
             ),
-        ).toBe("you're holding where you were in march.");
+        ).toBe("you're holding where you were in March.");
     });
 
     it('separates nothing comparable from one pair that is not yet a trend', () => {
@@ -289,13 +289,13 @@ describe('verdictSupport', () => {
             verdictSupport(
                 trend({ verdict: 'not_enough_history', comparison_count: 0 }),
             ),
-        ).toBe("run something twice and i'll tell you exactly what changed.");
+        ).toBe("run something twice and I'll tell you exactly what changed.");
 
         expect(
             verdictSupport(
                 trend({ verdict: 'not_enough_history', comparison_count: 1 }),
             ),
-        ).toBe("one more comparable run and i'll call it.");
+        ).toBe("one more comparable run and I'll call it.");
     });
 
     it('omits the aggregate when the window shipped no mean', () => {

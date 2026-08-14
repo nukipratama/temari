@@ -84,7 +84,7 @@ class StreakReminderNotification extends Notification implements ShouldQueue
 
     private function title(): string
     {
-        return "🔥 Your {$this->streakWeeks}-week streak is on the edge";
+        return "Your {$this->streakWeeks}-week streak is on the edge";
     }
 
     private function body(): string

@@ -325,19 +325,19 @@ describe('formatNaiveTimeId', () => {
         expect(formatNaiveTimeId('not-a-date')).toBeNull();
     });
 
-    it('reads the literal wall-clock HH.MM from the string', () => {
-        expect(formatNaiveTimeId('2026-06-09T06:52:00')).toBe('06.52');
-        expect(formatNaiveTimeId('2026-06-09T06:52')).toBe('06.52');
+    it('reads the literal wall-clock HH:MM from the string', () => {
+        expect(formatNaiveTimeId('2026-06-09T06:52:00')).toBe('06:52');
+        expect(formatNaiveTimeId('2026-06-09T06:52')).toBe('06:52');
     });
 
     it('does NOT shift the hour when the string carries a UTC Z (no timezone math)', () => {
         // Laravel serializes the naive datetime cast with a trailing Z. The hour
-        // must render as recorded (06.52), never reinterpreted as UTC and shifted.
-        expect(formatNaiveTimeId('2026-06-09T06:52:54.000000Z')).toBe('06.52');
+        // must render as recorded (06:52), never reinterpreted as UTC and shifted.
+        expect(formatNaiveTimeId('2026-06-09T06:52:54.000000Z')).toBe('06:52');
     });
 
     it('does NOT shift the hour under an explicit offset suffix', () => {
-        expect(formatNaiveTimeId('2026-06-09T23:15:00+09:00')).toBe('23.15');
+        expect(formatNaiveTimeId('2026-06-09T23:15:00+09:00')).toBe('23:15');
     });
 });
 
@@ -349,7 +349,7 @@ describe('formatShortDateTimeId', () => {
 
     it('combines short date and naive wall-clock time', () => {
         expect(formatShortDateTimeId('2026-06-09T06:52:00')).toBe(
-            '9 Jun 2026 · 06.52',
+            '9 Jun 2026 · 06:52',
         );
     });
 
@@ -359,7 +359,7 @@ describe('formatShortDateTimeId', () => {
 
     it('renders the as-recorded hour even with a trailing Z', () => {
         expect(formatShortDateTimeId('2026-06-09T06:52:54.000000Z')).toBe(
-            '9 Jun 2026 · 06.52',
+            '9 Jun 2026 · 06:52',
         );
     });
 });

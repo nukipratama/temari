@@ -52,7 +52,7 @@ export interface ShareKartuData {
     zonePct: ZonePct | null;
     location: string | null;
     weather: string | null;
-    /** Wind label, e.g. "12 km/j", for the context strip. */
+    /** Wind label, e.g. "12 km/h", for the context strip. */
     wind?: string | null;
     tags: string[];
     /** Badge emoji emblems, parallel to tags, for the hero ability pips. */

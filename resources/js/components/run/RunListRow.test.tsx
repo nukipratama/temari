@@ -26,10 +26,10 @@ describe('RunListRow', () => {
         expect(screen.getByText('10.00')).toBeInTheDocument();
     });
 
-    it('renders the formatted elapsed_time as the durasi cell', () => {
+    it('renders the formatted elapsed_time as the duration cell', () => {
         render(<RunListRow detail={detail({ elapsed_time: 2054 })} />);
         expect(screen.getByText('34:14')).toBeInTheDocument();
-        expect(screen.getByText('durasi')).toBeInTheDocument();
+        expect(screen.getByText('duration')).toBeInTheDocument();
     });
 
     it('falls back to "Run" when name is null', () => {
@@ -96,11 +96,11 @@ describe('RunListRow', () => {
                 detail={detail({ start_date_local: '2026-05-10T07:00:00' })}
             />,
         );
-        expect(screen.getByText('· 07.00')).toBeInTheDocument();
+        expect(screen.getByText('· 07:00')).toBeInTheDocument();
     });
 
     it('renders the literal wall-clock time even when serialized with a UTC Z (no zone shift)', () => {
-        // Laravel sends the naive cast as `...Z`; the time must stay 06.52, not
+        // Laravel sends the naive cast as `...Z`; the time must stay 06:52, not
         // shift to the viewer/test-runner timezone.
         render(
             <RunListRow
@@ -109,7 +109,7 @@ describe('RunListRow', () => {
                 })}
             />,
         );
-        expect(screen.getByText('· 06.52')).toBeInTheDocument();
+        expect(screen.getByText('· 06:52')).toBeInTheDocument();
     });
 
     it('omits the time when start_date_local has no time component', () => {

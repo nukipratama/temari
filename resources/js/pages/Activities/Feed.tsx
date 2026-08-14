@@ -281,7 +281,7 @@ const EMPTY_COPY: Record<StravaSyncState, { line: string; sub: string }> = {
         sub: "Your token isn't active anymore. Reconnect so new runs get picked up.",
     },
     syncing: {
-        line: 'Pulling in your runs 🏃‍♀️',
+        line: 'Pulling in your runs',
         sub: 'Hang tight, your history shows up as soon as the first run finishes processing.',
     },
     ready: {

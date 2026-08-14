@@ -85,7 +85,7 @@ function RunListRow({
                         <Cell value={km} unit="km" emphasize />
                         <Cell
                             value={formatDurationHMS(detail.elapsed_time)}
-                            unit="durasi"
+                            unit="duration"
                             hideOnNarrow="sm"
                         />
                         <Cell value={paceLabel} unit="/km" hideOnNarrow="sm" />

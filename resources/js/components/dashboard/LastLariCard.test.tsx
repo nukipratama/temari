@@ -74,6 +74,6 @@ describe('LastLariCard', () => {
                 note={{ oneline: 'x', mood: 'overloaded' }}
             />,
         );
-        expect(screen.getByText('07.00')).toBeInTheDocument();
+        expect(screen.getByText('07:00')).toBeInTheDocument();
     });
 });

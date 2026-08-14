@@ -750,12 +750,12 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, wind: '14 km/j' },
+            kartu: { ...kartu, wind: '14 km/h' },
             layout: 'kartu',
             format: 'story',
         });
         expect(ctx.fillText).toHaveBeenCalledWith(
-            expect.stringContaining('14 km/j'),
+            expect.stringContaining('14 km/h'),
             expect.any(Number),
             expect.any(Number),
         );

@@ -15,7 +15,7 @@ namespace App\Support;
  */
 final class LegalDocuments
 {
-    public const string UPDATED = '2026-08-13';
+    public const string UPDATED = '2026-08-14';
 
     private const string STRAVA_REVOKE_URL = 'https://www.strava.com/settings/apps';
 
@@ -165,7 +165,7 @@ final class LegalDocuments
                     'heading' => 'What is sent, and when',
                     'paragraphs' => [
                         'What goes to the model is the run\'s numbers and the context Temari has already computed around them: your recent averages, how this run compares to your own history, your load and streak state. It is sent when a block of text is first generated, not on every page load, and the result is stored so re-reading a page costs nothing.',
-                        'Generation is skipped entirely when the daily cost ceiling has been reached. A block waiting on that stays visibly pending rather than falling back to something written by a template and passed off as Temari.',
+                        'Nothing is sent to the model once the daily spend ceiling has been reached. Blocks written past that point come from a fixed set of lines Temari falls back to, built from the same numbers but chosen by a rule rather than written fresh. There is no marker on the page saying which of the two you are reading.',
                     ],
                 ],
                 [

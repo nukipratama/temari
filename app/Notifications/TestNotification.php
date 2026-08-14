@@ -51,7 +51,7 @@ class TestNotification extends Notification implements ShouldQueue
     {
         return new InboxMessage(
             kind: NotificationKind::Test,
-            title: '🔔 Test notification',
+            title: 'Test notification',
             body: TelegramReplies::test(),
         );
     }
@@ -59,7 +59,7 @@ class TestNotification extends Notification implements ShouldQueue
     public function toWebPush(User $notifiable, Notification $notification): WebPushMessage
     {
         return new WebPushMessage()
-            ->title('🔔 Test notification')
+            ->title('Test notification')
             ->body(TelegramReplies::test())
             ->icon('/icon-192.png')
             // Mirror the real push: high urgency so the test is a truthful delivery signal.

@@ -166,7 +166,7 @@ describe('Home', () => {
         const { container } = renderHome();
 
         const verdict = screen.getByText(
-            "you're faster than you were in march.",
+            "you're faster than you were in March.",
         );
         const thisWeek = screen.getByText(/This week ·/);
 
@@ -192,7 +192,7 @@ describe('Home', () => {
         renderHome(trend({ verdict: 'plateaued', mean_pace_delta_sec: 0.4 }));
 
         expect(
-            screen.getByText("you're holding where you were in march."),
+            screen.getByText("you're holding where you were in March."),
         ).toBeInTheDocument();
     });
 
@@ -209,7 +209,7 @@ describe('Home', () => {
         );
 
         expect(
-            screen.getByText("you've slipped since march."),
+            screen.getByText("you've slipped since March."),
         ).toBeInTheDocument();
         expect(screen.getByText('+10 s/km')).toBeInTheDocument();
     });

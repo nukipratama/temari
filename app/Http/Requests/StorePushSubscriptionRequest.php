@@ -59,7 +59,7 @@ class StorePushSubscriptionRequest extends FormRequest
     {
         return function (string $attribute, mixed $value, Closure $fail): void {
             if (! is_string($value) || ! $this->isAllowedPushEndpoint($value)) {
-                $fail('Endpoint push tidak dikenali.');
+                $fail('That push endpoint is not one we recognise.');
             }
         };
     }

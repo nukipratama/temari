@@ -173,7 +173,7 @@ class DemoRunSeeder
             // stays suppressed: the demo never has a real connection, so an
             // enqueued (no-op) notification job per row would just be waste.
             $filled = $this->backfillWithFiller($user);
-            $log(sprintf('  %d AI analyses backfilled with rule-based content (klik "Baca ulang" buat narasi LLM beneran).', $filled));
+            $log(sprintf('  %d AI analyses backfilled with rule-based content (hit "Reread" in the UI for real LLM narration).', $filled));
         });
 
         return $count;
@@ -237,7 +237,7 @@ class DemoRunSeeder
         $rng = new Randomizer(new Mt19937((int) $date->format('Ymd')));
 
         $locations = DemoLocation::library();
-        $names = ['Lari pagi', 'Easy run', 'Lari santai', 'Jogging pagi', 'Lari ringan'];
+        $names = ['Morning run', 'Easy run', 'Easy miles', 'Morning jog', 'Shakeout'];
 
         return new RunBlueprint(
             startsAt: $date->copy()->setTime(6, $rng->getInt(0, 45)),

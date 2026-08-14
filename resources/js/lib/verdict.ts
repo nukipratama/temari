@@ -119,7 +119,7 @@ export function verdictMetric(trend: PastYouTrend): EvidenceMetric {
     return 'pace';
 }
 
-/** The month of the oldest run the window was matched against, lowercased for Temari's register. */
+/** The month of the oldest run the window was matched against. */
 function matchedSinceMonth(trend: PastYouTrend): string | null {
     const dates = trend.comparisons
         .map((comparison) => comparison.past.date)
@@ -130,7 +130,7 @@ function matchedSinceMonth(trend: PastYouTrend): string | null {
     const oldest = parseNaiveLocalDate(dates.reduce((a, b) => (a < b ? a : b)));
     return oldest === null
         ? null
-        : oldest.toLocaleDateString('en-US', { month: 'long' }).toLowerCase();
+        : oldest.toLocaleDateString('en-US', { month: 'long' });
 }
 
 export function verdictHeadline(trend: PastYouTrend): string {
@@ -158,8 +158,8 @@ export function verdictHeadline(trend: PastYouTrend): string {
 export function verdictSupport(trend: PastYouTrend): string {
     if (trend.verdict === 'not_enough_history') {
         return trend.comparison_count === 0
-            ? "run something twice and i'll tell you exactly what changed."
-            : "one more comparable run and i'll call it.";
+            ? "run something twice and I'll tell you exactly what changed."
+            : "one more comparable run and I'll call it.";
     }
 
     const runs = `${trend.comparison_count} matched runs`;
