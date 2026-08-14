@@ -26,8 +26,10 @@ interface CoachMarkProps {
 
 const GAP = 12;
 const MARGIN = 12;
-// The mobile bottom nav is fixed over the page below `lg`.
-const BOTTOM_INSET = 76;
+// The mobile bottom nav is fixed over the page below `lg`. Mirrors the height
+// MobileBottomNav actually renders at (pt-2.5 + content + pb-7); anything less
+// parks the mark underneath it.
+const BOTTOM_INSET = 96;
 const WIDTH = 256;
 const FALLBACK_HEIGHT = 150;
 

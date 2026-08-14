@@ -5,7 +5,7 @@ import { formatPace } from '@/lib/pace';
 interface SplitsSparklineProps {
     /** Pace per km, in seconds (full km only). Lower = faster. */
     paceSec: ReadonlyArray<number>;
-    /** Normalized pace of the trailing "sisa" segment, or null. Rendered as a
+    /** Normalized pace of the trailing remainder segment, or null. Rendered as a
      *  de-emphasized, non-crownable ghost bar — kept out of the scored bars so it
      *  never enters the verdict, crown, or scale. */
     partialPaceSec?: number | null;
@@ -129,7 +129,7 @@ export default function SplitsSparkline({
                     // fastest/slowest/fastestIdx or it re-poisons the verdict + crown.
                     // Fixed height (out of scale), dashed cream ghost, visible "remainder" key
                     // since the sparkline has no legend.
-                    <div className="ml-1 flex min-w-0 flex-1 flex-col items-center gap-1.5">
+                    <div className="ml-1 flex min-w-[3.75rem] flex-1 flex-col items-center gap-1.5">
                         <div className="flex h-[72px] w-full items-end">
                             <div
                                 className="min-h-[8px] w-full rounded-sm border border-dashed border-cream/30 bg-cream/12"

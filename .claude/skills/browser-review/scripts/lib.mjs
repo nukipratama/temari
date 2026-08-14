@@ -138,7 +138,7 @@ export async function discoverPageRoutes(page) {
     if (GATED.some((re) => re.test(uri)) && !process.env.DEVTOOLS_PASSWORD) continue;
 
     if (!uri.includes('{')) {
-      pages.push({ name: uri === '/' || uri === '' ? 'hari-ini' : uri.replaceAll('/', '-'), path: `/${uri}` });
+      pages.push({ name: uri === '/' || uri === '' ? 'dashboard' : uri.replaceAll('/', '-'), path: `/${uri}` });
       continue;
     }
     // Single-param page: resolve the id from the list page (e.g. activities/{activity}).
