@@ -121,6 +121,56 @@ it('leaves load unknown, not zero, when no run scored a TRIMP', function (): voi
         ->and($snapshot->strain)->toBeNull();
 });
 
+it('persists a scored, a rest and an unscored week as three different facts', function (): void {
+    $user = User::factory()->create();
+    $thisWeek = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+    $scoredWeek = $thisWeek->copy()->subWeeks(4);
+    $restWeek = $thisWeek->copy()->subWeeks(2);
+    $unscoredWeek = $thisWeek->copy()->subWeeks(1);
+
+    $seed = function (Carbon $day, ?float $trimp) use ($user): void {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'distance' => 8000,
+            'moving_time' => 2400,
+            'trimp_edwards' => $trimp,
+            'start_date_local' => $day,
+        ]);
+    };
+    $seed($scoredWeek->copy()->subDays(5), 120.0);
+    $seed($scoredWeek->copy()->subDays(2), 90.0);
+    $seed($unscoredWeek->copy()->subDays(4), null);
+    $seed($unscoredWeek->copy()->subDays(1), null);
+
+    $this->aggregator->rebuildFor($user);
+
+    $rowFor = fn (Carbon $weekEnding): WeeklySnapshot => WeeklySnapshot::query()
+        ->where('user_id', $user->id)
+        ->where('week_ending', $weekEnding->toDateString())
+        ->firstOrFail();
+
+    $scored = $rowFor($scoredWeek);
+    expect($scored->runs)->toBe(2)
+        ->and($scored->weekly_trimp)->toBeGreaterThan(0.0)
+        ->and($scored->monotony)->toBeGreaterThan(0.0)
+        ->and($scored->strain)->toBeGreaterThan(0.0);
+
+    $rest = $rowFor($restWeek);
+    expect($rest->runs)->toBe(0)
+        ->and($rest->weekly_trimp)->toBe(0.0)
+        ->and($rest->monotony)->toBe(0.0)
+        ->and($rest->strain)->toBe(0.0);
+
+    // Ran 16 km, but nothing carried HR: volume known, load unknowable.
+    $unscored = $rowFor($unscoredWeek);
+    expect($unscored->runs)->toBe(2)
+        ->and($unscored->distance_km)->toBe(16.0)
+        ->and($unscored->weekly_trimp)->toBeNull()
+        ->and($unscored->monotony)->toBeNull()
+        ->and($unscored->strain)->toBeNull()
+        ->and($unscored->ctl_42d)->toBeFloat();
+});
+
 it('is idempotent — re-running upserts the same week without duplicating', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();

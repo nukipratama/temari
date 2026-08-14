@@ -53,8 +53,8 @@ class WeeklyAggregator
             return null;
         }
 
-        $dailyTrimp = $this->dailyTrimpMap($details);
-        $this->upsertWeek($user, $weekEnding, $details, $dailyTrimp);
+        ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->dailyHistory($details);
+        $this->upsertWeek($user, $weekEnding, $details, $dailyTrimp, $runDays);
 
         return $this->snapshotFor($user, $weekEnding);
     }
@@ -80,11 +80,11 @@ class WeeklyAggregator
             return null;
         }
 
-        $dailyTrimp = $this->dailyTrimpMap($details);
+        ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->dailyHistory($details);
 
         $weekEnding = $anchorWeekEnding->copy();
         while ($weekEnding->lte($lastWeekEnding)) {
-            $this->upsertWeek($user, $weekEnding, $details, $dailyTrimp);
+            $this->upsertWeek($user, $weekEnding, $details, $dailyTrimp, $runDays);
             $weekEnding = $weekEnding->copy()->addWeek();
         }
 
@@ -142,7 +142,7 @@ class WeeklyAggregator
             return 0;
         }
 
-        $dailyTrimp = $this->dailyTrimpMap($details);
+        ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->dailyHistory($details);
 
         // Non-empty (guarded above), so first() is present.
         $firstDetail = $details->first();
@@ -154,7 +154,7 @@ class WeeklyAggregator
 
         $count = 0;
         while ($weekEnding->lte($today)) {
-            $this->upsertWeek($user, $weekEnding, $details, $dailyTrimp);
+            $this->upsertWeek($user, $weekEnding, $details, $dailyTrimp, $runDays);
             $weekEnding = $weekEnding->copy()->addWeek();
             $count++;
         }
@@ -167,8 +167,9 @@ class WeeklyAggregator
     /**
      * @param  Enumerable<int, ActivityDetail>  $details
      * @param  array<string, float>  $dailyTrimp
+     * @param  array<string, true>  $runDays
      */
-    private function upsertWeek(User $user, Carbon $weekEnding, Enumerable $details, array $dailyTrimp): void
+    private function upsertWeek(User $user, Carbon $weekEnding, Enumerable $details, array $dailyTrimp, array $runDays): void
     {
         $weekStart = $weekEnding->copy()->subDays(6)->startOfDay();
         $weekEnd = $weekEnding->copy()->endOfDay();
@@ -188,7 +189,7 @@ class WeeklyAggregator
         // (which would understate current fitness). Past weeks are unaffected.
         $today = Carbon::today()->startOfDay();
         $loadAsOf = $weekEnding->lessThan($today) ? $weekEnding : $today;
-        $summary = $this->trainingLoad->summaryFromDailyMap($dailyTrimp, $weekEnding, $loadAsOf);
+        $summary = $this->trainingLoad->summaryFromDailyMap($dailyTrimp, $runDays, $weekEnding, $loadAsOf);
 
         WeeklySnapshot::query()->updateOrCreate(
             [
@@ -212,22 +213,31 @@ class WeeklyAggregator
     }
 
     /**
+     * The same two maps {@see TrainingLoad::summaryFromDailyMap} needs, derived
+     * from one already-loaded detail set: scored days, and every day a run
+     * happened on whether or not it carried heart rate.
+     *
      * @param  Enumerable<int, ActivityDetail>  $details
-     * @return array<string, float>
+     * @return array{trimp: array<string, float>, runDays: array<string, true>}
      */
-    private function dailyTrimpMap(Enumerable $details): array
+    private function dailyHistory(Enumerable $details): array
     {
-        $map = [];
+        $trimp = [];
+        $runDays = [];
         foreach ($details as $detail) {
-            if ($detail->trimp_edwards === null || $detail->start_date_local === null) {
+            if ($detail->start_date_local === null) {
                 continue;
             }
             $key = $detail->start_date_local->toDateString();
-            $map[$key] = ($map[$key] ?? 0.0) + (float) $detail->trimp_edwards;
+            $runDays[$key] = true;
+            if ($detail->trimp_edwards !== null) {
+                $trimp[$key] = ($trimp[$key] ?? 0.0) + (float) $detail->trimp_edwards;
+            }
         }
-        ksort($map);
+        ksort($trimp);
+        ksort($runDays);
 
-        return $map;
+        return ['trimp' => $trimp, 'runDays' => $runDays];
     }
 
     /**
