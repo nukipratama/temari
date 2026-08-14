@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Collection;
 /**
  * Resolves which accessories a user has equipped into the shape the Temari
  * mascot renders ({@see resources/js/components/temari/TemariProto.tsx}). One
- * source of truth shared by the Aksesori page and the global Inertia prop, so
+ * source of truth shared by the Accessories page and the global Inertia prop, so
  * the equipped look stays consistent everywhere the mascot appears.
  */
 class EquippedAccessories

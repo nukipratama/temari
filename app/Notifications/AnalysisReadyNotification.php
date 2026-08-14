@@ -26,7 +26,7 @@ use NotificationChannels\WebPush\WebPushMessage;
 
 /**
  * Fired from {@see \App\Services\AI\AnalysisService::markDone()} when a notifiable
- * analysis completes, and from the manual "Kirim notifikasi" controllers
+ * analysis completes, and from the manual "Send notification" controllers
  * ($force). `via()` decides per channel: an automatic push honours the recency
  * gate and the master-switch opt-in, a manual push bypasses both and reaches every
  * wired channel (Telegram if connected, web push if subscribed). Delivery +

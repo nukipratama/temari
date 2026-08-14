@@ -93,10 +93,10 @@ describe('Settings', () => {
         expect(container.querySelector('a[href="/profile"]')).toBeNull();
     });
 
-    // The mute switches say "Kirim ke Telegram" nowhere near their real scope:
-    // maintainer alerts and bot replies bypass them entirely. The group states
-    // that out loud so the toggle is not writing a cheque the code will not
-    // honour. See MaintainerAlerter.
+    // The mute switches say "Send run notifications to Telegram" nowhere near
+    // their real scope: maintainer alerts and bot replies bypass them entirely.
+    // The group states that out loud so the toggle is not writing a cheque the
+    // code will not honour. See MaintainerAlerter.
     it('scopes the channel mutes to run notifications', () => {
         render(<Settings />);
         expect(

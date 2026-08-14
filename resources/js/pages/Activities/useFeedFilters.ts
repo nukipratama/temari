@@ -59,7 +59,7 @@ export const DISTANCE_OPTIONS: ReadonlyArray<{
 ];
 
 /**
- * Must match JejakFilterRequest::range()'s fallback and the first entry of
+ * Must match FeedFilterRequest::range()'s fallback and the first entry of
  * RANGE_FILTER_OPTIONS (which HistoryFilter treats as the implicit default).
  * When it drifts, every URL carries a redundant `range=` and the "clean
  * /activities" case never happens.

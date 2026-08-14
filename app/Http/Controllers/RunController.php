@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\JejakFilterRequest;
+use App\Http\Requests\FeedFilterRequest;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -15,7 +15,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Ingest\DetailHydrator;
-use App\Services\Run\JejakQuery;
+use App\Services\Run\FeedQuery;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\PostRunNoteReader;
@@ -57,13 +57,13 @@ class RunController extends Controller
     /** Safety cap on weekly snapshots loaded into memory (10 years ≈ 520 weeks). */
     private const int MAX_WEEKS = 520;
 
-    public function index(JejakFilterRequest $request, JejakQuery $jejak, PostRunNoteReader $noteReader): Response
+    public function index(FeedFilterRequest $request, FeedQuery $feed, PostRunNoteReader $noteReader): Response
     {
         /** @var User $user */
         $user = $request->user();
 
-        $filters = $jejak->filtersFor($user, $request);
-        $runsQuery = $jejak->for($user, $filters);
+        $filters = $feed->filtersFor($user, $request);
+        $runsQuery = $feed->for($user, $filters);
 
         // Deferred behind a closure (Inertia's `useAnalysisTrigger` poll skips
         // any prop the partial reload does not name) and memoized (four props

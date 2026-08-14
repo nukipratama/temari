@@ -13,7 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
- * Manual "Kirim notifikasi" for a month's recap. The monthly recap's subject IS
+ * Manual "Send notification" for a month's recap. The monthly recap's subject IS
  * the user (subject_id = user id, discriminator = 'Y-m'), so scoping the lookup
  * to the caller's own id is the authorization: another user's month simply finds
  * no row. Forces (force: true) like the other manual pushes, so it bypasses the

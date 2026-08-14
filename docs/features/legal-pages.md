@@ -32,7 +32,7 @@ The wording that also appears *inside* the app lives in code, not in this note a
 
 Every claim has to be one the code keeps. Two places where that bit:
 
-- **Deletion is not quite total.** [UserEraser](../../app/Services/User/UserEraser.php) deliberately keeps `ai_token_usages` and stamps the departing user's name and Strava athlete id onto those rows so the spend stays attributable. `DataUseStatement`'s "everything Temari stored about you goes with it" is therefore slightly stronger than what happens, so `/privacy` states the exception explicitly in its own paragraph rather than restating the constant differently. A test pins that paragraph.
+- **Deletion is not quite total.** [UserEraser](../../app/Services/User/UserEraser.php) deliberately keeps `ai_token_usages` and stamps the departing user's name and Strava athlete id onto those rows so the spend stays attributable. "Everything Temari stored about you goes with it" would therefore be stronger than what happens, so both surfaces name the exception rather than hedging: `DataUseStatement` in its deletion bullet, `/privacy` at length in its own paragraph. A test pins each.
 - **There is no per-account AI switch.** `ai.enabled` is an app-wide [AppConfigKey](../../app/Support/Config/AppConfigKey.php); nothing scopes it per user. `/ai-use` says so outright instead of implying an opt-out exists.
 
 ## Where they are linked from

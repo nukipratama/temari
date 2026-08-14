@@ -7,7 +7,7 @@ namespace App\Services\Run;
 use App\Services\Run\Story\Temari;
 use Illuminate\Support\Carbon;
 
-final readonly class JejakFilters
+final readonly class FeedFilters
 {
     /**
      * Range chip → days back from today. Default `8w` keeps the page snappy
@@ -25,7 +25,7 @@ final readonly class JejakFilters
     public const string RANGE_ALL = 'all';
 
     /**
-     * Selectable moods for the Jejak filter. Mirrors the `Mood` union in
+     * Selectable moods for the Feed filter. Mirrors the `Mood` union in
      * resources/js/types/inertia.ts; anything else in `?mood=` is dropped rather
      * than 404ing, so a stale or hand-edited URL degrades to a wider view.
      */

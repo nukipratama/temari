@@ -331,8 +331,8 @@ class Analysis extends Model
     /**
      * Remaining manual-send cooldown for a {@see self::toPayload()} array, or
      * null when there is no row or it is not Done (only a Done row is ever
-     * pushed, so only it can cool). Surfaced next to the manual "Kirim
-     * notifikasi" button so it renders a disabled countdown.
+     * pushed, so only it can cool). Surfaced next to the manual "Send
+     * notification" button so it renders a disabled countdown.
      *
      * @param  array<string, mixed>  $payload
      */

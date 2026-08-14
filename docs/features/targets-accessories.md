@@ -7,7 +7,7 @@ reviewed: 2026-08-10
 code_refs:
   - resources/js/pages/Collection/Accessories.tsx
   - resources/js/pages/Collection/Badges.tsx
-  - app/Http/Controllers/AksesoriController.php
+  - app/Http/Controllers/AccessoryController.php
   - app/Http/Controllers/BadgeBoardController.php
   - resources/js/components/temari/TemariProto.tsx
   - resources/js/components/celebrations/AccessoryUnlockModal.tsx
@@ -18,7 +18,7 @@ code_refs:
 
 Two collection sub-tabs: **Accessories** (`/accessories`) is the wardrobe of what's been earned and can be put on Temari, now also showing live progress toward what's still locked. **Badges** (`/badges`) is the full badge board — all `Badge` cases plus the rest-day reward, lifetime counts and this-season counts side by side. Accessories are organized by six equipment **slots**: medal, headband, shirt, shorts, shoes, aura; badges aren't slotted.
 
-**Navigation:** `route('accessories')` → `/accessories` (`AksesoriController::index`); `route('badges')` → `/badges` (`BadgeBoardController::index`). The old `/goals` accessory-progress page (Slice 5 through Slice 6) and its `/target` legacy redirect both retired in Slice 7 — both now redirect straight to `/accessories`, where the progress numbers moved.
+**Navigation:** `route('accessories')` → `/accessories` (`AccessoryController::index`); `route('badges')` → `/badges` (`BadgeBoardController::index`). The old `/goals` accessory-progress page (Slice 5 through Slice 6) and its `/target` legacy redirect both retired in Slice 7 — both now redirect straight to `/accessories`, where the progress numbers moved.
 
 ## System dependencies
 
@@ -29,7 +29,7 @@ Two collection sub-tabs: **Accessories** (`/accessories`) is the wardrobe of wha
 
 ## Accessories (`/accessories`)
 
-The [AksesoriController](../../app/Http/Controllers/AksesoriController.php) `index` walks the `temari_unlocks` config catalog and, for each entry, resolves its slot (via the `EquippedAccessories` service), whether the user has unlocked it (`UserUnlock` rows), whether it's currently equipped, and — since Slice 7 — its live `current`/`target`/`unit` via `GoalResolver::forUser()` (the same server-side computation the retired `/goals` page used). It also returns the resolved `equipped` map (one key per slot).
+The [AccessoryController](../../app/Http/Controllers/AccessoryController.php) `index` walks the `temari_unlocks` config catalog and, for each entry, resolves its slot (via the `EquippedAccessories` service), whether the user has unlocked it (`UserUnlock` rows), whether it's currently equipped, and — since Slice 7 — its live `current`/`target`/`unit` via `GoalResolver::forUser()` (the same server-side computation the retired `/goals` page used). It also returns the resolved `equipped` map (one key per slot).
 
 [Accessories](../../resources/js/pages/Collection/Accessories.tsx) renders:
 
