@@ -133,6 +133,55 @@ describe('TemariProto — parity with the brand generator', () => {
         },
     );
 
+    /**
+     * The warm-up aura is the one catalogue item drawn with the generator's own
+     * default aura colour and dash, so an equipped render is comparable shape
+     * for shape. That makes this the case that proves halo suppression lands on
+     * both sides at once: a halo left in on either would show up as an extra
+     * circle in the diff.
+     */
+    it.each(TEMARI_EXPRESSIONS)(
+        'suppresses the mood halo on the %s face while an aura is equipped',
+        (expression) => {
+            const { container } = render(
+                <TemariProto
+                    pose={expression}
+                    equipped={{ aura: 'warmup' }}
+                    dropShadow={false}
+                />,
+            );
+            expect(container.querySelector('[data-part="halo"]')).toBeNull();
+            expect(shapesFromDom(container)).toEqual(
+                shapesFromMarkup(mascot(expression, { wearing: ['aura'] })),
+            );
+        },
+    );
+
+    it('brings the mood halo back the moment the aura comes off', () => {
+        const withAura = render(
+            <TemariProto
+                pose="challenging"
+                equipped={{ aura: 'champion' }}
+                dropShadow={false}
+            />,
+        ).container;
+        const withoutAura = render(
+            <TemariProto
+                pose="challenging"
+                equipped={{ aura: null }}
+                dropShadow={false}
+            />,
+        ).container;
+
+        expect(withAura.querySelector('[data-part="halo"]')).toBeNull();
+        expect(
+            withoutAura.querySelector('[data-part="halo"]'),
+        ).toBeInTheDocument();
+        expect(shapesFromDom(withoutAura)).toEqual(
+            shapesFromMarkup(mascot('challenging')),
+        );
+    });
+
     it('covers every wearable slot the generator defines', () => {
         const equipped: TemariEquipped = {
             headband: 'legendary',

@@ -3,7 +3,7 @@ title: Temari mascot
 description: The character that voices the app — faces from mood/vibe and equipped gear from shared props
 tags: [feature, temari]
 status: living
-reviewed: 2026-08-13
+reviewed: 2026-08-14
 code_refs:
   - resources/js/components/temari/Temari.tsx
   - resources/js/components/temari/TemariProto.tsx
@@ -63,6 +63,20 @@ whose colour and stroke weight carry the mood. The halo is never a fill, so it c
 a progress meter, and its colours come from the mood tokens darkened only where the raw token
 misses 3:1 on cream.
 
+**An equipped aura suppresses the mood halo.** The two rings are concentric and, under the heaviest
+halo (`gold`, weight 9), leave a 0.3-unit gap — measured in the running app that is 0.11 CSS px at
+the 34 px dashboard mini and still only 0.30 CSS px at the 96 px equip preview, so the pair fused
+into one thick smear at *every* size rather than reading as two signals. The aura is the earned,
+deliberate ring and takes precedence; the ambient mood ring returns the moment the aura comes off,
+so no signal is permanently lost. The rule lives in one place per side — `mascot()`'s `showHalo` in
+[build-mascot.mjs](../../resources/brand/build-mascot.mjs) and the `aura === null` guard in
+[TemariProto.tsx](../../resources/js/components/temari/TemariProto.tsx) — and is proven identical
+by the parity block in
+[TemariProto.test.tsx](../../resources/js/components/temari/TemariProto.test.tsx), which diffs an
+aura-equipped render of every face against `mascot(state, { wearing: ['aura'] })`. Placement is
+deliberately *not* re-derived: `BOUNDS` stays the union of the bare halo and the equipped aura, so
+equipping an aura never resizes the character.
+
 The eight original pose names (`proud`, `pumped`, `excited`, `holding`, `reading`, `wobble`,
 `observational`, `glow`) are still valid `pose` values and resolve to the face carrying the same
 read, so [temariPose.ts](../../resources/js/lib/temariPose.ts) and every call site are untouched.
@@ -74,8 +88,8 @@ The resolved face is exposed as `data-expression` on the root element.
 `tone`, `equipped`, `animate`, `dropShadow`, `seasonPhase` and `className`. It paints the six
 equipped slots: `headband` / `shirt` / `shorts` as flat bands clipped to the body circle (so they
 take the ball's curve for free and can never escape the silhouette), `shoes` under the body,
-`medal` on a lace over it, and `aura` as a dashed ring outside the halo. Colour carries rarity and
-a small detail carries the theme, so two rare items in the same slot still read as different
+`medal` on a lace over it, and `aura` as a dashed ring *in place of* the halo. Colour carries rarity
+and a small detail carries the theme, so two rare items in the same slot still read as different
 objects — those values were swept for separation and are not re-pickable casually. `tone` selects
 the silhouette outline (indigo on cream surfaces, cream on the one sky-panel placement). Motion is
 per-pose CSS animation only (`POSE_ANIM`, keyframes in `app.css`), never framer-motion, because the

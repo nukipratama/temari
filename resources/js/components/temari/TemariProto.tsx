@@ -776,15 +776,17 @@ function TemariProto({
     const character = (
         <g transform={PLACE_TRANSFORM}>
             {aura !== null && <Aura color={aura.color} dash={aura.dash} />}
-            <circle
-                data-part="halo"
-                cx={CX}
-                cy={CY}
-                r={HALO_R}
-                fill="none"
-                stroke={halo.color}
-                strokeWidth={halo.width}
-            />
+            {aura === null && (
+                <circle
+                    data-part="halo"
+                    cx={CX}
+                    cy={CY}
+                    r={HALO_R}
+                    fill="none"
+                    stroke={halo.color}
+                    strokeWidth={halo.width}
+                />
+            )}
             {shoes !== null && <Shoes item={shoes} />}
             <circle
                 data-part="body"
