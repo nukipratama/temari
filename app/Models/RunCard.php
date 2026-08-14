@@ -132,6 +132,7 @@ class RunCard extends Model
     protected function casts(): array
     {
         return [
+            'activity_id' => 'integer',
             'badges' => 'array',
             'rarity' => Rarity::class,
             'pr_set' => 'boolean',

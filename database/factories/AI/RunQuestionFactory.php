@@ -16,9 +16,6 @@ use Override;
  */
 class RunQuestionFactory extends Factory
 {
-    #[Override]
-    protected $model = RunQuestion::class;
-
     /** @return array<string, mixed> */
     #[Override]
     public function definition(): array

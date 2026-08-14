@@ -48,6 +48,7 @@ class SelfHealer
     public function __construct(
         private readonly AnalysisService $service,
         private readonly ChainResolver $chains,
+        private readonly BackfillAgeGate $ages,
     ) {
     }
 
@@ -100,7 +101,7 @@ class SelfHealer
             ->distinct()
             ->select('activities.user_id')
             ->chunkById(100, function ($users) use ($service, &$resumed, &$index): void {
-                $oldestReal = Carbon::now()->subDays((int) config('ai.backfill_max_age_days'));
+                $oldestReal = $this->ages->cutoff();
 
                 foreach ($users as $row) {
                     $earliest = AnalyzeActivityJob::earliestStalledActivityForUser((int) $row->user_id);
@@ -151,7 +152,7 @@ class SelfHealer
     private function resumeWeekly(): int
     {
         $links = $this->chains->stalledWeeklyLinkPerUser();
-        $oldestReal = Carbon::now()->subDays((int) config('ai.backfill_max_age_days'))->toDateString();
+        $oldestReal = $this->ages->cutoffDate();
         $index = 0;
 
         foreach ($links as $link) {
@@ -182,7 +183,7 @@ class SelfHealer
     private function resumeMonthly(): int
     {
         $links = $this->chains->stalledMonthlyLinkPerUser();
-        $oldestRealMonth = Carbon::now()->subDays((int) config('ai.backfill_max_age_days'))->format('Y-m');
+        $oldestRealMonth = $this->ages->cutoffMonth();
         $index = 0;
 
         foreach ($links as $link) {

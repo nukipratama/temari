@@ -224,6 +224,7 @@ class Activity extends Model
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
             'strava_external_id' => 'integer',
             'ingest_state' => IngestState::class,
             'fetched_at' => 'datetime',

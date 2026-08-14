@@ -84,6 +84,7 @@ class RaceGoal extends Model
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
             'race_date' => 'date:Y-m-d',
             'distance_m' => 'integer',
             'goal_time_sec' => 'integer',

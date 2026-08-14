@@ -72,6 +72,8 @@ class PersonalRecord extends Model
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
+            'activity_id' => 'integer',
             'value_sec' => 'float',
             'set_at' => 'datetime:Y-m-d\TH:i:s',
             'category' => PrCategory::class,

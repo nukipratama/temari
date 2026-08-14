@@ -63,6 +63,11 @@ class StravaSyncLog extends Model
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
+            'activities_synced' => 'integer',
+            'api_calls_used' => 'integer',
+            'rate_limit_15min_remaining' => 'integer',
+            'rate_limit_daily_remaining' => 'integer',
             'synced_at' => 'datetime',
         ];
     }

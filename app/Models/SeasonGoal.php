@@ -45,6 +45,7 @@ class SeasonGoal extends Model
     protected function casts(): array
     {
         return [
+            'season_id' => 'integer',
             'target' => 'float',
         ];
     }

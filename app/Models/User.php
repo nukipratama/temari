@@ -61,6 +61,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'pending_reveal_card_id' => 'integer',
             'is_demo' => 'boolean',
             'is_admin' => 'boolean',
             'onboarded_at' => 'datetime',

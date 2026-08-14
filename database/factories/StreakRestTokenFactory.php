@@ -15,9 +15,6 @@ use Override;
  */
 class StreakRestTokenFactory extends Factory
 {
-    #[Override]
-    protected $model = StreakRestToken::class;
-
     /** @return array<string, mixed> */
     #[Override]
     public function definition(): array

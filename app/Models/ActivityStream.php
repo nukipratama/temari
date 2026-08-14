@@ -41,6 +41,9 @@ class ActivityStream extends Model
     #[Override]
     protected function casts(): array
     {
-        return ['data' => 'array'];
+        return [
+            'activity_id' => 'integer',
+            'data' => 'array',
+        ];
     }
 }

@@ -16,6 +16,24 @@ use Illuminate\Support\Carbon;
  */
 class BackfillAgeGate
 {
+    /** The oldest instant still narratable by the LLM. */
+    public function cutoff(): Carbon
+    {
+        return Carbon::now()->subDays((int) config('ai.backfill_max_age_days'));
+    }
+
+    /** The cutoff as the `Y-m-d` key a date-keyed subject compares against. */
+    public function cutoffDate(): string
+    {
+        return $this->cutoff()->toDateString();
+    }
+
+    /** The cutoff as the `Y-m` key a month-keyed subject compares against. */
+    public function cutoffMonth(): string
+    {
+        return $this->cutoff()->format('Y-m');
+    }
+
     public function isTooOld(?Carbon $startedAt): bool
     {
         if ($startedAt === null) {

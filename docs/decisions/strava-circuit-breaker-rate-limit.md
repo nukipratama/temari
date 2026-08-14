@@ -13,6 +13,8 @@ code_refs:
 
 **Status:** Accepted (documented 2026-06-20)
 
+> **One detail below is superseded (noted 2026-08-14).** The note says `rateLimitRemaining(int $userId)` still takes a `$userId` for call-site compatibility. It no longer does: the parameter was never read, so it is gone ([StravaClient::rateLimitRemaining](app/Services/Strava/StravaClient.php#L147)). The decision recorded here, that the buckets are keyed app-wide and never per athlete, is unchanged.
+
 ## Context
 
 Strava enforces its rate limit per **API application** (the OAuth client), not per athlete: Read limits of 200 / 15 min and 2000 / day, with Overall limits of 400 / 15 min and 4000 / day sitting above them. Every connected user's calls draw from that one shared budget. If our local guard keyed its buckets per `user_id`, N users would each get a full private allowance and could collectively blow the single shared limit, getting the whole app 429'd. Separately, a sustained Strava outage (5xx / timeouts) would otherwise be hammered on every sync cycle with no fast-fail.

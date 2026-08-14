@@ -14,9 +14,6 @@ use Override;
  */
 class UserUnlockFactory extends Factory
 {
-    #[Override]
-    protected $model = UserUnlock::class;
-
     /** @return array<string, mixed> */
     #[Override]
     public function definition(): array
