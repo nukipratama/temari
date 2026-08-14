@@ -410,10 +410,10 @@ describe('Calendar', () => {
             );
             expect(screen.getByText(/Temari's notes/)).toBeInTheDocument();
             expect(
-                screen.queryByText('Belum dibaca Temari.'),
+                screen.queryByText(/thinking it over/),
             ).not.toBeInTheDocument();
             expect(
-                screen.queryByRole('button', { name: /Minta Temari bacain/ }),
+                screen.queryByRole('button', { name: /Try again/ }),
             ).not.toBeInTheDocument();
         });
 
@@ -434,7 +434,7 @@ describe('Calendar', () => {
                 screen.getByText("This month's recap isn't ready yet."),
             ).toBeInTheDocument();
             expect(
-                screen.queryByRole('button', { name: /Minta Temari bacain/ }),
+                screen.queryByRole('button', { name: /Try again/ }),
             ).not.toBeInTheDocument();
         });
 

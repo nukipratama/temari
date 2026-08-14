@@ -1,11 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import RiwayatTabs from './RiwayatTabs';
+import HistoryTabs from './HistoryTabs';
 
-describe('RiwayatTabs', () => {
+describe('HistoryTabs', () => {
     it('renders both sub-tab labels linking to their pages', () => {
-        render(<RiwayatTabs active="jejak" />);
+        render(<HistoryTabs active="feed" />);
         expect(screen.getByText('Feed').closest('a')).toHaveAttribute(
             'href',
             '/activities',
@@ -17,7 +17,7 @@ describe('RiwayatTabs', () => {
     });
 
     it('marks the active tab with aria-current', () => {
-        render(<RiwayatTabs active="kalender" />);
+        render(<HistoryTabs active="calendar" />);
         expect(screen.getByText('Calendar').closest('a')).toHaveAttribute(
             'aria-current',
             'page',

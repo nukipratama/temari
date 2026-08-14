@@ -87,10 +87,10 @@ describe('Settings', () => {
     // No back affordance anywhere: Settings is one tap from the Me tab and
     // from the avatar menu on every page, so a breadcrumb has no job here.
     it('has no back link', () => {
-        render(<Settings />);
-        expect(
-            screen.queryByRole('link', { name: /^Aku$/ }),
-        ).not.toBeInTheDocument();
+        const { container } = render(<Settings />);
+        // A back affordance would href its parent, the way HrZones' BackLink
+        // does. Asserting on the label instead outlived the label.
+        expect(container.querySelector('a[href="/profile"]')).toBeNull();
     });
 
     // The mute switches say "Kirim ke Telegram" nowhere near their real scope:

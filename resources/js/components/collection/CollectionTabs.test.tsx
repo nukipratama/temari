@@ -1,11 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import KoleksiTabs from './KoleksiTabs';
+import CollectionTabs from './CollectionTabs';
 
-describe('KoleksiTabs', () => {
+describe('CollectionTabs', () => {
     it('renders all four sub-tab labels', () => {
-        render(<KoleksiTabs active="cards" />);
+        render(<CollectionTabs active="cards" />);
         expect(screen.getByText('Cards')).toBeInTheDocument();
         expect(screen.getByText('Records')).toBeInTheDocument();
         expect(screen.getByText('Accessories')).toBeInTheDocument();
@@ -13,7 +13,7 @@ describe('KoleksiTabs', () => {
     });
 
     it('marks only the active tab with aria-current', () => {
-        render(<KoleksiTabs active="accessories" />);
+        render(<CollectionTabs active="accessories" />);
         expect(screen.getByText('Accessories').closest('a')).toHaveAttribute(
             'aria-current',
             'page',
@@ -24,7 +24,7 @@ describe('KoleksiTabs', () => {
     });
 
     it('shows the count chip only on the active tab when given', () => {
-        render(<KoleksiTabs active="badges" activeCount="3" />);
+        render(<CollectionTabs active="badges" activeCount="3" />);
         expect(screen.getByText('3')).toBeInTheDocument();
         expect(screen.getByText('Badges').closest('a')).toHaveTextContent('3');
         expect(screen.getByText('Cards').closest('a')).not.toHaveTextContent(
@@ -33,7 +33,7 @@ describe('KoleksiTabs', () => {
     });
 
     it('renders no count chip when activeCount is omitted', () => {
-        render(<KoleksiTabs active="cards" />);
+        render(<CollectionTabs active="cards" />);
         expect(
             screen
                 .getByText('Cards')

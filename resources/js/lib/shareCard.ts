@@ -38,7 +38,7 @@ export interface ShareKartuData {
     subtitle: string | null;
     date: string | null;
     km: string;
-    durasi: string;
+    duration: string;
     pace: string | null;
     trimp: string;
     hr: string | null;
@@ -984,7 +984,7 @@ function drawHeroArtWindow(
 
 /**
  * The dark stat block, mirroring the live Kartu full tier: rarity ribbon, name,
- * subtitle, KM hero, a labeled PACE · HR · CADENCE · DURASI · BEST grid, a Z1..Z5
+ * subtitle, KM hero, a labeled PACE · HR · CADENCE · DURATION · BEST grid, a Z1..Z5
  * HR-zone effort bar, badges, and (story) a flavor quote.
  *
  * Returns the total height it consumed from `box.y`. Pass `draw=false` to
@@ -1319,7 +1319,7 @@ function truncateToWidth(
 }
 
 /**
- * PACE · HR · CADENCE · DURASI · BEST · ELEVASI cells, present-only. Elevation
+ * PACE · HR · CADENCE · DURATION · BEST · ELEVATION cells, present-only. Elevation
  * gain is the 6th cell (under CADENCE, col 3 row 2); TRIMP stays as the floating
  * power badge over the art window, so it isn't shown twice. Date moves to the
  * bottom context strip.
@@ -1331,7 +1331,7 @@ function heroStatCells(
         { label: 'PACE', value: k.pace ? k.pace + '/km' : null },
         { label: 'HR', value: k.hr },
         { label: 'CADENCE', value: k.cadence },
-        { label: 'DURATION', value: k.durasi },
+        { label: 'DURATION', value: k.duration },
         { label: 'BEST', value: k.fastestKm },
         { label: 'ELEVATION', value: k.ascent ?? null },
     ];
@@ -1526,7 +1526,7 @@ function drawStats(d: DrawCtx): void {
     const cells: Array<{ label: string; value: string }> = [
         { label: 'DISTANCE', value: `${k.km} km` },
         { label: 'PACE', value: k.pace ? `${k.pace}/km` : '—' },
-        { label: 'DURATION', value: k.durasi },
+        { label: 'DURATION', value: k.duration },
         { label: 'HR', value: k.hr ?? '—' },
     ];
 

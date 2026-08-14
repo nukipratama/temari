@@ -59,8 +59,9 @@ export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
 
             {trippedTime !== undefined && (
                 <p className="mt-2 font-mono text-xs text-ink-2 tabular-nums">
-                    Ceiling tripped {trippedTime} · {degradedFills} block
-                    {degradedFills === 1 ? '' : 's'} served rule-based
+                    Ceiling tripped {trippedTime} · {degradedFills}{' '}
+                    {degradedFills === 1 ? 'reply' : 'replies'} served
+                    rule-based
                 </p>
             )}
 

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 
+// Keeps its original spelling: renaming it would silently drop the saved
+// filter of every user who already has one.
 const STORAGE_KEY = 'temari:riwayat:last-filter';
 
 /**
- * Remembers the last non-empty filter query the user applied on Jejak, so a
+ * Remembers the last non-empty filter query the user applied on the feed, so a
  * later visit can offer to resume it in one tap.
  *
  * Deliberately **not** auto-applied. Landing on a silently pre-filtered list

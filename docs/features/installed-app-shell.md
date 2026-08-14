@@ -167,7 +167,7 @@ Three things carry it, and all three are invisible on a desktop browser:
 - **Scroll lock behind overlays.**
   [useBodyScrollLock](resources/js/hooks/useBodyScrollLock.ts), refcounted so
   overlapping overlays cannot unlock early. Applied to the modals, and to the
-  Riwayat filter only below `lg`, where it is a sheet rather than a popover.
+  history filter only below `lg`, where it is a sheet rather than a popover.
 
 Tapping the tab you are already on scrolls to top instead of issuing a fresh
 visit ([MobileBottomNav.tsx](resources/js/components/MobileBottomNav.tsx)).

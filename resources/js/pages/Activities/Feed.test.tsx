@@ -7,7 +7,7 @@ import { makeUser, setMockPage, stubSyncAnimationFrame } from '@/test/setup';
 import RunsIndex from './Feed';
 import { run } from './runFixture';
 
-vi.mock('@/components/aktivitas/JourneyStrip', () => ({
+vi.mock('@/components/activities/JourneyStrip', () => ({
     default: () => <div data-testid="journey-strip" />,
 }));
 
@@ -306,7 +306,7 @@ describe('Activities/Feed', () => {
         );
     });
 
-    it('resets range + mood filters back to a bare /aktivitas', () => {
+    it('resets range + mood filters back to a bare /activities', () => {
         vi.mocked(router.get).mockReset();
         render(
             <RunsIndex

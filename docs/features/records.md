@@ -7,7 +7,7 @@ reviewed: 2026-06-20
 code_refs:
   - resources/js/pages/Collection/Records.tsx
   - app/Http/Controllers/RekorController.php
-  - resources/js/components/koleksi/MilestoneStrip.tsx
+  - resources/js/components/collection/MilestoneStrip.tsx
   - resources/js/components/card/PrCard.tsx
   - resources/js/components/run/SplitsSparkline.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
@@ -38,7 +38,7 @@ PR categories cover **1K / 5K / 10K / 15K / Half / Full Marathon** plus pace bes
 [Records](../../resources/js/pages/Collection/Records.tsx) sorts distance PRs longest-first, picks the longest as the headline `featured`, and stacks:
 
 - **HeroScoreboard** — an oversized time on a sky panel, the glowing Temari mascot, and the PR's **context line** streamed through [AnalysisStatus](../../resources/js/components/temari/AnalysisStatus.tsx) (see [[ai-pipeline]]). Captions (Type / Date / Location / Weather) sit below, then a [SplitsSparkline](../../resources/js/components/run/SplitsSparkline.tsx) of the per-km pace.
-- **MilestoneStrip** — only when the featured PR has a positive gap to its next round-number goal. [MilestoneStrip](../../resources/js/components/koleksi/MilestoneStrip.tsx) renders "you're N seconds off sub-X" using `targetSec` / `deltaSec` from `featuredExtras`.
+- **MilestoneStrip** — only when the featured PR has a positive gap to its next round-number goal. [MilestoneStrip](../../resources/js/components/collection/MilestoneStrip.tsx) renders "you're N seconds off sub-X" using `targetSec` / `deltaSec` from `featuredExtras`.
 - **TrophyWall** — every distance PR as a [PrCard](../../resources/js/components/card/PrCard.tsx) medallion (category, time, date, link to the run).
 - **PaceTicker** — pace best-efforts on a dark scoreboard strip.
 

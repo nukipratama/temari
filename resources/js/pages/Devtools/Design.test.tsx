@@ -85,7 +85,7 @@ describe('Devtools/Design', () => {
         expect(screen.getByText('--pad-card · 16px')).toBeInTheDocument();
     });
 
-    it('audits the live values, outline rule included', () => {
+    it('audits the live values, outline rule and translucent panels included', () => {
         cleanup = declareTokens();
         render(<Design />);
 
@@ -93,7 +93,8 @@ describe('Devtools/Design', () => {
         expect(
             screen.getByText('rarity-legendary fill outline'),
         ).toBeInTheDocument();
-        expect(screen.getByText('contrast 3/3')).toBeInTheDocument();
+        expect(screen.getByText('bg-ink/0.7 panel')).toBeInTheDocument();
+        expect(screen.getByText('contrast 8/8')).toBeInTheDocument();
     });
 
     it('says so when no custom properties are readable', () => {

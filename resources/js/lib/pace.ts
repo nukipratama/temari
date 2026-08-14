@@ -188,24 +188,6 @@ export function formatWeekdayDayId(date: Date): string {
     });
 }
 
-/** "May 11, 2026" — numeric day + long month + year, no weekday. */
-export function formatDayMonthYearId(date: Date): string {
-    return date.toLocaleDateString('en-US', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    });
-}
-
-/** "May 11, 2026" — zero-padded day + short month + year. */
-export function formatPaddedDayMonthYearId(date: Date): string {
-    return date.toLocaleDateString('en-US', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-    });
-}
-
 const ID_MONTH_SHORT = [
     'Jan',
     'Feb',
@@ -291,19 +273,6 @@ export function isoDateLocal(d: Date): string {
 /** Today as YYYY-MM-DD in the local zone. */
 export function todayLocalIso(): string {
     return isoDateLocal(new Date());
-}
-
-/** YYYY-MM-DD for `days` ago in the local zone. */
-export function isoDaysAgoLocal(days: number): string {
-    const d = new Date();
-    d.setDate(d.getDate() - days);
-    return isoDateLocal(d);
-}
-
-/** First day of the current month as YYYY-MM-DD in the local zone. */
-export function isoStartOfMonthLocal(): string {
-    const d = new Date();
-    return isoDateLocal(new Date(d.getFullYear(), d.getMonth(), 1));
 }
 
 // Inverse of formatPace: parses "M:SS" (or "MM:SS") back to seconds-per-km.

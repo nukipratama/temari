@@ -13,9 +13,9 @@ import type {
 import FeaturedKartuPanel from '@/components/dashboard/FeaturedKartuPanel';
 import KondisiCard from '@/components/dashboard/KondisiCard';
 import KpiTile from '@/components/dashboard/KpiTile';
-import LastLariCard, {
+import LastRunCard, {
     type LastRunNote,
-} from '@/components/dashboard/LastLariCard';
+} from '@/components/dashboard/LastRunCard';
 import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
 import VitalChips from '@/components/dashboard/VitalChips';
 import EvidenceList from '@/components/home/EvidenceList';
@@ -135,7 +135,7 @@ export default function Home({
 
                             <div className="grid gap-4 sm:grid-cols-2">
                                 {lastRun && (
-                                    <LastLariCard
+                                    <LastRunCard
                                         run={lastRun}
                                         pose={poseForRun(
                                             lastRun,

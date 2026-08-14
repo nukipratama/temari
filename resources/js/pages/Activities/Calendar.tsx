@@ -6,9 +6,9 @@ import { memo, useRef, type ReactNode } from 'react';
 import type { AnalysisPayload, Mood } from '@/types/inertia';
 
 import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
+import HistoryFilter from '@/components/history/HistoryFilter';
+import HistoryTabs from '@/components/history/HistoryTabs';
 import CoachMark from '@/components/onboarding/CoachMark';
-import RiwayatFilter from '@/components/riwayat/RiwayatFilter';
-import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import SendNotificationButton from '@/components/SendNotificationButton';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
@@ -117,7 +117,7 @@ export default function Calendar({
                 </header>
 
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                    <RiwayatTabs active="kalender" />
+                    <HistoryTabs active="calendar" />
                     <div className="flex flex-wrap items-center gap-2.5">
                         <MonthNav
                             label={monthLabel}
@@ -125,7 +125,7 @@ export default function Calendar({
                             nextMonth={nextMonth}
                             showTodayButton={!isCurrentMonth}
                         />
-                        <RiwayatFilter
+                        <HistoryFilter
                             mood={{
                                 selected: moodFilter,
                                 options: MOOD_FILTER_OPTIONS,
@@ -216,14 +216,14 @@ function LifetimeEyebrow({ lifetime }: Readonly<{ lifetime?: LifetimeStats }>) {
 
 /**
  * Temari's narrative recap for the viewed month, keyed to that month's
- * MonthlyRecap analysis. MonthlyRecap is a connected + chained kind: the
- * "Coba lagi" / "Minta Temari bacain" actions resume the chain from the
- * earliest unfilled month, and "Baca ulang" (regenerate) shows only on the
- * latest narrated month (`is_chain_head`). No rule-based fallback exists for
+ * MonthlyRecap analysis. MonthlyRecap is a connected + chained kind: the retry
+ * and resume actions pick the chain up from the earliest unfilled month, and
+ * regenerate shows only on the latest narrated month (`is_chain_head`). No
+ * rule-based fallback exists for
  * monthly, so unfilled months simply show the empty / resume state. The
  * still-running current month (`awaitingSchedule`) suppresses every trigger and
  * waits for the scheduler, so its incomplete recap can't be generated on demand.
- * Temari wears the month's dominant run mood, mirroring the weekly recap on Jejak.
+ * Temari wears the month's dominant run mood, mirroring the weekly recap on the feed.
  */
 function MonthlyRecapCard({
     recap,

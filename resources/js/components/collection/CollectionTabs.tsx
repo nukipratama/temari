@@ -1,15 +1,15 @@
 import SectionTabs, { type SectionTabItem } from '@/components/ui/SectionTabs';
 
-export type KoleksiTab = 'cards' | 'records' | 'accessories' | 'badges';
+export type CollectionTab = 'cards' | 'records' | 'accessories' | 'badges';
 
-interface KoleksiTabsProps {
-    active: KoleksiTab;
+interface CollectionTabsProps {
+    active: CollectionTab;
     /** Active tab's count chip only — sibling counts would need extra queries per page load. */
     activeCount?: string;
     className?: string;
 }
 
-const TABS: ReadonlyArray<SectionTabItem<KoleksiTab>> = [
+const TABS: ReadonlyArray<SectionTabItem<CollectionTab>> = [
     { id: 'cards', label: 'Cards', href: '/cards', icon: 'mdi:cards-outline' },
     {
         id: 'records',
@@ -31,11 +31,11 @@ const TABS: ReadonlyArray<SectionTabItem<KoleksiTab>> = [
     },
 ];
 
-export default function KoleksiTabs({
+export default function CollectionTabs({
     active,
     activeCount,
     className,
-}: Readonly<KoleksiTabsProps>) {
+}: Readonly<CollectionTabsProps>) {
     return (
         <SectionTabs
             tabs={TABS}

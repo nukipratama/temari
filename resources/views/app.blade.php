@@ -34,10 +34,11 @@
     {{-- Android/Chrome uses this to tint its toolbar. iOS does not use it for
          the standalone status bar at all, which is why two rounds of retinting
          it never touched the dark band around the notch — see StatusBarScrim
-         for what actually paints that. Cream because that is the app's top
-         surface on a device with no safe-area inset, where the scrim gradient
-         is only a few px tall. Fixed rather than following the dawn-shift. --}}
-    <meta name="theme-color" content="#EEE7D6">
+         for what actually paints that. `cream-deep` because that is the ground
+         AppShell paints under the whole app, and it is what
+         public/manifest.webmanifest already declares. Fixed rather than
+         following the dawn-shift. --}}
+    <meta name="theme-color" content="#ece2ce">
 
     {{-- PWA: installable + standalone; push works once added to the Home Screen via Safari. --}}
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">

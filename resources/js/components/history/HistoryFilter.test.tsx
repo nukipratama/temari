@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { MoodOption } from '@/lib/mood';
 
-import RiwayatFilter from './RiwayatFilter';
+import HistoryFilter from './HistoryFilter';
 
 type Range = '8w' | '12w';
 
@@ -31,10 +31,10 @@ function openPanel() {
     fireEvent.click(screen.getByRole('button', { name: /open filter/i }));
 }
 
-describe('RiwayatFilter', () => {
+describe('HistoryFilter', () => {
     it('renders range options as links to hrefFor() once opened', () => {
         render(
-            <RiwayatFilter<Range>
+            <HistoryFilter<Range>
                 range={{
                     value: '12w',
                     options: RANGE_OPTIONS,
@@ -58,7 +58,7 @@ describe('RiwayatFilter', () => {
         const onToggle = vi.fn();
         const onReset = vi.fn();
         render(
-            <RiwayatFilter
+            <HistoryFilter
                 mood={{
                     selected: new Set(['blazing']),
                     options: MOOD_OPTIONS,
@@ -78,7 +78,7 @@ describe('RiwayatFilter', () => {
 
     it('marks the selected mood as pressed, not menu-checked', () => {
         render(
-            <RiwayatFilter
+            <HistoryFilter
                 mood={{
                     selected: new Set(['blazing']),
                     options: MOOD_OPTIONS,
@@ -99,7 +99,7 @@ describe('RiwayatFilter', () => {
 
     it('does not adopt ARIA menu semantics (disclosure popover, not a menu)', () => {
         render(
-            <RiwayatFilter<Range>
+            <HistoryFilter<Range>
                 range={{
                     value: '12w',
                     options: RANGE_OPTIONS,
@@ -121,7 +121,7 @@ describe('RiwayatFilter', () => {
 
     it('returns focus to the trigger button when Escape is pressed', () => {
         render(
-            <RiwayatFilter<Range>
+            <HistoryFilter<Range>
                 range={{
                     value: '12w',
                     options: RANGE_OPTIONS,
@@ -144,7 +144,7 @@ describe('RiwayatFilter', () => {
         it('selects a band and marks the active one', () => {
             const onSelect = vi.fn();
             render(
-                <RiwayatFilter<Range, '0-5' | '21up'>
+                <HistoryFilter<Range, '0-5' | '21up'>
                     distance={{
                         value: '21up',
                         options: DISTANCE_OPTIONS,
@@ -168,7 +168,7 @@ describe('RiwayatFilter', () => {
         it('reports the same band again so the page can clear it', () => {
             const onSelect = vi.fn();
             render(
-                <RiwayatFilter<Range, '0-5' | '21up'>
+                <HistoryFilter<Range, '0-5' | '21up'>
                     distance={{
                         value: '21up',
                         options: DISTANCE_OPTIONS,
@@ -186,7 +186,7 @@ describe('RiwayatFilter', () => {
 
     it('counts every active filter on the trigger badge', () => {
         render(
-            <RiwayatFilter<Range, '0-5'>
+            <HistoryFilter<Range, '0-5'>
                 // '12w' is not the first option, so the range counts as active.
                 range={{
                     value: '12w',
@@ -216,7 +216,7 @@ describe('RiwayatFilter', () => {
     // filter the user has to be told about.
     it('does not count the default range towards the badge', () => {
         render(
-            <RiwayatFilter<Range>
+            <HistoryFilter<Range>
                 range={{
                     value: '8w',
                     options: RANGE_OPTIONS,

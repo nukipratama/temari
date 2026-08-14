@@ -5,7 +5,7 @@ import { useState } from 'react';
 
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
-import ProgressionChart from '@/components/koleksi/ProgressionChart';
+import ProgressionChart from '@/components/collection/ProgressionChart';
 import PersonaBar, { type PersonaSlice } from '@/components/PersonaBar';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
@@ -136,10 +136,9 @@ export default function Profile({
 
                 <HeroPanel className="lg:px-9 lg:py-8">
                     {/* Stacks below sm: the 100px mascot plus the gap leaves only
-                        ~150px of column on a 320px screen, which is too narrow for
-                        the "Minta Temari bacain" CTA — it wrapped one word per line
-                        into a tall, cramped pill. Side-by-side from sm up, where
-                        there is room for both. */}
+                        ~150px of column on a 320px screen, too narrow for the
+                        narration CTA beside it, which wrapped one word per line into
+                        a tall, cramped pill. Side-by-side from sm up. */}
                     <div className="mb-5 flex flex-col items-start gap-4 sm:flex-row sm:items-start sm:gap-6">
                         <div className="shrink-0">
                             <Temari pose="proud" size={100} animate={false} />

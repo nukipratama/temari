@@ -62,5 +62,580 @@
     "gradient-to-l",
     "transparent",
     "white"
-  ]
+  ],
+  "__panel": "Every bg-<token>/<alpha> the components paint. A translucent panel is not the token it tints: it is that token composited over whatever it is mounted on, which is the one fact no scan can see. `over` records it per call site, because the same panel class is a hero-panel tile in one file and a page-ground tile in another and only the second is a bug — so a new file painting it is a new claim to check, not a silent reuse. `text` is every text token that lands on the panel; the same-class-string scan finds most, a child element's text is added by hand. Empty text means nothing prints on it, so nothing scores it.",
+  "panel": {
+    "citrus/0.15": {
+      "over": {
+        "resources/js/lib/tones.ts": [
+          "paper"
+        ]
+      },
+      "text": [
+        "citrus-ink"
+      ]
+    },
+    "cream-deep/0.1": {
+      "over": {
+        "resources/js/components/history/WeekSection.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ink-3"
+      ]
+    },
+    "cream-deep/0.2": {
+      "text": []
+    },
+    "cream-deep/0.3": {
+      "text": []
+    },
+    "cream-deep/0.4": {
+      "text": []
+    },
+    "cream-deep/0.6": {
+      "over": {
+        "resources/js/components/history/WeekSection.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ink",
+        "ink-2"
+      ]
+    },
+    "cream-deep/0.7": {
+      "over": {
+        "resources/js/lib/variants.ts": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ink-2"
+      ]
+    },
+    "cream-deep/0.85": {
+      "text": []
+    },
+    "cream/0.04": {
+      "text": []
+    },
+    "cream/0.06": {
+      "text": []
+    },
+    "cream/0.08": {
+      "over": {
+        "resources/js/components/run/EmptyRunsState.tsx": [
+          "sky"
+        ],
+        "resources/js/pages/Auth/Login.tsx": [
+          "sky"
+        ]
+      },
+      "text": [
+        "cream"
+      ]
+    },
+    "cream/0.1": {
+      "over": {
+        "resources/js/components/card/FeaturedCardHero.tsx": [
+          "sky"
+        ],
+        "resources/js/components/card/Kartu.tsx": [
+          "sky"
+        ],
+        "resources/js/components/card/ZoneBar.tsx": [
+          "sky"
+        ],
+        "resources/js/components/celebrations/AccessoryUnlockModal.tsx": [
+          "sky"
+        ],
+        "resources/js/components/run/EmptyRunsState.tsx": [
+          "sky"
+        ],
+        "resources/js/components/ui/Chip.test.tsx": [
+          "sky"
+        ],
+        "resources/js/components/ui/MoodChip.tsx": [
+          "sky"
+        ],
+        "resources/js/components/ui/SectionTabs.tsx": [
+          "sky"
+        ],
+        "resources/js/lib/variants.ts": [
+          "sky"
+        ]
+      },
+      "text": [
+        "cream",
+        "cream/0.8",
+        "cream/0.85",
+        "horizon"
+      ]
+    },
+    "cream/0.12": {
+      "text": []
+    },
+    "cream/0.15": {
+      "text": []
+    },
+    "cream/0.2": {
+      "over": {
+        "resources/js/components/ui/SectionTabs.test.tsx": [
+          "sky"
+        ],
+        "resources/js/components/ui/SectionTabs.tsx": [
+          "sky"
+        ]
+      },
+      "text": [
+        "cream"
+      ]
+    },
+    "cream/0.35": {
+      "text": []
+    },
+    "cream/0.4": {
+      "text": []
+    },
+    "ember/0.08": {
+      "over": {
+        "resources/js/components/ErrorBanner.tsx": [
+          "paper"
+        ],
+        "resources/js/components/FlashNotice.tsx": [
+          "paper"
+        ],
+        "resources/js/pages/Devtools/Design.tsx": [
+          "paper"
+        ],
+        "resources/js/pages/Settings/HrZones.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ember-ink"
+      ]
+    },
+    "ember/0.15": {
+      "over": {
+        "resources/js/components/home/EvidenceList.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ember-ink"
+      ]
+    },
+    "ember/0.18": {
+      "over": {
+        "resources/js/pages/Devtools/Design.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ember-ink"
+      ]
+    },
+    "horizon/0.06": {
+      "text": []
+    },
+    "horizon/0.07": {
+      "text": []
+    },
+    "horizon/0.08": {
+      "text": []
+    },
+    "horizon/0.1": {
+      "over": {
+        "resources/js/lib/variants.ts": [
+          "paper"
+        ],
+        "resources/js/pages/Onboarding/Index.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "horizon-ink"
+      ]
+    },
+    "horizon/0.12": {
+      "text": []
+    },
+    "horizon/0.14": {
+      "over": {
+        "resources/js/components/run/EmptyRunsState.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "horizon-ink"
+      ]
+    },
+    "horizon/0.15": {
+      "over": {
+        "resources/js/components/history/WeekSection.tsx": [
+          "paper"
+        ],
+        "resources/js/components/temari/AnalysisStatus.tsx": [
+          "paper"
+        ],
+        "resources/js/lib/tones.ts": [
+          "paper"
+        ]
+      },
+      "text": [
+        "horizon-ink"
+      ]
+    },
+    "horizon/0.18": {
+      "over": {
+        "resources/js/components/ui/Chip.test.tsx": [
+          "paper"
+        ],
+        "resources/js/lib/variants.ts": [
+          "paper"
+        ],
+        "resources/js/pages/Auth/Login.tsx": [
+          "paper"
+        ],
+        "resources/js/pages/Devtools.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "horizon-ink"
+      ]
+    },
+    "horizon/0.35": {
+      "text": []
+    },
+    "ink-3/0.4": {
+      "text": []
+    },
+    "ink/0.04": {
+      "over": {
+        "resources/js/components/NotificationBell.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ink-2"
+      ]
+    },
+    "ink/0.05": {
+      "over": {
+        "resources/js/components/aiusage/UserTable.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ink-2"
+      ]
+    },
+    "ink/0.06": {
+      "over": {
+        "resources/js/components/NotificationBell.tsx": [
+          "paper"
+        ],
+        "resources/js/components/ui/Chip.test.tsx": [
+          "paper"
+        ],
+        "resources/js/lib/variants.ts": [
+          "paper"
+        ],
+        "resources/js/pages/Devtools/Design.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ink",
+        "ink-2"
+      ]
+    },
+    "ink/0.15": {
+      "text": []
+    },
+    "ink/0.2": {
+      "text": []
+    },
+    "ink/0.7": {
+      "over": {
+        "resources/js/components/run/RouteMap.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "cream"
+      ]
+    },
+    "leaf/0.08": {
+      "text": []
+    },
+    "leaf/0.1": {
+      "over": {
+        "resources/js/pages/Activities/Calendar.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "leaf-ink"
+      ]
+    },
+    "leaf/0.15": {
+      "over": {
+        "resources/js/components/home/EvidenceList.tsx": [
+          "paper"
+        ],
+        "resources/js/components/history/WeekSection.tsx": [
+          "paper"
+        ],
+        "resources/js/lib/tones.ts": [
+          "paper"
+        ],
+        "resources/js/pages/Activities/Calendar.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "leaf-ink"
+      ]
+    },
+    "leaf/0.18": {
+      "over": {
+        "resources/js/components/ui/Chip.test.tsx": [
+          "paper"
+        ],
+        "resources/js/lib/variants.ts": [
+          "paper"
+        ],
+        "resources/js/pages/Devtools/Design.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "leaf-ink"
+      ]
+    },
+    "line/0.2": {
+      "text": []
+    },
+    "line/0.4": {
+      "over": {
+        "resources/js/components/temari/UnlockToast.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ink"
+      ]
+    },
+    "line/0.6": {
+      "over": {
+        "resources/js/components/MetricExplainer.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ink"
+      ]
+    },
+    "mood-blazing/0.15": {
+      "over": {
+        "resources/js/components/history/WeekSection.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "mood-blazing-ink"
+      ]
+    },
+    "mood-easy/0.15": {
+      "over": {
+        "resources/js/components/history/WeekSection.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "mood-easy-ink"
+      ]
+    },
+    "mood-gassed/0.15": {
+      "over": {
+        "resources/js/components/history/WeekSection.test.tsx": [
+          "paper"
+        ],
+        "resources/js/components/history/WeekSection.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "mood-gassed-ink"
+      ]
+    },
+    "rarity-common/0.25": {
+      "text": []
+    },
+    "rarity-epic/0.3": {
+      "text": []
+    },
+    "rarity-legendary/0.06": {
+      "over": {
+        "resources/js/pages/Collection/Cards.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "rarity-legendary-ink"
+      ]
+    },
+    "rarity-legendary/0.35": {
+      "text": []
+    },
+    "rarity-rare/0.3": {
+      "text": []
+    },
+    "rarity-uncommon/0.25": {
+      "text": []
+    },
+    "sky-deep/0.8": {
+      "text": []
+    },
+    "sky/0.03": {
+      "text": []
+    },
+    "sky/0.06": {
+      "over": {
+        "resources/js/components/StravaSyncBadge.tsx": [
+          "paper"
+        ],
+        "resources/js/components/collection/MilestoneStrip.test.tsx": [
+          "paper"
+        ],
+        "resources/js/components/history/ActiveFilterChips.tsx": [
+          "paper"
+        ],
+        "resources/js/components/history/HistoryFilter.tsx": [
+          "paper"
+        ],
+        "resources/js/components/run/LapsGraph.tsx": [
+          "paper"
+        ],
+        "resources/js/components/run/SplitsTable.tsx": [
+          "paper"
+        ],
+        "resources/js/components/ui/ProgressBar.tsx": [
+          "paper"
+        ],
+        "resources/js/components/ui/SectionTabs.tsx": [
+          "paper"
+        ],
+        "resources/js/pages/Settings/HrZones.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ink-2",
+        "sky"
+      ]
+    },
+    "sky/0.08": {
+      "over": {
+        "resources/js/components/dashboard/VitalChips.tsx": [
+          "paper"
+        ],
+        "resources/js/components/ui/Chip.test.tsx": [
+          "paper"
+        ],
+        "resources/js/lib/variants.ts": [
+          "paper"
+        ]
+      },
+      "text": [
+        "sky"
+      ]
+    },
+    "sky/0.1": {
+      "over": {
+        "resources/js/components/plan/SeasonTrack.tsx": [
+          "paper"
+        ],
+        "resources/js/components/ui/ProgressBar.test.tsx": [
+          "paper"
+        ],
+        "resources/js/components/ui/ProgressBar.tsx": [
+          "paper"
+        ],
+        "resources/js/lib/variants.test.ts": [
+          "paper"
+        ],
+        "resources/js/lib/variants.ts": [
+          "paper"
+        ],
+        "resources/js/pages/Collection/Records.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "sky"
+      ]
+    },
+    "sky/0.12": {
+      "text": []
+    },
+    "sky/0.15": {
+      "over": {
+        "resources/js/components/ui/SectionTabs.test.tsx": [
+          "paper"
+        ],
+        "resources/js/components/ui/SectionTabs.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "sky"
+      ]
+    },
+    "sky/0.25": {
+      "text": []
+    },
+    "sky/0.4": {
+      "over": {
+        "resources/js/components/run/SplitsSparkline.tsx": [
+          "sky-deep",
+          "sky",
+          "sky-2"
+        ]
+      },
+      "text": [
+        "ink-on-sky"
+      ]
+    },
+    "surface-card/0.4": {
+      "text": []
+    },
+    "surface-sunken/0.6": {
+      "over": {
+        "resources/js/pages/Activities/Calendar.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ink-2"
+      ]
+    },
+    "surface-warm/0.6": {
+      "over": {
+        "resources/js/components/run/RunListRow.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ink"
+      ]
+    }
+  },
+  "__belowAa": "Panel/text pairs that are under 4.5:1 today, pinned at the ratio they measure. Every one is text-ink-3 — the meta tier is derived to land exactly on 4.5:1 on paper, so any tint over that paper puts it under. Recorded rather than waived: the set has to match what the audit finds and each ratio has to match to 2dp, so a new failure, a worse one, or a fixed one still listed all go red.",
+  "belowAa": {}
 }

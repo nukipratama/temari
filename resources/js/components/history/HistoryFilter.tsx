@@ -61,7 +61,7 @@ interface SortSection<S extends string> {
     onSelect: (sort: S) => void;
 }
 
-interface RiwayatFilterProps<
+interface HistoryFilterProps<
     V extends string,
     B extends string = string,
     S extends string = string,
@@ -76,7 +76,7 @@ interface RiwayatFilterProps<
 }
 
 /**
- * Single compact filter trigger used on both Jejak and Kalender. Replaces
+ * Single compact filter trigger used on both the feed and the calendar. Replaces
  * a row-spanning chip strip with one button + popover, so the page title and
  * tabs stay the visual anchor and the filter is opt-in.
  *
@@ -94,7 +94,7 @@ function isSheetViewport(): boolean {
     return window.matchMedia('(max-width: 1023.98px)').matches;
 }
 
-export default function RiwayatFilter<
+export default function HistoryFilter<
     V extends string,
     B extends string = string,
     S extends string = string,
@@ -105,7 +105,7 @@ export default function RiwayatFilter<
     sort,
     onReset,
     className,
-}: Readonly<RiwayatFilterProps<V, B, S>>) {
+}: Readonly<HistoryFilterProps<V, B, S>>) {
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const close = useCallback(() => setOpen(false), []);

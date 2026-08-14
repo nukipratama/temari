@@ -4,7 +4,7 @@ import { cn } from '@/lib/cn';
 
 /**
  * The sky-gradient frame every in-app Kartu sits in outside a stat grid (the
- * activity-detail section, the Koleksi grid cells): a dark navy mount so the
+ * activity-detail section, the Collection grid cells): a dark navy mount so the
  * card reads as "mounted" on a display case rather than floating bare on the
  * cream page background. The glow itself lives on the Kartu's own border
  * (`.kartu-glow`, tinted per rarity) — this mount stays a plain, unlit frame.

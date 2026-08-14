@@ -15,7 +15,7 @@ One walkthrough per user-facing area — what it does and where it lives in the 
 _Pages_
 - [[landing]] — /login as the public landing page: the Past You promise, the sourced legal copy, and the honest throttle path
 - [[dashboard]] — the home screen: the Past You verdict and its evidence, today's session, then vitals / last run / kartu
-- [[run-history]] — Jejak/Kalender, weekly snapshots, filters, journey strip
+- [[run-history]] — Feed/Calendar, weekly snapshots, filters, journey strip
 - [[run-detail]] — single run: story + adaptive claims lenses, route map, splits, HR zones
 - [[run-qa]] — ask about this run: run-derived suggested questions, an answer scoped to that one activity
 - [[profile]] — persona, profile voice

@@ -58,22 +58,30 @@
                 'bg-leaf/10 text-leaf-ink' => $pauseReason === null,
                 'bg-horizon/25 text-ink' => $pauseReason !== null,
             ])>
-                @switch($pauseReason)
-                    @case('kill_switch')
-                        paused: kill switch off
-                        @break
-                    @case('unconfigured')
-                        paused: Azure unconfigured
-                        @break
-                    @case('cost_ceiling')
-                        paused: cost ceiling hit today
-                        @break
-                    @case('config')
-                        paused: check API key / base URL
-                        @break
-                    @default
-                        healthy
-                @endswitch
+                {{-- Only a null reason is healthy. A @default that fell through to
+                     "healthy" is why an unrecognised pause read green while the box
+                     styled itself warn, and it is why nothing dispatching went
+                     unnoticed. An unmapped reason prints itself instead. --}}
+                @if ($pauseReason === null)
+                    healthy
+                @else
+                    @switch($pauseReason)
+                        @case('kill_switch')
+                            paused: kill switch off
+                            @break
+                        @case('unconfigured')
+                            paused: Azure unconfigured
+                            @break
+                        @case('cost_ceiling')
+                            paused: cost ceiling hit today
+                            @break
+                        @case('config')
+                            paused: check API key / base URL
+                            @break
+                        @default
+                            paused: {{ $pauseReason }}
+                    @endswitch
+                @endif
             </div>
         </div>
 

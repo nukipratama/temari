@@ -299,3 +299,290 @@ it('keeps the separator above its floor on every ground', function (): void {
             ->toBeGreaterThanOrEqual(1.4, "--color-line is under 1.4:1 on {$ground}.");
     }
 })->group('structure');
+
+/** A `token/alpha` spec, or a bare token at full opacity. */
+function splitAlpha(string $spec): array
+{
+    $parts = explode('/', $spec);
+
+    return [$parts[0], isset($parts[1]) ? (float) $parts[1] : 1.0];
+}
+
+/** The alpha spelled the way grounds.mjs spells it, so both sides agree on a key. */
+function alphaSpec(string $name, float $alpha): string
+{
+    return $name.'/'.rtrim(rtrim(number_format($alpha, 4, '.', ''), '0'), '.');
+}
+
+/**
+ * Every `bg-<token>/<alpha>` the components paint, mapped to the files that
+ * paint it.
+ *
+ * paintedBackgrounds() drops the alpha, which is right for classifying a panel
+ * and wrong for scoring it: `bg-sky/40` is not sky, it is sky over whatever it
+ * is mounted on, and it carries the text sky would take. The mount varies by
+ * call site, so the call site is the key.
+ *
+ * @param  array<string, string>  $tokens
+ * @return array<string, list<string>>
+ */
+function paintedAlphaPanelSites(array $tokens): array
+{
+    $sites = [];
+
+    foreach (File::allFiles(resource_path('js')) as $file) {
+        if (! in_array($file->getExtension(), ['ts', 'tsx'], true)) {
+            continue;
+        }
+        $source = preg_replace(['#/\*.*?\*/#s', '#//[^\n]*#'], ' ', $file->getContents()) ?? '';
+        $relative = 'resources/js/'.$file->getRelativePathname();
+
+        preg_match_all(
+            '/\bbg-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\/(?:\[([0-9.]+)\]|([0-9]{1,3}))(?![\w\-.])/',
+            $source,
+            $found,
+            PREG_SET_ORDER,
+        );
+        foreach ($found as $match) {
+            if (! isset($tokens[$match[1]])) {
+                continue;
+            }
+            $alpha = ($match[2] ?? '') !== '' ? (float) $match[2] : (float) $match[3] / 100;
+            $sites[alphaSpec($match[1], $alpha)][$relative] = true;
+        }
+    }
+
+    $out = [];
+    foreach ($sites as $spec => $files) {
+        $out[$spec] = array_keys($files);
+        sort($out[$spec]);
+    }
+    ksort($out);
+
+    return $out;
+}
+
+/**
+ * Every `text-<token>` painted in the same class string as an alpha panel. One
+ * class string is one element, so a pair found here definitely stacks; a panel
+ * carrying text from a child element is invisible here and is recorded by hand.
+ *
+ * @param  array<string, string>  $tokens
+ * @return array<string, list<string>>
+ */
+function paintedPanelText(array $tokens): array
+{
+    $painted = [];
+
+    foreach (componentSources() as $source) {
+        // A quoted literal cannot span a raw newline, but a naive `'[^']*'`
+        // does: an apostrophe in JSX text ("Temari's") opens a match that runs
+        // to the next one, swallowing whole subtrees and pairing a background
+        // in one element with text in another.
+        preg_match_all('/\'[^\'\n]*\'|"[^"\n]*"|`[^`]*`/s', $source, $literals);
+
+        foreach ($literals[0] as $literal) {
+            // No Tailwind class holds an angle or curly bracket, so this drops
+            // what is left of a mis-paired line.
+            if (preg_match('/[<>{}]/', $literal) === 1) {
+                continue;
+            }
+
+            preg_match_all(
+                '/(?:^|[\s\'"`])((?:[a-z0-9-]+:)*)bg-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\/(?:\[([0-9.]+)\]|([0-9]{1,3}))(?![\w\-.])/',
+                $literal,
+                $panels,
+                PREG_SET_ORDER,
+            );
+            if ($panels === []) {
+                continue;
+            }
+
+            preg_match_all(
+                '/(?:^|[\s\'"`])((?:[a-z0-9-]+:)*)text-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)(?:\/(?:\[([0-9.]+)\]|([0-9]{1,3})))?(?![\w-])/',
+                $literal,
+                $texts,
+                PREG_SET_ORDER,
+            );
+
+            $labels = [];
+            foreach ($texts as $match) {
+                if (! isset($tokens[$match[2]])) {
+                    continue;
+                }
+                $bracket = $match[3] ?? '';
+                $plain = $match[4] ?? '';
+                $labels[] = [
+                    'variant' => $match[1],
+                    'spec' => $bracket === '' && $plain === ''
+                        ? $match[2]
+                        : alphaSpec($match[2], $bracket !== '' ? (float) $bracket : (float) $plain / 100),
+                ];
+            }
+
+            foreach ($panels as $panel) {
+                if (! isset($tokens[$panel[2]])) {
+                    continue;
+                }
+                $alpha = ($panel[3] ?? '') !== '' ? (float) $panel[3] : (float) $panel[4] / 100;
+                $key = alphaSpec($panel[2], $alpha);
+
+                // A `hover:bg-*` tint is painted in the hover state, so the text
+                // on it is the `hover:text-*` the same element declares, not the
+                // base one it replaces.
+                $sameState = array_values(array_filter(
+                    $labels,
+                    fn (array $l): bool => $l['variant'] === $panel[1],
+                ));
+                $applicable = $sameState !== [] ? $sameState : array_values(array_filter(
+                    $labels,
+                    fn (array $l): bool => $l['variant'] === '',
+                ));
+
+                $painted[$key] = [
+                    ...($painted[$key] ?? []),
+                    ...array_column($applicable, 'spec'),
+                ];
+            }
+        }
+    }
+
+    foreach ($painted as $key => $labels) {
+        $labels = array_values(array_unique($labels));
+        sort($labels);
+        $painted[$key] = $labels;
+    }
+
+    return $painted;
+}
+
+/**
+ * Every registered panel/text pair, at the mount that scores worst. `paper`
+ * stands for the whole paper set; any other mount names the solid token the
+ * panel sits on.
+ *
+ * @return array<string, float>
+ */
+function panelPairRatios(): array
+{
+    ['tokens' => $tokens, 'shifts' => $shifts] = designTokens();
+    $papers = paperGrounds($tokens, $shifts);
+
+    $ratios = [];
+    foreach (groundKinds()['panel'] as $spec => $entry) {
+        if ($entry['text'] === [] || ! isset($entry['over'])) {
+            continue;
+        }
+        [$panel, $panelAlpha] = splitAlpha($spec);
+
+        $mounts = [];
+        foreach (array_unique(array_merge(...array_values($entry['over']))) as $mount) {
+            if ($mount === 'paper') {
+                $mounts = [...$mounts, ...array_values($papers)];
+
+                continue;
+            }
+            $mounts[] = $tokens[$mount];
+        }
+
+        foreach ($entry['text'] as $text) {
+            [$ink, $inkAlpha] = splitAlpha($text);
+            $worst = null;
+            foreach ($mounts as $mount) {
+                $ground = compositeOver($tokens[$panel], $panelAlpha, $mount);
+                $ratio = tokenContrast(compositeOver($tokens[$ink], $inkAlpha, $ground), $ground);
+                $worst = $worst === null ? $ratio : min($worst, $ratio);
+            }
+            $ratios["{$spec} + {$text}"] = round($worst, 2);
+        }
+    }
+
+    return $ratios;
+}
+
+it('registers every translucent panel call site', function (): void {
+    ['tokens' => $tokens] = designTokens();
+    $registry = groundKinds()['panel'];
+    $painted = paintedAlphaPanelSites($tokens);
+
+    $unregistered = [];
+    foreach ($painted as $spec => $files) {
+        if (! isset($registry[$spec])) {
+            $unregistered[] = $spec;
+
+            continue;
+        }
+        if ($registry[$spec]['text'] === []) {
+            continue;
+        }
+        foreach ($files as $file) {
+            if (! isset($registry[$spec]['over'][$file])) {
+                $unregistered[] = "{$spec} @ {$file}";
+            }
+        }
+    }
+
+    expect($unregistered)->toBe([], sprintf(
+        "These translucent panel call sites are unregistered, so nothing scored the text on them:\n  %s\n".
+        'Add each to the "panel" block of resources/brand/grounds.json, recording the ground that call '.
+        'site is mounted on ("paper", or the solid token it sits on) and the text tokens that land on it.',
+        implode("\n  ", $unregistered),
+    ));
+
+    $stale = [];
+    foreach ($registry as $spec => $entry) {
+        if (! isset($painted[$spec])) {
+            $stale[] = $spec;
+
+            continue;
+        }
+        foreach (array_keys($entry['over'] ?? []) as $file) {
+            if (! in_array($file, $painted[$spec], true)) {
+                $stale[] = "{$spec} @ {$file}";
+            }
+        }
+    }
+
+    expect($stale)->toBe([], 'These registered panel call sites paint nothing any more; drop them from grounds.json.');
+})->group('structure');
+
+it('records every panel/text pair painted in one class string', function (): void {
+    ['tokens' => $tokens] = designTokens();
+    $registry = groundKinds()['panel'];
+
+    $missing = [];
+    foreach (paintedPanelText($tokens) as $spec => $labels) {
+        foreach ($labels as $label) {
+            if (! in_array($label, $registry[$spec]['text'] ?? [], true)) {
+                $missing[] = "{$spec} + {$label}";
+            }
+        }
+    }
+
+    expect($missing)->toBe([], sprintf(
+        "These panels carry text that grounds.json does not record:\n  %s",
+        implode("\n  ", $missing),
+    ));
+})->group('structure');
+
+it('keeps every panel/text pair above AA, or pinned in the ledger', function (): void {
+    $ratios = panelPairRatios();
+    $ledger = groundKinds()['belowAa'];
+
+    $under = array_filter($ratios, fn (float $ratio): bool => $ratio < 4.5);
+
+    expect(array_keys($under))->toEqualCanonicalizing(array_keys($ledger), sprintf(
+        "The set of panel/text pairs under 4.5:1 has moved.\n  under now: %s\n  ledger:    %s\n".
+        'A new pair means a real contrast failure; a ledger entry that no longer fails means the fix landed '.
+        'and the entry should go.',
+        implode(', ', array_keys($under)),
+        implode(', ', array_keys($ledger)),
+    ));
+
+    foreach ($ledger as $pair => $pinned) {
+        expect($ratios[$pair])->toBe(
+            (float) $pinned,
+            "{$pair} measures {$ratios[$pair]}:1, pinned at {$pinned}:1 in grounds.json's belowAa ledger.",
+        );
+    }
+})->group('structure');

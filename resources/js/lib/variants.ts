@@ -114,7 +114,7 @@ export const chipVariants = cva(
  * Segmented / toggle control — the solid-fill selected-vs-unselected pill used
  * by the Rekor progression tabs and the ShareCardModal theme picker. One source
  * of truth for radius/size/state. Filter rows that need a bordered or tinted
- * treatment (riwayat range + mood, AiUsage presets) stay hand-rolled.
+ * treatment (history range + mood, AiUsage presets) stay hand-rolled.
  */
 export const toggleButtonVariants = cva(
     'inline-flex items-center justify-center rounded-full font-sans font-medium transition focus-ring',
@@ -162,7 +162,7 @@ export const iconButtonVariants = cva(
 
 /**
  * Filter-panel option row — the sky-tinted-vs-plain toggle shared by the
- * range links, distance/sort buttons, and mood buttons in RiwayatFilter.tsx.
+ * range links, distance/sort buttons, and mood buttons in HistoryFilter.tsx.
  * `layout: 'row'` covers the full-width justify-between rows (range,
  * distance, sort); `layout: 'mood'` covers the two-column mood grid, which
  * doesn't stretch full width and carries its own gap + weight.

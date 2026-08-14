@@ -62,7 +62,7 @@ describe('BudgetGauge', () => {
         expect(screen.queryByText(/rule-based/i)).not.toBeInTheDocument();
     });
 
-    it('names the trip time and the rule-based block count once tripped', () => {
+    it('names the trip time and how many replies were served rule-based', () => {
         render(
             <BudgetGauge
                 budget={budget({
@@ -76,12 +76,12 @@ describe('BudgetGauge', () => {
 
         expect(
             screen.getByText(
-                'Ceiling tripped 14:32 · 12 blocks served rule-based',
+                'Ceiling tripped 14:32 · 12 replies served rule-based',
             ),
         ).toBeInTheDocument();
     });
 
-    it('singularises the count for a lone degraded block', () => {
+    it('singularises the count for a lone degraded reply', () => {
         render(
             <BudgetGauge
                 budget={budget({
@@ -93,7 +93,7 @@ describe('BudgetGauge', () => {
 
         expect(
             screen.getByText(
-                'Ceiling tripped 09:05 · 1 block served rule-based',
+                'Ceiling tripped 09:05 · 1 reply served rule-based',
             ),
         ).toBeInTheDocument();
     });

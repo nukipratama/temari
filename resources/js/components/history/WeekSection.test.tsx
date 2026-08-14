@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type {
     WeekBucket,
     RunWithDetail,
-} from '@/pages/Activities/useJejakFilters';
+} from '@/pages/Activities/useFeedFilters';
 import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
 
 import { run } from '@/pages/Activities/runFixture';

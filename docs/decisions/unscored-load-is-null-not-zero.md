@@ -8,7 +8,7 @@ code_refs:
   - app/Services/Run/Metrics/TrainingLoad.php
   - app/Services/Run/Metrics/WeeklyAggregator.php
   - resources/js/types/inertia.ts
-  - resources/js/pages/Activities/useJejakFilters.ts
+  - resources/js/pages/Activities/useFeedFilters.ts
   - resources/js/components/dashboard/KondisiCard.tsx
 ---
 
@@ -45,7 +45,7 @@ Edwards TRIMP needs heart-rate minutes per zone, so a run without an HR stream s
 - **[PlanAdapter](app/Services/Run/Plan/PlanAdapter.php)** — same: `strainIsExcessive` and the monotony deload need a real number, so an unknown week triggers no adaptation rather than a false one.
 - **[BriefingContext](app/Services/Run/Story/BriefingContext.php)** — falls back to the most recent snapshot's monotony when the live value is unknown. Previously the live `0.0` won and suppressed that fallback; a real recent reading is a better basis for a safety ceiling than nothing.
 - **[WeekTotalsTool](app/Services/AI/Agent/Tools/WeekTotalsTool.php) / [WeeklyRecapNarrator](app/Services/AI/Narrators/WeeklyRecapNarrator.php)** — the tool passes nulls straight through, so both now say in words that a null is unknown load rather than zero load, and that an unknown week is never a coast.
-- **[groupByWeek](resources/js/pages/Activities/useJejakFilters.ts)** — the frontend keeps its own `totalTrimp` accumulator for filtered views, which started at `0` and skipped unscored runs, reproducing the same lie the snapshot no longer tells. It now starts null and only becomes a number once something scores.
+- **[groupByWeek](resources/js/pages/Activities/useFeedFilters.ts)** — the frontend keeps its own `totalTrimp` accumulator for filtered views, which started at `0` and skipped unscored runs, reproducing the same lie the snapshot no longer tells. It now starts null and only becomes a number once something scores.
 
 ### What the UI says
 

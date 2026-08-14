@@ -1,7 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 
-import CollectionHeader from '@/components/koleksi/CollectionHeader';
+import CollectionHeader from '@/components/collection/CollectionHeader';
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';

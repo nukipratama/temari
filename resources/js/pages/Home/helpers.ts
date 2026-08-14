@@ -32,7 +32,7 @@ export interface FeaturedCard {
     name: string;
     subtitle: string;
     km: string;
-    durasi: string;
+    duration: string;
     trimp: string;
     rarity: Rarity;
     mood: Mood;
@@ -42,15 +42,6 @@ export interface FeaturedCard {
     polyline: string | null;
     paceShape: number[];
     startDate: string | null;
-}
-
-export interface StripItem {
-    key: string;
-    cardId: number;
-    name: string;
-    rarity: Rarity;
-    date: string;
-    polyline: string | null;
 }
 
 function toFeaturedCard(
@@ -64,7 +55,7 @@ function toFeaturedCard(
         name: card.special_move,
         subtitle: `${RARITY_LABELS[card.rarity]} · ${formatNaiveRelativeId(r.start_date_local)}`,
         km: formatKm(r.distance),
-        durasi:
+        duration:
             r.elapsed_time != null ? formatDurationHMS(r.elapsed_time) : '—',
         trimp:
             r.trimp_edwards != null ? String(Math.round(r.trimp_edwards)) : '—',
@@ -96,19 +87,6 @@ export function featuredCardFor(
     return null;
 }
 
-export function kartuStripItem(run: ActivityDetail): StripItem | null {
-    const card: RunCard | undefined = run.activity?.run_card;
-    if (!card) return null;
-    return {
-        key: `card-${card.id}`,
-        cardId: card.id,
-        name: card.special_move,
-        rarity: card.rarity,
-        date: formatNaiveRelativeId(run.start_date_local),
-        polyline: run.summary_polyline ?? null,
-    };
-}
-
 export function formatSignedForm(form: number): string {
     return form >= 0 ? `+${form.toFixed(1)}` : form.toFixed(1);
 }
@@ -123,15 +101,6 @@ export function weekRangeLabel(now: Date): string {
     }
     return `${formatMonthDayId(monday)}–${formatMonthDayId(sunday)}`;
 }
-
-export const MOOD_UPPER: Record<Mood, string> = {
-    blazing: 'NYALA',
-    easy: 'ENTENG',
-    wobbly: 'OLENG',
-    gassed: 'LEMES',
-    overloaded: 'MUMET',
-    chill: 'ADEM',
-};
 
 export function formatIdDateUpper(iso: string | null): string {
     if (iso == null) return '';

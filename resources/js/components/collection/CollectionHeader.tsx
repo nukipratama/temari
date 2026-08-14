@@ -1,9 +1,9 @@
 import PageHero from '@/components/ui/PageHero';
 
-import KoleksiTabs, { type KoleksiTab } from './KoleksiTabs';
+import CollectionTabs, { type CollectionTab } from './CollectionTabs';
 
 interface CollectionHeaderProps {
-    active: KoleksiTab;
+    active: CollectionTab;
     eyebrow: string;
     headline1: string;
     headline2: string;
@@ -25,7 +25,7 @@ export default function CollectionHeader({
                 <em className="italic text-horizon-ink">{headline2}</em>
             </PageHero>
             <div data-coachmark="collection-tabs">
-                <KoleksiTabs active={active} activeCount={activeCount} />
+                <CollectionTabs active={active} activeCount={activeCount} />
             </div>
         </header>
     );

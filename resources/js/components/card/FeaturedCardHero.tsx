@@ -27,7 +27,7 @@ interface FeaturedCardHeroProps {
     /** Run telemetry for the hero stat strip (present-only cells). */
     stats?: KartuStats;
     /** Formatted moving time for the DURATION cell. */
-    durasi?: string;
+    duration?: string;
     /** Badge slugs rendered as small pips. */
     badges?: ReadonlyArray<string>;
     /** One short Temari voice line (a compact <AnalysisStatus>) — optional. */
@@ -54,7 +54,7 @@ export default function FeaturedCardHero({
     rarity,
     km,
     stats,
-    durasi,
+    duration,
     badges,
     voice,
     ctaHref,
@@ -63,7 +63,7 @@ export default function FeaturedCardHero({
     polyline,
 }: Readonly<FeaturedCardHeroProps>) {
     const catchLine = `${RARITY_SYMBOL[rarity]} ${RARITY_LABELS[rarity]} · ${km} KM`;
-    const cells = statCells(stats, durasi);
+    const cells = statCells(stats, duration);
     const pips = (badges ?? []).slice(0, 3);
 
     return (
@@ -169,13 +169,13 @@ export default function FeaturedCardHero({
 /** Present-only PACE · HR · CADENCE · DURATION · BEST cells (mirrors Kartu's StatGrid). */
 function statCells(
     stats: KartuStats | undefined,
-    durasi: string | undefined,
+    duration: string | undefined,
 ): Array<{ label: string; value: string }> {
     const raw: Array<{ label: string; value: string | undefined }> = [
         { label: 'PACE', value: stats?.pace },
         { label: 'HR', value: stats?.hr },
         { label: 'CADENCE', value: stats?.cadence },
-        { label: 'DURATION', value: durasi },
+        { label: 'DURATION', value: duration },
         { label: 'BEST', value: stats?.fastestKm },
     ];
     return raw.filter(

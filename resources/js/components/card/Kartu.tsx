@@ -34,7 +34,7 @@ export interface KartuStats {
 interface KartuProps {
     name: string;
     km: string;
-    durasi: string;
+    duration: string;
     trimp: string | number;
     rarity?: Rarity;
     /** The run's Temari mood, used as the card's "element/type". */
@@ -85,7 +85,7 @@ const SIZE_KM: Record<NonNullable<KartuProps['size']>, string> = {
  * (bold, filled), plus floating rarity and TRIMP chips in its top corners.
  * Below sits a dark stat block:
  * special-move name, the run's numbers (KM big; a labeled
- * PACE · HR · CADENCE · DURASI · BEST grid), badges, and a Z1..Z5 HR-zone
+ * PACE · HR · CADENCE · DURATION · BEST grid), badges, and a Z1..Z5 HR-zone
  * effort bar. Rarity drives a vivid loot-ladder color (gray → green → blue →
  * purple → gold) on the frame and route, with the same calm border halo on
  * every tier (no window-flooding foil).
@@ -93,7 +93,7 @@ const SIZE_KM: Record<NonNullable<KartuProps['size']>, string> = {
 export default function Kartu({
     name,
     km,
-    durasi,
+    duration,
     trimp,
     rarity = 'epic',
     mood = 'chill',
@@ -259,7 +259,7 @@ export default function Kartu({
                     drops it below the `sm` breakpoint; badges above stay as the mobile
                     summary. Wider/detail renders keep the full grid. */}
                 <div className={cn(hideStats && 'hidden sm:block')}>
-                    <StatGrid stats={stats} durasi={durasi} />
+                    <StatGrid stats={stats} duration={duration} />
 
                     {/* HR-zone effort bar — bare (no Z1..Z5 legend), matching the share
                         card's rounded legendless bar. */}
@@ -422,8 +422,8 @@ function nameGlowFor(rarity: Rarity): CSSProperties {
  */
 function StatGrid({
     stats,
-    durasi,
-}: Readonly<{ stats: KartuStats | undefined; durasi: string }>) {
+    duration,
+}: Readonly<{ stats: KartuStats | undefined; duration: string }>) {
     const cells: Array<{ label: string; value: string }> = [];
     const push = (label: string, value: string | undefined) => {
         if (value != null && value !== '' && value !== '—') {
@@ -433,7 +433,7 @@ function StatGrid({
     push('Pace', stats?.pace);
     push('HR', stats?.hr);
     push('Cadence', stats?.cadence);
-    push('Duration', durasi);
+    push('Duration', duration);
     push('Best', stats?.fastestKm);
     push('Elevation', stats?.elevation);
 

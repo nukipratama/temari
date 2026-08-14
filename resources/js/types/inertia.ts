@@ -401,7 +401,7 @@ export interface WeeklySnapshot {
 }
 
 /** A snapshot decorated by RunController::decorateSnapshot with its recap
- *  narration and the flags the Jejak week list renders it with. */
+ *  narration and the flags the feed week list renders it with. */
 export interface WeeklySnapshotWithRecap extends WeeklySnapshot {
     /** True for the in-progress week, whose recap waits for the weekly scheduler. */
     is_current_week: boolean;

@@ -1,30 +1,30 @@
 import SectionTabs, { type SectionTabItem } from '@/components/ui/SectionTabs';
 
-export type RiwayatTab = 'jejak' | 'kalender';
+export type HistoryTab = 'feed' | 'calendar';
 
-interface RiwayatTabsProps {
-    active: RiwayatTab;
+interface HistoryTabsProps {
+    active: HistoryTab;
     className?: string;
 }
 
-const TABS: ReadonlyArray<SectionTabItem<RiwayatTab>> = [
+const TABS: ReadonlyArray<SectionTabItem<HistoryTab>> = [
     {
-        id: 'jejak',
+        id: 'feed',
         label: 'Feed',
         href: '/activities',
         icon: 'mdi:shoe-print',
     },
     {
-        id: 'kalender',
+        id: 'calendar',
         label: 'Calendar',
         href: '/calendar',
         icon: 'mdi:calendar-blank-outline',
     },
 ];
 
-export default function RiwayatTabs({
+export default function HistoryTabs({
     active,
     className,
-}: Readonly<RiwayatTabsProps>) {
+}: Readonly<HistoryTabsProps>) {
     return <SectionTabs tabs={TABS} active={active} className={className} />;
 }

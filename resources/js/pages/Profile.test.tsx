@@ -5,7 +5,7 @@ import { makeUser, setMockPage } from '@/test/setup';
 
 import Profile from './Profile';
 
-vi.mock('@/components/koleksi/ProgressionChart', () => ({
+vi.mock('@/components/collection/ProgressionChart', () => ({
     default: () => <div data-testid="progression-chart" />,
 }));
 
@@ -69,8 +69,9 @@ describe('Profile', () => {
         ];
         render(<Profile identity={identity} stats={stats} personaMix={mix} />);
         expect(screen.getByText(/Persona/)).toBeInTheDocument();
+        expect(screen.queryByText(/thinking it over/)).not.toBeInTheDocument();
         expect(
-            screen.queryByText(/Belum dibaca Temari/),
+            screen.queryByRole('button', { name: /Try again/ }),
         ).not.toBeInTheDocument();
     });
 

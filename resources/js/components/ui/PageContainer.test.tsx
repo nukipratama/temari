@@ -24,8 +24,9 @@ describe('PageContainer', () => {
         expect(container.firstChild).toHaveClass(/pb-24/);
     });
 
-    it('renders a plain div (no motion) when static', () => {
-        const { container } = render(<PageContainer static>x</PageContainer>);
+    it('caps its width at both the page and 2xl stops', () => {
+        const { container } = render(<PageContainer>x</PageContainer>);
         expect(container.firstChild).toHaveClass(/max-w-page/);
+        expect(container.firstChild).toHaveClass(/2xl:max-w-page-2xl/);
     });
 });

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { AnalysisPayload } from '@/types/inertia';
 
-import RingkasanCard from './RingkasanCard';
+import SummaryCard from './SummaryCard';
 
 const baseAnalysis = (
     overrides: Partial<AnalysisPayload> = {},
@@ -18,10 +18,10 @@ const baseAnalysis = (
     ...overrides,
 });
 
-describe('RingkasanCard', () => {
+describe('SummaryCard', () => {
     it('shows the fallback prose when the analysis is not yet done', () => {
         render(
-            <RingkasanCard
+            <SummaryCard
                 analysis={baseAnalysis()}
                 fallback="You ran 3x this week for 12.5km."
             />,
@@ -37,7 +37,7 @@ describe('RingkasanCard', () => {
             content:
                 'You ran three times this week, and your pace kept getting smoother.',
         });
-        render(<RingkasanCard analysis={done} fallback="ignored" />);
+        render(<SummaryCard analysis={done} fallback="ignored" />);
         expect(
             screen.getByText(
                 'You ran three times this week, and your pace kept getting smoother.',
@@ -48,7 +48,7 @@ describe('RingkasanCard', () => {
     });
 
     it('hides the manual trigger but keeps the fallback prose for a past week with no narration yet', () => {
-        render(<RingkasanCard analysis={baseAnalysis()} fallback="fallback" />);
+        render(<SummaryCard analysis={baseAnalysis()} fallback="fallback" />);
         expect(
             screen.queryByRole('button', { name: /Ask Temari to read it/ }),
         ).not.toBeInTheDocument();
@@ -57,7 +57,7 @@ describe('RingkasanCard', () => {
 
     it('suppresses the trigger and labels the fallback as a preview for the current week', () => {
         render(
-            <RingkasanCard
+            <SummaryCard
                 analysis={baseAnalysis()}
                 fallback="fallback"
                 awaitingSchedule
