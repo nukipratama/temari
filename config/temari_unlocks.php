@@ -172,7 +172,7 @@ return [
         'description' => 'Gold shoes for 1,000 km logged and counting.',
     ],
 
-    // ── Aura (4) ───────────────────────────────────────────────────────
+    // ── Aura (5) ───────────────────────────────────────────────────────
     'accessory.aura_warmup' => [
         'name' => 'Warm-Up Aura',
         'slot' => 'aura',

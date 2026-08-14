@@ -10,8 +10,8 @@ use App\Models\RunCard;
 use Illuminate\Support\Carbon;
 
 /**
- * Single source of truth for `ai.backfill_max_age_days`: material older than the
- * cutoff is narrated by {@see \App\Services\AI\RuleBased\RuleBasedNarrationFiller}
+ * Whether a subject's material is older than `ai.backfill_max_age_days`, in which
+ * case it is narrated by {@see \App\Services\AI\RuleBased\RuleBasedNarrationFiller}
  * instead of the LLM. See docs/decisions/twelve-week-narration-cutoff.md.
  */
 class BackfillAgeGate
