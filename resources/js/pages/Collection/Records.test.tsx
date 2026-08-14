@@ -117,6 +117,15 @@ describe('Collection/Records', () => {
         expect(screen.getByText(/Pace ticker/)).toBeInTheDocument();
     });
 
+    it('labels a pace cell with the on-sky ink, not the vivid rarity fill', () => {
+        render(<Records personalRecords={[pr('best_5min', 320, 10, null)]} />);
+        const ticker = screen.getByText(/Pace ticker/).closest('section');
+        const label = within(ticker!).getByText('Best 5 min').closest('div');
+
+        expect(label).toHaveClass('text-ink-on-sky');
+        expect(label).not.toHaveClass('text-rarity-rare');
+    });
+
     it('renders pace-ticker effort PRs in ascending duration order, not data-arrival order', () => {
         render(
             <Records
