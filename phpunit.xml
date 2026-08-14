@@ -40,8 +40,6 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
-        <env name="TELESCOPE_ENABLED" value="false"/>
-        <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="INERTIA_SSR_ENABLED" value="false"/>
         <!-- Fake Azure config so AnalysisService::autoDispatchEnabled() lets
              dispatch tests fake the bus instead of silently no-op'ing. -->
