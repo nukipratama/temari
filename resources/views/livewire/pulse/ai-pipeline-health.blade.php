@@ -27,15 +27,17 @@
             <div>
                 <div class="text-label-micro text-ink-3 mb-1">Dead-letter</div>
                 <div @class([
-                    'flex items-center justify-between rounded-sm p-2',
+                    'rounded-sm p-2 text-center',
                     'bg-ember/15' => $deadLettered > 0,
                     'bg-surface-sunken' => $deadLettered === 0,
                 ])>
                     <div class="font-mono text-lg font-bold tabular-nums text-ink">{{ number_format($deadLettered) }}</div>
                     @if ($deadLettered > 0)
-                        <a href="{{ url('/ai-usage') }}" class="text-label-micro text-ember-deep underline">
+                        <a href="{{ url('/ai-usage') }}" class="block text-label-micro text-ember-deep underline">
                             /ai-usage
                         </a>
+                    @else
+                        <div class="text-label-micro text-ink-3">gave up</div>
                     @endif
                 </div>
             </div>
