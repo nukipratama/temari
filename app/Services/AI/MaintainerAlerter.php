@@ -159,6 +159,7 @@ class MaintainerAlerter
     {
         return match ($reason) {
             'kill_switch' => 'Temari berhenti narasi: kill switch AI lagi off.',
+            'auto_dispatch' => 'Temari berhenti narasi: AI_AUTO_DISPATCH lagi off.',
             'unconfigured' => 'Temari berhenti narasi: Azure OpenAI belum diisi (URI/API key kosong).',
             'cost_ceiling' => 'Temari berhenti narasi: batas biaya harian hari ini udah kelewat.',
             'config' => 'Temari berhenti narasi: config Azure kayaknya salah, cek API key sama base URL.',
