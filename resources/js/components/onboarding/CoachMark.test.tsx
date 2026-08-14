@@ -208,6 +208,17 @@ describe('positionFor', () => {
         expect(style.top).toBe(412);
     });
 
+    it('keeps clear of the fixed mobile bottom nav', () => {
+        // Anchored low enough that "bottom" would land under the nav, so the
+        // clamp is what decides. MobileBottomNav renders 95px tall; a mark that
+        // ends past 768 - 95 is painted over by it.
+        const lowAnchor = rect(300, 700, 200, 40);
+
+        const style = positionFor(lowAnchor, 'bottom', 120);
+
+        expect(Number(style.top) + 120).toBeLessThanOrEqual(768 - 95);
+    });
+
     it('never positions itself outside the viewport', () => {
         const offScreen = rect(-400, -400, 50, 50);
 
