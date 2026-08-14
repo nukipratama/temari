@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Jobs\AI\AnalyzeBriefingFeaturedKartuVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
@@ -774,6 +775,52 @@ it('still dispatches a real billed job for a non-demo user on the same block', f
         ->assertSuccessful();
 
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
+});
+
+// ── trigger → discriminator ownership ───────────────────────────────────────
+//
+// briefing_featured_kartu_voice keys off a RunCard id under the *caller's own*
+// subject id, so authorizing the subject alone let a forged trigger have another
+// user's card described in the caller's row.
+
+it('refuses a trigger carrying another user\'s card id, and mints no row for it', function (): void {
+    $attacker = User::factory()->create();
+    $victim = User::factory()->create();
+    $victimActivity = Activity::factory()->for($victim)->analyzed()->create();
+    ActivityDetail::factory()->for($victimActivity)->create(['start_date_local' => Carbon::today()]);
+    $victimCard = RunCard::factory()->for($victimActivity)->create();
+
+    $this->actingAs($attacker)
+        ->postJson("/api/analyses/briefing_featured_kartu_voice/{$attacker->id}/trigger?discriminator={$victimCard->id}")
+        ->assertForbidden();
+
+    Bus::assertNothingDispatched();
+    expect(Analysis::query()->count())->toBe(0);
+});
+
+it('refuses to read back another user\'s card-keyed row', function (): void {
+    $attacker = User::factory()->create();
+    $victim = User::factory()->create();
+    $victimActivity = Activity::factory()->for($victim)->analyzed()->create();
+    ActivityDetail::factory()->for($victimActivity)->create(['start_date_local' => Carbon::today()]);
+    $victimCard = RunCard::factory()->for($victimActivity)->create();
+
+    $this->actingAs($attacker)
+        ->getJson("/api/analyses/briefing_featured_kartu_voice/{$attacker->id}?discriminator={$victimCard->id}")
+        ->assertForbidden();
+});
+
+it('still lets a user trigger the voice for their own featured card', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()]);
+    $card = RunCard::factory()->for($activity)->create();
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/briefing_featured_kartu_voice/{$user->id}/trigger?discriminator={$card->id}")
+        ->assertSuccessful();
+
+    Bus::assertDispatched(AnalyzeBriefingFeaturedKartuVoiceJob::class);
 });
 
 // ── trigger → narration age cutoff ──────────────────────────────────────────

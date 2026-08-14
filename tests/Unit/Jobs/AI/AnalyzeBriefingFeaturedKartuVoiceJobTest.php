@@ -166,3 +166,26 @@ it('releases the job with the Retry-After delay instead of rethrowing when one i
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
 });
+
+it('refuses to narrate a card the row owner does not own, even with the row already queued', function (): void {
+    // Defence in depth behind the request-boundary check: if a row keyed to
+    // another user's card ever reaches the queue, the job must not read it.
+    // Removing the forUser() scope on the lookup makes this fail.
+    $attacker = User::factory()->create();
+    $victim = User::factory()->create();
+    $victimActivity = Activity::factory()->for($victim)->analyzed()->create();
+    ActivityDetail::factory()->for($victimActivity)->create(['distance' => 5000.0]);
+    $victimCard = RunCard::factory()->for($victimActivity)->create(['rarity' => Rarity::Legendary]);
+
+    $mock = Mockery::mock(BriefingFeaturedKartuVoiceNarrator::class);
+    $mock->shouldReceive('generate')
+        ->once()
+        ->with(Mockery::on(fn (User $u): bool => $u->id === $attacker->id), null)
+        ->andReturn('no card line');
+    app()->instance(BriefingFeaturedKartuVoiceNarrator::class, $mock);
+
+    $row = featuredKartuRow($attacker->id, (string) $victimCard->id);
+    new AnalyzeBriefingFeaturedKartuVoiceJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->content)->toBe('no card line');
+});

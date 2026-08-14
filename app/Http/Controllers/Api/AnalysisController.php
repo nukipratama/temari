@@ -34,8 +34,8 @@ class AnalysisController extends Controller
         $analysisType = AnalysisType::from($type);
 
         $user = $this->user($request);
-        AnalysisSubjectAuthorizer::authorize($user, $analysisType, $subjectId);
         $discriminator = $request->discriminator();
+        AnalysisSubjectAuthorizer::authorize($user, $analysisType, $subjectId, $discriminator);
 
         $existing = Analysis::query()
             ->forSubject($analysisType->subjectType(), $subjectId, $analysisType, $discriminator)
@@ -107,7 +107,7 @@ class AnalysisController extends Controller
         }
 
         $discriminator = $this->discriminator($request);
-        AnalysisSubjectAuthorizer::authorize($this->user($request), $analysisType, $subjectId);
+        AnalysisSubjectAuthorizer::authorize($this->user($request), $analysisType, $subjectId, $discriminator);
 
         $row = Analysis::query()
             ->forSubject($analysisType->subjectType(), $subjectId, $analysisType, $discriminator)

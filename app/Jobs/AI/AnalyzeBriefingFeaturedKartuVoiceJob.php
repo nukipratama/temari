@@ -22,10 +22,16 @@ class AnalyzeBriefingFeaturedKartuVoiceJob extends AnalyzeRowJob
 
         // The discriminator is the featured card's id, so the narration always
         // describes the exact card the hero shows; a stale/changed pick keys to a
-        // different row instead of stranding old text. A null/non-card id falls
-        // through to the "no card yet" line in the narrator.
+        // different row instead of stranding old text. Scoped to the row's own
+        // user: an unowned id must never be narrated into this user's row, even
+        // if one reaches the queue. A null, non-card or unowned id falls through
+        // to the "no card yet" line in the narrator.
         $card = is_numeric($row->discriminator)
-            ? RunCard::query()->with('activity.detail')->find((int) $row->discriminator)
+            ? RunCard::query()
+                ->with('activity.detail')
+                ->whereKey((int) $row->discriminator)
+                ->forUser($user->id)
+                ->first()
             : null;
 
         return app(BriefingFeaturedKartuVoiceNarrator::class)->generate($user, $card);
