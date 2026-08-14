@@ -49,6 +49,7 @@ _Data_
 
 _Infra & Strava_
 - [[summary-first-ingest]] — a connect stores the whole history from paged summaries; detail, streams and the story layer are hydrated only for runs someone opens
+- [[unscored-load-is-null-not-zero]] — a week that ran without heart rate reports unknown load; only a week nobody ran reports zero
 - [[strava-circuit-breaker-rate-limit]] — Strava rate limit is per-client, so the guard key is global
 - [[live-ingest-read-reserve]] — browsing-driven hydration stops at 75% of each read bucket, on its own throttle key, so it cannot starve a fresh run's ingest
 - [[fixed-session-cookie]] — fixed cookie name + Redis prefixes, not APP_NAME-derived
