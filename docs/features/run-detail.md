@@ -93,7 +93,7 @@ the falsifiability check to begin with.
 
 Each lens renders through [AnalysisStatus](../../resources/js/components/temari/AnalysisStatus.tsx),
 which owns the pending / processing / failed / done states and the per-block
-"Coba lagi" retry. These are **chained** analyses: only the chain head (the
+"Try again" retry. These are **chained** analyses: only the chain head (the
 user's latest run, `isChainHead` from `Activity::latestIdForUser`) shows the
 single "Reread all" regenerate button; historical runs are resume-only.
 See [[ai-pipeline]] for the narrator/job model behind these rows.

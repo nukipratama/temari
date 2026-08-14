@@ -97,4 +97,4 @@ Every read path treats the missing half as unknown, not as zero:
 
 ## Manual / scheduled entry points
 
-See [routes/console.php](routes/console.php): `strava:sync` (hourly during WIB running peaks, the fallback poll behind the webhook), `strava:ingest` (every 5 min drain), `geo:backfill-locations` (hourly geocode catch-up). [recomputeSummary()](app/Services/Run/Ingest/ActivityPipeline.php) re-derives one run's metrics from already-stored streams with **zero** Strava calls — the path behind a "Baca ulang" when HR zones change.
+See [routes/console.php](routes/console.php): `strava:sync` (hourly during WIB running peaks, the fallback poll behind the webhook), `strava:ingest` (every 5 min drain), `geo:backfill-locations` (hourly geocode catch-up). [recomputeSummary()](app/Services/Run/Ingest/ActivityPipeline.php) re-derives one run's metrics from already-stored streams with **zero** Strava calls — the path behind a "Reread" when HR zones change.
