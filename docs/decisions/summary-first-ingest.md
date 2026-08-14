@@ -44,7 +44,7 @@ The cost is that a summary payload is genuinely thinner. It carries distance, mo
 
 **The load-bearing consequence: a missing half reads as unknown, never as zero.** This is the rule that makes the whole shape honest, and the one that is easy to violate by accident:
 
-- [WeeklyAggregator](app/Services/Run/Metrics/WeeklyAggregator.php)'s `dailyTrimpMap()` skips a null `trimp_edwards` rather than summing a zero, and [upsertWeek()](app/Services/Run/Metrics/WeeklyAggregator.php#L202) writes `null`, not `0.0`, for load, ATL, CTL, form, monotony and strain when no run scored a TRIMP at all.
+- [WeeklyAggregator](app/Services/Run/Metrics/WeeklyAggregator.php)'s `dailyHistory()` skips a null `trimp_edwards` rather than summing a zero, and [upsertWeek()](app/Services/Run/Metrics/WeeklyAggregator.php#L172) writes `null`, not `0.0`, for load, ATL, CTL, form, monotony and strain when no run scored a TRIMP at all. Per *week*, the same distinction is drawn against a run-day set so an unscored week is null while a rest week keeps its honest zero: [[unscored-load-is-null-not-zero]].
 - Everything reading `stream_summary` goes through `StreamSummary::fromArray()`, which maps a null blob to null accessors, so splits, zones and relative effort simply do not render.
 - Volume, on the other hand, is exact across un-hydrated history: distance, duration and pace come straight off the summary.
 

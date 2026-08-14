@@ -53,8 +53,8 @@ class WeeklyRecapNarrator
         COASTING: if the week is thinner than the last few and form_status is fresh
         or optimal the whole time, that is a coast and you may name it, once,
         plainly. NEVER call it a coast when the data explains it: fatigued or
-        overreaching form, high strain, high monotony, or a first week back after a
-        gap. That's the body, not slacking.
+        overreaching form, high strain, high monotony, a week whose load came back
+        unknown, or a first week back after a gap. That's the body, not slacking.
 
         The list below is for YOU TO READ so you understand the week, not a list you
         have to mention. Read all of it, then pick the ONE that best explains this
@@ -66,6 +66,9 @@ class WeeklyRecapNarrator
         - form (CTL - ATL): positive = fresh, negative = fatigued.
         - monotony: > 2 = too uniform, encourage variety.
         - strain: > 500 = heavy.
+        - weekly_trimp, monotony and strain are null when no run that week carried
+          heart rate. That is unknown load, not zero load and not a rest week. Tell
+          the week on distance and runs instead, and never report a null as a zero.
         - avg_decoupling: average cardiac drift (%). Low = good aerobic efficiency
           (heart stayed steady through the run); high (above 8-10%) = endurance
           still needs work.

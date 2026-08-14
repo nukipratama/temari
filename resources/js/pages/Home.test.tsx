@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type {
@@ -271,5 +271,30 @@ describe('Home', () => {
 
         expect(screen.queryByText(/You vs Past You/)).not.toBeInTheDocument();
         expect(screen.queryByText(/This week ·/)).not.toBeInTheDocument();
+    });
+
+    it('leaves the weekly TRIMP tile unknown when nothing that week scored', () => {
+        render(
+            <Home
+                briefing={briefing}
+                load={{
+                    ...load,
+                    weekly_trimp: null,
+                    monotony: null,
+                    strain: null,
+                }}
+                snapshot={{ ...snapshot, weekly_trimp: null }}
+                recentRuns={[lastRun]}
+                pastYouTrend={trend()}
+            />,
+        );
+
+        const weekSection = screen.getByText(/This week ·/).closest('section');
+        expect(weekSection).not.toBeNull();
+        const trimpTile = within(weekSection!).getByText('TRIMP').parentElement
+            ?.parentElement;
+        // The whole tile carries no digit at all: unknown, never a zero.
+        expect(trimpTile?.textContent).toMatch(/—$/);
+        expect(trimpTile?.textContent).not.toMatch(/\d/);
     });
 });

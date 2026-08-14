@@ -73,7 +73,8 @@ export default function Home({
     const weekTrimp = useCountUp(snapshot?.weekly_trimp ?? 0);
     const weekRunsDisplay = snapshot ? Math.round(weekRuns).toString() : '—';
     const weekKmDisplay = snapshot ? weekKm.toFixed(1) : '—';
-    const weekTrimpDisplay = snapshot ? Math.round(weekTrimp).toString() : '—';
+    const weekTrimpDisplay =
+        snapshot?.weekly_trimp != null ? Math.round(weekTrimp).toString() : '—';
 
     const hasRuns = recentRuns.length > 0;
     const judged =

@@ -23,7 +23,8 @@ export interface WeekBucket {
     label: string;
     runs: RunWithDetail[];
     totalKm: number;
-    totalTrimp: number;
+    /** Null when the week's runs carried no heart rate: unknown, not zero. */
+    totalTrimp: number | null;
 }
 
 export type RangeFilterValue = '8w' | '12w' | '6m' | '1y' | 'all';
@@ -202,7 +203,7 @@ export function groupByWeek(rows: ReadonlyArray<RunWithDetail>): WeekBucket[] {
                 label: weekRangeLabel(monday),
                 runs: [],
                 totalKm: 0,
-                totalTrimp: 0,
+                totalTrimp: null,
             };
             byKey.set(key, bucket);
             ordered.push(key);
@@ -211,7 +212,8 @@ export function groupByWeek(rows: ReadonlyArray<RunWithDetail>): WeekBucket[] {
         if (row.detail.distance !== null)
             bucket.totalKm += row.detail.distance / 1000;
         if (row.detail.trimp_edwards !== null)
-            bucket.totalTrimp += row.detail.trimp_edwards;
+            bucket.totalTrimp =
+                (bucket.totalTrimp ?? 0) + row.detail.trimp_edwards;
     }
 
     const buckets = ordered.map((k) => byKey.get(k)!);
@@ -226,9 +228,12 @@ export function groupByWeek(rows: ReadonlyArray<RunWithDetail>): WeekBucket[] {
                 (acc, r) => acc + (r.detail.distance ?? 0) / 1000,
                 0,
             ),
-            totalTrimp: orphans.reduce(
-                (acc, r) => acc + (r.detail.trimp_edwards ?? 0),
-                0,
+            totalTrimp: orphans.reduce<number | null>(
+                (acc, r) =>
+                    r.detail.trimp_edwards === null
+                        ? acc
+                        : (acc ?? 0) + r.detail.trimp_edwards,
+                null,
             ),
         });
     }

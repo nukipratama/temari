@@ -163,14 +163,26 @@ describe('groupByWeek', () => {
         expect(groupByWeek([headless])).toEqual([]);
     });
 
-    it('treats a missing distance or TRIMP as zero', () => {
+    it('leaves TRIMP unknown when a week ran but nothing scored', () => {
         const bare = run(101, 'No metrics', '2026-05-19T06:00:00');
         bare.detail.distance = null;
         bare.detail.trimp_edwards = null;
 
         const [bucket] = groupByWeek([bare]);
         expect(bucket.totalKm).toBe(0);
-        expect(bucket.totalTrimp).toBe(0);
+        expect(bucket.totalTrimp).toBeNull();
+    });
+
+    it('keeps a summary-only week apart from the scored week beside it', () => {
+        const scored = run(101, 'With HR', '2026-05-19T06:00:00');
+        const unscored = run(102, 'No HR', '2026-05-12T06:00:00');
+        unscored.detail.trimp_edwards = null;
+
+        const [scoredWeek, unscoredWeek] = groupByWeek([scored, unscored]);
+
+        expect(scoredWeek.totalTrimp).toBe(50);
+        expect(unscoredWeek.totalTrimp).toBeNull();
+        expect(unscoredWeek.runs.length).toBe(1);
     });
 });
 
