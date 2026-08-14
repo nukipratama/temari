@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { useRef, useState } from 'react';
 
 import CoachMark from '@/components/onboarding/CoachMark';
+import SeasonTrack from '@/components/plan/SeasonTrack';
+import StreakPanel, { type StreakSummary } from '@/components/plan/StreakPanel';
 import PlanRaceTabs from '@/components/race/PlanRaceTabs';
 import TemariProto, { type SeasonPhase } from '@/components/temari/TemariProto';
 import Card from '@/components/ui/Card';
@@ -29,6 +31,7 @@ interface SeasonSummary {
     week_index: number;
     total_weeks: number;
     is_race_oriented: boolean;
+    tiers_kept_from_past_seasons: number;
     goals: Goal[];
 }
 
@@ -65,6 +68,7 @@ interface PlanProps {
     sessionsPerWeek: number;
     weeks: PlanWeek[];
     season: SeasonSummary;
+    streak: StreakSummary;
     adaptation: PlanAdaptation | null;
     /** Served from App\Support\TrainingDisclaimer, shared with the legal pages. */
     disclaimerHeadline: string;
@@ -133,6 +137,7 @@ export default function Plan({
     sessionsPerWeek,
     weeks,
     season,
+    streak,
     adaptation,
     disclaimerHeadline,
     disclaimer,
@@ -303,6 +308,21 @@ export default function Plan({
                             </p>
                         </div>
                     </div>
+                    {season.goals.length > 0 && (
+                        <div className="mt-4">
+                            <SeasonTrack
+                                earned={
+                                    season.goals.filter((g) => g.is_completed)
+                                        .length
+                                }
+                                total={season.goals.length}
+                                endsAt={season.ends_at}
+                                tiersKeptFromPastSeasons={
+                                    season.tiers_kept_from_past_seasons
+                                }
+                            />
+                        </div>
+                    )}
                     <motion.div
                         data-coachmark="plan-season-goals"
                         initial="hidden"
@@ -320,6 +340,10 @@ export default function Plan({
                             </motion.div>
                         ))}
                     </motion.div>
+                </section>
+
+                <section className="mt-10">
+                    <StreakPanel streak={streak} />
                 </section>
 
                 {weeks.length === 0 && (
