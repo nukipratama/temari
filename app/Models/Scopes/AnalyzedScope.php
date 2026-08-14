@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Scope;
  * Hides un-ingested activity stubs (synced from Strava, `analyzed_at IS NULL`,
  * no detail/streams yet) from every Activity query by default, so only fully
  * ingested runs are ever shown or counted. The ingestion pipeline opts out via
- * {@see \App\Models\Activity::scopeWithStubs()}.
+ * {@see \App\Models\Activity::withStubs()}.
  *
  * @implements Scope<Activity>
  */

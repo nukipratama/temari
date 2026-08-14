@@ -63,7 +63,7 @@ class Analysis extends Model
 
     /**
      * How long a Queued/Processing row may sit before it counts as a lost-queue
-     * zombie ({@see self::scopeStaleInFlight()}), and how long a Pending/Queued
+     * zombie ({@see self::staleInFlight()}), and how long a Pending/Queued
      * row may sit before /ai-usage surfaces it as "Nyangkut". Well beyond the
      * job's tries + backoff + Retry-After cap, so a genuinely in-flight row is
      * never yanked mid-attempt.
@@ -189,7 +189,8 @@ class Analysis extends Model
     /**
      * Seconds left before this row may be re-triggered, or null if no cooldown
      * applies. Only a Done row can cool; the window is a Redis-backed
-     * {@see Cooldown} started at {@see AnalysisService::markDone()}.
+     * {@see Cooldown} started at
+     * {@see \App\Services\AI\AnalysisService::markDone()}.
      */
     public function cooldownRemaining(): ?int
     {
@@ -202,8 +203,8 @@ class Analysis extends Model
 
     /**
      * Opens this row's re-trigger cooldown window. Called from
-     * {@see AnalysisService::markDone()} so a "Baca ulang" can't re-fire the
-     * LLM for the same block until the window elapses.
+     * {@see \App\Services\AI\AnalysisService::markDone()} so a "Baca ulang"
+     * can't re-fire the LLM for the same block until the window elapses.
      */
     public function startCooldown(): void
     {
