@@ -64,6 +64,10 @@ class StoryLine extends Model
     #[Override]
     protected function casts(): array
     {
-        return ['for_date' => 'date'];
+        return [
+            'user_id' => 'integer',
+            'activity_id' => 'integer',
+            'for_date' => 'date',
+        ];
     }
 }

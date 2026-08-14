@@ -159,6 +159,7 @@ class ActivityDetail extends Model
     protected function casts(): array
     {
         return [
+            'activity_id' => 'integer',
             'start_date_local' => 'datetime:Y-m-d\TH:i:s',
             'distance' => 'float',
             'moving_time' => 'integer',

@@ -78,10 +78,12 @@ class Analysis extends Model
     protected function casts(): array
     {
         return [
+            'subject_id' => 'integer',
             'analysis_type' => AnalysisType::class,
             'status' => AnalysisStatus::class,
             'generated_at' => 'datetime',
             'queued_at' => 'datetime',
+            'attempts' => 'integer',
         ];
     }
 
