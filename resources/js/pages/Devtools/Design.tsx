@@ -337,55 +337,62 @@ export default function Design() {
                         title="Contrast audit"
                         note={`Run client-side against the live values. Text pairs need 4.5:1, a meaningful graphic 3:1, a separator 1.4:1. A fill too light to carry 3:1 itself is drawn with its -ink outline, and the outline is what gets tested. Anything sitting on paper is scored on all ${grounds.length} grounds dawn-shift can render and reported at its worst, named after the pair.`}
                     >
-                        <table className="w-full max-w-[760px] border-collapse font-sans text-xs">
-                            <thead>
-                                <tr>
-                                    {['Use', 'Pair', 'Ratio', 'Min', ''].map(
-                                        (head) => (
+                        <div className="overflow-x-auto">
+                            <table className="w-full max-w-[760px] border-collapse font-sans text-xs">
+                                <thead>
+                                    <tr>
+                                        {[
+                                            'Use',
+                                            'Pair',
+                                            'Ratio',
+                                            'Min',
+                                            '',
+                                        ].map((head) => (
                                             <th
                                                 key={head}
                                                 className="text-label-micro border-b border-line py-2 pr-3 text-left text-ink-3"
                                             >
                                                 {head}
                                             </th>
-                                        ),
-                                    )}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {contrast.map((r) => (
-                                    <tr
-                                        key={`${r.use}-${r.fg}-${r.bg}`}
-                                        className={cn(
-                                            !r.pass && 'bg-ember/[0.08]',
-                                        )}
-                                    >
-                                        <td className="border-b border-line py-2 pr-3 text-ink">
-                                            {r.use}
-                                            {r.outlined === true && (
-                                                <span className="text-ink-3">
-                                                    {' '}
-                                                    (outlined)
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="border-b border-line py-2 pr-3 font-mono text-[11px] text-ink-2">
-                                            {r.fg.replace('--color-', '')} on{' '}
-                                            {r.bg.replace('--color-', '')}
-                                        </td>
-                                        <td className="border-b border-line py-2 pr-3 text-right font-mono tabular-nums text-ink">
-                                            {r.ratio?.toFixed(2) ?? '—'}
-                                        </td>
-                                        <td className="border-b border-line py-2 pr-3 text-right font-mono tabular-nums text-ink-3">
-                                            {r.min.toFixed(1)}
-                                        </td>
-                                        <td className="border-b border-line py-2">
-                                            <Verdict pass={r.pass} />
-                                        </td>
+                                        ))}
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {contrast.map((r) => (
+                                        <tr
+                                            key={`${r.use}-${r.fg}-${r.bg}`}
+                                            className={cn(
+                                                !r.pass && 'bg-ember/[0.08]',
+                                            )}
+                                        >
+                                            <td className="border-b border-line py-2 pr-3 text-ink">
+                                                {r.use}
+                                                {r.outlined === true && (
+                                                    <span className="text-ink-3">
+                                                        {' '}
+                                                        (outlined)
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="border-b border-line py-2 pr-3 font-mono text-[11px] text-ink-2">
+                                                {r.fg.replace('--color-', '')}{' '}
+                                                on{' '}
+                                                {r.bg.replace('--color-', '')}
+                                            </td>
+                                            <td className="border-b border-line py-2 pr-3 text-right font-mono tabular-nums text-ink">
+                                                {r.ratio?.toFixed(2) ?? '—'}
+                                            </td>
+                                            <td className="border-b border-line py-2 pr-3 text-right font-mono tabular-nums text-ink-3">
+                                                {r.min.toFixed(1)}
+                                            </td>
+                                            <td className="border-b border-line py-2">
+                                                <Verdict pass={r.pass} />
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </Section>
 
                     <Section
