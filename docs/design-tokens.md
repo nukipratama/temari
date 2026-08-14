@@ -282,12 +282,13 @@ className={cn(cardVariants({ tone, padding }), className)}
 ```
 
 **There is one card.** `cardVariants` is a single surface — `surface-card` on a `line` border at
-`rounded-md` with `shadow-e1` — in three states, not four competing treatments:
+`rounded-md` with `shadow-e1` — in four states, not a spread of competing treatments:
 
 | Tone | What it is |
 |---|---|
 | `card` | The card. Every resting surface in the app. |
-| `onSky` | The same card mounted on a dark sky panel: translucent cream over the panel, no elevation (there is nothing to cast onto). |
+| `sky` | The card inverted into the dark panel itself: `bg-sky` under `text-cream`, lifted to `shadow-e2`. |
+| `onSky` | The same card mounted *on* a dark sky panel: translucent cream over the panel, no elevation (there is nothing to cast onto). |
 | `empty` | The dashed placeholder standing in for a card with no content yet. Not a surface that rests on the page, so no elevation. |
 
 Padding names its role (`panel` / `card` / `hero` / `none`), never a number. A tone or padding

@@ -379,7 +379,7 @@ it('still bills a manual re-trigger of a dead-lettered block, only refusing queu
     expect($calls->count())->toBe(0);
 
     // Every dispatch path marks the row Queued first, which is what separates a
-    // human "Coba lagi" from the queue re-entering a row it already failed.
+    // human "Try again" from the queue re-entering a row it already failed.
     $service->markQueued($row->refresh());
     fakeSuccessRowJob($row->id)->handle($service);
 

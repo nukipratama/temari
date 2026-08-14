@@ -91,7 +91,7 @@ No *dispatch* path reaches the filler any more: a paused or failing block stays 
 
 ### The demo seed path
 
-The demo seeder stages and fills all Analysis rows under [`AnalysisService::withoutDispatching()`](app/Services/AI/AnalysisService.php#L44), which suppresses every job dispatch ([DemoRunSeeder::seed](database/seeders/Demo/DemoRunSeeder.php#L104)). Rows are staged `Pending` inside that closure and then flat-filled afterward by walking them through the filler ([`backfillWithFiller`](database/seeders/Demo/DemoRunSeeder.php#L292)), so seeding spends zero LLM tokens. The "Baca ulang" button stays live for the demo, but its trigger is filled through the same filler rather than dispatched, so no demo click reaches Azure — see [[demo-triggers-served-rule-based]]. The demo user is also held out of billing schedulers — see [[demo-user-billing-exclusion]].
+The demo seeder stages and fills all Analysis rows under [`AnalysisService::withoutDispatching()`](app/Services/AI/AnalysisService.php#L44), which suppresses every job dispatch ([DemoRunSeeder::seed](database/seeders/Demo/DemoRunSeeder.php#L104)). Rows are staged `Pending` inside that closure and then flat-filled afterward by walking them through the filler ([`backfillWithFiller`](database/seeders/Demo/DemoRunSeeder.php#L363)), so seeding spends zero LLM tokens. The "Reread" button stays live for the demo, but its trigger is filled through the same filler rather than dispatched, so no demo click reaches Azure — see [[demo-triggers-served-rule-based]]. The demo user is also held out of billing schedulers — see [[demo-user-billing-exclusion]].
 
 ## See also
 

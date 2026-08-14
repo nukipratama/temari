@@ -92,7 +92,7 @@ it('still lets the demo user log out', function (): void {
     expect(auth()->check())->toBeFalse();
 });
 
-it('still lets the demo user trigger "Baca ulang", served rule-based so it never bills', function (): void {
+it('still lets the demo user trigger "Reread", served rule-based so it never bills', function (): void {
     Bus::fake();
     $user = User::factory()->create(['is_demo' => true]);
 

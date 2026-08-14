@@ -116,7 +116,7 @@ it('requeues a transient upstream failure (no Retry-After) so a manual retry can
     $job->setJob($queueJob);
 
     // No rethrow: the row stays Queued (not Failed) for the retry wait, so it is
-    // neither re-dispatchable nor shown as a failed "Coba lagi" block.
+    // neither re-dispatchable nor shown as a failed "Try again" block.
     $job->handle(app(AnalysisService::class));
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
@@ -161,7 +161,7 @@ it('releases the job with the Retry-After delay instead of rethrowing when one i
     // Releasing replaces rethrow: handle() returns cleanly while the queue
     // re-enqueues the job after the requested delay. The row stays Queued (not
     // Failed) for the wait, so it is neither re-dispatchable nor shown as a
-    // failed "Coba lagi" block that a manual retry could double-bill.
+    // failed "Try again" block that a manual retry could double-bill.
     $job->handle(app(AnalysisService::class));
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);

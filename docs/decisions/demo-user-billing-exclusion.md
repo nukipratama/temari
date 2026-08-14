@@ -21,6 +21,8 @@ code_refs:
 
 **Status:** Accepted (documented 2026-06-20)
 
+> **One claim below is superseded (noted 2026-08-14).** The note says `resumePerActivity()` is the one self-heal sweep that does *not* filter the demo account. It does now — [SelfHealer::resumePerActivity](app/Services/AI/SelfHealer.php#L93) constrains to `User::query()->notDemo()`, so all six families exclude the demo. The exclusion principle this note records is unchanged; only the stated exception is gone.
+
 ## Context
 
 The `/login` "Coba versi demo" button signs a reviewer into a seeded demo account. That account is fully populated so every page renders, but it has no real Strava connection and we don't want it spending real Strava calls or LLM tokens on a recurring schedule. We needed the demo to look complete while costing zero on the cron path.

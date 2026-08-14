@@ -17,9 +17,9 @@ This is the engine behind the dashboard's "Kondisi" read-out and the [[run-histo
 
 ## TRIMP: the unit of training stress
 
-Everything is built on **Edwards TRIMP** — a single number for how hard one run was. The [[run-ingest-pipeline]] buckets a run's heart rate into HR zones (see [[stream-analysis]]) and hands the minutes-per-zone to [edwardsTrimp](app/Services/Run/Metrics/TrainingLoad.php#L32), which weights each zone by its intensity (the higher the zone, the heavier the weight; see [zoneWeight](app/Services/Run/Metrics/TrainingLoad.php#L257)) and sums them. The result is written onto the activity at [ActivityPipeline](app/Services/Run/Ingest/ActivityPipeline.php#L258) as `trimp_edwards`, so each run carries its own stress score.
+Everything is built on **Edwards TRIMP** — a single number for how hard one run was. The [[run-ingest-pipeline]] buckets a run's heart rate into HR zones (see [[stream-analysis]]) and hands the minutes-per-zone to [edwardsTrimp](app/Services/Run/Metrics/TrainingLoad.php#L32), which weights each zone by its intensity (the higher the zone, the heavier the weight; see [zoneWeight](app/Services/Run/Metrics/TrainingLoad.php#L281)) and sums them. The result is written onto the activity at [ActivityPipeline](app/Services/Run/Ingest/ActivityPipeline.php#L258) as `trimp_edwards`, so each run carries its own stress score.
 
-Because the weights and the zone math depend on the runner's HR zones, recomputing with new zones (see [[settings-hr-zones]]) re-derives TRIMP without re-fetching from Strava — that's what [recomputeSummary](app/Services/Run/Ingest/ActivityPipeline.php#L274) does.
+Because the weights and the zone math depend on the runner's HR zones, recomputing with new zones (see [[settings-hr-zones]]) re-derives TRIMP without re-fetching from Strava — that's what [recomputeSummary](app/Services/Run/Ingest/ActivityPipeline.php#L427) does.
 
 ## CTL / ATL: fitness and fatigue as decaying averages
 
@@ -50,7 +50,7 @@ Two subtleties:
 
 ### Backdated runs propagate forward
 
-CTL is **cumulative**: a run inserted into a past week changes the fitness baseline of *every* later week too. So ingest doesn't just rebuild that one week — [rebuildForwardFrom](app/Services/Run/Metrics/WeeklyAggregator.php#L50) rebuilds the affected week and every week through today, loading one shared lead-in series and re-rolling each week's snapshot from it in a single query. This is what [recomputeSummary](app/Services/Run/Ingest/ActivityPipeline.php#L285) calls after a run's TRIMP changes. A full from-scratch backfill is [rebuildFor](app/Services/Run/Metrics/WeeklyAggregator.php#L109).
+CTL is **cumulative**: a run inserted into a past week changes the fitness baseline of *every* later week too. So ingest doesn't just rebuild that one week — [rebuildForwardFrom](app/Services/Run/Metrics/WeeklyAggregator.php#L68) rebuilds the affected week and every week through today, loading one shared lead-in series and re-rolling each week's snapshot from it in a single query. This is what [recomputeSummary](app/Services/Run/Ingest/ActivityPipeline.php#L427) calls after a run's TRIMP changes. A full from-scratch backfill is [rebuildFor](app/Services/Run/Metrics/WeeklyAggregator.php#L130).
 
 ## Where the numbers surface
 

@@ -181,12 +181,12 @@ it('leaves a Done weekly recap untouched on re-ingest (no mid-week invalidation)
         ->where('subject_type', WeeklySnapshot::class)
         ->where('subject_id', $snapshot->id)
         ->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'recap dari Baca ulang');
+    app(AnalysisService::class)->markDone($row, 'recap from a reread');
 
     fire($activity);
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($row->fresh()->content)->toBe('recap dari Baca ulang');
+        ->and($row->fresh()->content)->toBe('recap from a reread');
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 

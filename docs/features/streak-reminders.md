@@ -22,7 +22,7 @@ There is no dedicated streak toggle — the nudge is governed by the single `not
 
 ## Flow
 
-1. **Cron** (Saturday 18:00, see [routes/console.php](routes/console.php#L72)) fires `StreakRemindCommand::handle()`.
+1. **Cron** (Saturday 18:00, see [routes/console.php](routes/console.php#L114)) fires `StreakRemindCommand::handle()`.
 2. The command queries **users** who are not demo, haven't set `notifications_enabled = false`, and are reachable on at least one channel (an active Telegram connection **or** at least one web-push subscription), then applies three guards:
    - Skip if `WeeklySnapshot::consecutiveWeekStreak($userId)` returns `< 1` (no live streak).
    - Skip if the current week's `WeeklySnapshot` already has `runs > 0`.

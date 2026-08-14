@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\AnalysisController;
+use App\Http\Requests\TriggerAnalysisRequest;
 use App\Jobs\AI\AnalyzeBriefingFeaturedKartuVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeActivityJob;
@@ -17,9 +19,13 @@ use App\Models\RunnerProfile;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\BackfillAgeGate;
+use App\Services\AI\ChainResolver;
 use App\Services\Run\Metrics\SummaryRecomputer;
+use Illuminate\Auth\Access\AuthorizationException;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use App\Support\Cooldown;
@@ -688,7 +694,7 @@ it('does not dispatch a billed job when a discriminator is sent to a type whose 
 
 /**
  * The demo login is public, so its trigger is served from the rule-based filler:
- * the reviewer keeps a working "Baca ulang" and no anonymous visitor can spend
+ * the reviewer keeps a working "Reread" and no anonymous visitor can spend
  * Azure tokens.
  */
 it('serves the demo account a rule-based narration instead of dispatching a billed job', function (): void {
@@ -826,7 +832,7 @@ it('still lets a user trigger the voice for their own featured card', function (
 // ── trigger → narration age cutoff ──────────────────────────────────────────
 //
 // card_flavor and pr_context are not chained, so nothing else stops a manual
-// "Baca ulang" on a years-old run from billing exactly what the ingest-side
+// "Reread" on a years-old run from billing exactly what the ingest-side
 // cutoff routed to the rule-based filler.
 
 /** @return array{0: RunCard, 1: PersonalRecord} */
@@ -979,4 +985,21 @@ it('skips the recompute for a block whose narration does not depend on zones', f
     $this->actingAs($user)
         ->postJson("/api/analyses/post_run_speech/{$activity->id}/trigger")
         ->assertSuccessful();
+});
+
+// ── trigger → defensive guard ───────────────────────────────────────────────
+
+it('throws Unauthenticated when the request has no user (defensive guard)', function (): void {
+    $controller = new AnalysisController();
+    $request = TriggerAnalysisRequest::create('/api/analyses/briefing_mascot_voice/1/trigger', 'POST');
+
+    expect(fn () => $controller->trigger(
+        $request,
+        app(AnalysisService::class),
+        app(SummaryRecomputer::class),
+        app(ChainResolver::class),
+        app(BackfillAgeGate::class),
+        'briefing_mascot_voice',
+        1,
+    ))->toThrow(AuthorizationException::class, 'Unauthenticated');
 });

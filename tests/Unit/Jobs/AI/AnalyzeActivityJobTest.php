@@ -133,7 +133,7 @@ it('reverts group rows to Pending without billing when generation is paused', fu
 
 // An unavailable model used to degrade the insights to deterministic template
 // copy. It no longer does: a template presented as narration is a lie the user
-// cannot see through, so the group fails honestly and the UI offers "Coba lagi".
+// cannot see through, so the group fails honestly and the UI offers "Try again".
 it('fails the whole group rather than templating run-insight when the LLM is unavailable', function (): void {
     $activity = seedActivityForJob();
 
