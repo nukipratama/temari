@@ -16,12 +16,17 @@ export const PALETTE = {
     horizonDeep: '#b98a2a',
     horizonInk: '#775a21',
     overloaded: '#6b3fa0',
+    gassed: '#7a2030',
+    chill: '#55488f',
     citrus: '#c9971f',
     citrusInk: '#785a13',
     stone: '#a99f8a',
     sky: '#241c54',
     skyDeep: '#170f38',
+    cream: '#f5f0e4',
     ink: '#1a1812',
+    ink2: '#3d362a',
+    ink3: '#6e6452',
 } as const;
 
 export type PaletteColor = keyof typeof PALETTE;

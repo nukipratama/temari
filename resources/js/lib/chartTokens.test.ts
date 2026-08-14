@@ -9,6 +9,9 @@ describe('PALETTE chart token bridge', () => {
         expect(PALETTE.overloaded).toBe('#6b3fa0');
         expect(PALETTE.horizon).toBe('#d9a53c');
         expect(PALETTE.citrus).toBe('#c9971f');
+        expect(PALETTE.cream).toBe('#f5f0e4');
+        expect(PALETTE.ink2).toBe('#3d362a');
+        expect(PALETTE.ink3).toBe('#6e6452');
     });
 
     it('exposes every value as a 6-digit lowercase hex', () => {

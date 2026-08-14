@@ -84,18 +84,18 @@ export function moodToken(mood: Mood): Mood {
 export function moodSigilColor(mood: Mood): string {
     switch (mood) {
         case 'blazing':
-            return '#c9971f';
+            return PALETTE.citrus;
         case 'easy':
-            return '#2f8f63';
+            return PALETTE.leaf;
         case 'gassed':
-            return '#7a2030';
+            return PALETTE.gassed;
         case 'wobbly':
-            return '#b23a4f';
+            return PALETTE.ember;
         case 'overloaded':
             return PALETTE.overloaded;
         case 'chill':
         default:
-            return '#55488f';
+            return PALETTE.chill;
     }
 }
 

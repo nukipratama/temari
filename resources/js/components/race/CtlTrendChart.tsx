@@ -5,6 +5,7 @@ import EmptyPanel from '@/components/ui/EmptyPanel';
 import Skeleton from '@/components/ui/Skeleton';
 import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';
+import { PALETTE } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatNaiveIdDate } from '@/lib/pace';
@@ -25,15 +26,8 @@ interface CtlTrendChartProps {
     className?: string;
 }
 
-// Design tokens resolved to hex — Chart.js paints to canvas and can't read
-// CSS custom properties. Keep in sync with the @theme block in app.css.
-const CHART_TOKENS = {
-    horizon: '#d9a53c', // --color-horizon (CTL / fitness — the slow line)
-    ink2: '#3d362a', // --color-ink-2 (axis ticks)
-    ink3: '#6e6452', // --color-ink-3 (grid line + ATL / fatigue line)
-} as const;
-const CTL_FILL = `${CHART_TOKENS.horizon}2e`; // 0.18 alpha
-const GRID_LINE = `${CHART_TOKENS.ink3}1f`; // 0.12 alpha
+const CTL_FILL = `${PALETTE.horizon}2e`; // 0.18 alpha
+const GRID_LINE = `${PALETTE.ink3}1f`; // 0.12 alpha
 
 export default function CtlTrendChart({
     trend,
@@ -51,7 +45,7 @@ export default function CtlTrendChart({
                 {
                     label: 'Fitness (CTL)',
                     data: trend.map((p) => p.ctl),
-                    borderColor: CHART_TOKENS.horizon,
+                    borderColor: PALETTE.horizon,
                     backgroundColor: CTL_FILL,
                     borderWidth: 2.5,
                     pointRadius: 0,
@@ -61,7 +55,7 @@ export default function CtlTrendChart({
                 {
                     label: 'Fatigue (ATL)',
                     data: trend.map((p) => p.atl),
-                    borderColor: CHART_TOKENS.ink3,
+                    borderColor: PALETTE.ink3,
                     backgroundColor: 'transparent',
                     borderWidth: 1.5,
                     borderDash: [4, 4],
@@ -86,7 +80,7 @@ export default function CtlTrendChart({
                 legend: {
                     display: true,
                     position: 'top' as const,
-                    labels: { color: CHART_TOKENS.ink2, boxWidth: 12 },
+                    labels: { color: PALETTE.ink2, boxWidth: 12 },
                 },
                 tooltip: {
                     callbacks: {
@@ -106,7 +100,7 @@ export default function CtlTrendChart({
                 },
                 y: {
                     grid: { color: GRID_LINE },
-                    ticks: { color: CHART_TOKENS.ink2, font: { size: 12 } },
+                    ticks: { color: PALETTE.ink2, font: { size: 12 } },
                 },
             },
         }),

@@ -4,6 +4,7 @@ import { lazy, Suspense, useMemo } from 'react';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Skeleton from '@/components/ui/Skeleton';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { PALETTE } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
 import { countUpEase } from '@/lib/motion';
 import { formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
@@ -21,21 +22,10 @@ interface ProgressionChartProps {
     className?: string;
 }
 
-// Design tokens resolved to the hex Chart.js needs (it paints to canvas and
-// can't read the CSS custom properties). Keep in sync with the @theme block in
-// resources/css/app.css. `#RRGGBBAA` suffixes are the token color at a set alpha.
-const CHART_TOKENS = {
-    horizon: '#d9a53c', // --color-horizon (best-time line + area fill)
-    horizonDeep: '#b98a2a', // --color-horizon-deep (point fill)
-    cream: '#f5f0e4', // --color-cream (point border)
-    citrus: '#c9971f', // --color-citrus (goal line / PR accent)
-    ink2: '#3d362a', // --color-ink-2 (axis ticks)
-    ink3: '#6e6452', // --color-ink-3 (grid line)
-} as const;
-const HORIZON_FILL_FLAT = `${CHART_TOKENS.horizon}2e`; // 0.18 alpha
-const HORIZON_FILL_TOP = `${CHART_TOKENS.horizon}52`; // 0.32 alpha
-const HORIZON_FILL_BOTTOM = `${CHART_TOKENS.horizon}05`; // 0.02 alpha
-const GRID_LINE = `${CHART_TOKENS.ink3}1f`; // 0.12 alpha
+const HORIZON_FILL_FLAT = `${PALETTE.horizon}2e`; // 0.18 alpha
+const HORIZON_FILL_TOP = `${PALETTE.horizon}52`; // 0.32 alpha
+const HORIZON_FILL_BOTTOM = `${PALETTE.horizon}05`; // 0.02 alpha
+const GRID_LINE = `${PALETTE.ink3}1f`; // 0.12 alpha
 
 function lastDefinedIndex(values: ReadonlyArray<number | null>): number {
     for (let i = values.length - 1; i >= 0; i--) {
@@ -77,7 +67,7 @@ export default function ProgressionChart({
                     data: timesSec.map((t, i) =>
                         t == null ? null : { x: xOffsets[i], y: t / 60 },
                     ),
-                    borderColor: CHART_TOKENS.horizon,
+                    borderColor: PALETTE.horizon,
                     // Vertical gradient area fill (denser near the line, fading to the axis)
                     // instead of a flat wash, so the chart reads as intentional, not a default.
                     backgroundColor: (ctx: {
@@ -100,8 +90,8 @@ export default function ProgressionChart({
                     },
                     borderWidth: 2.5,
                     pointRadius: 4,
-                    pointBackgroundColor: CHART_TOKENS.horizonDeep,
-                    pointBorderColor: CHART_TOKENS.cream,
+                    pointBackgroundColor: PALETTE.horizonDeep,
+                    pointBorderColor: PALETTE.cream,
                     pointBorderWidth: 1.5,
                     tension: 0.32,
                     fill: true,
@@ -123,7 +113,7 @@ export default function ProgressionChart({
                                             },
                                         ]
                                       : [],
-                              borderColor: CHART_TOKENS.citrus,
+                              borderColor: PALETTE.citrus,
                               backgroundColor: 'transparent',
                               borderDash: [6, 6],
                               borderWidth: 1.5,
@@ -182,7 +172,7 @@ export default function ProgressionChart({
                     reverse: true,
                     grid: { color: GRID_LINE },
                     ticks: {
-                        color: CHART_TOKENS.ink2,
+                        color: PALETTE.ink2,
                         font: { size: 12 },
                         callback: (val: number | string) => {
                             const v =
