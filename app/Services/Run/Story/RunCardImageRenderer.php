@@ -45,6 +45,52 @@ class RunCardImageRenderer
     private const int CONTENT_W = self::W - (self::PAD * 2);
 
     /**
+     * Mirrors shareCard.ts `CARD_SCALE`. The card takes 90% of each axis,
+     * centred, and the rest is mat. Card and canvas share the 9:16 aspect, so
+     * one uniform scale is the only inset that doesn't distort — the mat is 5%
+     * of each dimension (54 sideways, 96 top and bottom), not an equal pixel
+     * border. Everything below is authored in unscaled card coordinates and
+     * placed by the transform, so no geometry in this file moves.
+     */
+    private const float CARD_SCALE = 0.9;
+
+    private const float CARD_OFFSET_X = self::W * (1 - self::CARD_SCALE) / 2;
+
+    private const float CARD_OFFSET_Y = self::H * (1 - self::CARD_SCALE) / 2;
+
+    /** Card body corner radius, mirroring shareCard.ts `CARD_RADIUS`. */
+    private const int CARD_RADIUS = 44;
+
+    /**
+     * The mat behind the card, mirroring shareCard.ts `CARD_GROUND`:
+     * `--color-cream-deep`, the app's own ground. Fixed for every colorway —
+     * an exported image has no time of day, so it cannot follow the
+     * `--color-surface` drift the running app applies.
+     */
+    private const string GROUND = '#ece2ce';
+
+    /**
+     * `--shadow-e4` from app.css, the elevation the in-app Kartu mount
+     * carries. An SVG `feDropShadow`'s `stdDeviation` is σ and a CSS blur
+     * radius is 2σ, so each layer's blur halves and nothing is eyeballed.
+     * 23,15,56 is `--color-sky-deep`, the same hue the token casts.
+     *
+     * One filter per layer, over two caster rects, rather than two primitives
+     * in one filter: librsvg resolves a second primitive's omitted `in` to
+     * SourceGraphic instead of the previous result, so a stacked filter
+     * silently renders the tight layer alone and drops the deep one. Two
+     * casters also match how the canvas replays the stack, one fill per layer.
+     */
+    private const string ELEVATION = <<<'SVG'
+        <filter id="elevation-deep" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#170f38" flood-opacity="0.20"/>
+        </filter>
+        <filter id="elevation-tight" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#170f38" flood-opacity="0.12"/>
+        </filter>
+        SVG;
+
+    /**
      * Font families by role, mirroring the `--font-*` tokens in app.css.
      * librsvg resolves these through fontconfig, so the families must be
      * installed in the image (see the font install in the Dockerfile) or text
@@ -75,9 +121,8 @@ class RunCardImageRenderer
     private const float BAND_LEAN = 0.09;
 
     /**
-     * Threadwork colorways, mirroring shareCard.ts `COLORWAYS`. `bg` and
-     * `surface` are deliberately the same tone in every colorway — the rounded
-     * frame reveals a full-bleed card, not one floating on a backdrop. `name`
+     * Threadwork colorways, mirroring shareCard.ts `COLORWAYS`. `bg` is the
+     * card body only; the mat around it is `GROUND` in every colorway. `name`
      * is always horizon and `rarity` never appears here: both are the fixed
      * brand/collectible bridge, constant across colorways.
      */
@@ -149,6 +194,19 @@ class RunCardImageRenderer
         $w = self::W;
         $h = self::H;
         $sans = self::FONT_SANS;
+        $ground = self::GROUND;
+        $elevation = self::ELEVATION;
+        $radius = self::CARD_RADIUS;
+
+        // The elevation casters: the card's silhouette in canvas coordinates,
+        // one per shadow layer. The card group paints over them, so nothing of
+        // them survives except the cast falling on the mat.
+        $castX = self::CARD_OFFSET_X;
+        $castY = self::CARD_OFFSET_Y;
+        $castW = $w * self::CARD_SCALE;
+        $castH = $h * self::CARD_SCALE;
+        $castR = $radius * self::CARD_SCALE;
+        $scale = self::CARD_SCALE;
 
         return <<<SVG
 <?xml version="1.0" encoding="UTF-8"?>
@@ -157,16 +215,22 @@ class RunCardImageRenderer
     <filter id="bloom" x="-20%" y="-20%" width="140%" height="140%">
       <feGaussianBlur stdDeviation="18"/>
     </filter>
+{$elevation}
   </defs>
-  <rect width="{$w}" height="{$h}" fill="{$bg}"/>
-  <rect x="40" y="40" width="1000" height="1840" rx="56" fill="none" stroke="{$rarity}" stroke-width="6" opacity="0.55" filter="url(#bloom)"/>
-  <rect x="40" y="40" width="1000" height="1840" rx="56" fill="none" stroke="{$rarity}" stroke-width="6"/>
+  <rect width="{$w}" height="{$h}" fill="{$ground}"/>
+  <rect x="{$castX}" y="{$castY}" width="{$castW}" height="{$castH}" rx="{$castR}" fill="{$bg}" filter="url(#elevation-deep)"/>
+  <rect x="{$castX}" y="{$castY}" width="{$castW}" height="{$castH}" rx="{$castR}" fill="{$bg}" filter="url(#elevation-tight)"/>
+  <g transform="translate({$castX},{$castY}) scale({$scale})">
+  <rect width="{$w}" height="{$h}" rx="{$radius}" fill="{$bg}"/>
+  <rect x="6" y="6" width="1068" height="1908" rx="38" fill="none" stroke="{$rarity}" stroke-width="12" opacity="0.55" filter="url(#bloom)"/>
+  <rect x="6" y="6" width="1068" height="1908" rx="38" fill="none" stroke="{$rarity}" stroke-width="12"/>
 
   {$header}
 
   {$middle}
 
   {$footer}
+  </g>
 </svg>
 SVG;
     }

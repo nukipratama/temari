@@ -2,6 +2,7 @@ import polylineCodec from '@mapbox/polyline';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+    CARD_GROUND,
     COLORWAYS,
     drawShareCard,
     shareCardBlob,
@@ -62,6 +63,7 @@ function makeCtx() {
         save: vi.fn(),
         restore: vi.fn(),
         translate: vi.fn(),
+        scale: vi.fn(),
         rotate: vi.fn(),
         drawImage: vi.fn(),
         setLineDash: vi.fn(),
@@ -762,70 +764,114 @@ describe('drawShareCard — edge / branch cases', () => {
     });
 });
 
-/** Like `makeCtx`, but records the `fillStyle` in effect every time `fillRect`
- *  is called — `paintBackground`'s canvas-wide fill is always the first call,
- *  so `fills[0]` is the colorway's `bg` value actually used to paint. */
-function makeCtxWithFillRectLog() {
+/** Like `makeCtx`, but records the `fillStyle` in effect for each `fillRect`
+ *  and each `fill()`. `paintBackground`'s canvas-wide `fillRect` is the only
+ *  one, so `rects[0]` is the mat; the first two `fill()`s are `drawElevation`'s
+ *  shadow casters, so `fills[2]` is the colorway's card body. */
+function makeCtxWithFillLog() {
     const ctx = makeCtx();
+    const rects: string[] = [];
     const fills: string[] = [];
     ctx.fillRect = vi.fn(() => {
+        rects.push(ctx.fillStyle);
+    });
+    ctx.fill = vi.fn(() => {
         fills.push(ctx.fillStyle);
     });
-    return { ctx, fills };
+    return { ctx, rects, fills };
+}
+
+/** Flat colour fills only — gradient fills (glows, shimmers) aren't colours. */
+function flatFills(fills: string[]): string[] {
+    return fills.filter((fill) => typeof fill === 'string');
+}
+
+/** The colorway's card body: the first flat fill after `drawElevation`'s two
+ *  shadow casters. */
+function cardBody(fills: string[]): string {
+    return flatFills(fills)[2];
+}
+
+function drawWith(
+    ctx: ReturnType<typeof makeCtx>,
+    colorway?: 'navy' | 'dawn' | 'ember',
+) {
+    return drawShareCard(
+        {
+            width: 0,
+            height: 0,
+            getContext: () => ctx,
+        } as unknown as HTMLCanvasElement,
+        { kartu, layout: 'kartu', format: 'story', colorway },
+    );
 }
 
 describe('colorways', () => {
     it('defaults to navy when no colorway is given — byte-identical to explicit navy', async () => {
-        const implicit = makeCtxWithFillRectLog();
-        await drawShareCard(
-            {
-                width: 0,
-                height: 0,
-                getContext: () => implicit.ctx,
-            } as unknown as HTMLCanvasElement,
-            { kartu, layout: 'kartu', format: 'story' },
-        );
-        const explicit = makeCtxWithFillRectLog();
-        await drawShareCard(
-            {
-                width: 0,
-                height: 0,
-                getContext: () => explicit.ctx,
-            } as unknown as HTMLCanvasElement,
-            { kartu, layout: 'kartu', format: 'story', colorway: 'navy' },
-        );
-        expect(implicit.fills[0]).toBe(COLORWAYS.navy.bg);
-        expect(implicit.fills[0]).toBe(explicit.fills[0]);
+        const implicit = makeCtxWithFillLog();
+        await drawWith(implicit.ctx);
+        const explicit = makeCtxWithFillLog();
+        await drawWith(explicit.ctx, 'navy');
+        expect(flatFills(implicit.fills)).toEqual(flatFills(explicit.fills));
+        expect(cardBody(implicit.fills)).toBe(COLORWAYS.navy.surface);
     });
 
-    it('paints the dawn colorway on a light background, distinct from navy', async () => {
-        const { ctx, fills } = makeCtxWithFillRectLog();
-        await drawShareCard(
-            {
-                width: 0,
-                height: 0,
-                getContext: () => ctx,
-            } as unknown as HTMLCanvasElement,
-            { kartu, layout: 'kartu', format: 'story', colorway: 'dawn' },
-        );
-        expect(fills[0]).toBe(COLORWAYS.dawn.bg);
-        expect(fills[0]).not.toBe(COLORWAYS.navy.bg);
+    it('paints the dawn colorway on a light card body, distinct from navy', async () => {
+        const { ctx, fills } = makeCtxWithFillLog();
+        await drawWith(ctx, 'dawn');
+        expect(cardBody(fills)).toBe(COLORWAYS.dawn.surface);
+        expect(cardBody(fills)).not.toBe(COLORWAYS.navy.surface);
     });
 
-    it('paints the ember colorway on an ember-hued dark background, distinct from navy', async () => {
-        const { ctx, fills } = makeCtxWithFillRectLog();
-        await drawShareCard(
-            {
-                width: 0,
-                height: 0,
-                getContext: () => ctx,
-            } as unknown as HTMLCanvasElement,
-            { kartu, layout: 'kartu', format: 'story', colorway: 'ember' },
-        );
-        expect(fills[0]).toBe(COLORWAYS.ember.bg);
-        expect(fills[0]).not.toBe(COLORWAYS.navy.bg);
+    it('paints the ember colorway on an ember-hued card body, distinct from navy', async () => {
+        const { ctx, fills } = makeCtxWithFillLog();
+        await drawWith(ctx, 'ember');
+        expect(cardBody(fills)).toBe(COLORWAYS.ember.surface);
+        expect(cardBody(fills)).not.toBe(COLORWAYS.navy.surface);
     });
 
+    it('mats every colorway on the same cream ground, never the card body', async () => {
+        for (const colorway of ['navy', 'dawn', 'ember'] as const) {
+            const { ctx, rects } = makeCtxWithFillLog();
+            await drawWith(ctx, colorway);
+            expect(rects[0]).toBe(CARD_GROUND);
+            expect(rects[0]).not.toBe(COLORWAYS[colorway].surface);
+        }
+    });
+});
+
+describe('elevation', () => {
+    it('casts both --shadow-e4 layers under the card, at the token geometry', async () => {
+        const ctx = makeCtx();
+        const shadows: Array<{ blur: number; dy: number; color: string }> = [];
+        const original = ctx.fill;
+        ctx.fill = vi.fn(() => {
+            shadows.push({
+                blur: ctx.shadowBlur,
+                dy: ctx.shadowOffsetY,
+                color: ctx.shadowColor,
+            });
+            return original();
+        });
+        await drawWith(ctx, 'navy');
+
+        // 0 24px 56px rgba(23,15,56,.20), 0 8px 20px rgba(23,15,56,.12)
+        expect(shadows.slice(0, 2)).toEqual([
+            { blur: 56, dy: 24, color: 'rgba(23,15,56,0.20)' },
+            { blur: 20, dy: 8, color: 'rgba(23,15,56,0.12)' },
+        ]);
+    });
+
+    it('leaves the card itself unshadowed once the mat is cast', async () => {
+        const { ctx, fills } = makeCtxWithFillLog();
+        await drawWith(ctx, 'navy');
+        // Both casters paint the mat colour, so nothing of them survives the
+        // card body drawn over the top.
+        expect(fills.slice(0, 2)).toEqual([CARD_GROUND, CARD_GROUND]);
+    });
+});
+
+describe('colorway layouts', () => {
     it('renders the rute and stats layouts under every colorway without crashing', async () => {
         for (const layout of ['rute', 'stats'] as Layout[]) {
             for (const colorway of ['navy', 'dawn', 'ember'] as const) {

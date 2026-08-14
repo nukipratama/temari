@@ -258,11 +258,7 @@ export default function ShareCardModal({
                             height={format === 'story' ? 1920 : 1080}
                             aria-label={`Preview of ${kartu.name}`}
                             className="block rounded-lg"
-                            style={{
-                                maxWidth: '100%',
-                                maxHeight: '52vh',
-                                boxShadow: '0 16px 48px rgba(36,28,84,0.25)',
-                            }}
+                            style={{ maxWidth: '100%', maxHeight: '52vh' }}
                         />
 
                         {/* Format picker */}
