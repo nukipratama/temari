@@ -110,7 +110,7 @@
     /* Horizon — primary CTA, "earned" state, Temari accent. Gold thread. */
     --color-horizon: #d9a53c;
     --color-horizon-deep: #b98a2a;
-    --color-horizon-ink: #836424;
+    --color-horizon-ink: #7e6023;
 
     /* Cream — paper / app background, secondary surface. Warm linen canvas. */
     --color-cream: #f5f0e4;
@@ -141,19 +141,19 @@
     --color-surface-elev: #faf6ec;
     --color-surface-warm: #f8f0dd;
     --color-surface-sunken: #ece2ce;
-    --color-line: #cec5ad;
+    --color-line: #c9c0a9;
     --color-line-strong: #c3b89c;
 
     /* Mood — fill / pastel cell tint / text. */
     --color-mood-blazing: #c9971f;
     --color-mood-blazing-bg: #f3e6c2;
-    --color-mood-blazing-ink: #846314;
+    --color-mood-blazing-ink: #806014;
     --color-mood-easy: #2f8f63;
     --color-mood-easy-bg: #d7ecdf;
-    --color-mood-easy-ink: #277652;
+    --color-mood-easy-ink: #26724f;
     --color-mood-wobbly: #b23a4f;
     --color-mood-wobbly-bg: #f0d3d8;
-    --color-mood-wobbly-ink: #b23a4f;
+    --color-mood-wobbly-ink: #a9374b;
     --color-mood-gassed: #7a2030;
     --color-mood-gassed-bg: #e3c2c7;
     --color-mood-gassed-ink: #7a2030;
@@ -169,15 +169,15 @@
        legendary, green uncommon) keeps its vibrancy and is drawn with its
        `-ink` outline instead of being darkened. */
     --color-rarity-common: #7d8694;
-    --color-rarity-common-ink: #626974;
+    --color-rarity-common-ink: #5f6671;
     --color-rarity-uncommon: #2fb350;
-    --color-rarity-uncommon-ink: #207836;
+    --color-rarity-uncommon-ink: #1f7434;
     --color-rarity-rare: #2f81f7;
-    --color-rarity-rare-ink: #2567c4;
+    --color-rarity-rare-ink: #2463be;
     --color-rarity-epic: #a855f7;
-    --color-rarity-epic-ink: #8945ca;
+    --color-rarity-epic-ink: #8543c4;
     --color-rarity-legendary: #f5a623;
-    --color-rarity-legendary-ink: #8d6014;
+    --color-rarity-legendary-ink: #885c13;
 
     /* Strava brand (untouched, never themed). */
     --color-strava-orange: #fc4c02;
