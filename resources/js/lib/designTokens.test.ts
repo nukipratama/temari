@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import GROUND_KINDS from '../../brand/grounds.json';
 import {
+    auditPanels,
     auditContrast,
     auditSurface,
     collectPaperGrounds,
@@ -410,5 +411,53 @@ describe('auditSurface', () => {
                 reference,
             ).shadowOnScale,
         ).toBe(false);
+    });
+});
+
+describe('auditPanels', () => {
+    const VALUES: Record<string, string> = {
+        '--color-sky': '#241c54',
+        '--color-cream': '#f5f0e4',
+        '--color-ink': '#1a1812',
+        '--color-ink-on-sky': '#b0a3c9',
+    };
+    const PAPER = [{ name: 'cream-deep', value: '#ece2ce' }];
+
+    it('scores a panel on what it composites to, not on the fill it tints', () => {
+        const onSky = auditPanels(VALUES, PAPER).find((row) =>
+            row.bg.startsWith('sky/0.4'),
+        );
+
+        // sky at 40% over sky is still sky, so the muted label keeps its
+        // designed contrast. Over paper it would not, which is the whole point.
+        expect(onSky?.fg).toBe('--color-ink-on-sky');
+        expect(onSky?.pass).toBe(true);
+
+        const overPaper = auditPanels(
+            { ...VALUES, '--color-cream-deep': '#ece2ce' },
+            PAPER,
+        ).find((row) => row.bg.startsWith('cream-deep/0.6'));
+        expect(overPaper?.bg).toContain('on cream-deep');
+        expect(overPaper?.pass).toBe(true);
+    });
+
+    it('reads every registered panel out of grounds.json', () => {
+        const registry = GROUND_KINDS.panel as Record<
+            string,
+            { over?: Record<string, string[]>; text: string[] }
+        >;
+        expect(Object.keys(registry).length).toBeGreaterThan(0);
+
+        const scored = Object.values(registry).filter(
+            (entry) => entry.text.length > 0 && entry.over !== undefined,
+        );
+        expect(scored.length).toBeGreaterThan(0);
+        for (const entry of scored) {
+            expect(Object.keys(entry.over ?? {}).length).toBeGreaterThan(0);
+        }
+    });
+
+    it('skips a panel whose fill, text or mount token is not declared', () => {
+        expect(auditPanels({}, PAPER)).toEqual([]);
     });
 });

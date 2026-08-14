@@ -10,6 +10,7 @@ import {
     type ContrastRow,
     type SurfaceRow,
     auditContrast,
+    auditPanels,
     auditSurface,
     collectPaperGrounds,
     collectTokenNames,
@@ -155,7 +156,10 @@ export default function Design() {
         [tokens],
     );
     const contrast = useMemo<ContrastRow[]>(
-        () => auditContrast(tokens, grounds),
+        () => [
+            ...auditContrast(tokens, grounds),
+            ...auditPanels(tokens, grounds),
+        ],
         [tokens, grounds],
     );
     const [surfaces, setSurfaces] = useState<SurfaceRow[]>([]);

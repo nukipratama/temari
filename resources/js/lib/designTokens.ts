@@ -290,6 +290,98 @@ export function contrastRatio(a: string, b: string): number | null {
     return (light + 0.05) / (dark + 0.05);
 }
 
+/** `token` or `token/alpha`, the way grounds.json spells a panel and its text. */
+function splitAlpha(spec: string): { name: string; alpha: number } {
+    const [name, alpha] = spec.split('/');
+    return { name, alpha: alpha === undefined ? 1 : Number(alpha) };
+}
+
+type PanelEntry = {
+    over?: Record<string, ReadonlyArray<string>>;
+    text: ReadonlyArray<string>;
+};
+
+/**
+ * Scores every translucent panel against the text it carries.
+ *
+ * A `bg-<token>/<alpha>` panel is not the token it tints — it is that token
+ * composited over whatever it is mounted on, and the text an author reaches for
+ * is the text the solid token would take. `bg-sky/40` on the page ground reads
+ * as a dark panel and is not one, which is how it carried `text-ink-on-sky` at
+ * 1.5:1 while all three audits reported a pass. The mount is the one fact no
+ * scan can see, so grounds.json records it; everything else is derived.
+ */
+export function auditPanels(
+    values: Record<string, string>,
+    grounds: ReadonlyArray<Ground>,
+): ContrastRow[] {
+    const rows: ContrastRow[] = [];
+
+    for (const [spec, entry] of Object.entries(
+        GROUND_KINDS.panel as Record<string, PanelEntry>,
+    )) {
+        if (entry.text.length === 0 || entry.over === undefined) {
+            continue;
+        }
+        const panel = splitAlpha(spec);
+        const fill = values[`--color-${panel.name}`];
+        if (!fill) {
+            continue;
+        }
+
+        const mounts = [...new Set(Object.values(entry.over).flat())]
+            .flatMap((mount) =>
+                mount === PAPER
+                    ? [...grounds]
+                    : [
+                          {
+                              name: mount,
+                              value: values[`--color-${mount}`] ?? '',
+                          },
+                      ],
+            )
+            .filter((mount) => mount.value !== '');
+        if (mounts.length === 0) {
+            continue;
+        }
+
+        for (const text of entry.text) {
+            const fg = splitAlpha(text);
+            const ink = values[`--color-${fg.name}`];
+            if (!ink) {
+                continue;
+            }
+            const scored = mounts
+                .map((mount) => {
+                    const ground = composite(fill, panel.alpha, mount.value);
+                    return {
+                        mount,
+                        ground,
+                        ratio: contrastRatio(
+                            composite(ink, fg.alpha, ground),
+                            ground,
+                        ),
+                    };
+                })
+                .reduce((a, b) => {
+                    if (a.ratio === null) return a;
+                    return b.ratio === null || b.ratio < a.ratio ? b : a;
+                });
+
+            rows.push({
+                use: `bg-${spec} panel`,
+                fg: `--color-${fg.name}`,
+                bg: `${spec} · on ${scored.mount.name}`,
+                min: 4.5,
+                ratio: scored.ratio,
+                pass: scored.ratio !== null && scored.ratio >= 4.5,
+            });
+        }
+    }
+
+    return rows;
+}
+
 export interface ContrastRow {
     use: string;
     fg: string;

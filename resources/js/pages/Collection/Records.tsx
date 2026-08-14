@@ -370,7 +370,7 @@ function PaceCell({ pr }: Readonly<{ pr: ExtendedPR }>) {
     const time = formatPrValue(pr.category, pr.value_sec);
     const runName = pr.activity?.detail?.name ?? 'Run';
     return (
-        <div className="pad-card flex flex-col gap-2 rounded-md bg-sky/40">
+        <Card tone="sky" className="flex flex-col gap-2">
             <SectionLabel
                 dot
                 dotClass="bg-rarity-rare shadow-[0_0_8px_var(--color-rarity-rare)]"
@@ -385,7 +385,7 @@ function PaceCell({ pr }: Readonly<{ pr: ExtendedPR }>) {
                     {formatNaiveIdDate(pr.set_at, 'short')}
                 </Eyebrow>
             </div>
-        </div>
+        </Card>
     );
 }
 

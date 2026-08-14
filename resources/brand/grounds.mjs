@@ -99,6 +99,45 @@ export function unclassifiedBackgrounds(dir = COMPONENT_DIR) {
 }
 
 /**
+ * Panel call sites grounds.json does not register, and registered ones nothing
+ * paints any more. The mount is recorded per file rather than per panel class
+ * because that is the part a scan cannot see: the same `bg-sky/40` is a tile on
+ * a hero panel in one file and a tile on the page ground in another, and only
+ * the second one is a contrast bug. A new file painting a registered panel is
+ * therefore a new claim to check, not a silent reuse.
+ */
+export function panelSiteDrift(dir = COMPONENT_DIR, tokens = readColorTokens()) {
+  const painted = enumerateAlphaPanels(dir, tokens);
+  const unregistered = [];
+  const stale = [];
+
+  for (const [spec, files] of Object.entries(painted)) {
+    const entry = KINDS.panel[spec];
+    if (entry === undefined) {
+      unregistered.push(spec);
+      continue;
+    }
+    for (const file of files) {
+      if (entry.over?.[file] === undefined && entry.text.length > 0) {
+        unregistered.push(`${spec} @ ${file}`);
+      }
+    }
+  }
+
+  for (const [spec, entry] of Object.entries(KINDS.panel)) {
+    if (painted[spec] === undefined) {
+      stale.push(spec);
+      continue;
+    }
+    for (const file of Object.keys(entry.over ?? {})) {
+      if (!painted[spec].includes(file)) stale.push(`${spec} @ ${file}`);
+    }
+  }
+
+  return { unregistered, stale };
+}
+
+/**
  * The papers any ink can land on: every background classified `paper`, plus
  * each surface dawn-shift drifts to. Throws when a background in use is
  * unclassified, and when a classified one has no token behind it.
@@ -163,6 +202,135 @@ export function enumerateInkTints(dir = COMPONENT_DIR) {
     }
   }
   return heaviest;
+}
+
+const PANEL =
+  /\bbg-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\/(?:\[([0-9.]+)\]|([0-9]{1,3}))(?![\w\-.])/g;
+const TEXT =
+  /\btext-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)(?:\/(?:\[([0-9.]+)\]|([0-9]{1,3})))?(?![\w-])/g;
+
+const alphaOf = (bracket, plain) =>
+  bracket === undefined ? Number(plain) / 100 : Number(bracket);
+
+/**
+ * Every `bg-<token>/<alpha>` the components paint, as `token/alpha`.
+ *
+ * `enumerateBackgrounds` drops the alpha on purpose, so a translucent panel is
+ * classified as the solid token it is a tint of. That is the right call for
+ * *classifying* it and the wrong one for *scoring* it: `bg-sky/40` is not sky,
+ * it is whatever sky at 40% lands on, and the text an author picks for it is
+ * the text sky would take.
+ */
+export function enumerateAlphaPanels(dir = COMPONENT_DIR, tokens = readColorTokens()) {
+  const sites = {};
+  for (const file of sourceFiles(dir)) {
+    const rel = path.relative(path.dirname(path.dirname(dir)), file);
+    for (const [, name, bracket, plain] of stripComments(
+      readFileSync(file, 'utf8'),
+    ).matchAll(PANEL)) {
+      if (tokens[name] === undefined) continue;
+      const spec = `${name}/${alphaOf(bracket, plain)}`;
+      sites[spec] ??= new Set();
+      sites[spec].add(rel);
+    }
+  }
+  return Object.fromEntries(
+    Object.keys(sites)
+      .sort()
+      .map((spec) => [spec, [...sites[spec]].sort()]),
+  );
+}
+
+/**
+ * Every `text-<token>` painted in the same class string as an alpha panel,
+ * keyed by panel. One class string is one element, so a pair found here
+ * definitely stacks. A panel that carries text from a *child* element is
+ * invisible to this scan and has to be recorded by hand — which is how
+ * `bg-sky/40` carried `text-ink-on-sky` at 1.5:1 with three audits green.
+ */
+export function enumeratePanelText(dir = COMPONENT_DIR, tokens = readColorTokens()) {
+  const painted = {};
+  for (const file of sourceFiles(dir)) {
+    for (const [literal] of stripComments(readFileSync(file, 'utf8')).matchAll(
+      /'[^']*'|"[^"]*"|`[^`]*`/g,
+    )) {
+      const panels = [...literal.matchAll(PANEL)]
+        .filter(([, name]) => tokens[name] !== undefined)
+        .map(([, name, bracket, plain]) => `${name}/${alphaOf(bracket, plain)}`);
+      if (panels.length === 0) continue;
+
+      const texts = [...literal.matchAll(TEXT)]
+        .filter(([, name]) => tokens[name] !== undefined)
+        .map(([, name, bracket, plain]) =>
+          bracket === undefined && plain === undefined
+            ? name
+            : `${name}/${alphaOf(bracket, plain)}`,
+        );
+
+      for (const panel of new Set(panels)) {
+        painted[panel] ??= new Set();
+        for (const text of texts) painted[panel].add(text);
+      }
+    }
+  }
+  return Object.fromEntries(
+    Object.entries(painted).map(([panel, texts]) => [panel, [...texts].sort()]),
+  );
+}
+
+/** `token` or `token/alpha` split into its two parts. */
+export function splitAlpha(spec) {
+  const [name, alpha] = spec.split('/');
+  return { name, alpha: alpha === undefined ? 1 : Number(alpha) };
+}
+
+/**
+ * Every surface a panel is mounted on. `"paper"` stands for the whole paper
+ * set, so a panel painted on the page is scored against each of them; any
+ * other entry names the solid token it sits on. The same panel class can be
+ * mounted in both places — `bg-sky/40` is a hero-panel tile on `Runs/Show` and
+ * a page-ground tile on `Records` — and the worst mount is the one that counts.
+ */
+function panelBases(over, tokens, papers) {
+  const bases = {};
+  for (const mounts of Object.values(over)) {
+    for (const mount of mounts) {
+      if (mount === 'paper') {
+        Object.assign(bases, papers);
+        continue;
+      }
+      bases[mount] = tokens[mount];
+    }
+  }
+  return bases;
+}
+
+/**
+ * The real ground each registered alpha panel paints, and the text tokens that
+ * land on it, reported at the worst mount. This is the audit the `tint` rule
+ * only ever did for `-ink` chips.
+ */
+export function panelGrounds(tokens = readColorTokens(), papers = paperGrounds(tokens)) {
+  const rows = [];
+  for (const [spec, entry] of Object.entries(KINDS.panel)) {
+    if (entry.text.length === 0 || entry.over === undefined) continue;
+    const panel = splitAlpha(spec);
+    const bases = panelBases(entry.over, tokens, papers);
+
+    for (const text of entry.text) {
+      const fg = splitAlpha(text);
+      let worst = null;
+      for (const [baseName, base] of Object.entries(bases)) {
+        const ground = composite(tokens[panel.name], panel.alpha, base);
+        const ratio = contrast(composite(tokens[fg.name], fg.alpha, ground), ground);
+        if (worst === null || ratio < worst.ratio) {
+          worst = { ratio, ground, base: baseName };
+        }
+      }
+      rows.push({ panel: spec, text, ...worst });
+    }
+  }
+  return rows;
 }
 
 /**
