@@ -158,7 +158,7 @@ export default function AskAboutRun({
                     <p
                         role="status"
                         aria-live="polite"
-                        className="mt-3 font-sans text-sm text-ember-deep"
+                        className="mt-3 font-sans text-sm text-ember-ink"
                     >
                         {ERROR_COPY[error]}
                     </p>
@@ -231,7 +231,7 @@ function QuestionRow({
             )}
             {question.status === 'failed' && (
                 <div className="mt-2 flex flex-wrap items-center gap-3">
-                    <span className="font-sans text-sm text-ember-deep">
+                    <span className="font-sans text-sm text-ember-ink">
                         This one didn't come back.
                     </span>
                     <PillButton

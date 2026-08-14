@@ -87,7 +87,7 @@ describe('DetailTiles', () => {
 
     it('exposes the decoupling tile as a warning when |decoupling| > 8% on a cool run', () => {
         renderTiles({ weather_temp_c: 20 }, { decoupling_pct: 12.5 });
-        expect(screen.getByText('+12.5%')).toHaveClass('text-ember-deep');
+        expect(screen.getByText('+12.5%')).toHaveClass('text-ember-ink');
         expect(
             screen.getByText('breathing drifted in the second half'),
         ).toBeInTheDocument();
@@ -95,13 +95,13 @@ describe('DetailTiles', () => {
 
     it('softens the decoupling tile with a heat explanation when the run was hot', () => {
         renderTiles({ weather_temp_c: 32 }, { decoupling_pct: 12.5 });
-        expect(screen.getByText('+12.5%')).not.toHaveClass('text-ember-deep');
+        expect(screen.getByText('+12.5%')).not.toHaveClass('text-ember-ink');
         expect(screen.getByText('normal, it was 32°C out')).toBeInTheDocument();
     });
 
     it('still flags a high decoupling on a run without weather data', () => {
         renderTiles({ weather_temp_c: null }, { decoupling_pct: 12.5 });
-        expect(screen.getByText('+12.5%')).toHaveClass('text-ember-deep');
+        expect(screen.getByText('+12.5%')).toHaveClass('text-ember-ink');
     });
 
     it('does not apply the heat explanation to a large negative decoupling on a hot run', () => {
@@ -109,7 +109,7 @@ describe('DetailTiles', () => {
         // ever explains a positive drift, so a strongly negative value on a hot run
         // must still read as a plain warning, not "wajar, tadi panas".
         renderTiles({ weather_temp_c: 32 }, { decoupling_pct: -12.5 });
-        expect(screen.getByText('-12.5%')).toHaveClass('text-ember-deep');
+        expect(screen.getByText('-12.5%')).toHaveClass('text-ember-ink');
         expect(
             screen.getByText('breathing drifted in the second half'),
         ).toBeInTheDocument();

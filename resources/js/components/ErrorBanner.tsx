@@ -37,7 +37,7 @@ export default function ErrorBanner() {
                     icon="mdi:alert-circle-outline"
                     width={20}
                     height={20}
-                    className="mt-0.5 shrink-0 text-ember-deep"
+                    className="mt-0.5 shrink-0 text-ember-ink"
                     aria-hidden
                 />
                 <p className="flex-1 font-sans text-sm leading-relaxed text-ink">

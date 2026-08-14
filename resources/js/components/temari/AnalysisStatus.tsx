@@ -43,7 +43,7 @@ function hasStaleZones(
 
 function StaleZonesBadge() {
     return (
-        <span className="inline-flex items-center self-start gap-1 rounded-full bg-horizon/15 px-2 py-0.5 text-xs text-ember-deep">
+        <span className="inline-flex items-center self-start gap-1 rounded-full bg-horizon/15 px-2 py-0.5 text-xs text-horizon-ink">
             <Icon icon="mdi:heart-pulse" aria-hidden />
             <span>calculated with old zones</span>
         </span>
@@ -177,7 +177,7 @@ export default function AnalysisStatus({
                             cooldownRemaining,
                             'reread',
                         )}
-                        className={`focus-ring rounded inline-flex items-center self-start gap-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${onSky ? 'text-ink-on-sky hover:text-cream disabled:hover:text-ink-on-sky' : 'text-ink-3 hover:text-leaf-deep disabled:hover:text-ink-3'}`}
+                        className={`focus-ring rounded inline-flex items-center self-start gap-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${onSky ? 'text-ink-on-sky hover:text-cream disabled:hover:text-ink-on-sky' : 'text-ink-3 hover:text-leaf-ink disabled:hover:text-ink-3'}`}
                     >
                         <Icon icon="mdi:auto-awesome" aria-hidden />
                         <span>
@@ -245,7 +245,7 @@ export default function AnalysisStatus({
                         type="button"
                         onClick={trigger}
                         disabled={pending}
-                        className="focus-ring rounded inline-flex items-center self-start gap-1 text-xs text-leaf-deep hover:text-ink transition-colors disabled:opacity-50"
+                        className="focus-ring rounded inline-flex items-center self-start gap-1 text-xs text-leaf-ink hover:text-ink transition-colors disabled:opacity-50"
                     >
                         <Icon icon="mdi:auto-awesome" aria-hidden />
                         <span>Try again</span>

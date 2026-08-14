@@ -88,7 +88,7 @@ function resolveBadge(
                     ? `Strava synced ${relative}`
                     : 'Strava synced',
                 icon: 'mdi:cloud-check-variant-outline',
-                iconClass: 'text-leaf-deep',
+                iconClass: 'text-leaf-ink',
             };
         }
         case 'syncing':
@@ -105,7 +105,7 @@ function resolveBadge(
                     : 'Strava disconnected · Reconnect',
                 ariaLabel: 'Strava connection lost, reconnect',
                 icon: 'mdi:cloud-alert-outline',
-                iconClass: 'text-ember-deep',
+                iconClass: 'text-ember-ink',
             };
         default:
             return {

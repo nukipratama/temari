@@ -40,10 +40,10 @@ describe('JourneyStrip', () => {
         );
         const paceSpan = screen.getByText(/60 sec\/km faster/);
         expect(paceSpan).toBeInTheDocument();
-        expect(paceSpan).toHaveClass('text-leaf-deep');
+        expect(paceSpan).toHaveClass('text-leaf-ink');
         const hrSpan = screen.getByText(/15 bpm lower/);
         expect(hrSpan).toBeInTheDocument();
-        expect(hrSpan).toHaveClass('text-leaf-deep');
+        expect(hrSpan).toHaveClass('text-leaf-ink');
     });
 
     it('renders the negative-tone copy and class when pace/HR got worse', () => {
@@ -72,10 +72,10 @@ describe('JourneyStrip', () => {
         );
         const paceSpan = screen.getByText(/10 sec\/km slower/);
         expect(paceSpan).toBeInTheDocument();
-        expect(paceSpan).toHaveClass('text-ember-deep');
+        expect(paceSpan).toHaveClass('text-ember-ink');
         const hrSpan = screen.getByText(/5 bpm higher/);
         expect(hrSpan).toBeInTheDocument();
-        expect(hrSpan).toHaveClass('text-ember-deep');
+        expect(hrSpan).toHaveClass('text-ember-ink');
     });
 
     it('formats the first-run date as a wall-clock short date (RunController sends a date-only string)', () => {

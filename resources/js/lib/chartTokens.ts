@@ -17,7 +17,7 @@ export const PALETTE = {
     horizonInk: '#775a21',
     overloaded: '#6b3fa0',
     citrus: '#c9971f',
-    citrusDeep: '#a67c14',
+    citrusInk: '#785a13',
     stone: '#a99f8a',
     sky: '#241c54',
     skyDeep: '#170f38',

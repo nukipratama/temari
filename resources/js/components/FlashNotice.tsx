@@ -14,7 +14,7 @@ const TONES: Record<
         icon: 'mdi:alert-circle-outline',
         role: 'alert',
         frame: 'border-ember/30 bg-ember/[0.08]',
-        glyph: 'text-ember-deep',
+        glyph: 'text-ember-ink',
     },
     info: {
         icon: 'mdi:information-outline',
@@ -26,7 +26,7 @@ const TONES: Record<
         icon: 'mdi:check-circle-outline',
         role: 'status',
         frame: 'border-leaf/30 bg-leaf/[0.08]',
-        glyph: 'text-leaf-deep',
+        glyph: 'text-leaf-ink',
     },
 };
 

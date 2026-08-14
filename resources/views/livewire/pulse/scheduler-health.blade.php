@@ -36,16 +36,16 @@
                             </div>
                             <div @class([
                                 'shrink-0 rounded-full px-2 py-0.5 text-label-micro',
-                                'bg-ember/15 text-ember-deep' => $task['status'] === 'failed',
+                                'bg-ember/15 text-ember-ink' => $task['status'] === 'failed',
                                 'bg-horizon/25 text-ink' => $task['status'] === 'late',
-                                'bg-leaf/10 text-leaf-deep' => $task['status'] === 'ok',
+                                'bg-leaf/10 text-leaf-ink' => $task['status'] === 'ok',
                             ])>
                                 {{ $task['status'] }}
                             </div>
                         </div>
 
                         @if ($task['status'] === 'failed' && $task['failureMessage'])
-                            <div class="mt-1 truncate text-[11px] text-ember-deep" title="{{ $task['failureMessage'] }}">
+                            <div class="mt-1 truncate text-[11px] text-ember-ink" title="{{ $task['failureMessage'] }}">
                                 {{ $task['failureMessage'] }}
                             </div>
                         @endif

@@ -20,7 +20,7 @@
                     ])>
                         <div>
                             <div class="text-sm font-bold text-ink">AI</div>
-                            <div class="text-label-micro {{ $aiEnabled ? 'text-leaf-deep' : 'text-ember-deep' }}">
+                            <div class="text-label-micro {{ $aiEnabled ? 'text-leaf-ink' : 'text-ember-ink' }}">
                                 {{ $aiEnabled ? 'enabled' : 'disabled' }}
                             </div>
                         </div>
@@ -39,7 +39,7 @@
                     ])>
                         <div>
                             <div class="text-sm font-bold text-ink">Strava</div>
-                            <div class="text-label-micro {{ $stravaEnabled ? 'text-leaf-deep' : 'text-ember-deep' }}">
+                            <div class="text-label-micro {{ $stravaEnabled ? 'text-leaf-ink' : 'text-ember-ink' }}">
                                 {{ $stravaEnabled ? 'enabled' : 'disabled' }}
                             </div>
                         </div>

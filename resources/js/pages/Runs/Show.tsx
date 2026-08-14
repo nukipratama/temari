@@ -447,7 +447,7 @@ export default function RunsShow({
                                     <p
                                         role="status"
                                         aria-live="polite"
-                                        className="mt-2 font-sans text-xs text-ember-deep"
+                                        className="mt-2 font-sans text-xs text-ember-ink"
                                     >
                                         Couldn't replay the card. Try again in a
                                         bit.

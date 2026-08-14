@@ -145,7 +145,7 @@ export default function RunLenses({
                             cooldownRemaining,
                             'rereading all',
                         )}
-                        className="focus-ring rounded inline-flex items-center gap-1.5 text-label-micro text-ink-2 transition hover:text-leaf-deep disabled:cursor-not-allowed disabled:opacity-50"
+                        className="focus-ring rounded inline-flex items-center gap-1.5 text-label-micro text-ink-2 transition hover:text-leaf-ink disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <Icon
                             icon={
@@ -171,7 +171,7 @@ export default function RunLenses({
                             width={14}
                             height={14}
                             aria-hidden
-                            className="text-leaf-deep"
+                            className="text-leaf-ink"
                         />
                         <Eyebrow token="micro" tone="ink-2">
                             This run&apos;s story
@@ -204,7 +204,7 @@ export default function RunLenses({
                                 width={14}
                                 height={14}
                                 aria-hidden
-                                className="text-ember-deep"
+                                className="text-ember-ink"
                             />
                             <Eyebrow token="micro" tone="ink-2">
                                 What stood out

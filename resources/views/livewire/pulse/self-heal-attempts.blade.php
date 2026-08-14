@@ -52,7 +52,7 @@
                             <x-pulse::td numeric class="whitespace-nowrap">
                                 <span @class([
                                     'rounded-full px-2 py-0.5 font-mono text-xs font-bold tabular-nums',
-                                    'bg-ember/15 text-ember-deep' => $block->attempts >= $max,
+                                    'bg-ember/15 text-ember-ink' => $block->attempts >= $max,
                                     'bg-horizon/25 text-ink' => $block->attempts === $max - 1,
                                     'text-ink-2' => $block->attempts < $max - 1,
                                 ])>

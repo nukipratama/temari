@@ -29,7 +29,7 @@
                             <span class="flex shrink-0 items-center gap-3 font-mono tabular-nums">
                                 <span class="text-ink-3">{{ number_format($channel['sent']) }} sent</span>
                                 <span class="text-ink-3">{{ number_format($channel['pending']) }} in flight</span>
-                                <span class="{{ $channel['failed'] > 0 ? 'text-ember-deep font-bold' : 'text-ink-3' }}">{{ number_format($channel['failed']) }} failed</span>
+                                <span class="{{ $channel['failed'] > 0 ? 'text-ember-ink font-bold' : 'text-ink-3' }}">{{ number_format($channel['failed']) }} failed</span>
                             </span>
                         </div>
                     @endforeach
@@ -59,7 +59,7 @@
                                 <code class="block truncate text-xs text-ink">
                                     {{ $failure->channel }} · analysis #{{ $failure->analysis_id }}
                                 </code>
-                                <p class="mt-1 truncate text-xs text-ember-deep" title="{{ $failure->error }}">
+                                <p class="mt-1 truncate text-xs text-ember-ink" title="{{ $failure->error }}">
                                     {{ \Illuminate\Support\Str::limit((string) $failure->error, 120) }}
                                 </p>
                             </x-pulse::td>

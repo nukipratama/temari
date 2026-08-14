@@ -84,7 +84,7 @@ export default function MetricExplainer({
                             className="absolute inset-y-0 left-0 w-1 bg-leaf"
                         />
                         <div className="px-3.5 py-3 pl-4">
-                            <div className="flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-leaf-deep">
+                            <div className="flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-leaf-ink">
                                 <Icon
                                     icon="mdi:lightbulb-on-outline"
                                     width={12}

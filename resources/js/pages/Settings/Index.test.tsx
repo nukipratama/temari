@@ -110,7 +110,7 @@ describe('Settings', () => {
     it('tints the destructive row so it stops reading as routine', () => {
         render(<Settings />);
         expect(screen.getByText('Delete account')).toHaveClass(
-            'text-ember-deep',
+            'text-ember-ink',
         );
     });
 

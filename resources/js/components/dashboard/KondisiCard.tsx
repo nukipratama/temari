@@ -35,7 +35,7 @@ export default function KondisiCard({
             label: 'Fitness',
             value: load?.ctl_42d != null ? load.ctl_42d.toFixed(1) : '—',
             hint: ctlHint(load?.ctl_42d),
-            color: 'text-leaf-deep',
+            color: 'text-leaf-ink',
         },
         {
             label: 'Fatigue',
@@ -109,7 +109,7 @@ export default function KondisiCard({
                     'focus-ring mt-auto inline-flex min-h-6 items-center rounded pt-1 text-label-micro',
                     onSky
                         ? 'text-horizon hover:text-cream'
-                        : 'text-horizon-ink hover:text-ember-deep',
+                        : 'text-horizon-ink hover:text-ember-ink',
                 )}
             >
                 Technical detail →

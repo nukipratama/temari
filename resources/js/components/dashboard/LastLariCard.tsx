@@ -183,7 +183,7 @@ export default function LastLariCard({
                         aria-hidden
                         className={cn(
                             'mt-0.5 shrink-0',
-                            onSky ? 'text-leaf' : 'text-leaf-deep',
+                            onSky ? 'text-leaf' : 'text-leaf-ink',
                         )}
                     />
                     <p className="min-w-0">{renderBold(note.oneline)}</p>

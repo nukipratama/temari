@@ -104,7 +104,7 @@ function RunListRow({
                             width={14}
                             height={14}
                             aria-hidden
-                            className="mt-0.5 shrink-0 text-leaf-deep"
+                            className="mt-0.5 shrink-0 text-leaf-ink"
                         />
                         <p className="min-w-0">{renderBold(note.oneline)}</p>
                     </div>

@@ -384,8 +384,8 @@ export default function ShareCardModal({
                                 className={cn(
                                     'text-center font-sans text-xs',
                                     status.tone === 'ok'
-                                        ? 'text-leaf-deep'
-                                        : 'text-ember-deep',
+                                        ? 'text-leaf-ink'
+                                        : 'text-ember-ink',
                                 )}
                             >
                                 {status.text}
