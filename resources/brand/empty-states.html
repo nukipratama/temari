@@ -3,7 +3,7 @@
 <title>temari — empty states</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
-  :root{--sky:#241c54;--sky-deep:#170f38;--sky-2:#362a73;--horizon:#d9a53c;--horizon-deep:#b98a2a;--cream:#f5f0e4;--cream-deep:#ece2ce;--ink:#1a1812;--ink-2:#3d362a;--ink-3:#6e6452;--ink-on-sky:#b0a3c9;--surface:#f5f0e4;--surface-card:#f5f0e4;--surface-elev:#faf6ec;--surface-warm:#f8f0dd;--surface-sunken:#ece2ce;--line:#cec5ad;--line-strong:#c3b89c;--leaf:#2f8f63;--leaf-deep:#256f4d;--ember:#b23a4f;--ember-deep:#8d2c3d;--citrus:#c9971f;--citrus-deep:#a67c14;--stone:#a99f8a;--horizon-ink:#836424;--mood-blazing:#c9971f;--mood-easy:#2f8f63;--mood-wobbly:#b23a4f;--mood-gassed:#7a2030;--mood-overloaded:#6b3fa0;--mood-chill:#55488f;--mood-blazing-ink:#846314;--mood-easy-ink:#277652;--mood-wobbly-ink:#b23a4f;--mood-gassed-ink:#7a2030;--mood-overloaded-ink:#6b3fa0;--mood-chill-ink:#55488f;--rarity-common:#7d8694;--rarity-uncommon:#2fb350;--rarity-rare:#2f81f7;--rarity-epic:#a855f7;--rarity-legendary:#f5a623;--rarity-common-ink:#626974;--rarity-uncommon-ink:#207836;--rarity-rare-ink:#2567c4;--rarity-epic-ink:#8945ca;--rarity-legendary-ink:#8d6014;--r-xs:6px;--r-sm:10px;--r-md:14px;--r-lg:18px;--r-xl:24px;--r-full:9999px;--s-1:4px;--s-2:8px;--s-3:12px;--s-4:16px;--s-5:20px;--s-6:24px;--s-8:32px;--s-10:40px;--s-12:48px;--s-16:64px;--pad-chip:4px 12px;--pad-panel:12px 16px;--pad-card:16px;--pad-hero:24px;--pad-page:48px 40px 80px;--e-e1:0 1px 2px rgba(58,45,20,0.06), 0 1px 1px rgba(58,45,20,0.04);--e-e2:0 4px 10px rgba(58,45,20,0.08), 0 2px 4px rgba(58,45,20,0.05);--e-e3:0 12px 28px rgba(58,45,20,0.12), 0 4px 10px rgba(58,45,20,0.07);--e-e4:0 24px 56px rgba(23,15,56,0.20), 0 8px 20px rgba(23,15,56,0.12);--font-sans:'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;--font-mono:'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;--font-display:'Fraunces', Georgia, serif}
+  :root{--sky:#241c54;--sky-deep:#170f38;--sky-2:#362a73;--horizon:#d9a53c;--horizon-deep:#b98a2a;--cream:#f5f0e4;--cream-deep:#ece2ce;--ink:#1a1812;--ink-2:#3d362a;--ink-3:#6e6452;--ink-on-sky:#b0a3c9;--surface:#f5f0e4;--surface-card:#f5f0e4;--surface-elev:#faf6ec;--surface-warm:#f8f0dd;--surface-sunken:#ece2ce;--line:#c9c0a9;--line-strong:#c3b89c;--leaf:#2f8f63;--leaf-deep:#256f4d;--ember:#b23a4f;--ember-deep:#8d2c3d;--citrus:#c9971f;--citrus-deep:#a67c14;--stone:#a99f8a;--horizon-ink:#775a21;--mood-blazing-bg:#f3e6c2;--mood-easy-bg:#d7ecdf;--mood-wobbly-bg:#f0d3d8;--mood-gassed-bg:#e3c2c7;--mood-overloaded-bg:#ded0ee;--mood-chill-bg:#dcd8ee;--mood-blazing:#c9971f;--mood-easy:#2f8f63;--mood-wobbly:#b23a4f;--mood-gassed:#7a2030;--mood-overloaded:#6b3fa0;--mood-chill:#55488f;--mood-blazing-ink:#785a13;--mood-easy-ink:#226748;--mood-wobbly-ink:#a9374b;--mood-gassed-ink:#7a2030;--mood-overloaded-ink:#6b3fa0;--mood-chill-ink:#55488f;--rarity-common:#7d8694;--rarity-uncommon:#2fb350;--rarity-rare:#2f81f7;--rarity-epic:#a855f7;--rarity-legendary:#f5a623;--rarity-common-ink:#5f6671;--rarity-uncommon-ink:#1f7434;--rarity-rare-ink:#2463be;--rarity-epic-ink:#8543c4;--rarity-legendary-ink:#865b13;--r-xs:6px;--r-sm:10px;--r-md:14px;--r-lg:18px;--r-xl:24px;--r-full:9999px;--s-1:4px;--s-2:8px;--s-3:12px;--s-4:16px;--s-5:20px;--s-6:24px;--s-8:32px;--s-10:40px;--s-12:48px;--s-16:64px;--pad-chip:4px 12px;--pad-panel:12px 16px;--pad-card:16px;--pad-hero:24px;--pad-page:48px 40px 80px;--e-e1:0 1px 2px rgba(58,45,20,0.06), 0 1px 1px rgba(58,45,20,0.04);--e-e2:0 4px 10px rgba(58,45,20,0.08), 0 2px 4px rgba(58,45,20,0.05);--e-e3:0 12px 28px rgba(58,45,20,0.12), 0 4px 10px rgba(58,45,20,0.07);--e-e4:0 24px 56px rgba(23,15,56,0.20), 0 8px 20px rgba(23,15,56,0.12);--font-sans:'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;--font-mono:'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;--font-display:'Fraunces', Georgia, serif}
   *{box-sizing:border-box}
   body{margin:0;padding:var(--pad-page);background:var(--surface-sunken);color:var(--ink);
        font-family:var(--font-sans)}
@@ -42,7 +42,7 @@ never apologise for something that is about to fix itself.</p>
       fill="none" stroke="var(--line-strong)" stroke-width="2" stroke-dasharray="3 3.5"/></g>
     <g transform="translate(29.00 0.97) scale(0.62)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Temari — resting">
   <defs><clipPath id="clip-e-no-runs"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
-  <circle cx="50" cy="52" r="41" fill="none" stroke="#8b8575" stroke-width="6"/>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#878172" stroke-width="6"/>
   <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
   <g clip-path="url(#clip-e-no-runs)"></g>
   <path d="M34.5 40.0 L45.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
@@ -96,7 +96,7 @@ never apologise for something that is about to fix itself.</p>
     <path d="M57 68 h6" stroke="var(--line-strong)" stroke-width="2.5" stroke-linecap="round"/></g>
     <g transform="translate(29.00 0.97) scale(0.62)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Temari — challenging">
   <defs><clipPath id="clip-e-no-past-match"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
-  <circle cx="50" cy="52" r="41" fill="none" stroke="#a77f2e" stroke-width="9"/>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#a27b2d" stroke-width="9"/>
   <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
   <g clip-path="url(#clip-e-no-past-match)"></g>
   <path d="M34.5 36.5 L45.5 41.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
@@ -125,7 +125,7 @@ never apologise for something that is about to fix itself.</p>
       width="8" height="21" rx="2" fill="var(--line-strong)" opacity="0.75"/></g>
     <g transform="translate(29.00 0.97) scale(0.62)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Temari — unimpressed">
   <defs><clipPath id="clip-e-no-gps"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
-  <circle cx="50" cy="52" r="41" fill="none" stroke="#8d8473" stroke-width="5"/>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#898170" stroke-width="5"/>
   <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
   <g clip-path="url(#clip-e-no-gps)"></g>
   <path d="M34.5 41.0 L45.5 41.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
@@ -152,7 +152,7 @@ never apologise for something that is about to fix itself.</p>
       width="36" height="13" rx="4" fill="none" stroke="var(--line-strong)" stroke-width="2" stroke-dasharray="3 3.5"/></g>
     <g transform="translate(29.00 0.97) scale(0.62)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Temari — resting">
   <defs><clipPath id="clip-e-no-cards"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
-  <circle cx="50" cy="52" r="41" fill="none" stroke="#8b8575" stroke-width="6"/>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#878172" stroke-width="6"/>
   <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
   <g clip-path="url(#clip-e-no-cards)"></g>
   <path d="M34.5 40.0 L45.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>
