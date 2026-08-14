@@ -12,6 +12,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\ChainResolver;
 use App\Services\AI\SelfHealer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -75,7 +76,7 @@ function nonDispatchingResumeService(): AnalysisService
 
 function selfHealer(AnalysisService $service): SelfHealer
 {
-    return new SelfHealer($service, new ChainResolver());
+    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate());
 }
 
 /** Seed an activity for $user dated $startDate whose post-run speech is Pending. */

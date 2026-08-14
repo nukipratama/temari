@@ -36,7 +36,7 @@ Two things made the old cap leakier than it looked:
 
 **One gate owns the rule.** [BackfillAgeGate](app/Services/AI/BackfillAgeGate.php) is the single reader of `ai.backfill_max_age_days` for both entry points: the ingest fan-out asks it per activity ([DispatchPostRunAnalysis.php:49](app/Listeners/DispatchPostRunAnalysis.php#L49)), and the manual trigger asks it per subject ([AnalysisController.php:61](app/Http/Controllers/Api/AnalysisController.php#L61)).
 
-**`blocksManualTrigger()` is exhaustive over `AnalysisType`** ([BackfillAgeGate.php:34](app/Services/AI/BackfillAgeGate.php#L34)) — no `default` arm, so a new narrated block cannot be added without stating whether its manual trigger can reach material older than the cutoff. Three kinds block:
+**`blocksManualTrigger()` is exhaustive over `AnalysisType`** ([BackfillAgeGate.php:52](app/Services/AI/BackfillAgeGate.php#L52)) — no `default` arm, so a new narrated block cannot be added without stating whether its manual trigger can reach material older than the cutoff. Three kinds block:
 
 - `card_flavor` and `pr_context` — resolved to their run's `start_date_local` through the card / PR row.
 - `briefing_mascot_voice` — its discriminator *is* the day it narrates, so a hand-crafted POST could ask for a briefing about any past date.
