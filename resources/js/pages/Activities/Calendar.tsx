@@ -38,12 +38,12 @@ import { cardVariants } from '@/lib/variants';
 
 import {
     isFilteredOut,
-    useKalender,
+    useCalendar,
     type CalendarCell,
     type WeekRow,
-} from './useKalender';
+} from './useCalendar';
 
-export { dominantMoodOf, type CalendarCell } from './useKalender';
+export { dominantMoodOf, type CalendarCell } from './useCalendar';
 
 /** The monthly recap payload plus the chain-head flag the controller adds. */
 export type MonthlyRecap = AnalysisPayload & {
@@ -98,7 +98,7 @@ export default function Calendar({
         moodFilter,
         toggleMood,
         resetFilter,
-    } = useKalender({ cells, month, todayMonth });
+    } = useCalendar({ cells, month, todayMonth });
     const gridRef = useRef<HTMLDivElement>(null);
 
     return (
