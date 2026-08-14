@@ -41,7 +41,7 @@ We decided the demo's trigger **succeeds and is served from the deterministic
 rule-based filler** instead of dispatching an LLM job. The button behaves
 normally (200, a `done` row, fresh content); it simply never reaches Azure.
 
-The seam is [`AnalysisService::requestRuleBased()`](app/Services/AI/AnalysisService.php#L89):
+The seam is [`AnalysisService::requestRuleBased()`](app/Services/AI/AnalysisService.php#L108):
 it reuses or stages the row via `requestDeferred()`, then marks it Done with
 [RuleBasedNarrationFiller](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php)
 content inside `withoutDispatching()`. Running under that flag is what makes the
@@ -49,7 +49,7 @@ guarantee structural rather than incidental — `markDone()` skips both the
 cooldown and the notification fan-out when dispatch is suppressed, so the demo
 block stays instantly re-triggerable and sends nothing.
 
-[AnalysisController::trigger](app/Http/Controllers/Api/AnalysisController.php#L50)
+[AnalysisController::trigger](app/Http/Controllers/Api/AnalysisController.php#L24)
 branches on [`AnalysisService::shouldServeRuleBased`](app/Services/AI/AnalysisService.php)
 (`is_demo`) after the ownership, still-open-recap and cooldown guards,
 and *before* the chain-resume and zone-recompute paths — both of those exist only
