@@ -59,7 +59,7 @@ describe('PastYouHero', () => {
 
         const hr = screen.getByText('4 bpm lower');
         expect(hr).toBeInTheDocument();
-        expect(hr.className).toContain('text-leaf');
+        expect(hr).toHaveClass('text-leaf');
     });
 
     it('reads a higher heart rate as the worse direction', () => {
@@ -67,7 +67,7 @@ describe('PastYouHero', () => {
 
         const hr = screen.getByText('6 bpm higher');
         expect(hr).toBeInTheDocument();
-        expect(hr.className).toContain('text-citrus');
+        expect(hr).toHaveClass('text-citrus');
     });
 
     it('omits the heart-rate delta when neither run recorded HR', () => {
