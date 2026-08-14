@@ -116,6 +116,14 @@ enum SharedPropCacheKey: string
     }
 
     /**
+     * Envelope key. Redis stores a numeric value unserialized and hands it back
+     * as a string, so an `int` prop round-trips as `'5'` and only fails on the
+     * request that hits the cache rather than computing. Wrapping in an array
+     * forces serialization, which preserves the type under every store.
+     */
+    private const string ENVELOPE = '__prop';
+
+    /**
      * @template TValue
      *
      * @param  Closure(): TValue  $compute
@@ -123,8 +131,18 @@ enum SharedPropCacheKey: string
      */
     public function remember(?int $userId, Closure $compute): mixed
     {
-        /** @var TValue */
-        return Cache::remember($this->key($userId), $this->ttl(), $compute);
+        $key = $this->key($userId);
+        $cached = Cache::get($key);
+
+        if (is_array($cached) && array_key_exists(self::ENVELOPE, $cached)) {
+            /** @var TValue */
+            return $cached[self::ENVELOPE];
+        }
+
+        $value = $compute();
+        Cache::put($key, [self::ENVELOPE => $value], $this->ttl());
+
+        return $value;
     }
 
     public function forget(?int $userId = null): void

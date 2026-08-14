@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Support\SharedPropCacheKey;
+use Illuminate\Cache\ArrayStore;
+use Illuminate\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
 
 it('suffixes per-user keys with the user id', function (SharedPropCacheKey $case): void {
@@ -71,8 +73,8 @@ it('keeps one user out of another user cached value', function (): void {
     SharedPropCacheKey::TelegramConnected->remember(1, fn (): bool => true);
     SharedPropCacheKey::TelegramConnected->remember(2, fn (): bool => false);
 
-    expect(Cache::get(SharedPropCacheKey::TelegramConnected->key(1)))->toBeTrue()
-        ->and(Cache::get(SharedPropCacheKey::TelegramConnected->key(2)))->toBeFalse();
+    expect(SharedPropCacheKey::TelegramConnected->remember(1, fn (): bool => false))->toBeTrue()
+        ->and(SharedPropCacheKey::TelegramConnected->remember(2, fn (): bool => true))->toBeFalse();
 });
 
 it('recomputes after a forget', function (): void {
@@ -97,5 +99,39 @@ it('forgets only the targeted user', function (): void {
     SharedPropCacheKey::EquippedAccessories->forget(1);
 
     expect(Cache::has(SharedPropCacheKey::EquippedAccessories->key(1)))->toBeFalse()
-        ->and(Cache::get(SharedPropCacheKey::EquippedAccessories->key(2)))->toBe('two');
+        ->and(SharedPropCacheKey::EquippedAccessories->remember(2, fn (): string => 'recomputed'))->toBe('two');
+});
+
+it('round-trips every scalar type intact on the stores a test run can reach', function (string $store): void {
+    config()->set('cache.default', $store);
+    Cache::purge();
+
+    SharedPropCacheKey::UnreadNotifications->forget(1);
+    SharedPropCacheKey::TelegramConnected->forget(1);
+    SharedPropCacheKey::HrZonesChangedAt->forget(1);
+
+    SharedPropCacheKey::UnreadNotifications->remember(1, fn (): int => 5);
+    SharedPropCacheKey::TelegramConnected->remember(1, fn (): bool => false);
+    SharedPropCacheKey::HrZonesChangedAt->remember(1, fn (): ?string => null);
+
+    expect(SharedPropCacheKey::UnreadNotifications->remember(1, fn (): int => 99))->toBe(5)
+        ->and(SharedPropCacheKey::TelegramConnected->remember(1, fn (): bool => true))->toBeFalse()
+        ->and(SharedPropCacheKey::HrZonesChangedAt->remember(1, fn (): ?string => 'recomputed'))->toBeNull();
+})->with(['array', 'file']);
+
+it('keeps a value its own type on a store that does not preserve scalars', function (): void {
+    Cache::swap(new Repository(new class () extends ArrayStore {
+        public function get($key): mixed
+        {
+            $value = parent::get($key);
+
+            return is_int($value) || is_float($value) ? (string) $value : $value;
+        }
+    }));
+
+    Cache::put('scalar-fidelity-probe', 5, 60);
+    expect(Cache::get('scalar-fidelity-probe'))->toBe('5');
+
+    expect(SharedPropCacheKey::UnreadNotifications->remember(1, fn (): int => 5))->toBe(5)
+        ->and(SharedPropCacheKey::UnreadNotifications->remember(1, fn (): int => 99))->toBe(5);
 });
