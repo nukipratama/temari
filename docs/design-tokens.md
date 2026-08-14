@@ -86,16 +86,25 @@ is the only member allowed to carry **text or an icon**. `text-rarity-legendary`
 always wrong; it is `text-rarity-legendary-ink`. This is the single most common way the palette
 gets misused, and it is what the audit on `/devtools/design` exists to catch.
 
-**Paper is five colours, not one.** dawn-shift re-declares `--color-surface` per
-`body[data-time-of-day]` ([app.css](../resources/css/app.css):555), so the ground an `-ink`
-token lands on ranges from `#f8f2df` (morning) down to `#eee8d9` (night). Every derived value
-therefore targets the **darkest** ground ([build-tokens.mjs](../resources/brand/build-tokens.mjs):125),
-and every audit scores a paper pair on all five and reports its **worst** — the generator's
-([build-tokens.mjs](../resources/brand/build-tokens.mjs):161), the client-side one behind
-`/devtools/design` ([designTokens.ts](../resources/js/lib/designTokens.ts):270), and the CI guard
-([DesignTokenContrastTest.php](../tests/Unit/Architecture/DesignTokenContrastTest.php)). Deriving
-against the default alone is what once put eight `-ink` tokens at ~4.3:1 after dark while all
-three audits reported a pass.
+**Paper is not one colour, and the list of them is never written down.** Every derived value
+targets the **darkest** ground the app can render, and every audit scores a paper pair against
+all of them and reports its **worst**. What counts as "all of them" is *derived*, by
+[grounds.mjs](../resources/brand/grounds.mjs): token values come out of the shipped `@theme`
+block and the `body[data-time-of-day]` rules ([app.css](../resources/css/app.css):555), and the
+set of backgrounds in play comes out of every `bg-*` utility `resources/js` actually paints.
+[grounds.json](../resources/brand/grounds.json) records only what *kind* each background is, and
+one it does not classify **fails the build** rather than being skipped.
+
+An `-ink` token is scored on three things: every `paper` ground, its own `-bg` cell when it
+paints one, and its heaviest `bg-<family>/<alpha>` tint composited over the darkest paper — a
+chip prints on the tint, not on the paper under it. All three audits read that same registry:
+the generator's ([build-tokens.mjs](../resources/brand/build-tokens.mjs):177), the client-side one
+behind `/devtools/design` ([designTokens.ts](../resources/js/lib/designTokens.ts):377), and the CI
+guard ([DesignTokenContrastTest.php](../tests/Unit/Architecture/DesignTokenContrastTest.php)).
+
+Hand-listing the grounds instead is what shipped the whole hue-derived ink tier at ~4.3:1 on
+`cream-deep` — the ground `AppShell` paints under the entire app — while all three audits
+reported a pass. See [[ink-grounds-derived-not-listed]].
 
 **The outline rule.** Two fills (legendary gold, uncommon green) cannot reach even 3:1 on paper
 without losing the vibrancy that makes a legendary pull feel legendary. WCAG 1.4.11 is satisfied
@@ -112,7 +121,7 @@ edge carries the contrast. Never darken them instead.
 | Line | `line`, `line-strong` | Borders. `line` is the default hairline; `line-strong` is the dashed placeholder edge |
 | Mood | `mood-{blazing,easy,wobbly,gassed,overloaded,chill}` (+ `-bg`, `-ink`) | Calendar cells, mood badges. `-bg` is the pastel cell tint, `-ink` the label |
 | Rarity | `rarity-{common,uncommon,rare,epic,legendary}` (+ `-ink`) | Card rarity. Loud on purpose: it is the collectible signal |
-| Hues | `leaf` / `leaf-deep`, `ember` / `ember-deep`, `citrus` / `citrus-deep`, `stone` | Semantic accents; `citrus` reserved for PR / legendary celebration |
+| Hues | `leaf` / `leaf-deep`, `ember` / `ember-deep`, `citrus` / `citrus-deep`, `stone` | Semantic accents; `citrus` reserved for PR / legendary celebration. **No `-ink` member yet**, so these are the one family the contrast audit does not cover as text — see the pitfall below |
 | Strava | `strava-orange`, `strava-orange-hover` | Brand mark only — never themed or restyled |
 
 Chart.js and inline SVG cannot read CSS custom properties off a canvas, so a small
@@ -292,7 +301,8 @@ plain `Record` lookups; do **not** fold those into cva.
 ## Common pitfalls
 
 - **Using a fill colour as a label.** `text-mood-blazing` / `text-rarity-legendary` / `text-horizon-deep` fail contrast on paper. Reach for the `-ink` member. This is exactly the bug the fill/text split exists to prevent, and it happened once inside the generator itself.
-- **Checking contrast against the default surface only.** Paper drifts with dawn-shift; a token that clears AA at midday can be under it after dark. Score against every ground and take the worst.
+- **`text-leaf-deep` / `text-ember-deep` / `text-citrus-deep` — the known open case.** The semantic accents have no `-ink` member, so ~85 call sites use the CTA fill as a label colour. Measured on the page ground, `citrus-deep` is **2.96:1** and `leaf-deep` drops to **4.06:1** on its own `bg-leaf/15` chip. They are outside the `-ink` tier and therefore unscored by the audits. Don't add more; giving these families a derived `-ink` member is its own change (noted in [[ink-grounds-derived-not-listed]]).
+- **Checking contrast against a ground list you wrote by hand.** Paper drifts with dawn-shift, the app's own page ground is `cream-deep`, a mood chip sits on its `-bg` cell, and a tinted chip sits on the tint rather than the paper. Score against every ground the render produces and take the worst; if you are adding a background, classify it in [grounds.json](../resources/brand/grounds.json) — the build fails until you do.
 - **Darkening a light fill instead of outlining it.** Legendary gold and uncommon green stay vivid and take a 2px `-ink` outline; the edge carries the contrast.
 - **Raw Tailwind colors, default shadows, off-scale radii.** Every utility must resolve to a token. Enforced in CI by [scripts/check-raw-palette.mjs](../scripts/check-raw-palette.mjs).
 - **`text-ink-3` on body prose.** `ink-3` is for labels/timestamps/metadata only, never wrapping a `<p>` of running text. Sweep `grep text-ink-3` before merging.
