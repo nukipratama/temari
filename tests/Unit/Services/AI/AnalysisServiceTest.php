@@ -552,7 +552,7 @@ it('still dispatches when today\'s LLM cost is under the daily ceiling', functio
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
-it('keeps existing prose when a capped "Baca ulang" regenerate is a no-op', function (): void {
+it('keeps existing prose when a capped "Reread" regenerate is a no-op', function (): void {
     config(['ai.auto_dispatch' => false]);
     $snap = WeeklySnapshot::factory()->create();
     Analysis::query()->create([
@@ -607,7 +607,7 @@ it('markDone records content and generated_at', function (): void {
     expect($fresh->status)->toBe(AnalysisStatus::Done)
         ->and($fresh->content)->toBe('final narrative')
         ->and($fresh->generated_at)->not->toBeNull()
-        ->and($fresh->cooldownRemaining())->toBeGreaterThanOrEqual(0);
+        ->and($fresh->cooldownRemaining())->toBeGreaterThan(0);
 });
 
 it('markDone stores a content fingerprint when given, and leaves it null otherwise', function (): void {
