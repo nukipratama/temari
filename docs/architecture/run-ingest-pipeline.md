@@ -3,7 +3,7 @@ title: Run ingestion pipeline
 description: Strava sync stores the whole history from paged summaries; detail, streams and the story layer are fetched lazily, atomically, and drainably on failure
 tags: [architecture, run]
 status: living
-reviewed: 2026-08-13
+reviewed: 2026-08-14
 code_refs:
   - app/Services/Run/Ingest/SyncOrchestrator.php
   - app/Services/Run/Ingest/SummaryIngest.php
@@ -15,6 +15,7 @@ code_refs:
   - app/Services/Run/Metrics/TrainingLoad.php
   - app/Services/Run/Metrics/WeeklyAggregator.php
   - app/Services/Strava/StravaClient.php
+  - app/Enums/StravaReadPriority.php
   - app/Services/Strava/ActivityFetcher.php
   - app/Jobs/Strava/SyncActivitiesJob.php
   - app/Jobs/Strava/IngestActivityJob.php
@@ -46,7 +47,7 @@ The webhook push path ([syncSingleActivity()](app/Services/Run/Ingest/SyncOrches
 
 ## Phase 2 — hydrate (lazily → pipeline)
 
-A summary-only run is hydrated when the deeper data is about to be looked at. [DetailHydrator::hydrate()](app/Services/Run/Ingest/DetailHydrator.php) dispatches one [IngestActivityJob](app/Jobs/Strava/IngestActivityJob.php) for a `summaryOnly()` row belonging to a non-demo user with a live connection; the job is `ShouldBeUnique`, so repeated views collapse onto one fetch. [RunController::show()](app/Http/Controllers/RunController.php) calls it twice — for the run being opened, and for whichever past run [PastYouMatcher](app/Services/Run/Story/PastYouMatcher.php) just picked as the comparison (the matcher itself needs only summary fields, so it works across un-hydrated history).
+A summary-only run is hydrated when the deeper data is about to be looked at. [DetailHydrator::hydrate()](app/Services/Run/Ingest/DetailHydrator.php#L28) dispatches one [IngestActivityJob](app/Jobs/Strava/IngestActivityJob.php) for a `summaryOnly()` row belonging to a non-demo user with a live connection; the job is `ShouldBeUnique`, so repeated views collapse onto one fetch. These are the *expensive* reads (two per run opened, against a whole history's handful), so they queue at [`StravaReadPriority::Background`](app/Services/Run/Ingest/DetailHydrator.php#L42) and stop at the reserve floor rather than starving live ingest — see [[live-ingest-read-reserve]]. [RunController::show()](app/Http/Controllers/RunController.php) calls it twice — for the run being opened, and for whichever past run [PastYouMatcher](app/Services/Run/Story/PastYouMatcher.php) just picked as the comparison (the matcher itself needs only summary fields, so it works across un-hydrated history).
 
 `strava:ingest` ([IngestCommand](app/Console/Commands/Strava/IngestCommand.php)) still runs every 5 min over `pendingIngest()` (`analyzed_at` null, below the give-up threshold, skipping demo + revoked connections), pacing the webhook backlog so it never 429-storms Strava. Summary rows are *not* in that set — they are already visible, and nothing drains them wholesale.
 
@@ -86,11 +87,11 @@ Every read path treats the missing half as unknown, not as zero:
 - **Load is unscored.** [dailyTrimpMap()](app/Services/Run/Metrics/WeeklyAggregator.php) skips a null `trimp_edwards` rather than summing a zero, and [BuildCalendarCellsAction](app/Actions/Run/BuildCalendarCellsAction.php) emits a null `trimp` for a day no run scored — same shape it already had for an HR-less treadmill run.
 - **Stream-derived features are absent, not blank.** Everything reading `stream_summary` goes through [StreamSummary::fromArray()](app/Services/Run/Metrics/StreamSummary.php), which maps a null blob to null accessors, so splits, decoupling, zones and [RelativeEffort](app/Services/Run/Metrics/RelativeEffort.php) simply do not render.
 - **No card, no PR, no narration.** Those are minted inside the hydration transaction, so a summary-only run contributes nothing to the collection, the records board or the LLM spend until it is opened. The one read path that *does* span un-hydrated history is [[past-you-engine]]: its matching reads summary fields only, so it compares against un-opened runs without hydrating them and without spending a token. [PersonalRecords](app/Services/Run/Metrics/PersonalRecords.php) only ever *lowers* a record, so hydrating history out of order cannot mint a false PR.
-- **And the run page says so.** Rendering honestly is not the same as reading honestly: a run missing its splits, zones, effort and card looks broken unless something explains it. [RunController::show](app/Http/Controllers/RunController.php) passes `DetailHydrator::hydrate()`'s return value through as `awaitingDetail`, and [RunHydratingNotice](resources/js/components/run/RunHydratingNotice.tsx) renders the explanation and polls the page back until the rest lands. Because the flag *is* the hydrator's answer, the notice never appears for a run nothing is coming for (already detailed, demo data, or a revoked connection) and so never promises a refresh that will not happen.
+- **And the run page says so.** Rendering honestly is not the same as reading honestly: a run missing its splits, zones, effort and card looks broken unless something explains it. [RunController::show](app/Http/Controllers/RunController.php) passes `DetailHydrator::hydrate()`'s return value through as `awaitingDetail`, and [RunHydratingNotice](resources/js/components/run/RunHydratingNotice.tsx) renders the explanation and polls the page back until the rest lands. Because the flag *is* the hydrator's answer, the notice never appears for a run nothing is coming for (already detailed, demo data, or a revoked connection) and so never promises a refresh that will not happen. The same honesty bounds the *wait*: the copy says the deeper fetch queues behind runs finishing right now (the background tier of [[live-ingest-read-reserve]]), and once the [poll budget is spent](resources/js/components/run/RunHydratingNotice.tsx#L40) it drops the self-refresh promise and offers a manual re-check instead of a claim nothing will keep.
 
 ## Strava resilience
 
-[StravaClient](app/Services/Strava/StravaClient.php) fronts every call with a circuit breaker, app-wide (per-client, not per-athlete) rate-limit buckets, and per-connection token refresh under a lock. Revocation vs. transient-refresh handling lives in [SyncActivitiesJob](app/Jobs/Strava/SyncActivitiesJob.php). The breaker + rate-limit rationale is its own decision: [[strava-circuit-breaker-rate-limit]]; the operational mechanics (state machine, buckets, token refresh) are [[strava-client]].
+[StravaClient](app/Services/Strava/StravaClient.php) fronts every call with a circuit breaker, app-wide (per-client, not per-athlete) rate-limit buckets, and per-connection token refresh under a lock. Revocation vs. transient-refresh handling lives in [SyncActivitiesJob](app/Jobs/Strava/SyncActivitiesJob.php). The breaker + rate-limit rationale is its own decision: [[strava-circuit-breaker-rate-limit]], with the live-ingest share of that budget in [[live-ingest-read-reserve]]; the operational mechanics (state machine, buckets, token refresh) are [[strava-client]].
 
 ## Manual / scheduled entry points
 

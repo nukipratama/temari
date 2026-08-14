@@ -3,9 +3,10 @@ title: Strava API client resilience
 description: How the Strava client wrapper survives outages, rate limits, and revocations — circuit breaker, global rate buckets, per-connection token refresh, and how each upstream error routes.
 tags: [architecture, strava]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-08-14
 code_refs:
   - app/Services/Strava/StravaClient.php
+  - app/Enums/StravaReadPriority.php
   - app/Services/Strava/StravaCircuitBreaker.php
   - app/Models/StravaConnection.php
   - app/Support/Config/AppConfigKey.php
@@ -60,11 +61,17 @@ Threshold and cooldown are tunable `app_config` keys with code defaults in [AppC
 
 ## Global rate-limit buckets
 
-[`guardRateLimit()`](app/Services/Strava/StravaClient.php#L226) checks two Laravel `RateLimiter` buckets (a short 15-min window and a daily one) before hitting both. The keys from [`rateLimitKey()`](app/Services/Strava/StravaClient.php#L248) carry **no `user_id`** — the budget is app-wide because Strava meters per OAuth client, not per athlete (the [[strava-circuit-breaker-rate-limit]] ADR is the rationale). Exhaustion records a `strava_rate_limited` Pulse event and throws `StravaRateLimitedException`.
+[`guardRateLimit()`](app/Services/Strava/StravaClient.php#L238) checks two Laravel `RateLimiter` buckets (a short 15-min window and a daily one) before hitting both. The keys from [`rateLimitKey()`](app/Services/Strava/StravaClient.php#L278) carry **no `user_id`** — the budget is app-wide because Strava meters per OAuth client, not per athlete (the [[strava-circuit-breaker-rate-limit]] ADR is the rationale). Exhaustion records a `strava_rate_limited` Pulse event and throws `StravaRateLimitedException`.
+
+### The live-ingest reserve
+
+One pool, but **two ceilings against it**. Every read carries a [StravaReadPriority](app/Enums/StravaReadPriority.php#L13), defaulting to `Live`; a `Background` read is refused once a bucket reaches [`backgroundCeiling()`](app/Services/Strava/StravaClient.php#L268) — 75% of the max, so 150 / 15 min and 1,500 / day — while `Live` may spend the whole 200 / 2,000. Only browsing-driven hydration ([DetailHydrator](app/Services/Run/Ingest/DetailHydrator.php#L42)) is `Background`; webhook push, fallback poll, ingest drain, resync and doctor all stay `Live`. The keys are untouched by this: the reserve is a threshold, not a second bucket. Rationale and the rejected alternatives are in [[live-ingest-read-reserve]].
+
+A refused background read is **deferred, not dropped** — [IngestActivityJob](app/Jobs/Strava/IngestActivityJob.php#L89)'s `ThrottlesExceptions` releases it with backoff, on a [throttle key of its own tier](app/Enums/StravaReadPriority.php#L27) so a backed-off browsing burst can't release live ingest jobs alongside it.
 
 The ceilings are **this app's own Read allocation, 200 per 15 min and 2,000 per day**, read off its Strava API dashboard, with Overall limits of 400 / 4,000 sitting above them. Strava's public docs quote a lower 100 / 1,000 default for new applications; that is **not** this app's allocation, so don't lower the constants on a docs reading. The dashboard is the source of truth, and the [[strava-circuit-breaker-rate-limit]] ADR records the same pair.
 
-> **Gotcha:** [`rateLimitRemaining(int $userId)`](app/Services/Strava/StravaClient.php#L136) still takes a `$userId` for call-site compatibility but **ignores it** for keying — every athlete sees the same shared headroom. Do not reintroduce the id into the key. Note the local guard's exhaustion and a real upstream `429` both surface as `StravaRateLimitedException`; only the local one is preventable by us.
+> **Gotcha:** [`rateLimitRemaining(int $userId)`](app/Services/Strava/StravaClient.php#L148) still takes a `$userId` for call-site compatibility but **ignores it** for keying (and reports the *raw* pool, not the lower background-visible headroom) — every athlete sees the same shared headroom. Do not reintroduce the id into the key. Note the local guard's exhaustion and a real upstream `429` both surface as `StravaRateLimitedException`; only the local one is preventable by us.
 
 ## Per-connection token refresh
 
@@ -81,4 +88,4 @@ The breaker state lives in `app_config`, so a stuck-open breaker stays open acro
 
 ## See also
 
-[[strava-circuit-breaker-rate-limit]] · [[strava-connect]] · [[run-ingest-pipeline]] · [[data-model]] · [[deployment]]
+[[strava-circuit-breaker-rate-limit]] · [[live-ingest-read-reserve]] · [[strava-connect]] · [[run-ingest-pipeline]] · [[data-model]] · [[deployment]]
