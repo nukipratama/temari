@@ -12,6 +12,7 @@ use App\Models\AI\TokenUsage;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
+use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\Narrators\RunQuestionNarrator;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
@@ -105,7 +106,8 @@ it('serves the deterministic answer when the daily cost ceiling is the only stop
 
     expect($row->refresh()->status)->toBe(AnalysisStatus::Done)
         ->and($row->error)->toBeNull()
-        ->and($row->answer)->toBeString()->not->toBeEmpty();
+        ->and($row->answer)->toBeString()->not->toBeEmpty()
+        ->and(app(CostCeilingLedger::class)->today()['degradedFills'])->toBe(1);
 });
 
 it('fails the question when the run has no detail to read', function (): void {

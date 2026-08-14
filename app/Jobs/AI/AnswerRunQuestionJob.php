@@ -10,6 +10,7 @@ use App\Models\Activity;
 use App\Models\AI\RunQuestion;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
+use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\Narrators\RunQuestionNarrator;
 use App\Services\AI\RunQuestion\RuleBasedRunAnswer;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -62,6 +63,7 @@ class AnswerRunQuestionJob implements ShouldQueue
                 'answer' => RuleBasedRunAnswer::for($detail, $question->question),
                 'error' => null,
             ]);
+            app(CostCeilingLedger::class)->recordDegradedFill();
 
             return;
         }
