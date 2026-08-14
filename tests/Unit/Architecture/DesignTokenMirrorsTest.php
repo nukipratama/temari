@@ -8,11 +8,12 @@ use Illuminate\Support\Facades\File;
  * Guards the files that keep their own copy of the palette.
  *
  * A `<canvas>` cannot read `var(--color-*)`, and neither can the error pages,
- * which render without the app stylesheet, an inline SVG's fill attributes, or
- * PHP that paints an image server-side. So these files hold hex literals and a
- * comment asking the next person to keep them in sync. Nothing imports them,
- * so nothing broke when the ink tier moved — they simply kept painting the old
- * values, including the error layout's gold-on-cream-deep pair at 4.28:1.
+ * which render without the app stylesheet, an inline SVG's fill attributes, a
+ * `<meta>` tag in the document head, or PHP that paints an image server-side.
+ * So these files hold hex literals and a comment asking the next person to keep
+ * them in sync. Nothing imports them, so nothing broke when the ink tier moved
+ * — they simply kept painting the old values, including the error layout's
+ * gold-on-cream-deep pair at 4.28:1.
  *
  * Every hex in these files must therefore still be a value `app.css` declares.
  * A token that moves without its mirrors goes red here; a genuinely non-token
@@ -48,6 +49,7 @@ const MIRROR_FILES = [
     'resources/js/lib/shareCard.ts',
     'resources/js/lib/runcard.ts',
     'resources/js/components/temari/TemariProto.tsx',
+    'resources/views/app.blade.php',
     'resources/views/errors/layout.blade.php',
     'app/Services/Run/Story/RunCardImageRenderer.php',
     'app/Enums/Rarity.php',
