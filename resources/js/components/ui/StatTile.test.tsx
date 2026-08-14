@@ -43,7 +43,7 @@ describe('StatTile', () => {
                 tone === 'plain' || tone === 'plainSky'
                     ? screen.getByText('x')
                     : (container.firstElementChild as HTMLElement);
-            expect(target.className).toContain(expected);
+            expect(target).toHaveClass(expected);
         },
     );
 

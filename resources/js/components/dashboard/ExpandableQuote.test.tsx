@@ -62,8 +62,8 @@ describe('ExpandableQuote', () => {
     it('uses cream text on the sky panel', () => {
         render(<ExpandableQuote text="Easy does it." onSky />);
         const paragraph = screen.getByText(/Easy does it\./);
-        expect(paragraph.className).toContain('text-cream');
-        expect(paragraph.className).not.toContain('text-ink');
+        expect(paragraph).toHaveClass('text-cream');
+        expect(paragraph).not.toHaveClass('text-ink');
     });
 
     it('hands its ground down to the toggle', () => {

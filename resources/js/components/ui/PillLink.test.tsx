@@ -28,9 +28,9 @@ describe('PillLink', () => {
                 Click
             </PillLink>,
         );
-        expect(
-            screen.getByRole('link', { name: /click/i }).className,
-        ).toContain('bg-horizon');
+        expect(screen.getByRole('link', { name: /click/i })).toHaveClass(
+            'bg-horizon',
+        );
     });
 
     it('applies size-specific classes', () => {
