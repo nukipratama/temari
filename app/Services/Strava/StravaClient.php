@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Strava;
 
+use App\Enums\StravaReadPriority;
 use App\Models\StravaConnection;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
@@ -40,6 +41,11 @@ class StravaClient
 
     private const int RATE_LIMIT_DAILY_DECAY = 24 * 60 * 60;
 
+    // Share of each read bucket only StravaReadPriority::Live may spend. A
+    // freshly-finished run appearing promptly is the product's core promise; a
+    // user scrolling their 2019 archive can wait for the bucket to roll over.
+    private const int LIVE_RESERVE_PERCENT = 25;
+
     public function __construct(private readonly ?StravaCircuitBreaker $breaker = null)
     {
     }
@@ -47,8 +53,12 @@ class StravaClient
     /**
      * @param  array<string, mixed>  $query
      */
-    public function get(StravaConnection $connection, string $path, array $query = []): Response
-    {
+    public function get(
+        StravaConnection $connection,
+        string $path,
+        array $query = [],
+        StravaReadPriority $priority = StravaReadPriority::Live,
+    ): Response {
         $breaker = $this->breaker();
         if (! $breaker->allowsRequest()) {
             throw new StravaCircuitOpenException(
@@ -58,7 +68,7 @@ class StravaClient
 
         $connection = $this->refreshIfExpired($connection);
 
-        $this->guardRateLimit();
+        $this->guardRateLimit($priority);
 
         try {
             $response = Http::baseUrl(self::apiBaseUrl())
@@ -225,7 +235,7 @@ class StravaClient
         return $connection;
     }
 
-    private function guardRateLimit(): void
+    private function guardRateLimit(StravaReadPriority $priority): void
     {
         $buckets = [
             ['key' => $this->rateLimitKey('15min'), 'max' => self::RATE_LIMIT_15MIN_MAX, 'decay' => self::RATE_LIMIT_15MIN_DECAY],
@@ -233,11 +243,15 @@ class StravaClient
         ];
 
         foreach ($buckets as ['key' => $key, 'max' => $max]) {
-            if (RateLimiter::tooManyAttempts($key, $max)) {
+            $ceiling = $priority->isLive() ? $max : $this->backgroundCeiling($max);
+
+            if (RateLimiter::tooManyAttempts($key, $ceiling)) {
                 Pulse::record('strava_rate_limited', $key)->count();
 
                 throw new StravaRateLimitedException(
-                    "Strava rate limit exhausted for bucket [{$key}]; retry in ".RateLimiter::availableIn($key).'s.',
+                    $priority->isLive()
+                        ? "Strava rate limit exhausted for bucket [{$key}]; retry in ".RateLimiter::availableIn($key).'s.'
+                        : "Strava bucket [{$key}] is down to its live-ingest reserve; background read deferred, retry in ".RateLimiter::availableIn($key).'s.',
                 );
             }
         }
@@ -247,6 +261,20 @@ class StravaClient
         }
     }
 
+    /**
+     * Highest attempt count a background read may push a bucket to, leaving
+     * LIVE_RESERVE_PERCENT of it for webhook-driven ingest.
+     */
+    private function backgroundCeiling(int $max): int
+    {
+        return $max - intdiv($max * self::LIVE_RESERVE_PERCENT, 100);
+    }
+
+    /**
+     * Keyed per API client, never per athlete: Strava meters the whole OAuth
+     * application. Reintroducing a user id here would hand every athlete a
+     * private allowance and blow the one shared limit.
+     */
     private function rateLimitKey(string $bucket): string
     {
         return "strava-api:{$bucket}";

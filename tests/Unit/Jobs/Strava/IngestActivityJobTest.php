@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\StravaReadPriority;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Services\Run\Ingest\ActivityPipeline;
@@ -22,6 +23,22 @@ it('forwards to the ActivityPipeline for the resolved activity', function (): vo
         ->withArgs(fn (Activity $arg): bool => $arg->is($activity));
 
     new IngestActivityJob($activity->id)->handle($pipeline);
+});
+
+it('hands the pipeline the priority it was dispatched with', function (): void {
+    $activity = Activity::factory()->create();
+
+    $pipeline = Mockery::mock(ActivityPipeline::class);
+    $pipeline->shouldReceive('ingest')
+        ->once()
+        ->withArgs(fn (Activity $arg, StravaReadPriority $priority): bool => $arg->is($activity)
+            && $priority === StravaReadPriority::Background);
+
+    new IngestActivityJob($activity->id, StravaReadPriority::Background)->handle($pipeline);
+});
+
+it('defaults to live priority so an unqualified dispatch keeps the full budget', function (): void {
+    expect(new IngestActivityJob(1)->priority)->toBe(StravaReadPriority::Live);
 });
 
 it('quietly no-ops if the activity has been deleted before the job runs', function (): void {
@@ -85,6 +102,52 @@ it('survives many rate-limit backoffs without the throttle middleware failing th
 
     expect($fakeJob->failed)->toBeFalse()
         ->and($fakeJob->releaseCount)->toBe(10);
+});
+
+it('does not let a stalled browsing tier hold back live ingest', function (): void {
+    $fakeJob = fn (): object => new class () {
+        public int $releaseCount = 0;
+
+        public function release(int $delay): void
+        {
+            $this->releaseCount++;
+        }
+
+        public function fail(Throwable $e): void
+        {
+        }
+
+        public function uuid(): string
+        {
+            return 'job-uuid';
+        }
+    };
+
+    $rateLimited = function (): never {
+        throw new StravaRateLimitedException('rate limited');
+    };
+
+    // Exhaust the background tier's throttle circuit: 50 backoffs inside its
+    // decay window, the shape of a signup burst scrolling old runs.
+    $background = new IngestActivityJob(1, StravaReadPriority::Background)->middleware()[0];
+    $browsing = $fakeJob();
+    for ($attempt = 0; $attempt < 50; $attempt++) {
+        $background->handle($browsing, $rateLimited);
+    }
+
+    // The circuit is now open for browsing: it releases without even running.
+    $browsingAfter = $fakeJob();
+    $background->handle($browsingAfter, fn () => throw new RuntimeException('should not run'));
+    expect($browsingAfter->releaseCount)->toBe(1);
+
+    // A freshly-webhooked run still executes: separate key, separate circuit.
+    $ran = false;
+    $live = new IngestActivityJob(2)->middleware()[0];
+    $live->handle($fakeJob(), function () use (&$ran): void {
+        $ran = true;
+    });
+
+    expect($ran)->toBeTrue();
 });
 
 it('lets the throttle middleware re-raise a genuine non rate-limit failure', function (): void {
