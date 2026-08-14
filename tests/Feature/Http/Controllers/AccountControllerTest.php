@@ -38,7 +38,7 @@ it('refuses to delete the demo account', function (): void {
     $demo = User::factory()->create(['is_demo' => true]);
 
     $this->actingAs($demo)->delete('/account')
-        ->assertSessionHasErrors('akun');
+        ->assertSessionHasErrors('account');
 
     expect(User::query()->whereKey($demo->id)->exists())->toBeTrue();
     $this->assertAuthenticatedAs($demo);
