@@ -169,3 +169,27 @@ it('reports zero active users when no analyzed activities are recent', function 
 
     Carbon::setTestNow();
 });
+
+it('skips a just-connected athlete whose whole backfilled history is old', function (): void {
+    // Every imported run is stamped analyzed_at = now by the backfill, so an
+    // analyzed_at window would brief a dormant account daily for a week about a
+    // decade-old history. The run's own date is what "active" means.
+    Carbon::setTestNow('2026-05-11 12:00:00');
+
+    $dormant = User::factory()->create();
+    foreach ([60, 400, 900] as $daysAgo) {
+        $activity = Activity::factory()->for($dormant)->analyzed()->create(['analyzed_at' => Carbon::now()]);
+        ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()->subDays($daysAgo)]);
+    }
+
+    $service = Mockery::mock(AnalysisService::class);
+    $service->shouldNotReceive('requestBriefing');
+    $service->shouldNotReceive('request');
+    $this->app->instance(AnalysisService::class, $service);
+
+    $this->artisan('ai:daily-briefing')
+        ->expectsOutputToContain('Dispatched daily kickoff (briefing) for 0 active users.')
+        ->assertSuccessful();
+
+    Carbon::setTestNow();
+});

@@ -120,10 +120,12 @@ it('rolls the weekly snapshots forward once for the whole backfill', function ()
         ->firstOrFail();
 
     // Volume is exact from the summary; load stays unscored, exactly as it
-    // already does for an HR-less run.
+    // already does for an HR-less run. Unscored is null, not zero: this is the
+    // whole of a new connection's history until runs get opened.
     expect($weekOfTheRun->distance_km)->toBe(5.0)
         ->and($weekOfTheRun->runs)->toBe(1)
-        ->and($weekOfTheRun->weekly_trimp)->toBe(0.0);
+        ->and($weekOfTheRun->weekly_trimp)->toBeNull()
+        ->and($weekOfTheRun->ctl_42d)->toBeNull();
 });
 
 it('returns 0 and does not query Strava when user has no connection', function (): void {

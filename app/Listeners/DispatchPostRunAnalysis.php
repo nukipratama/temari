@@ -16,6 +16,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -32,6 +33,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         private readonly AnalysisService $analysisService,
         private readonly WeeklyAggregator $weeklyAggregator,
         private readonly StaggerBackfillAction $staggerBackfill,
+        private readonly BackfillAgeGate $ageGate,
     ) {
     }
 
@@ -44,7 +46,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
         $user = $activity->user;
         $detail = $activity->detail;
-        $tooOld = $this->isTooOldForRealNarration($detail);
+        $tooOld = $this->ageGate->isTooOld($detail->start_date_local);
 
         $today = Carbon::today()->toDateString();
         $isBackfill = $this->isBackfill($detail);
@@ -181,23 +183,6 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $thresholdHours = (int) config('ai.backfill_threshold_hours', 24);
 
         return Carbon::now()->diffInHours($startedAt, absolute: true) >= $thresholdHours;
-    }
-
-    /**
-     * An activity older than `ai.backfill_max_age_days` gets the deterministic
-     * rule-based filler instead of a real LLM call — nobody's checking back on
-     * narration for a year-old run, and it keeps every chain's depth bounded.
-     */
-    private function isTooOldForRealNarration(ActivityDetail $detail): bool
-    {
-        $startedAt = $detail->start_date_local;
-        if ($startedAt === null) {
-            return false;
-        }
-
-        $maxAgeDays = (int) config('ai.backfill_max_age_days');
-
-        return Carbon::now()->diffInDays($startedAt, absolute: true) >= $maxAgeDays;
     }
 
     /**

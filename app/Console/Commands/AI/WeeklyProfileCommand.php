@@ -18,6 +18,13 @@ use Illuminate\Support\Carbon;
 class WeeklyProfileCommand extends Command
 {
     /**
+     * How recently a user must have run to get a refreshed voice, keyed off the
+     * run's own date because an on-connect backfill stamps `analyzed_at` to now
+     * across a whole imported history.
+     */
+    private const int ACTIVE_WINDOW_DAYS = 7;
+
+    /**
      * The Aku-page voice carries no per-run cadence of its own, so this weekly
      * heartbeat is its only auto-refresh: each active user's "Kata Temari" line
      * re-narrates once a week on the week's updated data. Demo is excluded (it
@@ -33,10 +40,11 @@ class WeeklyProfileCommand extends Command
         $isoWeek = AnalysisType::currentIsoWeek();
 
         $activeUserIds = Activity::query()
-            ->where('analyzed_at', '>=', Carbon::today()->subDays(7))
-            ->whereIn('user_id', User::query()->notDemo()->select('id'))
+            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+            ->where('activity_details.start_date_local', '>=', Carbon::today()->subDays(self::ACTIVE_WINDOW_DAYS))
+            ->whereIn('activities.user_id', User::query()->notDemo()->select('id'))
             ->distinct()
-            ->pluck('user_id');
+            ->pluck('activities.user_id');
 
         foreach ($activeUserIds as $userId) {
             $service->request(

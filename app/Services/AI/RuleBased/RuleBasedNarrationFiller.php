@@ -15,15 +15,20 @@ use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\StreamSummary;
 
 /**
- * Rule-based content per AnalysisType. Used by:
- * - DemoSeedCommand to backfill Analysis rows without spending LLM tokens
- * - BriefingComposer when Azure OpenAI is unconfigured (empty env)
+ * Rule-based content per AnalysisType. Reached in production, not only by the
+ * demo seed:
+ * - {@see \App\Listeners\DispatchPostRunAnalysis} for material past
+ *   `ai.backfill_max_age_days`, and {@see \App\Services\AI\BackfillAgeGate} for
+ *   a manual retry on the same
+ * - {@see \App\Jobs\AI\AnalyzeRowJob} / {@see \App\Jobs\AI\AnalyzeGroupJob} when
+ *   Azure content-filters a generation twice over
+ * - the public demo account's triggers, and DemoSeedCommand's backfill
  *
  * Output is deterministic and Temari-voiced. Where the subject's real data is
  * available it drives the copy (run insight via {@see RuleBasedRunInsights}
  * so a seeded demo shows the run's real numbers), falling back to seeded
- * variants only when the subject row is missing. Users with a configured Azure
- * can re-trigger via "Baca ulang" to get real LLM output.
+ * variants only when the subject row is missing. A "Baca ulang" gets real LLM
+ * output whenever the subject is inside the narration age cutoff.
  */
 final readonly class RuleBasedNarrationFiller
 {

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\StreakRestToken;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -86,6 +87,56 @@ it('returns zero when the streak is stale (a full week has closed with no run)',
     foreach (['2026-05-24', '2026-05-17', '2026-05-10'] as $weekEnding) {
         WeeklySnapshot::factory()->for($user)->create(['week_ending' => $weekEnding, 'runs' => 2]);
     }
+
+    expect(WeeklySnapshot::consecutiveWeekStreak($user->id))->toBe(0);
+
+    Carbon::setTestNow();
+});
+
+it('keeps the streak alive when a rest token forgave the runless week that closed', function (): void {
+    Carbon::setTestNow('2026-06-03');
+    $user = User::factory()->create();
+    foreach (['2026-05-24', '2026-05-17', '2026-05-10'] as $weekEnding) {
+        WeeklySnapshot::factory()->for($user)->create(['week_ending' => $weekEnding, 'runs' => 2]);
+    }
+
+    // 2026-05-31 closed with no run, which is what breaks it.
+    expect(WeeklySnapshot::consecutiveWeekStreak($user->id))->toBe(0);
+
+    StreakRestToken::factory()->for($user)
+        ->spentFor(Carbon::parse('2026-05-31'))
+        ->create(['earned_for_week_ending' => '2026-05-24']);
+
+    // Bridged, not counted: the user did not run that week, so it stays 3.
+    expect(WeeklySnapshot::consecutiveWeekStreak($user->id))->toBe(3);
+
+    Carbon::setTestNow();
+});
+
+it('bridges a forgiven week in the middle of a streak without counting it', function (): void {
+    Carbon::setTestNow('2026-05-27');
+    $user = User::factory()->create();
+    foreach (['2026-05-24', '2026-05-10', '2026-05-03'] as $weekEnding) {
+        WeeklySnapshot::factory()->for($user)->create(['week_ending' => $weekEnding, 'runs' => 2]);
+    }
+
+    expect(WeeklySnapshot::consecutiveWeekStreak($user->id))->toBe(1);
+
+    StreakRestToken::factory()->for($user)
+        ->spentFor(Carbon::parse('2026-05-17'))
+        ->create(['earned_for_week_ending' => '2026-05-10']);
+
+    expect(WeeklySnapshot::consecutiveWeekStreak($user->id))->toBe(3);
+
+    Carbon::setTestNow();
+});
+
+it('does not manufacture a streak out of forgiven weeks alone', function (): void {
+    Carbon::setTestNow('2026-06-03');
+    $user = User::factory()->create();
+    StreakRestToken::factory()->for($user)
+        ->spentFor(Carbon::parse('2026-05-31'))
+        ->create(['earned_for_week_ending' => '2026-05-24']);
 
     expect(WeeklySnapshot::consecutiveWeekStreak($user->id))->toBe(0);
 

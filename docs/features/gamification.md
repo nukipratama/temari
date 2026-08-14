@@ -21,6 +21,9 @@ code_refs:
   - app/Http/Controllers/BadgeBoardController.php
   - app/Models/RunCard.php
   - app/Models/UserUnlock.php
+  - app/Models/StreakRestToken.php
+  - app/Actions/Gamification/SettleStreakRestTokensAction.php
+  - app/Console/Commands/Gamification/SettleStreakTokensCommand.php
   - app/Models/PersonalRecord.php
 ---
 
@@ -84,6 +87,27 @@ A [Season](../../app/Models/Season.php) is the training arc `Season IS the train
 5 [SeasonGoal](../../app/Models/SeasonGoal.php) rows generate once, at season creation (a stable checklist, unlike the day-by-day plan): total sessions completed, total quality (Tempo/Interval) sessions completed, the season's single longest planned long run completed, rest days honored, and a 5th that's race-margin (race-oriented) or CTL-growth (self-scaled). [SeasonGoalResolver](../../app/Services/Gamification/SeasonGoalResolver.php) resolves `current` live from a [SeasonGamificationContext](../../app/Services/Gamification/SeasonGamificationContext.php) — the same `metric`-string-driven pattern `GoalResolver` uses, scoped to the season's date range instead of the user's whole history. Rendered on the Plan tab, see [[plan-periodizer]].
 
 **The rest-day reward is not a `Badge`.** Every `Badge` grant requires a real ingested `Activity` (`run_cards.activity_id` is a required unique FK) — a rest day, by definition, has none. "Honored" = a `PlannedSession` with `session_type = Rest` where no `Activity` was logged that date (never a day with no `PlannedSession` row at all — that's simply unplanned, not honored). [GrantSeasonUnlocksAction](../../app/Actions/Gamification/GrantSeasonUnlocksAction.php) reuses `UserUnlock`'s shape instead, keyed `season.{id}.rest_honored_{3|7}` — the season id in the key is what makes the same threshold re-earnable every season, unlike the lifetime accessory catalog. No ingest hook can trigger it (honoring is an absence, not an arrival), so it's granted opportunistically wherever a `SeasonGamificationContext` is already computed: the Plan tab and the badge board.
+
+## The season track
+
+The same per-season key namespace carries a **track**: one tier, `season.{id}.track_{N}`, per completed `SeasonGoal`, granted by the same [GrantSeasonUnlocksAction](../../app/Actions/Gamification/GrantSeasonUnlocksAction.php) on the same read paths.
+
+It extends that namespace rather than paying out of the lifetime catalog **because the catalog has nothing left to give**: all 25 keys in `config/temari_unlocks.php` are claimed 1:1 by a criterion in `config/temari_goals.php`, and `GrantEligibleUnlocksAction` grants each once and never again — so a track drawing on it would pay a returning user nothing in their second season. The season id in the key is what makes a tier re-earnable, exactly as it is for the rest-day reward.
+
+Goal targets are generated scaled to the season's own length ([SeasonService](../../app/Services/Run/Plan/SeasonService.php)), so a short race-oriented season and a 12-week self-scaled one both run a comparable track. Crossing a season boundary resets the track to zero and **revokes nothing** — the previous season's tiers are owned permanently, under their own season id. [SeasonRolloverTest](../../tests/Feature/Gamification/SeasonRolloverTest.php) pins both halves of that.
+
+## Rest tokens and the weekly streak
+
+The weekly streak (`WeeklySnapshot::consecutiveWeekStreak()`) hard-resets to 0 as soon as one full week closes with no run. A **rest token** forgives exactly one such week, so a week lost to illness or a taper does not cost the streak.
+
+- **Accrual** — one token every 4th streak week, matching the periodizer's own 3-build-1-deload cycle (`PhaseSchedule`), so a token lands as a deload week comes due. At most `SettleStreakRestTokensAction::MAX_HELD` are held at once, which is what stops a long streak banking enough weeks to make itself meaningless.
+- **Spending is automatic**, at week close, and only when forgiving the week would actually bridge to a week the user ran — a token is never burned by a user with no streak to save. There is no surface on which a user could play one, and a token you have to remember would fail the runner it exists to protect.
+- **A forgiven week bridges the streak without counting toward it.** The user did not run, so the number does not grow.
+- Nothing is revoked when a streak breaks; the counter resets and the collection is untouched.
+
+[SettleStreakTokensCommand](../../app/Console/Commands/Gamification/SettleStreakTokensCommand.php) (`streak:settle`, Monday 00:00) settles the closed week. It is scheduled **ahead of `ai:weekly-recap` (00:01)**, which reads the streak and would otherwise narrate one this command is about to restore; that ordering is asserted, not just commented.
+
+Because `two_week_streak` is `min(streakWeeks, 2)`, a bridged streak can still reach the `aura_warmup` accessory goal. That is intended: the streak was preserved, so what the streak earns is preserved with it.
 
 ## Badge board
 

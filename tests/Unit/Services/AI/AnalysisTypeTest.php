@@ -8,6 +8,7 @@ use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Services\AI\AnalysisCadence;
 use App\Services\AI\AnalysisType;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rules\In;
 
 it('pins the exact case list, so adding or retiring a type is a deliberate edit', function (): void {
     expect(array_column(AnalysisType::cases(), 'value'))->toBe([
@@ -128,6 +129,48 @@ it('formats currentIsoWeek to the discriminator shape AkuProfileVoice requires',
 
     expect(AnalysisType::currentIsoWeek())->toBe('2026-W21')
         ->and(AnalysisType::currentIsoWeek())->toMatch('/^\d{4}-W\d{2}$/');
+
+    Carbon::setTestNow();
+});
+
+/**
+ * A shape rule is not a closed set. Every type that permits a discriminator must
+ * bound *which* values it permits, or a caller can mint unbounded permanent rows
+ * one request at a time. Two bounds are legitimate: a range, for a discriminator
+ * naming a period, and an ownership check, for one naming a resource.
+ */
+it('bounds every discriminator it permits, by range or by ownership', function (): void {
+    // The one resource-keyed discriminator. Its bound is ownership, enforced in
+    // AnalysisSubjectAuthorizer and proved in that class's own suite, so a range
+    // here would be meaningless.
+    $boundedByOwnership = [AnalysisType::BriefingFeaturedKartuVoice];
+
+    foreach (AnalysisType::cases() as $type) {
+        $rules = $type->discriminatorRules();
+
+        if ($rules === ['prohibited'] || in_array($type, $boundedByOwnership, true)) {
+            continue;
+        }
+
+        $hasRange = collect($rules)->contains(
+            fn (string|In $rule): bool => $rule instanceof In || str_starts_with((string) $rule, 'after_or_equal:'),
+        );
+
+        expect($hasRange)->toBeTrue(
+            "[{$type->value}] permits a discriminator with a shape but no range, so a caller can mint "
+            .'an unbounded number of permanent ai_analyses rows. Add a range, or bound it by ownership '
+            .'in AnalysisSubjectAuthorizer and list it above.',
+        );
+    }
+});
+
+it('ranges each period discriminator against the age cap, not against wall clock drift', function (): void {
+    Carbon::setTestNow('2026-05-18 05:30:00');
+    $oldestDay = Carbon::today()->subDays(AnalysisType::MAX_DISCRIMINATOR_AGE_DAYS)->toDateString();
+
+    expect(AnalysisType::BriefingMascotVoice->discriminatorRules())
+        ->toContain('after_or_equal:'.$oldestDay)
+        ->toContain('before_or_equal:2026-05-18');
 
     Carbon::setTestNow();
 });
