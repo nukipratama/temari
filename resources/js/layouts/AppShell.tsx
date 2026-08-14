@@ -78,7 +78,11 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                 "old page → blank → fade in". Inertia already swaps a different
                 component type on a real navigation, so React remounts what it
                 needs to without help. */}
-                <main id="main-content" className="pb-28 lg:pb-0">
+                <main
+                    id="main-content"
+                    tabIndex={-1}
+                    className="pb-28 outline-none lg:pb-0"
+                >
                     {children}
                 </main>
 

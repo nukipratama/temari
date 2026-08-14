@@ -39,10 +39,12 @@ export default function MetricExplainer({
     usePopover(open, containerRef, close);
 
     const iconSize = size === 'xs' ? 12 : 14;
+    // The box is 24px (WCAG 2.5.8) while negative margins keep the glyph's
+    // 16/20px footprint in the line, so no label row reflows.
     const buttonClass =
         size === 'xs'
-            ? 'focus-ring inline-flex h-4 w-4 items-center justify-center rounded-full text-ink-3 transition hover:bg-line/60 hover:text-ink'
-            : 'focus-ring inline-flex h-5 w-5 items-center justify-center rounded-full text-ink-3 transition hover:bg-line/60 hover:text-ink';
+            ? 'focus-ring -m-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-ink-3 transition hover:bg-line/60 hover:text-ink'
+            : 'focus-ring -m-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-ink-3 transition hover:bg-line/60 hover:text-ink';
 
     return (
         <span

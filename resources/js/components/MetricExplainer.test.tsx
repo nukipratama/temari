@@ -94,4 +94,16 @@ describe('MetricExplainer', () => {
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
         );
     });
+
+    // WCAG 2.5.8: the box is 24px at both sizes, negative margins keep the
+    // glyph's original footprint so no label row reflows.
+    it.each([
+        ['xs', '-m-1'],
+        ['sm', '-m-0.5'],
+    ] as const)('gives the %s trigger a 24px target box', (size, pullIn) => {
+        render(<MetricExplainer metricKey="ctl" size={size} />);
+        expect(
+            screen.getByRole('button', { name: 'Explain Fitness' }),
+        ).toHaveClass('h-6', 'w-6', pullIn);
+    });
 });

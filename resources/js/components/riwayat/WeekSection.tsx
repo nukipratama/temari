@@ -24,7 +24,7 @@ import { type WeekBucket } from '@/pages/Activities/useJejakFilters';
 const FORM_CHIP_CLASS: Record<FormStatus, string> = {
     fresh: 'bg-leaf/15 text-leaf-deep',
     optimal: 'bg-mood-easy/15 text-mood-easy-ink',
-    fatigued: 'bg-mood-blazing/20 text-citrus-deep',
+    fatigued: 'bg-mood-blazing/15 text-mood-blazing-ink',
     overreaching: 'bg-mood-gassed/15 text-mood-gassed-ink',
 };
 
