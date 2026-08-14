@@ -202,7 +202,7 @@ export default function Login({
                             </p>
                             <a
                                 href="/training-disclaimer"
-                                className="focus-ring mt-3 inline-flex items-center gap-1 rounded font-sans text-sm text-ink underline underline-offset-2 hover:text-ink-2"
+                                className="focus-ring mt-3 inline-flex min-h-6 items-center gap-1 rounded font-sans text-sm text-ink underline underline-offset-2 hover:text-ink-2"
                             >
                                 Read the whole disclaimer
                                 <Icon
@@ -242,7 +242,7 @@ export default function Login({
                             <a
                                 key={link.href}
                                 href={link.href}
-                                className="focus-ring rounded font-sans text-sm text-ink-2 underline underline-offset-2 hover:text-ink"
+                                className="focus-ring inline-flex min-h-6 items-center rounded font-sans text-sm text-ink-2 underline underline-offset-2 hover:text-ink"
                             >
                                 {link.label}
                             </a>

@@ -106,7 +106,7 @@ export default function KondisiCard({
             <Link
                 href="/activities"
                 className={cn(
-                    'focus-ring mt-auto rounded pt-1 text-label-micro',
+                    'focus-ring mt-auto inline-flex min-h-6 items-center rounded pt-1 text-label-micro',
                     onSky
                         ? 'text-horizon hover:text-cream'
                         : 'text-horizon-ink hover:text-ember-deep',
