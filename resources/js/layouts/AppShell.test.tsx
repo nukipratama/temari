@@ -311,4 +311,24 @@ describe('AppShell', () => {
         expect(await screen.findByText('Syncing in')).toBeInTheDocument();
         expect(screen.queryByText('New unlock')).not.toBeInTheDocument();
     });
+
+    // Without tabindex the fragment target is unfocusable, so activating the
+    // skip link scrolls but leaves focus (and the screen reader) in the header.
+    it('makes the skip link target focusable', () => {
+        setMockPage({
+            auth: { user: andiUser },
+            flash: {},
+            demoLoginEnabled: false,
+        });
+        render(
+            <AppShell>
+                <p>x</p>
+            </AppShell>,
+        );
+
+        const skip = screen.getByRole('link', { name: /konten|content/i });
+        const target = document.getElementById('main-content');
+        expect(skip).toHaveAttribute('href', '#main-content');
+        expect(target).toHaveAttribute('tabindex', '-1');
+    });
 });
