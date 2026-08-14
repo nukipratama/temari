@@ -476,7 +476,7 @@ const DayCellView = memo(function DayCellView({
                     </div>
                     {(cell.pace_sec_per_km !== null ||
                         cell.avg_hr !== null) && (
-                        <div className="mt-1.5 flex items-baseline gap-1.5 font-mono text-[11px] tabular-nums text-ink-3 lg:text-xs">
+                        <div className="mt-1.5 flex items-baseline gap-1.5 font-mono text-[11px] tabular-nums text-ink-2 lg:text-xs">
                             {cell.pace_sec_per_km !== null && (
                                 <span>{formatPace(cell.pace_sec_per_km)}</span>
                             )}

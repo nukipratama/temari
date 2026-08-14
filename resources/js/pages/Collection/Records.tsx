@@ -274,7 +274,7 @@ function TrophyWall({ records }: Readonly<{ records: ExtendedPR[] }>) {
                 <div className="flex items-baseline gap-3">
                     <h2 className="font-display text-headline-md text-ink">
                         Trophy wall ·{' '}
-                        <em className="italic text-horizon-deep">distance</em>
+                        <em className="italic text-horizon-ink">distance</em>
                     </h2>
                     <Chip tone="horizon">{count} PR</Chip>
                 </div>

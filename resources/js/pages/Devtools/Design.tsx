@@ -89,13 +89,21 @@ function Swatch({ name, value }: Readonly<{ name: string; value: string }>) {
 function Specimen({
     label,
     children,
-}: Readonly<{ label: string; children: React.ReactNode }>) {
+    onSky = false,
+}: Readonly<{ label: string; children: React.ReactNode; onSky?: boolean }>) {
     return (
         <div className="w-[124px]">
             <div className="flex h-[112px] items-center justify-center">
                 {children}
             </div>
-            <div className="mt-1 text-center text-meta">{label}</div>
+            <div
+                className={cn(
+                    'mt-1 text-center text-meta',
+                    onSky && 'text-ink-on-sky',
+                )}
+            >
+                {label}
+            </div>
         </div>
     );
 }
@@ -492,7 +500,11 @@ export default function Design() {
                                     'celebrating',
                                 ] as const
                             ).map((expression) => (
-                                <Specimen key={expression} label={expression}>
+                                <Specimen
+                                    key={expression}
+                                    label={expression}
+                                    onSky
+                                >
                                     <TemariProto
                                         pose={expression}
                                         tone="sky"
