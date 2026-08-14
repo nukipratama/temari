@@ -129,11 +129,12 @@ tab's season summary passes it, so the mascot stays phase-agnostic everywhere el
 state to pose:
 
 - `MOOD_TO_POSE` — run `Mood` → pose (e.g. `blazing` → `proud`, `gassed` → `wobble`,
-  `chill` → `reading`). Used on the run detail and the recaps.
-- `VIBE_TO_POSE` — a persona/weekly `vibe` string → pose (e.g. `pumped` →
-  `pumped`, `cooked` → `wobble`).
+  `chill` → `reading`). Used on the run detail, the calendar and the recaps.
+- `poseForRun` — an `ActivityDetail` → pose, preferring the persisted backend
+  mood and falling back to the `moodFromActivity` heuristic when a run has no
+  post-run StoryLine yet. This is what the dashboard uses.
 - `poseForFormStatus` — weekly training-load `FormStatus` → pose, used on the
-  Jejak weekly recap.
+  weekly recap in the run log.
 
 ## Size & animation
 
