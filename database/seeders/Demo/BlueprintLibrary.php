@@ -50,7 +50,7 @@ class BlueprintLibrary
         return $this->scriptedCache ??= [
             // A plain middling run: HR straddles Z2/Z3 (no zone dominant) and it's
             // kept under 5K so it dodges every special branch (incl. Anti Ngedrop,
-            // which needs 5K+) and lands the "Lari Santai" default move.
+            // which needs 5K+) and lands the "Easy Run" default move.
             new RunBlueprint(
                 startsAt: Carbon::today()->subDays(38)->setTime(6, 10),
                 distanceM: 4_500,

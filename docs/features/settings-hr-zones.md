@@ -1,5 +1,5 @@
 ---
-title: HR zones settings (Zona HR)
+title: HR zones settings
 description: The heart-rate-zone settings page — max/resting HR input, Karvonen-derived Z1–Z5, a live preview, manual overrides and save.
 tags: [feature, settings]
 status: living
@@ -13,7 +13,7 @@ code_refs:
   - routes/web.php
 ---
 
-# HR zones settings (Zona HR)
+# HR zones settings
 
 `/settings/zones` lets a runner set their personal heart-rate zones so every run is scored against *their* physiology, not a default. Until they save, the app falls back to a standard profile.
 
@@ -26,11 +26,10 @@ code_refs:
 
 ## The page
 
-[HrZones.tsx](../../resources/js/pages/Settings/HrZones.tsx) is split into three stacked sections:
+[HrZones.tsx](../../resources/js/pages/Settings/HrZones.tsx) is split into two stacked sections:
 
 1. **Max & Resting HR** — two `NumberField` bpm inputs. An "Auto-calculate from Max & Resting" button recomputes the zones from these.
-2. **Preview zona (otomatis)** — a live, read-only Z1–Z5 breakdown that updates as you type. Zones are derived client-side by the exported `deriveZones(maxHr, restingHr)`: each zone's `lo` is `round(resting + pct × (max − resting))` using the **Karvonen %HRR** breakpoints `[0.488, 0.664, 0.792, 0.904, 0.968]`; each `hi` is the next zone's `lo`, and Z5's `hi` is an open-ended sentinel (`999`, shown as `Z5+`). The breakpoints are mirrored from the server request so the preview matches the stored result byte for byte.
-3. **Atur manual (opsional)** — `BoundaryInput` fields to hand-tune each band. The rule (and the validation): each zone's upper bound must equal the next zone's lower bound so there are no gaps.
+2. **Your zones** — the Z1–Z5 breakdown, both the live preview and the hand-tuning in one place. It updates as you type: zones are derived client-side by the exported `deriveZones(maxHr, restingHr)`, where each zone's `lo` is `round(resting + pct × (max − resting))` using the **Karvonen %HRR** breakpoints `[0.488, 0.664, 0.792, 0.904, 0.968]`; each `hi` is the next zone's `lo`, and Z5's `hi` is an open-ended sentinel (`999`, shown as `Z5+`). The breakpoints are mirrored from the server request so the preview matches the stored result byte for byte. `BoundaryInput` fields let you hand-tune each band; the rule (and the validation) is that each zone's upper bound must equal the next zone's lower bound so there are no gaps.
 
 Submit `router.patch('/settings/zones', …)` with `max_hr`, `resting_hr` and the five `{lo, hi}` zones.
 

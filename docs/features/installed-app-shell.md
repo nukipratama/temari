@@ -58,20 +58,20 @@ makes the glyphs turn white (a different iOS version, a dark app surface at the
 top), the fix is a backing behind the glyphs — but confirm that on a device
 first rather than assuming it from the spec.
 
-`pt-[max(0.75rem,env(safe-area-inset-top))]` on the Aku top bar, and
+`pt-[max(0.75rem,env(safe-area-inset-top))]` on the Me top bar, and
 `pt-[env(safe-area-inset-top)]` on the shell everywhere else, are what keep
 content clear of the notch now that the web view runs edge to edge.
 
 ## The mobile top bar, and its back button
 
 [MobileTopBar](resources/js/components/MobileTopBar.tsx) is on **every** page.
-#398 briefly scoped it to Aku on the argument that a decorative brand mark and
+#398 briefly scoped it to Me on the argument that a decorative brand mark and
 an ambient sync chip did not justify permanent space on a phone. That
 under-weighted the sync chip: Strava freshness is time-sensitive and `revoked`
 is an actionable failure, so hiding it on the profile tab made a broken
 connection invisible until the user visited a tab they had no reason to open
 *because* nothing was syncing. It also quietly undid #396, which had moved
-Pengaturan and Keluar into the avatar menu precisely so account actions were
+Settings and Log out into the avatar menu precisely so account actions were
 reachable everywhere.
 
 On a **pushed** screen the brand mark gives way to a back button — roots show
@@ -82,7 +82,7 @@ identity, pushes show a way out. Which screens count is an explicit map in
   too, but are reached through in-page tab strips, so they are siblings of their
   root rather than a stack, and keep the brand mark.
 - `/settings` is deliberately absent from the map even though it is nested by
-  URL. It is one tap from the Aku tab and from the avatar menu on every page, so
+  URL. It is one tap from the Me tab and from the avatar menu on every page, so
   it behaves as a root. Only `/settings/zones`, reachable from nowhere else,
   gets a back button.
 
