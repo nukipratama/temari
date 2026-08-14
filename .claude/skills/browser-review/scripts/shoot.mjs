@@ -5,7 +5,7 @@
 // Pages are discovered from `artisan route:list` (see lib.mjs) — nothing hardcoded.
 import { rmSync } from 'node:fs';
 import { chromium } from 'playwright';
-import { BASE, VIEWPORT_DEFS, parseViewports, login, dismissReveal, discoverPageRoutes, fullPageScreenshot, SHOT, EXT } from './lib.mjs';
+import { BASE, VIEWPORT_DEFS, parseViewports, login, dismissReveal, discoverPageRoutes, fullPageScreenshot, SHOT, EXT, DEVTOOLS_AUTH } from './lib.mjs';
 
 // Each run lands in its own dir keyed by date + execution time. Prior batches are
 // cleared first, so only the latest sweep is kept (stale screenshots aren't needed):
@@ -39,7 +39,7 @@ for (const vp of selected) {
   const def = VIEWPORT_DEFS[vp];
   const dir = `${OUT}/${vp}`;
   const errors = [];
-  const context = await browser.newContext({ ...def, reducedMotion: 'reduce' });
+  const context = await browser.newContext({ ...def, ...DEVTOOLS_AUTH, reducedMotion: 'reduce' });
   const bootPage = await context.newPage();
   capture(bootPage, errors);
 

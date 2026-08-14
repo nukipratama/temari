@@ -3,7 +3,7 @@
 // Pages are discovered from `artisan route:list` (lib.mjs); overflow is
 // breakpoint-dependent, so every discovered page is checked at every viewport.
 import { chromium } from 'playwright';
-import { BASE, VIEWPORT_DEFS, parseViewports, login, dismissReveal, discoverPageRoutes } from './lib.mjs';
+import { BASE, VIEWPORT_DEFS, parseViewports, login, dismissReveal, discoverPageRoutes, DEVTOOLS_AUTH } from './lib.mjs';
 
 const selected = parseViewports();
 
@@ -14,7 +14,7 @@ const browser = await chromium.launch({
 
 for (const vp of selected) {
   const def = VIEWPORT_DEFS[vp];
-  const context = await browser.newContext(def);
+  const context = await browser.newContext({ ...def, ...DEVTOOLS_AUTH });
   const page = await context.newPage();
   console.log(`\n##### ${vp} (${def.viewport.width}x${def.viewport.height}) #####`);
   await login(page);
