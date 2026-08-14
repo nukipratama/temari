@@ -9,6 +9,9 @@ code_refs:
   - app/Services/AI/BackfillAgeGate.php
   - app/Listeners/DispatchPostRunAnalysis.php
   - app/Http/Controllers/Api/AnalysisController.php
+  - app/Services/AI/AnalysisSubjectAuthorizer.php
+  - app/Services/AI/AnalysisType.php
+  - app/Jobs/AI/AnalyzeBriefingFeaturedKartuVoiceJob.php
   - app/Services/AI/RuleBased/RuleBasedNarrationFiller.php
 ---
 
@@ -36,9 +39,19 @@ Two things made the old cap leakier than it looked:
 **`blocksManualTrigger()` is exhaustive over `AnalysisType`** ([BackfillAgeGate.php:34](app/Services/AI/BackfillAgeGate.php#L34)) — no `default` arm, so a new narrated block cannot be added without stating whether its manual trigger can reach material older than the cutoff. Three kinds block:
 
 - `card_flavor` and `pr_context` — resolved to their run's `start_date_local` through the card / PR row.
-- `briefing_mascot_voice` — its discriminator *is* the day it narrates, and the validation rule is an unbounded `date_format:Y-m-d`, so a hand-crafted POST could ask for a briefing about any date in history.
+- `briefing_mascot_voice` — its discriminator *is* the day it narrates, so a hand-crafted POST could ask for a briefing about any past date.
 
 The rest do not block, each for a stated reason: the four chained kinds are already covered by the chain head rule, and `aku_profile_voice` / `briefing_featured_kartu_voice` narrate material that is current whatever its date (the profile voice reads a rolling window as of now and ignores its week key; the featured kartu is whichever card the dashboard is showing today, picked from the last 8 runs — which for a low-mileage runner legitimately reaches past 84 days).
+
+### The discriminator is a second subject
+
+Gating the *age* of the material was not enough, because the discriminator was itself unbounded in two different ways, and each needed a different answer.
+
+**A discriminator that names a resource needs ownership.** `briefing_featured_kartu_voice` keys off a RunCard id carried under the *caller's own* subject id, and the controller authorized only the subject. A user could trigger a briefing keyed to another athlete's card and have that card described in their own row, which Strava's API terms have barred since Nov 2024. Ownership now lives with the subject check in [AnalysisSubjectAuthorizer](app/Services/AI/AnalysisSubjectAuthorizer.php) (a 403, matching the sibling check on the same request), and [AnalyzeBriefingFeaturedKartuVoiceJob](app/Jobs/AI/AnalyzeBriefingFeaturedKartuVoiceJob.php) scopes its own lookup to the row's owner so a row that somehow reaches the queue still cannot read across users. The existing generative cross-user sweep walks the *route table*, so a query-string discriminator was invisible to it.
+
+**A discriminator that names a period needs a range.** A shape rule is not a closed set: `date_format:Y-m-d` admits some 3.6M days, each of which `firstOrCreate`s a permanent `ai_analyses` row, at 8 requests a minute. The period-keyed types now carry a range as well as a shape ([AnalysisType::discriminatorRules()](app/Services/AI/AnalysisType.php)), bounded by `MAX_DISCRIMINATOR_AGE_DAYS`, so an out-of-range value is a 422 at the request boundary rather than a row.
+
+That cap is **365 days, deliberately wider than the 84-day narration cutoff**. The two bounds answer different questions and collapsing them would make one of them dead code: the discriminator range closes the set of rows a caller can mint, while the narration cutoff decides which of those are worth an LLM call. Between 84 and 365 days a trigger is valid and answered by the filler; past 365 it is not a request the app models at all.
 
 **A blocked trigger is served, not refused.** It resolves through [AnalysisService::requestRuleBased()](app/Services/AI/AnalysisService.php#L107) with `refillDone: false`, so the click always produces content — no dead button, no empty state a retry cannot fill — while a row that already holds real, billed-for prose is never clobbered.
 

@@ -891,12 +891,18 @@ it('never overwrites narration a too-old run was already billed for', function (
     Bus::assertNothingDispatched();
 });
 
-it('serves a hand-crafted briefing trigger for a long-past day rule-based', function (): void {
+it('serves a hand-crafted briefing trigger for a past day rule-based', function (): void {
+    // The two bounds are deliberately different widths and this is the band
+    // between them: past the 84-day narration cutoff, so no LLM call, but still
+    // inside the 365-day discriminator range, so the request is valid and the
+    // age gate (not validation) is what answers it. A day outside the range is
+    // a 422 instead, asserted in TriggerAnalysisRequestTest.
     config()->set('ai.backfill_max_age_days', 84);
     $user = User::factory()->create();
+    $pastDay = Carbon::today()->subDays(200)->toDateString();
 
     $this->actingAs($user)
-        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=2019-03-05")
+        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator={$pastDay}")
         ->assertSuccessful()
         ->assertJson(['status' => 'done']);
 
