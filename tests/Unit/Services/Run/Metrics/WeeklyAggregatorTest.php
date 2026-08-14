@@ -94,8 +94,10 @@ it('writes null avg_decoupling when no runs in the week have decoupling_pct', fu
     expect($snapshot->avg_decoupling)->toBeNull();
 });
 
-it('skips details without trimp_edwards when rolling the daily TRIMP map', function (): void {
-    // HR-less Strava run: counts toward distance/runs, contributes 0 TRIMP.
+it('leaves load unknown, not zero, when no run scored a TRIMP', function (): void {
+    // A brand-new connection's history is entirely summary-only, so nothing
+    // carries trimp_edwards: volume is exact, load is unscored. Writing 0.0
+    // would tell a stranger they did nothing.
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
@@ -110,7 +112,13 @@ it('skips details without trimp_edwards when rolling the daily TRIMP map', funct
     $snapshot = WeeklySnapshot::query()->where('user_id', $user->id)->latest('week_ending')->firstOrFail();
     expect($snapshot->runs)->toBe(1)
         ->and($snapshot->distance_km)->toBe(5.0)
-        ->and($snapshot->weekly_trimp)->toBe(0.0);
+        ->and($snapshot->weekly_trimp)->toBeNull()
+        ->and($snapshot->atl_7d)->toBeNull()
+        ->and($snapshot->ctl_42d)->toBeNull()
+        ->and($snapshot->form)->toBeNull()
+        ->and($snapshot->form_status)->toBeNull()
+        ->and($snapshot->monotony)->toBeNull()
+        ->and($snapshot->strain)->toBeNull();
 });
 
 it('is idempotent — re-running upserts the same week without duplicating', function (): void {

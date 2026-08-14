@@ -3,7 +3,7 @@ title: Decisions — Map of Content
 description: The architecture decision timeline (ADRs)
 tags: [decision, moc]
 status: living
-reviewed: 2026-08-11
+reviewed: 2026-08-14
 ---
 
 # Decisions (ADRs)
@@ -18,8 +18,9 @@ ADRs grouped by the problem they solve, for easier navigation than a flat timeli
 
 | Pattern | ADRs |
 |---|---|
-| **Cost guards** | [[idempotent-dispatch-cost-ceiling]] (dispatch-time + daily ceiling); [[bounded-self-heal-and-dead-letter]] (execution-time + bounded retry); [[narration-agents-on-openai-php]] (per-block agent budget); [[per-block-manual-retry]] *(superseded)* |
+| **Cost guards** | [[idempotent-dispatch-cost-ceiling]] (dispatch-time + daily ceiling); [[twelve-week-narration-cutoff]] (per-signup backfill depth); [[bounded-self-heal-and-dead-letter]] (execution-time + bounded retry); [[narration-agents-on-openai-php]] (per-block agent budget); [[per-block-manual-retry]] *(superseded)* |
 | **Data isolation** | [[analytics-db-separate-connection]] (metering outlives app resets); [[date-cast-utc-shift]] (UTC off-by-one guard) |
+| **Ingest** | [[summary-first-ingest]] (whole history from paged summaries, detail hydrated on demand) |
 | **Async / resilience** | [[chained-narration]] (connected narration threads); [[strava-circuit-breaker-rate-limit]] (per-client rate-limit guard); [[narrow-trusted-proxy-headers]] (proxy trust behind tunnel); [[trust-all-proxies-cloudflare]] *(superseded)*; [[deferred-recap-windowing]] (window-gated generation) |
 | **AI routing** | [[azure-openai-routing]] (per-narrator-kind deployment selection); [[narration-agents-on-openai-php]] (SDK seam + tool calling); [[demo-user-billing-exclusion]] (demo user omitted from auto-billing); [[demo-triggers-served-rule-based]] (demo triggers filled rule-based); [[scoped-run-qa-not-an-analysis-row]] (Q&A scoped by construction, stored outside the row model) |
 | **Notifications** | [[inbox-is-an-always-on-channel]] (the inbox as an unmuteable third channel); [[demo-notifications-are-inbox-only]] (demo routed to the record, never to an interruption) |
@@ -39,12 +40,14 @@ _AI cost & flow_
 - [[demo-triggers-served-rule-based]] — the public demo's "Baca ulang" works but is filled rule-based, never billed
 - [[narration-agents-on-openai-php]] — tool-calling narrators stay on openai-php; one block is bounded by steps + tokens
 - [[scoped-run-qa-not-an-analysis-row]] — ask-about-this-run is bound to one activity by construction, stored in its own table, rate-limited per user without a per-user cost cap
+- [[twelve-week-narration-cutoff]] — narration depth stops at 84 days, and every manual trigger that could reach past it is gated too
 
 _Data_
 - [[analytics-db-separate-connection]] — metering on a separate connection that survives migrate:fresh
 - [[date-cast-utc-shift]] — date columns cast `date:Y-m-d` to dodge a UTC off-by-one
 
 _Infra & Strava_
+- [[summary-first-ingest]] — a connect stores the whole history from paged summaries; detail, streams and the story layer are hydrated only for runs someone opens
 - [[strava-circuit-breaker-rate-limit]] — Strava rate limit is per-client, so the guard key is global
 - [[fixed-session-cookie]] — fixed cookie name + Redis prefixes, not APP_NAME-derived
 - [[trust-all-proxies-cloudflare]] — trust all proxies behind the Cloudflare tunnel *(superseded by [[narrow-trusted-proxy-headers]])*

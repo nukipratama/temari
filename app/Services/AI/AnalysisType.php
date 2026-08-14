@@ -19,6 +19,8 @@ use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\WeeklySnapshot;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\In;
 
 enum AnalysisType: string
 {
@@ -35,6 +37,14 @@ enum AnalysisType: string
     public const string BRIEFING_SUBJECT_TYPE = 'briefing_user_day';
     public const string AKU_PROFILE_VOICE_SUBJECT_TYPE = 'aku_profile_voice_user';
     public const string MONTHLY_RECAP_SUBJECT_TYPE = 'monthly_recap_user_month';
+
+    /**
+     * How far back a period-keyed discriminator may reach. Deliberately wider
+     * than `ai.backfill_max_age_days` so the two bounds stay distinct: this one
+     * closes the set of rows a caller can mint, the narration cutoff decides
+     * which of them are worth an LLM call.
+     */
+    public const int MAX_DISCRIMINATOR_AGE_DAYS = 365;
 
     /**
      * The multi-row group job this type is dispatched through (the whole group
@@ -162,17 +172,27 @@ enum AnalysisType: string
      * - every other type keys off subject_id alone and its job ignores the
      *   discriminator, so a non-null value is rejected outright.
      *
+     * A shape rule alone is not a closed set: `date_format:Y-m-d` admits some
+     * 3.6M days, so a caller could mint that many permanent rows. The
+     * period-keyed arms therefore carry a range as well as a shape, and the one
+     * arm naming a *resource* is ownership-checked in
+     * {@see AnalysisSubjectAuthorizer} instead, where a 403 is the honest answer.
+     *
      * Exhaustive on purpose (no `default`): a new type must state its choice.
      *
-     * @return list<string>
+     * @return list<string|In>
      */
     public function discriminatorRules(): array
     {
         return match ($this) {
-            self::BriefingMascotVoice => ['required', 'string', 'date_format:Y-m-d'],
+            self::BriefingMascotVoice => [
+                'required', 'string', 'date_format:Y-m-d',
+                'after_or_equal:'.Carbon::today()->subDays(self::MAX_DISCRIMINATOR_AGE_DAYS)->toDateString(),
+                'before_or_equal:'.Carbon::today()->toDateString(),
+            ],
             self::BriefingFeaturedKartuVoice => ['required', 'string', 'max:19', 'regex:/^[1-9][0-9]*$/'],
-            self::AkuProfileVoice => ['required', 'string', 'regex:/^\d{4}-W\d{2}$/'],
-            self::MonthlyRecap => ['required', 'string', 'date_format:Y-m'],
+            self::AkuProfileVoice => ['required', 'string', 'regex:/^\d{4}-W\d{2}$/', Rule::in(self::triggerableIsoWeeks())],
+            self::MonthlyRecap => ['required', 'string', 'date_format:Y-m', Rule::in(self::triggerableMonths())],
             self::PostRunSpeech,
             self::RunInsight,
             self::WeeklyRecap,
@@ -199,5 +219,39 @@ enum AnalysisType: string
     public static function currentIsoWeek(): string
     {
         return Carbon::now()->isoFormat('GGGG-[W]WW');
+    }
+
+    /**
+     * The ISO weeks a manual trigger may name. The profile narrator reads a
+     * rolling window as of now and ignores the week key entirely, so only the
+     * current week is meaningful; the previous one is admitted so a page loaded
+     * just before a week rollover can still retry.
+     *
+     * @return list<string>
+     */
+    private static function triggerableIsoWeeks(): array
+    {
+        return [
+            Carbon::now()->subWeek()->isoFormat('GGGG-[W]WW'),
+            self::currentIsoWeek(),
+        ];
+    }
+
+    /**
+     * The months a manual trigger may name, current back to the age cap. The
+     * calendar can page further, but the recap is chained: a click on an older
+     * month resumes the chain forward rather than narrating that month, so the
+     * bound costs no reachable behaviour.
+     *
+     * @return list<string>
+     */
+    private static function triggerableMonths(): array
+    {
+        $current = Carbon::today()->startOfMonth();
+
+        return array_map(
+            static fn (int $monthsBack): string => $current->copy()->subMonthsNoOverflow($monthsBack)->format('Y-m'),
+            range(0, intdiv(self::MAX_DISCRIMINATOR_AGE_DAYS, 30)),
+        );
     }
 }
