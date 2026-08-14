@@ -195,7 +195,7 @@ class SyncOrchestrator
     private function logSync(int $userId, string $status, int $activitiesSynced, int $apiCalls = 0, ?string $error = null): void
     {
         // Rate-limit headroom is only meaningful after a successful API call.
-        $remaining = $error === null ? $this->client->rateLimitRemaining($userId) : null;
+        $remaining = $error === null ? $this->client->rateLimitRemaining() : null;
 
         StravaSyncLog::log($userId, $status, $activitiesSynced, $apiCalls, $error, $remaining);
     }

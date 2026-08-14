@@ -71,7 +71,7 @@ A refused background read is **deferred, not dropped** — [IngestActivityJob](a
 
 The ceilings are **this app's own Read allocation, 200 per 15 min and 2,000 per day**, read off its Strava API dashboard, with Overall limits of 400 / 4,000 sitting above them. Strava's public docs quote a lower 100 / 1,000 default for new applications; that is **not** this app's allocation, so don't lower the constants on a docs reading. The dashboard is the source of truth, and the [[strava-circuit-breaker-rate-limit]] ADR records the same pair.
 
-> **Gotcha:** [`rateLimitRemaining(int $userId)`](app/Services/Strava/StravaClient.php#L148) still takes a `$userId` for call-site compatibility but **ignores it** for keying (and reports the *raw* pool, not the lower background-visible headroom) — every athlete sees the same shared headroom. Do not reintroduce the id into the key. Note the local guard's exhaustion and a real upstream `429` both surface as `StravaRateLimitedException`; only the local one is preventable by us.
+> **Gotcha:** [`rateLimitRemaining()`](app/Services/Strava/StravaClient.php#L147) takes no athlete: the buckets are app-wide, so every athlete sees the same shared headroom (and it reports the *raw* pool, not the lower background-visible headroom). Do not key it per user. Note the local guard's exhaustion and a real upstream `429` both surface as `StravaRateLimitedException`; only the local one is preventable by us.
 
 ## Per-connection token refresh
 

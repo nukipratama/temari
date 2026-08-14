@@ -139,13 +139,12 @@ class StravaClient
     }
 
     /**
-     * Remaining headroom for the shared per-client rate-limit buckets. The
-     * $userId is accepted for call-site compatibility but no longer scopes the
-     * key: the budget is app-wide, so every athlete sees the same headroom.
+     * Remaining headroom for the shared per-client rate-limit buckets, which
+     * are app-wide: every athlete sees the same numbers.
      *
      * @return array{'15min': int, 'daily': int}
      */
-    public function rateLimitRemaining(int $userId): array
+    public function rateLimitRemaining(): array
     {
         return [
             '15min' => max(0, RateLimiter::remaining($this->rateLimitKey('15min'), self::RATE_LIMIT_15MIN_MAX)),
