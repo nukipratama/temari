@@ -68,7 +68,7 @@ describe('KondisiCard', () => {
         };
         render(<KondisiCard load={riskyLoad} snapshot={snapshot} />);
 
-        expect(screen.getByText('3.15').className).toContain('text-ember');
-        expect(screen.getByText('6380').className).toContain('text-ember');
+        expect(screen.getByText('3.15')).toHaveClass('text-ember-deep');
+        expect(screen.getByText('6380')).toHaveClass('text-ember-deep');
     });
 });

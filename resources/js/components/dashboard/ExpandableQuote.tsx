@@ -27,6 +27,7 @@ export default function ExpandableQuote({
                 <ReadMoreToggle
                     expanded={expanded}
                     onToggle={() => setExpanded(!expanded)}
+                    onSky={onSky}
                 />
             )}
         </div>

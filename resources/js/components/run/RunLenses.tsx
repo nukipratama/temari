@@ -171,7 +171,7 @@ export default function RunLenses({
                             width={14}
                             height={14}
                             aria-hidden
-                            className="text-leaf"
+                            className="text-leaf-deep"
                         />
                         <Eyebrow token="micro" tone="ink-2">
                             This run&apos;s story
@@ -204,7 +204,7 @@ export default function RunLenses({
                                 width={14}
                                 height={14}
                                 aria-hidden
-                                className="text-ember"
+                                className="text-ember-deep"
                             />
                             <Eyebrow token="micro" tone="ink-2">
                                 What stood out

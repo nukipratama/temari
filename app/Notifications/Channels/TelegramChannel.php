@@ -23,8 +23,8 @@ use Illuminate\Support\Facades\Log;
  *
  * A message with a null `deliveryKey` (streak / test) skips the claim entirely.
  * A `force` message (manual push) skips the claim CHECK — so a resend always
- * goes out — but records the claim on success, so a later automatic notification
- * for the same row (e.g. a "Baca ulang" re-analysis) is deduped against it.
+ * goes out — but records the outcome, so a later automatic notification for the
+ * same row (e.g. a "Baca ulang" re-analysis) is deduped against a success.
  */
 class TelegramChannel
 {
@@ -72,24 +72,30 @@ class TelegramChannel
             return;
         }
 
-        // A manual push records the claim after a successful send (the automatic
-        // path already claimed before sending), so a later automatic notification
-        // for the same row is deduped. Best-effort and outside the deliver try: a
-        // claim hiccup must not be misread as a send failure (the message already
-        // went out) nor trigger a duplicate on retry.
-        if ($message->force && $message->deliveryKey !== null) {
-            $this->recordForcedClaim($message->deliveryKey);
+        // Best-effort and outside the deliver try: a bookkeeping hiccup must not be
+        // misread as a send failure (the message already went out) nor trigger a
+        // duplicate on retry. A manual push has no claim of its own, so this is
+        // also what dedupes a later automatic notification for the same row.
+        if ($message->deliveryKey !== null) {
+            $this->record(fn () => $this->claim->markSent($message->deliveryKey, self::CHANNEL), $message->deliveryKey);
         }
     }
 
     /**
      * A blocked bot / gone chat / bad token is non-retryable: mark the connection
-     * dead (like a Strava revocation) and stop. A force push has no claim to
-     * dedupe a retry, so it is one-shot: log and stop. The automatic path releases
-     * its claim and rethrows so the queued notification's retry can resend.
+     * dead (like a Strava revocation) and stop. A force push is one-shot: log and
+     * stop. The automatic path rethrows so the queued notification's retry can
+     * resend, which the failed claim now permits.
      */
     private function handleFailure(Throwable $e, User $notifiable, TelegramMessage $message): void
     {
+        if ($message->deliveryKey !== null) {
+            $this->record(
+                fn () => $this->claim->markFailed($message->deliveryKey, self::CHANNEL, $e->getMessage()),
+                $message->deliveryKey,
+            );
+        }
+
         if ($e instanceof TelegramApiException && $this->isPermanentTelegramFailure($e)) {
             $notifiable->telegramConnection?->markRevoked();
 
@@ -105,19 +111,15 @@ class TelegramChannel
             return;
         }
 
-        if ($message->deliveryKey !== null) {
-            $this->claim->release($message->deliveryKey, self::CHANNEL);
-        }
-
         throw $e;
     }
 
-    private function recordForcedClaim(int $deliveryKey): void
+    private function record(callable $write, int $deliveryKey): void
     {
         try {
-            $this->claim->claim($deliveryKey, self::CHANNEL);
+            $write();
         } catch (Throwable $e) {
-            Log::warning('telegram.force_send.claim_failed', [
+            Log::warning('telegram.delivery_record.failed', [
                 'delivery_key' => $deliveryKey,
                 'reason' => $e->getMessage(),
             ]);

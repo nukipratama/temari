@@ -271,7 +271,7 @@ function VitalChip({
     }[tone];
     const valueClass = {
         horizon: onSky ? 'text-horizon' : 'text-horizon-ink',
-        leaf: 'text-leaf',
+        leaf: onSky ? 'text-leaf' : 'text-leaf-deep',
         ink: onSky ? 'text-cream' : 'text-ink',
     }[tone];
     let middleBand: ReactNode = null;

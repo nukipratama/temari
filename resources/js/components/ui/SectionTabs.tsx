@@ -127,7 +127,7 @@ export default function SectionTabs<TId extends string>({
                                         'rounded-full px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-[0.06em]',
                                         onSky
                                             ? 'bg-sky/15 text-sky'
-                                            : 'bg-horizon/25 text-horizon',
+                                            : 'bg-horizon/25 text-horizon-ink',
                                     )}
                                 >
                                     {activeCount}

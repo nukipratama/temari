@@ -234,16 +234,24 @@ reached via `sail mysql`/`sail artisan tinker`/`docker exec`), so the only real 
 to bind off an unmodified `.env`. No changes needed to `compose.yaml` or `.githooks/pre-commit` —
 the pre-commit hook's `docker compose ps` check already resolves per-cwd correctly.
 
-Workflow: `EnterWorktree name=<slice>` → `./scripts/worktree-setup.sh <slot 1|2|3>` (its own
-`APP_PORT`/`VITE_PORT` off a static slot table — main stays 7001/7002, slots use 701x/702x — writes
-an untracked `compose.override.yaml` mounting the shared git dir so TIA works, then
-brings the stack up itself and fixes cache-volume ownership) → `vendor/` is empty on a
-fresh worktree, so `vendor/bin/sail` doesn't exist yet: install once with plain
-`docker compose exec -T app composer install`, then `./vendor/bin/sail npm ci` (`sail` works for
-everything from here on) → normal fast-feedback ladder → `ExitWorktree action=remove|keep`. That's
-enough to *run the automated suites* (they self-initialize their own `mysql_test`/`redis_test`) —
-to actually *load a page in a browser*, also run `sail artisan key:generate` (`.env.example` ships
-`APP_KEY` empty) and `sail artisan migrate`, plus `sail npm run dev` (or `npm run build`).
+Workflow: `EnterWorktree name=<slice>` → `./scripts/worktree-setup.sh <slot 1|2|3>` → normal
+fast-feedback ladder → `ExitWorktree action=remove|keep`. The script takes its own
+`APP_PORT`/`VITE_PORT` off a static slot table (main stays 7001/7002, slots use 701x/702x), writes
+an untracked `compose.override.yaml` mounting the shared git dir so TIA works, brings the stack up,
+fixes cache-volume ownership, then bootstraps the app: `composer install`, `key:generate`, and
+**both** migration sets. Every step is guarded or idempotent, so re-running the script after a
+failure is safe. `vendor/` is empty when it starts, so it uses plain `docker compose exec` for all
+of it; `./vendor/bin/sail` works for everything afterwards.
+
+**Both** migration sets matters. `analytics` is a second connection with its own migration path, so
+a plain `artisan migrate` does not touch it — the script also runs
+`migrate --database=analytics --path=database/migrations/analytics`. Without it `strava_sync_logs`
+and `ai_token_usages` are missing and `/pulse` + `/ai-usage` 500. This lived only in the script's
+printed next-steps until #614, which is exactly why every worktree skipped it.
+
+The PHP suites are ready at that point (they self-initialize their own `mysql_test`/`redis_test`).
+To *load a page in a browser*, also run `./vendor/bin/sail npm ci` plus `sail npm run dev` (or
+`npm run build`).
 
 Composer's and npm's **download caches** are shared across worktrees via fixed-name volumes
 (`temari_composer_cache`/`temari_npm_cache` in `compose.yaml`) — only `vendor/`/`node_modules`
@@ -253,10 +261,11 @@ worktree's install just replays from cache instead of re-downloading over the ne
 right after bringing the stack up, since they're created root-owned on first boot and the container
 always runs as `www-data` — no manual fix needed.
 
-**Two fresh-worktree gotchas**, neither concurrency-specific: a missing `APP_KEY` (see above) 500s
-every page with `MissingAppKeyException` until `key:generate` runs. And if several worktrees
-cold-install at the same moment, one can occasionally fail mid-extraction on a transient bind-mount
-visibility race — just retry once.
+**One fresh-worktree gotcha**, not concurrency-specific: if several worktrees cold-install at the
+same moment, one can occasionally fail mid-extraction on a transient bind-mount visibility race —
+just re-run `worktree-setup.sh`, which resumes rather than redoing. (The old `MissingAppKeyException`
+gotcha is gone: the script generates the key itself, and only when `APP_KEY` is unset, so a re-run
+never rotates it out from under a live session.)
 
 The Docker image (`temari/dev`) and its build cache are shared across worktrees on purpose (plain
 local tag, not project-scoped) — only pass `--build` again if a worktree's slice actually touches
