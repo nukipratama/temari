@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-set -euo pipefail
+# -E so the ERR trap below is inherited by the app() helper every step runs
+# through; without it a failing step exits non-zero but reports nothing.
+set -Eeuo pipefail
 
 #   ./scripts/worktree-setup.sh <slot: 1|2|3>
 #
@@ -19,6 +21,14 @@ case "$1" in
   3) APP_PORT=7031; VITE_PORT=7032 ;;
   *) usage ;;
 esac
+SLOT=$1
+
+# `set -e` already exits non-zero on a failing step, but the only other signal
+# is the closing banner not printing — and composer's ~160 lines of progress
+# output bury the error that caused it. A dead worktree then surfaces much later
+# as a missing vendor/autoload.php, which the app reports as a Vite manifest 500
+# pointing nowhere near the cause. Say so at the point of failure instead.
+trap 'printf "\nworktree-setup: FAILED at line %s — nothing after it ran.\nEvery step is guarded, so re-run to resume: %s %s\n" "$LINENO" "$0" "$SLOT" >&2' ERR
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
