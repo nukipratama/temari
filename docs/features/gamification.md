@@ -3,7 +3,7 @@ title: Gamification (cards, rarities, badges, unlocks, milestones)
 description: The reward engine — how a run becomes a card with rarity, badges and a special move, plus milestones, PRs and accessory unlocks.
 tags: [feature, gamification]
 status: living
-reviewed: 2026-07-29
+reviewed: 2026-08-14
 code_refs:
   - app/Services/Run/Story/RunCardFactory.php
   - app/Services/Run/Story/CardContext.php
@@ -96,6 +96,8 @@ It extends that namespace rather than paying out of the lifetime catalog **becau
 
 Goal targets are generated scaled to the season's own length ([SeasonService](../../app/Services/Run/Plan/SeasonService.php)), so a short race-oriented season and a 12-week self-scaled one both run a comparable track. Crossing a season boundary resets the track to zero and **revokes nothing** — the previous season's tiers are owned permanently, under their own season id. [SeasonRolloverTest](../../tests/Feature/Gamification/SeasonRolloverTest.php) pins both halves of that.
 
+It surfaces as the Plan tab's season track rail, which also carries the reset honesty and a count of the tiers earlier seasons left behind — see [[plan-periodizer]].
+
 ## Rest tokens and the weekly streak
 
 The weekly streak (`WeeklySnapshot::consecutiveWeekStreak()`) hard-resets to 0 as soon as one full week closes with no run. A **rest token** forgives exactly one such week, so a week lost to illness or a taper does not cost the streak.
@@ -108,6 +110,8 @@ The weekly streak (`WeeklySnapshot::consecutiveWeekStreak()`) hard-resets to 0 a
 [SettleStreakTokensCommand](../../app/Console/Commands/Gamification/SettleStreakTokensCommand.php) (`streak:settle`, Monday 00:00) settles the closed week. It is scheduled **ahead of `ai:weekly-recap` (00:01)**, which reads the streak and would otherwise narrate one this command is about to restore; that ordering is asserted, not just commented.
 
 Because `two_week_streak` is `min(streakWeeks, 2)`, a bridged streak can still reach the `aura_warmup` accessory goal. That is intended: the streak was preserved, so what the streak earns is preserved with it.
+
+The Plan tab renders the streak, the open week's stake, and the held rest weeks — with no control to play one, since there is nothing to play. See [[plan-periodizer]].
 
 ## Badge board
 

@@ -58,7 +58,18 @@ const SEASON = {
     week_index: 1,
     total_weeks: 12,
     is_race_oriented: false,
+    tiers_kept_from_past_seasons: 0,
     goals: [],
+};
+
+const STREAK = {
+    weeks: 6,
+    rest_weeks_held: 1,
+    rest_weeks_cap: 2,
+    weeks_to_next_rest_week: 2,
+    ran_this_week: true,
+    week_ends_on: '2026-08-16',
+    last_forgiven_week: null,
 };
 
 function lastPatchCall() {
@@ -85,6 +96,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK()]}
             />,
         );
@@ -111,11 +123,66 @@ describe('Plan', () => {
                 sessionsPerWeek={3}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[]}
             />,
         );
 
         expect(screen.getByText('No plan yet.')).toBeInTheDocument();
+    });
+
+    it('pays the season track one tier per completed goal, and holds it back with no goals at all', () => {
+        const goal = (id: number, is_completed: boolean) => ({
+            id,
+            title: `Goal ${id}`,
+            current: is_completed ? 10 : 2,
+            target: 10,
+            unit: 'sessions',
+            is_completed,
+        });
+
+        const { rerender } = render(
+            <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={null}
+                season={{
+                    ...SEASON,
+                    goals: [
+                        goal(1, true),
+                        goal(2, true),
+                        goal(3, false),
+                        goal(4, false),
+                        goal(5, false),
+                    ],
+                }}
+                streak={STREAK}
+                weeks={[WEEK()]}
+            />,
+        );
+
+        expect(
+            screen.getByRole('img', {
+                name: 'Season track: 2 of 5 tiers earned',
+            }),
+        ).toBeInTheDocument();
+
+        rerender(
+            <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={null}
+                season={SEASON}
+                streak={STREAK}
+                weeks={[WEEK()]}
+            />,
+        );
+
+        expect(screen.queryByText('Season Track')).not.toBeInTheDocument();
     });
 
     it("renders a session's type, distance, and pace", () => {
@@ -127,6 +194,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK()]}
             />,
         );
@@ -145,6 +213,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[
                     WEEK({
                         days: [
@@ -170,6 +239,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[]}
             />,
         );
@@ -189,6 +259,7 @@ describe('Plan', () => {
                 sessionsPerWeek={3}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[]}
             />,
         );
@@ -207,6 +278,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK()]}
             />,
         );
@@ -225,6 +297,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK()]}
             />,
         );
@@ -244,6 +317,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK({ days: [DAY({ pinned: true })] })]}
             />,
         );
@@ -262,6 +336,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK()]}
             />,
         );
@@ -280,6 +355,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[
                     WEEK({
                         days: [
@@ -313,6 +389,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK()]}
             />,
         );
@@ -331,6 +408,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK({ days: [DAY({ session_type: 'rest' })] })]}
             />,
         );
@@ -349,6 +427,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK()]}
             />,
         );
@@ -367,6 +446,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK()]}
             />,
         );
@@ -391,6 +471,7 @@ describe('Plan', () => {
                     week_index: 3,
                     total_weeks: 12,
                 }}
+                streak={STREAK}
                 weeks={[]}
             />,
         );
@@ -422,6 +503,7 @@ describe('Plan', () => {
                         },
                     ],
                 }}
+                streak={STREAK}
                 weeks={[]}
             />,
         );
@@ -443,6 +525,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK({ type: 'history', week_start: '2026-07-27' })]}
             />,
         );
@@ -461,6 +544,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK({ phase: 'peak' })]}
             />,
         );
@@ -481,6 +565,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[
                     WEEK({
                         week_start: '2026-07-27',
@@ -509,6 +594,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[]}
             />,
         );
@@ -525,6 +611,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[]}
             />,
         );
@@ -541,6 +628,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[]}
             />,
         );
@@ -579,6 +667,7 @@ describe('Plan', () => {
                         deload,
                     }}
                     season={SEASON}
+                    streak={STREAK}
                     weeks={[WEEK()]}
                 />,
             );
@@ -605,6 +694,7 @@ describe('Plan', () => {
                     deload: true,
                 }}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK()]}
             />,
         );
@@ -624,6 +714,7 @@ describe('Plan', () => {
                 sessionsPerWeek={4}
                 adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[
                     WEEK({
                         week_start: '2026-07-27',

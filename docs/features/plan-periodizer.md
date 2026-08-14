@@ -3,7 +3,7 @@ title: Plan — deterministic periodizer and the Plan tab
 description: The rules-only training periodizer that fills the Plan tab, its two modes, the render-time readiness clamp, and the render-time volume redistribution
 tags: [feature, run]
 status: living
-reviewed: 2026-08-13
+reviewed: 2026-08-14
 code_refs:
   - app/Services/Run/Plan/Periodizer.php
   - app/Services/Run/Plan/PhaseSchedule.php
@@ -23,6 +23,8 @@ code_refs:
   - app/Http/Controllers/PlanController.php
   - app/Console/Commands/Run/RegeneratePlanCommand.php
   - resources/js/pages/Plan.tsx
+  - resources/js/components/plan/SeasonTrack.tsx
+  - resources/js/components/plan/StreakPanel.tsx
 ---
 
 # Plan — deterministic periodizer and the Plan tab
@@ -91,6 +93,14 @@ The three sections above are all *render-time* reactions within one week. The ge
 The Plan tab's top-of-page summary section is the same periodized arc viewed at a higher zoom, not a separate page (`Season IS the training block` — see the v2 program's locked decisions). [SeasonService::ensureCurrent()](app/Services/Run/Plan/SeasonService.php) is called both from `PlanController::index()` (a fresh user's first page view already has a season) and from `Periodizer::regenerate()` (the weekly job and on-demand regeneration keep it in lockstep with the plan's own mode). A self-scaled `Season` runs a fixed 12 weeks (matching `HORIZON_WEEKS`) and auto-cycles into a fresh one on expiry; a race-oriented one ends on `race_date`. Setting or clearing a `RaceGoal` mid-season closes the current season early (`ends_at` moves to the day before) and opens the other mode at the next call — never a gap, never an overlap, since the mode check always compares the CURRENT active race against the latest season's `race_goal_id`.
 
 5 `SeasonGoal` rows generate once, at creation — see [[gamification]] for the full list and the rest-day reward mechanism that isn't a `Badge`.
+
+### The season track and the weekly streak on the page
+
+Two cards under that summary render what the season-scoped reward engine is actually doing.
+
+[SeasonTrack](../../resources/js/components/plan/SeasonTrack.tsx) is the reward rail: one pip per `SeasonGoal`, filled for each one completed, which is exactly the tier count `GrantSeasonUnlocksAction` grants under `season.{id}.track_{N}`. The earned count is derived on the client from the goals already in the payload rather than shipped twice. Under it sits the only honesty this card owes the user: **the track resets at the season boundary, and nothing collected resets with it.** `season.tiers_kept_from_past_seasons` ([PlanController](../../app/Http/Controllers/PlanController.php)) counts the track tiers owned under an *earlier* season's key namespace and proves that claim with a number; it renders only when that number is non-zero, so a first season shows no empty promise.
+
+[StreakPanel](../../resources/js/components/plan/StreakPanel.tsx) renders `WeeklySnapshot::consecutiveWeekStreak()` with the stake attached: whether the open week has a run in it yet, when it closes, and what a runless close would do. Rest weeks (`StreakRestToken`) appear as held pips and a plain statement that Temari plays them automatically — **there is deliberately no spend control**, because `SettleStreakRestTokensAction` spends at week close and a token the user had to remember would fail the runner it exists for. The accrual forecast ("the next one lands at week N") is hidden entirely once the held tokens are at `MAX_HELD`, since no further token can arrive; a broken streak reads as a restart rather than a zero.
 
 ## Extracted: interval detection
 
