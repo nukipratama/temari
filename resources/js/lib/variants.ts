@@ -112,7 +112,7 @@ export const chipVariants = cva(
 
 /**
  * Segmented / toggle control — the solid-fill selected-vs-unselected pill used
- * by the Rekor progression tabs and the ShareCardModal theme picker. One source
+ * by the PRs progression tabs and the ShareCardModal theme picker. One source
  * of truth for radius/size/state. Filter rows that need a bordered or tinted
  * treatment (history range + mood, AiUsage presets) stay hand-rolled.
  */
@@ -197,7 +197,7 @@ export const filterOptionVariants = cva(
 /**
  * Bordered pill — the hairline-outlined counterpart to
  * {@link toggleButtonVariants}'s solid fill, for a selectable filter (race
- * distance presets, the Rekor progression tabs) or an inline row action (the
+ * distance presets, the PRs progression tabs) or an inline row action (the
  * Plan tab's per-day controls). Gold-on-paper is `horizon-ink`, never the
  * `horizon-deep` CTA fill.
  */

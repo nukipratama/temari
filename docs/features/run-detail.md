@@ -126,7 +126,7 @@ limit up front instead of quietly answering thinner.
 When the run has a collectible [Kartu](../../resources/js/components/card/Kartu.tsx),
 its own section sits right below the hero: the full-size card on a sky panel with
 **Bagikan** (opens [ShareCardModal](../../resources/js/components/card/ShareCardModal.tsx))
-and **Buka ulang kartu** (re-arms the pack-tear reveal), plus the lore column — the
+and **Replay card reveal** (re-arms the pack-tear reveal), plus the lore column — the
 streamed `CardFlavor` quote and a "Kenapa [rarity]" block explaining each badge.
 `RunController::show` enriches the run's `RunCard` with that flavor analysis, its
 edition (`index`/`total` within its rarity), and a signed `public_share_url`; there

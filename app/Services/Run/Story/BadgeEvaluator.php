@@ -18,12 +18,12 @@ final class BadgeEvaluator
 
     private const int LONG_SLOW_DISTANCE_DURATION_S = 3_600;
 
-    private const int PACE_KILAT_SEC_PER_KM = 300;
+    private const int PACE_SPEEDSTER_SEC_PER_KM = 300;
 
     private const int ELEVATION_GAIN_M = 200;
 
-    /** A short punchy climb earns Pendaki even without big total gain. */
-    private const float MAX_GRADE_PENDAKI_PCT = 8.0;
+    /** A short punchy climb earns Climber even without big total gain. */
+    private const float MAX_GRADE_CLIMBER_PCT = 8.0;
 
     /** At or below this temperature (Celsius) a run counts as cold. */
     private const int COLD_TEMP_C = 20;
@@ -67,16 +67,16 @@ final class BadgeEvaluator
         $badges = [];
 
         if (($detail->weather_temp_c ?? 0) >= 31) {
-            $badges[] = Badge::HariPanas->value;
+            $badges[] = Badge::HeatTamer->value;
         }
         if ($detail->weather_rain_detected === true) {
-            $badges[] = Badge::PejuangHujan->value;
+            $badges[] = Badge::RainWarrior->value;
         }
         if (($detail->weather_wind_speed_kmh ?? 0) >= 20) {
-            $badges[] = Badge::LawanAngin->value;
+            $badges[] = Badge::Headwind->value;
         }
         if ($detail->start_date_local !== null && (int) $detail->start_date_local->format('H') < 6) {
-            $badges[] = Badge::AnakPagi->value;
+            $badges[] = Badge::EarlyBird->value;
         }
         if ($this->isLongSlowDistance($detail, $summary)) {
             $badges[] = Badge::LongSlowDistance->value;
@@ -85,7 +85,7 @@ final class BadgeEvaluator
             $badges[] = Badge::NegativeSplit->value;
         }
         if ($this->isAerobicDiscipline($detail, $summary)) {
-            $badges[] = Badge::TahanDiri->value;
+            $badges[] = Badge::HeldBack->value;
         }
 
         return $badges;
@@ -104,29 +104,29 @@ final class BadgeEvaluator
         $hour = $this->startHour($detail);
 
         if ($hour !== null && ($hour < 5 || $hour >= 21)) {
-            $badges[] = Badge::AnakMalam->value;
+            $badges[] = Badge::NightOwl->value;
         }
         if (($detail->total_elevation_gain ?? 0) >= self::ELEVATION_GAIN_M
-            || ($summary->maxGradePct() ?? 0.0) >= self::MAX_GRADE_PENDAKI_PCT) {
-            $badges[] = Badge::Pendaki->value;
+            || ($summary->maxGradePct() ?? 0.0) >= self::MAX_GRADE_CLIMBER_PCT) {
+            $badges[] = Badge::Climber->value;
         }
         if ($context->isFirstRunEver) {
-            $badges[] = Badge::PertamaKali->value;
+            $badges[] = Badge::FirstTimer->value;
         }
 
         $paceSec = $detail->paceSecPerKm();
-        if ($paceSec !== null && $paceSec < self::PACE_KILAT_SEC_PER_KM) {
-            $badges[] = Badge::Kilat->value;
+        if ($paceSec !== null && $paceSec < self::PACE_SPEEDSTER_SEC_PER_KM) {
+            $badges[] = Badge::Speedster->value;
         }
         if ($distance >= 21_097.5) {
-            $badges[] = Badge::Jauh->value;
+            $badges[] = Badge::LongHauler->value;
         }
 
         return array_merge($badges, $this->zoneAndEffortBadges($detail, $summary, $context, $hour));
     }
 
     /**
-     * Zone-based and effort-based badges: Z2 Master, Anak Dingin, Keras, Santai.
+     * Zone-based and effort-based badges: Z2 Master, Cold Runner, All Out, Easy Miles.
      *
      * @return list<string>
      */
@@ -139,21 +139,21 @@ final class BadgeEvaluator
             $badges[] = Badge::Z2Master->value;
         }
         if ($this->isColdRun($detail, $hour)) {
-            $badges[] = Badge::AnakDingin->value;
+            $badges[] = Badge::ColdRunner->value;
         }
         if ($this->isHardEffort($detail, $context)) {
-            $badges[] = Badge::Keras->value;
+            $badges[] = Badge::AllOut->value;
         }
         if ($this->isEasyEffort($detail, $context)) {
-            $badges[] = Badge::Santai->value;
+            $badges[] = Badge::EasyMiles->value;
         }
 
         return $badges;
     }
 
     /**
-     * Cold run for the ❄️ Anak Dingin badge. Prefer a real weather reading; when
-     * none is stored, fall back to a stricter pre-dawn window than AnakPagi's so
+     * Cold run for the ❄️ Cold Runner badge. Prefer a real weather reading; when
+     * none is stored, fall back to a stricter pre-dawn window than EarlyBird's so
      * the two badges stay distinct instead of double-awarding every early run.
      */
     private function isColdRun(ActivityDetail $detail, ?int $hour): bool

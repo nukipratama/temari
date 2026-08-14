@@ -44,7 +44,7 @@ class BackfillAgeGate
     }
 
     /**
-     * Whether a manual "Baca ulang" on this subject must be served rule-based.
+     * Whether a manual "Reread" on this subject must be served rule-based.
      *
      * Exhaustive on purpose (no `default`): a new AnalysisType must state
      * whether its manual trigger can reach material older than the cutoff.

@@ -113,7 +113,7 @@ it('grants aura_windrunner after three headwind badge cards', function (): void 
         $activity = Activity::factory()->for($user)->create();
         RunCard::factory()->create([
             'activity_id' => $activity->id,
-            'badges' => [Badge::LawanAngin->value],
+            'badges' => [Badge::Headwind->value],
         ]);
     }
 

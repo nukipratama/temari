@@ -95,10 +95,10 @@ class AnalysisService
      * {@see self::withoutDispatching()}, so no job is queued, no cooldown starts
      * and no notification fans out. The demo login is public and a manual
      * trigger deliberately fires past the cost ceiling, so the demo account's
-     * "Baca ulang" resolves here and can never bill Azure.
+     * "Reread" resolves here and can never bill Azure.
      *
      * $refillDone controls whether an already-Done row gets overwritten: the
-     * demo "Baca ulang" trigger wants true (its content is rule-based to begin
+     * demo "Reread" trigger wants true (its content is rule-based to begin
      * with, so refilling in place is a no-op it can rely on), but a caller
      * filling in a too-old-for-the-LLM backfill row must pass false — that row
      * can legitimately already hold real, billed-for narration (e.g. a Strava
@@ -130,7 +130,7 @@ class AnalysisService
      * invalidating. For windowed cadences (weekly/monthly) the LLM generation
      * is deferred to the scheduled command that fires once the window closes,
      * instead of re-billing the narration on every ingest inside the window.
-     * The row stays visible to the UI (empty state + manual "Baca ulang").
+     * The row stays visible to the UI (empty state + manual "Reread").
      */
     public function requestDeferred(
         Model|string $subjectOrType,
@@ -217,7 +217,7 @@ class AnalysisService
             'content_fingerprint' => $fingerprint ?? $row->content_fingerprint,
         ]);
 
-        // Start the re-trigger cooldown so a "Baca ulang" can't re-fire the LLM
+        // Start the re-trigger cooldown so a "Reread" can't re-fire the LLM
         // for the same block within the window (covers both auto and manual).
         // Skipped under withoutDispatching (demo seed) so a freshly seeded demo
         // stays instantly re-narratable on demand. afterCommit: AnalyzeGroupJob
@@ -679,7 +679,7 @@ class AnalysisService
      * Two statuses are left alone. An already-Done row keeps the real prose it
      * was billed for. A Failed row is a genuine fault (content filter, malformed
      * response, spent retry budget) that the bounded self-heal and the /ai-usage
-     * dead-letter exist to surface, so it stays Failed with its "Coba lagi"
+     * dead-letter exist to surface, so it stays Failed with its "Try again"
      * rather than hiding a break behind plausible content — on a day the ceiling
      * trips repeatedly, filling it would erase that signal every time.
      */

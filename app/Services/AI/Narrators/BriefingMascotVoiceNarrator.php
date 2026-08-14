@@ -26,7 +26,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 /**
- * The dashboard's single daily Temari voice ("Kata Temari hari ini"): one LLM
+ * The dashboard's single daily Temari voice: one LLM
  * call that reads the user's day and lands on the session that reading implies.
  * Reads its own previous day so today's opener never repeats yesterday's.
  */

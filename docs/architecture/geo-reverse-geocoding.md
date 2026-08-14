@@ -55,4 +55,4 @@ Consumers select `location_name` (the display string) — never re-deriving plac
 
 - [`DashboardController`](app/Http/Controllers/DashboardController.php#L56) → the last-run card ([`LastRunCard`](resources/js/components/dashboard/LastRunCard.tsx#L23), shortened for the chip).
 - [`RunController`](app/Http/Controllers/RunController.php#L299) → run detail's weather/place block ([`Show`](resources/js/pages/Runs/Show.tsx#L320)).
-- [`PrScoreboardBuilder`](app/Services/Run/PrScoreboardBuilder.php#L59) + [`RekorController`](app/Http/Controllers/RekorController.php#L50) → "where this PR was set" on the records page ([`Records`](resources/js/pages/Collection/Records.tsx#L210)). See [[records]].
+- [`PrScoreboardBuilder`](app/Services/Run/PrScoreboardBuilder.php#L59) + [`RecordsController`](app/Http/Controllers/RecordsController.php#L50) → "where this PR was set" on the records page ([`Records`](resources/js/pages/Collection/Records.tsx#L210)). See [[records]].

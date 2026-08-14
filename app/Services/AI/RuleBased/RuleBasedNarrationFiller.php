@@ -27,7 +27,7 @@ use App\Services\Run\Metrics\StreamSummary;
  * Output is deterministic and Temari-voiced. Where the subject's real data is
  * available it drives the copy (run insight via {@see RuleBasedRunInsights}
  * so a seeded demo shows the run's real numbers), falling back to seeded
- * variants only when the subject row is missing. A "Baca ulang" gets real LLM
+ * variants only when the subject row is missing. A "Reread" gets real LLM
  * output whenever the subject is inside the narration age cutoff.
  */
 final readonly class RuleBasedNarrationFiller
@@ -104,7 +104,7 @@ final readonly class RuleBasedNarrationFiller
         $km = DistanceFormatter::kmString($detail->distance) ?? '?';
 
         // Hashed (not the bare, sequential activityId), or a run of consecutive
-        // activities — exactly what the Riwayat feed shows side by side — walks
+        // activities — exactly what the History feed shows side by side — walks
         // the pool in lockstep and repeats the identical line every N-th run.
         $baseSeed = (int) crc32('post_run_speech_'.$activityId);
 
@@ -304,21 +304,21 @@ final readonly class RuleBasedNarrationFiller
 
         $clauses = [
             Badge::NegativeSplit->value => 'Second half came in faster than the first.',
-            Badge::HariPanas->value => 'Run in the worst heat of the day.',
-            Badge::PejuangHujan->value => 'Ran it in the rain.',
-            Badge::AnakPagi->value => 'Out the door before the city woke up.',
+            Badge::HeatTamer->value => 'Run in the worst heat of the day.',
+            Badge::RainWarrior->value => 'Ran it in the rain.',
+            Badge::EarlyBird->value => 'Out the door before the city woke up.',
             Badge::LongSlowDistance->value => "Long, slow, and you didn't rush it.",
-            Badge::TahanDiri->value => 'Pace held back from the first km.',
-            Badge::AnakMalam->value => 'Logged well after dark.',
-            Badge::Pendaki->value => 'Serious elevation on this one.',
-            Badge::PertamaKali->value => 'First of its kind in your log.',
-            Badge::Kilat->value => 'Sub-5 per km.',
-            Badge::Jauh->value => 'Half marathon distance and up.',
+            Badge::HeldBack->value => 'Pace held back from the first km.',
+            Badge::NightOwl->value => 'Logged well after dark.',
+            Badge::Climber->value => 'Serious elevation on this one.',
+            Badge::FirstTimer->value => 'First of its kind in your log.',
+            Badge::Speedster->value => 'Sub-5 per km.',
+            Badge::LongHauler->value => 'Half marathon distance and up.',
             Badge::Z2Master->value => 'Mostly Z2, which takes discipline to hold.',
-            Badge::AnakDingin->value => "Early enough that the air hadn't warmed up yet.",
-            Badge::Keras->value => 'HR stayed high from start to finish.',
-            Badge::Santai->value => 'Genuinely easy. HR never climbed.',
-            Badge::LawanAngin->value => 'Headwind the whole way.',
+            Badge::ColdRunner->value => "Early enough that the air hadn't warmed up yet.",
+            Badge::AllOut->value => 'HR stayed high from start to finish.',
+            Badge::EasyMiles->value => 'Genuinely easy. HR never climbed.',
+            Badge::Headwind->value => 'Headwind the whole way.',
         ];
 
         // Highlight one of the card's badges, chosen by seed so multi-badge

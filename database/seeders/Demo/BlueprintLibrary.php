@@ -50,7 +50,7 @@ class BlueprintLibrary
         return $this->scriptedCache ??= [
             // A plain middling run: HR straddles Z2/Z3 (no zone dominant) and it's
             // kept under 5K so it dodges every special branch (incl. Anti Ngedrop,
-            // which needs 5K+) and lands the "Lari Santai" default move.
+            // which needs 5K+) and lands the "Easy Run" default move.
             new RunBlueprint(
                 startsAt: Carbon::today()->subDays(38)->setTime(6, 10),
                 distanceM: 4_500,
@@ -61,8 +61,8 @@ class BlueprintLibrary
                 location: $this->loc(2),
             ),
             // A hard, even 5K time-trial — fast enough to take the 5K PR, Z4-heavy
-            // so it isn't Tahan Tempo, even pacing so it isn't Tancap di Akhir:
-            // the recipe for the "Pecah Rekor" card.
+            // so it is not "Tempo Lock", even pacing so it is not "Closing Kick":
+            // the recipe for the "New Record" card.
             new RunBlueprint(
                 startsAt: Carbon::today()->subDays(31)->setTime(6, 0),
                 distanceM: 5_000,
@@ -70,7 +70,7 @@ class BlueprintLibrary
                 hrProfile: HrProfile::HardEven,
                 cadenceSpm: 172,
                 name: '5K time trial',
-                tags: ['time_trial', 'pecah_rekor'],
+                tags: ['time_trial', 'new_record'],
                 location: $this->loc(1),
             ),
             // --- Older base: building from couch to a first half marathon ---
@@ -130,10 +130,10 @@ class BlueprintLibrary
                 tags: ['half_marathon', 'big_volume', 'all_time_longest'],
                 location: $this->loc(0),
             ),
-            // --- Half-marathon progression: four more HMs after the perdana,
-            // each a notch faster, so /rekor's featured progression chart draws a
+            // --- Half-marathon progression: four more HMs after the first,
+            // each a notch faster, so the records page's featured progression chart draws a
             // real improving line toward the Sub-2:45 goal instead of one point.
-            // All stay under the perdana's 21.3km so it keeps `all_time_longest`.
+            // All stay under the first one's 21.3km so it keeps `all_time_longest`.
             new RunBlueprint(
                 startsAt: Carbon::today()->subDays(118)->setTime(5, 40),
                 distanceM: 21_150,
@@ -175,8 +175,8 @@ class BlueprintLibrary
                 location: $this->loc(0),
             ),
             // --- Full-marathon progression: three FMs across the window so the
-            // /rekor chart can plot a marathon line too. All fall AFTER the D-136
-            // half-marathon perdana, so that HM keeps the first distance-milestone
+            // records chart can plot a marathon line too. All fall AFTER the D-136
+            // half-marathon, so that HM keeps the first distance-milestone
             // Legendary and the first marathon earns a second one. The first
             // marathon is the longest (its lone marathon Legendary); the rest
             // improve toward a PR. Low-variance LsdDrift keeps the first longest.

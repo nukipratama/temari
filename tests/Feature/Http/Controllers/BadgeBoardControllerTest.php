@@ -39,15 +39,15 @@ it('renders all 16 badge cases plus the rest-day entry', function (): void {
 it('shows a lifetime count for an earned badge', function (): void {
     $user = User::factory()->create();
     RunCard::factory()->for(Activity::factory()->for($user))->create([
-        'badges' => [Badge::Kilat->value],
+        'badges' => [Badge::Speedster->value],
     ]);
 
     $response = $this->actingAs($user)->get('/badges')->assertSuccessful();
     $items = collect($response->viewData('page')['props']['items']);
 
-    $kilat = $items->firstWhere('key', Badge::Kilat->value);
-    expect($kilat['unlocked'])->toBeTrue()
-        ->and($kilat['lifetime_count'])->toBe(1);
+    $speedster = $items->firstWhere('key', Badge::Speedster->value);
+    expect($speedster['unlocked'])->toBeTrue()
+        ->and($speedster['lifetime_count'])->toBe(1);
 });
 
 it('leaves an unearned badge locked with a zero count', function (): void {
@@ -56,7 +56,7 @@ it('leaves an unearned badge locked with a zero count', function (): void {
     $response = $this->actingAs($user)->get('/badges')->assertSuccessful();
     $items = collect($response->viewData('page')['props']['items']);
 
-    $item = $items->firstWhere('key', Badge::Kilat->value);
+    $item = $items->firstWhere('key', Badge::Speedster->value);
     expect($item['unlocked'])->toBeFalse()
         ->and($item['lifetime_count'])->toBe(0);
 });
@@ -68,15 +68,15 @@ it('scopes the season count to the active season, distinct from the lifetime cou
     // on this very request) — proves lifetime and "this season" diverge.
     $old = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($old)->create(['start_date_local' => '2025-01-01 07:00:00']);
-    RunCard::factory()->for($old)->create(['badges' => [Badge::Kilat->value]]);
+    RunCard::factory()->for($old)->create(['badges' => [Badge::Speedster->value]]);
 
     $current = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($current)->create(['start_date_local' => '2026-08-10 07:00:00']);
-    RunCard::factory()->for($current)->create(['badges' => [Badge::Kilat->value]]);
+    RunCard::factory()->for($current)->create(['badges' => [Badge::Speedster->value]]);
 
     $response = $this->actingAs($user)->get('/badges')->assertSuccessful();
     $items = collect($response->viewData('page')['props']['items']);
-    $item = $items->firstWhere('key', Badge::Kilat->value);
+    $item = $items->firstWhere('key', Badge::Speedster->value);
 
     expect($item['lifetime_count'])->toBe(2)
         ->and($item['season_count'])->toBe(1);

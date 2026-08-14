@@ -88,7 +88,7 @@
 
     /* Same tuning as --text-stat-fluid (floor + coefficient proven against a
        real 320px render), capped at --text-stat's 32px ceiling instead of
-       40px: for StatTile `lg` used in a narrow 3-up row (LastLariCard's
+       40px: for StatTile `lg` used in a narrow 3-up row (LastRunCard's
        KM/PACE/TRIMP), where the fixed 32px overlapped adjacent values below
        ~375px. `lg`'s other/wider uses are untouched -- this is an explicit
        opt-in via valueClassName, not a change to `--text-stat` itself. */
@@ -292,7 +292,7 @@ body {
 /* iOS Safari force-zooms the whole page whenever a focused control computes to
    a font-size below 16px, and does not zoom back out afterwards — you are left
    scrolled sideways in a magnified app until you pinch out by hand. Every input
-   in the app was under that threshold (the Riwayat search and the Koleksi
+   in the app was under that threshold (the History search and the Collection
    search/sort at text-xs, the HR-zone and AI-usage fields at text-sm), so
    focusing any of them visibly broke the illusion.
 

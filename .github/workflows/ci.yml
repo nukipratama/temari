@@ -87,6 +87,8 @@ jobs:
           php-version: ${{ env.PHP_VERSION }}
       - name: Check doc citations resolve
         run: php scripts/check-doc-citations.php
+      - name: Check no Indonesian has crept back in
+        run: php scripts/check-indonesian.php
 
   backend-tests:
     needs: [changes, secret-scan, docs-citation-guard]

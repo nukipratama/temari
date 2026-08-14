@@ -13,7 +13,7 @@ code_refs:
 
 # Training-Load Metrics Engine
 
-This is the engine behind the dashboard's "Kondisi" read-out and the [[run-history]] weekly trend: it turns a runner's heart-rate effort into a small set of training-load numbers — **fitness (CTL)**, **fatigue (ATL)**, **form**, **strain** and **monotony** — and keeps a per-week snapshot of them. Two classes do the work: [TrainingLoad](app/Services/Run/Metrics/TrainingLoad.php) is the pure math, and [WeeklyAggregator](app/Services/Run/Metrics/WeeklyAggregator.php) persists it per week.
+This is the engine behind the dashboard's training-load read-out and the [[run-history]] weekly trend: it turns a runner's heart-rate effort into a small set of training-load numbers — **fitness (CTL)**, **fatigue (ATL)**, **form**, **strain** and **monotony** — and keeps a per-week snapshot of them. Two classes do the work: [TrainingLoad](app/Services/Run/Metrics/TrainingLoad.php) is the pure math, and [WeeklyAggregator](app/Services/Run/Metrics/WeeklyAggregator.php) persists it per week.
 
 ## TRIMP: the unit of training stress
 

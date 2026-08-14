@@ -209,7 +209,7 @@ export default function RunsShow({
                         </PillButton>
                     </StravaAction>
                     <SendNotificationButton
-                        url={`/activities/${activity.id}/kirim`}
+                        url={`/activities/${activity.id}/send`}
                         retryAfterSeconds={notificationRetryAfterSeconds}
                         reachable={notificationsReachable}
                     />

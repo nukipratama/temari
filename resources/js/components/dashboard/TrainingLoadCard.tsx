@@ -17,7 +17,7 @@ import {
 
 const NO_HR_HINT = 'no HR on these runs';
 
-export default function KondisiCard({
+export default function TrainingLoadCard({
     load,
     snapshot,
     onSky = false,

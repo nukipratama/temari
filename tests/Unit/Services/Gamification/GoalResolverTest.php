@@ -187,11 +187,11 @@ it('counts activities toward shirt_beginner, shoes_basic and shirt_legendary', f
 
 it('counts badge-bearing cards toward shirt_early_bird, shirt_rain_warrior and aura goals', function (): void {
     $user = User::factory()->create();
-    makeCard($user, Rarity::Common, [Badge::AnakPagi->value]);
-    makeCard($user, Rarity::Common, [Badge::PejuangHujan->value]);
-    makeCard($user, Rarity::Common, [Badge::HariPanas->value]);
+    makeCard($user, Rarity::Common, [Badge::EarlyBird->value]);
+    makeCard($user, Rarity::Common, [Badge::RainWarrior->value]);
+    makeCard($user, Rarity::Common, [Badge::HeatTamer->value]);
     makeCard($user, Rarity::Common, [Badge::Z2Master->value]);
-    makeCard($user, Rarity::Common, [Badge::LawanAngin->value]);
+    makeCard($user, Rarity::Common, [Badge::Headwind->value]);
 
     $byId = goalsById($this->resolver, $user);
 

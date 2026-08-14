@@ -10,7 +10,7 @@ use App\Models\User;
 use App\Services\AI\Narrators\BriefingFeaturedKartuVoiceNarrator;
 
 /**
- * Standalone row job for the "Kata Temari" quote on the Featured Kartu panel.
+ * Standalone row job for the Temari-voice quote on the Featured Kartu panel.
  * Split from {@see AnalyzeBriefingMascotVoiceJob} so retrying one surface
  * doesn't also re-spend LLM tokens on the other.
  */

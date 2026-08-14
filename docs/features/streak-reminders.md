@@ -33,9 +33,9 @@ There is no dedicated streak toggle — the nudge is governed by the single `not
 
 The notification's `via()` re-checks the master switch at send time (the command already did, but `via()` runs again per notifiable) and fans out to the in-app inbox ([InAppChannel](../../app/Notifications/Channels/InAppChannel.php), always) plus whichever outbound channels are live: [TelegramChannel](../../app/Notifications/Channels/TelegramChannel.php) and/or [IdempotentWebPushChannel](../../app/Notifications/Channels/IdempotentWebPushChannel.php). The outbound pair carry the same title → body pair, with web push at `Urgency: high` (the nudge is time-boxed to the rest of the week, so an OS deferral under Low Power Mode would defeat it):
 
-> 🔥 Streak lari {n} minggu kamu lagi di ujung
+> Your {n}-week streak is on the edge
 >
-> Minggu ini belum ada progres. Sempatkan lari sebelum minggu ini berakhir, biar streak-nya nggak putus.
+> No runs yet this week. Get one in before it's over so the streak doesn't break.
 
 The tap-through points at the dashboard. See [[telegram-notifications]] for the broader notification pipeline.
 

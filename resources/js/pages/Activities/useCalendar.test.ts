@@ -7,9 +7,9 @@ import {
     chunkIntoWeeks,
     dominantMoodOf,
     isFilteredOut,
-    useKalender,
+    useCalendar,
     type CalendarCell,
-} from './useKalender';
+} from './useCalendar';
 
 function cellsFor(
     rows: Array<Partial<CalendarCell> & Pick<CalendarCell, 'date' | 'day'>>,
@@ -153,7 +153,7 @@ describe('isFilteredOut', () => {
     });
 });
 
-describe('useKalender', () => {
+describe('useCalendar', () => {
     const CELLS = cellsFor([
         { date: '2026-05-01', day: 1, mood: 'blazing', distance_km: 5 },
         { date: '2026-05-02', day: 2 },
@@ -161,7 +161,7 @@ describe('useKalender', () => {
 
     it('chunks cells into weeks and computes the dominant mood', () => {
         const { result } = renderHook(() =>
-            useKalender({
+            useCalendar({
                 cells: CELLS,
                 month: '2026-05',
                 todayMonth: '2026-05',
@@ -174,7 +174,7 @@ describe('useKalender', () => {
 
     it('reports whether the viewed month is the current one', () => {
         const { result: current } = renderHook(() =>
-            useKalender({
+            useCalendar({
                 cells: CELLS,
                 month: '2026-05',
                 todayMonth: '2026-05',
@@ -183,7 +183,7 @@ describe('useKalender', () => {
         expect(current.current.isCurrentMonth).toBe(true);
 
         const { result: past } = renderHook(() =>
-            useKalender({
+            useCalendar({
                 cells: CELLS,
                 month: '2026-04',
                 todayMonth: '2026-05',
@@ -194,7 +194,7 @@ describe('useKalender', () => {
 
     it('starts with an empty mood filter and toggles moods on/off', () => {
         const { result } = renderHook(() =>
-            useKalender({
+            useCalendar({
                 cells: CELLS,
                 month: '2026-05',
                 todayMonth: '2026-05',
@@ -211,7 +211,7 @@ describe('useKalender', () => {
 
     it('resets the mood filter back to empty', () => {
         const { result } = renderHook(() =>
-            useKalender({
+            useCalendar({
                 cells: CELLS,
                 month: '2026-05',
                 todayMonth: '2026-05',

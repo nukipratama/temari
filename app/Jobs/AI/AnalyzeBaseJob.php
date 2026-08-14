@@ -53,7 +53,7 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      * carries a `Retry-After`: re-queue the row(s) and release the job. The
      * release delay is the upstream `Retry-After` when present, otherwise the
      * configured backoff, capped at {@see self::MAX_RETRY_AFTER_SECONDS}. A
-     * re-queued row is neither re-dispatchable nor shown as "Coba lagi", so a
+     * re-queued row is neither re-dispatchable nor shown as "Try again", so a
      * manual retry cannot race a second LLM call during the wait.
      *
      * Every other outcome ends this attempt failed. `UnavailableException` is

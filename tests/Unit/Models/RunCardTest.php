@@ -24,28 +24,28 @@ it('forUser scopes to cards whose activity belongs to the user', function (): vo
 it('badgeCountsForUser counts each tracked badge across the user\'s cards', function (): void {
     $user = User::factory()->create();
     RunCard::factory()->for(Activity::factory()->for($user))->create([
-        'badges' => [Badge::AnakPagi->value, Badge::NegativeSplit->value],
+        'badges' => [Badge::EarlyBird->value, Badge::NegativeSplit->value],
     ]);
     RunCard::factory()->for(Activity::factory()->for($user))->create([
-        'badges' => [Badge::AnakPagi->value],
+        'badges' => [Badge::EarlyBird->value],
     ]);
 
     $counts = RunCard::badgeCountsForUser($user->id);
 
-    expect($counts[Badge::AnakPagi->value])->toBe(2)
+    expect($counts[Badge::EarlyBird->value])->toBe(2)
         ->and($counts[Badge::NegativeSplit->value])->toBe(1)
-        ->and($counts[Badge::HariPanas->value])->toBe(0);
+        ->and($counts[Badge::HeatTamer->value])->toBe(0);
 });
 
 it('badgeCountsForUser ignores untracked badge values', function (): void {
     $user = User::factory()->create();
     RunCard::factory()->for(Activity::factory()->for($user))->create([
-        'badges' => ['not_a_tracked_badge', Badge::AnakPagi->value],
+        'badges' => ['not_a_tracked_badge', Badge::EarlyBird->value],
     ]);
 
     $counts = RunCard::badgeCountsForUser($user->id);
 
-    expect($counts[Badge::AnakPagi->value])->toBe(1)
+    expect($counts[Badge::EarlyBird->value])->toBe(1)
         ->and($counts)->not->toHaveKey('not_a_tracked_badge');
 });
 
@@ -63,22 +63,22 @@ it('badgeCountsForUser scopes to the given user', function (): void {
     $user = User::factory()->create();
     $other = User::factory()->create();
     RunCard::factory()->for(Activity::factory()->for($other))->create([
-        'badges' => [Badge::AnakPagi->value],
+        'badges' => [Badge::EarlyBird->value],
     ]);
 
-    expect(RunCard::badgeCountsForUser($user->id)[Badge::AnakPagi->value])->toBe(0);
+    expect(RunCard::badgeCountsForUser($user->id)[Badge::EarlyBird->value])->toBe(0);
 });
 
 it('allBadgeCountsForUser counts every badge case, not just tracked ones', function (): void {
     $user = User::factory()->create();
     RunCard::factory()->for(Activity::factory()->for($user))->create([
-        'badges' => [Badge::Kilat->value, Badge::AnakPagi->value],
+        'badges' => [Badge::Speedster->value, Badge::EarlyBird->value],
     ]);
 
     $counts = RunCard::allBadgeCountsForUser($user->id);
 
-    expect($counts[Badge::Kilat->value])->toBe(1)
-        ->and($counts[Badge::AnakPagi->value])->toBe(1)
+    expect($counts[Badge::Speedster->value])->toBe(1)
+        ->and($counts[Badge::EarlyBird->value])->toBe(1)
         ->and($counts)->toHaveCount(count(Badge::cases()));
 });
 
@@ -86,11 +86,11 @@ it('allBadgeCountsForUser scopes to a date range when given one', function (): v
     $user = User::factory()->create();
     $inRange = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($inRange)->create(['start_date_local' => '2026-06-15 07:00:00']);
-    RunCard::factory()->for($inRange)->create(['badges' => [Badge::Kilat->value]]);
+    RunCard::factory()->for($inRange)->create(['badges' => [Badge::Speedster->value]]);
 
     $outOfRange = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($outOfRange)->create(['start_date_local' => '2026-01-01 07:00:00']);
-    RunCard::factory()->for($outOfRange)->create(['badges' => [Badge::Kilat->value]]);
+    RunCard::factory()->for($outOfRange)->create(['badges' => [Badge::Speedster->value]]);
 
     $counts = RunCard::allBadgeCountsForUser(
         $user->id,
@@ -98,7 +98,7 @@ it('allBadgeCountsForUser scopes to a date range when given one', function (): v
         Carbon::parse('2026-06-30'),
     );
 
-    expect($counts[Badge::Kilat->value])->toBe(1);
+    expect($counts[Badge::Speedster->value])->toBe(1);
 });
 
 it('casts badges to an array', function (): void {

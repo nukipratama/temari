@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { TrainingLoad, WeeklySnapshot } from '@/types/inertia';
 
-import KondisiCard from './KondisiCard';
+import TrainingLoadCard from './TrainingLoadCard';
 
 const load: TrainingLoad = {
     form: -2.5,
@@ -31,9 +31,9 @@ const snapshot: WeeklySnapshot = {
     strain: 392,
 };
 
-describe('KondisiCard', () => {
+describe('TrainingLoadCard', () => {
     it('renders all four metric rows with formatted values', () => {
-        render(<KondisiCard load={load} snapshot={snapshot} />);
+        render(<TrainingLoadCard load={load} snapshot={snapshot} />);
         ['Fitness', 'Fatigue', 'Strain', 'Monotony'].forEach((label) => {
             expect(screen.getByText(label)).toBeInTheDocument();
         });
@@ -44,7 +44,7 @@ describe('KondisiCard', () => {
     });
 
     it('shows the "7 days" subtitle and a technical-detail link', () => {
-        render(<KondisiCard load={load} snapshot={snapshot} />);
+        render(<TrainingLoadCard load={load} snapshot={snapshot} />);
         expect(screen.getByText(/7 days/)).toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: /Technical detail/ }),
@@ -52,14 +52,14 @@ describe('KondisiCard', () => {
     });
 
     it('falls back to em-dash values and "not enough data yet" when load and snapshot are null', () => {
-        render(<KondisiCard load={null} snapshot={null} />);
+        render(<TrainingLoadCard load={null} snapshot={null} />);
         expect(screen.getByText(/not enough data yet/)).toBeInTheDocument();
         expect(screen.getAllByText('—').length).toBe(4);
     });
 
     it('says the runs carried no HR instead of showing a zero strain', () => {
         render(
-            <KondisiCard
+            <TrainingLoadCard
                 load={{
                     ...load,
                     weekly_trimp: null,
@@ -78,7 +78,7 @@ describe('KondisiCard', () => {
     });
 
     it('names the missing HR when a week of runs scored nothing at all', () => {
-        render(<KondisiCard load={null} snapshot={snapshot} />);
+        render(<TrainingLoadCard load={null} snapshot={snapshot} />);
         expect(screen.getByText(/no HR data yet/)).toBeInTheDocument();
         expect(
             screen.queryByText(/not enough data yet/),
@@ -95,7 +95,7 @@ describe('KondisiCard', () => {
             monotony: 3.15,
             strain: 6380.3,
         };
-        render(<KondisiCard load={riskyLoad} snapshot={snapshot} />);
+        render(<TrainingLoadCard load={riskyLoad} snapshot={snapshot} />);
 
         expect(screen.getByText('3.15')).toHaveClass('text-ember-ink');
         expect(screen.getByText('6380')).toHaveClass('text-ember-ink');

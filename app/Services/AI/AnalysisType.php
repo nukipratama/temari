@@ -136,8 +136,7 @@ enum AnalysisType: string
 
     /**
      * Whether this narrative is derived from the user's heart-rate zones, so a
-     * zone change makes copies generated beforehand stale (the "dihitung dengan
-     * zona lama" hint). Zone-agnostic types never carry it.
+     * zone change makes copies generated beforehand stale (the "calculated with old zones" hint). Zone-agnostic types never carry it.
      *
      * RunInsight's claims are a variable mix (a `zone:<z>` claim reads the
      * configured zones, a `split:<n>`/other `metric:*` claim does not), and the

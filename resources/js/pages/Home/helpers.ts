@@ -148,7 +148,7 @@ export function formatWeather(
     return bits.length > 0 ? bits.join(' · ') : null;
 }
 
-// Descriptors for Kondisi card subtitles. Thresholds are rough
+// Descriptors for Training-load card subtitles. Thresholds are rough
 // runner-folklore numbers, not medical advice.
 export function ctlHint(ctl: number | null | undefined): string {
     if (ctl == null) return '';
@@ -193,7 +193,7 @@ function riskTone(
     return 'text-ember-ink';
 }
 
-// Kondisi card colors, kept on the same risk axis the hints above already
+// Training-load card colors, kept on the same risk axis the hints above already
 // describe in words (and, for monotony, the same >2.0 threshold Readiness
 // backs a session off for) instead of one fixed color per row regardless of
 // how extreme the value actually is.

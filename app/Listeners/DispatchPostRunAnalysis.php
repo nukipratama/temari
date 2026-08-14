@@ -81,7 +81,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
             // Weekly cadence: regenerating the recap of a still-unfinished week
             // on every run was the single biggest LLM re-bill. The row is staged
             // Pending here; ai:weekly-recap narrates it once the week closes.
-            // "Baca ulang" can still force a mid-week narration on demand.
+            // "Reread" can still force a mid-week narration on demand.
             $this->analysisService->requestDeferred(
                 WeeklySnapshot::class,
                 $snapshot->id,
@@ -235,7 +235,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
      * narrated — and its re-narrate cooldown has elapsed — invalidate the Done
      * group so it re-narrates the corrected data; otherwise it's a no-op, never
      * re-billing on Strava's byte-level jitter. Older runs are left to the manual
-     * "Baca ulang" so the connected story that quotes them doesn't desync.
+     * "Reread" so the connected story that quotes them doesn't desync.
      */
     private function maybeRefreshActivityGroup(Activity $activity): void
     {

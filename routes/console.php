@@ -37,7 +37,7 @@ $alertOnFailure(Schedule::command('ai:daily-briefing')->dailyAt('00:01'), 'ai:da
 
 // 00:05: keep the seeded demo account fresh — one modest synthetic run (~5/week)
 // plus a rule-based refresh of today's briefing/greeting/trend so the demo never
-// renders an empty "Belum dibaca" once the date rolls. Zero LLM tokens
+// renders an empty block once the date rolls. Zero LLM tokens
 // (withoutDispatching + rule-based fill), so the demo-billing exclusion holds.
 Schedule::command('demo:daily-refresh')->dailyAt('00:05');
 
@@ -46,10 +46,10 @@ Schedule::command('demo:daily-refresh')->dailyAt('00:05');
 // the single scheduled LLM call that fills it.
 $alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:01'), 'ai:weekly-recap');
 
-// Monday 00:05: refresh the Aku-page persona summary + Kata Temari voice once a
+// Monday 00:05: refresh the Aku-page persona summary + Temari voice once a
 // week, just after the recap. These two have no per-run cadence, so this is
 // their only auto-refresh; persona self-throttles per ISO week and the voice is
-// invalidated weekly. Demo excluded. Mid-week freshness stays on "Baca ulang".
+// invalidated weekly. Demo excluded. Mid-week freshness stays on "Reread".
 Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:05');
 
 // Monday 00:07: regenerate every user's plan today-forward against their

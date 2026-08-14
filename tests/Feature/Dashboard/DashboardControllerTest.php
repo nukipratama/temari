@@ -91,7 +91,7 @@ it('renders KPIs + recent runs when the user has training-load history', functio
 });
 
 /**
- * `snapshot` is a single row — `KondisiCard` takes one `WeeklySnapshot | null`.
+ * `snapshot` is a single row — `TrainingLoadCard` takes one `WeeklySnapshot | null`.
  * The read used to pull the newest twelve and throw eleven away.
  */
 it('reads only the newest weekly snapshot, not a window of them', function (): void {

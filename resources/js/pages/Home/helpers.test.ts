@@ -235,7 +235,7 @@ describe('atlTone / strainTone / monotonyTone', () => {
     });
 
     // Regression: monotony >2.0 is the same hard-flag threshold Readiness caps
-    // a session for, but the Kondisi card used to render this row a fixed
+    // a session for, but the training-load card used to render this row a fixed
     // leaf/green regardless of value — the loudest state read as the calmest.
     it('reads monotony >2.0 as alert, matching the Readiness hard-flag threshold', () => {
         expect(monotonyTone(1.2)).toBe('text-leaf-ink');

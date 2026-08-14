@@ -60,7 +60,7 @@ class RunQuestionController extends Controller
 
         // The demo login is public and a question is a real agent run, so the
         // demo is answered from this run's own stored numbers instead — the same
-        // stance the "Baca ulang" trigger takes, keyed on is_demo rather than on
+        // stance the "Reread" trigger takes, keyed on is_demo rather than on
         // the route. See docs/decisions/demo-triggers-served-rule-based.md.
         if ($service->shouldServeRuleBased($user)) {
             return $this->created($this->ruleBasedRow($user, $activity, $question, $detail));

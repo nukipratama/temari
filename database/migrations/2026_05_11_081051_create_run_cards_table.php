@@ -14,7 +14,7 @@ return new class () extends Migration {
             $table->foreignId('activity_id')->unique()->constrained()->cascadeOnDelete();
             // biasa, jarang, langka, epik, legendaris
             $table->string('rarity', 20);
-            // ["hari_panas", "negative_split", ...]
+            // ["heat_tamer", "negative_split", ...]
             $table->json('badges');
             // "Paru-paru Baja", "Metronom", etc.
             $table->string('special_move', 60);

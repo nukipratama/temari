@@ -54,7 +54,7 @@ There is no standalone `/cards/{card}` route. A card's full view — the big car
 Two actions sit under the hero:
 
 - **Bagikan** opens [ShareCardModal](../../resources/js/components/card/ShareCardModal.tsx), which draws a downloadable share image (card or route layout) on a canvas.
-- **Buka ulang kartu** re-arms the pack-tear reveal: it POSTs `/api/cards/{card}/replay`, then reloads the `pendingReveal` prop so [CardReveal](../../resources/js/components/card/CardReveal.tsx) replays. That reveal wraps the card in a draggable foil ([PackWrapper](../../resources/js/components/card/PackWrapper.tsx)) the user tears open; rare/epic/legendary reveals are "theatrical" and trigger their own confetti.
+- **Replay card reveal** re-arms the pack-tear reveal: it POSTs `/api/cards/{card}/replay`, then reloads the `pendingReveal` prop so [CardReveal](../../resources/js/components/card/CardReveal.tsx) replays. That reveal wraps the card in a draggable foil ([PackWrapper](../../resources/js/components/card/PackWrapper.tsx)) the user tears open; rare/epic/legendary reveals are "theatrical" and trigger their own confetti.
 
 ## Where rarities and badges come from
 

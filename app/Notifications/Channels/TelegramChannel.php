@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Log;
  * A message with a null `deliveryKey` (streak / test) skips the claim entirely.
  * A `force` message (manual push) skips the claim CHECK — so a resend always
  * goes out — but records the outcome, so a later automatic notification for the
- * same row (e.g. a "Baca ulang" re-analysis) is deduped against a success.
+ * same row (e.g. a "Reread" re-analysis) is deduped against a success.
  */
 class TelegramChannel
 {

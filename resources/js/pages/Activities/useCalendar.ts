@@ -97,13 +97,13 @@ export function isFilteredOut(
     );
 }
 
-interface KalenderDataProps {
+interface CalendarDataProps {
     cells: ReadonlyArray<CalendarCell>;
     month: string;
     todayMonth: string;
 }
 
-export function useKalender({ cells, month, todayMonth }: KalenderDataProps) {
+export function useCalendar({ cells, month, todayMonth }: CalendarDataProps) {
     const weeks = useMemo<WeekRow[]>(() => chunkIntoWeeks(cells), [cells]);
     const dominantMood = useMemo(() => dominantMoodOf(cells), [cells]);
     const isCurrentMonth = month === todayMonth;
