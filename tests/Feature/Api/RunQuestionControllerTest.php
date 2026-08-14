@@ -9,10 +9,12 @@ use App\Models\AI\RunQuestion;
 use App\Models\AI\TokenUsage;
 use App\Models\User;
 use App\Services\AI\AnalysisStatus;
+use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\RunQuestion\RunQuestionTopic;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -192,6 +194,29 @@ it('serves the demo even while generation is paused, since it never bills', func
 });
 
 // ── Pause + rate limit ──────────────────────────────────────────────────────
+
+it('answers a real question rule-based when only the cost ceiling stops it', function (): void {
+    config([
+        'azure_openai.daily_cost_ceiling' => 1.0,
+        'azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]],
+    ]);
+    TokenUsage::query()->create([
+        'kind' => 'run_question', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
+        'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
+    ]);
+    $user = User::factory()->create();
+    $activity = runFor($user, ['stream_summary' => ['hr_drift_bpm' => 6.4]]);
+
+    $this->actingAs($user)
+        ->postJson("/api/activities/{$activity->id}/questions", ['question' => RunQuestionTopic::HrDrift->question()])
+        ->assertCreated()
+        ->assertJson(['status' => 'done'])
+        ->assertJsonPath('answer', fn (?string $answer): bool => is_string($answer) && str_contains($answer, '6.4 bpm'));
+
+    Bus::assertNothingDispatched();
+    expect(RunQuestion::query()->sole()->status)->toBe(AnalysisStatus::Done)
+        ->and(app(CostCeilingLedger::class)->today()['degradedFills'])->toBe(1);
+});
 
 it('turns a real question away with 409 while generation is paused', function (): void {
     app(AppConfig::class)->set(AppConfigKey::AiEnabled, false);

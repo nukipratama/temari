@@ -95,7 +95,7 @@ class Activity extends Model
     /**
      * Runs that have been through the full pipeline, so streams, `stream_summary`,
      * TRIMP, weather and the story layer are all present. The complement of
-     * {@see self::scopeSummaryOnly()} — mirrors {@see AnalyzedScope}'s job of
+     * {@see self::summaryOnly()} — mirrors {@see AnalyzedScope}'s job of
      * keeping "is this row complete enough?" out of every call site.
      *
      * @param  Builder<Activity>  $query

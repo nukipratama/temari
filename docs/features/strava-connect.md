@@ -46,15 +46,15 @@ Socialite drives the handshake in [StravaAuthController](../../app/Http/Controll
 
 Routes: `auth.strava.redirect` / `auth.strava.callback` in [web.php](../../routes/web.php), both behind `throttle:strava-oauth` (10/min per IP, defined in [AppServiceProvider](../../app/Providers/AppServiceProvider.php)). This is the account-creation path and it is open to anyone, so it cannot key off a user id the way `strava-sync` and `analysis-trigger` do; it stays IP-keyed even for a signed-in reconnect. Terms, privacy, AI-use and the training disclaimer are linked from the login page footer so a stranger can read them before connecting — see [[legal-pages]].
 
-## Manual sync ("Sync sekarang")
+## Manual sync ("Sync now")
 
 [StravaSyncButton](../../resources/js/components/StravaSyncButton.tsx) is the state-driven CTA on empty states. When `state === 'ready'` it `router.post('/strava/sync')`; when disconnected/revoked it shows the connect link instead; while a sync is in flight it renders nothing.
 
 [SyncController](../../app/Http/Controllers/Strava/SyncController.php) (an `__invoke` single-action) just queues `SyncActivitiesJob` for the signed-in athlete and flashes a friendly message. A double-tap is safe — the orchestrator holds a per-user lock and the walk stops at the first already-known activity.
 
-[StravaSyncBadge](../../resources/js/components/StravaSyncBadge.tsx) reflects status in the nav: a green dot + relative "synced" time when ready, a pulsing "Lagi sinkron" while syncing, an ember "Strava putus" when revoked.
+[StravaSyncBadge](../../resources/js/components/StravaSyncBadge.tsx) reflects status in the nav: a green dot + relative "Strava synced" time when ready, a pulsing "Syncing" while syncing, an ember "Strava disconnected · Reconnect" when revoked.
 
-Two more manual re-pulls exist beyond "Sync sekarang": [ResyncActivityController](../../app/Http/Controllers/Strava/ResyncActivityController.php) behind the run detail page's "Resync dari Strava", and `RunnerZonesController::resyncFromStrava` behind the Pengaturan zone "Sinkron ulang dari Strava" (which runs [SyncZonesJob](../../app/Jobs/Strava/SyncZonesJob.php) inline rather than queued).
+Two more manual re-pulls exist beyond "Sync now": [ResyncActivityController](../../app/Http/Controllers/Strava/ResyncActivityController.php) behind the run detail page's "Resync from Strava", and `RunnerZonesController::resyncFromStrava` behind the settings zone page's "Resync from Strava" (which runs [SyncZonesJob](../../app/Jobs/Strava/SyncZonesJob.php) inline rather than queued).
 
 ## Kill-switch pause
 

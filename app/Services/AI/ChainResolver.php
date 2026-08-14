@@ -61,7 +61,7 @@ class ChainResolver
     /**
      * Weekly chains: the earliest stalled WeeklyRecap per user (runs > 0) among
      * the fully-closed weeks. "Stalled" = Pending or Failed under the retry
-     * budget ({@see Analysis::scopeStalled}), so this recovers a link a transient
+     * budget ({@see Analysis::stalled()}), so this recovers a link a transient
      * failure or cost-ceiling pause left behind without re-billing a block that
      * has burned its budget. Capped at the latest closed week so the sweep never
      * narrates the still-running current week on incomplete data (the weekly

@@ -43,8 +43,6 @@ use Throwable;
 // block the others.
 class ActivityPipeline
 {
-    private const int DETAIL_FETCH_MAX_ATTEMPTS = Activity::MAX_DETAIL_FETCH_ATTEMPTS;
-
     public function __construct(
         private readonly StravaClient $client,
         private readonly StreamAnalysis $streamAnalysis,
@@ -501,7 +499,7 @@ class ActivityPipeline
 
         $count = $activity->detail_fail_count + 1;
 
-        if ($count >= self::DETAIL_FETCH_MAX_ATTEMPTS) {
+        if ($count >= Activity::MAX_DETAIL_FETCH_ATTEMPTS) {
             $activity->update([
                 'detail_fail_count' => $count,
                 'analyzed_at' => now(),

@@ -6,10 +6,10 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Slice 3 (#559) consolidated AnalysisType::RunInsightTechnical/Splits/Zones
- * into one RunInsight case, but left every prior row of those three retired
- * types behind under their old string values with no live enum case to
- * resolve them to. `run_insight`'s content shape (a variable-length
+ * AnalysisType::RunInsightTechnical/Splits/Zones were consolidated into one
+ * RunInsight case, which left every prior row of those three retired types
+ * behind under their old string values with no live enum case to resolve
+ * them to. `run_insight`'s content shape (a variable-length
  * `{claims: [...]}` list) also does not match what the three old lenses
  * stored, so the rows cannot be rewritten onto the new type; they are simply
  * dead weight now excluded from every query by

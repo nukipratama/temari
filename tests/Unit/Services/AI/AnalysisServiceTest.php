@@ -552,7 +552,7 @@ it('still dispatches when today\'s LLM cost is under the daily ceiling', functio
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
-it('keeps existing prose when a capped "Baca ulang" regenerate is a no-op', function (): void {
+it('keeps existing prose when a capped "Reread" regenerate is a no-op', function (): void {
     config(['ai.auto_dispatch' => false]);
     $snap = WeeklySnapshot::factory()->create();
     Analysis::query()->create([
@@ -607,7 +607,7 @@ it('markDone records content and generated_at', function (): void {
     expect($fresh->status)->toBe(AnalysisStatus::Done)
         ->and($fresh->content)->toBe('final narrative')
         ->and($fresh->generated_at)->not->toBeNull()
-        ->and($fresh->cooldownRemaining())->toBeGreaterThanOrEqual(0);
+        ->and($fresh->cooldownRemaining())->toBeGreaterThan(0);
 });
 
 it('markDone stores a content fingerprint when given, and leaves it null otherwise', function (): void {
@@ -1029,6 +1029,51 @@ it('resumes generation for free once the config breaker resets (env fixed)', fun
 
     expect($this->service->generationPaused())->toBeFalse()
         ->and($this->service->pauseReason())->toBeNull();
+});
+
+it('names a reason for every stop that pauses generation', function (Closure $stop, string $reason): void {
+    $stop();
+
+    expect($this->service->generationPaused())->toBeTrue()
+        ->and($this->service->pauseReason())->toBe($reason);
+})->with([
+    'kill switch off' => [
+        fn () => app(AppConfig::class)->set(AppConfigKey::AiEnabled, false),
+        'kill_switch',
+    ],
+    'auto-dispatch env switch off' => [
+        fn () => config(['ai.auto_dispatch' => false]),
+        'auto_dispatch',
+    ],
+    'azure unconfigured' => [
+        fn () => config(['azure_openai.uri' => '', 'azure_openai.api_key' => '']),
+        'unconfigured',
+    ],
+    'daily cost ceiling breached' => [
+        breachTheCeiling(...),
+        'cost_ceiling',
+    ],
+]);
+
+it('reports no reason while generation is running', function (): void {
+    expect($this->service->generationPaused())->toBeFalse()
+        ->and($this->service->pauseReason())->toBeNull();
+});
+
+it('reads the breaker without consuming its half-open probe when only reporting', function (): void {
+    $breaker = app(AzureConfigCircuitBreaker::class);
+    for ($i = 0; $i < 3; $i++) {
+        $breaker->recordFailure();
+    }
+    Carbon::setTestNow(Carbon::now()->addHour());
+
+    expect($this->service->pauseReason())->toBeNull()
+        ->and($breaker->state())->toBe(AzureConfigCircuitBreaker::STATE_OPEN);
+
+    expect($this->service->generationPaused())->toBeFalse()
+        ->and($breaker->state())->toBe(AzureConfigCircuitBreaker::STATE_HALF_OPEN);
+
+    Carbon::setTestNow();
 });
 
 it('markDone reaches the inbox alone when Telegram is unconfigured', function (): void {

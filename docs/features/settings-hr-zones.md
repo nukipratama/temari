@@ -28,7 +28,7 @@ code_refs:
 
 [HrZones.tsx](../../resources/js/pages/Settings/HrZones.tsx) is split into three stacked sections:
 
-1. **Max & Resting HR** — two `NumberField` bpm inputs. A "Hitung otomatis dari Max & Resting" button recomputes the zones from these.
+1. **Max & Resting HR** — two `NumberField` bpm inputs. An "Auto-calculate from Max & Resting" button recomputes the zones from these.
 2. **Preview zona (otomatis)** — a live, read-only Z1–Z5 breakdown that updates as you type. Zones are derived client-side by the exported `deriveZones(maxHr, restingHr)`: each zone's `lo` is `round(resting + pct × (max − resting))` using the **Karvonen %HRR** breakpoints `[0.488, 0.664, 0.792, 0.904, 0.968]`; each `hi` is the next zone's `lo`, and Z5's `hi` is an open-ended sentinel (`999`, shown as `Z5+`). The breakpoints are mirrored from the server request so the preview matches the stored result byte for byte.
 3. **Atur manual (opsional)** — `BoundaryInput` fields to hand-tune each band. The rule (and the validation): each zone's upper bound must equal the next zone's lower bound so there are no gaps.
 

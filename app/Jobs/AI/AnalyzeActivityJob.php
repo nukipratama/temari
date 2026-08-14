@@ -130,7 +130,7 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
     /**
      * The user's earliest activity (by start_date_local) whose narration group is
      * *stalled* on its representative PostRunSpeech row: Pending, or Failed still
-     * under the self-heal retry budget ({@see Analysis::scopeStalled}). Unlike
+     * under the self-heal retry budget ({@see Analysis::stalled()}). Unlike
      * {@see self::earliestPendingActivityForUser()} (Pending-only, which drives
      * the chain advance), this also recovers a Failed-under-budget group so
      * ai:self-heal can retry it, bounded to dead-letter. Returns null when the

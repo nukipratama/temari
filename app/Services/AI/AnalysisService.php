@@ -601,54 +601,61 @@ class AnalysisService
 
     /**
      * Why generation is paused right now, for the /pulse dashboard's status
-     * line — null when healthy. Checked in the same precedence as
-     * {@see self::autoDispatchEnabled()}, but reported as a reason instead of
-     * a single boolean so "kill switch off" reads differently from "cost
-     * ceiling hit today".
+     * line — null when healthy. The same list {@see self::autoDispatchEnabled()}
+     * decides on, reported as a reason instead of a single boolean so "kill
+     * switch off" reads differently from "cost ceiling hit today".
      */
     public function pauseReason(): ?string
     {
+        return $this->blockingReason(withBudget: true, probeBreaker: false);
+    }
+
+    private function autoDispatchEnabled(): bool
+    {
+        return $this->blockingReason(withBudget: true, probeBreaker: true) === null;
+    }
+
+    private function dispatchAllowedIgnoringBudget(): bool
+    {
+        return $this->blockingReason(withBudget: false, probeBreaker: true) === null;
+    }
+
+    /**
+     * The first condition stopping an auto-dispatch, or null when none does.
+     * `withBudget: false` drops the daily spend ceiling so the caller can tell a
+     * budget stop from every other one.
+     *
+     * The breaker half-opens after a cooldown to allow a single probe, so a
+     * caller about to dispatch passes `probeBreaker: true` to take it; a caller
+     * only reporting passes false and reads the state without consuming it.
+     */
+    private function blockingReason(bool $withBudget, bool $probeBreaker): ?string
+    {
+        if ($this->dispatchSuppressed) {
+            return 'suppressed';
+        }
+
         if (! $this->config->boolean(AppConfigKey::AiEnabled)) {
             return 'kill_switch';
+        }
+
+        if (! (bool) config('ai.auto_dispatch', true)) {
+            return 'auto_dispatch';
         }
 
         if (blank(config('azure_openai.uri')) || blank(config('azure_openai.api_key'))) {
             return 'unconfigured';
         }
 
-        if ($this->dailyCostCeilingExceeded()) {
-            return 'cost_ceiling';
-        }
-
-        // A tripped config breaker (persistent 401/403 or wrong base URL) means
-        // the key/URL is fat-fingered: distinct from "unconfigured" (blank env).
-        if ($this->configBreaker->isTripped()) {
+        if ($probeBreaker ? ! $this->configBreaker->allowsRequest() : $this->configBreaker->isTripped()) {
             return 'config';
         }
 
+        if ($withBudget && $this->dailyCostCeilingExceeded()) {
+            return 'cost_ceiling';
+        }
+
         return null;
-    }
-
-    private function autoDispatchEnabled(): bool
-    {
-        return $this->dispatchAllowedIgnoringBudget() && ! $this->dailyCostCeilingExceeded();
-    }
-
-    /**
-     * Every auto-dispatch condition except the daily spend ceiling: the
-     * withoutDispatching suppression, the AiEnabled kill switch, the
-     * `ai.auto_dispatch` env switch, a configured Azure URI + key, and an
-     * untripped config breaker (it half-opens after a cooldown, so a fixed env
-     * auto-resumes via the next dispatch/self-heal for free).
-     */
-    private function dispatchAllowedIgnoringBudget(): bool
-    {
-        return ! $this->dispatchSuppressed
-            && $this->config->boolean(AppConfigKey::AiEnabled)
-            && (bool) config('ai.auto_dispatch', true)
-            && filled(config('azure_openai.uri'))
-            && filled(config('azure_openai.api_key'))
-            && $this->configBreaker->allowsRequest();
     }
 
     /**

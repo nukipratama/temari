@@ -213,7 +213,7 @@ it('weaves the snapshot real numbers into the weekly recap', function (): void {
     $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
 
     expect($recap)->toContain('24.6')
-        ->and($recap)->toContain('4')
+        ->and($recap)->toMatch('/\b4 (runs|sessions|times)\b/')
         ->and($recap)->toContain('recovery next week');
 });
 
