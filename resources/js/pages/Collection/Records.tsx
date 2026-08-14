@@ -373,8 +373,9 @@ function PaceCell({ pr }: Readonly<{ pr: ExtendedPR }>) {
         <Card tone="sky" className="flex flex-col gap-2">
             <SectionLabel
                 dot
+                onSky
                 dotClass="bg-rarity-rare shadow-[0_0_8px_var(--color-rarity-rare)]"
-                className="mb-0 inline-flex text-rarity-rare"
+                className="mb-0 inline-flex"
             >
                 {category}
             </SectionLabel>
