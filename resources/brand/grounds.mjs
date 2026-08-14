@@ -127,16 +127,68 @@ export function paperGrounds(tokens = readColorTokens(), dir = COMPONENT_DIR) {
   return grounds;
 }
 
+const toRgb = (hex) => {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+};
+
+/** `fill` at `alpha` over `ground`, the way the compositor does it. */
+export function composite(fill, alpha, ground) {
+  const [f, g] = [toRgb(fill), toRgb(ground)];
+  return (
+    '#' +
+    f
+      .map((v, i) => Math.round(v * alpha + g[i] * (1 - alpha)))
+      .map((v) => v.toString(16).padStart(2, '0'))
+      .join('')
+  );
+}
+
+/** Every `bg-<name>/<alpha>` a component paints under `text-<name>-ink`. */
+export function enumerateInkTints(dir = COMPONENT_DIR) {
+  const alphas = /\bbg-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\/(?:\[([0-9.]+)\]|([0-9]{1,3}))/g;
+  const heaviest = {};
+
+  for (const file of sourceFiles(dir)) {
+    const source = stripComments(readFileSync(file, 'utf8'));
+    for (const [literal] of source.matchAll(/'[^']*'|"[^"]*"|`[^`]*`/g)) {
+      for (const [, name, bracket, plain] of literal.matchAll(alphas)) {
+        if (!new RegExp(`text-${name}-ink\\b`).test(literal)) {
+          continue;
+        }
+        const alpha =
+          bracket === undefined ? Number(plain) / 100 : Number(bracket);
+        heaviest[name] = Math.max(heaviest[name] ?? 0, alpha);
+      }
+    }
+  }
+  return heaviest;
+}
+
 /**
- * Every ground `--color-<family>-ink` has to clear: the papers, plus the
- * family's own `-bg` cell when it paints one. The pairing is the naming
- * convention, so a new tinted cell is scored the moment it is classified.
+ * Every ground `--color-<family>-ink` has to clear: the papers, the family's
+ * own `-bg` cell when it paints one, and its heaviest alpha tint composited
+ * over the darkest paper. Both extras come from the naming convention, so a new
+ * cell or a heavier tint is scored as soon as it is recorded.
  */
 export function groundsForInk(family, tokens, papers) {
+  const grounds = { ...papers };
+
   const own = `${family}-bg`;
-  return KINDS.scoped.includes(own) && tokens[own] !== undefined
-    ? { ...papers, [own]: tokens[own] }
-    : { ...papers };
+  if (KINDS.scoped.includes(own) && tokens[own] !== undefined) {
+    grounds[own] = tokens[own];
+  }
+
+  const alpha = KINDS.tint[family];
+  if (alpha !== undefined && tokens[family] !== undefined) {
+    grounds[`${family}/${alpha} on paper`] = composite(
+      tokens[family],
+      alpha,
+      darkest(papers),
+    );
+  }
+
+  return grounds;
 }
 
 /** The ground a token is hardest to read on. */

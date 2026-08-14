@@ -69,11 +69,75 @@ function designTokens(): array
 }
 
 /**
- * @return array{paper: list<string>, scoped: list<string>, fill: list<string>, keyword: list<string>}
+ * @return array{paper: list<string>, scoped: list<string>, fill: list<string>, keyword: list<string>, tint: array<string, float>}
  */
 function groundKinds(): array
 {
     return File::json(resource_path('brand/grounds.json'));
+}
+
+/** @return list<string> */
+function componentSources(): array
+{
+    $sources = [];
+    foreach (File::allFiles(resource_path('js')) as $file) {
+        if (in_array($file->getExtension(), ['ts', 'tsx'], true)) {
+            $sources[] = preg_replace(['#/\*.*?\*/#s', '#//[^\n]*#'], ' ', $file->getContents()) ?? '';
+        }
+    }
+
+    return $sources;
+}
+
+/**
+ * The heaviest `bg-<family>/<alpha>` a component paints under
+ * `text-<family>-ink`, which is the real ground that chip prints on.
+ *
+ * @return array<string, float>
+ */
+function paintedInkTints(): array
+{
+    $heaviest = [];
+
+    foreach (componentSources() as $source) {
+        preg_match_all('/\'[^\']*\'|"[^"]*"|`[^`]*`/s', $source, $literals);
+
+        foreach ($literals[0] as $literal) {
+            preg_match_all(
+                '/\bbg-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\/(?:\[([0-9.]+)\]|([0-9]{1,3}))/',
+                $literal,
+                $found,
+                PREG_SET_ORDER,
+            );
+
+            foreach ($found as $match) {
+                $name = $match[1];
+                if (preg_match('/text-'.preg_quote($name, '/').'-ink\b/', $literal) !== 1) {
+                    continue;
+                }
+                $alpha = $match[2] !== '' ? (float) $match[2] : (float) $match[3] / 100;
+                $heaviest[$name] = max($heaviest[$name] ?? 0.0, $alpha);
+            }
+        }
+    }
+
+    return $heaviest;
+}
+
+/** `$fill` at `$alpha` over `$ground`, the way the compositor does it. */
+function compositeOver(string $fill, float $alpha, string $ground): string
+{
+    $of = (int) hexdec(mb_substr($fill, 1));
+    $og = (int) hexdec(mb_substr($ground, 1));
+
+    $mixed = '';
+    foreach ([16, 8, 0] as $shift) {
+        $f = ($of >> $shift) & 255;
+        $g = ($og >> $shift) & 255;
+        $mixed .= mb_str_pad(dechex((int) round($f * $alpha + $g * (1 - $alpha))), 2, '0', STR_PAD_LEFT);
+    }
+
+    return '#'.$mixed;
 }
 
 /**
@@ -175,10 +239,18 @@ it('finds more grounds than dawn-shift alone declares', function (): void {
     expect($beyondDawnShift)->not->toBeEmpty();
 })->group('structure');
 
+it('records the tint every ink actually prints on', function (): void {
+    // grounds.json carries the alphas because the live audit runs in a browser
+    // and cannot read the components. This is what keeps that copy honest: a
+    // heavier tint, or a new one, goes red until it is recorded.
+    expect(groundKinds()['tint'])->toEqual(paintedInkTints());
+})->group('structure');
+
 it('keeps every -ink token above AA on every ground it lands on', function (): void {
     ['tokens' => $tokens, 'shifts' => $shifts] = designTokens();
     $papers = paperGrounds($tokens, $shifts);
-    $scoped = groundKinds()['scoped'];
+    ['scoped' => $scoped, 'tint' => $tints] = groundKinds();
+    $darkestPaper = collect($papers)->sortBy(fn (string $hex): float => tokenLuminance($hex))->first();
 
     $inks = array_filter(
         $tokens,
@@ -195,9 +267,17 @@ it('keeps every -ink token above AA on every ground it lands on', function (): v
         // A family's own tinted cell is a ground only that family's ink lands
         // on. The pairing is the naming convention, so a new -bg cell is scored
         // the moment grounds.json calls it scoped.
-        $own = mb_substr($name, 0, -mb_strlen('-ink')).'-bg';
+        $family = mb_substr($name, 0, -mb_strlen('-ink'));
+        $own = $family.'-bg';
         if (in_array($own, $scoped, true) && isset($tokens[$own])) {
             $grounds[$own] = $tokens[$own];
+        }
+
+        // A chip painted bg-<family>/<alpha> prints on the tint, not on the
+        // paper under it. Composited over the darkest paper it can sit on.
+        if (isset($tints[$family], $tokens[$family])) {
+            $alpha = $tints[$family];
+            $grounds["{$family}/{$alpha} on paper"] = compositeOver($tokens[$family], $alpha, $darkestPaper);
         }
 
         foreach ($grounds as $ground => $paper) {

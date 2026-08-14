@@ -146,10 +146,21 @@ export function collectPaperGrounds(
     ];
 }
 
+/** `fill` at `alpha` over `ground`, the way the compositor does it. */
+function composite(fill: string, alpha: number, ground: string): string {
+    const [f, g] = [channels(fill), channels(ground)];
+    if (!f || !g) {
+        return '';
+    }
+    return `rgb(${f.map((v, i) => Math.round(v * alpha + g[i] * (1 - alpha))).join(', ')})`;
+}
+
 /**
- * The grounds one `-ink` token has to clear: the papers, plus its own family's
- * tinted cell when it paints one. The pairing is the naming convention, so a
- * new `-bg` cell is scored as soon as grounds.json calls it scoped.
+ * The grounds one `-ink` token has to clear: the papers, its own family's
+ * tinted cell when it paints one, and its heaviest alpha tint composited over
+ * the darkest paper — a chip painted `bg-<family>/<alpha>` prints on the tint,
+ * not on the paper under it. Both extras come from the naming convention, so a
+ * new cell or a heavier tint is scored as soon as grounds.json records it.
  */
 function groundsForInk(
     inkToken: string,
@@ -157,11 +168,31 @@ function groundsForInk(
     papers: ReadonlyArray<Ground>,
 ): Ground[] {
     const family = inkToken.slice('--color-'.length, -'-ink'.length);
-    const own = `${family}-bg`;
+    const grounds = [...papers];
 
-    return GROUND_KINDS.scoped.includes(own) && values[`--color-${own}`]
-        ? [...papers, { name: own, value: values[`--color-${own}`] }]
-        : [...papers];
+    const own = `${family}-bg`;
+    if (GROUND_KINDS.scoped.includes(own) && values[`--color-${own}`]) {
+        grounds.push({ name: own, value: values[`--color-${own}`] });
+    }
+
+    const alpha = (GROUND_KINDS.tint as Record<string, number>)[family];
+    const fill = values[`--color-${family}`];
+    const darkest = papers.reduce<Ground | null>((a, b) => {
+        const [x, y] = [a ? luminance(a.value) : null, luminance(b.value)];
+        if (x === null) {
+            return a ?? b;
+        }
+        return y !== null && y < x ? b : a;
+    }, null);
+
+    if (alpha !== undefined && fill && darkest) {
+        grounds.push({
+            name: `${family}/${alpha} on paper`,
+            value: composite(fill, alpha, darkest.value),
+        });
+    }
+
+    return grounds;
 }
 
 /** Resolve each token against an element, so cascaded overrides are included. */

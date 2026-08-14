@@ -16,7 +16,7 @@ const TOKENS: Record<string, string> = {
     '--color-surface-sunken': '#ece2ce',
     '--color-surface-warm': '#f8f0dd',
     '--color-rarity-legendary': '#f5a623',
-    '--color-rarity-legendary-ink': '#885c13',
+    '--color-rarity-legendary-ink': '#865b13',
     '--radius-md': '14px',
     '--shadow-e1': '0 1px 2px rgba(58, 45, 20, 0.06)',
     '--spacing-4': '16px',

@@ -33,7 +33,7 @@
     --color-citrus: #c9971f;
     --color-citrus-deep: #a67c14;
     --color-stone: #a99f8a;
-    --color-horizon-ink: #7e6023;
+    --color-horizon-ink: #775a21;
 
     /* mood — vivid for fills, -bg for the tinted cell, -ink for text (derived, >=4.5:1) */
     --color-mood-blazing: #c9971f;
@@ -48,8 +48,8 @@
     --color-mood-gassed-bg: #e3c2c7;
     --color-mood-overloaded-bg: #ded0ee;
     --color-mood-chill-bg: #dcd8ee;
-    --color-mood-blazing-ink: #806014;
-    --color-mood-easy-ink: #26724f;
+    --color-mood-blazing-ink: #785a13;
+    --color-mood-easy-ink: #226748;
     --color-mood-wobbly-ink: #a9374b;
     --color-mood-gassed-ink: #7a2030;
     --color-mood-overloaded-ink: #6b3fa0;
@@ -65,7 +65,7 @@
     --color-rarity-uncommon-ink: #1f7434;
     --color-rarity-rare-ink: #2463be;
     --color-rarity-epic-ink: #8543c4;
-    --color-rarity-legendary-ink: #885c13;
+    --color-rarity-legendary-ink: #865b13;
 
     /* spacing — NEW, no scale existed */
     --spacing-1: 4px;

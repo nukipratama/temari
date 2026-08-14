@@ -121,7 +121,16 @@ export function worstOn(fg, grounds = GROUNDS) {
     .reduce((a, b) => (a.ratio <= b.ratio ? a : b));
 }
 
-const inkGrounds = (family) => groundsForInk(family, { ...COLOR, ...MOOD_BG }, GROUNDS);
+/* Keyed the way the tokens ship (`mood-easy`, `rarity-epic`), not the way the
+   MOOD/RARITY maps are keyed, so a family name resolves to its fill. */
+const FILLS = {
+  ...COLOR,
+  ...MOOD_BG,
+  ...Object.fromEntries(Object.entries(MOOD).map(([k, v]) => [`mood-${k}`, v])),
+  ...Object.fromEntries(Object.entries(RARITY).map(([k, v]) => [`rarity-${k}`, v])),
+};
+
+const inkGrounds = (family) => groundsForInk(family, FILLS, GROUNDS);
 
 const RARITY_INK = Object.fromEntries(
   Object.entries(RARITY).map(([k, v]) => [k, inkOn(v, inkGrounds(`rarity-${k}`))]),

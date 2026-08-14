@@ -316,6 +316,29 @@ describe('auditContrast', () => {
         expect(label('#a9374b')?.pass).toBe(true);
     });
 
+    it('scores an ink on its own alpha tint, not on the paper under it', () => {
+        const values = {
+            ...paper,
+            '--color-horizon': '#d9a53c',
+            '--color-horizon-ink': '#7e6023',
+        };
+        const onlyPaper = [{ name: 'cream-deep', value: '#ece2ce' }];
+        const label = (ink: string) =>
+            auditContrast(
+                { ...values, '--color-horizon-ink': ink },
+                onlyPaper,
+            ).find((r) => r.use === 'horizon label');
+
+        // #7e6023 clears the paper itself at 4.56:1 and still fails here: once
+        // the bg-horizon/0.18 chip is composited over that paper it drops to
+        // 4.14:1, and the chip is the ground the label is really printed on.
+        expect(label('#7e6023')).toMatchObject({
+            bg: 'paper · horizon/0.18 on paper',
+            pass: false,
+        });
+        expect(label('#775a21')?.pass).toBe(true);
+    });
+
     it('leaves a pair whose ground is not paper on its own background', () => {
         const rows = auditContrast(
             {

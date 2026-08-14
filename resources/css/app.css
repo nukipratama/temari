@@ -110,7 +110,7 @@
     /* Horizon — primary CTA, "earned" state, Temari accent. Gold thread. */
     --color-horizon: #d9a53c;
     --color-horizon-deep: #b98a2a;
-    --color-horizon-ink: #7e6023;
+    --color-horizon-ink: #775a21;
 
     /* Cream — paper / app background, secondary surface. Warm linen canvas. */
     --color-cream: #f5f0e4;
@@ -147,10 +147,10 @@
     /* Mood — fill / pastel cell tint / text. */
     --color-mood-blazing: #c9971f;
     --color-mood-blazing-bg: #f3e6c2;
-    --color-mood-blazing-ink: #806014;
+    --color-mood-blazing-ink: #785a13;
     --color-mood-easy: #2f8f63;
     --color-mood-easy-bg: #d7ecdf;
-    --color-mood-easy-ink: #26724f;
+    --color-mood-easy-ink: #226748;
     --color-mood-wobbly: #b23a4f;
     --color-mood-wobbly-bg: #f0d3d8;
     --color-mood-wobbly-ink: #a9374b;
@@ -177,7 +177,7 @@
     --color-rarity-epic: #a855f7;
     --color-rarity-epic-ink: #8543c4;
     --color-rarity-legendary: #f5a623;
-    --color-rarity-legendary-ink: #885c13;
+    --color-rarity-legendary-ink: #865b13;
 
     /* Strava brand (untouched, never themed). */
     --color-strava-orange: #fc4c02;
