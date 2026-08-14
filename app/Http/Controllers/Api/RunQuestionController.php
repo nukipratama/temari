@@ -14,6 +14,7 @@ use App\Models\AI\RunQuestion;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
+use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\RunQuestion\RuleBasedRunAnswer;
 use App\Services\AI\RunQuestion\RunQuestionSeeds;
 use App\Services\AI\RunQuestion\RunQuestionTopic;
@@ -50,6 +51,7 @@ class RunQuestionController extends Controller
     public function store(
         AskRunQuestionRequest $request,
         AnalysisService $service,
+        CostCeilingLedger $ledger,
         int $activity,
     ): JsonResponse {
         $user = $this->user($request);
@@ -61,10 +63,13 @@ class RunQuestionController extends Controller
         // stance the "Baca ulang" trigger takes, keyed on is_demo rather than on
         // the route. See docs/decisions/demo-triggers-served-rule-based.md.
         if ($service->shouldServeRuleBased($user)) {
-            return $this->created($this->record($user, $activity, $question, [
-                'status' => AnalysisStatus::Done,
-                'answer' => RuleBasedRunAnswer::for($detail, $question),
-            ]));
+            return $this->created($this->ruleBasedRow($user, $activity, $question, $detail));
+        }
+
+        if ($service->costCeilingDegraded()) {
+            $ledger->recordDegradedFill();
+
+            return $this->created($this->ruleBasedRow($user, $activity, $question, $detail));
         }
 
         if ($service->generationPaused()) {
@@ -75,6 +80,14 @@ class RunQuestionController extends Controller
         AnswerRunQuestionJob::dispatch($row->id)->afterCommit();
 
         return $this->created($row);
+    }
+
+    private function ruleBasedRow(User $user, int $activityId, string $question, ActivityDetail $detail): RunQuestion
+    {
+        return $this->record($user, $activityId, $question, [
+            'status' => AnalysisStatus::Done,
+            'answer' => RuleBasedRunAnswer::for($detail, $question),
+        ]);
     }
 
     /**

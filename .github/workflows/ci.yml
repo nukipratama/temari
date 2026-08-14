@@ -48,7 +48,7 @@ jobs:
           changed=$(git diff --name-only "$(git merge-base origin/main HEAD)" HEAD)
           printf 'Changed files:\n%s\n' "$changed"
           backend=false; frontend=false
-          if printf '%s\n' "$changed" | grep -qE '^(app|bootstrap|config|database|routes|tests)/|^composer\.(json|lock)$|^phpunit\.xml$|^artisan$|^(phpstan|phpstan-baseline)\.neon$|^rector\.php$|^pint\.json$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
+          if printf '%s\n' "$changed" | grep -qE '^(app|bootstrap|config|database|routes|tests)/|^composer\.(json|lock)$|^phpunit\.xml$|^artisan$|^(phpstan|phpstan-baseline)\.neon$|^rector\.php$|^pint\.json$|^scripts/check-see-references\.php$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
             backend=true
           fi
           if printf '%s\n' "$changed" | grep -qE '^resources/(js|css|views)/|^public/|^package(-lock)?\.json$|^vite\.config\.ts$|^vitest\.config\.ts$|^tsconfig\.json$|^eslint\.config\.|^\.nvmrc$|^scripts/check-entry-chunks\.mjs$|^scripts/check-raw-palette\.mjs$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
@@ -125,6 +125,9 @@ jobs:
       # --no-tia on both Pest steps: TIA is a local fast-feedback tool, and a
       # graph-narrowed run would silently shrink both this gate and the coverage
       # gate below. CI stays exhaustive.
+      - name: Check {@see} references resolve
+        run: php scripts/check-see-references.php
+
       - name: Class/test 1:1 structure check
         run: ./vendor/bin/pest --no-tia --group=structure
 

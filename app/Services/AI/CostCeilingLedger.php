@@ -9,10 +9,11 @@ use Illuminate\Support\Facades\Cache;
 
 /**
  * Day-scoped record of the daily spend ceiling tripping: when it first tripped
- * and how many narration blocks were served rule-based because of it. Keyed by
- * date and cache-backed rather than migrated, because it answers one operator
- * question on /ai-usage about the current day, and the spend history it would
- * duplicate already lives in ai_token_usages.
+ * and how much was served rule-based because of it, counting both narration
+ * blocks and run-question answers. Keyed by date and cache-backed rather than
+ * migrated, because it answers one operator question on /ai-usage about the
+ * current day, and the spend history it would duplicate already lives in
+ * ai_token_usages.
  */
 class CostCeilingLedger
 {

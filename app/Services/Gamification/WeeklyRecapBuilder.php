@@ -15,8 +15,8 @@ use Illuminate\Support\Carbon;
  * Builds the "Minggu Kamu" weekly recap for the dashboard: km + runs this week
  * vs last week, the best card earned this week, the consecutive-week streak, and
  * the nearest incomplete goal. Reuses the app's Monday-Sunday week boundary
- * ({@see WeeklyAggregator}: week_ending = Sunday) so the recap window lines up
- * with the stored WeeklySnapshot rows.
+ * ({@see \App\Services\Run\Metrics\WeeklyAggregator}: week_ending = Sunday) so
+ * the recap window lines up with the stored WeeklySnapshot rows.
  */
 readonly class WeeklyRecapBuilder
 {
