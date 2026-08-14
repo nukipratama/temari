@@ -211,7 +211,8 @@ export function monotonyHint(monotony: number | null | undefined): string {
     return 'monotonous';
 }
 
-export type RiskTone = 'text-leaf' | 'text-citrus' | 'text-ember';
+export type RiskTone =
+    'text-leaf-deep' | 'text-citrus-deep' | 'text-ember-deep';
 
 /** Below `low` reads calm, below `high` reads cautionary, at or above reads alert. */
 function riskTone(
@@ -219,9 +220,9 @@ function riskTone(
     low: number,
     high: number,
 ): RiskTone {
-    if (value == null || value < low) return 'text-leaf';
-    if (value < high) return 'text-citrus';
-    return 'text-ember';
+    if (value == null || value < low) return 'text-leaf-deep';
+    if (value < high) return 'text-citrus-deep';
+    return 'text-ember-deep';
 }
 
 // Kondisi card colors, kept on the same risk axis the hints above already

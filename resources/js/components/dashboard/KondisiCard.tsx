@@ -35,7 +35,7 @@ export default function KondisiCard({
             label: 'Fitness',
             value: load?.ctl_42d != null ? load.ctl_42d.toFixed(1) : '—',
             hint: ctlHint(load?.ctl_42d),
-            color: 'text-leaf',
+            color: 'text-leaf-deep',
         },
         {
             label: 'Fatigue',

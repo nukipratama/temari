@@ -92,7 +92,7 @@ export default function EmptyRunsState({
             <div className="flex flex-col items-center gap-5 text-center">
                 <Temari pose="reading" size={140} />
                 <div>
-                    <Eyebrow token="hero" tone="horizon" className="mb-3">
+                    <Eyebrow token="hero" tone="horizon-ink" className="mb-3">
                         {hero.eyebrow}
                     </Eyebrow>
                     <h2

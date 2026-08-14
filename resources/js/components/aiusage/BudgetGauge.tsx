@@ -51,7 +51,7 @@ export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
             )}
 
             {overBudget && (
-                <p className="mt-2 text-xs font-semibold text-mood-gassed">
+                <p className="mt-2 text-xs font-semibold text-mood-gassed-ink">
                     Over the daily limit by{' '}
                     {formatCost(todayCost - dailyCeiling, currency)}.
                 </p>
