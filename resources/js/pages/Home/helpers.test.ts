@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import type { ActivityDetail, Rarity } from '@/types/inertia';
 
 import {
-    MOOD_UPPER,
     atlHint,
     atlTone,
     ctlHint,
@@ -12,7 +11,6 @@ import {
     formatSignedForm,
     featuredCardFor,
     formatWeather,
-    kartuStripItem,
     monotonyHint,
     monotonyTone,
     shortenLocation,
@@ -95,26 +93,6 @@ describe('featuredCardFor', () => {
     });
 });
 
-describe('kartuStripItem', () => {
-    it('returns null when the run has no attached card', () => {
-        expect(kartuStripItem(runWith({}))).toBeNull();
-    });
-
-    it('returns a strip item with rarity + key derived from card id', () => {
-        const run = runWith(
-            {},
-            { id: 42, rarity: 'rare', special_move: 'Cool Move' },
-        );
-        const item = kartuStripItem(run);
-        expect(item).toMatchObject({
-            key: 'card-42',
-            cardId: 42,
-            name: 'Cool Move',
-            rarity: 'rare',
-        });
-    });
-});
-
 describe('formatIdDateUpper', () => {
     it('returns empty for null', () => {
         expect(formatIdDateUpper(null)).toBe('');
@@ -128,13 +106,6 @@ describe('formatIdDateUpper', () => {
         const out = formatIdDateUpper('2026-05-20T07:00');
         expect(out).toMatch(/^[A-Z]/);
         expect(out).toBe(out.toUpperCase());
-    });
-});
-
-describe('MOOD_UPPER', () => {
-    it('uppercases every mood value', () => {
-        expect(MOOD_UPPER.blazing).toBe('NYALA');
-        expect(MOOD_UPPER.chill).toBe('ADEM');
     });
 });
 

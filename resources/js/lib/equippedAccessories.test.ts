@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EquippedAccessories } from '@/types/inertia';
 
-import { ACCESSORY_KEYS, equippedToKeys } from './equippedAccessories';
+import { keyToPreviewEquipped, serverToEquipped } from './equippedAccessories';
 
 const emptyEquipped: EquippedAccessories = {
     medal: null,
@@ -13,37 +13,49 @@ const emptyEquipped: EquippedAccessories = {
     aura: null,
 };
 
-describe('ACCESSORY_KEYS', () => {
-    it('contains all 25 unlock keys', () => {
-        const keys = Object.values(ACCESSORY_KEYS);
-        expect(keys).toHaveLength(25);
+describe('serverToEquipped', () => {
+    it('leaves every wearable slot empty when nothing is equipped', () => {
+        // `medal` is the one slot with a drawn empty state ('none'); the rest
+        // are simply not rendered.
+        expect(serverToEquipped(emptyEquipped)).toEqual({
+            headband: null,
+            medal: 'none',
+            shirt: null,
+            shorts: null,
+            shoes: null,
+            aura: null,
+        });
+    });
+
+    it('maps an unlock key to the variant the mascot draws', () => {
+        const equipped = serverToEquipped({
+            ...emptyEquipped,
+            medal: 'accessory.medal_gold',
+            shoes: 'accessory.shoes_basic',
+        });
+        expect(equipped.medal).toBe('gold');
+        expect(equipped.shoes).toBe('basic');
+    });
+
+    it('falls back to the slot default for a key with no variant', () => {
+        expect(
+            serverToEquipped({ ...emptyEquipped, medal: 'medal_unheard_of' })
+                .medal,
+        ).toBe('first');
     });
 });
 
-describe('equippedToKeys', () => {
-    it('returns no keys for null/empty equipped sets', () => {
-        expect(equippedToKeys(null)).toEqual([]);
-        expect(equippedToKeys(undefined)).toEqual([]);
-        expect(equippedToKeys(emptyEquipped)).toEqual([]);
+describe('keyToPreviewEquipped', () => {
+    it('equips exactly the slot the key belongs to, leaving the rest bare', () => {
+        const preview = keyToPreviewEquipped('accessory.shirt_legendary');
+        expect(preview.shirt).toBe('legendary');
+        expect(preview.medal).toBe('none');
+        expect(preview.shoes).toBeUndefined();
     });
 
-    it('maps each equipped slot to its unlock key', () => {
-        const result = equippedToKeys({
-            ...emptyEquipped,
-            headband: ACCESSORY_KEYS.headbandLegendary,
-            medal: ACCESSORY_KEYS.medalGold,
+    it('shows a headband for a key that matches no slot prefix', () => {
+        expect(keyToPreviewEquipped('accessory.mystery')).toEqual({
+            headband: 'epic',
         });
-        expect(result).toContain(ACCESSORY_KEYS.headbandLegendary);
-        expect(result).toContain(ACCESSORY_KEYS.medalGold);
-        expect(result).toHaveLength(2);
-    });
-
-    it('returns only the equipped keys, skipping null slots', () => {
-        expect(
-            equippedToKeys({
-                ...emptyEquipped,
-                shoes: ACCESSORY_KEYS.shoesBasic,
-            }),
-        ).toEqual([ACCESSORY_KEYS.shoesBasic]);
     });
 });

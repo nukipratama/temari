@@ -12,8 +12,6 @@ interface HeroPanelProps {
     children: ReactNode;
     /** When true (default), applies the pre-dawn 160deg sky→sky-deep→sky-2 gradient. */
     gradient?: boolean;
-    /** When true (default), renders built-in ambient glow decorations. */
-    decorative?: boolean;
     className?: string;
     style?: CSSProperties;
 }
@@ -97,7 +95,6 @@ const STARS: StarDot[] = [
 export default function HeroPanel({
     children,
     gradient = true,
-    decorative = true,
     className,
     style,
 }: Readonly<HeroPanelProps>) {
@@ -110,111 +107,107 @@ export default function HeroPanel({
             )}
             style={style}
         >
-            {decorative && (
-                <>
-                    {/* Dawn ray — diagonal beam across the hero */}
-                    <span
-                        aria-hidden
-                        className="pointer-events-none absolute inset-0"
-                        style={dawnRayStyle()}
-                    />
+            {/* Dawn ray — diagonal beam across the hero */}
+            <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0"
+                style={dawnRayStyle()}
+            />
 
-                    {/* Grain/noise texture */}
-                    <span
-                        aria-hidden
-                        className="pointer-events-none absolute inset-0 opacity-[0.07] mix-blend-overlay"
-                        style={noiseFilterStyle()}
-                    />
+            {/* Grain/noise texture */}
+            <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 opacity-[0.07] mix-blend-overlay"
+                style={noiseFilterStyle()}
+            />
 
-                    {/* Diffuse backlight — soft glow from below */}
-                    <span
-                        aria-hidden
-                        className="pointer-events-none absolute -inset-x-20 bottom-0 h-[60%] rounded-full opacity-60"
-                        style={{
-                            background:
-                                'radial-gradient(ellipse 80% 60% at 50% 100%, rgba(217,165,60,0.12) 0%, transparent 80%)',
-                        }}
-                    />
+            {/* Diffuse backlight — soft glow from below */}
+            <span
+                aria-hidden
+                className="pointer-events-none absolute -inset-x-20 bottom-0 h-[60%] rounded-full opacity-60"
+                style={{
+                    background:
+                        'radial-gradient(ellipse 80% 60% at 50% 100%, rgba(217,165,60,0.12) 0%, transparent 80%)',
+                }}
+            />
 
-                    {/* Main content area glow — fills the center behind text */}
-                    <span
-                        aria-hidden
-                        className="pointer-events-none absolute left-[5%] top-0 h-full w-[90%] opacity-40"
-                        style={{
-                            background:
-                                'radial-gradient(ellipse 100% 70% at 50% 25%, rgba(217,165,60,0.2) 0%, rgba(217,165,60,0.05) 40%, transparent 70%)',
-                        }}
-                    />
+            {/* Main content area glow — fills the center behind text */}
+            <span
+                aria-hidden
+                className="pointer-events-none absolute left-[5%] top-0 h-full w-[90%] opacity-40"
+                style={{
+                    background:
+                        'radial-gradient(ellipse 100% 70% at 50% 25%, rgba(217,165,60,0.2) 0%, rgba(217,165,60,0.05) 40%, transparent 70%)',
+                }}
+            />
 
-                    {/* Outer depth ring — sits behind the whole content column */}
-                    <span
-                        aria-hidden
-                        className="pointer-events-none absolute left-1/2 top-1/3 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40"
-                        style={glowStyle(
-                            GLOW_COLORS.horizon.r,
-                            GLOW_COLORS.horizon.g,
-                            GLOW_COLORS.horizon.b,
-                            0.08,
-                            '55%',
-                        )}
-                    />
+            {/* Outer depth ring — sits behind the whole content column */}
+            <span
+                aria-hidden
+                className="pointer-events-none absolute left-1/2 top-1/3 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40"
+                style={glowStyle(
+                    GLOW_COLORS.horizon.r,
+                    GLOW_COLORS.horizon.g,
+                    GLOW_COLORS.horizon.b,
+                    0.08,
+                    '55%',
+                )}
+            />
 
-                    {/* Top-right ember accent */}
-                    <span
-                        aria-hidden
-                        className="pointer-events-none absolute -right-12 -top-12 h-72 w-72 rounded-full"
-                        style={glowStyle(
-                            GLOW_COLORS.ember.r,
-                            GLOW_COLORS.ember.g,
-                            GLOW_COLORS.ember.b,
-                            0.5,
-                            '50%',
-                        )}
-                    />
+            {/* Top-right ember accent */}
+            <span
+                aria-hidden
+                className="pointer-events-none absolute -right-12 -top-12 h-72 w-72 rounded-full"
+                style={glowStyle(
+                    GLOW_COLORS.ember.r,
+                    GLOW_COLORS.ember.g,
+                    GLOW_COLORS.ember.b,
+                    0.5,
+                    '50%',
+                )}
+            />
 
-                    {/* Bottom-left leaf glow — grounding earth tone */}
-                    <span
-                        aria-hidden
-                        className="pointer-events-none absolute -bottom-10 -left-10 h-48 w-48 rounded-full"
-                        style={glowStyle(
-                            GLOW_COLORS.leaf.r,
-                            GLOW_COLORS.leaf.g,
-                            GLOW_COLORS.leaf.b,
-                            0.35,
-                            '55%',
-                        )}
-                    />
+            {/* Bottom-left leaf glow — grounding earth tone */}
+            <span
+                aria-hidden
+                className="pointer-events-none absolute -bottom-10 -left-10 h-48 w-48 rounded-full"
+                style={glowStyle(
+                    GLOW_COLORS.leaf.r,
+                    GLOW_COLORS.leaf.g,
+                    GLOW_COLORS.leaf.b,
+                    0.35,
+                    '55%',
+                )}
+            />
 
-                    {/* Subtle cool accent top-left */}
-                    <span
-                        aria-hidden
-                        className="pointer-events-none absolute -left-6 -top-6 h-36 w-36 rounded-full"
-                        style={glowStyle(
-                            GLOW_COLORS.sky.r,
-                            GLOW_COLORS.sky.g,
-                            GLOW_COLORS.sky.b,
-                            0.25,
-                            '60%',
-                        )}
-                    />
+            {/* Subtle cool accent top-left */}
+            <span
+                aria-hidden
+                className="pointer-events-none absolute -left-6 -top-6 h-36 w-36 rounded-full"
+                style={glowStyle(
+                    GLOW_COLORS.sky.r,
+                    GLOW_COLORS.sky.g,
+                    GLOW_COLORS.sky.b,
+                    0.25,
+                    '60%',
+                )}
+            />
 
-                    {/* Star field — generated for consistent coverage */}
-                    {STARS.map((s) => (
-                        <span
-                            key={s.id}
-                            aria-hidden
-                            className="pointer-events-none absolute rounded-full bg-cream"
-                            style={{
-                                left: `${s.x}%`,
-                                top: `${s.y}%`,
-                                width: `${s.size}px`,
-                                height: `${s.size}px`,
-                                opacity: s.opacity,
-                            }}
-                        />
-                    ))}
-                </>
-            )}
+            {/* Star field — generated for consistent coverage */}
+            {STARS.map((s) => (
+                <span
+                    key={s.id}
+                    aria-hidden
+                    className="pointer-events-none absolute rounded-full bg-cream"
+                    style={{
+                        left: `${s.x}%`,
+                        top: `${s.y}%`,
+                        width: `${s.size}px`,
+                        height: `${s.size}px`,
+                        opacity: s.opacity,
+                    }}
+                />
+            ))}
             {children}
         </div>
     );

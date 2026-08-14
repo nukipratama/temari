@@ -1,62 +1,6 @@
 import type { TemariEquipped } from '@/components/temari/TemariProto';
 import type { EquippedAccessories } from '@/types/inertia';
 
-/**
- * Canonical unlock keys from config/temari_unlocks.php. Shared by the mascot's
- * accessory overlays (TemariCharacter) and the equipped→keys conversion below
- * so the two can't drift.
- */
-export const ACCESSORY_KEYS = {
-    headbandLegendary: 'accessory.headband_legendary',
-    headbandEpic: 'accessory.headband_epic',
-    headbandRare: 'accessory.headband_rare',
-    headbandUncommon: 'accessory.headband_uncommon',
-    medalFirst: 'accessory.medal_first',
-    medalGold: 'accessory.medal_gold',
-    medalSilver: 'accessory.medal_silver',
-    medalPlatinum: 'accessory.medal_platinum',
-    shirtBeginner: 'accessory.shirt_beginner',
-    shirtEarlyBird: 'accessory.shirt_early_bird',
-    shirtRainWarrior: 'accessory.shirt_rain_warrior',
-    shirtLegendary: 'accessory.shirt_legendary',
-    shortsLightweight: 'accessory.shorts_lightweight',
-    shortsExplorer: 'accessory.shorts_explorer',
-    shortsNegativeSplit: 'accessory.shorts_negative_split',
-    shortsMarathon: 'accessory.shorts_marathon',
-    shoesBasic: 'accessory.shoes_basic',
-    shoesSpeed: 'accessory.shoes_speed',
-    shoesRugged: 'accessory.shoes_rugged',
-    shoesLegendary: 'accessory.shoes_legendary',
-    auraWarmup: 'accessory.aura_warmup',
-    auraHeatwave: 'accessory.aura_heatwave',
-    auraCalm: 'accessory.aura_calm',
-    auraChampion: 'accessory.aura_champion',
-    auraWindrunner: 'accessory.aura_windrunner',
-} as const;
-
-/**
- * Flattens the resolved equipped set into the unlock keys the mascot overlays
- * key off — one per slot, so the mascot shows exactly what the user equipped
- * (not every accessory they've unlocked).
- */
-export function equippedToKeys(
-    equipped: EquippedAccessories | null | undefined,
-): string[] {
-    if (!equipped) {
-        return [];
-    }
-
-    const keys: string[] = [];
-
-    for (const value of Object.values(equipped)) {
-        if (typeof value === 'string' && value.length > 0) {
-            keys.push(value);
-        }
-    }
-
-    return keys;
-}
-
 // ── Server unlock key → TemariEquipped variant mappers ─────────────
 //
 // Single source of truth for mapping the server-side unlock key strings

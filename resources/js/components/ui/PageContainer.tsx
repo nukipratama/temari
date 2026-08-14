@@ -7,8 +7,6 @@ import { fadeInUp } from '@/lib/motion';
 interface PageContainerProps {
     children: ReactNode;
     className?: string;
-    /** Skip the fadeInUp entrance (renders a plain div). Default: animated. */
-    static?: boolean;
 }
 
 /**
@@ -23,12 +21,7 @@ const CONTAINER =
 export default function PageContainer({
     children,
     className,
-    static: isStatic = false,
 }: Readonly<PageContainerProps>) {
-    if (isStatic) {
-        return <div className={cn(CONTAINER, className)}>{children}</div>;
-    }
-
     return (
         <motion.div
             variants={fadeInUp}

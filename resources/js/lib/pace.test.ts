@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-    formatDayMonthYearId,
     formatDuration,
     formatDurationHMS,
     formatIdDate,
@@ -10,15 +9,12 @@ import {
     formatNaiveIdDate,
     formatNaiveRelativeId,
     formatNaiveTimeId,
-    formatPaddedDayMonthYearId,
     formatPace,
     formatRelativeId,
     formatShortDateTimeId,
     formatShortWeekdayDateId,
     formatWeekdayDayId,
     isoDateLocal,
-    isoDaysAgoLocal,
-    isoStartOfMonthLocal,
     mondayOf,
     paceSecPerKm,
     parseNaiveLocalDate,
@@ -307,14 +303,6 @@ describe('date/time format variants', () => {
     it('formatWeekdayDayId: short weekday + day', () => {
         expect(formatWeekdayDayId(d)).toBe('11 Mon');
     });
-
-    it('formatDayMonthYearId: day + long month + year', () => {
-        expect(formatDayMonthYearId(d)).toBe('May 11, 2026');
-    });
-
-    it('formatPaddedDayMonthYearId: padded day + short month + year', () => {
-        expect(formatPaddedDayMonthYearId(d)).toBe('May 11, 2026');
-    });
 });
 
 describe('formatNaiveTimeId', () => {
@@ -367,19 +355,6 @@ describe('formatShortDateTimeId', () => {
 describe('local-zone ISO date helpers', () => {
     it('todayLocalIso returns YYYY-MM-DD for the local current date', () => {
         expect(todayLocalIso()).toBe(isoDateLocal(new Date()));
-    });
-
-    it('isoDaysAgoLocal subtracts whole days in the local zone', () => {
-        const d = new Date();
-        d.setDate(d.getDate() - 7);
-        expect(isoDaysAgoLocal(7)).toBe(isoDateLocal(d));
-    });
-
-    it('isoStartOfMonthLocal returns the first of the current month', () => {
-        const now = new Date();
-        expect(isoStartOfMonthLocal()).toBe(
-            isoDateLocal(new Date(now.getFullYear(), now.getMonth(), 1)),
-        );
     });
 });
 
