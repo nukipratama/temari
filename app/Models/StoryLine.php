@@ -67,7 +67,7 @@ class StoryLine extends Model
         return [
             'user_id' => 'integer',
             'activity_id' => 'integer',
-            'for_date' => 'date',
+            'for_date' => 'date:Y-m-d',
         ];
     }
 }
