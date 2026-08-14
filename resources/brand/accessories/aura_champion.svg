@@ -2,7 +2,7 @@
   <defs><clipPath id="clip-acc-accessoryaura_champion"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
 <circle cx="50" cy="52" r="47" fill="none" stroke="#a855f7" stroke-width="2.4"
        stroke-dasharray="1.5 7" stroke-linecap="round" opacity="0.85"/><circle cx="50" cy="52" r="47" fill="none" stroke="#a855f7" stroke-width="2.6"
-     stroke-dasharray="999" stroke-linecap="round" opacity="0.9"/>  <circle cx="50" cy="52" r="41" fill="none" stroke="#8b8575" stroke-width="6"/>
+     stroke-dasharray="999" stroke-linecap="round" opacity="0.9"/>  <circle cx="50" cy="52" r="41" fill="none" stroke="#878172" stroke-width="6"/>
   <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
   <g clip-path="url(#clip-acc-accessoryaura_champion)"></g>
   <path d="M34.5 40.0 L45.5 39.0" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>

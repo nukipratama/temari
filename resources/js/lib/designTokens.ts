@@ -10,6 +10,8 @@
  * what generates the `@theme` block in the first place.
  */
 
+import GROUND_KINDS from '../../brand/grounds.json';
+
 const ROOT_SELECTOR = /(^|,)\s*:root\b/;
 const GROUND_SELECTOR = /body\[data-time-of-day=['"]?([a-z0-9-]+)['"]?\]/i;
 
@@ -100,14 +102,20 @@ function collectGroundsFromRule(
 }
 
 /**
- * Every ground `--color-surface` can take, read back out of the parsed
- * stylesheet: the base value plus one per `body[data-time-of-day]` rule
- * dawn-shift declares. Scraped rather than listed, so a sixth bucket added to
- * [useDawnShift](../hooks/useDawnShift.ts) is audited the moment its CSS lands.
+ * Every paper an `-ink` token can land on, read back out of the live values:
+ * one per `body[data-time-of-day]` rule dawn-shift declares, plus every
+ * background
+ * [grounds.json](../../brand/grounds.json) classifies as paper. Scraped and
+ * resolved rather than listed, so a sixth dawn-shift bucket, or a new page
+ * ground the components start painting, is audited as soon as it is classified.
+ *
+ * A classified ground the stylesheet no longer resolves is kept with an empty
+ * value on purpose: it scores `null` and reports as a failure, rather than
+ * quietly shrinking the set the way the missing `--color-cream-deep` did.
  */
-export function collectSurfaceGrounds(
+export function collectPaperGrounds(
     sheets: Iterable<StyleSheetLike> | ArrayLike<StyleSheetLike>,
-    base: string,
+    values: Record<string, string>,
 ): Ground[] {
     const found = new Map<string, string>();
 
@@ -127,9 +135,64 @@ export function collectSurfaceGrounds(
     }
 
     return [
-        { name: 'day', value: base },
-        ...[...found.entries()].map(([name, value]) => ({ name, value })),
+        ...GROUND_KINDS.paper.map((name) => ({
+            name,
+            value: values[`--color-${name}`] ?? '',
+        })),
+        ...[...found.entries()].map(([name, value]) => ({
+            name: `surface · ${name}`,
+            value,
+        })),
     ];
+}
+
+/** `fill` at `alpha` over `ground`, the way the compositor does it. */
+function composite(fill: string, alpha: number, ground: string): string {
+    const [f, g] = [channels(fill), channels(ground)];
+    if (!f || !g) {
+        return '';
+    }
+    return `rgb(${f.map((v, i) => Math.round(v * alpha + g[i] * (1 - alpha))).join(', ')})`;
+}
+
+/**
+ * The grounds one `-ink` token has to clear: the papers, its own family's
+ * tinted cell when it paints one, and its heaviest alpha tint composited over
+ * the darkest paper — a chip painted `bg-<family>/<alpha>` prints on the tint,
+ * not on the paper under it. Both extras come from the naming convention, so a
+ * new cell or a heavier tint is scored as soon as grounds.json records it.
+ */
+function groundsForInk(
+    inkToken: string,
+    values: Record<string, string>,
+    papers: ReadonlyArray<Ground>,
+): Ground[] {
+    const family = inkToken.slice('--color-'.length, -'-ink'.length);
+    const grounds = [...papers];
+
+    const own = `${family}-bg`;
+    if (GROUND_KINDS.scoped.includes(own) && values[`--color-${own}`]) {
+        grounds.push({ name: own, value: values[`--color-${own}`] });
+    }
+
+    const alpha = (GROUND_KINDS.tint as Record<string, number>)[family];
+    const fill = values[`--color-${family}`];
+    const darkest = papers.reduce<Ground | null>((a, b) => {
+        const [x, y] = [a ? luminance(a.value) : null, luminance(b.value)];
+        if (x === null) {
+            return a ?? b;
+        }
+        return y !== null && y < x ? b : a;
+    }, null);
+
+    if (alpha !== undefined && fill && darkest) {
+        grounds.push({
+            name: `${family}/${alpha} on paper`,
+            value: composite(fill, alpha, darkest.value),
+        });
+    }
+
+    return grounds;
 }
 
 /** Resolve each token against an element, so cascaded overrides are included. */
@@ -244,11 +307,10 @@ export interface ContrastRow {
  * meaningful graphic, 1.4:1 for a separator).
  */
 const PAIRS: ReadonlyArray<[string, string, string, number]> = [
-    ['ink', 'surface', 'Body text', 4.5],
-    ['ink-2', 'surface', 'Secondary text', 4.5],
-    ['ink-3', 'surface', 'Meta text', 4.5],
-    ['ink-3', 'surface-sunken', 'Meta on sunken', 4.5],
-    ['horizon-ink', 'surface', 'Gold as text', 4.5],
+    ['ink', 'paper', 'Body text', 4.5],
+    ['ink-2', 'paper', 'Secondary text', 4.5],
+    ['ink-3', 'paper', 'Meta text', 4.5],
+    ['horizon-ink', 'paper', 'Gold as text', 4.5],
     ['cream', 'sky', 'Text on indigo', 4.5],
     ['ink-on-sky', 'sky', 'Muted on indigo', 4.5],
     ['ink', 'horizon', 'Text on gold CTA', 4.5],
@@ -256,16 +318,17 @@ const PAIRS: ReadonlyArray<[string, string, string, number]> = [
     ['cream', 'ember-deep', 'Text on ember CTA', 4.5],
     ['cream', 'sky-2', 'Text on sky-2', 4.5],
     ['horizon', 'sky', 'Gold mark on indigo', 3.0],
-    ['line', 'surface', 'Separator', 1.4],
+    ['line', 'paper', 'Separator', 1.4],
 ];
 
-const PAPER = '--color-surface';
+/** Stands for the whole paper set rather than one token. */
+const PAPER = 'paper';
 
 /**
- * Scores one pair. A pair whose ground is `--color-surface` is scored against
- * every dawn-shift ground and reported at its worst, because that is the paper
- * the token has to survive — auditing only the midday value is what let eight
- * `-ink` tokens ship at 4.3:1 after dark.
+ * Scores one pair. A pair grounded on `paper` is scored against every ground
+ * the app can paint under text and reported at its worst, because that is what
+ * the token has to survive — scoring only `--color-surface` and its dawn-shift
+ * drifts is what let every hue-derived `-ink` ship at 4.3:1 on the page ground.
  */
 function row(
     values: Record<string, string>,
@@ -318,9 +381,16 @@ export function auditContrast(
     const rows = PAIRS.filter(
         ([fg, bg]) =>
             values[`--color-${fg}`] !== undefined &&
-            values[`--color-${bg}`] !== undefined,
+            (bg === PAPER || values[`--color-${bg}`] !== undefined),
     ).map(([fg, bg, use, min]) =>
-        row(values, grounds, `--color-${fg}`, `--color-${bg}`, use, min),
+        row(
+            values,
+            grounds,
+            `--color-${fg}`,
+            bg === PAPER ? PAPER : `--color-${bg}`,
+            use,
+            min,
+        ),
     );
 
     for (const inkToken of Object.keys(values).sort()) {
@@ -335,7 +405,16 @@ export function auditContrast(
         }
 
         const label = fillToken.slice('--color-'.length);
-        rows.push(row(values, grounds, inkToken, PAPER, `${label} label`, 4.5));
+        rows.push(
+            row(
+                values,
+                groundsForInk(inkToken, values, grounds),
+                inkToken,
+                PAPER,
+                `${label} label`,
+                4.5,
+            ),
+        );
 
         const fill = row(values, grounds, fillToken, PAPER, `${label} fill`, 3);
         rows.push(

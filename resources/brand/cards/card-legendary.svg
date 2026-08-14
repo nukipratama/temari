@@ -33,12 +33,12 @@
   <text x="24" y="38" font-family="JetBrains Mono, ui-monospace, monospace" font-size="9.5"
      font-weight="500" fill="#6e6452" text-anchor="start" letter-spacing="1.2">12 AUG 2026</text>
   <text x="276" y="38" font-family="JetBrains Mono, ui-monospace, monospace" font-size="9.5"
-     font-weight="700" fill="#8d6014" text-anchor="end" letter-spacing="1.4">LEGENDARY</text>
+     font-weight="700" fill="#865b13" text-anchor="end" letter-spacing="1.4">LEGENDARY</text>
 
   <text x="22" y="106" font-family="JetBrains Mono, ui-monospace, monospace" font-size="64"
      font-weight="800" fill="#241c54" text-anchor="start" letter-spacing="-2.5">8.2</text>
   <text x="140" y="106" font-family="JetBrains Mono, ui-monospace, monospace" font-size="18"
-     font-weight="700" fill="#8d6014" text-anchor="start" letter-spacing="1">KM</text>
+     font-weight="700" fill="#865b13" text-anchor="start" letter-spacing="1">KM</text>
 
   <svg x="24" y="122" width="252" height="161.3"
      viewBox="0 0 100 64" preserveAspectRatio="xMidYMid meet"
@@ -47,7 +47,7 @@
         stroke-linecap="round" stroke-linejoin="round"
         style="filter:drop-shadow(0 0 1.5px #f5a623)"/></svg>
 
-  <path d="M24 300 H276" stroke="#cec5ad" stroke-width="1"/>
+  <path d="M24 300 H276" stroke="#c9c0a9" stroke-width="1"/>
   <text x="65" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"
      font-weight="700" fill="#6e6452" text-anchor="middle" letter-spacing="1">PACE</text><text x="65" y="334" font-family="JetBrains Mono, ui-monospace, monospace" font-size="19"
      font-weight="700" fill="#1a1812" text-anchor="middle" letter-spacing="0">5:12</text><text x="154" y="314" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui" font-size="8.5"

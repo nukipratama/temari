@@ -33,7 +33,7 @@
      font-weight="800" fill="#241c54" text-anchor="middle" letter-spacing="1.6">NEGATIVE SPLIT</text>
   <g transform="translate(196 412)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="54" height="54" role="img" aria-label="Temari — celebrating">
   <defs><clipPath id="clip-share-legendary"><circle cx="50" cy="52" r="28.8"/></clipPath></defs>
-  <circle cx="50" cy="52" r="41" fill="none" stroke="#a77f2e" stroke-width="9"/>
+  <circle cx="50" cy="52" r="41" fill="none" stroke="#a27b2d" stroke-width="9"/>
   <circle cx="50" cy="52" r="31" fill="#f5f0e4" stroke="#241c54" stroke-width="4.5"/>
   <g clip-path="url(#clip-share-legendary)"></g>
   <path d="M34.5 37.0 L45.5 35.5" fill="none" stroke="#241c54" stroke-width="3.8" stroke-linecap="round"/>

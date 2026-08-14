@@ -1,0 +1,63 @@
+{
+  "_": "Every bg-* utility resources/js actually paints, classified. Read by resources/brand/grounds.mjs, resources/js/lib/designTokens.ts and tests/Unit/Architecture/DesignTokenContrastTest.php. A bg-* utility in use and absent here fails all three closed.",
+  "paper": [
+    "cream",
+    "cream-deep",
+    "surface",
+    "surface-card",
+    "surface-elev",
+    "surface-sunken",
+    "surface-warm"
+  ],
+  "scoped": [
+    "mood-blazing-bg",
+    "mood-chill-bg",
+    "mood-easy-bg",
+    "mood-gassed-bg",
+    "mood-overloaded-bg",
+    "mood-wobbly-bg"
+  ],
+  "fill": [
+    "citrus",
+    "ember",
+    "ember-deep",
+    "horizon",
+    "horizon-deep",
+    "ink",
+    "ink-3",
+    "leaf",
+    "leaf-deep",
+    "line",
+    "mood-blazing",
+    "mood-chill",
+    "mood-easy",
+    "mood-gassed",
+    "mood-overloaded",
+    "mood-wobbly",
+    "rarity-common",
+    "rarity-epic",
+    "rarity-legendary",
+    "rarity-rare",
+    "rarity-uncommon",
+    "sky",
+    "sky-2",
+    "sky-deep",
+    "strava-orange",
+    "strava-orange-hover"
+  ],
+  "__tint": "Heaviest bg-<family>/<alpha> tint a component paints under text-<family>-ink. Composited over the darkest paper, it is the real ground that chip prints on. Derived from resources/js; DesignTokenContrastTest fails when this drifts from the source.",
+  "tint": {
+    "horizon": 0.18,
+    "mood-blazing": 0.15,
+    "mood-easy": 0.15,
+    "mood-gassed": 0.15,
+    "rarity-legendary": 0.06
+  },
+  "keyword": [
+    "current",
+    "gradient-to-br",
+    "gradient-to-l",
+    "transparent",
+    "white"
+  ]
+}

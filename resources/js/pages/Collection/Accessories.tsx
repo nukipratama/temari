@@ -305,7 +305,7 @@ function AccessoryCard({
             padding="card"
             className={cn(
                 'relative flex flex-col items-center gap-3 text-center transition',
-                item.equipped && 'border-horizon bg-horizon/[0.08]',
+                item.equipped && 'border-horizon',
             )}
         >
             {item.equipped && (

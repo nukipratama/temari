@@ -11,7 +11,7 @@ import {
     type SurfaceRow,
     auditContrast,
     auditSurface,
-    collectSurfaceGrounds,
+    collectPaperGrounds,
     collectTokenNames,
     groupColorFamilies,
     readTokenValues,
@@ -151,11 +151,7 @@ export default function Design() {
         return readTokenValues(names, document.documentElement);
     }, []);
     const grounds = useMemo(
-        () =>
-            collectSurfaceGrounds(
-                document.styleSheets,
-                tokens['--color-surface'] ?? '',
-            ),
+        () => collectPaperGrounds(document.styleSheets, tokens),
         [tokens],
     );
     const contrast = useMemo<ContrastRow[]>(
@@ -343,7 +339,7 @@ export default function Design() {
 
                     <Section
                         title="Contrast audit"
-                        note={`Run client-side against the live values. Text pairs need 4.5:1, a meaningful graphic 3:1, a separator 1.4:1. A fill too light to carry 3:1 itself is drawn with its -ink outline, and the outline is what gets tested. Anything sitting on paper is scored on all ${grounds.length} grounds dawn-shift can render and reported at its worst, named after the pair.`}
+                        note={`Run client-side against the live values. Text pairs need 4.5:1, a meaningful graphic 3:1, a separator 1.4:1. A fill too light to carry 3:1 itself is drawn with its -ink outline, and the outline is what gets tested. Anything sitting on paper is scored on all ${grounds.length} grounds the app can paint under text — every dawn-shift surface plus every background resources/brand/grounds.json calls paper — and reported at its worst, named after the pair.`}
                     >
                         <div className="overflow-x-auto">
                             <table className="w-full max-w-[760px] border-collapse font-sans text-xs">
