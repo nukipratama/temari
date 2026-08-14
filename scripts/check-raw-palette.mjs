@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
 /*
- * Source guard: keeps off-token utilities out of resources/js.
+ * Source guard: keeps off-token utilities out of resources/js and the Blade
+ * templates under resources/views (error pages + the first-party Pulse cards),
+ * minus the published vendor templates listed in EXCLUDED.
  *
  * Three rules, all enforcing the same thing — a value a designer can move must
  * live in the `@theme` block of resources/css/app.css, not at a call site:
@@ -36,7 +38,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const scanDir = path.join(root, 'resources/js');
+const scanDirs = [path.join(root, 'resources/js'), path.join(root, 'resources/views')];
+
+/**
+ * Published vendor templates. Their markup is Laravel Pulse's own, written
+ * against Pulse's bundled stylesheet rather than our tokens, so holding them to
+ * the token vocabulary would mean rewriting a design we don't own.
+ */
+const EXCLUDED = [path.join(root, 'resources/views/vendor')];
 
 const PALETTE_FAMILIES = [
     'slate', 'gray', 'zinc', 'neutral', 'stone',
@@ -74,15 +83,17 @@ const RULES = [
     },
 ];
 
-const SCAN_EXTENSIONS = new Set(['.ts', '.tsx']);
+/** `.blade.php` has a two-part extension, so match on the suffix, not extname(). */
+const SCAN_SUFFIXES = ['.ts', '.tsx', '.blade.php'];
 
 function walk(dir) {
     return readdirSync(dir, { recursive: true, withFileTypes: true })
-        .filter((entry) => entry.isFile() && SCAN_EXTENSIONS.has(path.extname(entry.name)))
-        .map((entry) => path.join(entry.parentPath, entry.name));
+        .filter((entry) => entry.isFile() && SCAN_SUFFIXES.some((suffix) => entry.name.endsWith(suffix)))
+        .map((entry) => path.join(entry.parentPath, entry.name))
+        .filter((file) => !EXCLUDED.some((excluded) => file.startsWith(excluded + path.sep)));
 }
 
-const files = walk(scanDir);
+const files = scanDirs.flatMap(walk);
 const problems = new Map(RULES.map((rule) => [rule.name, []]));
 
 for (const file of files) {
