@@ -8,8 +8,9 @@ use Illuminate\Support\Facades\File;
  * Guards the files that keep their own copy of the palette.
  *
  * A `<canvas>` cannot read `var(--color-*)`, and neither can the error pages,
- * which render without the app stylesheet. So three files hold hex literals and
- * a comment asking the next person to keep them in sync. Nothing imports them,
+ * which render without the app stylesheet, an inline SVG's fill attributes, or
+ * PHP that paints an image server-side. So these files hold hex literals and a
+ * comment asking the next person to keep them in sync. Nothing imports them,
  * so nothing broke when the ink tier moved — they simply kept painting the old
  * values, including the error layout's gold-on-cream-deep pair at 4.28:1.
  *
@@ -25,14 +26,31 @@ const OFF_TOKEN = [
     '#d99a1a' => 'chartTokens hrZone Z3',
     '#c46f1c' => 'chartTokens hrZone Z4',
     '#b8302f' => 'chartTokens hrZone Z5',
-    '#2a1017' => 'shareCard emberDark — the ember hue carried to canvas-background darkness',
+    '#2a1017' => 'shareCard/RunCardImageRenderer emberDark — the ember hue carried to canvas-background darkness',
     '#fcf9f3' => 'shareCard paper highlight, lighter than any surface token',
+    // TemariProto halo strokes. The halo palette reuses the exact token value
+    // where one fits (easy is --color-leaf, chill is --color-mood-chill); these
+    // four are the muted stroke variants with no token equivalent.
+    '#878172' => 'TemariProto halo neutral',
+    '#a47b19' => 'TemariProto halo blazing',
+    '#a27b2d' => 'TemariProto halo gold',
+    '#898170' => 'TemariProto halo stone',
+    // TemariProto medal metals. Gold alone has a token (--color-horizon).
+    '#a98f6b' => 'TemariProto medal bronze',
+    '#b9c0c9' => 'TemariProto medal silver',
+    '#d8f0ff' => 'TemariProto medal platinum',
+    '#fffaf0' => 'TemariProto eye highlight, lighter than any surface token',
+    '#3b2f1f' => 'TemariProto drop-shadow floodColor',
 ];
 
 const MIRROR_FILES = [
     'resources/js/lib/chartTokens.ts',
     'resources/js/lib/shareCard.ts',
+    'resources/js/lib/runcard.ts',
+    'resources/js/components/temari/TemariProto.tsx',
     'resources/views/errors/layout.blade.php',
+    'app/Services/Run/Story/RunCardImageRenderer.php',
+    'app/Enums/Rarity.php',
 ];
 
 /** @return list<string> */
