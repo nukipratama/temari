@@ -65,4 +65,12 @@ describe('ExpandableQuote', () => {
         expect(paragraph.className).toContain('text-cream');
         expect(paragraph.className).not.toContain('text-ink');
     });
+
+    it('hands its ground down to the toggle', () => {
+        const { rerender } = render(<ExpandableQuote text={'a'.repeat(200)} />);
+        expect(screen.getByRole('button')).toHaveClass('text-horizon-ink');
+
+        rerender(<ExpandableQuote text={'a'.repeat(200)} onSky />);
+        expect(screen.getByRole('button')).toHaveClass('text-horizon');
+    });
 });
