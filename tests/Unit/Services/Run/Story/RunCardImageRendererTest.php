@@ -229,9 +229,13 @@ it('paints a different card-body fill for each colorway', function (): void {
     $dawn = $svgFor('dawn');
     $ember = $svgFor('ember');
 
-    expect($navy)->toContain('#170f38') // navy card body
-        ->and($dawn)->toContain('#f5f0e4')->not->toContain('#170f38')
-        ->and($ember)->toContain('#2a1017')->not->toContain('#170f38');
+    // Matched on the body rect itself: navy's #170f38 is also the elevation's
+    // flood-color, so it appears under every colorway.
+    $body = fn (string $hex): string => "<rect width=\"1080\" height=\"1920\" rx=\"44\" fill=\"{$hex}\"/>";
+
+    expect($navy)->toContain($body('#170f38'))
+        ->and($dawn)->toContain($body('#f5f0e4'))->not->toContain($body('#170f38'))
+        ->and($ember)->toContain($body('#2a1017'))->not->toContain($body('#170f38'));
 });
 
 it('names the three real font families and never the generic sans-serif', function (): void {
@@ -275,6 +279,35 @@ it('renders at the client canvas story format, 1080x1920', function (): void {
 
     expect($svg)->toContain('width="1080" height="1920"')
         ->toContain('viewBox="0 0 1080 1920"');
+});
+
+it('mats the card on the app ground at the same inset the client canvas uses', function (): void {
+    $card = makeRunCard(['distance' => 5_280], ['rarity' => 'common', 'special_move' => 'Langkah Mantap']);
+
+    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+        ->invoke(app(RunCardImageRenderer::class), $card);
+
+    // These three numbers are the whole parity contract with shareCard.ts's
+    // CARD_GROUND / CARD_SCALE: the ground is --color-cream-deep, the card
+    // takes 90% of each axis, and it sits centred on the leftover mat.
+    expect($svg)->toContain('<rect width="1080" height="1920" fill="#ece2ce"/>')
+        ->toContain('<g transform="translate(54,96) scale(0.9)">');
+});
+
+it('casts the two --shadow-e4 layers behind the card, at half the token blur', function (): void {
+    $card = makeRunCard(['distance' => 5_280], ['rarity' => 'common', 'special_move' => 'Langkah Mantap']);
+
+    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+        ->invoke(app(RunCardImageRenderer::class), $card);
+
+    // --shadow-e4 is `0 24px 56px rgba(23,15,56,.20), 0 8px 20px rgba(23,15,56,.12)`.
+    // feDropShadow's stdDeviation is sigma and a CSS blur radius is 2 sigma, so
+    // each blur halves; the caster carries the filter in unscaled canvas space
+    // so the exported elevation is the token, not 90% of it.
+    expect($svg)->toContain('dy="24" stdDeviation="28" flood-color="#170f38" flood-opacity="0.20"')
+        ->toContain('dy="8" stdDeviation="10" flood-color="#170f38" flood-opacity="0.12"')
+        ->toContain('rx="39.6" fill="#170f38" filter="url(#elevation-deep)"')
+        ->toContain('rx="39.6" fill="#170f38" filter="url(#elevation-tight)"');
 });
 
 it('stamps the date once, in the footer rather than the meta line', function (): void {
