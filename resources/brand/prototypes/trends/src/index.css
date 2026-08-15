@@ -1,0 +1,198 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource-variable/jetbrains-mono";
+
+/*
+ * Luma's generated sheet, with Pewter's values substituted in place of the
+ * greyscale defaults. Everything under "Pewter" below is copied verbatim from
+ * resources/brand/directions.html [data-dir="pewter"]; nothing here is a new
+ * colour decision. The .dark block that shadcn generates is deleted: the app is
+ * light-mode only.
+ */
+
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono Variable', ui-monospace, Menlo, Consolas, monospace;
+
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+
+    /* Pewter's named palette, addressable as Tailwind utilities. */
+    --color-cream: var(--cream);
+    --color-cream-deep: var(--cream-deep);
+    --color-surface-elev: var(--surface-elev);
+    --color-surface-sunken: var(--surface-sunken);
+    --color-sky: var(--sky);
+    --color-sky-deep: var(--sky-deep);
+    --color-sky-2: var(--sky-2);
+    --color-horizon: var(--horizon);
+    --color-horizon-deep: var(--horizon-deep);
+    --color-horizon-ink: var(--horizon-ink);
+    --color-ink: var(--ink);
+    --color-ink-2: var(--ink-2);
+    --color-ink-3: var(--ink-3);
+    --color-line: var(--line);
+    --color-line-strong: var(--line-strong);
+    --color-stone: var(--stone);
+    --color-ink-on-sky: var(--ink-on-sky);
+    --color-leaf: var(--leaf);
+    --color-leaf-ink: var(--leaf-ink);
+    --color-ember: var(--ember);
+    --color-ember-ink: var(--ember-ink);
+    --color-citrus: var(--citrus);
+    --color-citrus-ink: var(--citrus-ink);
+
+    /* Luma's radius ladder. --radius 0.625rem puts rounded-4xl at 26px, which
+       is exactly Pewter's --r-card; the rest of the ladder falls out of it. */
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+
+    /* Pewter's --e-card, which is Tailwind's shadow-md geometry retinted to sky.
+       Overriding it here lands Pewter's elevation on every Luma card for free. */
+    --shadow-md: 0 4px 6px -1px rgba(23, 31, 40, 0.11), 0 2px 4px -2px rgba(23, 31, 40, 0.08);
+}
+
+:root {
+    /* ---- Pewter, verbatim from directions.html [data-dir="pewter"] ---- */
+    --cream: #f1f5f8;
+    --cream-deep: #e2e8ee;
+    --surface: #f1f5f8;
+    --surface-card: #f1f5f8;
+    --surface-elev: #f8fbfe;
+    --surface-warm: #f0f5fb;
+    --surface-sunken: #e2e8ee;
+    --sky: #171f28;
+    --sky-deep: #0b1017;
+    --sky-2: #26303d;
+    --horizon: #ade047;
+    --horizon-deep: #95c134;
+    --ink: #16181b;
+    --ink-2: #34373c;
+    --ink-3: #60666d;
+    --line: #bfc5cc;
+    --line-strong: #b2b9c2;
+    --stone: #64686c;
+    --ink-on-sky: #9c9ea7;
+    --horizon-ink: #577024;
+    --leaf-ink: #277551;
+    --ember-ink: #b23a4f;
+    --citrus-ink: #846314;
+    --leaf: #2f8f63;
+    --leaf-deep: #256f4d;
+    --ember: #b23a4f;
+    --ember-deep: #8d2c3d;
+    --citrus: #c9971f;
+    --rarity-common: #7d8694;
+    --rarity-uncommon: #2fb350;
+    --rarity-rare: #2f81f7;
+    --rarity-epic: #a855f7;
+    --rarity-legendary: #f5a623;
+
+    --r-frag: 30px;
+    --r-hero: 26px;
+    --r-card: 26px;
+    --r-tile: 20px;
+    --r-pill: 999px;
+    --r-chip: 11px;
+    --pad-card: 24px;
+    --pad-tile: 16px;
+
+    --t-display: -0.02em;
+    --lh-display: 1.15;
+    --lh-body: 1.65;
+    --t-num: -0.02em;
+    --t-label: 0.06em;
+
+    /* ---- Pewter mapped onto shadcn's semantic slots ---- */
+    --background: var(--cream-deep);
+    --foreground: var(--ink);
+    --card: var(--surface-card);
+    --card-foreground: var(--ink);
+    --popover: var(--surface-elev);
+    --popover-foreground: var(--ink);
+    --primary: var(--sky);
+    --primary-foreground: var(--cream);
+    --secondary: var(--surface-sunken);
+    --secondary-foreground: var(--ink);
+    --muted: var(--surface-sunken);
+    --muted-foreground: var(--ink-3);
+    --accent: #e6ecf2;
+    --accent-foreground: var(--ink);
+    --destructive: var(--ember);
+    --border: color-mix(in oklab, var(--line) 55%, transparent);
+    --input: var(--line);
+    --ring: var(--horizon-ink);
+    --radius: 0.625rem;
+
+    /* shadcn's chart slots are unused: Chart.js reads hex from lib/palette.ts,
+       because a <canvas> cannot resolve a CSS custom property. */
+    --chart-1: var(--horizon-ink);
+    --chart-2: var(--sky-2);
+    --chart-3: var(--leaf);
+    --chart-4: var(--ember);
+    --chart-5: var(--citrus-ink);
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+        line-height: var(--lh-body);
+        -webkit-font-smoothing: antialiased;
+    }
+
+    html {
+        @apply font-sans;
+    }
+}
+
+@utility num {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    letter-spacing: var(--t-num);
+    font-variant-numeric: tabular-nums;
+}
+
+@utility eyebrow {
+    font-weight: 600;
+    letter-spacing: var(--t-label);
+    text-transform: uppercase;
+}
+
+@utility display {
+    font-weight: 700;
+    letter-spacing: var(--t-display);
+    line-height: var(--lh-display);
+}
