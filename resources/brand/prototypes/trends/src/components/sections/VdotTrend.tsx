@@ -25,7 +25,7 @@ const READINGS = [
 type Reading = (typeof READINGS)[number]['key'];
 
 export function VdotTrend({ range }: Readonly<{ range: RangeKey }>) {
-    const [reading, setReading] = useState<Reading>('both');
+    const [reading, setReading] = useState<Reading>('rolling90');
     const rows = useMemo(() => withinRange(vdotTrend, range), [range]);
 
     const showRecords = reading !== 'rolling90';

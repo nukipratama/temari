@@ -96,7 +96,7 @@ export default function App() {
                 {tab !== 'trends' ? (
                     <NotBuilt label={TABS.find((t) => t.key === tab)!.label} />
                 ) : (
-                    <div className="flex flex-col gap-6">
+                    <div className="flex flex-col gap-10">
                         <div className="flex flex-col gap-4">
                             <div>
                                 <h1 className="display text-2xl text-ink sm:text-3xl">
@@ -109,6 +109,9 @@ export default function App() {
                                     else.
                                 </p>
                             </div>
+                        </div>
+
+                        <div className="flex flex-col gap-6 rounded-(--r-frag) border border-dashed border-line/70 p-(--pad-frag)">
                             <div className="flex items-center gap-3 overflow-x-auto">
                                 <span className="eyebrow shrink-0 text-[11px] text-ink-3">
                                     Range
@@ -119,17 +122,33 @@ export default function App() {
                                     options={RANGES}
                                     onChange={setRange}
                                 />
+                                <span className="eyebrow shrink-0 text-[11px] text-ink-3">
+                                    applies to everything below
+                                </span>
                             </div>
+
+                            <FitnessTrend range={range} />
+                            <div className="grid items-start gap-6 lg:grid-cols-2">
+                                <VdotTrend range={range} />
+                                <ConsistencyTrend range={range} />
+                            </div>
+                            <LoadTrend range={range} />
                         </div>
 
-                        <FitnessTrend range={range} />
-                        <ProgressionTrend />
-                        <div className="grid items-start gap-6 lg:grid-cols-2">
-                            <VdotTrend range={range} />
-                            <ConsistencyTrend range={range} />
+                        <div className="flex flex-col gap-6">
+                            <div>
+                                <span className="eyebrow text-[11px] text-ink-3">
+                                    Always full history
+                                </span>
+                                <p className="mt-1 text-sm text-ink-3">
+                                    Progression and records aren&apos;t windowed
+                                    by the range control above — they&apos;re
+                                    inherently monthly and all-time.
+                                </p>
+                            </div>
+                            <ProgressionTrend />
+                            <RecordsPanel />
                         </div>
-                        <LoadTrend range={range} />
-                        <RecordsPanel />
 
                         <p className="pb-4 text-xs text-ink-3">
                             Prototype. Every number on this page is fixture
