@@ -795,6 +795,7 @@ function cardBody(fills: string[]): string {
 function drawWith(
     ctx: ReturnType<typeof makeCtx>,
     colorway?: 'navy' | 'dawn' | 'ember',
+    layout: Layout = 'kartu',
 ) {
     return drawShareCard(
         {
@@ -802,8 +803,18 @@ function drawWith(
             height: 0,
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement,
-        { kartu, layout: 'kartu', format: 'story', colorway },
+        { kartu, layout, format: 'story', colorway },
     );
+}
+
+/** Like `makeCtx`, but records the `fillStyle` in effect for every `fillText`. */
+function makeCtxWithTextInkLog() {
+    const ctx = makeCtx();
+    const inks: string[] = [];
+    ctx.fillText = vi.fn(() => {
+        inks.push(ctx.fillStyle);
+    });
+    return { ctx, inks };
 }
 
 describe('colorways', () => {
@@ -837,6 +848,27 @@ describe('colorways', () => {
             expect(rects[0]).toBe(CARD_GROUND);
             expect(rects[0]).not.toBe(COLORWAYS[colorway].surface);
         }
+    });
+});
+
+describe('badge pills', () => {
+    // The pill tint and its label were fixed cream, so on the light `dawn`
+    // card the labels vanished into the card and only the emoji survived.
+    it.each(['kartu', 'rute'] as Layout[])(
+        'inks the pill label from the colorway, never a fixed cream, on %s',
+        async (layout) => {
+            for (const colorway of ['navy', 'dawn', 'ember'] as const) {
+                const { ctx, inks } = makeCtxWithTextInkLog();
+                await drawWith(ctx, colorway, layout);
+                expect(inks).toContain(COLORWAYS[colorway].chipInk);
+            }
+        },
+    );
+
+    it('inks the dawn pill in ink, not the cream the dark colorways use', async () => {
+        const { ctx, inks } = makeCtxWithTextInkLog();
+        await drawWith(ctx, 'dawn');
+        expect(inks).not.toContain(COLORWAYS.navy.chipInk);
     });
 });
 

@@ -167,6 +167,11 @@ interface Palette {
     meta: string;
     divider: string;
     quote: string;
+    /** Badge-pill tint and label ink — the colorway's own text hue at low and
+     *  high alpha, like `divider` and `quote`. Palette-driven rather than fixed
+     *  cream: on `dawn` a cream label sits on a cream card and disappears. */
+    chip: string;
+    chipInk: string;
     inkOnSky: string;
 }
 
@@ -184,6 +189,8 @@ export const COLORWAYS: Record<ColorwayId, Palette> = {
         meta: 'rgba(245,240,228,0.72)',
         divider: 'rgba(245,240,228,0.18)',
         quote: 'rgba(245,240,228,0.88)',
+        chip: 'rgba(245,240,228,0.10)',
+        chipInk: 'rgba(245,240,228,0.85)',
         inkOnSky: C.inkOnSky,
     },
     dawn: {
@@ -195,6 +202,8 @@ export const COLORWAYS: Record<ColorwayId, Palette> = {
         meta: 'rgba(26,24,18,0.72)',
         divider: 'rgba(26,24,18,0.18)',
         quote: 'rgba(26,24,18,0.88)',
+        chip: 'rgba(26,24,18,0.10)',
+        chipInk: 'rgba(26,24,18,0.85)',
         inkOnSky: C.ink3,
     },
     ember: {
@@ -206,6 +215,8 @@ export const COLORWAYS: Record<ColorwayId, Palette> = {
         meta: 'rgba(245,240,228,0.72)',
         divider: 'rgba(245,240,228,0.18)',
         quote: 'rgba(245,240,228,0.88)',
+        chip: 'rgba(245,240,228,0.10)',
+        chipInk: 'rgba(245,240,228,0.85)',
         inkOnSky: C.inkOnSky,
     },
 };
@@ -717,6 +728,7 @@ function ruteStatGridRow(
 function ruteBadgesRow(
     ctx: CanvasRenderingContext2D,
     k: ShareKartuData,
+    pal: Palette,
     w: number,
     story: boolean,
     draw: boolean,
@@ -738,7 +750,7 @@ function ruteBadgesRow(
         gap,
     );
     if (draw) {
-        drawBadgesRow(ctx, k, PAD, y, w - PAD * 2, story);
+        drawBadgesRow(ctx, k, PAD, y, w - PAD * 2, story, pal);
     }
     return y + rows.length * pillH + (rows.length - 1) * gap;
 }
@@ -758,7 +770,7 @@ function drawRuteBlock(
     y = ruteNameRow(ctx, k, pal, w, story, draw, y);
     y = ruteKmRow(ctx, k, pal, w, rarityCol, story, draw, y, gapBonus);
     y = ruteStatGridRow(ctx, k, pal, w, story, draw, y, gapBonus);
-    y = ruteBadgesRow(ctx, k, w, story, draw, y, gapBonus);
+    y = ruteBadgesRow(ctx, k, pal, w, story, draw, y, gapBonus);
     return y;
 }
 
@@ -1203,7 +1215,7 @@ function packPillRows(
 
 /** A centred row (wraps if needed) of up to 4 badge pills below the KM hero. */
 function heroBadgeClusterRow(s: HeroBlock, y: number): number {
-    const { ctx, k, box, story, draw } = s;
+    const { ctx, k, box, pal, story, draw } = s;
     const tags = k.tags.slice(0, 4);
     if (tags.length === 0) {
         return y;
@@ -1225,7 +1237,7 @@ function heroBadgeClusterRow(s: HeroBlock, y: number): number {
                 row.reduce((sum, p) => sum + p.w, 0) + gap * (row.length - 1);
             let bx = box.x + (box.w - rowW) / 2;
             row.forEach((p) => {
-                drawBadgePill(ctx, p.label, bx, by, p.w, pillH, padX);
+                drawBadgePill(ctx, p.label, bx, by, p.w, pillH, padX, pal);
                 bx += p.w + gap;
             });
             by += pillH + gap;
@@ -1277,11 +1289,12 @@ function drawBadgePill(
     w: number,
     h: number,
     padX: number,
+    pal: Palette,
 ): void {
     roundRectPath(ctx, x, y, w, h, h / 2);
-    ctx.fillStyle = 'rgba(245,240,228,0.10)';
+    ctx.fillStyle = pal.chip;
     ctx.fill();
-    ctx.fillStyle = 'rgba(245,240,228,0.85)';
+    ctx.fillStyle = pal.chipInk;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText(label, x + padX, y + h / 2 + 1);
@@ -1298,6 +1311,7 @@ function drawBadgesRow(
     y: number,
     w: number,
     story: boolean,
+    pal: Palette,
 ): void {
     const tags = k.tags.slice(0, 4);
     if (tags.length === 0) {
@@ -1316,7 +1330,7 @@ function drawBadgesRow(
     rows.forEach((row) => {
         let x = left;
         row.forEach((p) => {
-            drawBadgePill(ctx, p.label, x, by, p.w, pillH, padX);
+            drawBadgePill(ctx, p.label, x, by, p.w, pillH, padX, pal);
             x += p.w + gap;
         });
         by += pillH + gap;
