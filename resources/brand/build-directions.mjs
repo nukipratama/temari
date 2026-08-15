@@ -9,19 +9,21 @@ import {
 } from './grounds.mjs';
 import { inkOn, worstOn } from './build-tokens.mjs';
 
-/* Five visual directions, one of them today's palette as a control.
+/* Six visual directions, one of them today's palette as a control.
    Phase 2 re-tokenized the existing pages in place instead of rebuilding them
    against the Phase 0 reference screens, so the ground, the text tier and the
    type voice never moved — 36 of 43 colour tokens are byte-identical to main.
    Everything being tokenized is what makes moving them a small diff now, and
    this page is where that move gets judged: same composition, same code, same
-   size, five grounds.
+   size, six grounds.
 
    Four of them vary colour and type only; they share one shape scale so the
-   ground is the single variable. The fifth, Porcelain, is the exception on
-   purpose — it is built to pair with the shadcn component style the project
-   picked (Luma), which is a shape decision before it is a colour one, so it
-   carries its own radius, elevation and padding scale as well. */
+   ground is the single variable. Porcelain is the exception on purpose — it is
+   built to pair with the shadcn component style the project picked (Luma),
+   which is a shape decision before it is a colour one, so it carries its own
+   radius, elevation and padding scale as well. Pewter is the sixth and is not
+   a new exploration: it is Graphite's palette, byte for byte, carried on
+   Porcelain's geometry and type, so those two columns isolate shape. */
 
 // ---- OKLCh ------------------------------------------------------------------
 // Grounds are re-based rather than hand-picked: the current ladder already has
@@ -175,34 +177,60 @@ const VOICES = {
    shadcn's eight styles that has one — and 24px card padding. It is a separate
    scale rather than a tweak of `flat` because the two disagree about what
    separates a card from its ground: a line, or the shadow. */
+
+/** The collectible is exempt from shape under every scale, the same way it is
+    already exempt from full colour variation. */
+const KARTU_RADII = { 'r-mount': '16px', 'r-kartu': '16px', 'r-art': '11px', 'r-chip': '11px' };
+const KARTU_TOKENS = Object.keys(KARTU_RADII);
+
+/** Luma's cast shadow, carrying the direction's own structure colour rather than
+    neutral black — black over a tinted ground reads muddy at this elevation. */
+const castShadow = (sky) => {
+  const n = parseInt(sky.slice(1), 16);
+  const rgb = `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
+  return `0 4px 6px -1px rgba(${rgb},.11), 0 2px 4px -2px rgba(${rgb},.08)`;
+};
+
 const SHAPES = {
   flat: {
     note: 'The scale every other column uses, and the one Phase 0 proposed: 12–16px corners, a 1px line around each card, and a 1px elevation step that reads as a hairline rather than as lift.',
-    vars: {
+    vars: () => ({
       'r-frag': '16px', 'r-hero': '14px', 'r-card': '14px', 'r-tile': '12px',
-      'r-pill': '999px', 'r-mount': '16px', 'r-kartu': '16px', 'r-art': '11px',
-      'r-chip': '11px', 'r-spec': '12px',
+      'r-pill': '999px', ...KARTU_RADII, 'r-spec': '12px',
       'e-card': '0 1px 2px rgba(0,0,0,.05)',
       'bd-card': '1px solid var(--line)',
       'pad-frag': '20px 18px 22px', 'gap-frag': '16px', 'pad-hero': '18px 18px 20px',
       'pad-card': '16px', 'pad-tile': '11px 12px', 'pad-pill': '8px 13px', 'pad-spec': '16px',
-    },
+    }),
   },
   soft: {
     note: 'Luma’s measured geometry: 26px cards, pill buttons, 24px padding, and a real cast shadow instead of a hairline. The border stays but drops to a whisper — at this radius and this elevation a full-strength line reads as a second, competing edge.',
-    vars: {
+    vars: (sky) => ({
       'r-frag': '30px', 'r-hero': '26px', 'r-card': '26px', 'r-tile': '20px',
-      'r-pill': '999px', 'r-mount': '26px', 'r-kartu': '18px', 'r-art': '14px',
-      'r-chip': '14px', 'r-spec': '26px',
-      'e-card': '0 4px 6px -1px rgba(54,36,78,.11), 0 2px 4px -2px rgba(54,36,78,.08)',
+      'r-pill': '999px', ...KARTU_RADII, 'r-spec': '26px',
+      'e-card': castShadow(sky),
       'bd-card': '1px solid color-mix(in oklab,var(--line) 45%,transparent)',
       'pad-frag': '26px 24px 28px', 'gap-frag': '20px', 'pad-hero': '24px',
       'pad-card': '24px', 'pad-tile': '16px', 'pad-pill': '11px 18px', 'pad-spec': '24px',
-    },
+    }),
   },
 };
 
+/** The scale a direction renders on, its cast shadow already tinted. */
+const shapeVars = (dir) => SHAPES[dir.shape].vars(palette(dir).colors.sky);
+
 // ---- directions -------------------------------------------------------------
+/* Graphite's colour spec, referenced by two columns. Pewter is that palette
+   exactly, so it is shared rather than re-typed — the pair only isolates shape
+   for as long as the colour cannot drift between them. */
+const GRAPHITE_COLOR = {
+  ground: { L: 0.968, C: 0.006, H: 250 },
+  structure: { L: 0.235, C: 0.022, H: 255 },
+  accent: { L: 0.842, C: 0.185, H: 126 },
+  inkHue: 254,
+  inkChroma: 0.45,
+};
+
 export const DIRECTIONS = [
   {
     key: 'almanac',
@@ -224,11 +252,7 @@ export const DIRECTIONS = [
       'The ground goes cool and almost achromatic — the page stops being a warm object. Structure ' +
       'drops from indigo to graphite, and every earned moment is carried by a single lime signal ' +
       'that appears nowhere else. Mono is promoted to the display face.',
-    ground: { L: 0.968, C: 0.006, H: 250 },
-    structure: { L: 0.235, C: 0.022, H: 255 },
-    accent: { L: 0.842, C: 0.185, H: 126 },
-    inkHue: 254,
-    inkChroma: 0.45,
+    ...GRAPHITE_COLOR,
     voice: 'instrument',
     shape: 'flat',
   },
@@ -279,6 +303,21 @@ export const DIRECTIONS = [
     accent: { L: 0.795, C: 0.1, H: 58 },
     inkHue: 300,
     inkChroma: 0.55,
+    voice: 'soft',
+    shape: 'soft',
+  },
+  {
+    key: 'pewter',
+    name: 'Pewter',
+    tagline: 'Graphite’s palette on Porcelain’s geometry',
+    story:
+      'Not a sixth exploration — an assembly of two columns above. Graphite’s cold achromatic ' +
+      'paper, near-black structure and lime signal, carried on Porcelain’s geometry and type: ' +
+      '26px cards, pill buttons, 24px padding, a real cast shadow, Jakarta at display weight ' +
+      'instead of promoted mono. Every colour token is byte-identical to Graphite, so read this ' +
+      'against that column and shape is the only variable. The shadow is re-tinted to this ' +
+      'direction’s own structure hue rather than left on Porcelain’s plum.',
+    ...GRAPHITE_COLOR,
     voice: 'soft',
     shape: 'soft',
   },
@@ -374,12 +413,14 @@ export function diff(dir) {
   return rows;
 }
 
-/** Shape tokens a direction moves off the scale the other four share. */
+/** Shape tokens a direction moves off the scale the other four share. Kartu
+    radii are listed even though they never move — the exemption is the point,
+    and a silently absent row reads as an oversight rather than a decision. */
 export function shapeDiff(dir) {
-  const base = SHAPES.flat.vars;
-  return Object.entries(SHAPES[dir.shape].vars)
-    .filter(([k, v]) => base[k] !== v)
-    .map(([k, v]) => [`--${k}`, base[k], v]);
+  const base = SHAPES.flat.vars();
+  return Object.entries(shapeVars(dir))
+    .filter(([k, v]) => base[k] !== v || (dir.shape !== 'flat' && KARTU_TOKENS.includes(k)))
+    .map(([k, v]) => [`--${k}`, base[k], v, base[k] === v]);
 }
 
 // ---- the composition --------------------------------------------------------
@@ -473,7 +514,7 @@ const varsFor = (dir) => {
     `--f-body:${v.body.family}`, `--w-body:${v.body.weight}`, `--lh-body:${v.body.lh}`,
     `--f-num:${v.num.family}`, `--w-num:${v.num.weight}`, `--t-num:${v.num.tracking}`,
     `--f-label:${v.label.family}`, `--w-label:${v.label.weight}`, `--t-label:${v.label.tracking}`,
-    ...Object.entries(SHAPES[dir.shape].vars).map(([k, val]) => `--${k}:${val}`),
+    ...Object.entries(shapeVars(dir)).map(([k, val]) => `--${k}:${val}`),
   ].join(';');
 };
 
@@ -532,17 +573,23 @@ const shapeTable = (dir) => {
     return `<p class="note">Shape, elevation and padding are the scale every other column uses —
     unchanged, so the ground and the type are this direction's only variables.</p>`;
   }
+  const moved = rows.filter(([, , , exempt]) => !exempt).length;
   return `<table class="audit">
     <tr><th>token</th><th>shared scale</th><th>${dir.name}</th></tr>
-    ${rows.map(([k, from, to]) => `<tr><td><code>${k}</code></td>
+    ${rows.map(([k, from, to, exempt]) => `<tr><td><code>${k}</code>${
+      exempt ? ' <span style="color:#83838c;font-weight:400">(kartu exempt)</span>' : ''}</td>
       <td class="mono">${from}</td><td class="mono">${to}</td></tr>`).join('')}
   </table>
-  <p class="note"><b>${rows.length} shape tokens move, and none of them exists today.</b> The app has
-  no elevation in use at all — <code>--e-card</code>, <code>--bd-card</code> and the whole radius
+  <p class="note"><b>${moved} shape tokens move; none of them exists today.</b> The app has
+  no elevation in use at all — <code>--e-card</code>, <code>--bd-card</code> and the radius
   ladder here are a <i>new token category</i>, not a re-value of an old one. Phase 0 proposed a
   <code>--shadow-e*</code> scale (<code>build-tokens.mjs</code>) but it is a hairline at
   <code>e1</code>; Luma's <code>0 4px 6px</code> is roughly its <code>e2</code> step used one level
-  lower, on every resting card. ${SHAPES[dir.shape].note}</p>`;
+  lower, on every resting card. ${SHAPES[dir.shape].note}
+  <b>The Kartu is exempt from shape</b>, same as it is already exempt from full colour variation —
+  <code>--r-mount</code>/<code>--r-kartu</code>/<code>--r-art</code>/<code>--r-chip</code> stay on
+  the shared flat scale in every direction including this one, so the collectible stays visually
+  stable regardless of which direction wins.</p>`;
 };
 
 const specimen = (dir) => {
@@ -707,12 +754,13 @@ function html() {
 ${DIRECTIONS.map((d) => `  [data-dir="${d.key}"]{${varsFor(d)}}`).join('\n')}
 </style>
 
-<h1>Five visual directions</h1>
-<p class="lede">Same composition, same generator, same size, five grounds. The first column is the
+<h1>Six visual directions</h1>
+<p class="lede">Same composition, same generator, same size, six grounds. The first column is the
 palette that is live today — without it the comparison is dishonest, because a palette can look new
-in a swatch grid and identical in situ. The fifth, <b>Porcelain</b>, is the odd one out on purpose:
-it is the direction built to sit under the <b>Luma</b> shadcn component style, so it moves shape as
-well as colour.</p>
+in a swatch grid and identical in situ. <b>Porcelain</b> and <b>Pewter</b> are the odd ones out on
+purpose: both are built to sit under the <b>Luma</b> shadcn component style, so they move shape and
+type as well as colour. Pewter carries <b>Graphite's palette unchanged</b> on that geometry, so read
+those two columns as a pair — between them, shape is the only variable.</p>
 
 <div class="banner">
   <b>What the rebrand actually moved so far.</b> Against <code>main</code>, 36 of 43
@@ -749,19 +797,20 @@ ${DIRECTIONS.map((d) => `
 <h2>What this page does not decide for you</h2>
 <div class="banner">
   <b>Held constant on purpose:</b> the semantic accents (<code>leaf</code>, <code>ember</code>,
-  <code>citrus</code>) and the whole rarity ladder are identical in all five columns, so the only
+  <code>citrus</code>) and the whole rarity ladder are identical in all six columns, so the only
   variables are ground, structure, accent and type. Retinting those is a separate decision and a
   separate diff.<br><br>
-  <b>Porcelain is not a like-for-like palette comparison, and that is deliberate.</b> The other four
-  hold shape constant so the ground is the only variable. Porcelain moves radius, elevation and
-  padding too, because pairing with Luma is a geometry decision before it is a colour one — its
-  palette was chosen <i>for</i> soft pill shapes and a real cast shadow, and judging it on a flat
-  scale would be judging something nobody proposed. The consequence is that you cannot read the
-  Porcelain column as “what if we only changed the colours”. If you want that reading, say so and it
-  can be rendered on the shared <code>flat</code> scale as a sixth column.<br><br>
-  <b>The card barely moves, and that is real.</b> Compare the five Kartu: in colour they are nearly
-  indistinguishable — only Porcelain's corners differ, because it is on its own shape scale. The
-  frame is <code>sky-deep</code> and the rarity ladder is held, so a
+  <b>Porcelain and Pewter are not like-for-like palette comparisons, and that is deliberate.</b> The
+  other four hold shape constant so the ground is the only variable. These two move radius, elevation
+  and padding too, because pairing with Luma is a geometry decision before it is a colour one, and
+  judging them on a flat scale would be judging something nobody proposed. The consequence is that
+  neither column answers “what if we only changed the colours”. For the inverse reading — what the
+  geometry alone does — compare <b>Pewter</b> against <b>Graphite</b>: their palettes are byte-identical,
+  so shape and type are the only things that differ between them.<br><br>
+  <b>The card barely moves, and that is real.</b> Compare the six Kartu: they are nearly
+  indistinguishable in colour <i>and</i> in shape. The frame is <code>sky-deep</code>, the rarity
+  ladder is held, and <code>--r-mount</code>/<code>--r-kartu</code>/<code>--r-art</code>/<code>--r-chip</code>
+  are exempt from the soft scale, so a
   collectible reads as a collectible whatever the ground does. Decide whether that is the point
   (the collection is its own world) or a problem (the app's most saturated surface stays on the old
   identity). If it is a problem, the fix is a separate slice — retinting the rarity ladder — and it
@@ -786,9 +835,17 @@ if (process.argv[1]?.endsWith('build-directions.mjs')) {
   for (const dir of DIRECTIONS) {
     const rows = audit(dir);
     const fails = rows.filter((r) => !r.pass);
+    const moved = shapeDiff(dir).filter(([, , , exempt]) => !exempt).length;
     console.log(`  ${dir.name.padEnd(12)} ${diff(dir).length.toString().padStart(2)} colour + ` +
-      `${shapeDiff(dir).length.toString().padStart(2)} shape tokens move · shape=${dir.shape} · ` +
+      `${moved.toString().padStart(2)} shape tokens move · shape=${dir.shape} · ` +
       `contrast ${rows.length - fails.length}/${rows.length}` +
       (fails.length ? ` · FAIL: ${fails.map((f) => `${f.fg} on ${f.bg} ${f.ratio.toFixed(2)}`).join(', ')}` : ''));
   }
+
+  // The page claims Pewter is Graphite's palette exactly; prove it every build.
+  const colorsOf = (key) => palette(DIRECTIONS.find((d) => d.key === key)).colors;
+  const [g, p] = [colorsOf('graphite'), colorsOf('pewter')];
+  const drift = Object.keys(g).filter((k) => g[k] !== p[k]);
+  console.log(`  Pewter vs Graphite: ${drift.length} colour tokens differ` +
+    (drift.length ? ` (${drift.join(', ')})` : ''));
 }
