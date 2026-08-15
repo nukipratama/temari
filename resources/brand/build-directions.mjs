@@ -9,13 +9,19 @@ import {
 } from './grounds.mjs';
 import { inkOn, worstOn } from './build-tokens.mjs';
 
-/* Four visual directions, one of them today's palette as a control.
+/* Five visual directions, one of them today's palette as a control.
    Phase 2 re-tokenized the existing pages in place instead of rebuilding them
    against the Phase 0 reference screens, so the ground, the text tier and the
    type voice never moved — 36 of 43 colour tokens are byte-identical to main.
    Everything being tokenized is what makes moving them a small diff now, and
    this page is where that move gets judged: same composition, same code, same
-   size, four grounds. */
+   size, five grounds.
+
+   Four of them vary colour and type only; they share one shape scale so the
+   ground is the single variable. The fifth, Porcelain, is the exception on
+   purpose — it is built to pair with the shadcn component style the project
+   picked (Luma), which is a shape decision before it is a colour one, so it
+   carries its own radius, elevation and padding scale as well. */
 
 // ---- OKLCh ------------------------------------------------------------------
 // Grounds are re-based rather than hand-picked: the current ladder already has
@@ -149,6 +155,51 @@ const VOICES = {
     num: { family: JETBRAINS, weight: 500, tracking: '0.01em' },
     label: { family: JAKARTA, weight: 700, tracking: '0.16em' },
   },
+  soft: {
+    note: 'Jakarta at app weight rather than editorial weight — display drops to 700 upright, and labels give up the wide letterspacing that makes an eyebrow look printed. Numerals stay JetBrains but thin out. Luma specifies Inter; Jakarta is the face the app already loads that sits in the same register, so this voice is that substitution rather than a new webfont.',
+    display: { family: JAKARTA, weight: 700, style: 'normal', tracking: '-0.02em', transform: 'none', lh: '1.15' },
+    body: { family: JAKARTA, weight: 400, lh: '1.65' },
+    num: { family: JETBRAINS, weight: 600, tracking: '-0.02em' },
+    label: { family: JAKARTA, weight: 600, tracking: '0.06em' },
+  },
+};
+
+// ---- shape ------------------------------------------------------------------
+/* Radius, elevation and padding, as one scale per direction.
+   `flat` is what this page hardcoded when it only compared palettes, and it is
+   what four of the five columns still use, unchanged — it mirrors Temari's own
+   Phase 0 scale (build-tokens.mjs RADIUS/SHADOW): small corners, a 1px line
+   doing the separating, and an elevation step so faint it is decorative.
+   `soft` is the Luma pairing, measured off the real shadcn output: pill
+   buttons, 26px cards, a genuine `0 4px 6px` cast shadow — the only one of
+   shadcn's eight styles that has one — and 24px card padding. It is a separate
+   scale rather than a tweak of `flat` because the two disagree about what
+   separates a card from its ground: a line, or the shadow. */
+const SHAPES = {
+  flat: {
+    note: 'The scale every other column uses, and the one Phase 0 proposed: 12–16px corners, a 1px line around each card, and a 1px elevation step that reads as a hairline rather than as lift.',
+    vars: {
+      'r-frag': '16px', 'r-hero': '14px', 'r-card': '14px', 'r-tile': '12px',
+      'r-pill': '999px', 'r-mount': '16px', 'r-kartu': '16px', 'r-art': '11px',
+      'r-chip': '11px', 'r-spec': '12px',
+      'e-card': '0 1px 2px rgba(0,0,0,.05)',
+      'bd-card': '1px solid var(--line)',
+      'pad-frag': '20px 18px 22px', 'gap-frag': '16px', 'pad-hero': '18px 18px 20px',
+      'pad-card': '16px', 'pad-tile': '11px 12px', 'pad-pill': '8px 13px', 'pad-spec': '16px',
+    },
+  },
+  soft: {
+    note: 'Luma’s measured geometry: 26px cards, pill buttons, 24px padding, and a real cast shadow instead of a hairline. The border stays but drops to a whisper — at this radius and this elevation a full-strength line reads as a second, competing edge.',
+    vars: {
+      'r-frag': '30px', 'r-hero': '26px', 'r-card': '26px', 'r-tile': '20px',
+      'r-pill': '999px', 'r-mount': '26px', 'r-kartu': '18px', 'r-art': '14px',
+      'r-chip': '14px', 'r-spec': '26px',
+      'e-card': '0 4px 6px -1px rgba(54,36,78,.11), 0 2px 4px -2px rgba(54,36,78,.08)',
+      'bd-card': '1px solid color-mix(in oklab,var(--line) 45%,transparent)',
+      'pad-frag': '26px 24px 28px', 'gap-frag': '20px', 'pad-hero': '24px',
+      'pad-card': '24px', 'pad-tile': '16px', 'pad-pill': '11px 18px', 'pad-spec': '24px',
+    },
+  },
 };
 
 // ---- directions -------------------------------------------------------------
@@ -163,6 +214,7 @@ export const DIRECTIONS = [
       'Fraunces italic for Temari’s voice. Included so the other three are judged against what is ' +
       'actually on screen rather than against a memory of it.',
     voice: 'editorialItalic',
+    shape: 'flat',
   },
   {
     key: 'graphite',
@@ -178,6 +230,7 @@ export const DIRECTIONS = [
     inkHue: 254,
     inkChroma: 0.45,
     voice: 'instrument',
+    shape: 'flat',
   },
   {
     key: 'terracotta',
@@ -193,6 +246,7 @@ export const DIRECTIONS = [
     inkHue: 36,
     inkChroma: 0.9,
     voice: 'roman',
+    shape: 'flat',
   },
   {
     key: 'field',
@@ -208,6 +262,25 @@ export const DIRECTIONS = [
     inkHue: 148,
     inkChroma: 0.7,
     voice: 'fieldbook',
+    shape: 'flat',
+  },
+  {
+    key: 'porcelain',
+    name: 'Porcelain',
+    tagline: 'glazed lilac paper, plum structure, apricot signal — the Luma pairing',
+    story:
+      'The one direction here built around a component style rather than around a ground. Luma is ' +
+      'soft: pill buttons, 26px cards, a real cast shadow, generous padding. That geometry wants a ' +
+      'high-key page it can lift off, so the paper goes almost to white with a lilac cast, structure ' +
+      'softens from near-black to plum, and the accent becomes apricot rather than a signal colour. ' +
+      'The card borders drop to a whisper because at this radius the shadow is already doing that job.',
+    ground: { L: 0.98, C: 0.016, H: 302 },
+    structure: { L: 0.305, C: 0.075, H: 302 },
+    accent: { L: 0.795, C: 0.1, H: 58 },
+    inkHue: 300,
+    inkChroma: 0.55,
+    voice: 'soft',
+    shape: 'soft',
   },
 ];
 
@@ -301,6 +374,14 @@ export function diff(dir) {
   return rows;
 }
 
+/** Shape tokens a direction moves off the scale the other four share. */
+export function shapeDiff(dir) {
+  const base = SHAPES.flat.vars;
+  return Object.entries(SHAPES[dir.shape].vars)
+    .filter(([k, v]) => base[k] !== v)
+    .map(([k, v]) => [`--${k}`, base[k], v]);
+}
+
 // ---- the composition --------------------------------------------------------
 /* One fragment, repeated per direction. Taken off the real screens rather than
    invented: the hero is `HeroPanel` (resources/js/components/ui/HeroPanel.tsx),
@@ -392,6 +473,7 @@ const varsFor = (dir) => {
     `--f-body:${v.body.family}`, `--w-body:${v.body.weight}`, `--lh-body:${v.body.lh}`,
     `--f-num:${v.num.family}`, `--w-num:${v.num.weight}`, `--t-num:${v.num.tracking}`,
     `--f-label:${v.label.family}`, `--w-label:${v.label.weight}`, `--t-label:${v.label.tracking}`,
+    ...Object.entries(SHAPES[dir.shape].vars).map(([k, val]) => `--${k}:${val}`),
   ].join(';');
 };
 
@@ -444,6 +526,25 @@ const diffTable = (dir) => {
   variables on this page.</p>`;
 };
 
+const shapeTable = (dir) => {
+  const rows = shapeDiff(dir);
+  if (rows.length === 0) {
+    return `<p class="note">Shape, elevation and padding are the scale every other column uses —
+    unchanged, so the ground and the type are this direction's only variables.</p>`;
+  }
+  return `<table class="audit">
+    <tr><th>token</th><th>shared scale</th><th>${dir.name}</th></tr>
+    ${rows.map(([k, from, to]) => `<tr><td><code>${k}</code></td>
+      <td class="mono">${from}</td><td class="mono">${to}</td></tr>`).join('')}
+  </table>
+  <p class="note"><b>${rows.length} shape tokens move, and none of them exists today.</b> The app has
+  no elevation in use at all — <code>--e-card</code>, <code>--bd-card</code> and the whole radius
+  ladder here are a <i>new token category</i>, not a re-value of an old one. Phase 0 proposed a
+  <code>--shadow-e*</code> scale (<code>build-tokens.mjs</code>) but it is a hairline at
+  <code>e1</code>; Luma's <code>0 4px 6px</code> is roughly its <code>e2</code> step used one level
+  lower, on every resting card. ${SHAPES[dir.shape].note}</p>`;
+};
+
 const specimen = (dir) => {
   const v = VOICES[dir.voice];
   return `<div class="spec" data-dir="${dir.key}">
@@ -485,8 +586,8 @@ function html() {
   .cap span{font-size:12px;color:#6b6b74}
   .story{font-size:12px;line-height:1.55;color:#54545e;margin:8px 0 0;min-height:76px}
 
-  .frag{border-radius:16px;overflow:hidden;padding:20px 18px 22px;
-        display:flex;flex-direction:column;gap:16px;
+  .frag{border-radius:var(--r-frag);overflow:hidden;padding:var(--pad-frag);
+        display:flex;flex-direction:column;gap:var(--gap-frag);
         background:var(--cream-deep);color:var(--ink);
         font-family:var(--f-body);font-weight:var(--w-body);line-height:var(--lh-body);
         box-shadow:0 10px 30px rgba(0,0,0,.10),0 2px 6px rgba(0,0,0,.06)}
@@ -495,7 +596,7 @@ function html() {
            text-transform:uppercase;font-size:9.5px;color:var(--ink-3)}
   .eyebrow.on-sky{color:var(--ink-on-sky)}
 
-  .hero{border-radius:14px;padding:18px 18px 20px;color:var(--cream);
+  .hero{border-radius:var(--r-hero);padding:var(--pad-hero);color:var(--cream);
         background:linear-gradient(160deg,var(--sky-deep) 0%,var(--sky) 60%,var(--sky-2) 100%)}
   .h1{font-family:var(--f-display);font-weight:var(--w-display);font-style:var(--s-display);
       letter-spacing:var(--t-display);text-transform:var(--u-display);line-height:var(--lh-display);
@@ -505,22 +606,22 @@ function html() {
          font-variant-numeric:tabular-nums;font-size:25px;color:var(--cream);margin-top:4px;line-height:1}
   .hstat span{font-size:10px;margin-left:3px;color:var(--ink-on-sky);letter-spacing:0}
 
-  .verdict{background:var(--surface-card);border:1px solid var(--line);border-radius:14px;
-           padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .verdict{background:var(--surface-card);border:var(--bd-card);border-radius:var(--r-card);
+           padding:var(--pad-card);box-shadow:var(--e-card)}
   .voice{font-family:var(--f-display);font-weight:var(--w-display);font-style:var(--s-display);
          letter-spacing:var(--t-display);text-transform:var(--u-display);line-height:var(--lh-display);
          font-size:23px;color:var(--ink)}
   .prose{margin:10px 0 0;font-size:13px;color:var(--ink-2);line-height:var(--lh-body)}
   .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:13px}
   .chip{font-family:var(--f-label);font-weight:var(--w-label);letter-spacing:var(--t-label);
-        text-transform:uppercase;font-size:9px;padding:4px 10px;border-radius:999px}
+        text-transform:uppercase;font-size:9px;padding:4px 10px;border-radius:var(--r-pill)}
   .chip.accent{background:color-mix(in oklab,var(--horizon) 20%,transparent);color:var(--horizon-ink)}
   .chip.leaf{background:color-mix(in oklab,var(--leaf) 16%,transparent);color:var(--leaf-ink)}
   .chip.ember{background:color-mix(in oklab,var(--ember) 16%,transparent);color:var(--ember-ink)}
 
   .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-  .kpi{background:var(--surface-card);border:1px solid var(--line);border-radius:12px;padding:11px 12px;
-       box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .kpi{background:var(--surface-card);border:var(--bd-card);border-radius:var(--r-tile);
+       padding:var(--pad-tile);box-shadow:var(--e-card)}
   .kstat{font-family:var(--f-num);font-weight:var(--w-num);letter-spacing:var(--t-num);
          font-variant-numeric:tabular-nums;font-size:22px;color:var(--ink);margin-top:5px;line-height:1}
   .kstat span{font-size:9.5px;margin-left:3px;color:var(--ink-3);letter-spacing:0}
@@ -528,7 +629,7 @@ function html() {
   .rail i{display:block;height:100%;border-radius:999px;background:var(--horizon)}
 
   .btns{display:flex;gap:8px;flex-wrap:wrap}
-  .pill{border:0;border-radius:999px;padding:8px 13px;font-size:12px;font-weight:600;
+  .pill{border:0;border-radius:var(--r-pill);padding:var(--pad-pill);font-size:12px;font-weight:600;
         font-family:var(--f-body);cursor:default;display:inline-flex;align-items:center;gap:6px}
   .pill.cta{background:var(--horizon);color:var(--sky);font-weight:700}
   .pill.primary{background:var(--sky);color:var(--cream)}
@@ -537,22 +638,22 @@ function html() {
   .pill.strava{background:var(--strava-orange);color:#fff}
 
   .cardrow{display:flex;gap:14px;align-items:flex-start}
-  .mount{width:150px;flex:none;border-radius:16px;padding:9px;
+  .mount{width:150px;flex:none;border-radius:var(--r-mount);padding:9px;
          background:linear-gradient(165deg,var(--sky-deep),var(--sky-2))}
-  .kartu{--rarity:var(--rarity-epic);aspect-ratio:5/7;border-radius:16px;overflow:hidden;
+  .kartu{--rarity:var(--rarity-epic);aspect-ratio:5/7;border-radius:var(--r-kartu);overflow:hidden;
          background:var(--sky-deep);border:2px solid var(--rarity-epic);padding:4px;
          display:flex;flex-direction:column;position:relative;
          box-shadow:0 0 0 1px color-mix(in oklab,var(--rarity) 55%,transparent),
                     inset 0 0 11px color-mix(in oklab,var(--rarity) 65%,transparent)}
-  .art{flex:1;min-height:30%;border-radius:11px;overflow:hidden;
+  .art{flex:1;min-height:30%;border-radius:var(--r-art);overflow:hidden;
        background:radial-gradient(ellipse at 30% 26%,color-mix(in oklab,var(--rarity) 11%,transparent) 0%,transparent 70%),
                   linear-gradient(to bottom,var(--art-top),var(--cream-deep))}
   .art svg{width:100%;height:100%;display:block}
   .k-chip{position:absolute;background:var(--sky-deep);font-family:var(--f-body);font-weight:800;
           font-size:8.5px;letter-spacing:.04em;text-transform:uppercase;line-height:1;
           padding:5px 7px;display:inline-flex;align-items:center;gap:3px}
-  .k-tl{left:0;top:0;border-bottom-right-radius:11px;color:var(--rarity-epic)}
-  .k-tr{right:0;top:0;border-bottom-left-radius:11px;color:var(--cream);font-variant-numeric:tabular-nums}
+  .k-tl{left:0;top:0;border-bottom-right-radius:var(--r-chip);color:var(--rarity-epic)}
+  .k-tr{right:0;top:0;border-bottom-left-radius:var(--r-chip);color:var(--cream);font-variant-numeric:tabular-nums}
   .k-tr i{width:6px;height:6px;border-radius:999px;background:var(--ember);display:block}
   .k-body{padding:7px 5px 2px;text-align:center;color:var(--cream)}
   .k-name{font-family:var(--f-body);font-weight:800;text-transform:uppercase;font-size:11px;
@@ -570,7 +671,7 @@ function html() {
   .why p{margin:6px 0 0;font-size:12px;color:var(--ink-2);line-height:var(--lh-body)}
   .pips{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
   .pips span{font-family:var(--f-label);font-weight:var(--w-label);letter-spacing:var(--t-label);
-             text-transform:uppercase;font-size:8px;padding:3px 8px;border-radius:999px;
+             text-transform:uppercase;font-size:8px;padding:3px 8px;border-radius:var(--r-pill);
              background:color-mix(in oklab,var(--horizon) 20%,transparent);color:var(--horizon-ink)}
 
   /* ---- detail blocks ---- */
@@ -583,14 +684,15 @@ function html() {
   table.audit th,table.audit td{text-align:left;padding:4px 8px;border-bottom:1px solid #e2e2e6}
   table.audit th{font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:#83838c;font-weight:700}
   table.audit td.num{font-family:'JetBrains Mono',monospace;text-align:right;font-size:11px}
+  table.audit td.mono{font-family:'JetBrains Mono',monospace;font-size:10.5px;word-break:break-word}
   tr.bad{background:#b23a4f18}
   tr.bad td:last-child{color:#8d2c3d;font-weight:800}
   .note{font-size:11.5px;line-height:1.55;color:#6b6b74;margin:8px 0 0}
   .note.ok{color:#256f4d}
   .note.warn{color:#8d2c3d;font-weight:600}
 
-  .spec{padding:16px;border-radius:12px;background:var(--surface-card);border:1px solid var(--line);
-        color:var(--ink)}
+  .spec{padding:var(--pad-spec);border-radius:var(--r-spec);background:var(--surface-card);
+        border:var(--bd-card);box-shadow:var(--e-card);color:var(--ink)}
   .sp-display{font-family:var(--f-display);font-weight:var(--w-display);font-style:var(--s-display);
               letter-spacing:var(--t-display);text-transform:var(--u-display);line-height:var(--lh-display);
               font-size:26px}
@@ -605,10 +707,12 @@ function html() {
 ${DIRECTIONS.map((d) => `  [data-dir="${d.key}"]{${varsFor(d)}}`).join('\n')}
 </style>
 
-<h1>Four visual directions</h1>
-<p class="lede">Same composition, same generator, same size, four grounds. The first column is the
+<h1>Five visual directions</h1>
+<p class="lede">Same composition, same generator, same size, five grounds. The first column is the
 palette that is live today — without it the comparison is dishonest, because a palette can look new
-in a swatch grid and identical in situ.</p>
+in a swatch grid and identical in situ. The fifth, <b>Porcelain</b>, is the odd one out on purpose:
+it is the direction built to sit under the <b>Luma</b> shadcn component style, so it moves shape as
+well as colour.</p>
 
 <div class="banner">
   <b>What the rebrand actually moved so far.</b> Against <code>main</code>, 36 of 43
@@ -638,17 +742,26 @@ ${DIRECTIONS.map((d) => `
   <div><h4>Type voice</h4>${specimen(d)}</div>
   <div><h4>Grounds</h4>${groundTable(d)}</div>
   <div><h4>Contrast</h4>${auditTable(d)}
-       <h4 style="margin-top:20px">Token diff</h4>${diffTable(d)}</div>
+       <h4 style="margin-top:20px">Token diff</h4>${diffTable(d)}
+       <h4 style="margin-top:20px">Shape &amp; elevation</h4>${shapeTable(d)}</div>
 </div>`).join('')}
 
 <h2>What this page does not decide for you</h2>
 <div class="banner">
   <b>Held constant on purpose:</b> the semantic accents (<code>leaf</code>, <code>ember</code>,
-  <code>citrus</code>) and the whole rarity ladder are identical in all four columns, so the only
+  <code>citrus</code>) and the whole rarity ladder are identical in all five columns, so the only
   variables are ground, structure, accent and type. Retinting those is a separate decision and a
   separate diff.<br><br>
-  <b>The card barely moves, and that is real.</b> Compare the four Kartu: they are nearly
-  indistinguishable. The frame is <code>sky-deep</code> and the rarity ladder is held, so a
+  <b>Porcelain is not a like-for-like palette comparison, and that is deliberate.</b> The other four
+  hold shape constant so the ground is the only variable. Porcelain moves radius, elevation and
+  padding too, because pairing with Luma is a geometry decision before it is a colour one — its
+  palette was chosen <i>for</i> soft pill shapes and a real cast shadow, and judging it on a flat
+  scale would be judging something nobody proposed. The consequence is that you cannot read the
+  Porcelain column as “what if we only changed the colours”. If you want that reading, say so and it
+  can be rendered on the shared <code>flat</code> scale as a sixth column.<br><br>
+  <b>The card barely moves, and that is real.</b> Compare the five Kartu: in colour they are nearly
+  indistinguishable — only Porcelain's corners differ, because it is on its own shape scale. The
+  frame is <code>sky-deep</code> and the rarity ladder is held, so a
   collectible reads as a collectible whatever the ground does. Decide whether that is the point
   (the collection is its own world) or a problem (the app's most saturated surface stays on the old
   identity). If it is a problem, the fix is a separate slice — retinting the rarity ladder — and it
@@ -673,7 +786,8 @@ if (process.argv[1]?.endsWith('build-directions.mjs')) {
   for (const dir of DIRECTIONS) {
     const rows = audit(dir);
     const fails = rows.filter((r) => !r.pass);
-    console.log(`  ${dir.name.padEnd(12)} ${diff(dir).length.toString().padStart(2)} tokens move · ` +
+    console.log(`  ${dir.name.padEnd(12)} ${diff(dir).length.toString().padStart(2)} colour + ` +
+      `${shapeDiff(dir).length.toString().padStart(2)} shape tokens move · shape=${dir.shape} · ` +
       `contrast ${rows.length - fails.length}/${rows.length}` +
       (fails.length ? ` · FAIL: ${fails.map((f) => `${f.fg} on ${f.bg} ${f.ratio.toFixed(2)}`).join(', ')}` : ''));
   }
