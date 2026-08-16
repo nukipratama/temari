@@ -5,6 +5,7 @@ import { Line } from 'react-chartjs-2';
 import { StatTile } from '@/components/StatTile';
 import { TrendPanel } from '@/components/TrendPanel';
 import { baseOptions, crosshair, scales } from '@/components/charts/setup';
+import { useCountUp } from '@/hooks/useCountUp';
 import {
     CONSISTENCY_BANDS,
     consistencyTrend,
@@ -90,6 +91,11 @@ export function ConsistencyTrend({ range }: Readonly<{ range: RangeKey }>) {
     const latest = defined.at(-1)!;
     const first = defined[0];
     const band = bandFor(latest.variabilitySec!);
+    const steadiest = Math.min(...defined.map((r) => r.variabilitySec!));
+
+    const latestTween = useCountUp(latest.variabilitySec!);
+    const firstTween = useCountUp(first.variabilitySec!);
+    const steadiestTween = useCountUp(steadiest);
 
     const data = useMemo(
         () => ({
@@ -153,22 +159,20 @@ export function ConsistencyTrend({ range }: Readonly<{ range: RangeKey }>) {
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 <StatTile
                     label="This week"
-                    value={num(latest.variabilitySec!)}
+                    value={num(latestTween)}
                     unit="sec"
                     hint={band.label}
                     tone={band.tone}
                 />
                 <StatTile
                     label="A year ago"
-                    value={num(first.variabilitySec!)}
+                    value={num(firstTween)}
                     unit="sec"
                     hint={bandFor(first.variabilitySec!).label}
                 />
                 <StatTile
                     label="Steadiest week"
-                    value={num(
-                        Math.min(...defined.map((r) => r.variabilitySec!)),
-                    )}
+                    value={num(steadiestTween)}
                     unit="sec"
                     tone="good"
                 />

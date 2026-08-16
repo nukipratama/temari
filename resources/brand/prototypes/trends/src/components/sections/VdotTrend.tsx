@@ -5,6 +5,7 @@ import { StatTile } from '@/components/StatTile';
 import { TrendPanel } from '@/components/TrendPanel';
 import { baseOptions, crosshair, scales } from '@/components/charts/setup';
 import { SegmentedControl } from '@/components/SegmentedControl';
+import { useCountUp } from '@/hooks/useCountUp';
 import {
     currentVdot,
     vdotByRecord,
@@ -101,6 +102,9 @@ export function VdotTrend({ range }: Readonly<{ range: RangeKey }>) {
     const change = latest - first;
     const summary = `VDOT from your PRs went from ${num(first)} to ${num(latest)}.`;
 
+    const vdotTween = useCountUp(currentVdot);
+    const changeTween = useCountUp(change);
+
     return (
         <TrendPanel
             eyebrow="Fitness score"
@@ -116,14 +120,10 @@ export function VdotTrend({ range }: Readonly<{ range: RangeKey }>) {
             }
         >
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                <StatTile
-                    label="VDOT now"
-                    value={num(currentVdot)}
-                    tone="good"
-                />
+                <StatTile label="VDOT now" value={num(vdotTween)} tone="good" />
                 <StatTile
                     label="Over this window"
-                    value={signed(change)}
+                    value={signed(changeTween)}
                     hint={change > 0 ? 'Moving up' : 'Flat'}
                 />
                 <StatTile

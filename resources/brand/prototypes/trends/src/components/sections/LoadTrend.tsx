@@ -5,6 +5,7 @@ import { Line } from 'react-chartjs-2';
 import { StatTile } from '@/components/StatTile';
 import { TrendPanel } from '@/components/TrendPanel';
 import { baseOptions, crosshair, scales } from '@/components/charts/setup';
+import { useCountUp } from '@/hooks/useCountUp';
 import { weeklyLoad, withinRange, type RangeKey } from '@/data/mock';
 import { num, shortDate } from '@/lib/format';
 import { PEWTER, SERIES, STATUS, type StatusKey } from '@/lib/palette';
@@ -165,6 +166,10 @@ export function LoadTrend({ range }: Readonly<{ range: RangeKey }>) {
     const lastMonotony = [...monotony].reverse().find((v) => v !== null) ?? 0;
     const peakStrain = Math.max(...strain.map((v) => v ?? 0));
 
+    const strainTween = useCountUp(lastStrain);
+    const monotonyTween = useCountUp(lastMonotony);
+    const peakStrainTween = useCountUp(peakStrain);
+
     return (
         <TrendPanel
             eyebrow="Load quality"
@@ -174,19 +179,19 @@ export function LoadTrend({ range }: Readonly<{ range: RangeKey }>) {
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 <StatTile
                     label="Strain"
-                    value={num(lastStrain, 0)}
+                    value={num(strainTween, 0)}
                     hint={TONE_WORD[strainTone(lastStrain)]}
                     tone={strainTone(lastStrain)}
                 />
                 <StatTile
                     label="Monotony"
-                    value={lastMonotony.toFixed(2)}
+                    value={monotonyTween.toFixed(2)}
                     hint={TONE_WORD[monotonyTone(lastMonotony)]}
                     tone={monotonyTone(lastMonotony)}
                 />
                 <StatTile
                     label="Peak strain"
-                    value={num(peakStrain, 0)}
+                    value={num(peakStrainTween, 0)}
                     hint="In this window"
                 />
             </div>
