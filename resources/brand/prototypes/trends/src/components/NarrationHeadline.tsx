@@ -16,7 +16,10 @@ export function NarrationHeadline({ range }: Readonly<{ range: RangeKey }>) {
                 <span className="eyebrow text-[11px]">Temari&apos;s read</span>
             </div>
             <p className="display mt-3 text-xl leading-snug text-ink sm:text-2xl">
-                {headlineNarration[range]}
+                {headlineNarration[range].title}
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-ink-2 sm:text-base">
+                {headlineNarration[range].description}
             </p>
             <p className="mt-4 text-xs text-ink-3">
                 Fixture copy, hand-written in Temari&apos;s narration voice —
