@@ -11,7 +11,7 @@ import { headlineNarration, type RangeKey } from '@/data/mock';
  */
 export function NarrationHeadline({ range }: Readonly<{ range: RangeKey }>) {
     return (
-        <div className="relative rounded-(--r-card) border border-horizon-ink/25 bg-horizon/10 p-6 sm:p-8">
+        <div className="relative overflow-hidden rounded-(--r-card) border border-horizon-ink/25 bg-horizon/10 p-6 sm:p-8">
             <motion.span
                 aria-hidden
                 initial={{ opacity: 0.85, scale: 0.96 }}
