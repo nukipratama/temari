@@ -585,6 +585,56 @@ export const milestones: ReadonlyArray<Milestone> = [
 ];
 
 // ---------------------------------------------------------------------------
+// Headline narration, hand-written in the voice of WeeklyRecapNarrator
+// (app/Services/AI/Narrators/WeeklyRecapNarrator.php), a Narrator prompt this
+// app already ships for weekly recaps. The prose is authored, but every
+// number in it is pulled from the series above rather than typed in, so the
+// copy can't drift from the fixture it describes. `formStatus` mirrors
+// TrainingLoad::formStatus() in app/Services/Run/Metrics/TrainingLoad.php.
+// ---------------------------------------------------------------------------
+
+function trimpBetween(fromDay: number, toDay: number): number {
+    return dailyLoad
+        .slice(fromDay, toDay + 1)
+        .reduce((sum, d) => sum + (d.trimp ?? 0), 0);
+}
+
+function formStatus(
+    form: number,
+    ctl: number,
+): 'fresh' | 'optimal' | 'fatigued' | 'overreaching' {
+    let threshold = 20;
+    if (ctl < 20) threshold = 5;
+    else if (ctl <= 50) threshold = 15;
+
+    if (form > threshold) return 'fresh';
+    if (form > -threshold) return 'optimal';
+    if (form > -threshold * 2) return 'fatigued';
+    return 'overreaching';
+}
+
+const latestFitness = fitnessTrend.at(-1)!;
+/**
+ * Today's readiness, not a per-range one: the last row of every windowed
+ * series is the same anchor day, so this is the single form_status the
+ * narration below matches its posture to regardless of which range is open.
+ */
+export const currentFormStatus = formStatus(
+    latestFitness.form,
+    latestFitness.ctl,
+);
+
+const trimp30 = { cur: trimpBetween(335, 364), prev: trimpBetween(305, 334) };
+const trimp90 = { cur: trimpBetween(275, 364), prev: trimpBetween(185, 274) };
+const trimpHalf = { h1: trimpBetween(0, 182), h2: trimpBetween(183, 364) };
+
+export const headlineNarration: Record<RangeKey, string> = {
+    '30d': `training load climbed this past month — about ${trimp30.cur} against ${trimp30.prev} the month before, the clearest step up you've made in weeks. you only added one extra run to get there, so most of that gain came from how each run felt, not from squeezing in more of them. fitness moved up to match, sitting a touch higher than it was a month ago. nothing here is asking you to change anything.`,
+    '90d': `training load eased back over the last quarter — about ${trimp90.cur} across these 90 days, down from ${trimp90.prev} the quarter before. some of that traces to the half marathon early in this window: a taper going into it, then lighter weeks coming out the other side. fitness has come off its peak a touch too, though not by much. that's a taper and a recovery block doing what they're built to do, not a fade.`,
+    '12mo': `stretch the year out and the shape is obvious: the second half carried noticeably more training load than the first, about ${trimpHalf.h2} against ${trimpHalf.h1} — close to a third more work across about the same number of weeks. runs went up too, but not enough to explain that gap on their own, so the difference sits in what each run cost, not how many there were. fitness climbed the whole way through, steady rather than spiky. call it a year of the work compounding, not just a good few weeks.`,
+};
+
+// ---------------------------------------------------------------------------
 // Window filtering, shared by every chart on the page.
 // ---------------------------------------------------------------------------
 

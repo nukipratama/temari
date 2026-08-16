@@ -6,7 +6,9 @@ import { LoadTrend } from '@/components/sections/LoadTrend';
 import { ProgressionTrend } from '@/components/sections/ProgressionTrend';
 import { RecordsPanel } from '@/components/sections/RecordsPanel';
 import { VdotTrend } from '@/components/sections/VdotTrend';
+import { NarrationHeadline } from '@/components/NarrationHeadline';
 import { SegmentedControl } from '@/components/SegmentedControl';
+import { CompactPanels } from '@/components/TrendPanel';
 import { RANGES, type RangeKey } from '@/data/mock';
 import { cn } from '@/lib/utils';
 
@@ -111,7 +113,7 @@ export default function App() {
                             </div>
                         </div>
 
-                        <div className="flex flex-col gap-6 rounded-(--r-frag) border border-dashed border-line/70 p-(--pad-frag)">
+                        <div className="flex flex-col gap-3">
                             <div className="flex items-center gap-3 overflow-x-auto">
                                 <span className="eyebrow shrink-0 text-[11px] text-ink-3">
                                     Range
@@ -126,29 +128,38 @@ export default function App() {
                                     applies to everything below
                                 </span>
                             </div>
-
-                            <FitnessTrend range={range} />
-                            <div className="grid items-start gap-6 lg:grid-cols-2">
-                                <VdotTrend range={range} />
-                                <ConsistencyTrend range={range} />
-                            </div>
-                            <LoadTrend range={range} />
+                            <NarrationHeadline range={range} />
                         </div>
 
-                        <div className="flex flex-col gap-6">
-                            <div>
+                        <CompactPanels>
+                            <div className="flex flex-col gap-4 rounded-(--r-frag) border border-dashed border-line/70 p-(--pad-frag)">
                                 <span className="eyebrow text-[11px] text-ink-3">
-                                    Always full history
+                                    The numbers behind it
                                 </span>
-                                <p className="mt-1 text-sm text-ink-3">
-                                    Progression and records aren&apos;t windowed
-                                    by the range control above — they&apos;re
-                                    inherently monthly and all-time.
-                                </p>
+                                <FitnessTrend range={range} />
+                                <div className="grid items-start gap-4 lg:grid-cols-2">
+                                    <VdotTrend range={range} />
+                                    <ConsistencyTrend range={range} />
+                                </div>
+                                <LoadTrend range={range} />
                             </div>
-                            <ProgressionTrend />
-                            <RecordsPanel />
-                        </div>
+
+                            <div className="flex flex-col gap-4">
+                                <div>
+                                    <span className="eyebrow text-[11px] text-ink-3">
+                                        Always full history
+                                    </span>
+                                    <p className="mt-1 text-sm text-ink-3">
+                                        Progression and records aren&apos;t
+                                        windowed by the range control above —
+                                        they&apos;re inherently monthly and
+                                        all-time.
+                                    </p>
+                                </div>
+                                <ProgressionTrend />
+                                <RecordsPanel />
+                            </div>
+                        </CompactPanels>
 
                         <p className="pb-4 text-xs text-ink-3">
                             Prototype. Every number on this page is fixture
