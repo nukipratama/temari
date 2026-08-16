@@ -15,10 +15,10 @@ export function NarrationHeadline({ range }: Readonly<{ range: RangeKey }>) {
                 <Sparkles className="size-3.5" aria-hidden />
                 <span className="eyebrow text-[11px]">Temari&apos;s read</span>
             </div>
-            <p className="display mt-3 max-w-prose text-xl leading-snug text-ink sm:text-2xl">
+            <p className="display mt-3 text-xl leading-snug text-ink sm:text-2xl">
                 {headlineNarration[range]}
             </p>
-            <p className="mt-4 max-w-prose text-xs text-ink-3">
+            <p className="mt-4 text-xs text-ink-3">
                 Fixture copy, hand-written in Temari&apos;s narration voice —
                 not a live model call. In the app, a block like this would be
                 produced by the same pipeline that already narrates weekly
