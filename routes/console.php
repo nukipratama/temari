@@ -66,6 +66,15 @@ Schedule::command('strava:sync-zones')->monthlyOn(1, '00:10')->withoutOverlappin
 // 1st of the month 05:45: same pattern for the monthly recap.
 $alertOnFailure(Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45'), 'ai:monthly-recap');
 
+// Trends tab's "Temari's read", one range at a time, tiered by how often
+// each range's own numbers actually move (not just to spread out cost):
+// 30d changes day to day, 90d barely moves over a few days, 12mo barely
+// moves over a week. Scheduled + cached like every other narrator — never
+// generated live per page view. See TREND_READ_RANGES.
+$alertOnFailure(Schedule::command('ai:trend-read 30d')->dailyAt('06:00'), 'ai:trend-read 30d');
+$alertOnFailure(Schedule::command('ai:trend-read 90d')->cron('0 6 */3 * *'), 'ai:trend-read 90d');
+$alertOnFailure(Schedule::command('ai:trend-read 12mo')->weeklyOn(1, '06:00'), 'ai:trend-read 12mo');
+
 // Hourly self-heal sweep: re-kicks the earliest stalled AI block per user
 // (weekly + monthly + per-activity chains, plus card/PR narration) — for
 // cost-ceiling pauses (release at the midnight dailyCost() reset) and transient
