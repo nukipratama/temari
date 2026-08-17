@@ -19,6 +19,7 @@ use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\Agent\Tools\MonthTotalsTool;
 use App\Services\AI\Agent\Tools\PersonalRecordTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
+use App\Services\AI\Agent\Tools\TrendRangeTool;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
 use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
@@ -28,6 +29,7 @@ use App\Services\AI\Narrators\MonthlyRecapNarrator;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Narrators\PrContextNarrator;
 use App\Services\AI\Narrators\RunInsightNarrator;
+use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use App\Services\Run\LifetimeStats;
 use App\Services\Run\Metrics\RelativeEffort;
@@ -606,6 +608,38 @@ it('WeekTotalsTool reads avg_decoupling for the week', function (): void {
     $context = new WeekTotalsTool($snap)->handle([]);
 
     expect($context['avg_decoupling'])->toBe(6.4);
+});
+
+// ── TrendReadNarrator ─────────────────────────────────────────────────
+
+it('TrendReadNarrator joins title and description with a blank line on valid JSON', function (): void {
+    $user = User::factory()->create();
+    $caller = fakeCaller(json_encode(['title' => 'Judul.', 'description' => 'Deskripsi.'], JSON_THROW_ON_ERROR));
+    $narrator = new TrendReadNarrator($caller, app(TrainingLoad::class));
+
+    expect($narrator->generate($user, '30d'))->toBe("Judul.\n\nDeskripsi.");
+});
+
+it('TrendReadNarrator throws on missing title key', function (): void {
+    $user = User::factory()->create();
+    $caller = fakeCaller(json_encode(['description' => 'Deskripsi.'], JSON_THROW_ON_ERROR));
+    $narrator = new TrendReadNarrator($caller, app(TrainingLoad::class));
+    $narrator->generate($user, '30d');
+})->throws(UnavailableException::class);
+
+it('TrendReadNarrator throws on non-JSON', function (): void {
+    $user = User::factory()->create();
+    $caller = fakeCaller('not json');
+    $narrator = new TrendReadNarrator($caller, app(TrainingLoad::class));
+    $narrator->generate($user, '30d');
+})->throws(UnavailableException::class, 'non-JSON');
+
+it('TrendRangeTool exposes the current range on its own reading', function (): void {
+    $user = User::factory()->create();
+
+    $context = new TrendRangeTool($user, '90d', app(TrainingLoad::class))->handle([]);
+
+    expect($context['range'])->toBe('90d');
 });
 
 // ── PrContextNarrator ─────────────────────────────────────────────────
@@ -1255,6 +1289,7 @@ it('per-narrator step budgets cover two full read passes and only exist where th
         'BriefingFeaturedKartuVoiceNarrator' => 6,
         'MonthlyRecapNarrator' => 4,
         'PrContextNarrator' => 6,
+        'TrendReadNarrator' => 4,
         'WeeklyRecapNarrator' => 4,
     ]);
 });

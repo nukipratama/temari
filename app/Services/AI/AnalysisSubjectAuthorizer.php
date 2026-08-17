@@ -28,7 +28,8 @@ final class AnalysisSubjectAuthorizer
             AnalysisType::BriefingMascotVoice,
             AnalysisType::BriefingFeaturedKartuVoice,
             AnalysisType::AkuProfileVoice,
-            AnalysisType::MonthlyRecap => $subjectId === $user->id,
+            AnalysisType::MonthlyRecap,
+            AnalysisType::TrendRead => $subjectId === $user->id,
             AnalysisType::PostRunSpeech,
             AnalysisType::RunInsight => self::userOwns(Activity::query(), $subjectId, $user->id),
             AnalysisType::WeeklyRecap => self::userOwns(WeeklySnapshot::query(), $subjectId, $user->id),
@@ -74,7 +75,10 @@ final class AnalysisSubjectAuthorizer
             AnalysisType::RunInsight,
             AnalysisType::WeeklyRecap,
             AnalysisType::PrContext,
-            AnalysisType::CardFlavor => true,
+            AnalysisType::CardFlavor,
+            // Names a range (30d/90d/12mo), not a resource — bound by
+            // discriminatorRules()'s closed set, nothing further to own-check.
+            AnalysisType::TrendRead => true,
         };
 
         if (! $authorized) {

@@ -13,6 +13,7 @@ use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeGroupJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePrContextJob;
+use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\Activity;
 use App\Models\PersonalRecord;
@@ -33,10 +34,20 @@ enum AnalysisType: string
     case CardFlavor = 'card_flavor';
     case AkuProfileVoice = 'aku_profile_voice';
     case MonthlyRecap = 'monthly_recap';
+    case TrendRead = 'trend_read';
 
     public const string BRIEFING_SUBJECT_TYPE = 'briefing_user_day';
     public const string AKU_PROFILE_VOICE_SUBJECT_TYPE = 'aku_profile_voice_user';
     public const string MONTHLY_RECAP_SUBJECT_TYPE = 'monthly_recap_user_month';
+    public const string TREND_READ_SUBJECT_TYPE = 'trend_read_user_range';
+
+    /**
+     * The three windows Trends narrates. Not chained, not date-keyed — each is
+     * always "as of now", so the discriminator names the range, not a period.
+     *
+     * @var list<string>
+     */
+    public const array TREND_READ_RANGES = ['30d', '90d', '12mo'];
 
     /**
      * How far back a period-keyed discriminator may reach. Deliberately wider
@@ -93,7 +104,12 @@ enum AnalysisType: string
             self::BriefingFeaturedKartuVoice => AnalysisCadence::Daily,
             self::WeeklyRecap => AnalysisCadence::Weekly,
             self::MonthlyRecap => AnalysisCadence::Monthly,
-            self::AkuProfileVoice => AnalysisCadence::OnDemand,
+            // Neither is cascade-dispatched from post-run ingest, both have
+            // their own separate scheduled command(s) instead. TrendRead
+            // actually runs three different cadences (one per range — see
+            // routes/console.php), which no single case here represents.
+            self::AkuProfileVoice,
+            self::TrendRead => AnalysisCadence::OnDemand,
         };
     }
 
@@ -110,6 +126,7 @@ enum AnalysisType: string
             self::CardFlavor => AnalyzeCardFlavorJob::class,
             self::AkuProfileVoice => AnalyzeAkuProfileVoiceJob::class,
             self::MonthlyRecap => AnalyzeMonthlyRecapJob::class,
+            self::TrendRead => AnalyzeTrendReadJob::class,
         };
     }
 
@@ -150,7 +167,10 @@ enum AnalysisType: string
         return match ($this) {
             self::RunInsight,
             self::WeeklyRecap,
-            self::MonthlyRecap => true,
+            self::MonthlyRecap,
+            // Narrates monotony/strain/CTL movement, all TRIMP-derived and
+            // therefore zone-weighted, same reasoning as WeeklyRecap/MonthlyRecap.
+            self::TrendRead => true,
             default => false,
         };
     }
@@ -192,6 +212,7 @@ enum AnalysisType: string
             self::BriefingFeaturedKartuVoice => ['required', 'string', 'max:19', 'regex:/^[1-9][0-9]*$/'],
             self::AkuProfileVoice => ['required', 'string', 'regex:/^\d{4}-W\d{2}$/', Rule::in(self::triggerableIsoWeeks())],
             self::MonthlyRecap => ['required', 'string', 'date_format:Y-m', Rule::in(self::triggerableMonths())],
+            self::TrendRead => ['required', 'string', Rule::in(self::TREND_READ_RANGES)],
             self::PostRunSpeech,
             self::RunInsight,
             self::WeeklyRecap,
@@ -212,6 +233,7 @@ enum AnalysisType: string
             self::CardFlavor => RunCard::class,
             self::AkuProfileVoice => self::AKU_PROFILE_VOICE_SUBJECT_TYPE,
             self::MonthlyRecap => self::MONTHLY_RECAP_SUBJECT_TYPE,
+            self::TrendRead => self::TREND_READ_SUBJECT_TYPE,
         };
     }
 
