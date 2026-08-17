@@ -107,6 +107,13 @@ Schedule::command('weather:correct-forecast')->dailyAt('03:15')->withoutOverlapp
 // so a daily sweep is enough. Free HTTP, no LLM.
 Schedule::command('weather:backfill')->dailyAt('03:30')->withoutOverlapping(55);
 
+// 03:45 daily: grow-forward VDOT/pace-consistency history, one row per user
+// per day. Every user, not just recently-active ones — a rest week still
+// needs a row, or Trends' "not enough history yet" state never resolves for
+// someone who's resting. No backfill on purpose; a day with no row has no
+// history, it isn't retroactively derived from old runs.
+Schedule::command('trend:snapshot-daily')->dailyAt('03:45')->withoutOverlapping(55);
+
 // Saturday 18:00: nudge a user whose weekly streak is live but has no run yet
 // this week, while there's still time to save it before Sunday's week-close
 // breaks it. Demo excluded (checked inside the command); the streak_reminders
