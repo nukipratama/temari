@@ -20,7 +20,7 @@ code_refs:
 
 Edwards TRIMP needs heart-rate minutes per zone, so a run without an HR stream scores nothing. Under [[summary-first-ingest]] that is the *normal* state of a freshly connected athlete: their entire history arrives summary-only and carries no `trimp_edwards` at all.
 
-[weekStats](app/Services/Run/Metrics/TrainingLoad.php#L250) only ever saw the daily TRIMP map, which by construction contains scored days and nothing else. Two very different weeks therefore arrived at it looking identical — an empty map slice — and both left as `0.0` for `weekly_trimp`, `monotony` and `strain`:
+[weekStats](app/Services/Run/Metrics/TrainingLoad.php#L285) only ever saw the daily TRIMP map, which by construction contains scored days and nothing else. Two very different weeks therefore arrived at it looking identical — an empty map slice — and both left as `0.0` for `weekly_trimp`, `monotony` and `strain`:
 
 - a **rest week**, where nobody ran, and zero is the truth;
 - an **unscored week**, where they ran and we simply have no reading.
@@ -40,7 +40,7 @@ Edwards TRIMP needs heart-rate minutes per zone, so a run without an HR stream s
 ### What each consumer does with unknown, and why they differ
 
 - **`weekly_trimp` / `monotony` / `strain`** — nullable. Their window is exactly the seven days in question, so when it holds no reading there is nothing to report.
-- **ATL / CTL / form / form_status** — stay numbers. These are EWMAs over roughly a year of real history ([rollDailySeries](app/Services/Run/Metrics/TrainingLoad.php#L220)), where an unscored day is treated as a missing one and understates the average rather than voiding it. Nulling a year-long average because of one gap would trade a small understatement for a total loss of signal, and any threshold at which "enough gaps" flips it to null would be arbitrary. The whole summary is already null when *nothing* in the lookback scored, which is the honest answer for a wholly-unscored athlete.
+- **ATL / CTL / form / form_status** — stay numbers. These are EWMAs over roughly a year of real history ([rollDailySeries](app/Services/Run/Metrics/TrainingLoad.php#L255)), where an unscored day is treated as a missing one and understates the average rather than voiding it. Nulling a year-long average because of one gap would trade a small understatement for a total loss of signal, and any threshold at which "enough gaps" flips it to null would be arbitrary. The whole summary is already null when *nothing* in the lookback scored, which is the honest answer for a wholly-unscored athlete.
 - **[Readiness](app/Services/Run/Metrics/Readiness.php)** — a null monotony applies no cap, which its `?float` contract already meant. Its guardrails only fire on evidence, and unknown is not evidence.
 - **[PlanAdapter](app/Services/Run/Plan/PlanAdapter.php)** — same: `strainIsExcessive` and the monotony deload need a real number, so an unknown week triggers no adaptation rather than a false one.
 - **[BriefingContext](app/Services/Run/Story/BriefingContext.php)** — falls back to the most recent snapshot's monotony when the live value is unknown. Previously the live `0.0` won and suppressed that fallback; a real recent reading is a better basis for a safety ceiling than nothing.
