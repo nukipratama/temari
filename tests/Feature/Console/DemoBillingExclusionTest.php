@@ -53,6 +53,7 @@ const NON_BILLING = [
     'weather:correct-forecast' => 'free Open-Meteo lookup, no LLM and no Strava call',
     'weather:backfill' => 'free Open-Meteo lookup, no LLM and no Strava call',
     'streak:settle' => 'reads weekly snapshots and writes rest-token rows, no LLM and no Strava call',
+    'trend:snapshot-daily' => 'free local computation (VdotEstimator + StreamSummary), no LLM and no Strava call',
 ];
 
 /**

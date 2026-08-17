@@ -6,6 +6,7 @@ import { StatTile } from '@/components/StatTile';
 import { TrendPanel } from '@/components/TrendPanel';
 import { baseOptions, crosshair, scales } from '@/components/charts/setup';
 import { SegmentedControl } from '@/components/SegmentedControl';
+import { useCountUp } from '@/hooks/useCountUp';
 import { distanceRecords, progressions } from '@/data/mock';
 import { duration, monthYear, pace } from '@/lib/format';
 import { SERIES } from '@/lib/palette';
@@ -20,6 +21,10 @@ export function ProgressionTrend() {
     const firstSec = defined[0]?.timeSec ?? null;
     const bestSec = Math.min(...defined.map((p) => p.timeSec!));
     const gained = firstSec !== null ? firstSec - bestSec : 0;
+
+    const bestTween = useCountUp(record.valueSec);
+    const gainedTween = useCountUp(gained);
+    const goalTween = useCountUp(series.goalSec ?? 0);
 
     const data = useMemo(
         () => ({
@@ -138,18 +143,18 @@ export function ProgressionTrend() {
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 <StatTile
                     label="Personal best"
-                    value={duration(record.valueSec)}
+                    value={duration(bestTween)}
                     hint={monthYear(record.setAt)}
                     tone="good"
                 />
                 <StatTile
                     label="Took off"
-                    value={duration(gained)}
+                    value={duration(gainedTween)}
                     hint="Since a year ago"
                 />
                 <StatTile
                     label="Goal"
-                    value={series.goalSec ? duration(series.goalSec) : '—'}
+                    value={series.goalSec ? duration(goalTween) : '—'}
                     hint={
                         series.goalSec
                             ? `${duration(record.valueSec - series.goalSec)} to go`

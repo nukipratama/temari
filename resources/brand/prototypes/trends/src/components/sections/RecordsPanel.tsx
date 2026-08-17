@@ -1,7 +1,16 @@
 import { TrendPanel } from '@/components/TrendPanel';
 import { Badge } from '@/components/ui/badge';
+import { useCountUp } from '@/hooks/useCountUp';
 import { distanceRecords, paceRecords } from '@/data/mock';
 import { duration, pace, shortDate } from '@/lib/format';
+
+function AnimatedDuration({ seconds }: Readonly<{ seconds: number }>) {
+    return <>{duration(useCountUp(seconds))}</>;
+}
+
+function AnimatedPace({ secPerKm }: Readonly<{ secPerKm: number }>) {
+    return <>{pace(useCountUp(secPerKm))}</>;
+}
 
 export function RecordsPanel() {
     return (
@@ -33,10 +42,14 @@ export function RecordsPanel() {
                                     {r.label}
                                 </span>
                                 <span className="num text-xl leading-none text-ink">
-                                    {duration(r.valueSec)}
+                                    <AnimatedDuration seconds={r.valueSec} />
                                 </span>
                                 <span className="num text-xs text-ink-3">
-                                    {pace(r.valueSec / (r.distanceM / 1000))}{' '}
+                                    <AnimatedPace
+                                        secPerKm={
+                                            r.valueSec / (r.distanceM / 1000)
+                                        }
+                                    />{' '}
                                     /km
                                 </span>
                                 <span className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -78,7 +91,7 @@ export function RecordsPanel() {
                             </span>
                             <span className="flex items-baseline gap-3">
                                 <span className="num text-sm text-ink">
-                                    {pace(r.paceSec)}
+                                    <AnimatedPace secPerKm={r.paceSec} />
                                     <span className="ml-1 text-xs font-normal text-ink-3">
                                         /km
                                     </span>

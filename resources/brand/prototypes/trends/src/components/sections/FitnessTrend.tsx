@@ -1,10 +1,12 @@
 import type { Chart, ChartEvent, Plugin } from 'chart.js';
+import { motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Line } from 'react-chartjs-2';
 
 import { StatTile } from '@/components/StatTile';
 import { TrendPanel } from '@/components/TrendPanel';
 import { baseOptions, crosshair, scales } from '@/components/charts/setup';
+import { useCountUp } from '@/hooks/useCountUp';
 import {
     fitnessTrend,
     milestones,
@@ -12,6 +14,7 @@ import {
     type RangeKey,
 } from '@/data/mock';
 import { num, shortDate, signed } from '@/lib/format';
+import { pressShrink } from '@/lib/motion';
 import { PEWTER, SERIES } from '@/lib/palette';
 import { cn } from '@/lib/utils';
 
@@ -224,6 +227,10 @@ export function FitnessTrend({ range }: Readonly<{ range: RangeKey }>) {
     const first = rows[0];
     const summary = `Fitness ${num(first.ctl)} to ${num(latest.ctl)} over ${rows.length} days, fatigue now ${num(latest.atl)}.`;
 
+    const ctlTween = useCountUp(latest.ctl);
+    const atlTween = useCountUp(latest.atl);
+    const formTween = useCountUp(latest.form);
+
     return (
         <TrendPanel
             eyebrow="Load"
@@ -233,19 +240,19 @@ export function FitnessTrend({ range }: Readonly<{ range: RangeKey }>) {
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 <StatTile
                     label="Fitness"
-                    value={num(latest.ctl)}
+                    value={num(ctlTween)}
                     unit="CTL"
                     hint={fitnessHint(latest.ctl)}
                 />
                 <StatTile
                     label="Fatigue"
-                    value={num(latest.atl)}
+                    value={num(atlTween)}
                     unit="ATL"
                     hint={fatigueHint(latest.atl)}
                 />
                 <StatTile
                     label="Form"
-                    value={signed(latest.form)}
+                    value={signed(formTween)}
                     hint={latest.form >= 0 ? 'Rested' : 'Carrying load'}
                     tone={latest.form >= 0 ? 'good' : 'neutral'}
                 />
@@ -312,8 +319,9 @@ export function FitnessTrend({ range }: Readonly<{ range: RangeKey }>) {
                     <ul className="flex flex-wrap gap-2">
                         {marks.map((mark) => (
                             <li key={mark.key} className="shrink-0">
-                                <button
+                                <motion.button
                                     type="button"
+                                    whileTap={pressShrink}
                                     aria-pressed={mark.key === selected}
                                     onClick={() =>
                                         setSelected((cur) =>
@@ -334,7 +342,7 @@ export function FitnessTrend({ range }: Readonly<{ range: RangeKey }>) {
                                     <span className="num text-ink-3">
                                         {shortDate(mark.date)}
                                     </span>
-                                </button>
+                                </motion.button>
                             </li>
                         ))}
                     </ul>
