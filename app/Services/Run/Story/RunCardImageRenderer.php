@@ -67,7 +67,7 @@ class RunCardImageRenderer
      * an exported image has no time of day, so it cannot follow the
      * `--color-surface` drift the running app applies.
      */
-    private const string GROUND = '#ece2ce';
+    private const string GROUND = '#e2e8ee';
 
     /**
      * `--shadow-e4` from app.css, the elevation the in-app Kartu mount
@@ -83,10 +83,10 @@ class RunCardImageRenderer
      */
     private const string ELEVATION = <<<'SVG'
         <filter id="elevation-deep" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#170f38" flood-opacity="0.20"/>
+          <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#0b1017" flood-opacity="0.20"/>
         </filter>
         <filter id="elevation-tight" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#170f38" flood-opacity="0.12"/>
+          <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0b1017" flood-opacity="0.12"/>
         </filter>
         SVG;
 
@@ -128,33 +128,33 @@ class RunCardImageRenderer
      */
     private const array COLORWAYS = [
         'navy' => [
-            'bg' => '#170f38',
-            'surfaceSunken' => '#ece2ce',
-            'text' => '#f5f0e4',
+            'bg' => '#0b1017',
+            'surfaceSunken' => '#e2e8ee',
+            'text' => '#f1f5f8',
             'meta' => 'rgba(245,240,228,0.72)',
             'divider' => 'rgba(245,240,228,0.18)',
-            'inkOnSky' => '#b0a3c9',
+            'inkOnSky' => '#9c9ea7',
         ],
         'dawn' => [
-            'bg' => '#f5f0e4',
-            'surfaceSunken' => '#ece2ce',
-            'text' => '#1a1812',
+            'bg' => '#f1f5f8',
+            'surfaceSunken' => '#e2e8ee',
+            'text' => '#16181b',
             'meta' => 'rgba(26,24,18,0.72)',
             'divider' => 'rgba(26,24,18,0.18)',
-            'inkOnSky' => '#6e6452',
+            'inkOnSky' => '#60666d',
         ],
         'ember' => [
             'bg' => '#2a1017',
-            'surfaceSunken' => '#ece2ce',
-            'text' => '#f5f0e4',
+            'surfaceSunken' => '#e2e8ee',
+            'text' => '#f1f5f8',
             'meta' => 'rgba(245,240,228,0.72)',
             'divider' => 'rgba(245,240,228,0.18)',
-            'inkOnSky' => '#b0a3c9',
+            'inkOnSky' => '#9c9ea7',
         ],
     ];
 
     /** The run-name accent, the one hue that never varies by colorway. */
-    private const string HORIZON = '#d9a53c';
+    private const string HORIZON = '#ade047';
 
     public function __construct(private readonly PolylineProjector $projector)
     {

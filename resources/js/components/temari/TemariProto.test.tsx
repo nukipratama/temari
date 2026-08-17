@@ -358,10 +358,10 @@ describe('TemariProto', () => {
         const onCream = render(<TemariProto tone="cream" />).container;
         expect(
             onSky.querySelector('[data-part="body"]')?.getAttribute('stroke'),
-        ).toBe('#f5f0e4');
+        ).toBe('#f1f5f8');
         expect(
             onCream.querySelector('[data-part="body"]')?.getAttribute('stroke'),
-        ).toBe('#241c54');
+        ).toBe('#171f28');
     });
 
     it('skips the medal when equipped.medal is "none" or absent', () => {

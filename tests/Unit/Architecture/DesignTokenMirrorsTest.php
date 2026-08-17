@@ -30,12 +30,12 @@ const OFF_TOKEN = [
     '#2a1017' => 'shareCard/RunCardImageRenderer emberDark — the ember hue carried to canvas-background darkness',
     '#fcf9f3' => 'shareCard paper highlight, lighter than any surface token',
     // TemariProto halo strokes. The halo palette reuses the exact token value
-    // where one fits (easy is --color-leaf, chill is --color-mood-chill); these
-    // four are the muted stroke variants with no token equivalent.
-    '#878172' => 'TemariProto halo neutral',
-    '#a47b19' => 'TemariProto halo blazing',
-    '#a27b2d' => 'TemariProto halo gold',
-    '#898170' => 'TemariProto halo stone',
+    // where one fits (easy is --color-leaf, chill is --color-mood-chill, stone
+    // is --color-stone); these are the muted stroke variants with no token
+    // equivalent.
+    '#8a8474' => 'TemariProto halo neutral',
+    '#a87e1a' => 'TemariProto halo blazing',
+    '#6f8f2d' => 'TemariProto halo gold',
     // TemariProto medal metals. Gold alone has a token (--color-horizon).
     '#a98f6b' => 'TemariProto medal bronze',
     '#b9c0c9' => 'TemariProto medal silver',

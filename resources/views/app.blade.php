@@ -38,7 +38,7 @@
          AppShell paints under the whole app, and it is what
          public/manifest.webmanifest already declares. Fixed rather than
          following the dawn-shift. --}}
-    <meta name="theme-color" content="#ece2ce">
+    <meta name="theme-color" content="#e2e8ee">
 
     {{-- PWA: installable + standalone; push works once added to the Home Screen via Safari. --}}
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">

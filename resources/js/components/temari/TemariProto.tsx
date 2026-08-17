@@ -100,10 +100,10 @@ const EYE_S = 10;
 const EYE_L = CX - EYE_S;
 const EYE_R = CX + EYE_S;
 
-const SKY = '#241c54';
-const CREAM = '#f5f0e4';
-const GOLD_INK = '#775a21';
-const INK = '#1a1812';
+const SKY = '#171f28';
+const CREAM = '#f1f5f8';
+const GOLD_INK = '#546d23';
+const INK = '#16181b';
 const LACE = '#b23a4f';
 
 /**
@@ -114,12 +114,12 @@ const LACE = '#b23a4f';
  * fails the suite instead of drifting.
  */
 const HALO: Record<string, { color: string; width: number }> = {
-    neutral: { color: '#878172', width: 6 },
+    neutral: { color: '#8a8474', width: 6 },
     easy: { color: '#2f8f63', width: 6 },
-    blazing: { color: '#a47b19', width: 8 },
-    gold: { color: '#a27b2d', width: 9 },
+    blazing: { color: '#a87e1a', width: 8 },
+    gold: { color: '#6f8f2d', width: 9 },
     chill: { color: '#55488f', width: 6 },
-    stone: { color: '#898170', width: 5 },
+    stone: { color: '#64686c', width: 5 },
     wobbly: { color: '#b23a4f', width: 7 },
     gassed: { color: '#7a2030', width: 6 },
 };
@@ -320,33 +320,33 @@ const HEADBAND_ITEMS: Record<string, ItemSpec> = {
 const MEDAL_ITEMS: Record<string, ItemSpec> = {
     first: { color: '#a98f6b' },
     silver: { color: '#b9c0c9', detail: 'medalStar' },
-    gold: { color: '#d9a53c', detail: 'medalStar' },
+    gold: { color: '#ade047', detail: 'medalStar' },
     platinum: { color: '#d8f0ff', detail: 'medalRing' },
 };
 
 const SHIRT_ITEMS: Record<string, ItemSpec> = {
-    beginner: { color: '#a99f8a' },
+    beginner: { color: '#64686c' },
     earlyBird: { color: '#2f8f63', detail: 'sunrise' },
     rainWarrior: { color: '#2f81f7', detail: 'rain' },
     legendary: { color: '#f5a623' },
 };
 
 const SHORTS_ITEMS: Record<string, ItemSpec> = {
-    lightweight: { color: '#a99f8a' },
+    lightweight: { color: '#64686c' },
     explorer: { color: '#256f4d' },
     negativeSplit: { color: '#2f81f7', detail: 'splitPanel' },
     marathon: { color: '#a855f7' },
 };
 
 const SHOES_ITEMS: Record<string, ItemSpec> = {
-    basic: { color: '#a99f8a' },
+    basic: { color: '#64686c' },
     speed: { color: '#b23a4f', detail: 'speedStripe' },
     rugged: { color: '#256f4d', detail: 'lugs' },
     legendary: { color: '#f5a623', detail: 'speedStripe' },
 };
 
 const AURA_ITEMS: Record<string, { color: string; dash: string }> = {
-    warmup: { color: '#d9a53c', dash: '1.5 7' },
+    warmup: { color: '#ade047', dash: '1.5 7' },
     heatwave: { color: '#8d2c3d', dash: '3 5' },
     calm: { color: '#55488f', dash: '0.1 6' },
     champion: { color: '#a855f7', dash: '999' },
@@ -375,7 +375,7 @@ const SEASON_COVERAGE: Record<SeasonPhase, SeasonCoverageConfig> = {
     taper: { ...FULL_COVERAGE, shine: true },
 };
 
-const SEASON_COLORS = ['#8d2c3d', '#d9a53c', '#362a73', '#256f4d', '#6b3fa0'];
+const SEASON_COLORS = ['#8d2c3d', '#ade047', '#26303d', '#256f4d', '#6b3fa0'];
 
 // ── Primitives ───────────────────────────────────────────────────────
 
