@@ -1,4 +1,4 @@
-export type TabId = 'today' | 'collection' | 'plan' | 'me';
+export type TabId = 'today' | 'collection' | 'trends' | 'plan' | 'me';
 
 export interface NavItem {
     id: TabId;
@@ -22,6 +22,13 @@ export const ITEMS: ReadonlyArray<NavItem> = [
         href: '/cards',
         icon: 'mdi:cards-outline',
         prefixes: ['/cards', '/accessories', '/records', '/badges'],
+    },
+    {
+        id: 'trends',
+        label: 'Trends',
+        href: '/trends',
+        icon: 'mdi:chart-line',
+        prefixes: ['/trends'],
     },
     {
         id: 'plan',

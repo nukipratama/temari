@@ -216,6 +216,15 @@
     --radius-xl: 24px;
     --radius-full: 9999px;
 
+    /* Luma/Pewter's own card radius and cast shadow (resources/brand/directions.html
+       [data-dir="pewter"]), landed additively under its own role name rather than
+       overwriting --radius-lg/--shadow-e*: those names are reused across ~170
+       unrelated call sites, so changing their values would move shape on things
+       that were never meant to adopt Luma's card look. New surfaces opt in by name;
+       nothing existing changes. */
+    --radius-panel: 26px;
+    --shadow-panel: 0 4px 6px -1px rgba(23, 31, 40, 0.11), 0 2px 4px -2px rgba(23, 31, 40, 0.08);
+
     /* ─── Elevation ────────────────────────────────────────────────────
        Warm-tinted, never neutral: a grey shadow on a cream ground reads
        dirty. e1 resting card · e2 floating UI · e3 sheet · e4 modal. */

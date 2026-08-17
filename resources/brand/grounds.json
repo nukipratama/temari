@@ -254,10 +254,15 @@
         ],
         "resources/js/pages/Onboarding/Index.tsx": [
           "paper"
+        ],
+        "resources/js/components/trends/NarrationHeadline.tsx": [
+          "paper"
         ]
       },
       "text": [
-        "horizon-ink"
+        "horizon-ink",
+        "ink",
+        "ink-2"
       ]
     },
     "horizon/0.12": {
@@ -306,6 +311,16 @@
       },
       "text": [
         "horizon-ink"
+      ]
+    },
+    "horizon/0.3": {
+      "over": {
+        "resources/js/components/trends/RangeToggle.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ink"
       ]
     },
     "horizon/0.35": {
