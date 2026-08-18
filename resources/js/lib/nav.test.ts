@@ -3,13 +3,18 @@ import { describe, expect, it } from 'vitest';
 import { activeTabFromUrl, ITEMS } from './nav';
 
 describe('nav', () => {
-    it('has 4 top-level items', () => {
+    it('has 5 top-level items', () => {
         expect(ITEMS.map((item) => item.id)).toEqual([
             'today',
             'collection',
+            'trends',
             'plan',
             'me',
         ]);
+    });
+
+    it('resolves /trends to the Trends tab', () => {
+        expect(activeTabFromUrl('/trends')).toBe('trends');
     });
 
     it('resolves the root path to Today', () => {

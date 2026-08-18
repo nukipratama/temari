@@ -41,6 +41,7 @@ use App\Http\Controllers\Telegram\TelegramConnectionController;
 use App\Http\Controllers\Telegram\TelegramWebhookController;
 use App\Http\Controllers\WebPush\PushSubscriptionController;
 use App\Http\Controllers\TokenUsageController;
+use App\Http\Controllers\TrendsController;
 use Illuminate\Support\Facades\Route;
 
 // Strava push subscription. Called by Strava unauthenticated — gated by the
@@ -142,6 +143,8 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::permanentRedirect('/catatan', '/activities');
 
     Route::get('/records', RecordsController::class)->name('records');
+
+    Route::get('/trends', TrendsController::class)->name('trends');
 
     Route::get('/race', [RaceController::class, 'index'])->name('race');
     Route::post('/race', [RaceController::class, 'store'])->name('race.store');
