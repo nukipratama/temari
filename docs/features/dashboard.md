@@ -1,12 +1,14 @@
 ---
 title: Dashboard
-description: The home page — the Past You verdict and its evidence, today's session, then vitals, last run, training load and the featured kartu
+description: The home page — this week's plan widget, the Past You verdict and its evidence, today's session, then vitals, last run, training load and the featured kartu
 tags: [feature, dashboard]
 status: living
-reviewed: 2026-08-13
+reviewed: 2026-08-19
 code_refs:
   - resources/js/pages/Home.tsx
   - app/Http/Controllers/DashboardController.php
+  - resources/js/components/home/WeekPlanWidget.tsx
+  - app/Services/Run/Plan/CurrentWeekPlanBuilder.php
   - resources/js/components/home/VerdictHero.tsx
   - resources/js/components/home/EvidenceList.tsx
   - resources/js/components/home/NoVerdictPanel.tsx
@@ -20,7 +22,7 @@ code_refs:
 
 # Dashboard
 
-The app's home (`/`). It answers one question, **"am I getting better?"**, with a verdict and the evidence behind it, then shows today's session. Everything the page used to open with (vitals, last run, training load, featured kartu) sits below that as supporting detail. Server entry is [DashboardController](app/Http/Controllers/DashboardController.php) (`__invoke`), rendering the [Home](resources/js/pages/Home.tsx) page.
+The app's home (`/`). [WeekPlanWidget](resources/js/components/home/WeekPlanWidget.tsx) leads when the runner has a plan, then the page answers its other question, **"am I getting better?"**, with a verdict and the evidence behind it, then shows today's session. Everything the page used to open with (vitals, last run, training load, featured kartu) sits below that as supporting detail. Server entry is [DashboardController](app/Http/Controllers/DashboardController.php) (`__invoke`), rendering the [Home](resources/js/pages/Home.tsx) page.
 
 **Navigation:** `route('dashboard')` → `/`. Named route: `dashboard`. `/` is dispatched by [RootController](app/Http/Controllers/RootController.php), which branches on auth: a guest gets the landing page ([[landing]]) and a signed-in user is delegated here. `route('dashboard')` therefore resolves for guests too — it answers with the landing page rather than a redirect.
 
@@ -31,10 +33,17 @@ The app's home (`/`). It answers one question, **"am I getting better?"**, with 
 - **Training metrics** — `load` comes from `TrainingLoad::summary`. See [[training-load-metrics]].
 - **Gamification** — the featured kartu is picked by rarity rank. See [[gamification]].
 - **Dawn-shift** — surface tints drift by time of day via `useDawnShift`. See [[frontend-architecture]].
+- **Plan** — `weekPlan` comes from `CurrentWeekPlanBuilder::forUser`, the same phase/volume computation [[plan-periodizer]] uses for the full multi-week arc. See below.
+
+## This week's plan
+
+[WeekPlanWidget](resources/js/components/home/WeekPlanWidget.tsx) leads the page whenever `weekPlan` is non-null (a brand new account with no plan yet omits it entirely). It shows a sessions-done ring, this week's planned distance, the phase, a 7-day day-status grid (today's tile ringed), and today's row expanded into a sentence, all lifted straight from `CurrentWeekPlanBuilder::forUser`'s payload — the same [PlanRenderer::dayPayload](app/Services/Run/Plan/PlanRenderer.php) shape Plan's own week rows render, so nothing shown here can numerically drift from the Plan page.
+
+`streak_days` is a **day-grained streak scoped to the current week only** — consecutive credited (`done`/`partial`) days walking back from today, skipping today itself if it is still `planned` rather than counting that as a break. This is a different metric from [WeeklySnapshot::consecutiveWeekStreak()](app/Models/WeeklySnapshot.php), the week-grained lifetime streak [StreakPanel](resources/js/components/plan/StreakPanel.tsx) shows on Plan — the two can disagree (e.g. a broken day streak inside a week that still counts toward the weekly one) and that is expected, not a bug.
 
 ## The verdict
 
-[VerdictHero](resources/js/components/home/VerdictHero.tsx) leads the page: the call itself in Temari's narrated register (lowercase-leaning), the aggregate that backs it, and her byline so the sentence reads as hers. Its copy is rule-based, not a narrated block — [verdict.ts](resources/js/lib/verdict.ts) turns the `pastYouTrend` payload into a headline and a supporting line, so the claim costs no tokens and can never contradict the numbers beside it.
+[VerdictHero](resources/js/components/home/VerdictHero.tsx) leads the page below the week plan widget (or leads it outright when there is no plan yet): the call itself in Temari's narrated register (lowercase-leaning), the aggregate that backs it, and her byline so the sentence reads as hers. Its copy is rule-based, not a narrated block — [verdict.ts](resources/js/lib/verdict.ts) turns the `pastYouTrend` payload into a headline and a supporting line, so the claim costs no tokens and can never contradict the numbers beside it.
 
 Three of the four outcomes render here (`improving` / `plateaued` / `slipped`), each with its own tone and mascot pose. `plateaued` and `slipped` are stated plainly, once, with the number: a page that only looks good when the news is good would not be keeping score. See [[voice-and-tone]] and [temari-keeps-score-persona](docs/decisions/temari-keeps-score-persona.md).
 
