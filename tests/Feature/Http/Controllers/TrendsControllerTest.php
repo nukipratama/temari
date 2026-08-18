@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Models\AI\Analysis;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PersonalRecord;
+use App\Models\TrendDailySnapshot;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -94,4 +96,69 @@ it('never surfaces another user\'s narration', function (): void {
 
     $this->actingAs($user)->get('/trends')
         ->assertInertia(fn (Assert $page) => $page->where('narration.30d.status', 'pending'));
+});
+
+it('renders an empty load trend for a fresh user', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/trends')
+        ->assertInertia(fn (Assert $page) => $page->where('loadTrend', []));
+});
+
+it('renders a load trend from the user\'s TRIMP history', function (): void {
+    $user = User::factory()->create();
+    seedTrendsTrimpDay($user, 80);
+
+    $this->actingAs($user)->get('/trends')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('loadTrend', fn (mixed $trend): bool => collect($trend)
+                ->contains(fn (array $day): bool => $day['strain'] !== null)));
+});
+
+it('renders empty VDOT and pace consistency histories for a fresh user', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/trends')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('vdotHistory', [])
+            ->where('vdotSourceCategory', null)
+            ->where('paceConsistencyHistory', []));
+});
+
+it('renders VDOT and pace consistency histories from the user\'s snapshots', function (): void {
+    $user = User::factory()->create();
+    TrendDailySnapshot::factory()->for($user)->create([
+        'snapshot_date' => now()->toDateString(),
+        'vdot' => 42.5,
+        'pace_variability_sec' => 9.5,
+    ]);
+
+    $this->actingAs($user)->get('/trends')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('vdotHistory.0.vdot', 42.5)
+            ->where('paceConsistencyHistory.0.variabilitySec', 9.5));
+});
+
+it('sets vdotSourceCategory from the user\'s limiting personal record', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '10km',
+        'value_sec' => 3600,
+    ]);
+
+    $this->actingAs($user)->get('/trends')
+        ->assertInertia(fn (Assert $page) => $page->where('vdotSourceCategory', '10 km'));
+});
+
+it('never surfaces another user\'s load or snapshot history', function (): void {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    seedTrendsTrimpDay($other, 80);
+    TrendDailySnapshot::factory()->for($other)->create();
+
+    $this->actingAs($user)->get('/trends')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('loadTrend', [])
+            ->where('vdotHistory', [])
+            ->where('paceConsistencyHistory', []));
 });

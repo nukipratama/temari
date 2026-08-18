@@ -8,6 +8,15 @@ import NarrationHeadline from '@/components/trends/NarrationHeadline';
 import FitnessTrend, {
     type FitnessTrendPoint,
 } from '@/components/trends/panels/FitnessTrend';
+import LoadTrend, {
+    type LoadTrendPoint,
+} from '@/components/trends/panels/LoadTrend';
+import PaceConsistencyTrend, {
+    type PaceConsistencyPoint,
+} from '@/components/trends/panels/PaceConsistencyTrend';
+import VdotTrend, {
+    type VdotHistoryPoint,
+} from '@/components/trends/panels/VdotTrend';
 import RangeToggle, { type TrendRange } from '@/components/trends/RangeToggle';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
@@ -16,10 +25,21 @@ import { fadeInUp, staggerContainer } from '@/lib/motion';
 
 interface TrendsProps {
     ctlTrend: FitnessTrendPoint[];
+    loadTrend: LoadTrendPoint[];
+    vdotHistory: VdotHistoryPoint[];
+    vdotSourceCategory: string | null;
+    paceConsistencyHistory: PaceConsistencyPoint[];
     narration: Record<TrendRange, AnalysisPayload>;
 }
 
-export default function Trends({ ctlTrend, narration }: Readonly<TrendsProps>) {
+export default function Trends({
+    ctlTrend,
+    loadTrend,
+    vdotHistory,
+    vdotSourceCategory,
+    paceConsistencyHistory,
+    narration,
+}: Readonly<TrendsProps>) {
     const [range, setRange] = useState<TrendRange>('12mo');
 
     return (
@@ -58,6 +78,25 @@ export default function Trends({ ctlTrend, narration }: Readonly<TrendsProps>) {
 
                     <motion.div variants={fadeInUp}>
                         <FitnessTrend trend={ctlTrend} range={range} />
+                    </motion.div>
+
+                    <motion.div variants={fadeInUp}>
+                        <LoadTrend trend={loadTrend} range={range} />
+                    </motion.div>
+
+                    <motion.div variants={fadeInUp}>
+                        <VdotTrend
+                            trend={vdotHistory}
+                            sourceCategory={vdotSourceCategory}
+                            range={range}
+                        />
+                    </motion.div>
+
+                    <motion.div variants={fadeInUp}>
+                        <PaceConsistencyTrend
+                            trend={paceConsistencyHistory}
+                            range={range}
+                        />
                     </motion.div>
                 </motion.div>
             </PageContainer>
