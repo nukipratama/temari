@@ -44,7 +44,7 @@ function hookProps(
 }
 
 describe('filterQuery', () => {
-    it('omits every default so the unfiltered view is a bare /activities', () => {
+    it('omits every default so the unfiltered view is a bare /history', () => {
         expect(filterQuery(state())).toEqual({});
     });
 
@@ -76,13 +76,13 @@ describe('filterQuery', () => {
 });
 
 describe('hrefWithFilters', () => {
-    it('stays a clean /activities when nothing is filtered', () => {
-        expect(hrefWithFilters(state())).toBe('/activities');
+    it('stays a clean /history when nothing is filtered', () => {
+        expect(hrefWithFilters(state())).toBe('/history');
     });
 
     it('builds a query string for an active filter', () => {
         expect(hrefWithFilters(state({ range: '1y', distance: '0-5' }))).toBe(
-            '/activities?range=1y&dist=0-5',
+            '/history?range=1y&dist=0-5',
         );
     });
 });
@@ -314,7 +314,7 @@ describe('useFeedFilters', () => {
             );
 
             expect(router.get).toHaveBeenCalledWith(
-                '/activities',
+                '/history',
                 expected,
                 expect.objectContaining({
                     preserveScroll: true,
@@ -324,7 +324,7 @@ describe('useFeedFilters', () => {
         },
     );
 
-    it('resets every axis back to a bare /activities', () => {
+    it('resets every axis back to a bare /history', () => {
         vi.mocked(router.get).mockReset();
         const { result } = renderHook(() =>
             useFeedFilters(
@@ -341,7 +341,7 @@ describe('useFeedFilters', () => {
         act(() => result.current.resetFilters());
 
         expect(router.get).toHaveBeenCalledWith(
-            '/activities',
+            '/history',
             {},
             expect.anything(),
         );
@@ -354,7 +354,7 @@ describe('useFeedFilters', () => {
             );
 
             expect(result.current.sections.range.hrefFor('1y')).toBe(
-                '/activities?range=1y&mood=blazing',
+                '/history?range=1y&mood=blazing',
             );
         });
 
@@ -370,7 +370,7 @@ describe('useFeedFilters', () => {
 
             act(() => result.current.sections.mood.onToggle('easy'));
             expect(router.get).toHaveBeenLastCalledWith(
-                '/activities',
+                '/history',
                 { mood: 'easy' },
                 expect.anything(),
             );
@@ -378,7 +378,7 @@ describe('useFeedFilters', () => {
             rerender(hookProps({ moodFilter: ['easy'] }));
             act(() => result.current.sections.mood.onToggle('easy'));
             expect(router.get).toHaveBeenLastCalledWith(
-                '/activities',
+                '/history',
                 {},
                 expect.anything(),
             );
@@ -393,14 +393,14 @@ describe('useFeedFilters', () => {
 
             act(() => result.current.sections.distance.onSelect('21up'));
             expect(router.get).toHaveBeenLastCalledWith(
-                '/activities',
+                '/history',
                 {},
                 expect.anything(),
             );
 
             act(() => result.current.sections.distance.onSelect('0-5'));
             expect(router.get).toHaveBeenLastCalledWith(
-                '/activities',
+                '/history',
                 { dist: '0-5' },
                 expect.anything(),
             );
@@ -415,7 +415,7 @@ describe('useFeedFilters', () => {
             act(() => result.current.sections.sort.onSelect('newest'));
 
             expect(router.get).toHaveBeenCalledWith(
-                '/activities',
+                '/history',
                 {},
                 expect.anything(),
             );
@@ -462,7 +462,7 @@ describe('useFeedFilters', () => {
 
             act(() => result.current.resume!.apply());
             expect(router.get).toHaveBeenCalledWith(
-                '/activities',
+                '/history',
                 { mood: 'blazing' },
                 expect.anything(),
             );

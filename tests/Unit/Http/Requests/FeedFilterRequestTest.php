@@ -6,7 +6,7 @@ use App\Http\Requests\FeedFilterRequest;
 
 function feedRequest(string $query = ''): FeedFilterRequest
 {
-    return FeedFilterRequest::create('/activities'.($query === '' ? '' : '?'.$query));
+    return FeedFilterRequest::create('/history'.($query === '' ? '' : '?'.$query));
 }
 
 it('authorizes everyone and validates nothing', function (): void {

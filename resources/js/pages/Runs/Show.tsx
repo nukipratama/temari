@@ -179,7 +179,7 @@ export default function RunsShow({
             <Head title={detail.name ?? 'Run'} />
             <PageContainer>
                 <BackLink
-                    href="/activities"
+                    href="/history"
                     className="mb-4 hidden lg:inline-flex"
                 >
                     History · Log

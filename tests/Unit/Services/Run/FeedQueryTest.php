@@ -18,7 +18,7 @@ function feedFiltersFor(User $user, string $query = ''): FeedFilters
 {
     return app(FeedQuery::class)->filtersFor(
         $user,
-        FeedFilterRequest::create('/activities'.($query === '' ? '' : '?'.$query)),
+        FeedFilterRequest::create('/history'.($query === '' ? '' : '?'.$query)),
     );
 }
 

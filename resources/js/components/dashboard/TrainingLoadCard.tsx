@@ -113,7 +113,7 @@ export default function TrainingLoadCard({
                 </div>
             ))}
             <Link
-                href="/activities"
+                href="/history"
                 className={cn(
                     'focus-ring mt-auto inline-flex min-h-6 items-center rounded pt-1 text-label-micro',
                     onSky

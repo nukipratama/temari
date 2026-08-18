@@ -11,13 +11,13 @@ const TABS: ReadonlyArray<SectionTabItem<HistoryTab>> = [
     {
         id: 'feed',
         label: 'Feed',
-        href: '/activities',
+        href: '/history',
         icon: 'mdi:shoe-print',
     },
     {
         id: 'calendar',
         label: 'Calendar',
-        href: '/calendar',
+        href: '/history?view=calendar',
         icon: 'mdi:calendar-blank-outline',
     },
 ];

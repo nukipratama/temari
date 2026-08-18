@@ -46,7 +46,7 @@ it('redirects an unboarded user away from the rest of the app back to the wizard
     $user = User::factory()->needsOnboarding()->create();
 
     $this->actingAs($user)->get('/')->assertRedirect(route('onboarding.show'));
-    $this->actingAs($user)->get('/activities')->assertRedirect(route('onboarding.show'));
+    $this->actingAs($user)->get('/history')->assertRedirect(route('onboarding.show'));
 });
 
 it('lets an unboarded user log out without hitting the onboarding gate', function (): void {

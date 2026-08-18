@@ -12,7 +12,7 @@ describe('MobileTopBar', () => {
     });
 
     it.each([
-        ['Runs/Show', '/activities', 'History'],
+        ['Runs/Show', '/history', 'History'],
         ['Settings/HrZones', '/settings', 'Settings'],
     ])(
         'replaces the brand mark with a back button on %s',
@@ -29,9 +29,8 @@ describe('MobileTopBar', () => {
     it.each([
         'Today',
         'Collection/Cards',
-        'Activities/Feed',
+        'History',
         'Profile',
-        'Activities/Calendar',
         'Trends',
         'Settings/Index',
         'Race',
@@ -48,7 +47,7 @@ describe('MobileTopBar', () => {
         render(<MobileTopBar />);
         expect(
             screen.getByLabelText('Back to History').getAttribute('href'),
-        ).toBe('/activities');
+        ).toBe('/history');
     });
 
     it('shows the user menu when a user is signed in', () => {

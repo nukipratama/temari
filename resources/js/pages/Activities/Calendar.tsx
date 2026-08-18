@@ -302,7 +302,7 @@ function MonthNav({
     return (
         <div className="flex items-center gap-2">
             <NavButton
-                href={`/calendar?month=${prevMonth}`}
+                href={`/history?view=calendar&month=${prevMonth}`}
                 icon="mdi:chevron-left"
                 label="Previous month"
             />
@@ -310,13 +310,13 @@ function MonthNav({
                 {label}
             </h2>
             <NavButton
-                href={`/calendar?month=${nextMonth}`}
+                href={`/history?view=calendar&month=${nextMonth}`}
                 icon="mdi:chevron-right"
                 label="Next month"
             />
             {showTodayButton && (
                 <Link
-                    href="/calendar"
+                    href="/history?view=calendar"
                     aria-label="Jump to current month"
                     className="pressable focus-ring ml-1 rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1 text-xs font-semibold text-leaf-ink transition hover:border-leaf hover:bg-leaf/15"
                 >

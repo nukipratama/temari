@@ -83,7 +83,7 @@ export function WeekFocusNote({
             icon="mdi:calendar-week"
             className="mb-6 flex-wrap"
             action={
-                <BackLink href="/activities" tone="accent">
+                <BackLink href="/history" tone="accent">
                     View all runs
                 </BackLink>
             }

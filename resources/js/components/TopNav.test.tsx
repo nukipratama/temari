@@ -36,17 +36,8 @@ describe('TopNav', () => {
         );
     });
 
-    it('highlights Today for the /activities page', () => {
-        setMockPage(user(), '/activities');
-        render(<TopNav />);
-        expect(screen.getByText('Today')).toHaveAttribute(
-            'aria-current',
-            'page',
-        );
-    });
-
-    it('highlights Today for the /calendar page', () => {
-        setMockPage(user(), '/calendar');
+    it('highlights Today for the /history page', () => {
+        setMockPage(user(), '/history');
         render(<TopNav />);
         expect(screen.getByText('Today')).toHaveAttribute(
             'aria-current',

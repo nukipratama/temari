@@ -14,15 +14,15 @@ it('renders the guest login page', function (): void {
         ->assertInertia(fn (Assert $page) => $page->component('Auth/Login'));
 });
 
-it('renders every authenticated page for a fresh user', function (string $route, string $component): void {
+it('renders every authenticated page for a fresh user', function (string $route, string $component, array $params = []): void {
     $this->actingAs(User::factory()->create())
-        ->get(route($route))
+        ->get(route($route, $params))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->component($component));
 })->with([
     'dashboard' => ['dashboard', 'Home'],
-    'activities' => ['activities.index', 'Activities/Feed'],
-    'calendar' => ['calendar', 'Activities/Calendar'],
+    'history list' => ['history', 'History'],
+    'history calendar' => ['history', 'History', ['view' => 'calendar']],
     'cards' => ['cards.index', 'Collection/Cards'],
     'trends' => ['trends', 'Trends'],
     'accessories' => ['accessories', 'Collection/Accessories'],

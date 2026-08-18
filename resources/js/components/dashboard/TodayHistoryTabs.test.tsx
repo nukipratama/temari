@@ -12,7 +12,7 @@ describe('TodayHistoryTabs', () => {
         );
         expect(screen.getByText('History').closest('a')).toHaveAttribute(
             'href',
-            '/activities',
+            '/history',
         );
     });
 

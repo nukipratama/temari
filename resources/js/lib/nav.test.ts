@@ -22,9 +22,8 @@ describe('nav', () => {
     });
 
     it('folds History under Today', () => {
-        expect(activeTabFromUrl('/activities')).toBe('today');
+        expect(activeTabFromUrl('/history')).toBe('today');
         expect(activeTabFromUrl('/activities/123')).toBe('today');
-        expect(activeTabFromUrl('/calendar')).toBe('today');
     });
 
     it('folds Race under Plan', () => {

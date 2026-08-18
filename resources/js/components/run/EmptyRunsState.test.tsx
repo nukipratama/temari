@@ -59,7 +59,7 @@ function expectActionLinks() {
     expect(accessories).toHaveAttribute('href', '/accessories');
 
     const activities = screen.getByText('See your run recap').closest('a');
-    expect(activities).toHaveAttribute('href', '/activities');
+    expect(activities).toHaveAttribute('href', '/history');
 }
 
 describe('EmptyRunsState', () => {
