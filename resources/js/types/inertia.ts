@@ -382,6 +382,33 @@ export interface PastYouTrend {
     relative_effort_band: string | null;
 }
 
+/** One day within `WeekPlan['days']`, as `PlanRenderer::dayPayload()` ships
+ *  it — the same shape Plan's own day rows use. */
+export interface WeekPlanDay {
+    id: number;
+    date: string;
+    phase: string;
+    session_type: string;
+    distance_band: string;
+    pace_band: string | null;
+    pace_sec_per_km: number | null;
+    distance_km: number;
+    pinned: boolean;
+    status: 'planned' | 'done' | 'partial' | 'missed';
+    clamp_note: string | null;
+}
+
+/** `CurrentWeekPlanBuilder::forUser()` — Home's compact pull of the current
+ *  week's plan, null once a user has no plan yet. */
+export interface WeekPlan {
+    sessions_per_week: number;
+    phase: string;
+    planned_km_this_week: number;
+    credited_this_week: number;
+    streak_days: number;
+    days: WeekPlanDay[];
+}
+
 /** One `weekly_snapshots` row, shipped whole (`WeeklySnapshot::toArray()`). */
 export interface WeeklySnapshot {
     id: number;

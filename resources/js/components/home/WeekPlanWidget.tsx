@@ -1,0 +1,266 @@
+import { Icon } from '@iconify/react';
+
+import type { WeekPlan, WeekPlanDay } from '@/types/inertia';
+
+import Card from '@/components/ui/Card';
+import Chip, { type ChipTone } from '@/components/ui/Chip';
+import SectionLabel from '@/components/ui/SectionLabel';
+import StatTile from '@/components/ui/StatTile';
+import { useCountUp } from '@/hooks/useCountUp';
+import { cn } from '@/lib/cn';
+import { formatPace, parseNaiveLocalDate, todayLocalIso } from '@/lib/pace';
+
+const SESSION_TYPE_LABEL: Record<string, string> = {
+    easy: 'Easy',
+    long: 'Long run',
+    tempo: 'Tempo',
+    interval: 'Interval',
+    rest: 'Rest',
+};
+
+const PHASE_LABEL: Record<string, string> = {
+    base: 'Base',
+    build: 'Build',
+    peak: 'Peak',
+    taper: 'Taper',
+    deload: 'Deload',
+};
+
+const PHASE_TONE: Record<string, ChipTone> = {
+    base: 'neutral',
+    build: 'sky',
+    peak: 'horizon',
+    taper: 'horizon',
+    deload: 'neutral',
+};
+
+const RING_SIZE = 104;
+const RING_STROKE = 10;
+
+function weekdayAbbr(iso: string): string {
+    const date = parseNaiveLocalDate(iso);
+    return date === null
+        ? ''
+        : date.toLocaleDateString('en-US', { weekday: 'short' });
+}
+
+function isCredited(day: WeekPlanDay): boolean {
+    return day.status === 'done' || day.status === 'partial';
+}
+
+/** Which of the days rendered in the grid belong to the current streak, so
+ *  the grid can highlight the same run of days `streak_days` counts. */
+function streakDates(days: WeekPlanDay[], streakDays: number): Set<string> {
+    const dates = new Set<string>();
+    if (streakDays === 0) return dates;
+
+    const todayIso = todayLocalIso();
+    const todayIdx = days.findIndex((d) => d.date === todayIso);
+    let i = todayIdx === -1 ? days.length - 1 : todayIdx;
+    if (!isCredited(days[i])) i -= 1;
+
+    for (; i >= 0 && dates.size < streakDays; i--) {
+        dates.add(days[i].date);
+    }
+    return dates;
+}
+
+function SessionsRing({ value }: Readonly<{ value: number }>) {
+    const radius = (RING_SIZE - RING_STROKE) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const clamped = Math.min(1, Math.max(0, value));
+    const tweenedPct = useCountUp(clamped * 100) / 100;
+    const offset = circumference * (1 - tweenedPct);
+
+    return (
+        <svg
+            width={RING_SIZE}
+            height={RING_SIZE}
+            viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
+            className="-rotate-90"
+            aria-hidden
+        >
+            <circle
+                cx={RING_SIZE / 2}
+                cy={RING_SIZE / 2}
+                r={radius}
+                fill="none"
+                stroke="var(--color-surface-sunken)"
+                strokeWidth={RING_STROKE}
+            />
+            <circle
+                cx={RING_SIZE / 2}
+                cy={RING_SIZE / 2}
+                r={radius}
+                fill="none"
+                stroke="var(--color-horizon-ink)"
+                strokeWidth={RING_STROKE}
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={offset}
+            />
+        </svg>
+    );
+}
+
+function DayGlyph({
+    status,
+    inStreak,
+}: Readonly<{ status: WeekPlanDay['status']; inStreak: boolean }>) {
+    if (status === 'done' || status === 'partial') {
+        return (
+            <span
+                className={cn(
+                    'flex items-center justify-center rounded-full p-1',
+                    inStreak && 'bg-horizon/[0.18]',
+                )}
+            >
+                <Icon
+                    icon="mdi:fire"
+                    width={16}
+                    height={16}
+                    className={cn(
+                        status === 'partial' && 'opacity-60',
+                        inStreak ? 'text-horizon-ink' : 'text-ink-3',
+                    )}
+                    aria-hidden
+                />
+            </span>
+        );
+    }
+    if (status === 'missed') {
+        return (
+            <Icon
+                icon="mdi:fire"
+                width={16}
+                height={16}
+                className="text-ember-ink opacity-40"
+                aria-hidden
+            />
+        );
+    }
+    return (
+        <span aria-hidden className="size-1.5 rounded-full bg-line-strong" />
+    );
+}
+
+/**
+ * "This week's plan" — the widget Home leads with. Fields are exactly
+ * `CurrentWeekPlanBuilder::forUser()`'s shape, the same computation Plan's
+ * own week rows use, so nothing shown here can drift from Plan.
+ */
+export default function WeekPlanWidget({
+    weekPlan,
+}: Readonly<{ weekPlan: WeekPlan }>) {
+    const todayIso = todayLocalIso();
+    const today = weekPlan.days.find((d) => d.date === todayIso) ?? null;
+    const streak = streakDates(weekPlan.days, weekPlan.streak_days);
+
+    const creditedTweened = useCountUp(weekPlan.credited_this_week);
+    const kmTweened = useCountUp(weekPlan.planned_km_this_week);
+
+    return (
+        <Card as="section" padding="hero">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <SectionLabel dot dotClass="bg-leaf" className="mb-0">
+                    This week&apos;s plan
+                </SectionLabel>
+                <div className="flex items-center gap-2">
+                    {weekPlan.streak_days > 0 && (
+                        <Chip tone="horizon">
+                            <Icon
+                                icon="mdi:fire"
+                                width={12}
+                                height={12}
+                                aria-hidden
+                            />
+                            {weekPlan.streak_days}-day streak
+                        </Chip>
+                    )}
+                    <Chip tone={PHASE_TONE[weekPlan.phase] ?? 'neutral'}>
+                        {PHASE_LABEL[weekPlan.phase] ?? weekPlan.phase}
+                    </Chip>
+                </div>
+            </div>
+
+            <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-stretch">
+                <SessionsRing
+                    value={
+                        weekPlan.sessions_per_week > 0
+                            ? weekPlan.credited_this_week /
+                              weekPlan.sessions_per_week
+                            : 0
+                    }
+                />
+                <div className="grid flex-1 grid-cols-2 gap-3">
+                    <StatTile
+                        label="Sessions"
+                        value={`${Math.round(creditedTweened)}/${weekPlan.sessions_per_week}`}
+                        tone="sunken"
+                        size="sm"
+                    />
+                    <StatTile
+                        label="Distance"
+                        value={kmTweened.toFixed(1)}
+                        unit="km"
+                        tone="sunken"
+                        size="sm"
+                    />
+                </div>
+            </div>
+
+            <ul className="mt-4 grid grid-cols-7 gap-1.5">
+                {weekPlan.days.map((day) => (
+                    <li
+                        key={day.date}
+                        className={cn(
+                            'flex flex-col items-center gap-1 rounded-lg bg-surface-sunken p-2 text-center',
+                            day.date === todayIso && 'ring-2 ring-horizon-ink',
+                        )}
+                    >
+                        <span className="text-label-micro text-ink-3">
+                            {weekdayAbbr(day.date)}
+                        </span>
+                        <DayGlyph
+                            status={day.status}
+                            inStreak={streak.has(day.date)}
+                        />
+                        <span className="text-[11px] font-semibold text-ink">
+                            {day.session_type === 'rest'
+                                ? 'Rest'
+                                : `${day.distance_km}k`}
+                        </span>
+                        {day.pinned && (
+                            <Icon
+                                icon="mdi:pin"
+                                width={9}
+                                height={9}
+                                className="text-ink-3"
+                                aria-label="Pinned"
+                            />
+                        )}
+                    </li>
+                ))}
+            </ul>
+
+            {today !== null && (
+                <div className="mt-4 rounded-lg bg-surface-warm p-3">
+                    <span className="text-sm font-bold text-ink sm:text-base">
+                        Today ·{' '}
+                        {SESSION_TYPE_LABEL[today.session_type] ??
+                            today.session_type}
+                        {today.session_type !== 'rest' &&
+                            ` · ${today.distance_km} km`}
+                        {today.pace_sec_per_km !== null &&
+                            ` · ${formatPace(today.pace_sec_per_km)}/km`}
+                    </span>
+                    {today.clamp_note !== null && (
+                        <p className="mt-1 text-xs italic text-ink-3">
+                            {today.clamp_note}
+                        </p>
+                    )}
+                </div>
+            )}
+        </Card>
+    );
+}
