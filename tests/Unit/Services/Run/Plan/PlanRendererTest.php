@@ -9,7 +9,14 @@ use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Services\Run\Plan\PlanRenderer;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+
+// PlannedSession::factory()->make() never persists the session itself, but
+// its 'user_id' => User::factory() default still resolves (and creates a
+// real row) regardless of make() vs create() -- a well-known Eloquent
+// factory quirk, not something these tests can avoid by using make().
+uses(RefreshDatabase::class);
 
 it('weekPhasesAndMultipliers reads each week\'s phase from its first session', function (): void {
     $sessionsByWeek = collect([
