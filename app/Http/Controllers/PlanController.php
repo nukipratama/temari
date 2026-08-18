@@ -7,7 +7,6 @@ namespace App\Http\Controllers;
 use App\Actions\Gamification\GrantSeasonUnlocksAction;
 use App\Actions\Gamification\SettleStreakRestTokensAction;
 use App\Enums\DistanceBand;
-use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Http\Requests\UpdatePlannedSessionRequest;
@@ -29,7 +28,7 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\DistanceBandKm;
 use App\Services\Run\Plan\Periodizer;
-use App\Services\Run\Plan\PhaseSchedule;
+use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\SeasonService;
 use App\Services\Run\Plan\SessionMatcher;
@@ -119,21 +118,7 @@ class PlanController extends Controller
             fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
         );
 
-        /** @var Collection<string, PlanPhase> $phaseByWeek */
-        $phaseByWeek = $sessionsByWeek->map(function (Collection $weekSessions): PlanPhase {
-            $first = $weekSessions->first();
-            if ($first === null) {
-                // groupBy never produces an empty group; this only guards the type.
-                throw new LogicException('A grouped week unexpectedly had no sessions.');
-            }
-
-            return $first->phase;
-        })->sortKeys();
-
-        $multiplierByWeek = array_combine(
-            $phaseByWeek->keys()->all(),
-            PhaseSchedule::volumeMultipliers(array_values($phaseByWeek->values()->all())),
-        );
+        [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek);
 
         $currentWeekKey = $currentWeekStart->toDateString();
         $currentWeekMultiplier = $multiplierByWeek[$currentWeekKey] ?? 1.0;
@@ -179,7 +164,7 @@ class PlanController extends Controller
                 'week_start' => $weekStartKey,
                 'phase' => $weekPhase->value,
                 'type' => $weekStartKey < $currentWeekKey ? 'history' : ($weekStartKey === $currentWeekKey ? 'current' : 'lookahead'),
-                'days' => $weekSessions->map(fn (PlannedSession $s) => $this->dayPayload(
+                'days' => $weekSessions->map(fn (PlannedSession $s) => PlanRenderer::dayPayload(
                     $s,
                     $today,
                     $clamp,
@@ -398,48 +383,6 @@ class PlanController extends Controller
         return VolumeRedistributor::redistribute($eligibleDays, $remainingTargetKm, $bandKmThisWeek);
     }
 
-    /**
-     * @param  array{session_type: SessionType, distance_band: DistanceBand, pace_band: mixed, note: string}|null  $clamp
-     * @param  array<string, DistanceBand>  $redistributed
-     * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
-     * @return array<string, mixed>
-     */
-    private function dayPayload(
-        PlannedSession $s,
-        Carbon $today,
-        ?array $clamp,
-        array $redistributed,
-        float $longRunKm,
-        float $multiplier,
-        ?array $paces,
-        PlannedSessionStatus $status,
-    ): array {
-        $isToday = $s->date->isSameDay($today);
-
-        $sessionType = ($isToday && $clamp !== null) ? $clamp['session_type'] : $s->session_type;
-        $paceBand = ($isToday && $clamp !== null) ? $clamp['pace_band'] : $s->pace_band;
-
-        $band = $s->distance_band;
-        if ($isToday && $clamp !== null) {
-            $band = $clamp['distance_band'];
-        } elseif (isset($redistributed[$s->date->toDateString()])) {
-            $band = $redistributed[$s->date->toDateString()];
-        }
-
-        return [
-            'id' => $s->id,
-            'date' => $s->date->toDateString(),
-            'phase' => $s->phase->value,
-            'session_type' => $sessionType->value,
-            'distance_band' => $band->value,
-            'pace_band' => $paceBand?->value,
-            'pace_sec_per_km' => ($paceBand !== null && $paces !== null) ? ($paces[$paceBand->value] ?? null) : null,
-            'distance_km' => DistanceBandKm::kmFor($band, $longRunKm, $multiplier),
-            'pinned' => $s->pinned,
-            'status' => $status->value,
-            'clamp_note' => $isToday ? ($clamp['note'] ?? null) : null,
-        ];
-    }
 
     /**
      * @return array{reason: string, headline: string, detail: string, deload: bool}|null
