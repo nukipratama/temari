@@ -247,8 +247,8 @@ describe('ProgressionChart', () => {
                 chart: { chartArea: undefined, ctx: {} },
             });
 
-            // horizon token (#d9a53c) at 0.18 alpha.
-            expect(color).toBe('#d9a53c2e');
+            // horizon token (#ade047) at 0.18 alpha.
+            expect(color).toBe('#ade0472e');
         });
 
         it('builds a vertical gradient once the chart area is known', () => {

@@ -229,13 +229,13 @@ it('paints a different card-body fill for each colorway', function (): void {
     $dawn = $svgFor('dawn');
     $ember = $svgFor('ember');
 
-    // Matched on the body rect itself: navy's #170f38 is also the elevation's
+    // Matched on the body rect itself: navy's #0b1017 is also the elevation's
     // flood-color, so it appears under every colorway.
     $body = fn (string $hex): string => "<rect width=\"1080\" height=\"1920\" rx=\"44\" fill=\"{$hex}\"/>";
 
-    expect($navy)->toContain($body('#170f38'))
-        ->and($dawn)->toContain($body('#f5f0e4'))->not->toContain($body('#170f38'))
-        ->and($ember)->toContain($body('#2a1017'))->not->toContain($body('#170f38'));
+    expect($navy)->toContain($body('#0b1017'))
+        ->and($dawn)->toContain($body('#f1f5f8'))->not->toContain($body('#0b1017'))
+        ->and($ember)->toContain($body('#2a1017'))->not->toContain($body('#0b1017'));
 });
 
 it('names the three real font families and never the generic sans-serif', function (): void {
@@ -268,7 +268,7 @@ it('renders the run name in italic Fraunces on the horizon accent, like the clie
         ->invoke(app(RunCardImageRenderer::class), $card);
 
     expect($svg)->toContain('font-family="Fraunces" font-style="italic"')
-        ->toContain('fill="#d9a53c">Kaki Cepat</text>');
+        ->toContain('fill="#ade047">Kaki Cepat</text>');
 });
 
 it('renders at the client canvas story format, 1080x1920', function (): void {
@@ -290,7 +290,7 @@ it('mats the card on the app ground at the same inset the client canvas uses', f
     // These three numbers are the whole parity contract with shareCard.ts's
     // CARD_GROUND / CARD_SCALE: the ground is --color-cream-deep, the card
     // takes 90% of each axis, and it sits centred on the leftover mat.
-    expect($svg)->toContain('<rect width="1080" height="1920" fill="#ece2ce"/>')
+    expect($svg)->toContain('<rect width="1080" height="1920" fill="#e2e8ee"/>')
         ->toContain('<g transform="translate(54,96) scale(0.9)">');
 });
 
@@ -304,10 +304,10 @@ it('casts the two --shadow-e4 layers behind the card, at half the token blur', f
     // feDropShadow's stdDeviation is sigma and a CSS blur radius is 2 sigma, so
     // each blur halves; the caster carries the filter in unscaled canvas space
     // so the exported elevation is the token, not 90% of it.
-    expect($svg)->toContain('dy="24" stdDeviation="28" flood-color="#170f38" flood-opacity="0.20"')
-        ->toContain('dy="8" stdDeviation="10" flood-color="#170f38" flood-opacity="0.12"')
-        ->toContain('rx="39.6" fill="#170f38" filter="url(#elevation-deep)"')
-        ->toContain('rx="39.6" fill="#170f38" filter="url(#elevation-tight)"');
+    expect($svg)->toContain('dy="24" stdDeviation="28" flood-color="#0b1017" flood-opacity="0.20"')
+        ->toContain('dy="8" stdDeviation="10" flood-color="#0b1017" flood-opacity="0.12"')
+        ->toContain('rx="39.6" fill="#0b1017" filter="url(#elevation-deep)"')
+        ->toContain('rx="39.6" fill="#0b1017" filter="url(#elevation-tight)"');
 });
 
 it('stamps the date once, in the footer rather than the meta line', function (): void {
