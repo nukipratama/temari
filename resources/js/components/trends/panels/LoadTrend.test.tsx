@@ -9,11 +9,14 @@ type ChartData = {
     datasets: Array<{ label: string; data: Array<number | null> }>;
 };
 
-let seenData: ChartData[] = [];
+// Keyed by dataset label and overwritten (not appended) on every render, so
+// useCountUp's animation-frame-driven re-renders of the (unmemoized) mock
+// Line component can't inflate the capture beyond one entry per chart.
+let lastByLabel: Record<string, ChartData> = {};
 
 vi.mock('react-chartjs-2', () => ({
     Line: (props: { data: ChartData }) => {
-        seenData.push(props.data);
+        lastByLabel[props.data.datasets[0].label] = props.data;
         return createElement('div', { 'data-testid': 'line-chart' });
     },
 }));
@@ -44,24 +47,31 @@ describe('LoadTrend', () => {
     ] as const)(
         'slices the full year of points down to the last %s window',
         async (range, expectedLength) => {
-            seenData = [];
+            lastByLabel = {};
             render(<LoadTrend trend={pointsOverDays(365)} range={range} />);
 
-            await waitFor(() => expect(seenData).toHaveLength(2));
-            expect(seenData[0].datasets[0].data).toHaveLength(expectedLength);
-            expect(seenData[1].datasets[0].data).toHaveLength(expectedLength);
+            await waitFor(() => {
+                expect(lastByLabel.Strain).toBeDefined();
+                expect(lastByLabel.Monotony).toBeDefined();
+            });
+            expect(lastByLabel.Strain.datasets[0].data).toHaveLength(
+                expectedLength,
+            );
+            expect(lastByLabel.Monotony.datasets[0].data).toHaveLength(
+                expectedLength,
+            );
         },
     );
 
     it('renders strain and monotony as two separate charts', async () => {
-        seenData = [];
+        lastByLabel = {};
         render(<LoadTrend trend={pointsOverDays(30)} range="30d" />);
 
-        await waitFor(() => expect(seenData).toHaveLength(2));
-        expect(seenData.map((d) => d.datasets[0].label)).toEqual([
-            'Strain',
-            'Monotony',
-        ]);
+        await waitFor(() => {
+            expect(lastByLabel.Strain).toBeDefined();
+            expect(lastByLabel.Monotony).toBeDefined();
+        });
+        expect(Object.keys(lastByLabel).sort()).toEqual(['Monotony', 'Strain']);
     });
 
     it("shows the latest scored day's strain and monotony as stat tiles", async () => {
