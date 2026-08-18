@@ -54,7 +54,7 @@ const ACTIONS = [
         icon: 'mdi:chart-line',
         title: 'See your run recap',
         desc: 'Once your first run comes in, the recap shows up here.',
-        href: '/activities',
+        href: '/history',
     },
 ] as const;
 

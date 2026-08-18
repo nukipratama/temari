@@ -14,7 +14,7 @@ export const ITEMS: ReadonlyArray<NavItem> = [
         label: 'Today',
         href: '/',
         icon: 'mdi:weather-sunset-up',
-        prefixes: ['/', '/activities', '/calendar'],
+        prefixes: ['/', '/history', '/activities'],
     },
     {
         id: 'collection',

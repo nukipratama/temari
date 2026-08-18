@@ -121,7 +121,7 @@ export function filterQuery({
 export function hrefWithFilters(state: FilterState): string {
     const query = new URLSearchParams(filterQuery(state)).toString();
 
-    return query === '' ? '/activities' : `/activities?${query}`;
+    return query === '' ? '/history' : `/history?${query}`;
 }
 
 /** Looks up an option's label by value, falling back to the raw value itself. */
@@ -293,7 +293,7 @@ export function useFeedFilters({
     // within the current range window.
     const visitWithFilters = useCallback(
         (patch: Partial<FilterState>) => {
-            router.get('/activities', filterQuery({ ...current, ...patch }), {
+            router.get('/history', filterQuery({ ...current, ...patch }), {
                 preserveScroll: true,
                 preserveState: true,
                 only: RANGE_RELOAD_PROPS,
@@ -441,7 +441,7 @@ export function useFeedFilters({
         return {
             summary,
             apply: () =>
-                router.get('/activities', resumable, {
+                router.get('/history', resumable, {
                     preserveScroll: true,
                     preserveState: true,
                     only: RANGE_RELOAD_PROPS,

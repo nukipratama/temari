@@ -78,6 +78,6 @@ describe('WeekFocusNote', () => {
         ).toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: /View all runs/ }),
-        ).toHaveAttribute('href', '/activities');
+        ).toHaveAttribute('href', '/history');
     });
 });

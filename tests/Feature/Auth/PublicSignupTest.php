@@ -122,7 +122,7 @@ it('carries a stranger from OAuth to a working dashboard on summary data alone',
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('Home'));
 
-    $this->actingAs($user)->get(route('activities.index'))->assertOk();
+    $this->actingAs($user)->get(route('history'))->assertOk();
 });
 
 it('tells a stranger their first opened run is still filling in', function (): void {

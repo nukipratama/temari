@@ -13,7 +13,7 @@ const TABS: ReadonlyArray<SectionTabItem<TodayHistoryTab>> = [
     {
         id: 'history',
         label: 'History',
-        href: '/activities',
+        href: '/history',
         icon: 'mdi:history',
     },
 ];

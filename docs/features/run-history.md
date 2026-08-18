@@ -1,17 +1,17 @@
 ---
 title: Run history (Feed & Calendar)
-description: The activity archive — weekly journey strip + snapshots on the Feed, a month grid on the Calendar
+description: The activity archive — weekly journey strip + snapshots on the Feed view, a month grid on the Calendar view, both behind one /history route
 tags: [feature, runs]
 status: living
-reviewed: 2026-07-29
+reviewed: 2026-08-19
 code_refs:
+  - resources/js/pages/History.tsx
   - resources/js/pages/Activities/Feed.tsx
   - resources/js/pages/Activities/Calendar.tsx
-  - app/Http/Controllers/RunController.php
+  - app/Http/Controllers/HistoryController.php
   - app/Http/Requests/FeedFilterRequest.php
   - app/Services/Run/FeedQuery.php
   - app/Services/Run/FeedFilters.php
-  - app/Http/Controllers/CalendarController.php
   - resources/js/pages/Activities/useFeedFilters.ts
   - resources/js/components/history/HistoryTabs.tsx
   - resources/js/components/history/HistoryFilter.tsx
@@ -24,13 +24,24 @@ code_refs:
 # Run history (Feed & Calendar)
 
 The run-history area is the user's whole running archive, split into two views
-that share a header tab strip. [HistoryTabs](../../resources/js/components/history/HistoryTabs.tsx)
-links **Feed** (`/activities`) and **Calendar** (`/calendar`) — two routes, two
-controllers, one mental model.
+that share a header tab strip. Both views are one destination, `/history`
+(`HistoryController::index`), not two routes: `?view=calendar` selects the
+month grid, any other value (including absent) renders the chronological list.
+Each view's props are built independently server-side, so switching never pays
+for the other view's queries. [History.tsx](../../resources/js/pages/History.tsx)
+is a thin switch between the real [Feed.tsx](../../resources/js/pages/Activities/Feed.tsx)
+and [Calendar.tsx](../../resources/js/pages/Activities/Calendar.tsx) page
+components based on the `activeView` prop the controller ships; neither
+component's own markup changed for the merge.
+[HistoryTabs](../../resources/js/components/history/HistoryTabs.tsx) is the
+in-page Feed⇄Calendar switcher, now linking `/history` and
+`/history?view=calendar`.
 
-**Navigation:** `route('activities.index')` → `/activities` (Feed, `RunController::index`);
-`route('calendar')` → `/calendar` (Calendar, `CalendarController::__invoke`).
-Named routes: `activities.index`, `calendar`.
+**Navigation:** `route('history')` → `/history` (list by default);
+`route('history', ['view' => 'calendar'])` → `/history?view=calendar`. Named
+route: `history`. The former `/activities` (bare index) and `/calendar` routes
+were retired outright, not redirected — `/activities/{activity}` (the run
+detail page) is unaffected and still resolves via `RunController::show`.
 
 ## System dependencies
 
@@ -51,9 +62,9 @@ renders a header of week totals (runs / km / TRIMP), a row of weekly load chips
 (`WeeklyStatusChips` — Lelah/ATL, Variasi/monotony, Drift/decoupling, Fit/CTL,
 Form), then Temari's narrative recap, then the runs.
 
-The data comes from `RunController::index` in
-[RunController.php](../../app/Http/Controllers/RunController.php). It returns
-`runs`, the per-week `weeklySnapshots`, and a `journeyMatch`. The listing query
+The data comes from `HistoryController`'s list branch in
+[HistoryController.php](../../app/Http/Controllers/HistoryController.php). It
+returns `runs`, the per-week `weeklySnapshots`, and a `journeyMatch`. The listing query
 itself is not in the controller: [FeedFilterRequest](../../app/Http/Requests/FeedFilterRequest.php)
 normalises the query string, [FeedQuery](../../app/Services/Run/FeedQuery.php)
 resolves it into a [FeedFilters](../../app/Services/Run/FeedFilters.php) DTO and
@@ -83,7 +94,7 @@ See [[recaps]] and [[ai-pipeline]].
 [JourneyStrip](../../resources/js/components/activities/JourneyStrip.tsx) sits
 above the timeline and shows an **all-time progress delta**: first-ever run vs
 latest run (pace + HR improvement) plus lifetime km. The controller builds it in
-`RunController::buildJourneyMatch` and hides it for users with fewer than two
+`HistoryController::buildJourneyMatch` and hides it for users with fewer than two
 activities.
 
 ### Filters
@@ -102,8 +113,8 @@ removable chip.
 ## Calendar — the month grid
 
 [Calendar.tsx](../../resources/js/pages/Activities/Calendar.tsx) is a
-Google-Calendar-style single month. [CalendarController](../../app/Http/Controllers/CalendarController.php)
-(`__invoke`) resolves `?month=YYYY-MM`, pads the grid to full Mon–Sun weeks, and
+Google-Calendar-style single month. `HistoryController`'s calendar branch
+resolves `?month=YYYY-MM`, pads the grid to full Mon–Sun weeks, and
 hands the frontend pre-computed `cells` (per-day distance / pace / HR / mood /
 `activity_id`) so each cell renders rich without a second query. A run-day cell
 links to that run's [[run-detail]]; the mood tints the cell fill.

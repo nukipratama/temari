@@ -8,11 +8,11 @@ describe('HistoryTabs', () => {
         render(<HistoryTabs active="feed" />);
         expect(screen.getByText('Feed').closest('a')).toHaveAttribute(
             'href',
-            '/activities',
+            '/history',
         );
         expect(screen.getByText('Calendar').closest('a')).toHaveAttribute(
             'href',
-            '/calendar',
+            '/history?view=calendar',
         );
     });
 

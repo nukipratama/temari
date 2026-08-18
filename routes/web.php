@@ -12,11 +12,11 @@ use App\Http\Controllers\Api\NotificationReadController;
 use App\Http\Controllers\Auth\DemoAuthController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
-use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CardController;
 use App\Http\Controllers\ClientErrorController;
 use App\Http\Controllers\DevtoolsDesignController;
 use App\Http\Controllers\DevtoolsIndexController;
+use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\InboxController;
 use App\Http\Controllers\LegalController;
 use App\Http\Controllers\NotificationPreferenceController;
@@ -111,9 +111,11 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     // Conditional GET on the three history-read pages: the same URL is genuinely
     // revisited (filter/tab toggling, month paging, deep links back into a past
     // run) and their payloads are the largest in the app.
-    Route::get('/activities', [RunController::class, 'index'])
+    // /history absorbs the former /activities (list) and /calendar pages behind
+    // ?view=list|calendar (default list) — see HistoryController's docblock.
+    Route::get('/history', [HistoryController::class, 'index'])
         ->middleware('inertia-etag')
-        ->name('activities.index');
+        ->name('history');
     Route::get('/activities/{activity}', [RunController::class, 'show'])
         ->middleware('inertia-etag')
         ->name('activities.show');
@@ -123,10 +125,6 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::post('/activities/{activity}/send', SendActivityNotificationController::class)
         ->middleware('block-demo-telegram')
         ->name('activities.send');
-
-    Route::get('/calendar', CalendarController::class)
-        ->middleware('inertia-etag')
-        ->name('calendar');
 
     Route::post('/recaps/weekly/{snapshot}/send', SendWeeklyRecapNotificationController::class)
         ->middleware('block-demo-telegram')

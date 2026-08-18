@@ -13,7 +13,7 @@ import { cn } from '@/lib/cn';
 // Explicit map (not derived from activeTabFromUrl): calendar/records/accessories/badges/race
 // resolve to a tab too, but reach it via an in-page tab strip, so they keep the brand mark.
 const BACK_TARGETS: Record<string, { href: string; label: string }> = {
-    'Runs/Show': { href: '/activities', label: 'History' },
+    'Runs/Show': { href: '/history', label: 'History' },
     // Settings is one tap from Me/avatar menu everywhere, so it stays a root, not a push.
     'Settings/HrZones': { href: '/settings', label: 'Settings' },
 };
