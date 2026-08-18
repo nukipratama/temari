@@ -101,6 +101,33 @@ it('allBadgeCountsForUser scopes to a date range when given one', function (): v
     expect($counts[Badge::Speedster->value])->toBe(1);
 });
 
+it('firstEarnedDatesForUser returns the earliest date each badge was earned', function (): void {
+    $user = User::factory()->create();
+
+    $earlier = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($earlier)->create(['start_date_local' => '2026-01-05 07:00:00']);
+    RunCard::factory()->for($earlier)->create(['badges' => [Badge::EarlyBird->value]]);
+
+    $later = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($later)->create(['start_date_local' => '2026-03-10 07:00:00']);
+    RunCard::factory()->for($later)->create(['badges' => [Badge::EarlyBird->value, Badge::Speedster->value]]);
+
+    $firstDates = RunCard::firstEarnedDatesForUser($user->id);
+
+    expect($firstDates[Badge::EarlyBird->value])->toStartWith('2026-01-05')
+        ->and($firstDates[Badge::Speedster->value])->toStartWith('2026-03-10');
+});
+
+it('firstEarnedDatesForUser scopes to the given user', function (): void {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    $activity = Activity::factory()->for($other)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => '2026-01-05 07:00:00']);
+    RunCard::factory()->for($activity)->create(['badges' => [Badge::EarlyBird->value]]);
+
+    expect(RunCard::firstEarnedDatesForUser($user->id))->toBe([]);
+});
+
 it('casts badges to an array', function (): void {
     $card = RunCard::factory()->make([
         'activity_id' => 1,

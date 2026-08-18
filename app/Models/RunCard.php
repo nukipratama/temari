@@ -106,6 +106,35 @@ class RunCard extends Model
     }
 
     /**
+     * The date each badge slug was first earned by this user, oldest
+     * occurrence only — a "first time" story for the Trends badge-milestone
+     * timeline, not a log of every repeat.
+     *
+     * @return array<string, string>
+     */
+    public static function firstEarnedDatesForUser(int $userId): array
+    {
+        $firstDates = [];
+
+        self::query()
+            ->join('activities', 'activities.id', '=', 'run_cards.activity_id')
+            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+            ->where('activities.user_id', $userId)
+            ->orderBy('activity_details.start_date_local')
+            ->select('run_cards.badges', 'activity_details.start_date_local')
+            ->lazy()
+            ->each(function (self $row) use (&$firstDates): void {
+                /** @var string $startDateLocal */
+                $startDateLocal = $row->getAttribute('start_date_local');
+                foreach ($row->badges ?? [] as $badge) {
+                    $firstDates[$badge] ??= $startDateLocal;
+                }
+            });
+
+        return $firstDates;
+    }
+
+    /**
      * Cards owned by the given user (i.e. whose source activity belongs to them).
      *
      * @param  Builder<RunCard>  $query

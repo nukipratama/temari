@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Enums\Badge;
 use App\Models\AI\Analysis;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
+use App\Models\RunCard;
 use App\Models\TrendDailySnapshot;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
@@ -25,6 +27,14 @@ function seedTrendsTrimpDay(User $user, float $trimp): void
 
 it('requires authentication', function (): void {
     $this->get('/trends')->assertRedirect('/login');
+});
+
+it('retired /records and /badges outright, and retargets /rekor to /trends', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/records')->assertNotFound();
+    $this->actingAs($user)->get('/badges')->assertNotFound();
+    $this->get('/rekor')->assertRedirect('/trends');
 });
 
 it('renders an empty fitness trend for a fresh user', function (): void {
@@ -161,4 +171,58 @@ it('never surfaces another user\'s load or snapshot history', function (): void 
             ->where('loadTrend', [])
             ->where('vdotHistory', [])
             ->where('paceConsistencyHistory', []));
+});
+
+it('renders empty personal bests and badge milestones for a fresh user', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/trends')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('distanceRecords', [])
+            ->where('paceRecords', [])
+            ->where('badgeMilestones', []));
+});
+
+it('splits personal records into distanceRecords and paceRecords, distance-ascending', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 3000]);
+    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
+    PersonalRecord::factory()->for($user)->create(['category' => 'best_5min', 'value_sec' => 220]);
+
+    $this->actingAs($user)->get('/trends')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('distanceRecords.0.category', '5km')
+            ->where('distanceRecords.1.category', '10km')
+            ->where('paceRecords.0.category', 'best_5min')
+            ->where('paceRecords.0.paceSec', 220));
+});
+
+it('sets a badge milestone at its first-earned date only', function (): void {
+    $user = User::factory()->create();
+    $earlier = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($earlier)->create(['start_date_local' => now()->subDays(10)]);
+    RunCard::factory()->for($earlier)->create(['badges' => [Badge::EarlyBird->value]]);
+    $later = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($later)->create(['start_date_local' => now()->subDay()]);
+    RunCard::factory()->for($later)->create(['badges' => [Badge::EarlyBird->value]]);
+
+    $this->actingAs($user)->get('/trends')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('badgeMilestones', fn (mixed $milestones): bool => count($milestones) === 1
+                && $milestones[0]['key'] === Badge::EarlyBird->value));
+});
+
+it('never surfaces another user\'s personal bests or badges', function (): void {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    PersonalRecord::factory()->for($other)->create(['category' => '5km']);
+    $activity = Activity::factory()->for($other)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()->subDay()]);
+    RunCard::factory()->for($activity)->create(['badges' => [Badge::EarlyBird->value]]);
+
+    $this->actingAs($user)->get('/trends')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('distanceRecords', [])
+            ->where('paceRecords', [])
+            ->where('badgeMilestones', []));
 });

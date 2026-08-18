@@ -6,6 +6,7 @@ import type { AnalysisPayload } from '@/types/inertia';
 
 import NarrationHeadline from '@/components/trends/NarrationHeadline';
 import FitnessTrend, {
+    type BadgeMilestone,
     type FitnessTrendPoint,
 } from '@/components/trends/panels/FitnessTrend';
 import LoadTrend, {
@@ -14,6 +15,10 @@ import LoadTrend, {
 import PaceConsistencyTrend, {
     type PaceConsistencyPoint,
 } from '@/components/trends/panels/PaceConsistencyTrend';
+import PersonalBests, {
+    type DistanceRecord,
+    type PaceRecord,
+} from '@/components/trends/panels/PersonalBests';
 import VdotTrend, {
     type VdotHistoryPoint,
 } from '@/components/trends/panels/VdotTrend';
@@ -29,6 +34,9 @@ interface TrendsProps {
     vdotHistory: VdotHistoryPoint[];
     vdotSourceCategory: string | null;
     paceConsistencyHistory: PaceConsistencyPoint[];
+    distanceRecords: DistanceRecord[];
+    paceRecords: PaceRecord[];
+    badgeMilestones: BadgeMilestone[];
     narration: Record<TrendRange, AnalysisPayload>;
 }
 
@@ -38,6 +46,9 @@ export default function Trends({
     vdotHistory,
     vdotSourceCategory,
     paceConsistencyHistory,
+    distanceRecords,
+    paceRecords,
+    badgeMilestones,
     narration,
 }: Readonly<TrendsProps>) {
     const [range, setRange] = useState<TrendRange>('12mo');
@@ -77,7 +88,11 @@ export default function Trends({
                     </motion.div>
 
                     <motion.div variants={fadeInUp}>
-                        <FitnessTrend trend={ctlTrend} range={range} />
+                        <FitnessTrend
+                            trend={ctlTrend}
+                            milestones={badgeMilestones}
+                            range={range}
+                        />
                     </motion.div>
 
                     <motion.div variants={fadeInUp}>
@@ -96,6 +111,26 @@ export default function Trends({
                         <PaceConsistencyTrend
                             trend={paceConsistencyHistory}
                             range={range}
+                        />
+                    </motion.div>
+
+                    <motion.div
+                        variants={fadeInUp}
+                        className="flex flex-col gap-1"
+                    >
+                        <span className="text-label-micro text-ink-3">
+                            Always full history
+                        </span>
+                        <p className="text-xs text-ink-3">
+                            Personal bests don&apos;t change with the range
+                            above — they&apos;re your all-time numbers.
+                        </p>
+                    </motion.div>
+
+                    <motion.div variants={fadeInUp}>
+                        <PersonalBests
+                            distanceRecords={distanceRecords}
+                            paceRecords={paceRecords}
                         />
                     </motion.div>
                 </motion.div>

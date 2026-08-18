@@ -23,13 +23,13 @@ describe('CollectionHeader', () => {
     it('renders the sub-tabs with the given tab marked active', () => {
         render(
             <CollectionHeader
-                active="records"
+                active="accessories"
                 eyebrow="Collection"
-                headline1="Your best"
-                headline2="times"
+                headline1="Your"
+                headline2="gear"
             />,
         );
-        expect(screen.getByText('Records').closest('a')).toHaveAttribute(
+        expect(screen.getByText('Accessories').closest('a')).toHaveAttribute(
             'aria-current',
             'page',
         );

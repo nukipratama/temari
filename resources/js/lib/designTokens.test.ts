@@ -424,15 +424,9 @@ describe('auditPanels', () => {
     const PAPER = [{ name: 'cream-deep', value: '#ece2ce' }];
 
     it('scores a panel on what it composites to, not on the fill it tints', () => {
-        const onSky = auditPanels(VALUES, PAPER).find((row) =>
-            row.bg.startsWith('sky/0.4'),
-        );
-
-        // sky at 40% over sky is still sky, so the muted label keeps its
-        // designed contrast. Over paper it would not, which is the whole point.
-        expect(onSky?.fg).toBe('--color-ink-on-sky');
-        expect(onSky?.pass).toBe(true);
-
+        // cream-deep at 60% over cream-deep (registered as "paper" here) is
+        // still cream-deep, so the panel keeps the contrast its own family
+        // was designed for — the fill tint alone wouldn't tell you that.
         const overPaper = auditPanels(
             { ...VALUES, '--color-cream-deep': '#ece2ce' },
             PAPER,

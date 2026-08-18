@@ -32,11 +32,9 @@ describe('nav', () => {
         expect(activeTabFromUrl('/race')).toBe('plan');
     });
 
-    it('resolves the Collection sub-pages, including /badges', () => {
+    it('resolves the Collection sub-pages', () => {
         expect(activeTabFromUrl('/cards')).toBe('collection');
         expect(activeTabFromUrl('/accessories')).toBe('collection');
-        expect(activeTabFromUrl('/records')).toBe('collection');
-        expect(activeTabFromUrl('/badges')).toBe('collection');
     });
 
     it('no longer folds Race under Me', () => {

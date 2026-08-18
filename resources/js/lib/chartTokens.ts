@@ -27,6 +27,8 @@ export const PALETTE = {
     ink: '#16181b',
     ink2: '#34373c',
     ink3: '#60666d',
+    surfaceElev: '#f8fbfe',
+    line: '#bfc5cc',
 } as const;
 
 export type PaletteColor = keyof typeof PALETTE;

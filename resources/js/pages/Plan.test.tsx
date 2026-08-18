@@ -479,7 +479,7 @@ describe('Plan', () => {
         expect(screen.getByText(/Week 3 of 12/)).toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: 'Badge board' }),
-        ).toHaveAttribute('href', '/badges');
+        ).toHaveAttribute('href', '/trends');
     });
 
     it("renders each season goal's title and progress", () => {

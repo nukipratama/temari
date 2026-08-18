@@ -106,6 +106,7 @@ const ALLOWED = [
     ],
     'rekor' => [
         ['prefix' => 'routes/web.php', 'reason' => 'Legacy /rekor permanent redirect — a live URL.'],
+        ['prefix' => 'docs/features/records.md', 'reason' => 'Documents the /rekor legacy redirect route path, same as routes/web.php.'],
     ],
     'angin' => [
         ['prefix' => 'tests/Unit/Services/Run/Story/RunCardImageRendererTest.php', 'reason' => 'Regression test asserting the card no longer says "angin" — the word must stay for the assertion to mean anything.'],

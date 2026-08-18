@@ -12,7 +12,6 @@ use App\Http\Controllers\Api\NotificationReadController;
 use App\Http\Controllers\Auth\DemoAuthController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
-use App\Http\Controllers\BadgeBoardController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CardController;
 use App\Http\Controllers\ClientErrorController;
@@ -26,7 +25,6 @@ use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
-use App\Http\Controllers\RecordsController;
 use App\Http\Controllers\RootController;
 use App\Http\Controllers\RunController;
 use App\Http\Controllers\RunnerZonesController;
@@ -142,8 +140,6 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     // Catatan merged into Activities — keep deep links working.
     Route::permanentRedirect('/catatan', '/activities');
 
-    Route::get('/records', RecordsController::class)->name('records');
-
     Route::get('/trends', TrendsController::class)->name('trends');
 
     Route::get('/race', [RaceController::class, 'index'])->name('race');
@@ -156,7 +152,6 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::get('/accessories', [AccessoryController::class, 'index'])->name('accessories');
     Route::post('/api/accessories/equip', [AccessoryController::class, 'equip'])
         ->name('api.accessories.equip');
-    Route::get('/badges', [BadgeBoardController::class, 'index'])->name('badges');
 
     Route::get('/inbox', InboxController::class)->name('inbox');
 
@@ -198,7 +193,7 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::permanentRedirect('/pengaturan', '/settings');
     Route::permanentRedirect('/profil', '/profile');
     Route::permanentRedirect('/kalender', '/calendar');
-    Route::permanentRedirect('/rekor', '/records');
+    Route::permanentRedirect('/rekor', '/trends');
     Route::permanentRedirect('/aksesori', '/accessories');
     Route::permanentRedirect('/akun', '/account');
     // /goals (the old accessory-progress catalog page) retired in favor of

@@ -286,7 +286,7 @@ export default function Plan({
                             {season.total_weeks}
                         </SectionLabel>
                         <Link
-                            href="/badges"
+                            href="/trends"
                             className="text-xs text-ink-2 underline underline-offset-2 hover:text-ink"
                         >
                             Badge board
