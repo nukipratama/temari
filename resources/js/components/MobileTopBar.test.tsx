@@ -32,7 +32,7 @@ describe('MobileTopBar', () => {
         'Activities/Feed',
         'Profile',
         'Activities/Calendar',
-        'Collection/Records',
+        'Trends',
         'Settings/Index',
         'Race',
     ])('keeps the brand mark and shows no back button on %s', (component) => {

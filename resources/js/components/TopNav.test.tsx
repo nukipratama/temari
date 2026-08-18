@@ -117,8 +117,8 @@ describe('TopNav', () => {
         expect(screen.queryByLabelText(/Open menu/)).not.toBeInTheDocument();
     });
 
-    it('highlights Collection for the /badges page', () => {
-        setMockPage(user(), '/badges');
+    it('highlights Collection for the /accessories page', () => {
+        setMockPage(user(), '/accessories');
         render(<TopNav />);
         expect(screen.getByText('Collection')).toHaveAttribute(
             'aria-current',

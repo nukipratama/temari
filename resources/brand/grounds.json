@@ -177,9 +177,6 @@
     "cream/0.12": {
       "text": []
     },
-    "cream/0.15": {
-      "text": []
-    },
     "cream/0.2": {
       "over": {
         "resources/js/components/ui/SectionTabs.test.tsx": [
@@ -192,9 +189,6 @@
       "text": [
         "cream"
       ]
-    },
-    "cream/0.35": {
-      "text": []
     },
     "cream/0.4": {
       "text": []
@@ -311,6 +305,16 @@
       },
       "text": [
         "horizon-ink"
+      ]
+    },
+    "horizon/0.25": {
+      "over": {
+        "resources/js/components/trends/panels/FitnessTrend.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ink"
       ]
     },
     "horizon/0.3": {
@@ -525,9 +529,6 @@
         "resources/js/components/StravaSyncBadge.tsx": [
           "paper"
         ],
-        "resources/js/components/collection/MilestoneStrip.test.tsx": [
-          "paper"
-        ],
         "resources/js/components/history/ActiveFilterChips.tsx": [
           "paper"
         ],
@@ -587,9 +588,6 @@
         ],
         "resources/js/lib/variants.ts": [
           "paper"
-        ],
-        "resources/js/pages/Collection/Records.tsx": [
-          "paper"
         ]
       },
       "text": [
@@ -614,18 +612,6 @@
     },
     "sky/0.25": {
       "text": []
-    },
-    "sky/0.4": {
-      "over": {
-        "resources/js/components/run/SplitsSparkline.tsx": [
-          "sky-deep",
-          "sky",
-          "sky-2"
-        ]
-      },
-      "text": [
-        "ink-on-sky"
-      ]
     },
     "surface-card/0.4": {
       "text": []

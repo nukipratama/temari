@@ -1,8 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { createElement } from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { createElement, useImperativeHandle, type Ref } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import FitnessTrend, { type FitnessTrendPoint } from './FitnessTrend';
+import FitnessTrend, {
+    type BadgeMilestone,
+    type FitnessTrendPoint,
+} from './FitnessTrend';
 
 type ChartData = {
     labels: string[];
@@ -12,8 +15,9 @@ type ChartData = {
 let lastData: ChartData | null = null;
 
 vi.mock('react-chartjs-2', () => ({
-    Line: (props: { data: ChartData }) => {
+    Line: (props: { data: ChartData; ref?: Ref<unknown> }) => {
         lastData = props.data;
+        useImperativeHandle(props.ref, () => ({ update: () => {} }));
         return createElement('div', { 'data-testid': 'line-chart' });
     },
 }));
@@ -28,7 +32,7 @@ function pointsOverDays(days: number): FitnessTrendPoint[] {
 
 describe('FitnessTrend', () => {
     it('shows the not-enough-history empty state when the trend is empty', () => {
-        render(<FitnessTrend trend={[]} range="12mo" />);
+        render(<FitnessTrend trend={[]} milestones={[]} range="12mo" />);
 
         expect(
             screen.getByText(/Not enough training history yet/),
@@ -43,7 +47,13 @@ describe('FitnessTrend', () => {
     ] as const)(
         'slices the full year of points down to the last %s window',
         async (range, expectedLength) => {
-            render(<FitnessTrend trend={pointsOverDays(365)} range={range} />);
+            render(
+                <FitnessTrend
+                    trend={pointsOverDays(365)}
+                    milestones={[]}
+                    range={range}
+                />,
+            );
 
             expect(await screen.findByTestId('line-chart')).toBeInTheDocument();
             expect(lastData!.datasets[0].data).toHaveLength(expectedLength);
@@ -51,7 +61,13 @@ describe('FitnessTrend', () => {
     );
 
     it('labels the fitness and fatigue datasets', async () => {
-        render(<FitnessTrend trend={pointsOverDays(30)} range="30d" />);
+        render(
+            <FitnessTrend
+                trend={pointsOverDays(30)}
+                milestones={[]}
+                range="30d"
+            />,
+        );
 
         expect(await screen.findByTestId('line-chart')).toBeInTheDocument();
         expect(lastData!.datasets.map((d) => d.label)).toEqual([
@@ -65,7 +81,7 @@ describe('FitnessTrend', () => {
             { date: '2026-01-01', ctl: 40, atl: 30 },
             { date: '2026-01-02', ctl: 45, atl: 32 },
         ];
-        render(<FitnessTrend trend={trend} range="30d" />);
+        render(<FitnessTrend trend={trend} milestones={[]} range="30d" />);
 
         await waitFor(() => {
             expect(screen.getByText('45')).toBeInTheDocument();
@@ -78,8 +94,74 @@ describe('FitnessTrend', () => {
         const trend: FitnessTrendPoint[] = [
             { date: '2026-01-01', ctl: 30, atl: 45 },
         ];
-        render(<FitnessTrend trend={trend} range="30d" />);
+        render(<FitnessTrend trend={trend} milestones={[]} range="30d" />);
 
         expect(screen.getByText('Carrying load')).toBeInTheDocument();
+    });
+
+    describe('badge milestones', () => {
+        const trend: FitnessTrendPoint[] = [
+            { date: '2026-01-01', ctl: 40, atl: 30 },
+            { date: '2026-01-02', ctl: 41, atl: 31 },
+        ];
+
+        it('shows the no-badges message when no milestone falls in the window', () => {
+            render(<FitnessTrend trend={trend} milestones={[]} range="30d" />);
+
+            expect(screen.getByText('0 badges')).toBeInTheDocument();
+            expect(
+                screen.getByText(/No badges landed in this window/),
+            ).toBeInTheDocument();
+        });
+
+        it('only counts milestones whose date is inside the windowed trend', () => {
+            const milestones: BadgeMilestone[] = [
+                { key: 'early_bird', date: '2026-01-01' },
+                { key: 'speedster', date: '2099-01-01' }, // not in trend at all
+            ];
+            render(
+                <FitnessTrend
+                    trend={trend}
+                    milestones={milestones}
+                    range="30d"
+                />,
+            );
+
+            expect(screen.getByText('1 badges')).toBeInTheDocument();
+            expect(screen.getByText('Early Bird')).toBeInTheDocument();
+            expect(screen.queryByText('Speedster')).not.toBeInTheDocument();
+        });
+
+        it('selecting a chip shows its ability text, deselecting hides it', () => {
+            const milestones: BadgeMilestone[] = [
+                { key: 'early_bird', date: '2026-01-01' },
+            ];
+            render(
+                <FitnessTrend
+                    trend={trend}
+                    milestones={milestones}
+                    range="30d"
+                />,
+            );
+
+            expect(
+                screen.getByText(/Pick a badge to mark it on the line/),
+            ).toBeInTheDocument();
+
+            fireEvent.click(screen.getByRole('button', { name: /Early Bird/ }));
+
+            expect(
+                screen.getByText('Out the door before 6am.'),
+            ).toBeInTheDocument();
+            expect(
+                screen.queryByText(/Pick a badge to mark it on the line/),
+            ).not.toBeInTheDocument();
+
+            fireEvent.click(screen.getByRole('button', { name: /Early Bird/ }));
+
+            expect(
+                screen.getByText(/Pick a badge to mark it on the line/),
+            ).toBeInTheDocument();
+        });
     });
 });

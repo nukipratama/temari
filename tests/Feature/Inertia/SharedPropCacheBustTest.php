@@ -34,7 +34,7 @@ uses(RefreshDatabase::class);
  */
 function visitAs(User $user): TestResponse
 {
-    return test()->actingAs($user->fresh())->get('/records');
+    return test()->actingAs($user->fresh())->get('/profile');
 }
 
 function warmSharedProps(User $user): void

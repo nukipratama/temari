@@ -4,12 +4,10 @@ import { describe, expect, it } from 'vitest';
 import CollectionTabs from './CollectionTabs';
 
 describe('CollectionTabs', () => {
-    it('renders all four sub-tab labels', () => {
+    it('renders both sub-tab labels', () => {
         render(<CollectionTabs active="cards" />);
         expect(screen.getByText('Cards')).toBeInTheDocument();
-        expect(screen.getByText('Records')).toBeInTheDocument();
         expect(screen.getByText('Accessories')).toBeInTheDocument();
-        expect(screen.getByText('Badges')).toBeInTheDocument();
     });
 
     it('marks only the active tab with aria-current', () => {
@@ -24,9 +22,11 @@ describe('CollectionTabs', () => {
     });
 
     it('shows the count chip only on the active tab when given', () => {
-        render(<CollectionTabs active="badges" activeCount="3" />);
+        render(<CollectionTabs active="accessories" activeCount="3" />);
         expect(screen.getByText('3')).toBeInTheDocument();
-        expect(screen.getByText('Badges').closest('a')).toHaveTextContent('3');
+        expect(screen.getByText('Accessories').closest('a')).toHaveTextContent(
+            '3',
+        );
         expect(screen.getByText('Cards').closest('a')).not.toHaveTextContent(
             '3',
         );

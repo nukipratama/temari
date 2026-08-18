@@ -21,7 +21,7 @@ export const ITEMS: ReadonlyArray<NavItem> = [
         label: 'Collection',
         href: '/cards',
         icon: 'mdi:cards-outline',
-        prefixes: ['/cards', '/accessories', '/records', '/badges'],
+        prefixes: ['/cards', '/accessories'],
     },
     {
         id: 'trends',

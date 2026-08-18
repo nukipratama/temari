@@ -1,29 +1,28 @@
 ---
-title: Accessories & the badge board
-description: The accessories page (equip/unequip with a live Temari preview, live unlock progress) and the badge board (all Badge cases plus the rest-day reward, lifetime vs this-season).
+title: Accessories
+description: The accessories page — equip/unequip with a live Temari preview, live unlock progress toward what's still locked.
 tags: [feature, collection]
 status: living
-reviewed: 2026-08-10
+reviewed: 2026-08-18
 code_refs:
   - resources/js/pages/Collection/Accessories.tsx
-  - resources/js/pages/Collection/Badges.tsx
   - app/Http/Controllers/AccessoryController.php
-  - app/Http/Controllers/BadgeBoardController.php
   - resources/js/components/temari/TemariProto.tsx
   - resources/js/components/celebrations/AccessoryUnlockModal.tsx
   - resources/js/components/collection/CollectionTabs.tsx
 ---
 
-# Accessories & the badge board
+# Accessories
 
-Two collection sub-tabs: **Accessories** (`/accessories`) is the wardrobe of what's been earned and can be put on Temari, now also showing live progress toward what's still locked. **Badges** (`/badges`) is the full badge board — all `Badge` cases plus the rest-day reward, lifetime counts and this-season counts side by side. Accessories are organized by six equipment **slots**: medal, headband, shirt, shorts, shoes, aura; badges aren't slotted.
+**Accessories** (`/accessories`) is the wardrobe of what's been earned and can be put on Temari, showing live progress toward what's still locked. Accessories are organized by six equipment **slots**: medal, headband, shirt, shorts, shoes, aura.
 
-**Navigation:** `route('accessories')` → `/accessories` (`AccessoryController::index`); `route('badges')` → `/badges` (`BadgeBoardController::index`). The old `/goals` accessory-progress page (Slice 5 through Slice 6) and its `/target` legacy redirect both retired in Slice 7 — both now redirect straight to `/accessories`, where the progress numbers moved.
+The badge board that used to sit alongside this page as a second Collection sub-tab (`/badges`) retired once its content moved onto `/trends` as badge milestones on the Fitness/Fatigue timeline — see [[gamification]].
+
+**Navigation:** `route('accessories')` → `/accessories` (`AccessoryController::index`). The old `/goals` accessory-progress page (Slice 5 through Slice 6) and its `/target` legacy redirect both retired in Slice 7 — both now redirect straight to `/accessories`, where the progress numbers moved.
 
 ## System dependencies
 
-- **Gamification** — accessory progress and grants come from `GoalResolver`/`GrantEligibleUnlocksAction`; badge counts from `RunCard`; the rest-day reward from `GrantSeasonUnlocksAction`. See [[gamification]].
-- **Season** — the badge board's "this season" counts are scoped to the active `Season`'s date range; see [[gamification]] and [[plan-periodizer]].
+- **Gamification** — accessory progress and grants come from `GoalResolver`/`GrantEligibleUnlocksAction`; the rest-day reward from `GrantSeasonUnlocksAction`. See [[gamification]].
 - **Temari mascot** — the live preview hero uses `TemariProto` to render equipped gear; see [[temari-mascot]].
 - **Data model** — `UserUnlock`, `RunnerProfile` shapes in [[data-model]].
 
@@ -43,14 +42,6 @@ The [AccessoryController](../../app/Http/Controllers/AccessoryController.php) `i
 ### Unlock celebration
 
 When a run earns a *major* accessory, [AccessoryUnlockModal](../../resources/js/components/celebrations/AccessoryUnlockModal.tsx) (mounted globally) pops with Temari wearing the new item and a CTA that routes to `/accessories`. It only opens when the unlock flash carries `is_major`. The unlock itself is granted upstream during ingest — see [[gamification]].
-
-## Badge board (`/badges`)
-
-[BadgeBoardController](../../app/Http/Controllers/BadgeBoardController.php) ships one flat list: all 16 `Badge` cases plus the rest-day reward as a visually-equivalent 17th entry (`key: 'season.rest_honored'`), even though the two are backed by different mechanisms (`Badge` enum vs. `UserUnlock`-shaped) — see [[gamification]] for why. Each item carries `unlocked`, `lifetime_count`, and `season_count`.
-
-[Badges](../../resources/js/pages/Collection/Badges.tsx) reuses `runcard.ts`'s existing `BADGE_LABELS`/`BADGE_ABILITY` maps for the 16 real badges' name/emblem/criterion text (no server-side duplicate catalog needed) and hardcodes its own display text for the one rest-day entry, since that has no `Badge` case to read from. Locked items show their criterion; earned items show both counts.
-
-`CollectionTabs`'s 4th sub-tab is `badges` (was `target` → `/goals`, retired in Slice 7).
 
 ## Notes
 
