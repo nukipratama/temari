@@ -29,19 +29,46 @@ const NARRATION = {
 
 describe('Trends', () => {
     it('renders the page headline', () => {
-        render(<Trends ctlTrend={[]} narration={NARRATION} />);
+        render(
+            <Trends
+                ctlTrend={[]}
+                loadTrend={[]}
+                vdotHistory={[]}
+                vdotSourceCategory={null}
+                paceConsistencyHistory={[]}
+                narration={NARRATION}
+            />,
+        );
 
         expect(screen.getByText('How things are going')).toBeInTheDocument();
     });
 
     it('defaults to the 12 month range narration', () => {
-        render(<Trends ctlTrend={[]} narration={NARRATION} />);
+        render(
+            <Trends
+                ctlTrend={[]}
+                loadTrend={[]}
+                vdotHistory={[]}
+                vdotSourceCategory={null}
+                paceConsistencyHistory={[]}
+                narration={NARRATION}
+            />,
+        );
 
         expect(screen.getByText('The full year.')).toBeInTheDocument();
     });
 
     it('switches the narration shown when the range toggle changes', () => {
-        render(<Trends ctlTrend={[]} narration={NARRATION} />);
+        render(
+            <Trends
+                ctlTrend={[]}
+                loadTrend={[]}
+                vdotHistory={[]}
+                vdotSourceCategory={null}
+                paceConsistencyHistory={[]}
+                narration={NARRATION}
+            />,
+        );
 
         fireEvent.click(screen.getByRole('button', { name: '30 days' }));
 
@@ -50,10 +77,21 @@ describe('Trends', () => {
     });
 
     it('shows the fitness trend empty state when there is no history yet', () => {
-        render(<Trends ctlTrend={[]} narration={NARRATION} />);
+        render(
+            <Trends
+                ctlTrend={[]}
+                loadTrend={[]}
+                vdotHistory={[]}
+                vdotSourceCategory={null}
+                paceConsistencyHistory={[]}
+                narration={NARRATION}
+            />,
+        );
 
         expect(
-            screen.getByText(/Not enough training history yet/),
+            screen.getByText(
+                'Not enough training history yet to draw a trend.',
+            ),
         ).toBeInTheDocument();
     });
 });

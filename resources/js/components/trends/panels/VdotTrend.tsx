@@ -12,19 +12,16 @@ import { formatNaiveIdDate } from '@/lib/pace';
 
 import type { TrendRange } from '../RangeToggle';
 
-// Chart.js core + its scale/element registration live inside this lazy
-// module, mirroring CtlTrendChart/ProgressionChart so nothing chart-related
-// enters this page's own chunk either.
 const Line = lazy(() => import('@/components/collection/LineChart'));
 
-export interface FitnessTrendPoint {
+export interface VdotHistoryPoint {
     date: string;
-    atl: number;
-    ctl: number;
+    vdot: number | null;
 }
 
-interface FitnessTrendProps {
-    trend: ReadonlyArray<FitnessTrendPoint>;
+interface VdotTrendProps {
+    trend: ReadonlyArray<VdotHistoryPoint>;
+    sourceCategory: string | null;
     range: TrendRange;
     className?: string;
 }
@@ -35,38 +32,28 @@ const RANGE_DAYS: Record<TrendRange, number> = {
     '12mo': 365,
 };
 
-const CTL_FILL = `${PALETTE.horizon}2e`; // 0.18 alpha
 const GRID_LINE = `${PALETTE.ink3}1f`; // 0.12 alpha
 
-function fitnessHint(ctl: number): string {
-    if (ctl < 25) return 'Still building';
-    if (ctl < 50) return 'Trending up';
-    if (ctl < 80) return 'Stable';
-    return 'High';
-}
-
-function fatigueHint(atl: number): string {
-    if (atl < 25) return 'Fresh';
-    if (atl < 55) return 'Normal';
-    if (atl < 85) return 'Tired';
-    return 'Heavy';
-}
-
 /**
- * Fitness/Fatigue panel — the first Trends panel ported for real, proving the
- * backend-to-frontend plumbing end to end since TrainingLoad::ctlTrend()
- * already exists. Badge milestones on the timeline are deferred to the slice
- * that also ports Personal Bests (same new date-joined badge query backs
- * both), so this renders the two lines and their headline stats only.
+ * VDOT History panel — Temari keeps the minimum VDOT across every eligible PR
+ * category, so a prescribed pace never outruns a real result
+ * ({@see VdotEstimator}). The history is grow-forward only
+ * (TrendDailySnapshot has no backfill), so recent users will see a short
+ * line that lengthens day by day rather than a full year at once.
  */
-export default function FitnessTrend({
+export default function VdotTrend({
     trend,
+    sourceCategory,
     range,
     className,
-}: Readonly<FitnessTrendProps>) {
+}: Readonly<VdotTrendProps>) {
     const windowed = useMemo(
         () => trend.slice(-RANGE_DAYS[range]),
         [trend, range],
+    );
+    const defined = useMemo(
+        () => windowed.filter((p) => p.vdot !== null),
+        [windowed],
     );
 
     const labels = useMemo(
@@ -79,25 +66,15 @@ export default function FitnessTrend({
             labels,
             datasets: [
                 {
-                    label: 'Fitness',
-                    data: windowed.map((p) => p.ctl),
+                    label: 'VDOT',
+                    data: windowed.map((p) => p.vdot),
                     borderColor: PALETTE.horizonInk,
-                    backgroundColor: CTL_FILL,
+                    backgroundColor: `${PALETTE.horizon}2e`,
                     borderWidth: 2.5,
                     pointRadius: 0,
                     tension: 0.3,
+                    spanGaps: true,
                     fill: true,
-                },
-                {
-                    label: 'Fatigue',
-                    data: windowed.map((p) => p.atl),
-                    borderColor: PALETTE.ink3,
-                    backgroundColor: 'transparent',
-                    borderWidth: 1.5,
-                    borderDash: [4, 4],
-                    pointRadius: 0,
-                    tension: 0.3,
-                    fill: false,
                 },
             ],
         }),
@@ -113,12 +90,13 @@ export default function FitnessTrend({
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        title: (items: Array<{ dataIndex: number }>) => {
-                            const i = items[0]?.dataIndex ?? 0;
-                            return windowed[i]
-                                ? formatNaiveIdDate(windowed[i].date, 'short')
-                                : '';
-                        },
+                        title: (items: Array<{ dataIndex: number }>) =>
+                            windowed[items[0]?.dataIndex ?? 0]
+                                ? formatNaiveIdDate(
+                                      windowed[items[0]?.dataIndex ?? 0].date,
+                                      'short',
+                                  )
+                                : '',
                     },
                 },
             },
@@ -133,21 +111,26 @@ export default function FitnessTrend({
         [windowed],
     );
 
-    const latest = windowed[windowed.length - 1];
-    const ctlCount = useCountUp(latest?.ctl ?? 0);
-    const atlCount = useCountUp(latest?.atl ?? 0);
-    const formCount = useCountUp((latest?.ctl ?? 0) - (latest?.atl ?? 0));
+    const latest = defined.length > 0 ? defined[defined.length - 1] : null;
+    const first = defined.length > 0 ? defined[0] : null;
+    const vdotCount = useCountUp(latest?.vdot ?? 0);
+    const change =
+        latest !== null && first !== null ? latest.vdot! - first.vdot! : null;
 
     if (windowed.length === 0) {
         return (
             <EmptyPanel
-                title="Not enough training history yet to draw a trend."
+                title="Not enough VDOT history yet."
+                body="This builds up day by day from your personal records — check back after your next few runs."
                 className={cn('rounded-(--radius-panel)', className)}
             />
         );
     }
 
-    const summarySentence = `Fitness ${windowed[0].ctl.toFixed(0)} to ${latest.ctl.toFixed(0)} over ${windowed.length} days, fatigue now ${latest.atl.toFixed(0)}.`;
+    const summarySentence =
+        first !== null && latest !== null
+            ? `VDOT went from ${first.vdot!.toFixed(1)} to ${latest.vdot!.toFixed(1)}.`
+            : 'Not enough VDOT history yet to show a trend.';
 
     return (
         <div
@@ -157,14 +140,14 @@ export default function FitnessTrend({
             )}
         >
             <div>
-                <p className="text-label-micro text-ink-3">Load</p>
+                <p className="text-label-micro text-ink-3">Fitness score</p>
                 <h2 className="mt-1 font-display text-lg text-ink">
-                    Fitness and Fatigue
+                    VDOT History
                 </h2>
                 <p className="mt-1 text-sm text-ink-2">
-                    Fitness is your training load averaged over a long window,
-                    fatigue over a short one. When the fitness line climbs and
-                    the fatigue line sits under it, the work is sticking.
+                    VDOT is a single running fitness number worked out from your
+                    best effort, using the Jack Daniels formula. Higher means
+                    you are holding a faster pace for the same cost.
                 </p>
             </div>
 
@@ -178,36 +161,41 @@ export default function FitnessTrend({
                     <StatTile
                         tone="sunken"
                         size="sm"
-                        label="Fitness"
-                        value={Math.round(ctlCount)}
-                        unit="CTL"
-                        sub={fitnessHint(latest.ctl)}
+                        label="VDOT now"
+                        value={latest !== null ? vdotCount.toFixed(1) : '—'}
                     />
                 </motion.div>
                 <motion.div variants={fadeInUp}>
                     <StatTile
                         tone="sunken"
                         size="sm"
-                        label="Fatigue"
-                        value={Math.round(atlCount)}
-                        unit="ATL"
-                        sub={fatigueHint(latest.atl)}
-                    />
-                </motion.div>
-                <motion.div variants={fadeInUp}>
-                    <StatTile
-                        tone="sunken"
-                        size="sm"
-                        label="Form"
+                        label="Over this window"
                         value={
-                            formCount >= 0
-                                ? `+${Math.round(formCount)}`
-                                : Math.round(formCount)
+                            change !== null
+                                ? `${change >= 0 ? '+' : ''}${change.toFixed(1)}`
+                                : '—'
                         }
                         sub={
-                            latest.ctl - latest.atl >= 0
-                                ? 'Rested'
-                                : 'Carrying load'
+                            change === null
+                                ? undefined
+                                : change > 0
+                                  ? 'Moving up'
+                                  : change < 0
+                                    ? 'Moving down'
+                                    : 'Flat'
+                        }
+                    />
+                </motion.div>
+                <motion.div variants={fadeInUp}>
+                    <StatTile
+                        tone="sunken"
+                        size="sm"
+                        label="Set by"
+                        value={sourceCategory ?? '—'}
+                        sub={
+                            sourceCategory !== null
+                                ? 'Your slowest-scoring PR'
+                                : undefined
                         }
                     />
                 </motion.div>
@@ -215,7 +203,7 @@ export default function FitnessTrend({
 
             <motion.div
                 role="img"
-                aria-label={`Fitness and fatigue over ${windowed.length} days. ${summarySentence}`}
+                aria-label={`VDOT over ${windowed.length} days. ${summarySentence}`}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
