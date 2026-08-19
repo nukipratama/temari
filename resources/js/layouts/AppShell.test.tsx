@@ -88,7 +88,7 @@ describe('AppShell', () => {
             </AppShell>,
         );
         expect(screen.getByText('child content')).toBeInTheDocument();
-        ['Today', 'Collection', 'Plan', 'Me'].forEach((label) => {
+        ['Today', 'Trends', 'History', 'Me'].forEach((label) => {
             expect(screen.getAllByText(label).length).toBeGreaterThan(0);
         });
         // <main> keeps bottom clearance for the fixed mobile bottom nav (cleared on lg).

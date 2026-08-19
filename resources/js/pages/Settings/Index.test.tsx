@@ -70,7 +70,7 @@ describe('Settings', () => {
     // the app not using the editorial header every other page shares.
     it('opens with the editorial header rather than a bare title', () => {
         render(<Settings />);
-        expect(screen.getByText('Settings')).toBeInTheDocument();
+        expect(screen.getAllByText('Settings').length).toBeGreaterThan(0);
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
             'Set up Temari, your way.',
         );
@@ -84,13 +84,29 @@ describe('Settings', () => {
         expect(screen.getByText('Where it goes')).toBeInTheDocument();
     });
 
-    // No back affordance anywhere: Settings is one tap from the Me tab and
-    // from the avatar menu on every page, so a breadcrumb has no job here.
-    it('has no back link', () => {
+    // No breadcrumb-style back affordance: the MeTabs segmented nav (rendered
+    // below) already links to Profile as a lateral tab, not a "back" action,
+    // so a BackLink (mdi:arrow-left) would be a redundant second way back.
+    it('has no breadcrumb-style back link', () => {
         const { container } = render(<Settings />);
-        // A back affordance would href its parent, the way HrZones' BackLink
-        // does. Asserting on the label instead outlived the label.
-        expect(container.querySelector('a[href="/profile"]')).toBeNull();
+        expect(
+            container.querySelector('[data-icon="mdi:arrow-left"]'),
+        ).toBeNull();
+    });
+
+    it('renders the Me segmented nav with Settings active', () => {
+        render(<Settings />);
+        expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+        expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute(
+            'href',
+            '/profile',
+        );
+        expect(
+            screen.getByRole('link', { name: 'Accessories' }),
+        ).toHaveAttribute('href', '/accessories');
     });
 
     // The mute switches say "Send run notifications to Telegram" nowhere near

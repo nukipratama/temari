@@ -6,6 +6,7 @@ import { useState } from 'react';
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
 import ProgressionChart from '@/components/collection/ProgressionChart';
+import MeTabs from '@/components/me/MeTabs';
 import PersonaBar, { type PersonaSlice } from '@/components/PersonaBar';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
@@ -116,7 +117,7 @@ export default function Profile({
         <>
             <Head title="Profile" />
             <PageContainer>
-                <header className="mb-8">
+                <header className="mb-8 flex flex-col gap-5">
                     <PageHero
                         eyebrow={
                             <Eyebrow
@@ -132,6 +133,7 @@ export default function Profile({
                         <br />
                         <em className="italic text-horizon-ink">your story.</em>
                     </PageHero>
+                    <MeTabs active="profile" />
                 </header>
 
                 <HeroPanel className="lg:px-9 lg:py-8">

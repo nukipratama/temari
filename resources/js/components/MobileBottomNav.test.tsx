@@ -9,15 +9,15 @@ describe('MobileBottomNav', () => {
     it('renders all four primary tabs with their labels', () => {
         render(<MobileBottomNav />);
         expect(screen.getByText('Today')).toBeInTheDocument();
-        expect(screen.getByText('Collection')).toBeInTheDocument();
-        expect(screen.getByText('Plan')).toBeInTheDocument();
+        expect(screen.getByText('Trends')).toBeInTheDocument();
+        expect(screen.getByText('History')).toBeInTheDocument();
         expect(screen.getByText('Me')).toBeInTheDocument();
     });
 
     it('marks the tab matching the current url as active', () => {
-        setMockPage({}, '/accessories');
+        setMockPage({}, '/history');
         render(<MobileBottomNav />);
-        const link = screen.getByText('Collection').closest('a')!;
+        const link = screen.getByText('History').closest('a')!;
         expect(link).toHaveAttribute('aria-current', 'page');
         expect(screen.getByText('Today').closest('a')).not.toHaveAttribute(
             'aria-current',
@@ -30,9 +30,13 @@ describe('MobileBottomNav', () => {
             'href',
             '/',
         );
-        expect(screen.getByText('Plan').closest('a')).toHaveAttribute(
+        expect(screen.getByText('Trends').closest('a')).toHaveAttribute(
             'href',
-            '/plan',
+            '/trends',
+        );
+        expect(screen.getByText('History').closest('a')).toHaveAttribute(
+            'href',
+            '/history',
         );
         expect(screen.getByText('Me').closest('a')).toHaveAttribute(
             'href',
@@ -42,9 +46,9 @@ describe('MobileBottomNav', () => {
 
     // ink-on-sky replaced text-cream/55, which sat at ~2.2:1 contrast against the bar.
     it('tints inactive tabs with the readable on-sky muted tone', () => {
-        setMockPage({}, '/accessories');
+        setMockPage({}, '/history');
         render(<MobileBottomNav />);
-        expect(screen.getByText('Collection').closest('a')).toHaveClass(
+        expect(screen.getByText('History').closest('a')).toHaveClass(
             'text-horizon',
         );
         expect(screen.getByText('Me').closest('a')).toHaveClass(
@@ -55,10 +59,10 @@ describe('MobileBottomNav', () => {
     it('scrolls to top instead of navigating when the active tab is tapped', () => {
         const scrollTo = vi.fn();
         vi.stubGlobal('scrollTo', scrollTo);
-        setMockPage({}, '/accessories');
+        setMockPage({}, '/history');
         render(<MobileBottomNav />);
 
-        const link = screen.getByText('Collection').closest('a')!;
+        const link = screen.getByText('History').closest('a')!;
         const event = new MouseEvent('click', {
             bubbles: true,
             cancelable: true,
@@ -72,7 +76,7 @@ describe('MobileBottomNav', () => {
     it('leaves an inactive tab to navigate normally', () => {
         const scrollTo = vi.fn();
         vi.stubGlobal('scrollTo', scrollTo);
-        setMockPage({}, '/accessories');
+        setMockPage({}, '/history');
         render(<MobileBottomNav />);
 
         const link = screen.getByText('Me').closest('a')!;
@@ -98,11 +102,11 @@ describe('MobileBottomNav', () => {
                 removeEventListener: vi.fn(),
             })),
         );
-        setMockPage({}, '/accessories');
+        setMockPage({}, '/history');
         render(<MobileBottomNav />);
 
         screen
-            .getByText('Collection')
+            .getByText('History')
             .closest('a')!
             .dispatchEvent(
                 new MouseEvent('click', { bubbles: true, cancelable: true }),
