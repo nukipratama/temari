@@ -77,7 +77,10 @@ class FeedQuery
                     }
                 }
             })
-            ->with(['detail' => fn ($q) => $q->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'elapsed_time', 'average_heartrate', 'trimp_edwards', 'workout_type'])]);
+            ->with([
+                'detail' => fn ($q) => $q->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'elapsed_time', 'average_heartrate', 'trimp_edwards', 'workout_type', 'summary_polyline']),
+                'runCard' => fn ($q) => $q->select(['id', 'activity_id', 'rarity', 'special_move', 'badges']),
+            ]);
 
         // Mood lives on the post-run StoryLine, which is also what the list
         // renders, so filtering there keeps the filter and the displayed mood in
