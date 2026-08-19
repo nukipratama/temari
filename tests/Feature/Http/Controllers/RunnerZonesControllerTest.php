@@ -33,52 +33,8 @@ function validZonesPayload(array $overrides = []): array
     ];
 }
 
-it('requires authentication for the index', function (): void {
-    $this->get('/settings/zones')->assertRedirect('/login');
-});
-
 it('requires authentication for the update', function (): void {
     $this->patch('/settings/zones', validZonesPayload())->assertRedirect('/login');
-});
-
-it('renders the page with the config-fallback profile for a fresh user', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/settings/zones')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Settings/HrZones')
-            ->where('hasCustomProfile', false)
-            ->where('source', 'default')
-            ->where('stravaSyncedLabel', null)
-            ->where('profile.max_hr', 180)
-            ->where('profile.resting_hr', 55)
-            ->where('profile.hr_zones.Z1.lo', 116));
-});
-
-it('exposes the strava source and a last-synced label for a synced profile', function (): void {
-    $user = User::factory()->create();
-    RunnerProfile::factory()->for($user)->create([
-        'source' => 'strava',
-        'strava_zones_synced_at' => now(),
-    ]);
-
-    $this->actingAs($user)->get('/settings/zones')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('source', 'strava')
-            ->whereType('stravaSyncedLabel', 'string'));
-});
-
-it('renders the page with the stored custom profile', function (): void {
-    $user = User::factory()->create();
-    RunnerProfile::factory()->for($user)->create(['max_hr' => 195]);
-
-    $this->actingAs($user)->get('/settings/zones')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('hasCustomProfile', true)
-            ->where('profile.max_hr', 195));
 });
 
 it('creates a runner_profiles row and bumps hr_zones_changed_at', function (): void {
@@ -141,24 +97,6 @@ it('does not dispatch any recompute job on update (forward-only design)', functi
     Queue::assertNothingPushed();
 });
 
-it('exposes canSyncFromStrava true only with a live profile:read_all connection', function (): void {
-    $scoped = User::factory()->create();
-    StravaConnection::factory()->for($scoped)->create(['scopes' => 'read,activity:read_all,profile:read_all']);
-
-    $this->actingAs($scoped)->get('/settings/zones')
-        ->assertInertia(fn (Assert $page) => $page->where('canSyncFromStrava', true));
-
-    $unscoped = User::factory()->create();
-    StravaConnection::factory()->for($unscoped)->create(['scopes' => 'read,activity:read_all']);
-
-    $this->actingAs($unscoped)->get('/settings/zones')
-        ->assertInertia(fn (Assert $page) => $page->where('canSyncFromStrava', false));
-
-    $none = User::factory()->create();
-    $this->actingAs($none)->get('/settings/zones')
-        ->assertInertia(fn (Assert $page) => $page->where('canSyncFromStrava', false));
-});
-
 it('resets to default by deleting the runner profile', function (): void {
     $user = User::factory()->create();
     RunnerProfile::factory()->for($user)->create(['source' => 'manual']);
@@ -170,8 +108,8 @@ it('resets to default by deleting the runner profile', function (): void {
 
     expect(RunnerProfile::query()->where('user_id', $user->id)->exists())->toBeFalse();
 
-    $this->actingAs($user)->get('/settings/zones')
-        ->assertInertia(fn (Assert $page) => $page->where('source', 'default'));
+    $this->actingAs($user)->get('/settings')
+        ->assertInertia(fn (Assert $page) => $page->where('hrZones.source', 'default'));
 });
 
 it('re-syncs from Strava inline and flips the source to strava for a scoped user', function (): void {

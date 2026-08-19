@@ -6,32 +6,14 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateHrZonesRequest;
 use App\Jobs\Strava\SyncZonesJob;
-use App\Models\RunnerProfile;
 use App\Models\User;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class RunnerZonesController extends Controller
 {
-    public function index(Request $request): Response
-    {
-        /** @var User $user */
-        $user = $request->user();
-        $profile = RunnerProfile::query()->where('user_id', $user->id)->first();
-
-        return Inertia::render('Settings/HrZones', [
-            'profile' => $user->hrProfile(),
-            'hasCustomProfile' => $profile !== null,
-            'source' => $profile !== null ? $profile->source : 'default',
-            'stravaSyncedLabel' => $profile !== null ? $profile->strava_zones_synced_at?->format('j M Y, H:i') : null,
-            'canSyncFromStrava' => $this->canSyncFromStrava($user),
-        ]);
-    }
-
     public function update(UpdateHrZonesRequest $request): RedirectResponse
     {
         /** @var User $user */
@@ -64,7 +46,8 @@ class RunnerZonesController extends Controller
     /**
      * Drop the caller's runner profile so their zones fall back to the standard
      * config-derived defaults. This is the only path back out of a `manual`
-     * (or `strava`) source, since `index()` reports `default` when no row exists.
+     * (or `strava`) source, since the effective source is `default` whenever
+     * no row exists (see {@see \App\Http\Controllers\SettingsController}).
      */
     public function resetToDefault(Request $request): RedirectResponse
     {

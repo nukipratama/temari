@@ -14,8 +14,6 @@ import { cn } from '@/lib/cn';
 // resolve to a tab too, but reach it via an in-page tab strip, so they keep the brand mark.
 const BACK_TARGETS: Record<string, { href: string; label: string }> = {
     'Runs/Show': { href: '/history', label: 'History' },
-    // Settings is reachable only via the avatar link or the Me tab strip, so it stays a root, not a push.
-    'Settings/HrZones': { href: '/settings', label: 'Settings' },
 };
 
 // max() keeps the row clear of the notch under black-translucent; falls back to 0.75rem in a browser tab.

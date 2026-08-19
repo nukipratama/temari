@@ -26,7 +26,7 @@ Server entry is [SettingsController](../../app/Http/Controllers/SettingsControll
 - **Notifications** — one section holding two groups, because the user's model is one topic with two questions rather than three unrelated ones:
   - *What gets sent* — one channel-neutral master switch, **Keep me posted** (`notifications_enabled`), covering the post-run story, both recaps and the streak nudge, and gating Telegram and phone push alike. Full behaviour in [[telegram-notifications]].
   - *Where it goes* — Telegram and web push ([PushNotificationToggle](../../resources/js/components/PushNotificationToggle.tsx), rendered once a VAPID key is configured), each with a **mute** toggle once connected: off keeps the link and simply stops delivery, so re-enabling needs no re-auth. The in-app inbox is not listed here: it is never muted, because muting it would lose history rather than spare an interruption ([[inbox-is-an-always-on-channel]]). The destructive "Disconnect" / "Turn off" sits demoted beneath the row it belongs to. Plus the "Send test notification" button, which lives here rather than with the types because what it proves is that a channel can reach you — it has a 60s cooldown and a pending state, both shorter than the 5-minute per-recap send for the reasons in [[telegram-notifications]].
-- **Running · HR zones** — a row linking to [[settings-hr-zones]] (`/settings/zones`).
+- **Running · HR zones** — an inline expand/collapse disclosure, not a separate page any more; see [[settings-hr-zones]].
 - **Your data** — the plain-language data-use statement, server-supplied from [DataUseStatement](../../app/Support/DataUseStatement.php) so the page and the public terms/privacy pages cannot word it differently. Why it says what it says: [[strava-data-compliance]].
 - **The fine print** — links out to the four public documents in [[legal-pages]].
 - **Account · Log out, Delete account** — logging out posts `/logout` directly from a row here (moved off the avatar link when it stopped opening a dropdown); delete account is covered below.
@@ -35,7 +35,7 @@ Every line is one primitive. [SettingsRow](../../resources/js/components/ui/Sett
 
 The page opens with [PageHero](../../resources/js/components/ui/PageHero.tsx) like every other screen. It previously used a bare `<h1>`, which made it the one page that looked like it belonged to a different product.
 
-It carries **no back affordance at all** — not in the page and not in the top bar. Settings is a lateral MeTabs tab, one hop from Profile (itself one tap away via the avatar link), not a pushed screen, so a breadcrumb would be chrome without a job. `Settings/HrZones` is the exception and keeps one, since it is reachable only from here; see [[installed-app-shell]] for how the top bar decides.
+It carries **no back affordance at all** — not in the page and not in the top bar. Settings is a lateral MeTabs tab, one hop from Profile (itself one tap away via the avatar link), not a pushed screen, so a breadcrumb would be chrome without a job. HR zones is an inline disclosure on this same page now, not a pushed screen either — see [[installed-app-shell]] for how the top bar decides what gets a back button.
 
 ## Account deletion
 

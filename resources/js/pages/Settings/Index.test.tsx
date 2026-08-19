@@ -35,6 +35,42 @@ describe('Settings', () => {
         expect(screen.getByText('Delete account')).toBeInTheDocument();
     });
 
+    it('expands the HR zones disclosure inline, without navigating', () => {
+        render(<Settings />);
+        expect(screen.queryByLabelText('Max HR')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /HR zones/ }));
+
+        expect(screen.getByLabelText('Max HR')).toBeInTheDocument();
+    });
+
+    it('passes the server-supplied HR-zones profile into the disclosure', () => {
+        render(
+            <Settings
+                hrZones={{
+                    profile: {
+                        max_hr: 200,
+                        resting_hr: 48,
+                        hr_zones: {
+                            Z1: { lo: 122, hi: 143 },
+                            Z2: { lo: 143, hi: 160 },
+                            Z3: { lo: 160, hi: 175 },
+                            Z4: { lo: 175, hi: 185 },
+                            Z5: { lo: 185, hi: 999 },
+                        },
+                        optimal_cadence_spm: 172,
+                    },
+                    source: 'manual',
+                    stravaSyncedLabel: null,
+                    canSyncFromStrava: false,
+                }}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /HR zones/ }));
+        expect(screen.getByLabelText('Max HR')).toHaveValue(200);
+    });
+
     it('links out to the four legal pages', () => {
         render(<Settings />);
 
