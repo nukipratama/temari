@@ -212,17 +212,21 @@ describe('rarityVariants', () => {
         },
     );
 
-    it('maps rarity to a flag background + readable text tone', () => {
-        expect(tokens(rarityVariants.flag({ rarity: 'legendary' }))).toContain(
-            'bg-rarity-legendary',
-        );
-        expect(tokens(rarityVariants.flag({ rarity: 'legendary' }))).toContain(
-            'text-ink',
-        );
-        expect(tokens(rarityVariants.flag({ rarity: 'common' }))).toContain(
-            'text-cream',
-        );
-    });
+    it.each([
+        ['common', 'bg-rarity-common'],
+        ['uncommon', 'bg-rarity-uncommon'],
+        ['rare', 'bg-rarity-rare'],
+        ['epic', 'bg-rarity-epic'],
+        ['legendary', 'bg-rarity-legendary'],
+    ] as const)(
+        'flags rarity %s with its fill and the on-fill label tone',
+        (rarity, fill) => {
+            expect(tokens(rarityVariants.flag({ rarity }))).toContain(fill);
+            expect(tokens(rarityVariants.flag({ rarity }))).toContain(
+                'text-ink-on-rarity',
+            );
+        },
+    );
 
     it('maps rarity to a top-border corner flag', () => {
         expect(tokens(rarityVariants.corner({ rarity: 'rare' }))).toContain(

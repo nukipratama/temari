@@ -275,11 +275,11 @@ export const rarityVariants = {
     flag: cva('', {
         variants: {
             rarity: {
-                common: 'bg-rarity-common text-cream',
-                uncommon: 'bg-rarity-uncommon text-cream',
-                rare: 'bg-rarity-rare text-cream',
-                epic: 'bg-rarity-epic text-ink',
-                legendary: 'bg-rarity-legendary text-ink',
+                common: 'bg-rarity-common text-ink-on-rarity',
+                uncommon: 'bg-rarity-uncommon text-ink-on-rarity',
+                rare: 'bg-rarity-rare text-ink-on-rarity',
+                epic: 'bg-rarity-epic text-ink-on-rarity',
+                legendary: 'bg-rarity-legendary text-ink-on-rarity',
             },
         },
         defaultVariants: { rarity: 'epic' },

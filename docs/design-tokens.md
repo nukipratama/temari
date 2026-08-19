@@ -116,7 +116,7 @@ edge carries the contrast. Never darken them instead.
 | Sky | `sky`, `sky-deep`, `sky-2` (`#241c54`) | Structure, dark hero panels (the only "dark" surface). Deep indigo. |
 | Horizon | `horizon`, `horizon-deep`, `horizon-ink` (`#d9a53c` gold) | Primary CTA, "earned" / PR state, Temari accent. `horizon-ink` for gold **as text**; `horizon-deep` is a *fill* (hover state, gradient stop, chart point) and reaches only 2.6:1 on paper, so `text-horizon-deep` is always wrong. |
 | Cream | `cream`, `cream-deep` (`#f5f0e4`) | Paper / secondary surface, on-dark text. Warm linen canvas. |
-| Ink | `ink` / `ink-2` / `ink-3` (+ `ink-on-sky`) | 3-tier text contrast (primary / supporting / meta); `ink-on-sky` = muted label on a dark sky panel |
+| Ink | `ink` / `ink-2` / `ink-3` (+ `ink-on-sky`, `ink-on-rarity`) | 3-tier text contrast (primary / supporting / meta); `ink-on-sky` = muted label on a dark sky panel, `ink-on-rarity` = label on a vivid rarity fill |
 | Surface | `surface`, `surface-card`, `surface-elev`, `surface-warm`, `surface-sunken` | App surfaces (dawn-shift drifts `surface`); `surface-card` = the one linen every card shares; `surface-elev` = floating UI only |
 | Line | `line`, `line-strong` | Borders. `line` is the default hairline; `line-strong` is the dashed placeholder edge |
 | Mood | `mood-{blazing,easy,wobbly,gassed,overloaded,chill}` (+ `-bg`, `-ink`) | Calendar cells, mood badges. `-bg` is the pastel cell tint, `-ink` the label |
@@ -134,8 +134,9 @@ from there rather than pasting a hex; it is asserted against `app.css` by its ow
 - `text-ink-2` — supporting body (subtitles, descriptive lines).
 - `text-ink-3` — labels / timestamps / footnotes / metadata only; never body prose.
 - `text-ink-on-sky` — muted metadata label on dark sky panels.
+- `text-ink-on-rarity` — label printed on a vivid rarity fill (the rarity flag).
 
-All four clear WCAG AA on their intended background.
+All five clear WCAG AA on their intended background.
 
 ### CTA contrast
 

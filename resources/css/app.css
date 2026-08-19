@@ -125,11 +125,13 @@
     --color-cream-deep: #e2e8ee;
 
     /* Ink scale (3-tier text contrast), all ≥4.5:1 on paper. ink-on-sky is
-       the muted label tone on dark sky panels. */
+       the muted label tone on dark sky panels; ink-on-rarity is the label tone
+       on a vivid rarity fill, the one value that clears 4.5:1 on all five. */
     --color-ink: #16181b;
     --color-ink-2: #34373c;
     --color-ink-3: #60666d;
     --color-ink-on-sky: #9c9ea7;
+    --color-ink-on-rarity: #170f38;
 
     /* Semantic accent hues. The plain member is the fill; `-deep` is the fill
        for a dark CTA (cream text on it); `-ink` is the only member a label or

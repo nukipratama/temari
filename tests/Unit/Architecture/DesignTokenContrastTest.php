@@ -565,6 +565,92 @@ it('records every panel/text pair painted in one class string', function (): voi
     ));
 })->group('structure');
 
+/**
+ * Every opaque `bg-<token>` painted in the same class string as a `text-<token>`,
+ * scored straight: with no alpha the fill *is* the ground, so there is nothing
+ * to composite it over.
+ *
+ * The panel registry only reaches `bg-<token>/<alpha>`, and the sweep above only
+ * reaches tokens named `-ink`. An opaque fill carrying a label that is neither
+ * was scored by nothing, which is how the rarity flags shipped under AA.
+ *
+ * @param  array<string, string>  $tokens
+ * @return array<string, float>
+ */
+function paintedOpaqueFillText(array $tokens): array
+{
+    $ratios = [];
+
+    foreach (componentSources() as $source) {
+        preg_match_all('/\'[^\'\n]*\'|"[^"\n]*"|`[^`]*`/s', $source, $literals);
+
+        foreach ($literals[0] as $literal) {
+            if (preg_match('/[<>{}]/', $literal) === 1) {
+                continue;
+            }
+
+            preg_match_all(
+                '/(?:^|[\s\'"`])((?:[a-z0-9-]+:)*)bg-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)(?![\w\-.\/])/',
+                $literal,
+                $fills,
+                PREG_SET_ORDER,
+            );
+            if ($fills === []) {
+                continue;
+            }
+
+            preg_match_all(
+                '/(?:^|[\s\'"`])((?:[a-z0-9-]+:)*)text-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)(?![\w\-.\/])/',
+                $literal,
+                $labels,
+                PREG_SET_ORDER,
+            );
+
+            foreach ($fills as $fill) {
+                if (! isset($tokens[$fill[2]])) {
+                    continue;
+                }
+
+                foreach ($labels as $label) {
+                    if (! isset($tokens[$label[2]]) || $label[1] !== $fill[1]) {
+                        continue;
+                    }
+
+                    $ratios['bg-'.$fill[2].' + text-'.$label[2]] = round(
+                        tokenContrast($tokens[$label[2]], $tokens[$fill[2]]),
+                        2,
+                    );
+                }
+            }
+        }
+    }
+
+    ksort($ratios);
+
+    return $ratios;
+}
+
+it('keeps every label on an opaque fill above AA', function (): void {
+    ['tokens' => $tokens] = designTokens();
+    $pairs = paintedOpaqueFillText($tokens);
+
+    expect($pairs)->not->toBeEmpty();
+
+    $under = [];
+    foreach ($pairs as $pair => $ratio) {
+        if ($ratio < 4.5) {
+            $under[] = sprintf('%s: %.2f', $pair, $ratio);
+        }
+    }
+
+    expect($under)->toBe([], sprintf(
+        "These labels print on an opaque fill under 4.5:1:\n  %s\n".
+        'The fill is the ground here, so an -ink derived against paper scores worse, not better; '.
+        'reach for a tone derived against the fill itself.',
+        implode("\n  ", $under),
+    ));
+})->group('structure');
+
 it('keeps every panel/text pair above AA, or pinned in the ledger', function (): void {
     $ratios = panelPairRatios();
     $ledger = groundKinds()['belowAa'];
