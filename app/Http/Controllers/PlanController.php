@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Actions\Gamification\GrantSeasonUnlocksAction;
-use App\Actions\Gamification\SettleStreakRestTokensAction;
 use App\Enums\DistanceBand;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
@@ -14,13 +13,9 @@ use App\Models\ActivityDetail;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
-use App\Models\Season;
-use App\Models\StreakRestToken;
 use App\Models\User;
-use App\Models\UserUnlock;
-use App\Models\WeeklySnapshot;
 use App\Services\Gamification\SeasonGamificationContext;
-use App\Services\Gamification\SeasonGoalResolver;
+use App\Services\Gamification\SeasonStreakSummaryBuilder;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -63,7 +58,7 @@ class PlanController extends Controller
         VdotEstimator $vdotEstimator,
         TrainingPaceCalculator $paceCalculator,
         SeasonService $seasonService,
-        SeasonGoalResolver $seasonGoalResolver,
+        SeasonStreakSummaryBuilder $seasonStreakBuilder,
         GrantSeasonUnlocksAction $grantSeasonUnlocks,
         SessionMatcher $sessionMatcher,
     ): Response {
@@ -79,13 +74,8 @@ class PlanController extends Controller
         $season = $seasonService->ensureCurrent($user, $today);
         $seasonCtx = SeasonGamificationContext::forSeason($user, $season, $today, $trainingLoad);
         $grantSeasonUnlocks($user, $season, $seasonCtx);
-        $seasonPayload = $this->seasonPayload(
-            $season,
-            $seasonGoalResolver->forSeason($user, $season, $seasonCtx),
-            $today,
-            $this->tiersKeptFromPastSeasons($user, $season),
-        );
-        $streakPayload = $this->streakPayload($user, $today);
+        $seasonPayload = $seasonStreakBuilder->seasonPayload($user, $season, $today, $seasonCtx);
+        $streakPayload = $seasonStreakBuilder->streakPayload($user, $today);
 
         $adaptationPayload = $this->adaptationPayload($user, $currentWeekStart);
 
@@ -248,83 +238,6 @@ class PlanController extends Controller
     private function racePayload(?RaceGoal $race): ?array
     {
         return $race === null ? null : ['race_date' => $race->race_date->toDateString(), 'name' => $race->name];
-    }
-
-    /**
-     * The Plan tab's season summary: arc progress + the season's 5 goals +
-     * a link to the badge board. Season IS the training block (see the v2
-     * program's locked decisions) — this is the same arc at a higher zoom,
-     * not a separate page.
-     *
-     * @param  list<array{id: int, title: string, current: int|float, target: int|float, unit: string, is_completed: bool}>  $goals
-     * @return array{starts_at: string, ends_at: string, week_index: int, total_weeks: int, is_race_oriented: bool, tiers_kept_from_past_seasons: int, goals: list<array{id: int, title: string, current: int|float, target: int|float, unit: string, is_completed: bool}>}
-     */
-    private function seasonPayload(Season $season, array $goals, Carbon $today, int $tiersKeptFromPastSeasons): array
-    {
-        $totalWeeks = max(1, (int) $season->starts_at->diffInWeeks($season->ends_at) + 1);
-        $weekIndex = max(1, min($totalWeeks, (int) $season->starts_at->diffInWeeks($today) + 1));
-
-        return [
-            'starts_at' => $season->starts_at->toDateString(),
-            'ends_at' => $season->ends_at->toDateString(),
-            'week_index' => $weekIndex,
-            'total_weeks' => $totalWeeks,
-            'is_race_oriented' => $season->race_goal_id !== null,
-            'tiers_kept_from_past_seasons' => $tiersKeptFromPastSeasons,
-            'goals' => $goals,
-        ];
-    }
-
-    /**
-     * Track tiers owned under an earlier season's key namespace. A season
-     * boundary resets the live track to zero and revokes nothing, so this is
-     * the number that proves it.
-     */
-    private function tiersKeptFromPastSeasons(User $user, Season $season): int
-    {
-        return UserUnlock::query()
-            ->where('user_id', $user->id)
-            ->where('unlock_key', 'like', 'season.%.track\_%')
-            ->where('unlock_key', 'not like', "season.{$season->id}.%")
-            ->count();
-    }
-
-    /**
-     * The weekly streak, its stakes for the open week, and the rest weeks that
-     * stand between a runless week and a reset. Spending is automatic at week
-     * close ({@see SettleStreakRestTokensAction}), so nothing here is an
-     * affordance the user could act on.
-     *
-     * @return array{weeks: int, rest_weeks_held: int, rest_weeks_cap: int, weeks_to_next_rest_week: int|null, ran_this_week: bool, week_ends_on: string, last_forgiven_week: string|null}
-     */
-    private function streakPayload(User $user, Carbon $today): array
-    {
-        $weeks = WeeklySnapshot::consecutiveWeekStreak($user->id);
-        $held = StreakRestToken::unspentCountForUser($user->id);
-        $weekEndsOn = $today->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay();
-
-        $accrual = SettleStreakRestTokensAction::ACCRUAL_EVERY_WEEKS;
-        $atCap = $held >= SettleStreakRestTokensAction::MAX_HELD;
-
-        $lastForgiven = StreakRestToken::query()
-            ->where('user_id', $user->id)
-            ->whereNotNull('spent_for_week_ending')
-            ->orderByDesc('spent_for_week_ending')
-            ->first();
-
-        return [
-            'weeks' => $weeks,
-            'rest_weeks_held' => $held,
-            'rest_weeks_cap' => SettleStreakRestTokensAction::MAX_HELD,
-            'weeks_to_next_rest_week' => $atCap ? null : $accrual - ($weeks % $accrual),
-            'ran_this_week' => WeeklySnapshot::query()
-                ->where('user_id', $user->id)
-                ->where('week_ending', $weekEndsOn->toDateString())
-                ->where('runs', '>', 0)
-                ->exists(),
-            'week_ends_on' => $weekEndsOn->toDateString(),
-            'last_forgiven_week' => $lastForgiven?->spent_for_week_ending?->toDateString(),
-        ];
     }
 
     /**

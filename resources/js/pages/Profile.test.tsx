@@ -77,6 +77,33 @@ describe('Profile', () => {
         ).not.toBeInTheDocument();
     });
 
+    it('renders the season & streak panel when the server hands it a seasonStreak prop', () => {
+        render(
+            <Profile
+                identity={identity}
+                stats={stats}
+                seasonStreak={{
+                    season: null,
+                    streak: {
+                        weeks: 0,
+                        rest_weeks_held: 0,
+                        rest_weeks_cap: 2,
+                        weeks_to_next_rest_week: 3,
+                        ran_this_week: false,
+                        week_ends_on: '2026-08-16',
+                        last_forgiven_week: null,
+                    },
+                }}
+            />,
+        );
+        expect(screen.getByText('Season & streak')).toBeInTheDocument();
+    });
+
+    it('omits the season & streak panel when no seasonStreak prop is given', () => {
+        render(<Profile identity={identity} stats={stats} />);
+        expect(screen.queryByText('Season & streak')).not.toBeInTheDocument();
+    });
+
     it('renders the persona bar without a narration block of its own', () => {
         const mix = [
             { mood: 'easy' as const, count: 22, percent: 34.9 },
