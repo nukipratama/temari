@@ -180,6 +180,7 @@ const WeekSection = memo(function WeekSection({
                         detail={activity.detail}
                         note={notes[activity.id] ?? null}
                         mood={moods[activity.id] ?? null}
+                        runCard={activity.run_card ?? null}
                     />
                 ))}
             </div>

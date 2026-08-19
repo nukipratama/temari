@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { ActivityDetail } from '@/types/inertia';
+import type { ActivityDetail, RunCard } from '@/types/inertia';
 
 import RunListRow from './RunListRow';
 
@@ -15,6 +15,17 @@ function detail(overrides: Partial<ActivityDetail> = {}): ActivityDetail {
         elapsed_time: 3600,
         average_heartrate: 150,
         trimp_edwards: 70,
+        ...overrides,
+    };
+}
+
+function runCard(overrides: Partial<RunCard> = {}): RunCard {
+    return {
+        id: 1,
+        activity_id: 99,
+        rarity: 'legendary',
+        special_move: 'Dawn Sprint',
+        badges: ['early_bird'],
         ...overrides,
     };
 }
@@ -117,5 +128,32 @@ describe('RunListRow', () => {
             <RunListRow detail={detail({ start_date_local: '2026-05-10' })} />,
         );
         expect(screen.queryByText(/^· \d{2}\.\d{2}$/)).not.toBeInTheDocument();
+    });
+
+    it('leads with the earned Kartu when a run_card is present', () => {
+        render(<RunListRow detail={detail()} runCard={runCard()} />);
+        expect(
+            screen.getByRole('img', { name: 'Dawn Sprint' }),
+        ).toBeInTheDocument();
+    });
+
+    it('shows compact caption stats beside the Kartu', () => {
+        render(<RunListRow detail={detail()} runCard={runCard()} />);
+        expect(screen.getByText('10.00 km')).toBeInTheDocument();
+        expect(screen.getByText('1:00:00')).toBeInTheDocument();
+        expect(screen.getByText('150 bpm')).toBeInTheDocument();
+        expect(screen.getByText('70 TRIMP')).toBeInTheDocument();
+    });
+
+    it('renders each badge as an emoji with a descriptive title', () => {
+        render(<RunListRow detail={detail()} runCard={runCard()} />);
+        const badge = screen.getByTitle('Early Bird');
+        expect(badge).toHaveTextContent('🌅');
+    });
+
+    it('falls back to the plain row when run_card is absent', () => {
+        render(<RunListRow detail={detail()} runCard={null} />);
+        expect(screen.getByText('Blazing')).toBeInTheDocument();
+        expect(screen.queryByRole('img', { name: 'Dawn Sprint' })).toBeNull();
     });
 });
