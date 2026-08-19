@@ -50,18 +50,19 @@ describe('MobileTopBar', () => {
         ).toBe('/history');
     });
 
-    it('shows the user menu when a user is signed in', () => {
+    it('shows the avatar link to Profile when a user is signed in', () => {
         setMockPage({ auth: { user: makeUser({ name: 'Ada Lovelace' }) } });
         render(<MobileTopBar />);
-        expect(
-            screen.getByLabelText('Open menu for Ada Lovelace'),
-        ).toBeInTheDocument();
+        expect(screen.getByLabelText("Ada Lovelace's profile")).toHaveAttribute(
+            'href',
+            '/profile',
+        );
     });
 
-    it('omits the user menu when there is no signed-in user', () => {
+    it('omits the avatar link when there is no signed-in user', () => {
         setMockPage({ auth: { user: null } });
         render(<MobileTopBar />);
-        expect(screen.queryByLabelText(/Open menu/)).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(/'s profile/)).not.toBeInTheDocument();
     });
 
     it('renders the Strava sync badge in its disconnected state by default', () => {

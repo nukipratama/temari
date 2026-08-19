@@ -1,4 +1,4 @@
-export type TabId = 'today' | 'trends' | 'history' | 'me';
+export type TabId = 'today' | 'trends' | 'history';
 
 export interface NavItem {
     id: TabId;
@@ -29,13 +29,6 @@ export const ITEMS: ReadonlyArray<NavItem> = [
         href: '/history',
         icon: 'mdi:history',
         prefixes: ['/history', '/activities'],
-    },
-    {
-        id: 'me',
-        label: 'Me',
-        href: '/profile',
-        icon: 'mdi:account-outline',
-        prefixes: ['/profile', '/settings', '/accessories'],
     },
 ];
 

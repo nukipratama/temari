@@ -67,9 +67,9 @@ describe('Profile', () => {
         expect(screen.getByText('Longest run')).toBeInTheDocument();
     });
 
-    // Settings moved out of this page into the avatar menu, next to logout, so
-    // it is reachable from every page rather than only from here. The entry
-    // point is asserted in UserMenu.test.tsx.
+    // Settings moved out of this page into MeTabs, reachable from Profile
+    // rather than carried here as its own row. The entry point is asserted
+    // in MeTabs.test.tsx and Settings/Index.test.tsx.
     it('no longer carries a settings row of its own', () => {
         render(<Profile identity={identity} stats={stats} />);
         expect(

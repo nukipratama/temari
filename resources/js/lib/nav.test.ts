@@ -3,12 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { activeTabFromUrl, ITEMS } from './nav';
 
 describe('nav', () => {
-    it('has 4 top-level items', () => {
+    it('has 3 top-level items', () => {
         expect(ITEMS.map((item) => item.id)).toEqual([
             'today',
             'trends',
             'history',
-            'me',
         ]);
     });
 
@@ -30,10 +29,10 @@ describe('nav', () => {
         expect(activeTabFromUrl('/race')).toBe('today');
     });
 
-    it('resolves Settings and Accessories under Me', () => {
-        expect(activeTabFromUrl('/profile')).toBe('me');
-        expect(activeTabFromUrl('/settings')).toBe('me');
-        expect(activeTabFromUrl('/accessories')).toBe('me');
+    it('resolves no bottom-nav tab for Profile, Settings, or Accessories — reached via the avatar, not a tab', () => {
+        expect(activeTabFromUrl('/profile')).toBeNull();
+        expect(activeTabFromUrl('/settings')).toBeNull();
+        expect(activeTabFromUrl('/accessories')).toBeNull();
     });
 
     it('ignores a query string when matching', () => {
