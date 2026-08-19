@@ -1,6 +1,6 @@
 ---
 title: Settings
-description: The settings hub at /settings — notification types and channels, the HR-zone entry, and account deletion — reached from the avatar menu or the Me segmented nav.
+description: The settings hub at /settings — notification types and channels, the HR-zone entry, account deletion, and logout — reached via MeTabs from Profile.
 tags: [feature, settings]
 status: living
 reviewed: 2026-08-19
@@ -9,6 +9,7 @@ code_refs:
   - app/Http/Controllers/AccountController.php
   - resources/js/pages/Settings/Index.tsx
   - resources/js/components/me/MeTabs.tsx
+  - resources/js/components/UserAvatarLink.tsx
   - routes/web.php
 ---
 
@@ -16,7 +17,7 @@ code_refs:
 
 `/settings` is the one home for user settings. They were once scattered on Profile (`/profile`), then reached via a single row at the bottom of that page; the legacy `/pengaturan` redirect still points at the real page ([routes/web.php](../../routes/web.php)).
 
-**Navigation:** two independent entry points. The **avatar menu** ([UserMenu](../../resources/js/components/UserMenu.tsx)), directly above "Log out" and shared by [TopNav](../../resources/js/components/TopNav.tsx) and [MobileTopBar](../../resources/js/components/MobileTopBar.tsx), reaches Settings from every page on both mobile and desktop. The [MeTabs](../../resources/js/components/me/MeTabs.tsx) segmented nav, rendered atop Profile/Settings/Accessories alike, reaches it as a lateral tab once already on the Me destination. `route('settings')` → `/settings` (GET). Named route: `settings`.
+**Navigation:** one entry point. [UserAvatarLink](../../resources/js/components/UserAvatarLink.tsx), shared by [TopNav](../../resources/js/components/TopNav.tsx) and [MobileTopBar](../../resources/js/components/MobileTopBar.tsx), links the avatar straight to `/profile` from every page on both mobile and desktop — there is no dropdown any more. From there, the [MeTabs](../../resources/js/components/me/MeTabs.tsx) segmented nav, rendered atop Profile/Settings/Accessories alike, reaches Settings as a lateral tab. `route('settings')` → `/settings` (GET). Named route: `settings`.
 
 Server entry is [SettingsController](../../app/Http/Controllers/SettingsController.php) (`__invoke`), rendering [Settings/Index](../../resources/js/pages/Settings/Index.tsx). It resolves the same Telegram payload the profile page used to (`resolveTelegram()`), including a fresh signed deep-link token per render.
 
@@ -28,13 +29,13 @@ Server entry is [SettingsController](../../app/Http/Controllers/SettingsControll
 - **Running · HR zones** — a row linking to [[settings-hr-zones]] (`/settings/zones`).
 - **Your data** — the plain-language data-use statement, server-supplied from [DataUseStatement](../../app/Support/DataUseStatement.php) so the page and the public terms/privacy pages cannot word it differently. Why it says what it says: [[strava-data-compliance]].
 - **The fine print** — links out to the four public documents in [[legal-pages]].
-- **Account · Delete account** — see below.
+- **Account · Log out, Delete account** — logging out posts `/logout` directly from a row here (moved off the avatar link when it stopped opening a dropdown); delete account is covered below.
 
 Every line is one primitive. [SettingsRow](../../resources/js/components/ui/SettingsRow.tsx) takes an optional `control` slot that replaces its chevron, so toggle rows and navigation rows share a layout instead of each inventing padding and type; a row carrying a control is never itself tappable, since a row that both navigates and holds a switch gives two different outcomes for taps a few pixels apart. The switch itself is [Toggle](../../resources/js/components/ui/Toggle.tsx), promoted out of this page once more than one place needed it.
 
 The page opens with [PageHero](../../resources/js/components/ui/PageHero.tsx) like every other screen. It previously used a bare `<h1>`, which made it the one page that looked like it belonged to a different product.
 
-It carries **no back affordance at all** — not in the page and not in the top bar. Settings is one tap from the Me tab and from the avatar menu on every page, so a breadcrumb would be chrome without a job. `Settings/HrZones` is the exception and keeps one, since it is reachable only from here; see [[installed-app-shell]] for how the top bar decides.
+It carries **no back affordance at all** — not in the page and not in the top bar. Settings is a lateral MeTabs tab, one hop from Profile (itself one tap away via the avatar link), not a pushed screen, so a breadcrumb would be chrome without a job. `Settings/HrZones` is the exception and keeps one, since it is reachable only from here; see [[installed-app-shell]] for how the top bar decides.
 
 ## Account deletion
 

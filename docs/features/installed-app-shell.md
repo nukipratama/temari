@@ -82,9 +82,9 @@ identity, pushes show a way out. Which screens count is an explicit map in
   too, but are reached through in-page tab strips, so they are siblings of their
   root rather than a stack, and keep the brand mark.
 - `/settings` is deliberately absent from the map even though it is nested by
-  URL. It is one tap from the Me tab and from the avatar menu on every page, so
-  it behaves as a root. Only `/settings/zones`, reachable from nowhere else,
-  gets a back button.
+  URL. It's a lateral MeTabs tab reached from Profile (itself one tap away via
+  the avatar link), not a pushed screen, so it behaves as a root. Only
+  `/settings/zones`, reachable from nowhere else, gets a back button.
 
 Two details worth keeping:
 

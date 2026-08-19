@@ -13,6 +13,7 @@ code_refs:
   - resources/js/components/temari/Temari.tsx
   - resources/js/components/me/MeTabs.tsx
   - resources/js/components/me/SeasonStreakPanel.tsx
+  - resources/js/components/UserAvatarLink.tsx
   - app/Services/Run/Metrics/VdotEstimator.php
   - app/Actions/Run/Metrics/EstimateThresholdAction.php
   - app/Services/Run/Metrics/TrainingPaceCalculator.php
@@ -23,7 +24,7 @@ code_refs:
 
 The Profile page (`/profile`) is the runner's about-me: who they are, how Temari sees them, their lifetime totals, a 12-week mood persona, and their PR progression over time. Server entry is [ProfileController](app/Http/Controllers/ProfileController.php) (`__invoke`), rendering the [Profile](resources/js/pages/Profile.tsx) page.
 
-**Navigation:** `route('profile')` → `/profile`. Named route: `profile`. "Me" is the bottom-nav tab's label ([TopNav](resources/js/components/TopNav.tsx)), landing on Profile by default; Profile/Settings/Accessories are three separate routes/controllers switched by the shared [MeTabs](resources/js/components/me/MeTabs.tsx) segmented nav rendered atop all three pages, not a merged `/me?segment=` route. There is no `/aku` route, and `/profil` is a permanent redirect to `/profile`.
+**Navigation:** `route('profile')` → `/profile`. Named route: `profile`. There is no bottom-nav "Me" tab — [UserAvatarLink](resources/js/components/UserAvatarLink.tsx) links the avatar itself straight to Profile, on every page, on both [TopNav](resources/js/components/TopNav.tsx) and [MobileTopBar](resources/js/components/MobileTopBar.tsx). Profile/Settings/Accessories are three separate routes/controllers switched by the shared [MeTabs](resources/js/components/me/MeTabs.tsx) segmented nav rendered atop all three pages, not a merged `/me?segment=` route. There is no `/aku` route, and `/profil` is a permanent redirect to `/profile`.
 
 ## System dependencies
 
@@ -70,7 +71,7 @@ PRs and accessories are **not** rendered here — Profile shows no PR cards and 
 
 ## Settings
 
-Profile carries no settings section of its own; the Telegram notification panel and HR-zone entry live on the [[settings]] hub instead. Settings is reachable two ways: the [MeTabs](resources/js/components/me/MeTabs.tsx) segmented nav (a lateral tab, alongside Profile and Accessories) and the avatar menu ([UserMenu](../../resources/js/components/UserMenu.tsx)) next to "Log out", the latter kept so Settings stays one tap away from every page, not only from Me.
+Profile carries no settings section of its own; the Telegram notification panel and HR-zone entry live on the [[settings]] hub instead. Settings is reachable via the [MeTabs](resources/js/components/me/MeTabs.tsx) segmented nav (a lateral tab, alongside Profile and Accessories), once on Profile. Log out moved off the old avatar dropdown (which no longer exists) into a row at the bottom of Settings' Account section.
 
 ## Notes / gotchas
 

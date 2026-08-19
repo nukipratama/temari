@@ -6,7 +6,7 @@ import type { SharedProps } from '@/types/inertia';
 import BrandMark from '@/components/BrandMark';
 import NotificationBell from '@/components/NotificationBell';
 import StravaSyncBadge from '@/components/StravaSyncBadge';
-import UserMenu from '@/components/UserMenu';
+import UserAvatarLink from '@/components/UserAvatarLink';
 import { useScrolled } from '@/hooks/useScrolled';
 import { cn } from '@/lib/cn';
 
@@ -14,7 +14,7 @@ import { cn } from '@/lib/cn';
 // resolve to a tab too, but reach it via an in-page tab strip, so they keep the brand mark.
 const BACK_TARGETS: Record<string, { href: string; label: string }> = {
     'Runs/Show': { href: '/history', label: 'History' },
-    // Settings is one tap from Me/avatar menu everywhere, so it stays a root, not a push.
+    // Settings is reachable only via the avatar link or the Me tab strip, so it stays a root, not a push.
     'Settings/HrZones': { href: '/settings', label: 'Settings' },
 };
 
@@ -60,7 +60,7 @@ export default function MobileTopBar() {
                 {user && (
                     <>
                         <NotificationBell density="compact" />
-                        <UserMenu
+                        <UserAvatarLink
                             name={user.name}
                             avatarUrl={user.avatar_url}
                         />

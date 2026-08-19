@@ -123,6 +123,15 @@ describe('Settings', () => {
         ).toBeInTheDocument();
     });
 
+    it('posts to /logout when the Log out row is clicked', () => {
+        vi.mocked(router.post).mockReset();
+        render(<Settings />);
+
+        fireEvent.click(screen.getByText('Log out'));
+
+        expect(router.post).toHaveBeenCalledWith('/logout');
+    });
+
     it('tints the destructive row so it stops reading as routine', () => {
         render(<Settings />);
         expect(screen.getByText('Delete account')).toHaveClass(

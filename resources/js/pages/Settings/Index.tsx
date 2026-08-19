@@ -103,9 +103,9 @@ export default function Settings({
         <>
             <Head title="Settings" />
             <PageContainer>
-                {/* No back affordance: Settings is one tap from the Me tab
-                    and from the avatar menu on every page, so a breadcrumb here
-                    would be chrome without a job. */}
+                {/* No back affordance: Settings is reachable via MeTabs from
+                    Profile (itself one tap away via the avatar), so a
+                    breadcrumb here would be chrome without a job. */}
                 <header className="mb-8 flex flex-col gap-5">
                     <PageHero eyebrow="Settings">
                         Set up Temari,{' '}
@@ -186,6 +186,12 @@ export default function Settings({
                     <SectionLabel>Account</SectionLabel>
                     <div className="mt-3">
                         <Card padding="hero">
+                            <SettingsRow
+                                icon="mdi:logout"
+                                label="Log out"
+                                description="You can sign back in any time."
+                                onClick={() => router.post('/logout')}
+                            />
                             <DeleteAccountPanel />
                         </Card>
                     </div>

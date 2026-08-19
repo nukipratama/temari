@@ -6,12 +6,11 @@ import { setMockPage } from '@/test/setup';
 import MobileBottomNav from './MobileBottomNav';
 
 describe('MobileBottomNav', () => {
-    it('renders all four primary tabs with their labels', () => {
+    it('renders all three primary tabs with their labels', () => {
         render(<MobileBottomNav />);
         expect(screen.getByText('Today')).toBeInTheDocument();
         expect(screen.getByText('Trends')).toBeInTheDocument();
         expect(screen.getByText('History')).toBeInTheDocument();
-        expect(screen.getByText('Me')).toBeInTheDocument();
     });
 
     it('marks the tab matching the current url as active', () => {
@@ -38,10 +37,6 @@ describe('MobileBottomNav', () => {
             'href',
             '/history',
         );
-        expect(screen.getByText('Me').closest('a')).toHaveAttribute(
-            'href',
-            '/profile',
-        );
     });
 
     // ink-on-sky replaced text-cream/55, which sat at ~2.2:1 contrast against the bar.
@@ -51,7 +46,7 @@ describe('MobileBottomNav', () => {
         expect(screen.getByText('History').closest('a')).toHaveClass(
             'text-horizon',
         );
-        expect(screen.getByText('Me').closest('a')).toHaveClass(
+        expect(screen.getByText('Today').closest('a')).toHaveClass(
             'text-ink-on-sky',
         );
     });
@@ -79,7 +74,7 @@ describe('MobileBottomNav', () => {
         setMockPage({}, '/history');
         render(<MobileBottomNav />);
 
-        const link = screen.getByText('Me').closest('a')!;
+        const link = screen.getByText('Today').closest('a')!;
         const event = new MouseEvent('click', {
             bubbles: true,
             cancelable: true,
