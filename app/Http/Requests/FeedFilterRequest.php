@@ -98,4 +98,12 @@ class FeedFilterRequest extends FormRequest
 
         return is_string($raw) && array_key_exists($raw, FeedFilters::DISTANCE_BANDS) ? $raw : null;
     }
+
+    /** The selected rarity, or null for "any rarity". */
+    public function rarity(): ?string
+    {
+        $raw = $this->query('rarity');
+
+        return is_string($raw) && in_array($raw, FeedFilters::RARITIES, true) ? $raw : null;
+    }
 }

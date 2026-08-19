@@ -111,6 +111,7 @@ class HistoryController extends Controller
             'rangeFilter' => $filters->range,
             'moodFilter' => $filters->moods,
             'distanceFilter' => $filters->distanceBand,
+            'rarityFilter' => $filters->rarity,
             'sortMode' => $filters->sort,
             'weekFilter' => $filters->week?->toDateString(),
             'rangeStart' => $filters->rangeStart?->toDateString(),

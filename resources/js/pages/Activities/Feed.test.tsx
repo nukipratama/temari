@@ -42,7 +42,9 @@ describe('Activities/Feed', () => {
             screen.getByRole('dialog', { name: 'Filter the log' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByText(/narrow it down by mood, distance, or week/),
+            screen.getByText(
+                /narrow it down by mood, distance, rarity, or week/,
+            ),
         ).toBeInTheDocument();
     });
 

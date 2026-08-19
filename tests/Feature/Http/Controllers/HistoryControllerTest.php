@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\NotificationPreference;
+use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\TelegramConnection;
 use App\Models\User;
@@ -254,6 +256,33 @@ it('treats an unknown distance band as no filter', function (): void {
         ->assertInertia(fn (Assert $page) => $page
             ->has('runs', 3)
             ->where('distanceFilter', null));
+});
+
+it('filters runs by rarity through the earned run_card', function (): void {
+    $user = User::factory()->create();
+    $legendary = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($legendary)->create(['name' => 'Legendary run', 'start_date_local' => Carbon::now()->subDays(3)]);
+    RunCard::factory()->for($legendary)->create(['rarity' => Rarity::Legendary]);
+    $common = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($common)->create(['name' => 'Common run', 'start_date_local' => Carbon::now()->subDays(4)]);
+    RunCard::factory()->for($common)->create(['rarity' => Rarity::Common]);
+
+    $this->actingAs($user)->get('/history?rarity=legendary')
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('runs', 1)
+            ->where('rarityFilter', 'legendary'));
+});
+
+it('treats an unknown rarity as no filter', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()->subDays(3)]);
+
+    $this->actingAs($user)->get('/history?rarity=mythic')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('runs', 1)
+            ->where('rarityFilter', null));
 });
 
 it('combines distance, mood and range', function (): void {

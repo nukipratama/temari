@@ -168,8 +168,8 @@ describe('AppShell', () => {
 
         setMockPage(
             { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
-            '/cards',
-            'Collection/Cards',
+            '/accessories',
+            'Collection/Accessories',
         );
         rerender(
             <AppShell>
@@ -231,8 +231,8 @@ describe('AppShell', () => {
     it('shows the mobile top bar on every page', () => {
         setMockPage(
             { auth: { user: makeUser() } },
-            '/cards',
-            'Collection/Cards',
+            '/accessories',
+            'Collection/Accessories',
         );
         render(<AppShell>content</AppShell>);
         // Scoped by testid, not by tag: TopNav is also a <header> and stays in

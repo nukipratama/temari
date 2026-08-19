@@ -39,12 +39,6 @@ const HERO: Record<
 
 const ACTIONS = [
     {
-        icon: 'mdi:cards-outline',
-        title: 'Check out the legendary collection',
-        desc: 'See the cards you could unlock.',
-        href: '/cards',
-    },
-    {
         icon: 'mdi:tshirt-crew-outline',
         title: 'Dress up Temari',
         desc: 'Pick an accessory combo for your profile.',

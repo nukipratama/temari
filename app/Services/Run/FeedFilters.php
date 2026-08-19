@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run;
 
+use App\Enums\Rarity;
 use App\Services\Run\Story\Temari;
 use Illuminate\Support\Carbon;
 
@@ -65,6 +66,20 @@ final readonly class FeedFilters
     public const array SORTS = [self::SORT_NEWEST, self::SORT_LONGEST, self::SORT_FASTEST];
 
     /**
+     * Selectable rarities for the List filter, matching the earned Kartu's
+     * {@see \App\Enums\Rarity} — a run whose card hasn't been generated yet
+     * carries no rarity and matches no filter, same as an un-storylined run
+     * and the mood filter.
+     */
+    public const array RARITIES = [
+        Rarity::Common->value,
+        Rarity::Uncommon->value,
+        Rarity::Rare->value,
+        Rarity::Epic->value,
+        Rarity::Legendary->value,
+    ];
+
+    /**
      * @param  array<int, string>  $moods
      */
     public function __construct(
@@ -75,6 +90,7 @@ final readonly class FeedFilters
         public ?string $distanceBand,
         public string $sort,
         public ?Carbon $week,
+        public ?string $rarity,
     ) {
     }
 }

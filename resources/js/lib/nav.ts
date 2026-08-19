@@ -19,9 +19,9 @@ export const ITEMS: ReadonlyArray<NavItem> = [
     {
         id: 'collection',
         label: 'Collection',
-        href: '/cards',
+        href: '/accessories',
         icon: 'mdi:cards-outline',
-        prefixes: ['/cards', '/accessories'],
+        prefixes: ['/accessories'],
     },
     {
         id: 'trends',

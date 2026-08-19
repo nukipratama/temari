@@ -15,7 +15,7 @@ describe('MobileBottomNav', () => {
     });
 
     it('marks the tab matching the current url as active', () => {
-        setMockPage({}, '/cards');
+        setMockPage({}, '/accessories');
         render(<MobileBottomNav />);
         const link = screen.getByText('Collection').closest('a')!;
         expect(link).toHaveAttribute('aria-current', 'page');
@@ -42,7 +42,7 @@ describe('MobileBottomNav', () => {
 
     // ink-on-sky replaced text-cream/55, which sat at ~2.2:1 contrast against the bar.
     it('tints inactive tabs with the readable on-sky muted tone', () => {
-        setMockPage({}, '/cards');
+        setMockPage({}, '/accessories');
         render(<MobileBottomNav />);
         expect(screen.getByText('Collection').closest('a')).toHaveClass(
             'text-horizon',
@@ -55,7 +55,7 @@ describe('MobileBottomNav', () => {
     it('scrolls to top instead of navigating when the active tab is tapped', () => {
         const scrollTo = vi.fn();
         vi.stubGlobal('scrollTo', scrollTo);
-        setMockPage({}, '/cards');
+        setMockPage({}, '/accessories');
         render(<MobileBottomNav />);
 
         const link = screen.getByText('Collection').closest('a')!;
@@ -72,7 +72,7 @@ describe('MobileBottomNav', () => {
     it('leaves an inactive tab to navigate normally', () => {
         const scrollTo = vi.fn();
         vi.stubGlobal('scrollTo', scrollTo);
-        setMockPage({}, '/cards');
+        setMockPage({}, '/accessories');
         render(<MobileBottomNav />);
 
         const link = screen.getByText('Me').closest('a')!;
@@ -98,7 +98,7 @@ describe('MobileBottomNav', () => {
                 removeEventListener: vi.fn(),
             })),
         );
-        setMockPage({}, '/cards');
+        setMockPage({}, '/accessories');
         render(<MobileBottomNav />);
 
         screen

@@ -12,7 +12,6 @@ use App\Http\Controllers\Api\NotificationReadController;
 use App\Http\Controllers\Auth\DemoAuthController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
-use App\Http\Controllers\CardController;
 use App\Http\Controllers\ClientErrorController;
 use App\Http\Controllers\DevtoolsDesignController;
 use App\Http\Controllers\DevtoolsIndexController;
@@ -133,8 +132,6 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
         ->middleware('block-demo-telegram')
         ->name('recaps.monthly.send');
 
-    Route::get('/cards', [CardController::class, 'index'])->name('cards.index');
-
     // Catatan merged into Activities — keep deep links working.
     Route::permanentRedirect('/catatan', '/activities');
 
@@ -187,7 +184,6 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::permanentRedirect('/runs', '/activities');
     Route::redirect('/runs/{activity}', '/activities/{activity}', 301);
     Route::permanentRedirect('/progress', '/activities');
-    Route::permanentRedirect('/kartu', '/cards');
     Route::permanentRedirect('/pengaturan', '/settings');
     Route::permanentRedirect('/profil', '/profile');
     Route::permanentRedirect('/kalender', '/calendar');

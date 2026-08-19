@@ -47,6 +47,7 @@ class FeedQuery
             distanceBand: $request->distanceBand(),
             sort: $request->sort(),
             week: $week,
+            rarity: $request->rarity(),
         );
     }
 
@@ -92,6 +93,13 @@ class FeedQuery
                 ->where('user_id', $user->id)
                 ->where('kind', StoryLine::KIND_POST_RUN)
                 ->whereIn('mood', $filters->moods));
+        }
+
+        // Rarity lives on the earned RunCard, generated once a run's detail is
+        // hydrated. A run still in the summary-only ingest state has no card yet
+        // and is therefore not a match for any rarity, same as mood above.
+        if ($filters->rarity !== null) {
+            $query->whereHas('runCard', fn ($q) => $q->where('rarity', $filters->rarity));
         }
 
         $this->applySort($query, $filters->sort);

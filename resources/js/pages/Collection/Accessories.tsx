@@ -5,7 +5,6 @@ import { useRef, useState } from 'react';
 
 import type { EquippedSlot, Rarity } from '@/types/inertia';
 
-import CollectionHeader from '@/components/collection/CollectionHeader';
 import CoachMark from '@/components/onboarding/CoachMark';
 import TemariProto, {
     type TemariEquipped,
@@ -15,6 +14,7 @@ import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
 import PageContainer from '@/components/ui/PageContainer';
+import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
 import ProgressBar from '@/components/ui/ProgressBar';
 import SectionLabel from '@/components/ui/SectionLabel';
@@ -91,8 +91,6 @@ export default function Accessories({
     const unlockedCount = items.filter((i) => i.unlocked).length;
     const eyebrow = `Collection · ${unlockedCount} / ${items.length} accessories`;
 
-    const accessoryCount = `${unlockedCount} / ${items.length}`;
-
     const previewEquipped: TemariEquipped = {
         headband: equipped.headband ? mapHeadband(equipped.headband) : null,
         medal: mapMedal(equipped.medal),
@@ -121,13 +119,13 @@ export default function Accessories({
         <>
             <Head title="Collection · Accessories" />
             <PageContainer>
-                <CollectionHeader
-                    active="accessories"
-                    eyebrow={eyebrow}
-                    headline1="Dress up Temari"
-                    headline2="with what you've unlocked."
-                    activeCount={accessoryCount}
-                />
+                <PageHero eyebrow={eyebrow}>
+                    Dress up Temari,
+                    <br />
+                    <em className="italic text-horizon-ink">
+                        with what you&apos;ve unlocked.
+                    </em>
+                </PageHero>
 
                 <HeroPanel className="mt-8 lg:px-14 lg:py-12">
                     <div
