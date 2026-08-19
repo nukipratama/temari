@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Enums\Rarity;
 use App\Http\Requests\FeedFilterRequest;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\Run\FeedFilters;
@@ -130,6 +132,25 @@ it('leaves an open-ended top band', function (): void {
     feedRun($user, 'Ultra', Carbon::now()->subDays(3), 80000.0);
 
     expect(feedRunNames($user, 'dist=21up'))->toBe(['Ultra']);
+});
+
+it('filters by rarity through the earned run_card', function (): void {
+    $user = User::factory()->create();
+    $legendary = feedRun($user, 'Legendary run', Carbon::now()->subDays(3));
+    RunCard::factory()->for($legendary)->create(['rarity' => Rarity::Legendary]);
+    $common = feedRun($user, 'Common run', Carbon::now()->subDays(4));
+    RunCard::factory()->for($common)->create(['rarity' => Rarity::Common]);
+    feedRun($user, 'No card yet', Carbon::now()->subDays(5));
+
+    expect(feedRunNames($user, 'rarity=legendary'))->toBe(['Legendary run'])
+        ->and(feedRunNames($user, 'rarity=common'))->toBe(['Common run']);
+});
+
+it('excludes a cardless (summary-only) run from every rarity filter', function (): void {
+    $user = User::factory()->create();
+    feedRun($user, 'Not carded yet', Carbon::now()->subDays(3));
+
+    expect(feedRunNames($user, 'rarity=common'))->toBe([]);
 });
 
 it('orders newest first by default', function (): void {

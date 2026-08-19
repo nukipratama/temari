@@ -31,8 +31,7 @@ describe('nav', () => {
         expect(activeTabFromUrl('/race')).toBe('plan');
     });
 
-    it('resolves the Collection sub-pages', () => {
-        expect(activeTabFromUrl('/cards')).toBe('collection');
+    it('resolves the Collection sub-page', () => {
         expect(activeTabFromUrl('/accessories')).toBe('collection');
     });
 
@@ -51,6 +50,6 @@ describe('nav', () => {
     });
 
     it('does not treat every path as Today just because "/" is a prefix', () => {
-        expect(activeTabFromUrl('/cards')).not.toBe('today');
+        expect(activeTabFromUrl('/accessories')).not.toBe('today');
     });
 });

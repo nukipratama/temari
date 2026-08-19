@@ -52,3 +52,9 @@ it('keeps a known distance band and drops anything else', function (): void {
         ->and(feedRequest('dist=42up')->distanceBand())->toBeNull()
         ->and(feedRequest()->distanceBand())->toBeNull();
 });
+
+it('keeps a known rarity and drops anything else', function (): void {
+    expect(feedRequest('rarity=legendary')->rarity())->toBe('legendary')
+        ->and(feedRequest('rarity=mythic')->rarity())->toBeNull()
+        ->and(feedRequest()->rarity())->toBeNull();
+});

@@ -54,8 +54,7 @@
     "leaf": 0.18,
     "mood-blazing": 0.15,
     "mood-easy": 0.15,
-    "mood-gassed": 0.15,
-    "rarity-legendary": 0.06
+    "mood-gassed": 0.15
   },
   "keyword": [
     "current",
@@ -502,16 +501,6 @@
     },
     "rarity-epic/0.3": {
       "text": []
-    },
-    "rarity-legendary/0.06": {
-      "over": {
-        "resources/js/pages/Collection/Cards.tsx": [
-          "paper"
-        ]
-      },
-      "text": [
-        "rarity-legendary-ink"
-      ]
     },
     "rarity-legendary/0.35": {
       "text": []

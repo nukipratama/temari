@@ -3,20 +3,19 @@ title: Accessories
 description: The accessories page — equip/unequip with a live Temari preview, live unlock progress toward what's still locked.
 tags: [feature, collection]
 status: living
-reviewed: 2026-08-18
+reviewed: 2026-08-19
 code_refs:
   - resources/js/pages/Collection/Accessories.tsx
   - app/Http/Controllers/AccessoryController.php
   - resources/js/components/temari/TemariProto.tsx
   - resources/js/components/celebrations/AccessoryUnlockModal.tsx
-  - resources/js/components/collection/CollectionTabs.tsx
 ---
 
 # Accessories
 
 **Accessories** (`/accessories`) is the wardrobe of what's been earned and can be put on Temari, showing live progress toward what's still locked. Accessories are organized by six equipment **slots**: medal, headband, shirt, shorts, shoes, aura.
 
-The badge board that used to sit alongside this page as a second Collection sub-tab (`/badges`) retired once its content moved onto `/trends` as badge milestones on the Fitness/Fatigue timeline — see [[gamification]].
+The badge board that used to sit alongside this page as a second Collection sub-tab (`/badges`) retired once its content moved onto `/trends` as badge milestones on the Fitness/Fatigue timeline — see [[gamification]]. `/cards` retired the same way once every earned card became browsable inline on [[run-history]] instead, so Accessories is now the sole Collection page and renders with no tab-switcher chrome above it (the bottom-nav "Collection" tab links straight here) — see [[cards-collection]].
 
 **Navigation:** `route('accessories')` → `/accessories` (`AccessoryController::index`). The old `/goals` accessory-progress page (Slice 5 through Slice 6) and its `/target` legacy redirect both retired in Slice 7 — both now redirect straight to `/accessories`, where the progress numbers moved.
 

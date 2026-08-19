@@ -124,7 +124,7 @@ describe('CardReveal', () => {
         ).toBeInTheDocument();
     });
 
-    it('"View collection" marks seen and navigates to /cards after the reveal', async () => {
+    it('"View collection" marks seen and navigates to /history after the reveal', async () => {
         const u = userEvent.setup();
         render(<CardReveal pending={commonReveal} />);
         // Tear the pack, then wait for the staggered action buttons to appear.
@@ -135,7 +135,7 @@ describe('CardReveal', () => {
             '/api/cards/7/seen',
             expect.objectContaining({ method: 'POST' }),
         );
-        expect(visit).toHaveBeenCalledWith('/cards', expect.anything());
+        expect(visit).toHaveBeenCalledWith('/history', expect.anything());
     });
 
     it('"Close" marks seen and reloads the pendingReveal prop', async () => {

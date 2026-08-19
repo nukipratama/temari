@@ -23,7 +23,6 @@ it('renders every authenticated page for a fresh user', function (string $route,
     'dashboard' => ['dashboard', 'Home'],
     'history list' => ['history', 'History'],
     'history calendar' => ['history', 'History', ['view' => 'calendar']],
-    'cards' => ['cards.index', 'Collection/Cards'],
     'trends' => ['trends', 'Trends'],
     'accessories' => ['accessories', 'Collection/Accessories'],
     'profile' => ['profile', 'Profile'],
@@ -31,3 +30,10 @@ it('renders every authenticated page for a fresh user', function (string $route,
     'race' => ['race', 'Race'],
     'plan' => ['plan', 'Plan'],
 ]);
+
+it('retired /cards and its /kartu alias outright, replaced by History\'s inline Kartu-per-row', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/cards')->assertNotFound();
+    $this->actingAs($user)->get('/kartu')->assertNotFound();
+});

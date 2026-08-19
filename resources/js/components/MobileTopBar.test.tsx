@@ -28,7 +28,7 @@ describe('MobileTopBar', () => {
 
     it.each([
         'Today',
-        'Collection/Cards',
+        'Collection/Accessories',
         'History',
         'Profile',
         'Trends',

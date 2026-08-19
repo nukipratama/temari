@@ -5,6 +5,7 @@ import { useRef } from 'react';
 
 import type {
     Mood,
+    Rarity,
     SharedProps,
     StravaSyncState,
     WeeklySnapshotWithRecap,
@@ -58,6 +59,8 @@ interface RunsIndexProps {
     moodFilter?: ReadonlyArray<Mood>;
     /** Distance band the server filtered on, or null for any distance. */
     distanceFilter?: DistanceBand | null;
+    /** Rarity the server filtered on, or null for any rarity. */
+    rarityFilter?: Rarity | null;
     /** Ordering the server applied. Anything but 'newest' renders a flat list. */
     sortMode?: SortMode;
     /** Week deep link (that week's Sunday, YYYY-MM-DD), or null. */
@@ -80,6 +83,7 @@ export default function RunsIndex({
     rangeFilter,
     moodFilter = [],
     distanceFilter = null,
+    rarityFilter = null,
     sortMode = DEFAULT_SORT,
     weekFilter = null,
     rangeAutoWidened = false,
@@ -104,6 +108,7 @@ export default function RunsIndex({
         rangeFilter,
         moodFilter,
         distanceFilter,
+        rarityFilter,
         sortMode,
         weekFilter,
     });
@@ -115,6 +120,7 @@ export default function RunsIndex({
         sortMode,
         moodFilter.join(','),
         distanceFilter ?? '',
+        rarityFilter ?? '',
         weekFilter ?? '',
     ].join('|');
 
@@ -149,7 +155,7 @@ export default function RunsIndex({
                             anchorRef={filterRef}
                             placement="bottom"
                             title="Filter the log"
-                            body="When the list gets long, narrow it down by mood, distance, or week."
+                            body="When the list gets long, narrow it down by mood, distance, rarity, or week."
                         />
                     </div>
                     <ActiveFilterChips

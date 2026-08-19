@@ -61,15 +61,31 @@ interface SortSection<S extends string> {
     onSelect: (sort: S) => void;
 }
 
+export interface RarityOption<R extends string> {
+    value: R;
+    label: string;
+    hint?: string;
+}
+
+interface RaritySection<R extends string> {
+    /** Active rarity, or null for any rarity. */
+    value: R | null;
+    options: ReadonlyArray<RarityOption<R>>;
+    /** Selecting the active rarity again clears it. */
+    onSelect: (rarity: R) => void;
+}
+
 interface HistoryFilterProps<
     V extends string,
     B extends string = string,
     S extends string = string,
+    R extends string = string,
 > {
     range?: RangeSection<V>;
     mood?: MoodSection;
     distance?: DistanceSection<B>;
     sort?: SortSection<S>;
+    rarity?: RaritySection<R>;
     /** When the user hits Reset — clears every filter set this component owns. */
     onReset?: () => void;
     className?: string;
@@ -98,14 +114,16 @@ export default function HistoryFilter<
     V extends string,
     B extends string = string,
     S extends string = string,
+    R extends string = string,
 >({
     range,
     mood,
     distance,
     sort,
+    rarity,
     onReset,
     className,
-}: Readonly<HistoryFilterProps<V, B, S>>) {
+}: Readonly<HistoryFilterProps<V, B, S, R>>) {
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const close = useCallback(() => setOpen(false), []);
@@ -126,13 +144,15 @@ export default function HistoryFilter<
             ? 1
             : 0;
     const distanceActive = distance?.value != null ? 1 : 0;
+    const rarityActive = rarity?.value != null ? 1 : 0;
     // Like range, the first sort option is the implicit default and isn't counted.
     const sortActive =
         sort && sort.options.length > 0 && sort.value !== sort.options[0].value
             ? 1
             : 0;
-    const totalActive = moodActive + rangeActive + distanceActive + sortActive;
-    const summary = buildSummary(range, moodActive, distance, sort);
+    const totalActive =
+        moodActive + rangeActive + distanceActive + rarityActive + sortActive;
+    const summary = buildSummary(range, moodActive, distance, sort, rarity);
 
     return (
         <div ref={containerRef} className={cn('relative', className)}>
@@ -248,6 +268,12 @@ export default function HistoryFilter<
                         <OptionListSectionView
                             title="Distance"
                             section={distance}
+                        />
+                    )}
+                    {rarity && (
+                        <OptionListSectionView
+                            title="Rarity"
+                            section={rarity}
                         />
                     )}
                     {mood && <MoodSectionView section={mood} />}
@@ -385,11 +411,17 @@ function OptionListSectionView<T extends string>({
     );
 }
 
-function buildSummary<V extends string, B extends string, S extends string>(
+function buildSummary<
+    V extends string,
+    B extends string,
+    S extends string,
+    R extends string,
+>(
     range: RangeSection<V> | undefined,
     moodActive: number,
     distance: DistanceSection<B> | undefined,
     sort: SortSection<S> | undefined,
+    rarity: RaritySection<R> | undefined,
 ): string {
     const parts: string[] = [];
     if (
@@ -407,6 +439,10 @@ function buildSummary<V extends string, B extends string, S extends string>(
     if (distance?.value != null) {
         const band = distance.options.find((o) => o.value === distance.value);
         if (band) parts.push(band.hint ?? band.label);
+    }
+    if (rarity?.value != null) {
+        const tier = rarity.options.find((o) => o.value === rarity.value);
+        if (tier) parts.push(tier.hint ?? tier.label);
     }
     if (moodActive > 0) {
         parts.push(`${moodActive} mood`);

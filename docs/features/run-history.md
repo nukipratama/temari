@@ -100,15 +100,18 @@ activities.
 ### Filters
 
 [HistoryFilter](../../resources/js/components/history/HistoryFilter.tsx) drives
-four controls (urutan, rentang waktu, jarak, mood), and all of them go to the
-server: every filter is a partial Inertia reload (`only:` a fixed prop list)
-that re-queries. The **mood** toggles narrow the query through the post-run
-`StoryLine` (`FeedQuery::for`), so unmatched runs are *removed* from the list,
-not dimmed. A run with no story line yet carries no mood and matches no mood
-filter. Range, distance band and sort resolve the same way; unknown values widen
-rather than error. The `?week=` deep link from the weekly-recap notification is
-a fifth axis with no popover control: it pins its own window and surfaces as a
-removable chip.
+five controls (urutan, rentang waktu, jarak, rarity, mood), and all of them go
+to the server: every filter is a partial Inertia reload (`only:` a fixed prop
+list) that re-queries. The **mood** toggles narrow the query through the
+post-run `StoryLine` (`FeedQuery::for`), so unmatched runs are *removed* from
+the list, not dimmed. A run with no story line yet carries no mood and matches
+no mood filter. **Rarity** narrows through the run's earned `RunCard` the same
+way (`whereHas('runCard', ...)` in `FeedQuery::for`) — a run whose card hasn't
+been generated yet (still summary-only, see [[run-ingest-pipeline]]) matches no
+rarity filter, the same "not yet, not never" semantics as mood. Range, distance
+band and sort resolve the same way; unknown values widen rather than error. The
+`?week=` deep link from the weekly-recap notification is a sixth axis with no
+popover control: it pins its own window and surfaces as a removable chip.
 
 ## Calendar — the month grid
 
