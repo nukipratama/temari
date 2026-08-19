@@ -5,7 +5,6 @@ import { memo, useRef, type ReactNode } from 'react';
 
 import type { AnalysisPayload, Mood } from '@/types/inertia';
 
-import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
 import HistoryFilter from '@/components/history/HistoryFilter';
 import HistoryTabs from '@/components/history/HistoryTabs';
 import CoachMark from '@/components/onboarding/CoachMark';
@@ -106,7 +105,6 @@ export default function Calendar({
             <Head title={`History · Calendar · ${monthLabel}`} />
             <PageContainer>
                 <header className="mb-8 min-w-0">
-                    <TodayHistoryTabs active="history" className="mb-5" />
                     <PageHero eyebrow={<LifetimeEyebrow lifetime={lifetime} />}>
                         Every run,
                         <br />

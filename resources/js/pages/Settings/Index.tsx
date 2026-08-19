@@ -3,6 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
+import MeTabs from '@/components/me/MeTabs';
 import PushNotificationToggle from '@/components/PushNotificationToggle';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import Card from '@/components/ui/Card';
@@ -105,11 +106,12 @@ export default function Settings({
                 {/* No back affordance: Settings is one tap from the Me tab
                     and from the avatar menu on every page, so a breadcrumb here
                     would be chrome without a job. */}
-                <header className="mb-8">
+                <header className="mb-8 flex flex-col gap-5">
                     <PageHero eyebrow="Settings">
                         Set up Temari,{' '}
                         <em className="italic text-horizon-ink">your way.</em>
                     </PageHero>
+                    <MeTabs active="settings" />
                 </header>
 
                 {/* One notification section, not three. The user holds a single

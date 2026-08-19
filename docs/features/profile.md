@@ -3,7 +3,7 @@ title: Profile
 description: The runner's identity page — Temari's profile voice, lifetime stats, 12-week persona mix, PR progression charts, Strava status
 tags: [feature, profile]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-08-19
 code_refs:
   - resources/js/pages/Profile.tsx
   - app/Http/Controllers/ProfileController.php
@@ -11,6 +11,7 @@ code_refs:
   - resources/js/components/temari/AnalysisStatus.tsx
   - resources/js/components/collection/ProgressionChart.tsx
   - resources/js/components/temari/Temari.tsx
+  - resources/js/components/me/MeTabs.tsx
   - app/Services/Run/Metrics/VdotEstimator.php
   - app/Actions/Run/Metrics/EstimateThresholdAction.php
   - app/Services/Run/Metrics/TrainingPaceCalculator.php
@@ -20,7 +21,7 @@ code_refs:
 
 The Profile page (`/profile`) is the runner's about-me: who they are, how Temari sees them, their lifetime totals, a 12-week mood persona, and their PR progression over time. Server entry is [ProfileController](app/Http/Controllers/ProfileController.php) (`__invoke`), rendering the [Profile](resources/js/pages/Profile.tsx) page.
 
-**Navigation:** `route('profile')` → `/profile`. Named route: `profile`. "Me" is the nav *label* only ([TopNav](resources/js/components/TopNav.tsx)); there is no `/aku` route, and `/profil` is a permanent redirect to `/profile`.
+**Navigation:** `route('profile')` → `/profile`. Named route: `profile`. "Me" is the bottom-nav tab's label ([TopNav](resources/js/components/TopNav.tsx)), landing on Profile by default; Profile/Settings/Accessories are three separate routes/controllers switched by the shared [MeTabs](resources/js/components/me/MeTabs.tsx) segmented nav rendered atop all three pages, not a merged `/me?segment=` route. There is no `/aku` route, and `/profil` is a permanent redirect to `/profile`.
 
 ## System dependencies
 
@@ -57,11 +58,11 @@ When `progressionByCategory` is non-empty, a tabbed section (5K / 10K / HM / FM)
 
 ## Not on this page
 
-PRs and accessories are **not** rendered here — Profile shows no PR cards and no accessory strip. The full PR list lives at `/records` ([[records]]) and the unlock catalog at `/accessories` ([[targets-accessories]]).
+PRs and accessories are **not** rendered here — Profile shows no PR cards and no accessory strip. The full PR list is the Personal Bests panel on `/trends` ([[records]]) and the unlock catalog is a tap away on the Accessories segment ([[targets-accessories]]).
 
 ## Settings
 
-Profile no longer carries a settings entry point. The Telegram notification panel and the HR zones entry once lived inline here, then behind a single row at the bottom of the page; both now live on the [[settings]] hub, reached from the avatar menu ([UserMenu](../../resources/js/components/UserMenu.tsx)) next to "Log out". Settings is an account action, not a profile section — putting it beside logout makes it reachable from every page instead of only this one.
+Profile carries no settings section of its own; the Telegram notification panel and HR-zone entry live on the [[settings]] hub instead. Settings is reachable two ways: the [MeTabs](resources/js/components/me/MeTabs.tsx) segmented nav (a lateral tab, alongside Profile and Accessories) and the avatar menu ([UserMenu](../../resources/js/components/UserMenu.tsx)) next to "Log out", the latter kept so Settings stays one tap away from every page, not only from Me.
 
 ## Notes / gotchas
 

@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 
 import type { EquippedSlot, Rarity } from '@/types/inertia';
 
+import MeTabs from '@/components/me/MeTabs';
 import CoachMark from '@/components/onboarding/CoachMark';
 import TemariProto, {
     type TemariEquipped,
@@ -119,13 +120,16 @@ export default function Accessories({
         <>
             <Head title="Collection · Accessories" />
             <PageContainer>
-                <PageHero eyebrow={eyebrow}>
-                    Dress up Temari,
-                    <br />
-                    <em className="italic text-horizon-ink">
-                        with what you&apos;ve unlocked.
-                    </em>
-                </PageHero>
+                <header className="flex flex-col gap-5">
+                    <PageHero eyebrow={eyebrow}>
+                        Dress up Temari,
+                        <br />
+                        <em className="italic text-horizon-ink">
+                            with what you&apos;ve unlocked.
+                        </em>
+                    </PageHero>
+                    <MeTabs active="accessories" />
+                </header>
 
                 <HeroPanel className="mt-8 lg:px-14 lg:py-12">
                     <div

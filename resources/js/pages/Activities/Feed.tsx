@@ -14,7 +14,6 @@ import type {
 import JourneyStrip, {
     type JourneyMatchData,
 } from '@/components/activities/JourneyStrip';
-import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
 import ActiveFilterChips from '@/components/history/ActiveFilterChips';
 import HistoryFilter from '@/components/history/HistoryFilter';
 import HistoryTabs from '@/components/history/HistoryTabs';
@@ -129,7 +128,6 @@ export default function RunsIndex({
             <Head title="History · Log" />
             <PageContainer>
                 <header className="flex flex-col gap-5">
-                    <TodayHistoryTabs active="history" />
                     <PageHero
                         eyebrow={
                             anyFilterActive

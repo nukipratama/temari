@@ -45,6 +45,21 @@ describe('Profile', () => {
         expect(screen.getByText('Runner,')).toBeInTheDocument();
     });
 
+    it('renders the Me segmented nav with Profile active', () => {
+        render(<Profile identity={identity} stats={stats} />);
+        expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+        expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
+            'href',
+            '/settings',
+        );
+        expect(
+            screen.getByRole('link', { name: 'Accessories' }),
+        ).toHaveAttribute('href', '/accessories');
+    });
+
     it('renders the three stat tiles', () => {
         render(<Profile identity={identity} stats={stats} />);
         expect(screen.getByText('Total km')).toBeInTheDocument();

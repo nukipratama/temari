@@ -22,22 +22,13 @@ describe('TopNav', () => {
     it('renders the 4 primary tabs', () => {
         render(<TopNav />);
         expect(screen.getByText('Today')).toBeInTheDocument();
-        expect(screen.getByText('Collection')).toBeInTheDocument();
-        expect(screen.getByText('Plan')).toBeInTheDocument();
+        expect(screen.getByText('Trends')).toBeInTheDocument();
+        expect(screen.getByText('History')).toBeInTheDocument();
         expect(screen.getByText('Me')).toBeInTheDocument();
     });
 
-    it('highlights Plan for the /plan page', () => {
+    it('highlights Today for the /plan page, a drill-in', () => {
         setMockPage(user(), '/plan');
-        render(<TopNav />);
-        expect(screen.getByText('Plan')).toHaveAttribute(
-            'aria-current',
-            'page',
-        );
-    });
-
-    it('highlights Today for the /history page', () => {
-        setMockPage(user(), '/history');
         render(<TopNav />);
         expect(screen.getByText('Today')).toHaveAttribute(
             'aria-current',
@@ -45,10 +36,19 @@ describe('TopNav', () => {
         );
     });
 
-    it('highlights Plan for the /race page', () => {
+    it('highlights History for the /history page', () => {
+        setMockPage(user(), '/history');
+        render(<TopNav />);
+        expect(screen.getByText('History')).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+    });
+
+    it('highlights Today for the /race page, a drill-in', () => {
         setMockPage(user(), '/race');
         render(<TopNav />);
-        expect(screen.getByText('Plan')).toHaveAttribute(
+        expect(screen.getByText('Today')).toHaveAttribute(
             'aria-current',
             'page',
         );
@@ -57,7 +57,7 @@ describe('TopNav', () => {
 
     it('gives tab links and the brand link a keyboard focus ring', () => {
         render(<TopNav />);
-        const tab = screen.getByText('Plan').closest('a');
+        const tab = screen.getByText('History').closest('a');
         expect(tab?.className).toMatch(/focus-ring/);
         const brand = screen.getByLabelText('Home');
         expect(brand.className).toMatch(/focus-ring/);
@@ -108,13 +108,10 @@ describe('TopNav', () => {
         expect(screen.queryByLabelText(/Open menu/)).not.toBeInTheDocument();
     });
 
-    it('highlights Collection for the /accessories page', () => {
+    it('highlights Me for the /accessories page', () => {
         setMockPage(user(), '/accessories');
         render(<TopNav />);
-        expect(screen.getByText('Collection')).toHaveAttribute(
-            'aria-current',
-            'page',
-        );
+        expect(screen.getByText('Me')).toHaveAttribute('aria-current', 'page');
     });
 
     it('highlights Me for the nested /settings settings pages', () => {

@@ -3,12 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { activeTabFromUrl, ITEMS } from './nav';
 
 describe('nav', () => {
-    it('has 5 top-level items', () => {
+    it('has 4 top-level items', () => {
         expect(ITEMS.map((item) => item.id)).toEqual([
             'today',
-            'collection',
             'trends',
-            'plan',
+            'history',
             'me',
         ]);
     });
@@ -21,28 +20,24 @@ describe('nav', () => {
         expect(activeTabFromUrl('/')).toBe('today');
     });
 
-    it('folds History under Today', () => {
-        expect(activeTabFromUrl('/history')).toBe('today');
-        expect(activeTabFromUrl('/activities/123')).toBe('today');
+    it('resolves History to its own tab', () => {
+        expect(activeTabFromUrl('/history')).toBe('history');
+        expect(activeTabFromUrl('/activities/123')).toBe('history');
     });
 
-    it('folds Race under Plan', () => {
-        expect(activeTabFromUrl('/plan')).toBe('plan');
-        expect(activeTabFromUrl('/race')).toBe('plan');
+    it('folds Plan and Race under Today, as drill-ins', () => {
+        expect(activeTabFromUrl('/plan')).toBe('today');
+        expect(activeTabFromUrl('/race')).toBe('today');
     });
 
-    it('resolves the Collection sub-page', () => {
-        expect(activeTabFromUrl('/accessories')).toBe('collection');
-    });
-
-    it('no longer folds Race under Me', () => {
+    it('resolves Settings and Accessories under Me', () => {
         expect(activeTabFromUrl('/profile')).toBe('me');
         expect(activeTabFromUrl('/settings')).toBe('me');
-        expect(activeTabFromUrl('/race')).not.toBe('me');
+        expect(activeTabFromUrl('/accessories')).toBe('me');
     });
 
     it('ignores a query string when matching', () => {
-        expect(activeTabFromUrl('/plan?tab=race')).toBe('plan');
+        expect(activeTabFromUrl('/plan?tab=race')).toBe('today');
     });
 
     it('returns null for a path that matches no prefix', () => {

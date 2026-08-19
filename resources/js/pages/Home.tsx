@@ -16,7 +16,6 @@ import KpiTile from '@/components/dashboard/KpiTile';
 import LastRunCard, {
     type LastRunNote,
 } from '@/components/dashboard/LastRunCard';
-import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
 import TrainingLoadCard from '@/components/dashboard/TrainingLoadCard';
 import VitalChips from '@/components/dashboard/VitalChips';
 import EvidenceList from '@/components/home/EvidenceList';
@@ -91,8 +90,6 @@ export default function Home({
         <>
             <Head title="Home" />
             <PageContainer>
-                <TodayHistoryTabs active="today" className="mb-5" />
-
                 {!hasRuns ? (
                     <EmptyRunsState />
                 ) : (

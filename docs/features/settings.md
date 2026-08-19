@@ -1,13 +1,14 @@
 ---
 title: Settings
-description: The settings hub at /settings — notification types and channels, the HR-zone entry, and account deletion — reached from the avatar menu.
+description: The settings hub at /settings — notification types and channels, the HR-zone entry, and account deletion — reached from the avatar menu or the Me segmented nav.
 tags: [feature, settings]
 status: living
-reviewed: 2026-07-13
+reviewed: 2026-08-19
 code_refs:
   - app/Http/Controllers/SettingsController.php
   - app/Http/Controllers/AccountController.php
   - resources/js/pages/Settings/Index.tsx
+  - resources/js/components/me/MeTabs.tsx
   - routes/web.php
 ---
 
@@ -15,7 +16,7 @@ code_refs:
 
 `/settings` is the one home for user settings. They were once scattered on Profile (`/profile`), then reached via a single row at the bottom of that page; the legacy `/pengaturan` redirect still points at the real page ([routes/web.php](../../routes/web.php)).
 
-**Navigation:** the entry point is the **avatar menu** ([UserMenu](../../resources/js/components/UserMenu.tsx)), directly above "Log out". Because that menu is shared by [TopNav](../../resources/js/components/TopNav.tsx) and [MobileTopBar](../../resources/js/components/MobileTopBar.tsx), settings is one tap from every page on both mobile and desktop — rather than requiring a detour through Profile. `route('settings')` → `/settings` (GET). Named route: `settings`.
+**Navigation:** two independent entry points. The **avatar menu** ([UserMenu](../../resources/js/components/UserMenu.tsx)), directly above "Log out" and shared by [TopNav](../../resources/js/components/TopNav.tsx) and [MobileTopBar](../../resources/js/components/MobileTopBar.tsx), reaches Settings from every page on both mobile and desktop. The [MeTabs](../../resources/js/components/me/MeTabs.tsx) segmented nav, rendered atop Profile/Settings/Accessories alike, reaches it as a lateral tab once already on the Me destination. `route('settings')` → `/settings` (GET). Named route: `settings`.
 
 Server entry is [SettingsController](../../app/Http/Controllers/SettingsController.php) (`__invoke`), rendering [Settings/Index](../../resources/js/pages/Settings/Index.tsx). It resolves the same Telegram payload the profile page used to (`resolveTelegram()`), including a fresh signed deep-link token per render.
 
