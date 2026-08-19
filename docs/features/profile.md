@@ -12,9 +12,11 @@ code_refs:
   - resources/js/components/collection/ProgressionChart.tsx
   - resources/js/components/temari/Temari.tsx
   - resources/js/components/me/MeTabs.tsx
+  - resources/js/components/me/SeasonStreakPanel.tsx
   - app/Services/Run/Metrics/VdotEstimator.php
   - app/Actions/Run/Metrics/EstimateThresholdAction.php
   - app/Services/Run/Metrics/TrainingPaceCalculator.php
+  - app/Services/Gamification/SeasonStreakSummaryBuilder.php
 ---
 
 # Profile
@@ -26,7 +28,7 @@ The Profile page (`/profile`) is the runner's about-me: who they are, how Temari
 ## System dependencies
 
 - **AI narration** — `profileVoice` (`AkuProfileVoice`) is an `Analysis` row from the [[ai-pipeline]]. It is the page's only narrated block.
-- **Gamification** — the `PersonalRecord` rows behind the progression charts come from [[gamification]].
+- **Gamification** — the `PersonalRecord` rows behind the progression charts, and the `Season`/`SeasonGoal`/streak data behind the Season & streak panel, come from [[gamification]].
 - **Settings** — the Telegram toggles, HR-zone entry, and account deletion moved to the [[settings]] hub; Profile links to it.
 - **Data model** — `PersonalRecord` shape in [[data-model]].
 
@@ -55,6 +57,12 @@ The "Persona" section renders [PersonaBar](resources/js/components/PersonaBar.ts
 ## Journey (progression)
 
 When `progressionByCategory` is non-empty, a tabbed section (5K / 10K / HM / FM) renders [ProgressionChart](resources/js/components/collection/ProgressionChart.tsx) alongside a "Then …, now …" best/worst readout and a goal chip. The series are built server-side by `ProfileController::buildProgressionByCategory` via `ProgressionSeriesBuilder`, over the four `PROGRESSION_CATEGORIES`.
+
+## Season & streak
+
+Below the "Got a race coming up?" link card, [SeasonStreakPanel](resources/js/components/me/SeasonStreakPanel.tsx) surfaces the same season and weekly-streak data that already lives on `/plan` — a streak tile (weeks running, a "Live" pill, rest-week dots) and a season tile (date range, per-goal progress bars). It's a compact, prototype-inspired layout, not the Plan page's `SeasonTrack`/`StreakPanel` re-mounted.
+
+The payload is built by [SeasonStreakSummaryBuilder](app/Services/Gamification/SeasonStreakSummaryBuilder.php), extracted from what used to be private `PlanController` methods so both pages read the exact same shapes. Streak is always present (`WeeklySnapshot`/`StreakRestToken` reads have no season dependency). Season can be `null`: `ProfileController` calls `SeasonService::peekCurrent()`, a read-only counterpart to `ensureCurrent()` that returns the current season **if one already exists**, never creating one — visiting Profile must not trigger the same season-creation / badge-board-grant side effects a Plan page load does. A `null` season renders a "No season yet — start one on Plan" link instead of goal progress.
 
 ## Not on this page
 

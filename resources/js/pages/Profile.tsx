@@ -7,7 +7,11 @@ import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
 import ProgressionChart from '@/components/collection/ProgressionChart';
 import MeTabs from '@/components/me/MeTabs';
+import SeasonStreakPanel, {
+    type SeasonSummary,
+} from '@/components/me/SeasonStreakPanel';
 import PersonaBar, { type PersonaSlice } from '@/components/PersonaBar';
+import { type StreakSummary } from '@/components/plan/StreakPanel';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
 import Card from '@/components/ui/Card';
@@ -67,6 +71,11 @@ interface FitnessPayload {
     training_paces: TrainingPaces | null;
 }
 
+interface SeasonStreakPayload {
+    season: SeasonSummary | null;
+    streak: StreakSummary;
+}
+
 interface ProfileProps {
     identity: IdentityPayload;
     stats: StatsPayload;
@@ -74,6 +83,7 @@ interface ProfileProps {
     profileVoice?: AnalysisPayload;
     progressionByCategory?: Record<string, ProgressionSeries> | null;
     fitness?: FitnessPayload | null;
+    seasonStreak?: SeasonStreakPayload;
 }
 
 export default function Profile({
@@ -83,6 +93,7 @@ export default function Profile({
     profileVoice,
     progressionByCategory = null,
     fitness = null,
+    seasonStreak,
 }: Readonly<ProfileProps>) {
     const { auth, stravaSync } = usePage<SharedProps>().props;
     const sharedUser = auth.user;
@@ -290,6 +301,13 @@ export default function Profile({
                         Set your race &rarr;
                     </span>
                 </LinkCard>
+
+                {seasonStreak && (
+                    <SeasonStreakPanel
+                        season={seasonStreak.season}
+                        streak={seasonStreak.streak}
+                    />
+                )}
 
                 {fitness?.training_paces && (
                     <section className="mt-10">

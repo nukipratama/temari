@@ -7,10 +7,12 @@ use App\Models\StoryLine;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
+use App\Models\Season;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\LifetimeStats;
+use App\Services\Run\Plan\SeasonService;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -67,6 +69,31 @@ it('reports strava_connected as false when the user has no connection', function
 
 it('requires auth', function (): void {
     $this->get('/profile')->assertRedirect('/login');
+});
+
+it('reports a null season and a zero streak when the user has never visited Plan', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/profile')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('seasonStreak.season', null)
+            ->where('seasonStreak.streak.weeks', 0));
+
+    expect(Season::query()->where('user_id', $user->id)->count())->toBe(0);
+});
+
+it('reports the season Plan already created, without ensuring or mutating it itself', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+    $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
+
+    $this->actingAs($user)->get('/profile')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('seasonStreak.season.starts_at', $season->starts_at->toDateString())
+            ->has('seasonStreak.season.goals', 5));
+
+    expect(Season::query()->where('user_id', $user->id)->count())->toBe(1);
+    Carbon::setTestNow();
 });
 
 it('includes training_paces derived from VDOT when the user has a qualifying PR', function (): void {

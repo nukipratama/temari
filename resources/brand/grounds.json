@@ -304,6 +304,9 @@
         ],
         "resources/js/pages/Devtools.tsx": [
           "paper"
+        ],
+        "resources/js/components/me/SeasonStreakPanel.tsx": [
+          "paper"
         ]
       },
       "text": [
