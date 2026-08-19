@@ -42,7 +42,9 @@ describe('Activities/Feed', () => {
             screen.getByRole('dialog', { name: 'Filter the log' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByText(/narrow it down by mood, distance, or week/),
+            screen.getByText(
+                /narrow it down by mood, distance, rarity, or week/,
+            ),
         ).toBeInTheDocument();
     });
 
@@ -253,7 +255,7 @@ describe('Activities/Feed', () => {
         fireEvent.click(screen.getByRole('button', { name: /^Easy$/ }));
 
         expect(router.get).toHaveBeenCalledWith(
-            '/activities',
+            '/history',
             // '8w' is the default range, so it is omitted from the URL.
             { mood: 'easy' },
             expect.objectContaining({
@@ -297,7 +299,7 @@ describe('Activities/Feed', () => {
         fireEvent.click(screen.getByRole('button', { name: /^Easy$/ }));
 
         expect(router.get).toHaveBeenCalledWith(
-            '/activities',
+            '/history',
             {},
             expect.objectContaining({
                 preserveScroll: true,
@@ -323,7 +325,7 @@ describe('Activities/Feed', () => {
 
         // Defaults are omitted, so the unfiltered view is a clean URL.
         expect(router.get).toHaveBeenCalledWith(
-            '/activities',
+            '/history',
             {},
             expect.objectContaining({
                 preserveScroll: true,
@@ -363,7 +365,7 @@ describe('Activities/Feed', () => {
         expect(screen.getByText('No runs match.')).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: /Reset filter/ }));
         expect(router.get).toHaveBeenCalledWith(
-            '/activities',
+            '/history',
             {},
             expect.anything(),
         );
@@ -386,7 +388,7 @@ describe('Activities/Feed', () => {
         fireEvent.click(screen.getByRole('button', { name: /^Under 5K/ }));
 
         expect(router.get).toHaveBeenCalledWith(
-            '/activities',
+            '/history',
             { range: '1y', mood: 'easy', dist: '0-5' },
             expect.anything(),
         );
@@ -408,7 +410,7 @@ describe('Activities/Feed', () => {
         fireEvent.click(screen.getByRole('button', { name: /^Half and up/ }));
 
         expect(router.get).toHaveBeenCalledWith(
-            '/activities',
+            '/history',
             {},
             expect.anything(),
         );
@@ -444,7 +446,7 @@ describe('Activities/Feed', () => {
             fireEvent.click(screen.getByRole('button', { name: /^Longest/ }));
 
             expect(router.get).toHaveBeenCalledWith(
-                '/activities',
+                '/history',
                 { sort: 'longest' },
                 expect.anything(),
             );
@@ -468,7 +470,7 @@ describe('Activities/Feed', () => {
             );
 
             expect(router.get).toHaveBeenCalledWith(
-                '/activities',
+                '/history',
                 {},
                 expect.anything(),
             );
@@ -527,7 +529,7 @@ describe('Activities/Feed', () => {
             fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
 
             expect(router.get).toHaveBeenCalledWith(
-                '/activities',
+                '/history',
                 {},
                 expect.anything(),
             );
@@ -550,7 +552,7 @@ describe('Activities/Feed', () => {
         expect(screen.getByText(/Viewing the week of/)).toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: /View all runs/ }),
-        ).toHaveAttribute('href', '/activities');
+        ).toHaveAttribute('href', '/history');
     });
 
     it('counts a week-scoped view as filtered', () => {
@@ -611,7 +613,7 @@ describe('Activities/Feed', () => {
 
             fireEvent.click(screen.getByText(/Resume:/));
             expect(router.get).toHaveBeenCalledWith(
-                '/activities',
+                '/history',
                 { mood: 'blazing', dist: '21up' },
                 expect.anything(),
             );

@@ -5,6 +5,7 @@ import type {
     Activity,
     ActivityDetail,
     Mood,
+    Rarity,
     WeeklySnapshotWithRecap,
 } from '@/types/inertia';
 
@@ -13,6 +14,7 @@ import { type RangeOption } from '@/components/history/HistoryFilter';
 import { useLastFilter } from '@/hooks/useLastFilter';
 import { MOOD_FILTER_OPTIONS, MOOD_LABEL, MOOD_ORDER } from '@/lib/mood';
 import { formatIdDate, isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
+import { RARITY_LABELS, RARITY_ORDER } from '@/lib/runcard';
 
 export type RunWithDetail = Activity & { detail: ActivityDetail };
 
@@ -58,6 +60,12 @@ export const DISTANCE_OPTIONS: ReadonlyArray<{
     { value: '21up', label: 'Half and up', hint: '21+' },
 ];
 
+/** Matches the earned Kartu's rarity tiers, common-to-legendary. */
+export const RARITY_OPTIONS: ReadonlyArray<{
+    value: Rarity;
+    label: string;
+}> = RARITY_ORDER.map((value) => ({ value, label: RARITY_LABELS[value] }));
+
 /**
  * Must match FeedFilterRequest::range()'s fallback and the first entry of
  * RANGE_FILTER_OPTIONS (which HistoryFilter treats as the implicit default).
@@ -70,6 +78,7 @@ const RANGE_RELOAD_PROPS = [
     'rangeFilter',
     'moodFilter',
     'distanceFilter',
+    'rarityFilter',
     'sortMode',
     'weekFilter',
     'rangeStart',
@@ -86,6 +95,7 @@ export interface FilterState {
     range: RangeFilterValue;
     moods: ReadonlySet<Mood>;
     distance: DistanceBand | null;
+    rarity: Rarity | null;
     sort: SortMode;
     /** Week deep-link scope (that week's Sunday), or null for the full history. */
     week: string | null;
@@ -102,6 +112,7 @@ export function filterQuery({
     range,
     moods,
     distance,
+    rarity,
     sort,
     week,
 }: FilterState): Record<string, string> {
@@ -113,6 +124,7 @@ export function filterQuery({
     if (moods.size > 0)
         query.mood = MOOD_ORDER.filter((m) => moods.has(m)).join(',');
     if (distance !== null) query.dist = distance;
+    if (rarity !== null) query.rarity = rarity;
     if (sort !== DEFAULT_SORT) query.sort = sort;
 
     return query;
@@ -121,7 +133,7 @@ export function filterQuery({
 export function hrefWithFilters(state: FilterState): string {
     const query = new URLSearchParams(filterQuery(state)).toString();
 
-    return query === '' ? '/activities' : `/activities?${query}`;
+    return query === '' ? '/history' : `/history?${query}`;
 }
 
 /** Looks up an option's label by value, falling back to the raw value itself. */
@@ -158,6 +170,9 @@ export function summariseQuery(query: Record<string, string>): string | null {
     }
     if (query.dist) {
         parts.push(labelFor(DISTANCE_OPTIONS, query.dist));
+    }
+    if (query.rarity) {
+        parts.push(labelFor(RARITY_OPTIONS, query.rarity));
     }
     if (query.mood) {
         const moods = query.mood
@@ -247,6 +262,7 @@ interface FeedFilterProps {
     rangeFilter: RangeFilterValue;
     moodFilter: ReadonlyArray<Mood>;
     distanceFilter: DistanceBand | null;
+    rarityFilter: Rarity | null;
     sortMode: SortMode;
     weekFilter: string | null;
 }
@@ -263,6 +279,7 @@ export function useFeedFilters({
     rangeFilter,
     moodFilter,
     distanceFilter,
+    rarityFilter,
     sortMode,
     weekFilter,
 }: FeedFilterProps) {
@@ -280,10 +297,18 @@ export function useFeedFilters({
             range: rangeFilter,
             moods: selectedMoods,
             distance: distanceFilter,
+            rarity: rarityFilter,
             sort: sortMode,
             week: weekFilter,
         }),
-        [rangeFilter, selectedMoods, distanceFilter, sortMode, weekFilter],
+        [
+            rangeFilter,
+            selectedMoods,
+            distanceFilter,
+            rarityFilter,
+            sortMode,
+            weekFilter,
+        ],
     );
 
     // The filters live in the URL and are applied by the server, so a change is a
@@ -293,7 +318,7 @@ export function useFeedFilters({
     // within the current range window.
     const visitWithFilters = useCallback(
         (patch: Partial<FilterState>) => {
-            router.get('/activities', filterQuery({ ...current, ...patch }), {
+            router.get('/history', filterQuery({ ...current, ...patch }), {
                 preserveScroll: true,
                 preserveState: true,
                 only: RANGE_RELOAD_PROPS,
@@ -321,6 +346,15 @@ export function useFeedFilters({
         [distanceFilter, visitWithFilters],
     );
 
+    const selectRarity = useCallback(
+        // Same clear-on-reselect behavior as distance.
+        (tier: Rarity) =>
+            visitWithFilters({
+                rarity: tier === rarityFilter ? null : tier,
+            }),
+        [rarityFilter, visitWithFilters],
+    );
+
     const selectSort = useCallback(
         (sort: SortMode) => visitWithFilters({ sort }),
         [visitWithFilters],
@@ -331,6 +365,7 @@ export function useFeedFilters({
             range: DEFAULT_RANGE,
             moods: new Set(),
             distance: null,
+            rarity: null,
             sort: DEFAULT_SORT,
             week: null,
         });
@@ -363,6 +398,14 @@ export function useFeedFilters({
             onSelect: selectDistance,
         }),
         [distanceFilter, selectDistance],
+    );
+    const raritySection = useMemo(
+        () => ({
+            value: rarityFilter,
+            options: RARITY_OPTIONS,
+            onSelect: selectRarity,
+        }),
+        [rarityFilter, selectRarity],
     );
     const sortSection = useMemo(
         () => ({
@@ -409,6 +452,14 @@ export function useFeedFilters({
                 onRemove: () => visitWithFilters({ distance: null }),
             });
         }
+        if (rarityFilter !== null) {
+            const label = labelFor(RARITY_OPTIONS, rarityFilter);
+            list.push({
+                key: `rarity:${rarityFilter}`,
+                label,
+                onRemove: () => visitWithFilters({ rarity: null }),
+            });
+        }
         for (const mood of MOOD_ORDER.filter((m) => selectedMoods.has(m))) {
             list.push({
                 key: `mood:${mood}`,
@@ -427,6 +478,7 @@ export function useFeedFilters({
         rangeFilter,
         sortMode,
         distanceFilter,
+        rarityFilter,
         selectedMoods,
         visitWithFilters,
     ]);
@@ -441,7 +493,7 @@ export function useFeedFilters({
         return {
             summary,
             apply: () =>
-                router.get('/activities', resumable, {
+                router.get('/history', resumable, {
                     preserveScroll: true,
                     preserveState: true,
                     only: RANGE_RELOAD_PROPS,
@@ -453,6 +505,7 @@ export function useFeedFilters({
     const anyFilterActive =
         selectedMoods.size > 0 ||
         distanceFilter !== null ||
+        rarityFilter !== null ||
         weekFilter !== null;
     // Ranking globally is incompatible with week buckets (a weekly recap card
     // only means anything in date order), so a non-default sort switches the
@@ -466,6 +519,7 @@ export function useFeedFilters({
             range: rangeSection,
             mood: moodSection,
             distance: distanceSection,
+            rarity: raritySection,
             sort: sortSection,
         },
         chips,

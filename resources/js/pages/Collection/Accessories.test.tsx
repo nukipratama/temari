@@ -66,6 +66,21 @@ describe('Collection/Accessories', () => {
         ).toBeInTheDocument();
     });
 
+    it('renders the Me segmented nav with Accessories active', () => {
+        render(<Accessories items={[]} equipped={emptyEquipped} />);
+        expect(
+            screen.getByRole('link', { name: 'Accessories' }),
+        ).toHaveAttribute('aria-current', 'page');
+        expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute(
+            'href',
+            '/profile',
+        );
+        expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
+            'href',
+            '/settings',
+        );
+    });
+
     it('renders headers + equipped slot labels when nothing is equipped', () => {
         const items = [
             item('accessory.headband_epic', 'headband', false, false),

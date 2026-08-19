@@ -82,9 +82,11 @@ identity, pushes show a way out. Which screens count is an explicit map in
   too, but are reached through in-page tab strips, so they are siblings of their
   root rather than a stack, and keep the brand mark.
 - `/settings` is deliberately absent from the map even though it is nested by
-  URL. It is one tap from the Me tab and from the avatar menu on every page, so
-  it behaves as a root. Only `/settings/zones`, reachable from nowhere else,
-  gets a back button.
+  URL. It's a lateral MeTabs tab reached from Profile (itself one tap away via
+  the avatar link), not a pushed screen, so it behaves as a root. HR zones,
+  once a standalone `/settings/zones` page and the one exception that kept a
+  back button, is now an inline disclosure on Settings itself — see
+  [[settings-hr-zones]].
 
 Two details worth keeping:
 
@@ -93,11 +95,10 @@ Two details worth keeping:
   would strand the user or exit the app. [useSwipeBack](resources/js/hooks/useSwipeBack.ts)
   remains the gesture equivalent.
 - **Desktop keeps the in-page breadcrumb** where one exists. The bar is
-  `lg:hidden`, so the [BackLink](resources/js/components/ui/BackLink.tsx) on the
+  `lg:hidden`, so the [BackLink](resources/js/components/ui/BackLink.tsx) on
   pushed pages is hidden below `lg` rather than deleted — each viewport gets
-  exactly one back affordance. `Settings/HrZones`'s link also had its target
-  corrected: it read "Aku · Pengaturan" as a trail while hrefing past its actual
-  parent to `/profile`. Settings itself has no breadcrumb on either viewport.
+  exactly one back affordance. Settings itself has no breadcrumb on either
+  viewport.
 
 `TopNav` is a separate component and also a `<header>`, which is why tests
 select the mobile bar by `data-testid` rather than by tag.

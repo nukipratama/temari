@@ -7,11 +7,11 @@ describe('PALETTE chart token bridge', () => {
         expect(PALETTE.leaf).toBe('#2f8f63');
         expect(PALETTE.ember).toBe('#b23a4f');
         expect(PALETTE.overloaded).toBe('#6b3fa0');
-        expect(PALETTE.horizon).toBe('#d9a53c');
+        expect(PALETTE.horizon).toBe('#ade047');
         expect(PALETTE.citrus).toBe('#c9971f');
-        expect(PALETTE.cream).toBe('#f5f0e4');
-        expect(PALETTE.ink2).toBe('#3d362a');
-        expect(PALETTE.ink3).toBe('#6e6452');
+        expect(PALETTE.cream).toBe('#f1f5f8');
+        expect(PALETTE.ink2).toBe('#34373c');
+        expect(PALETTE.ink3).toBe('#60666d');
     });
 
     it('exposes every value as a 6-digit lowercase hex', () => {

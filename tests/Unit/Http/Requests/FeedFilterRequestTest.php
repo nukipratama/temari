@@ -6,7 +6,7 @@ use App\Http\Requests\FeedFilterRequest;
 
 function feedRequest(string $query = ''): FeedFilterRequest
 {
-    return FeedFilterRequest::create('/activities'.($query === '' ? '' : '?'.$query));
+    return FeedFilterRequest::create('/history'.($query === '' ? '' : '?'.$query));
 }
 
 it('authorizes everyone and validates nothing', function (): void {
@@ -51,4 +51,10 @@ it('keeps a known distance band and drops anything else', function (): void {
     expect(feedRequest('dist=10-21')->distanceBand())->toBe('10-21')
         ->and(feedRequest('dist=42up')->distanceBand())->toBeNull()
         ->and(feedRequest()->distanceBand())->toBeNull();
+});
+
+it('keeps a known rarity and drops anything else', function (): void {
+    expect(feedRequest('rarity=legendary')->rarity())->toBe('legendary')
+        ->and(feedRequest('rarity=mythic')->rarity())->toBeNull()
+        ->and(feedRequest()->rarity())->toBeNull();
 });

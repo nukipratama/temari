@@ -7,6 +7,7 @@ import type {
     Mood,
     PastYouTrend,
     TrainingLoad,
+    WeekPlan,
     WeeklySnapshot,
 } from '@/types/inertia';
 
@@ -15,19 +16,20 @@ import KpiTile from '@/components/dashboard/KpiTile';
 import LastRunCard, {
     type LastRunNote,
 } from '@/components/dashboard/LastRunCard';
-import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
 import TrainingLoadCard from '@/components/dashboard/TrainingLoadCard';
 import VitalChips from '@/components/dashboard/VitalChips';
 import EvidenceList from '@/components/home/EvidenceList';
 import NoVerdictPanel from '@/components/home/NoVerdictPanel';
 import TodaySession from '@/components/home/TodaySession';
 import VerdictHero from '@/components/home/VerdictHero';
+import WeekPlanWidget from '@/components/home/WeekPlanWidget';
 import CoachMark from '@/components/onboarding/CoachMark';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
 import PageContainer from '@/components/ui/PageContainer';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { useCountUp } from '@/hooks/useCountUp';
 import { appLayout } from '@/layouts/appLayout';
+import { cn } from '@/lib/cn';
 import { poseForRun } from '@/lib/temariPose';
 
 import { featuredCardFor, weekRangeLabel } from './Home/helpers';
@@ -40,6 +42,7 @@ interface HomeProps {
     lastRunNote?: LastRunNote | null;
     recentMoods?: Record<number, Mood>;
     pastYouTrend?: PastYouTrend | null;
+    weekPlan?: WeekPlan | null;
 }
 
 /**
@@ -55,6 +58,7 @@ export default function Home({
     lastRunNote = null,
     recentMoods = {},
     pastYouTrend = null,
+    weekPlan = null,
 }: Readonly<HomeProps>) {
     const featuredRef = useRef<HTMLDivElement>(null);
 
@@ -86,14 +90,21 @@ export default function Home({
         <>
             <Head title="Home" />
             <PageContainer>
-                <TodayHistoryTabs active="today" className="mb-5" />
-
                 {!hasRuns ? (
                     <EmptyRunsState />
                 ) : (
                     <>
+                        {weekPlan !== null && (
+                            <WeekPlanWidget weekPlan={weekPlan} />
+                        )}
+
                         {pastYouTrend !== null && (
-                            <div className="flex flex-col gap-4">
+                            <div
+                                className={cn(
+                                    'flex flex-col gap-4',
+                                    weekPlan !== null && 'mt-6',
+                                )}
+                            >
                                 {judged !== null ? (
                                     <>
                                         <VerdictHero

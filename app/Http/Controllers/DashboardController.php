@@ -9,6 +9,7 @@ use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\PostRunNoteReader;
 use App\Services\Run\Story\BriefingComposer;
 use App\Services\Run\Story\BriefingResult;
@@ -31,6 +32,7 @@ class DashboardController extends Controller
         BriefingComposer $briefingComposer,
         PostRunNoteReader $noteReader,
         PastYouTrendBuilder $pastYouTrend,
+        CurrentWeekPlanBuilder $weekPlanBuilder,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -73,6 +75,7 @@ class DashboardController extends Controller
                 ->first(),
             'recentRuns' => fn (): Collection => $loadRecentRuns(),
             'pastYouTrend' => fn (): array => $pastYouTrend->build($user, $today)->toArray(),
+            'weekPlan' => fn (): ?array => $weekPlanBuilder->forUser($user, $today),
             'lastRunNote' => function () use ($loadRecentRuns, $noteReader): ?array {
                 $lastRunActivityId = $loadRecentRuns()->first()?->activity_id;
 

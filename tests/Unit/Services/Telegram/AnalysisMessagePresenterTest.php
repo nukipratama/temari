@@ -72,7 +72,7 @@ it('links a weekly recap to the run history page', function (): void {
     $message = new AnalysisMessagePresenter()->format($analysis);
 
     expect($message)->toStartWith("Your weekly recap is ready\n\n28 km this week.")
-        ->and($message)->toContain('View history: ' . route('activities.index'));
+        ->and($message)->toContain('View history: ' . route('history'));
 });
 
 it('links a monthly recap to its month on the calendar', function (): void {
@@ -85,7 +85,7 @@ it('links a monthly recap to its month on the calendar', function (): void {
     $message = new AnalysisMessagePresenter()->format($analysis);
 
     expect($message)->toStartWith("Your June recap is ready\n\n120 km this month.")
-        ->and($message)->toContain('View calendar: ' . route('calendar', ['month' => '2026-06']));
+        ->and($message)->toContain('View calendar: ' . route('history', ['view' => 'calendar', 'month' => '2026-06']));
 });
 
 // --- title() ---------------------------------------------------------------
@@ -156,7 +156,7 @@ it('deep-links the weekly recap to its own week', function (): void {
     ]);
 
     expect(new AnalysisMessagePresenter()->url($analysis))
-        ->toBe(route('activities.index', ['week' => '2026-05-17']));
+        ->toBe(route('history', ['week' => '2026-05-17']));
 });
 
 // A deleted week must not turn the notification into a dead end.
@@ -166,7 +166,7 @@ it('falls back to the bare run history when the recap snapshot is gone', functio
         'subject_id' => 99_999,
     ]);
 
-    expect(new AnalysisMessagePresenter()->url($analysis))->toBe(route('activities.index'));
+    expect(new AnalysisMessagePresenter()->url($analysis))->toBe(route('history'));
 });
 
 it('falls back to the app name for a non-notifiable type', function (): void {

@@ -35,6 +35,42 @@ describe('Settings', () => {
         expect(screen.getByText('Delete account')).toBeInTheDocument();
     });
 
+    it('expands the HR zones disclosure inline, without navigating', () => {
+        render(<Settings />);
+        expect(screen.queryByLabelText('Max HR')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /HR zones/ }));
+
+        expect(screen.getByLabelText('Max HR')).toBeInTheDocument();
+    });
+
+    it('passes the server-supplied HR-zones profile into the disclosure', () => {
+        render(
+            <Settings
+                hrZones={{
+                    profile: {
+                        max_hr: 200,
+                        resting_hr: 48,
+                        hr_zones: {
+                            Z1: { lo: 122, hi: 143 },
+                            Z2: { lo: 143, hi: 160 },
+                            Z3: { lo: 160, hi: 175 },
+                            Z4: { lo: 175, hi: 185 },
+                            Z5: { lo: 185, hi: 999 },
+                        },
+                        optimal_cadence_spm: 172,
+                    },
+                    source: 'manual',
+                    stravaSyncedLabel: null,
+                    canSyncFromStrava: false,
+                }}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /HR zones/ }));
+        expect(screen.getByLabelText('Max HR')).toHaveValue(200);
+    });
+
     it('links out to the four legal pages', () => {
         render(<Settings />);
 
@@ -70,7 +106,7 @@ describe('Settings', () => {
     // the app not using the editorial header every other page shares.
     it('opens with the editorial header rather than a bare title', () => {
         render(<Settings />);
-        expect(screen.getByText('Settings')).toBeInTheDocument();
+        expect(screen.getAllByText('Settings').length).toBeGreaterThan(0);
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
             'Set up Temari, your way.',
         );
@@ -84,13 +120,29 @@ describe('Settings', () => {
         expect(screen.getByText('Where it goes')).toBeInTheDocument();
     });
 
-    // No back affordance anywhere: Settings is one tap from the Me tab and
-    // from the avatar menu on every page, so a breadcrumb has no job here.
-    it('has no back link', () => {
+    // No breadcrumb-style back affordance: the MeTabs segmented nav (rendered
+    // below) already links to Profile as a lateral tab, not a "back" action,
+    // so a BackLink (mdi:arrow-left) would be a redundant second way back.
+    it('has no breadcrumb-style back link', () => {
         const { container } = render(<Settings />);
-        // A back affordance would href its parent, the way HrZones' BackLink
-        // does. Asserting on the label instead outlived the label.
-        expect(container.querySelector('a[href="/profile"]')).toBeNull();
+        expect(
+            container.querySelector('[data-icon="mdi:arrow-left"]'),
+        ).toBeNull();
+    });
+
+    it('renders the Me segmented nav with Settings active', () => {
+        render(<Settings />);
+        expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+        expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute(
+            'href',
+            '/profile',
+        );
+        expect(
+            screen.getByRole('link', { name: 'Accessories' }),
+        ).toHaveAttribute('href', '/accessories');
     });
 
     // The mute switches say "Send run notifications to Telegram" nowhere near
@@ -105,6 +157,15 @@ describe('Settings', () => {
         expect(
             screen.getByText(/system alerts still come through/),
         ).toBeInTheDocument();
+    });
+
+    it('posts to /logout when the Log out row is clicked', () => {
+        vi.mocked(router.post).mockReset();
+        render(<Settings />);
+
+        fireEvent.click(screen.getByText('Log out'));
+
+        expect(router.post).toHaveBeenCalledWith('/logout');
     });
 
     it('tints the destructive row so it stops reading as routine', () => {

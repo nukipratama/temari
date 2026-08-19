@@ -31,6 +31,7 @@ const BILLING = [
     'ai:weekly-recap' => 'User::notDemo() on the recap scan',
     'ai:weekly-profile' => 'User::notDemo() on the profile scan',
     'ai:monthly-recap' => 'User::notDemo() on the user list',
+    'ai:trend-read' => 'User::notDemo() on the active-user scan',
     'strava:sync' => 'notDemo() on the connection scan',
     'strava:sync-zones' => 'notDemo() on the connection scan',
     'strava:ingest' => 'whereHas(user, is_demo = false) on the stub drain',
@@ -53,6 +54,7 @@ const NON_BILLING = [
     'weather:correct-forecast' => 'free Open-Meteo lookup, no LLM and no Strava call',
     'weather:backfill' => 'free Open-Meteo lookup, no LLM and no Strava call',
     'streak:settle' => 'reads weekly snapshots and writes rest-token rows, no LLM and no Strava call',
+    'trend:snapshot-daily' => 'free local computation (VdotEstimator + StreamSummary), no LLM and no Strava call',
 ];
 
 /**
@@ -101,6 +103,7 @@ it('reads the demo exclusion straight out of each billing command source', funct
     'ai:weekly-recap' => ['ai:weekly-recap', 'app/Console/Commands/AI/WeeklyRecapCommand.php'],
     'ai:weekly-profile' => ['ai:weekly-profile', 'app/Console/Commands/AI/WeeklyProfileCommand.php'],
     'ai:monthly-recap' => ['ai:monthly-recap', 'app/Console/Commands/AI/MonthlyRecapCommand.php'],
+    'ai:trend-read' => ['ai:trend-read', 'app/Console/Commands/AI/TrendReadCommand.php'],
     'strava:sync' => ['strava:sync', 'app/Console/Commands/Strava/SyncCommand.php'],
     'strava:sync-zones' => ['strava:sync-zones', 'app/Console/Commands/Strava/SyncZonesCommand.php'],
     'strava:ingest' => ['strava:ingest', 'app/Console/Commands/Strava/IngestCommand.php'],

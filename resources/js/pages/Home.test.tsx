@@ -7,6 +7,7 @@ import type {
     PastYouComparison,
     PastYouTrend,
     TrainingLoad,
+    WeekPlan,
     WeeklySnapshot,
 } from '@/types/inertia';
 
@@ -141,7 +142,10 @@ function trend(overrides: Partial<PastYouTrend> = {}): PastYouTrend {
     };
 }
 
-function renderHome(pastYouTrend: PastYouTrend | null = trend()) {
+function renderHome(
+    pastYouTrend: PastYouTrend | null = trend(),
+    weekPlan: WeekPlan | null = null,
+) {
     return render(
         <Home
             briefing={briefing}
@@ -149,9 +153,33 @@ function renderHome(pastYouTrend: PastYouTrend | null = trend()) {
             snapshot={snapshot}
             recentRuns={[lastRun]}
             pastYouTrend={pastYouTrend}
+            weekPlan={weekPlan}
         />,
     );
 }
+
+const weekPlan: WeekPlan = {
+    sessions_per_week: 5,
+    phase: 'build',
+    planned_km_this_week: 32,
+    credited_this_week: 2,
+    streak_days: 0,
+    days: [
+        {
+            id: 1,
+            date: '2026-06-08',
+            phase: 'build',
+            session_type: 'easy',
+            distance_band: 'medium',
+            pace_band: 'easy',
+            pace_sec_per_km: 360,
+            distance_km: 8,
+            pinned: false,
+            status: 'done',
+            clamp_note: null,
+        },
+    ],
+};
 
 beforeEach(() => {
     setMockPage({
@@ -179,6 +207,26 @@ describe('Home', () => {
             verdict.compareDocumentPosition(thisWeek) &
                 Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
+    });
+
+    it('leads with the week plan widget when the backend shipped one, verdict follows', () => {
+        renderHome(trend(), weekPlan);
+
+        const weekPlanHeading = screen.getByText("This week's plan");
+        const verdict = screen.getByText(
+            "you're faster than you were in March.",
+        );
+
+        expect(
+            weekPlanHeading.compareDocumentPosition(verdict) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+    });
+
+    it('omits the week plan widget when the backend shipped none', () => {
+        renderHome(trend(), null);
+
+        expect(screen.queryByText("This week's plan")).not.toBeInTheDocument();
     });
 
     it('shows the evidence the verdict was computed from', () => {

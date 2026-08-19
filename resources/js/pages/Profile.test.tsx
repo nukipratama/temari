@@ -45,6 +45,21 @@ describe('Profile', () => {
         expect(screen.getByText('Runner,')).toBeInTheDocument();
     });
 
+    it('renders the Me segmented nav with Profile active', () => {
+        render(<Profile identity={identity} stats={stats} />);
+        expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+        expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
+            'href',
+            '/settings',
+        );
+        expect(
+            screen.getByRole('link', { name: 'Accessories' }),
+        ).toHaveAttribute('href', '/accessories');
+    });
+
     it('renders the three stat tiles', () => {
         render(<Profile identity={identity} stats={stats} />);
         expect(screen.getByText('Total km')).toBeInTheDocument();
@@ -52,14 +67,41 @@ describe('Profile', () => {
         expect(screen.getByText('Longest run')).toBeInTheDocument();
     });
 
-    // Settings moved out of this page into the avatar menu, next to logout, so
-    // it is reachable from every page rather than only from here. The entry
-    // point is asserted in UserMenu.test.tsx.
+    // Settings moved out of this page into MeTabs, reachable from Profile
+    // rather than carried here as its own row. The entry point is asserted
+    // in MeTabs.test.tsx and Settings/Index.test.tsx.
     it('no longer carries a settings row of its own', () => {
         render(<Profile identity={identity} stats={stats} />);
         expect(
             screen.queryByText(/Notifikasi Telegram, zona HR/),
         ).not.toBeInTheDocument();
+    });
+
+    it('renders the season & streak panel when the server hands it a seasonStreak prop', () => {
+        render(
+            <Profile
+                identity={identity}
+                stats={stats}
+                seasonStreak={{
+                    season: null,
+                    streak: {
+                        weeks: 0,
+                        rest_weeks_held: 0,
+                        rest_weeks_cap: 2,
+                        weeks_to_next_rest_week: 3,
+                        ran_this_week: false,
+                        week_ends_on: '2026-08-16',
+                        last_forgiven_week: null,
+                    },
+                }}
+            />,
+        );
+        expect(screen.getByText('Season & streak')).toBeInTheDocument();
+    });
+
+    it('omits the season & streak panel when no seasonStreak prop is given', () => {
+        render(<Profile identity={identity} stats={stats} />);
+        expect(screen.queryByText('Season & streak')).not.toBeInTheDocument();
     });
 
     it('renders the persona bar without a narration block of its own', () => {

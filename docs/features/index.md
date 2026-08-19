@@ -27,9 +27,9 @@ _Pages_
 - [[plan-periodizer]] — Plan, the deterministic periodizer, readiness clamp, and volume redistribution
 
 _Collection_
-- [[cards-collection]] — Collection/Cards, rarities, badges, special moves
+- [[cards-collection]] — the Kartu's reveal + full view (rarities, badges, special moves); browsing/filtering by rarity is inline on [[run-history]]
 - [[records]] — PRs, progression chart
-- [[targets-accessories]] — Accessories (with live unlock progress) + the badge board
+- [[targets-accessories]] — Accessories, with live unlock progress (badge board moved to Trends)
 
 _Systems_
 - [[recaps]] — weekly/monthly/persona narratives across the app

@@ -46,6 +46,7 @@ final readonly class RuleBasedNarrationFiller
             AnalysisType::CardFlavor => $this->cardFlavor($seed),
             AnalysisType::AkuProfileVoice => $this->akuProfileVoice($seed),
             AnalysisType::MonthlyRecap => $this->monthlyRecap($seed),
+            AnalysisType::TrendRead => $this->trendRead($seed),
         };
     }
 
@@ -349,6 +350,21 @@ final readonly class RuleBasedNarrationFiller
             "Your runs split between **blazing** days and wobbly ones, and your longest distance came out of the bold end. You like to push. The easy days are what make the hard ones repeatable.",
             "The pattern reads disciplined: mostly **chill**, pushed on occasion, and your total built out of steady volume rather than one heroic run. Nothing in here is accidental.",
             "You're early and the mix is still thin, but you've come back more than once already. That's a start with a number attached. The reading gets sharper the more you feed it.",
+        ], $seed);
+    }
+
+    /**
+     * Matches TrendReadNarrator's own title-then-description shape (joined by
+     * a blank line) so the frontend never has to special-case which pipeline
+     * produced a given block before splitting it.
+     */
+    private function trendRead(int $seed): string
+    {
+        return $this->select([
+            "Steady is the read.\n\nNothing in this window moved sharply enough to call out on its own. The rhythm held, which is its own kind of answer.",
+            "The numbers are still catching up.\n\nThere isn't quite enough history in this window yet for a sharper read. Keep logging and the picture fills in.",
+            "A quiet stretch.\n\nNo big swings in either direction this window. Sometimes the story is that there isn't one.",
+            "The trend line sat flat.\n\nNeither a climb nor a drop stands out here. Worth checking back once a few more weeks are in.",
         ], $seed);
     }
 

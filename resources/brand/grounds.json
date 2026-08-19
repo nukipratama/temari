@@ -28,6 +28,7 @@
     "leaf",
     "leaf-deep",
     "line",
+    "line-strong",
     "mood-blazing",
     "mood-chill",
     "mood-easy",
@@ -53,8 +54,7 @@
     "leaf": 0.18,
     "mood-blazing": 0.15,
     "mood-easy": 0.15,
-    "mood-gassed": 0.15,
-    "rarity-legendary": 0.06
+    "mood-gassed": 0.15
   },
   "keyword": [
     "current",
@@ -177,9 +177,6 @@
     "cream/0.12": {
       "text": []
     },
-    "cream/0.15": {
-      "text": []
-    },
     "cream/0.2": {
       "over": {
         "resources/js/components/ui/SectionTabs.test.tsx": [
@@ -192,9 +189,6 @@
       "text": [
         "cream"
       ]
-    },
-    "cream/0.35": {
-      "text": []
     },
     "cream/0.4": {
       "text": []
@@ -210,7 +204,7 @@
         "resources/js/pages/Devtools/Design.tsx": [
           "paper"
         ],
-        "resources/js/pages/Settings/HrZones.tsx": [
+        "resources/js/components/settings/HrZonesDisclosure.tsx": [
           "paper"
         ]
       },
@@ -254,10 +248,15 @@
         ],
         "resources/js/pages/Onboarding/Index.tsx": [
           "paper"
+        ],
+        "resources/js/components/trends/NarrationHeadline.tsx": [
+          "paper"
         ]
       },
       "text": [
-        "horizon-ink"
+        "horizon-ink",
+        "ink",
+        "ink-2"
       ]
     },
     "horizon/0.12": {
@@ -291,6 +290,9 @@
     },
     "horizon/0.18": {
       "over": {
+        "resources/js/components/home/WeekPlanWidget.tsx": [
+          "paper"
+        ],
         "resources/js/components/ui/Chip.test.tsx": [
           "paper"
         ],
@@ -302,10 +304,33 @@
         ],
         "resources/js/pages/Devtools.tsx": [
           "paper"
+        ],
+        "resources/js/components/me/SeasonStreakPanel.tsx": [
+          "paper"
         ]
       },
       "text": [
         "horizon-ink"
+      ]
+    },
+    "horizon/0.25": {
+      "over": {
+        "resources/js/components/trends/panels/FitnessTrend.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ink"
+      ]
+    },
+    "horizon/0.3": {
+      "over": {
+        "resources/js/components/trends/RangeToggle.tsx": [
+          "paper"
+        ]
+      },
+      "text": [
+        "ink"
       ]
     },
     "horizon/0.35": {
@@ -480,16 +505,6 @@
     "rarity-epic/0.3": {
       "text": []
     },
-    "rarity-legendary/0.06": {
-      "over": {
-        "resources/js/pages/Collection/Cards.tsx": [
-          "paper"
-        ]
-      },
-      "text": [
-        "rarity-legendary-ink"
-      ]
-    },
     "rarity-legendary/0.35": {
       "text": []
     },
@@ -510,9 +525,6 @@
         "resources/js/components/StravaSyncBadge.tsx": [
           "paper"
         ],
-        "resources/js/components/collection/MilestoneStrip.test.tsx": [
-          "paper"
-        ],
         "resources/js/components/history/ActiveFilterChips.tsx": [
           "paper"
         ],
@@ -529,9 +541,6 @@
           "paper"
         ],
         "resources/js/components/ui/SectionTabs.tsx": [
-          "paper"
-        ],
-        "resources/js/pages/Settings/HrZones.tsx": [
           "paper"
         ]
       },
@@ -572,9 +581,6 @@
         ],
         "resources/js/lib/variants.ts": [
           "paper"
-        ],
-        "resources/js/pages/Collection/Records.tsx": [
-          "paper"
         ]
       },
       "text": [
@@ -599,18 +605,6 @@
     },
     "sky/0.25": {
       "text": []
-    },
-    "sky/0.4": {
-      "over": {
-        "resources/js/components/run/SplitsSparkline.tsx": [
-          "sky-deep",
-          "sky",
-          "sky-2"
-        ]
-      },
-      "text": [
-        "ink-on-sky"
-      ]
     },
     "surface-card/0.4": {
       "text": []

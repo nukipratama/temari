@@ -174,6 +174,41 @@ class TrainingLoad
         return $trend;
     }
 
+    /**
+     * The last $days days of the daily weekly-trimp/monotony/strain series
+     * (each day's own trailing-7-day window), oldest first. Reuses the exact
+     * {@see weekStats} computation `summaryFromDailyMap()` already runs for
+     * "this week" — this just runs it once per day across the range instead
+     * of once for today, the same "expose every day the computation already
+     * touches" pattern {@see ctlTrend} uses for `rollDailySeries`. No new
+     * metric math, no new storage.
+     *
+     * @return list<array{date: string, weekly_trimp: float|null, monotony: float|null, strain: float|null}>
+     */
+    public function strainMonotonyTrend(User $user, int $days = 365, ?Carbon $asOf = null): array
+    {
+        $today = ($asOf ?? Carbon::today())->copy()->startOfDay();
+        ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->loadDailyHistory($user, $today);
+        if ($dailyTrimp === [] && $runDays === []) {
+            return [];
+        }
+
+        $trend = [];
+        $cursor = $today->copy()->subDays($days - 1);
+        while ($cursor->lte($today)) {
+            [$weekly, $monotony, $strain] = $this->weekStats($dailyTrimp, $runDays, $cursor);
+            $trend[] = [
+                'date' => $cursor->toDateString(),
+                'weekly_trimp' => $weekly,
+                'monotony' => $monotony,
+                'strain' => $strain,
+            ];
+            $cursor->addDay();
+        }
+
+        return $trend;
+    }
+
     public function formStatus(float $form, float $ctl): string
     {
         $threshold = match (true) {

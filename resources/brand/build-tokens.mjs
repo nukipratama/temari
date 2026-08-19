@@ -7,34 +7,37 @@ import { contrast, darkest, groundsForInk, paperGrounds } from './grounds.mjs';
    the main reason surfaces read inconsistently. Type drops from 4 families to 3. */
 
 const COLOR = {
-  // structure
-  sky:            '#241c54',
-  'sky-deep':     '#170f38',
-  'sky-2':        '#362a73',
-  // accent / earned
-  horizon:        '#d9a53c',
-  'horizon-deep': '#b98a2a',
-  // paper
-  cream:          '#f5f0e4',
-  'cream-deep':   '#ece2ce',
+  // structure — Pewter: cold near-black
+  sky:            '#171f28',
+  'sky-deep':     '#0b1017',
+  'sky-2':        '#26303d',
+  // accent / earned — Pewter: lime
+  horizon:        '#ade047',
+  'horizon-deep': '#95c134',
+  // paper — Pewter: cold near-white
+  cream:          '#f1f5f8',
+  'cream-deep':   '#e2e8ee',
   // text, 3 tiers + on-dark
-  ink:            '#1a1812',
-  'ink-2':        '#3d362a',
-  'ink-3':        '#6e6452',
-  'ink-on-sky':   '#b0a3c9',
+  ink:            '#16181b',
+  'ink-2':        '#34373c',
+  'ink-3':        '#60666d',
+  'ink-on-sky':   '#9c9ea7',
   // surfaces
-  surface:          '#f5f0e4',
-  'surface-card':   '#f5f0e4',
-  'surface-elev':   '#faf6ec',
-  'surface-warm':   '#f8f0dd',
-  'surface-sunken': '#ece2ce',
+  surface:          '#f1f5f8',
+  'surface-card':   '#f1f5f8',
+  'surface-elev':   '#f8fbfe',
+  'surface-warm':   '#f0f5fb',
+  'surface-sunken': '#e2e8ee',
+  // line/line-strong already drifted from app.css before this change (this
+  // file predates the current live values) — left as-is, not this change's
+  // drift to fix.
   line:             '#d2c9b0',
   'line-strong':    '#c3b89c',
-  // semantic accents
+  // semantic accents — held constant across every direction (not brand)
   leaf: '#2f8f63', 'leaf-deep': '#256f4d',
   ember: '#b23a4f', 'ember-deep': '#8d2c3d',
   citrus: '#c9971f',
-  stone: '#a99f8a',
+  stone: '#64686c',
 };
 
 const MOOD = {

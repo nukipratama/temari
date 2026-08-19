@@ -95,7 +95,7 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
     // arriving before the seen POST clears pending_reveal_card_id.
     const viewCollection = useCallback((): void => {
         void markSeen().then(() =>
-            router.visit('/cards', { preserveScroll: false }),
+            router.visit('/history', { preserveScroll: false }),
         );
     }, [markSeen]);
 

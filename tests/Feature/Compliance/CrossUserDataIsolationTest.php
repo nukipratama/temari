@@ -164,7 +164,7 @@ it('never renders another user\'s activity data on a shared page', function (): 
 
 it('renders the marker run to its own owner, so the sweeps are not vacuous', function (): void {
     $this->actingAs($this->victim)
-        ->get('/activities')
+        ->get('/history')
         ->assertSuccessful()
         ->assertSee($this->marker, false);
 });

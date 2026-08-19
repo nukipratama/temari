@@ -175,10 +175,10 @@ it('renders the feed and calendar for a summary-only run without inventing a zer
         'trimp_edwards' => null,
     ]);
 
-    $this->actingAs($user)->get(route('activities.index'))->assertOk();
+    $this->actingAs($user)->get(route('history'))->assertOk();
 
     $this->actingAs($user)
-        ->get(route('calendar'))
+        ->get(route('history', ['view' => 'calendar']))
         ->assertOk()
         ->assertInertia(function ($page) use ($activity): void {
             $runCells = collect($page->toArray()['props']['cells'])

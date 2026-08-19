@@ -5,7 +5,7 @@ import type { SharedProps } from '@/types/inertia';
 import BrandMark from '@/components/BrandMark';
 import NotificationBell from '@/components/NotificationBell';
 import StravaSyncBadge from '@/components/StravaSyncBadge';
-import UserMenu from '@/components/UserMenu';
+import UserAvatarLink from '@/components/UserAvatarLink';
 import { cn } from '@/lib/cn';
 import { activeTabFromUrl, ITEMS, type NavItem } from '@/lib/nav';
 
@@ -44,7 +44,7 @@ export default function TopNav() {
                     {user && (
                         <>
                             <NotificationBell />
-                            <UserMenu
+                            <UserAvatarLink
                                 name={user.name}
                                 avatarUrl={user.avatar_url}
                             />

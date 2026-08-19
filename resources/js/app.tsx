@@ -29,7 +29,7 @@ const pages = import.meta.glob<{ default: ComponentType }>([
 ]);
 
 /** The four bottom-nav destinations, by Inertia page name. */
-const TAB_PAGES = ['Home', 'Collection/Cards', 'Activities/Feed', 'Profile'];
+const TAB_PAGES = ['Home', 'Collection/Accessories', 'History', 'Profile'];
 
 /**
  * Fetches the JS chunk for each tab once the browser is idle, so the first tap

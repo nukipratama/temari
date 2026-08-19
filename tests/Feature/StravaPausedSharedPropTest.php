@@ -20,13 +20,13 @@ beforeEach(fn () => Cache::flush());
 it('shares true when the Strava kill-switch is off', function (): void {
     app(AppConfig::class)->set(AppConfigKey::StravaEnabled, false);
 
-    $this->actingAs(User::factory()->create())->get('/records')
+    $this->actingAs(User::factory()->create())->get('/profile')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('stravaPaused', true));
 });
 
 it('shares false while Strava is enabled', function (): void {
-    $this->actingAs(User::factory()->create())->get('/records')
+    $this->actingAs(User::factory()->create())->get('/profile')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('stravaPaused', false));
 });
@@ -42,11 +42,11 @@ it('shares false for a guest', function (): void {
 it('reflects a /pulse toggle on the very next request rather than after the TTL', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/records')
+    $this->actingAs($user)->get('/profile')
         ->assertInertia(fn (Assert $page) => $page->where('stravaPaused', false));
 
     Livewire::test(SystemControl::class)->call('toggleStrava');
 
-    $this->actingAs($user)->get('/records')
+    $this->actingAs($user)->get('/profile')
         ->assertInertia(fn (Assert $page) => $page->where('stravaPaused', true));
 });

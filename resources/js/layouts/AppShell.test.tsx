@@ -76,7 +76,7 @@ describe('AppShell', () => {
         );
     });
 
-    it('renders the 4 primary tabs + children by default', () => {
+    it('renders the 3 primary tabs + children by default', () => {
         setMockPage({
             auth: { user: andiUser },
             flash: {},
@@ -88,7 +88,7 @@ describe('AppShell', () => {
             </AppShell>,
         );
         expect(screen.getByText('child content')).toBeInTheDocument();
-        ['Today', 'Collection', 'Plan', 'Me'].forEach((label) => {
+        ['Today', 'Trends', 'History'].forEach((label) => {
             expect(screen.getAllByText(label).length).toBeGreaterThan(0);
         });
         // <main> keeps bottom clearance for the fixed mobile bottom nav (cleared on lg).
@@ -168,8 +168,8 @@ describe('AppShell', () => {
 
         setMockPage(
             { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
-            '/cards',
-            'Collection/Cards',
+            '/accessories',
+            'Collection/Accessories',
         );
         rerender(
             <AppShell>
@@ -231,8 +231,8 @@ describe('AppShell', () => {
     it('shows the mobile top bar on every page', () => {
         setMockPage(
             { auth: { user: makeUser() } },
-            '/cards',
-            'Collection/Cards',
+            '/accessories',
+            'Collection/Accessories',
         );
         render(<AppShell>content</AppShell>);
         // Scoped by testid, not by tag: TopNav is also a <header> and stays in

@@ -39,12 +39,6 @@ const HERO: Record<
 
 const ACTIONS = [
     {
-        icon: 'mdi:cards-outline',
-        title: 'Check out the legendary collection',
-        desc: 'See the cards you could unlock.',
-        href: '/cards',
-    },
-    {
         icon: 'mdi:tshirt-crew-outline',
         title: 'Dress up Temari',
         desc: 'Pick an accessory combo for your profile.',
@@ -54,7 +48,7 @@ const ACTIONS = [
         icon: 'mdi:chart-line',
         title: 'See your run recap',
         desc: 'Once your first run comes in, the recap shows up here.',
-        href: '/activities',
+        href: '/history',
     },
 ] as const;
 

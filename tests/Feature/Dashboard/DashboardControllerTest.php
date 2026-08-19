@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\PlannedSession;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\StoryLine;
@@ -188,7 +189,7 @@ it('does not fetch recent runs or weekly snapshots on a briefing-only partial re
     $response->assertJsonPath('component', 'Home');
     // The one prop the poll does name still has to resolve.
     $response->assertJsonPath('props.briefing.mood', fn (mixed $mood): bool => is_string($mood));
-    foreach (['load', 'snapshot', 'recentRuns', 'lastRunNote', 'recentMoods'] as $skipped) {
+    foreach (['load', 'snapshot', 'recentRuns', 'lastRunNote', 'recentMoods', 'weekPlan'] as $skipped) {
         $response->assertJsonMissingPath("props.{$skipped}");
     }
 });
@@ -207,7 +208,38 @@ it('still returns every dashboard prop on a full page load', function (): void {
             ->has('snapshot')
             ->has('recentRuns', 1)
             ->has('recentMoods')
-            ->has('pastYouTrend'));
+            ->has('pastYouTrend')
+            ->has('weekPlan'));
+});
+
+it('ships weekPlan as null when the user has no planned sessions this week', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Home')
+            ->where('weekPlan', null));
+});
+
+it('ships a real weekPlan when the user has a plan for the current week', function (): void {
+    Carbon::setTestNow('2026-08-12'); // a Wednesday
+    $user = User::factory()->create();
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    for ($i = 0; $i < 7; $i++) {
+        PlannedSession::factory()->for($user)->create(['date' => $weekStart->copy()->addDays($i)]);
+    }
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Home')
+            ->where('weekPlan.days', fn (mixed $days): bool => count($days) === 7)
+            ->has('weekPlan.sessions_per_week')
+            ->has('weekPlan.phase')
+            ->has('weekPlan.streak_days'));
+
+    Carbon::setTestNow();
 });
 
 it('ships the Past You verdict as its own outcome when history is too thin', function (): void {

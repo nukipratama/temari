@@ -15,7 +15,7 @@ it('shares null when the user has no runner profile', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
-    $this->actingAs($user)->get('/records')
+    $this->actingAs($user)->get('/profile')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('hrZonesChangedAt', null));
 });
@@ -26,7 +26,7 @@ it('shares null when the profile has never changed its zones', function (): void
     $profile = RunnerProfile::factory()->for($user)->create();
     $profile->forceFill(['hr_zones_changed_at' => null])->saveQuietly();
 
-    $this->actingAs($user)->get('/records')
+    $this->actingAs($user)->get('/profile')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('hrZonesChangedAt', null));
 });
@@ -38,7 +38,7 @@ it('shares the ISO timestamp of the last heart-rate-zone change', function (): v
     $profile = RunnerProfile::factory()->for($user)->create();
     $profile->forceFill(['hr_zones_changed_at' => $changedAt])->saveQuietly();
 
-    $this->actingAs($user)->get('/records')
+    $this->actingAs($user)->get('/profile')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('hrZonesChangedAt', $changedAt->toIso8601String()));

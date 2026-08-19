@@ -15,7 +15,7 @@ describe('appLayout', () => {
         render(appLayout(<p>page body</p>));
 
         expect(screen.getByText('page body')).toBeInTheDocument();
-        ['Today', 'Collection', 'Plan', 'Me'].forEach((label) => {
+        ['Today', 'Trends', 'History'].forEach((label) => {
             expect(screen.getAllByText(label).length).toBeGreaterThan(0);
         });
     });

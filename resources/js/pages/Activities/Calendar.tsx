@@ -5,7 +5,6 @@ import { memo, useRef, type ReactNode } from 'react';
 
 import type { AnalysisPayload, Mood } from '@/types/inertia';
 
-import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
 import HistoryFilter from '@/components/history/HistoryFilter';
 import HistoryTabs from '@/components/history/HistoryTabs';
 import CoachMark from '@/components/onboarding/CoachMark';
@@ -106,7 +105,6 @@ export default function Calendar({
             <Head title={`History · Calendar · ${monthLabel}`} />
             <PageContainer>
                 <header className="mb-8 min-w-0">
-                    <TodayHistoryTabs active="history" className="mb-5" />
                     <PageHero eyebrow={<LifetimeEyebrow lifetime={lifetime} />}>
                         Every run,
                         <br />
@@ -302,7 +300,7 @@ function MonthNav({
     return (
         <div className="flex items-center gap-2">
             <NavButton
-                href={`/calendar?month=${prevMonth}`}
+                href={`/history?view=calendar&month=${prevMonth}`}
                 icon="mdi:chevron-left"
                 label="Previous month"
             />
@@ -310,13 +308,13 @@ function MonthNav({
                 {label}
             </h2>
             <NavButton
-                href={`/calendar?month=${nextMonth}`}
+                href={`/history?view=calendar&month=${nextMonth}`}
                 icon="mdi:chevron-right"
                 label="Next month"
             />
             {showTodayButton && (
                 <Link
-                    href="/calendar"
+                    href="/history?view=calendar"
                     aria-label="Jump to current month"
                     className="pressable focus-ring ml-1 rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1 text-xs font-semibold text-leaf-ink transition hover:border-leaf hover:bg-leaf/15"
                 >

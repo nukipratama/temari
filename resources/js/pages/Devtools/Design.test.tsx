@@ -94,7 +94,7 @@ describe('Devtools/Design', () => {
             screen.getByText('rarity-legendary fill outline'),
         ).toBeInTheDocument();
         expect(screen.getByText('bg-ink/0.7 panel')).toBeInTheDocument();
-        expect(screen.getByText('contrast 8/8')).toBeInTheDocument();
+        expect(screen.getByText('contrast 7/7')).toBeInTheDocument();
     });
 
     it('says so when no custom properties are readable', () => {

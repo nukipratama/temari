@@ -184,6 +184,49 @@ describe('HistoryFilter', () => {
         });
     });
 
+    describe('rarity section', () => {
+        const RARITY_OPTIONS = [
+            { value: 'common' as const, label: 'Common' },
+            { value: 'legendary' as const, label: 'Legendary' },
+        ];
+
+        it('selects a rarity and marks the active one', () => {
+            const onSelect = vi.fn();
+            render(
+                <HistoryFilter<Range, string, string, 'common' | 'legendary'>
+                    rarity={{
+                        value: 'legendary',
+                        options: RARITY_OPTIONS,
+                        onSelect,
+                    }}
+                />,
+            );
+            openPanel();
+
+            expect(
+                screen.getByRole('button', { name: /Legendary/ }),
+            ).toHaveAttribute('aria-pressed', 'true');
+            fireEvent.click(screen.getByRole('button', { name: /Common/ }));
+            expect(onSelect).toHaveBeenCalledWith('common');
+        });
+
+        it('reports the same rarity again so the page can clear it', () => {
+            const onSelect = vi.fn();
+            render(
+                <HistoryFilter<Range, string, string, 'common' | 'legendary'>
+                    rarity={{
+                        value: 'legendary',
+                        options: RARITY_OPTIONS,
+                        onSelect,
+                    }}
+                />,
+            );
+            openPanel();
+            fireEvent.click(screen.getByRole('button', { name: /Legendary/ }));
+            expect(onSelect).toHaveBeenCalledWith('legendary');
+        });
+    });
+
     it('counts every active filter on the trigger badge', () => {
         render(
             <HistoryFilter<Range, '0-5'>

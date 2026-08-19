@@ -122,7 +122,7 @@ class AnalysisMessagePresenter
         return match ($analysis->analysis_type) {
             AnalysisType::PostRunSpeech => route('activities.show', $analysis->subject_id),
             AnalysisType::WeeklyRecap => $this->weeklyRecapUrl($analysis),
-            AnalysisType::MonthlyRecap => route('calendar', ['month' => $analysis->discriminator]),
+            AnalysisType::MonthlyRecap => route('history', ['view' => 'calendar', 'month' => $analysis->discriminator]),
             default => null,
         };
     }
@@ -141,8 +141,8 @@ class AnalysisMessagePresenter
             ->value('week_ending');
 
         return $weekEnding === null
-            ? route('activities.index')
-            : route('activities.index', ['week' => Carbon::parse($weekEnding)->toDateString()]);
+            ? route('history')
+            : route('history', ['week' => Carbon::parse($weekEnding)->toDateString()]);
     }
 
     /**

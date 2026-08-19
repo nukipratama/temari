@@ -310,3 +310,74 @@ it('keeps ATL/CTL as numbers through an unscored stretch', function (): void {
         ->and($summary['atl_7d'])->toBeFloat()
         ->and($summary['form_status'])->toBeString();
 });
+
+it('returns an empty strainMonotonyTrend for a user with no TRIMP-bearing activities', function (): void {
+    $user = User::factory()->create();
+
+    expect($this->load->strainMonotonyTrend($user))->toBe([]);
+});
+
+it('strainMonotonyTrend returns one entry per requested day, agreeing with the daily summary', function (): void {
+    $user = User::factory()->create();
+
+    for ($i = 0; $i < 100; $i++) {
+        seedTrimpDay($user, 80.0, 99 - $i);
+    }
+
+    $trend = $this->load->strainMonotonyTrend($user, 90);
+
+    expect($trend)->toHaveCount(90)
+        ->and($trend[0]['date'])->toBe(Carbon::today()->subDays(89)->toDateString())
+        ->and($trend[89]['date'])->toBe(Carbon::today()->toDateString());
+
+    // Last day's window must agree with summary()'s own weekStats() call —
+    // this is exposing the same computation across a range, not a second one.
+    $summary = $this->load->summary($user);
+    expect($trend[89]['weekly_trimp'])->toBe($summary['weekly_trimp'])
+        ->and($trend[89]['monotony'])->toBe($summary['monotony'])
+        ->and($trend[89]['strain'])->toBe($summary['strain']);
+});
+
+it('strainMonotonyTrend caps monotony at 5.0 on a uniform-load week, same as summary()', function (): void {
+    $user = User::factory()->create();
+
+    for ($i = 0; $i < 7; $i++) {
+        seedTrimpDay($user, 80.0, 6 - $i);
+    }
+
+    $trend = $this->load->strainMonotonyTrend($user, 7);
+
+    expect($trend[6]['monotony'])->toBe(5.0)
+        ->and($trend[6]['strain'])->toBeFloat()->toBeGreaterThan(0.0);
+});
+
+it('strainMonotonyTrend reports days before any history began as a rested zero, not a gap', function (): void {
+    $user = User::factory()->create();
+
+    // Only 5 days of real history, but a 30-day trend is asked for — the
+    // 25 days before that history began are a legitimate "no load yet"
+    // zero, not something to omit (unlike ctlTrend, which needs a start
+    // date to roll the EWMA forward from and so can't extend before it).
+    for ($i = 0; $i < 5; $i++) {
+        seedTrimpDay($user, 80.0, 4 - $i);
+    }
+
+    $trend = $this->load->strainMonotonyTrend($user, 30);
+
+    expect($trend)->toHaveCount(30)
+        ->and($trend[0]['weekly_trimp'])->toBe(0.0)
+        ->and($trend[0]['monotony'])->toBe(0.0)
+        ->and($trend[0]['strain'])->toBe(0.0);
+});
+
+it('strainMonotonyTrend tells an unscored week apart from a rested one, same as summary()', function (): void {
+    $user = User::factory()->create();
+    seedTrimpDay($user, 120.0, 29);
+    seedTrimpDay($user, null, 1);
+
+    $trend = $this->load->strainMonotonyTrend($user, 1);
+
+    expect($trend[0]['weekly_trimp'])->toBeNull()
+        ->and($trend[0]['monotony'])->toBeNull()
+        ->and($trend[0]['strain'])->toBeNull();
+});

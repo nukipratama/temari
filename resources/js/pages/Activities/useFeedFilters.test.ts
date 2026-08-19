@@ -7,6 +7,7 @@ import type { Mood, WeeklySnapshotWithRecap } from '@/types/inertia';
 import { run } from './runFixture';
 import {
     DISTANCE_OPTIONS,
+    RARITY_OPTIONS,
     filterQuery,
     groupByWeek,
     hrefWithFilters,
@@ -22,6 +23,7 @@ function state(overrides: Partial<FilterState> = {}): FilterState {
         range: '8w',
         moods: new Set<Mood>(),
         distance: null,
+        rarity: null,
         sort: 'newest',
         week: null,
         ...overrides,
@@ -37,6 +39,7 @@ function hookProps(
         rangeFilter: '8w' as const,
         moodFilter: [] as ReadonlyArray<Mood>,
         distanceFilter: null,
+        rarityFilter: null,
         sortMode: 'newest' as const,
         weekFilter: null,
         ...overrides,
@@ -44,7 +47,7 @@ function hookProps(
 }
 
 describe('filterQuery', () => {
-    it('omits every default so the unfiltered view is a bare /activities', () => {
+    it('omits every default so the unfiltered view is a bare /history', () => {
         expect(filterQuery(state())).toEqual({});
     });
 
@@ -61,9 +64,19 @@ describe('filterQuery', () => {
     it('carries every non-default axis', () => {
         expect(
             filterQuery(
-                state({ range: '1y', distance: '21up', sort: 'longest' }),
+                state({
+                    range: '1y',
+                    distance: '21up',
+                    rarity: 'legendary',
+                    sort: 'longest',
+                }),
             ),
-        ).toEqual({ range: '1y', dist: '21up', sort: 'longest' });
+        ).toEqual({
+            range: '1y',
+            dist: '21up',
+            rarity: 'legendary',
+            sort: 'longest',
+        });
     });
 
     // A week scope pins its own window, so carrying `range` alongside it would
@@ -76,13 +89,13 @@ describe('filterQuery', () => {
 });
 
 describe('hrefWithFilters', () => {
-    it('stays a clean /activities when nothing is filtered', () => {
-        expect(hrefWithFilters(state())).toBe('/activities');
+    it('stays a clean /history when nothing is filtered', () => {
+        expect(hrefWithFilters(state())).toBe('/history');
     });
 
     it('builds a query string for an active filter', () => {
         expect(hrefWithFilters(state({ range: '1y', distance: '0-5' }))).toBe(
-            '/activities?range=1y&dist=0-5',
+            '/history?range=1y&dist=0-5',
         );
     });
 });
@@ -94,6 +107,10 @@ describe('labelFor', () => {
 
     it('falls back to the raw value for an unknown option', () => {
         expect(labelFor(DISTANCE_OPTIONS, 'nope')).toBe('nope');
+    });
+
+    it('resolves a rarity label, common to legendary', () => {
+        expect(labelFor(RARITY_OPTIONS, 'legendary')).toBe('Legendary');
     });
 });
 
@@ -109,9 +126,12 @@ describe('summariseQuery', () => {
                 range: '1y',
                 sort: 'longest',
                 dist: '21up',
+                rarity: 'legendary',
                 mood: 'blazing,chill',
             }),
-        ).toBe('one week · Full year · Longest · Half and up · Blazing, Chill');
+        ).toBe(
+            'one week · Full year · Longest · Half and up · Legendary · Blazing, Chill',
+        );
     });
 
     it('ignores a mood value that is not a real mood', () => {
@@ -220,6 +240,7 @@ describe('useFeedFilters', () => {
     it.each([
         ['mood', { moodFilter: ['easy' as Mood] }],
         ['distance', { distanceFilter: '21up' as const }],
+        ['rarity', { rarityFilter: 'legendary' as const }],
         ['week', { weekFilter: '2026-05-17' }],
     ])('counts a %s filter as active', (_axis, override) => {
         const { result } = renderHook(() =>
@@ -253,6 +274,7 @@ describe('useFeedFilters', () => {
                     rangeFilter: '1y',
                     sortMode: 'longest',
                     distanceFilter: '21up',
+                    rarityFilter: 'legendary',
                     moodFilter: ['chill', 'blazing'],
                 }),
             ),
@@ -263,6 +285,7 @@ describe('useFeedFilters', () => {
             'range:1y',
             'sort:longest',
             'dist:21up',
+            'rarity:legendary',
             'mood:blazing',
             'mood:chill',
         ]);
@@ -271,6 +294,7 @@ describe('useFeedFilters', () => {
             'Full year',
             'Longest',
             'Half and up',
+            'Legendary',
             'Blazing',
             'Chill',
         ]);
@@ -279,7 +303,13 @@ describe('useFeedFilters', () => {
     it.each([
         [
             'week:2026-05-17',
-            { range: '1y', mood: 'blazing', dist: '21up', sort: 'longest' },
+            {
+                range: '1y',
+                mood: 'blazing',
+                dist: '21up',
+                rarity: 'legendary',
+                sort: 'longest',
+            },
         ],
         [
             'range:1y',
@@ -287,12 +317,46 @@ describe('useFeedFilters', () => {
                 week: '2026-05-17',
                 mood: 'blazing',
                 dist: '21up',
+                rarity: 'legendary',
                 sort: 'longest',
             },
         ],
-        ['sort:longest', { week: '2026-05-17', mood: 'blazing', dist: '21up' }],
-        ['dist:21up', { week: '2026-05-17', mood: 'blazing', sort: 'longest' }],
-        ['mood:blazing', { week: '2026-05-17', dist: '21up', sort: 'longest' }],
+        [
+            'sort:longest',
+            {
+                week: '2026-05-17',
+                mood: 'blazing',
+                dist: '21up',
+                rarity: 'legendary',
+            },
+        ],
+        [
+            'dist:21up',
+            {
+                week: '2026-05-17',
+                mood: 'blazing',
+                rarity: 'legendary',
+                sort: 'longest',
+            },
+        ],
+        [
+            'rarity:legendary',
+            {
+                week: '2026-05-17',
+                mood: 'blazing',
+                dist: '21up',
+                sort: 'longest',
+            },
+        ],
+        [
+            'mood:blazing',
+            {
+                week: '2026-05-17',
+                dist: '21up',
+                rarity: 'legendary',
+                sort: 'longest',
+            },
+        ],
     ])(
         'drops the %s chip and keeps every other axis in the url',
         (key, expected) => {
@@ -304,6 +368,7 @@ describe('useFeedFilters', () => {
                         rangeFilter: '1y',
                         sortMode: 'longest',
                         distanceFilter: '21up',
+                        rarityFilter: 'legendary',
                         moodFilter: ['blazing'],
                     }),
                 ),
@@ -314,7 +379,7 @@ describe('useFeedFilters', () => {
             );
 
             expect(router.get).toHaveBeenCalledWith(
-                '/activities',
+                '/history',
                 expected,
                 expect.objectContaining({
                     preserveScroll: true,
@@ -324,7 +389,7 @@ describe('useFeedFilters', () => {
         },
     );
 
-    it('resets every axis back to a bare /activities', () => {
+    it('resets every axis back to a bare /history', () => {
         vi.mocked(router.get).mockReset();
         const { result } = renderHook(() =>
             useFeedFilters(
@@ -332,6 +397,7 @@ describe('useFeedFilters', () => {
                     rangeFilter: '1y',
                     moodFilter: ['blazing'],
                     distanceFilter: '21up',
+                    rarityFilter: 'legendary',
                     sortMode: 'fastest',
                     weekFilter: '2026-05-17',
                 }),
@@ -341,7 +407,7 @@ describe('useFeedFilters', () => {
         act(() => result.current.resetFilters());
 
         expect(router.get).toHaveBeenCalledWith(
-            '/activities',
+            '/history',
             {},
             expect.anything(),
         );
@@ -354,7 +420,7 @@ describe('useFeedFilters', () => {
             );
 
             expect(result.current.sections.range.hrefFor('1y')).toBe(
-                '/activities?range=1y&mood=blazing',
+                '/history?range=1y&mood=blazing',
             );
         });
 
@@ -370,7 +436,7 @@ describe('useFeedFilters', () => {
 
             act(() => result.current.sections.mood.onToggle('easy'));
             expect(router.get).toHaveBeenLastCalledWith(
-                '/activities',
+                '/history',
                 { mood: 'easy' },
                 expect.anything(),
             );
@@ -378,7 +444,7 @@ describe('useFeedFilters', () => {
             rerender(hookProps({ moodFilter: ['easy'] }));
             act(() => result.current.sections.mood.onToggle('easy'));
             expect(router.get).toHaveBeenLastCalledWith(
-                '/activities',
+                '/history',
                 {},
                 expect.anything(),
             );
@@ -393,15 +459,37 @@ describe('useFeedFilters', () => {
 
             act(() => result.current.sections.distance.onSelect('21up'));
             expect(router.get).toHaveBeenLastCalledWith(
-                '/activities',
+                '/history',
                 {},
                 expect.anything(),
             );
 
             act(() => result.current.sections.distance.onSelect('0-5'));
             expect(router.get).toHaveBeenLastCalledWith(
-                '/activities',
+                '/history',
                 { dist: '0-5' },
+                expect.anything(),
+            );
+        });
+
+        // Same clear-on-reselect behavior as distance.
+        it('clears the rarity when the active one is picked again', () => {
+            vi.mocked(router.get).mockReset();
+            const { result } = renderHook(() =>
+                useFeedFilters(hookProps({ rarityFilter: 'legendary' })),
+            );
+
+            act(() => result.current.sections.rarity.onSelect('legendary'));
+            expect(router.get).toHaveBeenLastCalledWith(
+                '/history',
+                {},
+                expect.anything(),
+            );
+
+            act(() => result.current.sections.rarity.onSelect('common'));
+            expect(router.get).toHaveBeenLastCalledWith(
+                '/history',
+                { rarity: 'common' },
                 expect.anything(),
             );
         });
@@ -415,7 +503,7 @@ describe('useFeedFilters', () => {
             act(() => result.current.sections.sort.onSelect('newest'));
 
             expect(router.get).toHaveBeenCalledWith(
-                '/activities',
+                '/history',
                 {},
                 expect.anything(),
             );
@@ -462,7 +550,7 @@ describe('useFeedFilters', () => {
 
             act(() => result.current.resume!.apply());
             expect(router.get).toHaveBeenCalledWith(
-                '/activities',
+                '/history',
                 { mood: 'blazing' },
                 expect.anything(),
             );

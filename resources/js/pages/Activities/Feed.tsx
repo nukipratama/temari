@@ -5,6 +5,7 @@ import { useRef } from 'react';
 
 import type {
     Mood,
+    Rarity,
     SharedProps,
     StravaSyncState,
     WeeklySnapshotWithRecap,
@@ -13,7 +14,6 @@ import type {
 import JourneyStrip, {
     type JourneyMatchData,
 } from '@/components/activities/JourneyStrip';
-import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
 import ActiveFilterChips from '@/components/history/ActiveFilterChips';
 import HistoryFilter from '@/components/history/HistoryFilter';
 import HistoryTabs from '@/components/history/HistoryTabs';
@@ -58,6 +58,8 @@ interface RunsIndexProps {
     moodFilter?: ReadonlyArray<Mood>;
     /** Distance band the server filtered on, or null for any distance. */
     distanceFilter?: DistanceBand | null;
+    /** Rarity the server filtered on, or null for any rarity. */
+    rarityFilter?: Rarity | null;
     /** Ordering the server applied. Anything but 'newest' renders a flat list. */
     sortMode?: SortMode;
     /** Week deep link (that week's Sunday, YYYY-MM-DD), or null. */
@@ -80,6 +82,7 @@ export default function RunsIndex({
     rangeFilter,
     moodFilter = [],
     distanceFilter = null,
+    rarityFilter = null,
     sortMode = DEFAULT_SORT,
     weekFilter = null,
     rangeAutoWidened = false,
@@ -104,6 +107,7 @@ export default function RunsIndex({
         rangeFilter,
         moodFilter,
         distanceFilter,
+        rarityFilter,
         sortMode,
         weekFilter,
     });
@@ -115,6 +119,7 @@ export default function RunsIndex({
         sortMode,
         moodFilter.join(','),
         distanceFilter ?? '',
+        rarityFilter ?? '',
         weekFilter ?? '',
     ].join('|');
 
@@ -123,7 +128,6 @@ export default function RunsIndex({
             <Head title="History · Log" />
             <PageContainer>
                 <header className="flex flex-col gap-5">
-                    <TodayHistoryTabs active="history" />
                     <PageHero
                         eyebrow={
                             anyFilterActive
@@ -149,7 +153,7 @@ export default function RunsIndex({
                             anchorRef={filterRef}
                             placement="bottom"
                             title="Filter the log"
-                            body="When the list gets long, narrow it down by mood, distance, or week."
+                            body="When the list gets long, narrow it down by mood, distance, rarity, or week."
                         />
                     </div>
                     <ActiveFilterChips

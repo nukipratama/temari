@@ -3,7 +3,7 @@ title: Plan — deterministic periodizer and the Plan tab
 description: The rules-only training periodizer that fills the Plan tab, its two modes, the render-time readiness clamp, and the render-time volume redistribution
 tags: [feature, run]
 status: living
-reviewed: 2026-08-14
+reviewed: 2026-08-19
 code_refs:
   - app/Services/Run/Plan/Periodizer.php
   - app/Services/Run/Plan/PhaseSchedule.php
@@ -15,12 +15,15 @@ code_refs:
   - app/Services/Run/Plan/SeasonService.php
   - app/Services/Run/Plan/SessionMatcher.php
   - app/Services/Run/Plan/PlanAdapter.php
+  - app/Services/Run/Plan/PlanRenderer.php
+  - app/Services/Run/Plan/CurrentWeekPlanBuilder.php
   - app/Enums/AdaptationReason.php
   - app/Models/PlanAdaptation.php
   - app/Models/PlannedSession.php
   - app/Models/Season.php
   - app/Models/SeasonGoal.php
   - app/Http/Controllers/PlanController.php
+  - app/Services/Gamification/SeasonStreakSummaryBuilder.php
   - app/Console/Commands/Run/RegeneratePlanCommand.php
   - resources/js/pages/Plan.tsx
   - resources/js/components/plan/SeasonTrack.tsx
@@ -56,7 +59,7 @@ Each regeneration deletes every unpinned row across the *full* 12-week horizon b
 
 This is the *within-the-day* half of the readiness reaction; the *within-the-week* half (a real deload) is in "Reacting to what actually happened" below.
 
-[ReadinessClamp::apply()](app/Services/Run/Plan/ReadinessClamp.php) compares a stored session's implied intensity against the CURRENT [ReadinessCeiling](app/Services/Run/Metrics/ReadinessCeiling.php) and, when the stored session asks for more than the ceiling allows, returns a downgraded view plus one of a handful of short templated strings (e.g. *"Your form dipped, so today's the easy version instead."*) — this is a rule-driven downgrade message, never an LLM call, never a new `AnalysisType`. [PlanController::index()](app/Http/Controllers/PlanController.php) applies it to **today's row only**: a future day's readiness isn't knowable today, and clamping a whole training block by this moment's fatigue would defeat periodization. The stored row is never mutated — only the rendered payload reflects the clamp.
+[ReadinessClamp::apply()](app/Services/Run/Plan/ReadinessClamp.php) compares a stored session's implied intensity against the CURRENT [ReadinessCeiling](app/Services/Run/Metrics/ReadinessCeiling.php) and, when the stored session asks for more than the ceiling allows, returns a downgraded view plus one of a handful of short templated strings (e.g. *"Your form dipped, so today's the easy version instead."*) — this is a rule-driven downgrade message, never an LLM call, never a new `AnalysisType`. [PlanController::index()](app/Http/Controllers/PlanController.php) applies it to **today's row only**: a future day's readiness isn't knowable today, and clamping a whole training block by this moment's fatigue would defeat periodization. The stored row is never mutated — only the rendered payload reflects the clamp. [CurrentWeekPlanBuilder](app/Services/Run/Plan/CurrentWeekPlanBuilder.php) applies the identical clamp for Home's own current-week read (the `weekPlan` Inertia prop, `DashboardController`) — the two never disagree about today's row because they call the same `ReadinessClamp::apply()`.
 
 Quality work (Tempo/Interval) needs the optimistic `QualityOk` ceiling; a Long day only needs `ModerateOk` (it's a volume day, not an intensity one); Easy needs the floor above `Rest`.
 
@@ -88,9 +91,11 @@ The three sections above are all *render-time* reactions within one week. The ge
 
 [DistanceBandKm::kmFor()](app/Services/Run/Plan/DistanceBandKm.php) is the only place a `distance_band` becomes an actual kilometre figure, combining the athlete's *current* long-run baseline with a phase-derived volume multiplier. [PlanController::index()](app/Http/Controllers/PlanController.php) recomputes this fresh on every page load (never reading a stored km), so a week regenerated weeks ago still displays honestly against the athlete's fitness today.
 
+**Shared with Home, not duplicated.** [PlanRenderer](app/Services/Run/Plan/PlanRenderer.php) holds the two computations above — the phase→volume-multiplier grouping and the per-day payload — extracted out of `PlanController` so [CurrentWeekPlanBuilder](app/Services/Run/Plan/CurrentWeekPlanBuilder.php) (Home's `weekPlan` prop, no lookahead, no redistribution since Home never shows a future day's resized distance) can never numerically drift from Plan's own figures for the same week: a Peak/Taper/Deload week's multiplier is relative to how far into that phase block the week sits, which needs the same trailing history both callers query with the identical `HISTORY_WEEKS` window.
+
 ## Season — the arc this plan belongs to (Slice 7)
 
-The Plan tab's top-of-page summary section is the same periodized arc viewed at a higher zoom, not a separate page (`Season IS the training block` — see the v2 program's locked decisions). [SeasonService::ensureCurrent()](app/Services/Run/Plan/SeasonService.php) is called both from `PlanController::index()` (a fresh user's first page view already has a season) and from `Periodizer::regenerate()` (the weekly job and on-demand regeneration keep it in lockstep with the plan's own mode). A self-scaled `Season` runs a fixed 12 weeks (matching `HORIZON_WEEKS`) and auto-cycles into a fresh one on expiry; a race-oriented one ends on `race_date`. Setting or clearing a `RaceGoal` mid-season closes the current season early (`ends_at` moves to the day before) and opens the other mode at the next call — never a gap, never an overlap, since the mode check always compares the CURRENT active race against the latest season's `race_goal_id`.
+The Plan tab's top-of-page summary section is the same periodized arc viewed at a higher zoom, not a separate page (`Season IS the training block` — see the v2 program's locked decisions). [SeasonService::ensureCurrent()](app/Services/Run/Plan/SeasonService.php) is called both from `PlanController::index()` (a fresh user's first page view already has a season) and from `Periodizer::regenerate()` (the weekly job and on-demand regeneration keep it in lockstep with the plan's own mode). `SeasonService::peekCurrent()` is the read-only counterpart the [[profile]] page uses instead — it returns the current season if one already exists, `null` otherwise, and never creates, updates, or closes a `Season` row. A self-scaled `Season` runs a fixed 12 weeks (matching `HORIZON_WEEKS`) and auto-cycles into a fresh one on expiry; a race-oriented one ends on `race_date`. Setting or clearing a `RaceGoal` mid-season closes the current season early (`ends_at` moves to the day before) and opens the other mode at the next call — never a gap, never an overlap, since the mode check always compares the CURRENT active race against the latest season's `race_goal_id`.
 
 5 `SeasonGoal` rows generate once, at creation — see [[gamification]] for the full list and the rest-day reward mechanism that isn't a `Badge`.
 
@@ -98,7 +103,7 @@ The Plan tab's top-of-page summary section is the same periodized arc viewed at 
 
 Two cards under that summary render what the season-scoped reward engine is actually doing.
 
-[SeasonTrack](../../resources/js/components/plan/SeasonTrack.tsx) is the reward rail: one pip per `SeasonGoal`, filled for each one completed, which is exactly the tier count `GrantSeasonUnlocksAction` grants under `season.{id}.track_{N}`. The earned count is derived on the client from the goals already in the payload rather than shipped twice. Under it sits the only honesty this card owes the user: **the track resets at the season boundary, and nothing collected resets with it.** `season.tiers_kept_from_past_seasons` ([PlanController](../../app/Http/Controllers/PlanController.php)) counts the track tiers owned under an *earlier* season's key namespace and proves that claim with a number; it renders only when that number is non-zero, so a first season shows no empty promise.
+[SeasonTrack](../../resources/js/components/plan/SeasonTrack.tsx) is the reward rail: one pip per `SeasonGoal`, filled for each one completed, which is exactly the tier count `GrantSeasonUnlocksAction` grants under `season.{id}.track_{N}`. The earned count is derived on the client from the goals already in the payload rather than shipped twice. Under it sits the only honesty this card owes the user: **the track resets at the season boundary, and nothing collected resets with it.** `season.tiers_kept_from_past_seasons` ([SeasonStreakSummaryBuilder](../../app/Services/Gamification/SeasonStreakSummaryBuilder.php), shared with the [[profile]] page's own season & streak panel) counts the track tiers owned under an *earlier* season's key namespace and proves that claim with a number; it renders only when that number is non-zero, so a first season shows no empty promise.
 
 [StreakPanel](../../resources/js/components/plan/StreakPanel.tsx) renders `WeeklySnapshot::consecutiveWeekStreak()` with the stake attached: whether the open week has a run in it yet, when it closes, and what a runless close would do. Rest weeks (`StreakRestToken`) appear as held pips and a plain statement that Temari plays them automatically — **there is deliberately no spend control**, because `SettleStreakRestTokensAction` spends at week close and a token the user had to remember would fail the runner it exists for. The accrual forecast ("the next one lands at week N") is hidden entirely once the held tokens are at `MAX_HELD`, since no further token can arrive; a broken streak reads as a restart rather than a zero.
 
@@ -106,4 +111,4 @@ Two cards under that summary render what the season-scoped reward engine is actu
 
 [IntervalDetector::detect()](app/Services/Run/Metrics/IntervalDetector.php) is [LapsTool](app/Services/AI/Agent/Tools/LapsTool.php)'s original `reps()` heuristic (pace-spread threshold, midpoint split, non-adjacency rejection), pulled out as a pure function so the periodizer and other session-structure code can reuse it without going through the LLM tool layer. No behavior change from the original inline logic.
 
-See also [[race-projection]] (the `RaceGoal` this periodizer reads), [[training-load-metrics]] (the CTL/ATL/monotony inputs `Readiness` clamps against, and the season's CTL-growth goal), and [[gamification]] (season goals, the rest-day reward, and the badge board).
+See also [[race-projection]] (the `RaceGoal` this periodizer reads), [[training-load-metrics]] (the CTL/ATL/monotony inputs `Readiness` clamps against, and the season's CTL-growth goal), and [[gamification]] (season goals, the rest-day reward, and badge milestones).
