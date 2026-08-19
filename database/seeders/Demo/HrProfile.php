@@ -12,10 +12,10 @@ enum HrProfile: string
     case LsdDrift = 'lsd_drift';
     case NegSplit = 'neg_split';
     // A genuinely middling run: HR straddles Z2/Z3 so no zone dominates — lands
-    // the "Lari Santai" default move that no other profile reaches.
+    // the "Easy Run" default move that no other profile reaches.
     case Mixed = 'mixed';
     // A hard, even time-trial: HR sits in Z4 (so Z3 share stays low) with no
-    // negative split — the recipe for a "Pecah Rekor" PR that isn't Tahan Tempo.
+    // negative split — the recipe for a "New Record" PR that is not "Tempo Lock".
     case HardEven = 'hard_even';
 
     public function velocityMultiplier(float $progress, bool $intervalWork): float

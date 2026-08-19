@@ -1,25 +1,30 @@
 import { Icon } from '@iconify/react';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
-import ProgressionChart from '@/components/koleksi/ProgressionChart';
+import ProgressionChart from '@/components/collection/ProgressionChart';
+import MeTabs from '@/components/me/MeTabs';
+import SeasonStreakPanel, {
+    type SeasonSummary,
+} from '@/components/me/SeasonStreakPanel';
 import PersonaBar, { type PersonaSlice } from '@/components/PersonaBar';
+import { type StreakSummary } from '@/components/plan/StreakPanel';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
+import LinkCard from '@/components/ui/LinkCard';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';
 import { appLayout } from '@/layouts/appLayout';
-import { cn } from '@/lib/cn';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 import {
     formatDurationHMS,
@@ -29,6 +34,7 @@ import {
 } from '@/lib/pace';
 import { PR_CATEGORY_LABELS } from '@/lib/pr';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
+import { outlineChipVariants } from '@/lib/variants';
 
 interface IdentityPayload {
     name: string;
@@ -65,6 +71,11 @@ interface FitnessPayload {
     training_paces: TrainingPaces | null;
 }
 
+interface SeasonStreakPayload {
+    season: SeasonSummary | null;
+    streak: StreakSummary;
+}
+
 interface ProfileProps {
     identity: IdentityPayload;
     stats: StatsPayload;
@@ -72,6 +83,7 @@ interface ProfileProps {
     profileVoice?: AnalysisPayload;
     progressionByCategory?: Record<string, ProgressionSeries> | null;
     fitness?: FitnessPayload | null;
+    seasonStreak?: SeasonStreakPayload;
 }
 
 export default function Profile({
@@ -81,6 +93,7 @@ export default function Profile({
     profileVoice,
     progressionByCategory = null,
     fitness = null,
+    seasonStreak,
 }: Readonly<ProfileProps>) {
     const { auth, stravaSync } = usePage<SharedProps>().props;
     const sharedUser = auth.user;
@@ -115,7 +128,7 @@ export default function Profile({
         <>
             <Head title="Profile" />
             <PageContainer>
-                <header className="mb-8">
+                <header className="mb-8 flex flex-col gap-5">
                     <PageHero
                         eyebrow={
                             <Eyebrow
@@ -129,18 +142,16 @@ export default function Profile({
                     >
                         {firstName ? `${firstName} Runner,` : 'Runner,'}
                         <br />
-                        <em className="italic text-horizon-deep">
-                            your story.
-                        </em>
+                        <em className="italic text-horizon-ink">your story.</em>
                     </PageHero>
+                    <MeTabs active="profile" />
                 </header>
 
                 <HeroPanel className="lg:px-9 lg:py-8">
                     {/* Stacks below sm: the 100px mascot plus the gap leaves only
-                        ~150px of column on a 320px screen, which is too narrow for
-                        the "Minta Temari bacain" CTA — it wrapped one word per line
-                        into a tall, cramped pill. Side-by-side from sm up, where
-                        there is room for both. */}
+                        ~150px of column on a 320px screen, too narrow for the
+                        narration CTA beside it, which wrapped one word per line into
+                        a tall, cramped pill. Side-by-side from sm up. */}
                     <div className="mb-5 flex flex-col items-start gap-4 sm:flex-row sm:items-start sm:gap-6">
                         <div className="shrink-0">
                             <Temari pose="proud" size={100} animate={false} />
@@ -273,25 +284,30 @@ export default function Profile({
                     </motion.div>
                 </HeroPanel>
 
-                <section className="mt-6">
-                    <Link
-                        href="/race"
-                        className="focus-ring pressable flex items-center justify-between gap-3 rounded-xl border border-line bg-cream px-4 py-3.5 shadow-sm transition hover:border-horizon/60"
-                    >
-                        <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-                            <Icon
-                                icon="mdi:flag-checkered"
-                                width={16}
-                                height={16}
-                                aria-hidden
-                            />
-                            Got a race coming up?
-                        </span>
-                        <span className="text-label-micro text-ink-3">
-                            Set your race &rarr;
-                        </span>
-                    </Link>
-                </section>
+                <LinkCard
+                    href="/race"
+                    className="pressable mt-10 flex items-center justify-between gap-3 transition hover:border-horizon/60"
+                >
+                    <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+                        <Icon
+                            icon="mdi:flag-checkered"
+                            width={16}
+                            height={16}
+                            aria-hidden
+                        />
+                        Got a race coming up?
+                    </span>
+                    <span className="text-label-micro text-ink-3">
+                        Set your race &rarr;
+                    </span>
+                </LinkCard>
+
+                {seasonStreak && (
+                    <SeasonStreakPanel
+                        season={seasonStreak.season}
+                        streak={seasonStreak.streak}
+                    />
+                )}
 
                 {fitness?.training_paces && (
                     <section className="mt-10">
@@ -391,7 +407,7 @@ function ProgressionSection({
 
     return (
         <div data-coachmark="profile-progression" className="mt-10">
-            <Card as="section" padding="lg">
+            <Card as="section" padding="hero">
                 {tabs.length > 1 && (
                     <div
                         className="mb-6 flex flex-wrap items-center gap-2"
@@ -413,12 +429,9 @@ function ProgressionSection({
                                 role="tab"
                                 aria-selected={c === selected}
                                 onClick={() => setSelected(c)}
-                                className={cn(
-                                    'focus-ring inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-label-micro transition',
-                                    c === selected
-                                        ? 'border-horizon bg-horizon/10 text-horizon-deep'
-                                        : 'border-line text-ink-3 hover:border-horizon/60 hover:text-ink',
-                                )}
+                                className={outlineChipVariants({
+                                    selected: c === selected,
+                                })}
                             >
                                 {PROGRESSION_TAB_LABEL[c]}
                             </button>
@@ -434,7 +447,7 @@ function ProgressionSection({
                                 {formatDurationHMS(Math.round(worstCount))}
                             </em>
                             , now{' '}
-                            <em className="italic text-horizon-deep">
+                            <em className="italic text-horizon-ink">
                                 {formatDurationHMS(Math.round(bestCount))}
                             </em>
                         </p>

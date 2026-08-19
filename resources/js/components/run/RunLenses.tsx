@@ -89,7 +89,7 @@ function insightHasContent(insight: AnalysisPayload): boolean {
 function ClaimLine({ claim }: Readonly<{ claim: RunInsightClaim }>) {
     return (
         <div className="flex flex-col gap-1.5">
-            <p className="font-sans text-[15px] leading-relaxed text-ink">
+            <p className="font-sans text-quote-sm leading-relaxed text-ink">
                 {renderBold(claim.text)}
             </p>
             {(claim.value ?? claim.delta) && (
@@ -145,7 +145,7 @@ export default function RunLenses({
                             cooldownRemaining,
                             'rereading all',
                         )}
-                        className="focus-ring rounded inline-flex items-center gap-1.5 text-label-micro text-ink-2 transition hover:text-leaf-deep disabled:cursor-not-allowed disabled:opacity-50"
+                        className="focus-ring rounded inline-flex items-center gap-1.5 text-label-micro text-ink-2 transition hover:text-leaf-ink disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <Icon
                             icon={
@@ -162,7 +162,7 @@ export default function RunLenses({
             <div className="flex flex-col gap-3.5">
                 <Card
                     as="article"
-                    padding="lg"
+                    padding="hero"
                     className="border-l-[3px] border-l-leaf"
                 >
                     <div className="mb-2.5 flex items-center gap-2">
@@ -171,7 +171,7 @@ export default function RunLenses({
                             width={14}
                             height={14}
                             aria-hidden
-                            className="text-leaf"
+                            className="text-leaf-ink"
                         />
                         <Eyebrow token="micro" tone="ink-2">
                             This run&apos;s story
@@ -185,7 +185,7 @@ export default function RunLenses({
                         allowReanalyze={!isChainHead}
                         showTimestamp={false}
                         renderContent={(text) => (
-                            <p className="font-sans text-[15px] leading-relaxed text-ink">
+                            <p className="font-sans text-quote-sm leading-relaxed text-ink">
                                 {renderBold(text)}
                             </p>
                         )}
@@ -195,7 +195,7 @@ export default function RunLenses({
                 {insightHasContent(insight) && (
                     <Card
                         as="article"
-                        padding="lg"
+                        padding="hero"
                         className="border-l-[3px] border-l-ember"
                     >
                         <div className="mb-2.5 flex items-center gap-2">
@@ -204,7 +204,7 @@ export default function RunLenses({
                                 width={14}
                                 height={14}
                                 aria-hidden
-                                className="text-ember"
+                                className="text-ember-ink"
                             />
                             <Eyebrow token="micro" tone="ink-2">
                                 What stood out

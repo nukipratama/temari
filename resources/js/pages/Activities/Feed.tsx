@@ -5,6 +5,7 @@ import { useRef } from 'react';
 
 import type {
     Mood,
+    Rarity,
     SharedProps,
     StravaSyncState,
     WeeklySnapshotWithRecap,
@@ -12,19 +13,18 @@ import type {
 
 import JourneyStrip, {
     type JourneyMatchData,
-} from '@/components/aktivitas/JourneyStrip';
-import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
-import CoachMark from '@/components/onboarding/CoachMark';
-import ActiveFilterChips from '@/components/riwayat/ActiveFilterChips';
+} from '@/components/activities/JourneyStrip';
+import ActiveFilterChips from '@/components/history/ActiveFilterChips';
+import HistoryFilter from '@/components/history/HistoryFilter';
+import HistoryTabs from '@/components/history/HistoryTabs';
 import {
     RangeWidenedNote,
     RunsTruncatedNote,
     WeekFocusNote,
-} from '@/components/riwayat/InlineNote';
-import ResumeFilterChip from '@/components/riwayat/ResumeFilterChip';
-import RiwayatFilter from '@/components/riwayat/RiwayatFilter';
-import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
-import WeekSection from '@/components/riwayat/WeekSection';
+} from '@/components/history/InlineNote';
+import ResumeFilterChip from '@/components/history/ResumeFilterChip';
+import WeekSection from '@/components/history/WeekSection';
+import CoachMark from '@/components/onboarding/CoachMark';
 import RunListRow, { type RunNote } from '@/components/run/RunListRow';
 import StravaSyncButton from '@/components/StravaSyncButton';
 import Temari from '@/components/temari/Temari';
@@ -42,12 +42,12 @@ import {
     DEFAULT_SORT,
     SORT_OPTIONS,
     labelFor,
-    useJejakFilters,
+    useFeedFilters,
     type DistanceBand,
     type RangeFilterValue,
     type RunWithDetail,
     type SortMode,
-} from './useJejakFilters';
+} from './useFeedFilters';
 
 interface RunsIndexProps {
     runs: ReadonlyArray<RunWithDetail>;
@@ -58,6 +58,8 @@ interface RunsIndexProps {
     moodFilter?: ReadonlyArray<Mood>;
     /** Distance band the server filtered on, or null for any distance. */
     distanceFilter?: DistanceBand | null;
+    /** Rarity the server filtered on, or null for any rarity. */
+    rarityFilter?: Rarity | null;
     /** Ordering the server applied. Anything but 'newest' renders a flat list. */
     sortMode?: SortMode;
     /** Week deep link (that week's Sunday, YYYY-MM-DD), or null. */
@@ -80,6 +82,7 @@ export default function RunsIndex({
     rangeFilter,
     moodFilter = [],
     distanceFilter = null,
+    rarityFilter = null,
     sortMode = DEFAULT_SORT,
     weekFilter = null,
     rangeAutoWidened = false,
@@ -98,12 +101,13 @@ export default function RunsIndex({
         resume,
         anyFilterActive,
         ranked,
-    } = useJejakFilters({
+    } = useFeedFilters({
         runs,
         weeklySnapshots,
         rangeFilter,
         moodFilter,
         distanceFilter,
+        rarityFilter,
         sortMode,
         weekFilter,
     });
@@ -115,6 +119,7 @@ export default function RunsIndex({
         sortMode,
         moodFilter.join(','),
         distanceFilter ?? '',
+        rarityFilter ?? '',
         weekFilter ?? '',
     ].join('|');
 
@@ -123,7 +128,6 @@ export default function RunsIndex({
             <Head title="History · Log" />
             <PageContainer>
                 <header className="flex flex-col gap-5">
-                    <TodayHistoryTabs active="history" />
                     <PageHero
                         eyebrow={
                             anyFilterActive
@@ -132,14 +136,14 @@ export default function RunsIndex({
                         }
                     >
                         Every run{' '}
-                        <em className="not-italic text-horizon-deep">
+                        <em className="not-italic text-horizon-ink">
                             has a story.
                         </em>
                     </PageHero>
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <RiwayatTabs active="jejak" />
+                        <HistoryTabs active="feed" />
                         <div ref={filterRef} data-coachmark="history-filters">
-                            <RiwayatFilter
+                            <HistoryFilter
                                 {...sections}
                                 onReset={resetFilters}
                             />
@@ -149,7 +153,7 @@ export default function RunsIndex({
                             anchorRef={filterRef}
                             placement="bottom"
                             title="Filter the log"
-                            body="When the list gets long, narrow it down by mood, distance, or week."
+                            body="When the list gets long, narrow it down by mood, distance, rarity, or week."
                         />
                     </div>
                     <ActiveFilterChips
@@ -165,7 +169,7 @@ export default function RunsIndex({
                     )}
                 </header>
 
-                <JourneyStrip match={journeyMatch} className="mt-6 mb-6" />
+                <JourneyStrip match={journeyMatch} className="mt-8" />
 
                 {weekFilter !== null && (
                     <WeekFocusNote weekEnding={weekFilter} />
@@ -177,7 +181,7 @@ export default function RunsIndex({
                         initial="hidden"
                         animate="visible"
                         variants={staggerContainer}
-                        className="space-y-8"
+                        className="mt-8 space-y-8"
                     >
                         {rangeAutoWidened && (
                             <RangeWidenedNote rangeFilter={rangeFilter} />
@@ -250,7 +254,7 @@ function RankedList({
     return (
         <Card as="section" padding="none" className="overflow-hidden">
             <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-cream-deep bg-cream-deep/40 px-5 py-4">
-                <div className="font-display text-lg italic text-ink">
+                <div className="font-display text-headline-xs italic text-ink">
                     {label}
                 </div>
                 <Eyebrow token="micro" tone="ink-3">
@@ -281,7 +285,7 @@ const EMPTY_COPY: Record<StravaSyncState, { line: string; sub: string }> = {
         sub: "Your token isn't active anymore. Reconnect so new runs get picked up.",
     },
     syncing: {
-        line: 'Pulling in your runs 🏃‍♀️',
+        line: 'Pulling in your runs',
         sub: 'Hang tight, your history shows up as soon as the first run finishes processing.',
     },
     ready: {
@@ -314,7 +318,7 @@ function EmptyState() {
                     </BackLink>
                 </>
             }
-            className="flex flex-col items-center"
+            className="mt-8 flex flex-col items-center"
         />
     );
 }
@@ -328,11 +332,11 @@ function NoFilterMatchState({ onReset }: Readonly<{ onReset: () => void }>) {
     return (
         <Card
             tone="empty"
-            padding="lg"
-            className="flex flex-col items-center text-center"
+            padding="hero"
+            className="mt-8 flex flex-col items-center text-center"
         >
             <Temari pose="observational" size={112} animate={false} />
-            <p className="mt-4 font-display text-2xl italic text-ink-2">
+            <p className="mt-4 font-display text-headline-sm italic text-ink-2">
                 No runs match.
             </p>
             <p className="mt-2 font-sans text-sm text-ink-2">

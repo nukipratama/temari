@@ -3,7 +3,7 @@
 // Pages are discovered from `artisan route:list` (lib.mjs); overflow is
 // breakpoint-dependent, so every discovered page is checked at every viewport.
 import { chromium } from 'playwright';
-import { BASE, VIEWPORT_DEFS, parseViewports, login, dismissReveal, discoverPageRoutes } from './lib.mjs';
+import { BASE, VIEWPORT_DEFS, parseViewports, login, dismissReveal, discoverPageRoutes, DEVTOOLS_AUTH } from './lib.mjs';
 
 const selected = parseViewports();
 
@@ -14,7 +14,7 @@ const browser = await chromium.launch({
 
 for (const vp of selected) {
   const def = VIEWPORT_DEFS[vp];
-  const context = await browser.newContext(def);
+  const context = await browser.newContext({ ...def, ...DEVTOOLS_AUTH });
   const page = await context.newPage();
   console.log(`\n##### ${vp} (${def.viewport.width}x${def.viewport.height}) #####`);
   await login(page);
@@ -37,12 +37,14 @@ for (const vp of selected) {
         if (rect.width === 0 || rect.height === 0) continue;
         if (rect.right > vw + 1) {
           // Ignore intentional scroll containers, decorative non-interactive glows, and
-          // Leaflet's internal tile buffer (it always renders past the visible map edge
-          // for smooth panning, clipped by the map's own overflow-hidden — never visible).
+          // Leaflet's internal panes (they always render past the visible map edge for
+          // smooth panning, clipped by the map's own overflow-hidden — never visible).
+          // Every pane does this, not just the tile one: the overlay pane's route SVG
+          // tripped this check on /activities/{id} at 834px with nothing visibly wrong.
           const inScroller = el.closest('[class*="overflow-x-auto"],[class*="overflow-auto"],[class*="overflow-scroll"]');
           const decorative = el.closest('[class*="pointer-events-none"]');
-          const leafletTile = el.closest('.leaflet-tile-pane');
-          if ((inScroller && inScroller !== el) || decorative || leafletTile) continue;
+          const leafletPane = el.closest('.leaflet-pane');
+          if ((inScroller && inScroller !== el) || decorative || leafletPane) continue;
           real.push({ tag: el.tagName.toLowerCase(), cls: (el.getAttribute('class') || '').slice(0, 70), right: Math.round(rect.right) });
         }
       }

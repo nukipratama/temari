@@ -116,6 +116,7 @@ class StravaConnection extends Model
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
             'strava_athlete_id' => 'integer',
             'access_token' => 'encrypted',
             'refresh_token' => 'encrypted',

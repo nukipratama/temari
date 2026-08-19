@@ -166,23 +166,6 @@ export function formatNaiveIdDate(
     return idDateFromDate(d, format);
 }
 
-/** "Monday, May 11" — long weekday + numeric day + long month, no year. */
-export function formatWeekdayDateId(date: Date): string {
-    return date.toLocaleDateString('en-US', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-    });
-}
-
-/** "08:30 AM" — zero-padded hour and minute. */
-export function formatTimeId(date: Date): string {
-    return date.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-    });
-}
-
 /** "Mon, May 11" — short weekday + numeric day + short month. */
 export function formatShortWeekdayDateId(date: Date): string {
     return date.toLocaleDateString('en-US', {
@@ -202,24 +185,6 @@ export function formatWeekdayDayId(date: Date): string {
     return date.toLocaleDateString('en-US', {
         weekday: 'short',
         day: 'numeric',
-    });
-}
-
-/** "May 11, 2026" — numeric day + long month + year, no weekday. */
-export function formatDayMonthYearId(date: Date): string {
-    return date.toLocaleDateString('en-US', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    });
-}
-
-/** "May 11, 2026" — zero-padded day + short month + year. */
-export function formatPaddedDayMonthYearId(date: Date): string {
-    return date.toLocaleDateString('en-US', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
     });
 }
 
@@ -248,7 +213,7 @@ export function formatShortDateId(iso: string | null | undefined): string {
     return `${Number(d)} ${ID_MONTH_SHORT[Number(m) - 1]} ${y}`;
 }
 
-// "06.52" — zero-padded HH.MM via NAIVE_DATETIME_RE (see parseNaiveLocalDate).
+// "06:52" — zero-padded HH:MM via NAIVE_DATETIME_RE (see parseNaiveLocalDate).
 // Null when the string carries no time component.
 export function formatNaiveTimeId(
     iso: string | null | undefined,
@@ -257,10 +222,10 @@ export function formatNaiveTimeId(
     const match = NAIVE_DATETIME_RE.exec(iso);
     if (!match?.[4]) return null;
     const [, , , , h, m] = match;
-    return `${h}.${m}`;
+    return `${h}:${m}`;
 }
 
-// "19 Feb 2026 · 06.52" — short date + naive wall-clock time. Drops the time
+// "19 Feb 2026 · 06:52" — short date + naive wall-clock time. Drops the time
 // half when the string is date-only.
 export function formatShortDateTimeId(iso: string | null | undefined): string {
     const date = formatShortDateId(iso);
@@ -308,19 +273,6 @@ export function isoDateLocal(d: Date): string {
 /** Today as YYYY-MM-DD in the local zone. */
 export function todayLocalIso(): string {
     return isoDateLocal(new Date());
-}
-
-/** YYYY-MM-DD for `days` ago in the local zone. */
-export function isoDaysAgoLocal(days: number): string {
-    const d = new Date();
-    d.setDate(d.getDate() - days);
-    return isoDateLocal(d);
-}
-
-/** First day of the current month as YYYY-MM-DD in the local zone. */
-export function isoStartOfMonthLocal(): string {
-    const d = new Date();
-    return isoDateLocal(new Date(d.getFullYear(), d.getMonth(), 1));
 }
 
 // Inverse of formatPace: parses "M:SS" (or "MM:SS") back to seconds-per-km.

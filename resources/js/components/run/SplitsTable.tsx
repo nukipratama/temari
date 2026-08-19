@@ -42,13 +42,13 @@ export default function SplitsTable({
     }));
 
     return (
-        <Card as="section" padding="lg" className={className}>
+        <Card as="section" padding="hero" className={className}>
             <header className="mb-1.5 flex flex-wrap items-baseline justify-between gap-3">
                 <SectionLabel>Splits per km</SectionLabel>
                 {fastest != null && fastestKm != null && (
-                    <p className="font-display text-sm italic text-ink-2">
+                    <p className="font-display text-quote-sm italic text-ink-2">
                         Fastest at km {fastestKm},{' '}
-                        <span className="font-semibold text-horizon-deep">
+                        <span className="font-semibold text-horizon-ink">
                             {formatPace(fastest)}/km
                         </span>
                     </p>
@@ -147,7 +147,7 @@ function SplitPartialRow({
                 'mt-1 rounded-lg border-t border-cream-deep px-3 py-2 lg:py-2.5',
             )}
         >
-            <div className="font-mono text-[11px] uppercase tracking-[0.02em] text-ink-3">
+            <div className="text-label-micro text-ink-3">
                 {formatKm(partial.distance_m, 1)} KM
             </div>
             <div className="h-2.5 rounded border border-dashed border-sky/20 bg-sky/[0.06] lg:h-3" />

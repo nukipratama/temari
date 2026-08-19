@@ -76,7 +76,7 @@ describe('AppShell', () => {
         );
     });
 
-    it('renders the 4 primary tabs + children by default', () => {
+    it('renders the 3 primary tabs + children by default', () => {
         setMockPage({
             auth: { user: andiUser },
             flash: {},
@@ -88,7 +88,7 @@ describe('AppShell', () => {
             </AppShell>,
         );
         expect(screen.getByText('child content')).toBeInTheDocument();
-        ['Today', 'Collection', 'Plan', 'Me'].forEach((label) => {
+        ['Today', 'Trends', 'History'].forEach((label) => {
             expect(screen.getAllByText(label).length).toBeGreaterThan(0);
         });
         // <main> keeps bottom clearance for the fixed mobile bottom nav (cleared on lg).
@@ -168,8 +168,8 @@ describe('AppShell', () => {
 
         setMockPage(
             { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
-            '/cards',
-            'Collection/Cards',
+            '/accessories',
+            'Collection/Accessories',
         );
         rerender(
             <AppShell>
@@ -192,9 +192,12 @@ describe('AppShell', () => {
             </AppShell>,
         );
 
-        expect(
-            document.getElementById('main-content')?.className,
-        ).not.toContain('page-enter');
+        const main = document.getElementById('main-content');
+        expect(main).toHaveClass('pb-28', 'outline-none', 'lg:pb-0');
+        // Exactly those three: an enter animation would have to add a class
+        // here, and starting one at opacity 0 is what read as "old page ->
+        // blank -> fade in".
+        expect(main?.className.split(' ')).toHaveLength(3);
     });
 
     it('keeps the content region mounted across a partial reload of the same page', () => {
@@ -228,8 +231,8 @@ describe('AppShell', () => {
     it('shows the mobile top bar on every page', () => {
         setMockPage(
             { auth: { user: makeUser() } },
-            '/cards',
-            'Collection/Cards',
+            '/accessories',
+            'Collection/Accessories',
         );
         render(<AppShell>content</AppShell>);
         // Scoped by testid, not by tag: TopNav is also a <header> and stays in
@@ -237,7 +240,7 @@ describe('AppShell', () => {
         expect(screen.getByTestId('mobile-top-bar')).toBeInTheDocument();
     });
 
-    it('shows AksesoriUnlockModal and dismisses it when a major unlock is flashed', async () => {
+    it('shows AccessoryUnlockModal and dismisses it when a major unlock is flashed', async () => {
         setMockPage({
             auth: { user: andiUser },
             flash: {
@@ -262,7 +265,7 @@ describe('AppShell', () => {
         });
     });
 
-    it('defers the aksesori-unlock modal while a CardReveal pack is pending, so they never stack', async () => {
+    it('defers the accessory-unlock modal while a CardReveal pack is pending, so they never stack', async () => {
         setMockPage({
             auth: { user: andiUser },
             flash: {
@@ -283,7 +286,7 @@ describe('AppShell', () => {
         );
         // CardReveal (the pack) takes priority: it's shown...
         expect(await screen.findByText('Syncing in')).toBeInTheDocument();
-        // ...and the aksesori modal is held back, even though a major unlock fired.
+        // ...and the accessory modal is held back, even though a major unlock fired.
         expect(
             screen.queryByText(/Ikat Kepala Istimewa/),
         ).not.toBeInTheDocument();
@@ -310,5 +313,25 @@ describe('AppShell', () => {
         );
         expect(await screen.findByText('Syncing in')).toBeInTheDocument();
         expect(screen.queryByText('New unlock')).not.toBeInTheDocument();
+    });
+
+    // Without tabindex the fragment target is unfocusable, so activating the
+    // skip link scrolls but leaves focus (and the screen reader) in the header.
+    it('makes the skip link target focusable', () => {
+        setMockPage({
+            auth: { user: andiUser },
+            flash: {},
+            demoLoginEnabled: false,
+        });
+        render(
+            <AppShell>
+                <p>x</p>
+            </AppShell>,
+        );
+
+        const skip = screen.getByRole('link', { name: /konten|content/i });
+        const target = document.getElementById('main-content');
+        expect(skip).toHaveAttribute('href', '#main-content');
+        expect(target).toHaveAttribute('tabindex', '-1');
     });
 });

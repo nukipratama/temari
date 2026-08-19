@@ -63,6 +63,8 @@ class Season extends Model
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
+            'race_goal_id' => 'integer',
             'starts_at' => 'date:Y-m-d',
             'ends_at' => 'date:Y-m-d',
         ];

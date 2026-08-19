@@ -62,7 +62,15 @@ describe('ExpandableQuote', () => {
     it('uses cream text on the sky panel', () => {
         render(<ExpandableQuote text="Easy does it." onSky />);
         const paragraph = screen.getByText(/Easy does it\./);
-        expect(paragraph.className).toContain('text-cream');
-        expect(paragraph.className).not.toContain('text-ink');
+        expect(paragraph).toHaveClass('text-cream');
+        expect(paragraph).not.toHaveClass('text-ink');
+    });
+
+    it('hands its ground down to the toggle', () => {
+        const { rerender } = render(<ExpandableQuote text={'a'.repeat(200)} />);
+        expect(screen.getByRole('button')).toHaveClass('text-horizon-ink');
+
+        rerender(<ExpandableQuote text={'a'.repeat(200)} onSky />);
+        expect(screen.getByRole('button')).toHaveClass('text-horizon');
     });
 });

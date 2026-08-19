@@ -41,7 +41,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-surface px-6 text-center">
                 <Icon
                     icon="mdi:emoticon-sad-outline"
-                    className="text-5xl text-horizon-deep"
+                    className="text-5xl text-horizon-ink"
                     aria-hidden
                 />
                 <div className="flex flex-col gap-1">

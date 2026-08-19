@@ -43,7 +43,7 @@ function hasStaleZones(
 
 function StaleZonesBadge() {
     return (
-        <span className="inline-flex items-center self-start gap-1 rounded-full bg-horizon/15 px-2 py-0.5 text-xs text-ember-deep">
+        <span className="inline-flex items-center self-start gap-1 rounded-full bg-horizon/15 px-2 py-0.5 text-xs text-horizon-ink">
             <Icon icon="mdi:heart-pulse" aria-hidden />
             <span>calculated with old zones</span>
         </span>
@@ -95,9 +95,11 @@ const TEXT_SIZE: Record<AnalysisStatusSize, string> = {
 /** Widths of the stacked skeleton bars shown while a block is queued/processing. */
 const SKELETON_WIDTHS = ['w-full', 'w-[70%]', 'w-[85%]'];
 
-function RateLimitedNote() {
+function RateLimitedNote({ onSky }: Readonly<{ onSky: boolean }>) {
     return (
-        <span className="text-xs text-horizon-deep">
+        <span
+            className={`text-xs ${onSky ? 'text-horizon' : 'text-horizon-ink'}`}
+        >
             Easy there, Temari&apos;s overwhelmed. Try again in a bit.
         </span>
     );
@@ -175,7 +177,7 @@ export default function AnalysisStatus({
                             cooldownRemaining,
                             'reread',
                         )}
-                        className={`focus-ring rounded inline-flex items-center self-start gap-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${onSky ? 'text-ink-on-sky hover:text-cream disabled:hover:text-ink-on-sky' : 'text-ink-3 hover:text-leaf-deep disabled:hover:text-ink-3'}`}
+                        className={`focus-ring rounded inline-flex items-center self-start gap-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${onSky ? 'text-ink-on-sky hover:text-cream disabled:hover:text-ink-on-sky' : 'text-ink-3 hover:text-leaf-ink disabled:hover:text-ink-3'}`}
                     >
                         <Icon icon="mdi:auto-awesome" aria-hidden />
                         <span>
@@ -185,7 +187,7 @@ export default function AnalysisStatus({
                         </span>
                     </button>
                 )}
-                {rateLimited && <RateLimitedNote />}
+                {rateLimited && <RateLimitedNote onSky={onSky} />}
             </motion.div>
         );
     }
@@ -237,13 +239,13 @@ export default function AnalysisStatus({
         return (
             <div className="flex flex-col gap-1.5">
                 <UnavailableNote size={size} />
-                {rateLimited && <RateLimitedNote />}
+                {rateLimited && <RateLimitedNote onSky={onSky} />}
                 {canTrigger && (
                     <button
                         type="button"
                         onClick={trigger}
                         disabled={pending}
-                        className="focus-ring rounded inline-flex items-center self-start gap-1 text-xs text-leaf-deep hover:text-ink transition-colors disabled:opacity-50"
+                        className="focus-ring rounded inline-flex items-center self-start gap-1 text-xs text-leaf-ink hover:text-ink transition-colors disabled:opacity-50"
                     >
                         <Icon icon="mdi:auto-awesome" aria-hidden />
                         <span>Try again</span>

@@ -50,19 +50,19 @@ class BlueprintLibrary
         return $this->scriptedCache ??= [
             // A plain middling run: HR straddles Z2/Z3 (no zone dominant) and it's
             // kept under 5K so it dodges every special branch (incl. Anti Ngedrop,
-            // which needs 5K+) and lands the "Lari Santai" default move.
+            // which needs 5K+) and lands the "Easy Run" default move.
             new RunBlueprint(
                 startsAt: Carbon::today()->subDays(38)->setTime(6, 10),
                 distanceM: 4_500,
                 targetPaceSecPerKm: 430,
                 hrProfile: HrProfile::Mixed,
-                name: 'Lari biasa aja',
+                name: 'Just a run',
                 tags: ['mixed'],
                 location: $this->loc(2),
             ),
             // A hard, even 5K time-trial — fast enough to take the 5K PR, Z4-heavy
-            // so it isn't Tahan Tempo, even pacing so it isn't Tancap di Akhir:
-            // the recipe for the "Pecah Rekor" card.
+            // so it is not "Tempo Lock", even pacing so it is not "Closing Kick":
+            // the recipe for the "New Record" card.
             new RunBlueprint(
                 startsAt: Carbon::today()->subDays(31)->setTime(6, 0),
                 distanceM: 5_000,
@@ -70,7 +70,7 @@ class BlueprintLibrary
                 hrProfile: HrProfile::HardEven,
                 cadenceSpm: 172,
                 name: '5K time trial',
-                tags: ['time_trial', 'pecah_rekor'],
+                tags: ['time_trial', 'new_record'],
                 location: $this->loc(1),
             ),
             // --- Older base: building from couch to a first half marathon ---
@@ -79,7 +79,7 @@ class BlueprintLibrary
                 distanceM: 4_000,
                 targetPaceSecPerKm: 450,
                 hrProfile: HrProfile::Z2Steady,
-                name: 'Lari pelan pertama',
+                name: 'First slow one',
                 tags: ['baseline'],
                 location: $this->loc(0),
             ),
@@ -107,7 +107,7 @@ class BlueprintLibrary
                 distanceM: 5_500,
                 targetPaceSecPerKm: 425,
                 hrProfile: HrProfile::Z2Steady,
-                name: 'Pagi di Bandung',
+                name: 'Bandung morning',
                 tags: ['travel'],
                 location: $this->loc(3),
             ),
@@ -116,7 +116,7 @@ class BlueprintLibrary
                 distanceM: 8_000,
                 targetPaceSecPerKm: 410,
                 hrProfile: HrProfile::Tempo,
-                name: 'Tempo pertama',
+                name: 'First tempo',
                 tags: ['tempo'],
                 location: $this->loc(0),
             ),
@@ -126,21 +126,21 @@ class BlueprintLibrary
                 targetPaceSecPerKm: 495,
                 hrProfile: HrProfile::LsdDrift,
                 elevationGainM: 140,
-                name: 'Half marathon perdana',
+                name: 'First half marathon',
                 tags: ['half_marathon', 'big_volume', 'all_time_longest'],
                 location: $this->loc(0),
             ),
-            // --- Half-marathon progression: four more HMs after the perdana,
-            // each a notch faster, so /rekor's featured progression chart draws a
+            // --- Half-marathon progression: four more HMs after the first,
+            // each a notch faster, so the records page's featured progression chart draws a
             // real improving line toward the Sub-2:45 goal instead of one point.
-            // All stay under the perdana's 21.3km so it keeps `all_time_longest`.
+            // All stay under the first one's 21.3km so it keeps `all_time_longest`.
             new RunBlueprint(
                 startsAt: Carbon::today()->subDays(118)->setTime(5, 40),
                 distanceM: 21_150,
                 targetPaceSecPerKm: 488,
                 hrProfile: HrProfile::LsdDrift,
                 elevationGainM: 120,
-                name: 'Half marathon kedua',
+                name: 'Second half marathon',
                 tags: ['half_marathon', 'big_volume'],
                 location: $this->loc(5),
             ),
@@ -150,7 +150,7 @@ class BlueprintLibrary
                 targetPaceSecPerKm: 483,
                 hrProfile: HrProfile::NegSplit,
                 elevationGainM: 90,
-                name: 'Half marathon pagi Bali',
+                name: 'Bali morning half',
                 tags: ['half_marathon', 'big_volume', 'travel'],
                 location: $this->loc(6),
             ),
@@ -175,8 +175,8 @@ class BlueprintLibrary
                 location: $this->loc(0),
             ),
             // --- Full-marathon progression: three FMs across the window so the
-            // /rekor chart can plot a marathon line too. All fall AFTER the D-136
-            // half-marathon perdana, so that HM keeps the first distance-milestone
+            // records chart can plot a marathon line too. All fall AFTER the D-136
+            // half-marathon, so that HM keeps the first distance-milestone
             // Legendary and the first marathon earns a second one. The first
             // marathon is the longest (its lone marathon Legendary); the rest
             // improve toward a PR. Low-variance LsdDrift keeps the first longest.
@@ -186,7 +186,7 @@ class BlueprintLibrary
                 targetPaceSecPerKm: 519,
                 hrProfile: HrProfile::LsdDrift,
                 elevationGainM: 260,
-                name: 'Marathon perdana',
+                name: 'First marathon',
                 tags: ['marathon', 'big_volume', 'all_time_longest'],
                 location: $this->loc(4),
             ),
@@ -196,7 +196,7 @@ class BlueprintLibrary
                 targetPaceSecPerKm: 498,
                 hrProfile: HrProfile::LsdDrift,
                 elevationGainM: 220,
-                name: 'Marathon kedua',
+                name: 'Second marathon',
                 tags: ['marathon', 'big_volume', 'travel'],
                 location: $this->loc(3),
             ),
@@ -250,7 +250,7 @@ class BlueprintLibrary
                 weatherTempC: 25,
                 weatherHumidityPct: 95,
                 weatherRainDetected: true,
-                name: 'Hujan deras 8K',
+                name: 'Downpour 8K',
                 tags: ['rain_warrior'],
                 location: $this->loc(0),
             ),
@@ -259,7 +259,7 @@ class BlueprintLibrary
                 distanceM: 6_000,
                 targetPaceSecPerKm: 430,
                 hrProfile: HrProfile::Z2Steady,
-                name: 'Lari pagi di Sanur',
+                name: 'Sanur morning run',
                 tags: ['travel'],
                 location: $this->loc(6),
             ),
@@ -303,7 +303,7 @@ class BlueprintLibrary
                 weatherTempC: 25,
                 weatherHumidityPct: 95,
                 weatherRainDetected: true,
-                name: 'Hujan deras 8K',
+                name: 'Downpour 8K',
                 tags: ['rain_warrior'],
                 location: $this->loc(0),
             ),
@@ -393,7 +393,7 @@ class BlueprintLibrary
                 distanceM: 5_200,
                 targetPaceSecPerKm: 395,
                 hrProfile: HrProfile::NegSplit,
-                name: 'Pagi negative split',
+                name: 'Morning negative split',
                 tags: ['negative_split', 'past_you_today'],
                 location: $this->loc(0),
             ),
@@ -408,7 +408,7 @@ class BlueprintLibrary
                 weatherTempC: 24,
                 weatherHumidityPct: 55,
                 weatherRainDetected: false,
-                name: 'Treadmill 8K (hujan deras)',
+                name: 'Treadmill 8K (downpour outside)',
                 tags: ['no_gps', 'treadmill'],
                 hasGps: false,
             ),
@@ -418,7 +418,7 @@ class BlueprintLibrary
                 distanceM: 5_500,
                 targetPaceSecPerKm: 440,
                 hrProfile: HrProfile::Z2Steady,
-                name: 'Lari pagi tanpa jam',
+                name: 'Morning run, no watch',
                 tags: ['no_hr', 'no_cadence', 'phone_only'],
                 hasHrSensor: false,
                 hasCadenceSensor: false,
@@ -530,12 +530,12 @@ class BlueprintLibrary
     private function fillerName(Carbon $date, HrProfile $profile): string
     {
         $name = match ($profile) {
-            HrProfile::Tempo => 'Tempo sore',
-            HrProfile::LsdDrift => 'Long run santai',
-            HrProfile::Intervals => 'Interval pagi',
-            HrProfile::NegSplit => 'Progresif',
+            HrProfile::Tempo => 'Evening tempo',
+            HrProfile::LsdDrift => 'Easy long run',
+            HrProfile::Intervals => 'Morning intervals',
+            HrProfile::NegSplit => 'Progression',
             HrProfile::Z2Steady => 'Easy aerobic',
-            HrProfile::Mixed => 'Lari campur',
+            HrProfile::Mixed => 'Mixed bag',
             HrProfile::HardEven => 'Time trial',
         };
 

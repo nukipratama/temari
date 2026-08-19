@@ -11,7 +11,7 @@ import MetricExplainer from '@/components/MetricExplainer';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
 import { formStatusLabel } from '@/lib/formStatus';
-import { formatSignedForm } from '@/pages/Today/helpers';
+import { formatSignedForm } from '@/pages/Home/helpers';
 
 // Form (= ctl − atl) is unbounded, but formStatus() buckets fresh/optimal/fatigued/
 // overreaching within roughly ±40 at typical CTL, so that's the rail's clamp range.
@@ -270,8 +270,8 @@ function VitalChip({
         ink: 'bg-ink-3',
     }[tone];
     const valueClass = {
-        horizon: onSky ? 'text-horizon' : 'text-horizon-deep',
-        leaf: 'text-leaf',
+        horizon: onSky ? 'text-horizon' : 'text-horizon-ink',
+        leaf: onSky ? 'text-leaf' : 'text-leaf-ink',
         ink: onSky ? 'text-cream' : 'text-ink',
     }[tone];
     let middleBand: ReactNode = null;
@@ -283,7 +283,7 @@ function VitalChip({
     return (
         <div
             className={cn(
-                'flex h-full flex-col justify-between rounded-2xl border px-3.5 py-4 shadow-sm sm:px-4 sm:py-3.5',
+                'flex h-full flex-col justify-between rounded-lg border px-3.5 py-4 shadow-e1 sm:px-4 sm:py-3.5',
                 onSky
                     ? 'border-cream/[0.12] bg-cream/[0.06]'
                     : 'border-line bg-surface-card',

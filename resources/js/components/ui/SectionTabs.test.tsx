@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import SectionTabs, { type SectionTabItem } from './SectionTabs';
 
@@ -92,12 +92,46 @@ describe('SectionTabs', () => {
 
     it('renders no count chip when activeCount is omitted', () => {
         render(<SectionTabs tabs={TABS} active="today" />);
-        expect(
-            screen
-                .getByText('Today')
-                .closest('a')!
-                .querySelector('.bg-horizon\\/25'),
-        ).toBeNull();
+        expect(screen.getByText('Today').closest('a')!.children).toHaveLength(
+            1,
+        );
+    });
+
+    it('draws the count chip in cream, not the paper-only horizon ink, on the dark active tab', () => {
+        render(<SectionTabs tabs={TABS} active="history" activeCount="12" />);
+        expect(screen.getByText('12')).toHaveClass('bg-cream/20', 'text-cream');
+    });
+
+    it('draws the count chip in sky when the strip sits on a hero panel', () => {
+        render(
+            <SectionTabs tabs={TABS} active="history" activeCount="12" onSky />,
+        );
+        expect(screen.getByText('12')).toHaveClass('bg-sky/15', 'text-sky');
+    });
+
+    // scrollIntoView moves the sequential focus navigation starting point into
+    // the strip, so the page's first Tab skipped the skip link and the header.
+    it('scrolls the strip itself rather than calling scrollIntoView on a tab', () => {
+        const scrollIntoView = vi.fn();
+        const saved = Object.getOwnPropertyDescriptor(
+            HTMLElement.prototype,
+            'scrollIntoView',
+        );
+        Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+            configurable: true,
+            value: scrollIntoView,
+        });
+
+        render(<SectionTabs tabs={TABS} active="history" />);
+
+        expect(scrollIntoView).not.toHaveBeenCalled();
+        if (saved) {
+            Object.defineProperty(
+                HTMLElement.prototype,
+                'scrollIntoView',
+                saved,
+            );
+        }
     });
 
     it('shows no fade affordance when the strip fits its container', () => {

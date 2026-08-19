@@ -41,7 +41,7 @@ function UserCells({
                 <div className="flex items-center gap-1.5">
                     <span>{label}</span>
                     {row.deleted && (
-                        <span className="rounded-full bg-ink/5 px-1.5 py-0.5 text-[10px] font-normal text-ink-3">
+                        <span className="rounded-full bg-ink/5 px-1.5 py-0.5 text-[10px] font-normal text-ink-2">
                             deleted
                         </span>
                     )}

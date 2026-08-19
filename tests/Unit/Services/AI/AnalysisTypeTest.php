@@ -5,9 +5,12 @@ declare(strict_types=1);
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
+use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Services\AI\AnalysisCadence;
 use App\Services\AI\AnalysisType;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\In;
 
 it('pins the exact case list, so adding or retiring a type is a deliberate edit', function (): void {
     expect(array_column(AnalysisType::cases(), 'value'))->toBe([
@@ -20,6 +23,7 @@ it('pins the exact case list, so adding or retiring a type is a deliberate edit'
         'card_flavor',
         'aku_profile_voice',
         'monthly_recap',
+        'trend_read',
     ], implode(' ', [
         'The AnalysisType case list changed. Update this list only after settling the call sites that',
         'read the cases as a set rather than one case at a time: Analysis::knownType(), which decides',
@@ -40,6 +44,11 @@ it('maps MonthlyRecap to its job + subject type', function (): void {
         ->and(AnalysisType::MonthlyRecap->subjectType())->toBe(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE);
 });
 
+it('maps TrendRead to its job + subject type', function (): void {
+    expect(AnalysisType::TrendRead->jobClass())->toBe(AnalyzeTrendReadJob::class)
+        ->and(AnalysisType::TrendRead->subjectType())->toBe(AnalysisType::TREND_READ_SUBJECT_TYPE);
+});
+
 it('flags exactly the heart-rate-zone-derived types as zone-dependent', function (AnalysisType $type, bool $expected): void {
     expect($type->isZoneDependent())->toBe($expected);
 })->with([
@@ -48,6 +57,7 @@ it('flags exactly the heart-rate-zone-derived types as zone-dependent', function
     'run insight' => [AnalysisType::RunInsight, true],
     'weekly recap' => [AnalysisType::WeeklyRecap, true],
     'monthly recap (reads zone-weighted CTL for its fitness arc)' => [AnalysisType::MonthlyRecap, true],
+    'trend read (reads monotony/strain/CTL, all TRIMP-derived)' => [AnalysisType::TrendRead, true],
     'post-run speech' => [AnalysisType::PostRunSpeech, false],
     'pr context' => [AnalysisType::PrContext, false],
     'briefing mascot voice' => [AnalysisType::BriefingMascotVoice, false],
@@ -62,6 +72,7 @@ it('flags only the connected + chained kinds wired so far', function (AnalysisTy
     'run insight (per-activity chain)' => [AnalysisType::RunInsight, true],
     'card flavor (standalone)' => [AnalysisType::CardFlavor, false],
     'briefing mascot voice (standalone)' => [AnalysisType::BriefingMascotVoice, false],
+    'trend read (always as-of-now, never a sequence of closed periods)' => [AnalysisType::TrendRead, false],
 ]);
 
 it('assigns a cadence to every type', function (): void {
@@ -78,6 +89,7 @@ it('maps representative types to the expected cadence', function (AnalysisType $
     'weekly recap is weekly' => [AnalysisType::WeeklyRecap, AnalysisCadence::Weekly],
     'monthly recap is monthly' => [AnalysisType::MonthlyRecap, AnalysisCadence::Monthly],
     'aku profile voice is on-demand' => [AnalysisType::AkuProfileVoice, AnalysisCadence::OnDemand],
+    'trend read is on-demand (its own 3 cron schedules, not cascade-driven)' => [AnalysisType::TrendRead, AnalysisCadence::OnDemand],
 ]);
 
 it('is the single source of truth for group membership', function (): void {
@@ -131,3 +143,60 @@ it('formats currentIsoWeek to the discriminator shape AkuProfileVoice requires',
 
     Carbon::setTestNow();
 });
+
+/**
+ * A shape rule is not a closed set. Every type that permits a discriminator must
+ * bound *which* values it permits, or a caller can mint unbounded permanent rows
+ * one request at a time. Two bounds are legitimate: a range, for a discriminator
+ * naming a period, and an ownership check, for one naming a resource.
+ */
+it('bounds every discriminator it permits, by range or by ownership', function (): void {
+    // The one resource-keyed discriminator. Its bound is ownership, enforced in
+    // AnalysisSubjectAuthorizer and proved in that class's own suite, so a range
+    // here would be meaningless.
+    $boundedByOwnership = [AnalysisType::BriefingFeaturedKartuVoice];
+
+    foreach (AnalysisType::cases() as $type) {
+        $rules = $type->discriminatorRules();
+
+        if ($rules === ['prohibited'] || in_array($type, $boundedByOwnership, true)) {
+            continue;
+        }
+
+        $hasRange = collect($rules)->contains(
+            fn (string|In $rule): bool => $rule instanceof In || str_starts_with((string) $rule, 'after_or_equal:'),
+        );
+
+        expect($hasRange)->toBeTrue(
+            "[{$type->value}] permits a discriminator with a shape but no range, so a caller can mint "
+            .'an unbounded number of permanent ai_analyses rows. Add a range, or bound it by ownership '
+            .'in AnalysisSubjectAuthorizer and list it above.',
+        );
+    }
+});
+
+it('ranges each period discriminator against the age cap, not against wall clock drift', function (): void {
+    Carbon::setTestNow('2026-05-18 05:30:00');
+    $oldestDay = Carbon::today()->subDays(AnalysisType::MAX_DISCRIMINATOR_AGE_DAYS)->toDateString();
+
+    expect(AnalysisType::BriefingMascotVoice->discriminatorRules())
+        ->toContain('after_or_equal:'.$oldestDay)
+        ->toContain('before_or_equal:2026-05-18');
+
+    Carbon::setTestNow();
+});
+
+it('bounds TrendRead\'s discriminator to exactly the three ranges', function (string $range, bool $valid): void {
+    $result = Validator::make(
+        ['discriminator' => $range],
+        ['discriminator' => AnalysisType::TrendRead->discriminatorRules()],
+    );
+
+    expect($result->fails())->toBe(! $valid);
+})->with([
+    '30d' => ['30d', true],
+    '90d' => ['90d', true],
+    '12mo' => ['12mo', true],
+    '7d (not one of the three)' => ['7d', false],
+    'empty' => ['', false],
+]);

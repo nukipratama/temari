@@ -1,15 +1,6 @@
 import type { Mood } from '@/types/inertia';
 
-import { THREADWORK } from '@/lib/chartTokens';
-
-export const MOOD_FACE: Record<Mood, string> = {
-    blazing: '✨',
-    easy: '🦘',
-    gassed: '🥵',
-    wobbly: '🍳',
-    overloaded: '💫',
-    chill: '🌧️',
-};
+import { PALETTE } from '@/lib/chartTokens';
 
 export const MOOD_LABEL: Record<Mood, string> = {
     blazing: 'Blazing',
@@ -77,28 +68,20 @@ export const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = MOOD_ORDER.map(
     }),
 );
 
-export function moodToken(mood: Mood): Mood {
-    return mood;
-}
-
 export function moodSigilColor(mood: Mood): string {
     switch (mood) {
         case 'blazing':
-            return '#c9971f';
+            return PALETTE.citrus;
         case 'easy':
-            return '#2f8f63';
+            return PALETTE.leaf;
         case 'gassed':
-            return '#7a2030';
+            return PALETTE.gassed;
         case 'wobbly':
-            return '#b23a4f';
+            return PALETTE.ember;
         case 'overloaded':
-            return THREADWORK.overloaded;
+            return PALETTE.overloaded;
         case 'chill':
         default:
-            return '#55488f';
+            return PALETTE.chill;
     }
-}
-
-export function moodRing(mood: Mood): string {
-    return `ring-mood-${mood}/60`;
 }

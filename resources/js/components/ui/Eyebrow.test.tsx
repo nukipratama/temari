@@ -10,9 +10,7 @@ describe('Eyebrow', () => {
         ['hero', 'text-label-hero'],
     ] as const)('renders token="%s"', (token, expected) => {
         render(<Eyebrow token={token}>Token {token}</Eyebrow>);
-        expect(screen.getByText(`Token ${token}`).className).toContain(
-            expected,
-        );
+        expect(screen.getByText(`Token ${token}`)).toHaveClass(expected);
     });
 
     it.each(['div', 'span', 'h3', 'dt', 'footer'] as const)(
@@ -38,7 +36,7 @@ describe('Eyebrow', () => {
         ['ink-2', 'text-ink-2'],
         ['ink-3', 'text-ink-3'],
         ['horizon', 'text-horizon'],
-        ['horizon-deep', 'text-horizon-deep'],
+        ['horizon-ink', 'text-horizon-ink'],
         ['ink-on-sky', 'text-ink-on-sky'],
         ['cream', 'text-cream'],
     ] as const)('renders tone="%s"', (tone, expected) => {
@@ -47,7 +45,7 @@ describe('Eyebrow', () => {
                 Tone {tone}
             </Eyebrow>,
         );
-        expect(screen.getByText(`Tone ${tone}`).className).toContain(expected);
+        expect(screen.getByText(`Tone ${tone}`)).toHaveClass(expected);
     });
 
     it('omits a color class when tone is unset, so className can supply a one-off color', () => {

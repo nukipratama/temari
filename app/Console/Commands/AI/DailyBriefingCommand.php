@@ -18,15 +18,23 @@ use Illuminate\Support\Carbon;
 #[Description('Dispatch the daily briefing set for each active user (last 7 days)')]
 class DailyBriefingCommand extends Command
 {
+    /**
+     * How recently a user must have run to be briefed, keyed off the run's own
+     * date because an on-connect backfill stamps `analyzed_at` to now across a
+     * whole imported history.
+     */
+    private const int ACTIVE_WINDOW_DAYS = 7;
+
     public function handle(AnalysisService $service, ResolveFeaturedKartuAction $featuredKartu): int
     {
         $today = Carbon::today()->toDateString();
 
         $activeUserIds = Activity::query()
-            ->where('analyzed_at', '>=', Carbon::today()->subDays(7))
-            ->whereIn('user_id', User::query()->notDemo()->select('id'))
+            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+            ->where('activity_details.start_date_local', '>=', Carbon::today()->subDays(self::ACTIVE_WINDOW_DAYS))
+            ->whereIn('activities.user_id', User::query()->notDemo()->select('id'))
             ->distinct()
-            ->pluck('user_id');
+            ->pluck('activities.user_id');
 
         $users = User::query()->whereIn('id', $activeUserIds)->get();
 

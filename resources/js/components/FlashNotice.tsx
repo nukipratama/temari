@@ -14,7 +14,7 @@ const TONES: Record<
         icon: 'mdi:alert-circle-outline',
         role: 'alert',
         frame: 'border-ember/30 bg-ember/[0.08]',
-        glyph: 'text-ember-deep',
+        glyph: 'text-ember-ink',
     },
     info: {
         icon: 'mdi:information-outline',
@@ -26,7 +26,7 @@ const TONES: Record<
         icon: 'mdi:check-circle-outline',
         role: 'status',
         frame: 'border-leaf/30 bg-leaf/[0.08]',
-        glyph: 'text-leaf-deep',
+        glyph: 'text-leaf-ink',
     },
 };
 
@@ -66,7 +66,7 @@ export default function FlashNotice() {
         <div className="px-4 pt-4 lg:px-8">
             <div
                 role={style.role}
-                className={`mx-auto flex max-w-page-2xl items-start gap-3 rounded-2xl border px-4 py-3 ${style.frame}`}
+                className={`mx-auto flex max-w-page-2xl items-start gap-3 rounded-lg border px-4 py-3 ${style.frame}`}
             >
                 <Icon
                     icon={style.icon}

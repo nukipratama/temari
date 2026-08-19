@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-set -euo pipefail
+# -E so the ERR trap below is inherited by the app() helper every step runs
+# through; without it a failing step exits non-zero but reports nothing.
+set -Eeuo pipefail
 
 #   ./scripts/worktree-setup.sh <slot: 1|2|3>
 #
@@ -19,6 +21,14 @@ case "$1" in
   3) APP_PORT=7031; VITE_PORT=7032 ;;
   *) usage ;;
 esac
+SLOT=$1
+
+# `set -e` already exits non-zero on a failing step, but the only other signal
+# is the closing banner not printing — and composer's ~160 lines of progress
+# output bury the error that caused it. A dead worktree then surfaces much later
+# as a missing vendor/autoload.php, which the app reports as a Vite manifest 500
+# pointing nowhere near the cause. Say so at the point of failure instead.
+trap 'printf "\nworktree-setup: FAILED at line %s — nothing after it ran.\nEvery step is guarded, so re-run to resume: %s %s\n" "$LINENO" "$0" "$SLOT" >&2' ERR
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
@@ -63,20 +73,38 @@ EOF
 docker compose up -d
 docker compose exec -u root app chown -R www-data:www-data node_modules /var/cache/composer /var/cache/npm
 
+# vendor/ is empty on a fresh worktree, so ./vendor/bin/sail doesn't exist yet —
+# everything below uses the plain `docker compose exec` form. Each step is
+# guarded or idempotent, so re-running the script after a transient failure
+# (the known cold-install bind-mount race) is safe.
+app() { docker compose exec -T app "$@"; }
+
+[ -f vendor/autoload.php ] || app composer install
+
+# Only when unset: re-running key:generate would rotate APP_KEY and invalidate
+# every existing session in this worktree.
+grep -qE '^APP_KEY=.+' .env || app php artisan key:generate
+
+app php artisan migrate --force
+
+# The analytics schema is a SECOND connection with its own migration path, so a
+# plain `migrate` does not touch it. Skipping this leaves strava_sync_logs and
+# ai_token_usages missing, which 500s /pulse and /ai-usage — a gap every
+# worktree hit, because it only ever lived in this script's printed next-steps.
+# The schema itself is created on a fresh volume by docker/mysql/init.
+app php artisan migrate --database=analytics --path=database/migrations/analytics --force
+
 cat <<EOF
 worktree-setup: slot $1 configured — APP_PORT=$APP_PORT, VITE_PORT=$VITE_PORT.
-Stack is up; composer/npm caches are shared across worktrees, so installs
-after the first one should be faster.
+Stack is up, PHP deps installed, both the app and analytics schemas migrated.
+Composer/npm caches are shared across worktrees, so installs after the first
+one should be faster.
 
-Next (vendor/ is empty on a fresh worktree, so vendor/bin/sail doesn't exist
-yet — install once with plain docker compose first):
-  docker compose exec -T app composer install
-  ./vendor/bin/sail npm ci             # sail works from here on
+/devtools, /ai-usage, /horizon and /pulse sit behind HTTP Basic — any username,
+password = DEVTOOLS_PASSWORD from this worktree's .env (seeded from .env.example).
 
-To actually load pages in a browser (not just run the automated test suites,
-which use their own self-initializing mysql_test/redis_test and don't need
-this), also run once:
-  ./vendor/bin/sail artisan key:generate   # .env.example ships APP_KEY empty
-  ./vendor/bin/sail artisan migrate
+The PHP suites are ready now (they use their own self-initializing
+mysql_test/redis_test). To also load pages in a browser:
+  ./vendor/bin/sail npm ci
   ./vendor/bin/sail npm run dev            # or \`npm run build\` for a one-shot build
 EOF

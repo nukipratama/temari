@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 /**
  * Sends the channel-agnostic {@see TestNotification} to whatever channels the
  * signed-in user has wired — Telegram if connected, web push if subscribed. One
- * "Kirim tes" for every channel; the notification's via() picks the destinations.
+ * "Send test notification" for every channel; the notification's via() picks the destinations.
  *
  * Cooled per user for a short window. The route's `throttle:6,1` still bounds
  * abuse, but six silent sends a minute is a lot of buzzing for a mis-tap, and a

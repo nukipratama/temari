@@ -9,9 +9,11 @@ use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\PostRunNoteReader;
 use App\Services\Run\Story\BriefingComposer;
 use App\Services\Run\Story\BriefingResult;
+use App\Services\Run\Story\PastYouTrendBuilder;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
 use Illuminate\Database\Eloquent\Collection;
@@ -29,6 +31,8 @@ class DashboardController extends Controller
         TrainingLoad $trainingLoad,
         BriefingComposer $briefingComposer,
         PostRunNoteReader $noteReader,
+        PastYouTrendBuilder $pastYouTrend,
+        CurrentWeekPlanBuilder $weekPlanBuilder,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -62,7 +66,7 @@ class DashboardController extends Controller
                 ->get();
         };
 
-        return Inertia::render('Today', [
+        return Inertia::render('Home', [
             'briefing' => fn (): BriefingResult => $briefingComposer->compose($user, $today),
             'load' => fn (): ?array => $trainingLoad->summary($user, $today),
             'snapshot' => fn (): ?WeeklySnapshot => WeeklySnapshot::query()
@@ -70,6 +74,8 @@ class DashboardController extends Controller
                 ->orderByDesc('week_ending')
                 ->first(),
             'recentRuns' => fn (): Collection => $loadRecentRuns(),
+            'pastYouTrend' => fn (): array => $pastYouTrend->build($user, $today)->toArray(),
+            'weekPlan' => fn (): ?array => $weekPlanBuilder->forUser($user, $today),
             'lastRunNote' => function () use ($loadRecentRuns, $noteReader): ?array {
                 $lastRunActivityId = $loadRecentRuns()->first()?->activity_id;
 

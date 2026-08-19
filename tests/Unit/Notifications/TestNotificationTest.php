@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Enums\NotificationKind;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Notifications\Channels\IdempotentWebPushChannel;
+use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\TestNotification;
 use App\Services\Telegram\TelegramReplies;
@@ -24,32 +26,32 @@ it('routes to Telegram when a connection is present', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();
 
-    expect(new TestNotification()->via($user))->toBe([TelegramChannel::class]);
+    expect(new TestNotification()->via($user))->toBe([InAppChannel::class, TelegramChannel::class]);
 });
 
-it('routes nowhere without a connection', function (): void {
-    expect(new TestNotification()->via(User::factory()->create()))->toBe([]);
+it('routes to the inbox alone without a connection', function (): void {
+    expect(new TestNotification()->via(User::factory()->create()))->toBe([InAppChannel::class]);
 });
 
-it('routes nowhere over a revoked connection', function (): void {
+it('routes to the inbox alone over a revoked connection', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->revoked()->create();
 
-    expect(new TestNotification()->via($user))->toBe([]);
+    expect(new TestNotification()->via($user))->toBe([InAppChannel::class]);
 });
 
-it('routes nowhere for the demo user', function (): void {
+it('routes the demo user to the inbox alone, never outbound', function (): void {
     $user = User::factory()->create(['is_demo' => true]);
     TelegramConnection::factory()->for($user)->create();
 
-    expect(new TestNotification()->via($user))->toBe([]);
+    expect(new TestNotification()->via($user))->toBe([InAppChannel::class]);
 });
 
 it('routes to web push when the user has a subscription', function (): void {
     $user = User::factory()->create();
     $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
 
-    expect(new TestNotification()->via($user))->toBe([IdempotentWebPushChannel::class]);
+    expect(new TestNotification()->via($user))->toBe([InAppChannel::class, IdempotentWebPushChannel::class]);
 });
 
 it('builds the keyless test-reply message', function (): void {
@@ -65,7 +67,16 @@ it('builds a titled, high-urgency web push test message', function (): void {
     $message = $notification->toWebPush(User::factory()->create(), $notification);
     $payload = $message->toArray();
 
-    expect($payload['title'])->toBe('🔔 Test notification')
+    expect($payload['title'])->toBe('Test notification')
         ->and($payload['body'])->toBe(TelegramReplies::test())
         ->and($message->getOptions())->toBe(['urgency' => 'high']);
+});
+
+it('records the test in the inbox as well, so the send leaves a trace', function (): void {
+    $message = new TestNotification()->toInbox(User::factory()->create());
+
+    expect($message->kind)->toBe(NotificationKind::Test)
+        ->and($message->title)->toBe('Test notification')
+        ->and($message->body)->toBe(TelegramReplies::test())
+        ->and($message->dedupeKey)->toBeNull();
 });

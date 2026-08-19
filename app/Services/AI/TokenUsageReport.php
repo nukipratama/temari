@@ -24,8 +24,10 @@ use Illuminate\Support\Facades\DB;
  */
 class TokenUsageReport
 {
-    public function __construct(private readonly LlmCostCalculator $costCalculator)
-    {
+    public function __construct(
+        private readonly LlmCostCalculator $costCalculator,
+        private readonly CostCeilingLedger $ceilingLedger,
+    ) {
     }
 
     /**
@@ -37,7 +39,7 @@ class TokenUsageReport
      *     byUser: list<array{user_id:int, user_name:string|null, strava_athlete_id:int|null, deleted:bool, prompt:int, completion:int, total:int, calls:int}>,
      *     daily: list<array{day:string, prompt:int, completion:int, total:int, calls:int, cost:float}>,
      *     availableKinds: list<array{value:string, label:string}>,
-     *     budget: array{todayCost:float, dailyCeiling:float|null, currency:string},
+     *     budget: array{todayCost:float, dailyCeiling:float|null, currency:string, trippedAt:string|null, degradedFills:int},
      * }
      */
     public function build(Carbon $from, Carbon $to, ?string $kind, bool $includePrevious = true): array
@@ -64,6 +66,7 @@ class TokenUsageReport
                 'todayCost' => $this->costCalculator->dailyCost(),
                 'dailyCeiling' => $ceiling === null ? null : (float) $ceiling,
                 'currency' => 'USD', // Prices are quoted in USD.
+                ...$this->ceilingLedger->today(),
             ],
         ];
     }

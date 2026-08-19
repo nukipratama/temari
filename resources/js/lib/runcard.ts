@@ -70,14 +70,6 @@ export const BADGE_ABILITY: Record<string, string> = {
     headwind: 'Pushed through strong wind, 20 km/h or more.',
 };
 
-export const RARITY_BORDER: Record<Rarity, string> = {
-    common: 'border-rarity-common',
-    uncommon: 'border-rarity-uncommon',
-    rare: 'border-rarity-rare',
-    epic: 'border-rarity-epic',
-    legendary: 'border-rarity-legendary',
-};
-
 // Escalating "set symbol" glyph per rarity (circle to star), TCG-style. Colored
 // via RARITY_TEXT. Mirrored as RARITY_SYMBOL in lib/shareCard.ts for the canvas.
 export const RARITY_SYMBOL: Record<Rarity, string> = {
@@ -152,6 +144,8 @@ export function threadBandLines(count: number): ThreadBandLine[] {
     return lines;
 }
 
+// The vivid fill as a text colour. Only legible on the card's dark frame —
+// on paper use RARITY_INK.
 export const RARITY_TEXT: Record<Rarity, string> = {
     common: 'text-rarity-common',
     uncommon: 'text-rarity-uncommon',
@@ -160,8 +154,17 @@ export const RARITY_TEXT: Record<Rarity, string> = {
     legendary: 'text-rarity-legendary',
 };
 
-// Static literal Tailwind class maps (so JIT picks them up) for the rarity
-// swatch + surface wash shared by the card and the mini tile.
+// The only rarity colours allowed to carry text or an icon on paper.
+export const RARITY_INK: Record<Rarity, string> = {
+    common: 'text-rarity-common-ink',
+    uncommon: 'text-rarity-uncommon-ink',
+    rare: 'text-rarity-rare-ink',
+    epic: 'text-rarity-epic-ink',
+    legendary: 'text-rarity-legendary-ink',
+};
+
+// Static literal Tailwind class map (so JIT picks it up) for the rarity
+// swatch shared by the card and the mini tile.
 export const RARITY_DOT: Record<Rarity, string> = {
     common: 'bg-rarity-common',
     uncommon: 'bg-rarity-uncommon',
@@ -169,24 +172,6 @@ export const RARITY_DOT: Record<Rarity, string> = {
     epic: 'bg-rarity-epic',
     legendary: 'bg-rarity-legendary',
 };
-
-export const RARITY_TINT: Record<Rarity, string> = {
-    common: 'bg-rarity-common/[0.05]',
-    uncommon: 'bg-rarity-uncommon/[0.06]',
-    rare: 'bg-rarity-rare/[0.07]',
-    epic: 'bg-rarity-epic/[0.08]',
-    legendary: 'bg-rarity-legendary/[0.09]',
-};
-
-// Headband color driven by rarity — wired to TemariProto's `equipped.headband`.
-export const RARITY_HEADBAND: Record<Rarity, 'ember' | 'epik' | 'legendaris'> =
-    {
-        common: 'ember',
-        uncommon: 'ember',
-        rare: 'epik',
-        epic: 'legendaris',
-        legendary: 'legendaris',
-    };
 
 // Mascot pose driven by rarity — reinforces the tier hierarchy on cards and detail page.
 export const RARITY_POSE: Record<Rarity, TemariPose> = {
@@ -322,7 +307,7 @@ export function buildCardStats(
 /** The shared `<Kartu>` prop bag derived from a run's detail. */
 export interface KartuPropsFromDetail {
     km: string;
-    durasi: string;
+    duration: string;
     trimp: string;
     subtitle: string | null;
     stats: CardStatStrings;
@@ -340,7 +325,7 @@ export interface KartuPropsOptions {
 }
 
 /**
- * Derive the `km/durasi/trimp/subtitle/stats/zonePct/paceShape` prop bag a
+ * Derive the `km/duration/trimp/subtitle/stats/zonePct/paceShape` prop bag a
  * `<Kartu>` renders from a run's detail, in one place. Every `<Kartu>` call site
  * feeds from this so the `… != null ? … : '—'` sentinels can't drift. `subtitle`
  * is `null` when detail is absent (callers that always have a detail get the
@@ -350,7 +335,7 @@ export function kartuPropsFromDetail(
     detail?: ActivityDetail | null,
     { durationFormat = 'hms' }: KartuPropsOptions = {},
 ): KartuPropsFromDetail {
-    const durasi =
+    const duration =
         detail?.elapsed_time == null
             ? '—'
             : durationFormat === 'hms'
@@ -358,7 +343,7 @@ export function kartuPropsFromDetail(
               : formatDuration(detail.elapsed_time);
     return {
         km: formatKm(detail?.distance),
-        durasi,
+        duration,
         trimp:
             detail?.trimp_edwards == null
                 ? '—'

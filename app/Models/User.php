@@ -61,6 +61,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'pending_reveal_card_id' => 'integer',
             'is_demo' => 'boolean',
             'is_admin' => 'boolean',
             'onboarded_at' => 'datetime',
@@ -118,6 +119,18 @@ class User extends Authenticatable
     public function notificationPreference(): HasOne
     {
         return $this->hasOne(NotificationPreference::class);
+    }
+
+    /**
+     * The notification inbox, newest first. Named apart from the `Notifiable`
+     * trait's own `notifications()`, which expects the framework's
+     * DatabaseNotification schema rather than ours.
+     *
+     * @return HasMany<InboxNotification, $this>
+     */
+    public function inboxNotifications(): HasMany
+    {
+        return $this->hasMany(InboxNotification::class)->latest();
     }
 
     /**

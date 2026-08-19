@@ -1,0 +1,79 @@
+import type { AnalysisPayload } from '@/types/inertia';
+
+import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import { cn } from '@/lib/cn';
+import { renderBold } from '@/lib/richText';
+
+interface SummaryCardProps {
+    analysis: AnalysisPayload;
+    /** Used to refresh just the relevant props after a retry, matching the parent page. */
+    inertiaReloadProps?: string[];
+    /** When the LLM hasn't produced a recap yet, this fallback prose stays visible. */
+    fallback: string;
+    /** The in-progress week: suppress the manual trigger until the week closes. */
+    awaitingSchedule?: boolean;
+    /** Weekly recap is a chained kind: retry resumes the chain, regenerate is head-only. */
+    isChainHead?: boolean;
+    className?: string;
+}
+
+const DEFAULT_RELOAD_PROPS = ['weeklySnapshots', 'historicalSnapshots'];
+
+/**
+ * Renders Temari's weekly recap narrative. While the LLM job is pending /
+ * processing / failed, shows the rule-based `fallback` so the section never
+ * looks empty. Reuses the central {@link AnalysisStatus} state machine for
+ * spinner, retry button, error chip.
+ */
+export default function SummaryCard({
+    analysis,
+    inertiaReloadProps = DEFAULT_RELOAD_PROPS,
+    fallback,
+    awaitingSchedule = false,
+    isChainHead = false,
+    className,
+}: Readonly<SummaryCardProps>) {
+    return (
+        <section
+            className={cn(
+                'rounded-lg border border-line bg-surface-warm p-4 shadow-e1 sm:p-5',
+                className,
+            )}
+            aria-label="Temari's notes this week"
+        >
+            <div className="font-mono text-xs font-bold uppercase tracking-wider text-ink-2">
+                Temari's Notes
+            </div>
+            <div className="mt-2">
+                <AnalysisStatus
+                    analysis={analysis}
+                    inertiaReloadProps={inertiaReloadProps}
+                    awaitingSchedule={awaitingSchedule}
+                    chained
+                    isChainHead={isChainHead}
+                    size="md"
+                    renderContent={(content) => (
+                        <p className="text-sm leading-relaxed text-ink">
+                            {renderBold(content)}
+                        </p>
+                    )}
+                />
+            </div>
+            {/* awaitingSchedule already shows its own "not available yet" line above;
+                stacking the fallback stat sentence right after it with no framing
+                read as a contradiction ("not ready yet" immediately followed by
+                the actual summary). Label it explicitly as a preview instead of
+                dropping it, so the card still never looks empty. */}
+            {analysis.status !== 'done' && (
+                <p className="mt-2 text-sm leading-relaxed text-ink-2">
+                    {awaitingSchedule && (
+                        <span className="font-semibold text-ink-3">
+                            For now:{' '}
+                        </span>
+                    )}
+                    {fallback}
+                </p>
+            )}
+        </section>
+    );
+}

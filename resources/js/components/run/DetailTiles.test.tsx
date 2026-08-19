@@ -87,7 +87,7 @@ describe('DetailTiles', () => {
 
     it('exposes the decoupling tile as a warning when |decoupling| > 8% on a cool run', () => {
         renderTiles({ weather_temp_c: 20 }, { decoupling_pct: 12.5 });
-        expect(screen.getByText('+12.5%')).toHaveClass('text-ember');
+        expect(screen.getByText('+12.5%')).toHaveClass('text-ember-ink');
         expect(
             screen.getByText('breathing drifted in the second half'),
         ).toBeInTheDocument();
@@ -95,13 +95,13 @@ describe('DetailTiles', () => {
 
     it('softens the decoupling tile with a heat explanation when the run was hot', () => {
         renderTiles({ weather_temp_c: 32 }, { decoupling_pct: 12.5 });
-        expect(screen.getByText('+12.5%')).not.toHaveClass('text-ember');
+        expect(screen.getByText('+12.5%')).not.toHaveClass('text-ember-ink');
         expect(screen.getByText('normal, it was 32°C out')).toBeInTheDocument();
     });
 
     it('still flags a high decoupling on a run without weather data', () => {
         renderTiles({ weather_temp_c: null }, { decoupling_pct: 12.5 });
-        expect(screen.getByText('+12.5%')).toHaveClass('text-ember');
+        expect(screen.getByText('+12.5%')).toHaveClass('text-ember-ink');
     });
 
     it('does not apply the heat explanation to a large negative decoupling on a hot run', () => {
@@ -109,7 +109,7 @@ describe('DetailTiles', () => {
         // ever explains a positive drift, so a strongly negative value on a hot run
         // must still read as a plain warning, not "wajar, tadi panas".
         renderTiles({ weather_temp_c: 32 }, { decoupling_pct: -12.5 });
-        expect(screen.getByText('-12.5%')).toHaveClass('text-ember');
+        expect(screen.getByText('-12.5%')).toHaveClass('text-ember-ink');
         expect(
             screen.getByText('breathing drifted in the second half'),
         ).toBeInTheDocument();
@@ -119,6 +119,24 @@ describe('DetailTiles', () => {
     it('leaves a small decoupling untinted', () => {
         renderTiles();
         expect(screen.getByText('+4.5%')).toHaveClass('text-ink');
+    });
+
+    it('reads a small decoupling as steady rather than as drift', () => {
+        renderTiles({ weather_temp_c: 20 }, { decoupling_pct: 4.5 });
+        expect(
+            screen.getByText('breathing held steady to the end'),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText('breathing drifted in the second half'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('reads a decoupling of near zero as steady on a hot run too', () => {
+        renderTiles({ weather_temp_c: 32 }, { decoupling_pct: 0.5 });
+        expect(
+            screen.getByText('breathing held steady to the end'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/normal, it was/)).not.toBeInTheDocument();
     });
 
     it('skips the decoupling tile when its value is not a finite number (no "NaN%")', () => {
@@ -132,10 +150,10 @@ describe('DetailTiles', () => {
         // count that would otherwise strand CADENCE alone in the 2-column grid.
         renderTiles({}, {});
         expect(
-            screen.getByText('CADENCE').closest('div.rounded-xl'),
+            screen.getByText('CADENCE').closest('div.rounded-lg'),
         ).toHaveClass('col-span-2');
         expect(
-            screen.getByText('AVG HR').closest('div.rounded-xl'),
+            screen.getByText('AVG HR').closest('div.rounded-lg'),
         ).not.toHaveClass('col-span-2');
     });
 
@@ -143,7 +161,7 @@ describe('DetailTiles', () => {
         // Default fixture yields 4 tiles (AVG HR, MAX HR, CADENCE, DECOUPLING).
         renderTiles();
         expect(
-            screen.getByText('DECOUPLING').closest('div.rounded-xl'),
+            screen.getByText('DECOUPLING').closest('div.rounded-lg'),
         ).not.toHaveClass('col-span-2');
     });
 

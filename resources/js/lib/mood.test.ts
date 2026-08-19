@@ -3,15 +3,12 @@ import { describe, expect, it } from 'vitest';
 import type { Mood } from '@/types/inertia';
 
 import {
-    MOOD_FACE,
     MOOD_FILL,
     MOOD_FILTER_OPTIONS,
     MOOD_HINT,
     MOOD_LABEL,
     MOOD_ORDER,
-    moodRing,
     moodSigilColor,
-    moodToken,
 } from './mood';
 
 const ALL_MOODS: Mood[] = [
@@ -24,12 +21,6 @@ const ALL_MOODS: Mood[] = [
 ];
 
 describe('mood', () => {
-    it('exposes a face emoji for every mood', () => {
-        ALL_MOODS.forEach((m) => {
-            expect(MOOD_FACE[m]).toBeTruthy();
-        });
-    });
-
     describe('MOOD_ORDER', () => {
         it('lists every mood exactly once', () => {
             const byName = (a: Mood, b: Mood) => a.localeCompare(b);
@@ -60,15 +51,6 @@ describe('mood', () => {
         });
     });
 
-    describe('moodToken', () => {
-        it.each(ALL_MOODS.map((m) => [m, m] as [Mood, Mood]))(
-            'passes through %s',
-            (mood, token) => {
-                expect(moodToken(mood)).toBe(token);
-            },
-        );
-    });
-
     describe('moodSigilColor', () => {
         it('returns a hex color for every mood', () => {
             ALL_MOODS.forEach((m) => {
@@ -78,14 +60,6 @@ describe('mood', () => {
 
         it('falls back to chill grey for unknown mood', () => {
             expect(moodSigilColor('unknown' as Mood)).toBe('#55488f');
-        });
-    });
-
-    describe('moodRing', () => {
-        it('returns ring-mood-* class with /60 opacity', () => {
-            expect(moodRing('blazing')).toBe('ring-mood-blazing/60');
-            expect(moodRing('gassed')).toBe('ring-mood-gassed/60');
-            expect(moodRing('chill')).toBe('ring-mood-chill/60');
         });
     });
 });

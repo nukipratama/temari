@@ -34,10 +34,11 @@
     {{-- Android/Chrome uses this to tint its toolbar. iOS does not use it for
          the standalone status bar at all, which is why two rounds of retinting
          it never touched the dark band around the notch — see StatusBarScrim
-         for what actually paints that. Cream because that is the app's top
-         surface on a device with no safe-area inset, where the scrim gradient
-         is only a few px tall. Fixed rather than following the dawn-shift. --}}
-    <meta name="theme-color" content="#EEE7D6">
+         for what actually paints that. `cream-deep` because that is the ground
+         AppShell paints under the whole app, and it is what
+         public/manifest.webmanifest already declares. Fixed rather than
+         following the dawn-shift. --}}
+    <meta name="theme-color" content="#e2e8ee">
 
     {{-- PWA: installable + standalone; push works once added to the Home Screen via Safari. --}}
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
@@ -81,7 +82,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Oswald:wght@500;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
         rel="stylesheet"
     >
     @viteReactRefresh

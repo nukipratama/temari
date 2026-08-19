@@ -110,6 +110,7 @@ class PlannedSession extends Model
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
             'date' => 'date:Y-m-d',
             'phase' => PlanPhase::class,
             'session_type' => SessionType::class,

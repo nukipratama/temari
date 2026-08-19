@@ -6,8 +6,10 @@ import {
     BADGE_ABILITY,
     BADGE_LABELS,
     RARITY_BAND_COUNT,
+    RARITY_INK,
     RARITY_LABELS,
     RARITY_ORDER,
+    RARITY_TEXT,
     avgCadenceFromDetail,
     badgeEmblem,
     badgeName,
@@ -51,6 +53,23 @@ describe('RARITY_LABELS', () => {
             rare: 'Rare',
             epic: 'Epic',
             legendary: 'Legendary',
+        });
+    });
+});
+
+// The fill-vs-text rule from docs/design-tokens.md, as a test: the vivid value
+// is the fill, the `-ink` value is the only one that may carry text on paper.
+// Shipping `text-rarity-legendary` on a cream surface is the bug this catches.
+describe('rarity text colours', () => {
+    it('keeps RARITY_TEXT on the vivid fill, for the card frame only', () => {
+        RARITY_ORDER.forEach((r) => {
+            expect(RARITY_TEXT[r]).toBe(`text-rarity-${r}`);
+        });
+    });
+
+    it('gives RARITY_INK the -ink variant for every tier', () => {
+        RARITY_ORDER.forEach((r) => {
+            expect(RARITY_INK[r]).toBe(`text-rarity-${r}-ink`);
         });
     });
 });
@@ -219,7 +238,7 @@ describe('kartuPropsFromDetail', () => {
     it('derives the full card prop bag with digital HMS duration by default', () => {
         const props = kartuPropsFromDetail(fullDetail);
         expect(props.km).toBe('5.00');
-        expect(props.durasi).toBe('30:10');
+        expect(props.duration).toBe('30:10');
         expect(props.trimp).toBe('43');
         expect(props.subtitle).toContain('Pagi santai · ');
         expect(props.stats).toEqual({
@@ -235,7 +254,7 @@ describe('kartuPropsFromDetail', () => {
     it('uses the words-form duration when durationFormat is words', () => {
         expect(
             kartuPropsFromDetail(fullDetail, { durationFormat: 'words' })
-                .durasi,
+                .duration,
         ).toBe('30 min 10 sec');
     });
 
@@ -248,7 +267,7 @@ describe('kartuPropsFromDetail', () => {
     it('uses "—" sentinels and null fields when detail is null or empty', () => {
         const props = kartuPropsFromDetail(null);
         expect(props.km).toBe('—');
-        expect(props.durasi).toBe('—');
+        expect(props.duration).toBe('—');
         expect(props.trimp).toBe('—');
         expect(props.subtitle).toBeNull();
         expect(props.stats).toEqual({

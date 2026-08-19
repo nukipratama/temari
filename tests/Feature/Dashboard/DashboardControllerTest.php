@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Models\PlannedSession;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\Run\Story\PastYouTrendBuilder;
 use App\Models\WeeklySnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -14,8 +16,10 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
-it('redirects unauthenticated users to login', function (): void {
-    $this->get('/')->assertRedirect('/login');
+it('never renders the dashboard to a guest', function (): void {
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login'));
 });
 
 it('renders for a user with no synced activities', function (): void {
@@ -24,7 +28,7 @@ it('renders for a user with no synced activities', function (): void {
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Today')
+            ->component('Home')
             ->where('auth.user.first_name', explode(' ', (string) $user->name)[0])
             ->where('load', null)
             ->where('recentRuns', []));
@@ -78,7 +82,7 @@ it('renders KPIs + recent runs when the user has training-load history', functio
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Today')
+            ->component('Home')
             ->has('load.weekly_trimp')
             ->has('load.form')
             ->has('snapshot')
@@ -88,7 +92,7 @@ it('renders KPIs + recent runs when the user has training-load history', functio
 });
 
 /**
- * `snapshot` is a single row — `KondisiCard` takes one `WeeklySnapshot | null`.
+ * `snapshot` is a single row — `TrainingLoadCard` takes one `WeeklySnapshot | null`.
  * The read used to pull the newest twelve and throw eleven away.
  */
 it('reads only the newest weekly snapshot, not a window of them', function (): void {
@@ -130,7 +134,7 @@ it('does not ship the unused trendAnalysis or weeklyRecap props', function (): v
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Today')
+            ->component('Home')
             ->missing('trendAnalysis')
             ->missing('weeklyRecap'));
 });
@@ -182,10 +186,10 @@ it('does not fetch recent runs or weekly snapshots on a briefing-only partial re
     expect($recentRunFetches)->toBeEmpty()
         ->and($snapshotReads)->toBeEmpty();
 
-    $response->assertJsonPath('component', 'Today');
+    $response->assertJsonPath('component', 'Home');
     // The one prop the poll does name still has to resolve.
     $response->assertJsonPath('props.briefing.mood', fn (mixed $mood): bool => is_string($mood));
-    foreach (['load', 'snapshot', 'recentRuns', 'lastRunNote', 'recentMoods'] as $skipped) {
+    foreach (['load', 'snapshot', 'recentRuns', 'lastRunNote', 'recentMoods', 'weekPlan'] as $skipped) {
         $response->assertJsonMissingPath("props.{$skipped}");
     }
 });
@@ -199,11 +203,58 @@ it('still returns every dashboard prop on a full page load', function (): void {
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Today')
+            ->component('Home')
             ->has('briefing')
             ->has('snapshot')
             ->has('recentRuns', 1)
-            ->has('recentMoods'));
+            ->has('recentMoods')
+            ->has('pastYouTrend')
+            ->has('weekPlan'));
+});
+
+it('ships weekPlan as null when the user has no planned sessions this week', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Home')
+            ->where('weekPlan', null));
+});
+
+it('ships a real weekPlan when the user has a plan for the current week', function (): void {
+    Carbon::setTestNow('2026-08-12'); // a Wednesday
+    $user = User::factory()->create();
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    for ($i = 0; $i < 7; $i++) {
+        PlannedSession::factory()->for($user)->create(['date' => $weekStart->copy()->addDays($i)]);
+    }
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Home')
+            ->where('weekPlan.days', fn (mixed $days): bool => count($days) === 7)
+            ->has('weekPlan.sessions_per_week')
+            ->has('weekPlan.phase')
+            ->has('weekPlan.streak_days'));
+
+    Carbon::setTestNow();
+});
+
+it('ships the Past You verdict as its own outcome when history is too thin', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Home')
+            ->where('pastYouTrend.verdict', 'not_enough_history')
+            ->where('pastYouTrend.comparison_count', 0)
+            ->where('pastYouTrend.window_days', PastYouTrendBuilder::WINDOW_DAYS)
+            ->etc());
 });
 
 /**
@@ -220,7 +271,7 @@ function briefingOnlyHeaders(object $actingAs): array
     return [
         'X-Inertia' => 'true',
         'X-Inertia-Version' => inertiaVersionFor($actingAs, '/'),
-        'X-Inertia-Partial-Component' => 'Today',
+        'X-Inertia-Partial-Component' => 'Home',
         'X-Inertia-Partial-Data' => 'briefing',
     ];
 }

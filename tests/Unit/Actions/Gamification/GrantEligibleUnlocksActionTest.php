@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Enums\Badge;
 use App\Enums\Rarity;
 use App\Actions\Gamification\GrantEligibleUnlocksAction;
+use App\Enums\NotificationKind;
 use App\Models\Activity;
+use App\Models\InboxNotification;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\User;
@@ -65,7 +67,7 @@ it('short-circuits once every accessory has been unlocked', function (): void {
     expect(($this->engine)($user))->toBe([]);
 });
 
-it('grants medal_gold once five PRs are recorded', function (): void {
+it('grants medal_silver once five PRs are recorded', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->count(5)->state(new Sequence(
         ['category' => '1km'],
@@ -76,7 +78,7 @@ it('grants medal_gold once five PRs are recorded', function (): void {
     ))->create();
 
     expect(($this->engine)($user))
-        ->toContain('accessory.medal_gold');
+        ->toContain('accessory.medal_silver');
 });
 
 it('grants headband_legendary from a Legendaris run card', function (): void {
@@ -111,7 +113,7 @@ it('grants aura_windrunner after three headwind badge cards', function (): void 
         $activity = Activity::factory()->for($user)->create();
         RunCard::factory()->create([
             'activity_id' => $activity->id,
-            'badges' => [Badge::LawanAngin->value],
+            'badges' => [Badge::Headwind->value],
         ]);
     }
 
@@ -208,4 +210,47 @@ it('falls back to the key + default icon when the config entry omits name and ic
         'icon' => 'mdi:medal',
         'is_major' => false,
     ]);
+});
+
+describe('the inbox record', function (): void {
+    // The flash only ever reached a user who happened to be mid-request, and
+    // only for the first of a batch. An unlock granted during a background
+    // ingest was celebrated to nobody.
+    it('records every new unlock in the inbox, session or not', function (): void {
+        $user = User::factory()->create();
+        PersonalRecord::factory()->for($user)->create();
+
+        ($this->engine)($user);
+
+        expect(InboxNotification::query()->where('user_id', $user->id)->pluck('dedupe_key')->all())
+            ->toBe(['unlock:accessory.medal_first']);
+    });
+
+    it('carries the celebration payload the toast uses, so it can be replayed', function (): void {
+        $user = User::factory()->create();
+        PersonalRecord::factory()->for($user)->create();
+
+        ($this->engine)($user);
+
+        $row = InboxNotification::query()->firstOrFail();
+        $catalog = (array) config('temari_unlocks');
+
+        expect($row->kind)->toBe(NotificationKind::Unlock)
+            ->and($row->payload)->toEqual([
+                'unlock_key' => 'accessory.medal_first',
+                'name' => $catalog['accessory.medal_first']['name'],
+                'icon' => $catalog['accessory.medal_first']['icon'],
+                'is_major' => false,
+            ])
+            ->and($row->title)->toBe('Unlocked: '.$catalog['accessory.medal_first']['name']);
+    });
+
+    it('records the demo unlock too, so the public demo inbox is not blank', function (): void {
+        $user = User::factory()->create(['is_demo' => true]);
+        PersonalRecord::factory()->for($user)->create();
+
+        ($this->engine)($user);
+
+        expect(InboxNotification::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
+    });
 });

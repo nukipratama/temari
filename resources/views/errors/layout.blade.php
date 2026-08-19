@@ -12,14 +12,14 @@
         href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,400;1,9..144,500&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap">
     <style>
         :root {
-            --sky: #241c54;
-            --cream: #f5f0e4;
-            --cream-deep: #ece2ce;
-            --ink: #1a1812;
-            --ink-2: #3d362a;
-            --ink-3: #6e6452;
-            --horizon: #d9a53c;
-            --horizon-deep: #b98a2a;
+            --sky: #171f28;
+            --cream: #f1f5f8;
+            --cream-deep: #e2e8ee;
+            --ink: #16181b;
+            --ink-2: #34373c;
+            --ink-3: #60666d;
+            --horizon: #ade047;
+            --horizon-ink: #546d23;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -44,7 +44,7 @@
             font-size: 88px;
             line-height: 1;
             font-weight: 500;
-            color: var(--horizon-deep);
+            color: var(--horizon-ink);
         }
         .title {
             font-family: 'Fraunces', Georgia, serif;

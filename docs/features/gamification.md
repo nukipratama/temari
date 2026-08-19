@@ -3,7 +3,7 @@ title: Gamification (cards, rarities, badges, unlocks, milestones)
 description: The reward engine — how a run becomes a card with rarity, badges and a special move, plus milestones, PRs and accessory unlocks.
 tags: [feature, gamification]
 status: living
-reviewed: 2026-07-29
+reviewed: 2026-08-14
 code_refs:
   - app/Services/Run/Story/RunCardFactory.php
   - app/Services/Run/Story/CardContext.php
@@ -18,15 +18,18 @@ code_refs:
   - app/Services/Gamification/GoalResolver.php
   - app/Services/Gamification/SeasonGoalResolver.php
   - app/Services/Gamification/SeasonGamificationContext.php
-  - app/Http/Controllers/BadgeBoardController.php
+  - resources/js/components/trends/panels/FitnessTrend.tsx
   - app/Models/RunCard.php
   - app/Models/UserUnlock.php
+  - app/Models/StreakRestToken.php
+  - app/Actions/Gamification/SettleStreakRestTokensAction.php
+  - app/Console/Commands/Gamification/SettleStreakTokensCommand.php
   - app/Models/PersonalRecord.php
 ---
 
 # Gamification
 
-Gamification isn't a page — it's an engine that runs as each activity is ingested. The visible payoffs (cards, rarities, records, unlock progress) surface across [[cards-collection]], [[records]] and [[targets-accessories]] (the badge board and live accessory progress). This note describes the engine and where each piece is wired.
+Gamification isn't a page — it's an engine that runs as each activity is ingested. The visible payoffs (cards, rarities, records, unlock progress) surface across [[cards-collection]], [[records]] and [[targets-accessories]] (live accessory progress); badge milestones and PRs live on `/trends`. This note describes the engine and where each piece is wired.
 
 **No dedicated route** — this is a service-layer engine, not a page.
 
@@ -53,7 +56,7 @@ The rarity isn't a coin flip: [RarityScorer::score()](../../app/Services/Run/Sto
 
 Effort badges are read against the athlete's max HR, so a stale max quietly distorts them: `all_out` (hard) landed on 69% of runs while `easy_miles` (easy) fired on none at all, since its 70%-of-max bar describes a recovery jog rather than the easy run a Z2 session actually is. Both thresholds now sit where runners would recognise the effort, and max HR self-corrects during ingest (see [[stream-analysis]]).
 
-The result persists to the `run_cards` table via [RunCard](../../app/Models/RunCard.php): `rarity` is a string column cast to the `Rarity` enum, `badges` casts to an array, and `special_move` holds the name. The model exposes `forUser()`, `badgeCountsForUser()` (lifetime, `Badge::tracked()` only — feeds `GamificationContext`) and `allBadgeCountsForUser()` (every `Badge` case, optionally date-ranged — feeds the badge board) for the collection views.
+The result persists to the `run_cards` table via [RunCard](../../app/Models/RunCard.php): `rarity` is a string column cast to the `Rarity` enum, `badges` casts to an array, and `special_move` holds the name. The model exposes `forUser()`, `badgeCountsForUser()` (lifetime, `Badge::tracked()` only — feeds `GamificationContext`), `allBadgeCountsForUser()` (every `Badge` case, optionally date-ranged) and `firstEarnedDatesForUser()` (the earliest date each badge slug was ever earned — feeds the badge-milestone timeline below) for the collection views.
 
 **Two badges retired (Slice 7): `Berturut`/`streak` (7-day) and `Rajin`/`habit_forming` (3-day).** Both keyed off `CardContext::$consecutiveDaysBefore`, a daily-consecutive counter — a completely different signal from `GamificationContext::$streakWeeks`/`$twoWeekStreak` (weekly), which still drives `StreakRemindCommand` and the `aura_warmup` accessory goal untouched. `Badge` now has 16 cases (was 18 after Slice 2g retired the holiday badge). The frontend's `BADGE_LABELS`/`BADGE_ABILITY` drop the two entries too (same "let it fall back to `prettyBadge()`" treatment Slice 2g used for `holiday_run`), so a pre-existing card that still carries one of these slugs in its `badges` JSON array renders without crashing.
 
@@ -83,11 +86,36 @@ A [Season](../../app/Models/Season.php) is the training arc `Season IS the train
 
 5 [SeasonGoal](../../app/Models/SeasonGoal.php) rows generate once, at season creation (a stable checklist, unlike the day-by-day plan): total sessions completed, total quality (Tempo/Interval) sessions completed, the season's single longest planned long run completed, rest days honored, and a 5th that's race-margin (race-oriented) or CTL-growth (self-scaled). [SeasonGoalResolver](../../app/Services/Gamification/SeasonGoalResolver.php) resolves `current` live from a [SeasonGamificationContext](../../app/Services/Gamification/SeasonGamificationContext.php) — the same `metric`-string-driven pattern `GoalResolver` uses, scoped to the season's date range instead of the user's whole history. Rendered on the Plan tab, see [[plan-periodizer]].
 
-**The rest-day reward is not a `Badge`.** Every `Badge` grant requires a real ingested `Activity` (`run_cards.activity_id` is a required unique FK) — a rest day, by definition, has none. "Honored" = a `PlannedSession` with `session_type = Rest` where no `Activity` was logged that date (never a day with no `PlannedSession` row at all — that's simply unplanned, not honored). [GrantSeasonUnlocksAction](../../app/Actions/Gamification/GrantSeasonUnlocksAction.php) reuses `UserUnlock`'s shape instead, keyed `season.{id}.rest_honored_{3|7}` — the season id in the key is what makes the same threshold re-earnable every season, unlike the lifetime accessory catalog. No ingest hook can trigger it (honoring is an absence, not an arrival), so it's granted opportunistically wherever a `SeasonGamificationContext` is already computed: the Plan tab and the badge board.
+**The rest-day reward is not a `Badge`.** Every `Badge` grant requires a real ingested `Activity` (`run_cards.activity_id` is a required unique FK) — a rest day, by definition, has none. "Honored" = a `PlannedSession` with `session_type = Rest` where no `Activity` was logged that date (never a day with no `PlannedSession` row at all — that's simply unplanned, not honored). [GrantSeasonUnlocksAction](../../app/Actions/Gamification/GrantSeasonUnlocksAction.php) reuses `UserUnlock`'s shape instead, keyed `season.{id}.rest_honored_{3|7}` — the season id in the key is what makes the same threshold re-earnable every season, unlike the lifetime accessory catalog. No ingest hook can trigger it (honoring is an absence, not an arrival), so it's granted opportunistically wherever a `SeasonGamificationContext` is already computed: the Plan tab.
 
-## Badge board
+## The season track
 
-[BadgeBoardController](../../app/Http/Controllers/BadgeBoardController.php) (`/badges`, `Collection/Badges`) shows all 16 `Badge` cases plus the rest-day entry as one visually-equivalent list — earned entries show a lifetime count, unearned show their criterion (the frontend's existing `runcard.ts` `BADGE_LABELS`/`BADGE_ABILITY` catalog supplies that text; the rest-day entry, having no `Badge` case, carries its own display text in `Collection/Badges.tsx`). Every entry also carries a "this season" count via `RunCard::allBadgeCountsForUser()`'s date-ranged variant.
+The same per-season key namespace carries a **track**: one tier, `season.{id}.track_{N}`, per completed `SeasonGoal`, granted by the same [GrantSeasonUnlocksAction](../../app/Actions/Gamification/GrantSeasonUnlocksAction.php) on the same read paths.
+
+It extends that namespace rather than paying out of the lifetime catalog **because the catalog has nothing left to give**: all 25 keys in `config/temari_unlocks.php` are claimed 1:1 by a criterion in `config/temari_goals.php`, and `GrantEligibleUnlocksAction` grants each once and never again — so a track drawing on it would pay a returning user nothing in their second season. The season id in the key is what makes a tier re-earnable, exactly as it is for the rest-day reward.
+
+Goal targets are generated scaled to the season's own length ([SeasonService](../../app/Services/Run/Plan/SeasonService.php)), so a short race-oriented season and a 12-week self-scaled one both run a comparable track. Crossing a season boundary resets the track to zero and **revokes nothing** — the previous season's tiers are owned permanently, under their own season id. [SeasonRolloverTest](../../tests/Feature/Gamification/SeasonRolloverTest.php) pins both halves of that.
+
+It surfaces as the Plan tab's season track rail, which also carries the reset honesty and a count of the tiers earlier seasons left behind — see [[plan-periodizer]].
+
+## Rest tokens and the weekly streak
+
+The weekly streak (`WeeklySnapshot::consecutiveWeekStreak()`) hard-resets to 0 as soon as one full week closes with no run. A **rest token** forgives exactly one such week, so a week lost to illness or a taper does not cost the streak.
+
+- **Accrual** — one token every 4th streak week, matching the periodizer's own 3-build-1-deload cycle (`PhaseSchedule`), so a token lands as a deload week comes due. At most `SettleStreakRestTokensAction::MAX_HELD` are held at once, which is what stops a long streak banking enough weeks to make itself meaningless.
+- **Spending is automatic**, at week close, and only when forgiving the week would actually bridge to a week the user ran — a token is never burned by a user with no streak to save. There is no surface on which a user could play one, and a token you have to remember would fail the runner it exists to protect.
+- **A forgiven week bridges the streak without counting toward it.** The user did not run, so the number does not grow.
+- Nothing is revoked when a streak breaks; the counter resets and the collection is untouched.
+
+[SettleStreakTokensCommand](../../app/Console/Commands/Gamification/SettleStreakTokensCommand.php) (`streak:settle`, Monday 00:00) settles the closed week. It is scheduled **ahead of `ai:weekly-recap` (00:01)**, which reads the streak and would otherwise narrate one this command is about to restore; that ordering is asserted, not just commented.
+
+Because `two_week_streak` is `min(streakWeeks, 2)`, a bridged streak can still reach the `aura_warmup` accessory goal. That is intended: the streak was preserved, so what the streak earns is preserved with it.
+
+The Plan tab renders the streak, the open week's stake, and the held rest weeks — with no control to play one, since there is nothing to play. See [[plan-periodizer]].
+
+## Badge milestones
+
+The standalone badge board (`/badges`) retired once its content moved onto `/trends`. [FitnessTrend](../../resources/js/components/trends/panels/FitnessTrend.tsx) plots each badge as a marker on the Fitness/Fatigue timeline, keyed off `RunCard::firstEarnedDatesForUser()` — first occurrence only, not a lifetime/season count. Markers within 22px of each other cluster into one with a count; a chip list below the chart is the precise control for reaching an individual badge. Name/emblem/criterion text still comes from the frontend's `runcard.ts` `BADGE_LABELS`/`BADGE_ABILITY` catalog, matching the old badge board. The rest-day reward isn't part of this timeline — it has no `Badge` case and no earned-activity date to plot against.
 
 ## See also
 

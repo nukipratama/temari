@@ -122,7 +122,7 @@ class AnalysisMessagePresenter
         return match ($analysis->analysis_type) {
             AnalysisType::PostRunSpeech => route('activities.show', $analysis->subject_id),
             AnalysisType::WeeklyRecap => $this->weeklyRecapUrl($analysis),
-            AnalysisType::MonthlyRecap => route('calendar', ['month' => $analysis->discriminator]),
+            AnalysisType::MonthlyRecap => route('history', ['view' => 'calendar', 'month' => $analysis->discriminator]),
             default => null,
         };
     }
@@ -141,15 +141,15 @@ class AnalysisMessagePresenter
             ->value('week_ending');
 
         return $weekEnding === null
-            ? route('activities.index')
-            : route('activities.index', ['week' => Carbon::parse($weekEnding)->toDateString()]);
+            ? route('history')
+            : route('history', ['week' => Carbon::parse($weekEnding)->toDateString()]);
     }
 
     /**
      * The notification title shared by web push and the Telegram body's first
-     * line: an emoji plus a short, data-aware phrase (run distance, recap month).
-     * Falls back to the type's data-less label when that data can't be resolved,
-     * and to the app name for an unregistered type.
+     * line: a short, data-aware phrase (run distance, recap month). Falls back
+     * to the type's data-less label when that data can't be resolved, and to
+     * the app name for an unregistered type.
      */
     public function title(Analysis $analysis): string
     {
@@ -164,16 +164,16 @@ class AnalysisMessagePresenter
             default => $meta['title'],
         };
 
-        return trim($meta['emoji'] . ' ' . $phrase);
+        return $phrase;
     }
 
-    /** "Your 8,2K run is in! 🏁", dropping the distance when it's unknown. */
+    /** "Your 8.2K run is in.", dropping the distance when it's unknown. */
     private function postRunTitle(Analysis $analysis): string
     {
         $distance = $this->activityDetail($analysis->subject_id)?->distance;
         $prefix = $distance !== null ? $this->shortDistance((int) $distance) . ' ' : '';
 
-        return 'Your ' . $prefix . 'run is in! 🏁';
+        return 'Your ' . $prefix . 'run is in.';
     }
 
     /** "Your July recap is ready", falling back to the label when the month is unknown. */

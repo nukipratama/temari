@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
  * Single source of truth for the featured "Kartu andalan dari Temari": the
  * highest-rarity card among the user's last few runs (ties broken toward the
  * most recent), not scoped to a calendar week. Both the dashboard hero and the
- * narration key off this one pick, so the displayed card and the "Kata Temari"
+ * narration key off this one pick, so the displayed card and the Temari-voice
  * quote can never describe different cards.
  */
 class ResolveFeaturedKartuAction

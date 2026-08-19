@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Requests\TriggerAnalysisRequest;
 use App\Services\AI\AnalysisType;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -38,6 +39,17 @@ function triggerAnalysisPasses(string $type, mixed $discriminator): bool
 
     return Validator::make($data, triggerAnalysisRules($type))->passes();
 }
+
+beforeEach(function (): void {
+    // The datasets below carry literal periods, and the range rules resolve
+    // against "now". Pin the clock so they cannot drift out of range as wall
+    // time moves on.
+    Carbon::setTestNow('2026-05-18 05:30:00');
+});
+
+afterEach(function (): void {
+    Carbon::setTestNow();
+});
 
 it('authorizes the request (ownership is enforced in the controller)', function (): void {
     expect(new TriggerAnalysisRequest()->authorize())->toBeTrue();
@@ -96,7 +108,7 @@ it('accepts the discriminator shape its own dispatch sites write', function (str
 })->with([
     'briefing mascot voice day' => ['briefing_mascot_voice', '2026-05-18'],
     'featured kartu card id' => ['briefing_featured_kartu_voice', '42'],
-    'aku profile voice ISO week' => ['aku_profile_voice', '2026-W31'],
+    'aku profile voice ISO week' => ['aku_profile_voice', '2026-W21'],
     'monthly recap month' => ['monthly_recap', '2026-05'],
     'weekly recap keys off the snapshot id' => ['weekly_recap', null],
     'card flavor keys off the card id' => ['card_flavor', null],
@@ -120,6 +132,32 @@ it('rejects a novel or malformed discriminator', function (string $type, string 
     'a non-numeric featured card' => ['briefing_featured_kartu_voice', 'abc'],
     'a zero featured card id' => ['briefing_featured_kartu_voice', '0'],
     'a zero-padded featured card id' => ['briefing_featured_kartu_voice', '007'],
+]);
+
+/**
+ * A shape rule is not a closed set: date_format:Y-m-d admits ~3.6M days, each
+ * of which firstOrCreate()s a permanent ai_analyses row at 8 requests a minute.
+ * The period-keyed types carry a range too, so an out-of-range value is a 422
+ * at the boundary rather than a row.
+ */
+it('rejects a well-formed period outside the range a trigger may name', function (string $type, string $discriminator): void {
+    expect(triggerAnalysisPasses($type, $discriminator))->toBeFalse();
+})->with([
+    'a day past the age cap' => ['briefing_mascot_voice', '2020-01-01'],
+    'a day in the future' => ['briefing_mascot_voice', '2026-05-19'],
+    'a month past the age cap' => ['monthly_recap', '2019-07'],
+    'a month in the future' => ['monthly_recap', '2026-06'],
+    'a long-past ISO week' => ['aku_profile_voice', '2019-W03'],
+    'an ISO week in the future' => ['aku_profile_voice', '2026-W31'],
+]);
+
+it('accepts the edges of each range', function (string $type, string $discriminator): void {
+    expect(triggerAnalysisPasses($type, $discriminator))->toBeTrue();
+})->with([
+    'the oldest day still in range' => ['briefing_mascot_voice', '2025-05-18'],
+    'today' => ['briefing_mascot_voice', '2026-05-18'],
+    'the oldest month still in range' => ['monthly_recap', '2025-05'],
+    'the week before this one, for a rollover race' => ['aku_profile_voice', '2026-W20'],
 ]);
 
 /**

@@ -10,7 +10,6 @@ import { cn } from '@/lib/cn';
 import { MOOD_FILL, MOOD_LABEL, moodSigilColor } from '@/lib/mood';
 import {
     BADGE_ABILITY,
-    RARITY_BORDER,
     RARITY_HEX,
     RARITY_LABELS,
     RARITY_SYMBOL,
@@ -18,6 +17,7 @@ import {
     badgeEmblem,
     badgeName,
 } from '@/lib/runcard';
+import { rarityVariants } from '@/lib/variants';
 
 /** Secondary telemetry shown in the stat block. */
 export interface KartuStats {
@@ -34,7 +34,7 @@ export interface KartuStats {
 interface KartuProps {
     name: string;
     km: string;
-    durasi: string;
+    duration: string;
     trimp: string | number;
     rarity?: Rarity;
     /** The run's Temari mood, used as the card's "element/type". */
@@ -85,7 +85,7 @@ const SIZE_KM: Record<NonNullable<KartuProps['size']>, string> = {
  * (bold, filled), plus floating rarity and TRIMP chips in its top corners.
  * Below sits a dark stat block:
  * special-move name, the run's numbers (KM big; a labeled
- * PACE · HR · CADENCE · DURASI · BEST grid), badges, and a Z1..Z5 HR-zone
+ * PACE · HR · CADENCE · DURATION · BEST grid), badges, and a Z1..Z5 HR-zone
  * effort bar. Rarity drives a vivid loot-ladder color (gray → green → blue →
  * purple → gold) on the frame and route, with the same calm border halo on
  * every tier (no window-flooding foil).
@@ -93,7 +93,7 @@ const SIZE_KM: Record<NonNullable<KartuProps['size']>, string> = {
 export default function Kartu({
     name,
     km,
-    durasi,
+    duration,
     trimp,
     rarity = 'epic',
     mood = 'chill',
@@ -152,7 +152,7 @@ export default function Kartu({
             className={cn(
                 'relative flex aspect-[5/7] flex-col overflow-hidden rounded-[16px] bg-sky-deep',
                 isFull ? 'border-[3px] p-1.5' : 'border-2 p-1',
-                RARITY_BORDER[rarity],
+                rarityVariants.border({ rarity }),
                 'kartu-glow',
                 className,
             )}
@@ -215,7 +215,7 @@ export default function Kartu({
                 {/* Special-move name (rarity now floats on the art window) */}
                 <div
                     className={cn(
-                        'font-collectible font-semibold uppercase leading-[1.02] tracking-[0.01em] text-cream',
+                        'font-sans font-extrabold uppercase leading-[1.02] tracking-[0.01em] text-cream',
                         SIZE_NAME[size],
                         hideName && 'hidden sm:block',
                     )}
@@ -228,7 +228,7 @@ export default function Kartu({
                 <div className="mt-1 flex items-baseline justify-center gap-1">
                     <span
                         className={cn(
-                            'font-collectible font-bold tabular-nums leading-none',
+                            'font-mono font-bold tabular-nums leading-none',
                             RARITY_TEXT[rarity],
                             SIZE_KM[size],
                         )}
@@ -259,7 +259,7 @@ export default function Kartu({
                     drops it below the `sm` breakpoint; badges above stay as the mobile
                     summary. Wider/detail renders keep the full grid. */}
                 <div className={cn(hideStats && 'hidden sm:block')}>
-                    <StatGrid stats={stats} durasi={durasi} />
+                    <StatGrid stats={stats} duration={duration} />
 
                     {/* HR-zone effort bar — bare (no Z1..Z5 legend), matching the share
                         card's rounded legendless bar. */}
@@ -422,8 +422,8 @@ function nameGlowFor(rarity: Rarity): CSSProperties {
  */
 function StatGrid({
     stats,
-    durasi,
-}: Readonly<{ stats: KartuStats | undefined; durasi: string }>) {
+    duration,
+}: Readonly<{ stats: KartuStats | undefined; duration: string }>) {
     const cells: Array<{ label: string; value: string }> = [];
     const push = (label: string, value: string | undefined) => {
         if (value != null && value !== '' && value !== '—') {
@@ -433,7 +433,7 @@ function StatGrid({
     push('Pace', stats?.pace);
     push('HR', stats?.hr);
     push('Cadence', stats?.cadence);
-    push('Duration', durasi);
+    push('Duration', duration);
     push('Best', stats?.fastestKm);
     push('Elevation', stats?.elevation);
 

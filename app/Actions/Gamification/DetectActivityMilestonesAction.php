@@ -82,8 +82,8 @@ class DetectActivityMilestonesAction
 
             return [
                 'kind' => 'pr',
-                'label' => 'Personal Record!',
-                'body' => sprintf('Kamu baru saja memecahkan PR di %s. Aku catat.', $label),
+                'label' => 'Personal Record',
+                'body' => sprintf('New PR at %s. Your old number held until today.', $label),
                 'priority' => 100,
             ];
         }, $newPrCategories);
@@ -93,8 +93,8 @@ class DetectActivityMilestonesAction
         if ($longestEver !== null && $distanceMeters > $longestEver) {
             $milestones[] = [
                 'kind' => 'longest_ever',
-                'label' => 'Lari terjauh sampai sekarang',
-                'body' => sprintf('%s km, melampaui rekor jarak kamu sebelumnya.', DistanceFormatter::kmString($distanceMeters)),
+                'label' => 'Longest Run Yet',
+                'body' => sprintf('%s km, further than you have ever gone before.', DistanceFormatter::kmString($distanceMeters)),
                 'priority' => 90,
             ];
         }
@@ -120,8 +120,8 @@ class DetectActivityMilestonesAction
 
     private function longestEverBefore(Activity $activity, ActivityDetail $detail): ?float
     {
-        // Ordered by start_date_local, not Activity.id: Strava history can sync
-        // out of chronological order (e.g. a year-long backfill).
+        // "Before" keys on start_date_local, not Activity.id: Strava history can
+        // sync out of chronological order (e.g. a year-long backfill).
         return ActivityDetail::query()
             ->whereHas('activity', fn ($q) => $q->where('user_id', $activity->user_id)->where('id', '!=', $activity->id))
             ->where('start_date_local', '<', $detail->start_date_local)
@@ -156,8 +156,8 @@ class DetectActivityMilestonesAction
 
         return [
             'kind' => 'first_ever_distance',
-            'label' => sprintf('%s pertama kamu!', $this->formatKmLabel($thresholdReached)),
-            'body' => sprintf('Pertama kali kamu lari sejauh %s km. Tandai momen ini.', DecimalFormatter::decimal($distanceKm)),
+            'label' => sprintf('First %s', $this->formatKmLabel($thresholdReached)),
+            'body' => sprintf('First time you have covered %s km. That distance is yours now.', DecimalFormatter::decimal($distanceKm)),
             'priority' => 50 + (int) round($thresholdReached * 2),
         ];
     }
@@ -194,8 +194,8 @@ class DetectActivityMilestonesAction
 
         return [
             'kind' => 'first_ever_pace',
-            'label' => sprintf('Pace sub-%s pertama!', $label),
-            'body' => sprintf('Pace kamu turun di bawah %s/km. Lari berkualitas!', $label),
+            'label' => sprintf('First Sub-%s', $label),
+            'body' => sprintf('Your pace dropped under %s/km for the first time.', $label),
             'priority' => 30 + (int) round((420 - $thresholdMatched) / 6),
         ];
     }

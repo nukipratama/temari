@@ -116,7 +116,7 @@ it('requeues a transient upstream failure (no Retry-After) so a manual retry can
     $job->setJob($queueJob);
 
     // No rethrow: the row stays Queued (not Failed) for the retry wait, so it is
-    // neither re-dispatchable nor shown as a failed "Coba lagi" block.
+    // neither re-dispatchable nor shown as a failed "Try again" block.
     $job->handle(app(AnalysisService::class));
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
@@ -161,8 +161,31 @@ it('releases the job with the Retry-After delay instead of rethrowing when one i
     // Releasing replaces rethrow: handle() returns cleanly while the queue
     // re-enqueues the job after the requested delay. The row stays Queued (not
     // Failed) for the wait, so it is neither re-dispatchable nor shown as a
-    // failed "Coba lagi" block that a manual retry could double-bill.
+    // failed "Try again" block that a manual retry could double-bill.
     $job->handle(app(AnalysisService::class));
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
+});
+
+it('refuses to narrate a card the row owner does not own, even with the row already queued', function (): void {
+    // Defence in depth behind the request-boundary check: if a row keyed to
+    // another user's card ever reaches the queue, the job must not read it.
+    // Removing the forUser() scope on the lookup makes this fail.
+    $attacker = User::factory()->create();
+    $victim = User::factory()->create();
+    $victimActivity = Activity::factory()->for($victim)->analyzed()->create();
+    ActivityDetail::factory()->for($victimActivity)->create(['distance' => 5000.0]);
+    $victimCard = RunCard::factory()->for($victimActivity)->create(['rarity' => Rarity::Legendary]);
+
+    $mock = Mockery::mock(BriefingFeaturedKartuVoiceNarrator::class);
+    $mock->shouldReceive('generate')
+        ->once()
+        ->with(Mockery::on(fn (User $u): bool => $u->id === $attacker->id), null)
+        ->andReturn('no card line');
+    app()->instance(BriefingFeaturedKartuVoiceNarrator::class, $mock);
+
+    $row = featuredKartuRow($attacker->id, (string) $victimCard->id);
+    new AnalyzeBriefingFeaturedKartuVoiceJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->content)->toBe('no card line');
 });

@@ -11,26 +11,31 @@ import { cva } from 'class-variance-authority';
  * `Record` lookups and are not folded in here.
  */
 
-/** Card surface tone + padding. Mirrors TONE_CLASS / PADDING_CLASS in components/ui/Card.tsx. */
-export const cardVariants = cva('shadow-sm', {
+/**
+ * The card system. One surface treatment — `surface-card` on a `line` border at
+ * the `md` radius with the resting `e1` elevation — in three states: the card
+ * itself, the same card mounted on a dark sky panel, and the dashed placeholder
+ * that stands in for a card that has no content yet. Padding names the `--pad-*`
+ * role it wants rather than a number.
+ */
+export const cardVariants = cva('rounded-md', {
     variants: {
         tone: {
-            cream: 'rounded-2xl border border-line bg-surface-card',
-            'cream-deep': 'rounded-2xl border border-line bg-cream-deep',
-            'sky-glass':
-                'rounded-2xl border border-cream/[0.12] bg-cream/[0.06] backdrop-blur',
-            empty: 'rounded-2xl border border-dashed border-cream-deep bg-cream/40 shadow-none',
+            card: 'border border-line bg-surface-card shadow-e1',
+            sky: 'border border-sky bg-sky text-cream shadow-e2',
+            onSky: 'border border-cream/[0.12] bg-cream/[0.06] backdrop-blur',
+            empty: 'border border-dashed border-line-strong bg-surface-card/40',
         },
         padding: {
             none: '',
-            sm: 'px-4 py-3.5',
-            md: 'px-5 py-5',
-            lg: 'px-6 py-6',
+            panel: 'pad-panel',
+            card: 'pad-card',
+            hero: 'pad-hero',
         },
     },
     defaultVariants: {
-        tone: 'cream',
-        padding: 'md',
+        tone: 'card',
+        padding: 'card',
     },
 });
 
@@ -83,19 +88,19 @@ export const pillButtonVariants = cva(
 
 /** Chip tone + size. Mirrors TONE_CLASS + size ternary in components/ui/Chip.tsx. */
 export const chipVariants = cva(
-    'inline-flex items-center gap-1 whitespace-nowrap rounded-full text-label-micro font-semibold tracking-[0.08em]',
+    'pad-chip inline-flex items-center gap-1 whitespace-nowrap rounded-full text-label-micro font-semibold tracking-[0.08em]',
     {
         variants: {
             tone: {
                 neutral: 'bg-ink/[0.06] text-ink-2',
-                horizon: 'bg-horizon/[0.18] text-horizon-deep',
-                leaf: 'bg-leaf/[0.18] text-leaf',
+                horizon: 'bg-horizon/[0.18] text-horizon-ink',
+                leaf: 'bg-leaf/[0.18] text-leaf-ink',
                 sky: 'bg-sky/[0.08] text-sky',
                 onSky: 'bg-cream/10 text-cream/80',
             },
             size: {
-                sm: 'px-[9px] py-[3px] text-[11px]',
-                md: 'px-[11px] py-[5px] text-[12px]',
+                sm: 'text-[11px]',
+                md: 'text-[12px]',
             },
         },
         defaultVariants: {
@@ -107,9 +112,9 @@ export const chipVariants = cva(
 
 /**
  * Segmented / toggle control — the solid-fill selected-vs-unselected pill used
- * by the Rekor progression tabs and the ShareCardModal theme picker. One source
+ * by the PRs progression tabs and the ShareCardModal theme picker. One source
  * of truth for radius/size/state. Filter rows that need a bordered or tinted
- * treatment (riwayat range + mood, AiUsage presets) stay hand-rolled.
+ * treatment (history range + mood, AiUsage presets) stay hand-rolled.
  */
 export const toggleButtonVariants = cva(
     'inline-flex items-center justify-center rounded-full font-sans font-medium transition focus-ring',
@@ -157,7 +162,7 @@ export const iconButtonVariants = cva(
 
 /**
  * Filter-panel option row — the sky-tinted-vs-plain toggle shared by the
- * range links, distance/sort buttons, and mood buttons in RiwayatFilter.tsx.
+ * range links, distance/sort buttons, and mood buttons in HistoryFilter.tsx.
  * `layout: 'row'` covers the full-width justify-between rows (range,
  * distance, sort); `layout: 'mood'` covers the two-column mood grid, which
  * doesn't stretch full width and carries its own gap + weight.
@@ -189,6 +194,47 @@ export const filterOptionVariants = cva(
     },
 );
 
+/**
+ * Bordered pill — the hairline-outlined counterpart to
+ * {@link toggleButtonVariants}'s solid fill, for a selectable filter (race
+ * distance presets, the PRs progression tabs) or an inline row action (the
+ * Plan tab's per-day controls). Gold-on-paper is `horizon-ink`, never the
+ * `horizon-deep` CTA fill.
+ */
+export const outlineChipVariants = cva(
+    'focus-ring inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 py-1.5 text-label-micro transition',
+    {
+        variants: {
+            selected: {
+                true: 'border-horizon bg-horizon/10 text-horizon-ink',
+                false: 'border-line text-ink-3 hover:border-horizon/60 hover:text-ink',
+            },
+        },
+        defaultVariants: { selected: false },
+    },
+);
+
+/**
+ * Text/number/date field. `rounded-sm` is the radius scale's input corner, so
+ * a field never picks up a card's `md` or a pill's `full`. `sm` is the inline
+ * field that sits in a row of controls, and shares `min-h-8` with
+ * {@link outlineChipVariants} so the two line up: a coarse pointer forces
+ * every field to 16px (see the iOS zoom note in app.css), which would
+ * otherwise leave a field taller than the pills beside it.
+ */
+export const inputVariants = cva(
+    'focus-ring w-full border border-line bg-surface rounded-sm text-ink',
+    {
+        variants: {
+            size: {
+                sm: 'min-h-8 px-2.5 py-1 text-sm',
+                md: 'px-3 py-2 text-sm',
+            },
+        },
+        defaultVariants: { size: 'md' },
+    },
+);
+
 /** Eyebrow's type tier, one of the `.text-label-*` role utilities in app.css. */
 export const eyebrowVariants = cva('', {
     variants: {
@@ -201,7 +247,7 @@ export const eyebrowVariants = cva('', {
             'ink-2': 'text-ink-2',
             'ink-3': 'text-ink-3',
             horizon: 'text-horizon',
-            'horizon-deep': 'text-horizon-deep',
+            'horizon-ink': 'text-horizon-ink',
             'ink-on-sky': 'text-ink-on-sky',
             cream: 'text-cream',
         },
@@ -209,10 +255,9 @@ export const eyebrowVariants = cva('', {
 });
 
 /**
- * Rarity → border + corner-flag scale. Mirrors RARITY_BORDER (lib/runcard.ts)
- * plus the per-component flag treatments in card/Kartu.tsx (RARITY_FLAG_BG)
- * and card/KartuMini.tsx (RARITY_CORNER). Exposed as three slots so each card
- * surface can opt into the part it renders.
+ * Rarity → border + flag + corner scale, the one source of truth for the card
+ * surfaces. `border` backs card/Kartu.tsx and card/KartuMini.tsx; `flag` and
+ * `corner` are the remaining two slots a card surface can opt into.
  */
 export const rarityVariants = {
     border: cva('', {
@@ -230,11 +275,11 @@ export const rarityVariants = {
     flag: cva('', {
         variants: {
             rarity: {
-                common: 'bg-rarity-common text-cream',
-                uncommon: 'bg-rarity-uncommon text-cream',
-                rare: 'bg-rarity-rare text-cream',
-                epic: 'bg-rarity-epic text-ink',
-                legendary: 'bg-rarity-legendary text-ink',
+                common: 'bg-rarity-common text-ink-on-rarity',
+                uncommon: 'bg-rarity-uncommon text-ink-on-rarity',
+                rare: 'bg-rarity-rare text-ink-on-rarity',
+                epic: 'bg-rarity-epic text-ink-on-rarity',
+                legendary: 'bg-rarity-legendary text-ink-on-rarity',
             },
         },
         defaultVariants: { rarity: 'epic' },

@@ -5,13 +5,13 @@ import { memo, useRef, type ReactNode } from 'react';
 
 import type { AnalysisPayload, Mood } from '@/types/inertia';
 
-import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
+import HistoryFilter from '@/components/history/HistoryFilter';
+import HistoryTabs from '@/components/history/HistoryTabs';
 import CoachMark from '@/components/onboarding/CoachMark';
-import RiwayatFilter from '@/components/riwayat/RiwayatFilter';
-import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import SendNotificationButton from '@/components/SendNotificationButton';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
+import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
@@ -33,15 +33,16 @@ import { formatPace, formatShortDateId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 import { activityUrl } from '@/lib/routes';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
+import { cardVariants } from '@/lib/variants';
 
 import {
     isFilteredOut,
-    useKalender,
+    useCalendar,
     type CalendarCell,
     type WeekRow,
-} from './useKalender';
+} from './useCalendar';
 
-export { dominantMoodOf, type CalendarCell } from './useKalender';
+export { dominantMoodOf, type CalendarCell } from './useCalendar';
 
 /** The monthly recap payload plus the chain-head flag the controller adds. */
 export type MonthlyRecap = AnalysisPayload & {
@@ -96,7 +97,7 @@ export default function Calendar({
         moodFilter,
         toggleMood,
         resetFilter,
-    } = useKalender({ cells, month, todayMonth });
+    } = useCalendar({ cells, month, todayMonth });
     const gridRef = useRef<HTMLDivElement>(null);
 
     return (
@@ -104,18 +105,17 @@ export default function Calendar({
             <Head title={`History · Calendar · ${monthLabel}`} />
             <PageContainer>
                 <header className="mb-8 min-w-0">
-                    <TodayHistoryTabs active="history" className="mb-5" />
                     <PageHero eyebrow={<LifetimeEyebrow lifetime={lifetime} />}>
                         Every run,
                         <br />
-                        <em className="not-italic text-horizon-deep">
+                        <em className="not-italic text-horizon-ink">
                             has a story.
                         </em>
                     </PageHero>
                 </header>
 
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                    <RiwayatTabs active="kalender" />
+                    <HistoryTabs active="calendar" />
                     <div className="flex flex-wrap items-center gap-2.5">
                         <MonthNav
                             label={monthLabel}
@@ -123,7 +123,7 @@ export default function Calendar({
                             nextMonth={nextMonth}
                             showTodayButton={!isCurrentMonth}
                         />
-                        <RiwayatFilter
+                        <HistoryFilter
                             mood={{
                                 selected: moodFilter,
                                 options: MOOD_FILTER_OPTIONS,
@@ -160,7 +160,10 @@ export default function Calendar({
                         initial="hidden"
                         animate="visible"
                         variants={fadeInUp}
-                        className="overflow-hidden rounded-2xl border border-line/70 bg-surface-warm shadow-sm"
+                        className={cn(
+                            cardVariants({ padding: 'none' }),
+                            'overflow-hidden',
+                        )}
                     >
                         <CalendarHeader />
                         {weeks.map((week) => (
@@ -211,14 +214,14 @@ function LifetimeEyebrow({ lifetime }: Readonly<{ lifetime?: LifetimeStats }>) {
 
 /**
  * Temari's narrative recap for the viewed month, keyed to that month's
- * MonthlyRecap analysis. MonthlyRecap is a connected + chained kind: the
- * "Coba lagi" / "Minta Temari bacain" actions resume the chain from the
- * earliest unfilled month, and "Baca ulang" (regenerate) shows only on the
- * latest narrated month (`is_chain_head`). No rule-based fallback exists for
+ * MonthlyRecap analysis. MonthlyRecap is a connected + chained kind: the retry
+ * and resume actions pick the chain up from the earliest unfilled month, and
+ * regenerate shows only on the latest narrated month (`is_chain_head`). No
+ * rule-based fallback exists for
  * monthly, so unfilled months simply show the empty / resume state. The
  * still-running current month (`awaitingSchedule`) suppresses every trigger and
  * waits for the scheduler, so its incomplete recap can't be generated on demand.
- * Temari wears the month's dominant run mood, mirroring the weekly recap on Jejak.
+ * Temari wears the month's dominant run mood, mirroring the weekly recap on the feed.
  */
 function MonthlyRecapCard({
     recap,
@@ -235,11 +238,13 @@ function MonthlyRecapCard({
 }>) {
     const notificationsReachable = useNotificationsReachable();
     return (
-        <section
-            className="mb-4 rounded-2xl border border-line bg-surface-warm p-4 shadow-sm sm:p-5"
+        <Card
+            as="section"
+            padding="card"
+            className="mb-4"
             aria-label={`Temari's notes for ${monthLabel}`}
         >
-            <div className="font-mono text-xs font-bold uppercase tracking-wider text-ink-2">
+            <div className="text-label-small text-ink-2">
                 Temari's notes · {monthLabel}
             </div>
             <div className="mt-2 flex items-start gap-3.5">
@@ -277,7 +282,7 @@ function MonthlyRecapCard({
                     )}
                 </div>
             </div>
-        </section>
+        </Card>
     );
 }
 
@@ -295,7 +300,7 @@ function MonthNav({
     return (
         <div className="flex items-center gap-2">
             <NavButton
-                href={`/calendar?month=${prevMonth}`}
+                href={`/history?view=calendar&month=${prevMonth}`}
                 icon="mdi:chevron-left"
                 label="Previous month"
             />
@@ -303,15 +308,15 @@ function MonthNav({
                 {label}
             </h2>
             <NavButton
-                href={`/calendar?month=${nextMonth}`}
+                href={`/history?view=calendar&month=${nextMonth}`}
                 icon="mdi:chevron-right"
                 label="Next month"
             />
             {showTodayButton && (
                 <Link
-                    href="/calendar"
+                    href="/history?view=calendar"
                     aria-label="Jump to current month"
-                    className="pressable focus-ring ml-1 rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1 text-xs font-semibold text-leaf-deep transition hover:border-leaf hover:bg-leaf/15"
+                    className="pressable focus-ring ml-1 rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1 text-xs font-semibold text-leaf-ink transition hover:border-leaf hover:bg-leaf/15"
                 >
                     Today
                 </Link>
@@ -469,7 +474,7 @@ const DayCellView = memo(function DayCellView({
                     </div>
                     {(cell.pace_sec_per_km !== null ||
                         cell.avg_hr !== null) && (
-                        <div className="mt-1.5 flex items-baseline gap-1.5 font-mono text-[11px] tabular-nums text-ink-3 lg:text-xs">
+                        <div className="mt-1.5 flex items-baseline gap-1.5 font-mono text-[11px] tabular-nums text-ink-2 lg:text-xs">
                             {cell.pace_sec_per_km !== null && (
                                 <span>{formatPace(cell.pace_sec_per_km)}</span>
                             )}
@@ -611,7 +616,8 @@ function Legend({ className }: Readonly<{ className?: string }>) {
     return (
         <div
             className={cn(
-                'flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-line/60 bg-surface-warm/40 px-4 py-3 shadow-sm',
+                cardVariants({ padding: 'panel' }),
+                'flex flex-wrap items-center gap-x-5 gap-y-2',
                 className,
             )}
         >

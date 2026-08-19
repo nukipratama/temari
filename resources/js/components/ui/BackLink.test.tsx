@@ -5,9 +5,13 @@ import BackLink from './BackLink';
 
 describe('BackLink', () => {
     it('renders a link to href with the label', () => {
-        render(<BackLink href="/cards">Collection · Cards</BackLink>);
-        const link = screen.getByRole('link', { name: /collection · cards/i });
-        expect(link).toHaveAttribute('href', '/cards');
+        render(
+            <BackLink href="/accessories">Collection · Accessories</BackLink>,
+        );
+        const link = screen.getByRole('link', {
+            name: /collection · accessories/i,
+        });
+        expect(link).toHaveAttribute('href', '/accessories');
     });
 
     it('uses the muted tint by default', () => {
@@ -25,7 +29,7 @@ describe('BackLink', () => {
         );
         expect(
             screen.getByRole('link', { name: /back to today/i }).className,
-        ).toMatch(/text-horizon-deep/);
+        ).toMatch(/text-horizon-ink/);
     });
 
     it('passes spacing className through', () => {

@@ -8,7 +8,8 @@ import type { SharedProps } from '@/types/inertia';
  * Surfaces Inertia's shared error bag (Strava-connect denial, demo misconfig,
  * a rejected accessory-equip, etc.) as a dismissable banner. Without it those
  * `withErrors()` redirects bounce the user with no explanation. Mounted once in
- * {@link AppShell} so it covers both the guest login page and the authed app.
+ * each shell — {@link AppShell} for the authed app and {@link BareShell} for the
+ * standalone screens, which is where the Strava-connect denial lands.
  */
 export default function ErrorBanner() {
     const errors = usePage<SharedProps>().props.errors ?? {};
@@ -31,13 +32,13 @@ export default function ErrorBanner() {
         <div className="px-4 pt-4 lg:px-8">
             <div
                 role="alert"
-                className="mx-auto flex max-w-page-2xl items-start gap-3 rounded-2xl border border-ember/30 bg-ember/[0.08] px-4 py-3"
+                className="mx-auto flex max-w-page-2xl items-start gap-3 rounded-lg border border-ember/30 bg-ember/[0.08] px-4 py-3"
             >
                 <Icon
                     icon="mdi:alert-circle-outline"
                     width={20}
                     height={20}
-                    className="mt-0.5 shrink-0 text-ember-deep"
+                    className="mt-0.5 shrink-0 text-ember-ink"
                     aria-hidden
                 />
                 <p className="flex-1 font-sans text-sm leading-relaxed text-ink">

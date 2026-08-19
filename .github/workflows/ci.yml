@@ -24,6 +24,7 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      docker: ${{ steps.filter.outputs.docker }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -33,6 +34,13 @@ jobs:
       # Shared-infra paths (ci.yml, Dockerfile, compose, .env.example) match
       # both, so an infra change runs the full pipeline. Diff is against the
       # merge-base with main; on main pushes both jobs run anyway (see the `if`).
+      #
+      # `docker` is narrower than the other two on purpose: it lists only the
+      # inputs that can break the prod image without any other job noticing.
+      # The assets stage's inputs (package*.json, vite/tsconfig, resources/,
+      # public/, scripts/) are deliberately absent — frontend-tests already runs
+      # `npm run build` over exactly those, so including them would rebuild the
+      # image on nearly every frontend PR for no signal the pipeline lacks.
       - name: Detect changed areas
         id: filter
         run: |
@@ -40,15 +48,20 @@ jobs:
           changed=$(git diff --name-only "$(git merge-base origin/main HEAD)" HEAD)
           printf 'Changed files:\n%s\n' "$changed"
           backend=false; frontend=false
-          if printf '%s\n' "$changed" | grep -qE '^(app|bootstrap|config|database|routes|tests)/|^composer\.(json|lock)$|^phpunit\.xml$|^artisan$|^(phpstan|phpstan-baseline)\.neon$|^rector\.php$|^pint\.json$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
+          if printf '%s\n' "$changed" | grep -qE '^(app|bootstrap|config|database|routes|tests)/|^composer\.(json|lock)$|^phpunit\.xml$|^artisan$|^(phpstan|phpstan-baseline)\.neon$|^rector\.php$|^pint\.json$|^scripts/check-see-references\.php$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
             backend=true
           fi
           if printf '%s\n' "$changed" | grep -qE '^resources/(js|css|views)/|^public/|^package(-lock)?\.json$|^vite\.config\.ts$|^vitest\.config\.ts$|^tsconfig\.json$|^eslint\.config\.|^\.nvmrc$|^scripts/check-entry-chunks\.mjs$|^scripts/check-raw-palette\.mjs$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
             frontend=true
           fi
+          docker=false
+          if printf '%s\n' "$changed" | grep -qE '^Dockerfile$|^docker/|^composer\.(json|lock)$|^resources/brand/fonts/|^\.github/workflows/ci\.yml$'; then
+            docker=true
+          fi
           echo "backend=$backend" >> "$GITHUB_OUTPUT"
           echo "frontend=$frontend" >> "$GITHUB_OUTPUT"
-          echo "Result: backend=$backend frontend=$frontend"
+          echo "docker=$docker" >> "$GITHUB_OUTPUT"
+          echo "Result: backend=$backend frontend=$frontend docker=$docker"
 
   # Runs on every event, independent of the path filter.
   secret-scan:
@@ -74,6 +87,8 @@ jobs:
           php-version: ${{ env.PHP_VERSION }}
       - name: Check doc citations resolve
         run: php scripts/check-doc-citations.php
+      - name: Check no Indonesian has crept back in
+        run: php scripts/check-indonesian.php
 
   backend-tests:
     needs: [changes, secret-scan, docs-citation-guard]
@@ -112,6 +127,9 @@ jobs:
       # --no-tia on both Pest steps: TIA is a local fast-feedback tool, and a
       # graph-narrowed run would silently shrink both this gate and the coverage
       # gate below. CI stays exhaustive.
+      - name: Check {@see} references resolve
+        run: php scripts/check-see-references.php
+
       - name: Class/test 1:1 structure check
         run: ./vendor/bin/pest --no-tia --group=structure
 
@@ -273,10 +291,14 @@ jobs:
             [ "$r" = "success" ] || { echo "::error::a required unconditional job did not pass ($r)"; exit 1; }
           done
 
+  # Two reasons to run: the main push that produces the image `deploy` pulls,
+  # and a PR that touches an input which can only break here. Until the latter
+  # existed, nothing in CI ever built the runtime stage on a PR — a Dockerfile
+  # change reached main having been validated by hand or not at all.
   build:
     name: build-prod-image
     needs: [changes, secret-scan, docs-citation-guard]
-    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && ((github.ref == 'refs/heads/main' && github.event_name == 'push') || needs.changes.outputs.docker == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -293,17 +315,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # A PR build is a validation, not a release: it reads the shared buildcache
+      # but neither publishes a :<sha> the deploy would never pull nor writes the
+      # cache back, so a branch's layers can't displace main's.
       - name: Build and push the runtime image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: Dockerfile
           platforms: linux/amd64
-          push: true
+          push: ${{ github.event_name == 'push' }}
           tags: ${{ env.APP_IMAGE }}:${{ github.sha }}
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
           cache-from: type=registry,ref=${{ env.APP_IMAGE }}:buildcache
-          cache-to: type=registry,ref=${{ env.APP_IMAGE }}:buildcache,mode=max
+          cache-to: ${{ github.event_name == 'push' && format('type=registry,ref={0}:buildcache,mode=max', env.APP_IMAGE) || '' }}
           provenance: false
 
   deploy:

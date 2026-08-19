@@ -43,7 +43,7 @@ describe('StatTile', () => {
                 tone === 'plain' || tone === 'plainSky'
                     ? screen.getByText('x')
                     : (container.firstElementChild as HTMLElement);
-            expect(target.className).toContain(expected);
+            expect(target).toHaveClass(expected);
         },
     );
 
@@ -78,9 +78,9 @@ describe('StatTile', () => {
 
     it('lets valueClassName override the value color', () => {
         const { container } = render(
-            <StatTile value="x" label="y" valueClassName="text-horizon-deep" />,
+            <StatTile value="x" label="y" valueClassName="text-horizon-ink" />,
         );
-        expect(container.querySelector('.text-horizon-deep')).not.toBeNull();
+        expect(container.querySelector('.text-horizon-ink')).not.toBeNull();
     });
 
     it('renders an italic quote sub when subVariant=quote', () => {

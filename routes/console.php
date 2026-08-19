@@ -37,7 +37,7 @@ $alertOnFailure(Schedule::command('ai:daily-briefing')->dailyAt('00:01'), 'ai:da
 
 // 00:05: keep the seeded demo account fresh — one modest synthetic run (~5/week)
 // plus a rule-based refresh of today's briefing/greeting/trend so the demo never
-// renders an empty "Belum dibaca" once the date rolls. Zero LLM tokens
+// renders an empty block once the date rolls. Zero LLM tokens
 // (withoutDispatching + rule-based fill), so the demo-billing exclusion holds.
 Schedule::command('demo:daily-refresh')->dailyAt('00:05');
 
@@ -46,10 +46,10 @@ Schedule::command('demo:daily-refresh')->dailyAt('00:05');
 // the single scheduled LLM call that fills it.
 $alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:01'), 'ai:weekly-recap');
 
-// Monday 00:05: refresh the Aku-page persona summary + Kata Temari voice once a
+// Monday 00:05: refresh the Aku-page persona summary + Temari voice once a
 // week, just after the recap. These two have no per-run cadence, so this is
 // their only auto-refresh; persona self-throttles per ISO week and the voice is
-// invalidated weekly. Demo excluded. Mid-week freshness stays on "Baca ulang".
+// invalidated weekly. Demo excluded. Mid-week freshness stays on "Reread".
 Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:05');
 
 // Monday 00:07: regenerate every user's plan today-forward against their
@@ -65,6 +65,15 @@ Schedule::command('strava:sync-zones')->monthlyOn(1, '00:10')->withoutOverlappin
 
 // 1st of the month 05:45: same pattern for the monthly recap.
 $alertOnFailure(Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45'), 'ai:monthly-recap');
+
+// Trends tab's "Temari's read", one range at a time, tiered by how often
+// each range's own numbers actually move (not just to spread out cost):
+// 30d changes day to day, 90d barely moves over a few days, 12mo barely
+// moves over a week. Scheduled + cached like every other narrator — never
+// generated live per page view. See TREND_READ_RANGES.
+$alertOnFailure(Schedule::command('ai:trend-read 30d')->dailyAt('06:00'), 'ai:trend-read 30d');
+$alertOnFailure(Schedule::command('ai:trend-read 90d')->cron('0 6 */3 * *'), 'ai:trend-read 90d');
+$alertOnFailure(Schedule::command('ai:trend-read 12mo')->weeklyOn(1, '06:00'), 'ai:trend-read 12mo');
 
 // Hourly self-heal sweep: re-kicks the earliest stalled AI block per user
 // (weekly + monthly + per-activity chains, plus card/PR narration) — for
@@ -107,8 +116,22 @@ Schedule::command('weather:correct-forecast')->dailyAt('03:15')->withoutOverlapp
 // so a daily sweep is enough. Free HTTP, no LLM.
 Schedule::command('weather:backfill')->dailyAt('03:30')->withoutOverlapping(55);
 
+// 03:45 daily: grow-forward VDOT/pace-consistency history, one row per user
+// per day. Every user, not just recently-active ones — a rest week still
+// needs a row, or Trends' "not enough history yet" state never resolves for
+// someone who's resting. No backfill on purpose; a day with no row has no
+// history, it isn't retroactively derived from old runs.
+Schedule::command('trend:snapshot-daily')->dailyAt('03:45')->withoutOverlapping(55);
+
 // Saturday 18:00: nudge a user whose weekly streak is live but has no run yet
 // this week, while there's still time to save it before Sunday's week-close
 // breaks it. Demo excluded (checked inside the command); the streak_reminders
 // claim table makes a same-week re-run a no-op, not a second push.
 Schedule::command('streak:remind')->weeklyOn(Carbon::SATURDAY, '18:00');
+
+// Monday 00:00: settle the week that just closed — mint a rest token every 4th
+// streak week, or spend one to forgive a runless week. Must run before
+// ai:weekly-recap (00:01), which reads consecutiveWeekStreak() and would
+// otherwise narrate a streak that this command is about to restore. No LLM and
+// no Strava call.
+Schedule::command('streak:settle')->weeklyOn(1, '00:00');

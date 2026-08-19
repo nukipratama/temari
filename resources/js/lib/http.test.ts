@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { csrfToken, postJson } from './http';
+import { csrfToken, getJson, postJson } from './http';
 
 afterEach(() => {
     document.head.innerHTML = '';
@@ -69,5 +69,44 @@ describe('postJson', () => {
     it('rejects a network error rather than swallowing it, leaving the policy to the caller', async () => {
         vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
         await expect(postJson('/api/x')).rejects.toThrow('offline');
+    });
+
+    it('serialises a supplied body instead of the empty-object default', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(new Response('{}'));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await postJson('/api/x', { question: 'why did my HR drift?' });
+
+        expect(fetchMock.mock.calls[0][1].body).toBe(
+            '{"question":"why did my HR drift?"}',
+        );
+    });
+});
+
+describe('getJson', () => {
+    it('GETs the url with the AJAX headers and same-origin credentials', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(new Response('{}'));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await getJson('/api/activities/9/questions');
+
+        const [url, init] = fetchMock.mock.calls[0];
+        expect(url).toBe('/api/activities/9/questions');
+        expect(init.method).toBe('GET');
+        expect(init.credentials).toBe('same-origin');
+        expect(init.headers['Accept']).toBe('application/json');
+        expect(init.headers['X-Requested-With']).toBe('XMLHttpRequest');
+    });
+
+    it('resolves with the raw Response so a caller can check .ok', async () => {
+        const response = new Response('{}', { status: 403 });
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
+
+        await expect(getJson('/api/x')).resolves.toBe(response);
+    });
+
+    it('rejects a network error rather than swallowing it', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+        await expect(getJson('/api/x')).rejects.toThrow('offline');
     });
 });

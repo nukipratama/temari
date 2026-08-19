@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Notifications;
 
+use App\Enums\NotificationKind;
 use App\Models\User;
+use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\Notifications\ChannelRouter;
 use Illuminate\Bus\Queueable;
@@ -14,10 +16,10 @@ use NotificationChannels\WebPush\WebPushMessage;
 
 /**
  * The "streak at risk" nudge dispatched by {@see \App\Console\Commands\Gamification\StreakRemindCommand}.
- * Re-checks the demo flag and the notification master switch at send time (the
- * command already checked, but `via()` runs again per notifiable).
- * Channel-neutral like the rest: it reaches every wired channel, so a user on
- * phone push alone still gets nudged.
+ * Re-checks the notification master switch at send time (the command already
+ * checked, but `via()` runs again per notifiable). Channel-neutral like the
+ * rest: it reaches every wired channel, so a user on phone push alone still
+ * gets nudged. Demo routing is the router's call, not this notification's.
  */
 class StreakReminderNotification extends Notification implements ShouldQueue
 {
@@ -39,10 +41,6 @@ class StreakReminderNotification extends Notification implements ShouldQueue
      */
     public function via(User $notifiable): array
     {
-        if ($notifiable->is_demo) {
-            return [];
-        }
-
         // The nudge is named in the master switch's own description, so it is
         // governed by it rather than piggybacking a recap flag; missing row = all-on.
         $preference = $notifiable->notificationPreference;
@@ -74,9 +72,19 @@ class StreakReminderNotification extends Notification implements ShouldQueue
             ->options(['urgency' => 'high']);
     }
 
+    public function toInbox(User $notifiable): InboxMessage
+    {
+        return new InboxMessage(
+            kind: NotificationKind::StreakReminder,
+            title: $this->title(),
+            body: $this->body(),
+            payload: ['streak_weeks' => $this->streakWeeks, 'url' => route('dashboard')],
+        );
+    }
+
     private function title(): string
     {
-        return "🔥 Your {$this->streakWeeks}-week streak is on the edge";
+        return "Your {$this->streakWeeks}-week streak is on the edge";
     }
 
     private function body(): string

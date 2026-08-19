@@ -9,6 +9,8 @@ use App\Models\StravaConnection;
 use App\Models\User;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
+use App\Support\DataUseStatement;
+use App\Support\TrainingDisclaimer;
 use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\RequestException;
@@ -18,6 +20,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Socialite\Two\InvalidStateException;
 use Laravel\Socialite\Two\User as SocialiteUser;
@@ -34,14 +37,46 @@ it('shows the login page to guests', function (): void {
         ->assertInertia(fn (Assert $page) => $page->component('Auth/Login')->has('authStravaUrl'));
 });
 
+it('hands the landing page its legal copy from the single source, not a retype', function (): void {
+    $this->get(route('login'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Auth/Login')
+            ->where('dataUse.headline', DataUseStatement::HEADLINE)
+            ->where('dataUse.points', DataUseStatement::points())
+            ->where('trainingDisclaimer.headline', TrainingDisclaimer::HEADLINE)
+            ->where('trainingDisclaimer.text', TrainingDisclaimer::TEXT)
+            ->etc());
+});
+
+it('fails honestly when the ip-keyed oauth throttle trips', function (): void {
+    // The one uncapped Strava spender: no session exists until the callback, so
+    // the limit is per IP. A bare framework 429 would strand the visitor with no
+    // idea what happened or whether retrying is safe.
+    foreach (range(1, 10) as $ignored) {
+        mockStravaDriver(function ($driver): void {
+            $driver->shouldReceive('scopes')->andReturnSelf();
+            $driver->shouldReceive('redirect')->andReturn(redirect('https://www.strava.com/oauth/authorize?fake'));
+        });
+        $this->get(route('auth.strava.redirect'))->assertRedirect();
+    }
+
+    $this->get(route('auth.strava.redirect'))
+        ->assertStatus(429)
+        ->assertSee('Too many tries, too fast')
+        ->assertSee('Wait a minute and start the connect over');
+});
+
 it('redirects authenticated users away from login', function (): void {
     $this->actingAs(User::factory()->create())
         ->get(route('login'))
         ->assertRedirect(route('dashboard'));
 });
 
-it('redirects unauthenticated visitors from root to login', function (): void {
-    $this->get('/')->assertRedirect(route('login'));
+it('serves the landing page to unauthenticated visitors at root', function (): void {
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login'));
 });
 
 it('renders dashboard for authenticated visitors at root', function (): void {
@@ -442,8 +477,19 @@ it('encrypts the page object written to history state', function (): void {
         ->and($page['encryptHistory'] ?? false)->toBeTrue();
 });
 
-it('blocks guests from the dashboard', function (): void {
-    $this->get(route('dashboard'))->assertRedirect(route('login'));
+it('throttles both strava oauth endpoints, the open account-creation path', function (): void {
+    foreach (['auth.strava.redirect', 'auth.strava.callback'] as $name) {
+        $route = Route::getRoutes()->getByName($name);
+
+        expect($route)->not->toBeNull()
+            ->and($route->gatherMiddleware())->toContain('throttle:strava-oauth');
+    }
+});
+
+it('answers the dashboard url with the landing page for guests', function (): void {
+    $this->get(route('dashboard'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login'));
 });
 
 it('shows the dashboard to authenticated users', function (): void {
@@ -456,6 +502,6 @@ it('shows the dashboard to authenticated users', function (): void {
         ->get(route('dashboard'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Today')
+            ->component('Home')
             ->where('auth.user.name', 'Ada Lovelace'));
 });

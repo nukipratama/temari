@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Serves the Jejak mood filter, which resolves a user's matching activity ids
+ * Serves the Feed mood filter, which resolves a user's matching activity ids
  * with `where user_id = ? and kind = 'post_run' and mood in (...)`. The existing
  * indexes lead on `(user_id, activity_id)` / `(user_id, for_date)`, so neither
  * covers `kind` + `mood` — without this the filter scans every one of the user's

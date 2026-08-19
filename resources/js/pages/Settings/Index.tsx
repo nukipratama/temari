@@ -3,7 +3,11 @@ import { Head, router } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
+import MeTabs from '@/components/me/MeTabs';
 import PushNotificationToggle from '@/components/PushNotificationToggle';
+import HrZonesDisclosure, {
+    type HrZonesPayload,
+} from '@/components/settings/HrZonesDisclosure';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import Card from '@/components/ui/Card';
 import PageContainer from '@/components/ui/PageContainer';
@@ -35,12 +39,51 @@ interface TelegramPayload {
     connect_url: string | null;
 }
 
+interface DataUsePayload {
+    headline: string;
+    points: string[];
+}
+
 interface SettingsProps {
+    dataUse?: DataUsePayload;
     telegram?: TelegramPayload;
     notificationPrefs?: NotificationPrefs;
     /** Seconds left on the test-send cooldown, or null when it is not cooling. */
     testCooldownSeconds?: number | null;
+    hrZones?: HrZonesPayload;
 }
+
+const LEGAL_ROWS: ReadonlyArray<{
+    href: string;
+    icon: string;
+    label: string;
+    description: string;
+}> = [
+    {
+        href: '/terms',
+        icon: 'mdi:file-document-outline',
+        label: 'Terms of use',
+        description: 'What Temari is, what it costs, and what it promises.',
+    },
+    {
+        href: '/privacy',
+        icon: 'mdi:lock-outline',
+        label: 'Privacy policy',
+        description: 'What is stored, who else sees it, what deletion removes.',
+    },
+    {
+        href: '/ai-use',
+        icon: 'mdi:robot-outline',
+        label: 'How Temari uses AI',
+        description: 'What is sent to the model, and what it never does.',
+    },
+    {
+        href: '/training-disclaimer',
+        icon: 'mdi:heart-pulse',
+        label: 'Training disclaimer',
+        description: 'Why the plan is specific, and when to ignore it.',
+    },
+];
 
 const TELEGRAM_DEFAULT: TelegramPayload = {
     connected: false,
@@ -54,23 +97,46 @@ const PREFS_DEFAULT: NotificationPrefs = {
     push_enabled: true,
 };
 
+// Mirrors config('runner.php')'s single-user defaults, the same fallback
+// SettingsController hands back for a user with no RunnerProfile row.
+const HR_ZONES_DEFAULT: HrZonesPayload = {
+    profile: {
+        max_hr: 180,
+        resting_hr: 55,
+        hr_zones: {
+            Z1: { lo: 116, hi: 138 },
+            Z2: { lo: 138, hi: 154 },
+            Z3: { lo: 154, hi: 168 },
+            Z4: { lo: 168, hi: 176 },
+            Z5: { lo: 176, hi: 999 },
+        },
+        optimal_cadence_spm: 170,
+    },
+    source: 'default',
+    stravaSyncedLabel: null,
+    canSyncFromStrava: false,
+};
+
 export default function Settings({
+    dataUse,
     telegram = TELEGRAM_DEFAULT,
     notificationPrefs = PREFS_DEFAULT,
     testCooldownSeconds = null,
+    hrZones = HR_ZONES_DEFAULT,
 }: Readonly<SettingsProps>) {
     return (
         <>
             <Head title="Settings" />
             <PageContainer>
-                {/* No back affordance: Settings is one tap from the Me tab
-                    and from the avatar menu on every page, so a breadcrumb here
-                    would be chrome without a job. */}
-                <header className="mb-8">
+                {/* No back affordance: Settings is reachable via MeTabs from
+                    Profile (itself one tap away via the avatar), so a
+                    breadcrumb here would be chrome without a job. */}
+                <header className="mb-8 flex flex-col gap-5">
                     <PageHero eyebrow="Settings">
                         Set up Temari,{' '}
-                        <em className="italic text-horizon-deep">your way.</em>
+                        <em className="italic text-horizon-ink">your way.</em>
                     </PageHero>
+                    <MeTabs active="settings" />
                 </header>
 
                 {/* One notification section, not three. The user holds a single
@@ -80,7 +146,7 @@ export default function Settings({
                 <section data-coachmark="settings-notifications">
                     <SectionLabel>Notifications</SectionLabel>
                     <div className="mt-3">
-                        <Card padding="lg">
+                        <Card padding="hero">
                             <NotificationPrefsPanel
                                 prefs={notificationPrefs}
                                 telegram={telegram}
@@ -93,13 +159,43 @@ export default function Settings({
                 <section className="mt-10" data-coachmark="settings-hr-zones">
                     <SectionLabel>Running</SectionLabel>
                     <div className="mt-3">
-                        <Card padding="lg">
-                            <SettingsRow
-                                icon="mdi:heart-pulse"
-                                label="HR zones"
-                                description="Set your own Z1-Z5 boundaries so Temari reads your runs more accurately."
-                                href="/settings/zones"
-                            />
+                        <HrZonesDisclosure hrZones={hrZones} />
+                    </div>
+                </section>
+
+                {dataUse ? (
+                    <section className="mt-10">
+                        <SectionLabel>{dataUse.headline}</SectionLabel>
+                        <div className="mt-3">
+                            <Card padding="hero">
+                                <ul className="flex flex-col gap-4">
+                                    {dataUse.points.map((point) => (
+                                        <li
+                                            key={point}
+                                            className="text-sm leading-relaxed text-ink-2"
+                                        >
+                                            {point}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </Card>
+                        </div>
+                    </section>
+                ) : null}
+
+                <section className="mt-10">
+                    <SectionLabel>The fine print</SectionLabel>
+                    <div className="mt-3">
+                        <Card padding="hero">
+                            {LEGAL_ROWS.map((row) => (
+                                <SettingsRow
+                                    key={row.href}
+                                    icon={row.icon}
+                                    label={row.label}
+                                    description={row.description}
+                                    href={row.href}
+                                />
+                            ))}
                         </Card>
                     </div>
                 </section>
@@ -107,7 +203,13 @@ export default function Settings({
                 <section className="mt-10">
                     <SectionLabel>Account</SectionLabel>
                     <div className="mt-3">
-                        <Card padding="lg">
+                        <Card padding="hero">
+                            <SettingsRow
+                                icon="mdi:logout"
+                                label="Log out"
+                                description="You can sign back in any time."
+                                onClick={() => router.post('/logout')}
+                            />
                             <DeleteAccountPanel />
                         </Card>
                     </div>
@@ -378,7 +480,7 @@ function TelegramPanel({
                             }),
                         )
                     }
-                    className="focus-ring inline-flex shrink-0 items-center gap-1 rounded text-label-small text-ink-3 transition hover:text-ember-deep"
+                    className="focus-ring inline-flex shrink-0 items-center gap-1 rounded text-label-small text-ink-3 transition hover:text-ember-ink"
                 >
                     <Icon
                         icon="mdi:link-off"

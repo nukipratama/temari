@@ -174,6 +174,18 @@ describe('Runs/Show', () => {
         ).toBeInTheDocument();
     });
 
+    it('says nothing about hydration when the run is already detailed', () => {
+        renderShow();
+        expect(screen.queryByText(/still filling this run in/i)).toBeNull();
+    });
+
+    it('explains the thin page while the deeper fetch is queued', () => {
+        renderShow({ awaitingDetail: true });
+        expect(
+            screen.getByText(/still filling this run in/i),
+        ).toBeInTheDocument();
+    });
+
     it('renders run name in the sky hero', () => {
         renderShow();
         expect(screen.getAllByText('Morning Run').length).toBeGreaterThan(0);
@@ -234,7 +246,7 @@ describe('Runs/Show', () => {
     it('renders the as-recorded date and start time in the hero', () => {
         renderShow();
         // start_date_local '2026-05-10T07:00:00' → wall-clock date + time, no zone shift.
-        expect(screen.getByText('10 May 2026 · 07.00')).toBeInTheDocument();
+        expect(screen.getByText('10 May 2026 · 07:00')).toBeInTheDocument();
     });
 
     it('renders the literal hero time even when serialized with a UTC Z', () => {
@@ -244,7 +256,7 @@ describe('Runs/Show', () => {
                 start_date_local: '2026-06-09T06:52:54.000000Z',
             },
         });
-        expect(screen.getByText('9 Jun 2026 · 06.52')).toBeInTheDocument();
+        expect(screen.getByText('9 Jun 2026 · 06:52')).toBeInTheDocument();
     });
 
     it('renders the run lenses with the What Temari Says header', () => {
@@ -398,7 +410,7 @@ describe('Runs/Show', () => {
         expect(screen.getByText('0.8 KM')).toBeInTheDocument();
     });
 
-    it('renders the past-you strip when journeyMatch is present', () => {
+    it('promotes the past-you comparison into the hero when a match exists', () => {
         renderShow({
             pastYou: {
                 past: { start_date_local: '2026-04-01T07:00' },
@@ -408,6 +420,36 @@ describe('Runs/Show', () => {
             },
         });
         expect(screen.getByText(/30 days ago/)).toBeInTheDocument();
+        expect(screen.getByText('You vs past you')).toBeInTheDocument();
+        expect(screen.getByText(/sec\/km faster/)).toBeInTheDocument();
+    });
+
+    it('omits the past-you band entirely when there is no match', () => {
+        renderShow({ pastYou: null });
+        expect(screen.queryByText('You vs past you')).not.toBeInTheDocument();
+    });
+
+    it('offers the per-run ask panel', () => {
+        renderShow({});
+        expect(screen.getByText('Ask about this run')).toBeInTheDocument();
+        expect(
+            screen.getByPlaceholderText('Ask anything about this run'),
+        ).toBeInTheDocument();
+    });
+
+    it('tells the ask panel the toolbox is thin on a summary-only run', () => {
+        renderShow({
+            activity: {
+                id: 99,
+                user_id: 1,
+                analyzed_at: '2026-05-10',
+                ingest_state: 'summary',
+                detail,
+            },
+        });
+        expect(
+            screen.getByText(/no splits,\s+zones or terrain yet/),
+        ).toBeInTheDocument();
     });
 
     it('falls back to "Run" when detail.name is null', () => {
@@ -520,7 +562,7 @@ describe('Runs/Show', () => {
         renderShow({}, { telegramConnected: true });
         fireEvent.click(screen.getByText('Send notification'));
         expect(router.post).toHaveBeenCalledWith(
-            '/activities/99/kirim',
+            '/activities/99/send',
             {},
             expect.objectContaining({
                 preserveScroll: true,

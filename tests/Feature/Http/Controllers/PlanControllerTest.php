@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Actions\Gamification\SettleStreakRestTokensAction;
 use App\Models\PlannedSession;
 use App\Models\Season;
+use App\Models\StreakRestToken;
 use App\Models\User;
+use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -42,6 +45,62 @@ it('creates a season and its 5 goals on a fresh user\'s first Plan view, before 
             ->where('season.is_race_oriented', false));
 
     expect(Season::query()->where('user_id', $user->id)->count())->toBe(1);
+});
+
+it('counts only an earlier season\'s track tiers as kept, never the live season\'s', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user)->get('/plan');
+    $season = Season::query()->where('user_id', $user->id)->sole();
+
+    UserUnlock::query()->insert([
+        ['user_id' => $user->id, 'unlock_key' => 'season.999.track_1', 'unlocked_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['user_id' => $user->id, 'unlock_key' => 'season.999.track_2', 'unlocked_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['user_id' => $user->id, 'unlock_key' => 'season.999.rest_honored_3', 'unlocked_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['user_id' => $user->id, 'unlock_key' => "season.{$season->id}.track_1", 'unlocked_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    $this->actingAs($user)->get('/plan')
+        ->assertInertia(fn (Assert $page) => $page->where('season.tiers_kept_from_past_seasons', 2));
+});
+
+it('reports the weekly streak with its open week and no rest weeks held', function (): void {
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->create([
+        'user_id' => $user->id,
+        'week_ending' => '2026-08-16',
+        'runs' => 3,
+    ]);
+
+    $this->actingAs($user)->get('/plan')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('streak.weeks', 1)
+            ->where('streak.rest_weeks_held', 0)
+            ->where('streak.rest_weeks_cap', SettleStreakRestTokensAction::MAX_HELD)
+            ->where('streak.weeks_to_next_rest_week', 3)
+            ->where('streak.ran_this_week', true)
+            ->where('streak.week_ends_on', '2026-08-16')
+            ->where('streak.last_forgiven_week', null));
+});
+
+it('stops forecasting the next rest week once the held ones are capped, and names the last forgiven week', function (): void {
+    $user = User::factory()->create();
+    foreach (range(1, SettleStreakRestTokensAction::MAX_HELD) as $offset) {
+        StreakRestToken::factory()->create([
+            'user_id' => $user->id,
+            'earned_for_week_ending' => Carbon::parse('2026-08-09')->subWeeks($offset)->toDateString(),
+        ]);
+    }
+    StreakRestToken::factory()->create([
+        'user_id' => $user->id,
+        'earned_for_week_ending' => '2026-05-31',
+        'spent_for_week_ending' => '2026-07-05',
+    ]);
+
+    $this->actingAs($user)->get('/plan')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('streak.rest_weeks_held', SettleStreakRestTokensAction::MAX_HELD)
+            ->where('streak.weeks_to_next_rest_week', null)
+            ->where('streak.last_forgiven_week', '2026-07-05'));
 });
 
 it('regenerating populates the plan and redirects with a success flash', function (): void {

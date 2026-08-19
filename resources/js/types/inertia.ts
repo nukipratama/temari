@@ -1,8 +1,18 @@
 // Generated from the PHP enums — see generated.ts (`php artisan typescript:enums`).
 // Imported for local use below and re-exported so consumers keep importing from here.
-import type { AnalysisStatus, AnalysisType, Rarity } from './generated';
+import type {
+    AnalysisStatus,
+    AnalysisType,
+    NotificationKind,
+    Rarity,
+} from './generated';
 
-export type { AnalysisStatus, AnalysisType, Rarity } from './generated';
+export type {
+    AnalysisStatus,
+    AnalysisType,
+    NotificationKind,
+    Rarity,
+} from './generated';
 
 export type Mood =
     'blazing' | 'easy' | 'wobbly' | 'gassed' | 'overloaded' | 'chill';
@@ -72,6 +82,26 @@ export interface UnlockFlash {
 }
 
 /**
+ * One row of the notification centre, flattened by `InboxController` so the
+ * page never reads the raw `payload` blob. `run_card_id` and `unlock` are the
+ * replay handles: either one re-runs the celebration this row is a record of,
+ * rather than describing it.
+ */
+export interface InboxItem {
+    id: number;
+    kind: NotificationKind;
+    title: string;
+    body: string | null;
+    /** True instant (ISO-8601 with offset), not a naive wall-clock date. */
+    created_at: string | null;
+    read_at: string | null;
+    url: string | null;
+    run_card_id: number | null;
+    rarity: Rarity | null;
+    unlock: UnlockFlash | null;
+}
+
+/**
  * The race the user is currently training for, shared app-wide. "Race" is the
  * user-facing name; live accessory-unlock progress lives on `/accessories`,
  * see AccessoriesItem.
@@ -103,6 +133,8 @@ export interface SharedProps {
     telegramConnected?: boolean;
     /** Whether the auth user has at least one browser push subscription. */
     webPushSubscribed?: boolean;
+    /** How many of the auth user's inbox notifications are still unread. */
+    unreadNotifications?: number;
     /** The public VAPID key the browser needs to subscribe to web push; '' when unconfigured. */
     webPushPublicKey?: string;
     /** True when the auth user's Strava connection is live but lacks the `profile:read_all` scope needed for HR-zone sync. */
@@ -260,6 +292,7 @@ export interface Activity {
     user_id: number;
     name?: string;
     analyzed_at: string | null;
+    ingest_state?: 'summary' | 'detailed';
     detail?: ActivityDetail;
     run_card?: RunCard;
 }
@@ -292,14 +325,88 @@ export interface StoryLine {
 
 export type FormStatus = 'fresh' | 'optimal' | 'fatigued' | 'overreaching';
 
+/** The three week-window fields are null when the week's runs carried no heart
+ *  rate, which is not the same as a zero. ATL/CTL/form are EWMAs over a year of
+ *  history and stay numbers through an unscored stretch. */
 export interface TrainingLoad {
     form: number;
     form_status: FormStatus;
     ctl_42d: number;
     atl_7d: number;
-    weekly_trimp: number;
-    monotony: number;
-    strain: number;
+    weekly_trimp: number | null;
+    monotony: number | null;
+    strain: number | null;
+}
+
+export type TrendVerdict =
+    'improving' | 'plateaued' | 'slipped' | 'not_enough_history';
+
+export type TrendDirection = 'better' | 'flat' | 'worse';
+
+/** One side of a Past You pair, as `ComparableRun::toArray()` ships it. */
+export interface ComparableRun {
+    activity_id: number;
+    date: string;
+    km: number;
+    pace_sec_per_km: number;
+    average_heartrate: number | null;
+    elevation_gain_m: number | null;
+    ingest_state: 'summary' | 'detailed';
+}
+
+/** One matched pair, as `PastYouComparison::toArray()` ships it. */
+export interface PastYouComparison {
+    direction: TrendDirection;
+    days_apart: number;
+    similarity: number;
+    /** Positive when the recent run is faster. */
+    pace_delta_sec: number;
+    /** Negative when the recent run's average heart rate is lower. */
+    hr_delta_bpm: number | null;
+    current: ComparableRun;
+    past: ComparableRun;
+}
+
+/** `PastYouTrend::toArray()`. Every supporting reading stays null until the
+ *  detail pipeline has hydrated the runs the verdict was built from. */
+export interface PastYouTrend {
+    verdict: TrendVerdict;
+    window_days: number;
+    comparison_count: number;
+    comparisons: PastYouComparison[];
+    mean_pace_delta_sec: number | null;
+    mean_hr_delta_bpm: number | null;
+    fitness_delta_ctl: number | null;
+    pace_consistency_now: string | null;
+    pace_consistency_then: string | null;
+    relative_effort_band: string | null;
+}
+
+/** One day within `WeekPlan['days']`, as `PlanRenderer::dayPayload()` ships
+ *  it — the same shape Plan's own day rows use. */
+export interface WeekPlanDay {
+    id: number;
+    date: string;
+    phase: string;
+    session_type: string;
+    distance_band: string;
+    pace_band: string | null;
+    pace_sec_per_km: number | null;
+    distance_km: number;
+    pinned: boolean;
+    status: 'planned' | 'done' | 'partial' | 'missed';
+    clamp_note: string | null;
+}
+
+/** `CurrentWeekPlanBuilder::forUser()` — Home's compact pull of the current
+ *  week's plan, null once a user has no plan yet. */
+export interface WeekPlan {
+    sessions_per_week: number;
+    phase: string;
+    planned_km_this_week: number;
+    credited_this_week: number;
+    streak_days: number;
+    days: WeekPlanDay[];
 }
 
 /** One `weekly_snapshots` row, shipped whole (`WeeklySnapshot::toArray()`). */
@@ -321,7 +428,7 @@ export interface WeeklySnapshot {
 }
 
 /** A snapshot decorated by RunController::decorateSnapshot with its recap
- *  narration and the flags the Jejak week list renders it with. */
+ *  narration and the flags the feed week list renders it with. */
 export interface WeeklySnapshotWithRecap extends WeeklySnapshot {
     /** True for the in-progress week, whose recap waits for the weekly scheduler. */
     is_current_week: boolean;

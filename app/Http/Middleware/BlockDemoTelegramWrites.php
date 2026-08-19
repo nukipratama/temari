@@ -32,7 +32,7 @@ class BlockDemoTelegramWrites
             return $next($request);
         }
 
-        $message = 'Akun demo cuma bisa dilihat, gak bisa diubah.';
+        $message = 'The demo account is read-only. Nothing here can be changed.';
 
         if ($request->header('X-Inertia') === null) {
             return response()->json(['message' => $message], 403);

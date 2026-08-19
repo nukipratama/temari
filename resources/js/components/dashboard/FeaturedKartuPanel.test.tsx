@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { FeaturedCard } from '@/pages/Today/helpers';
+import type { FeaturedCard } from '@/pages/Home/helpers';
 import type { AnalysisPayload } from '@/types/inertia';
 
 import FeaturedKartuPanel from './FeaturedKartuPanel';
@@ -12,7 +12,7 @@ const featured: FeaturedCard = {
     name: 'Comeback Kid',
     subtitle: 'Epic · 2 days ago',
     km: '5.28',
-    durasi: '40:00',
+    duration: '40:00',
     trimp: '87',
     rarity: 'epic',
     mood: 'blazing',

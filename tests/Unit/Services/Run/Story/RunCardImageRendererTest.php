@@ -155,7 +155,7 @@ it('renders valid PNG bytes for the kartu layout (no route panel, larger KM hero
     $png = app(RunCardImageRenderer::class)->render($card, 'kartu');
 
     expect(str_starts_with($png, PNG_MAGIC))->toBeTrue()
-        ->and($svg)->toContain('font-size="170"') // the enlarged hero KM figure
+        ->and($svg)->toContain('font-size="380"') // the enlarged hero KM figure
         ->not->toContain('<polyline'); // no route panel, even though the run has a polyline
 });
 
@@ -202,14 +202,19 @@ it('scales the thread-band accent line count with rarity tier', function (): voi
             ->invoke(app(RunCardImageRenderer::class), $card);
     };
 
-    // Common = 1 stitch, Legendary = 5 (3 primary + 2 crossing) — count the
-    // <line> elements the thread-band accent draws (distinct from the
-    // route/badge/stat markup, which uses <rect>/<text>/<polyline>, never <line>).
-    expect(substr_count($svgFor('common'), '<line '))->toBe(1)
-        ->and(substr_count($svgFor('uncommon'), '<line '))->toBe(2)
-        ->and(substr_count($svgFor('rare'), '<line '))->toBe(3)
-        ->and(substr_count($svgFor('epic'), '<line '))->toBe(4)
-        ->and(substr_count($svgFor('legendary'), '<line '))->toBe(5);
+    // Common = 1 stitch, Legendary = 5 (3 primary + 2 crossing). Matched on the
+    // stitch's own stroke width: the footer divider is a <line> too, and the
+    // route polyline is also round-capped, so neither marker alone is specific.
+    $stitches = fn (string $rarity): int => substr_count(
+        $svgFor($rarity),
+        'stroke-width="5" stroke-linecap="round"',
+    );
+
+    expect($stitches('common'))->toBe(1)
+        ->and($stitches('uncommon'))->toBe(2)
+        ->and($stitches('rare'))->toBe(3)
+        ->and($stitches('epic'))->toBe(4)
+        ->and($stitches('legendary'))->toBe(5);
 });
 
 it('paints a different card-body fill for each colorway', function (): void {
@@ -224,7 +229,99 @@ it('paints a different card-body fill for each colorway', function (): void {
     $dawn = $svgFor('dawn');
     $ember = $svgFor('ember');
 
-    expect($navy)->toContain('#241c54') // navy card body
-        ->and($dawn)->toContain('#f5f0e4')->not->toContain('#241c54')
-        ->and($ember)->toContain('#3a2015')->not->toContain('#241c54');
+    // Matched on the body rect itself: navy's #0b1017 is also the elevation's
+    // flood-color, so it appears under every colorway.
+    $body = fn (string $hex): string => "<rect width=\"1080\" height=\"1920\" rx=\"44\" fill=\"{$hex}\"/>";
+
+    expect($navy)->toContain($body('#0b1017'))
+        ->and($dawn)->toContain($body('#f1f5f8'))->not->toContain($body('#0b1017'))
+        ->and($ember)->toContain($body('#2a1017'))->not->toContain($body('#0b1017'));
+});
+
+it('names the three real font families and never the generic sans-serif', function (): void {
+    $card = makeRunCard([
+        'distance' => 5_280,
+        'elapsed_time' => 1_800,
+        'average_heartrate' => 150,
+    ], ['rarity' => 'epic', 'special_move' => 'Tendangan Balik']);
+
+    // These names are resolved by librsvg through fontconfig, so they have to
+    // match font families actually installed in the image (see the font install
+    // in the Dockerfile). 'sans-serif' silently resolved to DejaVu, which is why
+    // the Telegram photo never matched the client-rendered share image.
+    foreach (['rute', 'kartu', 'stats'] as $layout) {
+        $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+            ->invoke(app(RunCardImageRenderer::class), $card, $layout);
+
+        expect($svg)->toContain('font-family="Plus Jakarta Sans"')
+            ->toContain('font-family="JetBrains Mono"')
+            ->not->toContain('sans-serif');
+    }
+});
+
+it('renders the run name in italic Fraunces on the horizon accent, like the client canvas', function (): void {
+    $card = makeRunCard([
+        'distance' => 5_280,
+    ], ['rarity' => 'rare', 'special_move' => 'Kaki Cepat']);
+
+    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+        ->invoke(app(RunCardImageRenderer::class), $card);
+
+    expect($svg)->toContain('font-family="Fraunces" font-style="italic"')
+        ->toContain('fill="#ade047">Kaki Cepat</text>');
+});
+
+it('renders at the client canvas story format, 1080x1920', function (): void {
+    $card = makeRunCard(['distance' => 5_280], ['rarity' => 'common', 'special_move' => 'Langkah Mantap']);
+
+    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+        ->invoke(app(RunCardImageRenderer::class), $card);
+
+    expect($svg)->toContain('width="1080" height="1920"')
+        ->toContain('viewBox="0 0 1080 1920"');
+});
+
+it('mats the card on the app ground at the same inset the client canvas uses', function (): void {
+    $card = makeRunCard(['distance' => 5_280], ['rarity' => 'common', 'special_move' => 'Langkah Mantap']);
+
+    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+        ->invoke(app(RunCardImageRenderer::class), $card);
+
+    // These three numbers are the whole parity contract with shareCard.ts's
+    // CARD_GROUND / CARD_SCALE: the ground is --color-cream-deep, the card
+    // takes 90% of each axis, and it sits centred on the leftover mat.
+    expect($svg)->toContain('<rect width="1080" height="1920" fill="#e2e8ee"/>')
+        ->toContain('<g transform="translate(54,96) scale(0.9)">');
+});
+
+it('casts the two --shadow-e4 layers behind the card, at half the token blur', function (): void {
+    $card = makeRunCard(['distance' => 5_280], ['rarity' => 'common', 'special_move' => 'Langkah Mantap']);
+
+    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+        ->invoke(app(RunCardImageRenderer::class), $card);
+
+    // --shadow-e4 is `0 24px 56px rgba(23,15,56,.20), 0 8px 20px rgba(23,15,56,.12)`.
+    // feDropShadow's stdDeviation is sigma and a CSS blur radius is 2 sigma, so
+    // each blur halves; the caster carries the filter in unscaled canvas space
+    // so the exported elevation is the token, not 90% of it.
+    expect($svg)->toContain('dy="24" stdDeviation="28" flood-color="#0b1017" flood-opacity="0.20"')
+        ->toContain('dy="8" stdDeviation="10" flood-color="#0b1017" flood-opacity="0.12"')
+        ->toContain('rx="39.6" fill="#0b1017" filter="url(#elevation-deep)"')
+        ->toContain('rx="39.6" fill="#0b1017" filter="url(#elevation-tight)"');
+});
+
+it('stamps the date once, in the footer rather than the meta line', function (): void {
+    $card = makeRunCard([
+        'distance' => 5_280,
+        'location_name' => 'Alun-alun Kidul, Yogyakarta',
+        'weather_temp_c' => 27,
+    ], ['rarity' => 'common', 'special_move' => 'Langkah Mantap']);
+
+    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+        ->invoke(app(RunCardImageRenderer::class), $card);
+
+    $date = $card->activity->detail->start_date_local->translatedFormat('j M Y');
+
+    expect(substr_count($svg, $date))->toBe(1)
+        ->and($svg)->toContain('Alun-alun Kidul');
 });

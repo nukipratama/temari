@@ -14,7 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
- * Manual "Kirim notifikasi" on a run's detail page: pushes that run's post-run
+ * Manual "Send notification" on a run's detail page: pushes that run's post-run
  * narration to every channel the owner has wired on demand. A manual override -- it ignores
  * the post-run opt-in and the once-only delivery guard (force: true), so
  * it can be re-sent, but still requires a Done narration and a connection (the

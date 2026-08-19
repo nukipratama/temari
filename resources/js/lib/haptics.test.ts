@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { hapticCommit, hapticTap } from './haptics';
+import { hapticCommit } from './haptics';
 
 function stubVibrate(impl: (pattern: number) => boolean) {
     const spy = vi.fn(impl);
@@ -18,12 +18,6 @@ afterEach(() => {
 });
 
 describe('haptics', () => {
-    it('vibrates briefly on a tap', () => {
-        const vibrate = stubVibrate(() => true);
-        hapticTap();
-        expect(vibrate).toHaveBeenCalledWith(10);
-    });
-
     it('vibrates a touch longer on a commit', () => {
         const vibrate = stubVibrate(() => true);
         hapticCommit();
@@ -34,7 +28,7 @@ describe('haptics', () => {
     // not exist. Calling must be a silent no-op, never a crash.
     it('is a no-op when the platform has no vibrate (iOS Safari)', () => {
         Reflect.deleteProperty(navigator, 'vibrate');
-        expect(() => hapticTap()).not.toThrow();
+        expect(() => hapticCommit()).not.toThrow();
     });
 
     it('swallows a vibrate that throws inside an embedded webview', () => {

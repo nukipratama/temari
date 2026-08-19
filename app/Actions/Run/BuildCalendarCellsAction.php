@@ -85,7 +85,10 @@ class BuildCalendarCellsAction
 
         $totalDistance = (float) $rows->sum(fn ($r) => (float) ($r->distance ?? 0));
         $totalMoving = (float) $rows->sum(fn ($r) => (float) ($r->moving_time ?? 0));
-        $totalTrimp = (float) $rows->sum(fn ($r) => (float) ($r->trimp_edwards ?? 0));
+        // A summary-only run has no TRIMP; counting it as zero would render an
+        // honest unknown as a genuine zero-effort day.
+        $scored = $rows->filter(fn ($r): bool => $r->trimp_edwards !== null);
+        $totalTrimp = $scored->isEmpty() ? null : (float) $scored->sum(fn ($r) => (float) $r->trimp_edwards);
 
         // Weighted average HR by moving time so longer runs dominate the day's reading.
         $hrWeighted = 0.0;
@@ -108,7 +111,7 @@ class BuildCalendarCellsAction
             'distance_km' => DistanceFormatter::km($totalDistance, DistanceFormatter::EXACT),
             'pace_sec_per_km' => $paceSecPerKm !== null ? round($paceSecPerKm, 0) : null,
             'avg_hr' => $hrWeight > 0 ? (int) round($hrWeighted / $hrWeight) : null,
-            'trimp' => round($totalTrimp, 1),
+            'trimp' => $totalTrimp === null ? null : round($totalTrimp, 1),
             'mood' => $moodByActivity[$primaryId] ?? null,
             'activity_id' => $rows->count() === 1 ? $primaryId : null,
         ];

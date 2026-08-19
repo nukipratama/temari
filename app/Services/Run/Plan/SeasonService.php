@@ -99,6 +99,22 @@ final readonly class SeasonService
         });
     }
 
+    /**
+     * The read-only counterpart to {@see self::ensureCurrent()}: returns the
+     * current season if one already exists and is still valid, `null`
+     * otherwise. Never creates, updates, or closes a {@see Season} row — for
+     * a consumer (like the Profile page) that must not trigger the same
+     * creation side effects a Plan page load does.
+     */
+    public function peekCurrent(User $user, ?Carbon $today = null): ?Season
+    {
+        $today = ($today ?? Carbon::today())->copy()->startOfDay();
+        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
+        $current = Season::query()->where('user_id', $user->id)->orderByDesc('starts_at')->first();
+
+        return ($current !== null && $this->isCurrent($current, $race, $today)) ? $current : null;
+    }
+
     private function isCurrent(Season $season, ?RaceGoal $race, Carbon $today): bool
     {
         if ($today->isAfter($season->ends_at)) {

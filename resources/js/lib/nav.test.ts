@@ -3,45 +3,40 @@ import { describe, expect, it } from 'vitest';
 import { activeTabFromUrl, ITEMS } from './nav';
 
 describe('nav', () => {
-    it('has 4 top-level items', () => {
+    it('has 3 top-level items', () => {
         expect(ITEMS.map((item) => item.id)).toEqual([
-            'hari-ini',
-            'koleksi',
-            'plan',
-            'aku',
+            'today',
+            'trends',
+            'history',
         ]);
     });
 
+    it('resolves /trends to the Trends tab', () => {
+        expect(activeTabFromUrl('/trends')).toBe('trends');
+    });
+
     it('resolves the root path to Today', () => {
-        expect(activeTabFromUrl('/')).toBe('hari-ini');
+        expect(activeTabFromUrl('/')).toBe('today');
     });
 
-    it('folds History under Today', () => {
-        expect(activeTabFromUrl('/activities')).toBe('hari-ini');
-        expect(activeTabFromUrl('/activities/123')).toBe('hari-ini');
-        expect(activeTabFromUrl('/calendar')).toBe('hari-ini');
+    it('resolves History to its own tab', () => {
+        expect(activeTabFromUrl('/history')).toBe('history');
+        expect(activeTabFromUrl('/activities/123')).toBe('history');
     });
 
-    it('folds Race under Plan', () => {
-        expect(activeTabFromUrl('/plan')).toBe('plan');
-        expect(activeTabFromUrl('/race')).toBe('plan');
+    it('folds Plan and Race under Today, as drill-ins', () => {
+        expect(activeTabFromUrl('/plan')).toBe('today');
+        expect(activeTabFromUrl('/race')).toBe('today');
     });
 
-    it('resolves the Collection sub-pages, including /badges', () => {
-        expect(activeTabFromUrl('/cards')).toBe('koleksi');
-        expect(activeTabFromUrl('/accessories')).toBe('koleksi');
-        expect(activeTabFromUrl('/records')).toBe('koleksi');
-        expect(activeTabFromUrl('/badges')).toBe('koleksi');
-    });
-
-    it('no longer folds Race under Me', () => {
-        expect(activeTabFromUrl('/profile')).toBe('aku');
-        expect(activeTabFromUrl('/settings')).toBe('aku');
-        expect(activeTabFromUrl('/race')).not.toBe('aku');
+    it('resolves no bottom-nav tab for Profile, Settings, or Accessories — reached via the avatar, not a tab', () => {
+        expect(activeTabFromUrl('/profile')).toBeNull();
+        expect(activeTabFromUrl('/settings')).toBeNull();
+        expect(activeTabFromUrl('/accessories')).toBeNull();
     });
 
     it('ignores a query string when matching', () => {
-        expect(activeTabFromUrl('/plan?tab=race')).toBe('plan');
+        expect(activeTabFromUrl('/plan?tab=race')).toBe('today');
     });
 
     it('returns null for a path that matches no prefix', () => {
@@ -49,6 +44,6 @@ describe('nav', () => {
     });
 
     it('does not treat every path as Today just because "/" is a prefix', () => {
-        expect(activeTabFromUrl('/cards')).not.toBe('hari-ini');
+        expect(activeTabFromUrl('/accessories')).not.toBe('today');
     });
 });

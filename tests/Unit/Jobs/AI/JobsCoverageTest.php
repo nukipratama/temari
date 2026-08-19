@@ -11,6 +11,7 @@ use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePrContextJob;
+use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
@@ -25,6 +26,7 @@ use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
 use App\Services\AI\Narrators\PrContextNarrator;
+use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -149,6 +151,79 @@ it('AnalyzeBriefingMascotVoiceJob failed() spares a row that is already Done', f
 
     expect($voice->fresh()->status)->toBe(AnalysisStatus::Done)
         ->and($voice->fresh()->content)->toBe('kept');
+});
+
+// ── AnalyzeTrendReadJob (row) ─────────────────────────────────────────
+
+it('AnalyzeTrendReadJob returns the trend read for the row\'s range', function (): void {
+    $user = User::factory()->create();
+    mockNarrator(TrendReadNarrator::class, 'The last 30 days, in one read.');
+
+    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, '30d');
+    new AnalyzeTrendReadJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->content)->toBe('The last 30 days, in one read.')
+        ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
+});
+
+it('AnalyzeTrendReadJob marks the row Failed and rethrows when the user is missing', function (): void {
+    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, 99999, AnalysisType::TrendRead, '30d');
+
+    expect(fn () => new AnalyzeTrendReadJob($row->id)->handle(app(AnalysisService::class)))
+        ->toThrow(ModelNotFoundException::class);
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+});
+
+it('AnalyzeTrendReadJob does not re-invoke the narrator when its row is already Done (no double-bill)', function (): void {
+    $user = User::factory()->create();
+
+    $row = Analysis::factory()->done('preexisting')->create([
+        'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::TrendRead,
+        'discriminator' => '30d',
+    ]);
+
+    $mock = Mockery::mock(TrendReadNarrator::class);
+    $mock->shouldNotReceive('generate');
+    app()->instance(TrendReadNarrator::class, $mock);
+
+    new AnalyzeTrendReadJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->fresh()->content)->toBe('preexisting');
+});
+
+it('AnalyzeTrendReadJob falls back to rule-based content when generation content-filters', function (): void {
+    $user = User::factory()->create();
+
+    $mock = Mockery::mock(TrendReadNarrator::class);
+    $mock->shouldReceive('generate')->andThrow(new ContentFilterException('content filtered'));
+    app()->instance(TrendReadNarrator::class, $mock);
+
+    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, '30d');
+    new AnalyzeTrendReadJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->fresh()->content)->not->toBeEmpty();
+});
+
+it('AnalyzeTrendReadJob failed() marks a stranded row Failed', function (): void {
+    $user = User::factory()->create();
+
+    $row = Analysis::factory()->create([
+        'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::TrendRead,
+        'discriminator' => '30d',
+        'status' => AnalysisStatus::Processing,
+    ]);
+
+    new AnalyzeTrendReadJob($row->id)->failed(new RuntimeException('worker timeout'));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed)
+        ->and($row->fresh()->error)->toBe('worker timeout');
 });
 
 // ── AnalyzeCardFlavorJob (row) ────────────────────────────────────────

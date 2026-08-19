@@ -18,6 +18,19 @@ it('casts for_date to Carbon', function (): void {
         ->and($line->for_date->toDateString())->toBe('2026-05-10');
 });
 
+it('serialises for_date as a plain date, unshifted under Asia/Jakarta', function (): void {
+    $original = date_default_timezone_get();
+    date_default_timezone_set('Asia/Jakarta');
+
+    try {
+        $line = StoryLine::factory()->dailyGreeting('2026-05-10')->make(['user_id' => 1]);
+
+        expect($line->toArray()['for_date'])->toBe('2026-05-10');
+    } finally {
+        date_default_timezone_set($original);
+    }
+});
+
 it('belongs to a user and (optionally) an activity', function (): void {
     $activity = Activity::factory()->create();
     $line = StoryLine::factory()->for($activity)->create([

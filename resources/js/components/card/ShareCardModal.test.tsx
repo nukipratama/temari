@@ -59,7 +59,7 @@ const kartu: ShareKartuData = {
     subtitle: 'Negative-split morning · 20 Mei 2026',
     date: '20 Mei 2026\n07:00',
     km: '5.28',
-    durasi: '40 min',
+    duration: '40 min',
     pace: '5:30',
     trimp: '87',
     hr: '145 bpm',

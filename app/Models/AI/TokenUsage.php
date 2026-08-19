@@ -45,6 +45,15 @@ class TokenUsage extends Model
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
+            'strava_athlete_id' => 'integer',
+            'prompt_tokens' => 'integer',
+            'completion_tokens' => 'integer',
+            'total_tokens' => 'integer',
+            'cached_tokens' => 'integer',
+            'reasoning_tokens' => 'integer',
+            'steps' => 'integer',
+            'latency_ms' => 'integer',
             'created_at' => 'datetime',
             'truncated' => 'boolean',
         ];

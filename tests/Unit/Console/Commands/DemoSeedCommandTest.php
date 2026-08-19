@@ -14,6 +14,7 @@ use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
+use App\Notifications\Channels\InAppChannel;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\RecapPeriod;
 use App\Support\SharedPropCacheKey;
@@ -23,6 +24,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Testing\Fakes\NotificationFake;
 
 uses(RefreshDatabase::class);
 
@@ -30,17 +32,48 @@ uses(RefreshDatabase::class);
 beforeEach(fn () => Carbon::setTestNow('2026-05-12 12:00:00'));
 afterEach(fn () => Carbon::setTestNow());
 
+/**
+ * Every distinct channel a notification resolved to during the run.
+ *
+ * @return list<string>
+ */
+function channelsUsedBy(NotificationFake $notifications): array
+{
+    // sentNotifications() nests notifiable class => key => notification class => records.
+    $channels = [];
+
+    foreach ($notifications->sentNotifications() as $byKey) {
+        foreach ($byKey as $byNotification) {
+            foreach ($byNotification as $records) {
+                foreach ($records as $record) {
+                    $channels = [...$channels, ...$record['channels']];
+                }
+            }
+        }
+    }
+
+    sort($channels);
+
+    return array_values(array_unique($channels));
+}
+
 it('seeds a complete, login-ready demo dataset and stays idempotent across re-runs', function (): void {
-    // Token set + queue/notifications faked: the whole seed must stay under
-    // withoutDispatching, so a configured token never sends a markDone notification.
+    // Token set + queue/notifications faked: seeding must never reach *out*, so a
+    // configured token cannot turn a seed run into real Telegram or push traffic.
+    // It does legitimately record: unlocks granted while materialising runs route
+    // to the in-app inbox, which is what makes the public demo's notification
+    // centre non-empty (see docs/decisions/demo-notifications-are-inbox-only.md).
+    // So the rule is per-channel rather than "nothing sent" — and asserting the
+    // exact channel set keeps both halves: an empty set would mean the seed
+    // stopped recording, any other entry would mean it reached outside the app.
     config()->set('services.telegram.bot_token', 'test-token');
     Queue::fake();
-    Notification::fake();
+    $notifications = Notification::fake();
 
     $exitCode = $this->artisan('demo:seed')->run();
     expect($exitCode)->toBe(0);
 
-    Notification::assertNothingSent();
+    expect(channelsUsedBy($notifications))->toBe([InAppChannel::class]);
 
     $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();
 

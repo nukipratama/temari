@@ -32,13 +32,13 @@ export default function LapsGraph({
             : null;
 
     return (
-        <Card as="section" padding="lg" className={className}>
+        <Card as="section" padding="hero" className={className}>
             <header className="mb-1.5 flex flex-wrap items-baseline justify-between gap-3">
                 <SectionLabel>Laps</SectionLabel>
                 {fastest != null && fastestLap != null && (
-                    <p className="font-display text-sm italic text-ink-2">
+                    <p className="font-display text-quote-sm italic text-ink-2">
                         Fastest at lap {fastestLap},{' '}
-                        <span className="font-semibold text-horizon-deep">
+                        <span className="font-semibold text-horizon-ink">
                             {formatPace(fastest)}/km
                         </span>
                     </p>

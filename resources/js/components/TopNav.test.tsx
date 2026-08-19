@@ -19,54 +19,44 @@ beforeEach(() => {
 });
 
 describe('TopNav', () => {
-    it('renders the 4 primary tabs', () => {
+    it('renders the 3 primary tabs', () => {
         render(<TopNav />);
         expect(screen.getByText('Today')).toBeInTheDocument();
-        expect(screen.getByText('Collection')).toBeInTheDocument();
-        expect(screen.getByText('Plan')).toBeInTheDocument();
-        expect(screen.getByText('Me')).toBeInTheDocument();
+        expect(screen.getByText('Trends')).toBeInTheDocument();
+        expect(screen.getByText('History')).toBeInTheDocument();
     });
 
-    it('highlights Plan for the /plan page', () => {
+    it('highlights Today for the /plan page, a drill-in', () => {
         setMockPage(user(), '/plan');
         render(<TopNav />);
-        expect(screen.getByText('Plan')).toHaveAttribute(
-            'aria-current',
-            'page',
-        );
-    });
-
-    it('highlights Today for the /activities page', () => {
-        setMockPage(user(), '/activities');
-        render(<TopNav />);
         expect(screen.getByText('Today')).toHaveAttribute(
             'aria-current',
             'page',
         );
     });
 
-    it('highlights Today for the /calendar page', () => {
-        setMockPage(user(), '/calendar');
+    it('highlights History for the /history page', () => {
+        setMockPage(user(), '/history');
         render(<TopNav />);
-        expect(screen.getByText('Today')).toHaveAttribute(
+        expect(screen.getByText('History')).toHaveAttribute(
             'aria-current',
             'page',
         );
     });
 
-    it('highlights Plan for the /race page', () => {
+    it('highlights Today for the /race page, a drill-in', () => {
         setMockPage(user(), '/race');
         render(<TopNav />);
-        expect(screen.getByText('Plan')).toHaveAttribute(
+        expect(screen.getByText('Today')).toHaveAttribute(
             'aria-current',
             'page',
         );
-        expect(screen.getByText('Me')).not.toHaveAttribute('aria-current');
+        expect(screen.getByText('History')).not.toHaveAttribute('aria-current');
     });
 
     it('gives tab links and the brand link a keyboard focus ring', () => {
         render(<TopNav />);
-        const tab = screen.getByText('Plan').closest('a');
+        const tab = screen.getByText('History').closest('a');
         expect(tab?.className).toMatch(/focus-ring/);
         const brand = screen.getByLabelText('Home');
         expect(brand.className).toMatch(/focus-ring/);
@@ -100,36 +90,38 @@ describe('TopNav', () => {
         expect(screen.getByText('Strava synced')).toBeInTheDocument();
     });
 
-    it('renders the avatar menu for the signed-in user', () => {
+    it('renders the avatar link to Profile for the signed-in user', () => {
         render(<TopNav />);
-        expect(
-            screen.getByLabelText(/Open menu for Ada Lovelace/),
-        ).toBeInTheDocument();
+        expect(screen.getByLabelText(/Ada Lovelace's profile/)).toHaveAttribute(
+            'href',
+            '/profile',
+        );
     });
 
-    it('hides the avatar menu when no user is in shared props', () => {
+    it('hides the avatar link when no user is in shared props', () => {
         setMockPage({
             auth: { user: null },
             flash: {},
             demoLoginEnabled: false,
         });
         render(<TopNav />);
-        expect(screen.queryByLabelText(/Open menu/)).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(/'s profile/)).not.toBeInTheDocument();
     });
 
-    it('highlights Collection for the /badges page', () => {
-        setMockPage(user(), '/badges');
+    it('highlights no bottom-nav tab for the /accessories page', () => {
+        setMockPage(user(), '/accessories');
         render(<TopNav />);
-        expect(screen.getByText('Collection')).toHaveAttribute(
-            'aria-current',
-            'page',
-        );
+        for (const label of ['Today', 'Trends', 'History']) {
+            expect(screen.getByText(label)).not.toHaveAttribute('aria-current');
+        }
     });
 
-    it('highlights Me for the nested /settings settings pages', () => {
+    it('highlights no bottom-nav tab for the nested /settings settings pages', () => {
         setMockPage(user(), '/settings/zones');
         render(<TopNav />);
-        expect(screen.getByText('Me')).toHaveAttribute('aria-current', 'page');
+        for (const label of ['Today', 'Trends', 'History']) {
+            expect(screen.getByText(label)).not.toHaveAttribute('aria-current');
+        }
     });
 
     it('activeTabFromUrl returns null for paths that do not match any prefix', () => {

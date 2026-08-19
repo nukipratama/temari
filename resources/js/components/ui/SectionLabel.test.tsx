@@ -18,7 +18,9 @@ describe('SectionLabel', () => {
     });
 
     it('renders a leading dot instead of the divider when dot is set', () => {
-        const { container } = render(<SectionLabel dot>Kondisi</SectionLabel>);
+        const { container } = render(
+            <SectionLabel dot>Training load</SectionLabel>,
+        );
         const dot = container.querySelector('[aria-hidden]');
         expect(dot).not.toBeNull();
         expect(dot).toHaveClass('rounded-full');

@@ -23,7 +23,7 @@ use App\Services\Run\Metrics\StreamSummary;
  * class emits already anchors to real data, so it always survives the
  * narrator's own falsifiability check unchanged.
  */
-final readonly class RuleBasedRunInsights
+final class RuleBasedRunInsights
 {
     /** Decoupling (% pace drift) */
     private const float DECOUPLING_HIGH = 5.0;
@@ -47,16 +47,16 @@ final readonly class RuleBasedRunInsights
      *
      * @return list<array{anchor: string, text: string, value: string|null, delta: string|null}>
      */
-    public function claims(ActivityDetail $detail): array
+    public static function claims(ActivityDetail $detail): array
     {
         $summary = StreamSummary::fromArray($detail->streamSummary());
 
         $claims = [];
-        $this->appendDecouplingClaim($detail, $summary, $claims);
-        $this->appendSplitClaim($summary, $claims);
-        $this->appendGradeClaim($summary, $claims);
-        $this->appendZoneClaim($summary, $claims);
-        $this->appendPaceVariabilityClaim($summary, $claims);
+        self::appendDecouplingClaim($detail, $summary, $claims);
+        self::appendSplitClaim($summary, $claims);
+        self::appendGradeClaim($summary, $claims);
+        self::appendZoneClaim($summary, $claims);
+        self::appendPaceVariabilityClaim($summary, $claims);
 
         return array_slice($claims, 0, self::MAX_CLAIMS);
     }
@@ -64,7 +64,7 @@ final readonly class RuleBasedRunInsights
     /**
      * @param  list<array{anchor: string, text: string, value: string|null, delta: string|null}>  $claims
      */
-    private function appendDecouplingClaim(ActivityDetail $detail, StreamSummary $summary, array &$claims): void
+    private static function appendDecouplingClaim(ActivityDetail $detail, StreamSummary $summary, array &$claims): void
     {
         $decoupling = $summary->decouplingPct();
         if ($decoupling === null) {
@@ -73,7 +73,7 @@ final readonly class RuleBasedRunInsights
 
         $value = '+'.DecimalFormatter::decimal($decoupling).'%';
         $text = match (true) {
-            $decoupling > self::DECOUPLING_HIGH => $this->decouplingHighText($detail),
+            $decoupling > self::DECOUPLING_HIGH => self::decouplingHighText($detail),
             $decoupling > self::DECOUPLING_OK => 'Decoupling stayed within a normal range, HR tracked pace pretty well.',
             default => 'Decoupling stayed tight, your aerobic fitness held up well across the run.',
         };
@@ -81,7 +81,7 @@ final readonly class RuleBasedRunInsights
         $claims[] = ['anchor' => 'metric:decoupling', 'text' => $text, 'value' => $value, 'delta' => null];
     }
 
-    private function decouplingHighText(ActivityDetail $detail): string
+    private static function decouplingHighText(ActivityDetail $detail): string
     {
         $temp = $detail->weather_temp_c;
 
@@ -93,7 +93,7 @@ final readonly class RuleBasedRunInsights
     /**
      * @param  list<array{anchor: string, text: string, value: string|null, delta: string|null}>  $claims
      */
-    private function appendSplitClaim(StreamSummary $summary, array &$claims): void
+    private static function appendSplitClaim(StreamSummary $summary, array &$claims): void
     {
         if ($summary->negativeSplit() === true) {
             $claims[] = [
@@ -106,7 +106,7 @@ final readonly class RuleBasedRunInsights
             return;
         }
 
-        $fastest = $this->fastestSplit($summary);
+        $fastest = self::fastestSplit($summary);
         if ($fastest !== null) {
             $claims[] = [
                 'anchor' => "split:{$fastest['km']}",
@@ -120,7 +120,7 @@ final readonly class RuleBasedRunInsights
     /**
      * @return array{km: int, pace: string}|null
      */
-    private function fastestSplit(StreamSummary $summary): ?array
+    private static function fastestSplit(StreamSummary $summary): ?array
     {
         /** @var array<int, array{km?: int, pace?: string}> $perKm */
         $perKm = $summary->perKm() ?? [];
@@ -135,7 +135,7 @@ final readonly class RuleBasedRunInsights
                 continue;
             }
 
-            $seconds = $this->parsePaceToSeconds(is_string($row['pace'] ?? null) ? $row['pace'] : '');
+            $seconds = self::parsePaceToSeconds(is_string($row['pace'] ?? null) ? $row['pace'] : '');
             if ($seconds !== null) {
                 $paces[$km] = $seconds;
             }
@@ -154,7 +154,7 @@ final readonly class RuleBasedRunInsights
     /**
      * @param  list<array{anchor: string, text: string, value: string|null, delta: string|null}>  $claims
      */
-    private function appendGradeClaim(StreamSummary $summary, array &$claims): void
+    private static function appendGradeClaim(StreamSummary $summary, array &$claims): void
     {
         $grade = $summary->maxGradePct();
         if ($grade === null || $grade < self::NOTABLE_GRADE_PCT) {
@@ -163,7 +163,7 @@ final readonly class RuleBasedRunInsights
 
         $claims[] = [
             'anchor' => 'metric:grade',
-            'text' => "The steepest stretch of this run was a real climb, worth the extra effort it took.",
+            'text' => 'The steepest stretch of this run was a genuine climb, not a bump.',
             'value' => DecimalFormatter::trimmed($grade).'%',
             'delta' => null,
         ];
@@ -172,9 +172,9 @@ final readonly class RuleBasedRunInsights
     /**
      * @param  list<array{anchor: string, text: string, value: string|null, delta: string|null}>  $claims
      */
-    private function appendZoneClaim(StreamSummary $summary, array &$claims): void
+    private static function appendZoneClaim(StreamSummary $summary, array &$claims): void
     {
-        $zonePct = $this->resolveZonePercentages($summary);
+        $zonePct = self::resolveZonePercentages($summary);
         if ($zonePct === []) {
             return;
         }
@@ -200,7 +200,7 @@ final readonly class RuleBasedRunInsights
     /**
      * @param  list<array{anchor: string, text: string, value: string|null, delta: string|null}>  $claims
      */
-    private function appendPaceVariabilityClaim(StreamSummary $summary, array &$claims): void
+    private static function appendPaceVariabilityClaim(StreamSummary $summary, array &$claims): void
     {
         $raw = $summary->paceVariabilitySec();
         if ($raw === null || ! PaceConsistency::isNotablyUneven($raw)) {
@@ -209,7 +209,7 @@ final readonly class RuleBasedRunInsights
 
         $claims[] = [
             'anchor' => 'metric:pace_variability',
-            'text' => 'Pace varied a fair bit through this run, worth aiming for more consistency next time.',
+            'text' => 'Your pace swung around a fair bit through this run, the splits never settled.',
             'value' => null,
             'delta' => null,
         ];
@@ -218,7 +218,7 @@ final readonly class RuleBasedRunInsights
     /**
      * @return array<string, float>
      */
-    private function resolveZonePercentages(StreamSummary $summary): array
+    private static function resolveZonePercentages(StreamSummary $summary): array
     {
         $zonePct = $summary->zonePct();
         if ($zonePct !== []) {
@@ -244,7 +244,7 @@ final readonly class RuleBasedRunInsights
     /**
      * Parse a pace string like "5:32" into total seconds.
      */
-    private function parsePaceToSeconds(string $pace): ?int
+    private static function parsePaceToSeconds(string $pace): ?int
     {
         $parts = explode(':', $pace);
         if (count($parts) !== 2) {

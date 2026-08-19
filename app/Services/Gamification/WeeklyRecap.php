@@ -8,7 +8,7 @@ use Illuminate\Contracts\Support\Arrayable;
 use Override;
 
 /**
- * Render-ready "Minggu Kamu" weekly recap for the dashboard. Shaped (not a raw
+ * Render-ready weekly recap for the dashboard. Shaped (not a raw
  * model) so the Inertia payload stays a flat, predictable contract the React
  * RecapCard can consume without re-deriving anything.
  *

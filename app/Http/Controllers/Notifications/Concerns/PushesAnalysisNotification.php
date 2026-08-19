@@ -12,7 +12,7 @@ use App\Support\Cooldown;
 use Illuminate\Http\RedirectResponse;
 
 /**
- * Shared body of every manual "Kirim notifikasi" controller: force-notify the
+ * Shared body of every manual "Send notification" controller: force-notify the
  * push (force: true, so it bypasses the master switch and the once-only guard,
  * and reaches every wired channel — Telegram if connected, web push if
  * subscribed) when the analysis is Done, otherwise flash that it isn't ready yet.

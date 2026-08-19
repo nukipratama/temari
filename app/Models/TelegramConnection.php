@@ -90,6 +90,7 @@ class TelegramConnection extends Model
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
             'chat_id' => 'integer',
             'revoked_at' => 'datetime',
         ];

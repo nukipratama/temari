@@ -3,7 +3,7 @@ import { latLngBounds } from 'leaflet';
 import { useMemo, useState } from 'react';
 import { MapContainer, Polyline, TileLayer } from 'react-leaflet';
 
-import { THREADWORK } from '@/lib/chartTokens';
+import { PALETTE } from '@/lib/chartTokens';
 // leaflet.css lives in resources/css/app.css (@import). Importing it here would race
 // the lazy-load and leave tiles unpositioned on first render.
 
@@ -25,7 +25,7 @@ export default function RouteMap({
 
     if (positions.length < 2) {
         return (
-            <div className="flex h-56 items-center justify-center rounded-2xl border border-dashed border-line text-sm text-ink-3">
+            <div className="flex h-56 items-center justify-center rounded-lg border border-dashed border-line text-sm text-ink-3">
                 Route not available
             </div>
         );
@@ -41,7 +41,7 @@ export default function RouteMap({
     // `role="img"` element's subtree to just its accessible name, which would hide
     // the tap-to-activate button below from keyboard/AT users entirely.
     return (
-        <div className="relative isolate overflow-hidden rounded-2xl border border-line">
+        <div className="relative isolate overflow-hidden rounded-lg border border-line">
             <div
                 role="img"
                 aria-label={mapLabel}
@@ -74,7 +74,7 @@ export default function RouteMap({
                     <Polyline
                         positions={positions}
                         pathOptions={{
-                            color: THREADWORK.leaf,
+                            color: PALETTE.leaf,
                             weight: 4,
                             opacity: 0.9,
                         }}

@@ -11,7 +11,6 @@
  */
 
 /** Milliseconds. Short enough to read as a tick, not a buzz. */
-const TAP_MS = 10;
 const COMMIT_MS = 18;
 
 function vibrate(pattern: number): void {
@@ -29,11 +28,6 @@ function vibrate(pattern: number): void {
     } catch {
         // A refused vibration is never worth surfacing.
     }
-}
-
-/** A light tick for a confirmed tap. */
-export function hapticTap(): void {
-    vibrate(TAP_MS);
 }
 
 /** A slightly heavier beat for a completed action (send, equip, unlock). */

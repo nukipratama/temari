@@ -35,14 +35,14 @@ it('does not enqueue any LLM job on GET /profile', function (): void {
     Bus::assertNotDispatched(AnalyzeAkuProfileVoiceJob::class);
 });
 
-it('does not enqueue any LLM job on GET /calendar (Activities · Calendar)', function (): void {
-    $this->actingAs(User::factory()->create())->get('/calendar?month=2026-05')->assertSuccessful();
+it('does not enqueue any LLM job on GET /history?view=calendar', function (): void {
+    $this->actingAs(User::factory()->create())->get('/history?view=calendar&month=2026-05')->assertSuccessful();
 
     Bus::assertNotDispatched(AnalyzeMonthlyRecapJob::class);
 });
 
-it('does not enqueue any LLM job on GET /activities (Activities · Feed)', function (): void {
-    $this->actingAs(User::factory()->create())->get('/activities')->assertSuccessful();
+it('does not enqueue any LLM job on GET /history', function (): void {
+    $this->actingAs(User::factory()->create())->get('/history')->assertSuccessful();
 
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });

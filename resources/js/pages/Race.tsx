@@ -18,6 +18,8 @@ import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
+import { earliestRaceDate, goalTimeError } from '@/lib/raceGoal';
+import { inputVariants, outlineChipVariants } from '@/lib/variants';
 
 interface RacePayload {
     id: number;
@@ -86,6 +88,9 @@ export default function Race({
     const highSecCount = useCountUp(projection?.high_sec ?? 0);
     const predictedSecCount = useCountUp(projection?.predicted_sec ?? 0);
 
+    const goalTimeSec = hours * 3_600 + minutes * 60 + seconds;
+    const goalTimeIssue = goalTimeError(goalTimeSec);
+
     const submit = (event: FormEvent) => {
         event.preventDefault();
         router.post(
@@ -93,7 +98,7 @@ export default function Race({
             {
                 race_date: raceDate,
                 distance_m: Math.round(distanceKm * 1000),
-                goal_time_sec: hours * 3_600 + minutes * 60 + seconds,
+                goal_time_sec: goalTimeSec,
                 name: name.trim() === '' ? null : name.trim(),
             },
             {
@@ -126,7 +131,7 @@ export default function Race({
 
                 {race && (
                     <section className="mt-8" data-coachmark="race-goal">
-                        <Card padding="lg">
+                        <Card padding="hero">
                             <div className="flex flex-wrap items-start justify-between gap-4">
                                 <div>
                                     <SectionLabel>
@@ -178,7 +183,7 @@ export default function Race({
                                             Math.round(lowSecCount),
                                         )}{' '}
                                         &ndash;{' '}
-                                        <em className="italic text-horizon-deep">
+                                        <em className="italic text-horizon-ink">
                                             {formatDurationHMS(
                                                 Math.round(highSecCount),
                                             )}
@@ -223,7 +228,7 @@ export default function Race({
                     <SectionLabel>
                         {race ? 'Edit your race' : 'Set your race'}
                     </SectionLabel>
-                    <Card padding="lg" className="mt-3">
+                    <Card padding="hero" className="mt-3">
                         <form
                             onSubmit={submit}
                             className="grid grid-cols-1 gap-5 sm:grid-cols-2"
@@ -242,7 +247,7 @@ export default function Race({
                                     onChange={(e) => setName(e.target.value)}
                                     maxLength={120}
                                     placeholder="Jakarta Half 2026"
-                                    className="mt-1.5 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus-ring"
+                                    className={cn(inputVariants(), 'mt-1.5')}
                                 />
                             </div>
                             <div>
@@ -256,11 +261,12 @@ export default function Race({
                                     id="race_date"
                                     type="date"
                                     required
+                                    min={earliestRaceDate()}
                                     value={raceDate}
                                     onChange={(e) =>
                                         setRaceDate(e.target.value)
                                     }
-                                    className="mt-1.5 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus-ring"
+                                    className={cn(inputVariants(), 'mt-1.5')}
                                 />
                             </div>
 
@@ -276,12 +282,10 @@ export default function Race({
                                             onClick={() =>
                                                 setDistanceKm(preset.km)
                                             }
-                                            className={cn(
-                                                'focus-ring rounded-full border px-3 py-1.5 text-label-micro transition',
-                                                distanceKm === preset.km
-                                                    ? 'border-horizon bg-horizon/10 text-horizon-deep'
-                                                    : 'border-line text-ink-3 hover:border-horizon/60 hover:text-ink',
-                                            )}
+                                            className={outlineChipVariants({
+                                                selected:
+                                                    distanceKm === preset.km,
+                                            })}
                                         >
                                             {preset.label}
                                         </button>
@@ -300,7 +304,10 @@ export default function Race({
                                                 )
                                             }
                                             aria-label="Custom distance in kilometers"
-                                            className="w-20 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink focus-ring"
+                                            className={cn(
+                                                inputVariants({ size: 'sm' }),
+                                                'w-20',
+                                            )}
                                         />
                                         <span className="text-sm text-ink-3">
                                             km
@@ -323,7 +330,10 @@ export default function Race({
                                             setHours(Number(e.target.value))
                                         }
                                         aria-label="Hours"
-                                        className="w-16 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink focus-ring"
+                                        className={cn(
+                                            inputVariants({ size: 'sm' }),
+                                            'w-16',
+                                        )}
                                     />
                                     <span className="text-sm text-ink-3">
                                         hr
@@ -337,7 +347,10 @@ export default function Race({
                                             setMinutes(Number(e.target.value))
                                         }
                                         aria-label="Minutes"
-                                        className="w-16 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink focus-ring"
+                                        className={cn(
+                                            inputVariants({ size: 'sm' }),
+                                            'w-16',
+                                        )}
                                     />
                                     <span className="text-sm text-ink-3">
                                         min
@@ -351,19 +364,32 @@ export default function Race({
                                             setSeconds(Number(e.target.value))
                                         }
                                         aria-label="Seconds"
-                                        className="w-16 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink focus-ring"
+                                        className={cn(
+                                            inputVariants({ size: 'sm' }),
+                                            'w-16',
+                                        )}
                                     />
                                     <span className="text-sm text-ink-3">
                                         sec
                                     </span>
                                 </div>
+                                {goalTimeIssue && (
+                                    <p
+                                        role="alert"
+                                        className="mt-1.5 font-sans text-xs text-ember-ink"
+                                    >
+                                        {goalTimeIssue}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="sm:col-span-2">
                                 <PillButton
                                     type="submit"
                                     tone="horizon"
-                                    disabled={processing}
+                                    disabled={
+                                        processing || goalTimeIssue !== null
+                                    }
                                 >
                                     {processing
                                         ? 'Saving…'
@@ -378,7 +404,7 @@ export default function Race({
 
                 <section className="mt-10" data-coachmark="race-fitness-trend">
                     <SectionLabel>Fitness · last 90 days</SectionLabel>
-                    <Card padding="lg" className="mt-3">
+                    <Card padding="hero" className="mt-3">
                         <CtlTrendChart trend={ctlTrend} />
                     </Card>
                 </section>

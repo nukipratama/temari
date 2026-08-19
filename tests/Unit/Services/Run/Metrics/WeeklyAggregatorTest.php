@@ -94,8 +94,10 @@ it('writes null avg_decoupling when no runs in the week have decoupling_pct', fu
     expect($snapshot->avg_decoupling)->toBeNull();
 });
 
-it('skips details without trimp_edwards when rolling the daily TRIMP map', function (): void {
-    // HR-less Strava run: counts toward distance/runs, contributes 0 TRIMP.
+it('leaves load unknown, not zero, when no run scored a TRIMP', function (): void {
+    // A brand-new connection's history is entirely summary-only, so nothing
+    // carries trimp_edwards: volume is exact, load is unscored. Writing 0.0
+    // would tell a stranger they did nothing.
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
@@ -110,7 +112,63 @@ it('skips details without trimp_edwards when rolling the daily TRIMP map', funct
     $snapshot = WeeklySnapshot::query()->where('user_id', $user->id)->latest('week_ending')->firstOrFail();
     expect($snapshot->runs)->toBe(1)
         ->and($snapshot->distance_km)->toBe(5.0)
-        ->and($snapshot->weekly_trimp)->toBe(0.0);
+        ->and($snapshot->weekly_trimp)->toBeNull()
+        ->and($snapshot->atl_7d)->toBeNull()
+        ->and($snapshot->ctl_42d)->toBeNull()
+        ->and($snapshot->form)->toBeNull()
+        ->and($snapshot->form_status)->toBeNull()
+        ->and($snapshot->monotony)->toBeNull()
+        ->and($snapshot->strain)->toBeNull();
+});
+
+it('persists a scored, a rest and an unscored week as three different facts', function (): void {
+    $user = User::factory()->create();
+    $thisWeek = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+    $scoredWeek = $thisWeek->copy()->subWeeks(4);
+    $restWeek = $thisWeek->copy()->subWeeks(2);
+    $unscoredWeek = $thisWeek->copy()->subWeeks(1);
+
+    $seed = function (Carbon $day, ?float $trimp) use ($user): void {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'distance' => 8000,
+            'moving_time' => 2400,
+            'trimp_edwards' => $trimp,
+            'start_date_local' => $day,
+        ]);
+    };
+    $seed($scoredWeek->copy()->subDays(5), 120.0);
+    $seed($scoredWeek->copy()->subDays(2), 90.0);
+    $seed($unscoredWeek->copy()->subDays(4), null);
+    $seed($unscoredWeek->copy()->subDays(1), null);
+
+    $this->aggregator->rebuildFor($user);
+
+    $rowFor = fn (Carbon $weekEnding): WeeklySnapshot => WeeklySnapshot::query()
+        ->where('user_id', $user->id)
+        ->where('week_ending', $weekEnding->toDateString())
+        ->firstOrFail();
+
+    $scored = $rowFor($scoredWeek);
+    expect($scored->runs)->toBe(2)
+        ->and($scored->weekly_trimp)->toBeGreaterThan(0.0)
+        ->and($scored->monotony)->toBeGreaterThan(0.0)
+        ->and($scored->strain)->toBeGreaterThan(0.0);
+
+    $rest = $rowFor($restWeek);
+    expect($rest->runs)->toBe(0)
+        ->and($rest->weekly_trimp)->toBe(0.0)
+        ->and($rest->monotony)->toBe(0.0)
+        ->and($rest->strain)->toBe(0.0);
+
+    // Ran 16 km, but nothing carried HR: volume known, load unknowable.
+    $unscored = $rowFor($unscoredWeek);
+    expect($unscored->runs)->toBe(2)
+        ->and($unscored->distance_km)->toBe(16.0)
+        ->and($unscored->weekly_trimp)->toBeNull()
+        ->and($unscored->monotony)->toBeNull()
+        ->and($unscored->strain)->toBeNull()
+        ->and($unscored->ctl_42d)->toBeFloat();
 });
 
 it('is idempotent — re-running upserts the same week without duplicating', function (): void {

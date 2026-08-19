@@ -10,7 +10,9 @@ code_refs:
   - app/Http/Requests/CompleteOnboardingRequest.php
   - app/Models/User.php
   - app/Http/Controllers/Auth/StravaAuthController.php
+  - app/Services/Run/Ingest/DetailHydrator.php
   - resources/js/pages/Onboarding/Index.tsx
+  - resources/js/lib/raceGoal.ts
   - resources/js/hooks/useCoachMark.ts
   - resources/js/components/onboarding/CoachMark.tsx
   - routes/web.php
@@ -34,8 +36,10 @@ A minimal two-step wizard shown once, right after a user's *first* Strava connec
 
 [Onboarding/Index.tsx](../../resources/js/pages/Onboarding/Index.tsx) runs inside the normal authenticated shell (`appLayout`/`AppShell`), not the bare login shell — two steps, no persona/experience questions (deliberately out of scope):
 
-1. **Strava-connect confirmation** — a `pose="glow"` Temari, confirms the connection and that history is backfilling.
+1. **Strava-connect confirmation** — a `pose="glow"` Temari, and a panel naming exactly what just landed and what has not. The first sync writes every historical run in `summary` state; splits, HR zones, effort and the run's card come from a second, per-run fetch that [DetailHydrator](../../app/Services/Run/Ingest/DetailHydrator.php) only queues when the run is opened or picked as a Past You comparison (see [[run-ingest-pipeline]]). Saying so here is what stops a new account reading its empty card collection as a bug.
 2. **Optional first race goal** — the same shape as `/race` (`race_date`/`distance_m`/`goal_time_sec`/`name`, validated by [CompleteOnboardingRequest](../../app/Http/Requests/CompleteOnboardingRequest.php) with `required_with` making the three core fields all-or-nothing). "Skip for now" posts an empty payload regardless of unsaved input.
+
+The goal form only offers submissions the server can accept. [raceGoal.ts](../../resources/js/lib/raceGoal.ts) mirrors the request's `after:today` and `between:300,259200` bounds into the date input's `min` and a disabled submit, and server-side field errors render beside the field that caused them. Before that, blanking the minutes field produced a `goal_time_sec` of 0 — a submit that could only ever 422, explained by nothing nearer than the global error banner. `/race` shares the same helper for the same reason ([[race-projection]]).
 
 `OnboardingController::store` creates the `RaceGoal` (if goal fields were sent) and calls `User::markOnboarded()`, then redirects to `dashboard`.
 
@@ -45,10 +49,10 @@ A minimal two-step wizard shown once, right after a user's *first* Strava connec
 
 ### Where marks are mounted
 
-One mark per page, at the anchor that teaches a genuinely non-obvious interaction — [Today.tsx:119](../../resources/js/pages/Today.tsx#L119) (a run mints a card), [Activities/Feed.tsx:147](../../resources/js/pages/Activities/Feed.tsx#L147) (the filter sheet), [Activities/Calendar.tsx:171](../../resources/js/pages/Activities/Calendar.tsx#L171) (a day opens its run), [Runs/Show.tsx:496](../../resources/js/pages/Runs/Show.tsx#L496) (the card shares as an image), [Plan.tsx:449](../../resources/js/pages/Plan.tsx#L449) (upcoming days are editable), [Collection/Cards.tsx:210](../../resources/js/pages/Collection/Cards.tsx#L210) (a card opens its run), and [Collection/Accessories.tsx:188](../../resources/js/pages/Collection/Accessories.tsx#L188) (equipping updates the preview). The remaining `data-coachmark` anchors stay unmounted on purpose: where the surrounding copy or a control's own label already explains the interaction, a callout is noise, and two marks competing on one page fight each other (an outside click on either dismisses the other).
+One mark per page, at the anchor that teaches a genuinely non-obvious interaction — [Home.tsx:154](../../resources/js/pages/Home.tsx#L154) (a run mints a card), [Activities/Feed.tsx:147](../../resources/js/pages/Activities/Feed.tsx#L147) (the filter sheet), [Activities/Calendar.tsx:171](../../resources/js/pages/Activities/Calendar.tsx#L171) (a day opens its run), [Runs/Show.tsx:496](../../resources/js/pages/Runs/Show.tsx#L496) (the card shares as an image), [Plan.tsx:436](../../resources/js/pages/Plan.tsx#L436) (upcoming days are editable), and [Collection/Accessories.tsx:192](../../resources/js/pages/Collection/Accessories.tsx#L192) (equipping updates the preview). The remaining `data-coachmark` anchors stay unmounted on purpose: where the surrounding copy or a control's own label already explains the interaction, a callout is noise, and two marks competing on one page fight each other (an outside click on either dismisses the other).
 
 **A mark must render after its anchor in tree order.** React attaches a parent's ref only once its children's layout effects have run, so a mark nested inside — or placed before — its anchor measures a null element on mount and silently never appears.
 
 ## See also
 
-[[strava-connect]]
+[[strava-connect]] · [[landing]] — the public surface that carries the Past You promise before the wizard is ever reached

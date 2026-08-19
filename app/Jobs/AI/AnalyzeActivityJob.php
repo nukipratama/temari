@@ -130,7 +130,7 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
     /**
      * The user's earliest activity (by start_date_local) whose narration group is
      * *stalled* on its representative PostRunSpeech row: Pending, or Failed still
-     * under the self-heal retry budget ({@see Analysis::scopeStalled}). Unlike
+     * under the self-heal retry budget ({@see Analysis::stalled()}). Unlike
      * {@see self::earliestPendingActivityForUser()} (Pending-only, which drives
      * the chain advance), this also recovers a Failed-under-budget group so
      * ai:self-heal can retry it, bounded to dead-letter. Returns null when the
@@ -192,7 +192,7 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
      * The run-insight analysis this group persists: its content is a JSON-
      * encoded claims list (possibly `[]` when nothing survived falsifiability
      * checking — see {@see RunInsightNarrator}). Reused verbatim from an
-     * already-Done row when present (so a cerita-only re-dispatch does not
+     * already-Done row when present (so a story-only re-dispatch does not
      * re-bill the insight LLM); otherwise generated fresh.
      */
     private function resolveInsight(Activity $activity, ActivityDetail $detail): string

@@ -24,6 +24,44 @@ describe('BareShell', () => {
         expect(screen.queryByTestId('mobile-top-bar')).not.toBeInTheDocument();
     });
 
+    it('carries the error banner, since a connect denial lands on a bare screen', () => {
+        setMockPage({
+            auth: { user: null },
+            flash: {},
+            demoLoginEnabled: false,
+            errors: { strava: 'Strava connect was denied.' },
+        });
+        render(<BareShell>content</BareShell>);
+
+        expect(
+            screen.getByText('Strava connect was denied.'),
+        ).toBeInTheDocument();
+    });
+
+    it('leaves the AI and Strava pipeline banners to AppShell', () => {
+        setMockPage({
+            auth: { user: null },
+            flash: {},
+            demoLoginEnabled: false,
+            aiPaused: true,
+            aiCatchingUp: true,
+            stravaPaused: true,
+            stravaZoneScopeMissing: true,
+        });
+        render(<BareShell>content</BareShell>);
+
+        expect(screen.queryByText(/resting for a bit/)).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/Still processing in the background/),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/pull from Strava is paused/),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/Reconnect Strava to auto-sync/),
+        ).not.toBeInTheDocument();
+    });
+
     it('pads past the notch itself, since it has no top bar to do it', () => {
         setMockPage({
             auth: { user: null },

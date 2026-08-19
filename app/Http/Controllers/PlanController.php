@@ -6,17 +6,16 @@ namespace App\Http\Controllers;
 
 use App\Actions\Gamification\GrantSeasonUnlocksAction;
 use App\Enums\DistanceBand;
-use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\ActivityDetail;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
-use App\Models\Season;
 use App\Models\User;
 use App\Services\Gamification\SeasonGamificationContext;
-use App\Services\Gamification\SeasonGoalResolver;
+use App\Services\Gamification\SeasonStreakSummaryBuilder;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -24,12 +23,14 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\DistanceBandKm;
 use App\Services\Run\Plan\Periodizer;
-use App\Services\Run\Plan\PhaseSchedule;
+use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\SeasonService;
+use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\VolumeRedistributor;
 use App\Services\Run\Story\BriefingContext;
+use App\Support\TrainingDisclaimer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -57,8 +58,9 @@ class PlanController extends Controller
         VdotEstimator $vdotEstimator,
         TrainingPaceCalculator $paceCalculator,
         SeasonService $seasonService,
-        SeasonGoalResolver $seasonGoalResolver,
+        SeasonStreakSummaryBuilder $seasonStreakBuilder,
         GrantSeasonUnlocksAction $grantSeasonUnlocks,
+        SessionMatcher $sessionMatcher,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -72,7 +74,10 @@ class PlanController extends Controller
         $season = $seasonService->ensureCurrent($user, $today);
         $seasonCtx = SeasonGamificationContext::forSeason($user, $season, $today, $trainingLoad);
         $grantSeasonUnlocks($user, $season, $seasonCtx);
-        $seasonPayload = $this->seasonPayload($season, $seasonGoalResolver->forSeason($user, $season, $seasonCtx), $today);
+        $seasonPayload = $seasonStreakBuilder->seasonPayload($user, $season, $today, $seasonCtx);
+        $streakPayload = $seasonStreakBuilder->streakPayload($user, $today);
+
+        $adaptationPayload = $this->adaptationPayload($user, $currentWeekStart);
 
         $sessions = PlannedSession::query()
             ->where('user_id', $user->id)
@@ -86,6 +91,10 @@ class PlanController extends Controller
                 'sessionsPerWeek' => $baseline->forUser($user, $today)['sessions_per_week'],
                 'weeks' => [],
                 'season' => $seasonPayload,
+                'streak' => $streakPayload,
+                'adaptation' => $adaptationPayload,
+                'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
+                'disclaimer' => TrainingDisclaimer::TEXT,
             ]);
         }
 
@@ -99,25 +108,22 @@ class PlanController extends Controller
             fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
         );
 
-        /** @var Collection<string, PlanPhase> $phaseByWeek */
-        $phaseByWeek = $sessionsByWeek->map(function (Collection $weekSessions): PlanPhase {
-            $first = $weekSessions->first();
-            if ($first === null) {
-                // groupBy never produces an empty group; this only guards the type.
-                throw new LogicException('A grouped week unexpectedly had no sessions.');
-            }
-
-            return $first->phase;
-        })->sortKeys();
-
-        $multiplierByWeek = array_combine(
-            $phaseByWeek->keys()->all(),
-            PhaseSchedule::volumeMultipliers(array_values($phaseByWeek->values()->all())),
-        );
+        [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek);
 
         $currentWeekKey = $currentWeekStart->toDateString();
         $currentWeekMultiplier = $multiplierByWeek[$currentWeekKey] ?? 1.0;
         $bandKmThisWeek = $this->bandKmFor($baselineData['long_run_km'], $currentWeekMultiplier);
+
+        $plannedKmByDate = [];
+        foreach ($sessions as $s) {
+            $weekKey = $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
+            $plannedKmByDate[$s->date->toDateString()] = DistanceBandKm::kmFor(
+                $s->distance_band,
+                $baselineData['long_run_km'],
+                $multiplierByWeek[$weekKey] ?? 1.0,
+            );
+        }
+        $statuses = $sessionMatcher->statuses($user, $plannedKmByDate, $today);
 
         // Readiness clamp: TODAY's row only — a future day's readiness isn't
         // knowable today, so clamping never reaches past this one row.
@@ -148,7 +154,7 @@ class PlanController extends Controller
                 'week_start' => $weekStartKey,
                 'phase' => $weekPhase->value,
                 'type' => $weekStartKey < $currentWeekKey ? 'history' : ($weekStartKey === $currentWeekKey ? 'current' : 'lookahead'),
-                'days' => $weekSessions->map(fn (PlannedSession $s) => $this->dayPayload(
+                'days' => $weekSessions->map(fn (PlannedSession $s) => PlanRenderer::dayPayload(
                     $s,
                     $today,
                     $clamp,
@@ -156,6 +162,7 @@ class PlanController extends Controller
                     $baselineData['long_run_km'],
                     $multiplierByWeek[$weekStartKey] ?? 1.0,
                     $paces,
+                    $statuses[$s->date->toDateString()] ?? PlannedSessionStatus::Planned,
                 ))->all(),
             ];
         }
@@ -165,6 +172,10 @@ class PlanController extends Controller
             'sessionsPerWeek' => $baselineData['sessions_per_week'],
             'weeks' => $weeks,
             'season' => $seasonPayload,
+            'streak' => $streakPayload,
+            'adaptation' => $adaptationPayload,
+            'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
+            'disclaimer' => TrainingDisclaimer::TEXT,
         ]);
     }
 
@@ -230,30 +241,6 @@ class PlanController extends Controller
     }
 
     /**
-     * The Plan tab's season summary: arc progress + the season's 5 goals +
-     * a link to the badge board. Season IS the training block (see the v2
-     * program's locked decisions) — this is the same arc at a higher zoom,
-     * not a separate page.
-     *
-     * @param  list<array{id: int, title: string, current: int|float, target: int|float, unit: string, is_completed: bool}>  $goals
-     * @return array{starts_at: string, ends_at: string, week_index: int, total_weeks: int, is_race_oriented: bool, goals: list<array{id: int, title: string, current: int|float, target: int|float, unit: string, is_completed: bool}>}
-     */
-    private function seasonPayload(Season $season, array $goals, Carbon $today): array
-    {
-        $totalWeeks = max(1, (int) $season->starts_at->diffInWeeks($season->ends_at) + 1);
-        $weekIndex = max(1, min($totalWeeks, (int) $season->starts_at->diffInWeeks($today) + 1));
-
-        return [
-            'starts_at' => $season->starts_at->toDateString(),
-            'ends_at' => $season->ends_at->toDateString(),
-            'week_index' => $weekIndex,
-            'total_weeks' => $totalWeeks,
-            'is_race_oriented' => $season->race_goal_id !== null,
-            'goals' => $goals,
-        ];
-    }
-
-    /**
      * @return array<string, float>
      */
     private function bandKmFor(float $longRunKm, float $multiplier): array
@@ -309,70 +296,23 @@ class PlanController extends Controller
         return VolumeRedistributor::redistribute($eligibleDays, $remainingTargetKm, $bandKmThisWeek);
     }
 
+
     /**
-     * @param  array{session_type: SessionType, distance_band: DistanceBand, pace_band: mixed, note: string}|null  $clamp
-     * @param  array<string, DistanceBand>  $redistributed
-     * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
-     * @return array<string, mixed>
+     * @return array{reason: string, headline: string, detail: string, deload: bool}|null
      */
-    private function dayPayload(
-        PlannedSession $s,
-        Carbon $today,
-        ?array $clamp,
-        array $redistributed,
-        float $longRunKm,
-        float $multiplier,
-        ?array $paces,
-    ): array {
-        $isToday = $s->date->isSameDay($today);
+    private function adaptationPayload(User $user, Carbon $currentWeekStart): ?array
+    {
+        $adaptation = PlanAdaptation::query()
+            ->where('user_id', $user->id)
+            ->where('week_start', $currentWeekStart->toDateString())
+            ->first();
 
-        $sessionType = ($isToday && $clamp !== null) ? $clamp['session_type'] : $s->session_type;
-        $paceBand = ($isToday && $clamp !== null) ? $clamp['pace_band'] : $s->pace_band;
-
-        $band = $s->distance_band;
-        if ($isToday && $clamp !== null) {
-            $band = $clamp['distance_band'];
-        } elseif (isset($redistributed[$s->date->toDateString()])) {
-            $band = $redistributed[$s->date->toDateString()];
-        }
-
-        return [
-            'id' => $s->id,
-            'date' => $s->date->toDateString(),
-            'phase' => $s->phase->value,
-            'session_type' => $sessionType->value,
-            'distance_band' => $band->value,
-            'pace_band' => $paceBand?->value,
-            'pace_sec_per_km' => ($paceBand !== null && $paces !== null) ? ($paces[$paceBand->value] ?? null) : null,
-            'distance_km' => DistanceBandKm::kmFor($band, $longRunKm, $multiplier),
-            'pinned' => $s->pinned,
-            'status' => $this->statusFor($s, $today),
-            'clamp_note' => $isToday ? ($clamp['note'] ?? null) : null,
+        return $adaptation === null ? null : [
+            'reason' => $adaptation->reason->value,
+            'headline' => $adaptation->reason->headline(),
+            'detail' => $adaptation->reason->detail($adaptation->adherence_pct),
+            'deload' => $adaptation->deload,
         ];
-    }
-
-    private function statusFor(PlannedSession $session, Carbon $today): string
-    {
-        if (! $session->date->isBefore($today)) {
-            return PlannedSessionStatus::Planned->value;
-        }
-        if ($session->session_type === SessionType::Rest) {
-            return PlannedSessionStatus::Done->value;
-        }
-
-        return $this->hasActivityOn($session->user_id, $session->date)
-            ? PlannedSessionStatus::Done->value
-            : PlannedSessionStatus::Missed->value;
-    }
-
-    private function hasActivityOn(int $userId, Carbon $date): bool
-    {
-        return ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
-            ->where('activities.user_id', $userId)
-            ->whereNotNull('activity_details.start_date_local')
-            ->whereBetween('activity_details.start_date_local', [$date->copy()->startOfDay(), $date->copy()->endOfDay()])
-            ->exists();
     }
 
     private function completedKmInRange(User $user, Carbon $from, Carbon $to): float

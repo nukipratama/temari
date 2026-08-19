@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Strava;
 
+use App\Enums\StravaReadPriority;
 use App\Models\StravaConnection;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
@@ -20,8 +21,6 @@ use Laravel\Pulse\Facades\Pulse;
 
 class StravaClient
 {
-    private const string API_BASE_URL = 'https://www.strava.com/api/v3';
-
     private const string TOKEN_URL = 'https://www.strava.com/oauth/token';
 
     private const int REFRESH_BUFFER_SECONDS = 60;
@@ -30,8 +29,10 @@ class StravaClient
 
     // Strava enforces rate limits per CLIENT (the whole app), not per athlete, so
     // these buckets are keyed globally and shared across every connected user. The
-    // values are Strava's Read limits (200 / 15min, 2000 / day); they bind before
-    // the Overall limits (400 / 4000) because all of our calls are reads.
+    // values are this app's own Read allocation per its Strava API dashboard
+    // (200 / 15min, 2000 / day), not the lower 100 / 1000 default the public
+    // docs quote; they bind before the Overall limits (400 / 4000) because all
+    // of our calls are reads.
     private const int RATE_LIMIT_15MIN_MAX = 200;
 
     private const int RATE_LIMIT_15MIN_DECAY = 15 * 60;
@@ -40,6 +41,11 @@ class StravaClient
 
     private const int RATE_LIMIT_DAILY_DECAY = 24 * 60 * 60;
 
+    // Share of each read bucket only StravaReadPriority::Live may spend. A
+    // freshly-finished run appearing promptly is the product's core promise; a
+    // user scrolling their 2019 archive can wait for the bucket to roll over.
+    private const int LIVE_RESERVE_PERCENT = 25;
+
     public function __construct(private readonly ?StravaCircuitBreaker $breaker = null)
     {
     }
@@ -47,8 +53,12 @@ class StravaClient
     /**
      * @param  array<string, mixed>  $query
      */
-    public function get(StravaConnection $connection, string $path, array $query = []): Response
-    {
+    public function get(
+        StravaConnection $connection,
+        string $path,
+        array $query = [],
+        StravaReadPriority $priority = StravaReadPriority::Live,
+    ): Response {
         $breaker = $this->breaker();
         if (! $breaker->allowsRequest()) {
             throw new StravaCircuitOpenException(
@@ -58,10 +68,10 @@ class StravaClient
 
         $connection = $this->refreshIfExpired($connection);
 
-        $this->guardRateLimit();
+        $this->guardRateLimit($priority);
 
         try {
-            $response = Http::baseUrl(self::API_BASE_URL)
+            $response = Http::baseUrl(self::apiBaseUrl())
                 ->withToken($connection->access_token)
                 ->get($path, $query);
         } catch (ConnectionException $e) {
@@ -103,6 +113,11 @@ class StravaClient
         return $response->throw();
     }
 
+    public static function apiBaseUrl(): string
+    {
+        return rtrim((string) config('services.strava.api_base_url'), '/');
+    }
+
     private function breaker(): StravaCircuitBreaker
     {
         return $this->breaker ?? app(StravaCircuitBreaker::class);
@@ -124,13 +139,12 @@ class StravaClient
     }
 
     /**
-     * Remaining headroom for the shared per-client rate-limit buckets. The
-     * $userId is accepted for call-site compatibility but no longer scopes the
-     * key: the budget is app-wide, so every athlete sees the same headroom.
+     * Remaining headroom for the shared per-client rate-limit buckets, which
+     * are app-wide: every athlete sees the same numbers.
      *
      * @return array{'15min': int, 'daily': int}
      */
-    public function rateLimitRemaining(int $userId): array
+    public function rateLimitRemaining(): array
     {
         return [
             '15min' => max(0, RateLimiter::remaining($this->rateLimitKey('15min'), self::RATE_LIMIT_15MIN_MAX)),
@@ -220,7 +234,7 @@ class StravaClient
         return $connection;
     }
 
-    private function guardRateLimit(): void
+    private function guardRateLimit(StravaReadPriority $priority): void
     {
         $buckets = [
             ['key' => $this->rateLimitKey('15min'), 'max' => self::RATE_LIMIT_15MIN_MAX, 'decay' => self::RATE_LIMIT_15MIN_DECAY],
@@ -228,11 +242,15 @@ class StravaClient
         ];
 
         foreach ($buckets as ['key' => $key, 'max' => $max]) {
-            if (RateLimiter::tooManyAttempts($key, $max)) {
+            $ceiling = $priority->isLive() ? $max : $this->backgroundCeiling($max);
+
+            if (RateLimiter::tooManyAttempts($key, $ceiling)) {
                 Pulse::record('strava_rate_limited', $key)->count();
 
                 throw new StravaRateLimitedException(
-                    "Strava rate limit exhausted for bucket [{$key}]; retry in ".RateLimiter::availableIn($key).'s.',
+                    $priority->isLive()
+                        ? "Strava rate limit exhausted for bucket [{$key}]; retry in ".RateLimiter::availableIn($key).'s.'
+                        : "Strava bucket [{$key}] is down to its live-ingest reserve; background read deferred, retry in ".RateLimiter::availableIn($key).'s.',
                 );
             }
         }
@@ -242,6 +260,20 @@ class StravaClient
         }
     }
 
+    /**
+     * Highest attempt count a background read may push a bucket to, leaving
+     * LIVE_RESERVE_PERCENT of it for webhook-driven ingest.
+     */
+    private function backgroundCeiling(int $max): int
+    {
+        return $max - intdiv($max * self::LIVE_RESERVE_PERCENT, 100);
+    }
+
+    /**
+     * Keyed per API client, never per athlete: Strava meters the whole OAuth
+     * application. Reintroducing a user id here would hand every athlete a
+     * private allowance and blow the one shared limit.
+     */
     private function rateLimitKey(string $bucket): string
     {
         return "strava-api:{$bucket}";

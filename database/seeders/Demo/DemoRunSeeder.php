@@ -6,6 +6,7 @@ namespace Database\Seeders\Demo;
 
 use App\Actions\Gamification\GrantEligibleUnlocksAction;
 use App\Actions\Run\Story\ResolveFeaturedKartuAction;
+use App\Enums\IngestState;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
@@ -172,7 +173,7 @@ class DemoRunSeeder
             // stays suppressed: the demo never has a real connection, so an
             // enqueued (no-op) notification job per row would just be waste.
             $filled = $this->backfillWithFiller($user);
-            $log(sprintf('  %d AI analyses backfilled with rule-based content (klik "Baca ulang" buat narasi LLM beneran).', $filled));
+            $log(sprintf('  %d AI analyses backfilled with rule-based content (hit "Reread" in the UI for real LLM narration).', $filled));
         });
 
         return $count;
@@ -183,7 +184,7 @@ class DemoRunSeeder
      * scheduler. Adds one modest synthetic run for today (skipping two rest days
      * a week so the streak looks human) and re-stages + rule-based-fills today's
      * date-keyed narration, so the demo never goes stale or renders an empty
-     * "Belum dibaca" when the date rolls. Zero LLM tokens (runs under
+     * an empty, un-narrated block when the date rolls. Zero LLM tokens (runs under
      * withoutDispatching + the filler), so the demo-billing exclusion holds.
      *
      * @param  Closure(string): void|null  $log  optional reporter (command::info etc.)
@@ -213,7 +214,7 @@ class DemoRunSeeder
 
             // Re-stage the date-keyed surfaces (briefing set, greeting, trend,
             // weekly persona) against today's discriminator — the line that kills
-            // "Belum dibaca" once the calendar day moves past the seed day.
+            // an empty, un-narrated block once the calendar day moves past the seed day.
             $this->stagePendingAnalyses($user);
 
             // Backfill inside withoutDispatching so markDone's Telegram fan-out
@@ -236,7 +237,7 @@ class DemoRunSeeder
         $rng = new Randomizer(new Mt19937((int) $date->format('Ymd')));
 
         $locations = DemoLocation::library();
-        $names = ['Lari pagi', 'Easy run', 'Lari santai', 'Jogging pagi', 'Lari ringan'];
+        $names = ['Morning run', 'Easy run', 'Easy miles', 'Morning jog', 'Shakeout'];
 
         return new RunBlueprint(
             startsAt: $date->copy()->setTime(6, $rng->getInt(0, 45)),
@@ -315,11 +316,11 @@ class DemoRunSeeder
             );
         }
         // Mirrors DailyBriefingCommand so the dashboard's Temari voice card is
-        // filled and never renders "Belum dibaca".
+        // filled and never renders as empty.
         $this->analysisService->requestBriefing($user, $today);
-        // The weekly-featured-card voice ("Kartu dari Temari minggu ini" on the
+        // The weekly-featured-card voice (the featured-card quote on the
         // dashboard hero) has its own job and is never auto-requested by ingest,
-        // so the demo must stage it here or the hero falls back to "Belum dibaca".
+        // so the demo must stage it here or the hero falls back to empty.
         // Keyed by the featured card id (matching BriefingComposer) so the staged
         // quote lines up with the card the hero actually shows.
         $featuredCard = ($this->featuredKartu)($user);
@@ -439,6 +440,7 @@ class DemoRunSeeder
             [
                 'fetched_at' => $blueprint->startsAt->copy()->addHour(),
                 'analyzed_at' => $blueprint->startsAt->copy()->addHour(),
+                'ingest_state' => IngestState::Detailed,
                 'detail_fail_count' => 0,
             ],
         );

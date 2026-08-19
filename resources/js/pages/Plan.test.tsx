@@ -6,6 +6,10 @@ import { stubSyncAnimationFrame } from '@/test/setup';
 
 import Plan from './Plan';
 
+const DISCLAIMER_HEADLINE = 'Training guidance, not medical advice';
+const DISCLAIMER =
+    'Temari prescribes from your own data, not from a medical assessment. These numbers are training guidance, not medical advice. Pain, illness or injury is a conversation for a doctor, not a plan engine.';
+
 // framer-motion's prefers-reduced-motion check is a module-level singleton
 // that lazily initializes once and never re-checks: it must be forced before
 // this file's first render, or a later per-test override has no effect. This
@@ -54,7 +58,18 @@ const SEASON = {
     week_index: 1,
     total_weeks: 12,
     is_race_oriented: false,
+    tiers_kept_from_past_seasons: 0,
     goals: [],
+};
+
+const STREAK = {
+    weeks: 6,
+    rest_weeks_held: 1,
+    rest_weeks_cap: 2,
+    weeks_to_next_rest_week: 2,
+    ran_this_week: true,
+    week_ends_on: '2026-08-16',
+    last_forgiven_week: null,
 };
 
 function lastPatchCall() {
@@ -75,9 +90,13 @@ describe('Plan', () => {
         stubSyncAnimationFrame();
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK()]}
             />,
         );
@@ -97,18 +116,85 @@ describe('Plan', () => {
 
     it('shows an empty state with no weeks generated yet', () => {
         render(
-            <Plan race={null} sessionsPerWeek={3} season={SEASON} weeks={[]} />,
+            <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
+                race={null}
+                sessionsPerWeek={3}
+                adaptation={null}
+                season={SEASON}
+                streak={STREAK}
+                weeks={[]}
+            />,
         );
 
         expect(screen.getByText('No plan yet.')).toBeInTheDocument();
     });
 
+    it('pays the season track one tier per completed goal, and holds it back with no goals at all', () => {
+        const goal = (id: number, is_completed: boolean) => ({
+            id,
+            title: `Goal ${id}`,
+            current: is_completed ? 10 : 2,
+            target: 10,
+            unit: 'sessions',
+            is_completed,
+        });
+
+        const { rerender } = render(
+            <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={null}
+                season={{
+                    ...SEASON,
+                    goals: [
+                        goal(1, true),
+                        goal(2, true),
+                        goal(3, false),
+                        goal(4, false),
+                        goal(5, false),
+                    ],
+                }}
+                streak={STREAK}
+                weeks={[WEEK()]}
+            />,
+        );
+
+        expect(
+            screen.getByRole('img', {
+                name: 'Season track: 2 of 5 tiers earned',
+            }),
+        ).toBeInTheDocument();
+
+        rerender(
+            <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={null}
+                season={SEASON}
+                streak={STREAK}
+                weeks={[WEEK()]}
+            />,
+        );
+
+        expect(screen.queryByText('Season Track')).not.toBeInTheDocument();
+    });
+
     it("renders a session's type, distance, and pace", () => {
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK()]}
             />,
         );
@@ -121,9 +207,13 @@ describe('Plan', () => {
     it('shows the readiness-clamp explanation when present', () => {
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[
                     WEEK({
                         days: [
@@ -143,9 +233,13 @@ describe('Plan', () => {
     it('links to /race, mentioning a set race by name', () => {
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={{ race_date: '2026-12-06', name: 'Jakarta 10K' }}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[]}
             />,
         );
@@ -158,7 +252,16 @@ describe('Plan', () => {
 
     it('offers to set a race when there is none', () => {
         render(
-            <Plan race={null} sessionsPerWeek={3} season={SEASON} weeks={[]} />,
+            <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
+                race={null}
+                sessionsPerWeek={3}
+                adaptation={null}
+                season={SEASON}
+                streak={STREAK}
+                weeks={[]}
+            />,
         );
 
         expect(
@@ -169,9 +272,13 @@ describe('Plan', () => {
     it('posts to /plan/regenerate on Regenerate', () => {
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK()]}
             />,
         );
@@ -184,9 +291,13 @@ describe('Plan', () => {
     it('pins a day', () => {
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK()]}
             />,
         );
@@ -200,9 +311,13 @@ describe('Plan', () => {
     it('unpins an already-pinned day', () => {
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK({ days: [DAY({ pinned: true })] })]}
             />,
         );
@@ -215,9 +330,13 @@ describe('Plan', () => {
     it('blocks a training day to rest', () => {
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK()]}
             />,
         );
@@ -230,9 +349,13 @@ describe('Plan', () => {
     it('restores a rest day back to easy', () => {
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[
                     WEEK({
                         days: [
@@ -260,9 +383,13 @@ describe('Plan', () => {
     it('cycles the distance band on Resize', () => {
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK()]}
             />,
         );
@@ -275,9 +402,13 @@ describe('Plan', () => {
     it('does not offer Resize for a rest day', () => {
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK({ days: [DAY({ session_type: 'rest' })] })]}
             />,
         );
@@ -290,9 +421,13 @@ describe('Plan', () => {
     it('deletes a day', () => {
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK()]}
             />,
         );
@@ -305,9 +440,13 @@ describe('Plan', () => {
     it('moves a day to a new date', () => {
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK()]}
             />,
         );
@@ -322,13 +461,17 @@ describe('Plan', () => {
     it('renders the season arc progress and a link to the badge board', () => {
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={{
                     ...SEASON,
                     week_index: 3,
                     total_weeks: 12,
                 }}
+                streak={STREAK}
                 weeks={[]}
             />,
         );
@@ -336,14 +479,17 @@ describe('Plan', () => {
         expect(screen.getByText(/Week 3 of 12/)).toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: 'Badge board' }),
-        ).toHaveAttribute('href', '/badges');
+        ).toHaveAttribute('href', '/trends');
     });
 
     it("renders each season goal's title and progress", () => {
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={{
                     ...SEASON,
                     goals: [
@@ -357,6 +503,7 @@ describe('Plan', () => {
                         },
                     ],
                 }}
+                streak={STREAK}
                 weeks={[]}
             />,
         );
@@ -372,9 +519,13 @@ describe('Plan', () => {
     it('hides edit controls for history weeks', () => {
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK({ type: 'history', week_start: '2026-07-27' })]}
             />,
         );
@@ -387,9 +538,13 @@ describe('Plan', () => {
     it('shows the current week’s phase as the season visual caption', () => {
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[WEEK({ phase: 'peak' })]}
             />,
         );
@@ -404,9 +559,13 @@ describe('Plan', () => {
     it('pauses season-visual accretion on a deload week instead of resetting it', () => {
         render(
             <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
                 race={null}
                 sessionsPerWeek={4}
+                adaptation={null}
                 season={SEASON}
+                streak={STREAK}
                 weeks={[
                     WEEK({
                         week_start: '2026-07-27',
@@ -428,9 +587,144 @@ describe('Plan', () => {
 
     it('falls back to the base season phase when no current week exists', () => {
         render(
-            <Plan race={null} sessionsPerWeek={4} season={SEASON} weeks={[]} />,
+            <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={null}
+                season={SEASON}
+                streak={STREAK}
+                weeks={[]}
+            />,
         );
 
         expect(screen.getByText('Base')).toBeInTheDocument();
+    });
+
+    it('always shows the not-medical-advice disclaimer, adaptation or not', () => {
+        render(
+            <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={null}
+                season={SEASON}
+                streak={STREAK}
+                weeks={[]}
+            />,
+        );
+
+        expect(screen.getByText(DISCLAIMER)).toBeInTheDocument();
+    });
+
+    it('heads the disclaimer and links out to the full scope', () => {
+        render(
+            <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={null}
+                season={SEASON}
+                streak={STREAK}
+                weeks={[]}
+            />,
+        );
+
+        expect(screen.getByText(DISCLAIMER_HEADLINE)).toBeInTheDocument();
+        expect(
+            screen.getByRole('link', {
+                name: 'What the plan can and cannot see',
+            }),
+        ).toHaveAttribute('href', '/training-disclaimer');
+    });
+
+    // Mirrors App\Enums\AdaptationReason::headline() — every reason the
+    // periodizer can record has to read as a decision, not a failure.
+    it.each([
+        ['steady', 'on plan', false],
+        ['low_readiness', 'deload week', true],
+        ['high_monotony', 'deload week', true],
+        ['high_strain', 'deload week', true],
+        ['missed_week', 'deload week', true],
+        ['behind_race_pace', 'one more quality session', false],
+        ['ahead_of_race_pace', 'one less quality session', false],
+    ] as const)(
+        'renders the %s adaptation headline in Temari’s own voice',
+        (reason, headline, deload) => {
+            render(
+                <Plan
+                    disclaimerHeadline={DISCLAIMER_HEADLINE}
+                    disclaimer={DISCLAIMER}
+                    race={null}
+                    sessionsPerWeek={4}
+                    adaptation={{
+                        reason,
+                        headline,
+                        detail: 'the detail line.',
+                        deload,
+                    }}
+                    season={SEASON}
+                    streak={STREAK}
+                    weeks={[WEEK()]}
+                />,
+            );
+
+            const rendered = screen.getByText(headline);
+            expect(rendered).toBeInTheDocument();
+            // Narrated voice stays lowercase: the headline must not be
+            // rendered through an uppercasing chrome utility.
+            expect(rendered.className).not.toContain('text-label');
+        },
+    );
+
+    it("explains this week's adaptation when the periodizer recorded one", () => {
+        render(
+            <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={{
+                    reason: 'missed_week',
+                    headline: 'deload week',
+                    detail: "you finished 20% of last week's sessions. this week comes back smaller, not doubled.",
+                    deload: true,
+                }}
+                season={SEASON}
+                streak={STREAK}
+                weeks={[WEEK()]}
+            />,
+        );
+
+        expect(screen.getByText('deload week')).toBeInTheDocument();
+        expect(
+            screen.getByText(/comes back smaller, not doubled/),
+        ).toBeInTheDocument();
+    });
+
+    it('labels a partially completed history session', () => {
+        render(
+            <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={null}
+                season={SEASON}
+                streak={STREAK}
+                weeks={[
+                    WEEK({
+                        week_start: '2026-07-27',
+                        type: 'history',
+                        days: [DAY({ status: 'partial' })],
+                    }),
+                ]}
+            />,
+        );
+
+        expect(screen.getByText('Partial')).toBeInTheDocument();
     });
 });

@@ -21,6 +21,7 @@ use App\Services\AI\AnalysisService;
 use App\Actions\AI\StaggerBackfillAction;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -31,7 +32,15 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Bus::fake();
+    // The default fixture run is dated 2026-05-10; pin the clock next to it so
+    // it stays inside the narration age cutoff as wall time moves on. Cases that
+    // exercise the cutoff itself set their own clock and config.
+    Carbon::setTestNow('2026-05-11 09:00:00');
     $this->listener = app(DispatchPostRunAnalysis::class);
+});
+
+afterEach(function (): void {
+    Carbon::setTestNow();
 });
 
 /** Seed an already-ingested activity (analyzed_at set + detail) the listener can fan out from. */
@@ -172,12 +181,12 @@ it('leaves a Done weekly recap untouched on re-ingest (no mid-week invalidation)
         ->where('subject_type', WeeklySnapshot::class)
         ->where('subject_id', $snapshot->id)
         ->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'recap dari Baca ulang');
+    app(AnalysisService::class)->markDone($row, 'recap from a reread');
 
     fire($activity);
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($row->fresh()->content)->toBe('recap dari Baca ulang');
+        ->and($row->fresh()->content)->toBe('recap from a reread');
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
@@ -386,6 +395,35 @@ it('fills an activity older than the backfill depth cap rule-based (group + card
     Carbon::setTestNow();
 });
 
+it('routes an ingest either side of the shipped cutoff differently, against the real config default', function (int $daysAgo, bool $expectRealNarration): void {
+    // No config()->set here on purpose: this is the proof that the value
+    // config/ai.php actually ships is the one production routes on.
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    expect(config('ai.backfill_max_age_days'))->toBe(84);
+
+    $activity = analyzedActivity(Carbon::now()->subDays($daysAgo)->toDateTimeString());
+    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
+
+    fire($activity);
+
+    $cardRow = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
+
+    if ($expectRealNarration) {
+        Bus::assertDispatched(AnalyzeCardFlavorJob::class);
+        expect($cardRow->status)->not->toBe(AnalysisStatus::Done);
+    } else {
+        Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
+        Bus::assertNotDispatched(AnalyzeActivityJob::class);
+        expect($cardRow->status)->toBe(AnalysisStatus::Done)
+            ->and($cardRow->content)->toBeString()->not->toBeEmpty();
+    }
+
+    Carbon::setTestNow();
+})->with([
+    'a day inside the 12-week window still bills the LLM' => [83, true],
+    'the cutoff day itself is filled rule-based' => [84, false],
+]);
+
 it('steady-state (fresh run) dispatches the activity group immediately', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     $fresh = analyzedActivity('2026-06-10 06:00:00');
@@ -559,7 +597,12 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
     $activity = analyzedActivity();
     $weekly = Mockery::mock(WeeklyAggregator::class);
     $weekly->shouldReceive('rebuildForwardFrom')->once()->andReturnNull();
-    $listener = new DispatchPostRunAnalysis(app(AnalysisService::class), $weekly, app(StaggerBackfillAction::class));
+    $listener = new DispatchPostRunAnalysis(
+        app(AnalysisService::class),
+        $weekly,
+        app(StaggerBackfillAction::class),
+        app(BackfillAgeGate::class),
+    );
 
     $listener->handle(new ActivityIngested($activity->id));
 

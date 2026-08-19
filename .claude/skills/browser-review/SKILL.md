@@ -47,6 +47,20 @@ before a release).
 The app is reachable **inside the container at `http://localhost`** (host-forwarded port is
 `APP_PORT=7001`, but the scripts run in the container, so use `localhost`).
 
+### The operator console (`/devtools`, `/devtools/design`, `/ai-usage`, `/pulse`)
+
+All four sit behind HTTP Basic Auth (`EnsureDevtoolsAccess`) and `/pulse` is a vendor route that
+`route:list --except-vendor` never reports, so they are **excluded unless `DEVTOOLS_PASSWORD` is
+set**. Pass it through and the scripts add the basic-auth credentials and append `/pulse`:
+
+```bash
+./vendor/bin/sail exec -e DEVTOOLS_PASSWORD=<pw> app node .claude/skills/browser-review/scripts/shoot.mjs
+```
+
+`DEVTOOLS_PASSWORD` is empty in `.env.example`, so set it in the gitignored `compose.override.yaml`
+first or every one of the four just 401s. Without the variable the scripts log a line naming the four
+pages they skipped, rather than silently omitting them.
+
 ## The Alpine/Playwright gotcha (do not rediscover this)
 
 The `app` container is **Alpine Linux (musl), ARM64**. Playwright's bundled Chromium is a glibc

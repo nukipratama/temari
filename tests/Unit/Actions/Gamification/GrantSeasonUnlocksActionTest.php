@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Gamification\GrantSeasonUnlocksAction;
 use App\Models\Season;
+use App\Models\SeasonGoal;
 use App\Models\User;
 use App\Models\UserUnlock;
 use App\Services\Gamification\SeasonGamificationContext;
@@ -76,4 +77,68 @@ it('re-earns the threshold in a new season, distinct from the old season\'s unlo
 
     expect($new)->toBe(["season.{$secondSeason->id}.rest_honored_3"])
         ->and(UserUnlock::query()->where('user_id', $user->id)->count())->toBe(2);
+});
+
+function seasonGoal(Season $season, string $metric, float $target): void
+{
+    SeasonGoal::factory()->for($season)->create([
+        'metric' => $metric,
+        'target' => $target,
+        'unit' => 'sessions',
+    ]);
+}
+
+it('grants one track tier per completed season goal', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create();
+    seasonGoal($season, 'season_sessions_completed', 5.0);
+    seasonGoal($season, 'season_quality_completed', 2.0);
+    seasonGoal($season, 'season_longest_long_run_km', 30.0);
+
+    $ctx = new SeasonGamificationContext(
+        sessionsCompleted: 5,
+        qualityCompleted: 2,
+        longestLongRunKm: 4.0,
+        restHonored: 0,
+        raceGoalMet: false,
+        ctlGrowth: 0.0,
+    );
+
+    $new = app(GrantSeasonUnlocksAction::class)($user, $season, $ctx);
+
+    expect($new)->toBe(["season.{$season->id}.track_1", "season.{$season->id}.track_2"]);
+});
+
+it('grants no track tier while no season goal is complete', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create();
+    seasonGoal($season, 'season_sessions_completed', 5.0);
+
+    $new = app(GrantSeasonUnlocksAction::class)($user, $season, seasonUnlockCtx(0));
+
+    expect($new)->toBe([]);
+});
+
+it('re-earns the track in the next season and keeps the previous season\'s tiers', function (): void {
+    $user = User::factory()->create();
+    $first = Season::factory()->for($user)->create();
+    seasonGoal($first, 'season_sessions_completed', 5.0);
+
+    $ctx = new SeasonGamificationContext(
+        sessionsCompleted: 5,
+        qualityCompleted: 0,
+        longestLongRunKm: 0.0,
+        restHonored: 0,
+        raceGoalMet: false,
+        ctlGrowth: 0.0,
+    );
+    app(GrantSeasonUnlocksAction::class)($user, $first, $ctx);
+
+    $second = Season::factory()->for($user)->create(['starts_at' => '2027-01-04', 'ends_at' => '2027-03-29']);
+    seasonGoal($second, 'season_sessions_completed', 5.0);
+
+    $new = app(GrantSeasonUnlocksAction::class)($user, $second, $ctx);
+
+    expect($new)->toBe(["season.{$second->id}.track_1"])
+        ->and(UserUnlock::query()->where('user_id', $user->id)->where('unlock_key', "season.{$first->id}.track_1")->exists())->toBeTrue();
 });

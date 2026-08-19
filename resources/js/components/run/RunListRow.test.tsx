@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { ActivityDetail } from '@/types/inertia';
+import type { ActivityDetail, RunCard } from '@/types/inertia';
 
 import RunListRow from './RunListRow';
 
@@ -19,6 +19,17 @@ function detail(overrides: Partial<ActivityDetail> = {}): ActivityDetail {
     };
 }
 
+function runCard(overrides: Partial<RunCard> = {}): RunCard {
+    return {
+        id: 1,
+        activity_id: 99,
+        rarity: 'legendary',
+        special_move: 'Dawn Sprint',
+        badges: ['early_bird'],
+        ...overrides,
+    };
+}
+
 describe('RunListRow', () => {
     it('renders activity name + distance', () => {
         render(<RunListRow detail={detail()} />);
@@ -26,10 +37,10 @@ describe('RunListRow', () => {
         expect(screen.getByText('10.00')).toBeInTheDocument();
     });
 
-    it('renders the formatted elapsed_time as the durasi cell', () => {
+    it('renders the formatted elapsed_time as the duration cell', () => {
         render(<RunListRow detail={detail({ elapsed_time: 2054 })} />);
         expect(screen.getByText('34:14')).toBeInTheDocument();
-        expect(screen.getByText('durasi')).toBeInTheDocument();
+        expect(screen.getByText('duration')).toBeInTheDocument();
     });
 
     it('falls back to "Run" when name is null', () => {
@@ -37,7 +48,7 @@ describe('RunListRow', () => {
         expect(screen.getByText('Run')).toBeInTheDocument();
     });
 
-    it('links to /aktivitas/{activity_id}', () => {
+    it('links to /activities/{activity_id}', () => {
         render(<RunListRow detail={detail({ activity_id: 7 })} />);
         expect(screen.getByRole('link').getAttribute('href')).toBe(
             '/activities/7',
@@ -96,11 +107,11 @@ describe('RunListRow', () => {
                 detail={detail({ start_date_local: '2026-05-10T07:00:00' })}
             />,
         );
-        expect(screen.getByText('· 07.00')).toBeInTheDocument();
+        expect(screen.getByText('· 07:00')).toBeInTheDocument();
     });
 
     it('renders the literal wall-clock time even when serialized with a UTC Z (no zone shift)', () => {
-        // Laravel sends the naive cast as `...Z`; the time must stay 06.52, not
+        // Laravel sends the naive cast as `...Z`; the time must stay 06:52, not
         // shift to the viewer/test-runner timezone.
         render(
             <RunListRow
@@ -109,7 +120,7 @@ describe('RunListRow', () => {
                 })}
             />,
         );
-        expect(screen.getByText('· 06.52')).toBeInTheDocument();
+        expect(screen.getByText('· 06:52')).toBeInTheDocument();
     });
 
     it('omits the time when start_date_local has no time component', () => {
@@ -117,5 +128,32 @@ describe('RunListRow', () => {
             <RunListRow detail={detail({ start_date_local: '2026-05-10' })} />,
         );
         expect(screen.queryByText(/^· \d{2}\.\d{2}$/)).not.toBeInTheDocument();
+    });
+
+    it('leads with the earned Kartu when a run_card is present', () => {
+        render(<RunListRow detail={detail()} runCard={runCard()} />);
+        expect(
+            screen.getByRole('img', { name: 'Dawn Sprint' }),
+        ).toBeInTheDocument();
+    });
+
+    it('shows compact caption stats beside the Kartu', () => {
+        render(<RunListRow detail={detail()} runCard={runCard()} />);
+        expect(screen.getByText('10.00 km')).toBeInTheDocument();
+        expect(screen.getByText('1:00:00')).toBeInTheDocument();
+        expect(screen.getByText('150 bpm')).toBeInTheDocument();
+        expect(screen.getByText('70 TRIMP')).toBeInTheDocument();
+    });
+
+    it('renders each badge as an emoji with a descriptive title', () => {
+        render(<RunListRow detail={detail()} runCard={runCard()} />);
+        const badge = screen.getByTitle('Early Bird');
+        expect(badge).toHaveTextContent('🌅');
+    });
+
+    it('falls back to the plain row when run_card is absent', () => {
+        render(<RunListRow detail={detail()} runCard={null} />);
+        expect(screen.getByText('Blazing')).toBeInTheDocument();
+        expect(screen.queryByRole('img', { name: 'Dawn Sprint' })).toBeNull();
     });
 });

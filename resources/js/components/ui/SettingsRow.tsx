@@ -56,14 +56,14 @@ export default function SettingsRow({
                     icon={icon}
                     width={20}
                     height={20}
-                    className={isDanger ? 'text-ember-deep' : 'text-ink-3'}
+                    className={isDanger ? 'text-ember-ink' : 'text-ink-3'}
                     aria-hidden
                 />
                 <span className="flex flex-col">
                     <span
                         className={cn(
                             'font-sans text-sm font-semibold',
-                            isDanger ? 'text-ember-deep' : 'text-ink',
+                            isDanger ? 'text-ember-ink' : 'text-ink',
                         )}
                     >
                         {label}

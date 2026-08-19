@@ -27,7 +27,8 @@ final class WeekTotalsTool extends NoArgumentTool
         return "The week you're telling: number of runs, distance, average pace, TRIMP, "
             .'ctl_42d/atl_7d/form/form_status, monotony, strain, average decoupling, plus the '
             ."previous week's numbers to compare against. If prev_* is missing, there's no "
-            .'comparison week yet.';
+            .'comparison week yet. weekly_trimp, monotony and strain are null when no run that '
+            .'week carried heart rate: the load is unknown, which is not the same as zero.';
     }
 
     /** @return array<string, mixed> */

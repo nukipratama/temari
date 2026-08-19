@@ -67,7 +67,7 @@ class RaceController extends Controller
         // The model's own saved()/deleted() hooks already bust this per row,
         // but they fire mid-transaction (before commit) here — busted again
         // after the commit so a concurrent read can't re-warm the cache from
-        // the pre-swap state. Same reasoning as AksesoriController::equip().
+        // the pre-swap state. Same reasoning as AccessoryController::equip().
         SharedPropCacheKey::ActiveRace->forget($user->id);
 
         return back()->with('success', 'Your race is set. Temari will keep the plan honest against it.');

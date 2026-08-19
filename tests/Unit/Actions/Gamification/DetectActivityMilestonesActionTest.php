@@ -221,9 +221,9 @@ it('formats PR category labels for half_marathon and marathon distance PRs', fun
 
     $prMilestones = collect($milestones)->where('kind', 'pr');
     $bodies = $prMilestones->pluck('body')->all();
-    expect($bodies)->toContain('Kamu baru saja memecahkan PR di Half Marathon. Aku catat.')
-        ->and($bodies)->toContain('Kamu baru saja memecahkan PR di Marathon. Aku catat.')
-        ->and($bodies)->toContain('Kamu baru saja memecahkan PR di 15 km. Aku catat.');
+    expect($bodies)->toContain('New PR at Half Marathon. Your old number held until today.')
+        ->and($bodies)->toContain('New PR at Marathon. Your old number held until today.')
+        ->and($bodies)->toContain('New PR at 15 km. Your old number held until today.');
 });
 
 it('treats older activities synced later as not setting a new "first ever" for younger rows', function (): void {
@@ -246,5 +246,5 @@ it('drops the trailing decimal from a whole-kilometre threshold label', function
 
     $distance = collect(($this->detector)($activity, $detail))->firstWhere('kind', 'first_ever_distance');
 
-    expect($distance['label'])->toBe('5 km pertama kamu!');
+    expect($distance['label'])->toBe('First 5 km');
 });

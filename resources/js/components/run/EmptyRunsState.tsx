@@ -39,12 +39,6 @@ const HERO: Record<
 
 const ACTIONS = [
     {
-        icon: 'mdi:cards-outline',
-        title: 'Check out the legendary collection',
-        desc: 'See the cards you could unlock.',
-        href: '/cards',
-    },
-    {
         icon: 'mdi:tshirt-crew-outline',
         title: 'Dress up Temari',
         desc: 'Pick an accessory combo for your profile.',
@@ -54,7 +48,7 @@ const ACTIONS = [
         icon: 'mdi:chart-line',
         title: 'See your run recap',
         desc: 'Once your first run comes in, the recap shows up here.',
-        href: '/activities',
+        href: '/history',
     },
 ] as const;
 
@@ -92,7 +86,7 @@ export default function EmptyRunsState({
             <div className="flex flex-col items-center gap-5 text-center">
                 <Temari pose="reading" size={140} />
                 <div>
-                    <Eyebrow token="hero" tone="horizon" className="mb-3">
+                    <Eyebrow token="hero" tone="horizon-ink" className="mb-3">
                         {hero.eyebrow}
                     </Eyebrow>
                     <h2
@@ -118,8 +112,8 @@ export default function EmptyRunsState({
 
             {/* While you wait */}
             <Card
-                tone={onSky ? 'sky-glass' : 'cream'}
-                padding="md"
+                tone={onSky ? 'onSky' : 'card'}
+                padding="card"
                 className="w-full max-w-md"
             >
                 <SectionLabel onSky={onSky}>While you wait</SectionLabel>
@@ -139,7 +133,7 @@ export default function EmptyRunsState({
                                     'flex h-8 w-8 flex-none items-center justify-center rounded-lg',
                                     onSky
                                         ? 'bg-cream/10 text-horizon'
-                                        : 'bg-horizon/[0.14] text-horizon-deep',
+                                        : 'bg-horizon/[0.14] text-horizon-ink',
                                 )}
                             >
                                 <Icon icon={icon} width={16} height={16} />

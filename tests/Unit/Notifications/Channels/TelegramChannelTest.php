@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\NotificationDeliveryStatus;
+use App\Services\Notifications\NotificationDeliveryClaim;
 use App\Services\Telegram\Exceptions\TelegramApiException;
 use App\Models\AI\Analysis;
 use App\Models\TelegramConnection;
@@ -108,7 +110,7 @@ it('claims a keyed delivery and is idempotent across repeats', function (): void
     $this->assertDatabaseHas('notification_deliveries', ['analysis_id' => $analysisId, 'channel' => 'telegram']);
 });
 
-it('releases the keyed claim when the send fails so a retry can resend', function (): void {
+it('settles the keyed claim as failed with its error so a retry can resend', function (): void {
     Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'boom'], 500)]);
     $user = connectedUser();
     $analysisId = Analysis::factory()->create()->id;
@@ -116,7 +118,12 @@ it('releases the keyed claim when the send fails so a retry can resend', functio
     expect(fn () => channelSend($user, new TelegramMessage(text: 'Gagal', deliveryKey: $analysisId)))
         ->toThrow(TelegramApiException::class);
 
-    $this->assertDatabaseMissing('notification_deliveries', ['analysis_id' => $analysisId, 'channel' => 'telegram']);
+    $this->assertDatabaseHas('notification_deliveries', [
+        'analysis_id' => $analysisId,
+        'channel' => 'telegram',
+        'status' => NotificationDeliveryStatus::Failed->value,
+    ]);
+    expect(app(NotificationDeliveryClaim::class)->claim($analysisId, 'telegram'))->toBeTrue();
 });
 
 it('revokes the connection and does not retry when the bot is blocked (403)', function (): void {
@@ -141,14 +148,18 @@ it('force-sends even when the delivery row already exists, and records the claim
     $this->assertDatabaseHas('notification_deliveries', ['analysis_id' => $analysisId, 'channel' => 'telegram']);
 });
 
-it('force-send swallows a failure (one-shot) and never claims a delivery', function (): void {
+it('force-send swallows a failure (one-shot) but records it as a failed delivery', function (): void {
     Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'boom'], 500)]);
     $user = connectedUser();
     $analysisId = Analysis::factory()->create()->id;
 
     channelSend($user, new TelegramMessage(text: 'Gagal manual', deliveryKey: $analysisId, force: true));
 
-    $this->assertDatabaseMissing('notification_deliveries', ['analysis_id' => $analysisId, 'channel' => 'telegram']);
+    $this->assertDatabaseHas('notification_deliveries', [
+        'analysis_id' => $analysisId,
+        'channel' => 'telegram',
+        'status' => NotificationDeliveryStatus::Failed->value,
+    ]);
 });
 
 it('sends a keyless message (streak / test) without touching the deliveries table', function (): void {

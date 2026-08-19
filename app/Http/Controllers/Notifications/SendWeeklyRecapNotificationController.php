@@ -14,7 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
- * Manual "Kirim notifikasi" for a week's recap: pushes that week's recap
+ * Manual "Send notification" for a week's recap: pushes that week's recap
  * narration to every channel the owner has wired on demand. Like the activity push, it forces
  * (force: true), so it ignores the weekly-recap opt-in and the once-only
  * delivery guard and can be re-sent, but still requires a Done recap and a live

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs\Strava;
 
 use Throwable;
+use App\Enums\StravaReadPriority;
 use App\Models\Activity;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
@@ -58,8 +59,10 @@ class IngestActivityJob implements ShouldBeUnique, ShouldQueue
      */
     public int $uniqueFor = self::RETRY_WINDOW_HOURS * 3600;
 
-    public function __construct(public readonly int $activityId)
-    {
+    public function __construct(
+        public readonly int $activityId,
+        public readonly StravaReadPriority $priority = StravaReadPriority::Live,
+    ) {
     }
 
     public function uniqueId(): string
@@ -75,12 +78,15 @@ class IngestActivityJob implements ShouldBeUnique, ShouldQueue
         return [
             // Both a 429 and an open circuit mean "back off and retry later"
             // rather than burn the failure budget — the throttle re-queues with a
-            // delay that comfortably outlasts the breaker cooldown.
+            // delay that comfortably outlasts the breaker cooldown. The key is
+            // per priority tier: ThrottlesExceptions releases every job sharing a
+            // key once the circuit trips, so one key would let a backed-off
+            // browsing burst hold back live ingest it never competed with.
             new ThrottlesExceptions(self::RATE_LIMIT_MAX_ATTEMPTS, self::RATE_LIMIT_DECAY_SECONDS)
                 ->when(fn (Throwable $e): bool => $e instanceof StravaRateLimitedException
                     || $e instanceof StravaCircuitOpenException)
                 ->backoff(self::RATE_LIMIT_BACKOFF_MINUTES)
-                ->by('strava-ingest'),
+                ->by($this->priority->throttleKey()),
         ];
     }
 
@@ -99,7 +105,7 @@ class IngestActivityJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $pipeline->ingest($activity);
+        $pipeline->ingest($activity, $this->priority);
     }
 
     /**

@@ -11,10 +11,7 @@ describe('MobileTopBar', () => {
         expect(screen.getByLabelText('Home')).toHaveAttribute('href', '/');
     });
 
-    it.each([
-        ['Runs/Show', '/activities', 'History'],
-        ['Settings/HrZones', '/settings', 'Settings'],
-    ])(
+    it.each([['Runs/Show', '/history', 'History']])(
         'replaces the brand mark with a back button on %s',
         (component, href, label) => {
             setMockPage({}, '/x', component);
@@ -28,11 +25,10 @@ describe('MobileTopBar', () => {
 
     it.each([
         'Today',
-        'Collection/Cards',
-        'Activities/Feed',
+        'Collection/Accessories',
+        'History',
         'Profile',
-        'Activities/Calendar',
-        'Collection/Records',
+        'Trends',
         'Settings/Index',
         'Race',
     ])('keeps the brand mark and shows no back button on %s', (component) => {
@@ -48,21 +44,22 @@ describe('MobileTopBar', () => {
         render(<MobileTopBar />);
         expect(
             screen.getByLabelText('Back to History').getAttribute('href'),
-        ).toBe('/activities');
+        ).toBe('/history');
     });
 
-    it('shows the user menu when a user is signed in', () => {
+    it('shows the avatar link to Profile when a user is signed in', () => {
         setMockPage({ auth: { user: makeUser({ name: 'Ada Lovelace' }) } });
         render(<MobileTopBar />);
-        expect(
-            screen.getByLabelText('Open menu for Ada Lovelace'),
-        ).toBeInTheDocument();
+        expect(screen.getByLabelText("Ada Lovelace's profile")).toHaveAttribute(
+            'href',
+            '/profile',
+        );
     });
 
-    it('omits the user menu when there is no signed-in user', () => {
+    it('omits the avatar link when there is no signed-in user', () => {
         setMockPage({ auth: { user: null } });
         render(<MobileTopBar />);
-        expect(screen.queryByLabelText(/Open menu/)).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(/'s profile/)).not.toBeInTheDocument();
     });
 
     it('renders the Strava sync badge in its disconnected state by default', () => {

@@ -29,7 +29,7 @@ export default function MapWeatherPanel({
                 <div className="flex items-baseline gap-3">
                     {temp != null && (
                         <div>
-                            <div className="font-sans text-2xl font-bold leading-none">
+                            <div className="font-sans text-2xl font-bold leading-none tabular-nums">
                                 {Math.round(temp)}°
                                 <span className="text-sm font-medium">C</span>
                             </div>
@@ -39,7 +39,7 @@ export default function MapWeatherPanel({
                                     tone="cream"
                                     className="mt-1"
                                 >
-                                    {Math.round(humidity)}% lembab
+                                    {Math.round(humidity)}% humidity
                                 </Eyebrow>
                             )}
                             {windSpeed != null && (
@@ -54,7 +54,7 @@ export default function MapWeatherPanel({
                                         height={11}
                                         aria-hidden
                                     />
-                                    {Math.round(windSpeed)} km/j
+                                    {Math.round(windSpeed)} km/h
                                     {showGust && (
                                         <span>· gust {Math.round(gust)}</span>
                                     )}
@@ -81,7 +81,7 @@ export default function MapWeatherPanel({
                                     splitLocationLines(location);
                                 return (
                                     <>
-                                        <div className="truncate font-display text-xl leading-tight tracking-[-0.005em]">
+                                        <div className="truncate font-display text-headline-xs">
                                             {place}
                                         </div>
                                         {region && (

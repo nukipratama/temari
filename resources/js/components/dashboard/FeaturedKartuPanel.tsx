@@ -1,4 +1,4 @@
-import type { FeaturedCard } from '@/pages/Today/helpers';
+import type { FeaturedCard } from '@/pages/Home/helpers';
 import type { AnalysisPayload } from '@/types/inertia';
 
 import FeaturedCardHero from '@/components/card/FeaturedCardHero';
@@ -18,7 +18,7 @@ export default function FeaturedKartuPanel({
             rarity={featured.rarity}
             km={featured.km}
             stats={featured.stats}
-            durasi={featured.durasi}
+            duration={featured.duration}
             badges={featured.badges}
             polyline={featured.polyline}
             ctaHref={activityUrl({ activity_id: featured.activityId })}
@@ -40,7 +40,7 @@ export default function FeaturedKartuPanel({
                 <Kartu
                     name={featured.name}
                     km={featured.km}
-                    durasi={featured.durasi}
+                    duration={featured.duration}
                     trimp={featured.trimp}
                     rarity={featured.rarity}
                     mood={featured.mood}

@@ -10,42 +10,42 @@ namespace App\Enums;
  */
 enum Badge: string
 {
-    case HariPanas = 'heat_tamer';
-    case PejuangHujan = 'rain_warrior';
-    case AnakPagi = 'early_bird';
+    case HeatTamer = 'heat_tamer';
+    case RainWarrior = 'rain_warrior';
+    case EarlyBird = 'early_bird';
     case LongSlowDistance = 'long_slow_distance';
     case NegativeSplit = 'negative_split';
-    case TahanDiri = 'held_back';
-    case AnakMalam = 'night_owl';
-    case Pendaki = 'climber';
-    case PertamaKali = 'first_timer';
-    case Kilat = 'speedster';
-    case Jauh = 'long_hauler';
+    case HeldBack = 'held_back';
+    case NightOwl = 'night_owl';
+    case Climber = 'climber';
+    case FirstTimer = 'first_timer';
+    case Speedster = 'speedster';
+    case LongHauler = 'long_hauler';
     case Z2Master = 'z2_master';
-    case AnakDingin = 'cold_runner';
-    case Keras = 'all_out';
-    case Santai = 'easy_miles';
-    case LawanAngin = 'headwind';
+    case ColdRunner = 'cold_runner';
+    case AllOut = 'all_out';
+    case EasyMiles = 'easy_miles';
+    case Headwind = 'headwind';
 
     public function label(): string
     {
         return match ($this) {
-            self::HariPanas => '🔥 Heat Tamer',
-            self::PejuangHujan => '🌧️ Rain Warrior',
-            self::AnakPagi => '🌅 Early Bird',
+            self::HeatTamer => '🔥 Heat Tamer',
+            self::RainWarrior => '🌧️ Rain Warrior',
+            self::EarlyBird => '🌅 Early Bird',
             self::LongSlowDistance => '🐢 Long Slow Distance',
             self::NegativeSplit => '👻 Negative Split',
-            self::TahanDiri => '🧘 Held Back',
-            self::AnakMalam => '🌙 Night Owl',
-            self::Pendaki => '⛰️ Climber',
-            self::PertamaKali => '🏅 First Timer',
-            self::Kilat => '⚡ Speedster',
-            self::Jauh => '🗺️ Long Hauler',
+            self::HeldBack => '🧘 Held Back',
+            self::NightOwl => '🌙 Night Owl',
+            self::Climber => '⛰️ Climber',
+            self::FirstTimer => '🏅 First Timer',
+            self::Speedster => '⚡ Speedster',
+            self::LongHauler => '🗺️ Long Hauler',
             self::Z2Master => '🫀 Z2 Master',
-            self::AnakDingin => '❄️ Cold Runner',
-            self::Keras => '😤 All Out',
-            self::Santai => '☺️ Easy Miles',
-            self::LawanAngin => '🌬️ Headwind',
+            self::ColdRunner => '❄️ Cold Runner',
+            self::AllOut => '😤 All Out',
+            self::EasyMiles => '☺️ Easy Miles',
+            self::Headwind => '🌬️ Headwind',
         };
     }
 
@@ -57,13 +57,13 @@ enum Badge: string
     public static function tracked(): array
     {
         return [
-            self::AnakMalam,
-            self::AnakPagi,
-            self::PejuangHujan,
+            self::NightOwl,
+            self::EarlyBird,
+            self::RainWarrior,
             self::NegativeSplit,
-            self::HariPanas,
+            self::HeatTamer,
             self::Z2Master,
-            self::LawanAngin,
+            self::Headwind,
         ];
     }
 

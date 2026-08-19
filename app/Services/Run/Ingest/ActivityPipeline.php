@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Run\Ingest;
 
 use App\Actions\Gamification\DetectActivityMilestonesAction;
+use App\Enums\IngestState;
+use App\Enums\StravaReadPriority;
 use App\Events\ActivityIngested;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
@@ -41,8 +43,6 @@ use Throwable;
 // block the others.
 class ActivityPipeline
 {
-    private const int DETAIL_FETCH_MAX_ATTEMPTS = Activity::MAX_DETAIL_FETCH_ATTEMPTS;
-
     public function __construct(
         private readonly StravaClient $client,
         private readonly StreamAnalysis $streamAnalysis,
@@ -57,7 +57,7 @@ class ActivityPipeline
     ) {
     }
 
-    public function ingest(Activity $activity): void
+    public function ingest(Activity $activity, StravaReadPriority $priority = StravaReadPriority::Live): void
     {
         if ($this->stravaIngestDisabled()) {
             return;
@@ -74,7 +74,7 @@ class ActivityPipeline
 
         try {
             $detail = $this->client
-                ->get($connection, "/activities/{$activity->strava_external_id}")
+                ->get($connection, "/activities/{$activity->strava_external_id}", priority: $priority)
                 ->json();
         } catch (StravaRateLimitedException|StravaCircuitOpenException $e) {
             // Rethrow rather than retry here: IngestActivityJob re-queues with its
@@ -109,7 +109,7 @@ class ActivityPipeline
 
         $detailModel = $this->storeDetail($activity, $detail);
 
-        $streams = $this->fetchStreams($activity, $connection);
+        $streams = $this->fetchStreams($activity, $connection, $priority);
         if ($streams !== null) {
             $this->storeStreams($activity, $streams);
         }
@@ -123,6 +123,7 @@ class ActivityPipeline
         DB::transaction(function () use ($activity, $detailModel): void {
             $activity->update([
                 'analyzed_at' => now(),
+                'ingest_state' => IngestState::Detailed,
                 'detail_fail_count' => 0,
             ]);
 
@@ -248,14 +249,14 @@ class ActivityPipeline
     /**
      * @return array<string, mixed>|null
      */
-    private function fetchStreams(Activity $activity, StravaConnection $connection): ?array
+    private function fetchStreams(Activity $activity, StravaConnection $connection, StravaReadPriority $priority): ?array
     {
         try {
             $streams = $this->client
                 ->get($connection, "/activities/{$activity->strava_external_id}/streams", [
                     'keys' => 'time,distance,heartrate,cadence,velocity_smooth,altitude,latlng,grade_smooth',
                     'key_by_type' => 'true',
-                ])
+                ], $priority)
                 ->json();
 
             return is_array($streams) ? $streams : null;
@@ -413,7 +414,7 @@ class ActivityPipeline
      * Recompute a single activity's `stream_summary` / `trimp_edwards` from its
      * ALREADY-STORED streams using the user's CURRENT heart-rate zones, then
      * rebuild that week's snapshot forward. Forward-only: makes ZERO Strava HTTP
-     * calls, so a user-initiated "Baca ulang" can refresh one block with new
+     * calls, so a user-initiated "Reread" can refresh one block with new
      * zones without re-ingesting from Strava. No-op when the activity has no
      * stored streams or no detail row.
      *
@@ -498,7 +499,7 @@ class ActivityPipeline
 
         $count = $activity->detail_fail_count + 1;
 
-        if ($count >= self::DETAIL_FETCH_MAX_ATTEMPTS) {
+        if ($count >= Activity::MAX_DETAIL_FETCH_ATTEMPTS) {
             $activity->update([
                 'detail_fail_count' => $count,
                 'analyzed_at' => now(),

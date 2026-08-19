@@ -16,7 +16,7 @@ export default function DailyChart({
     const totalCost = data.reduce((sum, d) => sum + d.cost, 0);
 
     return (
-        <Card tone="cream" padding="md" className="mt-4 bg-surface-elev">
+        <Card tone="card" padding="card" className="mt-4 bg-surface-elev">
             <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
                 <span className="text-label-small text-ink-3">
                     {data.length} day{data.length === 1 ? '' : 's'}
@@ -40,7 +40,7 @@ export default function DailyChart({
                             style={{ minWidth: 0 }}
                         >
                             {/* Tooltip */}
-                            <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-line bg-surface-elev px-3 py-2 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                            <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-line bg-surface-elev px-3 py-2 text-xs opacity-0 shadow-e2 transition-opacity group-hover:opacity-100">
                                 <div className="font-semibold text-ink">
                                     {formatDayLabel(d.day)}
                                 </div>

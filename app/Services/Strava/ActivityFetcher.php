@@ -23,11 +23,14 @@ class ActivityFetcher
     }
 
     /**
-     * Fetch external ids of activities not yet stored locally.
+     * Fetch the activity-summary payloads of runs not yet stored locally, plus
+     * how many Strava reads the walk actually spent.
      *
      * Contract: relies on the Strava `/athlete/activities` invariant that
-     * results are ordered newest-first, and returns the new ids sorted
-     * oldest-first so the caller can ingest in chronological order.
+     * results are ordered newest-first, and returns the new summaries sorted
+     * oldest-first so the caller can store them in chronological order. Each
+     * page carries PER_PAGE summaries, so an athlete's whole history costs a
+     * handful of reads rather than one per activity.
      *
      * The walk keeps scanning past a known id while the activity started within
      * the trailing DISCOVERY_WINDOW_DAYS window — a backdated upload sits at its
@@ -39,9 +42,9 @@ class ActivityFetcher
      * started on or before it — bounding a first-connect backfill to a recent
      * window instead of pulling an athlete's entire history.
      *
-     * @return list<int>
+     * @return array{summaries: list<array<string, mixed>>, api_calls: int}
      */
-    public function fetchNewExternalIds(StravaConnection $connection, ?CarbonImmutable $since = null): array
+    public function fetchNewSummaries(StravaConnection $connection, ?CarbonImmutable $since = null): array
     {
         $existing = Activity::query()
             ->withStubs()
@@ -52,14 +55,16 @@ class ActivityFetcher
         $existingSet = array_flip($existing);
         $windowStart = CarbonImmutable::now()->subDays(self::DISCOVERY_WINDOW_DAYS);
 
-        $newIds = [];
+        $summaries = [];
         $page = 1;
+        $apiCalls = 0;
 
         while (true) {
             $response = $this->client->get($connection, '/athlete/activities', [
                 'per_page' => self::PER_PAGE,
                 'page' => $page,
             ]);
+            $apiCalls++;
 
             /** @var list<array<string, mixed>> $items */
             $items = $response->json() ?? [];
@@ -67,7 +72,7 @@ class ActivityFetcher
                 break;
             }
 
-            $stop = $this->collectNewIds($items, $existingSet, $windowStart, $since, $newIds);
+            $stop = $this->collectNewSummaries($items, $existingSet, $windowStart, $since, $summaries);
 
             if ($stop || count($items) < self::PER_PAGE) {
                 break;
@@ -75,22 +80,22 @@ class ActivityFetcher
             $page++;
         }
 
-        // Strava paginates newest-first; reverse so the caller inserts oldest-first.
-        sort($newIds);
+        // Strava paginates newest-first; reverse so the caller stores oldest-first.
+        usort($summaries, fn (array $a, array $b): int => (int) $a['id'] <=> (int) $b['id']);
 
-        return $newIds;
+        return ['summaries' => $summaries, 'api_calls' => $apiCalls];
     }
 
     /**
-     * Walk one page of activities, appending new run ids to $newIds. Returns true
-     * when the caller should stop paginating (known id below the window, or the
-     * $since bound reached).
+     * Walk one page of activities, appending new run summaries to $summaries.
+     * Returns true when the caller should stop paginating (known id below the
+     * window, or the $since bound reached).
      *
      * @param  list<array<string, mixed>>  $items
      * @param  array<int, int>  $existingSet
-     * @param  list<int>  $newIds
+     * @param  list<array<string, mixed>>  $summaries
      */
-    private function collectNewIds(array $items, array $existingSet, CarbonImmutable $windowStart, ?CarbonImmutable $since, array &$newIds): bool
+    private function collectNewSummaries(array $items, array $existingSet, CarbonImmutable $windowStart, ?CarbonImmutable $since, array &$summaries): bool
     {
         foreach ($items as $item) {
             $id = (int) ($item['id'] ?? 0);
@@ -112,7 +117,7 @@ class ActivityFetcher
             if (! $this->isRun($item)) {
                 continue;
             }
-            $newIds[] = $id;
+            $summaries[] = $item;
         }
 
         return false;

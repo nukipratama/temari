@@ -16,7 +16,7 @@ it('shares the equipped accessories on every authenticated page', function (): v
     // Unlocked but not equipped — must not leak into the shared set.
     UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.headband_legendary', 'equipped' => false]);
 
-    $this->actingAs($user)->get('/records')
+    $this->actingAs($user)->get('/profile')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('equippedAccessories.headband', 'accessory.headband_epic')
@@ -27,7 +27,7 @@ it('shares the equipped accessories on every authenticated page', function (): v
 it('shares an empty equipped set when nothing is equipped', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/records')
+    $this->actingAs($user)->get('/profile')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('equippedAccessories.headband', null)

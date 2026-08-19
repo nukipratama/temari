@@ -35,26 +35,26 @@ Strava is the only identity in the app — there is no email/password. Signing i
 
 ## Connect (OAuth)
 
-The login screen is the front door. [Login.tsx](../../resources/js/pages/Auth/Login.tsx) renders a Strava-branded button whose `href` is the server-issued `authStravaUrl`; it is a plain `<a>` full navigation, not an Inertia visit (the brand mark and "Sambungkan dengan Strava" label are a deliberate product decision, see the comment in the page).
+The login screen is the front door. [Login.tsx](../../resources/js/pages/Auth/Login.tsx) renders a Strava-branded button whose `href` is the server-issued `authStravaUrl`; it is a plain `<a>` full navigation, not an Inertia visit (the brand mark and "Connect with Strava" label are a deliberate product decision, see the comment in the page).
 
 Socialite drives the handshake in [StravaAuthController](../../app/Http/Controllers/Auth/StravaAuthController.php):
 
 - `redirect()` requests scopes `read` and `activity:read_all`.
 - `callback()` reads the *granted* scopes from Strava's `scope` query param (not what we asked for), then `upsertUser()` creates-or-updates the `User` + [StravaConnection](../../app/Models/StravaConnection.php) keyed on `strava_athlete_id`. A partial grant still saves but logs `strava.scopes.partial`.
-- On a *first-ever* connection it dispatches `SyncActivitiesJob` immediately so the dashboard isn't empty before the hourly poll, then redirects to the [[onboarding]] wizard instead of the dashboard; re-logins skip the backfill and land straight on `dashboard` (the per-user lock makes a redundant sync dispatch harmless anyway).
+- On a *first-ever* connection it dispatches `SyncActivitiesJob` immediately so the dashboard isn't empty before the hourly poll, then redirects to the [[onboarding]] wizard instead of the dashboard; re-logins skip the backfill and land straight on `dashboard` (the per-user lock makes a redundant sync dispatch harmless anyway). That backfill is unbounded on purpose and still cheap: the walk pages 200 activity *summaries* per read and stores the athlete's whole history from them, so it costs a handful of Strava calls rather than two per run — see [[run-ingest-pipeline]].
 - `logout()` clears the session — it does **not** revoke the Strava token.
 
-Routes: `auth.strava.redirect` / `auth.strava.callback` in [web.php](../../routes/web.php).
+Routes: `auth.strava.redirect` / `auth.strava.callback` in [web.php](../../routes/web.php), both behind `throttle:strava-oauth` (10/min per IP, defined in [AppServiceProvider](../../app/Providers/AppServiceProvider.php)). This is the account-creation path and it is open to anyone, so it cannot key off a user id the way `strava-sync` and `analysis-trigger` do; it stays IP-keyed even for a signed-in reconnect. Terms, privacy, AI-use and the training disclaimer are linked from the login page footer so a stranger can read them before connecting — see [[legal-pages]].
 
-## Manual sync ("Sync sekarang")
+## Manual sync ("Sync now")
 
 [StravaSyncButton](../../resources/js/components/StravaSyncButton.tsx) is the state-driven CTA on empty states. When `state === 'ready'` it `router.post('/strava/sync')`; when disconnected/revoked it shows the connect link instead; while a sync is in flight it renders nothing.
 
 [SyncController](../../app/Http/Controllers/Strava/SyncController.php) (an `__invoke` single-action) just queues `SyncActivitiesJob` for the signed-in athlete and flashes a friendly message. A double-tap is safe — the orchestrator holds a per-user lock and the walk stops at the first already-known activity.
 
-[StravaSyncBadge](../../resources/js/components/StravaSyncBadge.tsx) reflects status in the nav: a green dot + relative "synced" time when ready, a pulsing "Lagi sinkron" while syncing, an ember "Strava putus" when revoked.
+[StravaSyncBadge](../../resources/js/components/StravaSyncBadge.tsx) reflects status in the nav: a green dot + relative "Strava synced" time when ready, a pulsing "Syncing" while syncing, an ember "Strava disconnected · Reconnect" when revoked.
 
-Two more manual re-pulls exist beyond "Sync sekarang": [ResyncActivityController](../../app/Http/Controllers/Strava/ResyncActivityController.php) behind the run detail page's "Resync dari Strava", and `RunnerZonesController::resyncFromStrava` behind the Pengaturan zone "Sinkron ulang dari Strava" (which runs [SyncZonesJob](../../app/Jobs/Strava/SyncZonesJob.php) inline rather than queued).
+Two more manual re-pulls exist beyond "Sync now": [ResyncActivityController](../../app/Http/Controllers/Strava/ResyncActivityController.php) behind the run detail page's "Resync from Strava", and `RunnerZonesController::resyncFromStrava` behind the HR-zones disclosure's "Resync from Strava" on [[settings-hr-zones]] (which runs [SyncZonesJob](../../app/Jobs/Strava/SyncZonesJob.php) inline rather than queued).
 
 ## Kill-switch pause
 

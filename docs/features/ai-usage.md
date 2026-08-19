@@ -3,8 +3,11 @@ title: AI usage dashboard
 description: The ops-gated token-usage and cost dashboard — by kind, user and deployment, with daily spend against a ceiling.
 tags: [feature, ai]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-08-14
 code_refs:
+  - app/Livewire/Pulse/NotificationDeliveryHealth.php
+  - app/Livewire/Pulse/SelfHealAttempts.php
+  - resources/views/vendor/pulse/dashboard.blade.php
   - resources/js/pages/AiUsage.tsx
   - resources/js/pages/AiUsage/helpers.ts
   - resources/js/pages/AiUsage/types.ts
@@ -14,6 +17,7 @@ code_refs:
   - resources/js/components/aiusage/UsageFilters.tsx
   - resources/js/components/aiusage/UsageKpis.tsx
   - resources/js/components/aiusage/BudgetGauge.tsx
+  - app/Services/AI/CostCeilingLedger.php
   - resources/js/components/aiusage/DailyChart.tsx
   - resources/js/components/aiusage/AttentionArea.tsx
   - resources/js/components/aiusage/DeploymentTable.tsx
@@ -32,7 +36,7 @@ code_refs:
 
 ## System dependencies
 
-- **Cost ceiling** — spend is bounded by [[idempotent-dispatch-cost-ceiling]] (dispatch-time) and the execution-time guard in `AnalyzeBaseJob`.
+- **Cost ceiling** — spend is bounded by [[idempotent-dispatch-cost-ceiling]] (dispatch-time) and the execution-time guard in `AnalyzeBaseJob`. Past the ceiling narration is served rule-based rather than paused, per [[cost-ceiling-degrades-to-rule-based]].
 - **Analytics DB** — metering rows live on the separate `analytics` connection; see [[analytics-db]].
 - **AI pipeline** — all analyses are produced by [[ai-pipeline]].
 
@@ -41,11 +45,11 @@ code_refs:
 [AiUsage.tsx](../../resources/js/pages/AiUsage.tsx) is pure composition; each block below is its own component under [components/aiusage/](../../resources/js/components/aiusage/AttentionArea.tsx), and the shared formatting and payload shapes live in [helpers.ts](../../resources/js/pages/AiUsage/helpers.ts) / [types.ts](../../resources/js/pages/AiUsage/types.ts). For a chosen date window it renders:
 
 - **KPI tiles** via [UsageKpis](../../resources/js/components/aiusage/UsageKpis.tsx) over [KpiTile](../../resources/js/components/dashboard/KpiTile.tsx) — total tokens, estimated cost, prompt tokens (and prompt share), plus a fourth tile.
-- A **budget gauge** ([BudgetGauge](../../resources/js/components/aiusage/BudgetGauge.tsx)) comparing the window's spend against the configured daily ceiling.
+- A **budget gauge** ([BudgetGauge](../../resources/js/components/aiusage/BudgetGauge.tsx)) comparing the window's spend against the configured daily ceiling, plus — once the ceiling has tripped today — the trip time and how many blocks were served rule-based as a result, recorded by [CostCeilingLedger](../../app/Services/AI/CostCeilingLedger.php).
 - Breakdown tables: **by kind** ([KindTable](../../resources/js/components/aiusage/KindTable.tsx), which narrator/analysis), **by user** ([UserTable](../../resources/js/components/aiusage/UserTable.tsx)), and **by deployment** ([DeploymentTable](../../resources/js/components/aiusage/DeploymentTable.tsx), which Azure model deployment served the call). All three share the generic [DataTable](../../resources/js/components/ui/DataTable.tsx) shell, which takes its empty state from the caller.
 - Each **by kind** row carries an agent summary line under its name — `3.5 langkah · 71% cache · 18% reasoning`. Every narrator is a tool-calling agent, so one row can span several model turns: without the step count an expensive block is indistinguishable from a chatty one. The line is **absent, not zeroed**, for kinds whose rows predate those columns, since zero would read as "never cached, never reasoned" rather than "never measured".
 - A **daily** series for the spend-over-time view ([DailyChart](../../resources/js/components/aiusage/DailyChart.tsx)).
-- An **attention area** ([AttentionArea](../../resources/js/components/aiusage/AttentionArea.tsx), hidden when nothing is stuck) with a global one-shot **Pulihkan semua** recover action plus three per-user buckets so the "healthy" dashboard stops hiding silent rot: **Perlu perhatian** (dead-lettered, self-heal gave up), **Failed, belum menyerah** (Failed but still under the retry budget), and **Nyangkut** (Pending/Queued stuck past `Analysis::STALE_IN_FLIGHT_HOURS`, excluding window-gated open-period recap rows whose Pending is inert by design). The dead-letter and failed-under-budget buckets carry a per-user re-arm button; Nyangkut is recovered by the global action.
+- An **attention area** ([AttentionArea](../../resources/js/components/aiusage/AttentionArea.tsx), hidden when nothing is stuck) with a global one-shot **Recover all** recover action plus three per-user buckets so the "healthy" dashboard stops hiding silent rot: **Needs attention** (dead-lettered, self-heal gave up), **Failed, not giving up yet** (Failed but still under the retry budget), and **Stuck** (Pending/Queued stuck past `Analysis::STALE_IN_FLIGHT_HOURS`, excluding window-gated open-period recap rows whose Pending is inert by design). The dead-letter and failed-under-budget buckets carry a per-user re-arm button; Stuck is recovered by the global action. The buckets group by user, type and error and do not show how much retry budget an individual block has left — that numeric `attempts` / `Analysis::MAX_SELF_HEAL_ATTEMPTS` view is the `Self-Heal Budget` Pulse card ([SelfHealAttempts](../../app/Livewire/Pulse/SelfHealAttempts.php)), per the surface split below.
 
 A kind filter and from/to date controls ([UsageFilters](../../resources/js/components/aiusage/UsageFilters.tsx)) re-query the same endpoint via `router`.
 
@@ -54,6 +58,12 @@ A kind filter and from/to date controls ([UsageFilters](../../resources/js/compo
 [TokenUsageController::show](../../app/Http/Controllers/TokenUsageController.php) validates optional `from` / `to` (`Y-m-d`) and `kind`, defaulting the window to the start of the current month through now. It delegates to [TokenUsageReport::build](../../app/Services/AI/TokenUsageReport.php), which aggregates the metering rows and returns `totals`, `byKind`, `byUser`, `byDeployment`, `daily`, `availableKinds` and `budget` — all passed straight into the Inertia page.
 
 The metering rows (`ai_token_usages`) live on the separate `analytics` connection, not the app database — see [[analytics-db]].
+
+## Surface split with /pulse
+
+This page owns **money**: spend, the daily budget, the per-user and per-model breakdowns, and the dead-letter re-arm. `/pulse` owns **health**: pipeline state, Strava, scheduler runs, the kill switches, notification delivery outcomes ([NotificationDeliveryHealth](../../app/Livewire/Pulse/NotificationDeliveryHealth.php)) and the per-block retry budget ([SelfHealAttempts](../../app/Livewire/Pulse/SelfHealAttempts.php)). The split is why a new operational signal goes to Pulse rather than growing this page, and why this page stays a first-party Inertia screen rather than becoming Livewire.
+
+Pulse renders outside the Inertia shell, so its layout loads only the packaged `pulse.css`; [resources/views/vendor/pulse/dashboard.blade.php](../../resources/views/vendor/pulse/dashboard.blade.php) registers `app.css` through `Pulse::css()` so the first-party cards can use the semantic `--color-*` tokens. Pulse's own stylesheet is unlayered and therefore still outranks the Tailwind v4 layers on every class the two vocabularies share, which is what keeps the stock cards looking stock. Utilities that Tailwind v3 initialises on `*` (`border-color`, the `--tw-ring-*` group) cannot be overridden that way, so the first-party cards use tinted backgrounds rather than rings or borders. The same file pins `localStorage.theme` to `light`, because the app is light-mode only and Pulse's switcher otherwise follows the operator's OS.
 
 ## Access (ops-gated)
 

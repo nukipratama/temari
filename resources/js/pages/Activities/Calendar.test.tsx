@@ -241,17 +241,17 @@ describe('Calendar', () => {
         );
         expect(
             screen.getByRole('link', { name: 'Jump to current month' }),
-        ).toHaveAttribute('href', '/calendar');
+        ).toHaveAttribute('href', '/history?view=calendar');
     });
 
     it('renders prev / next nav buttons with correct hrefs', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
             screen.getByRole('link', { name: 'Previous month' }),
-        ).toHaveAttribute('href', '/calendar?month=2026-04');
+        ).toHaveAttribute('href', '/history?view=calendar&month=2026-04');
         expect(
             screen.getByRole('link', { name: 'Next month' }),
-        ).toHaveAttribute('href', '/calendar?month=2026-06');
+        ).toHaveAttribute('href', '/history?view=calendar&month=2026-06');
     });
 
     it('renders all six mood swatches in the legend', () => {
@@ -410,10 +410,10 @@ describe('Calendar', () => {
             );
             expect(screen.getByText(/Temari's notes/)).toBeInTheDocument();
             expect(
-                screen.queryByText('Belum dibaca Temari.'),
+                screen.queryByText(/thinking it over/),
             ).not.toBeInTheDocument();
             expect(
-                screen.queryByRole('button', { name: /Minta Temari bacain/ }),
+                screen.queryByRole('button', { name: /Try again/ }),
             ).not.toBeInTheDocument();
         });
 
@@ -434,7 +434,7 @@ describe('Calendar', () => {
                 screen.getByText("This month's recap isn't ready yet."),
             ).toBeInTheDocument();
             expect(
-                screen.queryByRole('button', { name: /Minta Temari bacain/ }),
+                screen.queryByRole('button', { name: /Try again/ }),
             ).not.toBeInTheDocument();
         });
 

@@ -93,9 +93,9 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
 
     // Await markSeen before navigating — prevents the Inertia request from
     // arriving before the seen POST clears pending_reveal_card_id.
-    const viewKoleksi = useCallback((): void => {
+    const viewCollection = useCallback((): void => {
         void markSeen().then(() =>
-            router.visit('/cards', { preserveScroll: false }),
+            router.visit('/history', { preserveScroll: false }),
         );
     }, [markSeen]);
 
@@ -135,7 +135,7 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
     useBodyScrollLock(!dismissed);
 
     const km = formatKm(pending.distance_m);
-    const durasi =
+    const duration =
         pending.elapsed_time_sec != null
             ? formatDuration(pending.elapsed_time_sec)
             : '—';
@@ -185,7 +185,7 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
         subtitle,
         date: null,
         km,
-        durasi,
+        duration,
         pace: sharePaceSec != null ? formatPace(sharePaceSec) : null,
         trimp,
         hr: revealStats.hr ?? null,
@@ -344,7 +344,7 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
                                     <Kartu
                                         name={pending.special_move}
                                         km={km}
-                                        durasi={durasi}
+                                        duration={duration}
                                         trimp={trimp}
                                         rarity={pending.rarity}
                                         mood={pending.mood}
@@ -382,7 +382,7 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
                                             >
                                                 <PillButton
                                                     tone="sky"
-                                                    onClick={viewKoleksi}
+                                                    onClick={viewCollection}
                                                 >
                                                     <Icon
                                                         icon="mdi:cards-outline"

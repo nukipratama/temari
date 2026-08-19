@@ -157,11 +157,11 @@ describe('UsageFilters', () => {
     it('highlights the active preset', () => {
         renderFilters({ range: '7d' as RangeToken });
 
-        expect(
-            screen.getByRole('link', { name: /7 days/i }).className,
-        ).toContain('bg-sky');
-        expect(
-            screen.getByRole('link', { name: /30 days/i }).className,
-        ).toContain('bg-cream-deep');
+        expect(screen.getByRole('link', { name: /7 days/i })).toHaveClass(
+            'bg-sky',
+        );
+        expect(screen.getByRole('link', { name: /30 days/i })).toHaveClass(
+            'bg-cream-deep',
+        );
     });
 });

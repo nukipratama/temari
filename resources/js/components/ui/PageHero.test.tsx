@@ -24,8 +24,7 @@ describe('PageHero', () => {
     it('defaults to the lg step and ink text on a cream surface', () => {
         render(<PageHero>Plain headline</PageHero>);
         const h1 = screen.getByText('Plain headline');
-        expect(h1.className).toContain('text-display-lg');
-        expect(h1.className).toContain('text-ink');
+        expect(h1).toHaveClass('text-display-lg', 'text-ink');
     });
 
     it('applies the on-sky tone (cream headline text)', () => {
