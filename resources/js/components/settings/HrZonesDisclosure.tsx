@@ -1,18 +1,14 @@
 import { Icon } from '@iconify/react';
-import { Head, router, usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import StravaAction from '@/components/StravaAction';
-import BackLink from '@/components/ui/BackLink';
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
-import PageContainer from '@/components/ui/PageContainer';
-import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { usePendingPost } from '@/hooks/usePendingPost';
-import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 
@@ -38,29 +34,10 @@ const ZONE_LABEL: Record<ZoneKey, string> = {
 
 type ZoneSource = 'default' | 'strava' | 'manual';
 
-const SOURCE_INFO: Record<
-    ZoneSource,
-    { icon: string; iconClass: string; label: string; description: string }
-> = {
-    default: {
-        icon: 'mdi:tune-variant',
-        iconClass: 'text-ink-3',
-        label: 'Default zones',
-        description: "You're still on the default zones. Make your own below.",
-    },
-    strava: {
-        icon: 'mdi:cloud-check-variant-outline',
-        iconClass: 'text-leaf-ink',
-        label: 'Synced from Strava',
-        description:
-            'These zones sync automatically from Strava. Edit them manually below if you want to set your own.',
-    },
-    manual: {
-        icon: 'mdi:pencil-outline',
-        iconClass: 'text-ink-2',
-        label: 'Set manually',
-        description: "You've set your own zones. Change them anytime below.",
-    },
+const SOURCE_ICON: Record<ZoneSource, string> = {
+    default: 'mdi:tune-variant',
+    strava: 'mdi:cloud-check-variant-outline',
+    manual: 'mdi:pencil-outline',
 };
 
 interface Zone {
@@ -77,12 +54,11 @@ interface HrProfile {
     optimal_cadence_spm: number;
 }
 
-interface HrZonesProps {
+export interface HrZonesPayload {
     profile: HrProfile;
-    hasCustomProfile: boolean;
-    source?: ZoneSource;
-    stravaSyncedLabel?: string | null;
-    canSyncFromStrava?: boolean;
+    source: ZoneSource;
+    stravaSyncedLabel: string | null;
+    canSyncFromStrava: boolean;
 }
 
 /**
@@ -108,12 +84,30 @@ export function deriveZones(maxHr: number, restingHr: number): HrZones {
     return zones;
 }
 
-export default function HrZones({
-    profile,
-    source = 'default',
-    stravaSyncedLabel = null,
-    canSyncFromStrava = false,
-}: Readonly<HrZonesProps>) {
+function collapsedCopy(hrZones: HrZonesPayload): string {
+    if (hrZones.source === 'strava') {
+        return hrZones.stravaSyncedLabel
+            ? `Synced from Strava · last synced ${hrZones.stravaSyncedLabel}`
+            : 'Synced from Strava';
+    }
+    if (hrZones.source === 'manual') {
+        return "You've set your own zones";
+    }
+    return "Set your own zones — you're on the defaults for now";
+}
+
+/**
+ * Inline HR-zone editing, expand/collapse rather than a separate page: real
+ * Max/Resting HR + all five zone boundaries stay individually editable (not
+ * just derived), matching what `/settings/zones` used to offer as its own
+ * route.
+ */
+export default function HrZonesDisclosure({
+    hrZones,
+}: Readonly<{ hrZones: HrZonesPayload }>) {
+    const [open, setOpen] = useState(false);
+    const { profile, source, canSyncFromStrava } = hrZones;
+
     const [maxHr, setMaxHr] = useState<number>(profile.max_hr);
     const [restingHr, setRestingHr] = useState<number>(profile.resting_hr);
     const [zones, setZones] = useState<HrZones>(profile.hr_zones);
@@ -156,19 +150,19 @@ export default function HrZones({
         }));
     };
 
-    // Reset and resync change the zones server-side, so hard-refresh afterwards
-    // to re-seed the whole form from the new profile — simpler and more robust
-    // than reconciling this page's local state against the incoming props.
+    // Reset and resync change the zones server-side; a scoped reload of just
+    // this prop re-seeds the form from the new profile without disturbing
+    // whatever else is live on the rest of the Settings page.
     const resetToDefault = () => {
         router.delete('/settings/zones', {
-            onSuccess: () => window.location.reload(),
+            onSuccess: () => router.reload({ only: ['hrZones'] }),
         });
     };
 
     const [resyncing, resyncFromStrava] = usePendingPost(
         '/settings/zones/resync-strava',
         {
-            onSuccess: () => window.location.reload(),
+            onSuccess: () => router.reload({ only: ['hrZones'] }),
         },
     );
 
@@ -204,52 +198,43 @@ export default function HrZones({
     };
 
     return (
-        <>
-            <Head title="Settings · HR Zones" />
-            <PageContainer>
-                <header>
-                    {/* Points at the real parent. It used to read as a trail to
-                        the profile while hrefing straight past the page it came
-                        from. */}
-                    <PageHero
-                        size="md"
-                        italic
-                        eyebrow={
-                            <BackLink
-                                href="/settings"
-                                className="mb-4 hidden lg:inline-flex"
-                            >
-                                Settings
-                            </BackLink>
-                        }
-                    >
-                        Your heart rate zones.
-                    </PageHero>
-                    <p className="mt-2 max-w-xl font-sans text-sm leading-relaxed text-ink-2">
-                        {SOURCE_INFO[source].description}
-                    </p>
-                    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="inline-flex items-center gap-2 rounded-full bg-sky/[0.06] px-3.5 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-ink-2">
-                            <Icon
-                                icon={SOURCE_INFO[source].icon}
-                                width={13}
-                                height={13}
-                                aria-hidden
-                                className={cn(
-                                    'shrink-0',
-                                    SOURCE_INFO[source].iconClass,
-                                )}
-                            />
-                            {SOURCE_INFO[source].label}
+        <div className="rounded-xl border border-line/60">
+            <button
+                type="button"
+                onClick={() => setOpen((v) => !v)}
+                aria-expanded={open}
+                className="pressable focus-ring flex w-full items-center justify-between gap-3 rounded-xl p-3.5 text-left transition hover:bg-cream-deep/40"
+            >
+                <span className="flex items-center gap-3">
+                    <Icon
+                        icon={SOURCE_ICON[source]}
+                        width={20}
+                        height={20}
+                        className="text-ink-3"
+                        aria-hidden
+                    />
+                    <span className="flex flex-col">
+                        <span className="font-sans text-sm font-semibold text-ink">
+                            HR zones
                         </span>
-                        {source === 'strava' && stravaSyncedLabel && (
-                            <span className="text-meta">
-                                · last synced {stravaSyncedLabel}
-                            </span>
-                        )}
-                    </div>
+                        <span className="font-sans text-[12px] text-ink-3">
+                            {collapsedCopy(hrZones)}
+                        </span>
+                    </span>
+                </span>
+                <Icon
+                    icon={open ? 'mdi:chevron-up' : 'mdi:chevron-down'}
+                    width={18}
+                    height={18}
+                    className="shrink-0 text-ink-3"
+                    aria-hidden
+                />
+            </button>
+
+            {open && (
+                <div className="border-t border-line/60 p-3.5 pt-4">
                     {source !== 'default' && (
-                        <div className="mt-4 flex flex-wrap items-center gap-3">
+                        <div className="mb-4 flex flex-wrap items-center gap-3">
                             {canShowResync && (
                                 <StravaAction>
                                     <PillButton
@@ -294,54 +279,47 @@ export default function HrZones({
                             </PillButton>
                         </div>
                     )}
-                </header>
 
-                <Card as="section" padding="hero" className="mt-8">
-                    <SectionLabel>Max & Resting HR</SectionLabel>
-                    <div className="grid gap-5 sm:grid-cols-2">
-                        <NumberField
-                            label="Max HR"
-                            suffix="bpm"
-                            value={maxHr}
-                            error={errors.max_hr}
-                            onChange={setMaxHr}
-                        />
-                        <NumberField
-                            label="Resting HR"
-                            suffix="bpm"
-                            value={restingHr}
-                            error={errors.resting_hr}
-                            onChange={setRestingHr}
-                        />
-                    </div>
-
-                    <div className="mt-5 flex flex-wrap items-center gap-3">
-                        <PillButton
-                            tone="outline"
-                            size="sm"
-                            onClick={applyDerived}
-                        >
-                            <Icon
-                                icon="mdi:calculator-variant-outline"
-                                width={14}
-                                height={14}
-                                aria-hidden
+                    <Card padding="panel">
+                        <SectionLabel size="micro">
+                            Max &amp; Resting HR
+                        </SectionLabel>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <NumberField
+                                label="Max HR"
+                                suffix="bpm"
+                                value={maxHr}
+                                error={errors.max_hr}
+                                onChange={setMaxHr}
                             />
-                            Auto-calculate from Max & Resting
-                        </PillButton>
-                    </div>
-                    <p className="mt-3 max-w-xl font-sans text-xs leading-relaxed text-ink-3">
-                        I use the %HRR (Karvonen) formula as a starting point:
-                        it works out your zones from your resting and max heart
-                        rate. If you've already got your own numbers, just edit
-                        them manually below.
-                    </p>
-                </Card>
+                            <NumberField
+                                label="Resting HR"
+                                suffix="bpm"
+                                value={restingHr}
+                                error={errors.resting_hr}
+                                onChange={setRestingHr}
+                            />
+                        </div>
+                        <div className="mt-4">
+                            <PillButton
+                                tone="outline"
+                                size="sm"
+                                onClick={applyDerived}
+                            >
+                                <Icon
+                                    icon="mdi:calculator-variant-outline"
+                                    width={14}
+                                    height={14}
+                                    aria-hidden
+                                />
+                                Auto-calculate from Max &amp; Resting
+                            </PillButton>
+                        </div>
+                    </Card>
 
-                <div data-coachmark="hrzones-editor" className="mt-6">
-                    <Card as="section" padding="hero">
-                        <SectionLabel>Your zones</SectionLabel>
-                        <p className="mb-4 font-sans text-xs text-ink-3">
+                    <Card padding="panel" className="mt-3">
+                        <SectionLabel size="micro">Your zones</SectionLabel>
+                        <p className="mb-3 font-sans text-xs text-ink-3">
                             Each upper bound should match the next zone's lower
                             bound, so there are no gaps.
                         </p>
@@ -421,52 +399,46 @@ export default function HrZones({
                             )}
                         </AnimatePresence>
                     </Card>
-                </div>
 
-                <p className="mt-5 font-sans text-sm text-ink-2">
-                    These zones apply to every run from now on.
-                </p>
-
-                <div
-                    className="mt-5 flex items-center gap-3"
-                    data-coachmark="hrzones-save"
-                >
-                    <PillButton
-                        tone="sky"
-                        onClick={submit}
-                        disabled={processing || !isDirty}
-                    >
-                        <Icon
-                            icon="mdi:content-save-outline"
-                            width={16}
-                            height={16}
-                            aria-hidden
-                        />
-                        Save zones
-                    </PillButton>
-                    <AnimatePresence>
-                        {justSaved && (
-                            <motion.span
-                                variants={fadeInUp}
-                                initial="hidden"
-                                animate="visible"
-                                exit="hidden"
-                                role="status"
-                                className="inline-flex items-center gap-1.5 text-sm font-semibold text-leaf-ink"
-                            >
-                                <Icon
-                                    icon="mdi:check-circle-outline"
-                                    width={16}
-                                    height={16}
-                                    aria-hidden
-                                />
-                                Saved
-                            </motion.span>
-                        )}
-                    </AnimatePresence>
+                    <div className="mt-4 flex items-center gap-3">
+                        <PillButton
+                            tone="sky"
+                            size="sm"
+                            onClick={submit}
+                            disabled={processing || !isDirty}
+                        >
+                            <Icon
+                                icon="mdi:content-save-outline"
+                                width={16}
+                                height={16}
+                                aria-hidden
+                            />
+                            Save zones
+                        </PillButton>
+                        <AnimatePresence>
+                            {justSaved && (
+                                <motion.span
+                                    variants={fadeInUp}
+                                    initial="hidden"
+                                    animate="visible"
+                                    exit="hidden"
+                                    role="status"
+                                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-leaf-ink"
+                                >
+                                    <Icon
+                                        icon="mdi:check-circle-outline"
+                                        width={16}
+                                        height={16}
+                                        aria-hidden
+                                    />
+                                    Saved
+                                </motion.span>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
-            </PageContainer>
-        </>
+            )}
+        </div>
     );
 }
 
@@ -567,5 +539,3 @@ function BoundaryInput({
         />
     );
 }
-
-HrZones.layout = appLayout;

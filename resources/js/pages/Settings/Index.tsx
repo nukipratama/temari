@@ -5,6 +5,9 @@ import { type ReactNode, useState } from 'react';
 import DemoBlockedModal from '@/components/DemoBlockedModal';
 import MeTabs from '@/components/me/MeTabs';
 import PushNotificationToggle from '@/components/PushNotificationToggle';
+import HrZonesDisclosure, {
+    type HrZonesPayload,
+} from '@/components/settings/HrZonesDisclosure';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import Card from '@/components/ui/Card';
 import PageContainer from '@/components/ui/PageContainer';
@@ -47,6 +50,7 @@ interface SettingsProps {
     notificationPrefs?: NotificationPrefs;
     /** Seconds left on the test-send cooldown, or null when it is not cooling. */
     testCooldownSeconds?: number | null;
+    hrZones?: HrZonesPayload;
 }
 
 const LEGAL_ROWS: ReadonlyArray<{
@@ -93,11 +97,32 @@ const PREFS_DEFAULT: NotificationPrefs = {
     push_enabled: true,
 };
 
+// Mirrors config('runner.php')'s single-user defaults, the same fallback
+// SettingsController hands back for a user with no RunnerProfile row.
+const HR_ZONES_DEFAULT: HrZonesPayload = {
+    profile: {
+        max_hr: 180,
+        resting_hr: 55,
+        hr_zones: {
+            Z1: { lo: 116, hi: 138 },
+            Z2: { lo: 138, hi: 154 },
+            Z3: { lo: 154, hi: 168 },
+            Z4: { lo: 168, hi: 176 },
+            Z5: { lo: 176, hi: 999 },
+        },
+        optimal_cadence_spm: 170,
+    },
+    source: 'default',
+    stravaSyncedLabel: null,
+    canSyncFromStrava: false,
+};
+
 export default function Settings({
     dataUse,
     telegram = TELEGRAM_DEFAULT,
     notificationPrefs = PREFS_DEFAULT,
     testCooldownSeconds = null,
+    hrZones = HR_ZONES_DEFAULT,
 }: Readonly<SettingsProps>) {
     return (
         <>
@@ -134,14 +159,7 @@ export default function Settings({
                 <section className="mt-10" data-coachmark="settings-hr-zones">
                     <SectionLabel>Running</SectionLabel>
                     <div className="mt-3">
-                        <Card padding="hero">
-                            <SettingsRow
-                                icon="mdi:heart-pulse"
-                                label="HR zones"
-                                description="Set your own Z1-Z5 boundaries so Temari reads your runs more accurately."
-                                href="/settings/zones"
-                            />
-                        </Card>
+                        <HrZonesDisclosure hrZones={hrZones} />
                     </div>
                 </section>
 

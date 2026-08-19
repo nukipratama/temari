@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\RunnerProfile;
 use App\Models\User;
 use App\Services\Telegram\TelegramLinkToken;
 use App\Support\Cooldown;
@@ -32,7 +33,30 @@ class SettingsController extends Controller
                 Cooldown::testNotificationKey($user->id),
                 Cooldown::TEST_WINDOW_SECONDS,
             )->remaining(),
+            'hrZones' => $this->resolveHrZones($user),
         ]);
+    }
+
+    /**
+     * @return array{profile: array<string, mixed>, source: string, stravaSyncedLabel: string|null, canSyncFromStrava: bool}
+     */
+    private function resolveHrZones(User $user): array
+    {
+        $profile = RunnerProfile::query()->where('user_id', $user->id)->first();
+
+        return [
+            'profile' => $user->hrProfile(),
+            'source' => $profile !== null ? $profile->source : 'default',
+            'stravaSyncedLabel' => $profile !== null ? $profile->strava_zones_synced_at?->format('j M Y, H:i') : null,
+            'canSyncFromStrava' => $this->canSyncFromStrava($user),
+        ];
+    }
+
+    private function canSyncFromStrava(User $user): bool
+    {
+        $connection = $user->stravaConnection;
+
+        return $connection !== null && ! $connection->isRevoked() && $connection->hasZoneScope();
     }
 
     /**

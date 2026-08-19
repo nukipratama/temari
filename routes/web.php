@@ -171,7 +171,6 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 
     Route::delete('/account', [AccountController::class, 'destroy'])->name('account.destroy');
 
-    Route::get('/settings/zones', [RunnerZonesController::class, 'index'])->name('settings.zones');
     Route::patch('/settings/zones', [RunnerZonesController::class, 'update'])->name('settings.zones.update');
     Route::delete('/settings/zones', [RunnerZonesController::class, 'resetToDefault'])->name('settings.zones.reset');
     Route::post('/settings/zones/resync-strava', [RunnerZonesController::class, 'resyncFromStrava'])->name('settings.zones.resync');

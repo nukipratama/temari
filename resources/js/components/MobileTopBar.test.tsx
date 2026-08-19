@@ -11,10 +11,7 @@ describe('MobileTopBar', () => {
         expect(screen.getByLabelText('Home')).toHaveAttribute('href', '/');
     });
 
-    it.each([
-        ['Runs/Show', '/history', 'History'],
-        ['Settings/HrZones', '/settings', 'Settings'],
-    ])(
+    it.each([['Runs/Show', '/history', 'History']])(
         'replaces the brand mark with a back button on %s',
         (component, href, label) => {
             setMockPage({}, '/x', component);

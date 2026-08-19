@@ -204,7 +204,7 @@
         "resources/js/pages/Devtools/Design.tsx": [
           "paper"
         ],
-        "resources/js/pages/Settings/HrZones.tsx": [
+        "resources/js/components/settings/HrZonesDisclosure.tsx": [
           "paper"
         ]
       },
@@ -541,9 +541,6 @@
           "paper"
         ],
         "resources/js/components/ui/SectionTabs.tsx": [
-          "paper"
-        ],
-        "resources/js/pages/Settings/HrZones.tsx": [
           "paper"
         ]
       },

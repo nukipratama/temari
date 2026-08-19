@@ -54,7 +54,7 @@ Routes: `auth.strava.redirect` / `auth.strava.callback` in [web.php](../../route
 
 [StravaSyncBadge](../../resources/js/components/StravaSyncBadge.tsx) reflects status in the nav: a green dot + relative "Strava synced" time when ready, a pulsing "Syncing" while syncing, an ember "Strava disconnected · Reconnect" when revoked.
 
-Two more manual re-pulls exist beyond "Sync now": [ResyncActivityController](../../app/Http/Controllers/Strava/ResyncActivityController.php) behind the run detail page's "Resync from Strava", and `RunnerZonesController::resyncFromStrava` behind the settings zone page's "Resync from Strava" (which runs [SyncZonesJob](../../app/Jobs/Strava/SyncZonesJob.php) inline rather than queued).
+Two more manual re-pulls exist beyond "Sync now": [ResyncActivityController](../../app/Http/Controllers/Strava/ResyncActivityController.php) behind the run detail page's "Resync from Strava", and `RunnerZonesController::resyncFromStrava` behind the HR-zones disclosure's "Resync from Strava" on [[settings-hr-zones]] (which runs [SyncZonesJob](../../app/Jobs/Strava/SyncZonesJob.php) inline rather than queued).
 
 ## Kill-switch pause
 
