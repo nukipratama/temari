@@ -1,0 +1,1943 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Temari — history redesign (mobile-first, light/dark/system)</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
+<style>
+  :root {
+    --sky: #171f28; --sky-deep: #0b1017; --sky-2: #26303d;
+    --horizon: #ade047; --horizon-deep: #95c134; --horizon-ink: #546d23;
+    --cream: #f1f5f8; --cream-deep: #e2e8ee;
+    --ink: #16181b; --ink-2: #34373c; --ink-3: #60666d;
+    --leaf: #2f8f63; --ember: #b23a4f; --citrus: #c9971f;
+    --line-light: #bfc5cc;
+    --r-xs: 6px; --r-sm: 10px; --r-md: 14px; --r-lg: 18px; --r-xl: 24px; --r-full: 9999px; --r-panel: 26px;
+    --e1: 0 1px 2px rgba(58,45,20,.06), 0 1px 1px rgba(58,45,20,.04);
+    --e2: 0 4px 10px rgba(58,45,20,.08), 0 2px 4px rgba(58,45,20,.05);
+    --e3: 0 12px 28px rgba(58,45,20,.12), 0 4px 10px rgba(58,45,20,.07);
+    --f-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    --f-display: 'Fraunces', Georgia, serif;
+    --f-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+    /* Real app.css --color-rarity-* vivid fills — the actual Kartu/RunCard glow tokens. */
+    --rc-common: #7d8694; --rc-uncommon: #2fb350; --rc-rare: #2f81f7;
+    --rc-epic: #a855f7; --rc-legendary: #f5a623;
+    /* Real app.css --color-mood-* values (resources/js/lib/mood.ts / chartTokens.ts
+       PALETTE) — the actual 6-mood taxonomy already used by MoodChip and the
+       Calendar page's day dots. */
+    --mood-blazing: #c9971f; --mood-easy: #2f8f63; --mood-wobbly: #b23a4f;
+    --mood-gassed: #7a2030; --mood-overloaded: #6b3fa0; --mood-chill: #55488f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 48px 40px 96px; background: #e4e4e4; color: var(--ink); font-family: var(--f-sans); }
+  h1 { font-size: 21px; font-weight: 800; margin: 0 0 4px; letter-spacing: -.01em; }
+  p.lede { margin: 0 0 8px; color: #58585f; max-width: 78ch; font-size: 14px; line-height: 1.55; }
+  .banner {
+    border: 1px solid #d2d2d8; background: #fff; border-radius: 12px; padding: 12px 16px;
+    margin: 16px 0 36px; max-width: 78ch; font-size: 12.5px; line-height: 1.6; color: #46464e;
+  }
+  .banner b { color: var(--ink); }
+
+  .rack { display: flex; gap: 40px; flex-wrap: wrap; align-items: flex-start; }
+  .col { display: flex; flex-direction: column; align-items: flex-start; }
+  .cap { width: 390px; margin-top: 12px; font-size: 12px; }
+  .cap b { display: block; font-weight: 700; font-size: 13px; }
+  .cap span { color: #6a6a72; }
+
+  .vp-bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 28px; }
+  .state-bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
+  .vp-btn {
+    border: 1px solid #d2d2d8; background: #fff; color: #46464e; font-family: var(--f-sans);
+    font-size: 12.5px; font-weight: 600; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  }
+  .vp-btn.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+  .phone {
+    width: 390px; height: 844px; border-radius: 52px; padding: 14px;
+    background: #0d0d0f; box-shadow: var(--e3), 0 30px 60px rgba(0,0,0,.25);
+    position: relative; transition: width .2s ease, height .2s ease;
+  }
+  .island {
+    position: absolute; top: 26px; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 30px; border-radius: var(--r-full); background: #0d0d0f; z-index: 20;
+  }
+  .phone.chrome-tablet .island { display: none; }
+  .phone.chrome-browser { border-radius: 14px; padding: 0; }
+  .phone.chrome-browser .island { display: none; }
+  .phone.chrome-browser .screen { height: calc(100% - 38px); border-radius: 0 0 10px 10px; }
+  .browser-bar { display: none; }
+  .phone.chrome-browser .browser-bar {
+    display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px;
+    background: #1c1c1f; border-radius: 14px 14px 0 0;
+  }
+  .browser-bar span { width: 9px; height: 9px; border-radius: 50%; background: #4a4a50; }
+
+  .screen {
+    width: 100%; height: 100%; border-radius: 38px; overflow: hidden; position: relative;
+    display: flex; flex-direction: column; container-type: inline-size;
+    --bg: var(--cream); --surf: var(--cream); --surf-sunk: var(--cream-deep);
+    --text: var(--ink); --text-2: var(--ink-2); --text-3: var(--ink-3);
+    --ln: var(--line-light); --ico-fg: var(--horizon-ink);
+    background: var(--bg); color: var(--text);
+  }
+  .screen[data-theme="dark"] {
+    --bg: var(--sky-deep); --surf: var(--sky); --surf-sunk: var(--sky-2);
+    --text: var(--cream); --text-2: rgba(241,245,248,.72); --text-3: rgba(241,245,248,.5);
+    --ln: rgba(241,245,248,.14); --ico-fg: var(--horizon);
+  }
+  @media (prefers-color-scheme: dark) {
+    .screen[data-theme="system"] {
+      --bg: var(--sky-deep); --surf: var(--sky); --surf-sunk: var(--sky-2);
+      --text: var(--cream); --text-2: rgba(241,245,248,.72); --text-3: rgba(241,245,248,.5);
+      --ln: rgba(241,245,248,.14); --ico-fg: var(--horizon);
+    }
+  }
+
+  .topbar {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 10px;
+  }
+  .topbar-brand {
+    display: flex; align-items: center; gap: 7px; font-weight: 800; font-size: 14px;
+    background: var(--surf-sunk); padding: 7px 13px 7px 10px; border-radius: 999px; box-shadow: var(--e1);
+  }
+  .topbar-brand svg { flex: none; }
+  @container (max-width: 340px) {
+    .topbar-brand { padding: 8px; }
+    .topbar-brand span { display: none; }
+  }
+  .topbar-right { display: flex; align-items: center; gap: 6px; }
+  .topbar-bell {
+    position: relative; width: 32px; height: 32px; border-radius: 50%; color: var(--text-3);
+    background: var(--surf-sunk); box-shadow: var(--e1);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .topbar-bell iconify-icon { font-size: 18px; }
+  .topbar-bell .badge {
+    position: absolute; top: 2px; right: 2px; min-width: 14px; height: 14px; padding: 0 3px;
+    border-radius: 999px; background: var(--ember); color: #fff; font-family: var(--f-mono);
+    font-size: 8.5px; font-weight: 800; line-height: 14px; text-align: center;
+  }
+  .topbar-avatar {
+    width: 28px; height: 28px; border-radius: 50%; background: var(--surf-sunk); color: var(--text-2);
+    display: flex; align-items: center; justify-content: center; font-family: var(--f-mono); font-size: 11px; font-weight: 700;
+    box-shadow: var(--e1);
+  }
+
+  .scroller { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; min-height: 0; }
+  .scroller::-webkit-scrollbar { display: none; }
+  .content { padding: 64px 16px 88px; }
+
+  .bottomnav {
+    position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 10;
+    display: flex; gap: 4px; padding: 6px; border-radius: 999px;
+    background: linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.05)), color-mix(in oklab, var(--surf) 58%, transparent);
+    backdrop-filter: blur(20px) saturate(1.8); -webkit-backdrop-filter: blur(20px) saturate(1.8);
+    border: 1px solid rgba(255,255,255,.3); box-shadow: var(--e2), inset 0 1px 0 rgba(255,255,255,.35);
+  }
+  .bn-item {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px 0; border-radius: 999px; color: var(--text-3); text-decoration: none;
+    transition: background .15s ease, color .15s ease, flex-grow .2s ease;
+  }
+  .bn-item iconify-icon { font-size: 18px; transition: font-size .15s ease; }
+  .bn-item span {
+    font-family: var(--f-mono); font-size: 9px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .05em; max-width: 0; overflow: hidden; white-space: nowrap; opacity: 0;
+    transition: max-width .2s ease, opacity .15s ease;
+  }
+  .bn-item.active {
+    flex-grow: 1.6; color: var(--ico-fg);
+    background: linear-gradient(135deg, color-mix(in oklab, var(--horizon) 34%, transparent), color-mix(in oklab, var(--horizon) 14%, transparent));
+    box-shadow: 0 2px 10px -2px color-mix(in oklab, var(--horizon) 45%, transparent), inset 0 1px 0 color-mix(in oklab, white 25%, transparent);
+  }
+  .bn-item.active iconify-icon { font-size: 20px; }
+  .bn-item.active span { max-width: 60px; opacity: 1; }
+
+  /* ─── page header — kept at full prominence per the redesign brief:
+     the emotional beat stays, only the list underneath changes. ────── */
+  .eyebrow { font-family: var(--f-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--text-3); }
+  .page-h1 {
+    margin: 8px 0 16px; font-family: var(--f-display); font-style: italic; font-weight: 600;
+    font-size: 28px; line-height: 1.1; color: var(--text);
+  }
+  .page-h1 em { color: var(--horizon-ink); font-style: italic; }
+  .screen[data-theme="dark"] .page-h1 em, .screen[data-theme="system"] .page-h1 em { color: var(--horizon); }
+
+  .htabs { display: flex; gap: 4px; margin: 0 0 14px; background: var(--surf-sunk); padding: 4px; border-radius: 999px; }
+  .htabs a { flex: 1; text-align: center; padding: 8px 0; border-radius: 999px; font-size: 11.5px; font-weight: 700; color: var(--text-3); text-decoration: none; }
+  .htabs a.active { background: var(--surf); color: var(--text); box-shadow: var(--e1); }
+
+
+  /* ─── week sections — plain header, no thread/nodes. Recap survives as
+     a real card (lighter than before); the run list is a single flat,
+     hairline-divided block, Strava-shaped rather than card-per-run. ─── */
+  .week-section { margin-bottom: 22px; }
+  .week-section:last-child { margin-bottom: 4px; }
+  .week-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; padding: 0 2px; }
+  .week-title { font-family: var(--f-display); font-size: 16px; font-weight: 600; color: var(--text); }
+  .week-meta { font-family: var(--f-mono); font-size: 9.5px; color: var(--text-3); }
+
+  .week-recap { display: flex; gap: 10px; align-items: flex-start; background: var(--surf); border: 1px solid var(--ln); border-radius: var(--r-md); padding: 12px 14px; box-shadow: var(--e1); margin-bottom: 10px; }
+  .week-recap svg { flex: none; }
+  .recap-body { flex: 1; min-width: 0; }
+  .recap-line { margin: 0; font-family: var(--f-display); font-style: italic; font-weight: 400; font-size: 12px; line-height: 1.45; color: var(--text-2); }
+  /* Notify sits with the chips, not beside the narration — it was
+     crowding the text mid-paragraph up top. */
+  .recap-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 7px; }
+  .recap-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .recap-chip { font-family: var(--f-mono); font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; padding: 2px 7px; border-radius: 999px; background: var(--surf-sunk); color: var(--text-2); }
+  .recap-notify { flex: none; width: 24px; height: 24px; border-radius: 50%; border: none; background: var(--surf-sunk); color: var(--ico-fg); display: flex; align-items: center; justify-content: center; }
+  .recap-notify iconify-icon { font-size: 13px; }
+
+  .run-list { background: var(--surf); border: 1px solid var(--ln); border-radius: var(--r-md); box-shadow: var(--e1); overflow: hidden; }
+
+  /* ─── run row — stats lead at full weight; mood is a small dot, Kartu
+     is a small star, the note is one truncated line. Demoted, not gone. */
+  .run-row { padding: 12px 14px; border-bottom: 1px solid var(--ln); }
+  .run-row:last-child { border-bottom: none; }
+  .run-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .run-title { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .mood-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--mood); }
+  .run-name { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .run-dist { flex: none; font-family: var(--f-mono); font-size: 13px; font-weight: 700; color: var(--text); }
+  .kartu-star { flex: none; font-size: 12px; color: var(--rarity); }
+  .run-date { flex: none; font-family: var(--f-mono); font-size: 9.5px; color: var(--text-3); }
+  .run-stats-primary { display: flex; align-items: baseline; gap: 7px; margin-top: 5px; font-family: var(--f-mono); }
+  .run-stats-primary b { font-size: 13px; font-weight: 800; color: var(--text); }
+  .run-stats-primary .sep { color: var(--ln); font-size: 11px; }
+  .run-stats-primary .hr { font-size: 13px; color: var(--text); font-weight: 800; }
+  .run-note {
+    margin: 5px 0 0; font-family: var(--f-display); font-style: italic; font-weight: 400; font-size: 10.5px; color: var(--text-3);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* ─── content states — independent of the theme toggle, mirrors
+     Today's plan-state pattern. "empty" = no runs logged ever; "partial"
+     = this week hasn't started yet, last week still shows. ─────────── */
+  .screen[data-state="empty"] .week-section,
+  .screen[data-state="empty"] .load-more-row { display: none; }
+  .screen[data-state="empty"] .no-runs-card { display: flex; }
+  .screen[data-state="partial"] .week-section-current { display: none; }
+
+  .no-runs-card {
+    display: none; background: var(--surf); border: 1px solid var(--ln); border-radius: var(--r-md); padding: 18px;
+    box-shadow: var(--e1); align-items: center; gap: 14px; margin-bottom: 18px;
+  }
+  .no-runs-card svg { flex: none; }
+  .no-runs-card .nr-title { margin: 0; font-family: var(--f-display); font-style: italic; font-weight: 600; font-size: 16px; color: var(--text); }
+  .no-runs-card .nr-body { margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-2); }
+
+  /* ─── load older weeks — Feed paginates rather than handing off to
+     Calendar; one demo week revealed here, real version would keep
+     fetching further back on repeat clicks. ─────────────────────────── */
+  .load-more-row { display: flex; justify-content: center; margin: 4px 0 18px; }
+  .load-more-btn {
+    border: 1px solid var(--ln); background: var(--surf); color: var(--text-2); font-family: var(--f-mono);
+    font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+    padding: 9px 18px; border-radius: 999px; box-shadow: var(--e1); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .load-more-btn iconify-icon { font-size: 12px; }
+  .older-week { display: none; }
+  .older-week.revealed { display: block; }
+
+  /* ─── calendar tab — grounded in the real Activities/Calendar.tsx:
+     a real monthly recap card (LLM MonthlyRecap analysis) survives as-is;
+     per-week narration inside the grid is a genuine extension (the real
+     week-summary cell is just a totals readout, no narration today) —
+     tapping it expands a strip below that row, reusing week data already
+     shown on the Feed tab so both views tell the same story. ──────────── */
+  .calendar-view { display: none; }
+  .screen[data-tab="calendar"] .feed-view { display: none; }
+  .screen[data-tab="calendar"] .calendar-view { display: block; }
+
+  .month-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .month-nav-arrow {
+    width: 28px; height: 28px; border-radius: 50%; background: var(--surf); box-shadow: var(--e1); border: none;
+    display: flex; align-items: center; justify-content: center; color: var(--text-2);
+  }
+  .month-nav-arrow[disabled] { opacity: .35; }
+
+  .month-block { display: none; }
+  .month-block[data-month="aug"] { display: block; }
+  .screen[data-month="jul"] .month-block[data-month="aug"] { display: none; }
+  .screen[data-month="jul"] .month-block[data-month="jul"] { display: block; }
+  .month-nav-label { font-family: var(--f-display); font-size: 15px; font-weight: 600; color: var(--text); }
+
+  .month-recap { display: flex; gap: 10px; align-items: flex-start; background: var(--surf); border: 1px solid var(--ln); border-radius: var(--r-md); padding: 14px; box-shadow: var(--e1); margin-bottom: 14px; }
+  .month-recap svg { flex: none; }
+  .month-recap-body { flex: 1; min-width: 0; }
+  .month-recap-line { margin: 0; font-family: var(--f-display); font-style: italic; font-weight: 400; font-size: 12.5px; line-height: 1.5; color: var(--text-2); }
+  .month-recap-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+  .month-meta { display: flex; align-items: center; justify-content: center; margin: 0 0 10px; padding: 0 2px; }
+  .month-meta-stats { font-family: var(--f-mono); font-size: 9.5px; color: var(--text-3); text-align: center; }
+
+  .mood-legend { display: flex; flex-wrap: wrap; gap: 7px 12px; margin-bottom: 14px; padding: 0 2px; }
+  .mood-legend-item { display: flex; align-items: center; gap: 4px; font-family: var(--f-mono); font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--text-3); }
+  .mood-legend-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--mood); }
+
+  .cal-grid-row { display: grid; grid-template-columns: 30px repeat(7, 1fr); gap: 3px; }
+  .cal-head { margin-bottom: 6px; }
+  .cal-head span { display: block; text-align: center; font-family: var(--f-mono); font-size: 7.5px; font-weight: 800; text-transform: uppercase; color: var(--text-3); }
+  .cal-head span:first-child { visibility: hidden; }
+
+  .week-block { margin-bottom: 4px; }
+  .wk-cell {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    background: var(--surf); border: 1px solid var(--ln); border-radius: var(--r-xs); padding: 5px 1px;
+    font-family: var(--f-mono); color: var(--text-3); width: 100%;
+  }
+  .wk-cell .wk-n { font-size: 7px; font-weight: 800; text-transform: uppercase; }
+  .wk-cell .wk-km { font-size: 8px; font-weight: 700; color: var(--text-2); }
+  .wk-cell .wk-meta { display: flex; align-items: center; gap: 2px; margin-top: 1px; }
+  .wk-cell .wk-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--mood); }
+  .wk-cell .wk-chevron { font-size: 7px; color: var(--text-3); transition: transform .15s ease; }
+  .week-block.expanded .wk-chevron { transform: rotate(180deg); }
+  .wk-cell[disabled] { color: var(--ln); cursor: default; }
+  .wk-cell:not([disabled]) { cursor: pointer; }
+
+  .day-cell {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    background: var(--surf); border: 1px solid var(--ln); border-radius: var(--r-xs); padding: 6px 0;
+    font-family: var(--f-mono); font-size: 9.5px; font-weight: 700; color: var(--text-2); min-height: 32px;
+  }
+  .day-cell.out { opacity: .32; }
+  .day-cell.today { background: color-mix(in oklab, var(--horizon) 18%, var(--surf)); border-color: var(--horizon-ink); color: var(--text); }
+  .day-cell .day-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--mood); }
+
+  .week-narration { display: none; margin: 4px 0 8px; padding: 10px 12px; background: var(--surf-sunk); border-radius: var(--r-sm); }
+  .week-block.expanded .week-narration { display: block; }
+  .week-narration p { margin: 0; font-family: var(--f-display); font-style: italic; font-weight: 400; font-size: 11.5px; line-height: 1.45; color: var(--text-2); }
+  .week-narration .recap-chips { margin-top: 7px; }
+  .week-narration .kartu-chip { color: var(--rarity); }
+
+  /* ─── wide reflow: same 900px threshold as the rest of this pass ── */
+  @container (min-width: 900px) {
+    .content { max-width: 760px; margin: 0 auto; padding: 24px 24px 96px; }
+  }
+</style>
+
+<h1>History — mobile redesign (round 3)</h1>
+<p class="lede">Real Pewter tokens (resources/css/app.css). Redesign of resources/js/pages/Activities/Feed.tsx — layout only, no dev work yet. Grounded in the real page: Feed/Calendar are genuinely separate views behind one route, a weekly recap sourced from WeeklySnapshot, and Kartu (RunCard) vs. plain runs — using the real mood taxonomy (resources/js/lib/mood.ts) and rarity tokens (app.css) throughout.</p>
+<div class="banner">
+  <b>Round 3 — the thread is gone.</b> Grilled this properly before rebuilding: the vertical thread/mascot-node
+  timeline read as decoration bolted onto a list, not something that made runs easier to scan — the actual job
+  of this page is fast, recency-first browsing, not a narrative experience. Rebuilt as a plain, hairline-divided
+  list (closer to how a real activity feed reads) with stats at full visual weight; mood color and Kartu rarity
+  survive as small accents (a dot, a star) instead of leading the row. The journey strip (first-run-vs-latest
+  comparison) is cut entirely — that belongs in a profile/trends context, not blocking the run list. The weekly
+  recap card survives, lighter than before. Header keeps its full italic-display treatment; that wasn't the
+  problem. Every week gets a recap card now, not just the current one — showing only one read as an inconsistency,
+  not a deliberate simplification. Its mascot is bigger and tinted by that week's own dominant mood (same
+  mood-dot tokens the run rows use), instead of a fixed neutral face. Content states are covered too: no runs
+  yet (mascot empty state), this week not started yet (its section is simply omitted, last week still shows),
+  and older history (a "load older weeks" control paginates the Feed further back — Calendar stays a separate,
+  full-browse view rather than absorbing overflow). Filters/sort are cut entirely — not needed on top of range,
+  mood, and Kartu already reading at a glance in this list. Same simplifications as before: Feed only, 365-run
+  cap isn't built here.
+</div>
+
+<div class="state-bar">
+  <button class="vp-btn active" data-state="populated" onclick="setHistoryState('populated')">Populated</button>
+  <button class="vp-btn" data-state="partial" onclick="setHistoryState('partial')">This week not started</button>
+  <button class="vp-btn" data-state="empty" onclick="setHistoryState('empty')">No runs yet</button>
+</div>
+
+<div class="vp-bar">
+  <button class="vp-btn active" data-vp="mobile" onclick="setViewport('mobile')">Mobile · 390×844</button>
+  <button class="vp-btn" data-vp="se" onclick="setViewport('se')">SE · 320×568</button>
+  <button class="vp-btn" data-vp="tablet" onclick="setViewport('tablet')">Tablet · 834×1112</button>
+  <button class="vp-btn" data-vp="desktop" onclick="setViewport('desktop')">Desktop · 1280×800</button>
+  <button class="vp-btn" data-vp="wide" onclick="setViewport('wide')">Wide · 1536×864</button>
+</div>
+
+<div class="rack">
+
+  <!-- LIGHT -->
+  <div class="col">
+    <div class="phone">
+      <div class="island"></div>
+      <div class="browser-bar"><span></span><span></span><span></span></div>
+      <div class="screen" data-theme="light">
+        <div class="topbar">
+          <div class="topbar-brand">
+            <svg viewBox="0 0 100 100" width="22" height="22" aria-hidden="true">
+              <g fill="none" stroke-width="11" stroke-linecap="round">
+                <path stroke="var(--horizon)" d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"/>
+                <path stroke="var(--text)" d="M50 27 A23 23 0 1 1 30.09 61.5"/>
+              </g>
+            </svg>
+            <span>temari</span>
+          </div>
+          <div class="topbar-right">
+            <a href="#" class="topbar-bell"><iconify-icon icon="mdi:bell-outline"></iconify-icon><span class="badge">2</span></a>
+            <div class="topbar-avatar">N</div>
+          </div>
+        </div>
+
+        <div class="scroller">
+        <div class="content">
+          <div class="eyebrow">history · 42 activities</div>
+          <h1 class="page-h1">every run<br><em>has a story.</em></h1>
+
+          <nav class="htabs">
+            <a href="#" class="active" data-tab="feed" onclick="switchHistoryTab(event, this, 'feed')">feed</a>
+            <a href="#" data-tab="calendar" onclick="switchHistoryTab(event, this, 'calendar')">calendar</a>
+          </nav>
+
+          <div class="feed-view">
+          <div class="no-runs-card">
+            <svg viewBox="0 0 100 100" width="40" height="40" aria-hidden="true">
+              <circle cx="50" cy="52" r="41" fill="none" stroke="var(--horizon)" stroke-width="6"/>
+              <circle cx="50" cy="52" r="31" fill="var(--surf)" stroke="var(--text)" stroke-width="4.5"/>
+              <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+              <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+              <circle cx="40" cy="50" r="4.4" fill="var(--text)"/><circle cx="60" cy="50" r="4.4" fill="var(--text)"/>
+              <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+            </svg>
+            <div>
+              <p class="nr-title">no runs yet.</p>
+              <p class="nr-body">log your first run and temari will start telling the story of your weeks here.</p>
+            </div>
+          </div>
+
+          <div class="week-section week-section-current">
+            <div class="week-head">
+              <div class="week-title">this week</div>
+              <div class="week-meta">3 runs · 24.6 km · trimp 186</div>
+            </div>
+
+            <div class="week-recap" style="--mood: var(--mood-easy)">
+              <svg viewBox="0 0 100 100" width="36" height="36" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--mood)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div class="recap-body">
+                <p class="recap-line">tempo tuesday was your strongest push yet, and sunday's long run held pace deep into the second hour.</p>
+                <div class="recap-foot">
+                  <div class="recap-chips"><span class="recap-chip">fatigue moderate</span><span class="recap-chip">fitness +2.1</span></div>
+                  <button class="recap-notify"><iconify-icon icon="mdi:bell-plus-outline"></iconify-icon></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="run-list">
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-blazing)"></span>
+                    <span class="run-name">tempo tuesday</span>
+                    <span class="run-dist">· 8.4 km</span>
+                    <iconify-icon class="kartu-star" icon="mdi:star-four-points" style="--rarity: var(--rc-rare)"></iconify-icon>
+                  </div>
+                  <span class="run-date">12 aug · 6:12am</span>
+                </div>
+                <div class="run-stats-primary"><b>42:18</b><span class="sep">·</span><b>5:02/km</b><span class="sep">·</span><span class="hr">152 bpm</span></div>
+                <p class="run-note">"you held that pace even when the hill fought back."</p>
+              </div>
+
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-easy)"></span>
+                    <span class="run-name">easy shakeout</span>
+                    <span class="run-dist">· 5.0 km</span>
+                  </div>
+                  <span class="run-date">14 aug · 6:40am</span>
+                </div>
+                <div class="run-stats-primary"><b>31:10</b><span class="sep">·</span><b>6:14/km</b><span class="sep">·</span><span class="hr">138 bpm</span></div>
+                <p class="run-note">"nice and loose — exactly what an easy day should feel like."</p>
+              </div>
+
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-wobbly)"></span>
+                    <span class="run-name">sunday long run</span>
+                    <span class="run-dist">· 16.2 km</span>
+                  </div>
+                  <span class="run-date">16 aug · 7:05am</span>
+                </div>
+                <div class="run-stats-primary"><b>1:34:02</b><span class="sep">·</span><b>5:48/km</b><span class="sep">·</span><span class="hr">149 bpm</span></div>
+                <p class="run-note">"your longest run in five weeks, and it didn't even feel like it."</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="week-section">
+            <div class="week-head">
+              <div class="week-title">last week</div>
+              <div class="week-meta">4 runs · 31.2 km · trimp 210</div>
+            </div>
+
+            <div class="week-recap" style="--mood: var(--mood-blazing)">
+              <svg viewBox="0 0 100 100" width="36" height="36" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--mood)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div class="recap-body">
+                <p class="recap-line">hill repeats tested you monday, and half marathon PR settled the score by thursday — a new PR by 2 minutes.</p>
+                <div class="recap-foot">
+                  <div class="recap-chips"><span class="recap-chip">load high</span><span class="recap-chip">fitness +3.4</span></div>
+                  <button class="recap-notify"><iconify-icon icon="mdi:bell-plus-outline"></iconify-icon></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="run-list">
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-gassed)"></span>
+                    <span class="run-name">hill repeats</span>
+                    <span class="run-dist">· 6.1 km</span>
+                  </div>
+                  <span class="run-date">4 aug · 6:00am</span>
+                </div>
+                <div class="run-stats-primary"><b>38:50</b><span class="sep">·</span><b>6:22/km</b><span class="sep">·</span><span class="hr">141 bpm</span></div>
+                <p class="run-note">"the hills didn't let up, and neither did you."</p>
+              </div>
+
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-blazing)"></span>
+                    <span class="run-name">half marathon PR</span>
+                    <span class="run-dist">· 21.1 km</span>
+                    <iconify-icon class="kartu-star" icon="mdi:star-four-points" style="--rarity: var(--rc-epic)"></iconify-icon>
+                  </div>
+                  <span class="run-date">7 aug · 7:00am</span>
+                </div>
+                <div class="run-stats-primary"><b>1:38:20</b><span class="sep">·</span><b>4:39/km</b><span class="sep">·</span><span class="hr">158 bpm</span></div>
+                <p class="run-note">"new pr by 2 minutes — you paced this one perfectly."</p>
+              </div>
+
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-chill)"></span>
+                    <span class="run-name">recovery jog</span>
+                    <span class="run-dist">· 4.0 km</span>
+                  </div>
+                  <span class="run-date">9 aug · 7:30am</span>
+                </div>
+                <div class="run-stats-primary"><b>26:40</b><span class="sep">·</span><b>6:40/km</b><span class="sep">·</span><span class="hr">128 bpm</span></div>
+                <p class="run-note">"slow enough to actually recover — good instinct."</p>
+              </div>
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-wobbly)"></span>
+                    <span class="run-name">tempo intervals</span>
+                    <span class="run-dist">· 7.2 km</span>
+                  </div>
+                  <span class="run-date">5 aug · 6:15am</span>
+                </div>
+                <div class="run-stats-primary"><b>36:05</b><span class="sep">·</span><b>5:00/km</b><span class="sep">·</span><span class="hr">161 bpm</span></div>
+                <p class="run-note">"held the target pace across every rep."</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="load-more-row">
+            <button class="load-more-btn" onclick="revealOlderWeek(this)">load older weeks<iconify-icon icon="mdi:chevron-down"></iconify-icon></button>
+          </div>
+
+          <div class="week-section older-week">
+            <div class="week-head">
+              <div class="week-title">27 jul – 2 aug</div>
+              <div class="week-meta">2 runs · 19.5 km · trimp 158</div>
+            </div>
+
+            <div class="week-recap" style="--mood: var(--mood-overloaded)">
+              <svg viewBox="0 0 100 100" width="36" height="36" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--mood)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div class="recap-body">
+                <p class="recap-line">a lighter week overall — monday eased you in, and saturday's long run tested legs that hadn't fully recovered.</p>
+                <div class="recap-foot">
+                  <div class="recap-chips"><span class="recap-chip">load moderate</span><span class="recap-chip">fitness +1.2</span></div>
+                  <button class="recap-notify"><iconify-icon icon="mdi:bell-plus-outline"></iconify-icon></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="run-list">
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-easy)"></span>
+                    <span class="run-name">monday easy</span>
+                    <span class="run-dist">· 5.5 km</span>
+                  </div>
+                  <span class="run-date">28 jul · 6:20am</span>
+                </div>
+                <div class="run-stats-primary"><b>33:00</b><span class="sep">·</span><b>6:00/km</b><span class="sep">·</span><span class="hr">135 bpm</span></div>
+                <p class="run-note">"settled into an easy rhythm early."</p>
+              </div>
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-overloaded)"></span>
+                    <span class="run-name">saturday long run</span>
+                    <span class="run-dist">· 14.0 km</span>
+                  </div>
+                  <span class="run-date">2 aug · 7:00am</span>
+                </div>
+                <div class="run-stats-primary"><b>1:22:30</b><span class="sep">·</span><b>5:53/km</b><span class="sep">·</span><span class="hr">148 bpm</span></div>
+                <p class="run-note">"legs felt heavy from the start, but you finished it."</p>
+              </div>
+            </div>
+          </div>
+          </div>
+
+          <div class="calendar-view">
+            <div class="month-nav">
+              <button class="month-nav-arrow" aria-label="Previous month" onclick="navMonth(this, 'prev')"><iconify-icon icon="mdi:chevron-left"></iconify-icon></button>
+              <div class="month-nav-label">august 2026</div>
+              <button class="month-nav-arrow" aria-label="Next month" disabled onclick="navMonth(this, 'next')"><iconify-icon icon="mdi:chevron-right"></iconify-icon></button>
+            </div>
+
+            <div class="month-block" data-month="aug">
+            <div class="month-meta">
+              <div class="month-meta-stats">9 runs · 75.3 km · trimp 554</div>
+            </div>
+
+            <div class="month-recap" style="--mood: var(--mood-blazing)">
+              <svg viewBox="0 0 100 100" width="36" height="36" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--mood)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div class="month-recap-body">
+                <p class="month-recap-line">august leaned into big efforts — a half marathon pr mid-month, backed by two kartu pulls, and fitness kept climbing even through the heavier weeks.</p>
+                <div class="month-recap-foot">
+                  <div class="recap-chips"><span class="recap-chip">load high</span><span class="recap-chip">fitness +6.7</span></div>
+                  <button class="recap-notify"><iconify-icon icon="mdi:bell-plus-outline"></iconify-icon></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mood-legend">
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-blazing)"></span>blazing</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-easy)"></span>easy</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-wobbly)"></span>wobbly</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-gassed)"></span>gassed</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-overloaded)"></span>overloaded</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-chill)"></span>chill</div>
+            </div>
+
+            <div class="cal-grid-row cal-head">
+              <span>wk</span><span>mo</span><span>tu</span><span>we</span><span>th</span><span>fr</span><span>sa</span><span>su</span>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" onclick="toggleWeekRow(this)"><span class="wk-n">wk 1</span><span class="wk-km">19.5k</span><span class="wk-meta"><span class="wk-dot" style="--mood: var(--mood-overloaded)"></span><iconify-icon class="wk-chevron" icon="mdi:chevron-down"></iconify-icon></span></button>
+                <div class="day-cell out">27</div>
+                <div class="day-cell out">28<span class="day-dot" style="--mood: var(--mood-easy)"></span></div>
+                <div class="day-cell out">29</div>
+                <div class="day-cell out">30</div>
+                <div class="day-cell out">31</div>
+                <div class="day-cell">1</div>
+                <div class="day-cell">2<span class="day-dot" style="--mood: var(--mood-overloaded)"></span></div>
+              </div>
+              <div class="week-narration">
+                <p>"a lighter week overall — monday eased you in, and saturday's long run tested legs that hadn't fully recovered."</p>
+                <div class="recap-chips"><span class="recap-chip">load moderate</span><span class="recap-chip">fitness +1.2</span></div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" onclick="toggleWeekRow(this)"><span class="wk-n">wk 2</span><span class="wk-km">31.2k</span><span class="wk-meta"><span class="wk-dot" style="--mood: var(--mood-blazing)"></span><iconify-icon class="wk-chevron" icon="mdi:chevron-down"></iconify-icon></span></button>
+                <div class="day-cell">3</div>
+                <div class="day-cell">4<span class="day-dot" style="--mood: var(--mood-gassed)"></span></div>
+                <div class="day-cell">5<span class="day-dot" style="--mood: var(--mood-wobbly)"></span></div>
+                <div class="day-cell">6</div>
+                <div class="day-cell">7<span class="day-dot" style="--mood: var(--mood-blazing)"></span></div>
+                <div class="day-cell">8</div>
+                <div class="day-cell">9<span class="day-dot" style="--mood: var(--mood-chill)"></span></div>
+              </div>
+              <div class="week-narration">
+                <p>"hill repeats tested you monday, and half marathon pr settled the score by thursday — a new pr by 2 minutes."</p>
+                <div class="recap-chips"><span class="recap-chip">load high</span><span class="recap-chip">fitness +3.4</span><span class="recap-chip kartu-chip" style="--rarity: var(--rc-epic)"><iconify-icon icon="mdi:star-four-points"></iconify-icon> epic kartu</span></div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" onclick="toggleWeekRow(this)"><span class="wk-n">wk 3</span><span class="wk-km">24.6k</span><span class="wk-meta"><span class="wk-dot" style="--mood: var(--mood-easy)"></span><iconify-icon class="wk-chevron" icon="mdi:chevron-down"></iconify-icon></span></button>
+                <div class="day-cell">10</div>
+                <div class="day-cell">11</div>
+                <div class="day-cell">12<span class="day-dot" style="--mood: var(--mood-blazing)"></span></div>
+                <div class="day-cell">13</div>
+                <div class="day-cell">14<span class="day-dot" style="--mood: var(--mood-easy)"></span></div>
+                <div class="day-cell">15</div>
+                <div class="day-cell today">16<span class="day-dot" style="--mood: var(--mood-wobbly)"></span></div>
+              </div>
+              <div class="week-narration">
+                <p>"tempo tuesday was your strongest push yet, and sunday's long run held pace deep into the second hour."</p>
+                <div class="recap-chips"><span class="recap-chip">fatigue moderate</span><span class="recap-chip">fitness +2.1</span><span class="recap-chip kartu-chip" style="--rarity: var(--rc-rare)"><iconify-icon icon="mdi:star-four-points"></iconify-icon> rare kartu</span></div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 4</span></button>
+                <div class="day-cell">17</div>
+                <div class="day-cell">18</div>
+                <div class="day-cell">19</div>
+                <div class="day-cell">20</div>
+                <div class="day-cell">21</div>
+                <div class="day-cell">22</div>
+                <div class="day-cell">23</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 5</span></button>
+                <div class="day-cell">24</div>
+                <div class="day-cell">25</div>
+                <div class="day-cell">26</div>
+                <div class="day-cell">27</div>
+                <div class="day-cell">28</div>
+                <div class="day-cell">29</div>
+                <div class="day-cell">30</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 6</span></button>
+                <div class="day-cell">31</div>
+                <div class="day-cell out">1</div>
+                <div class="day-cell out">2</div>
+                <div class="day-cell out">3</div>
+                <div class="day-cell out">4</div>
+                <div class="day-cell out">5</div>
+                <div class="day-cell out">6</div>
+              </div>
+            </div>
+            </div>
+
+            <div class="month-block" data-month="jul">
+            <div class="month-meta">
+              <div class="month-meta-stats">1 run · 5.5 km · trimp 48</div>
+            </div>
+
+            <div class="month-recap" style="--mood: var(--mood-easy)">
+              <svg viewBox="0 0 100 100" width="36" height="36" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--mood)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div class="month-recap-body">
+                <p class="month-recap-line">july stayed light — a loosen-up run bridged you into a bigger august.</p>
+                <div class="month-recap-foot">
+                  <div class="recap-chips"><span class="recap-chip">load low</span><span class="recap-chip">fitness +0.4</span></div>
+                  <button class="recap-notify"><iconify-icon icon="mdi:bell-plus-outline"></iconify-icon></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mood-legend">
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-blazing)"></span>blazing</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-easy)"></span>easy</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-wobbly)"></span>wobbly</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-gassed)"></span>gassed</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-overloaded)"></span>overloaded</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-chill)"></span>chill</div>
+            </div>
+
+            <div class="cal-grid-row cal-head">
+              <span>wk</span><span>mo</span><span>tu</span><span>we</span><span>th</span><span>fr</span><span>sa</span><span>su</span>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 1</span></button>
+                <div class="day-cell out">29</div>
+                <div class="day-cell out">30</div>
+                <div class="day-cell">1</div>
+                <div class="day-cell">2</div>
+                <div class="day-cell">3</div>
+                <div class="day-cell">4</div>
+                <div class="day-cell">5</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 2</span></button>
+                <div class="day-cell">6</div>
+                <div class="day-cell">7</div>
+                <div class="day-cell">8</div>
+                <div class="day-cell">9</div>
+                <div class="day-cell">10</div>
+                <div class="day-cell">11</div>
+                <div class="day-cell">12</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 3</span></button>
+                <div class="day-cell">13</div>
+                <div class="day-cell">14</div>
+                <div class="day-cell">15</div>
+                <div class="day-cell">16</div>
+                <div class="day-cell">17</div>
+                <div class="day-cell">18</div>
+                <div class="day-cell">19</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 4</span></button>
+                <div class="day-cell">20</div>
+                <div class="day-cell">21</div>
+                <div class="day-cell">22</div>
+                <div class="day-cell">23</div>
+                <div class="day-cell">24</div>
+                <div class="day-cell">25</div>
+                <div class="day-cell">26</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" onclick="toggleWeekRow(this)"><span class="wk-n">wk 5</span><span class="wk-km">19.5k</span><span class="wk-meta"><span class="wk-dot" style="--mood: var(--mood-overloaded)"></span><iconify-icon class="wk-chevron" icon="mdi:chevron-down"></iconify-icon></span></button>
+                <div class="day-cell">27</div>
+                <div class="day-cell">28<span class="day-dot" style="--mood: var(--mood-easy)"></span></div>
+                <div class="day-cell">29</div>
+                <div class="day-cell">30</div>
+                <div class="day-cell">31</div>
+                <div class="day-cell out">1</div>
+                <div class="day-cell out">2<span class="day-dot" style="--mood: var(--mood-overloaded)"></span></div>
+              </div>
+              <div class="week-narration">
+                <p>"a lighter week overall — monday eased you in, and saturday's long run tested legs that hadn't fully recovered."</p>
+                <div class="recap-chips"><span class="recap-chip">load moderate</span><span class="recap-chip">fitness +1.2</span></div>
+              </div>
+            </div>
+            </div>
+
+          </div>
+
+        </div>
+        </div>
+
+        <nav class="bottomnav">
+          <a class="bn-item"><iconify-icon icon="mdi:weather-sunset-up"></iconify-icon><span>today</span></a>
+          <a class="bn-item"><iconify-icon icon="mdi:chart-line"></iconify-icon><span>trends</span></a>
+          <a class="bn-item active"><iconify-icon icon="mdi:history"></iconify-icon><span>history</span></a>
+        </nav>
+      </div>
+    </div>
+    <div class="cap"><b>Light</b><span>Forced via data-theme="light" — the default .screen palette.</span></div>
+  </div>
+
+  <!-- DARK -->
+  <div class="col">
+    <div class="phone">
+      <div class="island"></div>
+      <div class="browser-bar"><span></span><span></span><span></span></div>
+      <div class="screen" data-theme="dark">
+        <div class="topbar">
+          <div class="topbar-brand">
+            <svg viewBox="0 0 100 100" width="22" height="22" aria-hidden="true">
+              <g fill="none" stroke-width="11" stroke-linecap="round">
+                <path stroke="var(--horizon)" d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"/>
+                <path stroke="var(--text)" d="M50 27 A23 23 0 1 1 30.09 61.5"/>
+              </g>
+            </svg>
+            <span>temari</span>
+          </div>
+          <div class="topbar-right">
+            <a href="#" class="topbar-bell"><iconify-icon icon="mdi:bell-outline"></iconify-icon><span class="badge">2</span></a>
+            <div class="topbar-avatar">N</div>
+          </div>
+        </div>
+
+        <div class="scroller">
+        <div class="content">
+          <div class="eyebrow">history · 42 activities</div>
+          <h1 class="page-h1">every run<br><em>has a story.</em></h1>
+
+          <nav class="htabs">
+            <a href="#" class="active" data-tab="feed" onclick="switchHistoryTab(event, this, 'feed')">feed</a>
+            <a href="#" data-tab="calendar" onclick="switchHistoryTab(event, this, 'calendar')">calendar</a>
+          </nav>
+
+          <div class="feed-view">
+          <div class="no-runs-card">
+            <svg viewBox="0 0 100 100" width="40" height="40" aria-hidden="true">
+              <circle cx="50" cy="52" r="41" fill="none" stroke="var(--horizon)" stroke-width="6"/>
+              <circle cx="50" cy="52" r="31" fill="var(--surf)" stroke="var(--text)" stroke-width="4.5"/>
+              <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+              <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+              <circle cx="40" cy="50" r="4.4" fill="var(--text)"/><circle cx="60" cy="50" r="4.4" fill="var(--text)"/>
+              <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+            </svg>
+            <div>
+              <p class="nr-title">no runs yet.</p>
+              <p class="nr-body">log your first run and temari will start telling the story of your weeks here.</p>
+            </div>
+          </div>
+
+          <div class="week-section week-section-current">
+            <div class="week-head">
+              <div class="week-title">this week</div>
+              <div class="week-meta">3 runs · 24.6 km · trimp 186</div>
+            </div>
+
+            <div class="week-recap" style="--mood: var(--mood-easy)">
+              <svg viewBox="0 0 100 100" width="36" height="36" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--mood)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div class="recap-body">
+                <p class="recap-line">tempo tuesday was your strongest push yet, and sunday's long run held pace deep into the second hour.</p>
+                <div class="recap-foot">
+                  <div class="recap-chips"><span class="recap-chip">fatigue moderate</span><span class="recap-chip">fitness +2.1</span></div>
+                  <button class="recap-notify"><iconify-icon icon="mdi:bell-plus-outline"></iconify-icon></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="run-list">
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-blazing)"></span>
+                    <span class="run-name">tempo tuesday</span>
+                    <span class="run-dist">· 8.4 km</span>
+                    <iconify-icon class="kartu-star" icon="mdi:star-four-points" style="--rarity: var(--rc-rare)"></iconify-icon>
+                  </div>
+                  <span class="run-date">12 aug · 6:12am</span>
+                </div>
+                <div class="run-stats-primary"><b>42:18</b><span class="sep">·</span><b>5:02/km</b><span class="sep">·</span><span class="hr">152 bpm</span></div>
+                <p class="run-note">"you held that pace even when the hill fought back."</p>
+              </div>
+
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-easy)"></span>
+                    <span class="run-name">easy shakeout</span>
+                    <span class="run-dist">· 5.0 km</span>
+                  </div>
+                  <span class="run-date">14 aug · 6:40am</span>
+                </div>
+                <div class="run-stats-primary"><b>31:10</b><span class="sep">·</span><b>6:14/km</b><span class="sep">·</span><span class="hr">138 bpm</span></div>
+                <p class="run-note">"nice and loose — exactly what an easy day should feel like."</p>
+              </div>
+
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-wobbly)"></span>
+                    <span class="run-name">sunday long run</span>
+                    <span class="run-dist">· 16.2 km</span>
+                  </div>
+                  <span class="run-date">16 aug · 7:05am</span>
+                </div>
+                <div class="run-stats-primary"><b>1:34:02</b><span class="sep">·</span><b>5:48/km</b><span class="sep">·</span><span class="hr">149 bpm</span></div>
+                <p class="run-note">"your longest run in five weeks, and it didn't even feel like it."</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="week-section">
+            <div class="week-head">
+              <div class="week-title">last week</div>
+              <div class="week-meta">4 runs · 31.2 km · trimp 210</div>
+            </div>
+
+            <div class="week-recap" style="--mood: var(--mood-blazing)">
+              <svg viewBox="0 0 100 100" width="36" height="36" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--mood)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div class="recap-body">
+                <p class="recap-line">hill repeats tested you monday, and half marathon PR settled the score by thursday — a new PR by 2 minutes.</p>
+                <div class="recap-foot">
+                  <div class="recap-chips"><span class="recap-chip">load high</span><span class="recap-chip">fitness +3.4</span></div>
+                  <button class="recap-notify"><iconify-icon icon="mdi:bell-plus-outline"></iconify-icon></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="run-list">
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-gassed)"></span>
+                    <span class="run-name">hill repeats</span>
+                    <span class="run-dist">· 6.1 km</span>
+                  </div>
+                  <span class="run-date">4 aug · 6:00am</span>
+                </div>
+                <div class="run-stats-primary"><b>38:50</b><span class="sep">·</span><b>6:22/km</b><span class="sep">·</span><span class="hr">141 bpm</span></div>
+                <p class="run-note">"the hills didn't let up, and neither did you."</p>
+              </div>
+
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-blazing)"></span>
+                    <span class="run-name">half marathon PR</span>
+                    <span class="run-dist">· 21.1 km</span>
+                    <iconify-icon class="kartu-star" icon="mdi:star-four-points" style="--rarity: var(--rc-epic)"></iconify-icon>
+                  </div>
+                  <span class="run-date">7 aug · 7:00am</span>
+                </div>
+                <div class="run-stats-primary"><b>1:38:20</b><span class="sep">·</span><b>4:39/km</b><span class="sep">·</span><span class="hr">158 bpm</span></div>
+                <p class="run-note">"new pr by 2 minutes — you paced this one perfectly."</p>
+              </div>
+
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-chill)"></span>
+                    <span class="run-name">recovery jog</span>
+                    <span class="run-dist">· 4.0 km</span>
+                  </div>
+                  <span class="run-date">9 aug · 7:30am</span>
+                </div>
+                <div class="run-stats-primary"><b>26:40</b><span class="sep">·</span><b>6:40/km</b><span class="sep">·</span><span class="hr">128 bpm</span></div>
+                <p class="run-note">"slow enough to actually recover — good instinct."</p>
+              </div>
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-wobbly)"></span>
+                    <span class="run-name">tempo intervals</span>
+                    <span class="run-dist">· 7.2 km</span>
+                  </div>
+                  <span class="run-date">5 aug · 6:15am</span>
+                </div>
+                <div class="run-stats-primary"><b>36:05</b><span class="sep">·</span><b>5:00/km</b><span class="sep">·</span><span class="hr">161 bpm</span></div>
+                <p class="run-note">"held the target pace across every rep."</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="load-more-row">
+            <button class="load-more-btn" onclick="revealOlderWeek(this)">load older weeks<iconify-icon icon="mdi:chevron-down"></iconify-icon></button>
+          </div>
+
+          <div class="week-section older-week">
+            <div class="week-head">
+              <div class="week-title">27 jul – 2 aug</div>
+              <div class="week-meta">2 runs · 19.5 km · trimp 158</div>
+            </div>
+
+            <div class="week-recap" style="--mood: var(--mood-overloaded)">
+              <svg viewBox="0 0 100 100" width="36" height="36" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--mood)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div class="recap-body">
+                <p class="recap-line">a lighter week overall — monday eased you in, and saturday's long run tested legs that hadn't fully recovered.</p>
+                <div class="recap-foot">
+                  <div class="recap-chips"><span class="recap-chip">load moderate</span><span class="recap-chip">fitness +1.2</span></div>
+                  <button class="recap-notify"><iconify-icon icon="mdi:bell-plus-outline"></iconify-icon></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="run-list">
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-easy)"></span>
+                    <span class="run-name">monday easy</span>
+                    <span class="run-dist">· 5.5 km</span>
+                  </div>
+                  <span class="run-date">28 jul · 6:20am</span>
+                </div>
+                <div class="run-stats-primary"><b>33:00</b><span class="sep">·</span><b>6:00/km</b><span class="sep">·</span><span class="hr">135 bpm</span></div>
+                <p class="run-note">"settled into an easy rhythm early."</p>
+              </div>
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-overloaded)"></span>
+                    <span class="run-name">saturday long run</span>
+                    <span class="run-dist">· 14.0 km</span>
+                  </div>
+                  <span class="run-date">2 aug · 7:00am</span>
+                </div>
+                <div class="run-stats-primary"><b>1:22:30</b><span class="sep">·</span><b>5:53/km</b><span class="sep">·</span><span class="hr">148 bpm</span></div>
+                <p class="run-note">"legs felt heavy from the start, but you finished it."</p>
+              </div>
+            </div>
+          </div>
+          </div>
+
+          <div class="calendar-view">
+            <div class="month-nav">
+              <button class="month-nav-arrow" aria-label="Previous month" onclick="navMonth(this, 'prev')"><iconify-icon icon="mdi:chevron-left"></iconify-icon></button>
+              <div class="month-nav-label">august 2026</div>
+              <button class="month-nav-arrow" aria-label="Next month" disabled onclick="navMonth(this, 'next')"><iconify-icon icon="mdi:chevron-right"></iconify-icon></button>
+            </div>
+
+            <div class="month-block" data-month="aug">
+            <div class="month-meta">
+              <div class="month-meta-stats">9 runs · 75.3 km · trimp 554</div>
+            </div>
+
+            <div class="month-recap" style="--mood: var(--mood-blazing)">
+              <svg viewBox="0 0 100 100" width="36" height="36" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--mood)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div class="month-recap-body">
+                <p class="month-recap-line">august leaned into big efforts — a half marathon pr mid-month, backed by two kartu pulls, and fitness kept climbing even through the heavier weeks.</p>
+                <div class="month-recap-foot">
+                  <div class="recap-chips"><span class="recap-chip">load high</span><span class="recap-chip">fitness +6.7</span></div>
+                  <button class="recap-notify"><iconify-icon icon="mdi:bell-plus-outline"></iconify-icon></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mood-legend">
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-blazing)"></span>blazing</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-easy)"></span>easy</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-wobbly)"></span>wobbly</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-gassed)"></span>gassed</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-overloaded)"></span>overloaded</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-chill)"></span>chill</div>
+            </div>
+
+            <div class="cal-grid-row cal-head">
+              <span>wk</span><span>mo</span><span>tu</span><span>we</span><span>th</span><span>fr</span><span>sa</span><span>su</span>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" onclick="toggleWeekRow(this)"><span class="wk-n">wk 1</span><span class="wk-km">19.5k</span><span class="wk-meta"><span class="wk-dot" style="--mood: var(--mood-overloaded)"></span><iconify-icon class="wk-chevron" icon="mdi:chevron-down"></iconify-icon></span></button>
+                <div class="day-cell out">27</div>
+                <div class="day-cell out">28<span class="day-dot" style="--mood: var(--mood-easy)"></span></div>
+                <div class="day-cell out">29</div>
+                <div class="day-cell out">30</div>
+                <div class="day-cell out">31</div>
+                <div class="day-cell">1</div>
+                <div class="day-cell">2<span class="day-dot" style="--mood: var(--mood-overloaded)"></span></div>
+              </div>
+              <div class="week-narration">
+                <p>"a lighter week overall — monday eased you in, and saturday's long run tested legs that hadn't fully recovered."</p>
+                <div class="recap-chips"><span class="recap-chip">load moderate</span><span class="recap-chip">fitness +1.2</span></div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" onclick="toggleWeekRow(this)"><span class="wk-n">wk 2</span><span class="wk-km">31.2k</span><span class="wk-meta"><span class="wk-dot" style="--mood: var(--mood-blazing)"></span><iconify-icon class="wk-chevron" icon="mdi:chevron-down"></iconify-icon></span></button>
+                <div class="day-cell">3</div>
+                <div class="day-cell">4<span class="day-dot" style="--mood: var(--mood-gassed)"></span></div>
+                <div class="day-cell">5<span class="day-dot" style="--mood: var(--mood-wobbly)"></span></div>
+                <div class="day-cell">6</div>
+                <div class="day-cell">7<span class="day-dot" style="--mood: var(--mood-blazing)"></span></div>
+                <div class="day-cell">8</div>
+                <div class="day-cell">9<span class="day-dot" style="--mood: var(--mood-chill)"></span></div>
+              </div>
+              <div class="week-narration">
+                <p>"hill repeats tested you monday, and half marathon pr settled the score by thursday — a new pr by 2 minutes."</p>
+                <div class="recap-chips"><span class="recap-chip">load high</span><span class="recap-chip">fitness +3.4</span><span class="recap-chip kartu-chip" style="--rarity: var(--rc-epic)"><iconify-icon icon="mdi:star-four-points"></iconify-icon> epic kartu</span></div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" onclick="toggleWeekRow(this)"><span class="wk-n">wk 3</span><span class="wk-km">24.6k</span><span class="wk-meta"><span class="wk-dot" style="--mood: var(--mood-easy)"></span><iconify-icon class="wk-chevron" icon="mdi:chevron-down"></iconify-icon></span></button>
+                <div class="day-cell">10</div>
+                <div class="day-cell">11</div>
+                <div class="day-cell">12<span class="day-dot" style="--mood: var(--mood-blazing)"></span></div>
+                <div class="day-cell">13</div>
+                <div class="day-cell">14<span class="day-dot" style="--mood: var(--mood-easy)"></span></div>
+                <div class="day-cell">15</div>
+                <div class="day-cell today">16<span class="day-dot" style="--mood: var(--mood-wobbly)"></span></div>
+              </div>
+              <div class="week-narration">
+                <p>"tempo tuesday was your strongest push yet, and sunday's long run held pace deep into the second hour."</p>
+                <div class="recap-chips"><span class="recap-chip">fatigue moderate</span><span class="recap-chip">fitness +2.1</span><span class="recap-chip kartu-chip" style="--rarity: var(--rc-rare)"><iconify-icon icon="mdi:star-four-points"></iconify-icon> rare kartu</span></div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 4</span></button>
+                <div class="day-cell">17</div>
+                <div class="day-cell">18</div>
+                <div class="day-cell">19</div>
+                <div class="day-cell">20</div>
+                <div class="day-cell">21</div>
+                <div class="day-cell">22</div>
+                <div class="day-cell">23</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 5</span></button>
+                <div class="day-cell">24</div>
+                <div class="day-cell">25</div>
+                <div class="day-cell">26</div>
+                <div class="day-cell">27</div>
+                <div class="day-cell">28</div>
+                <div class="day-cell">29</div>
+                <div class="day-cell">30</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 6</span></button>
+                <div class="day-cell">31</div>
+                <div class="day-cell out">1</div>
+                <div class="day-cell out">2</div>
+                <div class="day-cell out">3</div>
+                <div class="day-cell out">4</div>
+                <div class="day-cell out">5</div>
+                <div class="day-cell out">6</div>
+              </div>
+            </div>
+            </div>
+
+            <div class="month-block" data-month="jul">
+            <div class="month-meta">
+              <div class="month-meta-stats">1 run · 5.5 km · trimp 48</div>
+            </div>
+
+            <div class="month-recap" style="--mood: var(--mood-easy)">
+              <svg viewBox="0 0 100 100" width="36" height="36" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--mood)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div class="month-recap-body">
+                <p class="month-recap-line">july stayed light — a loosen-up run bridged you into a bigger august.</p>
+                <div class="month-recap-foot">
+                  <div class="recap-chips"><span class="recap-chip">load low</span><span class="recap-chip">fitness +0.4</span></div>
+                  <button class="recap-notify"><iconify-icon icon="mdi:bell-plus-outline"></iconify-icon></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mood-legend">
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-blazing)"></span>blazing</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-easy)"></span>easy</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-wobbly)"></span>wobbly</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-gassed)"></span>gassed</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-overloaded)"></span>overloaded</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-chill)"></span>chill</div>
+            </div>
+
+            <div class="cal-grid-row cal-head">
+              <span>wk</span><span>mo</span><span>tu</span><span>we</span><span>th</span><span>fr</span><span>sa</span><span>su</span>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 1</span></button>
+                <div class="day-cell out">29</div>
+                <div class="day-cell out">30</div>
+                <div class="day-cell">1</div>
+                <div class="day-cell">2</div>
+                <div class="day-cell">3</div>
+                <div class="day-cell">4</div>
+                <div class="day-cell">5</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 2</span></button>
+                <div class="day-cell">6</div>
+                <div class="day-cell">7</div>
+                <div class="day-cell">8</div>
+                <div class="day-cell">9</div>
+                <div class="day-cell">10</div>
+                <div class="day-cell">11</div>
+                <div class="day-cell">12</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 3</span></button>
+                <div class="day-cell">13</div>
+                <div class="day-cell">14</div>
+                <div class="day-cell">15</div>
+                <div class="day-cell">16</div>
+                <div class="day-cell">17</div>
+                <div class="day-cell">18</div>
+                <div class="day-cell">19</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 4</span></button>
+                <div class="day-cell">20</div>
+                <div class="day-cell">21</div>
+                <div class="day-cell">22</div>
+                <div class="day-cell">23</div>
+                <div class="day-cell">24</div>
+                <div class="day-cell">25</div>
+                <div class="day-cell">26</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" onclick="toggleWeekRow(this)"><span class="wk-n">wk 5</span><span class="wk-km">19.5k</span><span class="wk-meta"><span class="wk-dot" style="--mood: var(--mood-overloaded)"></span><iconify-icon class="wk-chevron" icon="mdi:chevron-down"></iconify-icon></span></button>
+                <div class="day-cell">27</div>
+                <div class="day-cell">28<span class="day-dot" style="--mood: var(--mood-easy)"></span></div>
+                <div class="day-cell">29</div>
+                <div class="day-cell">30</div>
+                <div class="day-cell">31</div>
+                <div class="day-cell out">1</div>
+                <div class="day-cell out">2<span class="day-dot" style="--mood: var(--mood-overloaded)"></span></div>
+              </div>
+              <div class="week-narration">
+                <p>"a lighter week overall — monday eased you in, and saturday's long run tested legs that hadn't fully recovered."</p>
+                <div class="recap-chips"><span class="recap-chip">load moderate</span><span class="recap-chip">fitness +1.2</span></div>
+              </div>
+            </div>
+            </div>
+
+          </div>
+
+        </div>
+        </div>
+
+        <nav class="bottomnav">
+          <a class="bn-item"><iconify-icon icon="mdi:weather-sunset-up"></iconify-icon><span>today</span></a>
+          <a class="bn-item"><iconify-icon icon="mdi:chart-line"></iconify-icon><span>trends</span></a>
+          <a class="bn-item active"><iconify-icon icon="mdi:history"></iconify-icon><span>history</span></a>
+        </nav>
+      </div>
+    </div>
+    <div class="cap"><b>Dark</b><span>Forced via data-theme="dark" — Sky family as ground, Cream as text.</span></div>
+  </div>
+
+  <!-- SYSTEM -->
+  <div class="col">
+    <div class="phone">
+      <div class="island"></div>
+      <div class="browser-bar"><span></span><span></span><span></span></div>
+      <div class="screen" data-theme="system">
+        <div class="topbar">
+          <div class="topbar-brand">
+            <svg viewBox="0 0 100 100" width="22" height="22" aria-hidden="true">
+              <g fill="none" stroke-width="11" stroke-linecap="round">
+                <path stroke="var(--horizon)" d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"/>
+                <path stroke="var(--text)" d="M50 27 A23 23 0 1 1 30.09 61.5"/>
+              </g>
+            </svg>
+            <span>temari</span>
+          </div>
+          <div class="topbar-right">
+            <a href="#" class="topbar-bell"><iconify-icon icon="mdi:bell-outline"></iconify-icon><span class="badge">2</span></a>
+            <div class="topbar-avatar">N</div>
+          </div>
+        </div>
+
+        <div class="scroller">
+        <div class="content">
+          <div class="eyebrow">history · 42 activities</div>
+          <h1 class="page-h1">every run<br><em>has a story.</em></h1>
+
+          <nav class="htabs">
+            <a href="#" class="active" data-tab="feed" onclick="switchHistoryTab(event, this, 'feed')">feed</a>
+            <a href="#" data-tab="calendar" onclick="switchHistoryTab(event, this, 'calendar')">calendar</a>
+          </nav>
+
+          <div class="feed-view">
+          <div class="no-runs-card">
+            <svg viewBox="0 0 100 100" width="40" height="40" aria-hidden="true">
+              <circle cx="50" cy="52" r="41" fill="none" stroke="var(--horizon)" stroke-width="6"/>
+              <circle cx="50" cy="52" r="31" fill="var(--surf)" stroke="var(--text)" stroke-width="4.5"/>
+              <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+              <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+              <circle cx="40" cy="50" r="4.4" fill="var(--text)"/><circle cx="60" cy="50" r="4.4" fill="var(--text)"/>
+              <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+            </svg>
+            <div>
+              <p class="nr-title">no runs yet.</p>
+              <p class="nr-body">log your first run and temari will start telling the story of your weeks here.</p>
+            </div>
+          </div>
+
+          <div class="week-section week-section-current">
+            <div class="week-head">
+              <div class="week-title">this week</div>
+              <div class="week-meta">3 runs · 24.6 km · trimp 186</div>
+            </div>
+
+            <div class="week-recap" style="--mood: var(--mood-easy)">
+              <svg viewBox="0 0 100 100" width="36" height="36" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--mood)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div class="recap-body">
+                <p class="recap-line">tempo tuesday was your strongest push yet, and sunday's long run held pace deep into the second hour.</p>
+                <div class="recap-foot">
+                  <div class="recap-chips"><span class="recap-chip">fatigue moderate</span><span class="recap-chip">fitness +2.1</span></div>
+                  <button class="recap-notify"><iconify-icon icon="mdi:bell-plus-outline"></iconify-icon></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="run-list">
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-blazing)"></span>
+                    <span class="run-name">tempo tuesday</span>
+                    <span class="run-dist">· 8.4 km</span>
+                    <iconify-icon class="kartu-star" icon="mdi:star-four-points" style="--rarity: var(--rc-rare)"></iconify-icon>
+                  </div>
+                  <span class="run-date">12 aug · 6:12am</span>
+                </div>
+                <div class="run-stats-primary"><b>42:18</b><span class="sep">·</span><b>5:02/km</b><span class="sep">·</span><span class="hr">152 bpm</span></div>
+                <p class="run-note">"you held that pace even when the hill fought back."</p>
+              </div>
+
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-easy)"></span>
+                    <span class="run-name">easy shakeout</span>
+                    <span class="run-dist">· 5.0 km</span>
+                  </div>
+                  <span class="run-date">14 aug · 6:40am</span>
+                </div>
+                <div class="run-stats-primary"><b>31:10</b><span class="sep">·</span><b>6:14/km</b><span class="sep">·</span><span class="hr">138 bpm</span></div>
+                <p class="run-note">"nice and loose — exactly what an easy day should feel like."</p>
+              </div>
+
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-wobbly)"></span>
+                    <span class="run-name">sunday long run</span>
+                    <span class="run-dist">· 16.2 km</span>
+                  </div>
+                  <span class="run-date">16 aug · 7:05am</span>
+                </div>
+                <div class="run-stats-primary"><b>1:34:02</b><span class="sep">·</span><b>5:48/km</b><span class="sep">·</span><span class="hr">149 bpm</span></div>
+                <p class="run-note">"your longest run in five weeks, and it didn't even feel like it."</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="week-section">
+            <div class="week-head">
+              <div class="week-title">last week</div>
+              <div class="week-meta">4 runs · 31.2 km · trimp 210</div>
+            </div>
+
+            <div class="week-recap" style="--mood: var(--mood-blazing)">
+              <svg viewBox="0 0 100 100" width="36" height="36" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--mood)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div class="recap-body">
+                <p class="recap-line">hill repeats tested you monday, and half marathon PR settled the score by thursday — a new PR by 2 minutes.</p>
+                <div class="recap-foot">
+                  <div class="recap-chips"><span class="recap-chip">load high</span><span class="recap-chip">fitness +3.4</span></div>
+                  <button class="recap-notify"><iconify-icon icon="mdi:bell-plus-outline"></iconify-icon></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="run-list">
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-gassed)"></span>
+                    <span class="run-name">hill repeats</span>
+                    <span class="run-dist">· 6.1 km</span>
+                  </div>
+                  <span class="run-date">4 aug · 6:00am</span>
+                </div>
+                <div class="run-stats-primary"><b>38:50</b><span class="sep">·</span><b>6:22/km</b><span class="sep">·</span><span class="hr">141 bpm</span></div>
+                <p class="run-note">"the hills didn't let up, and neither did you."</p>
+              </div>
+
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-blazing)"></span>
+                    <span class="run-name">half marathon PR</span>
+                    <span class="run-dist">· 21.1 km</span>
+                    <iconify-icon class="kartu-star" icon="mdi:star-four-points" style="--rarity: var(--rc-epic)"></iconify-icon>
+                  </div>
+                  <span class="run-date">7 aug · 7:00am</span>
+                </div>
+                <div class="run-stats-primary"><b>1:38:20</b><span class="sep">·</span><b>4:39/km</b><span class="sep">·</span><span class="hr">158 bpm</span></div>
+                <p class="run-note">"new pr by 2 minutes — you paced this one perfectly."</p>
+              </div>
+
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-chill)"></span>
+                    <span class="run-name">recovery jog</span>
+                    <span class="run-dist">· 4.0 km</span>
+                  </div>
+                  <span class="run-date">9 aug · 7:30am</span>
+                </div>
+                <div class="run-stats-primary"><b>26:40</b><span class="sep">·</span><b>6:40/km</b><span class="sep">·</span><span class="hr">128 bpm</span></div>
+                <p class="run-note">"slow enough to actually recover — good instinct."</p>
+              </div>
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-wobbly)"></span>
+                    <span class="run-name">tempo intervals</span>
+                    <span class="run-dist">· 7.2 km</span>
+                  </div>
+                  <span class="run-date">5 aug · 6:15am</span>
+                </div>
+                <div class="run-stats-primary"><b>36:05</b><span class="sep">·</span><b>5:00/km</b><span class="sep">·</span><span class="hr">161 bpm</span></div>
+                <p class="run-note">"held the target pace across every rep."</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="load-more-row">
+            <button class="load-more-btn" onclick="revealOlderWeek(this)">load older weeks<iconify-icon icon="mdi:chevron-down"></iconify-icon></button>
+          </div>
+
+          <div class="week-section older-week">
+            <div class="week-head">
+              <div class="week-title">27 jul – 2 aug</div>
+              <div class="week-meta">2 runs · 19.5 km · trimp 158</div>
+            </div>
+
+            <div class="week-recap" style="--mood: var(--mood-overloaded)">
+              <svg viewBox="0 0 100 100" width="36" height="36" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--mood)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div class="recap-body">
+                <p class="recap-line">a lighter week overall — monday eased you in, and saturday's long run tested legs that hadn't fully recovered.</p>
+                <div class="recap-foot">
+                  <div class="recap-chips"><span class="recap-chip">load moderate</span><span class="recap-chip">fitness +1.2</span></div>
+                  <button class="recap-notify"><iconify-icon icon="mdi:bell-plus-outline"></iconify-icon></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="run-list">
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-easy)"></span>
+                    <span class="run-name">monday easy</span>
+                    <span class="run-dist">· 5.5 km</span>
+                  </div>
+                  <span class="run-date">28 jul · 6:20am</span>
+                </div>
+                <div class="run-stats-primary"><b>33:00</b><span class="sep">·</span><b>6:00/km</b><span class="sep">·</span><span class="hr">135 bpm</span></div>
+                <p class="run-note">"settled into an easy rhythm early."</p>
+              </div>
+              <div class="run-row">
+                <div class="run-top">
+                  <div class="run-title">
+                    <span class="mood-dot" style="--mood: var(--mood-overloaded)"></span>
+                    <span class="run-name">saturday long run</span>
+                    <span class="run-dist">· 14.0 km</span>
+                  </div>
+                  <span class="run-date">2 aug · 7:00am</span>
+                </div>
+                <div class="run-stats-primary"><b>1:22:30</b><span class="sep">·</span><b>5:53/km</b><span class="sep">·</span><span class="hr">148 bpm</span></div>
+                <p class="run-note">"legs felt heavy from the start, but you finished it."</p>
+              </div>
+            </div>
+          </div>
+          </div>
+
+          <div class="calendar-view">
+            <div class="month-nav">
+              <button class="month-nav-arrow" aria-label="Previous month" onclick="navMonth(this, 'prev')"><iconify-icon icon="mdi:chevron-left"></iconify-icon></button>
+              <div class="month-nav-label">august 2026</div>
+              <button class="month-nav-arrow" aria-label="Next month" disabled onclick="navMonth(this, 'next')"><iconify-icon icon="mdi:chevron-right"></iconify-icon></button>
+            </div>
+
+            <div class="month-block" data-month="aug">
+            <div class="month-meta">
+              <div class="month-meta-stats">9 runs · 75.3 km · trimp 554</div>
+            </div>
+
+            <div class="month-recap" style="--mood: var(--mood-blazing)">
+              <svg viewBox="0 0 100 100" width="36" height="36" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--mood)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div class="month-recap-body">
+                <p class="month-recap-line">august leaned into big efforts — a half marathon pr mid-month, backed by two kartu pulls, and fitness kept climbing even through the heavier weeks.</p>
+                <div class="month-recap-foot">
+                  <div class="recap-chips"><span class="recap-chip">load high</span><span class="recap-chip">fitness +6.7</span></div>
+                  <button class="recap-notify"><iconify-icon icon="mdi:bell-plus-outline"></iconify-icon></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mood-legend">
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-blazing)"></span>blazing</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-easy)"></span>easy</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-wobbly)"></span>wobbly</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-gassed)"></span>gassed</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-overloaded)"></span>overloaded</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-chill)"></span>chill</div>
+            </div>
+
+            <div class="cal-grid-row cal-head">
+              <span>wk</span><span>mo</span><span>tu</span><span>we</span><span>th</span><span>fr</span><span>sa</span><span>su</span>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" onclick="toggleWeekRow(this)"><span class="wk-n">wk 1</span><span class="wk-km">19.5k</span><span class="wk-meta"><span class="wk-dot" style="--mood: var(--mood-overloaded)"></span><iconify-icon class="wk-chevron" icon="mdi:chevron-down"></iconify-icon></span></button>
+                <div class="day-cell out">27</div>
+                <div class="day-cell out">28<span class="day-dot" style="--mood: var(--mood-easy)"></span></div>
+                <div class="day-cell out">29</div>
+                <div class="day-cell out">30</div>
+                <div class="day-cell out">31</div>
+                <div class="day-cell">1</div>
+                <div class="day-cell">2<span class="day-dot" style="--mood: var(--mood-overloaded)"></span></div>
+              </div>
+              <div class="week-narration">
+                <p>"a lighter week overall — monday eased you in, and saturday's long run tested legs that hadn't fully recovered."</p>
+                <div class="recap-chips"><span class="recap-chip">load moderate</span><span class="recap-chip">fitness +1.2</span></div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" onclick="toggleWeekRow(this)"><span class="wk-n">wk 2</span><span class="wk-km">31.2k</span><span class="wk-meta"><span class="wk-dot" style="--mood: var(--mood-blazing)"></span><iconify-icon class="wk-chevron" icon="mdi:chevron-down"></iconify-icon></span></button>
+                <div class="day-cell">3</div>
+                <div class="day-cell">4<span class="day-dot" style="--mood: var(--mood-gassed)"></span></div>
+                <div class="day-cell">5<span class="day-dot" style="--mood: var(--mood-wobbly)"></span></div>
+                <div class="day-cell">6</div>
+                <div class="day-cell">7<span class="day-dot" style="--mood: var(--mood-blazing)"></span></div>
+                <div class="day-cell">8</div>
+                <div class="day-cell">9<span class="day-dot" style="--mood: var(--mood-chill)"></span></div>
+              </div>
+              <div class="week-narration">
+                <p>"hill repeats tested you monday, and half marathon pr settled the score by thursday — a new pr by 2 minutes."</p>
+                <div class="recap-chips"><span class="recap-chip">load high</span><span class="recap-chip">fitness +3.4</span><span class="recap-chip kartu-chip" style="--rarity: var(--rc-epic)"><iconify-icon icon="mdi:star-four-points"></iconify-icon> epic kartu</span></div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" onclick="toggleWeekRow(this)"><span class="wk-n">wk 3</span><span class="wk-km">24.6k</span><span class="wk-meta"><span class="wk-dot" style="--mood: var(--mood-easy)"></span><iconify-icon class="wk-chevron" icon="mdi:chevron-down"></iconify-icon></span></button>
+                <div class="day-cell">10</div>
+                <div class="day-cell">11</div>
+                <div class="day-cell">12<span class="day-dot" style="--mood: var(--mood-blazing)"></span></div>
+                <div class="day-cell">13</div>
+                <div class="day-cell">14<span class="day-dot" style="--mood: var(--mood-easy)"></span></div>
+                <div class="day-cell">15</div>
+                <div class="day-cell today">16<span class="day-dot" style="--mood: var(--mood-wobbly)"></span></div>
+              </div>
+              <div class="week-narration">
+                <p>"tempo tuesday was your strongest push yet, and sunday's long run held pace deep into the second hour."</p>
+                <div class="recap-chips"><span class="recap-chip">fatigue moderate</span><span class="recap-chip">fitness +2.1</span><span class="recap-chip kartu-chip" style="--rarity: var(--rc-rare)"><iconify-icon icon="mdi:star-four-points"></iconify-icon> rare kartu</span></div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 4</span></button>
+                <div class="day-cell">17</div>
+                <div class="day-cell">18</div>
+                <div class="day-cell">19</div>
+                <div class="day-cell">20</div>
+                <div class="day-cell">21</div>
+                <div class="day-cell">22</div>
+                <div class="day-cell">23</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 5</span></button>
+                <div class="day-cell">24</div>
+                <div class="day-cell">25</div>
+                <div class="day-cell">26</div>
+                <div class="day-cell">27</div>
+                <div class="day-cell">28</div>
+                <div class="day-cell">29</div>
+                <div class="day-cell">30</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 6</span></button>
+                <div class="day-cell">31</div>
+                <div class="day-cell out">1</div>
+                <div class="day-cell out">2</div>
+                <div class="day-cell out">3</div>
+                <div class="day-cell out">4</div>
+                <div class="day-cell out">5</div>
+                <div class="day-cell out">6</div>
+              </div>
+            </div>
+            </div>
+
+            <div class="month-block" data-month="jul">
+            <div class="month-meta">
+              <div class="month-meta-stats">1 run · 5.5 km · trimp 48</div>
+            </div>
+
+            <div class="month-recap" style="--mood: var(--mood-easy)">
+              <svg viewBox="0 0 100 100" width="36" height="36" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--mood)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div class="month-recap-body">
+                <p class="month-recap-line">july stayed light — a loosen-up run bridged you into a bigger august.</p>
+                <div class="month-recap-foot">
+                  <div class="recap-chips"><span class="recap-chip">load low</span><span class="recap-chip">fitness +0.4</span></div>
+                  <button class="recap-notify"><iconify-icon icon="mdi:bell-plus-outline"></iconify-icon></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mood-legend">
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-blazing)"></span>blazing</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-easy)"></span>easy</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-wobbly)"></span>wobbly</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-gassed)"></span>gassed</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-overloaded)"></span>overloaded</div>
+              <div class="mood-legend-item"><span class="mood-legend-dot" style="--mood: var(--mood-chill)"></span>chill</div>
+            </div>
+
+            <div class="cal-grid-row cal-head">
+              <span>wk</span><span>mo</span><span>tu</span><span>we</span><span>th</span><span>fr</span><span>sa</span><span>su</span>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 1</span></button>
+                <div class="day-cell out">29</div>
+                <div class="day-cell out">30</div>
+                <div class="day-cell">1</div>
+                <div class="day-cell">2</div>
+                <div class="day-cell">3</div>
+                <div class="day-cell">4</div>
+                <div class="day-cell">5</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 2</span></button>
+                <div class="day-cell">6</div>
+                <div class="day-cell">7</div>
+                <div class="day-cell">8</div>
+                <div class="day-cell">9</div>
+                <div class="day-cell">10</div>
+                <div class="day-cell">11</div>
+                <div class="day-cell">12</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 3</span></button>
+                <div class="day-cell">13</div>
+                <div class="day-cell">14</div>
+                <div class="day-cell">15</div>
+                <div class="day-cell">16</div>
+                <div class="day-cell">17</div>
+                <div class="day-cell">18</div>
+                <div class="day-cell">19</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" disabled><span class="wk-n">wk 4</span></button>
+                <div class="day-cell">20</div>
+                <div class="day-cell">21</div>
+                <div class="day-cell">22</div>
+                <div class="day-cell">23</div>
+                <div class="day-cell">24</div>
+                <div class="day-cell">25</div>
+                <div class="day-cell">26</div>
+              </div>
+            </div>
+
+            <div class="week-block">
+              <div class="cal-grid-row">
+                <button class="wk-cell" onclick="toggleWeekRow(this)"><span class="wk-n">wk 5</span><span class="wk-km">19.5k</span><span class="wk-meta"><span class="wk-dot" style="--mood: var(--mood-overloaded)"></span><iconify-icon class="wk-chevron" icon="mdi:chevron-down"></iconify-icon></span></button>
+                <div class="day-cell">27</div>
+                <div class="day-cell">28<span class="day-dot" style="--mood: var(--mood-easy)"></span></div>
+                <div class="day-cell">29</div>
+                <div class="day-cell">30</div>
+                <div class="day-cell">31</div>
+                <div class="day-cell out">1</div>
+                <div class="day-cell out">2<span class="day-dot" style="--mood: var(--mood-overloaded)"></span></div>
+              </div>
+              <div class="week-narration">
+                <p>"a lighter week overall — monday eased you in, and saturday's long run tested legs that hadn't fully recovered."</p>
+                <div class="recap-chips"><span class="recap-chip">load moderate</span><span class="recap-chip">fitness +1.2</span></div>
+              </div>
+            </div>
+            </div>
+
+          </div>
+
+        </div>
+        </div>
+
+        <nav class="bottomnav">
+          <a class="bn-item"><iconify-icon icon="mdi:weather-sunset-up"></iconify-icon><span>today</span></a>
+          <a class="bn-item"><iconify-icon icon="mdi:chart-line"></iconify-icon><span>trends</span></a>
+          <a class="bn-item active"><iconify-icon icon="mdi:history"></iconify-icon><span>history</span></a>
+        </nav>
+      </div>
+    </div>
+    <div class="cap"><b>System</b><span>No forced theme — follows your OS/browser prefers-color-scheme live.</span></div>
+  </div>
+
+</div>
+
+<script>
+  var VIEWPORTS = {
+    mobile:  { w: 390,  h: 844,  chrome: 'phone' },
+    se:      { w: 320,  h: 568,  chrome: 'phone' },
+    tablet:  { w: 834,  h: 1112, chrome: 'tablet' },
+    desktop: { w: 1280, h: 800,  chrome: 'browser' },
+    wide:    { w: 1536, h: 864,  chrome: 'browser' },
+  };
+  function setViewport(key) {
+    var vp = VIEWPORTS[key];
+    document.querySelectorAll('.col').forEach(function (col) {
+      var phone = col.querySelector('.phone');
+      var cap = col.querySelector('.cap');
+      phone.style.width = vp.w + 'px';
+      phone.style.height = vp.h + 'px';
+      cap.style.width = vp.w + 'px';
+      phone.classList.toggle('chrome-browser', vp.chrome === 'browser');
+      phone.classList.toggle('chrome-tablet', vp.chrome === 'tablet');
+    });
+    document.querySelectorAll('.vp-btn[data-vp]').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.vp === key);
+    });
+  }
+  function setHistoryState(state) {
+    document.querySelectorAll('.screen').forEach(function (screen) {
+      screen.dataset.state = state;
+    });
+    document.querySelectorAll('.state-bar .vp-btn').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.state === state);
+    });
+  }
+  function revealOlderWeek(btn) {
+    var screen = btn.closest('.screen');
+    screen.querySelector('.older-week').classList.add('revealed');
+    btn.closest('.load-more-row').style.display = 'none';
+  }
+  function switchHistoryTab(e, link, tab) {
+    e.preventDefault();
+    var screen = link.closest('.screen');
+    screen.dataset.tab = tab;
+    screen.querySelectorAll('.htabs a').forEach(function (a) {
+      a.classList.toggle('active', a.dataset.tab === tab);
+    });
+  }
+  function toggleWeekRow(btn) {
+    btn.closest('.week-block').classList.toggle('expanded');
+  }
+  var CAL_MONTHS = {
+    aug: { label: 'august 2026', prevDisabled: false, nextDisabled: true },
+    jul: { label: 'july 2026', prevDisabled: true, nextDisabled: false },
+  };
+  function navMonth(btn, dir) {
+    var screen = btn.closest('.screen');
+    var current = screen.dataset.month || 'aug';
+    var next = current;
+    if (dir === 'prev' && current === 'aug') next = 'jul';
+    else if (dir === 'next' && current === 'jul') next = 'aug';
+    screen.dataset.month = next;
+    var info = CAL_MONTHS[next];
+    screen.querySelector('.month-nav-label').textContent = info.label;
+    screen.querySelectorAll('.month-nav-arrow').forEach(function (a) {
+      var isPrev = a.getAttribute('aria-label') === 'Previous month';
+      a.disabled = isPrev ? info.prevDisabled : info.nextDisabled;
+    });
+  }
+  setViewport('mobile');
+</script>

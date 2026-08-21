@@ -1,0 +1,918 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Temari — today redesign (mobile-first, light/dark/system)</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
+<style>
+  :root {
+    /* raw Pewter brand tokens, unchanged from resources/css/app.css */
+    --sky: #171f28; --sky-deep: #0b1017; --sky-2: #26303d;
+    --horizon: #ade047; --horizon-deep: #95c134; --horizon-ink: #546d23;
+    --cream: #f1f5f8; --cream-deep: #e2e8ee;
+    --ink: #16181b; --ink-2: #34373c; --ink-3: #60666d;
+    --leaf: #2f8f63; --ember: #b23a4f; --citrus: #c9971f;
+    --line-light: #bfc5cc;
+    --r-xs: 6px; --r-sm: 10px; --r-md: 14px; --r-lg: 18px; --r-xl: 24px; --r-full: 9999px; --r-panel: 26px;
+    --e1: 0 1px 2px rgba(58,45,20,.06), 0 1px 1px rgba(58,45,20,.04);
+    --e3: 0 12px 28px rgba(58,45,20,.12), 0 4px 10px rgba(58,45,20,.07);
+    --f-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    --f-display: 'Fraunces', Georgia, serif;
+    --f-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 48px 40px 96px; background: #e4e4e4; color: var(--ink); font-family: var(--f-sans); }
+  h1 { font-size: 21px; font-weight: 800; margin: 0 0 4px; letter-spacing: -.01em; }
+  p.lede { margin: 0 0 8px; color: #58585f; max-width: 78ch; font-size: 14px; line-height: 1.55; }
+  .banner {
+    border: 1px solid #d2d2d8; background: #fff; border-radius: 12px; padding: 12px 16px;
+    margin: 16px 0 36px; max-width: 78ch; font-size: 12.5px; line-height: 1.6; color: #46464e;
+  }
+  .banner b { color: var(--ink); }
+
+  .rack { display: flex; gap: 40px; flex-wrap: wrap; align-items: flex-start; }
+  .col { display: flex; flex-direction: column; align-items: flex-start; }
+  .cap { width: 390px; margin-top: 12px; font-size: 12px; }
+  .cap b { display: block; font-weight: 700; font-size: 13px; }
+  .cap span { color: #6a6a72; }
+
+  .vp-bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 28px; }
+  .vp-btn {
+    border: 1px solid #d2d2d8; background: #fff; color: #46464e; font-family: var(--f-sans);
+    font-size: 12.5px; font-weight: 600; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  }
+  .vp-btn.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+  /* ─── device frame ─────────────────────────────────────────── */
+  .phone {
+    width: 390px; height: 844px; border-radius: 52px; padding: 14px;
+    background: #0d0d0f; box-shadow: var(--e3), 0 30px 60px rgba(0,0,0,.25);
+    position: relative; transition: width .2s ease, height .2s ease;
+  }
+  .island {
+    position: absolute; top: 26px; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 30px; border-radius: var(--r-full); background: #0d0d0f; z-index: 20;
+  }
+  .phone.chrome-tablet .island { display: none; }
+  .phone.chrome-browser { border-radius: 14px; padding: 0; }
+  .phone.chrome-browser .island { display: none; }
+  .phone.chrome-browser .screen { height: calc(100% - 38px); border-radius: 0 0 10px 10px; }
+  .browser-bar { display: none; }
+  .phone.chrome-browser .browser-bar {
+    display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px;
+    background: #1c1c1f; border-radius: 14px 14px 0 0;
+  }
+  .browser-bar span { width: 9px; height: 9px; border-radius: 50%; background: #4a4a50; }
+
+  /* ─── theme layer + 3-row app-shell skeleton (top bar / scroll / bottom nav) ─── */
+  .screen {
+    width: 100%; height: 100%; border-radius: 38px; overflow: hidden; position: relative;
+    display: flex; flex-direction: column; container-type: inline-size;
+    --bg: var(--cream); --surf: var(--cream); --surf-sunk: var(--cream-deep);
+    --text: var(--ink); --text-2: var(--ink-2); --text-3: var(--ink-3);
+    --ln: var(--line-light); --ico-fg: var(--horizon-ink);
+    background: var(--bg); color: var(--text);
+  }
+  .screen[data-theme="dark"] {
+    --bg: var(--sky-deep); --surf: var(--sky); --surf-sunk: var(--sky-2);
+    --text: var(--cream); --text-2: rgba(241,245,248,.72); --text-3: rgba(241,245,248,.5);
+    --ln: rgba(241,245,248,.14); --ico-fg: var(--horizon);
+  }
+  @media (prefers-color-scheme: dark) {
+    .screen[data-theme="system"] {
+      --bg: var(--sky-deep); --surf: var(--sky); --surf-sunk: var(--sky-2);
+      --text: var(--cream); --text-2: rgba(241,245,248,.72); --text-3: rgba(241,245,248,.5);
+      --ln: rgba(241,245,248,.14); --ico-fg: var(--horizon);
+    }
+  }
+  /* Plan-state toggle — swaps .plan-card/.no-plan-card visibility, independent of the theme toggle. */
+  .screen[data-plan="empty"] .plan-card { display: none; }
+  .screen[data-plan="empty"] .no-plan-card { display: flex; }
+
+  /* Floats over content (position:absolute, no background) instead of
+     sitting in normal flow — same "content scrolls underneath" technique
+     the bottom nav already uses. Each element needs its own chip so it
+     stays legible once arbitrary scrolled content is behind it, rather
+     than one shared bar background. */
+  .topbar {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 10px;
+  }
+  .topbar-brand {
+    display: flex; align-items: center; gap: 7px; font-weight: 800; font-size: 14px;
+    background: var(--surf-sunk); padding: 7px 13px 7px 10px; border-radius: 999px; box-shadow: var(--e1);
+  }
+  .topbar-brand svg { flex: none; }
+  .topbar-right { display: flex; align-items: center; gap: 6px; }
+  .topbar-bell {
+    position: relative; width: 32px; height: 32px; border-radius: 50%; color: var(--text-3);
+    background: var(--surf-sunk); box-shadow: var(--e1);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .topbar-bell iconify-icon { font-size: 18px; }
+  .topbar-bell .badge {
+    position: absolute; top: 2px; right: 2px; min-width: 14px; height: 14px; padding: 0 3px;
+    border-radius: 999px; background: var(--ember); color: #fff; font-family: var(--f-mono);
+    font-size: 8.5px; font-weight: 800; line-height: 14px; text-align: center;
+  }
+  .topbar-avatar {
+    width: 28px; height: 28px; border-radius: 50%; background: var(--surf-sunk); color: var(--text-2);
+    display: flex; align-items: center; justify-content: center; font-family: var(--f-mono); font-size: 11px; font-weight: 700;
+    box-shadow: var(--e1);
+  }
+
+  /* .scroller (flex item) / .content (plain block inside it) split in two —
+     a flex item that's also a direct descendant of the container-type
+     element, and is itself the @container query's target, resolves its
+     width wrong in this engine (verified via minimal repro: locks at a
+     stale intrinsic value instead of stretching to max-width). Keeping the
+     flex+scroll role on an outer, unqueried element sidesteps it. */
+  .scroller { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; min-height: 0; }
+  .scroller::-webkit-scrollbar { display: none; }
+  .content { padding: 64px 16px 88px; }
+
+  /* Floating, frosted — an absolutely-positioned overlay (not a normal flex
+     row) so real content actually scrolls underneath it and the blur has
+     something to blur. .content's bottom padding above keeps real content
+     clear of it. */
+  .bottomnav {
+    position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 10;
+    display: flex; gap: 4px; padding: 6px; border-radius: 999px;
+    /* A light sheen layered over the theme-tinted blur — glass needs its own
+       highlight to read as glass; relying on background bleed-through alone
+       washed out in dark mode, where the page/card values sit too close
+       together to create contrast. */
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.05)),
+      color-mix(in oklab, var(--surf) 58%, transparent);
+    backdrop-filter: blur(20px) saturate(1.8);
+    -webkit-backdrop-filter: blur(20px) saturate(1.8);
+    border: 1px solid rgba(255,255,255,.3);
+    box-shadow: var(--e2), inset 0 1px 0 rgba(255,255,255,.35);
+  }
+  .bn-item {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px 0; border-radius: 999px; color: var(--text-3); text-decoration: none;
+    transition: background .15s ease, color .15s ease, flex-grow .2s ease;
+  }
+  .bn-item iconify-icon { font-size: 18px; transition: font-size .15s ease; }
+  .bn-item span {
+    font-family: var(--f-mono); font-size: 9px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .05em; max-width: 0; overflow: hidden; white-space: nowrap; opacity: 0;
+    transition: max-width .2s ease, opacity .15s ease;
+  }
+  .bn-item.active {
+    flex-grow: 1.6; color: var(--ico-fg);
+    background: linear-gradient(135deg, color-mix(in oklab, var(--horizon) 34%, transparent), color-mix(in oklab, var(--horizon) 14%, transparent));
+    box-shadow: 0 2px 10px -2px color-mix(in oklab, var(--horizon) 45%, transparent), inset 0 1px 0 color-mix(in oklab, white 25%, transparent);
+  }
+  .bn-item.active iconify-icon { font-size: 20px; }
+  .bn-item.active span { max-width: 60px; opacity: 1; }
+
+  /* ─── shared label / chip primitives ─────────────────────────── */
+  .label {
+    font-family: var(--f-mono); font-size: 10px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .09em; color: var(--text-3);
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px; font-family: var(--f-mono); font-size: 9.5px;
+    font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 4px 9px; border-radius: 999px;
+  }
+  .chip-streak { background: color-mix(in oklab, var(--horizon) 20%, transparent); color: var(--ico-fg); }
+  .chip-phase { background: var(--surf-sunk); color: var(--text-2); }
+
+  /* ─── week-plan card ──────────────────────────────────────────── */
+  .plan-card { background: var(--surf); border: 1px solid var(--ln); border-radius: var(--r-md); padding: 16px; box-shadow: var(--e1); margin: 12px 0 16px; }
+
+  /* ─── "no plan yet" — proposed addition, not a port ────────────────
+     Real Home.tsx just omits WeekPlanWidget entirely when weekPlan is
+     null (`{weekPlan !== null && <WeekPlanWidget .../>}`) — this card
+     doesn't exist in the shipped app. Voice/pose matched to the Plan
+     tab's own real empty state (Plan.tsx:349-356: EmptyPanel
+     pose="proud", "No plan yet." / "Hit Regenerate and Temari will lay
+     out the weeks ahead."), reworded for Home's context (link out to
+     /plan to set one up, rather than a Regenerate button that only
+     exists on the Plan tab itself). */
+  .no-plan-card {
+    display: none; background: var(--surf); border: 1px solid var(--ln); border-radius: var(--r-md); padding: 18px;
+    box-shadow: var(--e1); margin: 12px 0 16px; align-items: center; gap: 14px;
+  }
+  .no-plan-card svg { flex: none; }
+  .no-plan-card .np-title { margin: 0; font-family: var(--f-display); font-style: italic; font-weight: 600; font-size: 16px; color: var(--text); }
+  .no-plan-card .np-body { margin: 4px 0 10px; font-size: 12px; line-height: 1.5; color: var(--text-2); }
+  .np-cta {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700;
+    color: var(--ico-fg); text-decoration: none;
+  }
+
+  .state-bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
+  .plan-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .plan-chips { display: flex; gap: 6px; }
+  .plan-body { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
+  .ring-wrap { position: relative; flex: none; width: 60px; height: 60px; }
+  .ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--f-mono); font-size: 10.5px; font-weight: 800; color: var(--text); }
+  .plan-stats { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .plan-stat b { display: block; font-family: var(--f-mono); font-size: 15px; font-weight: 800; color: var(--text); }
+  .plan-stat span { font-size: 9px; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; }
+  .day-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 14px; }
+  .day-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px 0; border-radius: 8px; }
+  .day-cell.today { box-shadow: 0 0 0 1.5px var(--ico-fg) inset; }
+  .day-cell .wd { font-family: var(--f-mono); font-size: 8.5px; color: var(--text-3); text-transform: uppercase; }
+  .day-cell iconify-icon { font-size: 13px; color: var(--text-3); }
+  .day-cell.done iconify-icon { color: var(--ico-fg); }
+  .day-cell .dist { font-family: var(--f-mono); font-size: 7.5px; color: var(--text-3); }
+  .today-strip {
+    background: var(--surf-sunk); border-radius: var(--r-sm); padding: 10px 12px; font-size: 11.5px;
+    color: var(--text-2); text-decoration: none; display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+  }
+  .today-strip b { color: var(--text); }
+  .today-strip iconify-icon { flex: none; color: var(--text-3); }
+
+  /* ─── verdict block ───────────────────────────────────────────── */
+  .verdict-card { margin-bottom: 16px; }
+  .verdict-h {
+    font-family: var(--f-display); font-style: italic; font-weight: 600; font-size: 25px;
+    line-height: 1.14; margin: 8px 0 0; color: var(--leaf);
+  }
+  .verdict-sub { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--text-2); }
+  .evidence { display: flex; flex-direction: column; gap: 1px; background: var(--ln); border: 1px solid var(--ln); border-radius: var(--r-md); overflow: hidden; box-shadow: var(--e1); margin-top: 12px; }
+  .ev-row { background: var(--surf); padding: 11px 14px; display: flex; flex-direction: column; gap: 4px; }
+  .ev-label { font-size: 10.5px; color: var(--text-3); }
+  .ev-nums { display: flex; align-items: baseline; gap: 8px; font-family: var(--f-mono); }
+  .ev-then { font-size: 12.5px; color: var(--text-3); }
+  .ev-arrow { font-size: 12px; color: var(--text-3); }
+  .ev-now { font-size: 14.5px; font-weight: 800; color: var(--text); }
+  .ev-delta { margin-left: auto; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: color-mix(in oklab, var(--leaf) 18%, transparent); color: var(--leaf); }
+
+  /* ─── today session (always sky-toned, like the real card) ──────── */
+  .today-card { background: var(--sky); color: var(--cream); border-radius: var(--r-md); padding: 16px; margin-bottom: 16px; }
+  .today-head { display: flex; align-items: center; gap: 12px; }
+  .today-card svg { flex: none; }
+  .today-lbl { font-family: var(--f-mono); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--horizon); margin-bottom: 4px; }
+  .today-lead { margin: 0; font-size: 13.5px; font-weight: 700; line-height: 1.5; }
+  .today-body { margin-top: 10px; font-size: 12.5px; line-height: 1.55; color: rgba(241,245,248,.78); }
+
+  /* ─── collapsed "supporting detail" disclosure ───────────────────
+     The density fix: everything the dashboard used to open with now
+     sits behind one tap instead of a long unconditional scroll. */
+  details.stats { margin-bottom: 8px; }
+  details.stats summary {
+    list-style: none; cursor: pointer; background: var(--surf); border: 1px solid var(--ln); border-radius: var(--r-md);
+    padding: 13px 14px; display: flex; align-items: center; justify-content: space-between;
+    box-shadow: var(--e1); font-size: 12px; color: var(--text-2);
+  }
+  details.stats summary::-webkit-details-marker { display: none; }
+  details.stats summary b { color: var(--text); font-weight: 700; }
+  details.stats summary iconify-icon { color: var(--text-3); transition: transform .15s ease; flex: none; }
+  details.stats[open] summary iconify-icon { transform: rotate(180deg); }
+  .stats-body { padding-top: 12px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .kpi-tile { background: var(--surf); border: 1px solid var(--ln); border-radius: var(--r-sm); padding: 10px; box-shadow: var(--e1); text-align: center; }
+  .kpi-tile b { display: block; font-family: var(--f-mono); font-size: 17px; font-weight: 800; color: var(--text); }
+  .kpi-tile span { font-family: var(--f-mono); font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); }
+
+  .vital-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .vital-tile { background: var(--surf); border: 1px solid var(--ln); border-radius: var(--r-sm); padding: 10px; box-shadow: var(--e1); }
+  .vital-tile .lbl { display: block; font-family: var(--f-mono); font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); }
+  .vital-tile b { display: block; margin-top: 3px; font-size: 13px; font-weight: 800; color: var(--text); }
+  .vital-rail { margin-top: 6px; height: 3px; border-radius: 2px; background: var(--ln); overflow: hidden; }
+  .vital-rail i { display: block; height: 100%; background: var(--horizon); }
+  .vital-tile .sub { display: block; margin-top: 4px; font-size: 9.5px; font-style: italic; color: var(--text-3); }
+
+  .stat-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .stat-card { background: var(--surf); border: 1px solid var(--ln); border-radius: var(--r-sm); padding: 12px; box-shadow: var(--e1); }
+  .stat-card h4 { margin: 0 0 8px; font-family: var(--f-mono); font-size: 10px; font-weight: 800; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; }
+  .mini-row { display: flex; justify-content: space-between; font-size: 11px; padding: 4px 0; border-bottom: 1px solid var(--ln); }
+  .mini-row:last-child { border-bottom: none; }
+  .mini-row span { color: var(--text-3); }
+  .mini-row b { color: var(--text); }
+  .card-link { display: inline-flex; align-items: center; gap: 3px; margin-top: 8px; font-size: 10.5px; color: var(--text-2); }
+
+  .featured-teaser {
+    margin-top: 8px; background: linear-gradient(160deg, var(--sky) 0%, var(--sky-2) 100%);
+    border-radius: var(--r-md); padding: 14px; color: var(--cream);
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--citrus) 45%, transparent);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .featured-teaser .mini-card {
+    flex: none; width: 54px; height: 60px; border-radius: var(--r-xs); position: relative; overflow: hidden;
+    background: linear-gradient(160deg, var(--sky-2) 0%, var(--sky) 100%);
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--citrus) 55%, transparent), inset 0 0 10px color-mix(in oklab, var(--citrus) 55%, transparent);
+  }
+  .featured-teaser .eyebrow2 { font-family: var(--f-mono); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--citrus); }
+  .featured-teaser p { margin: 4px 0 0; font-size: 12px; line-height: 1.4; }
+  .featured-teaser p b { font-weight: 700; }
+
+  /* ─── wide reflow: same markup, container-query-driven ───────────
+     Same 900px threshold used for the login mockup, kept above tablet's
+     effective inner width so tablet still reads as the mobile stack. */
+  @container (min-width: 900px) {
+    .content { max-width: 760px; margin: 0 auto; padding: 24px 24px 40px; }
+    .plan-body { gap: 24px; }
+    /* 3 real tiles / 2 real cards — cap + center instead of stretching to a
+       column count that doesn't match what's actually there (an earlier
+       repeat(6,1fr)/repeat(3,1fr) pass left phantom empty columns). */
+    .kpi-row, .vital-row { grid-template-columns: repeat(3, minmax(0, 200px)); justify-content: center; }
+    .stat-cards { grid-template-columns: repeat(2, minmax(0, 320px)); justify-content: center; }
+  }
+</style>
+
+<h1>Today — mobile redesign</h1>
+<p class="lede">Real Pewter tokens (resources/css/app.css). Redesign of resources/js/pages/Home.tsx — layout only, no dev work yet. Same 3-theme + viewport-switcher setup as the login mockup. Order kept as decided: this week's plan leads, then the verdict, then today's session — all per the deliberate hierarchy already in Home.tsx's own doc comment and last week's PRs.</p>
+<div class="banner">
+  <b>What changed vs. the shipped page:</b> everything the real dashboard "used to open with" — this-week KPIs,
+  vitals, last run, training load, the featured card — now sits behind one tap-to-expand disclosure instead of an
+  unconditional scroll. The plan widget, verdict and today's session stay fully visible as the primary read,
+  matching Home.tsx's own stated hierarchy. A top bar + bottom nav are included so thumb-reach reads in real
+  context, not in isolation.
+</div>
+
+<div class="state-bar">
+  <button class="vp-btn active" data-plan="has" onclick="setPlanState('has')">Has plan</button>
+  <button class="vp-btn" data-plan="empty" onclick="setPlanState('empty')">No plan (proposed empty state)</button>
+</div>
+
+<div class="vp-bar">
+  <button class="vp-btn active" data-vp="mobile" onclick="setViewport('mobile')">Mobile · 390×844</button>
+  <button class="vp-btn" data-vp="se" onclick="setViewport('se')">SE · 320×568</button>
+  <button class="vp-btn" data-vp="tablet" onclick="setViewport('tablet')">Tablet · 834×1112</button>
+  <button class="vp-btn" data-vp="desktop" onclick="setViewport('desktop')">Desktop · 1280×800</button>
+  <button class="vp-btn" data-vp="wide" onclick="setViewport('wide')">Wide · 1536×864</button>
+</div>
+
+<div class="rack">
+
+  <!-- LIGHT -->
+  <div class="col">
+    <div class="phone">
+      <div class="island"></div>
+      <div class="browser-bar"><span></span><span></span><span></span></div>
+      <div class="screen" data-theme="light" data-plan="has">
+        <div class="topbar">
+          <div class="topbar-brand">
+            <svg viewBox="0 0 100 100" width="22" height="22" aria-hidden="true">
+              <g fill="none" stroke-width="11" stroke-linecap="round">
+                <path stroke="var(--horizon)" d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"/>
+                <path stroke="var(--text)" d="M50 27 A23 23 0 1 1 30.09 61.5"/>
+              </g>
+            </svg>
+            temari
+          </div>
+          <div class="topbar-right">
+            <a href="#" class="topbar-bell">
+              <iconify-icon icon="mdi:bell-outline"></iconify-icon>
+              <span class="badge">2</span>
+            </a>
+            <div class="topbar-avatar">N</div>
+          </div>
+        </div>
+
+        <div class="scroller">
+        <div class="content">
+          <div class="plan-card">
+            <div class="plan-head">
+              <span class="label">this week's plan</span>
+              <div class="plan-chips">
+                <span class="chip chip-streak"><iconify-icon icon="mdi:fire" width="11"></iconify-icon>6-day streak</span>
+                <span class="chip chip-phase">build</span>
+              </div>
+            </div>
+            <div class="plan-body">
+              <div class="ring-wrap">
+                <svg viewBox="0 0 60 60">
+                  <circle cx="30" cy="30" r="25" fill="none" stroke="var(--ln)" stroke-width="6"/>
+                  <circle cx="30" cy="30" r="25" fill="none" stroke="var(--ico-fg)" stroke-width="6" stroke-linecap="round" stroke-dasharray="157" stroke-dashoffset="63"/>
+                </svg>
+                <span class="ring-label">3/5</span>
+              </div>
+              <div class="plan-stats">
+                <div class="plan-stat"><b>3/5</b><span>sessions</span></div>
+                <div class="plan-stat"><b>18.2</b><span>km this week</span></div>
+              </div>
+            </div>
+            <div class="day-grid">
+              <div class="day-cell done"><span class="wd">mon</span><iconify-icon icon="mdi:fire"></iconify-icon><span class="dist">6k</span></div>
+              <div class="day-cell done"><span class="wd">tue</span><iconify-icon icon="mdi:fire"></iconify-icon><span class="dist">8k</span></div>
+              <div class="day-cell"><span class="wd">wed</span><iconify-icon icon="mdi:circle-small"></iconify-icon><span class="dist">rest</span></div>
+              <div class="day-cell today"><span class="wd">thu</span><iconify-icon icon="mdi:circle-small"></iconify-icon><span class="dist">6k</span></div>
+              <div class="day-cell"><span class="wd">fri</span><iconify-icon icon="mdi:circle-small"></iconify-icon><span class="dist">rest</span></div>
+              <div class="day-cell"><span class="wd">sat</span><iconify-icon icon="mdi:circle-small"></iconify-icon><span class="dist">10k</span></div>
+              <div class="day-cell"><span class="wd">sun</span><iconify-icon icon="mdi:circle-small"></iconify-icon><span class="dist">rest</span></div>
+            </div>
+            <a href="#" class="today-strip">
+              <span><b>today</b> · easy · 6 km · 5:45/km</span>
+              <iconify-icon icon="mdi:chevron-right" width="16"></iconify-icon>
+            </a>
+          </div>
+
+          <div class="no-plan-card">
+            <svg viewBox="0 0 100 100" width="40" height="40" aria-hidden="true">
+              <circle cx="50" cy="52" r="41" fill="none" stroke="var(--horizon)" stroke-width="6"/>
+              <circle cx="50" cy="52" r="31" fill="var(--surf)" stroke="var(--text)" stroke-width="4.5"/>
+              <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+              <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+              <circle cx="40" cy="50" r="4.4" fill="var(--text)"/><circle cx="60" cy="50" r="4.4" fill="var(--text)"/>
+              <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+            </svg>
+            <div>
+              <p class="np-title">no plan yet.</p>
+              <p class="np-body">set one up and temari will lay out the weeks ahead.</p>
+              <a class="np-cta" href="#">set up a plan<iconify-icon icon="mdi:arrow-right" width="12"></iconify-icon></a>
+            </div>
+          </div>
+
+          <div class="verdict-card">
+            <span class="label">you vs past you · last 90 days</span>
+            <h2 class="verdict-h">you're faster than<br>you were in june.</h2>
+            <p class="verdict-sub">11 s/km faster on average, across 4 matched runs.</p>
+            <div class="evidence">
+              <div class="ev-row">
+                <span class="ev-label">6.2 km · pace vs jun 3</span>
+                <div class="ev-nums"><span class="ev-then">5:43</span><span class="ev-arrow">→</span><span class="ev-now">5:32</span><span class="ev-delta">-11 s/km</span></div>
+              </div>
+              <div class="ev-row">
+                <span class="ev-label">10 km · pace vs may 28</span>
+                <div class="ev-nums"><span class="ev-then">5:38</span><span class="ev-arrow">→</span><span class="ev-now">5:29</span><span class="ev-delta">-9 s/km</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="today-card">
+            <div class="today-head">
+              <svg viewBox="0 0 100 100" width="42" height="42" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--leaf)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div>
+                <div class="today-lbl">today</div>
+                <p class="today-lead">legs still owe you from tuesday's tempo.</p>
+              </div>
+            </div>
+            <p class="today-body">keep today easy and let it settle — the build phase rewards patience, not heroics.</p>
+          </div>
+
+          <details class="stats">
+            <summary>
+              <span><b>this week's stats</b> · 4 runs · 18.2 km</span>
+              <iconify-icon icon="mdi:chevron-down" width="18"></iconify-icon>
+            </summary>
+            <div class="stats-body">
+              <div class="kpi-row">
+                <div class="kpi-tile"><b>4</b><span>runs</span></div>
+                <div class="kpi-tile"><b>18.2</b><span>km</span></div>
+                <div class="kpi-tile"><b>312</b><span>trimp</span></div>
+              </div>
+              <div class="vital-row">
+                <div class="vital-tile">
+                  <span class="lbl">vibe</span><b>steady</b>
+                  <div class="vital-rail"><i style="width:55%"></i></div>
+                  <span class="sub">holding rhythm</span>
+                </div>
+                <div class="vital-tile">
+                  <span class="lbl">readiness</span><b>+8</b>
+                  <div class="vital-rail"><i style="width:68%"></i></div>
+                  <span class="sub">right on track</span>
+                </div>
+                <div class="vital-tile">
+                  <span class="lbl">recovery</span><b>14h</b>
+                  <div class="vital-rail"><i style="width:35%"></i></div>
+                  <span class="sub">since last run</span>
+                </div>
+              </div>
+              <div class="stat-cards">
+                <div class="stat-card">
+                  <h4>last run · yesterday</h4>
+                  <div class="mini-row"><span>km</span><b>6.2</b></div>
+                  <div class="mini-row"><span>pace</span><b>5:32/km</b></div>
+                  <div class="mini-row"><span>trimp</span><b>78</b></div>
+                  <a class="card-link" href="#">view run detail<iconify-icon icon="mdi:arrow-right" width="12"></iconify-icon></a>
+                </div>
+                <div class="stat-card">
+                  <h4>condition · 7 days</h4>
+                  <div class="mini-row"><span>fitness</span><b>42</b></div>
+                  <div class="mini-row"><span>fatigue</span><b>38</b></div>
+                  <div class="mini-row"><span>strain</span><b>1.1</b></div>
+                  <a class="card-link" href="#">technical detail<iconify-icon icon="mdi:arrow-right" width="12"></iconify-icon></a>
+                </div>
+              </div>
+              <div class="featured-teaser">
+                <div class="mini-card"><svg viewBox="0 0 54 60" fill="none"><path d="M3,44 Q17,28 27,36 T50,14" stroke="white" stroke-width="1.3" stroke-opacity=".35" stroke-linecap="round"/></svg></div>
+                <div>
+                  <div class="eyebrow2">top pick this week</div>
+                  <p><b>10K Sunrise</b> · 12 jun · <span class="chip" style="padding:2px 7px">legendary</span></p>
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+        </div>
+
+        <nav class="bottomnav">
+          <a class="bn-item active"><iconify-icon icon="mdi:weather-sunset-up"></iconify-icon><span>today</span></a>
+          <a class="bn-item"><iconify-icon icon="mdi:chart-line"></iconify-icon><span>trends</span></a>
+          <a class="bn-item"><iconify-icon icon="mdi:history"></iconify-icon><span>history</span></a>
+        </nav>
+      </div>
+    </div>
+    <div class="cap"><b>Light</b><span>Forced via data-theme="light" — the default .screen palette.</span></div>
+  </div>
+
+  <!-- DARK -->
+  <div class="col">
+    <div class="phone">
+      <div class="island"></div>
+      <div class="browser-bar"><span></span><span></span><span></span></div>
+      <div class="screen" data-theme="dark" data-plan="has">
+        <div class="topbar">
+          <div class="topbar-brand">
+            <svg viewBox="0 0 100 100" width="22" height="22" aria-hidden="true">
+              <g fill="none" stroke-width="11" stroke-linecap="round">
+                <path stroke="var(--horizon)" d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"/>
+                <path stroke="var(--text)" d="M50 27 A23 23 0 1 1 30.09 61.5"/>
+              </g>
+            </svg>
+            temari
+          </div>
+          <div class="topbar-right">
+            <a href="#" class="topbar-bell">
+              <iconify-icon icon="mdi:bell-outline"></iconify-icon>
+              <span class="badge">2</span>
+            </a>
+            <div class="topbar-avatar">N</div>
+          </div>
+        </div>
+
+        <div class="scroller">
+        <div class="content">
+          <div class="plan-card">
+            <div class="plan-head">
+              <span class="label">this week's plan</span>
+              <div class="plan-chips">
+                <span class="chip chip-streak"><iconify-icon icon="mdi:fire" width="11"></iconify-icon>6-day streak</span>
+                <span class="chip chip-phase">build</span>
+              </div>
+            </div>
+            <div class="plan-body">
+              <div class="ring-wrap">
+                <svg viewBox="0 0 60 60">
+                  <circle cx="30" cy="30" r="25" fill="none" stroke="var(--ln)" stroke-width="6"/>
+                  <circle cx="30" cy="30" r="25" fill="none" stroke="var(--ico-fg)" stroke-width="6" stroke-linecap="round" stroke-dasharray="157" stroke-dashoffset="63"/>
+                </svg>
+                <span class="ring-label">3/5</span>
+              </div>
+              <div class="plan-stats">
+                <div class="plan-stat"><b>3/5</b><span>sessions</span></div>
+                <div class="plan-stat"><b>18.2</b><span>km this week</span></div>
+              </div>
+            </div>
+            <div class="day-grid">
+              <div class="day-cell done"><span class="wd">mon</span><iconify-icon icon="mdi:fire"></iconify-icon><span class="dist">6k</span></div>
+              <div class="day-cell done"><span class="wd">tue</span><iconify-icon icon="mdi:fire"></iconify-icon><span class="dist">8k</span></div>
+              <div class="day-cell"><span class="wd">wed</span><iconify-icon icon="mdi:circle-small"></iconify-icon><span class="dist">rest</span></div>
+              <div class="day-cell today"><span class="wd">thu</span><iconify-icon icon="mdi:circle-small"></iconify-icon><span class="dist">6k</span></div>
+              <div class="day-cell"><span class="wd">fri</span><iconify-icon icon="mdi:circle-small"></iconify-icon><span class="dist">rest</span></div>
+              <div class="day-cell"><span class="wd">sat</span><iconify-icon icon="mdi:circle-small"></iconify-icon><span class="dist">10k</span></div>
+              <div class="day-cell"><span class="wd">sun</span><iconify-icon icon="mdi:circle-small"></iconify-icon><span class="dist">rest</span></div>
+            </div>
+            <a href="#" class="today-strip">
+              <span><b>today</b> · easy · 6 km · 5:45/km</span>
+              <iconify-icon icon="mdi:chevron-right" width="16"></iconify-icon>
+            </a>
+          </div>
+
+          <div class="no-plan-card">
+            <svg viewBox="0 0 100 100" width="40" height="40" aria-hidden="true">
+              <circle cx="50" cy="52" r="41" fill="none" stroke="var(--horizon)" stroke-width="6"/>
+              <circle cx="50" cy="52" r="31" fill="var(--surf)" stroke="var(--text)" stroke-width="4.5"/>
+              <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+              <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+              <circle cx="40" cy="50" r="4.4" fill="var(--text)"/><circle cx="60" cy="50" r="4.4" fill="var(--text)"/>
+              <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+            </svg>
+            <div>
+              <p class="np-title">no plan yet.</p>
+              <p class="np-body">set one up and temari will lay out the weeks ahead.</p>
+              <a class="np-cta" href="#">set up a plan<iconify-icon icon="mdi:arrow-right" width="12"></iconify-icon></a>
+            </div>
+          </div>
+
+          <div class="verdict-card">
+            <span class="label">you vs past you · last 90 days</span>
+            <h2 class="verdict-h">you're faster than<br>you were in june.</h2>
+            <p class="verdict-sub">11 s/km faster on average, across 4 matched runs.</p>
+            <div class="evidence">
+              <div class="ev-row">
+                <span class="ev-label">6.2 km · pace vs jun 3</span>
+                <div class="ev-nums"><span class="ev-then">5:43</span><span class="ev-arrow">→</span><span class="ev-now">5:32</span><span class="ev-delta">-11 s/km</span></div>
+              </div>
+              <div class="ev-row">
+                <span class="ev-label">10 km · pace vs may 28</span>
+                <div class="ev-nums"><span class="ev-then">5:38</span><span class="ev-arrow">→</span><span class="ev-now">5:29</span><span class="ev-delta">-9 s/km</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="today-card">
+            <div class="today-head">
+              <svg viewBox="0 0 100 100" width="42" height="42" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--leaf)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div>
+                <div class="today-lbl">today</div>
+                <p class="today-lead">legs still owe you from tuesday's tempo.</p>
+              </div>
+            </div>
+            <p class="today-body">keep today easy and let it settle — the build phase rewards patience, not heroics.</p>
+          </div>
+
+          <details class="stats">
+            <summary>
+              <span><b>this week's stats</b> · 4 runs · 18.2 km</span>
+              <iconify-icon icon="mdi:chevron-down" width="18"></iconify-icon>
+            </summary>
+            <div class="stats-body">
+              <div class="kpi-row">
+                <div class="kpi-tile"><b>4</b><span>runs</span></div>
+                <div class="kpi-tile"><b>18.2</b><span>km</span></div>
+                <div class="kpi-tile"><b>312</b><span>trimp</span></div>
+              </div>
+              <div class="vital-row">
+                <div class="vital-tile">
+                  <span class="lbl">vibe</span><b>steady</b>
+                  <div class="vital-rail"><i style="width:55%"></i></div>
+                  <span class="sub">holding rhythm</span>
+                </div>
+                <div class="vital-tile">
+                  <span class="lbl">readiness</span><b>+8</b>
+                  <div class="vital-rail"><i style="width:68%"></i></div>
+                  <span class="sub">right on track</span>
+                </div>
+                <div class="vital-tile">
+                  <span class="lbl">recovery</span><b>14h</b>
+                  <div class="vital-rail"><i style="width:35%"></i></div>
+                  <span class="sub">since last run</span>
+                </div>
+              </div>
+              <div class="stat-cards">
+                <div class="stat-card">
+                  <h4>last run · yesterday</h4>
+                  <div class="mini-row"><span>km</span><b>6.2</b></div>
+                  <div class="mini-row"><span>pace</span><b>5:32/km</b></div>
+                  <div class="mini-row"><span>trimp</span><b>78</b></div>
+                  <a class="card-link" href="#">view run detail<iconify-icon icon="mdi:arrow-right" width="12"></iconify-icon></a>
+                </div>
+                <div class="stat-card">
+                  <h4>condition · 7 days</h4>
+                  <div class="mini-row"><span>fitness</span><b>42</b></div>
+                  <div class="mini-row"><span>fatigue</span><b>38</b></div>
+                  <div class="mini-row"><span>strain</span><b>1.1</b></div>
+                  <a class="card-link" href="#">technical detail<iconify-icon icon="mdi:arrow-right" width="12"></iconify-icon></a>
+                </div>
+              </div>
+              <div class="featured-teaser">
+                <div class="mini-card"><svg viewBox="0 0 54 60" fill="none"><path d="M3,44 Q17,28 27,36 T50,14" stroke="white" stroke-width="1.3" stroke-opacity=".35" stroke-linecap="round"/></svg></div>
+                <div>
+                  <div class="eyebrow2">top pick this week</div>
+                  <p><b>10K Sunrise</b> · 12 jun · <span class="chip" style="padding:2px 7px">legendary</span></p>
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+        </div>
+
+        <nav class="bottomnav">
+          <a class="bn-item active"><iconify-icon icon="mdi:weather-sunset-up"></iconify-icon><span>today</span></a>
+          <a class="bn-item"><iconify-icon icon="mdi:chart-line"></iconify-icon><span>trends</span></a>
+          <a class="bn-item"><iconify-icon icon="mdi:history"></iconify-icon><span>history</span></a>
+        </nav>
+      </div>
+    </div>
+    <div class="cap"><b>Dark</b><span>Forced via data-theme="dark" — Sky family as ground, Cream as text.</span></div>
+  </div>
+
+  <!-- SYSTEM -->
+  <div class="col">
+    <div class="phone">
+      <div class="island"></div>
+      <div class="browser-bar"><span></span><span></span><span></span></div>
+      <div class="screen" data-theme="system" data-plan="has">
+        <div class="topbar">
+          <div class="topbar-brand">
+            <svg viewBox="0 0 100 100" width="22" height="22" aria-hidden="true">
+              <g fill="none" stroke-width="11" stroke-linecap="round">
+                <path stroke="var(--horizon)" d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"/>
+                <path stroke="var(--text)" d="M50 27 A23 23 0 1 1 30.09 61.5"/>
+              </g>
+            </svg>
+            temari
+          </div>
+          <div class="topbar-right">
+            <a href="#" class="topbar-bell">
+              <iconify-icon icon="mdi:bell-outline"></iconify-icon>
+              <span class="badge">2</span>
+            </a>
+            <div class="topbar-avatar">N</div>
+          </div>
+        </div>
+
+        <div class="scroller">
+        <div class="content">
+          <div class="plan-card">
+            <div class="plan-head">
+              <span class="label">this week's plan</span>
+              <div class="plan-chips">
+                <span class="chip chip-streak"><iconify-icon icon="mdi:fire" width="11"></iconify-icon>6-day streak</span>
+                <span class="chip chip-phase">build</span>
+              </div>
+            </div>
+            <div class="plan-body">
+              <div class="ring-wrap">
+                <svg viewBox="0 0 60 60">
+                  <circle cx="30" cy="30" r="25" fill="none" stroke="var(--ln)" stroke-width="6"/>
+                  <circle cx="30" cy="30" r="25" fill="none" stroke="var(--ico-fg)" stroke-width="6" stroke-linecap="round" stroke-dasharray="157" stroke-dashoffset="63"/>
+                </svg>
+                <span class="ring-label">3/5</span>
+              </div>
+              <div class="plan-stats">
+                <div class="plan-stat"><b>3/5</b><span>sessions</span></div>
+                <div class="plan-stat"><b>18.2</b><span>km this week</span></div>
+              </div>
+            </div>
+            <div class="day-grid">
+              <div class="day-cell done"><span class="wd">mon</span><iconify-icon icon="mdi:fire"></iconify-icon><span class="dist">6k</span></div>
+              <div class="day-cell done"><span class="wd">tue</span><iconify-icon icon="mdi:fire"></iconify-icon><span class="dist">8k</span></div>
+              <div class="day-cell"><span class="wd">wed</span><iconify-icon icon="mdi:circle-small"></iconify-icon><span class="dist">rest</span></div>
+              <div class="day-cell today"><span class="wd">thu</span><iconify-icon icon="mdi:circle-small"></iconify-icon><span class="dist">6k</span></div>
+              <div class="day-cell"><span class="wd">fri</span><iconify-icon icon="mdi:circle-small"></iconify-icon><span class="dist">rest</span></div>
+              <div class="day-cell"><span class="wd">sat</span><iconify-icon icon="mdi:circle-small"></iconify-icon><span class="dist">10k</span></div>
+              <div class="day-cell"><span class="wd">sun</span><iconify-icon icon="mdi:circle-small"></iconify-icon><span class="dist">rest</span></div>
+            </div>
+            <a href="#" class="today-strip">
+              <span><b>today</b> · easy · 6 km · 5:45/km</span>
+              <iconify-icon icon="mdi:chevron-right" width="16"></iconify-icon>
+            </a>
+          </div>
+
+          <div class="no-plan-card">
+            <svg viewBox="0 0 100 100" width="40" height="40" aria-hidden="true">
+              <circle cx="50" cy="52" r="41" fill="none" stroke="var(--horizon)" stroke-width="6"/>
+              <circle cx="50" cy="52" r="31" fill="var(--surf)" stroke="var(--text)" stroke-width="4.5"/>
+              <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+              <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+              <circle cx="40" cy="50" r="4.4" fill="var(--text)"/><circle cx="60" cy="50" r="4.4" fill="var(--text)"/>
+              <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--text)" stroke-width="3.8" stroke-linecap="round"/>
+            </svg>
+            <div>
+              <p class="np-title">no plan yet.</p>
+              <p class="np-body">set one up and temari will lay out the weeks ahead.</p>
+              <a class="np-cta" href="#">set up a plan<iconify-icon icon="mdi:arrow-right" width="12"></iconify-icon></a>
+            </div>
+          </div>
+
+          <div class="verdict-card">
+            <span class="label">you vs past you · last 90 days</span>
+            <h2 class="verdict-h">you're faster than<br>you were in june.</h2>
+            <p class="verdict-sub">11 s/km faster on average, across 4 matched runs.</p>
+            <div class="evidence">
+              <div class="ev-row">
+                <span class="ev-label">6.2 km · pace vs jun 3</span>
+                <div class="ev-nums"><span class="ev-then">5:43</span><span class="ev-arrow">→</span><span class="ev-now">5:32</span><span class="ev-delta">-11 s/km</span></div>
+              </div>
+              <div class="ev-row">
+                <span class="ev-label">10 km · pace vs may 28</span>
+                <div class="ev-nums"><span class="ev-then">5:38</span><span class="ev-arrow">→</span><span class="ev-now">5:29</span><span class="ev-delta">-9 s/km</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="today-card">
+            <div class="today-head">
+              <svg viewBox="0 0 100 100" width="42" height="42" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--leaf)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div>
+                <div class="today-lbl">today</div>
+                <p class="today-lead">legs still owe you from tuesday's tempo.</p>
+              </div>
+            </div>
+            <p class="today-body">keep today easy and let it settle — the build phase rewards patience, not heroics.</p>
+          </div>
+
+          <details class="stats">
+            <summary>
+              <span><b>this week's stats</b> · 4 runs · 18.2 km</span>
+              <iconify-icon icon="mdi:chevron-down" width="18"></iconify-icon>
+            </summary>
+            <div class="stats-body">
+              <div class="kpi-row">
+                <div class="kpi-tile"><b>4</b><span>runs</span></div>
+                <div class="kpi-tile"><b>18.2</b><span>km</span></div>
+                <div class="kpi-tile"><b>312</b><span>trimp</span></div>
+              </div>
+              <div class="vital-row">
+                <div class="vital-tile">
+                  <span class="lbl">vibe</span><b>steady</b>
+                  <div class="vital-rail"><i style="width:55%"></i></div>
+                  <span class="sub">holding rhythm</span>
+                </div>
+                <div class="vital-tile">
+                  <span class="lbl">readiness</span><b>+8</b>
+                  <div class="vital-rail"><i style="width:68%"></i></div>
+                  <span class="sub">right on track</span>
+                </div>
+                <div class="vital-tile">
+                  <span class="lbl">recovery</span><b>14h</b>
+                  <div class="vital-rail"><i style="width:35%"></i></div>
+                  <span class="sub">since last run</span>
+                </div>
+              </div>
+              <div class="stat-cards">
+                <div class="stat-card">
+                  <h4>last run · yesterday</h4>
+                  <div class="mini-row"><span>km</span><b>6.2</b></div>
+                  <div class="mini-row"><span>pace</span><b>5:32/km</b></div>
+                  <div class="mini-row"><span>trimp</span><b>78</b></div>
+                  <a class="card-link" href="#">view run detail<iconify-icon icon="mdi:arrow-right" width="12"></iconify-icon></a>
+                </div>
+                <div class="stat-card">
+                  <h4>condition · 7 days</h4>
+                  <div class="mini-row"><span>fitness</span><b>42</b></div>
+                  <div class="mini-row"><span>fatigue</span><b>38</b></div>
+                  <div class="mini-row"><span>strain</span><b>1.1</b></div>
+                  <a class="card-link" href="#">technical detail<iconify-icon icon="mdi:arrow-right" width="12"></iconify-icon></a>
+                </div>
+              </div>
+              <div class="featured-teaser">
+                <div class="mini-card"><svg viewBox="0 0 54 60" fill="none"><path d="M3,44 Q17,28 27,36 T50,14" stroke="white" stroke-width="1.3" stroke-opacity=".35" stroke-linecap="round"/></svg></div>
+                <div>
+                  <div class="eyebrow2">top pick this week</div>
+                  <p><b>10K Sunrise</b> · 12 jun · <span class="chip" style="padding:2px 7px">legendary</span></p>
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+        </div>
+
+        <nav class="bottomnav">
+          <a class="bn-item active"><iconify-icon icon="mdi:weather-sunset-up"></iconify-icon><span>today</span></a>
+          <a class="bn-item"><iconify-icon icon="mdi:chart-line"></iconify-icon><span>trends</span></a>
+          <a class="bn-item"><iconify-icon icon="mdi:history"></iconify-icon><span>history</span></a>
+        </nav>
+      </div>
+    </div>
+    <div class="cap"><b>System</b><span>No forced theme — follows your OS/browser prefers-color-scheme live.</span></div>
+  </div>
+
+</div>
+
+<script>
+  var VIEWPORTS = {
+    mobile:  { w: 390,  h: 844,  chrome: 'phone' },
+    se:      { w: 320,  h: 568,  chrome: 'phone' },
+    tablet:  { w: 834,  h: 1112, chrome: 'tablet' },
+    desktop: { w: 1280, h: 800,  chrome: 'browser' },
+    wide:    { w: 1536, h: 864,  chrome: 'browser' },
+  };
+  function setViewport(key) {
+    var vp = VIEWPORTS[key];
+    document.querySelectorAll('.col').forEach(function (col) {
+      var phone = col.querySelector('.phone');
+      var cap = col.querySelector('.cap');
+      phone.style.width = vp.w + 'px';
+      phone.style.height = vp.h + 'px';
+      cap.style.width = vp.w + 'px';
+      phone.classList.toggle('chrome-browser', vp.chrome === 'browser');
+      phone.classList.toggle('chrome-tablet', vp.chrome === 'tablet');
+    });
+    document.querySelectorAll('.vp-bar .vp-btn').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.vp === key);
+    });
+  }
+  function setPlanState(state) {
+    document.querySelectorAll('.screen').forEach(function (screen) {
+      screen.dataset.plan = state;
+    });
+    document.querySelectorAll('.state-bar .vp-btn').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.plan === state);
+    });
+  }
+  setViewport('mobile');
+</script>

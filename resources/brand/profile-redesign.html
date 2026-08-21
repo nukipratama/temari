@@ -1,0 +1,918 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Temari — profile redesign (mobile-first, light/dark/system)</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
+<style>
+  :root {
+    --sky: #171f28; --sky-deep: #0b1017; --sky-2: #26303d;
+    --horizon: #ade047; --horizon-deep: #95c134; --horizon-ink: #546d23;
+    --cream: #f1f5f8; --cream-deep: #e2e8ee;
+    --ink: #16181b; --ink-2: #34373c; --ink-3: #60666d;
+    --leaf: #2f8f63; --ember: #b23a4f; --citrus: #c9971f;
+    --zone-max: #7a2030;
+    --line-light: #bfc5cc;
+    --r-xs: 6px; --r-sm: 10px; --r-md: 14px; --r-lg: 18px; --r-xl: 24px; --r-full: 9999px; --r-panel: 26px;
+    --e1: 0 1px 2px rgba(58,45,20,.06), 0 1px 1px rgba(58,45,20,.04);
+    --e2: 0 4px 10px rgba(58,45,20,.08), 0 2px 4px rgba(58,45,20,.05);
+    --e3: 0 12px 28px rgba(58,45,20,.12), 0 4px 10px rgba(58,45,20,.07);
+    --f-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    --f-display: 'Fraunces', Georgia, serif;
+    --f-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 48px 40px 96px; background: #e4e4e4; color: var(--ink); font-family: var(--f-sans); }
+  h1 { font-size: 21px; font-weight: 800; margin: 0 0 4px; letter-spacing: -.01em; }
+  p.lede { margin: 0 0 8px; color: #58585f; max-width: 78ch; font-size: 14px; line-height: 1.55; }
+  .banner {
+    border: 1px solid #d2d2d8; background: #fff; border-radius: 12px; padding: 12px 16px;
+    margin: 16px 0 36px; max-width: 78ch; font-size: 12.5px; line-height: 1.6; color: #46464e;
+  }
+  .banner b { color: var(--ink); }
+
+  .rack { display: flex; gap: 40px; flex-wrap: wrap; align-items: flex-start; }
+  .col { display: flex; flex-direction: column; align-items: flex-start; }
+  .cap { width: 390px; margin-top: 12px; font-size: 12px; }
+  .cap b { display: block; font-weight: 700; font-size: 13px; }
+  .cap span { color: #6a6a72; }
+
+  .vp-bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 28px; }
+  .vp-btn {
+    border: 1px solid #d2d2d8; background: #fff; color: #46464e; font-family: var(--f-sans);
+    font-size: 12.5px; font-weight: 600; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  }
+  .vp-btn.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .state-bar { display: flex; gap: 8px; margin: 0 0 16px; }
+
+  .phone {
+    width: 390px; height: 844px; border-radius: 52px; padding: 14px;
+    background: #0d0d0f; box-shadow: var(--e3), 0 30px 60px rgba(0,0,0,.25);
+    position: relative; transition: width .2s ease, height .2s ease;
+  }
+  .island {
+    position: absolute; top: 26px; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 30px; border-radius: var(--r-full); background: #0d0d0f; z-index: 20;
+  }
+  .phone.chrome-tablet .island { display: none; }
+  .phone.chrome-browser { border-radius: 14px; padding: 0; }
+  .phone.chrome-browser .island { display: none; }
+  .phone.chrome-browser .screen { height: calc(100% - 38px); border-radius: 0 0 10px 10px; }
+  .browser-bar { display: none; }
+  .phone.chrome-browser .browser-bar {
+    display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px;
+    background: #1c1c1f; border-radius: 14px 14px 0 0;
+  }
+  .browser-bar span { width: 9px; height: 9px; border-radius: 50%; background: #4a4a50; }
+
+  .screen {
+    width: 100%; height: 100%; border-radius: 38px; overflow: hidden; position: relative;
+    display: flex; flex-direction: column; container-type: inline-size;
+    --bg: var(--cream); --surf: var(--cream); --surf-sunk: var(--cream-deep);
+    --text: var(--ink); --text-2: var(--ink-2); --text-3: var(--ink-3);
+    --ln: var(--line-light); --ico-fg: var(--horizon-ink);
+    background: var(--bg); color: var(--text);
+  }
+  .screen[data-theme="dark"] {
+    --bg: var(--sky-deep); --surf: var(--sky); --surf-sunk: var(--sky-2);
+    --text: var(--cream); --text-2: rgba(241,245,248,.72); --text-3: rgba(241,245,248,.5);
+    --ln: rgba(241,245,248,.14); --ico-fg: var(--horizon);
+  }
+  @media (prefers-color-scheme: dark) {
+    .screen[data-theme="system"] {
+      --bg: var(--sky-deep); --surf: var(--sky); --surf-sunk: var(--sky-2);
+      --text: var(--cream); --text-2: rgba(241,245,248,.72); --text-3: rgba(241,245,248,.5);
+      --ln: rgba(241,245,248,.14); --ico-fg: var(--horizon);
+    }
+  }
+
+  /* Floats over content (position:absolute, no background) instead of
+     sitting in normal flow — same "content scrolls underneath" technique
+     the bottom nav uses elsewhere in this pass. Each button carries its
+     own chip so it stays legible once arbitrary scrolled content is
+     behind it, rather than one shared bar background. */
+  .topbar {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 10px;
+  }
+  .topbar-right { display: flex; align-items: center; gap: 6px; }
+  .topbar-icon {
+    width: 32px; height: 32px; border-radius: 50%; color: var(--text-3);
+    background: var(--surf-sunk); box-shadow: var(--e1);
+    display: flex; align-items: center; justify-content: center; text-decoration: none;
+  }
+  .topbar-icon iconify-icon { font-size: 18px; }
+  .topbar-bell {
+    position: relative; width: 32px; height: 32px; border-radius: 50%; color: var(--text-3);
+    background: var(--surf-sunk); box-shadow: var(--e1);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .topbar-bell iconify-icon { font-size: 18px; }
+  .topbar-bell .badge {
+    position: absolute; top: 2px; right: 2px; min-width: 14px; height: 14px; padding: 0 3px;
+    border-radius: 999px; background: var(--ember); color: #fff; font-family: var(--f-mono);
+    font-size: 8.5px; font-weight: 800; line-height: 14px; text-align: center;
+  }
+  /* Profile is a pushed sub-page (reached by tapping the avatar elsewhere),
+     not a bottom-nav destination — the back chevron replaces the brand
+     lockup so there's an explicit way out instead of relying on the OS
+     back gesture alone. */
+  .topbar-back {
+    width: 32px; height: 32px; border-radius: 50%; background: var(--surf-sunk); color: var(--text);
+    box-shadow: var(--e1); display: flex; align-items: center; justify-content: center; text-decoration: none;
+  }
+  .topbar-back iconify-icon { font-size: 18px; }
+
+  /* .scroller (flex item) / .content (plain block inside it) split in two —
+     a flex item that's also a direct descendant of the container-type
+     element, and is itself the @container query's target, resolves its
+     width wrong in this engine (verified via minimal repro: locks at a
+     stale intrinsic value instead of stretching to max-width). Keeping the
+     flex+scroll role on an outer, unqueried element sidesteps it. */
+  .scroller { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; min-height: 0; }
+  .scroller::-webkit-scrollbar { display: none; }
+  .content { padding: 64px 16px 28px; }
+
+  /* ─── page header ──────────────────────────────────────────────── */
+  .eyebrow { font-family: var(--f-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--text-3); }
+  .page-eyebrow { margin-top: 12px; }
+  .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 8px 0 20px; }
+  .page-h1 {
+    margin: 0; font-family: var(--f-display); font-style: italic; font-weight: 600;
+    font-size: 26px; line-height: 1.12; color: var(--text);
+  }
+  .page-h1 em { color: var(--horizon-ink); font-style: italic; }
+  .screen[data-theme="dark"] .page-h1 em, .screen[data-theme="system"] .page-h1 em { color: var(--horizon); }
+  /* The avatar dropped out of the top bar with the back-chevron change —
+     it resurfaces here instead, since "whose profile is this" still needs
+     a home somewhere on the page. */
+  .page-avatar {
+    flex: none; width: 44px; height: 44px; margin-top: 7px; border-radius: 50%;
+    background: var(--surf-sunk); color: var(--text-2); display: flex; align-items: center; justify-content: center;
+    font-family: var(--f-mono); font-size: 16px; font-weight: 700; box-shadow: 0 0 0 2px var(--ico-fg);
+  }
+
+
+  /* ─── hero panel — a "player card" treatment: rarity-style glow border
+     (same box-shadow technique app.css's .kartu-glow uses for real
+     collectible cards), leaning into the app's own card/mascot identity
+     system instead of reading as a generic stats dashboard. ──────── */
+  .hero-panel {
+    position: relative; overflow: hidden; background: var(--sky); border-radius: var(--r-panel);
+    padding: 20px; color: var(--cream); margin-bottom: 16px;
+    box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--horizon) 55%, transparent),
+      inset 0 0 30px color-mix(in oklab, var(--horizon) 16%, transparent), var(--e2);
+  }
+  .hero-panel::before {
+    content: ''; position: absolute; top: -60px; right: -60px; width: 220px; height: 220px;
+    border-radius: 50%; pointer-events: none;
+    background: radial-gradient(circle, color-mix(in oklab, var(--horizon) 32%, transparent) 0%, transparent 70%);
+  }
+  .hero-top { position: relative; display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .hero-top svg { flex: none; filter: drop-shadow(0 0 10px color-mix(in oklab, var(--horizon) 45%, transparent)); }
+  .hero-eyebrow { font-family: var(--f-mono); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .09em; color: var(--horizon); margin-bottom: 6px; }
+  .hero-quote { position: relative; margin: 0 0 18px; font-family: var(--f-display); font-size: 14px; line-height: 1.55; font-style: italic; color: var(--cream); }
+  .est-badge {
+    display: inline-flex; align-items: center; gap: 4px; font-family: var(--f-mono);
+    font-size: 9px; font-weight: 800; letter-spacing: .05em; color: rgba(241,245,248,.55);
+  }
+  .est-badge b { color: var(--horizon); font-weight: 800; }
+  .member-since { display: none; }
+
+  .persona-label { position: relative; font-family: var(--f-mono); font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: rgba(241,245,248,.55); margin-bottom: 6px; }
+  /* Segmented capsule pills instead of one flat bar — reads more like
+     tactile game-progress beads than a generic percentage indicator. */
+  .persona-bar { position: relative; display: flex; gap: 3px; height: 9px; margin-bottom: 8px; }
+  .persona-bar i { display: block; height: 100%; border-radius: 999px; }
+  /* Explicit legend — this is a mood mix, not an HR-zone bar, and without
+     labels it reads exactly like one (both are segmented colored bars). */
+  .persona-legend { display: flex; flex-wrap: wrap; gap: 3px 10px; margin-bottom: 20px; }
+  .persona-legend span { display: inline-flex; align-items: center; gap: 4px; font-family: var(--f-mono); font-size: 8px; text-transform: uppercase; letter-spacing: .03em; color: rgba(241,245,248,.6); }
+  .persona-legend i { display: inline-block; width: 6px; height: 6px; border-radius: 50%; }
+
+  /* ─── stats as a horizontally-scrollable card strip — plain flexbox,
+     no viewBox stretching to distort, still reads as a set of small
+     collectible-style tiles rather than a flat spreadsheet grid. ──── */
+  .stat-strip { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -20px; padding: 0 20px 2px; }
+  .stat-strip::-webkit-scrollbar { display: none; }
+  .stat-card2 {
+    flex: none; width: 92px; background: rgba(241,245,248,.07); border-radius: var(--r-sm); padding: 12px 10px;
+    text-align: center; box-shadow: 0 0 0 1px color-mix(in oklab, var(--horizon) 28%, transparent);
+  }
+  .stat-card2 iconify-icon { font-size: 17px; color: var(--horizon); margin-bottom: 7px; }
+  .stat-card2 b { display: block; font-family: var(--f-mono); font-size: 16px; font-weight: 800; color: var(--cream); }
+  .stat-card2 span { display: block; margin-top: 2px; font-family: var(--f-mono); font-size: 7.5px; text-transform: uppercase; letter-spacing: .04em; color: rgba(241,245,248,.55); }
+
+  /* ─── race link card ──────────────────────────────────────────── */
+  .link-card {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: var(--surf); border: 1px solid var(--ln); border-radius: var(--r-md); padding: 16px; box-shadow: var(--e1);
+    margin-bottom: 16px; text-decoration: none; color: var(--text);
+  }
+  .link-card .lc-left { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; }
+  .link-card .lc-right { font-family: var(--f-mono); font-size: 10px; color: var(--text-3); }
+
+  /* Race-state toggle — .has-race is hidden by default, .no-race hides once a race is set. */
+  .link-card.has-race { display: none; align-items: center; gap: 12px; background: linear-gradient(135deg, var(--sky) 0%, var(--sky-2) 100%); border-color: transparent; color: var(--cream); }
+  .screen[data-race="set"] .link-card.no-race { display: none; }
+  .screen[data-race="set"] .link-card.has-race { display: flex; }
+  .link-card.has-race iconify-icon { flex: none; color: var(--horizon); font-size: 20px; }
+  .race-detail { flex: 1; min-width: 0; }
+  .race-detail b { display: block; font-size: 12.5px; font-weight: 700; }
+  .race-detail span { display: block; margin-top: 2px; font-family: var(--f-mono); font-size: 10px; color: rgba(241,245,248,.6); }
+  .race-countdown { flex: none; text-align: center; }
+  .race-countdown b { display: block; font-family: var(--f-mono); font-size: 18px; font-weight: 800; color: var(--horizon); line-height: 1; }
+  .race-countdown span { font-family: var(--f-mono); font-size: 7.5px; text-transform: uppercase; letter-spacing: .04em; color: rgba(241,245,248,.55); }
+
+  /* ─── season + streak ─────────────────────────────────────────── */
+  .season-card { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .season-tile { background: var(--surf); border: 1px solid var(--ln); border-radius: var(--r-md); padding: 16px; box-shadow: var(--e1); }
+  .st-label { font-family: var(--f-mono); font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); display: flex; align-items: center; justify-content: space-between; }
+  .live-pill { background: color-mix(in oklab, var(--horizon) 22%, transparent); color: var(--ico-fg); font-size: 8px; font-weight: 800; padding: 2px 6px; border-radius: 999px; }
+  .st-value { margin: 8px 0 6px; font-family: var(--f-mono); font-size: 20px; font-weight: 800; color: var(--text); }
+  .week-dots { display: flex; gap: 3px; }
+  .week-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--ico-fg); }
+  /* Stays filled, never hollow — hollow reads as "missed/incomplete" in
+     every common UI convention (empty checkbox, unfilled step), which
+     undermines trust in the streak number itself. A rest week still
+     counts, so it stays a solid dot, just a calmer tint of the same hue. */
+  .week-dots i.rest { background: color-mix(in oklab, var(--ico-fg) 40%, var(--surf)); }
+  .week-caption { margin-top: 6px; font-size: 9px; color: var(--text-3); }
+  .week-caption i { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: color-mix(in oklab, var(--ico-fg) 40%, var(--surf)); margin: 0 3px 0 5px; vertical-align: middle; }
+  .season-range { font-size: 11px; color: var(--text-2); margin: 8px 0 8px; }
+  /* Thread-coverage bands — the brand's own real visual language for phase
+     progress (docs/voice-and-tone.md: base = sparse, build = widening,
+     peak = fully wound, taper = peak's pattern kept + a rested shine),
+     reused here instead of one generic flat progress bar. */
+  .phase-bands { display: flex; gap: 4px; margin-bottom: 8px; }
+  .phase-band {
+    flex: 1; height: 15px; border-radius: 4px; background: var(--ln);
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  .phase-band span { font-family: var(--f-mono); font-size: 6.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: var(--text-3); }
+  .phase-band.reached { background: repeating-linear-gradient(115deg, var(--horizon), var(--horizon) 3px, var(--horizon-deep) 3px, var(--horizon-deep) 6px); }
+  .phase-band.reached span { color: var(--sky); }
+  .goal-bar { height: 5px; border-radius: 3px; background: var(--ln); overflow: hidden; margin-bottom: 6px; }
+  .goal-bar i { display: block; height: 100%; background: var(--horizon); }
+  .goal-label { font-size: 9.5px; color: var(--text-3); }
+
+  /* ─── pace targets ─────────────────────────────────────────────── */
+  .section-label { font-family: var(--f-mono); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .09em; color: var(--text-3); margin: 0 0 10px; }
+  /* Pace targets as one spectrum rail (slow → fast) instead of 4 flat
+     tiles — the relative relationship between paces is the actual point,
+     which a grid of disconnected numbers never showed. */
+  /* Sides wider than every other card's 16px on purpose: the spectrum's
+     edge markers translateX(-50%) past 0%/100%, so they need the extra
+     horizontal clearance or the end labels clip — verified at 20px there's
+     still ~5px of slack left. Top/bottom match every other card at 16px. */
+  .pace-card { background: var(--surf); border: 1px solid var(--ln); border-radius: var(--r-md); padding: 16px 20px; box-shadow: var(--e1); margin-bottom: 16px; }
+  .pace-spectrum { position: relative; height: 78px; margin: 0 8px; }
+  .ps-rail { position: absolute; left: 0; right: 0; top: 39px; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--leaf), var(--horizon)); }
+  .ps-marker { position: absolute; top: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; transform: translateX(-50%); }
+  .ps-marker.ps-below { top: auto; bottom: 0; }
+  .ps-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 3px var(--surf); }
+  .ps-label { text-align: center; white-space: nowrap; }
+  .ps-label b { display: block; font-family: var(--f-mono); font-size: 12px; font-weight: 800; color: var(--text); }
+  .ps-label span { font-family: var(--f-mono); font-size: 7px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-3); }
+
+  /* ─── progression / journey ────────────────────────────────────── */
+  .progression-card { background: var(--surf); border: 1px solid var(--ln); border-radius: var(--r-md); padding: 16px; box-shadow: var(--e1); margin-bottom: 8px; }
+  .dist-tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .dist-tab { font-family: var(--f-mono); font-size: 10.5px; font-weight: 800; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--ln); color: var(--text-2); }
+  .dist-tab.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .journey-h { margin: 4px 0 0; font-family: var(--f-display); font-size: 18px; font-weight: 600; color: var(--text); }
+  .journey-h em { font-style: italic; color: var(--horizon-ink); }
+  .screen[data-theme="dark"] .journey-h em, .screen[data-theme="system"] .journey-h em { color: var(--horizon); }
+  .journey-quote { margin: 8px 0 0; font-family: var(--f-display); font-style: italic; font-size: 12.5px; color: var(--text-2); }
+  .journey-chips { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .jchip { font-size: 10px; font-weight: 700; padding: 4px 9px; border-radius: 999px; background: var(--surf-sunk); color: var(--text-2); }
+  .jchip.goal { background: color-mix(in oklab, var(--horizon) 20%, transparent); color: var(--ico-fg); }
+  .journey-chart { position: relative; margin-top: 14px; }
+  .jc-tip {
+    position: absolute; transform: translate(-50%, -130%); background: var(--ink); color: var(--cream);
+    font-family: var(--f-mono); font-size: 10px; font-weight: 700; padding: 5px 9px; border-radius: 6px;
+    white-space: nowrap; pointer-events: none; opacity: 0; box-shadow: var(--e2); transition: opacity .12s ease; z-index: 20;
+  }
+  .jc-tip::after {
+    content: ''; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: var(--ink);
+  }
+  .jc-tip.visible { opacity: 1; }
+  /* Each point is a real tap target — a past week's run, not just a
+     decorative mark on a sparkline. Larger invisible hit-circle for a
+     comfortable touch target; visible dot grows slightly on hover/focus
+     as the tap affordance. */
+  .jc-point { cursor: pointer; }
+  .jc-point .jc-hit { fill: transparent; }
+  .jc-point .jc-dot { transition: transform .12s ease; transform-box: fill-box; transform-origin: center; }
+  .jc-point:hover .jc-dot, .jc-point:focus .jc-dot { transform: scale(1.7); }
+  .jc-point:focus { outline: none; }
+
+  /* ─── wide reflow: same 900px threshold as Today/Login ──────────── */
+  @container (min-width: 900px) {
+    .content { max-width: 760px; margin: 0 auto; padding: 24px 24px 88px; }
+    .member-since { display: block; text-align: right; margin-left: auto; flex: none; }
+    .member-since .eyebrow { margin: 0 0 4px; }
+    .member-since p { margin: 0; font-family: var(--f-display); font-size: 16px; color: var(--cream); }
+    .season-card { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+
+<h1>Profile — mobile redesign</h1>
+<p class="lede">Real Pewter tokens (resources/css/app.css). Redesign of resources/js/pages/Profile.tsx — layout only, no dev work yet. Same theme/viewport-switcher setup as Login and Today. Order kept as shipped: hero (voice + persona + stats) leads, then the race link, season/streak, pace targets, and the progression/journey chart — this page is a browsed reference, not a daily action loop, so nothing's collapsed behind a disclosure the way Today's supporting stats are.</p>
+<div class="banner">
+  <b>What changed vs. the shipped page:</b> same content and order, tightened for a phone-width single column
+  instead of the desktop 2/5-column grids. "With Temari since" (desktop-only on the real page) now reflows in
+  at the same 900px container-query threshold used everywhere else in this pass, rather than being permanently
+  hidden below it. No bottom nav — Profile isn't a bottom-nav destination (it's reached by tapping the avatar
+  elsewhere) so a nav with nothing lit up read as broken. A back chevron in the top bar replaces the brand
+  lockup instead, matching how a pushed sub-page usually signals its way out. The profile/accessories/settings
+  segmented tab strip is gone too — it mixed metaphors with the back chevron (tabs imply lateral siblings you
+  switch between, back implies you drilled in and can leave). Settled on drill-down: Settings is now a single
+  icon entry point in the top bar, its own pushed screen with its own back chevron home to Profile. Accessories
+  (the collection/equip gamification) was explored as a separate mockup and dropped — not worth the ongoing
+  maintenance cost — so it's gone from the nav entirely, not deferred.
+</div>
+
+<div class="state-bar">
+  <button class="vp-btn active" data-race="unset" onclick="setRaceState('unset')">No race set</button>
+  <button class="vp-btn" data-race="set" onclick="setRaceState('set')">Race set</button>
+</div>
+
+<div class="vp-bar">
+  <button class="vp-btn active" data-vp="mobile" onclick="setViewport('mobile')">Mobile · 390×844</button>
+  <button class="vp-btn" data-vp="se" onclick="setViewport('se')">SE · 320×568</button>
+  <button class="vp-btn" data-vp="tablet" onclick="setViewport('tablet')">Tablet · 834×1112</button>
+  <button class="vp-btn" data-vp="desktop" onclick="setViewport('desktop')">Desktop · 1280×800</button>
+  <button class="vp-btn" data-vp="wide" onclick="setViewport('wide')">Wide · 1536×864</button>
+</div>
+
+<div class="rack">
+
+  <!-- LIGHT -->
+  <div class="col">
+    <div class="phone">
+      <div class="island"></div>
+      <div class="browser-bar"><span></span><span></span><span></span></div>
+      <div class="screen" data-theme="light" data-race="unset">
+        <div class="topbar">
+          <a href="#" class="topbar-back" aria-label="Back"><iconify-icon icon="mdi:arrow-left"></iconify-icon></a>
+          <div class="topbar-right">
+            <a href="#" class="topbar-icon" aria-label="Settings"><iconify-icon icon="mdi:cog-outline"></iconify-icon></a>
+            <a href="#" class="topbar-bell"><iconify-icon icon="mdi:bell-outline"></iconify-icon><span class="badge">2</span></a>
+          </div>
+        </div>
+
+        <div class="scroller">
+        <div class="content">
+          <div class="eyebrow page-eyebrow">profile</div>
+          <div class="page-head">
+            <h1 class="page-h1">nuki,<br><em>your story.</em></h1>
+            <div class="page-avatar">N</div>
+          </div>
+
+          <div class="hero-panel">
+            <div class="hero-top">
+              <svg viewBox="0 0 100 100" width="64" height="64" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--leaf)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div>
+                <div class="hero-eyebrow">★ what temari says about you</div>
+                <div class="est-badge">est. <b>12 jun 2026</b></div>
+              </div>
+              <div class="member-since">
+                <div class="eyebrow">with temari since</div>
+                <p>12 jun 2026</p>
+              </div>
+            </div>
+            <p class="hero-quote">you've turned tempo tuesdays into a habit — three weeks running now, and it shows in the last km of every long run.</p>
+
+            <div class="persona-label">time in zone · last 12 weeks</div>
+            <div class="persona-bar">
+              <i style="width:15%;background:var(--leaf)"></i>
+              <i style="width:42%;background:var(--horizon)"></i>
+              <i style="width:25%;background:var(--citrus)"></i>
+              <i style="width:13%;background:var(--ember)"></i>
+              <i style="width:5%;background:var(--zone-max)"></i>
+            </div>
+            <div class="persona-legend">
+              <span><i style="background:var(--leaf)"></i>Z1 recovery 15%</span>
+              <span><i style="background:var(--horizon)"></i>Z2 aerobic 42%</span>
+              <span><i style="background:var(--citrus)"></i>Z3 tempo 25%</span>
+              <span><i style="background:var(--ember)"></i>Z4 threshold 13%</span>
+              <span><i style="background:var(--zone-max)"></i>Z5 max 5%</span>
+            </div>
+
+            <div class="stat-strip">
+              <div class="stat-card2"><iconify-icon icon="mdi:map-marker-distance"></iconify-icon><b>284.6</b><span>total km</span></div>
+              <div class="stat-card2"><iconify-icon icon="mdi:run"></iconify-icon><b>42</b><span>total runs</span></div>
+              <div class="stat-card2"><iconify-icon icon="mdi:trophy-outline"></iconify-icon><b>21.20</b><span>longest run</span></div>
+              <div class="stat-card2"><iconify-icon icon="mdi:speedometer"></iconify-icon><b>48.2</b><span>vdot</span></div>
+              <div class="stat-card2"><iconify-icon icon="mdi:timer-outline"></iconify-icon><b>4:52/km</b><span>threshold</span></div>
+            </div>
+          </div>
+
+          <a href="#" class="link-card no-race">
+            <span class="lc-left"><iconify-icon icon="mdi:flag-checkered" width="15"></iconify-icon>got a race coming up?</span>
+            <span class="lc-right">set your race →</span>
+          </a>
+          <a href="#" class="link-card has-race">
+            <iconify-icon icon="mdi:flag-checkered"></iconify-icon>
+            <div class="race-detail">
+              <b>jakarta half marathon</b>
+              <span>21.1 km · 12 oct 2026</span>
+            </div>
+            <div class="race-countdown"><b>42</b><span>days</span></div>
+          </a>
+
+          <div class="season-card">
+            <div class="season-tile">
+              <div class="st-label">streak<span class="live-pill">live</span></div>
+              <div class="st-value">6 weeks</div>
+              <div class="week-dots"><i></i><i></i><i class="rest"></i><i></i><i></i><i></i></div>
+              <div class="week-caption">last 6 weeks<i></i>rest week, still counts</div>
+            </div>
+            <div class="season-tile">
+              <div class="st-label">season</div>
+              <div class="season-range">base · 12 jun – 4 sep</div>
+              <div class="phase-bands">
+                <div class="phase-band reached"><span>base</span></div>
+                <div class="phase-band"><span>build</span></div>
+                <div class="phase-band"><span>peak</span></div>
+                <div class="phase-band"><span>taper</span></div>
+              </div>
+              <div class="goal-bar"><i style="width:62%"></i></div>
+              <div class="goal-label">62% to sub-50 10K</div>
+            </div>
+          </div>
+
+          <div class="pace-card">
+            <div class="section-label">training · pace targets · per km</div>
+            <div class="pace-spectrum">
+              <div class="ps-rail"></div>
+              <div class="ps-marker" style="left:0%">
+                <span class="ps-label"><b>6:10</b><span>easy</span></span>
+                <i class="ps-dot"></i>
+              </div>
+              <div class="ps-marker ps-below" style="left:49%">
+                <i class="ps-dot"></i>
+                <span class="ps-label"><b>5:20</b><span>marathon</span></span>
+              </div>
+              <div class="ps-marker" style="left:76%">
+                <span class="ps-label"><b>4:52</b><span>tempo</span></span>
+                <i class="ps-dot"></i>
+              </div>
+              <div class="ps-marker ps-below" style="left:100%">
+                <i class="ps-dot"></i>
+                <span class="ps-label"><b>4:28</b><span>interval</span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="progression-card">
+            <div class="dist-tabs">
+              <span class="dist-tab">5K</span>
+              <span class="dist-tab active">10K</span>
+              <span class="dist-tab">HM</span>
+              <span class="dist-tab">FM</span>
+            </div>
+            <div class="section-label" style="margin-bottom:2px">journey · 10K</div>
+            <p class="journey-h">then 52:40, now <em>48:15</em></p>
+            <p class="journey-quote">"4:25 faster over 14 weeks."</p>
+            <div class="journey-chips">
+              <span class="jchip">−4:25 total</span>
+              <span class="jchip goal">goal: sub-50:00</span>
+            </div>
+            <div class="journey-chart">
+              <svg viewBox="-8 0 316 78" width="100%" height="78" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="journeyFade" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="var(--horizon-ink)" stop-opacity="0.28"/>
+                    <stop offset="100%" stop-color="var(--horizon-ink)" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <polygon points="0,15 45,22 90,20 135,34 180,30 225,48 270,44 300,58 300,78 0,78" fill="url(#journeyFade)"/>
+                <polyline points="0,15 45,22 90,20 135,34 180,30 225,48 270,44 300,58" fill="none" stroke="var(--horizon-ink)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '14 weeks ago', '52:40')"><circle class="jc-hit" cx="0" cy="15" r="10"/><circle class="jc-dot" cx="0" cy="15" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '12 weeks ago', '51:57')"><circle class="jc-hit" cx="45" cy="22" r="10"/><circle class="jc-dot" cx="45" cy="22" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '10 weeks ago', '52:09')"><circle class="jc-hit" cx="90" cy="20" r="10"/><circle class="jc-dot" cx="90" cy="20" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '8 weeks ago', '50:43')"><circle class="jc-hit" cx="135" cy="34" r="10"/><circle class="jc-dot" cx="135" cy="34" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '6 weeks ago', '51:08')"><circle class="jc-hit" cx="180" cy="30" r="10"/><circle class="jc-dot" cx="180" cy="30" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '4 weeks ago', '49:17')"><circle class="jc-hit" cx="225" cy="48" r="10"/><circle class="jc-dot" cx="225" cy="48" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '2 weeks ago', '49:41')"><circle class="jc-hit" cx="270" cy="44" r="10"/><circle class="jc-dot" cx="270" cy="44" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View your current PR week" onclick="showJourneyTip(event, this, 'now · PR', '48:15')"><circle class="jc-hit" cx="300" cy="58" r="10"/><circle class="jc-dot" cx="300" cy="58" r="5" fill="var(--horizon)" stroke="var(--surf)" stroke-width="2"/></a>
+                <text x="300" y="45" text-anchor="end" font-family="var(--f-mono)" font-size="8" font-weight="800" fill="var(--horizon-ink)">PR</text>
+              </svg>
+              <div class="jc-tip"></div>
+            </div>
+          </div>
+        </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="cap"><b>Light</b><span>Forced via data-theme="light" — the default .screen palette.</span></div>
+  </div>
+
+  <!-- DARK -->
+  <div class="col">
+    <div class="phone">
+      <div class="island"></div>
+      <div class="browser-bar"><span></span><span></span><span></span></div>
+      <div class="screen" data-theme="dark" data-race="unset">
+        <div class="topbar">
+          <a href="#" class="topbar-back" aria-label="Back"><iconify-icon icon="mdi:arrow-left"></iconify-icon></a>
+          <div class="topbar-right">
+            <a href="#" class="topbar-icon" aria-label="Settings"><iconify-icon icon="mdi:cog-outline"></iconify-icon></a>
+            <a href="#" class="topbar-bell"><iconify-icon icon="mdi:bell-outline"></iconify-icon><span class="badge">2</span></a>
+          </div>
+        </div>
+
+        <div class="scroller">
+        <div class="content">
+          <div class="eyebrow page-eyebrow">profile</div>
+          <div class="page-head">
+            <h1 class="page-h1">nuki,<br><em>your story.</em></h1>
+            <div class="page-avatar">N</div>
+          </div>
+
+          <div class="hero-panel">
+            <div class="hero-top">
+              <svg viewBox="0 0 100 100" width="64" height="64" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--leaf)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div>
+                <div class="hero-eyebrow">★ what temari says about you</div>
+                <div class="est-badge">est. <b>12 jun 2026</b></div>
+              </div>
+              <div class="member-since">
+                <div class="eyebrow">with temari since</div>
+                <p>12 jun 2026</p>
+              </div>
+            </div>
+            <p class="hero-quote">you've turned tempo tuesdays into a habit — three weeks running now, and it shows in the last km of every long run.</p>
+
+            <div class="persona-label">time in zone · last 12 weeks</div>
+            <div class="persona-bar">
+              <i style="width:15%;background:var(--leaf)"></i>
+              <i style="width:42%;background:var(--horizon)"></i>
+              <i style="width:25%;background:var(--citrus)"></i>
+              <i style="width:13%;background:var(--ember)"></i>
+              <i style="width:5%;background:var(--zone-max)"></i>
+            </div>
+            <div class="persona-legend">
+              <span><i style="background:var(--leaf)"></i>Z1 recovery 15%</span>
+              <span><i style="background:var(--horizon)"></i>Z2 aerobic 42%</span>
+              <span><i style="background:var(--citrus)"></i>Z3 tempo 25%</span>
+              <span><i style="background:var(--ember)"></i>Z4 threshold 13%</span>
+              <span><i style="background:var(--zone-max)"></i>Z5 max 5%</span>
+            </div>
+
+            <div class="stat-strip">
+              <div class="stat-card2"><iconify-icon icon="mdi:map-marker-distance"></iconify-icon><b>284.6</b><span>total km</span></div>
+              <div class="stat-card2"><iconify-icon icon="mdi:run"></iconify-icon><b>42</b><span>total runs</span></div>
+              <div class="stat-card2"><iconify-icon icon="mdi:trophy-outline"></iconify-icon><b>21.20</b><span>longest run</span></div>
+              <div class="stat-card2"><iconify-icon icon="mdi:speedometer"></iconify-icon><b>48.2</b><span>vdot</span></div>
+              <div class="stat-card2"><iconify-icon icon="mdi:timer-outline"></iconify-icon><b>4:52/km</b><span>threshold</span></div>
+            </div>
+          </div>
+
+          <a href="#" class="link-card no-race">
+            <span class="lc-left"><iconify-icon icon="mdi:flag-checkered" width="15"></iconify-icon>got a race coming up?</span>
+            <span class="lc-right">set your race →</span>
+          </a>
+          <a href="#" class="link-card has-race">
+            <iconify-icon icon="mdi:flag-checkered"></iconify-icon>
+            <div class="race-detail">
+              <b>jakarta half marathon</b>
+              <span>21.1 km · 12 oct 2026</span>
+            </div>
+            <div class="race-countdown"><b>42</b><span>days</span></div>
+          </a>
+
+          <div class="season-card">
+            <div class="season-tile">
+              <div class="st-label">streak<span class="live-pill">live</span></div>
+              <div class="st-value">6 weeks</div>
+              <div class="week-dots"><i></i><i></i><i class="rest"></i><i></i><i></i><i></i></div>
+              <div class="week-caption">last 6 weeks<i></i>rest week, still counts</div>
+            </div>
+            <div class="season-tile">
+              <div class="st-label">season</div>
+              <div class="season-range">base · 12 jun – 4 sep</div>
+              <div class="phase-bands">
+                <div class="phase-band reached"><span>base</span></div>
+                <div class="phase-band"><span>build</span></div>
+                <div class="phase-band"><span>peak</span></div>
+                <div class="phase-band"><span>taper</span></div>
+              </div>
+              <div class="goal-bar"><i style="width:62%"></i></div>
+              <div class="goal-label">62% to sub-50 10K</div>
+            </div>
+          </div>
+
+          <div class="pace-card">
+            <div class="section-label">training · pace targets · per km</div>
+            <div class="pace-spectrum">
+              <div class="ps-rail"></div>
+              <div class="ps-marker" style="left:0%">
+                <span class="ps-label"><b>6:10</b><span>easy</span></span>
+                <i class="ps-dot"></i>
+              </div>
+              <div class="ps-marker ps-below" style="left:49%">
+                <i class="ps-dot"></i>
+                <span class="ps-label"><b>5:20</b><span>marathon</span></span>
+              </div>
+              <div class="ps-marker" style="left:76%">
+                <span class="ps-label"><b>4:52</b><span>tempo</span></span>
+                <i class="ps-dot"></i>
+              </div>
+              <div class="ps-marker ps-below" style="left:100%">
+                <i class="ps-dot"></i>
+                <span class="ps-label"><b>4:28</b><span>interval</span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="progression-card">
+            <div class="dist-tabs">
+              <span class="dist-tab">5K</span>
+              <span class="dist-tab active">10K</span>
+              <span class="dist-tab">HM</span>
+              <span class="dist-tab">FM</span>
+            </div>
+            <div class="section-label" style="margin-bottom:2px">journey · 10K</div>
+            <p class="journey-h">then 52:40, now <em>48:15</em></p>
+            <p class="journey-quote">"4:25 faster over 14 weeks."</p>
+            <div class="journey-chips">
+              <span class="jchip">−4:25 total</span>
+              <span class="jchip goal">goal: sub-50:00</span>
+            </div>
+            <div class="journey-chart">
+              <svg viewBox="-8 0 316 78" width="100%" height="78" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="journeyFade" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="var(--horizon-ink)" stop-opacity="0.28"/>
+                    <stop offset="100%" stop-color="var(--horizon-ink)" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <polygon points="0,15 45,22 90,20 135,34 180,30 225,48 270,44 300,58 300,78 0,78" fill="url(#journeyFade)"/>
+                <polyline points="0,15 45,22 90,20 135,34 180,30 225,48 270,44 300,58" fill="none" stroke="var(--horizon-ink)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '14 weeks ago', '52:40')"><circle class="jc-hit" cx="0" cy="15" r="10"/><circle class="jc-dot" cx="0" cy="15" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '12 weeks ago', '51:57')"><circle class="jc-hit" cx="45" cy="22" r="10"/><circle class="jc-dot" cx="45" cy="22" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '10 weeks ago', '52:09')"><circle class="jc-hit" cx="90" cy="20" r="10"/><circle class="jc-dot" cx="90" cy="20" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '8 weeks ago', '50:43')"><circle class="jc-hit" cx="135" cy="34" r="10"/><circle class="jc-dot" cx="135" cy="34" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '6 weeks ago', '51:08')"><circle class="jc-hit" cx="180" cy="30" r="10"/><circle class="jc-dot" cx="180" cy="30" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '4 weeks ago', '49:17')"><circle class="jc-hit" cx="225" cy="48" r="10"/><circle class="jc-dot" cx="225" cy="48" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '2 weeks ago', '49:41')"><circle class="jc-hit" cx="270" cy="44" r="10"/><circle class="jc-dot" cx="270" cy="44" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View your current PR week" onclick="showJourneyTip(event, this, 'now · PR', '48:15')"><circle class="jc-hit" cx="300" cy="58" r="10"/><circle class="jc-dot" cx="300" cy="58" r="5" fill="var(--horizon)" stroke="var(--surf)" stroke-width="2"/></a>
+                <text x="300" y="45" text-anchor="end" font-family="var(--f-mono)" font-size="8" font-weight="800" fill="var(--horizon-ink)">PR</text>
+              </svg>
+              <div class="jc-tip"></div>
+            </div>
+          </div>
+        </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="cap"><b>Dark</b><span>Forced via data-theme="dark" — Sky family as ground, Cream as text.</span></div>
+  </div>
+
+  <!-- SYSTEM -->
+  <div class="col">
+    <div class="phone">
+      <div class="island"></div>
+      <div class="browser-bar"><span></span><span></span><span></span></div>
+      <div class="screen" data-theme="system" data-race="unset">
+        <div class="topbar">
+          <a href="#" class="topbar-back" aria-label="Back"><iconify-icon icon="mdi:arrow-left"></iconify-icon></a>
+          <div class="topbar-right">
+            <a href="#" class="topbar-icon" aria-label="Settings"><iconify-icon icon="mdi:cog-outline"></iconify-icon></a>
+            <a href="#" class="topbar-bell"><iconify-icon icon="mdi:bell-outline"></iconify-icon><span class="badge">2</span></a>
+          </div>
+        </div>
+
+        <div class="scroller">
+        <div class="content">
+          <div class="eyebrow page-eyebrow">profile</div>
+          <div class="page-head">
+            <h1 class="page-h1">nuki,<br><em>your story.</em></h1>
+            <div class="page-avatar">N</div>
+          </div>
+
+          <div class="hero-panel">
+            <div class="hero-top">
+              <svg viewBox="0 0 100 100" width="64" height="64" aria-hidden="true">
+                <circle cx="50" cy="52" r="41" fill="none" stroke="var(--leaf)" stroke-width="6"/>
+                <circle cx="50" cy="52" r="31" fill="var(--sky-2)" stroke="var(--cream)" stroke-width="4.5"/>
+                <path d="M34.5 39.0 L45.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <path d="M65.5 39.0 L54.5 37.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+                <circle cx="40" cy="50" r="4.4" fill="var(--cream)"/><circle cx="60" cy="50" r="4.4" fill="var(--cream)"/>
+                <path d="M42 62.5 Q50 69 58 62.5" fill="none" stroke="var(--cream)" stroke-width="3.8" stroke-linecap="round"/>
+              </svg>
+              <div>
+                <div class="hero-eyebrow">★ what temari says about you</div>
+                <div class="est-badge">est. <b>12 jun 2026</b></div>
+              </div>
+              <div class="member-since">
+                <div class="eyebrow">with temari since</div>
+                <p>12 jun 2026</p>
+              </div>
+            </div>
+            <p class="hero-quote">you've turned tempo tuesdays into a habit — three weeks running now, and it shows in the last km of every long run.</p>
+
+            <div class="persona-label">time in zone · last 12 weeks</div>
+            <div class="persona-bar">
+              <i style="width:15%;background:var(--leaf)"></i>
+              <i style="width:42%;background:var(--horizon)"></i>
+              <i style="width:25%;background:var(--citrus)"></i>
+              <i style="width:13%;background:var(--ember)"></i>
+              <i style="width:5%;background:var(--zone-max)"></i>
+            </div>
+            <div class="persona-legend">
+              <span><i style="background:var(--leaf)"></i>Z1 recovery 15%</span>
+              <span><i style="background:var(--horizon)"></i>Z2 aerobic 42%</span>
+              <span><i style="background:var(--citrus)"></i>Z3 tempo 25%</span>
+              <span><i style="background:var(--ember)"></i>Z4 threshold 13%</span>
+              <span><i style="background:var(--zone-max)"></i>Z5 max 5%</span>
+            </div>
+
+            <div class="stat-strip">
+              <div class="stat-card2"><iconify-icon icon="mdi:map-marker-distance"></iconify-icon><b>284.6</b><span>total km</span></div>
+              <div class="stat-card2"><iconify-icon icon="mdi:run"></iconify-icon><b>42</b><span>total runs</span></div>
+              <div class="stat-card2"><iconify-icon icon="mdi:trophy-outline"></iconify-icon><b>21.20</b><span>longest run</span></div>
+              <div class="stat-card2"><iconify-icon icon="mdi:speedometer"></iconify-icon><b>48.2</b><span>vdot</span></div>
+              <div class="stat-card2"><iconify-icon icon="mdi:timer-outline"></iconify-icon><b>4:52/km</b><span>threshold</span></div>
+            </div>
+          </div>
+
+          <a href="#" class="link-card no-race">
+            <span class="lc-left"><iconify-icon icon="mdi:flag-checkered" width="15"></iconify-icon>got a race coming up?</span>
+            <span class="lc-right">set your race →</span>
+          </a>
+          <a href="#" class="link-card has-race">
+            <iconify-icon icon="mdi:flag-checkered"></iconify-icon>
+            <div class="race-detail">
+              <b>jakarta half marathon</b>
+              <span>21.1 km · 12 oct 2026</span>
+            </div>
+            <div class="race-countdown"><b>42</b><span>days</span></div>
+          </a>
+
+          <div class="season-card">
+            <div class="season-tile">
+              <div class="st-label">streak<span class="live-pill">live</span></div>
+              <div class="st-value">6 weeks</div>
+              <div class="week-dots"><i></i><i></i><i class="rest"></i><i></i><i></i><i></i></div>
+              <div class="week-caption">last 6 weeks<i></i>rest week, still counts</div>
+            </div>
+            <div class="season-tile">
+              <div class="st-label">season</div>
+              <div class="season-range">base · 12 jun – 4 sep</div>
+              <div class="phase-bands">
+                <div class="phase-band reached"><span>base</span></div>
+                <div class="phase-band"><span>build</span></div>
+                <div class="phase-band"><span>peak</span></div>
+                <div class="phase-band"><span>taper</span></div>
+              </div>
+              <div class="goal-bar"><i style="width:62%"></i></div>
+              <div class="goal-label">62% to sub-50 10K</div>
+            </div>
+          </div>
+
+          <div class="pace-card">
+            <div class="section-label">training · pace targets · per km</div>
+            <div class="pace-spectrum">
+              <div class="ps-rail"></div>
+              <div class="ps-marker" style="left:0%">
+                <span class="ps-label"><b>6:10</b><span>easy</span></span>
+                <i class="ps-dot"></i>
+              </div>
+              <div class="ps-marker ps-below" style="left:49%">
+                <i class="ps-dot"></i>
+                <span class="ps-label"><b>5:20</b><span>marathon</span></span>
+              </div>
+              <div class="ps-marker" style="left:76%">
+                <span class="ps-label"><b>4:52</b><span>tempo</span></span>
+                <i class="ps-dot"></i>
+              </div>
+              <div class="ps-marker ps-below" style="left:100%">
+                <i class="ps-dot"></i>
+                <span class="ps-label"><b>4:28</b><span>interval</span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="progression-card">
+            <div class="dist-tabs">
+              <span class="dist-tab">5K</span>
+              <span class="dist-tab active">10K</span>
+              <span class="dist-tab">HM</span>
+              <span class="dist-tab">FM</span>
+            </div>
+            <div class="section-label" style="margin-bottom:2px">journey · 10K</div>
+            <p class="journey-h">then 52:40, now <em>48:15</em></p>
+            <p class="journey-quote">"4:25 faster over 14 weeks."</p>
+            <div class="journey-chips">
+              <span class="jchip">−4:25 total</span>
+              <span class="jchip goal">goal: sub-50:00</span>
+            </div>
+            <div class="journey-chart">
+              <svg viewBox="-8 0 316 78" width="100%" height="78" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="journeyFade" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="var(--horizon-ink)" stop-opacity="0.28"/>
+                    <stop offset="100%" stop-color="var(--horizon-ink)" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <polygon points="0,15 45,22 90,20 135,34 180,30 225,48 270,44 300,58 300,78 0,78" fill="url(#journeyFade)"/>
+                <polyline points="0,15 45,22 90,20 135,34 180,30 225,48 270,44 300,58" fill="none" stroke="var(--horizon-ink)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '14 weeks ago', '52:40')"><circle class="jc-hit" cx="0" cy="15" r="10"/><circle class="jc-dot" cx="0" cy="15" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '12 weeks ago', '51:57')"><circle class="jc-hit" cx="45" cy="22" r="10"/><circle class="jc-dot" cx="45" cy="22" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '10 weeks ago', '52:09')"><circle class="jc-hit" cx="90" cy="20" r="10"/><circle class="jc-dot" cx="90" cy="20" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '8 weeks ago', '50:43')"><circle class="jc-hit" cx="135" cy="34" r="10"/><circle class="jc-dot" cx="135" cy="34" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '6 weeks ago', '51:08')"><circle class="jc-hit" cx="180" cy="30" r="10"/><circle class="jc-dot" cx="180" cy="30" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '4 weeks ago', '49:17')"><circle class="jc-hit" cx="225" cy="48" r="10"/><circle class="jc-dot" cx="225" cy="48" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View that week's run" onclick="showJourneyTip(event, this, '2 weeks ago', '49:41')"><circle class="jc-hit" cx="270" cy="44" r="10"/><circle class="jc-dot" cx="270" cy="44" r="2.5" fill="var(--horizon-ink)"/></a>
+                <a class="jc-point" href="#" aria-label="View your current PR week" onclick="showJourneyTip(event, this, 'now · PR', '48:15')"><circle class="jc-hit" cx="300" cy="58" r="10"/><circle class="jc-dot" cx="300" cy="58" r="5" fill="var(--horizon)" stroke="var(--surf)" stroke-width="2"/></a>
+                <text x="300" y="45" text-anchor="end" font-family="var(--f-mono)" font-size="8" font-weight="800" fill="var(--horizon-ink)">PR</text>
+              </svg>
+              <div class="jc-tip"></div>
+            </div>
+          </div>
+        </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="cap"><b>System</b><span>No forced theme — follows your OS/browser prefers-color-scheme live.</span></div>
+  </div>
+
+</div>
+
+<script>
+  var VIEWPORTS = {
+    mobile:  { w: 390,  h: 844,  chrome: 'phone' },
+    se:      { w: 320,  h: 568,  chrome: 'phone' },
+    tablet:  { w: 834,  h: 1112, chrome: 'tablet' },
+    desktop: { w: 1280, h: 800,  chrome: 'browser' },
+    wide:    { w: 1536, h: 864,  chrome: 'browser' },
+  };
+  function setViewport(key) {
+    var vp = VIEWPORTS[key];
+    document.querySelectorAll('.col').forEach(function (col) {
+      var phone = col.querySelector('.phone');
+      var cap = col.querySelector('.cap');
+      phone.style.width = vp.w + 'px';
+      phone.style.height = vp.h + 'px';
+      cap.style.width = vp.w + 'px';
+      phone.classList.toggle('chrome-browser', vp.chrome === 'browser');
+      phone.classList.toggle('chrome-tablet', vp.chrome === 'tablet');
+    });
+    document.querySelectorAll('.vp-btn').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.vp === key);
+    });
+  }
+  function setRaceState(state) {
+    document.querySelectorAll('.screen').forEach(function (screen) {
+      screen.dataset.race = state;
+    });
+    document.querySelectorAll('.state-bar .vp-btn').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.race === state);
+    });
+  }
+  function showJourneyTip(event, el, label, time) {
+    event.preventDefault();
+    event.stopPropagation();
+    var chart = el.closest('.journey-chart');
+    var tip = chart.querySelector('.jc-tip');
+    var chartRect = chart.getBoundingClientRect();
+    var dotRect = el.querySelector('.jc-dot').getBoundingClientRect();
+    tip.textContent = label + ' · ' + time;
+    tip.style.left = (dotRect.left + dotRect.width / 2 - chartRect.left) + 'px';
+    tip.style.top = (dotRect.top - chartRect.top) + 'px';
+    document.querySelectorAll('.jc-tip.visible').forEach(function (t) {
+      if (t !== tip) t.classList.remove('visible');
+    });
+    tip.classList.toggle('visible');
+  }
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.jc-point')) {
+      document.querySelectorAll('.jc-tip.visible').forEach(function (t) {
+        t.classList.remove('visible');
+      });
+    }
+  });
+  setViewport('mobile');
+</script>
