@@ -2,7 +2,7 @@ import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/utils';
 
 /**
- * resources/brand/today-redesign.html's .ring-wrap/.ring-label, with an
+ * The today-page mockup's .ring-wrap/.ring-label, with an
  * animated fill (framer-motion via useCountUp) instead of a static
  * stroke-dashoffset — settles at the exact same geometry either way.
  */

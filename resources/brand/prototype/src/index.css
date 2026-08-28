@@ -18,8 +18,8 @@
     --font-sans: 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, sans-serif;
     --font-mono: 'JetBrains Mono Variable', ui-monospace, Menlo, Consolas, monospace;
     /* Real app.css --f-display — the italic serif used on every hero/page
-       headline across resources/brand/*-redesign.html. The inherited kit
-       didn't have this; added back for fidelity. */
+       headline across the static mockups this prototype ported from. The
+       inherited kit didn't have this; added back for fidelity. */
     --font-serif: 'Fraunces Variable', Georgia, serif;
 
     --color-chart-5: var(--chart-5);
@@ -220,7 +220,7 @@
    system comparison the HTML mockups used, so exploration isn't locked
    to light before the decision is real. Scoped to [data-theme], never
    applied globally. Sky family as ground / Cream as text, same mapping
-   as resources/brand/*-redesign.html. */
+   as the HTML mockups used. */
 [data-theme="dark"] {
     --icon-accent-fg: var(--horizon);
     --text-2-fg: color-mix(in oklab, var(--cream) 72%, transparent);

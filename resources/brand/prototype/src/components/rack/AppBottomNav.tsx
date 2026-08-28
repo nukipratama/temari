@@ -50,11 +50,11 @@ function NavItem({
 }
 
 /**
- * Shared post-auth chrome — resources/brand/*-redesign.html's .bottomnav.
- * Frosted glass floating over content; the HTML source references an
- * undefined --e2 var in its box-shadow, which invalidates that whole
- * declaration (verified: computed box-shadow is "none") — no shadow here
- * either, matching what actually renders rather than the apparent intent.
+ * Shared post-auth chrome — the mockups' .bottomnav.
+ * Frosted glass floating over content; the original HTML source referenced an
+ * undefined --e2 var in its box-shadow, which invalidated that whole
+ * declaration (verified: computed box-shadow was "none") — no shadow here
+ * either, matching what actually rendered rather than the apparent intent.
  */
 export function AppBottomNav({ active }: Readonly<{ active: NavKey }>) {
     return (

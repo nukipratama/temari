@@ -4,7 +4,7 @@ import { VIEWPORTS, type ViewportKey } from '@/components/rack/viewports';
 import { cn } from '@/lib/utils';
 
 /**
- * Same device-frame chrome as resources/brand/*-redesign.html's .phone/
+ * Same device-frame chrome as the mockups' .phone/
  * .island/.browser-bar — mobile/SE keep the notch bezel, tablet drops the
  * island, desktop/wide swap to a plain browser-window chrome.
  */

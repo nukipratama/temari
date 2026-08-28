@@ -25,8 +25,8 @@ const THEMES = [
 ] as const;
 
 /**
- * Same review-rack pattern as resources/brand/*-redesign.html: a viewport
- * switcher resizing 3 side-by-side theme frames (light/dark/system) at once.
+ * Same review-rack pattern as the static HTML mockups this prototype ported
+ * from: a viewport switcher resizing 3 side-by-side theme frames (light/dark/system) at once.
  * `render` gets the active theme so a page can vary its content per frame
  * (e.g. a state demo open in one column only).
  */

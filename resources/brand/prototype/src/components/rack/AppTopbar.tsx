@@ -3,7 +3,7 @@ import { Bell } from 'lucide-react';
 import { TemariMark } from '@/components/rack/TemariMark';
 
 /**
- * Shared post-auth chrome — resources/brand/*-redesign.html's .topbar,
+ * Shared post-auth chrome — the mockups' .topbar,
  * floating over content (position:absolute, no background) rather than
  * sitting in normal flow. Static: unread count and avatar initial are the
  * same fixture values every mockup uses.

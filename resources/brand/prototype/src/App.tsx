@@ -50,20 +50,6 @@ const PAGES = [
 
 type PageKey = (typeof PAGES)[number]['key'];
 
-function NotBuilt({ label }: Readonly<{ label: string }>) {
-    return (
-        <div className="rounded-4xl border border-dashed border-line bg-card p-10 text-center">
-            <p className="display text-lg text-ink">
-                {label} isn't ported yet.
-            </p>
-            <p className="mt-1 text-sm text-ink-3">
-                Same layout and copy as resources/brand/{label.toLowerCase()}
-                -redesign.html — just needs its shadcn/ui pass.
-            </p>
-        </div>
-    );
-}
-
 export default function App() {
     const [page, setPage] = useState<PageKey>('today');
     const [planState, setPlanState] = useState<'has' | 'empty'>('has');
@@ -717,26 +703,6 @@ export default function App() {
                             />
                         </div>
                     )}
-
-                    {page !== 'login' &&
-                        page !== 'onboarding' &&
-                        page !== 'today' &&
-                        page !== 'plan' &&
-                        page !== 'race' &&
-                        page !== 'trends' &&
-                        page !== 'history' &&
-                        page !== 'activity' &&
-                        page !== 'inbox' &&
-                        page !== 'profile' &&
-                        page !== 'settings' && (
-                            <div className="mx-auto max-w-5xl">
-                                <NotBuilt
-                                    label={
-                                        PAGES.find((p) => p.key === page)!.label
-                                    }
-                                />
-                            </div>
-                        )}
                 </motion.main>
 
                 <nav

@@ -1,7 +1,7 @@
 import { ArrowLeft, Bell, Settings } from 'lucide-react';
 
 /**
- * resources/brand/profile-redesign.html's .topbar variant — Profile is a
+ * The profile mockup's .topbar variant — Profile is a
  * pushed sub-page (reached by tapping the avatar elsewhere), not a bottom-nav
  * destination, so the brand lockup is replaced by a back chevron.
  */

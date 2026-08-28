@@ -1,7 +1,7 @@
 import { ArrowLeft, Bell } from 'lucide-react';
 
 /**
- * resources/brand/settings-redesign.html's .topbar variant — Settings is a
+ * The settings mockup's .topbar variant — Settings is a
  * pushed screen reached via the gear icon on Profile's top bar, so it gets a
  * back chevron instead of the brand lockup, no bottom nav.
  */
