@@ -28,7 +28,7 @@ one, add a row to the amendments log (§5) and edit the entry here in the same c
 |---|---|
 | 1 | **Scope**: a wave-0 reconciliation ledger rules keep / restyle / cut / defer on every omitted shipped feature. Cutting is permitted. |
 | 2 | **Backend**: all four new capabilities in scope — training preferences, Compliance v2, structured session segments, plan narration. |
-| 3 | **Dependencies**: adopt `@base-ui/react`, `shadcn`, `lucide-react`, `clsx`. |
+| 3 | **Dependencies**: adopt `@base-ui/react`, `shadcn`, `lucide-react`, `clsx`, plus `tw-animate-css` (added in `F1` — see §5). |
 | 4 | **Tokens**: the prototype's semantic layer becomes canonical and is the preferred vocabulary in components. The app's named palette survives beneath it. |
 | 5 | **Transition**: one codemod-driven mechanical sweep first, then real redesign per screen. Visual parity is explicitly *not* promised. |
 | 6 | **Theming**: both grounds authored, both shipped. Dark is the default; light and system reachable via a Settings toggle. |
@@ -85,7 +85,7 @@ the slice itself (see [R3](#r3)); `n/a` for backend-only or docs-only slices.
 |---|---|---|---|---|---|---|---|---|
 | P0 | Program scaffold | 0 | [00](slices/00-P0-program-scaffold.md) | merged | — | main | n/a | committed directly (7c056d61) |
 | L0 | Reconciliation ledger + IA | 0 | [01](slices/01-L0-reconciliation-ledger.md) | merged | — | main | n/a | committed directly (fe927c1e) |
-| F1 | Dependency adoption | 1 | [02](slices/02-F1-dependency-adoption.md) | todo | — | main | n/a | |
+| F1 | Dependency adoption | 1 | [02](slices/02-F1-dependency-adoption.md) | in-review | — | main | n/a | ladder green, awaiting commit |
 | F2 | Two-ground tokens | 1 | [03](slices/03-F2-two-ground-tokens.md) | todo | — | main | | serialization point |
 | F3 | Mechanical sweep | 1 | [04](slices/04-F3-mechanical-sweep.md) | todo | — | main | | |
 | F4 | Shell + nav | 1 | [05](slices/05-F4-shell-and-nav.md) | todo | — | main | | |
@@ -142,6 +142,7 @@ Every deviation from §1 lands here, dated, with the reason. Empty is the health
 | date | decision | change | why |
 |---|---|---|---|
 | 2026-08-28 | 15 | Slice PRs (`F1` onward) target a new nested branch `epic/mobile-ux-port`, branched off `epic/rebrand-temari`, instead of `epic/rebrand-temari` directly. | `epic/rebrand-temari` already carries open PR #593 ("Temari v1"), which explicitly states further work should land on a nested epic branch rather than reopening that diff — a pattern already proven once by `epic/experience-rebuild` (#633). This was discovered only after `P0`/`L0` had already landed directly on `epic/rebrand-temari`; those two are grandfathered rather than rewritten, since `epic/rebrand-temari` was already pushed and rewriting a branch backing an open PR is avoidable risk for no benefit. |
+| 2026-08-28 | 3 | `tw-animate-css` added to `dependencies` alongside the four originally named packages. | `F1` confirmed by reading the frozen prototype: `src/index.css` imports it directly and `toggle-group.tsx` (one of the six primitives `F3` adopts) uses the `data-[state=...]` animate utilities it provides. Not speculative — demonstrably required by code this program ports; omitting it would break `F3`'s `toggle-group` swap. |
 
 ---
 
