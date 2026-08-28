@@ -78,8 +78,8 @@ the slice itself (see [R3](#r3)); `n/a` for backend-only or docs-only slices.
 
 | id | name | wave | doc | status | PR | slot | cov Δ | notes |
 |---|---|---|---|---|---|---|---|---|
-| P0 | Program scaffold | 0 | [00](slices/00-P0-program-scaffold.md) | in-review | — | main | n/a | tree + CI change written, awaiting commit/PR |
-| L0 | Reconciliation ledger + IA | 0 | [01](slices/01-L0-reconciliation-ledger.md) | in-review | — | main | n/a | all 11 verdicts + IA ruling final |
+| P0 | Program scaffold | 0 | [00](slices/00-P0-program-scaffold.md) | merged | — | main | n/a | committed directly (7c056d61) |
+| L0 | Reconciliation ledger + IA | 0 | [01](slices/01-L0-reconciliation-ledger.md) | merged | — | main | n/a | committed directly (fe927c1e) |
 | F1 | Dependency adoption | 1 | [02](slices/02-F1-dependency-adoption.md) | todo | — | main | n/a | |
 | F2 | Two-ground tokens | 1 | [03](slices/03-F2-two-ground-tokens.md) | todo | — | main | | serialization point |
 | F3 | Mechanical sweep | 1 | [04](slices/04-F3-mechanical-sweep.md) | todo | — | main | | |
