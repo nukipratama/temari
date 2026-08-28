@@ -1,4 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import {
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+    within,
+} from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
@@ -159,6 +165,42 @@ describe('Profile', () => {
         );
         expect(screen.getByText(/Journey/)).toBeInTheDocument();
         expect(screen.getByTestId('progression-chart')).toBeInTheDocument();
+    });
+
+    it('switches the progression chart between distances when more than one category is present', () => {
+        render(
+            <Profile
+                identity={identity}
+                stats={stats}
+                progressionByCategory={{
+                    '5km': {
+                        category: '5km',
+                        weeks: ['2026-04-13', '2026-04-20', '2026-04-27'],
+                        times_sec: [1800, 1770, 1751],
+                        goal_sec: 1740,
+                    },
+                    '10km': {
+                        category: '10km',
+                        weeks: ['2026-04-13', '2026-04-20', '2026-04-27'],
+                        times_sec: [3800, 3770, 3751],
+                        goal_sec: 3740,
+                    },
+                }}
+            />,
+        );
+
+        const tablist = screen.getByRole('tablist', {
+            name: 'Choose distance',
+        });
+        expect(
+            within(tablist).getByRole('tab', { name: '5K' }),
+        ).toHaveAttribute('aria-selected', 'false');
+
+        fireEvent.click(within(tablist).getByRole('tab', { name: '5K' }));
+
+        expect(
+            within(tablist).getByRole('tab', { name: '5K' }),
+        ).toHaveAttribute('aria-selected', 'true');
     });
 
     it('renders no VDOT, threshold pace or Training pace block when fitness is absent', () => {
