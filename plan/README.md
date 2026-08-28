@@ -6,8 +6,13 @@ into the shipped app.
 This file is the **living tracker**. It is the only place a decision may be amended and the only
 place slice status is recorded. Everything else in `plan/` hangs off it.
 
-- **Epic branch**: `epic/rebrand-temari`. Every slice PR targets it. It does **not** merge to `main`
-  (which auto-deploys to prod) until the whole program is done.
+- **Epic branch**: `epic/mobile-ux-port`, a **nested epic branched off `epic/rebrand-temari`**
+  (amended from decision 15 — see §5). Mirrors the precedent already set by `epic/experience-rebuild`
+  (#633): every slice PR from `F1` onward targets `epic/mobile-ux-port`; when the whole program is
+  done, one PR merges it into `epic/rebrand-temari`, which stays the record for #593 to merge into
+  `main` (which auto-deploys to prod) on its own separate, deliberate timeline. `P0`/`L0` were
+  committed directly to `epic/rebrand-temari` before this was reconsidered — grandfathered in, not
+  moved; `epic/mobile-ux-port` was branched from that point forward.
 - **Prototype**: frozen, read-only spec. SHA below.
 - **Scale**: 415 files in `resources/js` (148 `.tsx`, 63 `.ts`, 204 co-located tests).
   30 slices, ~45-50 PRs. Committed scope is wave 0 + wave 1, then re-assess.
@@ -35,7 +40,7 @@ one, add a row to the amendments log (§5) and edit the entry here in the same c
 | 12 | **Token pipeline**: extend `build-tokens.mjs`; add `darkGrounds()` beside `paperGrounds()`. |
 | 13 | **Art**: a dedicated wave-1 slice re-cuts mascot, accessories, Kartu chrome, share cards and the Strava mark for two grounds. |
 | 14 | **Nav / IA**: deferred to the ledger slice (`L0`), resolved in [ia.md](ia.md). |
-| 15 | **Branching**: all slice PRs target `epic/rebrand-temari`. No merge to `main` until the program is done. |
+| 15 | ~~**Branching**: all slice PRs target `epic/rebrand-temari`.~~ **Amended, see §5**: `F1` onward targets the nested `epic/mobile-ux-port`. No merge to `main` until the whole chain (this program → `epic/rebrand-temari` → `main`) is done. |
 | 16 | **Icons**: full swap to `lucide-react`; delete `iconBundle.ts` and `build-icon-bundle.mjs`. |
 | 17 | **Coverage CI**: add `epic/rebrand-temari` to the workflow's `push.branches`. |
 | 18 | **Commitment**: wave 0 + wave 1 firm; re-assess before the wave-2 fan-out. |
@@ -136,7 +141,7 @@ Every deviation from §1 lands here, dated, with the reason. Empty is the health
 
 | date | decision | change | why |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-08-28 | 15 | Slice PRs (`F1` onward) target a new nested branch `epic/mobile-ux-port`, branched off `epic/rebrand-temari`, instead of `epic/rebrand-temari` directly. | `epic/rebrand-temari` already carries open PR #593 ("Temari v1"), which explicitly states further work should land on a nested epic branch rather than reopening that diff — a pattern already proven once by `epic/experience-rebuild` (#633). This was discovered only after `P0`/`L0` had already landed directly on `epic/rebrand-temari`; those two are grandfathered rather than rewritten, since `epic/rebrand-temari` was already pushed and rewriting a branch backing an open PR is avoidable risk for no benefit. |
 
 ---
 
