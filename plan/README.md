@@ -42,7 +42,7 @@ one, add a row to the amendments log (§5) and edit the entry here in the same c
 | 14 | **Nav / IA**: deferred to the ledger slice (`L0`), resolved in [ia.md](ia.md). |
 | 15 | ~~**Branching**: all slice PRs target `epic/rebrand-temari`.~~ **Amended, see §5**: `F1` onward targets the nested `epic/mobile-ux-port`. No merge to `main` until the whole chain (this program → `epic/rebrand-temari` → `main`) is done. |
 | 16 | **Icons**: full swap to `lucide-react`; delete `iconBundle.ts` and `build-icon-bundle.mjs`. |
-| 17 | **Coverage CI**: add `epic/rebrand-temari` to the workflow's `push.branches`. |
+| 17 | **Coverage CI**: match any `epic/*` branch in the workflow's `push.branches` (widened from a literal `epic/rebrand-temari` — see §5). |
 | 18 | **Commitment**: wave 0 + wave 1 firm; re-assess before the wave-2 fan-out. |
 | 19 | **Prototype**: frozen at a tagged SHA after wave 0, read-only thereafter, deleted in wave 3. |
 
@@ -143,6 +143,7 @@ Every deviation from §1 lands here, dated, with the reason. Empty is the health
 |---|---|---|---|
 | 2026-08-28 | 15 | Slice PRs (`F1` onward) target a new nested branch `epic/mobile-ux-port`, branched off `epic/rebrand-temari`, instead of `epic/rebrand-temari` directly. | `epic/rebrand-temari` already carries open PR #593 ("Temari v1"), which explicitly states further work should land on a nested epic branch rather than reopening that diff — a pattern already proven once by `epic/experience-rebuild` (#633). This was discovered only after `P0`/`L0` had already landed directly on `epic/rebrand-temari`; those two are grandfathered rather than rewritten, since `epic/rebrand-temari` was already pushed and rewriting a branch backing an open PR is avoidable risk for no benefit. |
 | 2026-08-28 | 3 | `tw-animate-css` added to `dependencies` alongside the four originally named packages. | `F1` confirmed by reading the frozen prototype: `src/index.css` imports it directly and `toggle-group.tsx` (one of the six primitives `F3` adopts) uses the `data-[state=...]` animate utilities it provides. Not speculative — demonstrably required by code this program ports; omitting it would break `F3`'s `toggle-group` swap. |
+| 2026-08-28 | 17 | `push.branches` widened from the literal `epic/rebrand-temari` to the glob `epic/*`. | The literal name missed `epic/mobile-ux-port` — the nested branch this program actually pushes to, created by the same amendment that added decision 15's row above. A glob covers every current and future single-segment `epic/*` branch without needing to hand-maintain a list. |
 
 ---
 

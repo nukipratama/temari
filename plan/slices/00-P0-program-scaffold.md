@@ -31,8 +31,16 @@ is touched.
    pull_request:
    push:
 -    branches: [main]
-+    branches: [main, epic/rebrand-temari]
++    branches: [main, 'epic/*']
 ```
+
+**Widened from `epic/rebrand-temari` to the glob `epic/*`** (follow-up, same PR as `F1`, after the
+nested-branch discovery — see the §5 amendment for decision 17): a literal branch name would have
+covered `epic/rebrand-temari` but not the nested `epic/mobile-ux-port` this program actually pushes
+to, nor any future nested epic. GitHub Actions matches `branches` patterns per-segment, so `epic/*`
+covers every current epic branch (`epic/rebrand-temari`, `epic/mobile-ux-port`,
+`epic/experience-rebuild`, `epic/ui-revamp`, `epic/v2`, `epic/ai-resume` — all single-segment names
+after `epic/`) without needing a maintained list.
 
 Verified safe against the rest of the workflow before writing it:
 

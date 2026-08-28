@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, epic/rebrand-temari]
+    branches: [main, 'epic/*']
 
 concurrency:
   group: ci-${{ github.ref }}
