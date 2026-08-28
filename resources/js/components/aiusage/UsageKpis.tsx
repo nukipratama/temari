@@ -79,7 +79,7 @@ function DeltaChip({
     }
     if (previous <= 0) {
         return current > 0 ? (
-            <span className="ml-1.5 text-ink-3">· new</span>
+            <span className="ml-1.5 text-text-3">· new</span>
         ) : null;
     }
 
@@ -92,7 +92,7 @@ function DeltaChip({
     }
 
     return (
-        <span className="ml-1.5 text-ink-3">
+        <span className="ml-1.5 text-text-3">
             {arrow} {Math.abs(pct)}% vs prev
         </span>
     );

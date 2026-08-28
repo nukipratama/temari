@@ -46,14 +46,14 @@ export default function DataTable<T>({
                     <Card
                         tone="card"
                         padding="none"
-                        className="overflow-x-auto bg-surface-elev"
+                        className="overflow-x-auto bg-popover"
                     >
                         <table
                             className="w-full text-sm tabular-nums"
                             style={{ minWidth }}
                         >
                             <thead>
-                                <tr className="border-b border-line text-left text-xs text-ink-3">
+                                <tr className="border-b border-border text-left text-xs text-text-3">
                                     {columns.map((label) => (
                                         <th
                                             key={label}
@@ -68,7 +68,7 @@ export default function DataTable<T>({
                                 {rows.map((row) => (
                                     <tr
                                         key={rowKey(row)}
-                                        className="border-b border-line last:border-b-0"
+                                        className="border-b border-border last:border-b-0"
                                     >
                                         {renderRow(row)}
                                     </tr>
@@ -94,6 +94,6 @@ export function Td({
     className,
 }: Readonly<{ children: ReactNode; className?: string }>) {
     return (
-        <td className={cn('px-5 py-3 text-ink-2', className)}>{children}</td>
+        <td className={cn('px-5 py-3 text-text-2', className)}>{children}</td>
     );
 }

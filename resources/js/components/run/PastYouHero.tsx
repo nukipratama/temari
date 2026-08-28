@@ -71,7 +71,7 @@ export default function PastYouHero({
                     <Eyebrow token="micro" tone="ink-on-sky">
                         You vs past you
                     </Eyebrow>
-                    <p className="mt-2 flex flex-wrap items-baseline gap-x-2.5 font-display leading-none">
+                    <p className="mt-2 flex flex-wrap items-baseline gap-x-2.5 font-serif leading-none">
                         {evenPace ? (
                             <span className="text-display-sm text-cream">
                                 Dead even

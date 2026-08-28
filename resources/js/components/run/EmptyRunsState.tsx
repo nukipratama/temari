@@ -91,16 +91,16 @@ export default function EmptyRunsState({
                     </Eyebrow>
                     <h2
                         className={cn(
-                            'font-display text-display-sm',
-                            onSky ? 'text-cream' : 'text-ink',
+                            'font-serif text-display-sm',
+                            onSky ? 'text-cream' : 'text-foreground',
                         )}
                     >
                         {hero.headline}
                     </h2>
                     <p
                         className={cn(
-                            'mx-auto mt-3 max-w-sm font-display text-quote-sm italic leading-relaxed',
-                            onSky ? 'text-ink-on-sky' : 'text-ink-2',
+                            'mx-auto mt-3 max-w-sm font-serif text-quote-sm italic leading-relaxed',
+                            onSky ? 'text-ink-on-sky' : 'text-text-2',
                         )}
                     >
                         &ldquo;{hero.copy}&rdquo;
@@ -124,7 +124,7 @@ export default function EmptyRunsState({
                             href={href}
                             className={cn(
                                 'focus-ring flex items-center gap-3 rounded-xl px-4 py-3',
-                                onSky ? 'bg-cream/[0.08]' : 'bg-surface-card',
+                                onSky ? 'bg-cream/[0.08]' : 'bg-card',
                             )}
                         >
                             <span
@@ -142,7 +142,9 @@ export default function EmptyRunsState({
                                 <div
                                     className={cn(
                                         'text-[13px] font-semibold',
-                                        onSky ? 'text-cream' : 'text-ink',
+                                        onSky
+                                            ? 'text-cream'
+                                            : 'text-foreground',
                                     )}
                                 >
                                     {title}
@@ -152,7 +154,7 @@ export default function EmptyRunsState({
                                         'mt-0.5 font-mono text-[11px]',
                                         onSky
                                             ? 'text-ink-on-sky'
-                                            : 'text-ink-3',
+                                            : 'text-text-3',
                                     )}
                                 >
                                     {desc}
@@ -162,7 +164,7 @@ export default function EmptyRunsState({
                                 aria-hidden
                                 className={cn(
                                     'font-mono text-[14px]',
-                                    onSky ? 'text-ink-on-sky' : 'text-ink-3',
+                                    onSky ? 'text-ink-on-sky' : 'text-text-3',
                                 )}
                             >
                                 ›

@@ -188,16 +188,16 @@ export default function PaceConsistencyTrend({
     return (
         <div
             className={cn(
-                'flex flex-col gap-4 rounded-(--radius-panel) border border-line bg-surface-card p-6 shadow-(--shadow-panel) sm:p-8',
+                'flex flex-col gap-4 rounded-(--radius-panel) border border-border bg-card p-6 shadow-(--shadow-panel) sm:p-8',
                 className,
             )}
         >
             <div>
-                <p className="text-label-micro text-ink-3">Pacing</p>
-                <h2 className="mt-1 font-display text-lg text-ink">
+                <p className="text-label-micro text-text-3">Pacing</p>
+                <h2 className="mt-1 font-serif text-lg text-foreground">
                     Pace Consistency
                 </h2>
-                <p className="mt-1 text-sm text-ink-2">
+                <p className="mt-1 text-sm text-text-2">
                     How far apart your kilometre splits sit inside a single run,
                     in seconds. Lower is steadier, which usually means you
                     judged the effort well rather than going out hot.

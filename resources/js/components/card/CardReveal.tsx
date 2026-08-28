@@ -257,13 +257,13 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
                                 <div className="mb-3 text-label-hero text-horizon">
                                     {eyebrow}
                                 </div>
-                                <h2 className="font-display text-display-sm text-cream">
+                                <h2 className="font-serif text-display-sm text-cream">
                                     <em className="italic text-horizon">
                                         {title}
                                     </em>
                                 </h2>
                                 {subtitleText && (
-                                    <p className="mt-4 font-display text-base italic leading-relaxed text-cream/80 sm:text-lg">
+                                    <p className="mt-4 font-serif text-base italic leading-relaxed text-cream/80 sm:text-lg">
                                         {subtitleText}
                                     </p>
                                 )}

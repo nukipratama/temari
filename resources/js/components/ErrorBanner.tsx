@@ -41,14 +41,14 @@ export default function ErrorBanner() {
                     className="mt-0.5 shrink-0 text-ember-ink"
                     aria-hidden
                 />
-                <p className="flex-1 font-sans text-sm leading-relaxed text-ink">
+                <p className="flex-1 font-sans text-sm leading-relaxed text-foreground">
                     {message}
                 </p>
                 <button
                     type="button"
                     onClick={() => setDismissed(true)}
                     aria-label="Close"
-                    className="focus-ring -m-1 rounded p-1 text-ink-3 transition hover:text-ink"
+                    className="focus-ring -m-1 rounded p-1 text-text-3 transition hover:text-foreground"
                 >
                     <Icon icon="mdi:close" width={16} height={16} />
                 </button>

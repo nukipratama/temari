@@ -43,8 +43,8 @@ export default function MetricExplainer({
     // 16/20px footprint in the line, so no label row reflows.
     const buttonClass =
         size === 'xs'
-            ? 'focus-ring -m-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-ink-3 transition hover:bg-line/60 hover:text-ink'
-            : 'focus-ring -m-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-ink-3 transition hover:bg-line/60 hover:text-ink';
+            ? 'focus-ring -m-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-text-3 transition hover:bg-line/60 hover:text-foreground'
+            : 'focus-ring -m-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-text-3 transition hover:bg-line/60 hover:text-foreground';
 
     return (
         <span
@@ -97,7 +97,7 @@ export default function MetricExplainer({
                                         : entry.label}
                                 </span>
                             </div>
-                            <p className="mt-1.5 text-sm leading-relaxed text-ink">
+                            <p className="mt-1.5 text-sm leading-relaxed text-foreground">
                                 {entry.body}
                             </p>
                         </div>

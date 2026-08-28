@@ -13,7 +13,7 @@ describe('LinkCard', () => {
     it('applies the tonal-surface + hover-lift chrome by default', () => {
         const { container } = render(<LinkCard href="/x">x</LinkCard>);
         const root = container.firstChild as HTMLElement;
-        expect(root.className).toMatch(/bg-surface-card/);
+        expect(root.className).toMatch(/bg-card/);
         expect(root.className).toMatch(/focus-ring/);
     });
 

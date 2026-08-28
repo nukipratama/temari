@@ -46,7 +46,7 @@ export default function SplitsTable({
             <header className="mb-1.5 flex flex-wrap items-baseline justify-between gap-3">
                 <SectionLabel>Splits per km</SectionLabel>
                 {fastest != null && fastestKm != null && (
-                    <p className="font-display text-quote-sm italic text-ink-2">
+                    <p className="font-serif text-quote-sm italic text-text-2">
                         Fastest at km {fastestKm},{' '}
                         <span className="font-semibold text-horizon-ink">
                             {formatPace(fastest)}/km
@@ -58,7 +58,7 @@ export default function SplitsTable({
                 viewport so HR + cadence stay reachable by horizontal scroll instead
                 of folding away. The binary bar color needs a one-line key once the
                 card affordance is gone. */}
-            <p className="mb-3 text-label-micro text-ink-3">
+            <p className="mb-3 text-label-micro text-text-3">
                 Orange bar = fastest km, dark = the rest
                 {partial ? ', dashed = remainder' : ''}.
             </p>
@@ -108,13 +108,13 @@ export default function SplitsTable({
                                     }}
                                 />
                             </div>
-                            <div className="text-right font-sans text-sm font-semibold tabular-nums text-ink">
+                            <div className="text-right font-sans text-sm font-semibold tabular-nums text-foreground">
                                 {row.pace ?? '—'}
                             </div>
-                            <div className="text-right font-sans text-xs tabular-nums text-ink-2">
+                            <div className="text-right font-sans text-xs tabular-nums text-text-2">
                                 ♡ {row.avg_hr ?? '—'}
                             </div>
-                            <div className="flex items-center justify-end gap-1 font-sans text-xs tabular-nums text-ink-2">
+                            <div className="flex items-center justify-end gap-1 font-sans text-xs tabular-nums text-text-2">
                                 <Icon
                                     icon="mdi:shoe-print"
                                     width={12}
@@ -147,17 +147,17 @@ function SplitPartialRow({
                 'mt-1 rounded-lg border-t border-cream-deep px-3 py-2 lg:py-2.5',
             )}
         >
-            <div className="text-label-micro text-ink-3">
+            <div className="text-label-micro text-text-3">
                 {formatKm(partial.distance_m, 1)} KM
             </div>
             <div className="h-2.5 rounded border border-dashed border-sky/20 bg-sky/[0.06] lg:h-3" />
-            <div className="text-right font-sans text-sm font-semibold tabular-nums text-ink-3">
+            <div className="text-right font-sans text-sm font-semibold tabular-nums text-text-3">
                 {partial.pace ?? '—'}
             </div>
-            <div className="text-right font-sans text-xs tabular-nums text-ink-3">
+            <div className="text-right font-sans text-xs tabular-nums text-text-3">
                 ♡ {partial.avg_hr ?? '—'}
             </div>
-            <div className="flex items-center justify-end gap-1 font-sans text-xs tabular-nums text-ink-3">
+            <div className="flex items-center justify-end gap-1 font-sans text-xs tabular-nums text-text-3">
                 <Icon
                     icon="mdi:shoe-print"
                     width={12}

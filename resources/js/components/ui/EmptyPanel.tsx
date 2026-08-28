@@ -30,14 +30,14 @@ export default function EmptyPanel({
             {pose && <Temari pose={pose} size={128} animate />}
             <p
                 className={cn(
-                    'font-display italic text-2xl text-ink-2',
+                    'font-serif italic text-2xl text-text-2',
                     pose && 'mt-4',
                 )}
             >
                 {title}
             </p>
             {body && (
-                <p className="mt-2 font-sans text-sm text-ink-2">{body}</p>
+                <p className="mt-2 font-sans text-sm text-text-2">{body}</p>
             )}
             {action}
         </Card>

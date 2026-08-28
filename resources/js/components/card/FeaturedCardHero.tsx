@@ -96,7 +96,7 @@ export default function FeaturedCardHero({
                     <Eyebrow token="hero" tone="horizon" className="mb-3">
                         {eyebrow}
                     </Eyebrow>
-                    <h2 className="font-display text-display-xl text-cream">
+                    <h2 className="font-serif text-display-xl text-cream">
                         <em className="italic text-horizon">{name}</em>
                     </h2>
                     <Eyebrow token="small" className="mt-3 text-cream/85">

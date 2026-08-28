@@ -106,11 +106,11 @@ export default function TemariNudgeModal({
                             />
                             <h2
                                 id="temari-nudge-title"
-                                className="font-display text-2xl tracking-tight text-ink"
+                                className="font-serif text-2xl tracking-tight text-foreground"
                             >
                                 {title}
                             </h2>
-                            <p className="font-sans text-sm leading-relaxed text-ink-2">
+                            <p className="font-sans text-sm leading-relaxed text-text-2">
                                 {body}
                             </p>
                         </div>

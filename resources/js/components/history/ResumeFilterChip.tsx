@@ -15,7 +15,7 @@ export default function ResumeFilterChip({
             <button
                 type="button"
                 onClick={onResume}
-                className="pressable focus-ring inline-flex items-center gap-1.5 rounded-full border border-line/60 bg-surface-warm py-1 pl-3 pr-3.5 text-xs font-medium text-ink-2"
+                className="pressable focus-ring inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-accent py-1 pl-3 pr-3.5 text-xs font-medium text-text-2"
             >
                 <Icon icon="mdi:history" width={13} height={13} aria-hidden />
                 Resume: {summary}
@@ -24,7 +24,7 @@ export default function ResumeFilterChip({
                 type="button"
                 onClick={onDismiss}
                 aria-label="Forget last filter"
-                className="pressable focus-ring rounded px-1 text-xs font-medium text-ink-3 hover:text-ink-2"
+                className="pressable focus-ring rounded px-1 text-xs font-medium text-text-3 hover:text-text-2"
             >
                 <Icon icon="mdi:close" width={13} height={13} aria-hidden />
             </button>

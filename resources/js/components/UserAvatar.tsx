@@ -37,7 +37,7 @@ export default function UserAvatar({
             className={cn(
                 sizeClass,
                 fontClass,
-                'flex items-center justify-center rounded-full bg-horizon font-display font-semibold italic text-sky',
+                'flex items-center justify-center rounded-full bg-horizon font-serif font-semibold italic text-sky',
                 className,
             )}
         >

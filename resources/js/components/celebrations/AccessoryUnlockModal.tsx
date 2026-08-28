@@ -121,7 +121,7 @@ export default function AccessoryUnlockModal({
                             </div>
                             <h2
                                 id="accessory-unlock-title"
-                                className="mb-6 font-display text-[36px] leading-[0.95] tracking-[-0.02em] text-cream"
+                                className="mb-6 font-serif text-[36px] leading-[0.95] tracking-[-0.02em] text-cream"
                             >
                                 <em className="italic text-horizon">
                                     {unlock.name}

@@ -24,9 +24,9 @@ describe('StatTile', () => {
     });
 
     it.each([
-        ['plain', 'text-ink'],
+        ['plain', 'text-foreground'],
         ['plainSky', 'text-cream'],
-        ['card', 'border-line'],
+        ['card', 'border-border'],
         ['cream', 'bg-cream'],
         ['creamDeep', 'bg-cream-deep'],
         ['sunken', 'bg-line/20'],
@@ -38,7 +38,7 @@ describe('StatTile', () => {
                 <StatTile value="x" label="y" tone={tone} />,
             );
             // plain/plainSky carry no surface class on the root — their tone signal
-            // is the value text color (onSky flips text-ink -> text-cream) instead.
+            // is the value text color (onSky flips text-foreground -> text-cream) instead.
             const target =
                 tone === 'plain' || tone === 'plainSky'
                     ? screen.getByText('x')
@@ -94,6 +94,6 @@ describe('StatTile', () => {
         );
         const sub = screen.getByText('totally gassed');
         expect(sub).toHaveClass('italic');
-        expect(container.querySelector('.font-display')).not.toBeNull();
+        expect(container.querySelector('.font-serif')).not.toBeNull();
     });
 });

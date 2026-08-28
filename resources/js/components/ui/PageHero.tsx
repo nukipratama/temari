@@ -64,10 +64,10 @@ export default function PageHero({
             {eyebrowNode}
             <h1
                 className={cn(
-                    'font-display',
+                    'font-serif',
                     SIZE_CLASS[size],
                     italic && 'italic',
-                    onSky ? 'text-cream' : 'text-ink',
+                    onSky ? 'text-cream' : 'text-foreground',
                 )}
             >
                 {children}

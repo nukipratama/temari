@@ -300,16 +300,16 @@ export default function FitnessTrend({
     return (
         <div
             className={cn(
-                'flex flex-col gap-4 rounded-(--radius-panel) border border-line bg-surface-card p-6 shadow-(--shadow-panel) sm:p-8',
+                'flex flex-col gap-4 rounded-(--radius-panel) border border-border bg-card p-6 shadow-(--shadow-panel) sm:p-8',
                 className,
             )}
         >
             <div>
-                <p className="text-label-micro text-ink-3">Load</p>
-                <h2 className="mt-1 font-display text-lg text-ink">
+                <p className="text-label-micro text-text-3">Load</p>
+                <h2 className="mt-1 font-serif text-lg text-foreground">
                     Fitness and Fatigue
                 </h2>
-                <p className="mt-1 text-sm text-ink-2">
+                <p className="mt-1 text-sm text-text-2">
                     Fitness is your training load averaged over a long window,
                     fatigue over a short one. When the fitness line climbs and
                     the fatigue line sits under it, the work is sticking.
@@ -361,7 +361,7 @@ export default function FitnessTrend({
                 </motion.div>
             </motion.div>
 
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-ink-3">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-text-3">
                 <span className="inline-flex items-center gap-2">
                     <span
                         aria-hidden
@@ -381,7 +381,7 @@ export default function FitnessTrend({
                 <span className="inline-flex items-center gap-2">
                     <span
                         aria-hidden
-                        className="grid size-4 place-items-center rounded-full border border-line bg-surface-elev text-[9px]"
+                        className="grid size-4 place-items-center rounded-full border border-border bg-popover text-[9px]"
                     >
                         🏅
                     </span>
@@ -412,16 +412,16 @@ export default function FitnessTrend({
 
             <div className="flex flex-col gap-3">
                 <div className="flex items-baseline justify-between gap-3">
-                    <h3 className="text-sm font-semibold text-ink">
+                    <h3 className="text-sm font-semibold text-foreground">
                         Milestones on this stretch
                     </h3>
-                    <span className="text-xs text-ink-3">
+                    <span className="text-xs text-text-3">
                         {marks.length} badges
                     </span>
                 </div>
 
                 {marks.length === 0 ? (
-                    <p className="text-sm text-ink-3">
+                    <p className="text-sm text-text-3">
                         No badges landed in this window. Widen the range to see
                         the rest of the year.
                     </p>
@@ -441,8 +441,8 @@ export default function FitnessTrend({
                                     className={cn(
                                         'flex items-center gap-2 rounded-full border px-3 py-2 text-xs whitespace-nowrap transition-colors',
                                         mark.key === selected
-                                            ? 'border-horizon-ink bg-horizon/25 text-ink'
-                                            : 'border-line bg-surface-elev text-ink-2 hover:bg-cream-deep',
+                                            ? 'border-horizon-ink bg-horizon/25 text-foreground'
+                                            : 'border-border bg-popover text-text-2 hover:bg-cream-deep',
                                     )}
                                 >
                                     <span aria-hidden>
@@ -451,7 +451,7 @@ export default function FitnessTrend({
                                     <span className="font-semibold">
                                         {badgeName(mark.key)}
                                     </span>
-                                    <span className="text-ink-3">
+                                    <span className="text-text-3">
                                         {formatNaiveIdDate(mark.date, 'short')}
                                     </span>
                                 </motion.button>
@@ -462,18 +462,18 @@ export default function FitnessTrend({
 
                 {active ? (
                     <div className="rounded-(--radius-panel) border border-horizon-ink/30 bg-horizon/12 p-4">
-                        <p className="text-sm font-semibold text-ink">
+                        <p className="text-sm font-semibold text-foreground">
                             {badgeEmblem(active.key)} {badgeName(active.key)}
-                            <span className="ml-2 font-normal text-ink-3">
+                            <span className="ml-2 font-normal text-text-3">
                                 {formatNaiveIdDate(active.date, 'short')}
                             </span>
                         </p>
-                        <p className="mt-1 text-sm text-ink-2">
+                        <p className="mt-1 text-sm text-text-2">
                             {BADGE_ABILITY[active.key]}
                         </p>
                     </div>
                 ) : (
-                    <p className="text-xs text-ink-3">
+                    <p className="text-xs text-text-3">
                         Pick a badge to mark it on the line, or tap a marker on
                         the chart.
                     </p>

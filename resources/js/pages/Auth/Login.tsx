@@ -118,7 +118,7 @@ export default function Login({
             <main className="mx-auto w-full max-w-page px-5 pb-16 sm:px-8 lg:px-14">
                 <section className="mt-12">
                     <SectionLabel>How the comparison works</SectionLabel>
-                    <h2 className="font-display text-headline-sm text-ink">
+                    <h2 className="font-serif text-headline-sm text-foreground">
                         A verdict you can check the working on.
                     </h2>
                     <ul className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -154,10 +154,10 @@ export default function Login({
                                 />
                             </Suspense>
                             <div>
-                                <p className="font-sans text-sm font-semibold text-ink">
+                                <p className="font-sans text-sm font-semibold text-foreground">
                                     This is a real card, not a mockup
                                 </p>
-                                <p className="mt-1.5 font-sans text-sm leading-relaxed text-ink-2">
+                                <p className="mt-1.5 font-sans text-sm leading-relaxed text-text-2">
                                     Every run that syncs earns one, route and
                                     all. Some of them are rarer than others, and
                                     no, you cannot pick which.
@@ -180,7 +180,7 @@ export default function Login({
                                 {dataUse.points.map((point) => (
                                     <li
                                         key={point}
-                                        className="font-sans text-sm leading-relaxed text-ink-2"
+                                        className="font-sans text-sm leading-relaxed text-text-2"
                                     >
                                         {point}
                                     </li>
@@ -194,15 +194,15 @@ export default function Login({
                     <section className="mt-12">
                         <SectionLabel>Before you take its advice</SectionLabel>
                         <Card padding="hero">
-                            <p className="font-sans text-sm font-semibold text-ink">
+                            <p className="font-sans text-sm font-semibold text-foreground">
                                 {trainingDisclaimer.headline}
                             </p>
-                            <p className="mt-1.5 font-sans text-sm leading-relaxed text-ink-2">
+                            <p className="mt-1.5 font-sans text-sm leading-relaxed text-text-2">
                                 {trainingDisclaimer.text}
                             </p>
                             <a
                                 href="/training-disclaimer"
-                                className="focus-ring mt-3 inline-flex min-h-6 items-center gap-1 rounded font-sans text-sm text-ink underline underline-offset-2 hover:text-ink-2"
+                                className="focus-ring mt-3 inline-flex min-h-6 items-center gap-1 rounded font-sans text-sm text-foreground underline underline-offset-2 hover:text-text-2"
                             >
                                 Read the whole disclaimer
                                 <Icon
@@ -224,7 +224,7 @@ export default function Login({
                         <PageHero size="sm" className="text-center">
                             Ready when you are.
                         </PageHero>
-                        <p className="max-w-md font-sans text-sm leading-relaxed text-ink-2">
+                        <p className="max-w-md font-sans text-sm leading-relaxed text-text-2">
                             Connecting Strava is the whole setup. Temari reads
                             what is already there and starts keeping score from
                             your first sync.
@@ -233,7 +233,7 @@ export default function Login({
                     </Card>
                 </section>
 
-                <footer className="mt-10 flex flex-col items-center gap-3 border-t border-line pt-6">
+                <footer className="mt-10 flex flex-col items-center gap-3 border-t border-border pt-6">
                     <nav
                         aria-label="Legal"
                         className="flex flex-wrap justify-center gap-x-4 gap-y-1"
@@ -242,13 +242,13 @@ export default function Login({
                             <a
                                 key={link.href}
                                 href={link.href}
-                                className="focus-ring inline-flex min-h-6 items-center rounded font-sans text-sm text-ink-2 underline underline-offset-2 hover:text-ink"
+                                className="focus-ring inline-flex min-h-6 items-center rounded font-sans text-sm text-text-2 underline underline-offset-2 hover:text-foreground"
                             >
                                 {link.label}
                             </a>
                         ))}
                     </nav>
-                    <p className="text-center text-label-micro text-ink-3">
+                    <p className="text-center text-label-micro text-text-3">
                         Temari · your running companion, every step
                     </p>
                 </footer>
@@ -270,10 +270,10 @@ function FeatureCard({
             >
                 <Icon icon={icon} width={20} height={20} aria-hidden />
             </span>
-            <div className="font-sans text-sm font-semibold text-ink">
+            <div className="font-sans text-sm font-semibold text-foreground">
                 {label}
             </div>
-            <p className="mt-1.5 font-sans text-sm leading-relaxed text-ink-2">
+            <p className="mt-1.5 font-sans text-sm leading-relaxed text-text-2">
                 {desc}
             </p>
         </Card>
@@ -377,7 +377,7 @@ function Hero({
                             reads the gap between them and tells you which way
                             you are going, with the number attached.
                         </p>
-                        <p className="mt-5 max-w-xl font-display italic text-quote-lg text-cream">
+                        <p className="mt-5 max-w-xl font-serif italic text-quote-lg text-cream">
                             “no leaderboards, no strangers to lose to. just the
                             runner you were six weeks ago, and whether you have
                             caught them yet.”
@@ -416,11 +416,11 @@ function ConnectPanel({
     demoPending,
 }: Readonly<ConnectPanelProps>) {
     return (
-        <Card padding="hero" className="bg-surface-sunken text-ink">
-            <h2 className="font-display italic text-display-xs text-ink">
+        <Card padding="hero" className="bg-muted text-foreground">
+            <h2 className="font-serif italic text-display-xs text-foreground">
                 Start with your history.
             </h2>
-            <p className="mt-2 font-sans text-sm leading-relaxed text-ink-2">
+            <p className="mt-2 font-sans text-sm leading-relaxed text-text-2">
                 Temari signs you in through Strava and reads the runs already
                 sitting there. There is no separate account to make.
             </p>
@@ -447,7 +447,7 @@ function ConnectPanel({
                     tone="outline"
                     onClick={onSubmitDemo}
                     disabled={demoPending}
-                    className="relative mt-2.5 flex w-full items-center bg-transparent px-0 py-3 text-sm text-ink hover:text-ink"
+                    className="relative mt-2.5 flex w-full items-center bg-transparent px-0 py-3 text-sm text-foreground hover:text-foreground"
                 >
                     <Icon
                         icon="mdi:play-circle-outline"
@@ -462,12 +462,12 @@ function ConnectPanel({
                 </PillButton>
             )}
 
-            <p className="mt-5 font-sans text-sm leading-relaxed text-ink-2">
+            <p className="mt-5 font-sans text-sm leading-relaxed text-text-2">
                 Read only, and read for you alone. No other account can see a
                 run of yours.{' '}
                 <a
                     href="/privacy"
-                    className="focus-ring rounded text-ink underline underline-offset-2 hover:text-ink-2"
+                    className="focus-ring rounded text-foreground underline underline-offset-2 hover:text-text-2"
                 >
                     What Temari stores
                 </a>

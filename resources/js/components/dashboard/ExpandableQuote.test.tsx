@@ -63,7 +63,7 @@ describe('ExpandableQuote', () => {
         render(<ExpandableQuote text="Easy does it." onSky />);
         const paragraph = screen.getByText(/Easy does it\./);
         expect(paragraph).toHaveClass('text-cream');
-        expect(paragraph).not.toHaveClass('text-ink');
+        expect(paragraph).not.toHaveClass('text-foreground');
     });
 
     it('hands its ground down to the toggle', () => {

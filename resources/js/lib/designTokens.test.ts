@@ -419,6 +419,7 @@ describe('auditPanels', () => {
         '--color-sky': '#241c54',
         '--color-cream': '#f5f0e4',
         '--color-ink': '#1a1812',
+        '--color-foreground': '#1a1812',
         '--color-ink-on-sky': '#b0a3c9',
     };
     const PAPER = [{ name: 'cream-deep', value: '#ece2ce' }];

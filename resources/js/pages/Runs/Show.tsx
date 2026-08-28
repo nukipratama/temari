@@ -239,7 +239,7 @@ export default function RunsShow({
                                                 )}
                                             </Eyebrow>
                                         </div>
-                                        <h1 className="font-display text-display-sm text-cream">
+                                        <h1 className="font-serif text-display-sm text-cream">
                                             {detail.name ?? 'Run'}
                                         </h1>
                                     </div>
@@ -376,7 +376,7 @@ export default function RunsShow({
                                     {card.edition &&
                                         ` · ${card.edition.total} in your collection`}
                                 </Eyebrow>
-                                <h2 className="font-display text-display-sm leading-[0.95] tracking-[-0.02em] text-ink">
+                                <h2 className="font-serif text-display-sm leading-[0.95] tracking-[-0.02em] text-foreground">
                                     {card.special_move}.
                                 </h2>
                                 <div className="mt-3">
@@ -386,7 +386,7 @@ export default function RunsShow({
                                         allowReanalyze
                                         showTimestamp={false}
                                         renderContent={(text) => (
-                                            <p className="font-display text-quote-md italic leading-relaxed text-ink-2">
+                                            <p className="font-serif text-quote-md italic leading-relaxed text-text-2">
                                                 &ldquo;
                                                 {renderBold(
                                                     stripEdgeQuotes(text),
@@ -465,7 +465,7 @@ export default function RunsShow({
                                 <SectionLabel>
                                     Why this earned {rarityLabel}
                                 </SectionLabel>
-                                <p className="text-sm text-ink-2">
+                                <p className="text-sm text-text-2">
                                     Determined by a mix of great things in this
                                     run: a PR, steady or negative-split pace,
                                     long distance, weekly consistency, plus the
@@ -486,7 +486,7 @@ export default function RunsShow({
                                                 <Chip tone="horizon">
                                                     {badgeName(b)}
                                                 </Chip>
-                                                <p className="flex-1 text-sm text-ink-2">
+                                                <p className="flex-1 text-sm text-text-2">
                                                     {BADGE_ABILITY[b] ??
                                                         'A special condition that makes this run stand out.'}
                                                 </p>
@@ -508,10 +508,10 @@ export default function RunsShow({
                             animate={false}
                         />
                         <div>
-                            <h2 className="font-display text-headline-sm text-ink">
+                            <h2 className="font-serif text-headline-sm text-foreground">
                                 What Temari says
                             </h2>
-                            <p className="mt-1 font-sans text-xs text-ink-3">
+                            <p className="mt-1 font-sans text-xs text-text-3">
                                 The story of this run, and what stood out.
                             </p>
                         </div>

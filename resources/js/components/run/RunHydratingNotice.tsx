@@ -55,7 +55,7 @@ export default function RunHydratingNotice({
     return (
         <div
             role="status"
-            className="mb-5 flex items-start gap-3 rounded-lg border border-line bg-surface-sunken px-4 py-3"
+            className="mb-5 flex items-start gap-3 rounded-lg border border-border bg-muted px-4 py-3"
         >
             <Icon
                 icon={
@@ -65,16 +65,16 @@ export default function RunHydratingNotice({
                 }
                 width={20}
                 height={20}
-                className="mt-0.5 shrink-0 text-ink-3"
+                className="mt-0.5 shrink-0 text-text-3"
                 aria-hidden
             />
             <div className="flex-1">
-                <p className="font-sans text-sm font-semibold text-ink">
+                <p className="font-sans text-sm font-semibold text-foreground">
                     {stoppedPolling
                         ? 'Still waiting on the rest of this run'
                         : 'Still filling this run in'}
                 </p>
-                <p className="mt-1 font-sans text-sm leading-relaxed text-ink-2">
+                <p className="mt-1 font-sans text-sm leading-relaxed text-text-2">
                     {stoppedPolling
                         ? 'The deeper fetch still has not landed. I stopped reloading on your behalf rather than doing it forever, so this one is on you now.'
                         : 'So far I have the distance, time and pace Strava lists for it. The splits, heart-rate zones, effort score and its card come from a second, deeper fetch that queues behind runs finishing right now, so it can take a few minutes. This page refreshes itself when the rest arrives.'}

@@ -72,8 +72,8 @@ export default function LastRunCard({
                 <div className="min-w-0 flex-1">
                     <div
                         className={cn(
-                            'font-display text-2xl leading-tight tracking-[-0.01em]',
-                            onSky ? 'text-cream' : 'text-ink',
+                            'font-serif text-2xl leading-tight tracking-[-0.01em]',
+                            onSky ? 'text-cream' : 'text-foreground',
                         )}
                     >
                         {run.name ?? 'Run'}
@@ -136,7 +136,7 @@ export default function LastRunCard({
                         // overlaps adjacent values in this 3-up row below
                         // ~375px -- swap in the fluid variant tuned for it.
                         'font-black tracking-tight text-stat-fluid-lg',
-                        onSky ? 'text-cream' : 'text-ink',
+                        onSky ? 'text-cream' : 'text-foreground',
                     )}
                 />
                 <StatTile
@@ -150,7 +150,7 @@ export default function LastRunCard({
                         // overlaps adjacent values in this 3-up row below
                         // ~375px -- swap in the fluid variant tuned for it.
                         'font-black tracking-tight text-stat-fluid-lg',
-                        onSky ? 'text-cream' : 'text-ink',
+                        onSky ? 'text-cream' : 'text-foreground',
                     )}
                 />
                 <StatTile
@@ -165,7 +165,7 @@ export default function LastRunCard({
                         // overlaps adjacent values in this 3-up row below
                         // ~375px -- swap in the fluid variant tuned for it.
                         'font-black tracking-tight text-stat-fluid-lg',
-                        onSky ? 'text-cream' : 'text-ink',
+                        onSky ? 'text-cream' : 'text-foreground',
                     )}
                 />
             </div>
@@ -173,7 +173,7 @@ export default function LastRunCard({
                 <div
                     className={cn(
                         'flex items-start gap-2 px-3 text-sm leading-relaxed',
-                        onSky ? 'text-ink-on-sky' : 'text-ink-2',
+                        onSky ? 'text-ink-on-sky' : 'text-text-2',
                     )}
                 >
                     <Icon

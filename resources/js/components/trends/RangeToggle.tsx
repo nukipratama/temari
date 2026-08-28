@@ -35,7 +35,7 @@ export default function RangeToggle({
             role="group"
             aria-label="Time range"
             className={cn(
-                'inline-flex gap-1 rounded-full border border-line bg-surface-card p-1',
+                'inline-flex gap-1 rounded-full border border-border bg-card p-1',
                 className,
             )}
         >
@@ -51,8 +51,8 @@ export default function RangeToggle({
                         className={cn(
                             'rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors',
                             selected
-                                ? 'bg-horizon/30 text-ink'
-                                : 'text-ink-3 hover:bg-cream-deep',
+                                ? 'bg-horizon/30 text-foreground'
+                                : 'text-text-3 hover:bg-cream-deep',
                         )}
                     >
                         {range.label}

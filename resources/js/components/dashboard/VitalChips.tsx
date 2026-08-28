@@ -204,7 +204,7 @@ function VitalGauge({
             <div
                 className={cn(
                     'mt-1 flex justify-between font-mono text-[11px] tabular-nums',
-                    onSky ? 'text-ink-on-sky' : 'text-ink-3',
+                    onSky ? 'text-ink-on-sky' : 'text-text-3',
                 )}
             >
                 <span>{anchors[0]}</span>
@@ -272,7 +272,7 @@ function VitalChip({
     const valueClass = {
         horizon: onSky ? 'text-horizon' : 'text-horizon-ink',
         leaf: onSky ? 'text-leaf' : 'text-leaf-ink',
-        ink: onSky ? 'text-cream' : 'text-ink',
+        ink: onSky ? 'text-cream' : 'text-foreground',
     }[tone];
     let middleBand: ReactNode = null;
     if (gauge) {
@@ -286,7 +286,7 @@ function VitalChip({
                 'flex h-full flex-col justify-between rounded-lg border px-3.5 py-4 shadow-e1 sm:px-4 sm:py-3.5',
                 onSky
                     ? 'border-cream/[0.12] bg-cream/[0.06]'
-                    : 'border-line bg-surface-card',
+                    : 'border-border bg-card',
             )}
         >
             <SectionLabel
@@ -334,8 +334,8 @@ function VitalChip({
                 {sub !== '' && (
                     <div
                         className={cn(
-                            'mt-1 font-display text-xs italic',
-                            onSky ? 'text-ink-on-sky' : 'text-ink-3',
+                            'mt-1 font-serif text-xs italic',
+                            onSky ? 'text-ink-on-sky' : 'text-text-3',
                         )}
                     >
                         {sub}

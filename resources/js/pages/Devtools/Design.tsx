@@ -44,13 +44,13 @@ const FULLY_EQUIPPED: TemariEquipped = {
 const SEASON_PHASES = ['base', 'build', 'peak', 'taper'] as const;
 
 const TYPE_SPECIMENS: ReadonlyArray<[string, string, string]> = [
-    ['display-lg', 'font-display italic text-display-lg', 'Eight point two'],
-    ['headline-sm', 'font-display text-headline-sm', 'This week so far'],
-    ['quote-lg', 'font-display italic text-quote-lg', 'same route, less work'],
+    ['display-lg', 'font-serif italic text-display-lg', 'Eight point two'],
+    ['headline-sm', 'font-serif text-headline-sm', 'This week so far'],
+    ['quote-lg', 'font-serif italic text-quote-lg', 'same route, less work'],
     ['prose', 'text-prose', 'Body copy sits in Plus Jakarta Sans at quote-md.'],
     ['stat', 'text-stat', '8.2'],
-    ['label-small', 'text-label-small text-ink-3', 'Section label'],
-    ['label-micro', 'text-label-micro text-ink-3', 'Tile caption'],
+    ['label-small', 'text-label-small text-text-3', 'Section label'],
+    ['label-micro', 'text-label-micro text-text-3', 'Tile caption'],
     ['meta', 'text-meta', '12 Aug 2026 · 05:41'],
 ];
 
@@ -61,9 +61,9 @@ function Section({
 }: Readonly<{ title: string; note?: string; children: React.ReactNode }>) {
     return (
         <section className="mt-10">
-            <h2 className="text-label-small text-ink-3">{title}</h2>
+            <h2 className="text-label-small text-text-3">{title}</h2>
             {note !== undefined && (
-                <p className="mt-2 max-w-[72ch] font-sans text-xs leading-relaxed text-ink-2">
+                <p className="mt-2 max-w-[72ch] font-sans text-xs leading-relaxed text-text-2">
                     {note}
                 </p>
             )}
@@ -76,10 +76,10 @@ function Swatch({ name, value }: Readonly<{ name: string; value: string }>) {
     return (
         <div className="w-[132px]">
             <div
-                className="h-12 rounded-sm border border-line"
+                className="h-12 rounded-sm border border-border"
                 style={{ background: value }}
             />
-            <div className="mt-1 font-sans text-[11px] font-semibold text-ink">
+            <div className="mt-1 font-sans text-[11px] font-semibold text-foreground">
                 {name.replace('--color-', '')}
             </div>
             <div className="text-meta">{value}</div>
@@ -189,12 +189,12 @@ export default function Design() {
     return (
         <>
             <Head title="Design tokens · Temari" />
-            <div className="min-h-screen bg-surface pad-page text-ink">
+            <div className="min-h-screen bg-background pad-page text-foreground">
                 <div className="mx-auto max-w-page">
-                    <h1 className="font-display italic text-headline-xs text-ink">
+                    <h1 className="font-serif italic text-headline-xs text-foreground">
                         Design tokens
                     </h1>
-                    <p className="mt-2 max-w-[72ch] font-sans text-xs leading-relaxed text-ink-2">
+                    <p className="mt-2 max-w-[72ch] font-sans text-xs leading-relaxed text-text-2">
                         Every value below is read out of the live stylesheet at
                         render time with getComputedStyle, never from a list
                         copied into TypeScript. If a token moves in app.css this
@@ -204,7 +204,7 @@ export default function Design() {
                     </p>
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                        <span className="text-label-micro rounded-full bg-ink/[0.06] pad-chip text-ink-2">
+                        <span className="text-label-micro rounded-full bg-ink/[0.06] pad-chip text-text-2">
                             {names.length} tokens live
                         </span>
                         <span
@@ -260,7 +260,7 @@ export default function Design() {
                             {radii.map((name) => (
                                 <div
                                     key={name}
-                                    className="flex h-[76px] w-[104px] items-center justify-center border border-line bg-surface-elev text-meta"
+                                    className="flex h-[76px] w-[104px] items-center justify-center border border-border bg-popover text-meta"
                                     style={{ borderRadius: tokens[name] }}
                                 >
                                     {name.replace('--radius-', '')} ·{' '}
@@ -278,7 +278,7 @@ export default function Design() {
                             {shadows.map((name) => (
                                 <div
                                     key={name}
-                                    className="flex h-[88px] w-[132px] items-center justify-center rounded-lg bg-surface-card text-meta"
+                                    className="flex h-[88px] w-[132px] items-center justify-center rounded-lg bg-card text-meta"
                                     style={{ boxShadow: tokens[name] }}
                                 >
                                     {name.replace('--shadow-', '')}
@@ -312,10 +312,10 @@ export default function Design() {
                             {pads.map((name) => (
                                 <div key={name} className="w-[164px]">
                                     <div
-                                        className="rounded-sm border border-line bg-surface-elev"
+                                        className="rounded-sm border border-border bg-popover"
                                         style={{ padding: tokens[name] }}
                                     >
-                                        <div className="h-6 rounded-xs bg-surface-sunken" />
+                                        <div className="h-6 rounded-xs bg-muted" />
                                     </div>
                                     <div className="mt-1 text-meta">
                                         {name} · {tokens[name]}
@@ -358,7 +358,7 @@ export default function Design() {
                                         ].map((head) => (
                                             <th
                                                 key={head}
-                                                className="text-label-micro border-b border-line py-2 pr-3 text-left text-ink-3"
+                                                className="text-label-micro border-b border-border py-2 pr-3 text-left text-text-3"
                                             >
                                                 {head}
                                             </th>
@@ -373,27 +373,27 @@ export default function Design() {
                                                 !r.pass && 'bg-ember/[0.08]',
                                             )}
                                         >
-                                            <td className="border-b border-line py-2 pr-3 text-ink">
+                                            <td className="border-b border-border py-2 pr-3 text-foreground">
                                                 {r.use}
                                                 {r.outlined === true && (
-                                                    <span className="text-ink-3">
+                                                    <span className="text-text-3">
                                                         {' '}
                                                         (outlined)
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="border-b border-line py-2 pr-3 font-mono text-[11px] text-ink-2">
+                                            <td className="border-b border-border py-2 pr-3 font-mono text-[11px] text-text-2">
                                                 {r.fg.replace('--color-', '')}{' '}
                                                 on{' '}
                                                 {r.bg.replace('--color-', '')}
                                             </td>
-                                            <td className="border-b border-line py-2 pr-3 text-right font-mono tabular-nums text-ink">
+                                            <td className="border-b border-border py-2 pr-3 text-right font-mono tabular-nums text-foreground">
                                                 {r.ratio?.toFixed(2) ?? '—'}
                                             </td>
-                                            <td className="border-b border-line py-2 pr-3 text-right font-mono tabular-nums text-ink-3">
+                                            <td className="border-b border-border py-2 pr-3 text-right font-mono tabular-nums text-text-3">
                                                 {r.min.toFixed(1)}
                                             </td>
-                                            <td className="border-b border-line py-2">
+                                            <td className="border-b border-border py-2">
                                                 <Verdict pass={r.pass} />
                                             </td>
                                         </tr>
@@ -435,7 +435,7 @@ export default function Design() {
                                                 'text-label-micro',
                                                 tone === 'onSky'
                                                     ? 'text-cream'
-                                                    : 'text-ink-3',
+                                                    : 'text-text-3',
                                             )}
                                         >
                                             {tone} · {padding}
@@ -448,21 +448,21 @@ export default function Design() {
                             <tbody>
                                 {surfaces.map((r) => (
                                     <tr key={r.name}>
-                                        <td className="border-b border-line py-2 pr-3 text-ink">
+                                        <td className="border-b border-border py-2 pr-3 text-foreground">
                                             {r.name}
                                         </td>
-                                        <td className="border-b border-line py-2 pr-3 font-mono text-[11px] text-ink-2">
+                                        <td className="border-b border-border py-2 pr-3 font-mono text-[11px] text-text-2">
                                             {r.radius}
                                         </td>
-                                        <td className="border-b border-line py-2 pr-3">
+                                        <td className="border-b border-border py-2 pr-3">
                                             <Verdict pass={r.radiusOnScale} />
                                         </td>
-                                        <td className="border-b border-line py-2 pr-3 font-mono text-[11px] text-ink-2">
+                                        <td className="border-b border-border py-2 pr-3 font-mono text-[11px] text-text-2">
                                             {r.shadow === 'none'
                                                 ? 'no elevation'
                                                 : 'on the elevation scale'}
                                         </td>
-                                        <td className="border-b border-line py-2">
+                                        <td className="border-b border-border py-2">
                                             <Verdict pass={r.shadowOnScale} />
                                         </td>
                                     </tr>
@@ -571,7 +571,7 @@ export default function Design() {
                         title="Cards and screens"
                         note="Mounts here so the card art reads against the same live token set as everything above."
                     >
-                        <div className="rounded-md border border-dashed border-line-strong pad-hero text-meta">
+                        <div className="rounded-md border border-dashed border-border-strong pad-hero text-meta">
                             Reserved for the card art slice
                         </div>
                     </Section>

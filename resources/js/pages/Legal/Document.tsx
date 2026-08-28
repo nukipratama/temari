@@ -46,7 +46,7 @@ function linkify(text: string): ReactNode {
                 href={part}
                 rel="noreferrer noopener"
                 target="_blank"
-                className="underline decoration-horizon-deep underline-offset-2 hover:text-ink"
+                className="underline decoration-horizon-deep underline-offset-2 hover:text-foreground"
             >
                 {part}
             </a>
@@ -70,30 +70,30 @@ export default function LegalDocument({
                 <div className="mx-auto max-w-[46rem] py-10">
                     <Link
                         href="/login"
-                        className="font-mono text-xs font-semibold uppercase tracking-wider text-ink-3 hover:text-ink"
+                        className="font-mono text-xs font-semibold uppercase tracking-wider text-text-3 hover:text-foreground"
                     >
                         Temari
                     </Link>
 
-                    <h1 className="mt-4 font-display text-display-lg text-ink">
+                    <h1 className="mt-4 font-serif text-display-lg text-foreground">
                         {title}
                     </h1>
-                    <p className="mt-2 font-mono text-xs font-semibold uppercase tracking-wider text-ink-3">
+                    <p className="mt-2 font-mono text-xs font-semibold uppercase tracking-wider text-text-3">
                         Last updated {updated}
                     </p>
-                    <p className="mt-4 font-sans text-sm leading-relaxed text-ink-2">
+                    <p className="mt-4 font-sans text-sm leading-relaxed text-text-2">
                         {linkify(intro)}
                     </p>
 
                     {sections.map((section) => (
                         <section key={section.heading} className="mt-10">
-                            <h2 className="font-display text-headline-sm text-ink">
+                            <h2 className="font-serif text-headline-sm text-foreground">
                                 {section.heading}
                             </h2>
                             {section.paragraphs.map((paragraph) => (
                                 <p
                                     key={paragraph}
-                                    className="mt-3 font-sans text-sm leading-relaxed text-ink"
+                                    className="mt-3 font-sans text-sm leading-relaxed text-foreground"
                                 >
                                     {linkify(paragraph)}
                                 </p>
@@ -103,7 +103,7 @@ export default function LegalDocument({
 
                     <nav
                         aria-label="Other documents"
-                        className="mt-12 border-t border-line pt-6"
+                        className="mt-12 border-t border-border pt-6"
                     >
                         <ul className="flex flex-wrap gap-x-6 gap-y-2">
                             {DOCUMENTS.filter(
@@ -112,7 +112,7 @@ export default function LegalDocument({
                                 <li key={document.slug}>
                                     <Link
                                         href={document.href}
-                                        className="font-sans text-sm text-ink-2 underline underline-offset-2 hover:text-ink"
+                                        className="font-sans text-sm text-text-2 underline underline-offset-2 hover:text-foreground"
                                     >
                                         {document.label}
                                     </Link>

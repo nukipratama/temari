@@ -96,7 +96,7 @@ describe('MobileTopBar', () => {
             window.dispatchEvent(new Event('scroll'));
         });
 
-        expect(container.querySelector('header')).toHaveClass('border-line');
+        expect(container.querySelector('header')).toHaveClass('border-border');
         window.scrollY = 0;
     });
 

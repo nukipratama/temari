@@ -85,18 +85,18 @@ export default function InboxRow({
                         <time
                             dateTime={item.created_at ?? undefined}
                             title={formatIdDate(item.created_at, 'long')}
-                            className="shrink-0 font-mono text-xs tabular-nums text-ink-3"
+                            className="shrink-0 font-mono text-xs tabular-nums text-text-3"
                         >
                             {formatRelativeId(item.created_at)}
                         </time>
                     </div>
 
-                    <h2 className="mt-1 font-sans text-sm font-semibold text-ink">
+                    <h2 className="mt-1 font-sans text-sm font-semibold text-foreground">
                         {item.title}
                     </h2>
 
                     {item.body && (
-                        <p className="mt-1 line-clamp-3 font-sans text-sm leading-relaxed text-ink-2">
+                        <p className="mt-1 line-clamp-3 font-sans text-sm leading-relaxed text-text-2">
                             {item.body}
                         </p>
                     )}

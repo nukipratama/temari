@@ -52,7 +52,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
         <MotionConfig reducedMotion="user">
             {/* MobileTopBar carries the safe-area padding for this branch, so
             nothing is needed here — see its pt-[max(...)]. */}
-            <div className="min-h-screen bg-cream-deep text-ink">
+            <div className="min-h-screen bg-cream-deep text-foreground">
                 <RouteProgressBar />
                 <a
                     href="#main-content"

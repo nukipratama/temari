@@ -172,7 +172,7 @@ export default function Settings({
                                     {dataUse.points.map((point) => (
                                         <li
                                             key={point}
-                                            className="text-sm leading-relaxed text-ink-2"
+                                            className="text-sm leading-relaxed text-text-2"
                                         >
                                             {point}
                                         </li>
@@ -297,14 +297,14 @@ function NotificationPrefsPanel({
                 </div>
             </div>
 
-            <div className="border-t border-line/60 pt-5">
+            <div className="border-t border-border/60 pt-5">
                 <GroupLabel>Where it goes</GroupLabel>
                 {/* Scoped on purpose: these switches govern the run notifications
                     above them, not everything the app can send. Maintainer alerts
                     (dead-lettered AI blocks, generation pauses) go straight to
                     admin Telegram chats without touching preferences, and the bot
                     still replies to /start and /stop. See MaintainerAlerter. */}
-                <p className="mb-2 px-2 font-sans text-[12px] text-ink-3">
+                <p className="mb-2 px-2 font-sans text-[12px] text-text-3">
                     Controls your run notifications. Bot replies and system
                     alerts still come through.
                 </p>
@@ -388,7 +388,7 @@ function TestSendButton({
 /** Sub-heading inside a settings card, one tier below SectionLabel. */
 function GroupLabel({ children }: Readonly<{ children: ReactNode }>) {
     return (
-        <div className="mb-2 px-2 text-label-micro font-semibold text-ink-3">
+        <div className="mb-2 px-2 text-label-micro font-semibold text-text-3">
             {children}
         </div>
     );
@@ -480,7 +480,7 @@ function TelegramPanel({
                             }),
                         )
                     }
-                    className="focus-ring inline-flex shrink-0 items-center gap-1 rounded text-label-small text-ink-3 transition hover:text-ember-ink"
+                    className="focus-ring inline-flex shrink-0 items-center gap-1 rounded text-label-small text-text-3 transition hover:text-ember-ink"
                 >
                     <Icon
                         icon="mdi:link-off"

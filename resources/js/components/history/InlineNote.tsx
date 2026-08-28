@@ -34,10 +34,10 @@ export default function InlineNote({
                 icon={icon}
                 width={16}
                 height={16}
-                className="shrink-0 text-ink-3"
+                className="shrink-0 text-text-3"
                 aria-hidden
             />
-            <p className="font-sans text-sm text-ink-2">{children}</p>
+            <p className="font-sans text-sm text-text-2">{children}</p>
             {action}
         </Card>
     );

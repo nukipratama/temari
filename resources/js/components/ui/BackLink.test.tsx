@@ -17,7 +17,7 @@ describe('BackLink', () => {
     it('uses the muted tint by default', () => {
         render(<BackLink href="/x">Back</BackLink>);
         expect(screen.getByRole('link', { name: /^back$/i }).className).toMatch(
-            /text-ink-2/,
+            /text-text-2/,
         );
     });
 

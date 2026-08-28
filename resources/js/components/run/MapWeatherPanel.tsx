@@ -81,7 +81,7 @@ export default function MapWeatherPanel({
                                     splitLocationLines(location);
                                 return (
                                     <>
-                                        <div className="truncate font-display text-headline-xs">
+                                        <div className="truncate font-serif text-headline-xs">
                                             {place}
                                         </div>
                                         {region && (

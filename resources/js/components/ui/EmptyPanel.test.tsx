@@ -22,7 +22,7 @@ describe('EmptyPanel', () => {
         );
         expect(screen.getByText('Belum ada data')).toBeInTheDocument();
         expect(container.firstElementChild).toHaveClass('border-dashed');
-        expect(container.firstElementChild).toHaveClass('border-line-strong');
+        expect(container.firstElementChild).toHaveClass('border-border-strong');
         expect(container.firstElementChild).not.toHaveClass('border-2');
     });
 
@@ -72,10 +72,13 @@ describe('EmptyPanel', () => {
 
     it('renders the title and body in the canonical typography for every site', () => {
         render(<EmptyPanel title="Judul" body="Sub-copy" className="" />);
-        expect(screen.getByText('Judul')).toHaveClass('text-2xl', 'text-ink-2');
+        expect(screen.getByText('Judul')).toHaveClass(
+            'text-2xl',
+            'text-text-2',
+        );
         expect(screen.getByText('Sub-copy')).toHaveClass(
             'text-sm',
-            'text-ink-2',
+            'text-text-2',
         );
     });
 });

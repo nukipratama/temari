@@ -49,7 +49,7 @@ export default function JourneyStrip({
             <Eyebrow as="h3" token="hero" tone="ink-2">
                 You vs Your First Run
             </Eyebrow>
-            <p className="mt-2 font-sans text-sm leading-relaxed text-ink">
+            <p className="mt-2 font-sans text-sm leading-relaxed text-foreground">
                 Total{' '}
                 <span className="font-semibold text-horizon-ink">
                     {countedTotalKm.toFixed(1)} km
@@ -66,13 +66,13 @@ export default function JourneyStrip({
                 )}
                 .
             </p>
-            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5 font-display text-quote-md italic">
+            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5 font-serif text-quote-md italic">
                 {pace_improvement_sec !== null && (
                     <span
                         className={cn(
                             'tabular-nums',
                             pace_improvement_sec === 0
-                                ? 'text-ink-2'
+                                ? 'text-text-2'
                                 : pace_improvement_sec > 0
                                   ? 'text-leaf-ink'
                                   : 'text-ember-ink',
@@ -94,7 +94,7 @@ export default function JourneyStrip({
                         className={cn(
                             'tabular-nums',
                             hr_improvement_bpm === 0
-                                ? 'text-ink-2'
+                                ? 'text-text-2'
                                 : hr_improvement_bpm > 0
                                   ? 'text-leaf-ink'
                                   : 'text-ember-ink',
@@ -131,8 +131,13 @@ function PaceLine({
             ? formatPace(summary.pace_sec_per_km)
             : null;
     return (
-        <p className={cn('mt-3 text-xs leading-relaxed text-ink-2', className)}>
-            <span className="font-semibold text-ink">{label}:</span>{' '}
+        <p
+            className={cn(
+                'mt-3 text-xs leading-relaxed text-text-2',
+                className,
+            )}
+        >
+            <span className="font-semibold text-foreground">{label}:</span>{' '}
             {summary.name ?? 'Run'}{' '}
             {summary.distance_km !== null && (
                 <>· {summary.distance_km.toFixed(2)} km </>

@@ -16,14 +16,14 @@ export default function DailyChart({
     const totalCost = data.reduce((sum, d) => sum + d.cost, 0);
 
     return (
-        <Card tone="card" padding="card" className="mt-4 bg-surface-elev">
+        <Card tone="card" padding="card" className="mt-4 bg-popover">
             <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-                <span className="text-label-small text-ink-3">
+                <span className="text-label-small text-text-3">
                     {data.length} day{data.length === 1 ? '' : 's'}
                 </span>
-                <span className="text-sm text-ink-2">
+                <span className="text-sm text-text-2">
                     Estimated cost:{' '}
-                    <span className="font-semibold text-ink">
+                    <span className="font-semibold text-foreground">
                         {formatCost(totalCost, currency)}
                     </span>
                 </span>
@@ -40,17 +40,17 @@ export default function DailyChart({
                             style={{ minWidth: 0 }}
                         >
                             {/* Tooltip */}
-                            <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-line bg-surface-elev px-3 py-2 text-xs opacity-0 shadow-e2 transition-opacity group-hover:opacity-100">
-                                <div className="font-semibold text-ink">
+                            <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-popover px-3 py-2 text-xs opacity-0 shadow-e2 transition-opacity group-hover:opacity-100">
+                                <div className="font-semibold text-foreground">
                                     {formatDayLabel(d.day)}
                                 </div>
-                                <div className="text-ink-2">
+                                <div className="text-text-2">
                                     {fmt(d.total)} tokens
                                 </div>
-                                <div className="text-ink-3">
+                                <div className="text-text-3">
                                     {d.calls} call{d.calls === 1 ? '' : 's'}
                                 </div>
-                                <div className="text-ink-3">
+                                <div className="text-text-3">
                                     {formatCost(d.cost, currency)}
                                 </div>
                             </div>

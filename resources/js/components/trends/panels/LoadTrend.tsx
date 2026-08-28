@@ -163,16 +163,16 @@ export default function LoadTrend({
     return (
         <div
             className={cn(
-                'flex flex-col gap-4 rounded-(--radius-panel) border border-line bg-surface-card p-6 shadow-(--shadow-panel) sm:p-8',
+                'flex flex-col gap-4 rounded-(--radius-panel) border border-border bg-card p-6 shadow-(--shadow-panel) sm:p-8',
                 className,
             )}
         >
             <div>
-                <p className="text-label-micro text-ink-3">Load quality</p>
-                <h2 className="mt-1 font-display text-lg text-ink">
+                <p className="text-label-micro text-text-3">Load quality</p>
+                <h2 className="mt-1 font-serif text-lg text-foreground">
                     Strain and Monotony
                 </h2>
-                <p className="mt-1 text-sm text-ink-2">
+                <p className="mt-1 text-sm text-text-2">
                     Monotony is how same-y your week looked, strain is that
                     sameness multiplied by how much you did. A hard week is
                     fine. A hard week where every day looked identical is the
@@ -243,7 +243,7 @@ export default function LoadTrend({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4 }}
                 >
-                    <p className="mb-2 text-xs text-ink-3">
+                    <p className="mb-2 text-xs text-text-3">
                         Weekly load times monotony.
                     </p>
                     <span className="sr-only">{summarySentence}</span>
@@ -264,7 +264,7 @@ export default function LoadTrend({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: 0.05 }}
                 >
-                    <p className="mb-2 text-xs text-ink-3">
+                    <p className="mb-2 text-xs text-text-3">
                         Weekly mean load divided by its spread.
                     </p>
                     <span className="sr-only">{summarySentence}</span>
@@ -283,7 +283,7 @@ export default function LoadTrend({
                 </motion.div>
             </div>
 
-            <p className="text-xs text-ink-3">
+            <p className="text-xs text-text-3">
                 Gaps in these lines are days with no run to score, not a
                 monotony of zero.
             </p>

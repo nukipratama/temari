@@ -119,7 +119,7 @@ export default function SectionTabs<TId extends string>({
                             !isActive &&
                                 (onSky
                                     ? 'bg-transparent text-ink-on-sky hover:bg-cream/10 hover:text-cream'
-                                    : 'bg-transparent text-ink-2 hover:bg-sky/[0.06]'),
+                                    : 'bg-transparent text-text-2 hover:bg-sky/[0.06]'),
                         )}
                     >
                         <Icon

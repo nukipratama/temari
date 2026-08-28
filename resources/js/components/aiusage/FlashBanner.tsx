@@ -14,13 +14,13 @@ export default function FlashBanner({
     }
 
     return (
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-line bg-surface-elev px-4 py-3 text-sm text-ink">
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-border bg-popover px-4 py-3 text-sm text-foreground">
             <span>{message}</span>
             <button
                 type="button"
                 onClick={() => setDismissed(true)}
                 aria-label="Close"
-                className="focus-ring shrink-0 rounded-full p-1 text-ink-3 hover:text-ink"
+                className="focus-ring shrink-0 rounded-full p-1 text-text-3 hover:text-foreground"
             >
                 <Icon icon="mdi:close" width={16} aria-hidden />
             </button>

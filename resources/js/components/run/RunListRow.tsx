@@ -60,7 +60,7 @@ function RunListRow({
         return (
             <MotionLink
                 href={activityUrl(detail)}
-                className="flex items-start gap-4 border-b border-line px-5 py-4 text-sm transition last:border-b-0 hover:bg-surface sm:gap-6"
+                className="flex items-start gap-4 border-b border-border px-5 py-4 text-sm transition last:border-b-0 hover:bg-background sm:gap-6"
             >
                 <RunCardReveal
                     name={runCard.special_move}
@@ -70,20 +70,20 @@ function RunListRow({
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                     <div className="min-w-0">
-                        <div className="line-clamp-2 font-medium text-ink">
+                        <div className="line-clamp-2 font-medium text-foreground">
                             {detail.name ?? 'Run'}
                         </div>
-                        <div className="mt-0.5 text-xs text-ink-3">
+                        <div className="mt-0.5 text-xs text-text-3">
                             {formatNaiveIdDate(detail.start_date_local)}
                             {startTime && (
-                                <span className="text-ink-2">
+                                <span className="text-text-2">
                                     {' '}
                                     · {startTime}
                                 </span>
                             )}
                         </div>
-                        <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-xs tabular-nums text-ink-3">
-                            <span className="font-semibold text-ink-2">
+                        <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-xs tabular-nums text-text-3">
+                            <span className="font-semibold text-text-2">
                                 {km} km
                             </span>
                             <span>
@@ -108,7 +108,7 @@ function RunListRow({
                         </div>
                     </div>
                     {note && (
-                        <div className="flex items-start gap-2 rounded-xl bg-surface-warm/60 px-3 py-2 text-xs leading-relaxed text-ink">
+                        <div className="flex items-start gap-2 rounded-xl bg-accent/60 px-3 py-2 text-xs leading-relaxed text-foreground">
                             <Icon
                                 icon="mdi:comment-quote-outline"
                                 width={14}
@@ -129,7 +129,7 @@ function RunListRow({
     return (
         <MotionLink
             href={activityUrl(detail)}
-            className="flex items-start gap-4 border-b border-line px-5 py-4 text-sm transition last:border-b-0 hover:bg-surface"
+            className="flex items-start gap-4 border-b border-border px-5 py-4 text-sm transition last:border-b-0 hover:bg-background"
         >
             <Temari
                 pose={MOOD_TO_POSE[safeMood]}
@@ -142,14 +142,14 @@ function RunListRow({
                     <div className="min-w-0 flex-1">
                         {/* Wrap to two lines instead of a hard truncate so a run's
                             distinguishing trailing number/date survives at narrow widths. */}
-                        <div className="line-clamp-2 font-medium text-ink">
+                        <div className="line-clamp-2 font-medium text-foreground">
                             {detail.name ?? 'Run'}
                         </div>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-ink-3">
+                        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-text-3">
                             <span>
                                 {formatNaiveIdDate(detail.start_date_local)}
                                 {startTime && (
-                                    <span className="text-ink-2">
+                                    <span className="text-text-2">
                                         {' '}
                                         · {startTime}
                                     </span>
@@ -175,7 +175,7 @@ function RunListRow({
                     </div>
                 </div>
                 {note && (
-                    <div className="flex items-start gap-2 rounded-xl bg-surface-warm/60 px-3 py-2 text-xs leading-relaxed text-ink">
+                    <div className="flex items-start gap-2 rounded-xl bg-accent/60 px-3 py-2 text-xs leading-relaxed text-foreground">
                         <Icon
                             icon="mdi:comment-quote-outline"
                             width={14}
@@ -273,10 +273,10 @@ function Cell({
                 hideOnNarrow && HIDE_CLASSES[hideOnNarrow],
             )}
         >
-            <div className={cn('text-ink', emphasize && 'font-bold')}>
+            <div className={cn('text-foreground', emphasize && 'font-bold')}>
                 {value}
             </div>
-            <div className="text-label-micro text-ink-2">{unit}</div>
+            <div className="text-label-micro text-text-2">{unit}</div>
         </div>
     );
 }

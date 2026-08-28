@@ -76,10 +76,10 @@ export default function AskAboutRun({
                 <header className="flex items-start gap-3.5">
                     <Temari pose="observational" size={44} animate={false} />
                     <div className="min-w-0">
-                        <p className="font-display text-quote-md italic leading-snug text-ink-2">
+                        <p className="font-serif text-quote-md italic leading-snug text-text-2">
                             The numbers are up there. Ask me why.
                         </p>
-                        <p className="mt-1.5 font-sans text-xs text-ink-3">
+                        <p className="mt-1.5 font-sans text-xs text-text-3">
                             One run, one question at a time. I can only read
                             this run and your own history.
                         </p>
@@ -89,7 +89,7 @@ export default function AskAboutRun({
                 {summaryOnly && (
                     <p
                         role="status"
-                        className="mt-4 rounded-sm border border-line bg-surface-sunken px-3.5 py-2.5 font-sans text-sm leading-relaxed text-ink-2"
+                        className="mt-4 rounded-sm border border-border bg-muted px-3.5 py-2.5 font-sans text-sm leading-relaxed text-text-2"
                     >
                         Only the summary has landed for this run, so no splits,
                         zones or terrain yet. I'll answer from what's here.
@@ -165,7 +165,7 @@ export default function AskAboutRun({
                 )}
 
                 {questions.length > 0 && (
-                    <ol className="mt-6 flex flex-col gap-5 border-t border-line pt-5">
+                    <ol className="mt-6 flex flex-col gap-5 border-t border-border pt-5">
                         {questions.map((question) => (
                             <QuestionRow
                                 key={question.id}
@@ -198,14 +198,14 @@ function QuestionRow({
 
     return (
         <li>
-            <p className="font-sans text-sm font-semibold text-ink">
+            <p className="font-sans text-sm font-semibold text-foreground">
                 {question.question}
             </p>
             {pending && (
                 <div className="mt-2 flex flex-wrap items-center gap-3">
                     <span
                         role="status"
-                        className="inline-flex items-center gap-2 font-sans text-sm text-ink-3"
+                        className="inline-flex items-center gap-2 font-sans text-sm text-text-3"
                     >
                         <Icon
                             icon="mdi:loading"
@@ -244,7 +244,7 @@ function QuestionRow({
                 </div>
             )}
             {question.status === 'done' && question.answer !== null && (
-                <p className="mt-2 font-sans text-sm leading-relaxed text-ink">
+                <p className="mt-2 font-sans text-sm leading-relaxed text-foreground">
                     {renderBold(question.answer)}
                 </p>
             )}

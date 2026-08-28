@@ -39,8 +39,8 @@ export default function Devtools() {
     return (
         <>
             <Head title="Devtools · Temari" />
-            <div className="flex min-h-screen flex-col items-center gap-8 bg-cream-deep px-8 py-16 text-ink">
-                <h1 className="font-display italic text-display-xs text-ink">
+            <div className="flex min-h-screen flex-col items-center gap-8 bg-cream-deep px-8 py-16 text-foreground">
+                <h1 className="font-serif italic text-display-xs text-foreground">
                     Devtools
                 </h1>
                 <ul className="grid w-full max-w-[560px] gap-3.5">
@@ -62,10 +62,10 @@ export default function Devtools() {
                                     />
                                 </span>
                                 <div>
-                                    <div className="font-sans text-sm font-semibold text-ink">
+                                    <div className="font-sans text-sm font-semibold text-foreground">
                                         {link.label}
                                     </div>
-                                    <div className="mt-1 font-sans text-xs leading-snug text-ink-3">
+                                    <div className="mt-1 font-sans text-xs leading-snug text-text-3">
                                         {link.desc}
                                     </div>
                                 </div>

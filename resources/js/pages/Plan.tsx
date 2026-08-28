@@ -214,16 +214,16 @@ export default function Plan({
                             >
                                 Plan
                             </Eyebrow>
-                            <h1 className="font-display text-display-lg text-ink">
+                            <h1 className="font-serif text-display-lg text-foreground">
                                 The weeks ahead.
                             </h1>
-                            <p className="mt-2 max-w-xl font-sans text-sm leading-relaxed text-ink-2">
+                            <p className="mt-2 max-w-xl font-sans text-sm leading-relaxed text-text-2">
                                 {race
                                     ? `Built around ${race.name ?? 'your race'} on ${formatNaiveIdDate(race.race_date, 'long')}, about ${sessionsPerWeek} sessions a week.`
                                     : `No race set yet, so this cycles a steady build-and-deload rhythm, about ${sessionsPerWeek} sessions a week.`}{' '}
                                 <Link
                                     href="/race"
-                                    className="underline underline-offset-2 hover:text-ink"
+                                    className="underline underline-offset-2 hover:text-foreground"
                                 >
                                     {race ? 'Change your race' : 'Set a race'}
                                 </Link>
@@ -255,24 +255,24 @@ export default function Plan({
                             >
                                 This week
                             </SectionLabel>
-                            <p className="font-display text-headline-sm italic text-ink">
+                            <p className="font-serif text-headline-sm italic text-foreground">
                                 {adaptation.headline}
                             </p>
-                            <p className="mt-2 text-sm leading-relaxed text-ink-2">
+                            <p className="mt-2 text-sm leading-relaxed text-text-2">
                                 {adaptation.detail}
                             </p>
                         </Card>
                     )}
                     <Card padding="panel" className={cn(adaptation && 'mt-3')}>
-                        <p className="text-label-micro text-ink-2">
+                        <p className="text-label-micro text-text-2">
                             {disclaimerHeadline}
                         </p>
-                        <p className="mt-2 text-sm leading-relaxed text-ink-2">
+                        <p className="mt-2 text-sm leading-relaxed text-text-2">
                             {disclaimer}
                         </p>
                         <Link
                             href="/training-disclaimer"
-                            className="focus-ring mt-2 inline-block text-sm text-ink-2 underline underline-offset-2 hover:text-ink"
+                            className="focus-ring mt-2 inline-block text-sm text-text-2 underline underline-offset-2 hover:text-foreground"
                         >
                             What the plan can and cannot see
                         </Link>
@@ -287,7 +287,7 @@ export default function Plan({
                         </SectionLabel>
                         <Link
                             href="/trends"
-                            className="text-xs text-ink-2 underline underline-offset-2 hover:text-ink"
+                            className="text-xs text-text-2 underline underline-offset-2 hover:text-foreground"
                         >
                             Badge board
                         </Link>
@@ -303,7 +303,7 @@ export default function Plan({
                             <Chip tone={PHASE_TONE[seasonPhase] ?? 'neutral'}>
                                 {PHASE_LABEL[seasonPhase] ?? seasonPhase}
                             </Chip>
-                            <p className="mt-1 text-xs text-ink-2">
+                            <p className="mt-1 text-xs text-text-2">
                                 {SEASON_VISUAL_CAPTION[seasonPhase]}
                             </p>
                         </div>
@@ -402,21 +402,21 @@ export default function Plan({
                                                 )}
                                             >
                                                 <div className="flex min-w-0 flex-1 items-center gap-3">
-                                                    <span className="w-24 shrink-0 font-mono text-xs font-semibold uppercase tracking-wider text-ink-3">
+                                                    <span className="w-24 shrink-0 font-mono text-xs font-semibold uppercase tracking-wider text-text-3">
                                                         {formatNaiveIdDate(
                                                             day.date,
                                                             'short',
                                                         )}
                                                     </span>
                                                     <div className="min-w-0">
-                                                        <p className="text-sm font-semibold text-ink">
+                                                        <p className="text-sm font-semibold text-foreground">
                                                             {SESSION_TYPE_LABEL[
                                                                 day.session_type
                                                             ] ??
                                                                 day.session_type}{' '}
                                                             {day.session_type !==
                                                                 'rest' && (
-                                                                <span className="ml-1.5 font-normal text-ink-2">
+                                                                <span className="ml-1.5 font-normal text-text-2">
                                                                     {
                                                                         day.distance_km
                                                                     }{' '}
@@ -434,12 +434,12 @@ export default function Plan({
                                                                     height={13}
                                                                     role="img"
                                                                     aria-label="Pinned"
-                                                                    className="ml-1.5 inline-block align-baseline text-ink-3"
+                                                                    className="ml-1.5 inline-block align-baseline text-text-3"
                                                                 />
                                                             )}
                                                         </p>
                                                         {day.clamp_note && (
-                                                            <p className="mt-0.5 text-xs italic text-ink-2">
+                                                            <p className="mt-0.5 text-xs italic text-text-2">
                                                                 {day.clamp_note}
                                                             </p>
                                                         )}
@@ -447,7 +447,7 @@ export default function Plan({
                                                             'history' &&
                                                             day.session_type !==
                                                                 'rest' && (
-                                                                <p className="mt-0.5 text-xs text-ink-3">
+                                                                <p className="mt-0.5 text-xs text-text-3">
                                                                     {STATUS_LABEL[
                                                                         day
                                                                             .status
