@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { Head, router } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 
@@ -10,6 +9,7 @@ import HrZonesDisclosure, {
 } from '@/components/settings/HrZonesDisclosure';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import Card from '@/components/ui/Card';
+import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';

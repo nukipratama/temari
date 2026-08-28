@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { memo } from 'react';
 
 import type {
@@ -13,6 +12,7 @@ import RunListRow, { type RunNote } from '@/components/run/RunListRow';
 import SendNotificationButton from '@/components/SendNotificationButton';
 import Temari from '@/components/temari/Temari';
 import Card from '@/components/ui/Card';
+import { Icon } from '@/components/ui/Icon';
 import { useCountUp } from '@/hooks/useCountUp';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { cn } from '@/lib/cn';

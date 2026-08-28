@@ -1,5 +1,6 @@
-import { Icon } from '@iconify/react';
 import { useState } from 'react';
+
+import { Icon } from '@/components/ui/Icon';
 
 /** Inline confirmation for a `back()->with('info', …)` flash (e.g. a retry
  * confirmation). This page renders standalone, not under AppShell, so it

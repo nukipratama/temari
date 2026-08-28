@@ -1,8 +1,9 @@
-import { Icon } from '@iconify/react';
 import { usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
+
+import { Icon } from '@/components/ui/Icon';
 
 /**
  * Surfaces Inertia's shared error bag (Strava-connect denial, demo misconfig,

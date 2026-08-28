@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { router, usePage } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -6,6 +5,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import StravaAction from '@/components/StravaAction';
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { usePendingPost } from '@/hooks/usePendingPost';

@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { Link, usePage, usePoll } from '@inertiajs/react';
 import { useEffect } from 'react';
 
@@ -8,6 +7,7 @@ import StravaSyncButton from '@/components/StravaSyncButton';
 import Temari from '@/components/temari/Temari';
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
 

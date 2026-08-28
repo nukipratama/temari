@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { Head, usePage } from '@inertiajs/react';
 
 import type { SharedProps } from '@/types/inertia';
@@ -13,6 +12,7 @@ import UsageFilters from '@/components/aiusage/UsageFilters';
 import UsageKpis from '@/components/aiusage/UsageKpis';
 import UserTable from '@/components/aiusage/UserTable';
 import SectionHeading from '@/components/SectionHeading';
+import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 
 import type { AiUsageProps } from './AiUsage/types';

@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { Icon } from '@iconify/react';
-
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { ICON_TONE, type Tone } from '@/lib/tones';
 

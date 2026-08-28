@@ -1,8 +1,8 @@
-import { Icon } from '@iconify/react';
 import { useRef, useState, type FormEvent } from 'react';
 
 import Temari from '@/components/temari/Temari';
 import Card from '@/components/ui/Card';
+import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import {

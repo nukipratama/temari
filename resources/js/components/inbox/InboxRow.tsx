@@ -1,9 +1,8 @@
-import { Icon } from '@iconify/react';
-
 import type { InboxItem, NotificationKind } from '@/types/inertia';
 
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import PillLink from '@/components/ui/PillLink';
 import { cn } from '@/lib/cn';

@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { lazy, Suspense, type ReactNode } from 'react';
 
@@ -8,6 +7,7 @@ import BrandMark from '@/components/BrandMark';
 import TemariProto from '@/components/temari/TemariProto';
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';

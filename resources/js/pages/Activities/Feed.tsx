@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { Head, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { useRef } from 'react';
@@ -32,6 +31,7 @@ import BackLink from '@/components/ui/BackLink';
 import Card from '@/components/ui/Card';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';

@@ -1,7 +1,7 @@
-import { Icon } from '@iconify/react';
 import { Link } from '@inertiajs/react';
 import { type ReactNode } from 'react';
 
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 type BackLinkTone = 'muted' | 'accent';

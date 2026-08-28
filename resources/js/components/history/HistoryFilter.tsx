@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { Link } from '@inertiajs/react';
 import { motion, useDragControls } from 'framer-motion';
 import { useCallback, useRef, useState, type ReactNode } from 'react';
@@ -7,6 +6,7 @@ import type { MoodOption } from '@/lib/mood';
 import type { Mood } from '@/types/inertia';
 
 import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { usePopover } from '@/hooks/usePopover';
 import { cn } from '@/lib/cn';

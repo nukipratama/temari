@@ -1,6 +1,5 @@
 import type { FormDataConvertible } from '@inertiajs/core';
 
-import { Icon } from '@iconify/react';
 import { Head, Link, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { useRef, useState } from 'react';
@@ -15,6 +14,7 @@ import Chip, { type ChipTone } from '@/components/ui/Chip';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
 import GoalCard, { type Goal } from '@/components/ui/GoalCard';
+import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';

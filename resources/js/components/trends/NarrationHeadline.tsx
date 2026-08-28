@@ -1,9 +1,9 @@
-import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 
 import type { AnalysisPayload } from '@/types/inertia';
 
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 interface NarrationHeadlineProps {

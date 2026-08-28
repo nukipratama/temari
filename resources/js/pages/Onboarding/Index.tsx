@@ -1,6 +1,5 @@
 import type { FormDataConvertible } from '@inertiajs/core';
 
-import { Icon } from '@iconify/react';
 import { Head, router, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { type FormEvent, useState } from 'react';
@@ -9,6 +8,7 @@ import type { SharedProps } from '@/types/inertia';
 
 import Temari from '@/components/temari/Temari';
 import Card from '@/components/ui/Card';
+import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';

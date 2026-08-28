@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { Head, Link } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { memo, useRef, type ReactNode } from 'react';
@@ -13,6 +12,7 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import { useCountUp } from '@/hooks/useCountUp';

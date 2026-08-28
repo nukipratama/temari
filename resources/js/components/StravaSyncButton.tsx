@@ -1,10 +1,10 @@
-import { Icon } from '@iconify/react';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
 import type { StravaSyncState } from '@/types/inertia';
 
 import StravaAction from '@/components/StravaAction';
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 interface StravaSyncButtonProps {

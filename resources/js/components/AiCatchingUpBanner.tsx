@@ -1,7 +1,8 @@
-import { Icon } from '@iconify/react';
 import { usePage } from '@inertiajs/react';
 
 import type { SharedProps } from '@/types/inertia';
+
+import { Icon } from '@/components/ui/Icon';
 
 /**
  * Calm, app-wide reassurance shown while the auth user has at least one

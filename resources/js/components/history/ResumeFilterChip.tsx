@@ -1,4 +1,4 @@
-import { Icon } from '@iconify/react';
+import { Icon } from '@/components/ui/Icon';
 
 /**
  * One-tap offer to pick up the filter the user last used. Deliberately an offer

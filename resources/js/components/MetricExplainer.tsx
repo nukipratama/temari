@@ -1,7 +1,7 @@
-import { Icon } from '@iconify/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useId, useRef, useState } from 'react';
 
+import { Icon } from '@/components/ui/Icon';
 import { usePopover } from '@/hooks/usePopover';
 import { cn } from '@/lib/cn';
 import {

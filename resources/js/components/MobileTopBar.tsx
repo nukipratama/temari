@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { Link, usePage } from '@inertiajs/react';
 
 import type { SharedProps } from '@/types/inertia';
@@ -6,6 +5,7 @@ import type { SharedProps } from '@/types/inertia';
 import BrandMark from '@/components/BrandMark';
 import NotificationBell from '@/components/NotificationBell';
 import StravaSyncBadge from '@/components/StravaSyncBadge';
+import { Icon } from '@/components/ui/Icon';
 import UserAvatarLink from '@/components/UserAvatarLink';
 import { useScrolled } from '@/hooks/useScrolled';
 import { cn } from '@/lib/cn';

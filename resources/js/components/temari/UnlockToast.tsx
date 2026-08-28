@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { usePage } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
@@ -6,6 +5,7 @@ import { useEffect, useState } from 'react';
 import type { SharedProps, UnlockFlash } from '@/types/inertia';
 
 import ConfettiBurst from '@/components/ConfettiBurst';
+import { Icon } from '@/components/ui/Icon';
 
 const DISMISS_MS = 5000;
 

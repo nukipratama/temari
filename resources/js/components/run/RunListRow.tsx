@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { memo, useState } from 'react';
 
@@ -7,6 +6,7 @@ import type { ActivityDetail, Mood, Rarity, RunCard } from '@/types/inertia';
 import KartuMini from '@/components/card/KartuMini';
 import MotionLink from '@/components/MotionLink';
 import Temari from '@/components/temari/Temari';
+import { Icon } from '@/components/ui/Icon';
 import MoodChip from '@/components/ui/MoodChip';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { cn } from '@/lib/cn';

@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { type ReactNode } from 'react';
 
@@ -8,6 +7,7 @@ import { type KartuStats } from '@/components/card/Kartu';
 import RouteGlyph from '@/components/card/RouteGlyph';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
+import { Icon } from '@/components/ui/Icon';
 import PillLink from '@/components/ui/PillLink';
 import { fadeInUp } from '@/lib/motion';
 import {

@@ -1,6 +1,5 @@
-import { Icon } from '@iconify/react';
-
 import Card from '@/components/ui/Card';
+import { Icon } from '@/components/ui/Icon';
 
 export default function EmptyState() {
     return (

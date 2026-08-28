@@ -1,10 +1,10 @@
-import { Icon } from '@iconify/react';
 import { usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
+import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import SettingsRow from '@/components/ui/SettingsRow';
 import Toggle from '@/components/ui/Toggle';

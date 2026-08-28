@@ -1,7 +1,8 @@
-import { Icon } from '@iconify/react';
 import { usePage } from '@inertiajs/react';
 
 import type { SharedProps } from '@/types/inertia';
+
+import { Icon } from '@/components/ui/Icon';
 
 /**
  * Surfaces a reconnect nudge when the auth user's Strava connection is live but

@@ -1,8 +1,8 @@
-import { Icon } from '@iconify/react';
 import { Link, usePage } from '@inertiajs/react';
 
 import type { SharedProps } from '@/types/inertia';
 
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 interface NotificationBellProps {

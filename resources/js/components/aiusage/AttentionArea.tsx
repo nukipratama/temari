@@ -1,10 +1,10 @@
-import { Icon } from '@iconify/react';
 import { useForm, usePage } from '@inertiajs/react';
 
 import type { DeadLetterGroup } from '@/pages/AiUsage/types';
 import type { SharedProps } from '@/types/inertia';
 
 import SectionHeading from '@/components/SectionHeading';
+import { Icon } from '@/components/ui/Icon';
 
 /**
  * The "stuck work" cluster: a global one-shot recover action plus three buckets

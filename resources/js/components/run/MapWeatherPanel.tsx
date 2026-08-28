@@ -1,9 +1,9 @@
-import { Icon } from '@iconify/react';
 import { lazy, Suspense } from 'react';
 
 import type { ActivityDetail } from '@/types/inertia';
 
 import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { formatKm } from '@/lib/pace';
 

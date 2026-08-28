@@ -1,10 +1,10 @@
-import { Icon } from '@iconify/react';
 import { usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { type ReactNode } from 'react';
 
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
+import { Icon } from '@/components/ui/Icon';
 import {
     RATE_LIMITED_ERROR,
     useAnalysisTrigger,

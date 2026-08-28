@@ -254,12 +254,11 @@ vi.mock('react-chartjs-2', () => ({
     Bar: () => createElement('div', { 'data-testid': 'bar-chart' }),
 }));
 
-// Iconify loads icons through an internal timer; a late timer firing after a
-// test tears down setStates on the unmounted tree and surfaces as an unhandled
-// error that fails the run (same failure mode the framer-motion guard above
-// prevents). Icons are decorative (aria-hidden), so render a synchronous stub
-// that keeps the layout/aria props the components pass through.
-vi.mock('@iconify/react', () => ({
+// Icons are decorative (aria-hidden) and tests only need to assert which one
+// rendered, not lucide's actual SVG output — stub a synchronous span that
+// keeps the layout/aria props the components pass through and records the
+// icon key as a queryable attribute.
+vi.mock('@/components/ui/Icon', () => ({
     Icon: ({ icon, ...rest }: { icon?: unknown; [k: string]: unknown }) =>
         createElement('span', {
             'data-icon': typeof icon === 'string' ? icon : undefined,

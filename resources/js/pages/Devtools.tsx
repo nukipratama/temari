@@ -1,5 +1,6 @@
-import { Icon } from '@iconify/react';
 import { Head } from '@inertiajs/react';
+
+import { Icon } from '@/components/ui/Icon';
 
 interface DevtoolsLink {
     icon: string;

@@ -1,10 +1,10 @@
-import { Icon } from '@iconify/react';
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 
 import type { KindOption, RangeToken } from '@/pages/AiUsage/types';
 
 import Card from '@/components/ui/Card';
+import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import { cn } from '@/lib/cn';
 import { toggleButtonVariants } from '@/lib/variants';

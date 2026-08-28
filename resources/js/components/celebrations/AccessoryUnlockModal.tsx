@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { router } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRef } from 'react';
@@ -6,6 +5,7 @@ import { useRef } from 'react';
 import type { UnlockFlash } from '@/types/inertia';
 
 import TemariProto from '@/components/temari/TemariProto';
+import { Icon } from '@/components/ui/Icon';
 import { useModal } from '@/hooks/useModal';
 import { keyToPreviewEquipped } from '@/lib/equippedAccessories';
 

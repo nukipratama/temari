@@ -1,6 +1,6 @@
-import { Icon } from '@iconify/react';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
+import { Icon } from '@/components/ui/Icon';
 import { reportClientError } from '@/lib/clientErrorReporter';
 
 interface Props {

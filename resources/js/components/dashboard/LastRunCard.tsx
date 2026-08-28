@@ -1,10 +1,9 @@
-import { Icon } from '@iconify/react';
-
 import type { ActivityDetail, Mood } from '@/types/inertia';
 
 import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
 import LinkCard from '@/components/ui/LinkCard';
 import MoodChip from '@/components/ui/MoodChip';
 import SectionLabel from '@/components/ui/SectionLabel';

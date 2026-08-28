@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -8,6 +7,7 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
 import { triggerAnalysis } from '@/hooks/useAnalysisTrigger';
 import {
     cooldownAriaLabel,

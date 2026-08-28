@@ -1,8 +1,8 @@
-import { Icon } from '@iconify/react';
 import { Link } from '@inertiajs/react';
 
 import Eyebrow from '@/components/ui/Eyebrow';
 import GradientText from '@/components/ui/GradientText';
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { formatDuration } from '@/lib/pace';
 import { activityUrl } from '@/lib/routes';

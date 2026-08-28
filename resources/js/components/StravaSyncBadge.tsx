@@ -1,7 +1,6 @@
-import { Icon } from '@iconify/react';
-
 import type { StravaSync, StravaSyncState } from '@/types/inertia';
 
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { formatRelativeId } from '@/lib/pace';
 

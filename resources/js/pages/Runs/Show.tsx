@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { Head, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { lazy, Suspense, useRef, useState } from 'react';
@@ -31,6 +30,7 @@ import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
+import { Icon } from '@/components/ui/Icon';
 import MoodChip from '@/components/ui/MoodChip';
 import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';

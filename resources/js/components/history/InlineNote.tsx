@@ -1,8 +1,8 @@
-import { Icon } from '@iconify/react';
 import { type ReactNode } from 'react';
 
 import BackLink from '@/components/ui/BackLink';
 import Card from '@/components/ui/Card';
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { formatIdDate } from '@/lib/pace';
 import {

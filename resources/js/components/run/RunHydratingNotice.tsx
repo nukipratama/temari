@@ -1,7 +1,7 @@
-import { Icon } from '@iconify/react';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
+import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 
 const POLL_MS = 8000;

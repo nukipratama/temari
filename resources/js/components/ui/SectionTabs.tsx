@@ -1,7 +1,7 @@
-import { Icon } from '@iconify/react';
 import { Link } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 export interface SectionTabItem<TId extends string = string> {

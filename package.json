@@ -8,9 +8,6 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "prebuild": "npm run icons:build",
-        "predev": "npm run icons:build",
-        "icons:build": "node scripts/build-icon-bundle.mjs",
         "purge": "rm -rf public/build public/hot node_modules/.vite node_modules/.cache coverage",
         "lint": "eslint resources/js --max-warnings 0",
         "format": "prettier --write resources/js",
@@ -24,7 +21,6 @@
     },
     "devDependencies": {
         "@eslint-react/eslint-plugin": "^5.17.1",
-        "@iconify/json": "^2.2.502",
         "@tailwindcss/vite": "^4.0.0",
         "@testing-library/jest-dom": "^6.9.1",
         "@testing-library/react": "^16.3.2",
@@ -52,7 +48,6 @@
     },
     "dependencies": {
         "@base-ui/react": "^1.7.0",
-        "@iconify/react": "^6.0.2",
         "@inertiajs/react": "^3.1.1",
         "@mapbox/polyline": "^1.2.1",
         "chart.js": "^4.5.1",
