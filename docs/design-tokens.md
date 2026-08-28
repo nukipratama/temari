@@ -113,9 +113,9 @@ edge carries the contrast. Never darken them instead.
 
 | Family | Tokens | Role |
 |---|---|---|
-| Sky | `sky`, `sky-deep`, `sky-2` (`#241c54`) | Structure, dark hero panels (the only "dark" surface). Deep indigo. |
-| Horizon | `horizon`, `horizon-deep`, `horizon-ink` (`#d9a53c` gold) | Primary CTA, "earned" / PR state, Temari accent. `horizon-ink` for gold **as text**; `horizon-deep` is a *fill* (hover state, gradient stop, chart point) and reaches only 2.6:1 on paper, so `text-horizon-deep` is always wrong. |
-| Cream | `cream`, `cream-deep` (`#f5f0e4`) | Paper / secondary surface, on-dark text. Warm linen canvas. |
+| Sky | `sky` (`#171f28`), `sky-deep` (`#0b1017`), `sky-2` (`#26303d`) | Structure, dark hero panels — and, since F2, the dark ground itself (`background`/`card`/`popover` map to this family under `[data-theme="dark"]`; see below). Pewter: cold near-black. |
+| Horizon | `horizon` (`#ade047`), `horizon-deep`, `horizon-ink` | Primary CTA, "earned" / PR state, Temari accent. Pewter: lime. `horizon-ink` for the lime **as text**; `horizon-deep` is a *fill* and is never text. |
+| Cream | `cream` (`#f1f5f8`), `cream-deep` | Paper / secondary surface, on-dark text. Pewter: cold near-white. |
 | Ink | `ink` / `ink-2` / `ink-3` (+ `ink-on-sky`, `ink-on-rarity`) | 3-tier text contrast (primary / supporting / meta); `ink-on-sky` = muted label on a dark sky panel, `ink-on-rarity` = label on a vivid rarity fill |
 | Surface | `surface`, `surface-card`, `surface-elev`, `surface-warm`, `surface-sunken` | App surfaces (dawn-shift drifts `surface`); `surface-card` = the one linen every card shares; `surface-elev` = floating UI only |
 | Line | `line`, `line-strong` | Borders. `line` is the default hairline; `line-strong` is the dashed placeholder edge |
@@ -127,6 +127,46 @@ edge carries the contrast. Never darken them instead.
 Chart.js and inline SVG cannot read CSS custom properties off a canvas, so a small
 hex bridge mirrors the tokens in [chartTokens.ts](../resources/js/lib/chartTokens.ts). Import
 from there rather than pasting a hex; it is asserted against `app.css` by its own test.
+
+### Ground-reactive semantic layer (two grounds, F2)
+
+The families above are the app's fixed-identity palette — the same value on every ground. A
+second layer sits above them: values that **flip** under `[data-theme="dark"]`, declared as
+literal hex both times (never `var()` or `color-mix()` — the guard in
+[DesignTokenContrastTest.php](../tests/Unit/Architecture/DesignTokenContrastTest.php) that scores
+them parses `#rrggbb` by regex, so either one would silently score nothing). **Dark is the default
+ground**; light is reached via Settings.
+
+| Token | Light | Dark | Role |
+|---|---|---|---|
+| `background` / `foreground` | cream / ink | sky-deep / cream | Page ground and its text |
+| `card` / `card-foreground` | surface-card / ink | sky / cream | The default card |
+| `popover` / `popover-foreground` | surface-elev / ink | sky-2 / cream | Floating UI |
+| `primary` / `primary-foreground` | horizon / ink | horizon / ink | The app's CTA identity, unchanged across grounds |
+| `secondary`, `muted`, `accent` (+ `-foreground`) | surface-sunken / ink or ink-3 | sky-2 / cream or ink-on-sky | Secondary surfaces and de-emphasised text |
+| `destructive` | ember | ember | Constant — not brand, held across grounds like the mood/rarity fills |
+| `border` / `input` | line | one step lighter than sky-2 | Separators, form-control borders |
+| `ring` | leaf | leaf | Focus ring — matches `.focus-ring` below on both grounds |
+| `icon-accent` | horizon-ink | horizon | Icon tint; the fill/`-ink` split inverts the same way the accent hues do |
+| `text-2` / `text-3` | = `ink-2` / `ink-3` | derived, lighter than `muted-foreground` / equal to it | A secondary/tertiary text pair distinct from `ink-2`/`ink-3` |
+| `border-strong` | line | one step lighter than sky-2 | A stronger separator (e.g. Login) |
+| `today-accent` | horizon-ink at 30% over the card | transparent | The Today card's accent edge — no added edge needed on dark |
+| `btn-primary-bg` / `btn-primary-fg` | horizon-ink / white | horizon / ink | Settings' solid "primary" pill |
+| `chart-1`..`chart-5` | horizon-ink, sky-2, leaf, ember, citrus-ink | same | Unused by Chart.js (see above); reserved for any future SVG/shadcn chart primitive |
+
+**The `-ink` tier inverts on dark**, for `leaf-ink` / `ember-ink` / `citrus-ink` and the ten
+`rarity-*-ink` tokens: on paper the vivid fill is unreadable as text, so it is darkened; on Sky the
+opposite holds, so the dark value is the vivid fill itself where that already clears 4.5:1
+(`citrus-ink`, `rarity-uncommon-ink`, `rarity-legendary-ink`), or lightened toward white where it
+does not (`leaf-ink`, `ember-ink`, `rarity-common/rare/epic-ink`) — derived via `inkOnDark()` in
+[build-tokens.mjs](../resources/brand/build-tokens.mjs), worst-cased across sky-deep/sky/sky-2.
+`horizon-ink` has no dark counterpart: the app swaps to the vivid `horizon` fill itself instead.
+
+**Season-phase identity colours**, also added in F2: `--color-phase-{base,build,peak,taper}`,
+promoted from the prototype's `PHASE_COLOR` literals for the Plan/Today periodization display.
+Fixed identity like mood/rarity, constant across grounds. Validated colorblind-safe via the
+`dataviz` skill's palette checker — one adjacent pair sits at the CVD-separation floor, so any
+phase indicator needs a direct label or texture alongside the colour, never hue alone.
 
 ### Text contrast tiers
 
@@ -140,8 +180,8 @@ All five clear WCAG AA on their intended background.
 
 ### CTA contrast
 
-- `horizon` (gold) → dark text (`text-sky` / `text-ink`), never white.
-- `sky` / `sky-deep` (deep indigo) → `text-cream` / white.
+- `horizon` (lime) → dark text (`text-ink`), never white — clears 11.5:1 both light and dark.
+- `sky` / `sky-deep` (near-black) → `text-cream` / white.
 - `leaf-deep` / `ember-deep` → `text-cream` (both pass AA); darken on hover with `hover:opacity-90`, not a hue jump.
 
 ## Spacing
@@ -175,12 +215,15 @@ Section rhythm (unchanged): major section → next major `mt-10`; subsection →
 | `rounded-lg` | 18px | Larger panels, modals, sheets |
 | `rounded-xl` | 24px | Takeover surfaces, bottom sheets |
 | `rounded-full` | 9999px | Pills, chips, avatars, dots |
+| `rounded-2xl` | 18px | shadcn/prototype primitives (F2+) — a separate keyword vocabulary, not a continuation of the ladder above |
+| `rounded-3xl` | 22px | shadcn/prototype primitives |
+| `rounded-4xl` | 26px | shadcn/prototype primitives — lands on the same corner as `rounded-panel` below, independently |
 
 These **override Tailwind's defaults for the whole namespace**, so no call site can land between
-two steps. `rounded-2xl` / `rounded-3xl` are outside the scale and rejected by the source guard —
-that is how one screen ended up with four different card corners. Arbitrary radii
-(`rounded-[11px]`) survive only inside the collectible card art, which is drawn to its own
-geometry.
+two steps. `2xl`/`3xl`/`4xl` joined the scale in F2 to back the shadcn/prototype component set;
+before that they were rejected by the source guard, which is how one screen ended up with four
+different card corners without them. Arbitrary radii (`rounded-[11px]`) survive only inside the
+collectible card art, which is drawn to its own geometry.
 
 ## Elevation
 
@@ -240,7 +283,9 @@ the confetti burst — reads the same preference itself through
 
 - `<GradientText preset="horizon|cream-sun" fontSize=… />` ([component](../resources/js/components/ui/GradientText.tsx)) clips a `linear-gradient` to text. Numbers only, large sizes only, one per viewport.
 
-App is **light-mode only** — no `.dark` is applied to `<html>`, no `*-dark` tokens.
+The sky→horizon backdrop atmospherics (Login's inline `linear-gradient` / `radial-gradient`
+layers) are not yet re-tuned for the dark ground — that lands with the screen slice that ports
+Login, not with the token infrastructure in F2.
 
 ## Component utilities
 

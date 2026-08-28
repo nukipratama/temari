@@ -166,6 +166,26 @@ export function paperGrounds(tokens = readColorTokens(), dir = COMPONENT_DIR) {
   return grounds;
 }
 
+/**
+ * The three surfaces the dark ground actually uses: sky-deep (background),
+ * sky (card), sky-2 (popover/secondary/muted/accent). Fixed by the token
+ * model rather than scanned like paperGrounds() — nothing paints a dark
+ * surface via a literal bg-<name> class the way paper grounds are classified,
+ * since the same `bg-card`/`bg-background` utilities repaint per
+ * `[data-theme]` at runtime instead of naming a different token per ground.
+ */
+export function darkGrounds(tokens = readColorTokens()) {
+  const names = ['sky-deep', 'sky', 'sky-2'];
+  const grounds = {};
+  for (const name of names) {
+    if (tokens[name] === undefined) {
+      throw new Error(`darkGrounds expects --color-${name} to be declared in @theme static.`);
+    }
+    grounds[name] = tokens[name];
+  }
+  return grounds;
+}
+
 const toRgb = (hex) => {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];

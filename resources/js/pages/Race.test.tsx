@@ -1,5 +1,11 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+    act,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+} from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Race from './Race';
@@ -106,6 +112,46 @@ describe('Race', () => {
             goal_time_sec: 1_530,
             name: 'Christmas 5K',
         });
+    });
+
+    it('accepts a custom distance typed directly, not just a preset pill', () => {
+        render(<Race race={null} projection={null} ctlTrend={[]} />);
+
+        // race_date is required for the native form submit event to fire at
+        // all — without it the click never reaches router.post.
+        fireEvent.change(screen.getByLabelText('Race day'), {
+            target: { value: '2026-12-25' },
+        });
+        fireEvent.change(
+            screen.getByLabelText('Custom distance in kilometers'),
+            { target: { value: '15' } },
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Set race' }));
+
+        expect(lastPostCall()?.[1]).toMatchObject({ distance_m: 15_000 });
+    });
+
+    it('shows a saving state between the router request starting and finishing', () => {
+        render(<Race race={null} projection={null} ctlTrend={[]} />);
+
+        fireEvent.change(screen.getByLabelText('Race day'), {
+            target: { value: '2026-12-25' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Set race' }));
+
+        const call = lastPostCall();
+        const options = call?.[2] as {
+            onStart: () => void;
+            onFinish: () => void;
+        };
+
+        act(() => options.onStart());
+        expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
+
+        act(() => options.onFinish());
+        expect(
+            screen.getByRole('button', { name: 'Set race' }),
+        ).not.toBeDisabled();
     });
 
     it('refuses to submit a goal time the server would reject outright', () => {

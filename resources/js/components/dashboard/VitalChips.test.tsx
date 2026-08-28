@@ -159,6 +159,21 @@ describe('VitalChips', () => {
         ).toBeInTheDocument();
     });
 
+    // Recovery has no numeric gauge to fall back to when recoveryHours itself
+    // is unknown (e.g. no prior run to measure from) — the thin tone-coloured
+    // rail fills the slot instead, so the 3-up row stays a cohesive family.
+    it('shows a tone rail instead of a gauge for Recovery when recoveryHours is null', () => {
+        const noHours: BriefingResult = { ...briefing, recoveryHours: null };
+        render(<VitalChips briefing={noHours} load={load} />);
+        expect(
+            screen.queryByRole('meter', { name: 'Break' }),
+        ).not.toBeInTheDocument();
+        // The rail is tone-coloured rather than the gauge's fill, but the
+        // label still renders — the value itself is unaffected by the gauge
+        // falling back to a rail.
+        expect(screen.getByText('41h')).toBeInTheDocument();
+    });
+
     it('falls back to streakLabel then recoveryLabel for the Recovery chip', () => {
         const noHours: BriefingResult = {
             ...briefing,

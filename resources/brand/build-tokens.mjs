@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 
-import { contrast, darkest, groundsForInk, paperGrounds } from './grounds.mjs';
+import { contrast, darkest, darkGrounds, groundsForInk, paperGrounds } from './grounds.mjs';
 
 /* Threadwork v2 — the token set the current app is missing.
    Colour was already largely defined; radius and elevation were not, which is
@@ -110,12 +110,31 @@ export function inkOn(hex, grounds, target = 4.5) {
   return hex;
 }
 
+/** Lighten until the colour clears `target` against every ground in `grounds`
+ *  — the inverse move from inkOn(): on a dark ground the vivid fill already
+ *  reads, so it is darkening (toward black) rather than lightening (toward
+ *  white) that kills contrast. Returns the hex unchanged when it already
+ *  clears every ground, so a fill that is already legible stays vivid rather
+ *  than being needlessly bleached. */
+export function inkOnDark(hex, grounds, target = 4.5) {
+  const against = Object.values(grounds);
+  if (against.every((bg) => contrast(hex, bg) >= target)) return hex;
+  for (let f = 0; f <= 1; f += 0.0025) {
+    const c = toHex(toRgb(hex).map((v) => v + (255 - v) * f));
+    if (against.every((bg) => contrast(c, bg) >= target)) return c;
+  }
+  return '#ffffff';
+}
+
 /* Read out of app.css and resources/js rather than written down here — see
    resources/brand/grounds.mjs. */
 export const GROUNDS = paperGrounds();
 
 /** The ground a token has to survive: the darkest paper the app can render. */
 export const PAPER = darkest(GROUNDS);
+
+/** The dark ground's three surfaces (sky-deep/sky/sky-2) — see grounds.mjs. */
+export const GROUNDS_DARK = darkGrounds();
 
 /** Worst ratio a foreground scores across a ground set, and where it scored it. */
 export function worstOn(fg, grounds = GROUNDS) {
@@ -148,6 +167,19 @@ for (const family of INK_FAMILIES) {
   COLOR[`${family}-ink`] = inkOn(COLOR[family], inkGrounds(family));
 }
 COLOR.line = inkOn(COLOR.line, GROUNDS, 1.4);
+
+/* The three families whose light -ink value inverts on the dark ground
+   (F2's "problem 1" — see plan/README.md's token model). horizon is
+   deliberately excluded: the app already swaps to the vivid --color-horizon
+   fill itself for icon-accent/btn-primary-bg on dark (it clears every dark
+   surface at 8.6:1+), so it needs no separate derived dark-ink value. */
+const DARK_INK_FAMILIES = ['leaf', 'ember', 'citrus'];
+export const DARK_INK = Object.fromEntries(
+  DARK_INK_FAMILIES.map((family) => [family, inkOnDark(COLOR[family], GROUNDS_DARK)]),
+);
+export const RARITY_INK_DARK = Object.fromEntries(
+  Object.entries(RARITY).map(([k, v]) => [k, inkOnDark(v, GROUNDS_DARK)]),
+);
 
 const PAIRS = [
   // text on paper — must clear 4.5

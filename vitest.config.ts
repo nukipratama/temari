@@ -11,6 +11,9 @@ export default defineConfig({
             // mascot and its catalogue, and are pinned from Vitest. They are
             // never aliased in vite.config.ts, so none of this reaches a bundle.
             '@brand': path.resolve(__dirname, 'resources/brand'),
+            // Test-only, same reasoning: source-guard scripts export their
+            // rule tables for direct testing. Never aliased in vite.config.ts.
+            '@scripts': path.resolve(__dirname, 'scripts'),
         },
     },
     test: {

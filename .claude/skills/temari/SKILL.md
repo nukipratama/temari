@@ -29,15 +29,15 @@ Two DB connections: default `mysql` plus a second **`analytics`** schema for met
 
 ## Design system
 
-Jewel tones on a warm linen canvas. Tokens live in the `@theme` block of
+Pewter: cold near-white paper, near-black structure, lime accent. Tokens live in the `@theme` block of
 [resources/css/app.css](../../../resources/css/app.css), which is *generated* by
 [build-tokens.mjs](../../../resources/brand/build-tokens.mjs); full reference (colors, type scale,
 fonts, radius, elevation, spacing) in [docs/design-tokens.md](../../../docs/design-tokens.md).
 Use the **semantic token families, never raw Tailwind colors** like `lime-500`:
 
-- `sky` (`#241c54`) / `sky-deep` (`#170f38`) / `sky-2` (`#362a73`) — structure, dark hero panels, the only "dark" surface. Deep indigo thread.
-- `horizon` / `horizon-deep` (`#d9a53c` gold) — primary CTA, "earned"/PR state, Temari accent. Gold thread.
-- `cream` / `cream-deep` (`#f5f0e4`) — paper / secondary surface and borders. Warm linen canvas.
+- `sky` (`#171f28`) / `sky-deep` (`#0b1017`) / `sky-2` (`#26303d`) — structure, dark hero panels, and (since F2) the dark ground itself. Cold near-black.
+- `horizon` / `horizon-deep` (`#ade047` lime) — primary CTA, "earned"/PR state, Temari accent.
+- `cream` / `cream-deep` (`#f1f5f8`) — paper / secondary surface and borders. Cold near-white.
 - `ink` / `ink-2` / `ink-3` — the 3-tier text-contrast scale (see below).
 - `surface` / `surface-card` / `surface-elev` / `surface-warm` / `surface-sunken` + `line` / `line-strong` — app surfaces (dawn-shift drifts `surface`).
 - `mood-{blazing,easy,wobbly,gassed,overloaded,chill}` (each with a pastel `-bg` cell tint and an `-ink` label variant) — calendar cells + mood badges.
@@ -45,8 +45,13 @@ Use the **semantic token families, never raw Tailwind colors** like `lime-500`:
 - semantic hues `leaf` / `leaf-deep` / `leaf-ink`, `ember` / `ember-deep` / `ember-ink`, `citrus` / `citrus-ink`, `stone` (`-deep` fills a dark CTA, `-ink` carries the label; `citrus` fills no CTA and has no `-deep`).
 - `strava-orange` / `strava-orange-hover` — reserved, never themed (see below).
 
-`citrus` (`#c9971f`) is reserved for PR / legendary celebrations only. App is
-**light-mode only** (no `*-dark` tokens; `.dark` is never applied).
+`citrus` (`#c9971f`) is reserved for PR / legendary celebrations only.
+
+**Two grounds, since F2.** `[data-theme="dark"]` on `<html>` inverts Sky and Cream — Sky becomes
+ground, Cream becomes text — and is the app's **default** ground; light and system are reachable
+from Settings. A second semantic layer (`background`/`foreground`/`card`/`popover`/... plus
+`leaf-ink`/`ember-ink`/`citrus-ink`/`rarity-*-ink`, which invert per ground) sits above the palette
+above; see "Ground-reactive semantic layer" in [docs/design-tokens.md](../../../docs/design-tokens.md).
 
 **Fill vs text.** Every saturated family ships as a pair: the vivid value is the fill (dots,
 frames, strokes, tinted cells), the derived `-ink` value is the only member allowed to carry text
@@ -72,10 +77,10 @@ to neutral (`surface-sunken` + `ink`) so the brand mark gets breathing room. Str
 
 ### CTA contrast rule (WCAG)
 
-`horizon` (`#d9a53c`) is a gold thread tone, so it pairs with **dark** text, never white. Follow the
+`horizon` (`#ade047`) is a lime tone, so it pairs with **dark** text, never white. Follow the
 [`PillButton`](../../../resources/js/components/ui/PillButton.tsx) presets:
-- `horizon` bg → `text-sky` (dark indigo on gold passes comfortably); hover darkens to `horizon-deep`.
-- `sky` / `sky-deep` bg (dark indigo) → `text-cream` / white text (passes ~13:1); hover darkens to `sky-deep`.
+- `horizon` bg → `text-ink` (dark ink on lime clears 11.5:1); hover darkens to `horizon-deep`.
+- `sky` / `sky-deep` bg (near-black) → `text-cream` / white text (passes ~15:1+); hover darkens to `sky-deep`.
 - `leaf-deep` (`#256f4d`) / `ember-deep` (`#8d2c3d`) bg → `text-cream` (both pass AA); used for dense "retry"/action chips. No darker step exists, so darken on hover with `hover:opacity-90`, not a hue jump.
 - Never put white text on `horizon`/`citrus`/`cream` (all too light).
 
