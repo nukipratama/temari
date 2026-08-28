@@ -198,6 +198,73 @@
     --color-strava-orange: #fc4c02;
     --color-strava-orange-hover: #e34402;
 
+    /* ─── Ground-reactive semantic layer ──────────────────────────────
+       Two-ground token model (F2). Every token below is redeclared, literal
+       hex, under `[data-theme="dark"]` further down this file — this block
+       carries the light/default value only. `static` still gives each one a
+       real `var(--color-x)`-indirected utility (Tailwind v4 always defers
+       theme colours to a custom property; `static` only forces emission
+       regardless of usage), so the `[data-theme="dark"]` override below
+       repaints every `bg-card` / `text-foreground` / `text-leaf-ink` call site
+       without Tailwind regenerating anything. See DesignTokenContrastTest.php
+       for why every value here — light AND dark — stays literal hex: the
+       guard that scores these parses `#rrggbb` by regex, and a `color-mix()`
+       or `var()` value would silently score nothing.
+
+       Semantic slots (shadcn `base-luma` vocabulary) mapped onto Pewter:
+       primary/ring follow the app's own established identity (horizon is the
+       CTA colour, leaf is the focus-ring colour per .focus-ring below) rather
+       than the prototype's Luma-default choice of sky/indigo. */
+    --color-background: #f1f5f8; /* cream */
+    --color-foreground: #16181b; /* ink */
+    --color-card: #f1f5f8; /* surface-card */
+    --color-card-foreground: #16181b;
+    --color-popover: #f8fbfe; /* surface-elev */
+    --color-popover-foreground: #16181b;
+    --color-primary: #ade047; /* horizon */
+    --color-primary-foreground: #16181b; /* ink — already validated: text on gold CTA */
+    --color-secondary: #e2e8ee; /* surface-sunken */
+    --color-secondary-foreground: #16181b;
+    --color-muted: #e2e8ee;
+    --color-muted-foreground: #60666d; /* ink-3 */
+    --color-accent: #e2e8ee;
+    --color-accent-foreground: #16181b;
+    --color-destructive: #b23a4f; /* ember, constant across grounds */
+    --color-border: #bfc5cc; /* line */
+    --color-input: #bfc5cc;
+    --color-ring: #2f8f63; /* leaf — matches .focus-ring below, both grounds */
+    --color-chart-1: #546d23; /* horizon-ink */
+    --color-chart-2: #26303d; /* sky-2 */
+    --color-chart-3: #2f8f63; /* leaf */
+    --color-chart-4: #b23a4f; /* ember */
+    --color-chart-5: #7b5c13; /* citrus-ink */
+
+    /* Six hand-built theme-reactive tokens, ported from the prototype's own
+       set (resources/brand/prototype/src/index.css) — icon accents, a
+       secondary/tertiary text tier distinct from ink-2/ink-3 (light stays
+       equal to them; dark needs its own derived tones), a strong border for
+       login-style separators, the Today card's accent edge, and the
+       Settings solid-pill button pairing. */
+    --color-icon-accent: #546d23; /* horizon-ink */
+    --color-text-2: #34373c; /* = ink-2 on light */
+    --color-text-3: #60666d; /* = ink-3 on light */
+    --color-border-strong: #bfc5cc; /* = line on light */
+    --color-today-accent: #c2ccb8; /* horizon-ink at 30% over card (literal, not color-mix) */
+    --color-btn-primary-bg: #546d23; /* horizon-ink */
+    --color-btn-primary-fg: #ffffff;
+
+    /* Season-phase identity colours (F2, promoted from the prototype's
+       PlanScreen/TodayScreen PHASE_COLOR literals). Fixed identity, constant
+       across grounds — categorical like mood/rarity, not ground-dependent.
+       Validated via the dataviz skill's palette checker: all four pass: L
+       band, chroma floor, CVD separation (epic↔build sits at the 8.0 floor —
+       legal only with a direct label or texture alongside colour, never hue
+       alone) and contrast vs surface. */
+    --color-phase-base: #0d9488;
+    --color-phase-build: #1e6fe0;
+    --color-phase-peak: #a21caf;
+    --color-phase-taper: #db2777;
+
     /* ─── Spacing ──────────────────────────────────────────────────────
        4px base. Named PAD roles let a component ask for its *kind* of
        padding instead of picking a number (see the .pad-* utilities). */
@@ -227,6 +294,23 @@
     --radius-lg: 18px;
     --radius-xl: 24px;
     --radius-full: 9999px;
+
+    /* shadcn/prototype primitives (F3+) reach for `rounded-2xl/3xl/4xl` —
+       Tailwind's own built-in keywords, previously untokened here and banned
+       by check-raw-palette.mjs rule 3 for exactly that reason. These are
+       shadcn's own separate keyword vocabulary, not a continuation of this
+       ladder's xs-xl steps above (the two namespaces already coexist without
+       being one monotonic sequence — see --radius-panel below, which sits
+       above xl under its own name rather than being called "2xl"). Values
+       are the literal output of shadcn's own `calc(var(--radius) * N)` scheme
+       at `--radius: 0.625rem` (the prototype's base), hardcoded rather than
+       introducing that extra base var. `--radius-4xl` landing on the same
+       26px as `--radius-panel` below is the prototype's own math arriving,
+       independently, at Pewter's actual card corner — real corroboration,
+       not a new invention. */
+    --radius-2xl: 18px;
+    --radius-3xl: 22px;
+    --radius-4xl: 26px;
 
     /* Luma/Pewter's own card radius and cast shadow (resources/brand/directions.html
        [data-dir="pewter"]), landed additively under its own role name rather than
@@ -258,19 +342,33 @@
    `pressShrink` scale, see lib/motion.ts); do not remove that without
    restoring a highlight here. */
 html {
-    /* The app is light-mode only (no `.dark` on <html>, no *-dark tokens), but
-       until this was declared it never told the user agent so. On a device set
-       to Dark Mode the UA then renders everything IT owns in dark appearance —
-       form controls, scrollbars, and, in an installed iOS PWA, the status-bar
-       strip around the notch. That is what painted a dark slab above the cream
-       header, and why pinning `theme-color` to cream could not fix it: the
-       strip was never being painted from theme-color. Mirrored as a <meta> in
-       app.blade.php so it applies before this stylesheet loads. */
-    color-scheme: light;
+    /* Tells the UA how to render what it owns — form controls, scrollbars,
+       and, in an installed iOS PWA, the status-bar strip around the notch —
+       so it matches the active ground instead of just following the device's
+       own Dark Mode setting (which is how a dark slab once painted above the
+       cream header on a light-only app; pinning `theme-color` alone could not
+       fix it, since that strip was never painted from theme-color).
+
+       F2 makes the app two-ground: `dark` here is the bare fallback for a
+       pre-hydration/no-JS paint, matching decision 6's default ground; the
+       `[data-theme]` rules below are what actually apply once the blocking
+       inline script in app.blade.php runs, before first paint in the normal
+       case. Mirrored as a <meta name="color-scheme"> there for the same
+       reason the original single-value meta existed: it has to apply before
+       this stylesheet loads. */
+    color-scheme: dark;
     -webkit-tap-highlight-color: transparent;
     /* Stop iOS inflating text when a page ends up in landscape. The fluid
        clamp() type scale already handles sizing; Safari's own bump fights it. */
     -webkit-text-size-adjust: 100%;
+}
+
+html[data-theme='light'] {
+    color-scheme: light;
+}
+
+html[data-theme='dark'] {
+    color-scheme: dark;
 }
 
 /* Long-pressing app chrome on iOS pops the copy / share callout and starts a
@@ -587,6 +685,58 @@ body {
     }
     body[data-time-of-day='night'] {
         --color-surface: #e9edf1;
+    }
+}
+
+/* Dark ground (F2) — Sky family becomes ground, Cream becomes text, the
+   exact inverse of the app's light-only default above. Every value is
+   literal hex, matching @theme static's own convention and
+   DesignTokenContrastTest.php's regex-based guard (see the comment on the
+   light block these override, further up this file).
+
+   The `-ink` tier inverts here rather than reusing its light value: leaf/
+   ember/citrus-ink were darkened until they cleared 4.5:1 on paper, which is
+   why they read as ~2-3:1 against Sky. Each dark value below is the
+   opposite move — the vivid fill itself where it already clears 4.5:1 on
+   every Sky surface (citrus, and rarity uncommon/legendary), lightened
+   toward white where it does not (leaf, ember, rarity common/rare/epic) —
+   derived via inkOnDark() in resources/brand/build-tokens.mjs, worst-cased
+   across sky-deep/sky/sky-2. horizon-ink itself needs no dark counterpart:
+   the app already swaps to the vivid --color-horizon fill for icon-accent/
+   btn-primary-bg on dark, and that fill alone clears 8.6:1+ everywhere. */
+@layer base {
+    [data-theme='dark'] {
+        --color-background: #0b1017; /* sky-deep */
+        --color-foreground: #f1f5f8; /* cream */
+        --color-card: #171f28; /* sky */
+        --color-card-foreground: #f1f5f8;
+        --color-popover: #26303d; /* sky-2 */
+        --color-popover-foreground: #f1f5f8;
+        --color-secondary: #26303d;
+        --color-secondary-foreground: #f1f5f8;
+        --color-muted: #26303d;
+        --color-muted-foreground: #9c9ea7; /* = ink-on-sky, already 5:1+ on every dark surface */
+        --color-accent: #26303d;
+        --color-accent-foreground: #f1f5f8;
+        --color-border: #4d5560;
+        --color-input: #4d5560;
+
+        --color-icon-accent: #ade047; /* horizon */
+        --color-text-2: #c1c2c8;
+        --color-text-3: #9c9ea7; /* = ink-on-sky */
+        --color-border-strong: #4d5560;
+        --color-today-accent: transparent; /* dark Today card needs no added edge */
+        --color-btn-primary-bg: #ade047; /* horizon */
+        --color-btn-primary-fg: #16181b; /* ink — same pairing as --color-primary-foreground */
+
+        --color-leaf-ink: #57a581;
+        --color-ember-ink: #ce808e;
+        --color-citrus-ink: #c9971f; /* = --color-citrus, already clears 5:1+ */
+        --color-rarity-common-ink: #8f97a3;
+        --color-rarity-uncommon-ink: #2fb350; /* = --color-rarity-uncommon */
+        --color-rarity-rare-ink: #5296f8;
+        --color-rarity-epic-ink: #ba77f9;
+        --color-rarity-legendary-ink: #f5a623; /* = --color-rarity-legendary */
     }
 }
 

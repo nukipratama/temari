@@ -33,7 +33,7 @@ it('keeps the design docs free of removed token names', function (): void {
     // Names that were deleted from the codebase and must not reappear in docs.
     $forbidden = ['text-ink-soft', 'text-ink-meta', 'GradientNumber', '--gradient-subuh'];
 
-    foreach (['CLAUDE.md', 'README.md', 'docs/design-tokens.md'] as $relativePath) {
+    foreach (['CLAUDE.md', 'README.md', 'docs/design-tokens.md', '.claude/skills/temari/SKILL.md'] as $relativePath) {
         $content = File::get(base_path($relativePath));
         foreach ($forbidden as $needle) {
             expect(str_contains($content, $needle))->toBeFalse(
