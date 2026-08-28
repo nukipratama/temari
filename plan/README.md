@@ -85,7 +85,7 @@ the slice itself (see [R3](#r3)); `n/a` for backend-only or docs-only slices.
 |---|---|---|---|---|---|---|---|---|
 | P0 | Program scaffold | 0 | [00](slices/00-P0-program-scaffold.md) | merged | — | main | n/a | committed directly (7c056d61) |
 | L0 | Reconciliation ledger + IA | 0 | [01](slices/01-L0-reconciliation-ledger.md) | merged | — | main | n/a | committed directly (fe927c1e) |
-| F1 | Dependency adoption | 1 | [02](slices/02-F1-dependency-adoption.md) | in-review | — | main | n/a | ladder green, awaiting commit |
+| F1 | Dependency adoption | 1 | [02](slices/02-F1-dependency-adoption.md) | in-review | [#654](https://github.com/nukipratama/temari/pull/654) | main | n/a | ladder green |
 | F2 | Two-ground tokens | 1 | [03](slices/03-F2-two-ground-tokens.md) | todo | — | main | | serialization point |
 | F3 | Mechanical sweep | 1 | [04](slices/04-F3-mechanical-sweep.md) | todo | — | main | | |
 | F4 | Shell + nav | 1 | [05](slices/05-F4-shell-and-nav.md) | todo | — | main | | |
