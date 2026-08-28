@@ -79,7 +79,7 @@ to neutral (`surface-sunken` + `ink`) so the brand mark gets breathing room. Str
 
 `horizon` (`#ade047`) is a lime tone, so it pairs with **dark** text, never white. Follow the
 [`PillButton`](../../../resources/js/components/ui/PillButton.tsx) presets:
-- `horizon` bg → `text-ink` (dark ink on lime clears 11.5:1); hover darkens to `horizon-deep`.
+- `horizon` bg → `text-foreground` (dark ink on lime clears 11.5:1); hover darkens to `horizon-deep`.
 - `sky` / `sky-deep` bg (near-black) → `text-cream` / white text (passes ~15:1+); hover darkens to `sky-deep`.
 - `leaf-deep` (`#256f4d`) / `ember-deep` (`#8d2c3d`) bg → `text-cream` (both pass AA); used for dense "retry"/action chips. No darker step exists, so darken on hover with `hover:opacity-90`, not a hue jump.
 - Never put white text on `horizon`/`citrus`/`cream` (all too light).
@@ -103,19 +103,23 @@ user's local time. Light mode only — never auto-flips to dark mode.
 
 ### Text contrast tiers
 
-3-stop semantic system — use the tier that matches the text role, not "pick whichever color looks right":
+3-stop semantic system — use the tier that matches the text role, not "pick whichever color looks right".
+Since F3, call sites write the ground-reactive semantic classes (backed by `--color-ink` on the
+light ground, `--color-cream` on dark) rather than the raw `text-ink*` utilities, which still exist
+underneath but are fixed to the light value:
 
-- `text-ink` (`#1a1812`) — **primary text**: body paragraphs, headings, button labels, KPI values. Default for any prose the user reads.
-- `text-ink-2` (`#3d362a`) — **supporting body**: page subtitles, briefing suggestion lines, descriptive paragraphs adjacent to a primary statement.
-- `text-ink-3` (`#6e6452`) — **labels-above-values, timestamps, footnotes, table column headers, secondary metadata**. Smallest contrast tier, never use for body prose.
+- `text-foreground` (`#16181b` on light) — **primary text**: body paragraphs, headings, button labels, KPI values. Default for any prose the user reads.
+- `text-text-2` (`#34373c` on light) — **supporting body**: page subtitles, briefing suggestion lines, descriptive paragraphs adjacent to a primary statement.
+- `text-text-3` (`#60666d` on light) — **labels-above-values, timestamps, footnotes, table column headers, secondary metadata**. Smallest contrast tier, never use for body prose.
 
-Sweep `grep text-ink-3` before merging — if it's wrapping a `<p>` of running prose, it's probably wrong.
+Sweep `grep text-text-3` before merging — if it's wrapping a `<p>` of running prose, it's probably wrong.
 
 ### Typography & fonts
 
 Three families (all loaded via Google Fonts in
 [app.blade.php](../../../resources/views/app.blade.php)): **Fraunces** italic is
-`font-display` (headlines + Temari voice/quotes); **Plus Jakarta Sans** is `font-sans`, the default
+`font-serif` (headlines + Temari voice/quotes; renamed from `font-display` in F3 to match the
+prototype's own token name); **Plus Jakarta Sans** is `font-sans`, the default
 family for body/UI/buttons; **JetBrains Mono** is `font-mono`, for *numbers, stats and small
 uppercase metadata labels* (section labels, chips, stat-tile / kartu captions, timestamps). Oswald
 (`font-collectible`) is retired: the Kartu uses the same stack as everything else. Because `font-sans` is Tailwind's default, every small uppercase label must carry an
@@ -126,15 +130,15 @@ The scale is fluid `clamp()` tokens in `app.css` (`text-display-*`, `text-headli
 
 | Role | Class |
 |---|---|
-| In-app hero title | `font-display italic text-display-2xl text-ink` |
-| Page title (`<h1>`) | `font-display text-display-lg text-ink` (compact/devtools header: `text-headline-xs`) |
-| Section heading (`<h2>`) | `font-display text-headline-sm text-ink` |
-| Temari voice / quote | `font-display italic text-quote-lg text-ink-2` |
-| Sub-label (KPI/table cap) | `font-mono text-xs font-semibold uppercase tracking-wider text-ink-3` |
-| Body paragraph | `font-sans text-sm leading-relaxed text-ink` |
-| Caption / supporting | `text-sm text-ink-2 leading-relaxed` |
-| Meta / timestamp | `text-xs text-ink-3` |
-| KPI / big stat value | display tier (`text-display-xs`+) `tabular-nums text-ink`; avoid one-off `text-[NNpx]` |
+| In-app hero title | `font-serif italic text-display-2xl text-foreground` |
+| Page title (`<h1>`) | `font-serif text-display-lg text-foreground` (compact/devtools header: `text-headline-xs`) |
+| Section heading (`<h2>`) | `font-serif text-headline-sm text-foreground` |
+| Temari voice / quote | `font-serif italic text-quote-lg text-text-2` |
+| Sub-label (KPI/table cap) | `font-mono text-xs font-semibold uppercase tracking-wider text-text-3` |
+| Body paragraph | `font-sans text-sm leading-relaxed text-foreground` |
+| Caption / supporting | `text-sm text-text-2 leading-relaxed` |
+| Meta / timestamp | `text-xs text-text-3` |
+| KPI / big stat value | display tier (`text-display-xs`+) `tabular-nums text-foreground`; avoid one-off `text-[NNpx]` |
 
 ### Section spacing rhythm
 

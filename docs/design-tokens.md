@@ -33,7 +33,7 @@ Three families, one job each:
 
 | Token | Family | Use |
 |---|---|---|
-| `font-display` | Fraunces (italic) | Display headlines, Temari voice / quotes |
+| `font-serif` | Fraunces (italic) | Display headlines, Temari voice / quotes. Renamed from `font-display` in F3 to match the prototype's own token name. |
 | `font-sans` | Plus Jakarta Sans | Prose + UI (the readable **default** family) |
 | `font-mono` | JetBrains Mono | **Telemetry only** — numbers, stats, splits, uppercase metadata labels |
 
@@ -170,17 +170,24 @@ phase indicator needs a direct label or texture alongside the colour, never hue 
 
 ### Text contrast tiers
 
-- `text-ink` — primary text (body, headings, button labels, KPI values).
-- `text-ink-2` — supporting body (subtitles, descriptive lines).
-- `text-ink-3` — labels / timestamps / footnotes / metadata only; never body prose.
-- `text-ink-on-sky` — muted metadata label on dark sky panels.
-- `text-ink-on-rarity` — label printed on a vivid rarity fill (the rarity flag).
+Since F3, components write the ground-reactive semantic classes below rather than the raw
+`text-ink`/`text-ink-2`/`text-ink-3` utilities (those still exist — the raw palette survives
+beneath the semantic layer per decision 4 — but they're fixed to the light-mode value and no
+longer the call-site vocabulary):
+
+- `text-foreground` — primary text (body, headings, button labels, KPI values). Ground-reactive:
+  `--color-ink` on the light ground, `--color-cream` on dark.
+- `text-text-2` — supporting body (subtitles, descriptive lines).
+- `text-text-3` — labels / timestamps / footnotes / metadata only; never body prose.
+- `text-ink-on-sky` — muted metadata label on dark sky panels. Unchanged by F3 (already
+  ground-scoped by name, no semantic-layer equivalent needed).
+- `text-ink-on-rarity` — label printed on a vivid rarity fill (the rarity flag). Unchanged.
 
 All five clear WCAG AA on their intended background.
 
 ### CTA contrast
 
-- `horizon` (lime) → dark text (`text-ink`), never white — clears 11.5:1 both light and dark.
+- `horizon` (lime) → dark text (`text-foreground`), never white — clears 11.5:1 both light and dark.
 - `sky` / `sky-deep` (near-black) → `text-cream` / white.
 - `leaf-deep` / `ember-deep` → `text-cream` (both pass AA); darken on hover with `hover:opacity-90`, not a hue jump.
 
@@ -300,11 +307,11 @@ built with `@apply` so they compose with token utilities. Prefer these over re-t
 | `.text-label-micro` | `font-mono text-[11px] font-bold uppercase tracking-[0.12em]` | Smallest uppercase metadata label (kartu / stat captions) |
 | `.text-label-small` | `font-mono text-[12px] font-bold uppercase tracking-[0.14em]` | Section labels, chip-sized uppercase metadata |
 | `.text-label-hero` | `font-mono text-[11px] font-bold uppercase tracking-[0.18em]` | Page-hero eyebrow (wide tracking) |
-| `.text-prose` | `font-sans text-quote-md text-ink-2` | Narrator / body sentences |
-| `.text-stat` | `font-mono text-stat font-bold tabular-nums text-ink` | The big tabular KPI / PR number |
-| `.text-stat-sm` | `font-mono text-2xl font-bold tabular-nums text-ink` | Smaller stat figure (compact tiles) |
-| `.text-meta` | `font-mono text-[11px] tracking-[0.04em] text-ink-3` | Date / timestamp / footnote (non-uppercase metadata) |
-| `.voice` | `font-display text-quote-lg italic text-ink` | Temari voice (display serif italic) |
+| `.text-prose` | `font-sans text-quote-md text-text-2` | Narrator / body sentences |
+| `.text-stat` | `font-mono text-stat font-bold tabular-nums text-foreground` | The big tabular KPI / PR number |
+| `.text-stat-sm` | `font-mono text-2xl font-bold tabular-nums text-foreground` | Smaller stat figure (compact tiles) |
+| `.text-meta` | `font-mono text-[11px] tracking-[0.04em] text-text-3` | Date / timestamp / footnote (non-uppercase metadata) |
+| `.voice` | `font-serif text-quote-lg italic text-foreground` | Temari voice (display serif italic) |
 
 Text floor is **11px** in app chrome — no `text-[9px]` / `text-[10px]`. Prefer a role utility over a raw size.
 
@@ -352,7 +359,7 @@ plain `Record` lookups; do **not** fold those into cva.
 - **Checking contrast against a ground list you wrote by hand.** Paper drifts with dawn-shift, the app's own page ground is `cream-deep`, a mood chip sits on its `-bg` cell, and a tinted chip sits on the tint rather than the paper. Score against every ground the render produces and take the worst; if you are adding a background, classify it in [grounds.json](../resources/brand/grounds.json) — the build fails until you do.
 - **Darkening a light fill instead of outlining it.** Legendary gold and uncommon green stay vivid and take a 2px `-ink` outline; the edge carries the contrast.
 - **Raw Tailwind colors, default shadows, off-scale radii.** Every utility must resolve to a token. Enforced in CI by [scripts/check-raw-palette.mjs](../scripts/check-raw-palette.mjs).
-- **`text-ink-3` on body prose.** `ink-3` is for labels/timestamps/metadata only, never wrapping a `<p>` of running text. Sweep `grep text-ink-3` before merging.
+- **`text-text-3` on body prose.** The `ink-3` tier is for labels/timestamps/metadata only, never wrapping a `<p>` of running text. Sweep `grep text-text-3` before merging.
 - **Missing `tabular-nums` on stat displays.** Any big-number display must carry it so digits don't jitter as they change. The `.text-stat` / `.text-stat-sm` utilities include it; raw `font-mono` alone does not.
 - **`font-mono` omitted from uppercase labels.** Because `font-sans` is Tailwind's default, every `.text-label-micro` / `.text-label-small` utility needs an explicit `font-mono` — without it the label renders in the body font.
 - **Gradient text on non-numeric content.** `<GradientText>` is for numbers only (display-sized stats, KPI values), never for headlines or body prose.
