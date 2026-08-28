@@ -39,3 +39,21 @@ declare module '@brand/build-accessories.mjs' {
         override?: string;
     }>;
 }
+
+declare module '@brand/grounds.mjs' {
+    export function darkGrounds(
+        tokens?: Record<string, string>,
+    ): Record<string, string>;
+    export function contrast(a: string, b: string): number;
+}
+
+declare module '@brand/build-tokens.mjs' {
+    export const GROUNDS_DARK: Record<string, string>;
+    export const DARK_INK: Record<string, string>;
+    export const RARITY_INK_DARK: Record<string, string>;
+    export function inkOnDark(
+        hex: string,
+        grounds: Record<string, string>,
+        target?: number,
+    ): string;
+}
