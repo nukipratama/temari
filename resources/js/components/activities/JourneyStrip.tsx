@@ -1,5 +1,5 @@
-import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
+import Card from '@/components/ui/LegacyCard';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
 import { formatShortDateTimeId, formatPace } from '@/lib/pace';

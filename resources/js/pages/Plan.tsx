@@ -9,7 +9,7 @@ import SeasonTrack from '@/components/plan/SeasonTrack';
 import StreakPanel, { type StreakSummary } from '@/components/plan/StreakPanel';
 import PlanRaceTabs from '@/components/race/PlanRaceTabs';
 import TemariProto, { type SeasonPhase } from '@/components/temari/TemariProto';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import Chip, { type ChipTone } from '@/components/ui/Chip';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
@@ -242,7 +242,7 @@ export default function Plan({
 
                 <section className="mt-10" data-testid="plan-adaptation">
                     {adaptation && (
-                        <Card>
+                        <Card className="px-4 py-4">
                             <SectionLabel
                                 dot
                                 dotClass={
@@ -263,7 +263,7 @@ export default function Plan({
                             </p>
                         </Card>
                     )}
-                    <Card padding="panel" className={cn(adaptation && 'mt-3')}>
+                    <Card className={cn('px-4 py-3', adaptation && 'mt-3')}>
                         <p className="text-label-micro text-text-2">
                             {disclaimerHeadline}
                         </p>
@@ -394,11 +394,10 @@ export default function Plan({
                                             variants={fadeInUp}
                                         >
                                             <Card
-                                                padding="panel"
                                                 className={cn(
-                                                    'flex flex-wrap items-center justify-between gap-3',
+                                                    'flex flex-wrap items-center justify-between gap-3 px-4 py-3',
                                                     day.date === today &&
-                                                        'border-horizon',
+                                                        'border border-horizon',
                                                 )}
                                             >
                                                 <div className="flex min-w-0 flex-1 items-center gap-3">

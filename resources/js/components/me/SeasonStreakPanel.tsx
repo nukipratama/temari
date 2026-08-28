@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 
 import { type StreakSummary } from '@/components/plan/StreakPanel';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { type Goal } from '@/components/ui/GoalCard';
 import ProgressBar from '@/components/ui/ProgressBar';
@@ -44,7 +44,7 @@ export default function SeasonStreakPanel({
     return (
         <section className="mt-10">
             <SectionLabel>Season &amp; streak</SectionLabel>
-            <Card className="mt-3">
+            <Card className="mt-3 px-4 py-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div className="rounded-lg bg-line/20 p-4">
                         <div className="flex items-baseline justify-between">

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { TemariPose } from '@/components/temari/TemariProto';
 
 import Temari from '@/components/temari/Temari';
-import Card from '@/components/ui/Card';
+import Card from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
 
 interface EmptyPanelProps {

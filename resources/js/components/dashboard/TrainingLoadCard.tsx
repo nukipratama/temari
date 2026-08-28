@@ -2,7 +2,7 @@ import { Link } from '@inertiajs/react';
 
 import type { TrainingLoad, WeeklySnapshot } from '@/types/inertia';
 
-import Card from '@/components/ui/Card';
+import Card from '@/components/ui/LegacyCard';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
 import {

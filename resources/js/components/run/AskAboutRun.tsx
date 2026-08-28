@@ -1,7 +1,8 @@
 import { useRef, useState, type FormEvent } from 'react';
 
 import Temari from '@/components/temari/Temari';
-import Card from '@/components/ui/Card';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
@@ -72,7 +73,7 @@ export default function AskAboutRun({
     return (
         <section className={className} data-coachmark="run-ask">
             <SectionLabel>Ask about this run</SectionLabel>
-            <Card padding="hero" className="mt-3">
+            <Card className="mt-3 px-6 py-6">
                 <header className="flex items-start gap-3.5">
                     <Temari pose="observational" size={44} animate={false} />
                     <div className="min-w-0">
@@ -137,9 +138,8 @@ export default function AskAboutRun({
                         placeholder="Ask anything about this run"
                         className={cn(inputVariants(), 'min-w-0 flex-1')}
                     />
-                    <PillButton
+                    <Button
                         type="submit"
-                        tone="horizon"
                         disabled={!canSend}
                         className="disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -151,7 +151,7 @@ export default function AskAboutRun({
                             aria-hidden
                         />
                         {asking ? 'Sending…' : 'Ask'}
-                    </PillButton>
+                    </Button>
                 </form>
 
                 {error !== null && (

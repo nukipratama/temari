@@ -8,14 +8,14 @@ import HrZonesDisclosure, {
     type HrZonesPayload,
 } from '@/components/settings/HrZonesDisclosure';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import SettingsRow from '@/components/ui/SettingsRow';
-import Toggle from '@/components/ui/Toggle';
+import Toggle from '@/components/ui/Switch';
 import {
     cooldownAriaLabel,
     useCooldownCountdown,
@@ -146,7 +146,7 @@ export default function Settings({
                 <section data-coachmark="settings-notifications">
                     <SectionLabel>Notifications</SectionLabel>
                     <div className="mt-3">
-                        <Card padding="hero">
+                        <Card className="px-6 py-6">
                             <NotificationPrefsPanel
                                 prefs={notificationPrefs}
                                 telegram={telegram}
@@ -167,7 +167,7 @@ export default function Settings({
                     <section className="mt-10">
                         <SectionLabel>{dataUse.headline}</SectionLabel>
                         <div className="mt-3">
-                            <Card padding="hero">
+                            <Card className="px-6 py-6">
                                 <ul className="flex flex-col gap-4">
                                     {dataUse.points.map((point) => (
                                         <li
@@ -186,7 +186,7 @@ export default function Settings({
                 <section className="mt-10">
                     <SectionLabel>The fine print</SectionLabel>
                     <div className="mt-3">
-                        <Card padding="hero">
+                        <Card className="px-6 py-6">
                             {LEGAL_ROWS.map((row) => (
                                 <SettingsRow
                                     key={row.href}
@@ -203,7 +203,7 @@ export default function Settings({
                 <section className="mt-10">
                     <SectionLabel>Account</SectionLabel>
                     <div className="mt-3">
-                        <Card padding="hero">
+                        <Card className="px-6 py-6">
                             <SettingsRow
                                 icon="mdi:logout"
                                 label="Log out"

@@ -21,6 +21,7 @@ const TOKENS: Record<string, string> = {
     '--color-popover': '#faf6ec',
     '--color-muted': '#ece2ce',
     '--color-accent': '#f8f0dd',
+    '--color-secondary': '#ece2ce',
     '--color-rarity-legendary': '#f5a623',
     '--color-rarity-legendary-ink': '#865b13',
     '--radius-md': '14px',

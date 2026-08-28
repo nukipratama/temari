@@ -1,6 +1,6 @@
 import type { Budget } from '@/pages/AiUsage/types';
 
-import Card from '@/components/ui/Card';
+import Card from '@/components/ui/LegacyCard';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { formatCost } from '@/pages/AiUsage/helpers';
 

@@ -1,4 +1,4 @@
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
@@ -23,10 +23,10 @@ export default function GoalCard({ goal }: Readonly<{ goal: Goal }>) {
 
     return (
         <Card
-            padding="panel"
             className={cn(
-                'flex h-full flex-col gap-2',
-                goal.is_completed && 'border-horizon/30 bg-horizon/[0.06]',
+                'flex h-full flex-col gap-2 px-4 py-3',
+                goal.is_completed &&
+                    'border border-horizon/30 bg-horizon/[0.06]',
             )}
         >
             <p className="text-sm font-semibold text-foreground">

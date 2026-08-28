@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import Card, { type CardTone } from './Card';
+import Card, { type CardTone } from './LegacyCard';
 
 describe('Card', () => {
     it('renders children inside the tonal, bordered default surface', () => {

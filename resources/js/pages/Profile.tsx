@@ -13,11 +13,12 @@ import PersonaBar, { type PersonaSlice } from '@/components/PersonaBar';
 import { type StreakSummary } from '@/components/plan/StreakPanel';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
 import { Icon } from '@/components/ui/Icon';
+import LegacyCard from '@/components/ui/LegacyCard';
 import LinkCard from '@/components/ui/LinkCard';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
@@ -312,7 +313,7 @@ export default function Profile({
                 {fitness?.training_paces && (
                     <section className="mt-10">
                         <SectionLabel>Training · pace targets</SectionLabel>
-                        <Card className="mt-3">
+                        <Card className="mt-3 px-4 py-4">
                             <motion.div
                                 variants={staggerContainer}
                                 initial="hidden"
@@ -407,7 +408,7 @@ function ProgressionSection({
 
     return (
         <div data-coachmark="profile-progression" className="mt-10">
-            <Card as="section" padding="hero">
+            <LegacyCard as="section" padding="hero">
                 {tabs.length > 1 && (
                     <div
                         className="mb-6 flex flex-wrap items-center gap-2"
@@ -482,7 +483,7 @@ function ProgressionSection({
                         />
                     </div>
                 </div>
-            </Card>
+            </LegacyCard>
         </div>
     );
 }

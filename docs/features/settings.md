@@ -5,12 +5,12 @@ tags: [feature, settings]
 status: living
 reviewed: 2026-08-19
 code_refs:
-  - app/Http/Controllers/SettingsController.php
-  - app/Http/Controllers/AccountController.php
-  - resources/js/pages/Settings/Index.tsx
-  - resources/js/components/me/MeTabs.tsx
-  - resources/js/components/UserAvatarLink.tsx
-  - routes/web.php
+    - app/Http/Controllers/SettingsController.php
+    - app/Http/Controllers/AccountController.php
+    - resources/js/pages/Settings/Index.tsx
+    - resources/js/components/me/MeTabs.tsx
+    - resources/js/components/UserAvatarLink.tsx
+    - routes/web.php
 ---
 
 # Settings
@@ -24,14 +24,14 @@ Server entry is [SettingsController](../../app/Http/Controllers/SettingsControll
 ## Sections
 
 - **Notifications** — one section holding two groups, because the user's model is one topic with two questions rather than three unrelated ones:
-  - *What gets sent* — one channel-neutral master switch, **Keep me posted** (`notifications_enabled`), covering the post-run story, both recaps and the streak nudge, and gating Telegram and phone push alike. Full behaviour in [[telegram-notifications]].
-  - *Where it goes* — Telegram and web push ([PushNotificationToggle](../../resources/js/components/PushNotificationToggle.tsx), rendered once a VAPID key is configured), each with a **mute** toggle once connected: off keeps the link and simply stops delivery, so re-enabling needs no re-auth. The in-app inbox is not listed here: it is never muted, because muting it would lose history rather than spare an interruption ([[inbox-is-an-always-on-channel]]). The destructive "Disconnect" / "Turn off" sits demoted beneath the row it belongs to. Plus the "Send test notification" button, which lives here rather than with the types because what it proves is that a channel can reach you — it has a 60s cooldown and a pending state, both shorter than the 5-minute per-recap send for the reasons in [[telegram-notifications]].
+    - _What gets sent_ — one channel-neutral master switch, **Keep me posted** (`notifications_enabled`), covering the post-run story, both recaps and the streak nudge, and gating Telegram and phone push alike. Full behaviour in [[telegram-notifications]].
+    - _Where it goes_ — Telegram and web push ([PushNotificationToggle](../../resources/js/components/PushNotificationToggle.tsx), rendered once a VAPID key is configured), each with a **mute** toggle once connected: off keeps the link and simply stops delivery, so re-enabling needs no re-auth. The in-app inbox is not listed here: it is never muted, because muting it would lose history rather than spare an interruption ([[inbox-is-an-always-on-channel]]). The destructive "Disconnect" / "Turn off" sits demoted beneath the row it belongs to. Plus the "Send test notification" button, which lives here rather than with the types because what it proves is that a channel can reach you — it has a 60s cooldown and a pending state, both shorter than the 5-minute per-recap send for the reasons in [[telegram-notifications]].
 - **Running · HR zones** — an inline expand/collapse disclosure, not a separate page any more; see [[settings-hr-zones]].
 - **Your data** — the plain-language data-use statement, server-supplied from [DataUseStatement](../../app/Support/DataUseStatement.php) so the page and the public terms/privacy pages cannot word it differently. Why it says what it says: [[strava-data-compliance]].
 - **The fine print** — links out to the four public documents in [[legal-pages]].
 - **Account · Log out, Delete account** — logging out posts `/logout` directly from a row here (moved off the avatar link when it stopped opening a dropdown); delete account is covered below.
 
-Every line is one primitive. [SettingsRow](../../resources/js/components/ui/SettingsRow.tsx) takes an optional `control` slot that replaces its chevron, so toggle rows and navigation rows share a layout instead of each inventing padding and type; a row carrying a control is never itself tappable, since a row that both navigates and holds a switch gives two different outcomes for taps a few pixels apart. The switch itself is [Toggle](../../resources/js/components/ui/Toggle.tsx), promoted out of this page once more than one place needed it.
+Every line is one primitive. [SettingsRow](../../resources/js/components/ui/SettingsRow.tsx) takes an optional `control` slot that replaces its chevron, so toggle rows and navigation rows share a layout instead of each inventing padding and type; a row carrying a control is never itself tappable, since a row that both navigates and holds a switch gives two different outcomes for taps a few pixels apart. The switch itself is [Switch](../../resources/js/components/ui/Switch.tsx), promoted out of this page once more than one place needed it. Renamed from `Toggle.tsx` in F3 — shadcn's own `toggle.tsx` primitive is an unrelated pressed-button control, and TypeScript won't allow both filenames to coexist differing only by case.
 
 The page opens with [PageHero](../../resources/js/components/ui/PageHero.tsx) like every other screen. It previously used a bare `<h1>`, which made it the one page that looked like it belonged to a different product.
 

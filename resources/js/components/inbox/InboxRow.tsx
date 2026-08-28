@@ -1,9 +1,9 @@
 import type { InboxItem, NotificationKind } from '@/types/inertia';
 
-import Card from '@/components/ui/Card';
+import { Button } from '@/components/ui/button';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
-import PillButton from '@/components/ui/PillButton';
+import Card from '@/components/ui/LegacyCard';
 import PillLink from '@/components/ui/PillLink';
 import { cn } from '@/lib/cn';
 import { formatIdDate, formatRelativeId } from '@/lib/pace';
@@ -103,8 +103,7 @@ export default function InboxRow({
                     {(canReplay || item.url) && (
                         <div className="mt-3 flex flex-wrap items-center gap-2">
                             {canReplay && (
-                                <PillButton
-                                    tone="horizon"
+                                <Button
                                     size="sm"
                                     disabled={replaying}
                                     onClick={() => onReplay(item)}
@@ -123,7 +122,7 @@ export default function InboxRow({
                                         )}
                                     />
                                     {replaying ? 'Replaying' : replayLabel}
-                                </PillButton>
+                                </Button>
                             )}
                             {item.url && (
                                 <PillLink

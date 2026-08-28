@@ -1,4 +1,4 @@
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
@@ -55,7 +55,7 @@ export default function StreakPanel({
     const nextRestWeek = streak.weeks_to_next_rest_week;
 
     return (
-        <Card padding="card">
+        <Card className="px-4 py-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <SectionLabel dot dotClass="bg-leaf" className="mb-0">
                     Weekly Streak

@@ -6,11 +6,11 @@ import CtlTrendChart, {
     type CtlTrendPoint,
 } from '@/components/race/CtlTrendChart';
 import PlanRaceTabs from '@/components/race/PlanRaceTabs';
-import Card from '@/components/ui/Card';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
-import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';
@@ -131,7 +131,7 @@ export default function Race({
 
                 {race && (
                     <section className="mt-8" data-coachmark="race-goal">
-                        <Card padding="hero">
+                        <Card className="px-6 py-6">
                             <div className="flex flex-wrap items-start justify-between gap-4">
                                 <div>
                                     <SectionLabel>
@@ -228,7 +228,7 @@ export default function Race({
                     <SectionLabel>
                         {race ? 'Edit your race' : 'Set your race'}
                     </SectionLabel>
-                    <Card padding="hero" className="mt-3">
+                    <Card className="mt-3 px-6 py-6">
                         <form
                             onSubmit={submit}
                             className="grid grid-cols-1 gap-5 sm:grid-cols-2"
@@ -384,9 +384,8 @@ export default function Race({
                             </div>
 
                             <div className="sm:col-span-2">
-                                <PillButton
+                                <Button
                                     type="submit"
-                                    tone="horizon"
                                     disabled={
                                         processing || goalTimeIssue !== null
                                     }
@@ -396,7 +395,7 @@ export default function Race({
                                         : race
                                           ? 'Update race'
                                           : 'Set race'}
-                                </PillButton>
+                                </Button>
                             </div>
                         </form>
                     </Card>
@@ -404,7 +403,7 @@ export default function Race({
 
                 <section className="mt-10" data-coachmark="race-fitness-trend">
                     <SectionLabel>Fitness · last 90 days</SectionLabel>
-                    <Card padding="hero" className="mt-3">
+                    <Card className="mt-3 px-6 py-6">
                         <CtlTrendChart trend={ctlTrend} />
                     </Card>
                 </section>

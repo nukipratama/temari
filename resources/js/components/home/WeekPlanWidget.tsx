@@ -1,8 +1,8 @@
 import type { WeekPlan, WeekPlanDay } from '@/types/inertia';
 
-import Card from '@/components/ui/Card';
 import Chip, { type ChipTone } from '@/components/ui/Chip';
 import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';

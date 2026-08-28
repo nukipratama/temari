@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
@@ -24,7 +24,7 @@ export default function SeasonTrack({
     const remaining = Math.max(0, total - earned);
 
     return (
-        <Card padding="card">
+        <Card className="px-4 py-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <SectionLabel dot dotClass="bg-horizon" className="mb-0">
                     Season Track

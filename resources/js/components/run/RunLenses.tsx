@@ -4,10 +4,10 @@ import { useCallback, useMemo, useState } from 'react';
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 import { triggerAnalysis } from '@/hooks/useAnalysisTrigger';
 import {
     cooldownAriaLabel,

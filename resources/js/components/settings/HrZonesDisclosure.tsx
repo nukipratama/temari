@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import StravaAction from '@/components/StravaAction';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
@@ -280,7 +280,7 @@ export default function HrZonesDisclosure({
                         </div>
                     )}
 
-                    <Card padding="panel">
+                    <Card className="px-4 py-3">
                         <SectionLabel size="micro">
                             Max &amp; Resting HR
                         </SectionLabel>
@@ -317,7 +317,7 @@ export default function HrZonesDisclosure({
                         </div>
                     </Card>
 
-                    <Card padding="panel" className="mt-3">
+                    <Card className="mt-3 px-4 py-3">
                         <SectionLabel size="micro">Your zones</SectionLabel>
                         <p className="mb-3 font-sans text-xs text-text-3">
                             Each upper bound should match the next zone's lower

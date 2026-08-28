@@ -2,8 +2,8 @@ import { motion } from 'framer-motion';
 
 import type { Mood } from '@/types/inertia';
 
-import Card from '@/components/ui/Card';
 import EmptyPanel from '@/components/ui/EmptyPanel';
+import Card from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
 import { MOOD_FILL, MOOD_LABEL } from '@/lib/mood';
 import { countUpEase } from '@/lib/motion';

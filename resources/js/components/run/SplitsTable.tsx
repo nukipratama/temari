@@ -2,9 +2,9 @@ import { motion } from 'framer-motion';
 
 import type { StreamSummaryPartial, StreamSummaryPerKm } from '@/types/inertia';
 
-import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
 import { countUpEase, fadeInUp, staggerContainer } from '@/lib/motion';

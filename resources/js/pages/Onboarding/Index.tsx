@@ -7,7 +7,8 @@ import { type FormEvent, useState } from 'react';
 import type { SharedProps } from '@/types/inertia';
 
 import Temari from '@/components/temari/Temari';
-import Card from '@/components/ui/Card';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
@@ -97,7 +98,7 @@ export default function OnboardingIndex() {
                             You&rsquo;re connected, {firstName}.
                         </PageHero>
 
-                        <Card padding="hero" className="w-full text-left">
+                        <Card className="w-full px-6 py-6 text-left">
                             <ul className="flex flex-col gap-4">
                                 {WHAT_LANDS.map((item) => (
                                     <li
@@ -119,12 +120,9 @@ export default function OnboardingIndex() {
                             </ul>
                         </Card>
 
-                        <PillButton
-                            tone="horizon"
-                            onClick={() => setStep('goal')}
-                        >
+                        <Button onClick={() => setStep('goal')}>
                             Continue
-                        </PillButton>
+                        </Button>
                     </motion.div>
                 ) : (
                     <motion.div
@@ -142,7 +140,7 @@ export default function OnboardingIndex() {
                             later from Plan.
                         </p>
 
-                        <Card padding="hero" className="mt-6">
+                        <Card className="mt-6 px-6 py-6">
                             <form
                                 onSubmit={submitGoal}
                                 className="grid grid-cols-1 gap-5 sm:grid-cols-2"
@@ -258,15 +256,14 @@ export default function OnboardingIndex() {
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
-                                    <PillButton
+                                    <Button
                                         type="submit"
-                                        tone="horizon"
                                         disabled={processing || !canSubmitGoal}
                                     >
                                         {processing
                                             ? 'Saving…'
                                             : 'Set my goal & finish'}
-                                    </PillButton>
+                                    </Button>
                                     <PillButton
                                         type="button"
                                         tone="ghost"

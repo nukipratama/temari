@@ -5,9 +5,10 @@ import type { SharedProps } from '@/types/inertia';
 
 import BrandMark from '@/components/BrandMark';
 import TemariProto from '@/components/temari/TemariProto';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
+import LegacyCard from '@/components/ui/LegacyCard';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
@@ -131,10 +132,7 @@ export default function Login({
                 <section className="mt-12">
                     <SectionLabel>What you get</SectionLabel>
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-                        <Card
-                            padding="hero"
-                            className="flex items-center gap-5"
-                        >
+                        <Card className="flex items-center gap-5 px-6 py-6">
                             <Suspense
                                 fallback={
                                     <div
@@ -175,7 +173,7 @@ export default function Login({
                 {dataUse ? (
                     <section className="mt-12">
                         <SectionLabel>{dataUse.headline}</SectionLabel>
-                        <Card padding="hero">
+                        <Card className="px-6 py-6">
                             <ul className="flex flex-col gap-4">
                                 {dataUse.points.map((point) => (
                                     <li
@@ -193,7 +191,7 @@ export default function Login({
                 {trainingDisclaimer ? (
                     <section className="mt-12">
                         <SectionLabel>Before you take its advice</SectionLabel>
-                        <Card padding="hero">
+                        <Card className="px-6 py-6">
                             <p className="font-sans text-sm font-semibold text-foreground">
                                 {trainingDisclaimer.headline}
                             </p>
@@ -217,10 +215,7 @@ export default function Login({
                 ) : null}
 
                 <section className="mt-12">
-                    <Card
-                        padding="hero"
-                        className="flex flex-col items-center gap-5 text-center"
-                    >
+                    <Card className="flex flex-col items-center gap-5 px-6 py-6 text-center">
                         <PageHero size="sm" className="text-center">
                             Ready when you are.
                         </PageHero>
@@ -263,7 +258,7 @@ function FeatureCard({
     desc,
 }: Readonly<{ icon: string; label: string; desc: string }>) {
     return (
-        <Card as="li" padding="card">
+        <LegacyCard as="li" padding="card">
             <span
                 aria-hidden
                 className="mb-3 flex h-9 w-9 items-center justify-center rounded-sm bg-horizon/[0.18] text-horizon-ink"
@@ -276,7 +271,7 @@ function FeatureCard({
             <p className="mt-1.5 font-sans text-sm leading-relaxed text-text-2">
                 {desc}
             </p>
-        </Card>
+        </LegacyCard>
     );
 }
 
@@ -416,7 +411,7 @@ function ConnectPanel({
     demoPending,
 }: Readonly<ConnectPanelProps>) {
     return (
-        <Card padding="hero" className="bg-muted text-foreground">
+        <Card className="bg-muted px-6 py-6 text-foreground">
             <h2 className="font-serif italic text-display-xs text-foreground">
                 Start with your history.
             </h2>

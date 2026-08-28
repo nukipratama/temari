@@ -4,7 +4,7 @@ import { type MouseEventHandler, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { cardVariants } from '@/lib/variants';
 
-import { type CardPadding, type CardTone } from './Card';
+import { type CardPadding, type CardTone } from './LegacyCard';
 
 interface LinkCardProps {
     href: string;

@@ -3,8 +3,8 @@ import { useState } from 'react';
 
 import type { KindOption, RangeToken } from '@/pages/AiUsage/types';
 
-import Card from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 import PillButton from '@/components/ui/PillButton';
 import { cn } from '@/lib/cn';
 import { toggleButtonVariants } from '@/lib/variants';

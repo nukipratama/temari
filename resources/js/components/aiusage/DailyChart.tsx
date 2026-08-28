@@ -1,6 +1,6 @@
 import type { DailyRow } from '@/pages/AiUsage/types';
 
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import {
     fmt,
     formatCost,
@@ -16,7 +16,7 @@ export default function DailyChart({
     const totalCost = data.reduce((sum, d) => sum + d.cost, 0);
 
     return (
-        <Card tone="card" padding="card" className="mt-4 bg-popover">
+        <Card className="mt-4 bg-popover px-4 py-4">
             <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
                 <span className="text-label-small text-text-3">
                     {data.length} day{data.length === 1 ? '' : 's'}

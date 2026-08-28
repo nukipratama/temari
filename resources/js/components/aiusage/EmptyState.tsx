@@ -1,5 +1,5 @@
-import Card from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 
 export default function EmptyState() {
     return (

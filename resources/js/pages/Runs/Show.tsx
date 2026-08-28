@@ -26,7 +26,7 @@ import StravaAction from '@/components/StravaAction';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
 import BackLink from '@/components/ui/BackLink';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
@@ -458,10 +458,7 @@ export default function RunsShow({
                             {/* The rarity explainer is always shown, even with no
                                 badges: rarity is a composite score, so a badge-less
                                 card still deserves an honest reason, not a blank. */}
-                            <Card
-                                padding="card"
-                                className="flex flex-col gap-4"
-                            >
+                            <Card className="flex flex-col gap-4 px-4 py-4">
                                 <SectionLabel>
                                     Why this earned {rarityLabel}
                                 </SectionLabel>

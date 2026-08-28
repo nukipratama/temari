@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import SectionHeading from '@/components/SectionHeading';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/cn';
 
 interface DataTableProps<T> {
@@ -43,11 +43,7 @@ export default function DataTable<T>({
                 emptyState
             ) : (
                 <div className="relative mt-4">
-                    <Card
-                        tone="card"
-                        padding="none"
-                        className="overflow-x-auto bg-popover"
-                    >
+                    <Card className="overflow-x-auto bg-popover py-0">
                         <table
                             className="w-full text-sm tabular-nums"
                             style={{ minWidth }}
