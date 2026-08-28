@@ -1,0 +1,275 @@
+# Temari rebrand — program orchestrator
+
+Porting the mobile-UX shadcn/ui prototype at [resources/brand/prototype/](../resources/brand/prototype/)
+into the shipped app.
+
+This file is the **living tracker**. It is the only place a decision may be amended and the only
+place slice status is recorded. Everything else in `plan/` hangs off it.
+
+- **Epic branch**: `epic/rebrand-temari`. Every slice PR targets it. It does **not** merge to `main`
+  (which auto-deploys to prod) until the whole program is done.
+- **Prototype**: frozen, read-only spec. SHA below.
+- **Scale**: 415 files in `resources/js` (148 `.tsx`, 63 `.ts`, 204 co-located tests).
+  30 slices, ~45-50 PRs. Committed scope is wave 0 + wave 1, then re-assess.
+
+---
+
+## 1. Decisions
+
+Nineteen, settled in the planning session. Later slices must not silently re-open these. To change
+one, add a row to the amendments log (§5) and edit the entry here in the same commit.
+
+| # | Decision |
+|---|---|
+| 1 | **Scope**: a wave-0 reconciliation ledger rules keep / restyle / cut / defer on every omitted shipped feature. Cutting is permitted. |
+| 2 | **Backend**: all four new capabilities in scope — training preferences, Compliance v2, structured session segments, plan narration. |
+| 3 | **Dependencies**: adopt `@base-ui/react`, `shadcn`, `lucide-react`, `clsx`. |
+| 4 | **Tokens**: the prototype's semantic layer becomes canonical and is the preferred vocabulary in components. The app's named palette survives beneath it. |
+| 5 | **Transition**: one codemod-driven mechanical sweep first, then real redesign per screen. Visual parity is explicitly *not* promised. |
+| 6 | **Theming**: both grounds authored, both shipped. Dark is the default; light and system reachable via a Settings toggle. |
+| 7 | **Tests**: test-as-you-port. The 1:1 gate and the 95% coverage threshold stay untouched. |
+| 8 | **Planning docs**: a tracked `plan/` directory at repo root, outside `docs/`. |
+| 9 | **Slicing**: wave 0 ledger → wave 1 foundation (serialized) → waves 2a/2b in parallel worktrees → wave 3 cleanup. |
+| 10 | **Verification**: engineer / devops / copywriter as subagent rubrics per slice; PM / designer as human review per wave. |
+| 11 | **Plan narration is voice-only.** Rules still own every number. No superseding ADR, only an amendment. |
+| 12 | **Token pipeline**: extend `build-tokens.mjs`; add `darkGrounds()` beside `paperGrounds()`. |
+| 13 | **Art**: a dedicated wave-1 slice re-cuts mascot, accessories, Kartu chrome, share cards and the Strava mark for two grounds. |
+| 14 | **Nav / IA**: deferred to the ledger slice (`L0`), resolved in [ia.md](ia.md). |
+| 15 | **Branching**: all slice PRs target `epic/rebrand-temari`. No merge to `main` until the program is done. |
+| 16 | **Icons**: full swap to `lucide-react`; delete `iconBundle.ts` and `build-icon-bundle.mjs`. |
+| 17 | **Coverage CI**: add `epic/rebrand-temari` to the workflow's `push.branches`. |
+| 18 | **Commitment**: wave 0 + wave 1 firm; re-assess before the wave-2 fan-out. |
+| 19 | **Prototype**: frozen at a tagged SHA after wave 0, read-only thereafter, deleted in wave 3. |
+
+---
+
+## 2. Wave map
+
+```
+wave 0  ──  P0 ─┐
+                ├─→  (blocking; main checkout, no worktrees)
+            L0 ─┘
+
+wave 1  ──  F1 → F2 → F3 → F4          (serialized; critical path)
+                  │      └──→ F5 ┐     (worktree, after F2)
+                  └──────────→ F6 ┘    (worktree, after F2)
+                              F7       (worktree, after B2 + B3)
+
+            ★ CHECKPOINT — re-assess scope with real velocity
+
+wave 2a ──  B3 → B2 → B1 → B4          (ONE worktree slot, strictly sequential)
+
+wave 2b ──  S1 S2 S3 S4 S5 S6 S7 S8 S9 S10 S11 S12
+                                        (3 parallel worktree slots; per-slice blockers below)
+
+wave 3  ──  W1 → W2 → W3 → W4 → W5     (main checkout)
+```
+
+`F2` is the single serialization point of the whole program. Nothing else in wave 1 runs
+concurrently with it — see [R1](#r1).
+
+---
+
+## 3. Progress
+
+Status vocabulary: `todo` · `in-progress` · `in-review` · `merged` · `blocked` · `cut`.
+Coverage delta is the frontend Vitest line-% change reported by `npm run test:coverage`, recorded by
+the slice itself (see [R3](#r3)); `n/a` for backend-only or docs-only slices.
+
+| id | name | wave | doc | status | PR | slot | cov Δ | notes |
+|---|---|---|---|---|---|---|---|---|
+| P0 | Program scaffold | 0 | [00](slices/00-P0-program-scaffold.md) | in-review | — | main | n/a | tree + CI change written, awaiting commit/PR |
+| L0 | Reconciliation ledger + IA | 0 | [01](slices/01-L0-reconciliation-ledger.md) | in-review | — | main | n/a | all 11 verdicts + IA ruling final |
+| F1 | Dependency adoption | 1 | [02](slices/02-F1-dependency-adoption.md) | todo | — | main | n/a | |
+| F2 | Two-ground tokens | 1 | [03](slices/03-F2-two-ground-tokens.md) | todo | — | main | | serialization point |
+| F3 | Mechanical sweep | 1 | [04](slices/04-F3-mechanical-sweep.md) | todo | — | main | | |
+| F4 | Shell + nav | 1 | [05](slices/05-F4-shell-and-nav.md) | todo | — | main | | |
+| F5 | Two-ground art | 1 | [06](slices/06-F5-two-ground-art.md) | todo | — | wt | | |
+| F6 | Charts, two grounds | 1 | [07](slices/07-F6-charts.md) | todo | — | wt | | |
+| F7 | Demo data + fixtures | 1 | [08](slices/08-F7-demo-data-and-fixtures.md) | todo | — | wt | | after B2/B3 |
+| B3 | Structured session segments | 2a | [09](slices/09-B3-session-segments.md) | todo | — | wt-be | n/a | freezes `WeekPlanDay` |
+| B2 | Compliance v2 | 2a | [10](slices/10-B2-compliance-v2.md) | todo | — | wt-be | n/a | |
+| B1 | Training preferences | 2a | [11](slices/11-B1-training-preferences.md) | todo | — | wt-be | n/a | |
+| B4 | Plan narration | 2a | [12](slices/12-B4-plan-narration.md) | todo | — | wt-be | n/a | voice-only |
+| S1 | Login | 2b | [13](slices/13-S1-login.md) | todo | — | | | 160 kB gz budget |
+| S2 | Onboarding | 2b | [14](slices/14-S2-onboarding.md) | todo | — | | | |
+| S3 | Today | 2b | [15](slices/15-S3-today.md) | todo | — | | | |
+| S4 | Plan | 2b | [16](slices/16-S4-plan.md) | todo | — | | | |
+| S5 | RaceGoal | 2b | [17](slices/17-S5-race-goal.md) | todo | — | | | |
+| S6 | Trends | 2b | [18](slices/18-S6-trends.md) | todo | — | | | |
+| S7 | History | 2b | [19](slices/19-S7-history.md) | todo | — | | | |
+| S8 | ActivityDetail | 2b | [20](slices/20-S8-activity-detail.md) | todo | — | | | |
+| S9 | Inbox | 2b | [21](slices/21-S9-inbox.md) | todo | — | | | |
+| S10 | Profile | 2b | [22](slices/22-S10-profile.md) | todo | — | | | |
+| S11 | Settings | 2b | [23](slices/23-S11-settings.md) | todo | — | | | appearance toggle UI |
+| S12 | Undrawn survivors | 2b | [24](slices/24-S12-undrawn-survivors.md) | todo | — | | | the forgettable one |
+| W1 | IA cutover | 3 | [25](slices/25-W1-ia-cutover.md) | todo | — | main | | |
+| W2 | Dead-code sweep | 3 | [26](slices/26-W2-dead-code-sweep.md) | todo | — | main | | |
+| W3 | Coverage reconciliation | 3 | [27](slices/27-W3-coverage.md) | todo | — | main | | do not cut |
+| W4 | Docs | 3 | [28](slices/28-W4-docs.md) | todo | — | main | n/a | |
+| W5 | Merge readiness | 3 | [29](slices/29-W5-merge-readiness.md) | todo | — | main | n/a | deletes the prototype |
+
+---
+
+## 4. Frozen prototype SHA
+
+Per decision 19, `resources/brand/prototype/` is a **read-only spec** from this point. No edits. A
+spec change goes into the owning slice's doc, never into the prototype.
+
+| | |
+|---|---|
+| SHA | `6f7d401863e5ed5ada328916ce8fb7f75c82c563` |
+| Tag | `prototype-frozen` |
+| Commit | `feat(prototype): mobile-ux shadcn/ui prototype (#652)`, 2026-08-28 |
+
+Reading it back at any later point:
+
+```bash
+git show prototype-frozen:resources/brand/prototype/src/index.css
+```
+
+---
+
+## 5. Amendments
+
+Every deviation from §1 lands here, dated, with the reason. Empty is the healthy state.
+
+| date | decision | change | why |
+|---|---|---|---|
+| — | — | — | — |
+
+---
+
+## 6. The rest of the tree
+
+- [ledger.md](ledger.md) — keep / restyle / cut / defer on every shipped feature the prototype omits.
+- [ia.md](ia.md) — routes, tabs, and the literal diff spec against `resources/js/lib/nav.ts`.
+- [slices/](slices/) — 30 slice docs, numbered in dependency order.
+- [verification/](verification/) — three subagent rubrics (engineer, devops, copywriter) run per
+  slice; two human templates (PM, designer) worked per wave.
+- [codemods/](codemods/) — `F3`'s generated passes. Per [R2](#r2) these **are** the review artifact.
+
+---
+
+## 7. Risks
+
+Carried from the planning session. Each is owned by the slice named in its mitigation.
+
+<a id="r1"></a>**R1 — the two-ground contrast system's failure mode is a *green* CI.**
+`designTokens()` in `DesignTokenContrastTest`, `readColorTokens()` in `grounds.mjs`, and
+`declaredTokenValues()` in `DesignTokenMirrorsTest` all parse `--color-x: #rrggbb` by regex only. The
+prototype's dark layer is `color-mix(in oklab, var(--cream) 72%, transparent)` and `var()`
+indirection; authored that way, all three pass while scoring nothing.
+*Mitigation (`F2`):* first commit is a pure derivation-and-test change with the palette
+byte-identical — add `darkGrounds()`, `inkOnDark()` and a parallel `PAIRS_DARK`, prove both grounds
+score against existing values, and add a test asserting `@theme static` contains only literal hex (no
+`var(`, no `color-mix(`). Only the second commit introduces new values.
+
+<a id="r2"></a>**R2 — the sweep is unreviewable, and "no visual parity promised" removes the
+reviewer's oracle.**
+*Mitigation (`F3`):* codemods land in the PR under `codemods/` and are the review artifact; one
+commit per pass, each 100% script-generated with zero hand edits; a single `manual-fixups` commit is
+the only thing read line by line; `browser-review` before/after shots in the PR body to make the
+accepted shifts enumerable rather than to claim parity.
+
+<a id="r3"></a>**R3 — frontend coverage debt accrues invisibly.** CI runs `npm run test` (no
+coverage) on `pull_request` and `test:coverage` only on push, so without decision 17 the 95% JS gate
+would fire exactly once, at the epic→main merge, across ~190 components.
+*Mitigation:* decision 17, plus `npm run test:coverage` as every frontend slice's local definition of
+done with the delta recorded in §3. `W3` stays budgeted regardless.
+
+<a id="r4"></a>**R4 — `grounds.json` collides across every parallel worktree.**
+*Mitigation (`F2`):* make it fully generated by a new `resources/brand/build-grounds.mjs` driven by
+the existing `enumerateBackgrounds()` / `panelSiteDrift()` scan, so a conflict is resolved by
+re-running a script rather than hand-merging 635 lines of JSON. "Regenerate `grounds.json`" becomes
+the last step of every slice checklist.
+
+<a id="r5"></a>**R5 — `demo:seed` won't produce the new shapes**, so screen slices get designed
+against empty states.
+*Mitigation:* seeder extension is an acceptance criterion *inside* `B1`-`B4`, not a follow-up; `F7`
+adds the shared fixtures module.
+
+<a id="r6"></a>**R6 — Login's first-paint budget vs. the shadcn stack.** `bareLayout` is enforced
+framer-motion-free and capped at 160 kB gz. `button`, `card` and `badge` are Base-UI-free; `toggle`,
+`toggle-group` and `collapsible` are not, and one Base UI portal in `BareShell`'s graph blows the
+budget.
+*Mitigation:* the `base-ui` chunk group in `F1`; `S1` restricted to the Base-UI-free primitives;
+`npm run build && npm run check:chunks` as the definition of done for both.
+
+<a id="r7"></a>**R7 — the backend slices serialize** on `dayPayload()`, `inertia.ts`,
+`planned_sessions` migrations and the unconditional doc-citation guard.
+*Mitigation:* one worktree slot, strict `B3 → B2 → B1 → B4`, `WeekPlanDay` frozen at the end of `B3`,
+every exemption-array edit in a single dedicated first commit per slice.
+
+<a id="r8"></a>**R8 — the prototype drifts as the spec** across a months-long program. Its
+`lib/palette.ts` is already annotated "keep in sync by hand", and it carries decisions the app must
+*not* inherit (the 3-way `[data-theme]` rack, `PhoneFrame`, `--radius-4xl` on cards).
+*Mitigation:* decision 19 and §4.
+
+<a id="r9"></a>**R9 — `.claude/skills/temari/SKILL.md` is already wrong** (documents a gold
+`horizon #d9a53c` on "warm linen" while `app.css` ships Pewter `#ade047`), and nothing gates it, so
+every agent-driven slice starts primed with a dead palette. `DesignTokenDocsTest`'s forbidden-name
+loop covers only `CLAUDE.md`, `README.md` and `docs/design-tokens.md`.
+*Mitigation:* fix in `F2`; add the skill file to that loop.
+
+<a id="r10"></a>**R10 — the radius guard gets silently weakened.** `check-raw-palette.mjs` rule 3
+must be re-authored in `F2` to accept the shadcn ladder, and that is exactly the edit where it can be
+reduced to a no-op.
+*Mitigation:* the re-authored rule is reviewed as its own commit, with a test asserting it still
+rejects an off-scale value.
+
+---
+
+## 8. Coupling that will bite
+
+Files edited by slices that otherwise look independent. Several fail on the *epic* rather than in the
+colliding PR.
+
+| file | who touches it | failure mode |
+|---|---|---|
+| [resources/brand/grounds.json](../resources/brand/grounds.json) | every screen slice | 635 lines keyed by exact file path; `DesignTokenContrastTest` fails closed both ways. Worst coupler in the program — see R4. |
+| [resources/js/types/inertia.ts](../resources/js/types/inertia.ts) | written by `B1`-`B4`, read by `S3` `S4` `S5` `S7` `S11` | one file, nine slices |
+| `resources/js/types/generated.ts` | `B2` (`PlannedSessionStatus`) and `B4` (`AnalysisType`) | regenerated by both |
+| [DesignTokenMirrorsTest.php](../tests/Unit/Architecture/DesignTokenMirrorsTest.php) | any token/art/chart slice | `MIRROR_FILES` spans frontend *and* backend; a frontend-only chart tweak fails the **backend** structure group |
+| [resources/js/lib/cn.ts](../resources/js/lib/cn.ts) | `F2`, `F3` | `extendTailwindMerge`'s `font-size` group lists 19 literal token names. Rename a `--text-*` token and class merging breaks **with no failing test** |
+| [scripts/check-entry-chunks.mjs](../scripts/check-entry-chunks.mjs) | `F1`, `F4`, `S1`, `S3`, `S8`, `S10`, `W1` | `ROUTE_BUDGETS_KB` hardcodes four source paths; move or rename any and the guard fails "missing from the manifest" |
+| [EveryClassHasATestTest.php](../tests/Unit/Architecture/EveryClassHasATestTest.php) | all four backend slices | exemption array + 30-import `use` block; pint and rector reshuffle it. Guaranteed 4-way conflict |
+| [docs/features/plan-periodizer.md](../docs/features/plan-periodizer.md) | `B3`, `B4` | 24 `code_refs` and the doc-citation job is **unconditional**. The moment `B3` deletes `DistanceBandKm.php` it reddens **every open PR**. Land the doc edit in the same commit as the deletion |
+| `resources/brand/build-accessories.mjs` | `F2` (transitively), `F5` | imports `COLOR` from `build-tokens.mjs`, so `F2` silently changes 25 accessory SVGs that `TemariProto.test.tsx` pins via the `@brand` alias |
+| `resources/js/lib/iconBundle.ts` | every worktree, until `F3` | tracked *and* regenerated on `predev` |
+| [resources/js/test/structure.test.ts](../resources/js/test/structure.test.ts) | several | the `EXEMPT` / `TS_EXEMPT` sets, a 6-line block |
+
+---
+
+## 9. Verification ladder
+
+Per slice, before the PR opens — run the three subagent rubrics against the diff and resolve every
+finding, then this ladder, stopping at the first failure:
+
+```bash
+./vendor/bin/sail pest --group=structure          # DB-free 1:1 gate, run first
+./vendor/bin/sail bin pest --filter=<Name>        # the narrowest thing that can fail
+./vendor/bin/sail npm run test:coverage           # frontend DoD — record the delta in §3
+./vendor/bin/sail npm run build && npm run check:chunks
+./vendor/bin/sail composer check                  # full gate, pre-push
+```
+
+Any slice touching tokens, grounds or artwork additionally regenerates `grounds.json` and runs
+`php scripts/check-doc-citations.php` directly — a green `composer check` does **not** cover it.
+
+Per wave — work [verification/product-manager.md](verification/product-manager.md) and
+[verification/designer.md](verification/designer.md), and run a `browser-review` sweep **after**
+`npm run build`; the review server serves `public/build`, not live source, so an unbuilt sweep
+silently screenshots stale output. Check both grounds.
+
+**Wave-1 exit criteria, before the checkpoint:**
+
+1. `@theme static` contains literal hex only; the assertion test for this exists and passes.
+2. `DesignTokenContrastTest` scores **both** grounds, and every `-ink` tier passes AA on the ground
+   it is used on.
+3. The app builds and the full existing test suite passes after the sweep.
+4. `check:chunks` green with the shadcn stack in the graph; Login still under 160 kB gz.
+5. `check:palette` rule 3 accepts the shadcn radius ladder and still rejects an off-scale value.
+6. The appearance toggle switches grounds live, persists across reloads, and does not flash.
+7. Mascot, accessories, Kartu and share cards render correctly on both grounds, client and server.
+8. `demo:seed` produces a usable dataset on both grounds.
