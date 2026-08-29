@@ -4,6 +4,7 @@ import type {
     AnalysisStatus,
     AnalysisType,
     NotificationKind,
+    PlannedSessionStatus,
     Rarity,
 } from './generated';
 
@@ -11,6 +12,7 @@ export type {
     AnalysisStatus,
     AnalysisType,
     NotificationKind,
+    PlannedSessionStatus,
     Rarity,
 } from './generated';
 
@@ -407,7 +409,15 @@ export interface WeekPlanDay {
      *  cooldown are additional minutes on top, not counted here. */
     distance_km: number;
     pinned: boolean;
-    status: 'planned' | 'done' | 'partial' | 'missed';
+    /** Explicitly excused before the day passed — never scored, doesn't
+     *  penalize the week's adherence. Toggle with `PATCH .../sessions/{id}`. */
+    skipped: boolean;
+    status: PlannedSessionStatus;
+    /** Continuous km-ratio score (0+, uncapped upward) — null on a rest day,
+     *  a not-yet-past day, or a day with no VDOT estimate to size against. */
+    compliance_score: number | null;
+    /** A rest day (`status: 'done'`) that had real activity logged anyway. */
+    ran_anyway: boolean;
     clamp_note: string | null;
 }
 

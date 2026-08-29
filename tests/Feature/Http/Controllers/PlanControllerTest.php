@@ -174,6 +174,23 @@ it('allows an explicit unpin alongside an edit', function (): void {
     expect($session->fresh()->pinned)->toBeFalse();
 });
 
+it('skips a day via the skipped flag, distinct from blocking', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDay()->toDateString(),
+        'session_type' => 'tempo',
+        'skipped' => false,
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$session->id}", ['skipped' => true])
+        ->assertRedirect();
+
+    $fresh = $session->fresh();
+    expect($fresh->skipped)->toBeTrue()
+        ->and($fresh->session_type->value)->toBe('tempo');
+});
+
 it('blocks a day via session_type = rest', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create([

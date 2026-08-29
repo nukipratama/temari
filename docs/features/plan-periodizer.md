@@ -3,7 +3,7 @@ title: Plan — deterministic periodizer and the Plan tab
 description: The rules-only training periodizer that fills the Plan tab, its two modes, the render-time readiness clamp, and the render-time volume redistribution
 tags: [feature, run]
 status: living
-reviewed: 2026-08-19
+reviewed: 2026-08-29
 code_refs:
   - app/Services/Run/Plan/Periodizer.php
   - app/Services/Run/Plan/PhaseSchedule.php
@@ -16,10 +16,12 @@ code_refs:
   - app/Services/Run/Plan/VolumeRedistributor.php
   - app/Services/Run/Plan/SeasonService.php
   - app/Services/Run/Plan/SessionMatcher.php
+  - app/Console/Commands/Run/ScoreComplianceCommand.php
   - app/Services/Run/Plan/PlanAdapter.php
   - app/Services/Run/Plan/PlanRenderer.php
   - app/Services/Run/Plan/CurrentWeekPlanBuilder.php
   - app/Enums/AdaptationReason.php
+  - app/Enums/PlannedSessionStatus.php
   - app/Models/PlanAdaptation.php
   - app/Models/PlannedSession.php
   - app/Models/Season.php
@@ -53,7 +55,7 @@ Both modes materialize up to `Periodizer::HORIZON_WEEKS` (12) weeks of rows; a r
 
 ## Editable, pinned, regenerated
 
-A day can be moved (date), blocked (`session_type = rest`), pinned, or deleted via [PlanController::update()/destroy()](app/Http/Controllers/PlanController.php) (`PATCH`/`DELETE /plan/sessions/{plannedSession}`). Per-segment editing (a Tempo day's warmup length, an Interval day's rep count) isn't a stored field to edit — segments are computed fresh at render time, not persisted. Any explicit edit auto-pins the row (so the next regeneration doesn't silently revert it) unless the request explicitly passes `pinned: false`. `Periodizer::regenerate()` reads every pinned row in the horizon *before* building any week and never assigns a row to a pinned date; `WeekPlanBuilder` also skips any date before `$today` so **past weeks are never touched**. Regeneration is weekly ([routes/console.php](routes/console.php), `plan:regenerate` at Monday 00:07, after the existing 00:01/00:05 cluster) plus on-demand (`POST /plan/regenerate`).
+A day can be moved (date), blocked (`session_type = rest`), pinned, skipped, or deleted via [PlanController::update()/destroy()](app/Http/Controllers/PlanController.php) (`PATCH`/`DELETE /plan/sessions/{plannedSession}`). Skip is distinct from block: blocking rewrites what the day *is* (a rest day, still subject to the usual `done`/`ran_anyway` grading); skipping leaves the prescribed session as-is but pre-emptively excuses the athlete from being graded on it once the compliance pass reaches it. Per-segment editing (a Tempo day's warmup length, an Interval day's rep count) isn't a stored field to edit — segments are computed fresh at render time, not persisted. Any explicit edit auto-pins the row (so the next regeneration doesn't silently revert it) unless the request explicitly passes `pinned: false`. `Periodizer::regenerate()` reads every pinned row in the horizon *before* building any week and never assigns a row to a pinned date; `WeekPlanBuilder` also skips any date before `$today` so **past weeks are never touched**. Regeneration is weekly ([routes/console.php](routes/console.php), `plan:regenerate` at Monday 00:07, after the existing 00:01/00:05 cluster) plus on-demand (`POST /plan/regenerate`).
 
 Each regeneration deletes every unpinned row across the *full* 12-week horizon before writing (not just the freshly-computed weeks), so a shrinking horizon — e.g. switching from self-scaled to a near-term race — cleans up stale far-future rows from the old mode rather than leaving orphans.
 
@@ -75,7 +77,7 @@ The scale factor is capped at `VolumeRedistributor::MAX_SCALE`. A week missed un
 
 The three sections above are all *render-time* reactions within one week. The generation-time reaction is [PlanAdapter](app/Services/Run/Plan/PlanAdapter.php), which [Periodizer::regenerate()](app/Services/Run/Plan/Periodizer.php) consults before it builds a single week.
 
-**Matching runs to sessions.** [SessionMatcher](app/Services/Run/Plan/SessionMatcher.php) grades each past day on km actually run against km prescribed, not on "was there any activity": at or above `DONE_FRACTION` the session is `done`, above `PARTIAL_FRACTION` it's `partial`, otherwise `missed` (see [PlannedSessionStatus](app/Enums/PlannedSessionStatus.php)). A rest day asks for nothing, so it always reads `done`. `weekAdherence()` reduces a week to the completed share of its *elapsed* sessions, which is the number the adapter reacts to. One range query serves the whole rendered plan.
+**Matching runs to sessions — persisted once a day is in the past.** A day's compliance verdict is a historical judgment, not a forward-looking target, so unlike the render-time computations above it is scored once and frozen: [ScoreComplianceCommand](app/Console/Commands/Run/ScoreComplianceCommand.php) (`plan:score-compliance`, daily at 00:03, before the Monday 00:07 `plan:regenerate`) finds every still-`Planned` row that's now past-due and writes back `status`, `compliance_score` and `ran_anyway` via [SessionMatcher::scoreRange()](app/Services/Run/Plan/SessionMatcher.php). It doubles as the backfill mechanism for any historical backlog — the query is "any Planned row that's now past, regardless of age," so there's no separate backfill command. [SessionMatcher::scoreFor()](app/Services/Run/Plan/SessionMatcher.php) grades km actually run against km prescribed as a continuous `round(completedKm/plannedKm * 100)` score: `<35` is `missed`, `35-84` is `partial`, `85-129` is `done`, `>=130` is `overreached` (see [PlannedSessionStatus](app/Enums/PlannedSessionStatus.php); `isCredited()` counts `done`/`partial`/`overreached`, not `planned`/`missed`/`skip`). A day the athlete pre-emptively excuses (`PATCH /plan/sessions/{id}` with `skipped: true`) always resolves to `skip` regardless of km, with a null score. A rest day asks for nothing, so it always reads `done` with a null score; `ran_anyway` separately records whether an activity was logged on it anyway, without changing the status. [PlanController](app/Http/Controllers/PlanController.php) and [CurrentWeekPlanBuilder](app/Services/Run/Plan/CurrentWeekPlanBuilder.php) read the stored `status` column as the primary source of truth; `SessionMatcher::statuses()` is now only a defensive render-time fallback for the rare row still `Planned` despite being past-dated (the daily command hasn't reached it yet). [PlanAdapter::previousWeekAdherencePct()](app/Services/Run/Plan/PlanAdapter.php) averages last week's persisted `compliance_score` (each day capped at 100 first, so one `overreached` day can't mask other missed ones), excluding rest, still-unscored and `skip` days, and defaults to perfect adherence when nothing was scoreable at all.
 
 **One decision per week, safety first.** [PlanAdapter::decide()](app/Services/Run/Plan/PlanAdapter.php) is pure and returns exactly one [AdaptationReason](app/Enums/AdaptationReason.php), evaluated in priority order: readiness bottoming out at `Rest`, then monotony at Foster's injury-risk threshold, then weekly strain past a multiple of CTL, then a mostly-missed week, and only then race-pace feedback. Chasing a goal time can therefore never talk the plan past a red flag.
 

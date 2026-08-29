@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\AdaptationReason;
-use App\Enums\SessionType;
+use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
@@ -37,14 +37,13 @@ final readonly class PlanAdapter
     /** Below this much CTL the strain ratio is noise, not signal. */
     public const float MIN_CTL_FOR_STRAIN = 10.0;
 
-    /** Completing less of last week's sessions than this makes the coming week a re-entry, not a catch-up. */
-    public const float MISSED_WEEK_ADHERENCE = 0.5;
+    /** Below this average per-day compliance score, last week counts as a re-entry, not a catch-up. */
+    public const int MISSED_WEEK_ADHERENCE = 50;
 
     /** Projection within this fraction of the goal time is on track; neither direction fires. */
     public const float RACE_GAP_MARGIN = 0.02;
 
     public function __construct(
-        private SessionMatcher $sessionMatcher,
         private TrainingLoad $trainingLoad,
         private RiegelProjector $riegelProjector,
     ) {
@@ -52,12 +51,11 @@ final readonly class PlanAdapter
 
     /**
      * Gathers this athlete's live signals and runs them through
-     * {@see self::decide()}. `$longRunKm` is the current baseline the
-     * previous week's stored bands are priced against.
+     * {@see self::decide()}.
      *
      * @return array{reason: AdaptationReason, deload: bool, quality_delta: int, adherence_pct: int}
      */
-    public function forWeek(User $user, Carbon $weekStart, Carbon $today, float $longRunKm, ?RaceGoal $race): array
+    public function forWeek(User $user, Carbon $weekStart, Carbon $today, ?RaceGoal $race): array
     {
         $load = $this->trainingLoad->summary($user, $today);
         $ceiling = ReadinessCeiling::from(BriefingContext::forUser($user, $today, $load)->readinessCeiling);
@@ -67,12 +65,13 @@ final readonly class PlanAdapter
             self::floatOrNull($load['monotony'] ?? null),
             self::floatOrNull($load['strain'] ?? null),
             self::floatOrNull($load['ctl_42d'] ?? null),
-            $this->sessionMatcher->weekAdherence($user, $this->previousWeekKm($user, $weekStart, $longRunKm), $today)['adherence'],
+            $this->previousWeekAdherencePct($user, $weekStart),
             $this->raceGapRatio($user, $race),
         );
     }
 
     /**
+     * @param  int  $adherencePct  average of last week's persisted per-day compliance_score (Rest/Planned/Skip days excluded, each day capped at 100 before averaging — an overreached day can't paper over a missed one)
      * @param  float|null  $raceGapRatio  projected finish / goal time; above 1.0 the athlete is behind their goal
      * @return array{reason: AdaptationReason, deload: bool, quality_delta: int, adherence_pct: int}
      */
@@ -81,10 +80,10 @@ final readonly class PlanAdapter
         ?float $monotony,
         ?float $strain,
         ?float $ctl,
-        float $sessionAdherence,
+        int $adherencePct,
         ?float $raceGapRatio,
     ): array {
-        $reason = self::reasonFor($ceiling, $monotony, $strain, $ctl, $sessionAdherence, $raceGapRatio);
+        $reason = self::reasonFor($ceiling, $monotony, $strain, $ctl, $adherencePct, $raceGapRatio);
 
         return [
             'reason' => $reason,
@@ -94,7 +93,7 @@ final readonly class PlanAdapter
                 AdaptationReason::AheadOfRacePace => -1,
                 default => 0,
             },
-            'adherence_pct' => (int) round(min(1.0, max(0.0, $sessionAdherence)) * 100),
+            'adherence_pct' => min(100, max(0, $adherencePct)),
         ];
     }
 
@@ -103,7 +102,7 @@ final readonly class PlanAdapter
         ?float $monotony,
         ?float $strain,
         ?float $ctl,
-        float $sessionAdherence,
+        int $adherencePct,
         ?float $raceGapRatio,
     ): AdaptationReason {
         if ($ceiling === ReadinessCeiling::Rest) {
@@ -115,7 +114,7 @@ final readonly class PlanAdapter
         if (self::strainIsExcessive($strain, $ctl)) {
             return AdaptationReason::HighStrain;
         }
-        if ($sessionAdherence < self::MISSED_WEEK_ADHERENCE) {
+        if ($adherencePct < self::MISSED_WEEK_ADHERENCE) {
             return AdaptationReason::MissedWeek;
         }
         if ($raceGapRatio === null) {
@@ -139,30 +138,30 @@ final readonly class PlanAdapter
     }
 
     /**
-     * @return array<string, float>  Y-m-d => km the previous week's stored rows asked for
+     * Average of last week's persisted per-day `compliance_score`, each day
+     * capped at 100 before averaging (an overreached day shouldn't mask a
+     * missed one — this is a "did you do enough" check, not a volume total).
+     * Rest/still-`Planned`/`Skip` days are excluded entirely: rest asks for
+     * nothing, an unscored row has no verdict yet, and a skipped day is
+     * excused by definition. No scoreable days at all (first week ever, or
+     * an all-rest week) reads as perfect adherence — never punish for
+     * nothing to judge.
      */
-    private function previousWeekKm(User $user, Carbon $weekStart, float $longRunKm): array
+    private function previousWeekAdherencePct(User $user, Carbon $weekStart): int
     {
         $previousStart = $weekStart->copy()->subWeek();
-        $rows = PlannedSession::query()
+        $scores = PlannedSession::query()
             ->where('user_id', $user->id)
             ->whereBetween('date', [$previousStart->toDateString(), $previousStart->copy()->addDays(6)->toDateString()])
-            ->orderBy('date')
-            ->get();
+            ->whereNotIn('status', [PlannedSessionStatus::Planned, PlannedSessionStatus::Skip])
+            ->whereNotNull('compliance_score')
+            ->pluck('compliance_score');
 
-        // The week's first Easy day gets the bigger (Medium) fraction, same
-        // sibling-context rule PlanController/CurrentWeekPlanBuilder apply at
-        // render time — see SegmentGenerator::coreKmFor()'s $isPrimaryEasy.
-        $primaryEasyDate = $rows->first(fn (PlannedSession $row): bool => $row->session_type === SessionType::Easy)?->date?->toDateString();
-
-        $planned = [];
-        foreach ($rows as $row) {
-            $multiplier = PhaseSchedule::volumeMultipliers([$row->phase])[0];
-            $isPrimaryEasy = $row->date->toDateString() === $primaryEasyDate;
-            $planned[$row->date->toDateString()] = SegmentGenerator::coreKmFor($row->session_type, $isPrimaryEasy, $longRunKm, $multiplier);
+        if ($scores->isEmpty()) {
+            return 100;
         }
 
-        return $planned;
+        return (int) round($scores->map(static fn (int $score): int => min(100, $score))->avg() ?? 100.0);
     }
 
     private function raceGapRatio(User $user, ?RaceGoal $race): ?float

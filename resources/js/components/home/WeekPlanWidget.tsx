@@ -44,7 +44,11 @@ function weekdayAbbr(iso: string): string {
 }
 
 function isCredited(day: WeekPlanDay): boolean {
-    return day.status === 'done' || day.status === 'partial';
+    return (
+        day.status === 'done' ||
+        day.status === 'partial' ||
+        day.status === 'overreached'
+    );
 }
 
 /** Which of the days rendered in the grid belong to the current streak, so
@@ -106,7 +110,7 @@ function DayGlyph({
     status,
     inStreak,
 }: Readonly<{ status: WeekPlanDay['status']; inStreak: boolean }>) {
-    if (status === 'done' || status === 'partial') {
+    if (status === 'done' || status === 'partial' || status === 'overreached') {
         return (
             <span
                 className={cn(
@@ -134,6 +138,17 @@ function DayGlyph({
                 width={16}
                 height={16}
                 className="text-ember-ink opacity-40"
+                aria-hidden
+            />
+        );
+    }
+    if (status === 'skip') {
+        return (
+            <Icon
+                icon="mdi:minus-circle-outline"
+                width={16}
+                height={16}
+                className="text-text-3"
                 aria-hidden
             />
         );

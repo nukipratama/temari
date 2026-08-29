@@ -15,3 +15,6 @@ export const ANALYSIS_TYPE_VALUES = ['briefing_mascot_voice', 'briefing_featured
 
 export type NotificationKind = 'post_run' | 'weekly_recap' | 'monthly_recap' | 'streak_reminder' | 'unlock' | 'test';
 export const NOTIFICATION_KIND_VALUES = ['post_run', 'weekly_recap', 'monthly_recap', 'streak_reminder', 'unlock', 'test'] as const;
+
+export type PlannedSessionStatus = 'planned' | 'done' | 'partial' | 'missed' | 'overreached' | 'skip';
+export const PLANNED_SESSION_STATUS_VALUES = ['planned', 'done', 'partial', 'missed', 'overreached', 'skip'] as const;

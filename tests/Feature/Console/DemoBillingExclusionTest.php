@@ -48,6 +48,7 @@ const NON_BILLING = [
     'schedule:heartbeat' => 'writes one Redis timestamp, touches no user',
     'demo:daily-refresh' => 'the demo account is the point; rule-based fill, zero LLM tokens',
     'plan:regenerate' => 'deterministic periodizer, no LLM and no Strava call',
+    'plan:score-compliance' => 'free local km comparison against ActivityDetail rows, no LLM and no Strava call',
     'ai:self-heal' => 'only re-kicks Pending rows; demo rows are seeded Done, and the sweeps that could bill apply notDemo() themselves',
     'queue:prune-failed' => 'deletes rows, touches no user',
     'geo:backfill-locations' => 'free Nominatim lookup, no LLM and no Strava call',

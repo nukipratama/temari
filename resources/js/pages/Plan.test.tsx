@@ -45,7 +45,10 @@ const DAY = (overrides: Record<string, unknown> = {}) => ({
     ],
     distance_km: 8.0,
     pinned: false,
+    skipped: false,
     status: 'planned',
+    compliance_score: null,
+    ran_anyway: false,
     clamp_note: null,
     ...overrides,
 });
@@ -331,6 +334,45 @@ describe('Plan', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Unpin' }));
 
         expect(lastPatchCall()?.[1]).toEqual({ pinned: false });
+    });
+
+    it('skips a day', () => {
+        render(
+            <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={null}
+                season={SEASON}
+                streak={STREAK}
+                weeks={[WEEK()]}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+
+        expect(lastPatchCall()?.[0]).toBe('/plan/sessions/1');
+        expect(lastPatchCall()?.[1]).toEqual({ skipped: true });
+    });
+
+    it('unskips an already-skipped day', () => {
+        render(
+            <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={null}
+                season={SEASON}
+                streak={STREAK}
+                weeks={[WEEK({ days: [DAY({ skipped: true })] })]}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Unskip' }));
+
+        expect(lastPatchCall()?.[1]).toEqual({ skipped: false });
     });
 
     it('blocks a training day to rest', () => {

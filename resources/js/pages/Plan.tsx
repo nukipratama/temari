@@ -45,7 +45,10 @@ interface PlanDay {
     segments: PlanSessionSegment[];
     distance_km: number;
     pinned: boolean;
+    skipped: boolean;
     status: string;
+    compliance_score: number | null;
+    ran_anyway: boolean;
     clamp_note: string | null;
 }
 
@@ -79,6 +82,8 @@ const STATUS_LABEL: Record<string, string> = {
     done: 'Done',
     partial: 'Partial',
     missed: 'Missed',
+    overreached: 'Overreached',
+    skip: 'Skipped',
 };
 
 const SESSION_TYPE_LABEL: Record<string, string> = {
@@ -170,6 +175,9 @@ export default function Plan({
     };
 
     const togglePin = (day: PlanDay) => patchDay(day, { pinned: !day.pinned });
+
+    const toggleSkip = (day: PlanDay) =>
+        patchDay(day, { skipped: !day.skipped });
 
     const toggleBlock = (day: PlanDay) => {
         patchDay(day, {
@@ -423,6 +431,16 @@ export default function Plan({
                                                                     className="ml-1.5 inline-block align-baseline text-text-3"
                                                                 />
                                                             )}
+                                                            {day.skipped && (
+                                                                <Icon
+                                                                    icon="mdi:close-circle-outline"
+                                                                    width={13}
+                                                                    height={13}
+                                                                    role="img"
+                                                                    aria-label="Skipped"
+                                                                    className="ml-1.5 inline-block align-baseline text-text-3"
+                                                                />
+                                                            )}
                                                         </p>
                                                         {day.clamp_note && (
                                                             <p className="mt-0.5 text-xs italic text-text-2">
@@ -438,6 +456,18 @@ export default function Plan({
                                                                         day
                                                                             .status
                                                                     ] ?? ''}
+                                                                    {day.compliance_score !=
+                                                                        null &&
+                                                                        ` · ${day.compliance_score}%`}
+                                                                </p>
+                                                            )}
+                                                        {week.type ===
+                                                            'history' &&
+                                                            day.session_type ===
+                                                                'rest' &&
+                                                            day.ran_anyway && (
+                                                                <p className="mt-0.5 text-xs text-text-3">
+                                                                    Ran anyway
                                                                 </p>
                                                             )}
                                                     </div>
@@ -456,6 +486,22 @@ export default function Plan({
                                                             'rest'
                                                                 ? 'Restore'
                                                                 : 'Block'}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                toggleSkip(day)
+                                                            }
+                                                            className={outlineChipVariants(
+                                                                {
+                                                                    selected:
+                                                                        day.skipped,
+                                                                },
+                                                            )}
+                                                        >
+                                                            {day.skipped
+                                                                ? 'Unskip'
+                                                                : 'Skip'}
                                                         </button>
                                                         <button
                                                             type="button"
