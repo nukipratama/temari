@@ -1,6 +1,6 @@
 # F5 — Two-ground art
 
-**Wave** 1 · **Slot** worktree · **Blockers** `F2` · **Status** in-review
+**Wave** 1 · **Slot** worktree · **Blockers** `F2` · **Status** merged ([#659](https://github.com/nukipratama/temari/pull/659), squashed as `6aa3f9fc`)
 
 ## Goal
 
