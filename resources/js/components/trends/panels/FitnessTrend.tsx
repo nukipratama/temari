@@ -15,7 +15,8 @@ import EmptyPanel from '@/components/ui/EmptyPanel';
 import Skeleton from '@/components/ui/Skeleton';
 import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';
-import { PALETTE } from '@/lib/chartTokens';
+import { useIsChartDark } from '@/hooks/useIsChartDark';
+import { CHART_GROUND, PALETTE } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
 import { fadeInUp, pressShrink, staggerContainer } from '@/lib/motion';
 import { formatNaiveIdDate } from '@/lib/pace';
@@ -57,7 +58,6 @@ const RANGE_DAYS: Record<TrendRange, number> = {
 };
 
 const CTL_FILL = `${PALETTE.horizon}2e`; // 0.18 alpha
-const GRID_LINE = `${PALETTE.ink3}1f`; // 0.12 alpha
 
 function fitnessHint(ctl: number): string {
     if (ctl < 25) return 'Still building';
@@ -88,6 +88,8 @@ export default function FitnessTrend({
     className,
 }: Readonly<FitnessTrendProps>) {
     const [selected, setSelected] = useState<string | null>(null);
+    const isDark = useIsChartDark();
+    const ground = isDark ? CHART_GROUND.dark : CHART_GROUND.light;
 
     const windowed = useMemo(
         () => trend.slice(-RANGE_DAYS[range]),
@@ -105,13 +107,15 @@ export default function FitnessTrend({
 
     const marksRef = useRef(marks);
     const selectedRef = useRef(selected);
+    const groundRef = useRef(ground);
     marksRef.current = marks;
     selectedRef.current = selected;
+    groundRef.current = ground;
 
     const chartRef = useRef<Chart<'line'> | null>(null);
     useEffect(() => {
         chartRef.current?.update('none');
-    }, [marks, selected]);
+    }, [marks, selected, ground]);
 
     // Badges earned days apart land on the same pixel on a phone at 12
     // months, so markers within a marker's width of each other collapse
@@ -140,11 +144,12 @@ export default function FitnessTrend({
                     const isActive = members.some(
                         (m) => m.key === selectedRef.current,
                     );
+                    const g = groundRef.current;
                     ctx.beginPath();
                     ctx.setLineDash(isActive ? [] : [2, 4]);
                     ctx.strokeStyle = isActive
-                        ? PALETTE.horizonInk
-                        : `${PALETTE.ink3}59`;
+                        ? g.line
+                        : `${g.secondaryLine}59`;
                     ctx.lineWidth = 1;
                     ctx.moveTo(x, chartArea.top + 20);
                     ctx.lineTo(x, chartArea.bottom);
@@ -159,14 +164,10 @@ export default function FitnessTrend({
                         0,
                         Math.PI * 2,
                     );
-                    ctx.fillStyle = isActive
-                        ? PALETTE.horizon
-                        : PALETTE.surfaceElev;
+                    ctx.fillStyle = isActive ? PALETTE.horizon : g.pointBorder;
                     ctx.fill();
                     ctx.lineWidth = isActive ? 2 : 1;
-                    ctx.strokeStyle = isActive
-                        ? PALETTE.horizonInk
-                        : PALETTE.line;
+                    ctx.strokeStyle = isActive ? g.line : g.border;
                     ctx.stroke();
 
                     ctx.textAlign = 'center';
@@ -180,7 +181,7 @@ export default function FitnessTrend({
                         );
                     } else {
                         ctx.font = '600 11px system-ui';
-                        ctx.fillStyle = PALETTE.ink2;
+                        ctx.fillStyle = g.tick;
                         ctx.fillText(
                             `${members.length}`,
                             x,
@@ -206,7 +207,7 @@ export default function FitnessTrend({
                 {
                     label: 'Fitness',
                     data: windowed.map((p) => p.ctl),
-                    borderColor: PALETTE.horizonInk,
+                    borderColor: ground.line,
                     backgroundColor: CTL_FILL,
                     borderWidth: 2.5,
                     pointRadius: 0,
@@ -216,7 +217,7 @@ export default function FitnessTrend({
                 {
                     label: 'Fatigue',
                     data: windowed.map((p) => p.atl),
-                    borderColor: PALETTE.ink3,
+                    borderColor: ground.secondaryLine,
                     backgroundColor: 'transparent',
                     borderWidth: 1.5,
                     borderDash: [4, 4],
@@ -226,7 +227,7 @@ export default function FitnessTrend({
                 },
             ],
         }),
-        [windowed, labels],
+        [windowed, labels, ground.line, ground.secondaryLine],
     );
 
     const options = useMemo(
@@ -273,12 +274,12 @@ export default function FitnessTrend({
             scales: {
                 x: { grid: { display: false }, ticks: { display: false } },
                 y: {
-                    grid: { color: GRID_LINE },
-                    ticks: { color: PALETTE.ink2, font: { size: 12 } },
+                    grid: { color: ground.grid },
+                    ticks: { color: ground.tick, font: { size: 12 } },
                 },
             },
         }),
-        [windowed, marks, cluster],
+        [windowed, marks, cluster, ground],
     );
 
     const latest = windowed[windowed.length - 1];
@@ -366,7 +367,7 @@ export default function FitnessTrend({
                     <span
                         aria-hidden
                         className="h-0.5 w-6 rounded-full"
-                        style={{ background: PALETTE.horizonInk }}
+                        style={{ background: ground.line }}
                     />
                     Fitness
                 </span>
@@ -374,7 +375,7 @@ export default function FitnessTrend({
                     <span
                         aria-hidden
                         className="h-0 w-6 border-t-2 border-dashed"
-                        style={{ borderColor: PALETTE.ink3 }}
+                        style={{ borderColor: ground.secondaryLine }}
                     />
                     Fatigue
                 </span>

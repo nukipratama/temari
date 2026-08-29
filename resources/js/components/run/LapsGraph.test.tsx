@@ -94,7 +94,7 @@ describe('LapsGraph', () => {
             container.querySelector('.bg-horizon\\/\\[0\\.08\\]'),
         ).not.toBeNull();
         expect(
-            container.querySelector('.bg-sky\\/\\[0\\.03\\]'),
+            container.querySelector('.bg-foreground\\/\\[0\\.03\\]'),
         ).not.toBeNull();
     });
 

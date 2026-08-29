@@ -7,7 +7,8 @@ import EmptyPanel from '@/components/ui/EmptyPanel';
 import Skeleton from '@/components/ui/Skeleton';
 import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';
-import { PALETTE } from '@/lib/chartTokens';
+import { useIsChartDark } from '@/hooks/useIsChartDark';
+import { CHART_GROUND, PALETTE } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatNaiveIdDate } from '@/lib/pace';
@@ -32,8 +33,6 @@ const RANGE_DAYS: Record<TrendRange, number> = {
     '90d': 90,
     '12mo': 365,
 };
-
-const GRID_LINE = `${PALETTE.ink3}1f`; // 0.12 alpha
 
 // Mirrors PaceConsistency.php's VERY_EVEN_SEC/EVEN_SEC/UNEVEN_SEC bands.
 const BANDS = [
@@ -88,6 +87,8 @@ export default function PaceConsistencyTrend({
     range,
     className,
 }: Readonly<PaceConsistencyTrendProps>) {
+    const isDark = useIsChartDark();
+    const ground = isDark ? CHART_GROUND.dark : CHART_GROUND.light;
     const windowed = useMemo(
         () => trend.slice(-RANGE_DAYS[range]),
         [trend, range],
@@ -109,7 +110,7 @@ export default function PaceConsistencyTrend({
                 {
                     label: 'Pace consistency',
                     data: windowed.map((p) => p.variabilitySec),
-                    borderColor: PALETTE.horizonInk,
+                    borderColor: ground.line,
                     backgroundColor: 'transparent',
                     borderWidth: 2,
                     pointRadius: 3,
@@ -118,7 +119,7 @@ export default function PaceConsistencyTrend({
                 },
             ],
         }),
-        [windowed, labels],
+        [windowed, labels, ground.line],
     );
 
     const options = useMemo(
@@ -149,16 +150,16 @@ export default function PaceConsistencyTrend({
                 y: {
                     suggestedMin: 0,
                     suggestedMax: CHART_MAX,
-                    grid: { color: GRID_LINE },
+                    grid: { color: ground.grid },
                     ticks: {
-                        color: PALETTE.ink2,
+                        color: ground.tick,
                         font: { size: 12 },
                         callback: (v: number | string) => `${v}s`,
                     },
                 },
             },
         }),
-        [windowed],
+        [windowed, ground],
     );
 
     const latest = defined.length > 0 ? defined[defined.length - 1] : null;

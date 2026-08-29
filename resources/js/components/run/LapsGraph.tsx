@@ -45,7 +45,7 @@ export default function LapsGraph({
                 )}
             </header>
             <p className="mb-3 text-label-micro text-text-3">
-                Orange bar = fastest lap, dark = the rest. Left number = each
+                Orange bar = fastest lap, muted = the rest. Left number = each
                 lap&apos;s distance.
             </p>
 
@@ -78,12 +78,12 @@ export default function LapsGraph({
                             <div
                                 role="img"
                                 aria-label={`Lap ${lap.lap}, ${lap.distance_m} m, ${lap.pace} per km`}
-                                className="h-2.5 overflow-hidden rounded bg-sky/[0.06] lg:h-3"
+                                className="h-2.5 overflow-hidden rounded bg-foreground/[0.06] lg:h-3"
                             >
                                 <motion.div
                                     className={cn(
                                         'h-full origin-left rounded',
-                                        isFast ? 'bg-horizon' : 'bg-sky',
+                                        isFast ? 'bg-horizon' : 'bg-foreground',
                                     )}
                                     style={{
                                         width: `${computeBarWidth(sec, fastest, slowest)}%`,

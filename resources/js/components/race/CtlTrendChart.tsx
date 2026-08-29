@@ -5,7 +5,8 @@ import EmptyPanel from '@/components/ui/EmptyPanel';
 import Skeleton from '@/components/ui/Skeleton';
 import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';
-import { PALETTE } from '@/lib/chartTokens';
+import { useIsChartDark } from '@/hooks/useIsChartDark';
+import { CHART_GROUND, PALETTE } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatNaiveIdDate } from '@/lib/pace';
@@ -27,12 +28,14 @@ interface CtlTrendChartProps {
 }
 
 const CTL_FILL = `${PALETTE.horizon}2e`; // 0.18 alpha
-const GRID_LINE = `${PALETTE.ink3}1f`; // 0.12 alpha
 
 export default function CtlTrendChart({
     trend,
     className,
 }: Readonly<CtlTrendChartProps>) {
+    const isDark = useIsChartDark();
+    const ground = isDark ? CHART_GROUND.dark : CHART_GROUND.light;
+
     const labels = useMemo(
         () => trend.map((p) => formatNaiveIdDate(p.date, 'short')),
         [trend],
@@ -55,7 +58,7 @@ export default function CtlTrendChart({
                 {
                     label: 'Fatigue (ATL)',
                     data: trend.map((p) => p.atl),
-                    borderColor: PALETTE.ink3,
+                    borderColor: ground.secondaryLine,
                     backgroundColor: 'transparent',
                     borderWidth: 1.5,
                     borderDash: [4, 4],
@@ -65,7 +68,7 @@ export default function CtlTrendChart({
                 },
             ],
         }),
-        [trend, labels],
+        [trend, labels, ground.secondaryLine],
     );
 
     const options = useMemo(
@@ -80,7 +83,7 @@ export default function CtlTrendChart({
                 legend: {
                     display: true,
                     position: 'top' as const,
-                    labels: { color: PALETTE.ink2, boxWidth: 12 },
+                    labels: { color: ground.tick, boxWidth: 12 },
                 },
                 tooltip: {
                     callbacks: {
@@ -99,12 +102,12 @@ export default function CtlTrendChart({
                     ticks: { display: false },
                 },
                 y: {
-                    grid: { color: GRID_LINE },
-                    ticks: { color: PALETTE.ink2, font: { size: 12 } },
+                    grid: { color: ground.grid },
+                    ticks: { color: ground.tick, font: { size: 12 } },
                 },
             },
         }),
-        [trend],
+        [trend, ground],
     );
 
     const latest = trend[trend.length - 1];

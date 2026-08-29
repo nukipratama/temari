@@ -93,11 +93,11 @@ export default function SplitsTable({
                             <Eyebrow token="micro" tone="ink-2">
                                 KM {row.km ?? '?'}
                             </Eyebrow>
-                            <div className="h-2.5 overflow-hidden rounded bg-sky/[0.06] lg:h-3">
+                            <div className="h-2.5 overflow-hidden rounded bg-foreground/[0.06] lg:h-3">
                                 <motion.div
                                     className={cn(
                                         'h-full origin-left rounded',
-                                        isFast ? 'bg-horizon' : 'bg-sky',
+                                        isFast ? 'bg-horizon' : 'bg-foreground',
                                     )}
                                     style={{ width: `${pctWidth}%` }}
                                     initial={{ scaleX: 0 }}
@@ -144,13 +144,13 @@ function SplitPartialRow({
             className={cn(
                 'grid',
                 ROW_GRID,
-                'mt-1 rounded-lg border-t border-cream-deep px-3 py-2 lg:py-2.5',
+                'mt-1 rounded-lg border-t border-border px-3 py-2 lg:py-2.5',
             )}
         >
             <div className="text-label-micro text-text-3">
                 {formatKm(partial.distance_m, 1)} KM
             </div>
-            <div className="h-2.5 rounded border border-dashed border-sky/20 bg-sky/[0.06] lg:h-3" />
+            <div className="h-2.5 rounded border border-dashed border-foreground/20 bg-foreground/[0.06] lg:h-3" />
             <div className="text-right font-sans text-sm font-semibold tabular-nums text-text-3">
                 {partial.pace ?? '—'}
             </div>
