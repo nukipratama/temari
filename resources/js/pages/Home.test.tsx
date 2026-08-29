@@ -170,9 +170,15 @@ const weekPlan: WeekPlan = {
             date: '2026-06-08',
             phase: 'build',
             session_type: 'easy',
-            distance_band: 'medium',
-            pace_band: 'easy',
-            pace_sec_per_km: 360,
+            segments: [
+                {
+                    key: 'main',
+                    minutes: 48,
+                    zone: 'Z2',
+                    pace_label: 'easy',
+                    pace_sec_per_km: 360,
+                },
+            ],
             distance_km: 8,
             pinned: false,
             status: 'done',

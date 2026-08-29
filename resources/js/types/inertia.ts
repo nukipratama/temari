@@ -384,14 +384,27 @@ export interface PastYouTrend {
 
 /** One day within `WeekPlan['days']`, as `PlanRenderer::dayPayload()` ships
  *  it — the same shape Plan's own day rows use. */
+/** One ordered slice of a planned session — see `App\Services\Run\Plan\SessionSegment`.
+ *  `minutes`/`pace_sec_per_km` are null exactly when the athlete has no VDOT
+ *  estimate yet; the segment's shape (key, pace target) still renders. */
+export interface PlanSessionSegment {
+    key: 'warmup' | 'main' | 'interval' | 'recovery' | 'cooldown';
+    minutes: number | null;
+    zone: string;
+    pace_label: 'easy' | 'marathon' | 'threshold' | 'interval';
+    pace_sec_per_km: number | null;
+}
+
 export interface WeekPlanDay {
     id: number;
     date: string;
     phase: string;
     session_type: string;
-    distance_band: string;
-    pace_band: string | null;
-    pace_sec_per_km: number | null;
+    /** Ordered warmup/main/cooldown (or interval reps) breakdown — see
+     *  `App\Services\Run\Plan\SegmentGenerator`. Empty on a rest day. */
+    segments: PlanSessionSegment[];
+    /** The CORE work only (e.g. a Tempo day's threshold portion) — warmup/
+     *  cooldown are additional minutes on top, not counted here. */
     distance_km: number;
     pinned: boolean;
     status: 'planned' | 'done' | 'partial' | 'missed';

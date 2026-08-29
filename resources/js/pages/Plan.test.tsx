@@ -34,9 +34,15 @@ const DAY = (overrides: Record<string, unknown> = {}) => ({
     date: TODAY,
     phase: 'build',
     session_type: 'easy',
-    distance_band: 'medium',
-    pace_band: 'easy',
-    pace_sec_per_km: 330,
+    segments: [
+        {
+            key: 'main' as const,
+            minutes: 44.0,
+            zone: 'Z2',
+            pace_label: 'easy' as const,
+            pace_sec_per_km: 330,
+        },
+    ],
     distance_km: 8.0,
     pinned: false,
     status: 'planned',
@@ -358,14 +364,7 @@ describe('Plan', () => {
                 streak={STREAK}
                 weeks={[
                     WEEK({
-                        days: [
-                            DAY({
-                                session_type: 'rest',
-                                distance_band: 'rest',
-                                pace_band: null,
-                                pace_sec_per_km: null,
-                            }),
-                        ],
+                        days: [DAY({ session_type: 'rest', segments: [] })],
                     }),
                 ]}
             />,
@@ -373,49 +372,7 @@ describe('Plan', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
 
-        expect(lastPatchCall()?.[1]).toEqual({
-            session_type: 'easy',
-            distance_band: 'medium',
-            pace_band: 'easy',
-        });
-    });
-
-    it('cycles the distance band on Resize', () => {
-        render(
-            <Plan
-                disclaimerHeadline={DISCLAIMER_HEADLINE}
-                disclaimer={DISCLAIMER}
-                race={null}
-                sessionsPerWeek={4}
-                adaptation={null}
-                season={SEASON}
-                streak={STREAK}
-                weeks={[WEEK()]}
-            />,
-        );
-
-        fireEvent.click(screen.getByRole('button', { name: 'Resize' }));
-
-        expect(lastPatchCall()?.[1]).toEqual({ distance_band: 'long' });
-    });
-
-    it('does not offer Resize for a rest day', () => {
-        render(
-            <Plan
-                disclaimerHeadline={DISCLAIMER_HEADLINE}
-                disclaimer={DISCLAIMER}
-                race={null}
-                sessionsPerWeek={4}
-                adaptation={null}
-                season={SEASON}
-                streak={STREAK}
-                weeks={[WEEK({ days: [DAY({ session_type: 'rest' })] })]}
-            />,
-        );
-
-        expect(
-            screen.queryByRole('button', { name: 'Resize' }),
-        ).not.toBeInTheDocument();
+        expect(lastPatchCall()?.[1]).toEqual({ session_type: 'easy' });
     });
 
     it('deletes a day', () => {

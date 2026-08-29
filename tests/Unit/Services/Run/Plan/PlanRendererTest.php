@@ -2,13 +2,12 @@
 
 declare(strict_types=1);
 
-use App\Enums\DistanceBand;
-use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Services\Run\Plan\PlanRenderer;
+use App\Services\Run\Plan\SegmentGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -17,6 +16,8 @@ use Illuminate\Support\Carbon;
 // real row) regardless of make() vs create() -- a well-known Eloquent
 // factory quirk, not something these tests can avoid by using make().
 uses(RefreshDatabase::class);
+
+const RENDERER_PACES = ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240];
 
 it('weekPhasesAndMultipliers reads each week\'s phase from its first session', function (): void {
     $sessionsByWeek = collect([
@@ -46,12 +47,11 @@ it('weekPhasesAndMultipliers ramps a multi-week Build block relative to its own 
         ->and($multiplierByWeek['2026-08-17'])->toBeGreaterThan($multiplierByWeek['2026-08-10']);
 });
 
-it('dayPayload uses the stored session when there is no clamp or redistribution', function (): void {
+it('dayPayload generates segments fresh from the stored session when there is no clamp', function (): void {
     $session = PlannedSession::factory()->make([
         'date' => '2026-08-10',
+        'phase' => PlanPhase::Build,
         'session_type' => SessionType::Long,
-        'distance_band' => DistanceBand::Long,
-        'pace_band' => PaceBand::Easy,
         'pinned' => true,
     ]);
 
@@ -60,87 +60,96 @@ it('dayPayload uses the stored session when there is no clamp or redistribution'
         Carbon::parse('2026-08-01'),
         null,
         [],
+        false,
+        false,
         20.0,
         1.0,
-        ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        RENDERER_PACES,
         PlannedSessionStatus::Planned,
     );
 
     expect($payload['session_type'])->toBe('long')
-        ->and($payload['distance_band'])->toBe('long')
-        ->and($payload['pace_sec_per_km'])->toBe(360)
+        ->and($payload['segments'])->toHaveCount(1)
+        ->and($payload['segments'][0]['key'])->toBe('main')
+        ->and($payload['distance_km'])->toBe(20.0)
         ->and($payload['pinned'])->toBeTrue()
         ->and($payload['clamp_note'])->toBeNull();
 });
 
-it('dayPayload substitutes the clamp for today\'s row only', function (): void {
+it('dayPayload substitutes the clamp\'s segments for today\'s row only', function (): void {
     $today = Carbon::parse('2026-08-10');
     $todaySession = PlannedSession::factory()->make([
         'date' => $today,
+        'phase' => PlanPhase::Build,
         'session_type' => SessionType::Long,
-        'distance_band' => DistanceBand::Long,
         'pinned' => false,
     ]);
+    $clampSegments = SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, false, false, 20.0, 1.0, RENDERER_PACES);
     $clamp = [
         'session_type' => SessionType::Easy,
-        'distance_band' => DistanceBand::Short,
-        'pace_band' => PaceBand::Easy,
+        'segments' => $clampSegments,
+        'core_km' => SegmentGenerator::coreKmFor(SessionType::Easy, false, 20.0, 1.0),
         'note' => 'Clamped for low readiness.',
     ];
 
-    $payload = PlanRenderer::dayPayload($todaySession, $today, $clamp, [], 20.0, 1.0, null, PlannedSessionStatus::Planned);
+    $payload = PlanRenderer::dayPayload($todaySession, $today, $clamp, [], false, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
 
     expect($payload['session_type'])->toBe('easy')
-        ->and($payload['distance_band'])->toBe('short')
+        ->and($payload['segments'])->toBe(array_map(fn ($s) => $s->toArray(), $clampSegments))
+        ->and($payload['distance_km'])->toBe($clamp['core_km'])
         ->and($payload['clamp_note'])->toBe('Clamped for low readiness.');
 
     $tomorrowSession = PlannedSession::factory()->make([
         'date' => $today->copy()->addDay(),
+        'phase' => PlanPhase::Build,
         'session_type' => SessionType::Long,
-        'distance_band' => DistanceBand::Long,
         'pinned' => false,
     ]);
-    $unaffected = PlanRenderer::dayPayload($tomorrowSession, $today, $clamp, [], 20.0, 1.0, null, PlannedSessionStatus::Planned);
+    $unaffected = PlanRenderer::dayPayload($tomorrowSession, $today, $clamp, [], false, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
 
     expect($unaffected['session_type'])->toBe('long')
         ->and($unaffected['clamp_note'])->toBeNull();
 });
 
-it('dayPayload substitutes a redistributed band for a non-today day', function (): void {
+it('dayPayload applies a redistributed volume scale for a non-today day', function (): void {
     $session = PlannedSession::factory()->make([
         'date' => '2026-08-12',
-        'distance_band' => DistanceBand::Long,
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Long,
         'pinned' => false,
     ]);
 
-    $payload = PlanRenderer::dayPayload(
-        $session,
-        Carbon::parse('2026-08-10'),
-        null,
-        ['2026-08-12' => DistanceBand::Short],
-        20.0,
-        1.0,
-        null,
-        PlannedSessionStatus::Planned,
-    );
+    $unscaled = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, [], false, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
+    $scaled = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, ['2026-08-12' => 0.5], false, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
 
-    expect($payload['distance_band'])->toBe('short');
+    expect($scaled['distance_km'])->toBe(round($unscaled['distance_km'] * 0.5, 1));
 });
 
-it('dayPayload has a null pace when the session is a rest day', function (): void {
-    $session = PlannedSession::factory()->rest()->make(['date' => '2026-08-10']);
+it('dayPayload returns no segments and a null distance_km for a rest day', function (): void {
+    $session = PlannedSession::factory()->rest()->make(['date' => '2026-08-10', 'phase' => PlanPhase::Build]);
 
     $payload = PlanRenderer::dayPayload(
         $session,
         Carbon::parse('2026-08-01'),
         null,
         [],
+        false,
+        false,
         20.0,
         1.0,
-        ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        RENDERER_PACES,
         PlannedSessionStatus::Planned,
     );
 
-    expect($payload['pace_band'])->toBeNull()
-        ->and($payload['pace_sec_per_km'])->toBeNull();
+    expect($payload['segments'])->toBe([])
+        ->and($payload['distance_km'])->toBe(0.0);
+});
+
+it('dayPayload still fills distance_km with no VDOT estimate yet — only segment minutes go null', function (): void {
+    $session = PlannedSession::factory()->make(['date' => '2026-08-10', 'phase' => PlanPhase::Build, 'session_type' => SessionType::Easy]);
+
+    $payload = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-01'), null, [], false, true, 20.0, 1.0, null, PlannedSessionStatus::Planned);
+
+    expect($payload['segments'][0]['minutes'])->toBeNull()
+        ->and($payload['distance_km'])->toBe(13.0); // 20.0 * 0.65 (isPrimaryEasy=true), pace-independent
 });

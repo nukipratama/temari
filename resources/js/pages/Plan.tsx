@@ -4,6 +4,8 @@ import { Head, Link, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { useRef, useState } from 'react';
 
+import type { PlanSessionSegment } from '@/types/inertia';
+
 import CoachMark from '@/components/onboarding/CoachMark';
 import SeasonTrack from '@/components/plan/SeasonTrack';
 import StreakPanel, { type StreakSummary } from '@/components/plan/StreakPanel';
@@ -40,9 +42,7 @@ interface PlanDay {
     date: string;
     phase: string;
     session_type: string;
-    distance_band: string;
-    pace_band: string | null;
-    pace_sec_per_km: number | null;
+    segments: PlanSessionSegment[];
     distance_km: number;
     pinned: boolean;
     status: string;
@@ -105,8 +105,6 @@ const PHASE_TONE: Record<string, ChipTone> = {
     deload: 'neutral',
 };
 
-const BAND_ORDER = ['short', 'medium', 'long'] as const;
-
 const ADAPTATION_DOT: Record<string, string> = {
     steady: 'bg-leaf',
     low_readiness: 'bg-sky',
@@ -128,8 +126,11 @@ const SEASON_VISUAL_CAPTION: Record<SeasonPhase, string> = {
 };
 
 function paceLabel(day: PlanDay): string | null {
-    if (day.pace_sec_per_km == null) return null;
-    return `${formatPace(day.pace_sec_per_km)}/km`;
+    const core = day.segments.find(
+        (s) => s.key === 'main' || s.key === 'interval',
+    );
+    if (core?.pace_sec_per_km == null) return null;
+    return `${formatPace(core.pace_sec_per_km)}/km`;
 }
 
 export default function Plan({
@@ -170,24 +171,10 @@ export default function Plan({
 
     const togglePin = (day: PlanDay) => patchDay(day, { pinned: !day.pinned });
 
-    const cycleBand = (day: PlanDay) => {
-        const index = BAND_ORDER.indexOf(
-            day.distance_band as (typeof BAND_ORDER)[number],
-        );
-        const next = BAND_ORDER[(index + 1) % BAND_ORDER.length];
-        patchDay(day, { distance_band: next });
-    };
-
     const toggleBlock = (day: PlanDay) => {
-        if (day.session_type === 'rest') {
-            patchDay(day, {
-                session_type: 'easy',
-                distance_band: 'medium',
-                pace_band: 'easy',
-            });
-        } else {
-            patchDay(day, { session_type: 'rest' });
-        }
+        patchDay(day, {
+            session_type: day.session_type === 'rest' ? 'easy' : 'rest',
+        });
     };
 
     const moveDay = (day: PlanDay, newDate: string) => {
@@ -458,20 +445,6 @@ export default function Plan({
 
                                                 {editable && (
                                                     <div className="flex flex-wrap items-center gap-1.5">
-                                                        {day.session_type !==
-                                                            'rest' && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() =>
-                                                                    cycleBand(
-                                                                        day,
-                                                                    )
-                                                                }
-                                                                className={outlineChipVariants()}
-                                                            >
-                                                                Resize
-                                                            </button>
-                                                        )}
                                                         <button
                                                             type="button"
                                                             onClick={() =>

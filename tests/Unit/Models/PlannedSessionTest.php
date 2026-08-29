@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\DistanceBand;
-use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
@@ -30,8 +28,6 @@ it('casts date and every enum column', function (): void {
         'date' => '2026-08-17',
         'phase' => 'build',
         'session_type' => 'tempo',
-        'distance_band' => 'medium',
-        'pace_band' => 'threshold',
         'pinned' => 1,
         'status' => 'planned',
     ]);
@@ -39,8 +35,6 @@ it('casts date and every enum column', function (): void {
     expect($session->date)->toBeInstanceOf(Carbon::class)
         ->and($session->phase)->toBe(PlanPhase::Build)
         ->and($session->session_type)->toBe(SessionType::Tempo)
-        ->and($session->distance_band)->toBe(DistanceBand::Medium)
-        ->and($session->pace_band)->toBe(PaceBand::Threshold)
         ->and($session->pinned)->toBeTrue()
         ->and($session->status)->toBe(PlannedSessionStatus::Planned);
 });
@@ -49,12 +43,6 @@ it('serializes date as the naive date, not a UTC-shifted instant', function (): 
     $session = new PlannedSession(['date' => '2026-08-17']);
 
     expect($session->toArray()['date'])->toBe('2026-08-17');
-});
-
-it('allows a null pace_band, for rest days', function (): void {
-    $session = PlannedSession::factory()->rest()->make();
-
-    expect($session->pace_band)->toBeNull();
 });
 
 it('enforces one row per user per date', function (): void {
