@@ -1,6 +1,6 @@
 # B3 — Structured session segments
 
-**Wave** 2a · **Slot** worktree-be · **Blockers** wave-1 checkpoint · **Status** in-review
+**Wave** 2a · **Slot** worktree-be · **Blockers** wave-1 checkpoint · **Status** merged ([#660](https://github.com/nukipratama/temari/pull/660), squashed as `ab8f33aa`)
 
 ## Goal
 
