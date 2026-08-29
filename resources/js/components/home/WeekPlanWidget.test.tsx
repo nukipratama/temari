@@ -17,9 +17,15 @@ function day(overrides: Partial<WeekPlanDay>): WeekPlanDay {
         date: '2026-01-05',
         phase: 'build',
         session_type: 'easy',
-        distance_band: 'medium',
-        pace_band: 'easy',
-        pace_sec_per_km: 360,
+        segments: [
+            {
+                key: 'main',
+                minutes: 48,
+                zone: 'Z2',
+                pace_label: 'easy',
+                pace_sec_per_km: 360,
+            },
+        ],
         distance_km: 8,
         pinned: false,
         status: 'planned',
@@ -86,7 +92,15 @@ describe('WeekPlanWidget', () => {
                       date,
                       session_type: 'long',
                       distance_km: 15,
-                      pace_sec_per_km: 330,
+                      segments: [
+                          {
+                              key: 'main',
+                              minutes: 66,
+                              zone: 'Z2',
+                              pace_label: 'easy',
+                              pace_sec_per_km: 330,
+                          },
+                      ],
                       clamp_note: 'Clamped for low readiness.',
                   })
                 : day({ date }),
@@ -107,10 +121,8 @@ describe('WeekPlanWidget', () => {
                 ? day({
                       date,
                       session_type: 'rest',
-                      distance_band: 'rest',
                       distance_km: 0,
-                      pace_band: null,
-                      pace_sec_per_km: null,
+                      segments: [],
                   })
                 : day({ date }),
         );

@@ -3,8 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
-use App\Enums\DistanceBand;
-use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
@@ -120,8 +118,6 @@ it('reads last week\'s stored plan and the live signals to reach a verdict', fun
             'date' => $weekStart->copy()->subWeek()->addDays($offset)->toDateString(),
             'phase' => PlanPhase::Build,
             'session_type' => SessionType::Easy,
-            'distance_band' => DistanceBand::Medium,
-            'pace_band' => PaceBand::Easy,
         ]);
     }
 

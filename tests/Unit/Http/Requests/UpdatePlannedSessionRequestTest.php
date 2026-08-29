@@ -28,28 +28,12 @@ it('rejects an invalid date', function (): void {
     expect(validatePlannedSessionUpdate(['date' => 'not-a-date'])->fails())->toBeTrue();
 });
 
-it('passes a valid resize (distance_band)', function (): void {
-    expect(validatePlannedSessionUpdate(['distance_band' => 'medium'])->passes())->toBeTrue();
-});
-
-it('rejects an unknown distance_band', function (): void {
-    expect(validatePlannedSessionUpdate(['distance_band' => 'huge'])->fails())->toBeTrue();
-});
-
 it('passes a valid block (session_type = rest)', function (): void {
     expect(validatePlannedSessionUpdate(['session_type' => 'rest'])->passes())->toBeTrue();
 });
 
 it('rejects an unknown session_type', function (): void {
     expect(validatePlannedSessionUpdate(['session_type' => 'sprint'])->fails())->toBeTrue();
-});
-
-it('allows a null pace_band, for a rest day', function (): void {
-    expect(validatePlannedSessionUpdate(['pace_band' => null])->passes())->toBeTrue();
-});
-
-it('rejects an unknown pace_band', function (): void {
-    expect(validatePlannedSessionUpdate(['pace_band' => 'sprint'])->fails())->toBeTrue();
 });
 
 it('passes an explicit pin/unpin toggle', function (): void {

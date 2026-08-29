@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
-use App\Enums\DistanceBand;
-use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use Illuminate\Support\Carbon;
@@ -15,11 +13,13 @@ use Illuminate\Support\Carbon;
  * day (Monday-Sunday), skipping any date the caller reports as pinned so the
  * periodizer never overwrites a user-fixed day (see {@see Periodizer}).
  *
- * `distance_band` is derived purely from `session_type` here (Long -> Long,
- * Tempo -> Medium, Interval -> Short, the week's first Easy day -> Medium and
- * the rest -> Short) — no km enters generation at all, per the "not frozen
- * into the row" design; see {@see DistanceBandKm} for the render-time
- * conversion.
+ * Only ever decides `session_type` here — no km, pace or segment structure
+ * enters generation at all. {@see SegmentGenerator} derives the full
+ * warmup/main/cooldown breakdown fresh at render time from `session_type`
+ * alone (plus phase, current baseline and paces), so a token like "the
+ * week's first Easy day is bigger" is recomputed from sibling context by the
+ * render-time caller rather than decided here (see
+ * `docs/features/plan-periodizer.md`).
  */
 final class WeekPlanBuilder
 {
@@ -41,7 +41,7 @@ final class WeekPlanBuilder
     private const int MAX_SESSIONS = 6;
 
     /** Races at/above this distance get race-pace-specific (marathon band) quality work in Peak/Taper. */
-    private const float MARATHON_DISTANCE_THRESHOLD_M = 30_000.0;
+    public const float MARATHON_DISTANCE_THRESHOLD_M = 30_000.0;
 
     /** Ceiling on quality sessions per week once race-pace feedback asks for more. */
     private const int MAX_QUALITY_SLOTS = 3;
@@ -54,7 +54,7 @@ final class WeekPlanBuilder
      * @param  Carbon  $notBefore  dates earlier than this (a past day within the current week) are skipped too —
      *                             regeneration only ever writes today-forward, so past days stay untouched
      * @param  int  $qualityDelta  race-pace feedback from {@see PlanAdapter}: +1 adds a quality session, -1 drops one
-     * @return array<string, array{phase: PlanPhase, session_type: SessionType, distance_band: DistanceBand, pace_band: ?PaceBand}> keyed by Y-m-d
+     * @return array<string, array{phase: PlanPhase, session_type: SessionType}> keyed by Y-m-d
      */
     public function build(
         Carbon $weekStart,
@@ -69,10 +69,9 @@ final class WeekPlanBuilder
         $sessionsPerWeek = max(self::MIN_SESSIONS, min(self::MAX_SESSIONS, $sessionsPerWeek));
         $trainingOffsets = self::DAY_TEMPLATES[$sessionsPerWeek];
         $longOffset = end($trainingOffsets);
-        $isMarathonDistance = $raceDistanceM !== null && $raceDistanceM >= self::MARATHON_DISTANCE_THRESHOLD_M;
+        $isMarathonDistance = self::isMarathonDistance($raceDistanceM);
 
         $qualitySlots = $this->qualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $qualityDelta);
-        $longSlot = $this->longSlot($phase, $isMarathonDistance);
 
         // Non-long training offsets, in date order — the pool quality work is
         // spread across. Picking spread-out positions (not just the first N)
@@ -82,7 +81,6 @@ final class WeekPlanBuilder
 
         $rows = [];
         $qualityIndex = 0;
-        $easyBandFirstUsed = false;
 
         foreach (range(0, 6) as $offset) {
             $dayDate = $weekStart->copy()->addDays($offset);
@@ -92,13 +90,13 @@ final class WeekPlanBuilder
             }
 
             if (! in_array($offset, $trainingOffsets, true)) {
-                $rows[$date] = ['session_type' => SessionType::Rest, 'distance_band' => DistanceBand::Rest, 'pace_band' => null];
+                $rows[$date] = ['session_type' => SessionType::Rest];
 
                 continue;
             }
 
             if ($offset === $longOffset) {
-                $rows[$date] = $longSlot;
+                $rows[$date] = ['session_type' => SessionType::Long];
 
                 continue;
             }
@@ -110,29 +108,13 @@ final class WeekPlanBuilder
                 continue;
             }
 
-            $band = $easyBandFirstUsed ? DistanceBand::Short : DistanceBand::Medium;
-            $easyBandFirstUsed = true;
-            $rows[$date] = ['session_type' => SessionType::Easy, 'distance_band' => $band, 'pace_band' => PaceBand::Easy];
+            $rows[$date] = ['session_type' => SessionType::Easy];
         }
 
         return array_map(
             static fn (array $row): array => [...$row, 'phase' => $phase],
             $rows,
         );
-    }
-
-    /**
-     * @return array{session_type: SessionType, distance_band: DistanceBand, pace_band: PaceBand}
-     */
-    private function longSlot(PlanPhase $phase, bool $isMarathonDistance): array
-    {
-        // A race-simulation long run at marathon pace, once the plan is close
-        // enough to race day that race-pace-specific work makes sense.
-        $paceBand = in_array($phase, [PlanPhase::Peak, PlanPhase::Taper], true) && $isMarathonDistance
-            ? PaceBand::Marathon
-            : PaceBand::Easy;
-
-        return ['session_type' => SessionType::Long, 'distance_band' => DistanceBand::Long, 'pace_band' => $paceBand];
     }
 
     /**
@@ -170,6 +152,18 @@ final class WeekPlanBuilder
     }
 
     /**
+     * Whether a race is long enough to earn race-pace-specific (Marathon
+     * band) quality work in Peak/Taper — shared with render-time callers
+     * ({@see \App\Http\Controllers\PlanController}, {@see CurrentWeekPlanBuilder})
+     * so `SegmentGenerator::generate()` picks the same pace this class
+     * decided the session structure with.
+     */
+    public static function isMarathonDistance(?float $raceDistanceM): bool
+    {
+        return $raceDistanceM !== null && $raceDistanceM >= self::MARATHON_DISTANCE_THRESHOLD_M;
+    }
+
+    /**
      * How many quality (Tempo/Interval) sessions a week of this phase carries
      * — the same count {@see self::qualitySlots()} materializes into rows,
      * exposed so season-goal generation can sum it across an arc without
@@ -179,13 +173,11 @@ final class WeekPlanBuilder
      */
     public function qualitySlotCount(PlanPhase $phase, int $sessionsPerWeek, ?float $raceDistanceM, bool $selfScaled): int
     {
-        $isMarathonDistance = $raceDistanceM !== null && $raceDistanceM >= self::MARATHON_DISTANCE_THRESHOLD_M;
-
-        return count($this->qualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, 0));
+        return count($this->qualitySlots($phase, $sessionsPerWeek, self::isMarathonDistance($raceDistanceM), $selfScaled, 0));
     }
 
     /**
-     * @return list<array{session_type: SessionType, distance_band: DistanceBand, pace_band: PaceBand}>
+     * @return list<array{session_type: SessionType}>
      */
     private function qualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled, int $qualityDelta): array
     {
@@ -204,8 +196,8 @@ final class WeekPlanBuilder
      * the week having enough sessions to absorb it, so a 3-day week never
      * turns into two-thirds quality.
      *
-     * @param  list<array{session_type: SessionType, distance_band: DistanceBand, pace_band: PaceBand}>  $slots
-     * @return list<array{session_type: SessionType, distance_band: DistanceBand, pace_band: PaceBand}>
+     * @param  list<array{session_type: SessionType}>  $slots
+     * @return list<array{session_type: SessionType}>
      */
     private static function withQualityDelta(array $slots, PlanPhase $phase, int $sessionsPerWeek, int $qualityDelta): array
     {
@@ -222,16 +214,12 @@ final class WeekPlanBuilder
 
         return [
             ...$slots,
-            ...array_fill(0, $target - count($slots), [
-                'session_type' => SessionType::Tempo,
-                'distance_band' => DistanceBand::Medium,
-                'pace_band' => PaceBand::Threshold,
-            ]),
+            ...array_fill(0, $target - count($slots), ['session_type' => SessionType::Tempo]),
         ];
     }
 
     /**
-     * @return list<array{session_type: SessionType, distance_band: DistanceBand, pace_band: PaceBand}>
+     * @return list<array{session_type: SessionType}>
      */
     private function phaseQualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled): array
     {
@@ -243,24 +231,26 @@ final class WeekPlanBuilder
             // "Predominantly easy, at most one threshold session" — and only
             // once there's a session to spare beyond the long run + 2 easy days.
             return $sessionsPerWeek >= 4
-                ? [['session_type' => SessionType::Tempo, 'distance_band' => DistanceBand::Medium, 'pace_band' => PaceBand::Threshold]]
+                ? [['session_type' => SessionType::Tempo]]
                 : [];
         }
 
         // Peak/Taper for a marathon-distance race: one race-pace-specific
-        // session, not the threshold/interval mix below.
+        // session, not the threshold/interval mix below. Still a Tempo slot
+        // — {@see SegmentGenerator} is what recognises the marathon-pace
+        // case (phase + race distance) and swaps its main-set pace.
         if (in_array($phase, [PlanPhase::Peak, PlanPhase::Taper], true) && $isMarathonDistance) {
-            return [['session_type' => SessionType::Tempo, 'distance_band' => DistanceBand::Medium, 'pace_band' => PaceBand::Marathon]];
+            return [['session_type' => SessionType::Tempo]];
         }
 
         $count = $sessionsPerWeek <= 4 ? 1 : 2;
-        $slots = [['session_type' => SessionType::Tempo, 'distance_band' => DistanceBand::Medium, 'pace_band' => PaceBand::Threshold]];
+        $slots = [['session_type' => SessionType::Tempo]];
         if ($count === 2) {
             // Self-scaled Build stays threshold-only ("1-2 threshold sessions");
             // race-oriented Build/Peak/Taper mix in interval work.
             $slots[] = $selfScaled
-                ? ['session_type' => SessionType::Tempo, 'distance_band' => DistanceBand::Medium, 'pace_band' => PaceBand::Threshold]
-                : ['session_type' => SessionType::Interval, 'distance_band' => DistanceBand::Short, 'pace_band' => PaceBand::Interval];
+                ? ['session_type' => SessionType::Tempo]
+                : ['session_type' => SessionType::Interval];
         }
 
         return $slots;

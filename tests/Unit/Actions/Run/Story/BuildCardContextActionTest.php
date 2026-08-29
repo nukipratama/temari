@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Actions\Run\Story\BuildCardContextAction;
-use App\Enums\PaceBand;
 use App\Enums\PrCategory;
 use App\Enums\SessionType;
 use App\Models\Activity;
@@ -215,7 +214,6 @@ it('flags qualitySessionPaceMet when the run beats its planned tempo pace', func
     PlannedSession::factory()->for($user)->create([
         'date' => '2026-05-15',
         'session_type' => SessionType::Tempo,
-        'pace_band' => PaceBand::Threshold,
     ]);
     [$activity, $detail] = cardContextSubject($user, [
         'moving_time' => 1_000, // 5km in 1000s = 200 sec/km, fast enough to beat threshold pace
@@ -230,7 +228,6 @@ it('does not flag qualitySessionPaceMet when the run misses its planned tempo pa
     PlannedSession::factory()->for($user)->create([
         'date' => '2026-05-15',
         'session_type' => SessionType::Tempo,
-        'pace_band' => PaceBand::Threshold,
     ]);
     [$activity, $detail] = cardContextSubject($user, [
         'moving_time' => 3_000, // 5km in 3000s = 600 sec/km, far slower than threshold pace
@@ -253,7 +250,6 @@ it('does not flag qualitySessionPaceMet for a planned easy or rest session, only
     PlannedSession::factory()->for($user)->create([
         'date' => '2026-05-15',
         'session_type' => SessionType::Easy,
-        'pace_band' => PaceBand::Easy,
     ]);
     [$activity, $detail] = cardContextSubject($user, ['moving_time' => 1_000]);
 

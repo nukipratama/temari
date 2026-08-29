@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Actions\Gamification\GrantSeasonUnlocksAction;
-use App\Enums\DistanceBand;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Http\Requests\UpdatePlannedSessionRequest;
@@ -21,14 +20,16 @@ use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
-use App\Services\Run\Plan\DistanceBandKm;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\SeasonService;
+use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\SessionMatcher;
+use App\Services\Run\Plan\SessionSegment;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\VolumeRedistributor;
+use App\Services\Run\Plan\WeekPlanBuilder;
 use App\Services\Run\Story\BriefingContext;
 use App\Support\TrainingDisclaimer;
 use Illuminate\Http\RedirectResponse;
@@ -103,22 +104,23 @@ class PlanController extends Controller
         $ceiling = ReadinessCeiling::from(
             BriefingContext::forUser($user, $today, $trainingLoad->summary($user, $today))->readinessCeiling,
         );
+        $isMarathonDistance = WeekPlanBuilder::isMarathonDistance($race !== null ? (float) $race->distance_m : null);
 
         $sessionsByWeek = $sessions->groupBy(
             fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
         );
 
         [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek);
+        $primaryEasyDateByWeek = $sessionsByWeek->map(fn (Collection $weekSessions): ?string => self::primaryEasyDate($weekSessions));
 
         $currentWeekKey = $currentWeekStart->toDateString();
-        $currentWeekMultiplier = $multiplierByWeek[$currentWeekKey] ?? 1.0;
-        $bandKmThisWeek = $this->bandKmFor($baselineData['long_run_km'], $currentWeekMultiplier);
 
         $plannedKmByDate = [];
         foreach ($sessions as $s) {
             $weekKey = $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
-            $plannedKmByDate[$s->date->toDateString()] = DistanceBandKm::kmFor(
-                $s->distance_band,
+            $plannedKmByDate[$s->date->toDateString()] = SegmentGenerator::coreKmFor(
+                $s->session_type,
+                $s->date->toDateString() === $primaryEasyDateByWeek->get($weekKey),
                 $baselineData['long_run_km'],
                 $multiplierByWeek[$weekKey] ?? 1.0,
             );
@@ -129,15 +131,25 @@ class PlanController extends Controller
         // knowable today, so clamping never reaches past this one row.
         $todaySession = $sessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
         $clamp = ($todaySession !== null && ! $todaySession->pinned)
-            ? ReadinessClamp::apply($todaySession->session_type, $todaySession->distance_band, $ceiling)
+            ? ReadinessClamp::apply(
+                $todaySession->session_type,
+                $todaySession->phase,
+                $isMarathonDistance,
+                $baselineData['long_run_km'],
+                $multiplierByWeek[$currentWeekKey] ?? 1.0,
+                $paces,
+                $ceiling,
+            )
             : null;
 
-        $redistributed = $this->redistributeCurrentWeek(
+        $volumeScaleByDate = $this->redistributeCurrentWeek(
             $user,
             $sessionsByWeek->get($currentWeekKey, collect()),
             $today,
             $currentWeekStart,
-            $bandKmThisWeek,
+            $baselineData['long_run_km'],
+            $multiplierByWeek[$currentWeekKey] ?? 1.0,
+            $primaryEasyDateByWeek->get($currentWeekKey),
             $todaySession,
             $clamp,
         );
@@ -149,6 +161,7 @@ class PlanController extends Controller
                 // Built from the same grouping as $sessionsByWeek; this only guards the type.
                 throw new LogicException('A grouped week unexpectedly had no phase.');
             }
+            $primaryEasyDate = $primaryEasyDateByWeek->get($weekStartKey);
 
             $weeks[] = [
                 'week_start' => $weekStartKey,
@@ -158,7 +171,9 @@ class PlanController extends Controller
                     $s,
                     $today,
                     $clamp,
-                    $redistributed,
+                    $volumeScaleByDate,
+                    $isMarathonDistance,
+                    $s->date->toDateString() === $primaryEasyDate,
                     $baselineData['long_run_km'],
                     $multiplierByWeek[$weekStartKey] ?? 1.0,
                     $paces,
@@ -189,10 +204,10 @@ class PlanController extends Controller
     }
 
     /**
-     * Move (date), resize (distance_band), block (session_type = rest), or
-     * pin/unpin. Any explicit edit fixes the day (pins it) so the next
-     * regeneration doesn't silently overwrite it, unless the caller passes
-     * `pinned: false` to hand control back to the periodizer.
+     * Move (date), block (session_type = rest), or pin/unpin. Any explicit
+     * edit fixes the day (pins it) so the next regeneration doesn't silently
+     * overwrite it, unless the caller passes `pinned: false` to hand control
+     * back to the periodizer.
      */
     public function update(UpdatePlannedSessionRequest $request, PlannedSession $plannedSession): RedirectResponse
     {
@@ -201,13 +216,6 @@ class PlanController extends Controller
         $attributes = $request->validated();
         if (! array_key_exists('pinned', $attributes)) {
             $attributes['pinned'] = true;
-        }
-        // Blocking a day (session_type = rest) always clears its distance/pace,
-        // keeping the invariant "pace_band is null exactly when session_type is
-        // rest" regardless of what else the request sent.
-        if (($attributes['session_type'] ?? null) === SessionType::Rest->value) {
-            $attributes['distance_band'] = DistanceBand::Rest->value;
-            $attributes['pace_band'] = null;
         }
 
         $plannedSession->update($attributes);
@@ -241,29 +249,34 @@ class PlanController extends Controller
     }
 
     /**
-     * @return array<string, float>
+     * The week's first Easy day gets the bigger (Medium) core-km fraction —
+     * the sibling-context rule {@see SegmentGenerator::coreKmFor()}'s
+     * `$isPrimaryEasy` needs, recomputed here since it's no longer stored
+     * (see `WeekPlanBuilder`'s own docblock).
+     *
+     * @param  Collection<int, PlannedSession>  $weekSessions
      */
-    private function bandKmFor(float $longRunKm, float $multiplier): array
+    private static function primaryEasyDate(Collection $weekSessions): ?string
     {
-        return [
-            DistanceBand::Short->value => DistanceBandKm::kmFor(DistanceBand::Short, $longRunKm, $multiplier),
-            DistanceBand::Medium->value => DistanceBandKm::kmFor(DistanceBand::Medium, $longRunKm, $multiplier),
-            DistanceBand::Long->value => DistanceBandKm::kmFor(DistanceBand::Long, $longRunKm, $multiplier),
-        ];
+        return $weekSessions
+            ->sortBy(fn (PlannedSession $s): string => $s->date->toDateString())
+            ->first(fn (PlannedSession $s): bool => $s->session_type === SessionType::Easy)
+            ?->date?->toDateString();
     }
 
     /**
      * @param  Collection<int, PlannedSession>  $currentWeekSessions
-     * @param  array<string, float>  $bandKmThisWeek
-     * @param  array{session_type: SessionType, distance_band: DistanceBand, pace_band: mixed, note: string}|null  $clamp
-     * @return array<string, DistanceBand>
+     * @param array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string}|null $clamp
+     * @return array<string, float>  date => volume scale, from {@see VolumeRedistributor::redistribute()}
      */
     private function redistributeCurrentWeek(
         User $user,
         Collection $currentWeekSessions,
         Carbon $today,
         Carbon $currentWeekStart,
-        array $bandKmThisWeek,
+        float $longRunKm,
+        float $multiplier,
+        ?string $primaryEasyDate,
         ?PlannedSession $todaySession,
         ?array $clamp,
     ): array {
@@ -271,29 +284,33 @@ class PlanController extends Controller
             return [];
         }
 
-        $weekTargetKm = $currentWeekSessions->sum(fn (PlannedSession $s) => $bandKmThisWeek[$s->distance_band->value] ?? 0.0);
+        $kmFor = fn (PlannedSession $s): float => SegmentGenerator::coreKmFor(
+            $s->session_type,
+            $s->date->toDateString() === $primaryEasyDate,
+            $longRunKm,
+            $multiplier,
+        );
+
+        $weekTargetKm = $currentWeekSessions->sum($kmFor);
         $completedKm = $this->completedKmInRange($user, $currentWeekStart, $today->copy()->subDay());
-        $pinnedKm = $currentWeekSessions
-            ->filter(fn (PlannedSession $s): bool => $s->pinned)
-            ->sum(fn (PlannedSession $s) => $bandKmThisWeek[$s->distance_band->value] ?? 0.0);
+        $pinnedKm = $currentWeekSessions->filter(fn (PlannedSession $s): bool => $s->pinned)->sum($kmFor);
 
         $todayFixedKm = 0.0;
         if ($todaySession !== null && ! $todaySession->pinned) {
-            $todayBand = $clamp['distance_band'] ?? $todaySession->distance_band;
-            $todayFixedKm = $bandKmThisWeek[$todayBand->value] ?? 0.0;
+            $todayFixedKm = $clamp !== null ? $clamp['core_km'] : $kmFor($todaySession);
         }
 
-        $eligibleDays = [];
+        $eligibleDaysKm = [];
         foreach ($currentWeekSessions as $s) {
             if ($s->pinned || ! $s->date->isAfter($today)) {
                 continue;
             }
-            $eligibleDays[$s->date->toDateString()] = $s->distance_band;
+            $eligibleDaysKm[$s->date->toDateString()] = $kmFor($s);
         }
 
         $remainingTargetKm = max(0.0, $weekTargetKm - $completedKm - $pinnedKm - $todayFixedKm);
 
-        return VolumeRedistributor::redistribute($eligibleDays, $remainingTargetKm, $bandKmThisWeek);
+        return VolumeRedistributor::redistribute($eligibleDaysKm, $remainingTargetKm);
     }
 
 

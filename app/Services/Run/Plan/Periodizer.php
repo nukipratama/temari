@@ -119,8 +119,6 @@ final readonly class Periodizer
                     [
                         'phase' => $row['phase'],
                         'session_type' => $row['session_type'],
-                        'distance_band' => $row['distance_band'],
-                        'pace_band' => $row['pace_band'],
                         'pinned' => false,
                         'status' => PlannedSessionStatus::Planned,
                     ],

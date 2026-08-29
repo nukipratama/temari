@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\PlannedSessionStatus;
+use App\Enums\SessionType;
 use App\Models\PlannedSession;
+use App\Models\RaceGoal;
 use App\Models\User;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -13,6 +15,7 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Story\BriefingContext;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use LogicException;
 
 /**
@@ -77,11 +80,15 @@ final readonly class CurrentWeekPlanBuilder
         $ceiling = ReadinessCeiling::from(
             BriefingContext::forUser($user, $today, $this->trainingLoad->summary($user, $today))->readinessCeiling,
         );
+        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
+        $isMarathonDistance = WeekPlanBuilder::isMarathonDistance($race !== null ? (float) $race->distance_m : null);
+        $primaryEasyDate = self::primaryEasyDate($currentWeekSessions);
 
         $plannedKmByDate = [];
         foreach ($currentWeekSessions as $s) {
-            $plannedKmByDate[$s->date->toDateString()] = DistanceBandKm::kmFor(
-                $s->distance_band,
+            $plannedKmByDate[$s->date->toDateString()] = SegmentGenerator::coreKmFor(
+                $s->session_type,
+                $s->date->toDateString() === $primaryEasyDate,
                 $baselineData['long_run_km'],
                 $currentWeekMultiplier,
             );
@@ -90,7 +97,15 @@ final readonly class CurrentWeekPlanBuilder
 
         $todaySession = $currentWeekSessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
         $clamp = ($todaySession !== null && ! $todaySession->pinned)
-            ? ReadinessClamp::apply($todaySession->session_type, $todaySession->distance_band, $ceiling)
+            ? ReadinessClamp::apply(
+                $todaySession->session_type,
+                $todaySession->phase,
+                $isMarathonDistance,
+                $baselineData['long_run_km'],
+                $currentWeekMultiplier,
+                $paces,
+                $ceiling,
+            )
             : null;
 
         // ->values() reindexes to 0-based sequential keys — streakDays() walks
@@ -101,6 +116,8 @@ final readonly class CurrentWeekPlanBuilder
             $today,
             $clamp,
             [],
+            $isMarathonDistance,
+            $s->date->toDateString() === $primaryEasyDate,
             $baselineData['long_run_km'],
             $currentWeekMultiplier,
             $paces,
@@ -118,6 +135,20 @@ final readonly class CurrentWeekPlanBuilder
             'streak_days' => $this->streakDays($days, $today),
             'days' => $days,
         ];
+    }
+
+    /**
+     * The week's first Easy day gets the bigger (Medium) core-km fraction —
+     * see {@see SegmentGenerator::coreKmFor()}'s `$isPrimaryEasy`.
+     *
+     * @param  Collection<int, PlannedSession>  $weekSessions
+     */
+    private static function primaryEasyDate(Collection $weekSessions): ?string
+    {
+        return $weekSessions
+            ->sortBy(fn (PlannedSession $s): string => $s->date->toDateString())
+            ->first(fn (PlannedSession $s): bool => $s->session_type === SessionType::Easy)
+            ?->date?->toDateString();
     }
 
     /**

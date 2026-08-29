@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
-use App\Enums\DistanceBand;
 use App\Enums\PlanPhase;
+use App\Enums\SessionType;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\SeasonGoal;
@@ -142,7 +142,7 @@ final readonly class SeasonService
         $longestLongRunKm = 0.0;
         foreach ($phases as $index => $phase) {
             $qualityTotal += $this->weekPlanBuilder->qualitySlotCount($phase, $sessionsPerWeek, $raceDistanceM, $race === null);
-            $longRunKm = DistanceBandKm::kmFor(DistanceBand::Long, $baselineData['long_run_km'], $multipliers[$index]);
+            $longRunKm = SegmentGenerator::coreKmFor(SessionType::Long, isPrimaryEasy: false, longRunBaselineKm: $baselineData['long_run_km'], volumeMultiplier: $multipliers[$index]);
             $longestLongRunKm = max($longestLongRunKm, $longRunKm);
         }
 

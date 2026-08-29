@@ -153,6 +153,9 @@ export default function WeekPlanWidget({
 }: Readonly<{ weekPlan: WeekPlan }>) {
     const todayIso = todayLocalIso();
     const today = weekPlan.days.find((d) => d.date === todayIso) ?? null;
+    const todayCorePaceSecPerKm =
+        today?.segments.find((s) => s.key === 'main' || s.key === 'interval')
+            ?.pace_sec_per_km ?? null;
     const streak = streakDates(weekPlan.days, weekPlan.streak_days);
 
     const creditedTweened = useCountUp(weekPlan.credited_this_week);
@@ -250,8 +253,8 @@ export default function WeekPlanWidget({
                             today.session_type}
                         {today.session_type !== 'rest' &&
                             ` · ${today.distance_km} km`}
-                        {today.pace_sec_per_km !== null &&
-                            ` · ${formatPace(today.pace_sec_per_km)}/km`}
+                        {todayCorePaceSecPerKm !== null &&
+                            ` · ${formatPace(todayCorePaceSecPerKm)}/km`}
                     </span>
                     {today.clamp_note !== null && (
                         <p className="mt-1 text-xs italic text-text-3">

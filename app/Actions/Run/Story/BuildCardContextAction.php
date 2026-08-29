@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace App\Actions\Run\Story;
 
+use App\Enums\SegmentKey;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
+use App\Models\RaceGoal;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\SegmentGenerator;
+use App\Services\Run\Plan\SessionSegment;
+use App\Services\Run\Plan\WeekPlanBuilder;
 use App\Services\Run\Story\CardContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -86,7 +91,7 @@ final readonly class BuildCardContextAction
             ->whereIn('session_type', [SessionType::Tempo, SessionType::Interval])
             ->first();
 
-        if ($session === null || $session->pace_band === null) {
+        if ($session === null) {
             return false;
         }
 
@@ -96,7 +101,24 @@ final readonly class BuildCardContextAction
         }
 
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($activity->user));
-        $prescribedPace = $paces[$session->pace_band->value] ?? null;
+        $race = RaceGoal::query()->where('user_id', $activity->user_id)->active()->first();
+        // Segment structure only — $paces:null skips the minutes computation
+        // this call doesn't need, it only wants the main/interval segment's
+        // pace_label (Tempo: Threshold, or Marathon in a race-pace phase;
+        // Interval: always Interval).
+        $segments = SegmentGenerator::generate(
+            $session->session_type,
+            $session->phase,
+            WeekPlanBuilder::isMarathonDistance($race !== null ? (float) $race->distance_m : null),
+            isPrimaryEasy: false,
+            longRunBaselineKm: 0.0,
+            volumeMultiplier: 1.0,
+            paces: null,
+        );
+        $mainSegment = collect($segments)->first(
+            fn (SessionSegment $s): bool => in_array($s->key, [SegmentKey::Main, SegmentKey::Interval], true),
+        );
+        $prescribedPace = $mainSegment !== null ? ($paces[$mainSegment->paceLabel->value] ?? null) : null;
 
         return $prescribedPace !== null && $actualPace <= $prescribedPace;
     }

@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
-use App\Enums\DistanceBand;
-use App\Enums\PaceBand;
+use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Services\Run\Metrics\ReadinessCeiling;
 
@@ -15,7 +14,7 @@ use App\Services\Run\Metrics\ReadinessCeiling;
  * (see the "Readiness clamp" section of `docs/features/plan-periodizer.md`).
  * Compares what the stored session implies against what the ceiling allows
  * today; when the stored session asks for more than the ceiling permits,
- * returns a downgraded view plus a short templated explanation.
+ * returns a downgraded segment list plus a short templated explanation.
  *
  * Scope: only ever called against TODAY's row. A future day's readiness is
  * unknowable today, and clamping a whole training block by this moment's
@@ -25,11 +24,19 @@ use App\Services\Run\Metrics\ReadinessCeiling;
 final class ReadinessClamp
 {
     /**
-     * @return array{session_type: SessionType, distance_band: DistanceBand, pace_band: ?PaceBand, note: string}|null
-     *                                                                                                                null when the stored session already fits under the ceiling
+     * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
+     * @return array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string}|null
+     *                                                                                                            null when the stored session already fits under the ceiling
      */
-    public static function apply(SessionType $sessionType, DistanceBand $distanceBand, ReadinessCeiling $ceiling): ?array
-    {
+    public static function apply(
+        SessionType $sessionType,
+        PlanPhase $phase,
+        bool $isMarathonDistance,
+        float $longRunBaselineKm,
+        float $volumeMultiplier,
+        ?array $paces,
+        ReadinessCeiling $ceiling,
+    ): ?array {
         $requiredRank = self::requiredRank($sessionType);
         if ($requiredRank <= $ceiling->rank()) {
             return null;
@@ -38,20 +45,34 @@ final class ReadinessClamp
         return match ($ceiling) {
             ReadinessCeiling::Rest => [
                 'session_type' => SessionType::Rest,
-                'distance_band' => DistanceBand::Rest,
-                'pace_band' => null,
+                'segments' => [],
+                'core_km' => 0.0,
                 'note' => self::restNote($sessionType),
             ],
+            // Long is the one session type ModerateOk already clears (its own
+            // requiredRank), so this arm only ever downgrades Tempo/Interval —
+            // Long never reaches here.
             ReadinessCeiling::EasyOnly => [
                 'session_type' => SessionType::Easy,
-                'distance_band' => $sessionType === SessionType::Long ? DistanceBand::Medium : DistanceBand::Short,
-                'pace_band' => PaceBand::Easy,
+                'segments' => SegmentGenerator::generate(
+                    SessionType::Easy,
+                    $phase,
+                    $isMarathonDistance,
+                    $sessionType === SessionType::Long,
+                    $longRunBaselineKm,
+                    $volumeMultiplier,
+                    $paces,
+                ),
+                'core_km' => SegmentGenerator::coreKmFor(SessionType::Easy, $sessionType === SessionType::Long, $longRunBaselineKm, $volumeMultiplier),
                 'note' => self::easyOnlyNote($sessionType),
             ],
+            // Only reachable for Tempo/Interval (their requiredRank alone
+            // exceeds ModerateOk) — keeps the day's own size, just re-paced
+            // to Easy, since a Long day never needs more than ModerateOk.
             ReadinessCeiling::ModerateOk => [
                 'session_type' => SessionType::Easy,
-                'distance_band' => $distanceBand,
-                'pace_band' => PaceBand::Easy,
+                'segments' => SegmentGenerator::easyEquivalentOf($sessionType, $longRunBaselineKm, $volumeMultiplier, $paces),
+                'core_km' => SegmentGenerator::coreKmFor($sessionType, false, $longRunBaselineKm, $volumeMultiplier),
                 'note' => "Your form dipped, so today's the easy version instead.",
             ],
             ReadinessCeiling::QualityOk => null, // unreachable: nothing requires more than QualityOk

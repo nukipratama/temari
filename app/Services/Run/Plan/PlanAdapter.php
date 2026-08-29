@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\AdaptationReason;
+use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
@@ -146,12 +147,19 @@ final readonly class PlanAdapter
         $rows = PlannedSession::query()
             ->where('user_id', $user->id)
             ->whereBetween('date', [$previousStart->toDateString(), $previousStart->copy()->addDays(6)->toDateString()])
+            ->orderBy('date')
             ->get();
+
+        // The week's first Easy day gets the bigger (Medium) fraction, same
+        // sibling-context rule PlanController/CurrentWeekPlanBuilder apply at
+        // render time — see SegmentGenerator::coreKmFor()'s $isPrimaryEasy.
+        $primaryEasyDate = $rows->first(fn (PlannedSession $row): bool => $row->session_type === SessionType::Easy)?->date?->toDateString();
 
         $planned = [];
         foreach ($rows as $row) {
             $multiplier = PhaseSchedule::volumeMultipliers([$row->phase])[0];
-            $planned[$row->date->toDateString()] = DistanceBandKm::kmFor($row->distance_band, $longRunKm, $multiplier);
+            $isPrimaryEasy = $row->date->toDateString() === $primaryEasyDate;
+            $planned[$row->date->toDateString()] = SegmentGenerator::coreKmFor($row->session_type, $isPrimaryEasy, $longRunKm, $multiplier);
         }
 
         return $planned;

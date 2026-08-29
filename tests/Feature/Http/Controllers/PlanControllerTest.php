@@ -132,7 +132,7 @@ it('rejects updating another user\'s planned session', function (): void {
     $intruder = User::factory()->create();
 
     $this->actingAs($intruder)
-        ->patch("/plan/sessions/{$session->id}", ['distance_band' => 'short'])
+        ->patch("/plan/sessions/{$session->id}", ['pinned' => true])
         ->assertForbidden();
 });
 
@@ -154,11 +154,11 @@ it('updating a session automatically pins it, so the next regeneration leaves it
     ]);
 
     $this->actingAs($user)
-        ->patch("/plan/sessions/{$session->id}", ['distance_band' => 'short'])
+        ->patch("/plan/sessions/{$session->id}", ['session_type' => 'rest'])
         ->assertRedirect();
 
     $fresh = $session->fresh();
-    expect($fresh->distance_band->value)->toBe('short')
+    expect($fresh->session_type->value)->toBe('rest')
         ->and($fresh->pinned)->toBeTrue();
 });
 
@@ -174,25 +174,16 @@ it('allows an explicit unpin alongside an edit', function (): void {
     expect($session->fresh()->pinned)->toBeFalse();
 });
 
-it('blocking a day (session_type = rest) always clears distance_band and pace_band', function (): void {
+it('blocks a day via session_type = rest', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->addDay()->toDateString(),
         'session_type' => 'tempo',
-        'distance_band' => 'medium',
-        'pace_band' => 'threshold',
     ]);
 
-    $this->actingAs($user)->patch("/plan/sessions/{$session->id}", [
-        'session_type' => 'rest',
-        'distance_band' => 'medium',
-        'pace_band' => 'threshold',
-    ]);
+    $this->actingAs($user)->patch("/plan/sessions/{$session->id}", ['session_type' => 'rest']);
 
-    $fresh = $session->fresh();
-    expect($fresh->session_type->value)->toBe('rest')
-        ->and($fresh->distance_band->value)->toBe('rest')
-        ->and($fresh->pace_band)->toBeNull();
+    expect($session->fresh()->session_type->value)->toBe('rest');
 });
 
 it('deletes a planned session', function (): void {
@@ -214,8 +205,6 @@ it('clamps today\'s session against the readiness ceiling without mutating the s
     $today = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->toDateString(),
         'session_type' => 'interval',
-        'distance_band' => 'short',
-        'pace_band' => 'interval',
         'pinned' => false,
     ]);
 
@@ -246,8 +235,6 @@ it('never clamps a future day, only today, even at the worst readiness ceiling',
     PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->addDays(2)->toDateString(),
         'session_type' => 'interval',
-        'distance_band' => 'short',
-        'pace_band' => 'interval',
     ]);
 
     $response = $this->actingAs($user)->get('/plan')->assertSuccessful();

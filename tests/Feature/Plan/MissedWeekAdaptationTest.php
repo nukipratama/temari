@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
-use App\Enums\DistanceBand;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\PlanAdaptation;
@@ -11,6 +10,9 @@ use App\Models\PlannedSession;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\Periodizer;
+use App\Services\Run\Plan\SegmentGenerator;
+use App\Services\Run\Plan\TrainingBaseline;
+use App\Services\Run\Plan\VolumeRedistributor;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -148,15 +150,35 @@ it('redistributes a half-missed week into the days that remain, up to the cap', 
     $sunday = Carbon::parse(THIS_MONDAY)->addDays(6)->toDateString();
     $generated = weekOf($user, THIS_MONDAY)->keyBy(fn (PlannedSession $s): string => $s->date->toDateString());
 
-    expect($generated[$saturday]->distance_band)->toBe(DistanceBand::Short)
-        ->and($generated[$sunday]->distance_band)->toBe(DistanceBand::Long);
+    // 4-session template [Tue,Thu,Sat,Sun]: Tue takes the week's one quality
+    // slot, Thu is the week's earliest (isPrimaryEasy) Easy day, Sat the
+    // second, Sun the Long day — see WeekPlanBuilder's own day-template logic.
+    expect($generated[$saturday]->session_type)->toBe(SessionType::Easy)
+        ->and($generated[$sunday]->session_type)->toBe(SessionType::Long);
 
-    // Thursday, with Tuesday's and Thursday's sessions un-run.
+    // Thursday, with Tuesday's and Thursday's sessions un-run (nothing logged).
     Carbon::setTestNow(Carbon::parse(THIS_MONDAY)->addDays(3)->setTime(18, 0));
 
     $weeks = $this->actingAs($user)->get('/plan')->viewData('page')['props']['weeks'];
     $days = collect(collect($weeks)->firstWhere('week_start', THIS_MONDAY)['days'])->keyBy('date');
 
-    expect($days[$saturday]['distance_band'])->toBe(DistanceBand::Medium->value)
-        ->and($days[$sunday]['distance_band'])->toBe(DistanceBand::Long->value);
+    // Reproduce the app's own week-target math (no completed/pinned km, one
+    // freshly-generated Build week so the volume multiplier is 1.0) to prove
+    // the redistribution scale is exactly what VolumeRedistributor should
+    // produce — not just "bigger than before".
+    $longRunKm = app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_km'];
+    $kmFor = fn (SessionType $type, bool $isPrimaryEasy) => SegmentGenerator::coreKmFor($type, $isPrimaryEasy, $longRunKm, 1.0);
+
+    $weekTargetKm = $kmFor(SessionType::Tempo, false) + $kmFor(SessionType::Easy, true)
+        + $kmFor(SessionType::Easy, false) + $kmFor(SessionType::Long, false);
+    $todayFixedKm = $kmFor(SessionType::Easy, true); // Thursday, unclamped (no adverse readiness signals seeded)
+    $remainingTargetKm = max(0.0, $weekTargetKm - $todayFixedKm);
+
+    $satOriginalKm = $kmFor(SessionType::Easy, false);
+    $sunOriginalKm = $kmFor(SessionType::Long, false);
+    $scale = min(VolumeRedistributor::MAX_SCALE, $remainingTargetKm / ($satOriginalKm + $sunOriginalKm));
+
+    expect($days[$saturday]['distance_km'])->toBe(round($satOriginalKm * $scale, 1))
+        ->and($days[$sunday]['distance_km'])->toBe(round($sunOriginalKm * $scale, 1))
+        ->and($scale)->toBeGreaterThan(1.0); // real missed volume, genuinely redistributed
 });

@@ -2,9 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Services\Run\Plan\TrainingBaseline;
-use App\Services\Run\Plan\DistanceBandKm;
-use App\Enums\DistanceBand;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\Activity;
@@ -12,11 +9,16 @@ use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
+use App\Services\Run\Plan\SegmentGenerator;
+use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
+// Every day Easy — the earliest date each week resolves as the week's
+// $isPrimaryEasy day (see SegmentGenerator::coreKmFor()), matching what
+// WeekPlanBuilder itself would produce for a Deload/short week.
 function seedWeekOfSessions(User $user, Carbon $weekStart, PlanPhase $phase = PlanPhase::Base): void
 {
     for ($i = 0; $i < 7; $i++) {
@@ -24,7 +26,6 @@ function seedWeekOfSessions(User $user, Carbon $weekStart, PlanPhase $phase = Pl
             'date' => $weekStart->copy()->addDays($i),
             'phase' => $phase,
             'session_type' => SessionType::Easy,
-            'distance_band' => DistanceBand::Medium,
         ]);
     }
 }
@@ -73,8 +74,9 @@ it('credits a past day whose completed distance met the prescribed km', function
     $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
     seedWeekOfSessions($user, $weekStart);
 
-    // Monday's session is Medium distance; DistanceBandKm::kmFor(Medium, longRunKm≈15*0.35=5.25, 1.0)
-    // ≈ 3.4km at the default baseline. Log a run comfortably past the 85% done threshold.
+    // Monday is the week's earliest Easy day, so it's $isPrimaryEasy (the
+    // bigger, Medium-fraction target) — see SegmentGenerator::coreKmFor().
+    // Log a run comfortably past the 85% done threshold either way.
     $monday = $weekStart->copy();
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create([
@@ -139,14 +141,23 @@ it('applies the multi-week Build ramp, not an isolated week-1 multiplier', funct
     // A week computed in isolation (no trailing history) would wrongly see
     // k=0 and apply no ramp at all — this is exactly the drift the shared
     // PlanRenderer::weekPhasesAndMultipliers() computation exists to prevent.
+    // Only Monday (the week's earliest Easy day) gets the Medium fraction;
+    // the other 6 get Short — see SegmentGenerator::coreKmFor().
     $longRunKm = app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_km'];
     $rampedMultiplier = 1.075 ** 3;
-    $expectedPerDayKm = DistanceBandKm::kmFor(DistanceBand::Medium, $longRunKm, $rampedMultiplier);
-    $expectedTotalKm = round($expectedPerDayKm * 7, 1);
-    $unrampedPerDayKm = DistanceBandKm::kmFor(DistanceBand::Medium, $longRunKm, 1.0);
+    $rampedTotalKm = round(
+        SegmentGenerator::coreKmFor(SessionType::Easy, true, $longRunKm, $rampedMultiplier)
+        + SegmentGenerator::coreKmFor(SessionType::Easy, false, $longRunKm, $rampedMultiplier) * 6,
+        1,
+    );
+    $unrampedTotalKm = round(
+        SegmentGenerator::coreKmFor(SessionType::Easy, true, $longRunKm, 1.0)
+        + SegmentGenerator::coreKmFor(SessionType::Easy, false, $longRunKm, 1.0) * 6,
+        1,
+    );
 
-    expect($result['planned_km_this_week'])->toBe($expectedTotalKm)
-        ->and($expectedTotalKm)->toBeGreaterThan(round($unrampedPerDayKm * 7, 1)); // strictly more than the un-ramped (k=0) total
+    expect($result['planned_km_this_week'])->toBe($rampedTotalKm)
+        ->and($rampedTotalKm)->toBeGreaterThan($unrampedTotalKm); // strictly more than the un-ramped (k=0) total
 
     Carbon::setTestNow();
 });
