@@ -181,6 +181,29 @@ rendered unreadable text. And the icon audit (grepping `config/temari_unlocks.ph
 `resources/js`) surfaced 8 accessory icon keys that were never in the old bundle at all — a
 pre-existing bug this slice fixed as a side effect of building `Icon.tsx`'s lookup table correctly.
 
+**Browser-review sweep (R2), post-PR.** `npm run build && check:chunks` clean (Login 134.8 kB gz,
+still under its 160 kB budget). Full-route screenshot sweep (default viewport matrix, all 13
+list-page routes) came back with zero horizontal-overflow findings; a Sonnet inspection pass over
+every shot found no broken/missing icons and no Card/Badge/Button contrast or padding regressions.
+A one-off pass covered `/activities/{id}` (Runs/Show — missed by the route-sampler because the
+`/activities` list route was absorbed into `/history` in an earlier slice, unrelated to `F3`) plus an
+explicit light-vs-dark comparison (verified server-side via `document.documentElement.dataset.theme`
+before each shot) on the app's most icon/card-dense pages. One apparent finding — a blank chart on
+`CtlTrendChart` at desktop width — was chased down and confirmed a **false positive**: the canvas
+renders correctly (verified via `getComputedStyle`/cropped screenshot), the full-page capture was
+just landing mid-`Chart.js` draw animation (900ms). A second apparent finding — dark ground looking
+almost entirely unchanged on Today/Home and page chrome (nav bar, `AppShell`'s root background) —
+was chased down to `getComputedStyle` on `<html>`: the semantic layer's CSS variables (`--color-background`,
+`--color-card`, `--color-foreground`) **do** correctly flip under `[data-theme="dark"]` (`base` layer
+outranks `theme` layer in the cascade, confirmed against the compiled stylesheet). What doesn't flip
+is `AppShell.tsx`'s root wrapper (`bg-cream-deep`, a fixed raw-palette literal) and most of
+`Home.tsx`'s dashboard markup, both of which predate `F2` and were never in `F3`'s scope — `AppShell`
+is explicitly `F4`'s rebuild target ("wire the appearance toggle") and the dashboard is `S3` (wave
+2b), blocked on `F4`/`F5`/`B2`-`B4`, not started. Confirmed this is expected pre-`F4` state, not an
+`F3` regression, and left untouched rather than scope-creeping into `F4`'s job. **Takeaway for later
+waves:** a full "both grounds" visual sweep only makes sense once `F4` lands (the shell + toggle);
+doing it any earlier will always show most of the app looking unthemed, correctly.
+
 ## Open questions
 
 - **`Toggle`/`SectionTabs` vs `toggle`/`toggle-group`** (see Deviations). Both new primitives stay
