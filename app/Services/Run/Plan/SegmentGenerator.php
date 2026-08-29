@@ -14,9 +14,9 @@ use App\Services\Run\Metrics\HeartRateZones;
  * Turns a day's `(session_type, phase)` into its full ordered list of
  * {@see SessionSegment}s — warmup, main effort, interval reps, cooldown —
  * combining the athlete's CURRENT long-run baseline, phase-derived volume
- * multiplier and VDOT-derived paces. Render-time only, same as
- * {@see DistanceBandKm} before it: nothing here is stored on a row, so a
- * week rendered weeks after it was generated still reflects fitness gained
+ * multiplier and VDOT-derived paces. Render-time only, same as the
+ * retired distance-band lookup before it: nothing here is stored on a row,
+ * so a week rendered weeks after it was generated still reflects fitness gained
  * since (see `docs/features/plan-periodizer.md`). `WeekPlanBuilder` only
  * ever decides `session_type`/`phase`; every number below is computed here,
  * fresh, every render.
@@ -28,7 +28,7 @@ use App\Services\Run\Metrics\HeartRateZones;
  */
 final class SegmentGenerator
 {
-    /** Medium/Short scale proportionally under the week's Long run — the same fractions {@see DistanceBandKm} used. */
+    /** Medium/Short scale proportionally under the week's Long run — the same fractions the retired distance-band lookup used. */
     private const float MEDIUM_FRACTION_OF_LONG = 0.65;
 
     private const float SHORT_FRACTION_OF_LONG = 0.40;
@@ -58,7 +58,7 @@ final class SegmentGenerator
     /**
      * The core (pre-warmup/cooldown) distance this session's main work
      * targets, before any redistribution scale — the direct replacement for
-     * {@see DistanceBandKm::kmFor()}'s band lookup. Exposed separately so
+     * the retired distance-band lookup. Exposed separately so
      * {@see VolumeRedistributor} can sum a week's original km without
      * needing paces (it only ever compares distances, never converts to
      * minutes).
