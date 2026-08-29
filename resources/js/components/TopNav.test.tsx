@@ -19,20 +19,22 @@ beforeEach(() => {
 });
 
 describe('TopNav', () => {
-    it('renders the 3 primary tabs', () => {
+    it('renders the 4 primary tabs', () => {
         render(<TopNav />);
         expect(screen.getByText('Today')).toBeInTheDocument();
+        expect(screen.getByText('Plan')).toBeInTheDocument();
         expect(screen.getByText('Trends')).toBeInTheDocument();
         expect(screen.getByText('History')).toBeInTheDocument();
     });
 
-    it('highlights Today for the /plan page, a drill-in', () => {
+    it('highlights Plan for the /plan page, its own tab now', () => {
         setMockPage(user(), '/plan');
         render(<TopNav />);
-        expect(screen.getByText('Today')).toHaveAttribute(
+        expect(screen.getByText('Plan')).toHaveAttribute(
             'aria-current',
             'page',
         );
+        expect(screen.getByText('Today')).not.toHaveAttribute('aria-current');
     });
 
     it('highlights History for the /history page', () => {
@@ -44,13 +46,14 @@ describe('TopNav', () => {
         );
     });
 
-    it('highlights Today for the /race page, a drill-in', () => {
+    it('highlights Plan for the /race page, grouped with Plan per the IA ruling', () => {
         setMockPage(user(), '/race');
         render(<TopNav />);
-        expect(screen.getByText('Today')).toHaveAttribute(
+        expect(screen.getByText('Plan')).toHaveAttribute(
             'aria-current',
             'page',
         );
+        expect(screen.getByText('Today')).not.toHaveAttribute('aria-current');
         expect(screen.getByText('History')).not.toHaveAttribute('aria-current');
     });
 
@@ -111,7 +114,7 @@ describe('TopNav', () => {
     it('highlights no bottom-nav tab for the /accessories page', () => {
         setMockPage(user(), '/accessories');
         render(<TopNav />);
-        for (const label of ['Today', 'Trends', 'History']) {
+        for (const label of ['Today', 'Plan', 'Trends', 'History']) {
             expect(screen.getByText(label)).not.toHaveAttribute('aria-current');
         }
     });
@@ -119,7 +122,7 @@ describe('TopNav', () => {
     it('highlights no bottom-nav tab for the nested /settings settings pages', () => {
         setMockPage(user(), '/settings/zones');
         render(<TopNav />);
-        for (const label of ['Today', 'Trends', 'History']) {
+        for (const label of ['Today', 'Plan', 'Trends', 'History']) {
             expect(screen.getByText(label)).not.toHaveAttribute('aria-current');
         }
     });

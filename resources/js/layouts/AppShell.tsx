@@ -18,6 +18,7 @@ import UnlockToast from '@/components/temari/UnlockToast';
 import TopNav from '@/components/TopNav';
 import { useDawnShift } from '@/hooks/useDawnShift';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
+import { useSystemTheme } from '@/hooks/useSystemTheme';
 
 // The pack reveal drags the whole share-card canvas engine in behind it, and
 // this layout wraps every page — so it stays off the first-paint path and is
@@ -31,6 +32,7 @@ interface AppShellProps {
 export default function AppShell({ children }: Readonly<AppShellProps>) {
     useDawnShift();
     useSwipeBack();
+    useSystemTheme();
     const { pendingReveal, flash } = usePage<SharedProps>().props;
     const pending = pendingReveal ?? null;
     const unlock = flash?.unlock ?? null;
@@ -50,9 +52,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
 
     return (
         <MotionConfig reducedMotion="user">
-            {/* MobileTopBar carries the safe-area padding for this branch, so
-            nothing is needed here — see its pt-[max(...)]. */}
-            <div className="min-h-screen bg-cream-deep text-foreground">
+            <div className="min-h-screen bg-background text-foreground">
                 <RouteProgressBar />
                 <a
                     href="#main-content"
@@ -64,27 +64,32 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                 <TopNav />
                 <MobileTopBar />
 
-                <ErrorBanner />
-                <FlashNotice />
-                <StravaZoneReconnectBanner />
-                <AiOutageBanner />
-                <AiCatchingUpBanner />
-                <StravaPausedBanner />
+                {/* MobileTopBar floats over content (absolute, no background — see its
+                own comment), so this padding is what actually clears it on mobile;
+                TopNav is desktop-only and already in normal flow, hence lg:pt-0. */}
+                <div className="pt-20 lg:pt-0">
+                    <ErrorBanner />
+                    <FlashNotice />
+                    <StravaZoneReconnectBanner />
+                    <AiOutageBanner />
+                    <AiCatchingUpBanner />
+                    <StravaPausedBanner />
 
-                {/* Deliberately unkeyed and unanimated. A `key` here forced React to
-                tear down and rebuild the whole content subtree on every visit
-                (25 card mounts on Collection), and the enter animation it existed
-                to replay started at opacity 0 — so a navigation read as
-                "old page → blank → fade in". Inertia already swaps a different
-                component type on a real navigation, so React remounts what it
-                needs to without help. */}
-                <main
-                    id="main-content"
-                    tabIndex={-1}
-                    className="pb-28 outline-none lg:pb-0"
-                >
-                    {children}
-                </main>
+                    {/* Deliberately unkeyed and unanimated. A `key` here forced React to
+                    tear down and rebuild the whole content subtree on every visit
+                    (25 card mounts on Collection), and the enter animation it existed
+                    to replay started at opacity 0 — so a navigation read as
+                    "old page → blank → fade in". Inertia already swaps a different
+                    component type on a real navigation, so React remounts what it
+                    needs to without help. */}
+                    <main
+                        id="main-content"
+                        tabIndex={-1}
+                        className="pb-28 outline-none lg:pb-0"
+                    >
+                        {children}
+                    </main>
+                </div>
 
                 <MobileBottomNav />
                 {/* Celebration overlays are sequenced, not stacked: CardReveal (a pack
