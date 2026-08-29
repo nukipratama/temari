@@ -108,9 +108,6 @@
             },
             "text": ["text-2"]
         },
-        "cream-deep/0.85": {
-            "text": []
-        },
         "cream/0.04": {
             "text": []
         },
@@ -406,6 +403,12 @@
         },
         "card/0.4": {
             "text": []
+        },
+        "card/0.6": {
+            "over": {
+                "resources/js/components/MobileBottomNav.tsx": ["paper"]
+            },
+            "text": ["icon-accent", "text-3"]
         },
         "muted/0.6": {
             "over": {

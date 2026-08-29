@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
@@ -73,37 +73,41 @@ describe('MobileTopBar', () => {
     it('pads the top by the safe-area inset so content clears the notch', () => {
         const { container } = render(<MobileTopBar />);
         expect(container.querySelector('header')).toHaveClass(
-            'pt-[max(0.75rem,env(safe-area-inset-top))]',
+            'pt-[max(1rem,env(safe-area-inset-top))]',
         );
     });
 
-    it('sticks to the top so content scrolls underneath it', () => {
+    it('floats over content rather than sitting in normal flow', () => {
         const { container } = render(<MobileTopBar />);
         expect(container.querySelector('header')).toHaveClass(
-            'sticky',
+            'absolute',
             'top-0',
         );
     });
 
-    it('hides the hairline at rest and shows it once scrolled', () => {
+    it('carries no background of its own — only the chips inside it do', () => {
         const { container } = render(<MobileTopBar />);
-        expect(container.querySelector('header')).toHaveClass(
-            'border-transparent',
-        );
-
-        act(() => {
-            window.scrollY = 120;
-            window.dispatchEvent(new Event('scroll'));
-        });
-
-        expect(container.querySelector('header')).toHaveClass('border-border');
-        window.scrollY = 0;
+        const header = container.querySelector('header')!;
+        expect(header.className).not.toMatch(/\bbg-/);
+        expect(screen.getByLabelText('Home')).toHaveClass('bg-muted');
     });
 
-    it('keeps the cream ground', () => {
-        const { container } = render(<MobileTopBar />);
-        expect(container.querySelector('header')).toHaveClass(
-            'bg-cream-deep/85',
+    it('wraps the notification bell and avatar in a chip, matching the wordmark chip', () => {
+        setMockPage({ auth: { user: makeUser({ name: 'Ada Lovelace' }) } });
+        render(<MobileTopBar />);
+        expect(screen.getByLabelText('Inbox').closest('span')).toHaveClass(
+            'bg-muted',
+        );
+        expect(
+            screen.getByLabelText("Ada Lovelace's profile").closest('span'),
+        ).toHaveClass('bg-muted');
+    });
+
+    it('wraps the back button in the same chip treatment as the wordmark', () => {
+        setMockPage({}, '/activities/123', 'Runs/Show');
+        render(<MobileTopBar />);
+        expect(screen.getByLabelText('Back to History')).toHaveClass(
+            'bg-muted',
         );
     });
 });

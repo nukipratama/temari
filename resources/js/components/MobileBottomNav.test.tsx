@@ -6,9 +6,10 @@ import { setMockPage } from '@/test/setup';
 import MobileBottomNav from './MobileBottomNav';
 
 describe('MobileBottomNav', () => {
-    it('renders all three primary tabs with their labels', () => {
+    it('renders all four primary tabs with their labels', () => {
         render(<MobileBottomNav />);
         expect(screen.getByText('Today')).toBeInTheDocument();
+        expect(screen.getByText('Plan')).toBeInTheDocument();
         expect(screen.getByText('Trends')).toBeInTheDocument();
         expect(screen.getByText('History')).toBeInTheDocument();
     });
@@ -29,6 +30,10 @@ describe('MobileBottomNav', () => {
             'href',
             '/',
         );
+        expect(screen.getByText('Plan').closest('a')).toHaveAttribute(
+            'href',
+            '/plan',
+        );
         expect(screen.getByText('Trends').closest('a')).toHaveAttribute(
             'href',
             '/trends',
@@ -39,15 +44,21 @@ describe('MobileBottomNav', () => {
         );
     });
 
-    // ink-on-sky replaced text-cream/55, which sat at ~2.2:1 contrast against the bar.
-    it('tints inactive tabs with the readable on-sky muted tone', () => {
+    // The floating pill grows and gets a lime gradient fill for the active
+    // tab (per the prototype's AppBottomNav); inactive tabs stay a plain
+    // muted tone rather than the old bar's on-sky treatment.
+    it('grows and tints the active tab, leaving inactive tabs muted', () => {
         setMockPage({}, '/history');
         render(<MobileBottomNav />);
         expect(screen.getByText('History').closest('a')).toHaveClass(
-            'text-horizon',
+            'text-icon-accent',
+            'grow-[1.6]',
         );
         expect(screen.getByText('Today').closest('a')).toHaveClass(
-            'text-ink-on-sky',
+            'text-text-3',
+        );
+        expect(screen.getByText('Today').closest('a')).not.toHaveClass(
+            'grow-[1.6]',
         );
     });
 

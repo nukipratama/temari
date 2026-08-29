@@ -76,7 +76,7 @@ describe('AppShell', () => {
         );
     });
 
-    it('renders the 3 primary tabs + children by default', () => {
+    it('renders the 4 primary tabs + children by default', () => {
         setMockPage({
             auth: { user: andiUser },
             flash: {},
@@ -88,7 +88,7 @@ describe('AppShell', () => {
             </AppShell>,
         );
         expect(screen.getByText('child content')).toBeInTheDocument();
-        ['Today', 'Trends', 'History'].forEach((label) => {
+        ['Today', 'Plan', 'Trends', 'History'].forEach((label) => {
             expect(screen.getAllByText(label).length).toBeGreaterThan(0);
         });
         // <main> keeps bottom clearance for the fixed mobile bottom nav (cleared on lg).

@@ -7,7 +7,6 @@ import NotificationBell from '@/components/NotificationBell';
 import StravaSyncBadge from '@/components/StravaSyncBadge';
 import { Icon } from '@/components/ui/Icon';
 import UserAvatarLink from '@/components/UserAvatarLink';
-import { useScrolled } from '@/hooks/useScrolled';
 import { cn } from '@/lib/cn';
 
 // Explicit map (not derived from activeTabFromUrl): calendar/records/accessories/badges/race
@@ -16,40 +15,57 @@ const BACK_TARGETS: Record<string, { href: string; label: string }> = {
     'Runs/Show': { href: '/history', label: 'History' },
 };
 
-// max() keeps the row clear of the notch under black-translucent; falls back to 0.75rem in a browser tab.
+// A shared chip backdrop for the icon-only buttons — bg-muted is the exact
+// ground-reactive equivalent of the bar's old fixed cream-deep background (see
+// AppShell), so NotificationBell/UserAvatarLink's own hover/ring styling
+// (tuned against that backdrop) still reads correctly floating over content.
+// Unsized on purpose: it hugs whichever of the two differently-sized controls
+// it wraps rather than forcing both to match.
+const CHIP =
+    'inline-flex items-center justify-center overflow-hidden rounded-full bg-muted shadow-e1';
+
+/**
+ * Floating transparent chips, per the prototype's AppTopbar/ProfileTopbar —
+ * replaces the previous sticky bordered bar. `absolute` (not `sticky`): the
+ * bar no longer reserves flow space or paints a background, so content
+ * scrolls underneath it — AppShell reserves the clearance with top padding
+ * instead. `max()` keeps the row clear of the notch under black-translucent;
+ * falls back to 1rem in a browser tab.
+ */
 export default function MobileTopBar() {
     const page = usePage<SharedProps>();
     const user = page.props.auth.user;
     const stravaSync = page.props.stravaSync ?? null;
-    const scrolled = useScrolled();
     const back = BACK_TARGETS[page.component];
 
     return (
         <header
             data-testid="mobile-top-bar"
-            className={cn(
-                'sticky top-0 z-30 flex items-center justify-between gap-3 border-b bg-cream-deep/85 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl transition-colors lg:hidden',
-                scrolled ? 'border-border' : 'border-transparent',
-            )}
+            className="absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-3 px-4 pb-2.5 pt-[max(1rem,env(safe-area-inset-top))] lg:hidden"
         >
             {back ? (
                 // Real href, not history.back(): a deep link can open this cold with nothing behind it.
                 <Link
                     href={back.href}
                     aria-label={`Back to ${back.label}`}
-                    className="pressable focus-ring -ml-1 inline-flex min-w-0 items-center gap-1 rounded py-1 pl-1 pr-2 text-label-small text-text-2 transition hover:text-foreground"
+                    className={cn(
+                        CHIP,
+                        'pressable focus-ring size-9 text-foreground',
+                    )}
                 >
                     <Icon
-                        icon="mdi:chevron-left"
+                        icon="mdi:arrow-left"
                         width={18}
                         height={18}
                         aria-hidden
-                        className="shrink-0"
                     />
-                    <span className="truncate">{back.label}</span>
                 </Link>
             ) : (
-                <Link href="/" aria-label="Home" className="focus-ring rounded">
+                <Link
+                    href="/"
+                    aria-label="Home"
+                    className="pressable focus-ring inline-flex items-center gap-2.5 rounded-full bg-muted py-1.75 pr-3.25 pl-2.5 shadow-e1"
+                >
                     <BrandMark wordmarkClassName="hidden min-[350px]:inline" />
                 </Link>
             )}
@@ -57,11 +73,15 @@ export default function MobileTopBar() {
                 <StravaSyncBadge sync={stravaSync} density="compact" />
                 {user && (
                     <>
-                        <NotificationBell density="compact" />
-                        <UserAvatarLink
-                            name={user.name}
-                            avatarUrl={user.avatar_url}
-                        />
+                        <span className={CHIP}>
+                            <NotificationBell density="compact" />
+                        </span>
+                        <span className={CHIP}>
+                            <UserAvatarLink
+                                name={user.name}
+                                avatarUrl={user.avatar_url}
+                            />
+                        </span>
                     </>
                 )}
             </div>

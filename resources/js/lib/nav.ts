@@ -1,10 +1,10 @@
-export type TabId = 'today' | 'trends' | 'history';
+export type TabId = 'today' | 'plan' | 'trends' | 'history';
 
 export interface NavItem {
     id: TabId;
     label: string;
     href: string;
-    icon: string;
+    icon: string; // lucide-react component name, per decision 16 — not an iconify string
     prefixes: ReadonlyArray<string>;
 }
 
@@ -13,21 +13,28 @@ export const ITEMS: ReadonlyArray<NavItem> = [
         id: 'today',
         label: 'Today',
         href: '/',
-        icon: 'mdi:weather-sunset-up',
-        prefixes: ['/', '/plan', '/race'],
+        icon: 'Sunrise',
+        prefixes: ['/'],
+    },
+    {
+        id: 'plan',
+        label: 'Plan',
+        href: '/plan',
+        icon: 'CalendarCheck',
+        prefixes: ['/plan', '/race'],
     },
     {
         id: 'trends',
         label: 'Trends',
         href: '/trends',
-        icon: 'mdi:chart-line',
+        icon: 'LineChart',
         prefixes: ['/trends'],
     },
     {
         id: 'history',
         label: 'History',
         href: '/history',
-        icon: 'mdi:history',
+        icon: 'History',
         prefixes: ['/history', '/activities'],
     },
 ];

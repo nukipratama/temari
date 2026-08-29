@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import ErrorBanner from '@/components/ErrorBanner';
 import { useDawnShift } from '@/hooks/useDawnShift';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
+import { useSystemTheme } from '@/hooks/useSystemTheme';
 
 interface BareShellProps {
     children: ReactNode;
@@ -11,10 +12,11 @@ interface BareShellProps {
 export default function BareShell({ children }: Readonly<BareShellProps>) {
     useDawnShift();
     useSwipeBack();
+    useSystemTheme();
 
     return (
         // No MobileTopBar here, so this shell pads for the notch itself.
-        <div className="min-h-screen bg-cream-deep pt-[env(safe-area-inset-top)] text-foreground">
+        <div className="min-h-screen bg-background pt-[env(safe-area-inset-top)] text-foreground">
             <ErrorBanner />
             {children}
         </div>
