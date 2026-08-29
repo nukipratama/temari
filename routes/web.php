@@ -38,6 +38,7 @@ use App\Http\Controllers\Telegram\TelegramConnectionController;
 use App\Http\Controllers\Telegram\TelegramWebhookController;
 use App\Http\Controllers\WebPush\PushSubscriptionController;
 use App\Http\Controllers\TokenUsageController;
+use App\Http\Controllers\TrainingPreferencesController;
 use App\Http\Controllers\TrendsController;
 use Illuminate\Support\Facades\Route;
 
@@ -174,6 +175,7 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::patch('/settings/zones', [RunnerZonesController::class, 'update'])->name('settings.zones.update');
     Route::delete('/settings/zones', [RunnerZonesController::class, 'resetToDefault'])->name('settings.zones.reset');
     Route::post('/settings/zones/resync-strava', [RunnerZonesController::class, 'resyncFromStrava'])->name('settings.zones.resync');
+    Route::patch('/settings/training-preferences', [TrainingPreferencesController::class, 'update'])->name('settings.training-preferences.update');
 
     Route::post('/strava/sync', SyncController::class)
         ->middleware('throttle:strava-sync')

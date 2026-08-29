@@ -9,6 +9,7 @@ use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Season;
+use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\RiegelProjector;
@@ -255,6 +256,40 @@ it('never deloads a taper week, where freshness is already the goal', function (
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
     expect(currentWeekPhases($user))->toBe([PlanPhase::Taper]);
+});
+
+it('an explicit sessions_per_week preference overrides the behavioral session count', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 2, 'run_days' => null, 'long_run_day' => null]);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    $nonRest = PlannedSession::query()
+        ->where('user_id', $user->id)
+        ->whereBetween('date', [$weekStart->toDateString(), $weekStart->copy()->addDays(6)->toDateString()])
+        ->where('session_type', '!=', SessionType::Rest)
+        ->count();
+
+    expect($nonRest)->toBe(2);
+});
+
+it('an explicit run_days/long_run_day preference places sessions on the chosen weekdays', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    TrainingPreference::factory()->for($user)->create(['run_days' => [0, 2, 4], 'long_run_day' => 4]);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    $monday = PlannedSession::query()->where('user_id', $user->id)->where('date', $weekStart->toDateString())->firstOrFail();
+    $friday = PlannedSession::query()->where('user_id', $user->id)->where('date', $weekStart->copy()->addDays(4)->toDateString())->firstOrFail();
+    $tuesday = PlannedSession::query()->where('user_id', $user->id)->where('date', $weekStart->copy()->addDays(1)->toDateString())->firstOrFail();
+
+    expect($monday->session_type)->not->toBe(SessionType::Rest)
+        ->and($friday->session_type)->toBe(SessionType::Long)
+        ->and($tuesday->session_type)->toBe(SessionType::Rest);
 });
 
 it('lets the race projection move prescribed quality work in both directions', function (): void {

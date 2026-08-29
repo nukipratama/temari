@@ -6,6 +6,7 @@ use App\Models\NotificationPreference;
 use App\Models\RunnerProfile;
 use App\Models\StravaConnection;
 use App\Models\TelegramConnection;
+use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Support\DataUseStatement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -120,4 +121,31 @@ it('exposes canSyncFromStrava true only with a live profile:read_all connection'
     $none = User::factory()->create();
     $this->actingAs($none)->get('/settings')
         ->assertInertia(fn (Assert $page) => $page->where('hrZones.canSyncFromStrava', false));
+});
+
+it('hands the page all-null training preferences for a fresh user', function (): void {
+    $this->actingAs(User::factory()->create())->get('/settings')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('trainingPreferences.experience_level', null)
+            ->where('trainingPreferences.sessions_per_week', null)
+            ->where('trainingPreferences.run_days', null));
+});
+
+it('hands the page the stored training preferences', function (): void {
+    $user = User::factory()->create();
+    TrainingPreference::factory()->for($user)->create([
+        'experience_level' => 'experienced',
+        'sessions_per_week' => 5,
+        'run_days' => [0, 1, 3, 5, 6],
+        'long_run_day' => 6,
+    ]);
+
+    $this->actingAs($user)->get('/settings')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('trainingPreferences.experience_level', 'experienced')
+            ->where('trainingPreferences.sessions_per_week', 5)
+            ->where('trainingPreferences.run_days', [0, 1, 3, 5, 6])
+            ->where('trainingPreferences.long_run_day', 6));
 });

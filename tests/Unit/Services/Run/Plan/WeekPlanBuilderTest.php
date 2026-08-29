@@ -100,10 +100,29 @@ it('Deload carries no quality sessions at all', function (): void {
         ->and($types)->not->toContain(SessionType::Interval);
 });
 
-it('clamps an out-of-range session count into the supported 3-6 template range', function (): void {
-    $rows = $this->builder->build($this->monday, PlanPhase::Base, 10, [], null, false);
+it('clamps an out-of-range session count into the supported 2-6 template range', function (): void {
+    $tooMany = $this->builder->build($this->monday, PlanPhase::Base, 10, [], null, false);
+    $tooFew = $this->builder->build($this->monday, PlanPhase::Base, 1, [], null, false);
 
-    expect($rows)->toHaveCount(7); // still one row per day; falls back to the 6-session template
+    expect($tooMany)->toHaveCount(7) // falls back to the 6-session template
+        ->and($tooFew)->toHaveCount(7); // falls back to the 2-session template
+});
+
+it('supports the 2-session template, long run on Saturday', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 2, [], null, true);
+    $saturday = $this->monday->copy()->addDays(5)->toDateString();
+
+    expect(qualityCount($rows) + collect($rows)->filter(fn (array $r): bool => $r['session_type'] === SessionType::Long)->count())
+        ->toBe(2)
+        ->and($rows[$saturday]['session_type'])->toBe(SessionType::Long);
+});
+
+it('an explicit run_days/long_run_day preference overrides the day template entirely', function (): void {
+    $friday = $this->monday->copy()->addDays(4)->toDateString();
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 4, [], null, true, null, 0, [0, 2, 4], 4);
+
+    expect($rows[$friday]['session_type'])->toBe(SessionType::Long)
+        ->and(collect($rows)->filter(fn (array $r): bool => $r['session_type'] !== SessionType::Rest))->toHaveCount(3);
 });
 
 it('tags every produced row with the phase it was built for', function (): void {

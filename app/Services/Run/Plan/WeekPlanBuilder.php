@@ -30,13 +30,14 @@ final class WeekPlanBuilder
      * @var array<int, list<int>>
      */
     private const array DAY_TEMPLATES = [
+        2 => [2, 5],
         3 => [1, 3, 5],
         4 => [1, 3, 5, 6],
         5 => [0, 1, 3, 5, 6],
         6 => [0, 1, 2, 3, 5, 6],
     ];
 
-    private const int MIN_SESSIONS = 3;
+    private const int MIN_SESSIONS = 2;
 
     private const int MAX_SESSIONS = 6;
 
@@ -54,6 +55,10 @@ final class WeekPlanBuilder
      * @param  Carbon  $notBefore  dates earlier than this (a past day within the current week) are skipped too —
      *                             regeneration only ever writes today-forward, so past days stay untouched
      * @param  int  $qualityDelta  race-pace feedback from {@see PlanAdapter}: +1 adds a quality session, -1 drops one
+     * @param  ?list<int>  $preferredOffsets  an explicit {@see \App\Models\TrainingPreference} `run_days`
+     *                                        (0=Mon..6=Sun) — when set (with `$preferredLongOffset`), replaces
+     *                                        `DAY_TEMPLATES` entirely for this week rather than merely seeding it
+     * @param  ?int  $preferredLongOffset  the matching `long_run_day`, always a member of `$preferredOffsets`
      * @return array<string, array{phase: PlanPhase, session_type: SessionType}> keyed by Y-m-d
      */
     public function build(
@@ -65,10 +70,18 @@ final class WeekPlanBuilder
         bool $selfScaled,
         ?Carbon $notBefore = null,
         int $qualityDelta = 0,
+        ?array $preferredOffsets = null,
+        ?int $preferredLongOffset = null,
     ): array {
-        $sessionsPerWeek = max(self::MIN_SESSIONS, min(self::MAX_SESSIONS, $sessionsPerWeek));
-        $trainingOffsets = self::DAY_TEMPLATES[$sessionsPerWeek];
-        $longOffset = end($trainingOffsets);
+        if ($preferredOffsets !== null && $preferredLongOffset !== null) {
+            $trainingOffsets = $preferredOffsets;
+            $longOffset = $preferredLongOffset;
+            $sessionsPerWeek = count($trainingOffsets);
+        } else {
+            $sessionsPerWeek = max(self::MIN_SESSIONS, min(self::MAX_SESSIONS, $sessionsPerWeek));
+            $trainingOffsets = self::DAY_TEMPLATES[$sessionsPerWeek];
+            $longOffset = end($trainingOffsets);
+        }
         $isMarathonDistance = self::isMarathonDistance($raceDistanceM);
 
         $qualitySlots = $this->qualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $qualityDelta);

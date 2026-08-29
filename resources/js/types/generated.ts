@@ -18,3 +18,9 @@ export const NOTIFICATION_KIND_VALUES = ['post_run', 'weekly_recap', 'monthly_re
 
 export type PlannedSessionStatus = 'planned' | 'done' | 'partial' | 'missed' | 'overreached' | 'skip';
 export const PLANNED_SESSION_STATUS_VALUES = ['planned', 'done', 'partial', 'missed', 'overreached', 'skip'] as const;
+
+export type ExperienceLevel = 'new_to_running' | 'returning' | 'experienced';
+export const EXPERIENCE_LEVEL_VALUES = ['new_to_running', 'returning', 'experienced'] as const;
+
+export type GoalType = 'consistent' | 'race' | 'base' | 'return';
+export const GOAL_TYPE_VALUES = ['consistent', 'race', 'base', 'return'] as const;

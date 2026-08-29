@@ -7,6 +7,9 @@ import PushNotificationToggle from '@/components/PushNotificationToggle';
 import HrZonesDisclosure, {
     type HrZonesPayload,
 } from '@/components/settings/HrZonesDisclosure';
+import TrainingPreferencesDisclosure, {
+    type TrainingPreferencesPayload,
+} from '@/components/settings/TrainingPreferencesDisclosure';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/Icon';
@@ -51,6 +54,7 @@ interface SettingsProps {
     /** Seconds left on the test-send cooldown, or null when it is not cooling. */
     testCooldownSeconds?: number | null;
     hrZones?: HrZonesPayload;
+    trainingPreferences?: TrainingPreferencesPayload;
 }
 
 const LEGAL_ROWS: ReadonlyArray<{
@@ -117,12 +121,21 @@ const HR_ZONES_DEFAULT: HrZonesPayload = {
     canSyncFromStrava: false,
 };
 
+const TRAINING_PREFERENCES_DEFAULT: TrainingPreferencesPayload = {
+    experience_level: null,
+    sessions_per_week: null,
+    goal_type: null,
+    run_days: null,
+    long_run_day: null,
+};
+
 export default function Settings({
     dataUse,
     telegram = TELEGRAM_DEFAULT,
     notificationPrefs = PREFS_DEFAULT,
     testCooldownSeconds = null,
     hrZones = HR_ZONES_DEFAULT,
+    trainingPreferences = TRAINING_PREFERENCES_DEFAULT,
 }: Readonly<SettingsProps>) {
     return (
         <>
@@ -158,8 +171,11 @@ export default function Settings({
 
                 <section className="mt-10" data-coachmark="settings-hr-zones">
                     <SectionLabel>Running</SectionLabel>
-                    <div className="mt-3">
+                    <div className="mt-3 flex flex-col gap-3">
                         <HrZonesDisclosure hrZones={hrZones} />
+                        <TrainingPreferencesDisclosure
+                            trainingPreferences={trainingPreferences}
+                        />
                     </div>
                 </section>
 
