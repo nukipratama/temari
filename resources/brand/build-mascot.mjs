@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { COLOR, GROUNDS, MOOD, inkOn } from './build-tokens.mjs';
+import { COLOR, GROUNDS, GROUNDS_DARK, MOOD, inkOn, inkOnDark } from './build-tokens.mjs';
 
 const SKY = COLOR.sky, CREAM = COLOR.cream, GOLD = COLOR.horizon, GOLD_D = COLOR['horizon-ink'];
 const CX = 50, CY = 52, BODY_R = 31, HALO_R = 41, AURA_R = 47;
@@ -22,6 +22,23 @@ const HALO = {
   stone:    [legible(COLOR.stone), 5],
   wobbly:   [legible(MOOD.wobbly), 7],
   gassed:   [legible(MOOD.gassed), 6],
+};
+
+/* The dark-ground counterpart: the same rings drawn on the app's Sky ground
+   (decision 6's default) rather than paper. A colour darkened until it clears
+   3:1 on cream can drop below 2:1 on sky-deep — this is the opposite move,
+   lightened until it clears 3:1 on every GROUNDS_DARK surface. Two of eight
+   (easy, blazing, gold) already clear both directions unmodified. */
+const legibleDark = (c) => inkOnDark(c, GROUNDS_DARK, 3);
+export const HALO_DARK = {
+  neutral:  legibleDark(COLOR.line),
+  easy:     legibleDark(MOOD.easy),
+  blazing:  legibleDark(MOOD.blazing),
+  gold:     legibleDark(COLOR.horizon),
+  chill:    legibleDark(MOOD.chill),
+  stone:    legibleDark(COLOR.stone),
+  wobbly:   legibleDark(MOOD.wobbly),
+  gassed:   legibleDark(MOOD.gassed),
 };
 
 // brow offsets from the eye line: [outerY, innerY] — negative is above
