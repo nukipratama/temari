@@ -55,6 +55,57 @@ final class PlanRenderer
     }
 
     /**
+     * The week's first Easy day gets the bigger (Medium) core-km fraction —
+     * see {@see SegmentGenerator::coreKmFor()}'s `$isPrimaryEasy`. Shared by
+     * every caller that needs a week's per-day km (`PlanController`,
+     * `CurrentWeekPlanBuilder`, `plan:score-compliance`) so none of them
+     * silently drift on which day is "primary".
+     *
+     * @param  Collection<int, PlannedSession>  $weekSessions
+     */
+    public static function primaryEasyDate(Collection $weekSessions): ?string
+    {
+        return $weekSessions
+            ->sortBy(fn (PlannedSession $s): string => $s->date->toDateString())
+            ->first(fn (PlannedSession $s): bool => $s->session_type === SessionType::Easy)
+            ?->date?->toDateString();
+    }
+
+    /**
+     * Every session's core km, keyed by date — the shared computation behind
+     * `distance_km`/`SessionMatcher`'s planned-km input. `$sessions` should
+     * include enough trailing history for {@see self::weekPhasesAndMultipliers()}'s
+     * ramp to be correct for the *earliest* week being scored, not just the
+     * dates the caller actually wants km for.
+     *
+     * @param  Collection<int, PlannedSession>  $sessions
+     * @return array<string, float>  Y-m-d => core km
+     */
+    public static function plannedKmByDate(Collection $sessions, float $longRunBaselineKm): array
+    {
+        $sessionsByWeek = $sessions->groupBy(
+            fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
+        );
+        [, $multiplierByWeek] = self::weekPhasesAndMultipliers($sessionsByWeek);
+        $primaryEasyDateByWeek = $sessionsByWeek->map(
+            fn (Collection $weekSessions): ?string => self::primaryEasyDate($weekSessions),
+        );
+
+        $plannedKmByDate = [];
+        foreach ($sessions as $s) {
+            $weekKey = $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
+            $plannedKmByDate[$s->date->toDateString()] = SegmentGenerator::coreKmFor(
+                $s->session_type,
+                $s->date->toDateString() === $primaryEasyDateByWeek->get($weekKey),
+                $longRunBaselineKm,
+                $multiplierByWeek[$weekKey] ?? 1.0,
+            );
+        }
+
+        return $plannedKmByDate;
+    }
+
+    /**
      * @param array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string}|null $clamp
      * @param  array<string, float>  $volumeScaleByDate  date => scale, from {@see VolumeRedistributor::redistribute()}
      * @param  bool  $isPrimaryEasy  whether this is the week's first (bigger) Easy day — see {@see SegmentGenerator::coreKmFor()}
@@ -108,7 +159,10 @@ final class PlanRenderer
             'segments' => array_map(static fn (SessionSegment $segment): array => $segment->toArray(), $segments),
             'distance_km' => $distanceKm,
             'pinned' => $s->pinned,
+            'skipped' => $s->skipped,
             'status' => $status->value,
+            'compliance_score' => $s->compliance_score,
+            'ran_anyway' => $s->ran_anyway,
             'clamp_note' => $isToday ? ($clamp['note'] ?? null) : null,
         ];
     }

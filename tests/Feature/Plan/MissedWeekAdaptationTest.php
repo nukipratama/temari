@@ -66,7 +66,11 @@ it('turns the week after a fully missed one into a real deload, not a catch-up',
         ->and($missedWeek->pluck('phase')->unique()->all())->toBe([PlanPhase::Build]);
 
     // Nothing is logged against that week: every planned session is missed.
+    // In production the daily plan:score-compliance pass (00:03) always
+    // reaches last week's rows before Monday's 00:07 regenerate; simulate
+    // that here so PlanAdapter has a persisted verdict to react to.
     Carbon::setTestNow(THIS_MONDAY.' 08:00:00');
+    $this->artisan('plan:score-compliance')->assertSuccessful();
     $periodizer->regenerate($user, Carbon::parse(THIS_MONDAY));
 
     $adaptation = PlanAdaptation::query()
@@ -97,6 +101,7 @@ it('prescribes fewer km after a missed week than the build week it replaced', fu
     $buildWeekKm = collect($buildWeekKm)->sum('distance_km');
 
     Carbon::setTestNow(THIS_MONDAY.' 08:00:00');
+    $this->artisan('plan:score-compliance')->assertSuccessful();
     $periodizer->regenerate($user, Carbon::parse(THIS_MONDAY));
 
     $deloadWeekKm = $this->actingAs($user)->get('/plan')->viewData('page')['props']['weeks'];
@@ -114,6 +119,7 @@ it('explains the deload on the Plan tab, alongside the standing disclaimer', fun
     Carbon::setTestNow(LAST_MONDAY.' 08:00:00');
     $periodizer->regenerate($user, Carbon::parse(LAST_MONDAY));
     Carbon::setTestNow(THIS_MONDAY.' 08:00:00');
+    $this->artisan('plan:score-compliance')->assertSuccessful();
     $periodizer->regenerate($user, Carbon::parse(THIS_MONDAY));
 
     $this->actingAs($user)->get('/plan')

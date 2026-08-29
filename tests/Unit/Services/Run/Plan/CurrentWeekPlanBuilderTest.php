@@ -74,14 +74,32 @@ it('credits a past day whose completed distance met the prescribed km', function
     $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
     seedWeekOfSessions($user, $weekStart);
 
+    // A stable anchor run, well outside this week, pins long_run_km so
+    // Monday's own logged distance below can't retroactively change its own
+    // target (TrainingBaseline reads the longest run in the trailing 28
+    // days — logging Monday's own prescribed km would otherwise become that
+    // longest run, shrinking the target it's being judged against).
+    $anchorActivity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($anchorActivity)->create([
+        'start_date_local' => $weekStart->copy()->subDays(20)->setTime(7, 0),
+        'distance' => 20_000,
+    ]);
+
     // Monday is the week's earliest Easy day, so it's $isPrimaryEasy (the
     // bigger, Medium-fraction target) — see SegmentGenerator::coreKmFor().
-    // Log a run comfortably past the 85% done threshold either way.
+    // Log exactly the prescribed km: unambiguously Done (100%), nowhere near
+    // either the Partial floor or the Overreached ceiling.
+    $mondayTargetKm = SegmentGenerator::coreKmFor(
+        SessionType::Easy,
+        true,
+        app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_km'],
+        1.0,
+    );
     $monday = $weekStart->copy();
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => $monday->copy()->setTime(7, 0),
-        'distance' => 6_000,
+        'distance' => $mondayTargetKm * 1000,
     ]);
 
     $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());

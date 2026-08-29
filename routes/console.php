@@ -52,6 +52,14 @@ $alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:01'), 'ai:
 // invalidated weekly. Demo excluded. Mid-week freshness stays on "Reread".
 Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:05');
 
+// 00:03 daily: judge every user's Planned rows that just became past —
+// status/compliance_score/ran_anyway written once, never re-touched.
+// Idempotent by construction (only ever selects still-Planned rows), so it's
+// also the one-time backfill mechanism for existing historical rows after
+// this feature ships — no separate backfill command needed. Must run before
+// plan:regenerate (00:07), which reads last week's average score on Mondays.
+$alertOnFailure(Schedule::command('plan:score-compliance')->dailyAt('00:03'), 'plan:score-compliance');
+
 // Monday 00:07: regenerate every user's plan today-forward against their
 // current fitness/race state. No LLM involved (deterministic periodizer);
 // past weeks and pinned rows are never touched. On-demand regeneration is

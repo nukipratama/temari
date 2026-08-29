@@ -64,7 +64,7 @@ final readonly class Periodizer
         $baselineData = $this->baseline->forUser($user, $today);
         $sessionsPerWeek = $baselineData['sessions_per_week'];
 
-        $adaptation = $this->planAdapter->forWeek($user, $currentWeekStart, $today, $baselineData['long_run_km'], $race);
+        $adaptation = $this->planAdapter->forWeek($user, $currentWeekStart, $today, $race);
 
         $weeks = $race !== null
             ? array_slice($this->phaseSchedule->forRace($today, $race->race_date, (float) $race->distance_m), 0, self::HORIZON_WEEKS)

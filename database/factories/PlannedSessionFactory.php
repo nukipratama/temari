@@ -42,4 +42,14 @@ class PlannedSessionFactory extends Factory
     {
         return $this->state(fn (): array => ['pinned' => true]);
     }
+
+    /** As if `plan:score-compliance` already reached this row — Done, no activity logged. */
+    public function scored(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => PlannedSessionStatus::Done,
+            'compliance_score' => null,
+            'ran_anyway' => false,
+        ]);
+    }
 }

@@ -28,7 +28,10 @@ function day(overrides: Partial<WeekPlanDay>): WeekPlanDay {
         ],
         distance_km: 8,
         pinned: false,
+        skipped: false,
         status: 'planned',
+        compliance_score: null,
+        ran_anyway: false,
         clamp_note: null,
         ...overrides,
     };

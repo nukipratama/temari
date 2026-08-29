@@ -111,21 +111,34 @@ class PlanController extends Controller
         );
 
         [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek);
-        $primaryEasyDateByWeek = $sessionsByWeek->map(fn (Collection $weekSessions): ?string => self::primaryEasyDate($weekSessions));
+        $primaryEasyDateByWeek = $sessionsByWeek->map(fn (Collection $weekSessions): ?string => PlanRenderer::primaryEasyDate($weekSessions));
 
         $currentWeekKey = $currentWeekStart->toDateString();
 
-        $plannedKmByDate = [];
-        foreach ($sessions as $s) {
-            $weekKey = $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
-            $plannedKmByDate[$s->date->toDateString()] = SegmentGenerator::coreKmFor(
-                $s->session_type,
-                $s->date->toDateString() === $primaryEasyDateByWeek->get($weekKey),
-                $baselineData['long_run_km'],
-                $multiplierByWeek[$weekKey] ?? 1.0,
-            );
+        // Every past row should already carry its real status —
+        // plan:score-compliance (daily) persists it the morning after. This
+        // is only a safety net for whatever it hasn't reached yet, so it's
+        // computed for just that (normally empty) subset, not the whole range.
+        $staleSessions = $sessions->filter(
+            fn (PlannedSession $s): bool => $s->status === PlannedSessionStatus::Planned && $s->date->lt($today),
+        );
+        $fallbackStatuses = [];
+        if ($staleSessions->isNotEmpty()) {
+            $stalePlannedKm = [];
+            $staleSkipped = [];
+            foreach ($staleSessions as $s) {
+                $date = $s->date->toDateString();
+                $weekKey = $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
+                $stalePlannedKm[$date] = SegmentGenerator::coreKmFor(
+                    $s->session_type,
+                    $date === $primaryEasyDateByWeek->get($weekKey),
+                    $baselineData['long_run_km'],
+                    $multiplierByWeek[$weekKey] ?? 1.0,
+                );
+                $staleSkipped[$date] = $s->skipped;
+            }
+            $fallbackStatuses = $sessionMatcher->statuses($user, $stalePlannedKm, $staleSkipped, $today);
         }
-        $statuses = $sessionMatcher->statuses($user, $plannedKmByDate, $today);
 
         // Readiness clamp: TODAY's row only — a future day's readiness isn't
         // knowable today, so clamping never reaches past this one row.
@@ -177,7 +190,7 @@ class PlanController extends Controller
                     $baselineData['long_run_km'],
                     $multiplierByWeek[$weekStartKey] ?? 1.0,
                     $paces,
-                    $statuses[$s->date->toDateString()] ?? PlannedSessionStatus::Planned,
+                    $fallbackStatuses[$s->date->toDateString()] ?? $s->status,
                 ))->all(),
             ];
         }
@@ -204,10 +217,10 @@ class PlanController extends Controller
     }
 
     /**
-     * Move (date), block (session_type = rest), or pin/unpin. Any explicit
-     * edit fixes the day (pins it) so the next regeneration doesn't silently
-     * overwrite it, unless the caller passes `pinned: false` to hand control
-     * back to the periodizer.
+     * Move (date), block (session_type = rest), skip (excuse the day before
+     * it passes), or pin/unpin. Any explicit edit fixes the day (pins it) so
+     * the next regeneration doesn't silently overwrite it, unless the caller
+     * passes `pinned: false` to hand control back to the periodizer.
      */
     public function update(UpdatePlannedSessionRequest $request, PlannedSession $plannedSession): RedirectResponse
     {
@@ -246,22 +259,6 @@ class PlanController extends Controller
     private function racePayload(?RaceGoal $race): ?array
     {
         return $race === null ? null : ['race_date' => $race->race_date->toDateString(), 'name' => $race->name];
-    }
-
-    /**
-     * The week's first Easy day gets the bigger (Medium) core-km fraction —
-     * the sibling-context rule {@see SegmentGenerator::coreKmFor()}'s
-     * `$isPrimaryEasy` needs, recomputed here since it's no longer stored
-     * (see `WeekPlanBuilder`'s own docblock).
-     *
-     * @param  Collection<int, PlannedSession>  $weekSessions
-     */
-    private static function primaryEasyDate(Collection $weekSessions): ?string
-    {
-        return $weekSessions
-            ->sortBy(fn (PlannedSession $s): string => $s->date->toDateString())
-            ->first(fn (PlannedSession $s): bool => $s->session_type === SessionType::Easy)
-            ?->date?->toDateString();
     }
 
     /**

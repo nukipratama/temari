@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\PlannedSessionStatus;
-use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
@@ -15,7 +14,6 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Story\BriefingContext;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 use LogicException;
 
 /**
@@ -82,7 +80,7 @@ final readonly class CurrentWeekPlanBuilder
         );
         $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
         $isMarathonDistance = WeekPlanBuilder::isMarathonDistance($race !== null ? (float) $race->distance_m : null);
-        $primaryEasyDate = self::primaryEasyDate($currentWeekSessions);
+        $primaryEasyDate = PlanRenderer::primaryEasyDate($currentWeekSessions);
 
         $plannedKmByDate = [];
         foreach ($currentWeekSessions as $s) {
@@ -93,7 +91,25 @@ final readonly class CurrentWeekPlanBuilder
                 $currentWeekMultiplier,
             );
         }
-        $statuses = $this->sessionMatcher->statuses($user, $plannedKmByDate, $today);
+
+        // Every past row should already carry its real status —
+        // plan:score-compliance (daily) persists it the morning after. This
+        // is only a safety net for whatever it hasn't reached yet.
+        $staleSessions = $currentWeekSessions->filter(
+            fn (PlannedSession $s): bool => $s->status === PlannedSessionStatus::Planned && $s->date->lt($today),
+        );
+        $fallbackStatuses = [];
+        if ($staleSessions->isNotEmpty()) {
+            $staleSkipped = $staleSessions->mapWithKeys(
+                fn (PlannedSession $s): array => [$s->date->toDateString() => $s->skipped],
+            )->all();
+            $fallbackStatuses = $this->sessionMatcher->statuses($user, $plannedKmByDate, $staleSkipped, $today);
+        }
+        $resolvedStatuses = $currentWeekSessions->mapWithKeys(
+            fn (PlannedSession $s): array => [
+                $s->date->toDateString() => $fallbackStatuses[$s->date->toDateString()] ?? $s->status,
+            ],
+        )->all();
 
         $todaySession = $currentWeekSessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
         $clamp = ($todaySession !== null && ! $todaySession->pinned)
@@ -121,7 +137,7 @@ final readonly class CurrentWeekPlanBuilder
             $baselineData['long_run_km'],
             $currentWeekMultiplier,
             $paces,
-            $statuses[$s->date->toDateString()] ?? PlannedSessionStatus::Planned,
+            $resolvedStatuses[$s->date->toDateString()] ?? PlannedSessionStatus::Planned,
         ))->values()->all();
 
         return [
@@ -129,26 +145,12 @@ final readonly class CurrentWeekPlanBuilder
             'phase' => $currentWeekPhase->value,
             'planned_km_this_week' => round(array_sum($plannedKmByDate), 1),
             'credited_this_week' => count(array_filter(
-                $statuses,
+                $resolvedStatuses,
                 static fn (PlannedSessionStatus $status): bool => $status->isCredited(),
             )),
             'streak_days' => $this->streakDays($days, $today),
             'days' => $days,
         ];
-    }
-
-    /**
-     * The week's first Easy day gets the bigger (Medium) core-km fraction —
-     * see {@see SegmentGenerator::coreKmFor()}'s `$isPrimaryEasy`.
-     *
-     * @param  Collection<int, PlannedSession>  $weekSessions
-     */
-    private static function primaryEasyDate(Collection $weekSessions): ?string
-    {
-        return $weekSessions
-            ->sortBy(fn (PlannedSession $s): string => $s->date->toDateString())
-            ->first(fn (PlannedSession $s): bool => $s->session_type === SessionType::Easy)
-            ?->date?->toDateString();
     }
 
     /**

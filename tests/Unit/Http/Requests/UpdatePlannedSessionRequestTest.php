@@ -44,3 +44,12 @@ it('passes an explicit pin/unpin toggle', function (): void {
 it('rejects a non-boolean pinned value', function (): void {
     expect(validatePlannedSessionUpdate(['pinned' => 'yes'])->fails())->toBeTrue();
 });
+
+it('passes an explicit skip/unskip toggle', function (): void {
+    expect(validatePlannedSessionUpdate(['skipped' => true])->passes())->toBeTrue()
+        ->and(validatePlannedSessionUpdate(['skipped' => false])->passes())->toBeTrue();
+});
+
+it('rejects a non-boolean skipped value', function (): void {
+    expect(validatePlannedSessionUpdate(['skipped' => 'yes'])->fails())->toBeTrue();
+});
