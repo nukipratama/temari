@@ -1,6 +1,6 @@
 # B1 — Training preferences
 
-**Wave** 2a · **Slot** worktree-be · **Blockers** `B2` · **Status** in review
+**Wave** 2a · **Slot** worktree-be · **Blockers** `B2` · **Status** in review ([#662](https://github.com/nukipratama/temari/pull/662))
 
 ## Goal
 
