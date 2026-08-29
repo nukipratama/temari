@@ -122,6 +122,14 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasOne<TrainingPreference, $this>
+     */
+    public function trainingPreference(): HasOne
+    {
+        return $this->hasOne(TrainingPreference::class);
+    }
+
+    /**
      * The notification inbox, newest first. Named apart from the `Notifiable`
      * trait's own `notifications()`, which expects the framework's
      * DatabaseNotification schema rather than ours.

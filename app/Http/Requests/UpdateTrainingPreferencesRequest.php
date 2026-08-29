@@ -9,19 +9,16 @@ use App\Enums\GoalType;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Override;
 
 /**
- * The onboarding wizard's preferences and first-goal steps are both
- * optional: the race fields are nullable individually, but `required_with`
- * ties them together so a partial submission (e.g. a distance with no date)
- * is rejected instead of silently creating a malformed race. The training
- * preference fields are independently nullable — {@see withValidator()}
- * only enforces the structural pairing between `sessions_per_week` and
- * `run_days` (and `long_run_day` within it) when `run_days` is actually
- * submitted.
+ * Validates a Settings-page training-preferences edit. Every field is
+ * independently nullable — clearing a field back to null hands control back
+ * to {@see \App\Services\Run\Plan\TrainingBaseline}'s own fallback for it.
+ * {@see withValidator()} mirrors {@see CompleteOnboardingRequest}'s
+ * structural pairing between `sessions_per_week`, `run_days` and
+ * `long_run_day`.
  */
-class CompleteOnboardingRequest extends FormRequest
+class UpdateTrainingPreferencesRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -34,33 +31,12 @@ class CompleteOnboardingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'race_date' => ['nullable', 'date', 'after:today', 'before:'.now()->addYears(5)->toDateString(), 'required_with:distance_m,goal_time_sec'],
-            'distance_m' => ['nullable', 'integer', 'between:1000,300000', 'required_with:race_date,goal_time_sec'],
-            'goal_time_sec' => ['nullable', 'integer', 'between:300,259200', 'required_with:race_date,distance_m'],
-            'name' => ['nullable', 'string', 'max:120'],
             'experience_level' => ['nullable', Rule::enum(ExperienceLevel::class)],
             'sessions_per_week' => ['nullable', 'integer', 'between:2,6'],
             'goal_type' => ['nullable', Rule::enum(GoalType::class)],
             'run_days' => ['nullable', 'array', 'min:2', 'max:6'],
             'run_days.*' => ['integer', 'between:0,6', 'distinct'],
             'long_run_day' => ['nullable', 'integer', 'between:0,6'],
-        ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    #[Override]
-    public function messages(): array
-    {
-        return [
-            'race_date.after' => 'Race day has to be in the future.',
-            'race_date.before' => 'That\'s further out than we can plan for right now.',
-            'race_date.required_with' => 'Add a race day, distance, and goal time together, or leave all three blank.',
-            'distance_m.between' => 'Distance should be between 1 km and 300 km.',
-            'distance_m.required_with' => 'Add a race day, distance, and goal time together, or leave all three blank.',
-            'goal_time_sec.between' => 'Goal time should be between 5 minutes and 72 hours.',
-            'goal_time_sec.required_with' => 'Add a race day, distance, and goal time together, or leave all three blank.',
         ];
     }
 

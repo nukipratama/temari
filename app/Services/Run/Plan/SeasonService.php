@@ -127,7 +127,7 @@ final readonly class SeasonService
     private function generateGoals(Season $season, User $user, ?RaceGoal $race, Carbon $today): void
     {
         $baselineData = $this->baseline->forUser($user, $today);
-        $sessionsPerWeek = max(3, min(6, $baselineData['sessions_per_week']));
+        $sessionsPerWeek = $baselineData['sessions_per_week'];
 
         $weeks = $race !== null
             ? $this->phaseSchedule->forRace($today, $race->race_date, (float) $race->distance_m)

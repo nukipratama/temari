@@ -9,6 +9,7 @@ use App\Enums\PlannedSessionStatus;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
+use App\Models\TrainingPreference;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -61,6 +62,7 @@ final readonly class Periodizer
         $this->seasonService->ensureCurrent($user, $today);
 
         $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
+        $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
         $baselineData = $this->baseline->forUser($user, $today);
         $sessionsPerWeek = $baselineData['sessions_per_week'];
 
@@ -96,6 +98,8 @@ final readonly class Periodizer
                 $race === null,
                 $today,
                 $adaptation['quality_delta'],
+                $preference?->run_days,
+                $preference?->long_run_day,
             );
             foreach ($weekRows as $date => $row) {
                 $rows[$date] = $row;

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\RaceGoal;
+use App\Models\TrainingPreference;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -108,4 +109,32 @@ it('lets an already-onboarded user reach the rest of the app', function (): void
     $user = User::factory()->create();
 
     $this->actingAs($user)->get('/')->assertSuccessful();
+});
+
+it('creates a training_preferences row when the preferences step is filled in', function (): void {
+    $user = User::factory()->needsOnboarding()->create();
+
+    $this->actingAs($user)
+        ->post('/onboarding', [
+            'experience_level' => 'new_to_running',
+            'sessions_per_week' => 3,
+            'goal_type' => 'consistent',
+            'run_days' => [1, 3, 5],
+            'long_run_day' => 5,
+        ])
+        ->assertRedirect(route('dashboard'));
+
+    $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
+    expect($preference)->not->toBeNull()
+        ->and($preference->sessions_per_week)->toBe(3)
+        ->and($preference->run_days)->toBe([1, 3, 5])
+        ->and($user->fresh()->onboarded_at)->not->toBeNull();
+});
+
+it('creates no training_preferences row when the preferences step is skipped', function (): void {
+    $user = User::factory()->needsOnboarding()->create();
+
+    $this->actingAs($user)->post('/onboarding')->assertRedirect(route('dashboard'));
+
+    expect(TrainingPreference::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });

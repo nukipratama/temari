@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\RunnerProfile;
+use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Services\Telegram\TelegramLinkToken;
 use App\Support\Cooldown;
@@ -34,7 +35,24 @@ class SettingsController extends Controller
                 Cooldown::TEST_WINDOW_SECONDS,
             )->remaining(),
             'hrZones' => $this->resolveHrZones($user),
+            'trainingPreferences' => $this->resolveTrainingPreferences($user),
         ]);
+    }
+
+    /**
+     * @return array{experience_level: string|null, sessions_per_week: int|null, goal_type: string|null, run_days: list<int>|null, long_run_day: int|null}
+     */
+    private function resolveTrainingPreferences(User $user): array
+    {
+        $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
+
+        return [
+            'experience_level' => $preference?->experience_level?->value,
+            'sessions_per_week' => $preference?->sessions_per_week,
+            'goal_type' => $preference?->goal_type?->value,
+            'run_days' => $preference?->run_days,
+            'long_run_day' => $preference?->long_run_day,
+        ];
     }
 
     /**

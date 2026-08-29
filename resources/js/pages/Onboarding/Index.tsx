@@ -4,6 +4,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { type FormEvent, useState } from 'react';
 
+import type { ExperienceLevel, GoalType } from '@/types/generated';
 import type { SharedProps } from '@/types/inertia';
 
 import Temari from '@/components/temari/Temari';
@@ -40,7 +41,35 @@ const WHAT_LANDS: ReadonlyArray<{ icon: string; text: string }> = [
     },
 ];
 
-type Step = 'connected' | 'goal';
+const EXPERIENCE_OPTIONS: ReadonlyArray<{
+    value: ExperienceLevel;
+    label: string;
+}> = [
+    { value: 'new_to_running', label: 'New to running' },
+    { value: 'returning', label: 'Getting back into it' },
+    { value: 'experienced', label: 'Experienced' },
+];
+
+const SESSIONS_OPTIONS = [2, 3, 4, 5, 6] as const;
+
+const GOAL_OPTIONS: ReadonlyArray<{ value: GoalType; label: string }> = [
+    { value: 'consistent', label: 'Stay consistent' },
+    { value: 'race', label: 'Chase a race time' },
+    { value: 'base', label: 'Build a base' },
+    { value: 'return', label: 'Ease back in' },
+];
+
+const DAY_OPTIONS = [
+    { offset: 0, label: 'Mon' },
+    { offset: 1, label: 'Tue' },
+    { offset: 2, label: 'Wed' },
+    { offset: 3, label: 'Thu' },
+    { offset: 4, label: 'Fri' },
+    { offset: 5, label: 'Sat' },
+    { offset: 6, label: 'Sun' },
+] as const;
+
+type Step = 'connected' | 'preferences' | 'goal';
 
 export default function OnboardingIndex() {
     const page = usePage<SharedProps>().props;
@@ -54,15 +83,60 @@ export default function OnboardingIndex() {
     const [name, setName] = useState('');
     const [processing, setProcessing] = useState(false);
 
+    const [experienceLevel, setExperienceLevel] =
+        useState<ExperienceLevel | null>(null);
+    const [sessionsPerWeek, setSessionsPerWeek] = useState<number | null>(null);
+    const [goalType, setGoalType] = useState<GoalType | null>(null);
+    const [runDays, setRunDays] = useState<number[]>([]);
+    const [longRunDay, setLongRunDay] = useState<number | null>(null);
+
     const goalTimeSec = hours * 3_600 + minutes * 60;
     const goalTimeIssue = goalTimeError(goalTimeSec);
     const canSubmitGoal = raceDate !== '' && goalTimeIssue === null;
 
+    const daysIncomplete =
+        runDays.length > 0 && runDays.length !== sessionsPerWeek;
+    const canContinuePreferences = !daysIncomplete;
+
+    const toggleRunDay = (offset: number) => {
+        setLongRunDay(null);
+        setRunDays((prev) =>
+            prev.includes(offset)
+                ? prev.filter((d) => d !== offset)
+                : [...prev, offset],
+        );
+    };
+
+    const skipPreferences = () => {
+        setExperienceLevel(null);
+        setSessionsPerWeek(null);
+        setGoalType(null);
+        setRunDays([]);
+        setLongRunDay(null);
+        setStep('goal');
+    };
+
+    const preferencesPayload = (): Record<string, FormDataConvertible> => {
+        const payload: Record<string, FormDataConvertible> = {};
+        if (experienceLevel !== null)
+            payload.experience_level = experienceLevel;
+        if (sessionsPerWeek !== null)
+            payload.sessions_per_week = sessionsPerWeek;
+        if (goalType !== null) payload.goal_type = goalType;
+        if (runDays.length > 0) payload.run_days = runDays;
+        if (longRunDay !== null) payload.long_run_day = longRunDay;
+        return payload;
+    };
+
     const finish = (payload: Record<string, FormDataConvertible>) => {
-        router.post('/onboarding', payload, {
-            onStart: () => setProcessing(true),
-            onFinish: () => setProcessing(false),
-        });
+        router.post(
+            '/onboarding',
+            { ...preferencesPayload(), ...payload },
+            {
+                onStart: () => setProcessing(true),
+                onFinish: () => setProcessing(false),
+            },
+        );
     };
 
     const submitGoal = (event: FormEvent) => {
@@ -92,7 +166,7 @@ export default function OnboardingIndex() {
                         <Temari pose="glow" size={112} animate />
                         <PageHero
                             size="lg"
-                            eyebrow="Step 1 of 2 · Welcome"
+                            eyebrow="Step 1 of 3 · Welcome"
                             className="text-center"
                         >
                             You&rsquo;re connected, {firstName}.
@@ -120,9 +194,194 @@ export default function OnboardingIndex() {
                             </ul>
                         </Card>
 
-                        <Button onClick={() => setStep('goal')}>
+                        <Button onClick={() => setStep('preferences')}>
                             Continue
                         </Button>
+                    </motion.div>
+                ) : step === 'preferences' ? (
+                    <motion.div
+                        key="preferences"
+                        variants={fadeInUp}
+                        initial="hidden"
+                        animate="visible"
+                    >
+                        <PageHero size="lg" eyebrow="Step 2 of 3 · Optional">
+                            Tell us how you train.
+                        </PageHero>
+                        <p className="mt-3 font-sans text-sm leading-relaxed text-text-2">
+                            Every field here is optional. Skip it and
+                            Temari&rsquo;ll start from your recent Strava
+                            history instead.
+                        </p>
+
+                        <Card className="mt-6 flex flex-col gap-6 px-6 py-6">
+                            <div>
+                                <span className="text-label-micro text-text-3">
+                                    Experience
+                                </span>
+                                <div className="mt-1.5 flex flex-wrap gap-2">
+                                    {EXPERIENCE_OPTIONS.map((option) => (
+                                        <button
+                                            key={option.value}
+                                            type="button"
+                                            onClick={() =>
+                                                setExperienceLevel(option.value)
+                                            }
+                                            className={cn(
+                                                'focus-ring rounded-full border px-3 py-1.5 text-label-micro transition',
+                                                experienceLevel === option.value
+                                                    ? 'border-horizon bg-horizon/10 text-horizon-ink'
+                                                    : 'border-border text-text-3 hover:border-horizon/60 hover:text-foreground',
+                                            )}
+                                        >
+                                            {option.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <span className="text-label-micro text-text-3">
+                                    Sessions per week
+                                </span>
+                                <div className="mt-1.5 flex flex-wrap gap-2">
+                                    {SESSIONS_OPTIONS.map((n) => (
+                                        <button
+                                            key={n}
+                                            type="button"
+                                            onClick={() => {
+                                                setSessionsPerWeek(n);
+                                                setRunDays([]);
+                                                setLongRunDay(null);
+                                            }}
+                                            className={cn(
+                                                'focus-ring rounded-full border px-3 py-1.5 text-label-micro transition',
+                                                sessionsPerWeek === n
+                                                    ? 'border-horizon bg-horizon/10 text-horizon-ink'
+                                                    : 'border-border text-text-3 hover:border-horizon/60 hover:text-foreground',
+                                            )}
+                                        >
+                                            {n}x
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <span className="text-label-micro text-text-3">
+                                    What are you chasing right now?
+                                </span>
+                                <div className="mt-1.5 flex flex-wrap gap-2">
+                                    {GOAL_OPTIONS.map((option) => (
+                                        <button
+                                            key={option.value}
+                                            type="button"
+                                            onClick={() =>
+                                                setGoalType(option.value)
+                                            }
+                                            className={cn(
+                                                'focus-ring rounded-full border px-3 py-1.5 text-label-micro transition',
+                                                goalType === option.value
+                                                    ? 'border-horizon bg-horizon/10 text-horizon-ink'
+                                                    : 'border-border text-text-3 hover:border-horizon/60 hover:text-foreground',
+                                            )}
+                                        >
+                                            {option.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <span className="text-label-micro text-text-3">
+                                    Which days do you usually run?
+                                </span>
+                                <p className="mt-1 text-xs text-text-3">
+                                    {sessionsPerWeek === null
+                                        ? 'Pick your sessions per week first.'
+                                        : `Pick ${sessionsPerWeek} — ${runDays.length} of ${sessionsPerWeek} selected.`}
+                                </p>
+                                <div className="mt-1.5 flex flex-wrap gap-2">
+                                    {DAY_OPTIONS.map((day) => {
+                                        const active = runDays.includes(
+                                            day.offset,
+                                        );
+                                        const disabled =
+                                            sessionsPerWeek === null ||
+                                            (!active &&
+                                                runDays.length >=
+                                                    sessionsPerWeek);
+                                        return (
+                                            <button
+                                                key={day.offset}
+                                                type="button"
+                                                disabled={disabled}
+                                                onClick={() =>
+                                                    toggleRunDay(day.offset)
+                                                }
+                                                className={cn(
+                                                    'focus-ring rounded-full border px-3 py-1.5 text-label-micro transition disabled:cursor-not-allowed disabled:opacity-40',
+                                                    active
+                                                        ? 'border-horizon bg-horizon/10 text-horizon-ink'
+                                                        : 'border-border text-text-3 hover:border-horizon/60 hover:text-foreground',
+                                                )}
+                                            >
+                                                {day.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {sessionsPerWeek !== null &&
+                                runDays.length === sessionsPerWeek && (
+                                    <div>
+                                        <span className="text-label-micro text-text-3">
+                                            Which one&rsquo;s your long run?
+                                        </span>
+                                        <div className="mt-1.5 flex flex-wrap gap-2">
+                                            {DAY_OPTIONS.filter((day) =>
+                                                runDays.includes(day.offset),
+                                            ).map((day) => (
+                                                <button
+                                                    key={day.offset}
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setLongRunDay(
+                                                            day.offset,
+                                                        )
+                                                    }
+                                                    className={cn(
+                                                        'focus-ring rounded-full border px-3 py-1.5 text-label-micro transition',
+                                                        longRunDay ===
+                                                            day.offset
+                                                            ? 'border-horizon bg-horizon/10 text-horizon-ink'
+                                                            : 'border-border text-text-3 hover:border-horizon/60 hover:text-foreground',
+                                                    )}
+                                                >
+                                                    {day.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                            <div className="flex flex-wrap items-center gap-3">
+                                <Button
+                                    onClick={() => setStep('goal')}
+                                    disabled={!canContinuePreferences}
+                                >
+                                    Continue
+                                </Button>
+                                <PillButton
+                                    type="button"
+                                    tone="ghost"
+                                    onClick={skipPreferences}
+                                >
+                                    Skip for now
+                                </PillButton>
+                            </div>
+                        </Card>
                     </motion.div>
                 ) : (
                     <motion.div
@@ -131,7 +390,7 @@ export default function OnboardingIndex() {
                         initial="hidden"
                         animate="visible"
                     >
-                        <PageHero size="lg" eyebrow="Step 2 of 2 · Optional">
+                        <PageHero size="lg" eyebrow="Step 3 of 3 · Optional">
                             Got a race in mind?
                         </PageHero>
                         <p className="mt-3 font-sans text-sm leading-relaxed text-text-2">

@@ -186,6 +186,9 @@
                 "resources/js/pages/Onboarding/Index.tsx": ["paper"],
                 "resources/js/components/trends/NarrationHeadline.tsx": [
                     "paper"
+                ],
+                "resources/js/components/settings/TrainingPreferencesDisclosure.tsx": [
+                    "paper"
                 ]
             },
             "text": ["horizon-ink", "foreground", "text-2"]
