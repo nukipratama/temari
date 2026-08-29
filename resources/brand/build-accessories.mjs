@@ -1,6 +1,6 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { mascot } from './build-mascot.mjs';
-import { rootVars, COLOR, MOOD, RARITY, RARITY_INK } from './build-tokens.mjs';
+import { rootVars, COLOR, GROUNDS_DARK, MOOD, RARITY, RARITY_INK, inkOnDark } from './build-tokens.mjs';
 
 /* The 25 unlocks from config/temari_unlocks.php, drawn against the six slot
    shapes. Colour carries rarity; a small detail carries the item's theme, so
@@ -27,6 +27,19 @@ const DETAIL = {
 const AURA = (colour, dash) =>
   `<circle cx="50" cy="52" r="47" fill="none" stroke="${colour}" stroke-width="2.6"
      stroke-dasharray="${dash}" stroke-linecap="round" opacity="0.9"/>`;
+
+/* The aura ring draws outside the body circle, against the page/panel ground
+   rather than the mascot's own cream body — same dark-ground legibility
+   concern as build-mascot.mjs's HALO_DARK, and derived the same way. Three of
+   five (warmup, champion, windrunner) already clear 3:1 on sky unmodified. */
+const legibleDark = (c) => inkOnDark(c, GROUNDS_DARK, 3);
+export const AURA_DARK = {
+  warmup: legibleDark(COLOR.horizon),
+  heatwave: legibleDark(COLOR['ember-deep']),
+  calm: legibleDark(MOOD.chill),
+  champion: legibleDark(RARITY.epic),
+  windrunner: legibleDark(RARITY.rare),
+};
 
 const ITEMS = [
   // medal

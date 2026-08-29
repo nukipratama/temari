@@ -1,12 +1,13 @@
-import { ITEMS } from '@brand/build-accessories.mjs';
+import { AURA_DARK, ITEMS } from '@brand/build-accessories.mjs';
 import {
     BOUNDS,
+    HALO_DARK,
     SLOT_NAMES,
     STATE_NAMES,
     mascot,
 } from '@brand/build-mascot.mjs';
 import { render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
     mapAura,
@@ -18,6 +19,7 @@ import {
 } from '@/lib/equippedAccessories';
 
 import TemariProto, {
+    EXPRESSION_SPEC,
     TEMARI_EXPRESSIONS,
     type TemariEquipped,
     type TemariExpression,
@@ -267,6 +269,81 @@ describe('TemariProto — parity with the brand generator', () => {
         expect(
             at(Math.max(BOUNDS.bottom, gearBottom, 52 + outer), ty),
         ).toBeLessThanOrEqual(136);
+    });
+});
+
+describe('TemariProto — dark-ground ring legibility', () => {
+    afterEach(() => {
+        delete document.documentElement.dataset.theme;
+    });
+
+    it.each(TEMARI_EXPRESSIONS)(
+        'switches the %s mood halo to HALO_DARK, matching build-mascot.mjs',
+        (expression) => {
+            document.documentElement.dataset.theme = 'dark';
+            const { container } = render(
+                <TemariProto pose={expression} dropShadow={false} />,
+            );
+            const haloKey = EXPRESSION_SPEC[expression].halo;
+            expect(
+                container
+                    .querySelector('[data-part="halo"]')
+                    ?.getAttribute('stroke'),
+            ).toBe(HALO_DARK[haloKey]);
+        },
+    );
+
+    it.each(Object.keys(AURA_DARK))(
+        'switches the equipped %s aura to AURA_DARK, matching build-accessories.mjs',
+        (auraKey) => {
+            document.documentElement.dataset.theme = 'dark';
+            const { container } = render(
+                <TemariProto
+                    equipped={{ aura: auraKey as TemariEquipped['aura'] }}
+                    dropShadow={false}
+                />,
+            );
+            expect(
+                container
+                    .querySelector('[data-slot="aura"]')
+                    ?.getAttribute('stroke'),
+            ).toBe(AURA_DARK[auraKey]);
+        },
+    );
+
+    it('keeps the light halo/aura values when no dark theme is set', () => {
+        const { container } = render(
+            <TemariProto
+                pose="hyped"
+                equipped={{ aura: 'heatwave' }}
+                dropShadow={false}
+            />,
+        );
+        expect(
+            container
+                .querySelector('[data-slot="aura"]')
+                ?.getAttribute('stroke'),
+        ).toBe('#8d2c3d');
+    });
+
+    it('draws the season-coverage rings in their dark values under a dark theme', () => {
+        document.documentElement.dataset.theme = 'dark';
+        const { container } = render(<TemariProto seasonPhase="peak" />);
+        const strokes = [
+            ...container.querySelectorAll(
+                'ellipse[transform]:not([data-season])',
+            ),
+        ].map((el) => el.getAttribute('stroke'));
+        // peak draws 6 rings against a 5-colour palette, so the 6th wraps back
+        // to the 1st — same cycling `SEASON_COLORS`/`_DARK` share.
+        expect(strokes).toEqual([
+            '#ab636f',
+            '#ade047',
+            '#727881',
+            '#448466',
+            '#8a68b4',
+            '#ab636f',
+        ]);
     });
 });
 

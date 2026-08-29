@@ -8,6 +8,7 @@
 declare module '@brand/build-mascot.mjs' {
     export const STATE_NAMES: string[];
     export const SLOT_NAMES: string[];
+    export const HALO_DARK: Record<string, string>;
     export const BOUNDS: {
         top: number;
         bottom: number;
@@ -38,6 +39,7 @@ declare module '@brand/build-accessories.mjs' {
         detail: string | null;
         override?: string;
     }>;
+    export const AURA_DARK: Record<string, string>;
 }
 
 declare module '@brand/grounds.mjs' {

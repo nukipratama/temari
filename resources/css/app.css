@@ -672,19 +672,33 @@ body {
 
 /* Dawn-shift theme — subtle page-bg tint based on user's local
    time-of-day. Drifts the cream surface across the day: cool pre-dawn,
-   warmer in morning + dusk, calm at night. Light-mode only. */
+   warmer in morning + dusk, calm at night. Light-mode only (F5): guarded by
+   `html:not([data-theme='dark'])` so the dark ground's fixed sky-deep
+   background never gets fought by a stale time-of-day bucket.
+
+   Writes both `--color-surface` (unused by any live utility post-F3's sweep
+   to `bg-background`, kept only because resources/brand/grounds.mjs's
+   readDawnShiftSurfaces(), build-directions.mjs and apply-pewter.mjs all key
+   dawn-shift's ground set off this exact property name) and
+   `--color-background` (what `bg-background` — the page root's own class —
+   actually reads), so the tint is visible again without touching those three
+   scripts' contract. */
 @layer base {
-    body[data-time-of-day='dawn'] {
+    html:not([data-theme='dark']) body[data-time-of-day='dawn'] {
         --color-surface: #eceff4;
+        --color-background: #eceff4;
     }
-    body[data-time-of-day='morning'] {
+    html:not([data-theme='dark']) body[data-time-of-day='morning'] {
         --color-surface: #f2f7fc;
+        --color-background: #f2f7fc;
     }
-    body[data-time-of-day='dusk'] {
+    html:not([data-theme='dark']) body[data-time-of-day='dusk'] {
         --color-surface: #eaf0f6;
+        --color-background: #eaf0f6;
     }
-    body[data-time-of-day='night'] {
+    html:not([data-theme='dark']) body[data-time-of-day='night'] {
         --color-surface: #e9edf1;
+        --color-background: #e9edf1;
     }
 }
 
