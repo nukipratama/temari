@@ -1,7 +1,6 @@
-import { Icon } from '@iconify/react';
-
 import type { StravaSync, StravaSyncState } from '@/types/inertia';
 
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { formatRelativeId } from '@/lib/pace';
 
@@ -30,7 +29,7 @@ export default function StravaSyncBadge({
         isCompact,
     );
     const badgeClass = cn(
-        'inline-flex items-center whitespace-nowrap rounded-full bg-sky/[0.06] text-label-micro text-ink-2',
+        'inline-flex items-center whitespace-nowrap rounded-full bg-sky/[0.06] text-label-micro text-text-2',
         isCompact ? 'gap-1.5 px-2.5 py-1.5' : 'gap-2 px-3.5 py-2',
     );
     const content = (
@@ -112,7 +111,7 @@ function resolveBadge(
                 label: 'Strava',
                 ariaLabel: 'Strava not connected',
                 icon: 'mdi:cloud-off-outline',
-                iconClass: 'text-ink-3',
+                iconClass: 'text-text-3',
             };
     }
 }

@@ -1,7 +1,7 @@
-import { Icon } from '@iconify/react';
 import { Link } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 export interface SectionTabItem<TId extends string = string> {
@@ -119,7 +119,7 @@ export default function SectionTabs<TId extends string>({
                             !isActive &&
                                 (onSky
                                     ? 'bg-transparent text-ink-on-sky hover:bg-cream/10 hover:text-cream'
-                                    : 'bg-transparent text-ink-2 hover:bg-sky/[0.06]'),
+                                    : 'bg-transparent text-text-2 hover:bg-sky/[0.06]'),
                         )}
                     >
                         <Icon

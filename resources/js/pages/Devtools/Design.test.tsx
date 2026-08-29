@@ -7,6 +7,7 @@ import Design from './Design';
 
 const TOKENS: Record<string, string> = {
     '--color-ink': '#1a1812',
+    '--color-foreground': '#1b1917',
     '--color-surface': '#f5f0e4',
     // Every ground grounds.json calls paper, because the audit scores each one.
     '--color-cream': '#f5f0e4',
@@ -15,6 +16,12 @@ const TOKENS: Record<string, string> = {
     '--color-surface-elev': '#faf6ec',
     '--color-surface-sunken': '#ece2ce',
     '--color-surface-warm': '#f8f0dd',
+    '--color-background': '#f5f0e4',
+    '--color-card': '#f5f0e4',
+    '--color-popover': '#faf6ec',
+    '--color-muted': '#ece2ce',
+    '--color-accent': '#f8f0dd',
+    '--color-secondary': '#ece2ce',
     '--color-rarity-legendary': '#f5a623',
     '--color-rarity-legendary-ink': '#865b13',
     '--radius-md': '14px',

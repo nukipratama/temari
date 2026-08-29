@@ -2,7 +2,7 @@ import { Link } from '@inertiajs/react';
 
 import type { TrainingLoad, WeeklySnapshot } from '@/types/inertia';
 
-import Card from '@/components/ui/Card';
+import Card from '@/components/ui/LegacyCard';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
 import {
@@ -88,15 +88,15 @@ export default function TrainingLoadCard({
                         <div
                             className={cn(
                                 'text-[13px] font-medium',
-                                onSky ? 'text-cream' : 'text-ink',
+                                onSky ? 'text-cream' : 'text-foreground',
                             )}
                         >
                             {label}
                         </div>
                         <div
                             className={cn(
-                                'font-display text-xs italic',
-                                onSky ? 'text-ink-on-sky' : 'text-ink-3',
+                                'font-serif text-xs italic',
+                                onSky ? 'text-ink-on-sky' : 'text-text-3',
                             )}
                         >
                             {hint}

@@ -87,7 +87,7 @@ the slice itself (see [R3](#r3)); `n/a` for backend-only or docs-only slices.
 | L0 | Reconciliation ledger + IA | 0 | [01](slices/01-L0-reconciliation-ledger.md) | merged | — | main | n/a | committed directly (fe927c1e) |
 | F1 | Dependency adoption | 1 | [02](slices/02-F1-dependency-adoption.md) | merged | [#654](https://github.com/nukipratama/temari/pull/654) | main | n/a | squashed as 997b6ba8 |
 | F2 | Two-ground tokens | 1 | [03](slices/03-F2-two-ground-tokens.md) | merged | [#655](https://github.com/nukipratama/temari/pull/655) | main | 94.17→95.06% fn | squashed as 5e5a3d6f |
-| F3 | Mechanical sweep | 1 | [04](slices/04-F3-mechanical-sweep.md) | todo | — | main | | |
+| F3 | Mechanical sweep | 1 | [04](slices/04-F3-mechanical-sweep.md) | in-review | [#656](https://github.com/nukipratama/temari/pull/656) | main | 95.06→95.04% fn | |
 | F4 | Shell + nav | 1 | [05](slices/05-F4-shell-and-nav.md) | todo | — | main | | |
 | F5 | Two-ground art | 1 | [06](slices/06-F5-two-ground-art.md) | todo | — | wt | | |
 | F6 | Charts, two grounds | 1 | [07](slices/07-F6-charts.md) | todo | — | wt | | |

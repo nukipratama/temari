@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 
 import { type StreakSummary } from '@/components/plan/StreakPanel';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { type Goal } from '@/components/ui/GoalCard';
 import ProgressBar from '@/components/ui/ProgressBar';
@@ -44,7 +44,7 @@ export default function SeasonStreakPanel({
     return (
         <section className="mt-10">
             <SectionLabel>Season &amp; streak</SectionLabel>
-            <Card className="mt-3">
+            <Card className="mt-3 px-4 py-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div className="rounded-lg bg-line/20 p-4">
                         <div className="flex items-baseline justify-between">
@@ -57,9 +57,9 @@ export default function SeasonStreakPanel({
                                 </span>
                             )}
                         </div>
-                        <p className="mt-1 font-mono text-2xl tabular-nums text-ink">
+                        <p className="mt-1 font-mono text-2xl tabular-nums text-foreground">
                             {streak.weeks}{' '}
-                            <span className="text-xs font-semibold text-ink-3">
+                            <span className="text-xs font-semibold text-text-3">
                                 {streak.weeks === 1 ? 'week' : 'weeks'} running
                             </span>
                         </p>
@@ -77,13 +77,13 @@ export default function SeasonStreakPanel({
                                             'h-2.5 w-2.5 rounded-full',
                                             index < streak.rest_weeks_held
                                                 ? 'bg-horizon'
-                                                : 'border border-line-strong',
+                                                : 'border border-border-strong',
                                         )}
                                     />
                                 ),
                             )}
                         </div>
-                        <p className="mt-2 text-xs leading-snug text-ink-3">
+                        <p className="mt-2 text-xs leading-snug text-text-3">
                             A rest week forgives one missed week without
                             breaking the streak.
                         </p>
@@ -95,7 +95,7 @@ export default function SeasonStreakPanel({
                         </Eyebrow>
                         {season ? (
                             <>
-                                <p className="mt-1 text-sm text-ink-2">
+                                <p className="mt-1 text-sm text-text-2">
                                     {formatShortDateId(season.starts_at)}–
                                     {formatShortDateId(season.ends_at)} ·{' '}
                                     {season.is_race_oriented
@@ -106,10 +106,10 @@ export default function SeasonStreakPanel({
                                     {season.goals.map((goal) => (
                                         <div key={goal.id}>
                                             <div className="mb-1 flex items-baseline justify-between text-xs">
-                                                <span className="font-semibold text-ink-2">
+                                                <span className="font-semibold text-text-2">
                                                     {goal.title}
                                                 </span>
-                                                <span className="font-mono text-ink-3">
+                                                <span className="font-mono text-text-3">
                                                     {formatGoalNumber(
                                                         goal.current,
                                                     )}
@@ -138,11 +138,11 @@ export default function SeasonStreakPanel({
                                 </div>
                             </>
                         ) : (
-                            <p className="mt-1 text-sm leading-relaxed text-ink-2">
+                            <p className="mt-1 text-sm leading-relaxed text-text-2">
                                 No season yet.{' '}
                                 <Link
                                     href="/plan"
-                                    className="focus-ring underline underline-offset-2 hover:text-ink"
+                                    className="focus-ring underline underline-offset-2 hover:text-foreground"
                                 >
                                     Start one on Plan
                                 </Link>
@@ -152,7 +152,7 @@ export default function SeasonStreakPanel({
                     </div>
                 </div>
                 {season && (
-                    <p className="mt-4 text-xs text-ink-3">
+                    <p className="mt-4 text-xs text-text-3">
                         Week {season.week_index} of {season.total_weeks}
                         {season.tiers_kept_from_past_seasons > 0 &&
                             ` · ${plural(season.tiers_kept_from_past_seasons, 'tier')} kept from earlier seasons`}

@@ -1,6 +1,5 @@
-import { Icon } from '@iconify/react';
-
-import Card from '@/components/ui/Card';
+import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 
 export default function EmptyState() {
     return (
@@ -8,10 +7,10 @@ export default function EmptyState() {
             <Icon
                 icon="mdi:database-off"
                 width={32}
-                className="mx-auto text-ink-3"
+                className="mx-auto text-text-3"
                 aria-hidden
             />
-            <p className="mt-2 text-sm text-ink-2">
+            <p className="mt-2 text-sm text-text-2">
                 No token usage recorded in this range yet.
             </p>
         </Card>

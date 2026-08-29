@@ -1,13 +1,14 @@
-import { Icon } from '@iconify/react';
 import { usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import SettingsRow from '@/components/ui/SettingsRow';
-import Toggle from '@/components/ui/Toggle';
+import Toggle from '@/components/ui/Switch';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import {
     currentSubscription,
@@ -175,7 +176,7 @@ export default function PushNotificationToggle({
                 <p
                     role="status"
                     aria-live="polite"
-                    className="px-2 pb-1 text-[12px] text-ink-3"
+                    className="px-2 pb-1 text-[12px] text-text-3"
                 >
                     {status}
                 </p>
@@ -218,11 +219,7 @@ function PushAction({
     switch (state) {
         case 'stale':
             return (
-                <PillButton
-                    tone="horizon"
-                    disabled={busy}
-                    onClick={onSubscribe}
-                >
+                <Button disabled={busy} onClick={onSubscribe}>
                     <Icon
                         icon="mdi:bell-cog-outline"
                         width={14}
@@ -230,7 +227,7 @@ function PushAction({
                         aria-hidden
                     />
                     Fix
-                </PillButton>
+                </Button>
             );
         case 'subscribed':
             return (
@@ -250,11 +247,7 @@ function PushAction({
             );
         case 'ready':
             return (
-                <PillButton
-                    tone="horizon"
-                    disabled={busy}
-                    onClick={onSubscribe}
-                >
+                <Button disabled={busy} onClick={onSubscribe}>
                     <Icon
                         icon="mdi:bell-ring-outline"
                         width={14}
@@ -262,7 +255,7 @@ function PushAction({
                         aria-hidden
                     />
                     Turn on
-                </PillButton>
+                </Button>
             );
         default:
             return null;

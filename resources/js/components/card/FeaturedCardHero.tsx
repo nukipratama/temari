@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { type ReactNode } from 'react';
 
@@ -8,6 +7,7 @@ import { type KartuStats } from '@/components/card/Kartu';
 import RouteGlyph from '@/components/card/RouteGlyph';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
+import { Icon } from '@/components/ui/Icon';
 import PillLink from '@/components/ui/PillLink';
 import { fadeInUp } from '@/lib/motion';
 import {
@@ -96,7 +96,7 @@ export default function FeaturedCardHero({
                     <Eyebrow token="hero" tone="horizon" className="mb-3">
                         {eyebrow}
                     </Eyebrow>
-                    <h2 className="font-display text-display-xl text-cream">
+                    <h2 className="font-serif text-display-xl text-cream">
                         <em className="italic text-horizon">{name}</em>
                     </h2>
                     <Eyebrow token="small" className="mt-3 text-cream/85">

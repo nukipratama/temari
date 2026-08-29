@@ -118,7 +118,7 @@ describe('DetailTiles', () => {
 
     it('leaves a small decoupling untinted', () => {
         renderTiles();
-        expect(screen.getByText('+4.5%')).toHaveClass('text-ink');
+        expect(screen.getByText('+4.5%')).toHaveClass('text-foreground');
     });
 
     it('reads a small decoupling as steady rather than as drift', () => {

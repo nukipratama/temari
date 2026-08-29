@@ -67,7 +67,7 @@ export default function Trends({
                         <PageHero eyebrow="Trends">
                             How things are going
                         </PageHero>
-                        <p className="mt-2 max-w-prose text-sm text-ink-2">
+                        <p className="mt-2 max-w-prose text-sm text-text-2">
                             A year of running, read as lines rather than a list.
                             Everything on this page is your own history, never a
                             comparison with anyone else.
@@ -79,7 +79,7 @@ export default function Trends({
                         className="flex flex-col gap-3"
                     >
                         <div className="flex flex-wrap items-center gap-3">
-                            <span className="text-label-micro text-ink-3">
+                            <span className="text-label-micro text-text-3">
                                 Range
                             </span>
                             <RangeToggle value={range} onChange={setRange} />
@@ -118,10 +118,10 @@ export default function Trends({
                         variants={fadeInUp}
                         className="flex flex-col gap-1"
                     >
-                        <span className="text-label-micro text-ink-3">
+                        <span className="text-label-micro text-text-3">
                             Always full history
                         </span>
-                        <p className="text-xs text-ink-3">
+                        <p className="text-xs text-text-3">
                             Personal bests don&apos;t change with the range
                             above — they&apos;re your all-time numbers.
                         </p>

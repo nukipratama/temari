@@ -1,9 +1,9 @@
-import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 
 import type { StreamSummaryLap } from '@/types/inertia';
 
-import Card from '@/components/ui/Card';
+import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
 import { countUpEase, fadeInUp, staggerContainer } from '@/lib/motion';
@@ -36,7 +36,7 @@ export default function LapsGraph({
             <header className="mb-1.5 flex flex-wrap items-baseline justify-between gap-3">
                 <SectionLabel>Laps</SectionLabel>
                 {fastest != null && fastestLap != null && (
-                    <p className="font-display text-quote-sm italic text-ink-2">
+                    <p className="font-serif text-quote-sm italic text-text-2">
                         Fastest at lap {fastestLap},{' '}
                         <span className="font-semibold text-horizon-ink">
                             {formatPace(fastest)}/km
@@ -44,7 +44,7 @@ export default function LapsGraph({
                     </p>
                 )}
             </header>
-            <p className="mb-3 text-label-micro text-ink-3">
+            <p className="mb-3 text-label-micro text-text-3">
                 Orange bar = fastest lap, dark = the rest. Left number = each
                 lap&apos;s distance.
             </p>
@@ -72,7 +72,7 @@ export default function LapsGraph({
                                 barRowFill(isFast, idx),
                             )}
                         >
-                            <div className="font-mono text-[11px] tabular-nums tracking-[0.02em] text-ink-2">
+                            <div className="font-mono text-[11px] tabular-nums tracking-[0.02em] text-text-2">
                                 {lap.distance_m}m
                             </div>
                             <div
@@ -96,10 +96,10 @@ export default function LapsGraph({
                                     }}
                                 />
                             </div>
-                            <div className="text-right font-sans text-sm font-semibold tabular-nums text-ink">
+                            <div className="text-right font-sans text-sm font-semibold tabular-nums text-foreground">
                                 {lap.pace}
                             </div>
-                            <div className="flex items-center justify-end gap-1 font-sans text-xs tabular-nums text-ink-2">
+                            <div className="flex items-center justify-end gap-1 font-sans text-xs tabular-nums text-text-2">
                                 <Icon
                                     icon="mdi:timer-outline"
                                     width={12}
@@ -108,10 +108,10 @@ export default function LapsGraph({
                                 />
                                 {formatDurationHMS(lap.elapsed_sec)}
                             </div>
-                            <div className="text-right font-sans text-xs tabular-nums text-ink-2">
+                            <div className="text-right font-sans text-xs tabular-nums text-text-2">
                                 ♡ {lap.avg_hr ?? '—'}
                             </div>
-                            <div className="flex items-center justify-end gap-1 font-sans text-xs tabular-nums text-ink-2">
+                            <div className="flex items-center justify-end gap-1 font-sans text-xs tabular-nums text-text-2">
                                 <Icon
                                     icon="mdi:shoe-print"
                                     width={12}

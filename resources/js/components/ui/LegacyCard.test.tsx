@@ -1,18 +1,18 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import Card, { type CardTone } from './Card';
+import Card, { type CardTone } from './LegacyCard';
 
 describe('Card', () => {
     it('renders children inside the tonal, bordered default surface', () => {
         const { container } = render(<Card>hello</Card>);
         expect(screen.getByText('hello')).toBeInTheDocument();
         const root = container.firstChild as HTMLElement;
-        expect(root).toHaveClass('bg-surface-card', 'border-line');
+        expect(root).toHaveClass('bg-card', 'border-border');
     });
 
     it.each([
-        ['card', 'bg-surface-card'],
+        ['card', 'bg-card'],
         ['sky', 'bg-sky'],
         ['onSky', 'bg-cream/[0.06]'],
         ['empty', 'border-dashed'],

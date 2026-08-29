@@ -13,7 +13,7 @@ export default function BrandMark({
     className,
     wordmarkClassName,
 }: Readonly<BrandMarkProps>) {
-    const wordColor = tone === 'cream' ? 'text-cream' : 'text-ink';
+    const wordColor = tone === 'cream' ? 'text-cream' : 'text-foreground';
 
     return (
         <div className={cn('flex items-center gap-2.5', className)}>

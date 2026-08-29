@@ -1,9 +1,8 @@
-import { Icon } from '@iconify/react';
-
 import type { WeekPlan, WeekPlanDay } from '@/types/inertia';
 
-import Card from '@/components/ui/Card';
 import Chip, { type ChipTone } from '@/components/ui/Chip';
+import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';
@@ -121,7 +120,7 @@ function DayGlyph({
                     height={16}
                     className={cn(
                         status === 'partial' && 'opacity-60',
-                        inStreak ? 'text-horizon-ink' : 'text-ink-3',
+                        inStreak ? 'text-horizon-ink' : 'text-text-3',
                     )}
                     aria-hidden
                 />
@@ -214,18 +213,18 @@ export default function WeekPlanWidget({
                     <li
                         key={day.date}
                         className={cn(
-                            'flex flex-col items-center gap-1 rounded-lg bg-surface-sunken p-2 text-center',
+                            'flex flex-col items-center gap-1 rounded-lg bg-muted p-2 text-center',
                             day.date === todayIso && 'ring-2 ring-horizon-ink',
                         )}
                     >
-                        <span className="text-label-micro text-ink-3">
+                        <span className="text-label-micro text-text-3">
                             {weekdayAbbr(day.date)}
                         </span>
                         <DayGlyph
                             status={day.status}
                             inStreak={streak.has(day.date)}
                         />
-                        <span className="text-[11px] font-semibold text-ink">
+                        <span className="text-[11px] font-semibold text-foreground">
                             {day.session_type === 'rest'
                                 ? 'Rest'
                                 : `${day.distance_km}k`}
@@ -235,7 +234,7 @@ export default function WeekPlanWidget({
                                 icon="mdi:pin"
                                 width={9}
                                 height={9}
-                                className="text-ink-3"
+                                className="text-text-3"
                                 aria-label="Pinned"
                             />
                         )}
@@ -244,8 +243,8 @@ export default function WeekPlanWidget({
             </ul>
 
             {today !== null && (
-                <div className="mt-4 rounded-lg bg-surface-warm p-3">
-                    <span className="text-sm font-bold text-ink sm:text-base">
+                <div className="mt-4 rounded-lg bg-accent p-3">
+                    <span className="text-sm font-bold text-foreground sm:text-base">
                         Today ·{' '}
                         {SESSION_TYPE_LABEL[today.session_type] ??
                             today.session_type}
@@ -255,7 +254,7 @@ export default function WeekPlanWidget({
                             ` · ${formatPace(today.pace_sec_per_km)}/km`}
                     </span>
                     {today.clamp_note !== null && (
-                        <p className="mt-1 text-xs italic text-ink-3">
+                        <p className="mt-1 text-xs italic text-text-3">
                             {today.clamp_note}
                         </p>
                     )}

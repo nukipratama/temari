@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
@@ -24,15 +24,15 @@ export default function SeasonTrack({
     const remaining = Math.max(0, total - earned);
 
     return (
-        <Card padding="card">
+        <Card className="px-4 py-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <SectionLabel dot dotClass="bg-horizon" className="mb-0">
                     Season Track
                 </SectionLabel>
-                <p className="font-mono text-sm tabular-nums text-ink">
+                <p className="font-mono text-sm tabular-nums text-foreground">
                     {earned}
-                    <span className="text-ink-3">/{total}</span>{' '}
-                    <span className="text-ink-3">tiers</span>
+                    <span className="text-text-3">/{total}</span>{' '}
+                    <span className="text-text-3">tiers</span>
                 </p>
             </div>
 
@@ -52,7 +52,7 @@ export default function SeasonTrack({
                 ))}
             </div>
 
-            <p className="mt-3 text-sm leading-relaxed text-ink-2">
+            <p className="mt-3 text-sm leading-relaxed text-text-2">
                 {remaining === 0
                     ? 'Every goal below is done, so the whole track is yours.'
                     : `One tier per goal below. ${remaining} still out there.`}{' '}
@@ -60,7 +60,7 @@ export default function SeasonTrack({
                 cards, accessories and badges do not.{' '}
                 <Link
                     href="/accessories"
-                    className="focus-ring underline underline-offset-2 hover:text-ink"
+                    className="focus-ring underline underline-offset-2 hover:text-foreground"
                 >
                     See what is still missing
                 </Link>

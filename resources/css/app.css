@@ -20,7 +20,7 @@
        (numbers, stats, uppercase metadata labels). Loaded via Google Fonts
        <link> in app.blade.php. */
     --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
-    --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --font-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
     --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
 
     /* ─── Display-type scale ───────────────────────────────────────────
@@ -637,23 +637,23 @@ body {
     }
     /* Narrator / body sentences. */
     .text-prose {
-        @apply font-sans text-quote-md text-ink-2;
+        @apply font-sans text-quote-md text-text-2;
     }
     /* KPI / PR number — the big tabular figure. */
     .text-stat {
-        @apply font-mono text-stat font-bold tabular-nums tracking-[-0.02em] text-ink;
+        @apply font-mono text-stat font-bold tabular-nums tracking-[-0.02em] text-foreground;
     }
     /* Smaller stat figure (compact tiles). */
     .text-stat-sm {
-        @apply font-mono text-2xl font-bold tabular-nums tracking-[-0.02em] text-ink;
+        @apply font-mono text-2xl font-bold tabular-nums tracking-[-0.02em] text-foreground;
     }
     /* Date / timestamp / footnote — metadata, non-uppercase. */
     .text-meta {
-        @apply font-mono text-[11px] tracking-[0.04em] text-ink-3;
+        @apply font-mono text-[11px] tracking-[0.04em] text-text-3;
     }
     /* Temari voice — display serif italic. */
     .voice {
-        @apply font-display text-quote-lg italic text-ink;
+        @apply font-serif text-quote-lg italic text-foreground;
     }
 
     /* Rarity halo — every card gets a calm, static glow ring in its own

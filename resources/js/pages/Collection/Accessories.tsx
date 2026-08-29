@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { Head, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { useRef, useState } from 'react';
@@ -10,10 +9,11 @@ import CoachMark from '@/components/onboarding/CoachMark';
 import TemariProto, {
     type TemariEquipped,
 } from '@/components/temari/TemariProto';
-import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
+import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
@@ -153,7 +153,7 @@ export default function Accessories({
                             >
                                 ★ Currently equipped
                             </Eyebrow>
-                            <h2 className="mb-5 font-display text-display-md text-cream">
+                            <h2 className="mb-5 font-serif text-display-md text-cream">
                                 <em className="italic text-horizon">
                                     Wearing this right now.
                                 </em>
@@ -174,7 +174,7 @@ export default function Accessories({
                                         >
                                             {SLOT_LABEL[slot]}
                                         </Eyebrow>
-                                        <span className="font-display text-base italic text-cream">
+                                        <span className="font-serif text-base italic text-cream">
                                             {equippedLabelFor(
                                                 slot,
                                                 equipped,
@@ -184,7 +184,7 @@ export default function Accessories({
                                     </Card>
                                 ))}
                             </ul>
-                            <p className="mt-5 max-w-md font-display text-sm italic leading-relaxed text-cream/75">
+                            <p className="mt-5 max-w-md font-serif text-sm italic leading-relaxed text-cream/75">
                                 &ldquo;Every time you unlock something new, I'll
                                 have it ready right here.&rdquo;
                             </p>
@@ -335,19 +335,19 @@ function AccessoryCard({
             <div>
                 <h3
                     className={cn(
-                        'font-display text-headline-xs',
+                        'font-serif text-headline-xs',
                         RARITY_INK[item.rarity],
                     )}
                 >
                     {item.name}
                 </h3>
-                <p className="mt-1 font-sans text-sm text-ink-2">
+                <p className="mt-1 font-sans text-sm text-text-2">
                     {item.description}
                 </p>
             </div>
             {locked && (
                 <div className="mt-auto w-full">
-                    <p className="font-display text-xs italic text-ink-3">
+                    <p className="font-serif text-xs italic text-text-3">
                         {item.criteria}
                     </p>
                     {item.target > 0 && <AccessoryProgress item={item} />}
@@ -393,10 +393,10 @@ function AccessoryProgress({ item }: Readonly<{ item: AccessoriesItem }>) {
     const currentCount = useCountUp(item.current);
     return (
         <div className="mt-2">
-            <div className="mb-1 flex items-baseline justify-between font-mono text-[11px] tabular-nums text-ink-3">
+            <div className="mb-1 flex items-baseline justify-between font-mono text-[11px] tabular-nums text-text-3">
                 <span>
                     {formatGoalNumber(currentCount)}
-                    <span className="text-ink-3">/</span>
+                    <span className="text-text-3">/</span>
                     {formatGoalNumber(item.target)}
                 </span>
                 <span>{item.unit}</span>

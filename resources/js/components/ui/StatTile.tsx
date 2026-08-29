@@ -21,7 +21,7 @@ const statTileVariants = cva('', {
             // Bare tile on a sky (dark) panel: on-sky label/unit + cream value.
             plainSky: '',
             // Paper surface with a hairline border.
-            card: 'rounded-lg border border-line bg-surface-card',
+            card: 'rounded-lg border border-border bg-card',
             cream: 'rounded-lg bg-cream',
             creamDeep: 'rounded-lg bg-cream-deep',
             // Sunken neutral well used inside chart cards.
@@ -90,12 +90,12 @@ const ON_SKY: Record<StatTileTone, boolean> = {
 };
 
 const LABEL_CLASS: Record<StatTileTone, string> = {
-    plain: 'text-ink-2',
+    plain: 'text-text-2',
     plainSky: 'text-ink-on-sky',
-    card: 'text-ink-2',
-    cream: 'text-ink-2',
-    creamDeep: 'text-ink-2',
-    sunken: 'text-ink-2',
+    card: 'text-text-2',
+    cream: 'text-text-2',
+    creamDeep: 'text-text-2',
+    sunken: 'text-text-2',
     sky: 'text-ink-on-sky',
 };
 
@@ -126,8 +126,9 @@ export default function StatTile({
     className,
 }: Readonly<StatTileProps>) {
     const onSky = ON_SKY[tone];
-    const valueColor = valueClassName ?? (onSky ? 'text-cream' : 'text-ink');
-    const subColor = onSky ? 'text-ink-on-sky' : 'text-ink-3';
+    const valueColor =
+        valueClassName ?? (onSky ? 'text-cream' : 'text-foreground');
+    const subColor = onSky ? 'text-ink-on-sky' : 'text-text-3';
 
     return (
         <div
@@ -174,7 +175,7 @@ export default function StatTile({
                     className={cn(
                         'mt-1',
                         subVariant === 'quote'
-                            ? 'font-display text-xs italic'
+                            ? 'font-serif text-xs italic'
                             : 'font-sans text-xs',
                         subColor,
                     )}

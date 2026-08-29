@@ -1,10 +1,10 @@
-import { Icon } from '@iconify/react';
 import { usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { type ReactNode } from 'react';
 
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
+import { Icon } from '@/components/ui/Icon';
 import {
     RATE_LIMITED_ERROR,
     useAnalysisTrigger,
@@ -154,7 +154,7 @@ export default function AnalysisStatus({
                 className="flex flex-col gap-1"
             >
                 <div
-                    className={`${TEXT_SIZE[size]} whitespace-pre-line text-ink`}
+                    className={`${TEXT_SIZE[size]} whitespace-pre-line text-foreground`}
                 >
                     {renderContent
                         ? renderContent(content)
@@ -163,7 +163,7 @@ export default function AnalysisStatus({
                 {staleZones && <StaleZonesBadge />}
                 {showTimestamp && analysis.generated_at && (
                     <span
-                        className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-3'}`}
+                        className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-3'}`}
                     >
                         Generated {formatRelativeId(analysis.generated_at)}
                     </span>
@@ -177,7 +177,7 @@ export default function AnalysisStatus({
                             cooldownRemaining,
                             'reread',
                         )}
-                        className={`focus-ring rounded inline-flex items-center self-start gap-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${onSky ? 'text-ink-on-sky hover:text-cream disabled:hover:text-ink-on-sky' : 'text-ink-3 hover:text-leaf-ink disabled:hover:text-ink-3'}`}
+                        className={`focus-ring rounded inline-flex items-center self-start gap-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${onSky ? 'text-ink-on-sky hover:text-cream disabled:hover:text-ink-on-sky' : 'text-text-3 hover:text-leaf-ink disabled:hover:text-text-3'}`}
                     >
                         <Icon icon="mdi:auto-awesome" aria-hidden />
                         <span>
@@ -199,7 +199,7 @@ export default function AnalysisStatus({
             return (
                 <div className="flex flex-col gap-1.5">
                     <span
-                        className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-2'}`}
+                        className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-2'}`}
                     >
                         <Icon icon="mdi:clock-outline" aria-hidden />
                         <span>Still processing, check back in a bit.</span>
@@ -226,7 +226,7 @@ export default function AnalysisStatus({
                 </div>
                 {attempts > 1 && (
                     <span
-                        className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-3'}`}
+                        className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-3'}`}
                     >
                         Attempt {attempts}
                     </span>
@@ -245,7 +245,7 @@ export default function AnalysisStatus({
                         type="button"
                         onClick={trigger}
                         disabled={pending}
-                        className="focus-ring rounded inline-flex items-center self-start gap-1 text-xs text-leaf-ink hover:text-ink transition-colors disabled:opacity-50"
+                        className="focus-ring rounded inline-flex items-center self-start gap-1 text-xs text-leaf-ink hover:text-foreground transition-colors disabled:opacity-50"
                     >
                         <Icon icon="mdi:auto-awesome" aria-hidden />
                         <span>Try again</span>
@@ -267,7 +267,7 @@ export default function AnalysisStatus({
     return (
         <div className="flex flex-col gap-1.5">
             <span
-                className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-2'}`}
+                className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-2'}`}
             >
                 <Icon icon="mdi:clock-outline" aria-hidden />
                 <span>{awaitingScheduleLabel}</span>

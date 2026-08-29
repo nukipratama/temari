@@ -1,10 +1,9 @@
-import { Icon } from '@iconify/react';
-
 import type { InboxItem, NotificationKind } from '@/types/inertia';
 
-import Card from '@/components/ui/Card';
+import { Button } from '@/components/ui/button';
 import Eyebrow from '@/components/ui/Eyebrow';
-import PillButton from '@/components/ui/PillButton';
+import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 import PillLink from '@/components/ui/PillLink';
 import { cn } from '@/lib/cn';
 import { formatIdDate, formatRelativeId } from '@/lib/pace';
@@ -85,18 +84,18 @@ export default function InboxRow({
                         <time
                             dateTime={item.created_at ?? undefined}
                             title={formatIdDate(item.created_at, 'long')}
-                            className="shrink-0 font-mono text-xs tabular-nums text-ink-3"
+                            className="shrink-0 font-mono text-xs tabular-nums text-text-3"
                         >
                             {formatRelativeId(item.created_at)}
                         </time>
                     </div>
 
-                    <h2 className="mt-1 font-sans text-sm font-semibold text-ink">
+                    <h2 className="mt-1 font-sans text-sm font-semibold text-foreground">
                         {item.title}
                     </h2>
 
                     {item.body && (
-                        <p className="mt-1 line-clamp-3 font-sans text-sm leading-relaxed text-ink-2">
+                        <p className="mt-1 line-clamp-3 font-sans text-sm leading-relaxed text-text-2">
                             {item.body}
                         </p>
                     )}
@@ -104,8 +103,7 @@ export default function InboxRow({
                     {(canReplay || item.url) && (
                         <div className="mt-3 flex flex-wrap items-center gap-2">
                             {canReplay && (
-                                <PillButton
-                                    tone="horizon"
+                                <Button
                                     size="sm"
                                     disabled={replaying}
                                     onClick={() => onReplay(item)}
@@ -124,7 +122,7 @@ export default function InboxRow({
                                         )}
                                     />
                                     {replaying ? 'Replaying' : replayLabel}
-                                </PillButton>
+                                </Button>
                             )}
                             {item.url && (
                                 <PillLink

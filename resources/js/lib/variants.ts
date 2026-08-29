@@ -21,10 +21,10 @@ import { cva } from 'class-variance-authority';
 export const cardVariants = cva('rounded-md', {
     variants: {
         tone: {
-            card: 'border border-line bg-surface-card shadow-e1',
+            card: 'border border-border bg-card shadow-e1',
             sky: 'border border-sky bg-sky text-cream shadow-e2',
             onSky: 'border border-cream/[0.12] bg-cream/[0.06] backdrop-blur',
-            empty: 'border border-dashed border-line-strong bg-surface-card/40',
+            empty: 'border border-dashed border-border-strong bg-card/40',
         },
         padding: {
             none: '',
@@ -51,9 +51,9 @@ export const pillButtonVariants = cva(
             tone: {
                 horizon: 'bg-horizon text-sky hover:bg-horizon-deep',
                 sky: 'bg-sky text-cream hover:bg-sky-deep',
-                ghost: 'bg-transparent text-ink border-[1.5px] border-ink/[0.18] hover:border-ink-2',
+                ghost: 'bg-transparent text-foreground border-[1.5px] border-ink/[0.18] hover:border-ink-2',
                 outline:
-                    'bg-cream border-[1.5px] border-cream-deep text-ink-2 hover:border-ink-3 hover:text-ink',
+                    'bg-cream border-[1.5px] border-cream-deep text-text-2 hover:border-ink-3 hover:text-foreground',
             },
             size: {
                 sm: 'px-3.5 py-2 text-[13px]',
@@ -92,7 +92,7 @@ export const chipVariants = cva(
     {
         variants: {
             tone: {
-                neutral: 'bg-ink/[0.06] text-ink-2',
+                neutral: 'bg-ink/[0.06] text-text-2',
                 horizon: 'bg-horizon/[0.18] text-horizon-ink',
                 leaf: 'bg-leaf/[0.18] text-leaf-ink',
                 sky: 'bg-sky/[0.08] text-sky',
@@ -126,7 +126,7 @@ export const toggleButtonVariants = cva(
             },
             selected: {
                 true: 'bg-sky text-cream',
-                false: 'bg-cream-deep text-ink-2 hover:bg-cream-deep/70',
+                false: 'bg-cream-deep text-text-2 hover:bg-cream-deep/70',
             },
         },
         defaultVariants: {
@@ -141,7 +141,7 @@ export const toggleButtonVariants = cva(
  * arrows, modal dismiss). `onSky` flips it to the cream-on-dark treatment.
  */
 export const iconButtonVariants = cva(
-    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full transition text-ink-2 hover:bg-ink/[0.06] hover:text-ink focus-ring',
+    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full transition text-text-2 hover:bg-ink/[0.06] hover:text-foreground focus-ring',
     {
         variants: {
             size: {
@@ -177,7 +177,7 @@ export const filterOptionVariants = cva(
             },
             active: {
                 true: 'bg-sky/10 text-sky',
-                false: 'text-ink hover:bg-surface-warm',
+                false: 'text-foreground hover:bg-accent',
             },
         },
         compoundVariants: [
@@ -207,7 +207,7 @@ export const outlineChipVariants = cva(
         variants: {
             selected: {
                 true: 'border-horizon bg-horizon/10 text-horizon-ink',
-                false: 'border-line text-ink-3 hover:border-horizon/60 hover:text-ink',
+                false: 'border-border text-text-3 hover:border-horizon/60 hover:text-foreground',
             },
         },
         defaultVariants: { selected: false },
@@ -223,7 +223,7 @@ export const outlineChipVariants = cva(
  * otherwise leave a field taller than the pills beside it.
  */
 export const inputVariants = cva(
-    'focus-ring w-full border border-line bg-surface rounded-sm text-ink',
+    'focus-ring w-full border border-border bg-background rounded-sm text-foreground',
     {
         variants: {
             size: {
@@ -244,8 +244,8 @@ export const eyebrowVariants = cva('', {
             hero: 'text-label-hero',
         },
         tone: {
-            'ink-2': 'text-ink-2',
-            'ink-3': 'text-ink-3',
+            'ink-2': 'text-text-2',
+            'ink-3': 'text-text-3',
             horizon: 'text-horizon',
             'horizon-ink': 'text-horizon-ink',
             'ink-on-sky': 'text-ink-on-sky',

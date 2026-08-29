@@ -1,7 +1,7 @@
-import { Icon } from '@iconify/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 
+import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import { useModal } from '@/hooks/useModal';
 import { cn } from '@/lib/cn';
@@ -236,10 +236,10 @@ export default function ShareCardModal({
                             <Icon icon="mdi:close" width={16} height={16} />
                         </button>
                         <div className="flex-1 text-center">
-                            <div className="text-label-micro text-ink-2">
+                            <div className="text-label-micro text-text-2">
                                 Share card
                             </div>
-                            <div className="font-display text-xl tracking-tight text-ink">
+                            <div className="font-serif text-xl tracking-tight text-foreground">
                                 {kartu.name}
                             </div>
                         </div>
@@ -272,8 +272,8 @@ export default function ShareCardModal({
                                     className={cn(
                                         'focus-ring flex items-center justify-center gap-2 rounded-xl p-2.5 text-xs font-medium transition',
                                         format === f
-                                            ? 'border-2 border-sky bg-cream font-semibold text-ink'
-                                            : 'border-2 border-transparent bg-cream text-ink-2 hover:border-cream-deep',
+                                            ? 'border-2 border-sky bg-cream font-semibold text-foreground'
+                                            : 'border-2 border-transparent bg-cream text-text-2 hover:border-cream-deep',
                                     )}
                                 >
                                     <span

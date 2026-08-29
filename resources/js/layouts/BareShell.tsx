@@ -14,7 +14,7 @@ export default function BareShell({ children }: Readonly<BareShellProps>) {
 
     return (
         // No MobileTopBar here, so this shell pads for the notch itself.
-        <div className="min-h-screen bg-cream-deep pt-[env(safe-area-inset-top)] text-ink">
+        <div className="min-h-screen bg-cream-deep pt-[env(safe-area-inset-top)] text-foreground">
             <ErrorBanner />
             {children}
         </div>

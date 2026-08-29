@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { Head, Link } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { memo, useRef, type ReactNode } from 'react';
@@ -11,8 +10,9 @@ import CoachMark from '@/components/onboarding/CoachMark';
 import SendNotificationButton from '@/components/SendNotificationButton';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
-import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import { useCountUp } from '@/hooks/useCountUp';
@@ -244,7 +244,7 @@ function MonthlyRecapCard({
             className="mb-4"
             aria-label={`Temari's notes for ${monthLabel}`}
         >
-            <div className="text-label-small text-ink-2">
+            <div className="text-label-small text-text-2">
                 Temari's notes · {monthLabel}
             </div>
             <div className="mt-2 flex items-start gap-3.5">
@@ -264,7 +264,7 @@ function MonthlyRecapCard({
                         awaitingScheduleLabel="This month's recap isn't ready yet."
                         size="md"
                         renderContent={(content) => (
-                            <p className="text-sm leading-relaxed text-ink">
+                            <p className="text-sm leading-relaxed text-foreground">
                                 {renderBold(content)}
                             </p>
                         )}
@@ -304,7 +304,7 @@ function MonthNav({
                 icon="mdi:chevron-left"
                 label="Previous month"
             />
-            <h2 className="min-w-[7rem] text-center text-base font-semibold tracking-tight text-ink lg:text-lg">
+            <h2 className="min-w-[7rem] text-center text-base font-semibold tracking-tight text-foreground lg:text-lg">
                 {label}
             </h2>
             <NavButton
@@ -335,7 +335,7 @@ function NavButton({
             href={href}
             aria-label={label}
             preserveScroll
-            className="pressable focus-ring flex h-9 w-9 items-center justify-center rounded-full border border-line/60 text-ink-2 transition hover:border-line hover:bg-surface-warm hover:text-ink"
+            className="pressable focus-ring flex h-9 w-9 items-center justify-center rounded-full border border-border/60 text-text-2 transition hover:border-border hover:bg-accent hover:text-foreground"
         >
             <Icon icon={icon} width={18} height={18} aria-hidden />
         </Link>
@@ -344,7 +344,7 @@ function NavButton({
 
 function CalendarHeader() {
     return (
-        <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] border-b border-line/60 bg-surface-sunken/60 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
+        <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] border-b border-border/60 bg-muted/60 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
             <Eyebrow
                 token="micro"
                 tone="ink-2"
@@ -377,7 +377,7 @@ function WeekRowView({
     moodFilter: ReadonlySet<Mood>;
 }>) {
     return (
-        <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] border-b border-line/50 last:border-b-0 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
+        <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] border-b border-border/50 last:border-b-0 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
             <WeekSummary week={week} />
             {week.days.map((day) => (
                 <DayCellView
@@ -393,10 +393,10 @@ function WeekRowView({
 
 function WeekSummary({ week }: Readonly<{ week: WeekRow }>) {
     return (
-        <div className="flex flex-col items-center justify-center gap-0.5 border-r border-line/50 p-1.5 text-center lg:items-start lg:gap-1 lg:p-3 lg:text-left">
+        <div className="flex flex-col items-center justify-center gap-0.5 border-r border-border/50 p-1.5 text-center lg:items-start lg:gap-1 lg:p-3 lg:text-left">
             {week.runCount > 0 ? (
                 <>
-                    <span className="text-xs font-bold tabular-nums leading-none text-ink lg:text-lg">
+                    <span className="text-xs font-bold tabular-nums leading-none text-foreground lg:text-lg">
                         {week.totalKm.toFixed(1)}
                     </span>
                     <Eyebrow
@@ -409,7 +409,7 @@ function WeekSummary({ week }: Readonly<{ week: WeekRow }>) {
                     </Eyebrow>
                 </>
             ) : (
-                <span className="text-xs text-ink-3">—</span>
+                <span className="text-xs text-text-3">—</span>
             )}
         </div>
     );
@@ -432,12 +432,12 @@ const DayCellView = memo(function DayCellView({
     const muted = !cell.is_current_month;
 
     const cellChrome = cn(
-        'group relative flex min-h-[52px] flex-col gap-1 border-l border-line/50 p-1.5 transition lg:min-h-[140px] lg:gap-1.5 lg:p-3',
+        'group relative flex min-h-[52px] flex-col gap-1 border-l border-border/50 p-1.5 transition lg:min-h-[140px] lg:gap-1.5 lg:p-3',
         muted && 'opacity-60',
         filteredOut && 'opacity-30',
         hasRun && cell.mood && !filteredOut
             ? MOOD_SOFT_FILL[cell.mood]
-            : 'bg-surface-card',
+            : 'bg-card',
     );
 
     const inner = (
@@ -446,7 +446,7 @@ const DayCellView = memo(function DayCellView({
                 <span
                     className={cn(
                         'text-xs font-bold tabular-nums lg:text-lg',
-                        hasRun ? 'text-ink' : 'text-ink-2',
+                        hasRun ? 'text-foreground' : 'text-text-2',
                     )}
                 >
                     {cell.day}
@@ -466,15 +466,15 @@ const DayCellView = memo(function DayCellView({
             </div>
             {hasRun && (
                 <div className="mt-auto hidden lg:block">
-                    <div className="text-headline-xs font-black leading-none tabular-nums text-ink">
+                    <div className="text-headline-xs font-black leading-none tabular-nums text-foreground">
                         {cell.distance_km?.toFixed(2)}
-                        <span className="ml-0.5 text-[11px] font-bold text-ink-2 lg:text-xs">
+                        <span className="ml-0.5 text-[11px] font-bold text-text-2 lg:text-xs">
                             km
                         </span>
                     </div>
                     {(cell.pace_sec_per_km !== null ||
                         cell.avg_hr !== null) && (
-                        <div className="mt-1.5 flex items-baseline gap-1.5 font-mono text-[11px] tabular-nums text-ink-2 lg:text-xs">
+                        <div className="mt-1.5 flex items-baseline gap-1.5 font-mono text-[11px] tabular-nums text-text-2 lg:text-xs">
                             {cell.pace_sec_per_km !== null && (
                                 <span>{formatPace(cell.pace_sec_per_km)}</span>
                             )}
@@ -525,13 +525,13 @@ function TodayCell({
     quote,
 }: Readonly<{ cell: CalendarCell; quote: string | null }>) {
     const chrome =
-        'group relative flex min-h-[52px] flex-col gap-1 border-l border-line/50 bg-sky p-1.5 text-cream transition lg:min-h-[140px] lg:gap-2 lg:p-3';
+        'group relative flex min-h-[52px] flex-col gap-1 border-l border-border/50 bg-sky p-1.5 text-cream transition lg:min-h-[140px] lg:gap-2 lg:p-3';
     const hasRun = cell.distance_km !== null && cell.distance_km > 0;
 
     let body: ReactNode = null;
     if (quote) {
         body = (
-            <p className="mt-auto hidden font-display text-xs italic leading-snug text-cream/90 lg:block lg:text-sm">
+            <p className="mt-auto hidden font-serif text-xs italic leading-snug text-cream/90 lg:block lg:text-sm">
                 “{stripEdgeQuotes(quote)}”
             </p>
         );
@@ -642,10 +642,10 @@ function Legend({ className }: Readonly<{ className?: string }>) {
                         style={{ borderColor: moodSigilColor(mood) }}
                         aria-hidden
                     />
-                    <span className="font-medium text-ink">
+                    <span className="font-medium text-foreground">
                         {MOOD_LABEL[mood]}
                     </span>
-                    <span className="font-mono text-[11px] text-ink-3 lg:text-xs">
+                    <span className="font-mono text-[11px] text-text-3 lg:text-xs">
                         · {MOOD_HINT[mood]}
                     </span>
                 </span>

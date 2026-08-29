@@ -1,10 +1,10 @@
-import { Icon } from '@iconify/react';
 import { useForm, usePage } from '@inertiajs/react';
 
 import type { DeadLetterGroup } from '@/pages/AiUsage/types';
 import type { SharedProps } from '@/types/inertia';
 
 import SectionHeading from '@/components/SectionHeading';
+import { Icon } from '@/components/ui/Icon';
 
 /**
  * The "stuck work" cluster: a global one-shot recover action plus three buckets
@@ -70,8 +70,8 @@ function RecoverBar() {
     }
 
     return (
-        <div className="mt-10 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-surface-elev p-4">
-            <p className="text-sm text-ink-2">
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-popover p-4">
+            <p className="text-sm text-text-2">
                 Just recovered from an outage? Recover every stuck block at
                 once.
             </p>
@@ -159,23 +159,23 @@ function AttentionGroupRow({
     }, {});
 
     return (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-surface-elev p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-popover p-4">
             <div className="min-w-0">
-                <p className="truncate font-medium text-ink">
+                <p className="truncate font-medium text-foreground">
                     {group.user_name}
                 </p>
-                <p className="text-xs text-ink-3">
+                <p className="text-xs text-text-3">
                     {group.count} {countLabel}
                 </p>
                 <ul className="mt-2 flex flex-wrap gap-1.5">
                     {Object.entries(byType).map(([type, count]) => (
                         <li
                             key={type}
-                            className="rounded-md bg-surface-sunken px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider text-ink-3"
+                            className="rounded-md bg-muted px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider text-text-3"
                         >
                             {type}
                             {count > 1 && (
-                                <span className="ml-1 text-ink-2">
+                                <span className="ml-1 text-text-2">
                                     ×{count}
                                 </span>
                             )}

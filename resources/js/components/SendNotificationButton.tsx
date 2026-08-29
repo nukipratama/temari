@@ -1,8 +1,8 @@
-import { Icon } from '@iconify/react';
 import { useState } from 'react';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
 import EnableNotificationsModal from '@/components/EnableNotificationsModal';
+import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import {
     cooldownAriaLabel,

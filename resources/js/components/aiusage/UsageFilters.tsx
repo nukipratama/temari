@@ -1,10 +1,10 @@
-import { Icon } from '@iconify/react';
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 
 import type { KindOption, RangeToken } from '@/pages/AiUsage/types';
 
-import Card from '@/components/ui/Card';
+import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 import PillButton from '@/components/ui/PillButton';
 import { cn } from '@/lib/cn';
 import { toggleButtonVariants } from '@/lib/variants';
@@ -52,7 +52,7 @@ export default function UsageFilters({
                 as="section"
                 tone="card"
                 padding="panel"
-                className="bg-surface-elev"
+                className="bg-popover"
             >
                 <form
                     onSubmit={handleSubmit}
@@ -97,15 +97,17 @@ export default function UsageFilters({
                 </form>
             </Card>
 
-            <p className="mt-3 text-xs text-ink-3">
+            <p className="mt-3 text-xs text-text-3">
                 Active range:{' '}
-                <span className="font-semibold text-ink">{from}</span> to{' '}
-                <span className="font-semibold text-ink">{to}</span>
+                <span className="font-semibold text-foreground">{from}</span> to{' '}
+                <span className="font-semibold text-foreground">{to}</span>
                 {kind && (
                     <>
                         {' '}
-                        <span className="text-ink-2">|</span> Filter:{' '}
-                        <span className="font-semibold text-ink">{kind}</span>
+                        <span className="text-text-2">|</span> Filter:{' '}
+                        <span className="font-semibold text-foreground">
+                            {kind}
+                        </span>
                     </>
                 )}
             </p>
@@ -125,14 +127,14 @@ function KindFilter({
     return (
         <label
             htmlFor="kind-filter"
-            className="flex flex-col gap-1 font-mono text-xs font-bold uppercase tracking-wider text-ink-2"
+            className="flex flex-col gap-1 font-mono text-xs font-bold uppercase tracking-wider text-text-2"
         >
             Kind
             <select
                 id="kind-filter"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className="rounded-xl border border-line bg-surface-sunken px-3 py-2 text-sm font-medium text-ink focus:border-leaf focus:outline-none"
+                className="rounded-xl border border-border bg-muted px-3 py-2 text-sm font-medium text-foreground focus:border-leaf focus:outline-none"
             >
                 <option value="">All</option>
                 {kinds.map((k) => (
@@ -159,7 +161,7 @@ function DateField({
     return (
         <label
             htmlFor={id}
-            className="flex flex-col gap-1 font-mono text-xs font-bold uppercase tracking-wider text-ink-2"
+            className="flex flex-col gap-1 font-mono text-xs font-bold uppercase tracking-wider text-text-2"
         >
             {label}
             <input
@@ -167,7 +169,7 @@ function DateField({
                 type="date"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className="rounded-xl border border-line bg-surface-sunken px-3 py-2 text-sm font-medium text-ink focus:border-leaf focus:outline-none"
+                className="rounded-xl border border-border bg-muted px-3 py-2 text-sm font-medium text-foreground focus:border-leaf focus:outline-none"
             />
         </label>
     );

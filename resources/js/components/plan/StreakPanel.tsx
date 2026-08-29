@@ -1,4 +1,4 @@
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
@@ -55,18 +55,18 @@ export default function StreakPanel({
     const nextRestWeek = streak.weeks_to_next_rest_week;
 
     return (
-        <Card padding="card">
+        <Card className="px-4 py-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <SectionLabel dot dotClass="bg-leaf" className="mb-0">
                     Weekly Streak
                 </SectionLabel>
-                <p className="font-mono text-sm tabular-nums text-ink">
+                <p className="font-mono text-sm tabular-nums text-foreground">
                     {streak.weeks === 0 ? (
-                        <span className="text-ink-3">no streak</span>
+                        <span className="text-text-3">no streak</span>
                     ) : (
                         <>
                             {streak.weeks}{' '}
-                            <span className="text-ink-3">
+                            <span className="text-text-3">
                                 {streak.weeks === 1 ? 'week' : 'weeks'}
                             </span>
                         </>
@@ -74,19 +74,19 @@ export default function StreakPanel({
                 </p>
             </div>
 
-            <p className="mt-3 text-sm leading-relaxed text-ink-2">
+            <p className="mt-3 text-sm leading-relaxed text-text-2">
                 {stakes(streak)}
             </p>
 
             {streak.last_forgiven_week !== null && (
-                <p className="mt-2 text-sm leading-relaxed text-ink-2">
+                <p className="mt-2 text-sm leading-relaxed text-text-2">
                     The week ending{' '}
                     {formatNaiveIdDate(streak.last_forgiven_week, 'short')} was
                     forgiven: it bridged the streak without counting toward it.
                 </p>
             )}
 
-            <div className="mt-4 border-t border-line pt-3">
+            <div className="mt-4 border-t border-border pt-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <Eyebrow token="micro" tone="ink-3">
                         Rest Weeks
@@ -105,14 +105,14 @@ export default function StreakPanel({
                                         'h-2.5 w-2.5 rounded-full',
                                         index < streak.rest_weeks_held
                                             ? 'bg-leaf'
-                                            : 'border border-line-strong',
+                                            : 'border border-border-strong',
                                     )}
                                 />
                             ),
                         )}
                     </div>
                 </div>
-                <p className="mt-2 text-sm leading-relaxed text-ink-2">
+                <p className="mt-2 text-sm leading-relaxed text-text-2">
                     {restWeeksNote(streak)}
                 </p>
                 {nextRestWeek !== null && streak.weeks > 0 && (

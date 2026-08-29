@@ -1,8 +1,8 @@
-import { Icon } from '@iconify/react';
 import { Link } from '@inertiajs/react';
 
 import Eyebrow from '@/components/ui/Eyebrow';
 import GradientText from '@/components/ui/GradientText';
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { formatDuration } from '@/lib/pace';
 import { activityUrl } from '@/lib/routes';
@@ -71,7 +71,7 @@ export default function PastYouHero({
                     <Eyebrow token="micro" tone="ink-on-sky">
                         You vs past you
                     </Eyebrow>
-                    <p className="mt-2 flex flex-wrap items-baseline gap-x-2.5 font-display leading-none">
+                    <p className="mt-2 flex flex-wrap items-baseline gap-x-2.5 font-serif leading-none">
                         {evenPace ? (
                             <span className="text-display-sm text-cream">
                                 Dead even

@@ -25,7 +25,7 @@ describe('PillButton', () => {
         const button = screen.getByRole('button', { name: 'Keluar' });
         expect(button.className).toMatch(/bg-cream/);
         expect(button.className).toMatch(/border-cream-deep/);
-        expect(button.className).toMatch(/text-ink-2/);
+        expect(button.className).toMatch(/text-text-2/);
     });
 
     it('switches ghost to onSky variant when onSky=true', () => {

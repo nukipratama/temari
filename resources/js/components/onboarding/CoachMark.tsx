@@ -281,14 +281,14 @@ export default function CoachMark({
             aria-label={title}
             style={style}
             className={cn(
-                'z-50 w-64 rounded-lg border border-line bg-surface-elev p-4 shadow-e2',
+                'z-50 w-64 rounded-lg border border-border bg-popover p-4 shadow-e2',
                 className,
             )}
         >
-            <p className="font-display text-sm font-semibold text-ink">
+            <p className="font-serif text-sm font-semibold text-foreground">
                 {title}
             </p>
-            {body && <p className="mt-1.5 text-sm text-ink-2">{body}</p>}
+            {body && <p className="mt-1.5 text-sm text-text-2">{body}</p>}
             <button
                 type="button"
                 onClick={dismiss}

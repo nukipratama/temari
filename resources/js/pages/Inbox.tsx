@@ -112,7 +112,7 @@ export default function Inbox({
                 >
                     Everything I told you,
                     <br />
-                    <em className="italic text-ink-2">still here.</em>
+                    <em className="italic text-text-2">still here.</em>
                 </PageHero>
 
                 {items.length === 0 ? (
@@ -164,7 +164,7 @@ export default function Inbox({
                         ) : (
                             <span />
                         )}
-                        <span className="font-mono text-xs tabular-nums text-ink-3">
+                        <span className="font-mono text-xs tabular-nums text-text-3">
                             Page {notifications.current_page} of{' '}
                             {notifications.last_page}
                         </span>

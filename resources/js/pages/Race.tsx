@@ -6,11 +6,11 @@ import CtlTrendChart, {
     type CtlTrendPoint,
 } from '@/components/race/CtlTrendChart';
 import PlanRaceTabs from '@/components/race/PlanRaceTabs';
-import Card from '@/components/ui/Card';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
-import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';
@@ -121,7 +121,7 @@ export default function Race({
                                 ? 'Your race, on the calendar.'
                                 : 'Give the plan something to aim at.'}
                         </PageHero>
-                        <p className="mt-2 max-w-xl font-sans text-sm leading-relaxed text-ink-2">
+                        <p className="mt-2 max-w-xl font-sans text-sm leading-relaxed text-text-2">
                             Set a race and Temari projects a realistic finish
                             time from your own PRs, then tracks your fitness
                             trend against it.
@@ -131,19 +131,19 @@ export default function Race({
 
                 {race && (
                     <section className="mt-8" data-coachmark="race-goal">
-                        <Card padding="hero">
+                        <Card className="px-6 py-6">
                             <div className="flex flex-wrap items-start justify-between gap-4">
                                 <div>
                                     <SectionLabel>
                                         {race.name ?? 'Your race'}
                                     </SectionLabel>
-                                    <p className="font-display text-headline-sm text-ink">
+                                    <p className="font-serif text-headline-sm text-foreground">
                                         {formatNaiveIdDate(
                                             race.race_date,
                                             'long',
                                         )}
                                     </p>
-                                    <p className="mt-1 text-sm text-ink-2">
+                                    <p className="mt-1 text-sm text-text-2">
                                         {Math.round(daysUntilCount)} days to go
                                     </p>
                                 </div>
@@ -173,12 +173,12 @@ export default function Race({
                                     initial="hidden"
                                     animate="visible"
                                     variants={fadeInUp}
-                                    className="mt-6 border-t border-line pt-6"
+                                    className="mt-6 border-t border-border pt-6"
                                 >
                                     <SectionLabel size="micro">
                                         Projected finish
                                     </SectionLabel>
-                                    <p className="font-display text-headline-sm text-ink">
+                                    <p className="font-serif text-headline-sm text-foreground">
                                         {formatDurationHMS(
                                             Math.round(lowSecCount),
                                         )}{' '}
@@ -189,7 +189,7 @@ export default function Race({
                                             )}
                                         </em>
                                     </p>
-                                    <p className="mt-2 text-sm text-ink-2">
+                                    <p className="mt-2 text-sm text-text-2">
                                         Best estimate{' '}
                                         {formatDurationHMS(
                                             Math.round(predictedSecCount),
@@ -205,7 +205,7 @@ export default function Race({
                                 </motion.div>
                             )}
                             {!projection && (
-                                <p className="mt-6 border-t border-line pt-6 text-sm text-ink-2">
+                                <p className="mt-6 border-t border-border pt-6 text-sm text-text-2">
                                     No personal record yet to project a finish
                                     time from. Set one on a run and it shows up
                                     here.
@@ -228,7 +228,7 @@ export default function Race({
                     <SectionLabel>
                         {race ? 'Edit your race' : 'Set your race'}
                     </SectionLabel>
-                    <Card padding="hero" className="mt-3">
+                    <Card className="mt-3 px-6 py-6">
                         <form
                             onSubmit={submit}
                             className="grid grid-cols-1 gap-5 sm:grid-cols-2"
@@ -236,7 +236,7 @@ export default function Race({
                             <div>
                                 <label
                                     htmlFor="race_name"
-                                    className="text-label-micro text-ink-3"
+                                    className="text-label-micro text-text-3"
                                 >
                                     Name (optional)
                                 </label>
@@ -253,7 +253,7 @@ export default function Race({
                             <div>
                                 <label
                                     htmlFor="race_date"
-                                    className="text-label-micro text-ink-3"
+                                    className="text-label-micro text-text-3"
                                 >
                                     Race day
                                 </label>
@@ -271,7 +271,7 @@ export default function Race({
                             </div>
 
                             <div className="sm:col-span-2">
-                                <span className="text-label-micro text-ink-3">
+                                <span className="text-label-micro text-text-3">
                                     Distance
                                 </span>
                                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -309,7 +309,7 @@ export default function Race({
                                                 'w-20',
                                             )}
                                         />
-                                        <span className="text-sm text-ink-3">
+                                        <span className="text-sm text-text-3">
                                             km
                                         </span>
                                     </div>
@@ -317,7 +317,7 @@ export default function Race({
                             </div>
 
                             <div className="sm:col-span-2">
-                                <span className="text-label-micro text-ink-3">
+                                <span className="text-label-micro text-text-3">
                                     Goal time
                                 </span>
                                 <div className="mt-1.5 flex items-center gap-1.5">
@@ -335,7 +335,7 @@ export default function Race({
                                             'w-16',
                                         )}
                                     />
-                                    <span className="text-sm text-ink-3">
+                                    <span className="text-sm text-text-3">
                                         hr
                                     </span>
                                     <input
@@ -352,7 +352,7 @@ export default function Race({
                                             'w-16',
                                         )}
                                     />
-                                    <span className="text-sm text-ink-3">
+                                    <span className="text-sm text-text-3">
                                         min
                                     </span>
                                     <input
@@ -369,7 +369,7 @@ export default function Race({
                                             'w-16',
                                         )}
                                     />
-                                    <span className="text-sm text-ink-3">
+                                    <span className="text-sm text-text-3">
                                         sec
                                     </span>
                                 </div>
@@ -384,9 +384,8 @@ export default function Race({
                             </div>
 
                             <div className="sm:col-span-2">
-                                <PillButton
+                                <Button
                                     type="submit"
-                                    tone="horizon"
                                     disabled={
                                         processing || goalTimeIssue !== null
                                     }
@@ -396,7 +395,7 @@ export default function Race({
                                         : race
                                           ? 'Update race'
                                           : 'Set race'}
-                                </PillButton>
+                                </Button>
                             </div>
                         </form>
                     </Card>
@@ -404,7 +403,7 @@ export default function Race({
 
                 <section className="mt-10" data-coachmark="race-fitness-trend">
                     <SectionLabel>Fitness · last 90 days</SectionLabel>
-                    <Card padding="hero" className="mt-3">
+                    <Card className="mt-3 px-6 py-6">
                         <CtlTrendChart trend={ctlTrend} />
                     </Card>
                 </section>

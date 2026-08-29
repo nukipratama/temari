@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { usePage } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRef, type ReactNode } from 'react';
@@ -6,6 +5,7 @@ import { useRef, type ReactNode } from 'react';
 import type { SharedProps } from '@/types/inertia';
 
 import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
+import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import { useModal } from '@/hooks/useModal';
 import { cn } from '@/lib/cn';
@@ -106,11 +106,11 @@ export default function TemariNudgeModal({
                             />
                             <h2
                                 id="temari-nudge-title"
-                                className="font-display text-2xl tracking-tight text-ink"
+                                className="font-serif text-2xl tracking-tight text-foreground"
                             >
                                 {title}
                             </h2>
-                            <p className="font-sans text-sm leading-relaxed text-ink-2">
+                            <p className="font-sans text-sm leading-relaxed text-text-2">
                                 {body}
                             </p>
                         </div>

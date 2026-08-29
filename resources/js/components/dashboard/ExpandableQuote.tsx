@@ -14,7 +14,7 @@ export default function ExpandableQuote({
             <p
                 className={cn(
                     'whitespace-pre-line font-sans text-base leading-relaxed',
-                    onSky ? 'text-cream' : 'text-ink',
+                    onSky ? 'text-cream' : 'text-foreground',
                     !expanded && 'line-clamp-3',
                 )}
             >

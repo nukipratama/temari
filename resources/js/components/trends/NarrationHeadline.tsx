@@ -1,9 +1,9 @@
-import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 
 import type { AnalysisPayload } from '@/types/inertia';
 
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 interface NarrationHeadlineProps {
@@ -67,11 +67,11 @@ export default function NarrationHeadline({
                         const { title, description } = splitContent(content);
                         return (
                             <>
-                                <p className="font-display text-xl leading-snug text-ink sm:text-2xl">
+                                <p className="font-serif text-xl leading-snug text-foreground sm:text-2xl">
                                     {title}
                                 </p>
                                 {description !== '' && (
-                                    <p className="mt-2 max-w-full text-sm leading-relaxed text-ink-2 sm:text-base">
+                                    <p className="mt-2 max-w-full text-sm leading-relaxed text-text-2 sm:text-base">
                                         {description}
                                     </p>
                                 )}

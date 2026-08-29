@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { Head, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
@@ -14,10 +13,12 @@ import PersonaBar, { type PersonaSlice } from '@/components/PersonaBar';
 import { type StreakSummary } from '@/components/plan/StreakPanel';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
+import { Icon } from '@/components/ui/Icon';
+import LegacyCard from '@/components/ui/LegacyCard';
 import LinkCard from '@/components/ui/LinkCard';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
@@ -207,7 +208,7 @@ export default function Profile({
                                 >
                                     With Temari since
                                 </Eyebrow>
-                                <p className="mt-1 font-display text-headline-sm text-cream">
+                                <p className="mt-1 font-serif text-headline-sm text-cream">
                                     {formatShortDateId(identity.member_since)}
                                 </p>
                             </div>
@@ -288,7 +289,7 @@ export default function Profile({
                     href="/race"
                     className="pressable mt-10 flex items-center justify-between gap-3 transition hover:border-horizon/60"
                 >
-                    <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+                    <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <Icon
                             icon="mdi:flag-checkered"
                             width={16}
@@ -297,7 +298,7 @@ export default function Profile({
                         />
                         Got a race coming up?
                     </span>
-                    <span className="text-label-micro text-ink-3">
+                    <span className="text-label-micro text-text-3">
                         Set your race &rarr;
                     </span>
                 </LinkCard>
@@ -312,7 +313,7 @@ export default function Profile({
                 {fitness?.training_paces && (
                     <section className="mt-10">
                         <SectionLabel>Training · pace targets</SectionLabel>
-                        <Card className="mt-3">
+                        <Card className="mt-3 px-4 py-4">
                             <motion.div
                                 variants={staggerContainer}
                                 initial="hidden"
@@ -407,7 +408,7 @@ function ProgressionSection({
 
     return (
         <div data-coachmark="profile-progression" className="mt-10">
-            <Card as="section" padding="hero">
+            <LegacyCard as="section" padding="hero">
                 {tabs.length > 1 && (
                     <div
                         className="mb-6 flex flex-wrap items-center gap-2"
@@ -441,7 +442,7 @@ function ProgressionSection({
                 <div className="grid grid-cols-1 items-start gap-7 lg:grid-cols-[1fr_1.4fr]">
                     <div>
                         <SectionLabel>Journey · {label}</SectionLabel>
-                        <p className="font-display text-headline-sm text-ink">
+                        <p className="font-serif text-headline-sm text-foreground">
                             Then{' '}
                             <em className="italic">
                                 {formatDurationHMS(Math.round(worstCount))}
@@ -452,7 +453,7 @@ function ProgressionSection({
                             </em>
                         </p>
                         {delta > 0 && (
-                            <p className="mt-3 font-display text-sm italic leading-relaxed text-ink-2">
+                            <p className="mt-3 font-serif text-sm italic leading-relaxed text-text-2">
                                 &ldquo;
                                 {formatDurationHMS(Math.round(deltaCount))}{' '}
                                 faster over {series.weeks.length} weeks.&rdquo;
@@ -482,7 +483,7 @@ function ProgressionSection({
                         />
                     </div>
                 </div>
-            </Card>
+            </LegacyCard>
         </div>
     );
 }

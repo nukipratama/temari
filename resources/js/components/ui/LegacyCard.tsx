@@ -17,7 +17,7 @@ interface CardProps {
     children: ReactNode;
 }
 
-export default function Card({
+export default function LegacyCard({
     tone = 'card',
     padding = 'card',
     as: Component = 'div',

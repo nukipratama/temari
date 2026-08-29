@@ -27,7 +27,7 @@ export default function MoodChip({
                     : 'px-3 py-1.5 text-label-small',
                 onSky
                     ? 'bg-cream/10 text-cream'
-                    : cn(MOOD_SOFT_FILL[mood], 'text-ink'),
+                    : cn(MOOD_SOFT_FILL[mood], 'text-foreground'),
                 className,
             )}
         >

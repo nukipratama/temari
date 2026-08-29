@@ -33,7 +33,7 @@ export default function SectionLabel({
                 size === 'micro'
                     ? 'gap-1.5 text-label-micro'
                     : 'gap-3 text-label-small',
-                onSky ? 'text-ink-on-sky' : 'text-ink-2',
+                onSky ? 'text-ink-on-sky' : 'text-text-2',
                 className,
             )}
         >

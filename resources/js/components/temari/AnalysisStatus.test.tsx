@@ -190,7 +190,7 @@ describe('AnalysisStatus', () => {
         vi.useRealTimers();
     });
 
-    it('gives the done-state timestamp and "Reread" button the on-sky muted tone instead of text-ink-3', () => {
+    it('gives the done-state timestamp and "Reread" button the on-sky muted tone instead of text-text-3', () => {
         vi.useFakeTimers();
         const now = new Date('2026-07-07T12:00:00Z');
         vi.setSystemTime(now);
@@ -210,11 +210,11 @@ describe('AnalysisStatus', () => {
             'text-ink-on-sky',
         );
         expect(screen.getByText(/Generated 5 min ago/)).not.toHaveClass(
-            'text-ink-3',
+            'text-text-3',
         );
         const button = screen.getByRole('button', { name: /Reread/ });
         expect(button).toHaveClass('text-ink-on-sky');
-        expect(button).not.toHaveClass('text-ink-3');
+        expect(button).not.toHaveClass('text-text-3');
         vi.useRealTimers();
     });
 

@@ -36,12 +36,12 @@ export default function SummaryCard({
     return (
         <section
             className={cn(
-                'rounded-lg border border-line bg-surface-warm p-4 shadow-e1 sm:p-5',
+                'rounded-lg border border-border bg-accent p-4 shadow-e1 sm:p-5',
                 className,
             )}
             aria-label="Temari's notes this week"
         >
-            <div className="font-mono text-xs font-bold uppercase tracking-wider text-ink-2">
+            <div className="font-mono text-xs font-bold uppercase tracking-wider text-text-2">
                 Temari's Notes
             </div>
             <div className="mt-2">
@@ -53,7 +53,7 @@ export default function SummaryCard({
                     isChainHead={isChainHead}
                     size="md"
                     renderContent={(content) => (
-                        <p className="text-sm leading-relaxed text-ink">
+                        <p className="text-sm leading-relaxed text-foreground">
                             {renderBold(content)}
                         </p>
                     )}
@@ -65,9 +65,9 @@ export default function SummaryCard({
                 the actual summary). Label it explicitly as a preview instead of
                 dropping it, so the card still never looks empty. */}
             {analysis.status !== 'done' && (
-                <p className="mt-2 text-sm leading-relaxed text-ink-2">
+                <p className="mt-2 text-sm leading-relaxed text-text-2">
                     {awaitingSchedule && (
-                        <span className="font-semibold text-ink-3">
+                        <span className="font-semibold text-text-3">
                             For now:{' '}
                         </span>
                     )}

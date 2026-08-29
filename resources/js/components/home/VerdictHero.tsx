@@ -11,7 +11,7 @@ export type JudgedVerdict = Exclude<TrendVerdict, 'not_enough_history'>;
 
 const TONE: Record<JudgedVerdict, string> = {
     improving: 'text-leaf-ink',
-    plateaued: 'text-ink',
+    plateaued: 'text-foreground',
     slipped: 'text-ember-ink',
 };
 
@@ -38,14 +38,14 @@ export default function VerdictHero({
 
             <p
                 className={cn(
-                    'font-display italic text-display-xs leading-tight',
+                    'font-serif italic text-display-xs leading-tight',
                     TONE[verdict],
                 )}
             >
                 {verdictHeadline(trend)}
             </p>
 
-            <p className="mt-3 font-sans text-sm leading-relaxed text-ink-2">
+            <p className="mt-3 font-sans text-sm leading-relaxed text-text-2">
                 {verdictSupport(trend)}
             </p>
 
@@ -55,7 +55,7 @@ export default function VerdictHero({
                     size={34}
                     animate={false}
                 />
-                <span className="font-mono text-[11px] font-semibold tracking-[0.06em] text-ink-3">
+                <span className="font-mono text-[11px] font-semibold tracking-[0.06em] text-text-3">
                     temari
                 </span>
             </div>

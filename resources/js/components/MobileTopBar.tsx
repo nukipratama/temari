@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { Link, usePage } from '@inertiajs/react';
 
 import type { SharedProps } from '@/types/inertia';
@@ -6,6 +5,7 @@ import type { SharedProps } from '@/types/inertia';
 import BrandMark from '@/components/BrandMark';
 import NotificationBell from '@/components/NotificationBell';
 import StravaSyncBadge from '@/components/StravaSyncBadge';
+import { Icon } from '@/components/ui/Icon';
 import UserAvatarLink from '@/components/UserAvatarLink';
 import { useScrolled } from '@/hooks/useScrolled';
 import { cn } from '@/lib/cn';
@@ -29,7 +29,7 @@ export default function MobileTopBar() {
             data-testid="mobile-top-bar"
             className={cn(
                 'sticky top-0 z-30 flex items-center justify-between gap-3 border-b bg-cream-deep/85 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl transition-colors lg:hidden',
-                scrolled ? 'border-line' : 'border-transparent',
+                scrolled ? 'border-border' : 'border-transparent',
             )}
         >
             {back ? (
@@ -37,7 +37,7 @@ export default function MobileTopBar() {
                 <Link
                     href={back.href}
                     aria-label={`Back to ${back.label}`}
-                    className="pressable focus-ring -ml-1 inline-flex min-w-0 items-center gap-1 rounded py-1 pl-1 pr-2 text-label-small text-ink-2 transition hover:text-ink"
+                    className="pressable focus-ring -ml-1 inline-flex min-w-0 items-center gap-1 rounded py-1 pl-1 pr-2 text-label-small text-text-2 transition hover:text-foreground"
                 >
                     <Icon
                         icon="mdi:chevron-left"

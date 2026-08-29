@@ -1,8 +1,8 @@
-import { Icon } from '@iconify/react';
 import { Link, usePage } from '@inertiajs/react';
 
 import type { SharedProps } from '@/types/inertia';
 
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 interface NotificationBellProps {
@@ -27,8 +27,8 @@ export default function NotificationBell({
                 'pressable focus-ring relative inline-flex items-center justify-center rounded-full transition',
                 compact ? 'h-9 w-9' : 'h-11 w-11',
                 isActive
-                    ? 'bg-ink/[0.06] text-ink'
-                    : 'text-ink-3 hover:bg-ink/[0.04] hover:text-ink-2',
+                    ? 'bg-ink/[0.06] text-foreground'
+                    : 'text-text-3 hover:bg-ink/[0.04] hover:text-text-2',
             )}
         >
             <Icon

@@ -1,7 +1,7 @@
 import type { BriefingResult } from '@/types/inertia';
 
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import Card from '@/components/ui/Card';
+import Card from '@/components/ui/LegacyCard';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 

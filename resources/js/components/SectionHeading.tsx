@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { Icon } from '@iconify/react';
-
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { ICON_TONE, type Tone } from '@/lib/tones';
 
@@ -47,7 +46,7 @@ export default function SectionHeading({
             <div className="min-w-0">
                 <h2
                     className={cn(
-                        'relative inline-block pb-1.5 text-lg font-bold tracking-tight text-ink',
+                        'relative inline-block pb-1.5 text-lg font-bold tracking-tight text-foreground',
                         "before:absolute before:bottom-0 before:left-0 before:h-[2px] before:w-8 before:rounded-full before:content-['']",
                         ACCENT_RULE[tone],
                     )}
@@ -55,7 +54,7 @@ export default function SectionHeading({
                     {title}
                 </h2>
                 {subtitle !== undefined && subtitle !== null && (
-                    <p className="mt-2 text-sm leading-relaxed text-ink-2">
+                    <p className="mt-2 text-sm leading-relaxed text-text-2">
                         {subtitle}
                     </p>
                 )}

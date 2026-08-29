@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { Link } from '@inertiajs/react';
 import { motion, useDragControls } from 'framer-motion';
 import { useCallback, useRef, useState, type ReactNode } from 'react';
@@ -7,6 +6,7 @@ import type { MoodOption } from '@/lib/mood';
 import type { Mood } from '@/types/inertia';
 
 import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { usePopover } from '@/hooks/usePopover';
 import { cn } from '@/lib/cn';
@@ -168,7 +168,7 @@ export default function HistoryFilter<
                     'pressable focus-ring inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium transition lg:text-sm',
                     totalActive > 0
                         ? 'border-sky/40 bg-sky/[0.06] text-sky'
-                        : 'border-line/60 bg-surface-card text-ink-2 hover:bg-surface-warm',
+                        : 'border-border/60 bg-card text-text-2 hover:bg-accent',
                 )}
             >
                 <Icon
@@ -226,7 +226,7 @@ export default function HistoryFilter<
                         // able to grow as filters are added, where a 288px popover
                         // anchored to a top-right trigger gets cramped and sits at
                         // the far end of the screen from the thumb.
-                        'fixed inset-x-0 bottom-0 z-40 max-h-[80vh] overflow-y-auto rounded-t-lg border border-line bg-surface-elev pb-[max(1rem,env(safe-area-inset-bottom))] shadow-e2',
+                        'fixed inset-x-0 bottom-0 z-40 max-h-[80vh] overflow-y-auto rounded-t-lg border border-border bg-popover pb-[max(1rem,env(safe-area-inset-bottom))] shadow-e2',
                         // Desktop: the original anchored popover.
                         'lg:absolute lg:inset-x-auto lg:right-0 lg:bottom-auto lg:top-[calc(100%+8px)] lg:max-h-none lg:w-72 lg:overflow-hidden lg:rounded-lg lg:pb-0',
                     )}
@@ -243,7 +243,7 @@ export default function HistoryFilter<
                         <span className="h-1 w-9 rounded-full bg-ink/15" />
                     </div>
                     {(totalActive > 0 || onReset) && (
-                        <div className="flex items-center justify-between border-b border-line/60 px-3 py-2">
+                        <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
                             <Eyebrow as="span" token="micro" tone="ink-2">
                                 Filter
                             </Eyebrow>
@@ -288,7 +288,7 @@ function FilterSection({
     children,
 }: Readonly<{ title: string; children: ReactNode }>) {
     return (
-        <div className="border-b border-line/60 px-3 py-3 last:border-b-0">
+        <div className="border-b border-border/60 px-3 py-3 last:border-b-0">
             <Eyebrow token="micro" tone="ink-2" className="mb-2">
                 {title}
             </Eyebrow>
@@ -319,7 +319,7 @@ function RangeSectionView<V extends string>({
                         >
                             <span>{opt.label}</span>
                             {opt.hint && (
-                                <span className="font-mono text-[11px] text-ink-3">
+                                <span className="font-mono text-[11px] text-text-3">
                                     {opt.hint}
                                 </span>
                             )}
@@ -399,7 +399,7 @@ function OptionListSectionView<T extends string>({
                         >
                             <span>{opt.label}</span>
                             {opt.hint && (
-                                <span className="font-mono text-[11px] text-ink-3">
+                                <span className="font-mono text-[11px] text-text-3">
                                     {opt.hint}
                                 </span>
                             )}

@@ -1,5 +1,4 @@
-import { Icon } from '@iconify/react';
-
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 export interface ActiveChip {
@@ -52,7 +51,7 @@ export default function ActiveFilterChips({
                 <button
                     type="button"
                     onClick={onClearAll}
-                    className="focus-ring rounded px-1 text-xs font-medium text-ink-3 underline-offset-2 hover:text-ink-2 hover:underline"
+                    className="focus-ring rounded px-1 text-xs font-medium text-text-3 underline-offset-2 hover:text-text-2 hover:underline"
                 >
                     Clear all
                 </button>

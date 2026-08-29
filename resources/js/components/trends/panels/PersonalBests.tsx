@@ -42,16 +42,16 @@ export default function PersonalBests({
     return (
         <div
             className={cn(
-                'flex flex-col gap-6 rounded-(--radius-panel) border border-line bg-surface-card p-6 shadow-(--shadow-panel) sm:p-8',
+                'flex flex-col gap-6 rounded-(--radius-panel) border border-border bg-card p-6 shadow-(--shadow-panel) sm:p-8',
                 className,
             )}
         >
             <div>
-                <p className="text-label-micro text-ink-3">Records</p>
-                <h2 className="mt-1 font-display text-lg text-ink">
+                <p className="text-label-micro text-text-3">Records</p>
+                <h2 className="mt-1 font-serif text-lg text-foreground">
                     Personal Bests
                 </h2>
-                <p className="mt-1 text-sm text-ink-2">
+                <p className="mt-1 text-sm text-text-2">
                     Every distance you have a best for, and the fastest pace you
                     have held for a given stretch of time. Temari logs these off
                     your synced runs, you never enter one by hand.
@@ -59,7 +59,7 @@ export default function PersonalBests({
             </div>
 
             {!hasAny && (
-                <p className="text-sm text-ink-3">
+                <p className="text-sm text-text-3">
                     Run to set your first personal best — it shows up here
                     automatically.
                 </p>
@@ -68,10 +68,10 @@ export default function PersonalBests({
             {distanceRecords.length > 0 && (
                 <div className="flex flex-col gap-3">
                     <div className="flex items-baseline justify-between">
-                        <h3 className="text-sm font-semibold text-ink">
+                        <h3 className="text-sm font-semibold text-foreground">
                             By distance
                         </h3>
-                        <span className="text-xs text-ink-3">
+                        <span className="text-xs text-text-3">
                             {distanceRecords.length} PRs
                         </span>
                     </div>
@@ -102,27 +102,27 @@ export default function PersonalBests({
             {paceRecords.length > 0 && (
                 <div className="flex flex-col gap-3">
                     <div className="flex items-baseline justify-between">
-                        <h3 className="text-sm font-semibold text-ink">
+                        <h3 className="text-sm font-semibold text-foreground">
                             Best effort by time
                         </h3>
-                        <span className="text-xs text-ink-3">
+                        <span className="text-xs text-text-3">
                             {paceRecords.length} PRs
                         </span>
                     </div>
-                    <ul className="divide-y divide-line rounded-lg bg-surface-sunken">
+                    <ul className="divide-y divide-line rounded-lg bg-muted">
                         {paceRecords.map((record) => (
                             <li
                                 key={record.category}
                                 className="flex items-baseline justify-between gap-3 px-3 py-2.5"
                             >
-                                <span className="text-sm text-ink">
+                                <span className="text-sm text-foreground">
                                     {record.label}
                                 </span>
                                 <span className="flex items-baseline gap-3">
-                                    <span className="font-sans text-sm font-bold tabular-nums text-ink">
+                                    <span className="font-sans text-sm font-bold tabular-nums text-foreground">
                                         {formatPace(record.paceSec)}/km
                                     </span>
-                                    <span className="text-xs text-ink-3">
+                                    <span className="text-xs text-text-3">
                                         {formatNaiveIdDate(
                                             record.setAt,
                                             'short',

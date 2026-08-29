@@ -1,7 +1,7 @@
-import { Icon } from '@iconify/react';
 import { Link } from '@inertiajs/react';
 import { type MouseEventHandler, type ReactNode } from 'react';
 
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 interface SettingsRowProps {
@@ -56,20 +56,20 @@ export default function SettingsRow({
                     icon={icon}
                     width={20}
                     height={20}
-                    className={isDanger ? 'text-ember-ink' : 'text-ink-3'}
+                    className={isDanger ? 'text-ember-ink' : 'text-text-3'}
                     aria-hidden
                 />
                 <span className="flex flex-col">
                     <span
                         className={cn(
                             'font-sans text-sm font-semibold',
-                            isDanger ? 'text-ember-ink' : 'text-ink',
+                            isDanger ? 'text-ember-ink' : 'text-foreground',
                         )}
                     >
                         {label}
                     </span>
                     {description !== undefined && (
-                        <span className="font-sans text-[12px] text-ink-3">
+                        <span className="font-sans text-[12px] text-text-3">
                             {description}
                         </span>
                     )}
@@ -80,7 +80,7 @@ export default function SettingsRow({
                     icon="mdi:chevron-right"
                     width={18}
                     height={18}
-                    className="shrink-0 text-ink-3"
+                    className="shrink-0 text-text-3"
                     aria-hidden
                 />
             )}

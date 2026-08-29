@@ -1,11 +1,11 @@
 import type { MouseEvent } from 'react';
 
-import { Icon } from '@iconify/react';
 import { Link, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 
 import type { SharedProps } from '@/types/inertia';
 
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { tabIconPop } from '@/lib/motion';
 import { activeTabFromUrl, ITEMS } from '@/lib/nav';

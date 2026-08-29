@@ -2,8 +2,8 @@ import { motion } from 'framer-motion';
 
 import type { Mood } from '@/types/inertia';
 
-import Card from '@/components/ui/Card';
 import EmptyPanel from '@/components/ui/EmptyPanel';
+import Card from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
 import { MOOD_FILL, MOOD_LABEL } from '@/lib/mood';
 import { countUpEase } from '@/lib/motion';
@@ -34,7 +34,7 @@ export default function PersonaBar({
                     padding="card"
                     className={cn('text-center', className)}
                 >
-                    <p className="font-display text-base italic text-cream/85">
+                    <p className="font-serif text-base italic text-cream/85">
                         Not enough runs yet to read your persona.
                     </p>
                 </Card>
@@ -81,7 +81,7 @@ export default function PersonaBar({
                         key={slice.mood}
                         className={cn(
                             'inline-flex items-center gap-1.5',
-                            onSky ? 'text-ink-on-sky' : 'text-ink-2',
+                            onSky ? 'text-ink-on-sky' : 'text-text-2',
                         )}
                     >
                         <span
@@ -94,7 +94,7 @@ export default function PersonaBar({
                         <span
                             className={cn(
                                 'font-medium',
-                                onSky ? 'text-cream' : 'text-ink',
+                                onSky ? 'text-cream' : 'text-foreground',
                             )}
                         >
                             {MOOD_LABEL[slice.mood]}
@@ -102,7 +102,7 @@ export default function PersonaBar({
                         <span
                             className={cn(
                                 'font-mono font-semibold tabular-nums',
-                                onSky ? 'text-ink-on-sky' : 'text-ink-2',
+                                onSky ? 'text-ink-on-sky' : 'text-text-2',
                             )}
                         >
                             {slice.percent.toFixed(1)}%

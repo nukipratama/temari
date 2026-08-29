@@ -1,8 +1,8 @@
-import { Icon } from '@iconify/react';
 import { type ReactNode } from 'react';
 
 import BackLink from '@/components/ui/BackLink';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { formatIdDate } from '@/lib/pace';
 import {
@@ -25,19 +25,15 @@ export default function InlineNote({
     className,
 }: Readonly<InlineNoteProps>) {
     return (
-        <Card
-            tone="card"
-            padding="panel"
-            className={cn('flex items-center gap-2.5', className)}
-        >
+        <Card className={cn('flex items-center gap-2.5 px-4 py-3', className)}>
             <Icon
                 icon={icon}
                 width={16}
                 height={16}
-                className="shrink-0 text-ink-3"
+                className="shrink-0 text-text-3"
                 aria-hidden
             />
-            <p className="font-sans text-sm text-ink-2">{children}</p>
+            <p className="font-sans text-sm text-text-2">{children}</p>
             {action}
         </Card>
     );

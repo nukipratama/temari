@@ -185,7 +185,7 @@ export default function PackWrapper({
 
             <Eyebrow
                 token="micro"
-                className="absolute inset-x-0 bottom-5 text-center text-ink/60"
+                className="absolute inset-x-0 bottom-5 text-center text-foreground/60"
             >
                 Drag or tap to open
             </Eyebrow>

@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { router } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -17,6 +16,7 @@ import ConfettiBurst from '@/components/ConfettiBurst';
 import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import HeroPanel from '@/components/ui/HeroPanel';
+import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
@@ -257,13 +257,13 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
                                 <div className="mb-3 text-label-hero text-horizon">
                                     {eyebrow}
                                 </div>
-                                <h2 className="font-display text-display-sm text-cream">
+                                <h2 className="font-serif text-display-sm text-cream">
                                     <em className="italic text-horizon">
                                         {title}
                                     </em>
                                 </h2>
                                 {subtitleText && (
-                                    <p className="mt-4 font-display text-base italic leading-relaxed text-cream/80 sm:text-lg">
+                                    <p className="mt-4 font-serif text-base italic leading-relaxed text-cream/80 sm:text-lg">
                                         {subtitleText}
                                     </p>
                                 )}

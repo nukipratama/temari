@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { memo } from 'react';
 
 import type {
@@ -12,7 +11,8 @@ import MetricExplainer from '@/components/MetricExplainer';
 import RunListRow, { type RunNote } from '@/components/run/RunListRow';
 import SendNotificationButton from '@/components/SendNotificationButton';
 import Temari from '@/components/temari/Temari';
-import Card from '@/components/ui/Card';
+import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 import { useCountUp } from '@/hooks/useCountUp';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { cn } from '@/lib/cn';
@@ -99,7 +99,7 @@ const WeekSection = memo(function WeekSection({
             className="overflow-hidden transition"
         >
             <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-cream-deep bg-cream-deep/40 px-5 py-4">
-                <div className="font-display text-headline-xs italic text-ink">
+                <div className="font-serif text-headline-xs italic text-foreground">
                     {bucket.label}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs tabular-nums">
@@ -128,7 +128,7 @@ const WeekSection = memo(function WeekSection({
             </header>
 
             {hiddenCount > 0 && (
-                <p className="flex items-center gap-2 border-b border-cream-deep bg-cream-deep/10 px-5 py-2.5 font-sans text-xs text-ink-3">
+                <p className="flex items-center gap-2 border-b border-cream-deep bg-cream-deep/10 px-5 py-2.5 font-sans text-xs text-text-3">
                     <Icon
                         icon="mdi:eye-off-outline"
                         width={14}
@@ -267,10 +267,10 @@ function MetricChip({
                 'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold',
                 alert
                     ? 'bg-mood-gassed/15 text-mood-gassed-ink'
-                    : 'bg-cream-deep/60 text-ink-2',
+                    : 'bg-cream-deep/60 text-text-2',
             )}
         >
-            <span className="text-label-micro text-ink-2">{label}</span>
+            <span className="text-label-micro text-text-2">{label}</span>
             <span className="tabular-nums">{value}</span>
             {explainerKey && (
                 <MetricExplainer metricKey={explainerKey} size="xs" />
@@ -281,12 +281,12 @@ function MetricChip({
 
 function Stat({ icon, label }: Readonly<{ icon: string; label: string }>) {
     return (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-cream-deep/60 px-3 py-1 text-ink">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-cream-deep/60 px-3 py-1 text-foreground">
             <Icon
                 icon={icon}
                 width={12}
                 height={12}
-                className="text-ink-3"
+                className="text-text-3"
                 aria-hidden
             />
             <span className="font-semibold">{label}</span>

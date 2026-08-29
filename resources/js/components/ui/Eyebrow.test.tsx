@@ -33,8 +33,8 @@ describe('Eyebrow', () => {
     });
 
     it.each([
-        ['ink-2', 'text-ink-2'],
-        ['ink-3', 'text-ink-3'],
+        ['ink-2', 'text-text-2'],
+        ['ink-3', 'text-text-3'],
         ['horizon', 'text-horizon'],
         ['horizon-ink', 'text-horizon-ink'],
         ['ink-on-sky', 'text-ink-on-sky'],
@@ -56,7 +56,7 @@ describe('Eyebrow', () => {
         );
         const el = screen.getByText('Custom color');
         expect(el.className).toContain('text-cream/60');
-        expect(el.className).not.toMatch(/text-ink|text-horizon(?!\/)/);
+        expect(el.className).not.toMatch(/text-foreground|text-horizon(?!\/)/);
     });
 
     it('lets className override the token size via tailwind-merge', () => {

@@ -135,16 +135,16 @@ export default function VdotTrend({
     return (
         <div
             className={cn(
-                'flex flex-col gap-4 rounded-(--radius-panel) border border-line bg-surface-card p-6 shadow-(--shadow-panel) sm:p-8',
+                'flex flex-col gap-4 rounded-(--radius-panel) border border-border bg-card p-6 shadow-(--shadow-panel) sm:p-8',
                 className,
             )}
         >
             <div>
-                <p className="text-label-micro text-ink-3">Fitness score</p>
-                <h2 className="mt-1 font-display text-lg text-ink">
+                <p className="text-label-micro text-text-3">Fitness score</p>
+                <h2 className="mt-1 font-serif text-lg text-foreground">
                     VDOT History
                 </h2>
-                <p className="mt-1 text-sm text-ink-2">
+                <p className="mt-1 text-sm text-text-2">
                     VDOT is a single running fitness number worked out from your
                     best effort, using the Jack Daniels formula. Higher means
                     you are holding a faster pace for the same cost.

@@ -1,6 +1,5 @@
 import type { FormDataConvertible } from '@inertiajs/core';
 
-import { Icon } from '@iconify/react';
 import { Head, router, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { type FormEvent, useState } from 'react';
@@ -8,7 +7,9 @@ import { type FormEvent, useState } from 'react';
 import type { SharedProps } from '@/types/inertia';
 
 import Temari from '@/components/temari/Temari';
-import Card from '@/components/ui/Card';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
@@ -97,7 +98,7 @@ export default function OnboardingIndex() {
                             You&rsquo;re connected, {firstName}.
                         </PageHero>
 
-                        <Card padding="hero" className="w-full text-left">
+                        <Card className="w-full px-6 py-6 text-left">
                             <ul className="flex flex-col gap-4">
                                 {WHAT_LANDS.map((item) => (
                                     <li
@@ -109,9 +110,9 @@ export default function OnboardingIndex() {
                                             width={18}
                                             height={18}
                                             aria-hidden
-                                            className="mt-0.5 shrink-0 text-ink-3"
+                                            className="mt-0.5 shrink-0 text-text-3"
                                         />
-                                        <span className="font-sans text-sm leading-relaxed text-ink-2">
+                                        <span className="font-sans text-sm leading-relaxed text-text-2">
                                             {item.text}
                                         </span>
                                     </li>
@@ -119,12 +120,9 @@ export default function OnboardingIndex() {
                             </ul>
                         </Card>
 
-                        <PillButton
-                            tone="horizon"
-                            onClick={() => setStep('goal')}
-                        >
+                        <Button onClick={() => setStep('goal')}>
                             Continue
-                        </PillButton>
+                        </Button>
                     </motion.div>
                 ) : (
                     <motion.div
@@ -136,13 +134,13 @@ export default function OnboardingIndex() {
                         <PageHero size="lg" eyebrow="Step 2 of 2 · Optional">
                             Got a race in mind?
                         </PageHero>
-                        <p className="mt-3 font-sans text-sm leading-relaxed text-ink-2">
+                        <p className="mt-3 font-sans text-sm leading-relaxed text-text-2">
                             Give Temari something to build toward. Skip it if
                             you&rsquo;re not sure yet, you can always set one
                             later from Plan.
                         </p>
 
-                        <Card padding="hero" className="mt-6">
+                        <Card className="mt-6 px-6 py-6">
                             <form
                                 onSubmit={submitGoal}
                                 className="grid grid-cols-1 gap-5 sm:grid-cols-2"
@@ -150,7 +148,7 @@ export default function OnboardingIndex() {
                                 <div>
                                     <label
                                         htmlFor="onboarding_race_name"
-                                        className="text-label-micro text-ink-3"
+                                        className="text-label-micro text-text-3"
                                     >
                                         Name (optional)
                                     </label>
@@ -163,14 +161,14 @@ export default function OnboardingIndex() {
                                         }
                                         maxLength={120}
                                         placeholder="Jakarta Half 2026"
-                                        className="mt-1.5 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus-ring"
+                                        className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus-ring"
                                     />
                                     <FieldError message={errors.name} />
                                 </div>
                                 <div>
                                     <label
                                         htmlFor="onboarding_race_date"
-                                        className="text-label-micro text-ink-3"
+                                        className="text-label-micro text-text-3"
                                     >
                                         Race day
                                     </label>
@@ -182,13 +180,13 @@ export default function OnboardingIndex() {
                                         onChange={(e) =>
                                             setRaceDate(e.target.value)
                                         }
-                                        className="mt-1.5 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus-ring"
+                                        className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus-ring"
                                     />
                                     <FieldError message={errors.race_date} />
                                 </div>
 
                                 <div className="sm:col-span-2">
-                                    <span className="text-label-micro text-ink-3">
+                                    <span className="text-label-micro text-text-3">
                                         Distance
                                     </span>
                                     <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -203,7 +201,7 @@ export default function OnboardingIndex() {
                                                     'focus-ring rounded-full border px-3 py-1.5 text-label-micro transition',
                                                     distanceKm === preset.km
                                                         ? 'border-horizon bg-horizon/10 text-horizon-ink'
-                                                        : 'border-line text-ink-3 hover:border-horizon/60 hover:text-ink',
+                                                        : 'border-border text-text-3 hover:border-horizon/60 hover:text-foreground',
                                                 )}
                                             >
                                                 {preset.label}
@@ -214,7 +212,7 @@ export default function OnboardingIndex() {
                                 </div>
 
                                 <div className="sm:col-span-2">
-                                    <span className="text-label-micro text-ink-3">
+                                    <span className="text-label-micro text-text-3">
                                         Goal time
                                     </span>
                                     <div className="mt-1.5 flex items-center gap-1.5">
@@ -227,9 +225,9 @@ export default function OnboardingIndex() {
                                                 setHours(Number(e.target.value))
                                             }
                                             aria-label="Hours"
-                                            className="w-16 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink focus-ring"
+                                            className="w-16 rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground focus-ring"
                                         />
-                                        <span className="text-sm text-ink-3">
+                                        <span className="text-sm text-text-3">
                                             hr
                                         </span>
                                         <input
@@ -243,9 +241,9 @@ export default function OnboardingIndex() {
                                                 )
                                             }
                                             aria-label="Minutes"
-                                            className="w-16 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink focus-ring"
+                                            className="w-16 rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground focus-ring"
                                         />
-                                        <span className="text-sm text-ink-3">
+                                        <span className="text-sm text-text-3">
                                             min
                                         </span>
                                     </div>
@@ -258,15 +256,14 @@ export default function OnboardingIndex() {
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
-                                    <PillButton
+                                    <Button
                                         type="submit"
-                                        tone="horizon"
                                         disabled={processing || !canSubmitGoal}
                                     >
                                         {processing
                                             ? 'Saving…'
                                             : 'Set my goal & finish'}
-                                    </PillButton>
+                                    </Button>
                                     <PillButton
                                         type="button"
                                         tone="ghost"

@@ -1,4 +1,4 @@
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
@@ -23,18 +23,20 @@ export default function GoalCard({ goal }: Readonly<{ goal: Goal }>) {
 
     return (
         <Card
-            padding="panel"
             className={cn(
-                'flex h-full flex-col gap-2',
-                goal.is_completed && 'border-horizon/30 bg-horizon/[0.06]',
+                'flex h-full flex-col gap-2 px-4 py-3',
+                goal.is_completed &&
+                    'border border-horizon/30 bg-horizon/[0.06]',
             )}
         >
-            <p className="text-sm font-semibold text-ink">{goal.title}</p>
+            <p className="text-sm font-semibold text-foreground">
+                {goal.title}
+            </p>
             <div className="mt-auto">
-                <div className="mb-1 flex items-baseline justify-between font-mono text-[11px] tabular-nums text-ink-3">
+                <div className="mb-1 flex items-baseline justify-between font-mono text-[11px] tabular-nums text-text-3">
                     <span>
                         {formatGoalNumber(current)}
-                        <span className="text-ink-3">/</span>
+                        <span className="text-text-3">/</span>
                         {formatGoalNumber(goal.target)}
                     </span>
                     <span>{goal.unit}</span>

@@ -67,7 +67,7 @@ function TabLink({
             className={cn(
                 'pressable focus-ring relative rounded font-mono text-sm font-bold tracking-[0.02em] transition',
                 'px-[18px] py-2.5',
-                isActive ? 'text-ink' : 'text-ink-3 hover:text-ink-2',
+                isActive ? 'text-foreground' : 'text-text-3 hover:text-text-2',
             )}
         >
             {item.label}

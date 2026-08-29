@@ -1,11 +1,11 @@
-import { Icon } from '@iconify/react';
 import { router, usePage } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import StravaAction from '@/components/StravaAction';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { usePendingPost } from '@/hooks/usePendingPost';
@@ -198,7 +198,7 @@ export default function HrZonesDisclosure({
     };
 
     return (
-        <div className="rounded-xl border border-line/60">
+        <div className="rounded-xl border border-border/60">
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
@@ -210,14 +210,14 @@ export default function HrZonesDisclosure({
                         icon={SOURCE_ICON[source]}
                         width={20}
                         height={20}
-                        className="text-ink-3"
+                        className="text-text-3"
                         aria-hidden
                     />
                     <span className="flex flex-col">
-                        <span className="font-sans text-sm font-semibold text-ink">
+                        <span className="font-sans text-sm font-semibold text-foreground">
                             HR zones
                         </span>
-                        <span className="font-sans text-[12px] text-ink-3">
+                        <span className="font-sans text-[12px] text-text-3">
                             {collapsedCopy(hrZones)}
                         </span>
                     </span>
@@ -226,13 +226,13 @@ export default function HrZonesDisclosure({
                     icon={open ? 'mdi:chevron-up' : 'mdi:chevron-down'}
                     width={18}
                     height={18}
-                    className="shrink-0 text-ink-3"
+                    className="shrink-0 text-text-3"
                     aria-hidden
                 />
             </button>
 
             {open && (
-                <div className="border-t border-line/60 p-3.5 pt-4">
+                <div className="border-t border-border/60 p-3.5 pt-4">
                     {source !== 'default' && (
                         <div className="mb-4 flex flex-wrap items-center gap-3">
                             {canShowResync && (
@@ -280,7 +280,7 @@ export default function HrZonesDisclosure({
                         </div>
                     )}
 
-                    <Card padding="panel">
+                    <Card className="px-4 py-3">
                         <SectionLabel size="micro">
                             Max &amp; Resting HR
                         </SectionLabel>
@@ -317,9 +317,9 @@ export default function HrZonesDisclosure({
                         </div>
                     </Card>
 
-                    <Card padding="panel" className="mt-3">
+                    <Card className="mt-3 px-4 py-3">
                         <SectionLabel size="micro">Your zones</SectionLabel>
-                        <p className="mb-3 font-sans text-xs text-ink-3">
+                        <p className="mb-3 font-sans text-xs text-text-3">
                             Each upper bound should match the next zone's lower
                             bound, so there are no gaps.
                         </p>
@@ -356,7 +356,7 @@ export default function HrZonesDisclosure({
                                             data-testid="zone-Z5-hi"
                                             aria-label="Z5 upper bound: unbounded"
                                             title="The top zone has no upper bound"
-                                            className="flex h-[38px] w-20 items-center justify-center rounded-lg border border-cream-deep bg-surface-sunken font-mono text-sm text-ink-3"
+                                            className="flex h-[38px] w-20 items-center justify-center rounded-lg border border-cream-deep bg-muted font-mono text-sm text-text-3"
                                         >
                                             ∞
                                         </span>
@@ -484,10 +484,10 @@ function NumberField({
                     onChange={(e) =>
                         onChange(Number.parseInt(e.target.value, 10))
                     }
-                    className="w-full bg-transparent font-mono text-base font-semibold tabular-nums text-ink outline-none"
+                    className="w-full bg-transparent font-mono text-base font-semibold tabular-nums text-foreground outline-none"
                 />
                 {suffix && (
-                    <span className="font-mono text-[11px] text-ink-3">
+                    <span className="font-mono text-[11px] text-text-3">
                         {suffix}
                     </span>
                 )}
@@ -533,7 +533,7 @@ function BoundaryInput({
             value={Number.isNaN(value) ? '' : value}
             onChange={(e) => onChange(Number.parseInt(e.target.value, 10))}
             className={cn(
-                'focus-ring w-20 rounded-lg border bg-cream px-3 py-2 text-center font-mono text-sm font-semibold tabular-nums text-ink motion-safe:transition-colors motion-safe:duration-150 focus:border-horizon',
+                'focus-ring w-20 rounded-lg border bg-cream px-3 py-2 text-center font-mono text-sm font-semibold tabular-nums text-foreground motion-safe:transition-colors motion-safe:duration-150 focus:border-horizon',
                 invalid ? 'border-ember-deep' : 'border-cream-deep',
             )}
         />
