@@ -5,7 +5,8 @@ import EmptyPanel from '@/components/ui/EmptyPanel';
 import Skeleton from '@/components/ui/Skeleton';
 import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';
-import { PALETTE } from '@/lib/chartTokens';
+import { useIsChartDark } from '@/hooks/useIsChartDark';
+import { CHART_GROUND } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatNaiveIdDate } from '@/lib/pace';
@@ -39,9 +40,11 @@ const RANGE_DAYS: Record<TrendRange, number> = {
     '12mo': 365,
 };
 
-const GRID_LINE = `${PALETTE.ink3}1f`; // 0.12 alpha
-
-function miniChartOptions(labels: string[], decimals: number) {
+function miniChartOptions(
+    labels: string[],
+    decimals: number,
+    ground: (typeof CHART_GROUND)[keyof typeof CHART_GROUND],
+) {
     return {
         responsive: true,
         maintainAspectRatio: false,
@@ -62,8 +65,8 @@ function miniChartOptions(labels: string[], decimals: number) {
         scales: {
             x: { grid: { display: false }, ticks: { display: false } },
             y: {
-                grid: { color: GRID_LINE },
-                ticks: { color: PALETTE.ink2, font: { size: 11 } },
+                grid: { color: ground.grid },
+                ticks: { color: ground.tick, font: { size: 11 } },
             },
         },
     };
@@ -81,6 +84,8 @@ export default function LoadTrend({
     range,
     className,
 }: Readonly<LoadTrendProps>) {
+    const isDark = useIsChartDark();
+    const ground = isDark ? CHART_GROUND.dark : CHART_GROUND.light;
     const windowed = useMemo(
         () => trend.slice(-RANGE_DAYS[range]),
         [trend, range],
@@ -102,7 +107,7 @@ export default function LoadTrend({
                 {
                     label: 'Strain',
                     data: windowed.map((p) => p.strain),
-                    borderColor: PALETTE.horizonInk,
+                    borderColor: ground.line,
                     backgroundColor: 'transparent',
                     borderWidth: 2,
                     pointRadius: 0,
@@ -110,7 +115,7 @@ export default function LoadTrend({
                 },
             ],
         }),
-        [windowed, labels],
+        [windowed, labels, ground.line],
     );
 
     const monotonyData = useMemo(
@@ -120,7 +125,7 @@ export default function LoadTrend({
                 {
                     label: 'Monotony',
                     data: windowed.map((p) => p.monotony),
-                    borderColor: PALETTE.ink3,
+                    borderColor: ground.secondaryLine,
                     backgroundColor: 'transparent',
                     borderWidth: 2,
                     borderDash: [4, 4],
@@ -129,13 +134,16 @@ export default function LoadTrend({
                 },
             ],
         }),
-        [windowed, labels],
+        [windowed, labels, ground.secondaryLine],
     );
 
-    const strainOptions = useMemo(() => miniChartOptions(labels, 0), [labels]);
+    const strainOptions = useMemo(
+        () => miniChartOptions(labels, 0, ground),
+        [labels, ground],
+    );
     const monotonyOptions = useMemo(
-        () => miniChartOptions(labels, 2),
-        [labels],
+        () => miniChartOptions(labels, 2, ground),
+        [labels, ground],
     );
 
     const latest = scored.length > 0 ? scored[scored.length - 1] : null;

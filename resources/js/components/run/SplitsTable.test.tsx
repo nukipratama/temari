@@ -46,7 +46,7 @@ describe('SplitsTable', () => {
             container.querySelector('.bg-horizon\\/\\[0\\.08\\]'),
         ).not.toBeNull();
         expect(
-            container.querySelector('.bg-sky\\/\\[0\\.03\\]'),
+            container.querySelector('.bg-foreground\\/\\[0\\.03\\]'),
         ).not.toBeNull();
     });
 
@@ -59,7 +59,7 @@ describe('SplitsTable', () => {
                 ]}
             />,
         );
-        expect(container.querySelector('.bg-cream-deep\\/30')).not.toBeNull();
+        expect(container.querySelector('.bg-muted\\/60')).not.toBeNull();
     });
 
     it('omits the crown line when no split has a parseable pace', () => {

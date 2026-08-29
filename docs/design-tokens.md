@@ -126,7 +126,11 @@ edge carries the contrast. Never darken them instead.
 
 Chart.js and inline SVG cannot read CSS custom properties off a canvas, so a small
 hex bridge mirrors the tokens in [chartTokens.ts](../resources/js/lib/chartTokens.ts). Import
-from there rather than pasting a hex; it is asserted against `app.css` by its own test.
+from there rather than pasting a hex; it is asserted against `app.css` by its own test. Bold
+graphic fills/accents (`PALETTE`) are single-valued and read fine on either ground unchanged; grid
+lines, axis/legend labels, a muted secondary-series stroke, and the ink-safe primary line several
+trend panels use are text-weight and genuinely flip — those live in `CHART_GROUND`'s `light`/`dark`
+pair instead, read live per chart via `useIsChartDark()` (F6).
 
 ### Ground-reactive semantic layer (two grounds, F2)
 

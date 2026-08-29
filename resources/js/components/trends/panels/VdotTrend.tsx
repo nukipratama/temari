@@ -5,7 +5,8 @@ import EmptyPanel from '@/components/ui/EmptyPanel';
 import Skeleton from '@/components/ui/Skeleton';
 import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';
-import { PALETTE } from '@/lib/chartTokens';
+import { useIsChartDark } from '@/hooks/useIsChartDark';
+import { CHART_GROUND, PALETTE } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatNaiveIdDate } from '@/lib/pace';
@@ -32,8 +33,6 @@ const RANGE_DAYS: Record<TrendRange, number> = {
     '12mo': 365,
 };
 
-const GRID_LINE = `${PALETTE.ink3}1f`; // 0.12 alpha
-
 /**
  * VDOT History panel — Temari keeps the minimum VDOT across every eligible PR
  * category, so a prescribed pace never outruns a real result
@@ -47,6 +46,8 @@ export default function VdotTrend({
     range,
     className,
 }: Readonly<VdotTrendProps>) {
+    const isDark = useIsChartDark();
+    const ground = isDark ? CHART_GROUND.dark : CHART_GROUND.light;
     const windowed = useMemo(
         () => trend.slice(-RANGE_DAYS[range]),
         [trend, range],
@@ -68,7 +69,7 @@ export default function VdotTrend({
                 {
                     label: 'VDOT',
                     data: windowed.map((p) => p.vdot),
-                    borderColor: PALETTE.horizonInk,
+                    borderColor: ground.line,
                     backgroundColor: `${PALETTE.horizon}2e`,
                     borderWidth: 2.5,
                     pointRadius: 0,
@@ -78,7 +79,7 @@ export default function VdotTrend({
                 },
             ],
         }),
-        [windowed, labels],
+        [windowed, labels, ground.line],
     );
 
     const options = useMemo(
@@ -103,12 +104,12 @@ export default function VdotTrend({
             scales: {
                 x: { grid: { display: false }, ticks: { display: false } },
                 y: {
-                    grid: { color: GRID_LINE },
-                    ticks: { color: PALETTE.ink2, font: { size: 12 } },
+                    grid: { color: ground.grid },
+                    ticks: { color: ground.tick, font: { size: 12 } },
                 },
             },
         }),
-        [windowed],
+        [windowed, ground],
     );
 
     const latest = defined.length > 0 ? defined[defined.length - 1] : null;

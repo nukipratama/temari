@@ -55,12 +55,20 @@ const MIRROR_FILES = [
     'app/Enums/Rarity.php',
 ];
 
-/** @return list<string> */
+/**
+ * Every solid hex a `--color-*` custom property declares anywhere in
+ * app.css — not just inside `@theme static` (the light ground). F2 added a
+ * second declaration site, `[data-theme='dark'] { ... }`, for the tokens
+ * that flip; scoping this to `@theme static` alone would make any dark-only
+ * mirror value (e.g. a chart series that needs to stay legible against the
+ * dark ground) look stale here even though app.css genuinely declares it.
+ *
+ * @return list<string>
+ */
 function declaredTokenValues(): array
 {
     $css = File::get(base_path('resources/css/app.css'));
-    preg_match('/@theme static \{.*?\n\}/s', $css, $theme);
-    preg_match_all('/--color-[a-z0-9-]+:\s*(#[0-9a-f]{6});/', $theme[0], $found);
+    preg_match_all('/--color-[a-z0-9-]+:\s*(#[0-9a-f]{6});/', $css, $found);
 
     return array_values(array_unique($found[1]));
 }

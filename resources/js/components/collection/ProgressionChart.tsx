@@ -3,8 +3,9 @@ import { lazy, Suspense, useMemo } from 'react';
 
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Skeleton from '@/components/ui/Skeleton';
+import { useIsChartDark } from '@/hooks/useIsChartDark';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { PALETTE } from '@/lib/chartTokens';
+import { CHART_GROUND, PALETTE } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
 import { countUpEase } from '@/lib/motion';
 import { formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
@@ -25,7 +26,6 @@ interface ProgressionChartProps {
 const HORIZON_FILL_FLAT = `${PALETTE.horizon}2e`; // 0.18 alpha
 const HORIZON_FILL_TOP = `${PALETTE.horizon}52`; // 0.32 alpha
 const HORIZON_FILL_BOTTOM = `${PALETTE.horizon}05`; // 0.02 alpha
-const GRID_LINE = `${PALETTE.ink3}1f`; // 0.12 alpha
 
 function lastDefinedIndex(values: ReadonlyArray<number | null>): number {
     for (let i = values.length - 1; i >= 0; i--) {
@@ -42,6 +42,8 @@ export default function ProgressionChart({
     className,
 }: Readonly<ProgressionChartProps>) {
     const reducedMotion = useReducedMotion();
+    const isDark = useIsChartDark();
+    const ground = isDark ? CHART_GROUND.dark : CHART_GROUND.light;
     const chartLabel = category
         ? `Best time progression chart ${category}`
         : 'Best time progression chart';
@@ -91,7 +93,7 @@ export default function ProgressionChart({
                     borderWidth: 2.5,
                     pointRadius: 4,
                     pointBackgroundColor: PALETTE.horizonDeep,
-                    pointBorderColor: PALETTE.cream,
+                    pointBorderColor: ground.pointBorder,
                     pointBorderWidth: 1.5,
                     tension: 0.32,
                     fill: true,
@@ -125,7 +127,7 @@ export default function ProgressionChart({
                     : []),
             ],
         }),
-        [weeks, timesSec, goalSec, xOffsets],
+        [weeks, timesSec, goalSec, xOffsets, ground.pointBorder],
     );
 
     const options = useMemo(() => {
@@ -170,9 +172,9 @@ export default function ProgressionChart({
                 },
                 y: {
                     reverse: true,
-                    grid: { color: GRID_LINE },
+                    grid: { color: ground.grid },
                     ticks: {
-                        color: PALETTE.ink2,
+                        color: ground.tick,
                         font: { size: 12 },
                         callback: (val: number | string) => {
                             const v =
@@ -185,7 +187,7 @@ export default function ProgressionChart({
                 },
             },
         };
-    }, [weeks, xOffsets, reducedMotion]);
+    }, [weeks, xOffsets, reducedMotion, ground.grid, ground.tick]);
 
     if (weeks.length === 0) {
         return (

@@ -33,6 +33,7 @@
         "ink",
         "ink-3",
         "input",
+        "foreground",
         "leaf",
         "leaf-deep",
         "line",
@@ -88,9 +89,6 @@
             "text": ["text-3"]
         },
         "cream-deep/0.2": {
-            "text": []
-        },
-        "cream-deep/0.3": {
             "text": []
         },
         "cream-deep/0.4": {
@@ -353,9 +351,6 @@
         "sky-deep/0.8": {
             "text": []
         },
-        "sky/0.03": {
-            "text": []
-        },
         "sky/0.06": {
             "over": {
                 "resources/js/components/StravaSyncBadge.tsx": ["paper"],
@@ -363,8 +358,6 @@
                     "paper"
                 ],
                 "resources/js/components/history/HistoryFilter.tsx": ["paper"],
-                "resources/js/components/run/LapsGraph.tsx": ["paper"],
-                "resources/js/components/run/SplitsTable.tsx": ["paper"],
                 "resources/js/components/ui/ProgressBar.tsx": ["paper"],
                 "resources/js/components/ui/SectionTabs.tsx": ["paper"]
             },
@@ -412,9 +405,21 @@
         },
         "muted/0.6": {
             "over": {
-                "resources/js/pages/Activities/Calendar.tsx": ["paper"]
+                "resources/js/pages/Activities/Calendar.tsx": ["paper"],
+                "resources/js/lib/splits.ts": ["paper"],
+                "resources/js/lib/splits.test.ts": ["paper"]
             },
-            "text": ["text-2"]
+            "text": ["text-2", "foreground"]
+        },
+        "foreground/0.03": {
+            "over": {
+                "resources/js/lib/splits.ts": ["paper"],
+                "resources/js/lib/splits.test.ts": ["paper"]
+            },
+            "text": ["text-2", "foreground"]
+        },
+        "foreground/0.06": {
+            "text": []
         },
         "accent/0.6": {
             "over": {
