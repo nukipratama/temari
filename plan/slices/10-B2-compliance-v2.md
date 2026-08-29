@@ -1,6 +1,6 @@
 # B2 — Compliance v2
 
-**Wave** 2a · **Slot** worktree-be · **Blockers** `B3` · **Status** in review
+**Wave** 2a · **Slot** worktree-be · **Blockers** `B3` · **Status** merged ([#661](https://github.com/nukipratama/temari/pull/661), squashed as `5ec8d3e6`)
 
 ## Goal
 
