@@ -6,9 +6,11 @@ import CtlTrendChart, {
     type CtlTrendPoint,
 } from '@/components/race/CtlTrendChart';
 import PlanRaceTabs from '@/components/race/PlanRaceTabs';
+import ProjectionGauge from '@/components/race/ProjectionGauge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import EmptyPanel from '@/components/ui/EmptyPanel';
+import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import SectionLabel from '@/components/ui/SectionLabel';
@@ -18,7 +20,12 @@ import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
-import { earliestRaceDate, goalTimeError } from '@/lib/raceGoal';
+import {
+    ambitiousGoalWarning,
+    earliestRaceDate,
+    goalTimeError,
+    impossiblePaceWarning,
+} from '@/lib/raceGoal';
 import { inputVariants, outlineChipVariants } from '@/lib/variants';
 
 interface RacePayload {
@@ -84,12 +91,24 @@ export default function Race({
     const [processing, setProcessing] = useState(false);
 
     const daysUntilCount = useCountUp(race ? daysUntil(race.race_date) : 0);
-    const lowSecCount = useCountUp(projection?.low_sec ?? 0);
-    const highSecCount = useCountUp(projection?.high_sec ?? 0);
     const predictedSecCount = useCountUp(projection?.predicted_sec ?? 0);
 
     const goalTimeSec = hours * 3_600 + minutes * 60 + seconds;
     const goalTimeIssue = goalTimeError(goalTimeSec);
+    // `projection` is always computed server-side from the saved race's own
+    // distance, never the form's live distance state - so that's the only
+    // distance a client-side warning can compare the form against.
+    const projectionForWarning =
+        race && projection
+            ? {
+                  distanceKm: race.distance_m / 1_000,
+                  lowSec: projection.low_sec,
+                  highSec: projection.high_sec,
+              }
+            : null;
+    const goalTimeWarning =
+        impossiblePaceWarning(distanceKm, goalTimeSec) ??
+        ambitiousGoalWarning(distanceKm, goalTimeSec, projectionForWarning);
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
@@ -117,9 +136,23 @@ export default function Race({
                     <PlanRaceTabs active="race" />
                     <div>
                         <PageHero eyebrow="Race">
-                            {race
-                                ? 'Your race, on the calendar.'
-                                : 'Give the plan something to aim at.'}
+                            {race ? (
+                                <>
+                                    Your race,
+                                    <br />
+                                    <em className="italic text-icon-accent">
+                                        on the calendar.
+                                    </em>
+                                </>
+                            ) : (
+                                <>
+                                    Give the plan
+                                    <br />
+                                    <em className="italic text-icon-accent">
+                                        something to aim at.
+                                    </em>
+                                </>
+                            )}
                         </PageHero>
                         <p className="mt-2 max-w-xl font-sans text-sm leading-relaxed text-text-2">
                             Set a race and Temari projects a realistic finish
@@ -130,71 +163,74 @@ export default function Race({
                 </header>
 
                 {race && (
-                    <section className="mt-8" data-coachmark="race-goal">
+                    <section
+                        className="mt-8 flex flex-col gap-3"
+                        data-coachmark="race-goal"
+                    >
                         <Card className="px-6 py-6">
-                            <div className="flex flex-wrap items-start justify-between gap-4">
-                                <div>
-                                    <SectionLabel>
-                                        {race.name ?? 'Your race'}
-                                    </SectionLabel>
-                                    <p className="font-serif text-headline-sm text-foreground">
-                                        {formatNaiveIdDate(
-                                            race.race_date,
-                                            'long',
-                                        )}
-                                    </p>
-                                    <p className="mt-1 text-sm text-text-2">
-                                        {Math.round(daysUntilCount)} days to go
-                                    </p>
-                                </div>
-                                <div className="flex flex-wrap gap-4">
-                                    <StatTile
-                                        tone="sunken"
-                                        size="sm"
-                                        label="Distance"
-                                        value={(race.distance_m / 1000).toFixed(
-                                            1,
-                                        )}
-                                        unit="km"
+                            <SectionLabel>
+                                <span className="inline-flex items-center gap-1.5">
+                                    <Icon
+                                        icon="mdi:flag-checkered"
+                                        width={14}
+                                        height={14}
+                                        className="text-icon-accent"
+                                        aria-hidden
                                     />
-                                    <StatTile
-                                        tone="sunken"
-                                        size="sm"
-                                        label="Goal time"
-                                        value={formatDurationHMS(
-                                            race.goal_time_sec,
-                                        )}
-                                    />
-                                </div>
+                                    {race.name ?? 'Your race'}
+                                </span>
+                            </SectionLabel>
+                            <p className="font-serif text-headline-sm text-foreground">
+                                {formatNaiveIdDate(race.race_date, 'long')}
+                            </p>
+                            <p className="mt-1 text-sm text-text-2">
+                                {Math.round(daysUntilCount)} days to go
+                            </p>
+                            <div className="mt-4 flex flex-wrap gap-4 border-t border-border pt-4">
+                                <StatTile
+                                    tone="sunken"
+                                    size="sm"
+                                    label="Distance"
+                                    value={(race.distance_m / 1000).toFixed(1)}
+                                    unit="km"
+                                />
+                                <StatTile
+                                    tone="sunken"
+                                    size="sm"
+                                    label="Goal time"
+                                    value={formatDurationHMS(
+                                        race.goal_time_sec,
+                                    )}
+                                />
                             </div>
+                        </Card>
 
-                            {projection && (
+                        <Card className="px-6 py-6">
+                            {projection ? (
                                 <motion.div
                                     initial="hidden"
                                     animate="visible"
                                     variants={fadeInUp}
-                                    className="mt-6 border-t border-border pt-6"
                                 >
                                     <SectionLabel size="micro">
                                         Projected finish
                                     </SectionLabel>
-                                    <p className="font-serif text-headline-sm text-foreground">
-                                        {formatDurationHMS(
-                                            Math.round(lowSecCount),
-                                        )}{' '}
-                                        &ndash;{' '}
-                                        <em className="italic text-horizon-ink">
-                                            {formatDurationHMS(
-                                                Math.round(highSecCount),
-                                            )}
-                                        </em>
-                                    </p>
-                                    <p className="mt-2 text-sm text-text-2">
-                                        Best estimate{' '}
+                                    <div className="mt-2 flex justify-center">
+                                        <ProjectionGauge
+                                            lowSec={projection.low_sec}
+                                            predictedSec={
+                                                projection.predicted_sec
+                                            }
+                                            highSec={projection.high_sec}
+                                        />
+                                    </div>
+                                    <p className="mt-1 text-center font-serif text-headline-sm text-icon-accent">
                                         {formatDurationHMS(
                                             Math.round(predictedSecCount),
                                         )}
-                                        , from{' '}
+                                    </p>
+                                    <p className="mt-2 text-center text-sm text-text-2">
+                                        Best estimate, from{' '}
                                         {projection.sample_size === 1
                                             ? '1 PR'
                                             : `${projection.sample_size} PRs`}{' '}
@@ -203,9 +239,8 @@ export default function Race({
                                         ).
                                     </p>
                                 </motion.div>
-                            )}
-                            {!projection && (
-                                <p className="mt-6 border-t border-border pt-6 text-sm text-text-2">
+                            ) : (
+                                <p className="text-sm text-text-2">
                                     No personal record yet to project a finish
                                     time from. Set one on a run and it shows up
                                     here.
@@ -379,6 +414,21 @@ export default function Race({
                                         className="mt-1.5 font-sans text-xs text-ember-ink"
                                     >
                                         {goalTimeIssue}
+                                    </p>
+                                )}
+                                {!goalTimeIssue && goalTimeWarning && (
+                                    <p
+                                        role="alert"
+                                        className="mt-2 flex items-start gap-1.5 rounded-sm bg-ember/8 px-2.5 py-2 font-sans text-xs leading-relaxed text-ember-ink"
+                                    >
+                                        <Icon
+                                            icon="mdi:alert-circle-outline"
+                                            width={14}
+                                            height={14}
+                                            className="mt-0.5 shrink-0"
+                                            aria-hidden
+                                        />
+                                        <span>{goalTimeWarning}</span>
                                     </p>
                                 )}
                             </div>

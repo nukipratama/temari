@@ -190,6 +190,61 @@ describe('Race', () => {
         expect(call?.[1]).toMatchObject({ name: null });
     });
 
+    it('warns without blocking submission when the goal implies an implausible pace', () => {
+        render(<Race race={RACE} projection={PROJECTION} ctlTrend={[]} />);
+
+        // 10K in 25:00 = 150 sec/km, under the world-record-pace floor.
+        fireEvent.change(screen.getByLabelText('Minutes'), {
+            target: { value: '25' },
+        });
+        fireEvent.change(screen.getByLabelText('Seconds'), {
+            target: { value: '0' },
+        });
+
+        expect(
+            screen.getByText(/quicker than world-record pace/),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Update race' }),
+        ).not.toBeDisabled();
+    });
+
+    it("warns when the goal is well ahead of the athlete's own projected range for the same distance", () => {
+        render(<Race race={RACE} projection={PROJECTION} ctlTrend={[]} />);
+
+        // 10K in 33:20 = 200 sec/km: a plausible pace, but well inside
+        // PERSONALIZED_STRETCH_RATIO of the projection's own low_sec (2,900).
+        fireEvent.change(screen.getByLabelText('Minutes'), {
+            target: { value: '33' },
+        });
+        fireEvent.change(screen.getByLabelText('Seconds'), {
+            target: { value: '20' },
+        });
+
+        expect(
+            screen.getByText(/well ahead of your own projected range/),
+        ).toBeInTheDocument();
+    });
+
+    it('stays quiet about ambition once the custom distance no longer matches the projection', () => {
+        render(<Race race={RACE} projection={PROJECTION} ctlTrend={[]} />);
+
+        fireEvent.change(screen.getByLabelText('Minutes'), {
+            target: { value: '33' },
+        });
+        fireEvent.change(screen.getByLabelText('Seconds'), {
+            target: { value: '20' },
+        });
+        fireEvent.change(
+            screen.getByLabelText('Custom distance in kilometers'),
+            { target: { value: '15' } },
+        );
+
+        expect(
+            screen.queryByText(/well ahead of your own projected range/),
+        ).not.toBeInTheDocument();
+    });
+
     it('pre-fills the form from the active race for editing', () => {
         render(<Race race={RACE} projection={null} ctlTrend={[]} />);
 
