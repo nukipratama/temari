@@ -81,4 +81,14 @@ describe('EmptyPanel', () => {
             'text-text-2',
         );
     });
+
+    it('renders as a div by default', () => {
+        const { container } = render(<EmptyPanel title="Judul" />);
+        expect(container.firstElementChild?.tagName).toBe('DIV');
+    });
+
+    it('renders as the given landmark element when as is set', () => {
+        const { container } = render(<EmptyPanel title="Judul" as="section" />);
+        expect(container.firstElementChild?.tagName).toBe('SECTION');
+    });
 });

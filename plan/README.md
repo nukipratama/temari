@@ -103,7 +103,7 @@ the slice itself (see [R3](#r3)); `n/a` for backend-only or docs-only slices.
 | S5 | RaceGoal | 2b | [17](slices/17-S5-race-goal.md) | merged | [#670](https://github.com/nukipratama/temari/pull/670) | wt | 95.65% stmts, 89.39% branches, 95.48% fn, 96% lines | gauge + client-side goal-time warnings, ember tokens; squashed as ce2d97c2 |
 | S6 | Trends | 2b | [18](slices/18-S6-trends.md) | merged | [#667](https://github.com/nukipratama/temari/pull/667) | wt | 95.6→95.61% stmts | page shell + RangeToggle + NarrationHeadline restyle, charts kept from F6; streak badge-board entry per §5 amendment; squashed as adea9b6d |
 | S7 | History | 2b | [19](slices/19-S7-history.md) | todo | — | | | |
-| S8 | ActivityDetail | 2b | [20](slices/20-S8-activity-detail.md) | todo | — | | | |
+| S8 | ActivityDetail | 2b | [20](slices/20-S8-activity-detail.md) | in-review | [#673](https://github.com/nukipratama/temari/pull/673) | wt | 95.7% stmts (no change) | hero headline/supporting/secondary tier, Vitals card wrap; Leaflet/lenses/effort kept mechanical per L0; charts kept from F6 |
 | S9 | Inbox | 2b | [21](slices/21-S9-inbox.md) | merged | [#665](https://github.com/nukipratama/temari/pull/665) | wt | 95.92→95.95% lines | bucketed sections + time toggle, new scope; squashed as cd0ecd08 |
 | S10 | Profile | 2b | [22](slices/22-S10-profile.md) | merged | [#671](https://github.com/nukipratama/temari/pull/671) | wt | 95.61→95.62% stmts | persona mix restyle, milestone-display ledger ruling satisfied via SeasonStreakPanel, Accessories tab cut; squashed as 396b9d13 |
 | S11 | Settings | 2b | [23](slices/23-S11-settings.md) | merged | [#666](https://github.com/nukipratama/temari/pull/666) | wt | 95.37→95.40% fn | appearance toggle UI; squashed as cc3f5f5a |
