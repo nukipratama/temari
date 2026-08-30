@@ -74,18 +74,95 @@ describe('WeekPlanWidget', () => {
         expect(screen.getByText('Build')).toBeInTheDocument();
     });
 
-    it('shows a streak chip only when streak_days is positive', () => {
+    it('shows a plain credited-in-a-row readout only when streak_days is positive, never a streak chip', () => {
         const days = MON_TO_SUN.map((date) => day({ date }));
 
         const { rerender } = render(
             <WeekPlanWidget weekPlan={weekOf(days, { streak_days: 3 })} />,
         );
-        expect(screen.getByText('3-day streak')).toBeInTheDocument();
+        const readout = screen.getByText('3 Credited In A Row');
+        expect(readout).toBeInTheDocument();
+        expect(readout.querySelector('[data-icon]')).toBeNull();
+        expect(screen.queryByText(/streak/i)).not.toBeInTheDocument();
 
         rerender(
             <WeekPlanWidget weekPlan={weekOf(days, { streak_days: 0 })} />,
         );
-        expect(screen.queryByText(/day streak/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Credited In A Row/)).not.toBeInTheDocument();
+    });
+
+    it('renders a day glyph icon by session type, not by status', () => {
+        const days = MON_TO_SUN.map((date, i) =>
+            day({
+                date,
+                session_type: (['tempo', 'easy', 'long', 'rest'][i % 4] ??
+                    'easy') as string,
+            }),
+        );
+        const { container } = render(
+            <WeekPlanWidget weekPlan={weekOf(days)} />,
+        );
+
+        expect(
+            container.querySelector('[data-icon="mdi:fire"]'),
+        ).toBeInTheDocument();
+        expect(
+            container.querySelector('[data-icon="mdi:feather"]'),
+        ).toBeInTheDocument();
+        expect(
+            container.querySelector('[data-icon="mdi:bed"]'),
+        ).toBeInTheDocument();
+    });
+
+    it('colors overreached distinctly from a plain done day', () => {
+        const days = MON_TO_SUN.map((date, i) =>
+            day({
+                date,
+                status: i === 0 ? 'overreached' : 'done',
+                compliance_score: i === 0 ? 154 : 100,
+            }),
+        );
+        const { container } = render(
+            <WeekPlanWidget weekPlan={weekOf(days)} />,
+        );
+
+        const overreachedIcon = container.querySelector(
+            '[title^="Overreached"] [data-icon]',
+        );
+        const doneIcon = container.querySelector('[title^="Done"] [data-icon]');
+        expect(overreachedIcon).toHaveClass('text-horizon-ink');
+        expect(doneIcon).toHaveClass('text-leaf-ink');
+    });
+
+    it("surfaces a rest day's ran-anyway credit instead of the plain rest label", () => {
+        const days = MON_TO_SUN.map((date) =>
+            date === '2026-01-06'
+                ? day({
+                      date,
+                      session_type: 'rest',
+                      status: 'done',
+                      ran_anyway: true,
+                  })
+                : day({ date }),
+        );
+        render(<WeekPlanWidget weekPlan={weekOf(days)} />);
+
+        expect(screen.getByText('Ran Anyway')).toBeInTheDocument();
+    });
+
+    it("exposes each day's status and compliance score as an accessible title", () => {
+        const days = MON_TO_SUN.map((date) =>
+            date === '2026-01-05'
+                ? day({ date, status: 'partial', compliance_score: 62 })
+                : day({ date }),
+        );
+        const { container } = render(
+            <WeekPlanWidget weekPlan={weekOf(days)} />,
+        );
+
+        expect(
+            container.querySelector('li[title="Partial · 62%"]'),
+        ).toBeInTheDocument();
     });
 
     it("surfaces today's session in the today panel, including pace and clamp note", () => {

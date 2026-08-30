@@ -98,7 +98,7 @@ the slice itself (see [R3](#r3)); `n/a` for backend-only or docs-only slices.
 | B4 | Plan narration | 2a | [12](slices/12-B4-plan-narration.md) | merged | [#663](https://github.com/nukipratama/temari/pull/663) | wt-be | n/a | voice-only; regenerate rate-limit; squashed as afa210ab |
 | S1 | Login | 2b | [13](slices/13-S1-login.md) | merged | [#664](https://github.com/nukipratama/temari/pull/664) | wt | 95.37% fn (no change) | 160 kB gz budget; Login at 138.8 kB gz; squashed as 8bdfd11e |
 | S2 | Onboarding | 2b | [14](slices/14-S2-onboarding.md) | todo | — | | | |
-| S3 | Today | 2b | [15](slices/15-S3-today.md) | todo | — | | | |
+| S3 | Today | 2b | [15](slices/15-S3-today.md) | in-review | [#669](https://github.com/nukipratama/temari/pull/669) | wt | 95.56→95.63% stmts, 95.40→95.44% fn | streak reframed off-badge, compliance-v2 colors surfaced |
 | S4 | Plan | 2b | [16](slices/16-S4-plan.md) | todo | — | | | |
 | S5 | RaceGoal | 2b | [17](slices/17-S5-race-goal.md) | todo | — | | | |
 | S6 | Trends | 2b | [18](slices/18-S6-trends.md) | todo | — | | | |

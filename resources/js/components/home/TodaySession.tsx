@@ -1,9 +1,11 @@
 import type { BriefingResult } from '@/types/inertia';
 
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import Temari from '@/components/temari/Temari';
 import Card from '@/components/ui/LegacyCard';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
+import { MOOD_TO_POSE } from '@/lib/temariPose';
 
 /**
  * Temari's read on today, split into the line that leads and the rest. The
@@ -47,18 +49,23 @@ export default function TodaySession({
 }: Readonly<{ briefing: BriefingResult }>) {
     return (
         <Card as="section" tone="sky" padding="card">
-            <SectionLabel dot dotClass="bg-horizon" onSky className="mb-2">
-                Today
-            </SectionLabel>
+            <div className="flex items-center gap-3">
+                <Temari pose={MOOD_TO_POSE[briefing.mood]} size={42} />
+                <SectionLabel dot dotClass="bg-horizon" onSky className="mb-0">
+                    Today
+                </SectionLabel>
+            </div>
 
-            <AnalysisStatus
-                analysis={briefing.mascotVoice}
-                inertiaReloadProps={['briefing']}
-                allowReanalyze={false}
-                showTimestamp={false}
-                onSky
-                renderContent={(text) => <SessionVoice text={text} />}
-            />
+            <div className="mt-3">
+                <AnalysisStatus
+                    analysis={briefing.mascotVoice}
+                    inertiaReloadProps={['briefing']}
+                    allowReanalyze={false}
+                    showTimestamp={false}
+                    onSky
+                    renderContent={(text) => <SessionVoice text={text} />}
+                />
+            </div>
         </Card>
     );
 }

@@ -308,6 +308,14 @@ describe('Home', () => {
         expect(screen.getAllByText('Game Changer').length).toBeGreaterThan(0);
     });
 
+    it('opens the "this week" disclosure by default, so nothing is hidden on first paint', () => {
+        renderHome();
+
+        expect(
+            screen.getByRole('button', { expanded: true }),
+        ).toBeInTheDocument();
+    });
+
     it('omits the verdict block entirely when the backend shipped no trend', () => {
         renderHome(null);
 
@@ -348,8 +356,10 @@ describe('Home', () => {
 
         const weekSection = screen.getByText(/This week ·/).closest('section');
         expect(weekSection).not.toBeNull();
-        const trimpTile = within(weekSection!).getByText('TRIMP').parentElement
-            ?.parentElement;
+        // The KPI tile is the first "TRIMP" label in document order; the second
+        // is LastRunCard's own TRIMP stat, now sharing the same disclosure section.
+        const trimpTile = within(weekSection!).getAllByText('TRIMP')[0]
+            .parentElement?.parentElement;
         // The whole tile carries no digit at all: unknown, never a zero.
         expect(trimpTile?.textContent).toMatch(/—$/);
         expect(trimpTile?.textContent).not.toMatch(/\d/);
