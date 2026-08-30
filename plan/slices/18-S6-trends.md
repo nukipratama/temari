@@ -1,6 +1,6 @@
 # S6 — Trends
 
-**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `F6` · **Status** in review ([#TBD](#), squashed as `TBD`)
+**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `F6` · **Status** in review ([#667](https://github.com/nukipratama/temari/pull/667))
 
 ## Goal
 
