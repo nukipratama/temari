@@ -16,7 +16,9 @@ code_refs:
 
 **Accessories** (`/accessories`) is the wardrobe of what's been earned and can be put on Temari, showing live progress toward what's still locked. Accessories are organized by six equipment **slots**: medal, headband, shirt, shorts, shoes, aura.
 
-The badge board that used to sit alongside this page as a second Collection sub-tab (`/badges`) retired once its content moved onto `/trends` as badge milestones on the Fitness/Fatigue timeline — see [[gamification]]. `/cards` retired the same way once every earned card became browsable inline on [[run-history]] instead. There is no more standalone "Collection" bottom-nav tab either: Accessories folded into the Me destination alongside Profile and Settings, switched by the shared `MeTabs` segmented nav — see [[profile]].
+The badge board that used to sit alongside this page as a second Collection sub-tab (`/badges`) retired once its content moved onto `/trends` as badge milestones on the Fitness/Fatigue timeline — see [[gamification]]. `/cards` retired the same way once every earned card became browsable inline on [[run-history]] instead. There is no more standalone "Collection" bottom-nav tab either.
+
+**Accessories itself is a final cut in the mobile-UX port** (`plan/ledger.md`): the page, `/accessories` route, `AccessoryController`, and every inbound link are slated for removal in that program's `W1`/`W2`. `S10` already dropped the `MeTabs` tab that used to link here alongside Profile and Settings, so this page is reachable only by direct URL now — see [[profile]]. The rest of this note describes the page as it still stands, pending that removal.
 
 **Navigation:** `route('accessories')` → `/accessories` (`AccessoryController::index`). The old `/goals` accessory-progress page (Slice 5 through Slice 6) and its `/target` legacy redirect both retired in Slice 7 — both now redirect straight to `/accessories`, where the progress numbers moved.
 

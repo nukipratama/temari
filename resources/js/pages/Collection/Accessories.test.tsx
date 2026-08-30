@@ -66,11 +66,14 @@ describe('Collection/Accessories', () => {
         ).toBeInTheDocument();
     });
 
-    it('renders the Me segmented nav with Accessories active', () => {
+    // MeTabs no longer has an Accessories tab at all (S10 dropped it, mobile-UX
+    // port ledger cut) — this page itself still awaits removal, so the nav it
+    // renders atop of just carries the two surviving tabs, neither active.
+    it('renders the Me segmented nav without an Accessories tab', () => {
         render(<Accessories items={[]} equipped={emptyEquipped} />);
         expect(
-            screen.getByRole('link', { name: 'Accessories' }),
-        ).toHaveAttribute('aria-current', 'page');
+            screen.queryByRole('link', { name: 'Accessories' }),
+        ).not.toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute(
             'href',
             '/profile',

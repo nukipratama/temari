@@ -140,9 +140,10 @@ describe('Settings', () => {
             'href',
             '/profile',
         );
+        // Accessories is cut from MeTabs (mobile-UX port ledger, S10).
         expect(
-            screen.getByRole('link', { name: 'Accessories' }),
-        ).toHaveAttribute('href', '/accessories');
+            screen.queryByRole('link', { name: 'Accessories' }),
+        ).not.toBeInTheDocument();
     });
 
     // The mute switches say "Send run notifications to Telegram" nowhere near

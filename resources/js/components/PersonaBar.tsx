@@ -5,7 +5,7 @@ import type { Mood } from '@/types/inertia';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Card from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
-import { MOOD_FILL, MOOD_LABEL } from '@/lib/mood';
+import { MOOD_FILL, MOOD_LABEL, MOOD_SOFT_FILL } from '@/lib/mood';
 import { countUpEase } from '@/lib/motion';
 
 export interface PersonaSlice {
@@ -50,17 +50,21 @@ export default function PersonaBar({
 
     return (
         <div className={cn('flex flex-col gap-3', className)}>
+            {/* Gapped, individually-rounded segments (not one continuous bar)
+                mirror the prototype's own time-in-zone treatment, so the
+                identity read gets the same distinctive shape used elsewhere
+                for "how the last N weeks broke down". */}
             <div
                 className={cn(
-                    'flex h-4 w-full overflow-hidden rounded-full',
-                    onSky && 'ring-1 ring-cream/15',
+                    'flex h-4 w-full gap-[3px] rounded-full',
+                    onSky ? 'ring-1 ring-cream/15' : 'ring-1 ring-border',
                 )}
             >
                 {mix.map((slice, index) => (
                     <motion.div
                         key={slice.mood}
                         className={cn(
-                            'h-full origin-left',
+                            'h-full origin-left rounded-full',
                             MOOD_FILL[slice.mood],
                         )}
                         style={{ width: `${slice.percent}%` }}
@@ -75,13 +79,15 @@ export default function PersonaBar({
                     />
                 ))}
             </div>
-            <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
+            <ul className="flex flex-wrap gap-1.5 text-xs">
                 {mix.map((slice) => (
                     <li
                         key={slice.mood}
                         className={cn(
-                            'inline-flex items-center gap-1.5',
-                            onSky ? 'text-ink-on-sky' : 'text-text-2',
+                            'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1',
+                            onSky
+                                ? 'bg-cream/[0.08] text-ink-on-sky'
+                                : cn(MOOD_SOFT_FILL[slice.mood], 'text-text-2'),
                         )}
                     >
                         <span

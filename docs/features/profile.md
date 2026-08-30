@@ -24,7 +24,7 @@ code_refs:
 
 The Profile page (`/profile`) is the runner's about-me: who they are, how Temari sees them, their lifetime totals, a 12-week mood persona, and their PR progression over time. Server entry is [ProfileController](app/Http/Controllers/ProfileController.php) (`__invoke`), rendering the [Profile](resources/js/pages/Profile.tsx) page.
 
-**Navigation:** `route('profile')` → `/profile`. Named route: `profile`. There is no bottom-nav "Me" tab — [UserAvatarLink](resources/js/components/UserAvatarLink.tsx) links the avatar itself straight to Profile, on every page, on both [TopNav](resources/js/components/TopNav.tsx) and [MobileTopBar](resources/js/components/MobileTopBar.tsx). Profile/Settings/Accessories are three separate routes/controllers switched by the shared [MeTabs](resources/js/components/me/MeTabs.tsx) segmented nav rendered atop all three pages, not a merged `/me?segment=` route. There is no `/aku` route, and `/profil` is a permanent redirect to `/profile`.
+**Navigation:** `route('profile')` → `/profile`. Named route: `profile`. There is no bottom-nav "Me" tab — [UserAvatarLink](resources/js/components/UserAvatarLink.tsx) links the avatar itself straight to Profile, on every page, on both [TopNav](resources/js/components/TopNav.tsx) and [MobileTopBar](resources/js/components/MobileTopBar.tsx). Profile and Settings are two separate routes/controllers switched by the shared [MeTabs](resources/js/components/me/MeTabs.tsx) segmented nav rendered atop both pages, not a merged `/me?segment=` route. There is no `/aku` route, and `/profil` is a permanent redirect to `/profile`. `MeTabs` carried a third Accessories tab before the mobile-UX port; `S10` dropped it (Accessories is a final ledger cut, see [[targets-accessories]]) — the `/accessories` route/controller/page themselves are still live pending removal in that program's `W1`/`W2`, just no longer linked from here.
 
 ## System dependencies
 
@@ -53,7 +53,7 @@ These are the same estimators [AkuProfileVoiceNarrator](app/Services/AI/Narrator
 
 ## Persona · last 12 weeks
 
-The "Persona" section renders [PersonaBar](resources/js/components/PersonaBar.tsx): a single stacked bar of mood slices (`personaMix`), each colored by `MOOD_FILL`, with a legend of `MOOD_LABEL` + percent. The mix comes from `AkuProfileVoiceNarrator::personaMix($user)`. The bar carries no narration block of its own: the mix is narrated once, in the hero voice above. Empty mix → PersonaBar shows "Not enough runs yet to read your persona."
+The "Persona" section renders [PersonaBar](resources/js/components/PersonaBar.tsx): gapped, individually-rounded mood segments (`personaMix`), each colored by `MOOD_FILL` — mirroring the mobile-UX prototype's own time-in-zone bar treatment rather than one continuous track — with a legend of `MOOD_LABEL` + percent, each entry its own mood-tinted chip (`MOOD_SOFT_FILL` on paper, a translucent cream chip `onSky`). The mix comes from `AkuProfileVoiceNarrator::personaMix($user)`. The bar carries no narration block of its own: the mix is narrated once, in the hero voice above. Empty mix → PersonaBar shows "Not enough runs yet to read your persona." Persona mix earned a deliberate design pass in the mobile-UX port (`plan/README.md`'s `S10` ledger ruling), not a mechanical token swap.
 
 ## Journey (progression)
 
@@ -61,17 +61,17 @@ When `progressionByCategory` is non-empty, a tabbed section (5K / 10K / HM / FM)
 
 ## Season & streak
 
-Below the "Got a race coming up?" link card, [SeasonStreakPanel](resources/js/components/me/SeasonStreakPanel.tsx) surfaces the same season and weekly-streak data `/plan` computes — a streak tile (weeks running, a "Live" pill, rest-week dots) and a season tile (date range, per-goal progress bars). It's a compact, prototype-inspired layout, not the Plan page's `SeasonTrack` re-mounted. Plan itself dropped its own streak display in the mobile-UX port (`plan/README.md` §5, "Streak feature redesign"); Profile's panel is now the streak's only other home besides Trends' badge board.
+Below the "Got a race coming up?" link card, [SeasonStreakPanel](resources/js/components/me/SeasonStreakPanel.tsx) surfaces the same season and weekly-streak data `/plan` computes — a streak tile (weeks running, a "Live" pill, rest-week dots) and a season tile (date range, per-goal progress bars). It's a compact, prototype-inspired layout, not the Plan page's `SeasonTrack` re-mounted. Plan itself dropped its own streak display in the mobile-UX port (`plan/README.md` §5, "Streak feature redesign"); Profile's panel is now the streak's only other home besides Trends' badge board. The streak tile carries the same `mdi:medal-outline` glyph as Trends' `StreakBadge` (not the flame reserved for the prototype's tempo-session day-glyph convention), and a completed season goal gets an inline `mdi:check-circle` glyph — this panel is `S10`'s answer to the mobile-UX port ledger's "badge/milestone display" ruling: the standalone badge board already lives on Trends (see [[gamification]]) and unlock celebrations already fire as a toast/inbox entry, so no separate badge gallery was built on Profile; its existing milestone-adjacent surface (season goal progress) got the real design pass instead.
 
 The payload is built by [SeasonStreakSummaryBuilder](app/Services/Gamification/SeasonStreakSummaryBuilder.php), extracted from what used to be private `PlanController` methods so both pages read the exact same shapes. Streak is always present (`WeeklySnapshot`/`StreakRestToken` reads have no season dependency). Season can be `null`: `ProfileController` calls `SeasonService::peekCurrent()`, a read-only counterpart to `ensureCurrent()` that returns the current season **if one already exists**, never creating one — visiting Profile must not trigger the same season-creation / badge-board-grant side effects a Plan page load does. A `null` season renders a "No season yet — start one on Plan" link instead of goal progress.
 
 ## Not on this page
 
-PRs and accessories are **not** rendered here — Profile shows no PR cards and no accessory strip. The full PR list is the Personal Bests panel on `/trends` ([[records]]) and the unlock catalog is a tap away on the Accessories segment ([[targets-accessories]]).
+PRs and accessories are **not** rendered here — Profile shows no PR cards and no accessory strip. The full PR list is the Personal Bests panel on `/trends` ([[records]]); the accessory unlock catalog has no more nav entry point at all since `S10` dropped the Accessories tab (see [[targets-accessories]]).
 
 ## Settings
 
-Profile carries no settings section of its own; the Telegram notification panel and HR-zone entry live on the [[settings]] hub instead. Settings is reachable via the [MeTabs](resources/js/components/me/MeTabs.tsx) segmented nav (a lateral tab, alongside Profile and Accessories), once on Profile. Log out moved off the old avatar dropdown (which no longer exists) into a row at the bottom of Settings' Account section.
+Profile carries no settings section of its own; the Telegram notification panel and HR-zone entry live on the [[settings]] hub instead. Settings is reachable via the [MeTabs](resources/js/components/me/MeTabs.tsx) segmented nav (a lateral tab, alongside Profile), once on Profile. Log out moved off the old avatar dropdown (which no longer exists) into a row at the bottom of Settings' Account section.
 
 ## Notes / gotchas
 

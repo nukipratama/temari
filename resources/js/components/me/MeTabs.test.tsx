@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import MeTabs from './MeTabs';
 
 describe('MeTabs', () => {
-    it('renders all three segment labels linking to their pages', () => {
+    it('renders both segment labels linking to their pages', () => {
         render(<MeTabs active="profile" />);
         expect(screen.getByText('Profile').closest('a')).toHaveAttribute(
             'href',
@@ -13,10 +13,6 @@ describe('MeTabs', () => {
         expect(screen.getByText('Settings').closest('a')).toHaveAttribute(
             'href',
             '/settings',
-        );
-        expect(screen.getByText('Accessories').closest('a')).toHaveAttribute(
-            'href',
-            '/accessories',
         );
     });
 
@@ -29,8 +25,12 @@ describe('MeTabs', () => {
         expect(screen.getByText('Profile').closest('a')).not.toHaveAttribute(
             'aria-current',
         );
-        expect(
-            screen.getByText('Accessories').closest('a'),
-        ).not.toHaveAttribute('aria-current');
+    });
+
+    // Accessories is cut (mobile-UX port ledger); the tab must never come back
+    // as a dangling nav entry to a retired equip-locker.
+    it('does not render an Accessories tab', () => {
+        render(<MeTabs active="profile" />);
+        expect(screen.queryByText('Accessories')).not.toBeInTheDocument();
     });
 });

@@ -53,6 +53,13 @@ describe('PersonaBar', () => {
         expect(screen.getByText('60.0%')).toHaveClass('text-ink-on-sky');
     });
 
+    it('gives each legend entry a mood-tinted chip background off the hero panel', () => {
+        render(<PersonaBar mix={[{ mood: 'easy', count: 1, percent: 100 }]} />);
+        expect(screen.getByText('Easy').closest('li')).toHaveClass(
+            'bg-mood-easy-bg',
+        );
+    });
+
     it('rings the bar track for contrast against the hero panel when onSky', () => {
         const { container } = render(
             <PersonaBar

@@ -105,7 +105,7 @@ the slice itself (see [R3](#r3)); `n/a` for backend-only or docs-only slices.
 | S7 | History | 2b | [19](slices/19-S7-history.md) | todo | — | | | |
 | S8 | ActivityDetail | 2b | [20](slices/20-S8-activity-detail.md) | todo | — | | | |
 | S9 | Inbox | 2b | [21](slices/21-S9-inbox.md) | merged | [#665](https://github.com/nukipratama/temari/pull/665) | wt | 95.92→95.95% lines | bucketed sections + time toggle, new scope; squashed as cd0ecd08 |
-| S10 | Profile | 2b | [22](slices/22-S10-profile.md) | todo | — | | | |
+| S10 | Profile | 2b | [22](slices/22-S10-profile.md) | in-review | [#671](https://github.com/nukipratama/temari/pull/671) | wt | 95.61→95.62% stmts | persona mix restyle, milestone-display ledger ruling satisfied via SeasonStreakPanel, Accessories tab cut |
 | S11 | Settings | 2b | [23](slices/23-S11-settings.md) | merged | [#666](https://github.com/nukipratama/temari/pull/666) | wt | 95.37→95.40% fn | appearance toggle UI; squashed as cc3f5f5a |
 | S12 | Undrawn survivors | 2b | [24](slices/24-S12-undrawn-survivors.md) | todo | — | | | the forgettable one |
 | W1 | IA cutover | 3 | [25](slices/25-W1-ia-cutover.md) | todo | — | main | | |

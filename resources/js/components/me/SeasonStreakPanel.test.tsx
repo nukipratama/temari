@@ -74,6 +74,20 @@ describe('SeasonStreakPanel', () => {
         expect(screen.getByText('12/20 sessions')).toBeInTheDocument();
     });
 
+    it('marks a completed season goal with a check glyph, not an in-progress one', () => {
+        const { container } = render(
+            <SeasonStreakPanel season={season} streak={streak} />,
+        );
+        // One check glyph (the completed goal) plus the streak's own medal
+        // glyph — never one per goal.
+        expect(
+            container.querySelectorAll('[data-icon="mdi:check-circle"]'),
+        ).toHaveLength(1);
+        expect(
+            container.querySelectorAll('[data-icon="mdi:medal-outline"]'),
+        ).toHaveLength(1);
+    });
+
     it('shows the tiers-kept line only when tiers were actually kept', () => {
         const { rerender } = render(
             <SeasonStreakPanel season={season} streak={streak} />,

@@ -62,8 +62,8 @@ describe('Profile', () => {
             '/settings',
         );
         expect(
-            screen.getByRole('link', { name: 'Accessories' }),
-        ).toHaveAttribute('href', '/accessories');
+            screen.queryByRole('link', { name: 'Accessories' }),
+        ).not.toBeInTheDocument();
     });
 
     it('renders the three stat tiles', () => {

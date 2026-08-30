@@ -114,9 +114,10 @@
         },
         "cream/0.08": {
             "over": {
-                "resources/js/components/run/EmptyRunsState.tsx": ["sky"]
+                "resources/js/components/run/EmptyRunsState.tsx": ["sky"],
+                "resources/js/components/PersonaBar.tsx": ["sky"]
             },
-            "text": ["cream"]
+            "text": ["cream", "ink-on-sky"]
         },
         "cream/0.1": {
             "over": {
