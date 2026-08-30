@@ -211,7 +211,6 @@
         },
         "horizon/0.18": {
             "over": {
-                "resources/js/components/home/WeekPlanWidget.tsx": ["paper"],
                 "resources/js/components/ui/Chip.test.tsx": ["paper"],
                 "resources/js/lib/variants.ts": ["paper"],
                 "resources/js/pages/Auth/Login.tsx": ["paper"],

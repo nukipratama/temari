@@ -33,6 +33,37 @@ const PHASE_TONE: Record<string, ChipTone> = {
     deload: 'neutral',
 };
 
+const STATUS_LABEL: Record<string, string> = {
+    planned: 'Upcoming',
+    done: 'Done',
+    partial: 'Partial',
+    missed: 'Missed',
+    overreached: 'Overreached',
+    skip: 'Skipped',
+};
+
+/** Same shape-per-intensity vocabulary as the frozen prototype's TodayScreen:
+ *  quality/hard days read as a flame, easy/long days as a feather, rest as a
+ *  bed. This is the day's `session_type`, independent of how it went. */
+const TYPE_ICON: Record<string, string> = {
+    tempo: 'mdi:fire',
+    interval: 'mdi:fire',
+    easy: 'mdi:feather',
+    long: 'mdi:feather',
+    rest: 'mdi:bed',
+};
+
+/** Compliance-v2's six statuses, colored distinctly so "did more than asked"
+ *  (overreached) never reads the same as "hit it exactly" (done), and a
+ *  `skip` (explicitly excused) never reads as a `missed` (didn't happen). */
+const STATUS_TONE: Record<string, string> = {
+    done: 'text-leaf-ink',
+    partial: 'text-leaf-ink opacity-60',
+    overreached: 'text-horizon-ink',
+    missed: 'text-ember-ink opacity-40',
+    skip: 'text-text-3',
+};
+
 const RING_SIZE = 104;
 const RING_STROKE = 10;
 
@@ -43,29 +74,17 @@ function weekdayAbbr(iso: string): string {
         : date.toLocaleDateString('en-US', { weekday: 'short' });
 }
 
-function isCredited(day: WeekPlanDay): boolean {
-    return (
-        day.status === 'done' ||
-        day.status === 'partial' ||
-        day.status === 'overreached'
-    );
-}
-
-/** Which of the days rendered in the grid belong to the current streak, so
- *  the grid can highlight the same run of days `streak_days` counts. */
-function streakDates(days: WeekPlanDay[], streakDays: number): Set<string> {
-    const dates = new Set<string>();
-    if (streakDays === 0) return dates;
-
-    const todayIso = todayLocalIso();
-    const todayIdx = days.findIndex((d) => d.date === todayIso);
-    let i = todayIdx === -1 ? days.length - 1 : todayIdx;
-    if (!isCredited(days[i])) i -= 1;
-
-    for (; i >= 0 && dates.size < streakDays; i--) {
-        dates.add(days[i].date);
+/** Native-tooltip + accessible detail for a day cell: status, the 0-100
+ *  compliance score when one exists, and whether a rest day got run anyway. */
+function dayDetail(day: WeekPlanDay): string {
+    const parts = [STATUS_LABEL[day.status] ?? day.status];
+    if (day.compliance_score !== null) {
+        parts.push(`${day.compliance_score}%`);
     }
-    return dates;
+    if (day.ran_anyway) {
+        parts.push('Ran anyway');
+    }
+    return parts.join(' · ');
 }
 
 function SessionsRing({ value }: Readonly<{ value: number }>) {
@@ -106,55 +125,15 @@ function SessionsRing({ value }: Readonly<{ value: number }>) {
     );
 }
 
-function DayGlyph({
-    status,
-    inStreak,
-}: Readonly<{ status: WeekPlanDay['status']; inStreak: boolean }>) {
-    if (status === 'done' || status === 'partial' || status === 'overreached') {
-        return (
-            <span
-                className={cn(
-                    'flex items-center justify-center rounded-full p-1',
-                    inStreak && 'bg-horizon/[0.18]',
-                )}
-            >
-                <Icon
-                    icon="mdi:fire"
-                    width={16}
-                    height={16}
-                    className={cn(
-                        status === 'partial' && 'opacity-60',
-                        inStreak ? 'text-horizon-ink' : 'text-text-3',
-                    )}
-                    aria-hidden
-                />
-            </span>
-        );
-    }
-    if (status === 'missed') {
-        return (
-            <Icon
-                icon="mdi:fire"
-                width={16}
-                height={16}
-                className="text-ember-ink opacity-40"
-                aria-hidden
-            />
-        );
-    }
-    if (status === 'skip') {
-        return (
-            <Icon
-                icon="mdi:minus-circle-outline"
-                width={16}
-                height={16}
-                className="text-text-3"
-                aria-hidden
-            />
-        );
-    }
+function DayGlyph({ day }: Readonly<{ day: WeekPlanDay }>) {
     return (
-        <span aria-hidden className="size-1.5 rounded-full bg-line-strong" />
+        <Icon
+            icon={TYPE_ICON[day.session_type] ?? 'mdi:fire'}
+            width={16}
+            height={16}
+            className={STATUS_TONE[day.status] ?? 'text-text-3'}
+            aria-hidden
+        />
     );
 }
 
@@ -171,8 +150,6 @@ export default function WeekPlanWidget({
     const todayCorePaceSecPerKm =
         today?.segments.find((s) => s.key === 'main' || s.key === 'interval')
             ?.pace_sec_per_km ?? null;
-    const streak = streakDates(weekPlan.days, weekPlan.streak_days);
-
     const creditedTweened = useCountUp(weekPlan.credited_this_week);
     const kmTweened = useCountUp(weekPlan.planned_km_this_week);
 
@@ -184,15 +161,9 @@ export default function WeekPlanWidget({
                 </SectionLabel>
                 <div className="flex items-center gap-2">
                     {weekPlan.streak_days > 0 && (
-                        <Chip tone="horizon">
-                            <Icon
-                                icon="mdi:fire"
-                                width={12}
-                                height={12}
-                                aria-hidden
-                            />
-                            {weekPlan.streak_days}-day streak
-                        </Chip>
+                        <span className="text-label-micro text-text-3">
+                            {weekPlan.streak_days} Credited In A Row
+                        </span>
                     )}
                     <Chip tone={PHASE_TONE[weekPlan.phase] ?? 'neutral'}>
                         {PHASE_LABEL[weekPlan.phase] ?? weekPlan.phase}
@@ -230,6 +201,7 @@ export default function WeekPlanWidget({
                 {weekPlan.days.map((day) => (
                     <li
                         key={day.date}
+                        title={dayDetail(day)}
                         className={cn(
                             'flex flex-col items-center gap-1 rounded-lg bg-muted p-2 text-center',
                             day.date === todayIso && 'ring-2 ring-horizon-ink',
@@ -238,13 +210,12 @@ export default function WeekPlanWidget({
                         <span className="text-label-micro text-text-3">
                             {weekdayAbbr(day.date)}
                         </span>
-                        <DayGlyph
-                            status={day.status}
-                            inStreak={streak.has(day.date)}
-                        />
+                        <DayGlyph day={day} />
                         <span className="text-[11px] font-semibold text-foreground">
                             {day.session_type === 'rest'
-                                ? 'Rest'
+                                ? day.ran_anyway
+                                    ? 'Ran Anyway'
+                                    : 'Rest'
                                 : `${day.distance_km}k`}
                         </span>
                         {day.pinned && (

@@ -25,6 +25,12 @@ import VerdictHero from '@/components/home/VerdictHero';
 import WeekPlanWidget from '@/components/home/WeekPlanWidget';
 import CoachMark from '@/components/onboarding/CoachMark';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { useCountUp } from '@/hooks/useCountUp';
@@ -125,42 +131,71 @@ export default function Home({
 
                         <div className="mt-10 flex flex-col gap-6">
                             <section>
-                                <SectionLabel dot dotClass="bg-leaf">
-                                    This week · {weekRangeLabel(now)}
-                                </SectionLabel>
-                                <div className="grid grid-cols-3 gap-3">
-                                    <KpiTile
-                                        label="Runs"
-                                        value={weekRunsDisplay}
-                                    />
-                                    <KpiTile label="KM" value={weekKmDisplay} />
-                                    <KpiTile
-                                        label="TRIMP"
-                                        value={weekTrimpDisplay}
-                                        explainerKey="trimp"
-                                    />
-                                </div>
+                                <Collapsible defaultOpen>
+                                    <CollapsibleTrigger
+                                        render={<div />}
+                                        role="button"
+                                        tabIndex={0}
+                                        className="group focus-ring flex w-full cursor-pointer items-center justify-between gap-2 rounded"
+                                    >
+                                        <SectionLabel
+                                            dot
+                                            dotClass="bg-leaf"
+                                            className="mb-0"
+                                        >
+                                            This week · {weekRangeLabel(now)}
+                                        </SectionLabel>
+                                        <Icon
+                                            icon="mdi:chevron-down"
+                                            width={18}
+                                            height={18}
+                                            className="text-text-3 transition-transform group-aria-expanded:rotate-180"
+                                            aria-hidden
+                                        />
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="mt-3.5 flex flex-col gap-6">
+                                        <div className="grid grid-cols-3 gap-3">
+                                            <KpiTile
+                                                label="Runs"
+                                                value={weekRunsDisplay}
+                                            />
+                                            <KpiTile
+                                                label="KM"
+                                                value={weekKmDisplay}
+                                            />
+                                            <KpiTile
+                                                label="TRIMP"
+                                                value={weekTrimpDisplay}
+                                                explainerKey="trimp"
+                                            />
+                                        </div>
+
+                                        <VitalChips
+                                            briefing={briefing}
+                                            load={load}
+                                        />
+
+                                        <div className="grid gap-4 sm:grid-cols-2">
+                                            {lastRun && (
+                                                <LastRunCard
+                                                    run={lastRun}
+                                                    pose={poseForRun(
+                                                        lastRun,
+                                                        recentMoods[
+                                                            lastRun.activity_id
+                                                        ] ?? null,
+                                                    )}
+                                                    note={lastRunNote}
+                                                />
+                                            )}
+                                            <TrainingLoadCard
+                                                load={load}
+                                                snapshot={snapshot}
+                                            />
+                                        </div>
+                                    </CollapsibleContent>
+                                </Collapsible>
                             </section>
-
-                            <VitalChips briefing={briefing} load={load} />
-
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                {lastRun && (
-                                    <LastRunCard
-                                        run={lastRun}
-                                        pose={poseForRun(
-                                            lastRun,
-                                            recentMoods[lastRun.activity_id] ??
-                                                null,
-                                        )}
-                                        note={lastRunNote}
-                                    />
-                                )}
-                                <TrainingLoadCard
-                                    load={load}
-                                    snapshot={snapshot}
-                                />
-                            </div>
 
                             {featured && (
                                 <section>
