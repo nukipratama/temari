@@ -5,6 +5,7 @@ import type { SharedProps } from '@/types/inertia';
 
 import SectionHeading from '@/components/SectionHeading';
 import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 
 /**
  * The "stuck work" cluster: a global one-shot recover action plus three buckets
@@ -70,7 +71,11 @@ function RecoverBar() {
     }
 
     return (
-        <div className="mt-10 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-popover p-4">
+        <Card
+            tone="card"
+            padding="panel"
+            className="mt-10 flex flex-wrap items-center justify-between gap-3 bg-popover"
+        >
             <p className="text-sm text-text-2">
                 Just recovered from an outage? Recover every stuck block at
                 once.
@@ -84,7 +89,7 @@ function RecoverBar() {
                 <Icon icon="mdi:restore" aria-hidden />
                 <span>{processing ? 'Recovering…' : 'Recover all'}</span>
             </button>
-        </div>
+        </Card>
     );
 }
 
@@ -159,7 +164,11 @@ function AttentionGroupRow({
     }, {});
 
     return (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-popover p-4">
+        <Card
+            tone="card"
+            padding="panel"
+            className="flex flex-wrap items-center justify-between gap-3 bg-popover"
+        >
             <div className="min-w-0">
                 <p className="truncate font-medium text-foreground">
                     {group.user_name}
@@ -199,6 +208,6 @@ function AttentionGroupRow({
                     <span>{processing ? 'Sending…' : 'Retry all'}</span>
                 </button>
             )}
-        </div>
+        </Card>
     );
 }

@@ -48,7 +48,7 @@ export default function AiUsage({
                             <Icon icon="mdi:counter" width={20} aria-hidden />
                         </span>
                         <div>
-                            <h1 className="text-headline-xs font-semibold tracking-tight text-foreground">
+                            <h1 className="font-serif italic text-headline-xs text-foreground">
                                 AI Usage
                             </h1>
                             <p className="text-xs text-text-3">
