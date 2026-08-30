@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    formatAbsoluteId,
     formatDuration,
     formatDurationHMS,
     formatIdDate,
@@ -243,6 +244,23 @@ describe('formatRelativeId', () => {
             now.getTime() + 3 * 60 * 60 * 1000,
         ).toISOString();
         expect(formatRelativeId(future, now)).toBe('just now');
+    });
+});
+
+describe('formatAbsoluteId', () => {
+    it('returns dash for null / undefined', () => {
+        expect(formatAbsoluteId(null)).toBe('—');
+        expect(formatAbsoluteId(undefined)).toBe('—');
+    });
+
+    it('returns dash for non-parseable input', () => {
+        expect(formatAbsoluteId('totally-not-a-date')).toBe('—');
+    });
+
+    it('formats a true instant as short month/day + local time', () => {
+        expect(formatAbsoluteId('2026-08-25T07:12:00+07:00')).toMatch(
+            /^Aug 2[45] · \d{2}:\d{2}$/,
+        );
     });
 });
 

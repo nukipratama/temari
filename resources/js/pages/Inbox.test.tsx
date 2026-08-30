@@ -250,6 +250,40 @@ describe('Inbox', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
+    it('groups rows into Today / This Week / Earlier sections', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(2026, 7, 19, 12, 0, 0)); // Wed 19 Aug 2026
+
+        render(
+            <Inbox
+                notifications={page([
+                    item({
+                        id: 1,
+                        title: 'Today row',
+                        created_at: new Date(2026, 7, 19, 8).toISOString(),
+                    }),
+                    item({
+                        id: 2,
+                        title: 'This week row',
+                        created_at: new Date(2026, 7, 17, 8).toISOString(),
+                    }),
+                    item({
+                        id: 3,
+                        title: 'Earlier row',
+                        created_at: new Date(2026, 7, 1, 8).toISOString(),
+                    }),
+                ])}
+                focusId={null}
+            />,
+        );
+
+        expect(screen.getByText('Today')).toBeInTheDocument();
+        expect(screen.getByText('This Week')).toBeInTheDocument();
+        expect(screen.getByText('Earlier')).toBeInTheDocument();
+
+        vi.useRealTimers();
+    });
+
     it('offers page links only once there is more than one page', () => {
         const { rerender } = render(
             <Inbox notifications={page([item()])} focusId={null} />,
