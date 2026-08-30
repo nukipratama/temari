@@ -114,8 +114,7 @@
         },
         "cream/0.08": {
             "over": {
-                "resources/js/components/run/EmptyRunsState.tsx": ["sky"],
-                "resources/js/pages/Auth/Login.tsx": ["sky"]
+                "resources/js/components/run/EmptyRunsState.tsx": ["sky"]
             },
             "text": ["cream"]
         },

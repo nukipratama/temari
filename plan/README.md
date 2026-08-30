@@ -96,7 +96,7 @@ the slice itself (see [R3](#r3)); `n/a` for backend-only or docs-only slices.
 | B2 | Compliance v2 | 2a | [10](slices/10-B2-compliance-v2.md) | merged | [#661](https://github.com/nukipratama/temari/pull/661) | wt-be | n/a | persisted score, daily scoring pass; squashed as 5ec8d3e6 |
 | B1 | Training preferences | 2a | [11](slices/11-B1-training-preferences.md) | merged | [#662](https://github.com/nukipratama/temari/pull/662) | wt-be | n/a | preference-over-behavior override, 2-day template; squashed as c9338293 |
 | B4 | Plan narration | 2a | [12](slices/12-B4-plan-narration.md) | merged | [#663](https://github.com/nukipratama/temari/pull/663) | wt-be | n/a | voice-only; regenerate rate-limit; squashed as afa210ab |
-| S1 | Login | 2b | [13](slices/13-S1-login.md) | todo | — | | | 160 kB gz budget |
+| S1 | Login | 2b | [13](slices/13-S1-login.md) | in-review | — | wt | 95.37% fn (no change) | 160 kB gz budget; Login at 138.8 kB gz |
 | S2 | Onboarding | 2b | [14](slices/14-S2-onboarding.md) | todo | — | | | |
 | S3 | Today | 2b | [15](slices/15-S3-today.md) | todo | — | | | |
 | S4 | Plan | 2b | [16](slices/16-S4-plan.md) | todo | — | | | |
