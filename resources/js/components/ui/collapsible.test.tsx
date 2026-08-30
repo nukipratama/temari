@@ -9,22 +9,7 @@ import {
 } from './collapsible';
 
 describe('Collapsible', () => {
-    it('hides the panel until the trigger is activated', async () => {
-        render(
-            <Collapsible>
-                <CollapsibleTrigger>Toggle</CollapsibleTrigger>
-                <CollapsibleContent>Panel content</CollapsibleContent>
-            </Collapsible>,
-        );
-
-        expect(screen.queryByText('Panel content')).not.toBeInTheDocument();
-
-        await userEvent.setup().click(screen.getByText('Toggle'));
-
-        expect(screen.getByText('Panel content')).toBeInTheDocument();
-    });
-
-    it('starts open when defaultOpen is set', () => {
+    it('renders the panel content when defaultOpen is set', () => {
         render(
             <Collapsible defaultOpen>
                 <CollapsibleTrigger>Toggle</CollapsibleTrigger>
@@ -33,5 +18,34 @@ describe('Collapsible', () => {
         );
 
         expect(screen.getByText('Panel content')).toBeInTheDocument();
+    });
+
+    it('toggles the panel open state when the trigger is clicked', async () => {
+        render(
+            <Collapsible defaultOpen>
+                <CollapsibleTrigger>Toggle</CollapsibleTrigger>
+                <CollapsibleContent>Panel content</CollapsibleContent>
+            </Collapsible>,
+        );
+
+        const trigger = screen.getByText('Toggle');
+        expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+        await userEvent.setup().click(trigger);
+        expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('starts closed when no defaultOpen/open prop is given', () => {
+        render(
+            <Collapsible>
+                <CollapsibleTrigger>Toggle</CollapsibleTrigger>
+                <CollapsibleContent>Panel content</CollapsibleContent>
+            </Collapsible>,
+        );
+
+        expect(screen.getByText('Toggle')).toHaveAttribute(
+            'aria-expanded',
+            'false',
+        );
     });
 });

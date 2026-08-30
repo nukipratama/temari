@@ -86,4 +86,15 @@ describe('TodaySession', () => {
 
         expect(screen.getByRole('status')).toBeInTheDocument();
     });
+
+    it("renders Temari's mascot posed for the briefing's mood", () => {
+        const { container } = render(
+            <TodaySession briefing={briefing('Easy 6k.')} />,
+        );
+
+        expect(container.querySelector('.temari-root')).toHaveAttribute(
+            'data-pose',
+            'proud',
+        );
+    });
 });
