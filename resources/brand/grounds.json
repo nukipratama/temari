@@ -154,7 +154,8 @@
                 "resources/js/pages/Devtools/Design.tsx": ["paper"],
                 "resources/js/components/settings/HrZonesDisclosure.tsx": [
                     "paper"
-                ]
+                ],
+                "resources/js/pages/Race.tsx": ["paper"]
             },
             "text": ["ember-ink"]
         },
