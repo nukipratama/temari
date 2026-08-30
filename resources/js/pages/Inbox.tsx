@@ -9,8 +9,10 @@ import type {
 } from '@/types/inertia';
 
 import AccessoryUnlockModal from '@/components/celebrations/AccessoryUnlockModal';
+import { BUCKET_LABEL, groupByBucket } from '@/components/inbox/inboxBuckets';
 import InboxRow from '@/components/inbox/InboxRow';
 import EmptyPanel from '@/components/ui/EmptyPanel';
+import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillLink from '@/components/ui/PillLink';
@@ -127,24 +129,43 @@ export default function Inbox({
                         variants={staggerContainer}
                         initial="hidden"
                         animate="visible"
-                        className="mt-8 flex flex-col gap-2.5"
+                        className="mt-8 flex flex-col gap-6"
                     >
-                        {items.map((item) => (
-                            <motion.div
-                                key={item.id}
-                                id={`inbox-item-${item.id}`}
-                                variants={fadeInUp}
-                            >
-                                <InboxRow
-                                    item={item}
-                                    read={isRead(item)}
-                                    focused={item.id === focusId}
-                                    replaying={replayingId === item.id}
-                                    onReplay={replay}
-                                    onOpen={markRead}
-                                />
-                            </motion.div>
-                        ))}
+                        {groupByBucket(items).map(
+                            ({ bucket, items: bucketItems }) => (
+                                <div key={bucket}>
+                                    <Eyebrow
+                                        token="small"
+                                        tone="ink-3"
+                                        className="mb-2"
+                                    >
+                                        {BUCKET_LABEL[bucket]}
+                                    </Eyebrow>
+                                    <div className="flex flex-col gap-2.5">
+                                        {bucketItems.map((item) => (
+                                            <motion.div
+                                                key={item.id}
+                                                id={`inbox-item-${item.id}`}
+                                                variants={fadeInUp}
+                                            >
+                                                <InboxRow
+                                                    item={item}
+                                                    read={isRead(item)}
+                                                    focused={
+                                                        item.id === focusId
+                                                    }
+                                                    replaying={
+                                                        replayingId === item.id
+                                                    }
+                                                    onReplay={replay}
+                                                    onOpen={markRead}
+                                                />
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ),
+                        )}
                     </motion.div>
                 )}
 

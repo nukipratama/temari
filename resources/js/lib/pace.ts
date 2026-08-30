@@ -113,6 +113,20 @@ export function formatRelativeId(
     );
 }
 
+// "Aug 25 · 07:12" — short month/day + local time, for TRUE INSTANTS. The
+// absolute counterpart to formatRelativeId, for a relative↔absolute toggle.
+export function formatAbsoluteId(iso: string | null | undefined): string {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '—';
+    const time = d.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    });
+    return `${formatMonthDayId(d)} · ${time}`;
+}
+
 // Relative wording for NAIVE wall-clock values (Strava's start_date_local,
 // serialized with a misleading trailing Z): the delta is measured against the
 // as-recorded local clock, so a 06:30 run reads "12 hr ago" at 18:30 local

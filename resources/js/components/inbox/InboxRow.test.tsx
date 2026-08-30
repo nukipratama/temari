@@ -78,10 +78,10 @@ describe('InboxRow', () => {
         expect(screen.queryByLabelText('Unread')).not.toBeInTheDocument();
     });
 
-    it('offers no action for a row with nothing to open or replay', () => {
+    it('offers no replay or open action for a row with nothing to open or replay', () => {
         renderRow();
 
-        expect(screen.queryByRole('button')).not.toBeInTheDocument();
+        expect(screen.queryByText(/^Replay/)).not.toBeInTheDocument();
         expect(screen.queryByText('Open')).not.toBeInTheDocument();
     });
 
@@ -157,5 +157,34 @@ describe('InboxRow', () => {
         renderRow({ kind, body: null });
 
         expect(screen.getByText(label)).toBeInTheDocument();
+    });
+
+    it('shows the rarity badge instead of the kind label for a rated unlock', () => {
+        renderRow({ kind: 'unlock', rarity: 'legendary' });
+
+        expect(screen.getByText('Legendary Unlock')).toBeInTheDocument();
+        expect(screen.queryByText('Unlock')).not.toBeInTheDocument();
+    });
+
+    it('falls back to the plain kind label for an unlock with no rarity', () => {
+        renderRow({ kind: 'unlock', rarity: null });
+
+        expect(screen.getByText('Unlock')).toBeInTheDocument();
+    });
+
+    it('toggles the timestamp between relative and absolute on tap', async () => {
+        renderRow({ created_at: '2026-08-13T07:30:00+07:00' });
+
+        const toggle = screen.getByRole('button');
+        const relativeText = toggle.textContent;
+
+        await userEvent.click(toggle);
+
+        expect(toggle.textContent).not.toBe(relativeText);
+        expect(toggle.textContent).toMatch(/Aug 1[23] · \d{2}:\d{2}/);
+
+        await userEvent.click(toggle);
+
+        expect(toggle.textContent).toBe(relativeText);
     });
 });

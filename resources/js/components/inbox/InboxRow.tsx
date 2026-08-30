@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import type { InboxItem, NotificationKind } from '@/types/inertia';
 
 import { Button } from '@/components/ui/button';
@@ -6,8 +8,10 @@ import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import PillLink from '@/components/ui/PillLink';
 import { cn } from '@/lib/cn';
-import { formatIdDate, formatRelativeId } from '@/lib/pace';
+import { formatAbsoluteId, formatIdDate, formatRelativeId } from '@/lib/pace';
+import { RARITY_LABELS } from '@/lib/runcard';
 import { ICON_TONE, type Tone } from '@/lib/tones';
+import { rarityVariants } from '@/lib/variants';
 
 const KIND_LABEL: Record<NotificationKind, string> = {
     post_run: 'Post-run',
@@ -54,8 +58,10 @@ export default function InboxRow({
     onReplay,
     onOpen,
 }: Readonly<InboxRowProps>) {
+    const [showAbsolute, setShowAbsolute] = useState(false);
     const replayLabel = item.unlock ? 'Replay Unlock' : 'Replay Reveal';
     const canReplay = item.unlock !== null || item.run_card_id !== null;
+    const showRarityBadge = item.kind === 'unlock' && item.rarity !== null;
 
     return (
         <Card
@@ -80,14 +86,42 @@ export default function InboxRow({
 
                 <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-3">
-                        <Eyebrow token="micro">{KIND_LABEL[item.kind]}</Eyebrow>
-                        <time
-                            dateTime={item.created_at ?? undefined}
-                            title={formatIdDate(item.created_at, 'long')}
+                        {showRarityBadge && item.rarity !== null ? (
+                            <span
+                                className={cn(
+                                    'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-label-micro',
+                                    rarityVariants.flag({
+                                        rarity: item.rarity,
+                                    }),
+                                )}
+                            >
+                                <Icon
+                                    icon="mdi:medal"
+                                    width={11}
+                                    height={11}
+                                    aria-hidden
+                                />
+                                {RARITY_LABELS[item.rarity]} Unlock
+                            </span>
+                        ) : (
+                            <Eyebrow token="micro">
+                                {KIND_LABEL[item.kind]}
+                            </Eyebrow>
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => setShowAbsolute((prev) => !prev)}
                             className="shrink-0 font-mono text-xs tabular-nums text-text-3"
                         >
-                            {formatRelativeId(item.created_at)}
-                        </time>
+                            <time
+                                dateTime={item.created_at ?? undefined}
+                                title={formatIdDate(item.created_at, 'long')}
+                            >
+                                {showAbsolute
+                                    ? formatAbsoluteId(item.created_at)
+                                    : formatRelativeId(item.created_at)}
+                            </time>
+                        </button>
                     </div>
 
                     <h2 className="mt-1 font-sans text-sm font-semibold text-foreground">

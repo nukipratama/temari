@@ -3,7 +3,7 @@ title: Notification inbox
 description: The /inbox notification centre — a paginated record of everything Temari sent, with unlock and post-run rows that re-run the original celebration rather than summarising it.
 tags: [feature, notifications]
 status: living
-reviewed: 2026-08-13
+reviewed: 2026-08-30
 code_refs:
   - app/Http/Controllers/InboxController.php
   - app/Models/InboxNotification.php
@@ -11,6 +11,7 @@ code_refs:
   - app/Services/Inertia/NotificationProps.php
   - resources/js/pages/Inbox.tsx
   - resources/js/components/inbox/InboxRow.tsx
+  - resources/js/components/inbox/inboxBuckets.ts
   - resources/js/components/NotificationBell.tsx
   - resources/js/components/celebrations/AccessoryUnlockModal.tsx
 ---
@@ -58,6 +59,25 @@ Two row kinds carry enough to re-run the celebration they are a record of:
 
 Everything else (recaps, the streak nudge) is a deep link into the page the notification was
 about, which is the same URL its web push already carried.
+
+## Grouped sections and the time toggle
+
+Rows render grouped into **Today / This Week / Earlier**
+([inboxBuckets.ts](../../resources/js/components/inbox/inboxBuckets.ts)), a pure client-side
+grouping over whatever page of rows is already loaded, no backend shape change. The "this week"
+boundary is Monday-start, matching the backend's own week convention (`startOfWeek(Carbon::MONDAY)`,
+e.g. [Periodizer](../../app/Services/Run/Plan/Periodizer.php#L56)) rather than a locale default.
+`created_at` is a true instant, so bucketing reads it with plain `Date` parsing and deliberately does
+not reuse `pace.ts`'s `mondayOf`, which is built for Strava's naive `start_date_local` values.
+
+Tapping a row's timestamp toggles it between relative (`formatRelativeId`) and absolute
+(`formatAbsoluteId`) display, per row, client-only state.
+
+Pagination stays the existing Newer/Older page nav rather than adopting a cumulative "load more":
+the deep-link resolver ([InboxController](../../app/Http/Controllers/InboxController.php#L92)) jumps
+straight to the page a given row sits on, which assumes a single page is rendered at a time. A
+cumulative loader would need every page up to that one merged client-side first, a materially
+different pagination shape than what's wired today.
 
 ## Read state
 
