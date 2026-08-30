@@ -24,12 +24,14 @@
         "mood-wobbly-bg"
     ],
     "fill": [
+        "border-strong",
         "citrus",
         "destructive",
         "ember",
         "ember-deep",
         "horizon",
         "horizon-deep",
+        "icon-accent",
         "ink",
         "ink-3",
         "input",
@@ -190,9 +192,13 @@
                 ],
                 "resources/js/components/settings/TrainingPreferencesDisclosure.tsx": [
                     "paper"
-                ]
+                ],
+                "resources/js/components/onboarding/IconChoiceCard.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/onboarding/DayPicker.tsx": ["paper"]
             },
-            "text": ["horizon-ink", "foreground", "text-2"]
+            "text": ["horizon-ink", "foreground", "text-2", "icon-accent"]
         },
         "horizon/0.12": {
             "text": []

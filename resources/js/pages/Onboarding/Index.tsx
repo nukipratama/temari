@@ -2,11 +2,17 @@ import type { FormDataConvertible } from '@inertiajs/core';
 
 import { Head, router, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, type ReactNode, useState } from 'react';
 
 import type { ExperienceLevel, GoalType } from '@/types/generated';
 import type { SharedProps } from '@/types/inertia';
 
+import { DayCell, DayRow } from '@/components/onboarding/DayPicker';
+import IconChoiceCard from '@/components/onboarding/IconChoiceCard';
+import SessionsDial from '@/components/onboarding/SessionsDial';
+import StepProgress, {
+    type OnboardingStep,
+} from '@/components/onboarding/StepProgress';
 import Temari from '@/components/temari/Temari';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,9 +20,11 @@ import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
+import { useCountUp } from '@/hooks/useCountUp';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
+import { formatPace } from '@/lib/pace';
 import { earliestRaceDate, goalTimeError } from '@/lib/raceGoal';
 
 const DISTANCE_PRESETS = [
@@ -44,19 +52,61 @@ const WHAT_LANDS: ReadonlyArray<{ icon: string; text: string }> = [
 const EXPERIENCE_OPTIONS: ReadonlyArray<{
     value: ExperienceLevel;
     label: string;
+    description: string;
+    icon: string;
 }> = [
-    { value: 'new_to_running', label: 'New to running' },
-    { value: 'returning', label: 'Getting back into it' },
-    { value: 'experienced', label: 'Experienced' },
+    {
+        value: 'new_to_running',
+        label: 'New to running',
+        description: 'First few months, learning the ropes.',
+        icon: 'mdi:sprout',
+    },
+    {
+        value: 'returning',
+        label: 'Getting back into it',
+        description: 'Coming back after time off.',
+        icon: 'mdi:restore',
+    },
+    {
+        value: 'experienced',
+        label: 'Experienced',
+        description: 'Know your paces, chasing more.',
+        icon: 'mdi:trophy',
+    },
 ];
 
 const SESSIONS_OPTIONS = [2, 3, 4, 5, 6] as const;
 
-const GOAL_OPTIONS: ReadonlyArray<{ value: GoalType; label: string }> = [
-    { value: 'consistent', label: 'Stay consistent' },
-    { value: 'race', label: 'Chase a race time' },
-    { value: 'base', label: 'Build a base' },
-    { value: 'return', label: 'Ease back in' },
+const GOAL_OPTIONS: ReadonlyArray<{
+    value: GoalType;
+    label: string;
+    description: string;
+    icon: string;
+}> = [
+    {
+        value: 'consistent',
+        label: 'Stay consistent',
+        description: 'Show up steady, week after week.',
+        icon: 'mdi:target',
+    },
+    {
+        value: 'race',
+        label: 'Chase a race time',
+        description: 'Training toward a real finish time.',
+        icon: 'mdi:flag-checkered',
+    },
+    {
+        value: 'base',
+        label: 'Build a base',
+        description: 'Stack easy miles, no pressure yet.',
+        icon: 'mdi:layers-outline',
+    },
+    {
+        value: 'return',
+        label: 'Ease back in',
+        description: 'Rebuilding gently after a break.',
+        icon: 'mdi:undo-variant',
+    },
 ];
 
 const DAY_OPTIONS = [
@@ -69,13 +119,21 @@ const DAY_OPTIONS = [
     { offset: 6, label: 'Sun' },
 ] as const;
 
-type Step = 'connected' | 'preferences' | 'goal';
+// Decorative only — clamps the pace between a relaxed easy pace and a fast
+// pace to fill the ring, not a fitness assessment of the number.
+const EASY_PACE_SEC_PER_KM = 7.5 * 60;
+const FAST_PACE_SEC_PER_KM = 3.5 * 60;
+const RING_RADIUS = 32;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+type Step = OnboardingStep;
 
 export default function OnboardingIndex() {
     const page = usePage<SharedProps>().props;
     const firstName = page.auth.user?.first_name ?? '';
     const errors = page.errors ?? {};
     const [step, setStep] = useState<Step>('connected');
+    const [subIndex, setSubIndex] = useState(0);
     const [raceDate, setRaceDate] = useState('');
     const [distanceKm, setDistanceKm] = useState<number>(10);
     const [hours, setHours] = useState(0);
@@ -94,9 +152,20 @@ export default function OnboardingIndex() {
     const goalTimeIssue = goalTimeError(goalTimeSec);
     const canSubmitGoal = raceDate !== '' && goalTimeIssue === null;
 
-    const daysIncomplete =
-        runDays.length > 0 && runDays.length !== sessionsPerWeek;
-    const canContinuePreferences = !daysIncomplete;
+    const paceSecPerKm = distanceKm > 0 ? goalTimeSec / distanceKm : 0;
+    const ringPct =
+        paceSecPerKm > 0
+            ? Math.min(
+                  1,
+                  Math.max(
+                      0,
+                      (EASY_PACE_SEC_PER_KM - paceSecPerKm) /
+                          (EASY_PACE_SEC_PER_KM - FAST_PACE_SEC_PER_KM),
+                  ),
+              )
+            : 0;
+    const tweenedRingPct = useCountUp(ringPct);
+    const pace = paceSecPerKm > 0 ? `${formatPace(paceSecPerKm)}/km` : '—';
 
     const toggleRunDay = (offset: number) => {
         setLongRunDay(null);
@@ -111,6 +180,45 @@ export default function OnboardingIndex() {
         setExperienceLevel(null);
         setSessionsPerWeek(null);
         setGoalType(null);
+        setRunDays([]);
+        setLongRunDay(null);
+        setStep('goal');
+    };
+
+    const goBackSubStep = () => setSubIndex((i) => Math.max(0, i - 1));
+
+    const chooseExperience = (value: ExperienceLevel) => {
+        setExperienceLevel(value);
+        setSubIndex(1);
+    };
+
+    const chooseSessions = (n: number) => {
+        setSessionsPerWeek(n);
+        setRunDays([]);
+        setLongRunDay(null);
+        setSubIndex(2);
+    };
+
+    /** Days only has anything to configure once a sessions target exists. */
+    const advancePastGoalQuestion = (targetSessions: number | null) => {
+        if (targetSessions !== null) {
+            setSubIndex(3);
+        } else {
+            setStep('goal');
+        }
+    };
+
+    const chooseGoalType = (value: GoalType) => {
+        setGoalType(value);
+        advancePastGoalQuestion(sessionsPerWeek);
+    };
+
+    const chooseLongRunDay = (offset: number) => {
+        setLongRunDay(offset);
+        setStep('goal');
+    };
+
+    const skipDaysQuestion = () => {
         setRunDays([]);
         setLongRunDay(null);
         setStep('goal');
@@ -155,6 +263,8 @@ export default function OnboardingIndex() {
         <>
             <Head title="Welcome" />
             <PageContainer className="max-w-2xl">
+                <StepProgress step={step} subIndex={subIndex} />
+
                 {step === 'connected' ? (
                     <motion.div
                         key="connected"
@@ -164,11 +274,7 @@ export default function OnboardingIndex() {
                         className="flex flex-col items-center gap-5 py-2 text-center sm:py-10"
                     >
                         <Temari pose="glow" size={112} animate />
-                        <PageHero
-                            size="lg"
-                            eyebrow="Step 1 of 3 · Welcome"
-                            className="text-center"
-                        >
+                        <PageHero size="lg" className="text-center">
                             You&rsquo;re connected, {firstName}.
                         </PageHero>
 
@@ -200,188 +306,163 @@ export default function OnboardingIndex() {
                     </motion.div>
                 ) : step === 'preferences' ? (
                     <motion.div
-                        key="preferences"
+                        key={`preferences-${subIndex}`}
                         variants={fadeInUp}
                         initial="hidden"
                         animate="visible"
                     >
-                        <PageHero size="lg" eyebrow="Step 2 of 3 · Optional">
-                            Tell us how you train.
-                        </PageHero>
-                        <p className="mt-3 font-sans text-sm leading-relaxed text-text-2">
-                            Every field here is optional. Skip it and
-                            Temari&rsquo;ll start from your recent Strava
-                            history instead.
-                        </p>
+                        <div className="mb-5 flex h-8 items-center justify-between">
+                            {subIndex > 0 ? (
+                                <button
+                                    type="button"
+                                    onClick={goBackSubStep}
+                                    aria-label="Back"
+                                    className="focus-ring flex size-8 flex-none items-center justify-center rounded-full bg-muted text-foreground shadow-e1"
+                                >
+                                    <Icon
+                                        icon="mdi:chevron-left"
+                                        width={18}
+                                        height={18}
+                                        aria-hidden
+                                    />
+                                </button>
+                            ) : (
+                                <span />
+                            )}
+                            <PillButton tone="ghost" onClick={skipPreferences}>
+                                Skip for now
+                            </PillButton>
+                        </div>
 
-                        <Card className="mt-6 flex flex-col gap-6 px-6 py-6">
-                            <div>
-                                <span className="text-label-micro text-text-3">
-                                    Experience
-                                </span>
-                                <div className="mt-1.5 flex flex-wrap gap-2">
+                        {subIndex === 0 && (
+                            <PreferenceQuestion
+                                heading={
+                                    <>
+                                        How would you describe where
+                                        you&rsquo;re at?
+                                    </>
+                                }
+                            >
+                                <div className="flex flex-col gap-2">
                                     {EXPERIENCE_OPTIONS.map((option) => (
-                                        <button
+                                        <IconChoiceCard
                                             key={option.value}
-                                            type="button"
-                                            onClick={() =>
-                                                setExperienceLevel(option.value)
-                                            }
-                                            className={cn(
-                                                'focus-ring rounded-full border px-3 py-1.5 text-label-micro transition',
+                                            icon={option.icon}
+                                            label={option.label}
+                                            description={option.description}
+                                            active={
                                                 experienceLevel === option.value
-                                                    ? 'border-horizon bg-horizon/10 text-horizon-ink'
-                                                    : 'border-border text-text-3 hover:border-horizon/60 hover:text-foreground',
-                                            )}
-                                        >
-                                            {option.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div>
-                                <span className="text-label-micro text-text-3">
-                                    Sessions per week
-                                </span>
-                                <div className="mt-1.5 flex flex-wrap gap-2">
-                                    {SESSIONS_OPTIONS.map((n) => (
-                                        <button
-                                            key={n}
-                                            type="button"
-                                            onClick={() => {
-                                                setSessionsPerWeek(n);
-                                                setRunDays([]);
-                                                setLongRunDay(null);
-                                            }}
-                                            className={cn(
-                                                'focus-ring rounded-full border px-3 py-1.5 text-label-micro transition',
-                                                sessionsPerWeek === n
-                                                    ? 'border-horizon bg-horizon/10 text-horizon-ink'
-                                                    : 'border-border text-text-3 hover:border-horizon/60 hover:text-foreground',
-                                            )}
-                                        >
-                                            {n}x
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div>
-                                <span className="text-label-micro text-text-3">
-                                    What are you chasing right now?
-                                </span>
-                                <div className="mt-1.5 flex flex-wrap gap-2">
-                                    {GOAL_OPTIONS.map((option) => (
-                                        <button
-                                            key={option.value}
-                                            type="button"
-                                            onClick={() =>
-                                                setGoalType(option.value)
                                             }
-                                            className={cn(
-                                                'focus-ring rounded-full border px-3 py-1.5 text-label-micro transition',
-                                                goalType === option.value
-                                                    ? 'border-horizon bg-horizon/10 text-horizon-ink'
-                                                    : 'border-border text-text-3 hover:border-horizon/60 hover:text-foreground',
-                                            )}
-                                        >
-                                            {option.label}
-                                        </button>
+                                            onClick={() =>
+                                                chooseExperience(option.value)
+                                            }
+                                        />
                                     ))}
                                 </div>
-                            </div>
+                                <SkipQuestionLink
+                                    onClick={() => setSubIndex(1)}
+                                />
+                            </PreferenceQuestion>
+                        )}
 
+                        {subIndex === 1 && (
+                            <PreferenceQuestion heading="How many days a week can you realistically show up?">
+                                <SessionsDial
+                                    options={SESSIONS_OPTIONS}
+                                    value={sessionsPerWeek}
+                                    onChange={chooseSessions}
+                                />
+                                <SkipQuestionLink
+                                    onClick={() => setSubIndex(2)}
+                                />
+                            </PreferenceQuestion>
+                        )}
+
+                        {subIndex === 2 && (
+                            <PreferenceQuestion heading="What are you chasing right now?">
+                                <div className="flex flex-col gap-2">
+                                    {GOAL_OPTIONS.map((option) => (
+                                        <IconChoiceCard
+                                            key={option.value}
+                                            icon={option.icon}
+                                            label={option.label}
+                                            description={option.description}
+                                            active={goalType === option.value}
+                                            onClick={() =>
+                                                chooseGoalType(option.value)
+                                            }
+                                        />
+                                    ))}
+                                </div>
+                                <SkipQuestionLink
+                                    onClick={() =>
+                                        advancePastGoalQuestion(sessionsPerWeek)
+                                    }
+                                />
+                            </PreferenceQuestion>
+                        )}
+
+                        {subIndex === 3 && sessionsPerWeek !== null && (
                             <div>
-                                <span className="text-label-micro text-text-3">
+                                <h2 className="font-serif text-headline-xs text-foreground italic">
                                     Which days do you usually run?
-                                </span>
-                                <p className="mt-1 text-xs text-text-3">
-                                    {sessionsPerWeek === null
-                                        ? 'Pick your sessions per week first.'
-                                        : `Pick ${sessionsPerWeek} — ${runDays.length} of ${sessionsPerWeek} selected.`}
+                                </h2>
+                                <p className="mt-2 mb-5 text-sm leading-relaxed text-text-2">
+                                    Pick {sessionsPerWeek} &middot;{' '}
+                                    {runDays.length} of {sessionsPerWeek}{' '}
+                                    selected.
                                 </p>
-                                <div className="mt-1.5 flex flex-wrap gap-2">
-                                    {DAY_OPTIONS.map((day) => {
+
+                                <DayRow
+                                    items={DAY_OPTIONS.map((day) => {
                                         const active = runDays.includes(
                                             day.offset,
                                         );
                                         const disabled =
-                                            sessionsPerWeek === null ||
-                                            (!active &&
-                                                runDays.length >=
-                                                    sessionsPerWeek);
+                                            !active &&
+                                            runDays.length >= sessionsPerWeek;
                                         return (
-                                            <button
+                                            <DayCell
                                                 key={day.offset}
-                                                type="button"
+                                                label={day.label}
+                                                active={active}
                                                 disabled={disabled}
                                                 onClick={() =>
                                                     toggleRunDay(day.offset)
                                                 }
-                                                className={cn(
-                                                    'focus-ring rounded-full border px-3 py-1.5 text-label-micro transition disabled:cursor-not-allowed disabled:opacity-40',
-                                                    active
-                                                        ? 'border-horizon bg-horizon/10 text-horizon-ink'
-                                                        : 'border-border text-text-3 hover:border-horizon/60 hover:text-foreground',
-                                                )}
-                                            >
-                                                {day.label}
-                                            </button>
+                                            />
                                         );
                                     })}
-                                </div>
-                            </div>
+                                />
 
-                            {sessionsPerWeek !== null &&
-                                runDays.length === sessionsPerWeek && (
-                                    <div>
-                                        <span className="text-label-micro text-text-3">
+                                {runDays.length === sessionsPerWeek && (
+                                    <div className="mt-6 rounded-xl bg-muted p-2.5">
+                                        <p className="m-0 mb-3 font-serif text-sm text-foreground italic">
                                             Which one&rsquo;s your long run?
-                                        </span>
-                                        <div className="mt-1.5 flex flex-wrap gap-2">
-                                            {DAY_OPTIONS.filter((day) =>
+                                        </p>
+                                        <DayRow
+                                            items={DAY_OPTIONS.filter((day) =>
                                                 runDays.includes(day.offset),
                                             ).map((day) => (
-                                                <button
+                                                <DayCell
                                                     key={day.offset}
-                                                    type="button"
+                                                    label={day.label}
+                                                    active
+                                                    flagCandidate
                                                     onClick={() =>
-                                                        setLongRunDay(
+                                                        chooseLongRunDay(
                                                             day.offset,
                                                         )
                                                     }
-                                                    className={cn(
-                                                        'focus-ring rounded-full border px-3 py-1.5 text-label-micro transition',
-                                                        longRunDay ===
-                                                            day.offset
-                                                            ? 'border-horizon bg-horizon/10 text-horizon-ink'
-                                                            : 'border-border text-text-3 hover:border-horizon/60 hover:text-foreground',
-                                                    )}
-                                                >
-                                                    {day.label}
-                                                </button>
+                                                />
                                             ))}
-                                        </div>
+                                        />
                                     </div>
                                 )}
 
-                            <div className="flex flex-wrap items-center gap-3">
-                                <Button
-                                    onClick={() => setStep('goal')}
-                                    disabled={!canContinuePreferences}
-                                >
-                                    Continue
-                                </Button>
-                                <PillButton
-                                    type="button"
-                                    tone="ghost"
-                                    onClick={skipPreferences}
-                                >
-                                    Skip for now
-                                </PillButton>
+                                <SkipQuestionLink onClick={skipDaysQuestion} />
                             </div>
-                        </Card>
+                        )}
                     </motion.div>
                 ) : (
                     <motion.div
@@ -390,7 +471,7 @@ export default function OnboardingIndex() {
                         initial="hidden"
                         animate="visible"
                     >
-                        <PageHero size="lg" eyebrow="Step 3 of 3 · Optional">
+                        <PageHero size="lg" eyebrow="Optional">
                             Got a race in mind?
                         </PageHero>
                         <p className="mt-3 font-sans text-sm leading-relaxed text-text-2">
@@ -399,7 +480,49 @@ export default function OnboardingIndex() {
                             later from Plan.
                         </p>
 
-                        <Card className="mt-6 px-6 py-6">
+                        <div className="relative mt-6 mb-4 flex items-center gap-4 overflow-hidden rounded-xl border border-border-strong bg-card p-4 shadow-e1">
+                            <div className="relative flex-none">
+                                <svg
+                                    width={76}
+                                    height={76}
+                                    viewBox="0 0 76 76"
+                                    aria-hidden
+                                >
+                                    <circle
+                                        cx={38}
+                                        cy={38}
+                                        r={RING_RADIUS}
+                                        fill="none"
+                                        strokeWidth={6}
+                                        className="stroke-border-strong"
+                                    />
+                                    <circle
+                                        cx={38}
+                                        cy={38}
+                                        r={RING_RADIUS}
+                                        fill="none"
+                                        strokeWidth={6}
+                                        strokeLinecap="round"
+                                        strokeDasharray={`${RING_CIRCUMFERENCE * tweenedRingPct} ${RING_CIRCUMFERENCE}`}
+                                        transform="rotate(-90 38 38)"
+                                        className="stroke-icon-accent"
+                                    />
+                                </svg>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <Temari pose="glow" size={26} />
+                                </div>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <span className="text-label-micro text-text-3">
+                                    Required pace
+                                </span>
+                                <div className="mt-1 font-serif text-headline-xs font-bold text-icon-accent">
+                                    {pace}
+                                </div>
+                            </div>
+                        </div>
+
+                        <Card className="px-6 py-6">
                             <form
                                 onSubmit={submitGoal}
                                 className="grid grid-cols-1 gap-5 sm:grid-cols-2"
@@ -538,6 +661,36 @@ export default function OnboardingIndex() {
                 )}
             </PageContainer>
         </>
+    );
+}
+
+/** One preferences sub-question: heading, options, then the skip link. */
+function PreferenceQuestion({
+    heading,
+    children,
+}: Readonly<{ heading: ReactNode; children: ReactNode }>) {
+    return (
+        <div>
+            <h2 className="font-serif text-headline-xs text-foreground italic">
+                {heading}
+            </h2>
+            <p className="mt-2 mb-5 text-sm leading-relaxed text-text-2">
+                You can change this anytime in settings.
+            </p>
+            {children}
+        </div>
+    );
+}
+
+function SkipQuestionLink({ onClick }: Readonly<{ onClick: () => void }>) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="focus-ring mt-4 font-sans text-xs text-text-3 underline-offset-2 hover:text-foreground hover:underline"
+        >
+            Skip this
+        </button>
     );
 }
 

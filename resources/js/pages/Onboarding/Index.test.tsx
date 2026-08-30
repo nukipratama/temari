@@ -16,6 +16,16 @@ function advanceToGoal() {
     fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
 }
 
+/** Connected -> preferences, past the experience and sessions questions,
+ *  choosing `sessions` (so the days sub-step is reachable) and skipping the
+ *  goal-type question. Lands on the days sub-step. */
+function advanceToDays(sessions: number) {
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+    fireEvent.click(screen.getByRole('button', { name: `${sessions}x` }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+}
+
 describe('Onboarding/Index', () => {
     it('shows the connected step with the user first name', () => {
         setMockPage({ auth: { user: makeUser({ first_name: 'Budi' }) } });
@@ -31,7 +41,9 @@ describe('Onboarding/Index', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
-        expect(screen.getByText('Tell us how you train.')).toBeInTheDocument();
+        expect(
+            screen.getByText(/How would you describe where you.re at\?/),
+        ).toBeInTheDocument();
     });
 
     it('advances to the goal step from preferences', () => {
@@ -211,12 +223,61 @@ describe('Onboarding/Index', () => {
         expect(call?.[1]).toEqual({});
     });
 
-    it('caps run-day selection at the chosen sessions-per-week count', () => {
+    it('lets a single question be skipped without discarding the others', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
-        fireEvent.click(screen.getByRole('button', { name: '2x' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+        fireEvent.click(screen.getByRole('button', { name: '3x' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Stay consistent' }),
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+
+        const call = lastPostCall();
+        expect(call?.[1]).toEqual({
+            sessions_per_week: 3,
+            goal_type: 'consistent',
+        });
+    });
+
+    it('skips the days question entirely once sessions per week is left blank', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+
+        expect(screen.getByText('Got a race in mind?')).toBeInTheDocument();
+    });
+
+    it('steps back to a previous question without losing the current answer', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        fireEvent.click(screen.getByRole('button', { name: 'New to running' }));
+        expect(
+            screen.getByText(
+                /How many days a week can you realistically show up\?/,
+            ),
+        ).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+        expect(
+            screen.getByRole('button', { name: 'New to running' }),
+        ).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('caps run-day selection at the chosen sessions-per-week count', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        advanceToDays(2);
+
         fireEvent.click(screen.getByRole('button', { name: 'Mon' }));
         fireEvent.click(screen.getByRole('button', { name: 'Wed' }));
 
@@ -226,23 +287,21 @@ describe('Onboarding/Index', () => {
     it('deselects an already-picked day on a second click', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        advanceToDays(2);
 
-        fireEvent.click(screen.getByRole('button', { name: '2x' }));
         fireEvent.click(screen.getByRole('button', { name: 'Mon' }));
         fireEvent.click(screen.getByRole('button', { name: 'Mon' }));
 
         expect(
-            screen.getByText('Pick 2 — 0 of 2 selected.'),
+            screen.getByText('Pick 2 · 0 of 2 selected.'),
         ).toBeInTheDocument();
     });
 
     it('reveals the long-run picker only once the day count matches the target', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        advanceToDays(2);
 
-        fireEvent.click(screen.getByRole('button', { name: '2x' }));
         expect(
             screen.queryByText(/Which one.s your long run\?/),
         ).not.toBeInTheDocument();
@@ -268,7 +327,8 @@ describe('Onboarding/Index', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Mon' }));
         fireEvent.click(screen.getByRole('button', { name: 'Wed' }));
         fireEvent.click(screen.getAllByRole('button', { name: 'Wed' }).at(-1)!);
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        expect(screen.getByText('Got a race in mind?')).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
 
         const call = lastPostCall();
