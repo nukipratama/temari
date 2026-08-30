@@ -1,6 +1,6 @@
 # S9 — Inbox
 
-**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4` · **Status** in review
+**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4` · **Status** merged ([#665](https://github.com/nukipratama/temari/pull/665), squashed as `cd0ecd08`)
 
 ## Goal
 

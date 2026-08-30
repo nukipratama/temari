@@ -1,6 +1,6 @@
 # S11 — Settings
 
-**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `B1` · **Status** in review
+**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `B1` · **Status** merged ([#666](https://github.com/nukipratama/temari/pull/666), squashed as `cc3f5f5a`)
 
 ## Goal
 
