@@ -2,6 +2,8 @@ import type { MetricKey } from '@/lib/metricGlossary';
 import type { ActivityDetail, StreamSummary } from '@/types/inertia';
 
 import EmptyPanel from '@/components/ui/EmptyPanel';
+import Card from '@/components/ui/LegacyCard';
+import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
 import { cn } from '@/lib/cn';
 
@@ -21,7 +23,12 @@ interface DetailTile {
 export default function DetailTiles({
     detail,
     summary,
-}: Readonly<{ detail: ActivityDetail; summary: StreamSummary }>) {
+    className,
+}: Readonly<{
+    detail: ActivityDetail;
+    summary: StreamSummary;
+    className?: string;
+}>) {
     const tiles: DetailTile[] = [];
 
     if (detail.average_heartrate != null) {
@@ -98,35 +105,39 @@ export default function DetailTiles({
     if (tiles.length === 0) {
         return (
             <EmptyPanel
+                as="section"
                 title="Technical detail hasn't been read yet."
-                className=""
+                className={className}
             />
         );
     }
 
     return (
-        <div className="grid grid-cols-2 gap-2.5">
-            {tiles.map((t, i) => (
-                <StatTile
-                    key={t.label}
-                    tone="cream"
-                    size="sm"
-                    label={t.label}
-                    value={t.value}
-                    sub={t.sub}
-                    explainerKey={t.metricKey}
-                    valueClassName={
-                        t.warn ? 'text-ember-ink' : 'text-foreground'
-                    }
-                    // A lone trailing tile in this 2-column grid would otherwise
-                    // waste half the row — span it across both columns instead.
-                    className={cn(
-                        i === tiles.length - 1 &&
-                            tiles.length % 2 === 1 &&
-                            'col-span-2',
-                    )}
-                />
-            ))}
-        </div>
+        <Card as="section" padding="hero" className={className}>
+            <SectionLabel>Vitals</SectionLabel>
+            <div className="grid grid-cols-2 gap-2.5">
+                {tiles.map((t, i) => (
+                    <StatTile
+                        key={t.label}
+                        tone="sunken"
+                        size="sm"
+                        label={t.label}
+                        value={t.value}
+                        sub={t.sub}
+                        explainerKey={t.metricKey}
+                        valueClassName={
+                            t.warn ? 'text-ember-ink' : 'text-foreground'
+                        }
+                        // A lone trailing tile in this 2-column grid would otherwise
+                        // waste half the row — span it across both columns instead.
+                        className={cn(
+                            i === tiles.length - 1 &&
+                                tiles.length % 2 === 1 &&
+                                'col-span-2',
+                        )}
+                    />
+                ))}
+            </div>
+        </Card>
     );
 }
