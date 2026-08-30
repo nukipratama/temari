@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 
 /** Inline confirmation for a `back()->with('info', …)` flash (e.g. a retry
  * confirmation). This page renders standalone, not under AppShell, so it
@@ -15,7 +16,11 @@ export default function FlashBanner({
     }
 
     return (
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-border bg-popover px-4 py-3 text-sm text-foreground">
+        <Card
+            tone="card"
+            padding="panel"
+            className="mb-4 flex items-center justify-between gap-3 bg-popover text-sm text-foreground"
+        >
             <span>{message}</span>
             <button
                 type="button"
@@ -25,6 +30,6 @@ export default function FlashBanner({
             >
                 <Icon icon="mdi:close" width={16} aria-hidden />
             </button>
-        </div>
+        </Card>
     );
 }
