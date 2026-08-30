@@ -6,7 +6,9 @@ namespace App\Services\AI;
 
 use App\Models\Activity;
 use App\Models\PersonalRecord;
+use App\Models\PlanAdaptation;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -29,7 +31,8 @@ final class AnalysisSubjectAuthorizer
             AnalysisType::BriefingFeaturedKartuVoice,
             AnalysisType::AkuProfileVoice,
             AnalysisType::MonthlyRecap,
-            AnalysisType::TrendRead => $subjectId === $user->id,
+            AnalysisType::TrendRead,
+            AnalysisType::PlanDayVoice => $subjectId === $user->id,
             AnalysisType::PostRunSpeech,
             AnalysisType::RunInsight => self::userOwns(Activity::query(), $subjectId, $user->id),
             AnalysisType::WeeklyRecap => self::userOwns(WeeklySnapshot::query(), $subjectId, $user->id),
@@ -38,6 +41,8 @@ final class AnalysisSubjectAuthorizer
                 ->whereKey($subjectId)
                 ->forUser($user->id)
                 ->exists(),
+            AnalysisType::PlanWeekVoice => self::userOwns(PlanAdaptation::query(), $subjectId, $user->id),
+            AnalysisType::PlanSeasonVoice => self::userOwns(Season::query(), $subjectId, $user->id),
         };
 
         if (! $authorized) {
@@ -76,9 +81,14 @@ final class AnalysisSubjectAuthorizer
             AnalysisType::WeeklyRecap,
             AnalysisType::PrContext,
             AnalysisType::CardFlavor,
+            AnalysisType::PlanWeekVoice,
+            AnalysisType::PlanSeasonVoice,
             // Names a range (30d/90d/12mo), not a resource — bound by
             // discriminatorRules()'s closed set, nothing further to own-check.
-            AnalysisType::TrendRead => true,
+            AnalysisType::TrendRead,
+            // Names a date, not a resource — bound by discriminatorRules()'s
+            // date-shape validation instead.
+            AnalysisType::PlanDayVoice => true,
         };
 
         if (! $authorized) {

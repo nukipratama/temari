@@ -12,12 +12,17 @@ use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeGroupJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
+use App\Jobs\AI\AnalyzePlanDayVoiceJob;
+use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
+use App\Jobs\AI\AnalyzePlanWeekVoiceJob;
 use App\Jobs\AI\AnalyzePrContextJob;
 use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\Activity;
 use App\Models\PersonalRecord;
+use App\Models\PlanAdaptation;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\WeeklySnapshot;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -35,11 +40,15 @@ enum AnalysisType: string
     case AkuProfileVoice = 'aku_profile_voice';
     case MonthlyRecap = 'monthly_recap';
     case TrendRead = 'trend_read';
+    case PlanDayVoice = 'plan_day_voice';
+    case PlanWeekVoice = 'plan_week_voice';
+    case PlanSeasonVoice = 'plan_season_voice';
 
     public const string BRIEFING_SUBJECT_TYPE = 'briefing_user_day';
     public const string AKU_PROFILE_VOICE_SUBJECT_TYPE = 'aku_profile_voice_user';
     public const string MONTHLY_RECAP_SUBJECT_TYPE = 'monthly_recap_user_month';
     public const string TREND_READ_SUBJECT_TYPE = 'trend_read_user_range';
+    public const string PLAN_DAY_VOICE_SUBJECT_TYPE = 'plan_day_voice_user_day';
 
     /**
      * The three windows Trends narrates. Not chained, not date-keyed — each is
@@ -101,15 +110,21 @@ enum AnalysisType: string
             self::CardFlavor,
             self::PrContext => AnalysisCadence::PerActivity,
             self::BriefingMascotVoice,
-            self::BriefingFeaturedKartuVoice => AnalysisCadence::Daily,
-            self::WeeklyRecap => AnalysisCadence::Weekly,
+            self::BriefingFeaturedKartuVoice,
+            self::PlanDayVoice => AnalysisCadence::Daily,
+            self::WeeklyRecap,
+            self::PlanWeekVoice => AnalysisCadence::Weekly,
             self::MonthlyRecap => AnalysisCadence::Monthly,
-            // Neither is cascade-dispatched from post-run ingest, both have
-            // their own separate scheduled command(s) instead. TrendRead
-            // actually runs three different cadences (one per range — see
-            // routes/console.php), which no single case here represents.
+            // Neither AkuProfileVoice nor TrendRead is cascade-dispatched
+            // from post-run ingest, both have their own separate scheduled
+            // command(s) instead. TrendRead actually runs three different
+            // cadences (one per range — see routes/console.php), which no
+            // single case here represents. PlanSeasonVoice changes only at
+            // season boundaries (a race set/cleared, or a self-scaled
+            // season's 12-week expiry), not on any fixed clock.
             self::AkuProfileVoice,
-            self::TrendRead => AnalysisCadence::OnDemand,
+            self::TrendRead,
+            self::PlanSeasonVoice => AnalysisCadence::OnDemand,
         };
     }
 
@@ -127,6 +142,9 @@ enum AnalysisType: string
             self::AkuProfileVoice => AnalyzeAkuProfileVoiceJob::class,
             self::MonthlyRecap => AnalyzeMonthlyRecapJob::class,
             self::TrendRead => AnalyzeTrendReadJob::class,
+            self::PlanDayVoice => AnalyzePlanDayVoiceJob::class,
+            self::PlanWeekVoice => AnalyzePlanWeekVoiceJob::class,
+            self::PlanSeasonVoice => AnalyzePlanSeasonVoiceJob::class,
         };
     }
 
@@ -213,11 +231,22 @@ enum AnalysisType: string
             self::AkuProfileVoice => ['required', 'string', 'regex:/^\d{4}-W\d{2}$/', Rule::in(self::triggerableIsoWeeks())],
             self::MonthlyRecap => ['required', 'string', 'date_format:Y-m', Rule::in(self::triggerableMonths())],
             self::TrendRead => ['required', 'string', Rule::in(self::TREND_READ_RANGES)],
+            self::PlanDayVoice => [
+                'required', 'string', 'date_format:Y-m-d',
+                'after_or_equal:'.Carbon::today()->subDays(self::MAX_DISCRIMINATOR_AGE_DAYS)->toDateString(),
+                // The current week's 7 days can include future dates (Tue asking
+                // for Saturday's blurb) — bounded to a week out rather than
+                // "today" the way BriefingMascotVoice is, since plan narration is
+                // never about the current moment alone.
+                'before_or_equal:'.Carbon::today()->addDays(7)->toDateString(),
+            ],
             self::PostRunSpeech,
             self::RunInsight,
             self::WeeklyRecap,
             self::PrContext,
-            self::CardFlavor => ['prohibited'],
+            self::CardFlavor,
+            self::PlanWeekVoice,
+            self::PlanSeasonVoice => ['prohibited'],
         };
     }
 
@@ -234,6 +263,9 @@ enum AnalysisType: string
             self::AkuProfileVoice => self::AKU_PROFILE_VOICE_SUBJECT_TYPE,
             self::MonthlyRecap => self::MONTHLY_RECAP_SUBJECT_TYPE,
             self::TrendRead => self::TREND_READ_SUBJECT_TYPE,
+            self::PlanDayVoice => self::PLAN_DAY_VOICE_SUBJECT_TYPE,
+            self::PlanWeekVoice => PlanAdaptation::class,
+            self::PlanSeasonVoice => Season::class,
         };
     }
 

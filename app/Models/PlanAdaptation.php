@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\AdaptationReason;
+use App\Models\AI\Analysis;
 use Database\Factories\PlanAdaptationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
 use Override;
 
@@ -48,6 +50,14 @@ class PlanAdaptation extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return MorphMany<Analysis, $this>
+     */
+    public function analyses(): MorphMany
+    {
+        return $this->morphMany(Analysis::class, 'subject');
     }
 
     /** @return array<string, string> */

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\PersonalRecord;
+use App\Models\PlanAdaptation;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisSubjectAuthorizer;
@@ -23,7 +25,8 @@ it('lets the owner through and rejects a stranger for every AnalysisType', funct
         AnalysisType::BriefingFeaturedKartuVoice,
         AnalysisType::AkuProfileVoice,
         AnalysisType::MonthlyRecap,
-        AnalysisType::TrendRead => $owner->id,
+        AnalysisType::TrendRead,
+        AnalysisType::PlanDayVoice => $owner->id,
         AnalysisType::PostRunSpeech,
         AnalysisType::RunInsight => Activity::factory()->for($owner)->create()->id,
         AnalysisType::WeeklyRecap => WeeklySnapshot::factory()->for($owner)->create()->id,
@@ -31,6 +34,8 @@ it('lets the owner through and rejects a stranger for every AnalysisType', funct
         AnalysisType::CardFlavor => RunCard::factory()
             ->for(Activity::factory()->for($owner))
             ->create()->id,
+        AnalysisType::PlanWeekVoice => PlanAdaptation::factory()->for($owner)->create()->id,
+        AnalysisType::PlanSeasonVoice => Season::factory()->for($owner)->create()->id,
     };
 
     expect(fn () => AnalysisSubjectAuthorizer::authorize($owner, $type, $subjectId))

@@ -5,7 +5,12 @@ declare(strict_types=1);
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
+use App\Jobs\AI\AnalyzePlanDayVoiceJob;
+use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
+use App\Jobs\AI\AnalyzePlanWeekVoiceJob;
 use App\Jobs\AI\AnalyzeTrendReadJob;
+use App\Models\PlanAdaptation;
+use App\Models\Season;
 use App\Services\AI\AnalysisCadence;
 use App\Services\AI\AnalysisType;
 use Illuminate\Support\Carbon;
@@ -24,6 +29,9 @@ it('pins the exact case list, so adding or retiring a type is a deliberate edit'
         'aku_profile_voice',
         'monthly_recap',
         'trend_read',
+        'plan_day_voice',
+        'plan_week_voice',
+        'plan_season_voice',
     ], implode(' ', [
         'The AnalysisType case list changed. Update this list only after settling the call sites that',
         'read the cases as a set rather than one case at a time: Analysis::knownType(), which decides',
@@ -47,6 +55,21 @@ it('maps MonthlyRecap to its job + subject type', function (): void {
 it('maps TrendRead to its job + subject type', function (): void {
     expect(AnalysisType::TrendRead->jobClass())->toBe(AnalyzeTrendReadJob::class)
         ->and(AnalysisType::TrendRead->subjectType())->toBe(AnalysisType::TREND_READ_SUBJECT_TYPE);
+});
+
+it('maps PlanDayVoice to its job + subject type', function (): void {
+    expect(AnalysisType::PlanDayVoice->jobClass())->toBe(AnalyzePlanDayVoiceJob::class)
+        ->and(AnalysisType::PlanDayVoice->subjectType())->toBe(AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE);
+});
+
+it('maps PlanWeekVoice to its job + subject type', function (): void {
+    expect(AnalysisType::PlanWeekVoice->jobClass())->toBe(AnalyzePlanWeekVoiceJob::class)
+        ->and(AnalysisType::PlanWeekVoice->subjectType())->toBe(PlanAdaptation::class);
+});
+
+it('maps PlanSeasonVoice to its job + subject type', function (): void {
+    expect(AnalysisType::PlanSeasonVoice->jobClass())->toBe(AnalyzePlanSeasonVoiceJob::class)
+        ->and(AnalysisType::PlanSeasonVoice->subjectType())->toBe(Season::class);
 });
 
 it('flags exactly the heart-rate-zone-derived types as zone-dependent', function (AnalysisType $type, bool $expected): void {
@@ -90,6 +113,9 @@ it('maps representative types to the expected cadence', function (AnalysisType $
     'monthly recap is monthly' => [AnalysisType::MonthlyRecap, AnalysisCadence::Monthly],
     'aku profile voice is on-demand' => [AnalysisType::AkuProfileVoice, AnalysisCadence::OnDemand],
     'trend read is on-demand (its own 3 cron schedules, not cascade-driven)' => [AnalysisType::TrendRead, AnalysisCadence::OnDemand],
+    'plan day voice is daily' => [AnalysisType::PlanDayVoice, AnalysisCadence::Daily],
+    'plan week voice is weekly' => [AnalysisType::PlanWeekVoice, AnalysisCadence::Weekly],
+    'plan season voice is on-demand (changes only at season boundaries)' => [AnalysisType::PlanSeasonVoice, AnalysisCadence::OnDemand],
 ]);
 
 it('is the single source of truth for group membership', function (): void {
@@ -124,6 +150,8 @@ it('prohibits a discriminator on the types that key off subject_id alone', funct
     'weekly recap' => [AnalysisType::WeeklyRecap],
     'pr context' => [AnalysisType::PrContext],
     'card flavor' => [AnalysisType::CardFlavor],
+    'plan week voice' => [AnalysisType::PlanWeekVoice],
+    'plan season voice' => [AnalysisType::PlanSeasonVoice],
 ]);
 
 it('requires the date shape each keyed type dispatches with', function (AnalysisType $type, string $rule): void {
@@ -133,6 +161,7 @@ it('requires the date shape each keyed type dispatches with', function (Analysis
     'monthly recap is a month' => [AnalysisType::MonthlyRecap, 'date_format:Y-m'],
     'aku profile voice is an ISO week' => [AnalysisType::AkuProfileVoice, 'regex:/^\d{4}-W\d{2}$/'],
     'featured kartu is a card id' => [AnalysisType::BriefingFeaturedKartuVoice, 'regex:/^[1-9][0-9]*$/'],
+    'plan day voice is a day' => [AnalysisType::PlanDayVoice, 'date_format:Y-m-d'],
 ]);
 
 it('formats currentIsoWeek to the discriminator shape AkuProfileVoice requires', function (): void {

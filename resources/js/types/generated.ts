@@ -10,8 +10,8 @@ export const PR_CATEGORY_VALUES = ['1km', '5km', '10km', '15km', 'half_marathon'
 export type AnalysisStatus = 'pending' | 'queued' | 'processing' | 'done' | 'failed';
 export const ANALYSIS_STATUS_VALUES = ['pending', 'queued', 'processing', 'done', 'failed'] as const;
 
-export type AnalysisType = 'briefing_mascot_voice' | 'briefing_featured_kartu_voice' | 'post_run_speech' | 'run_insight' | 'weekly_recap' | 'pr_context' | 'card_flavor' | 'aku_profile_voice' | 'monthly_recap' | 'trend_read';
-export const ANALYSIS_TYPE_VALUES = ['briefing_mascot_voice', 'briefing_featured_kartu_voice', 'post_run_speech', 'run_insight', 'weekly_recap', 'pr_context', 'card_flavor', 'aku_profile_voice', 'monthly_recap', 'trend_read'] as const;
+export type AnalysisType = 'briefing_mascot_voice' | 'briefing_featured_kartu_voice' | 'post_run_speech' | 'run_insight' | 'weekly_recap' | 'pr_context' | 'card_flavor' | 'aku_profile_voice' | 'monthly_recap' | 'trend_read' | 'plan_day_voice' | 'plan_week_voice' | 'plan_season_voice';
+export const ANALYSIS_TYPE_VALUES = ['briefing_mascot_voice', 'briefing_featured_kartu_voice', 'post_run_speech', 'run_insight', 'weekly_recap', 'pr_context', 'card_flavor', 'aku_profile_voice', 'monthly_recap', 'trend_read', 'plan_day_voice', 'plan_week_voice', 'plan_season_voice'] as const;
 
 export type NotificationKind = 'post_run' | 'weekly_recap' | 'monthly_recap' | 'streak_reminder' | 'unlock' | 'test';
 export const NOTIFICATION_KIND_VALUES = ['post_run', 'weekly_recap', 'monthly_recap', 'streak_reminder', 'unlock', 'test'] as const;

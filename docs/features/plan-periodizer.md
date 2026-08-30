@@ -32,6 +32,13 @@ code_refs:
   - app/Http/Controllers/PlanController.php
   - app/Services/Gamification/SeasonStreakSummaryBuilder.php
   - app/Console/Commands/Run/RegeneratePlanCommand.php
+  - app/Services/AI/PlanNarrationRequester.php
+  - app/Services/AI/Narrators/PlanDayVoiceNarrator.php
+  - app/Services/AI/Narrators/PlanWeekVoiceNarrator.php
+  - app/Services/AI/Narrators/PlanSeasonVoiceNarrator.php
+  - app/Jobs/AI/AnalyzePlanDayVoiceJob.php
+  - app/Jobs/AI/AnalyzePlanWeekVoiceJob.php
+  - app/Jobs/AI/AnalyzePlanSeasonVoiceJob.php
   - resources/js/pages/Plan.tsx
   - resources/js/components/plan/SeasonTrack.tsx
   - resources/js/components/plan/StreakPanel.tsx
@@ -39,7 +46,7 @@ code_refs:
 
 # Plan — deterministic periodizer and the Plan tab
 
-The training instrument's forward half: a rules-only periodizer that fills a per-day plan (`planned_sessions`), rendered on its own top-level `/plan` tab. **Rules own every number, the LLM owns voice only** — there is no LLM call anywhere in this feature (see the "Plan authorship" row in the v2 program's locked decisions).
+The training instrument's forward half: a rules-only periodizer that fills a per-day plan (`planned_sessions`), rendered on its own top-level `/plan` tab. **Rules own every number, the LLM owns voice only** (see the "Plan authorship" row in the v2 program's locked decisions) — every figure in this doc through "Season" below is deterministic; the one LLM layer, "Plan narration" at the end, only narrates verdicts the rules already reached and never computes anything itself.
 
 ## Two modes, chosen fresh on every regeneration
 
@@ -107,6 +114,20 @@ The three sections above are all *render-time* reactions within one week. The ge
 The Plan tab's top-of-page summary section is the same periodized arc viewed at a higher zoom, not a separate page (`Season IS the training block` — see the v2 program's locked decisions). [SeasonService::ensureCurrent()](app/Services/Run/Plan/SeasonService.php) is called both from `PlanController::index()` (a fresh user's first page view already has a season) and from `Periodizer::regenerate()` (the weekly job and on-demand regeneration keep it in lockstep with the plan's own mode). `SeasonService::peekCurrent()` is the read-only counterpart the [[profile]] page uses instead — it returns the current season if one already exists, `null` otherwise, and never creates, updates, or closes a `Season` row. A self-scaled `Season` runs a fixed 12 weeks (matching `HORIZON_WEEKS`) and auto-cycles into a fresh one on expiry; a race-oriented one ends on `race_date`. Setting or clearing a `RaceGoal` mid-season closes the current season early (`ends_at` moves to the day before) and opens the other mode at the next call — never a gap, never an overlap, since the mode check always compares the CURRENT active race against the latest season's `race_goal_id`.
 
 5 `SeasonGoal` rows generate once, at creation — see [[gamification]] for the full list and the rest-day reward mechanism that isn't a `Badge`.
+
+## Plan narration — voice only, layered on top
+
+Three `AnalysisType` cases narrate what the rules above already decided, never re-deciding it: `PlanDayVoice`, `PlanWeekVoice`, `PlanSeasonVoice`. All three follow the standard AI narration pipeline (see the "AI narration pipeline" section of CLAUDE.md) — `PlanDayVoiceNarrator`/`PlanWeekVoiceNarrator`/`PlanSeasonVoiceNarrator` under [app/Services/AI/Narrators/](app/Services/AI/Narrators/), one `AnalyzeRowJob` subclass each under [app/Jobs/AI/](app/Jobs/AI/).
+
+**Day narration covers only the current week's 7 days, never the full 12-week horizon.** `PlanDayVoice`'s subject is a synthetic `user_id` + `Y-m-d` discriminator key (mirroring `BriefingMascotVoice`'s own per-user-per-day shape), not the `PlannedSession` row's own id — that row's id is *not* stable across weekly regenerations (`Periodizer::regenerate()` deletes and recreates every unpinned future-date row), so keying on it would silently orphan a day's narration history every Monday even when the actual prescribed session never changed. Editing a day (`PlanController::update()`, skip/block/move) re-requests that day's narration whenever the edited date falls within the current week, so the blurb never keeps describing a session the athlete just changed.
+
+**Week narration attaches to `PlanAdaptation`, not `WeeklySnapshot`.** The existing `WeeklyRecap` type already narrates `WeeklySnapshot` retrospectively ("how'd your week go"); `PlanWeekVoice` is prospective instead ("why does this week's plan look like this"), and `PlanAdaptation` is the periodizer's own decision record for exactly that question — see "Reacting to what actually happened" above. It's structurally bounded to the current week already, since `PlanAdaptation` itself is only ever written for `$currentWeekStart`.
+
+**Season narration attaches to `Season`**, requested on every dispatch but relying on `AnalysisService`'s own idempotency (an already-`Done`, unchanged season is left alone) rather than an explicit "did the season actually change" check.
+
+**Dispatched from `Periodizer::regenerate()`'s two callers, never from `Periodizer.php` itself** — [PlanController::regenerate()](app/Http/Controllers/PlanController.php) (manual) and [RegeneratePlanCommand](app/Console/Commands/Run/RegeneratePlanCommand.php) (the weekly cron), via [PlanNarrationRequester](app/Services/AI/PlanNarrationRequester.php). Literally dispatching narration inside `Periodizer.php` would contradict its own "no LLM call anywhere in this feature" heritage; keeping the requester one layer up preserves that boundary while still tying narration to the exact moment the underlying facts change. `RegeneratePlanCommand` narrates every non-demo user's week (`is_demo === false`) — the regenerate half stays exactly as free as before, but the narration half is now real per-user LLM cost, so it's classified `BILLING` in [DemoBillingExclusionTest](tests/Feature/Console/DemoBillingExclusionTest.php) even though the command's own regenerate call is unconditional. The demo account's own Plan page instead fills every block rule-based on view (`PlanNarrationRequester::ensureDemoFilled()`), the same path its manual "Reread" already resolves through, so it never shows a perpetually-Pending block.
+
+**The manual Regenerate button carries a real rate limit, unlike the button that predates this slice.** A full regenerate can dispatch up to 9 narration rows (7 days, the week, the season) — real LLM cost per click — so `PlanController::regenerate()` now checks a dedicated one-hour cooldown (`PlanNarrationRequester::regenerateCooldownRemaining()`/`startRegenerateCooldown()`) before calling the periodizer, started immediately rather than waiting for the async narration jobs to finish (closing the queue-latency window where two rapid clicks could both slip through). It's a standalone `Cooldown` key, not `Analysis::cooldownKey()` reused — every narration row's own completion unconditionally starts its own shorter (15-minute) cooldown in `AnalysisService::markDone()`, so sharing the key would have this longer window silently overwritten within moments. The weekly cron starts the same cooldown after its own regenerate (so a manual click right after Monday's auto-run is still correctly rate-limited) but never checks it — the cron always runs.
 
 ### The season track and the weekly streak on the page
 

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\AI\Analysis;
 use Database\Factories\SeasonFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
 use Override;
 
@@ -56,6 +58,14 @@ class Season extends Model
     public function goals(): HasMany
     {
         return $this->hasMany(SeasonGoal::class);
+    }
+
+    /**
+     * @return MorphMany<Analysis, $this>
+     */
+    public function analyses(): MorphMany
+    {
+        return $this->morphMany(Analysis::class, 'subject');
     }
 
     /** @return array<string, string> */
