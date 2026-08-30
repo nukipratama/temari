@@ -1,6 +1,6 @@
 # S10 — Profile
 
-**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `F5` · **Status** in-review
+**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `F5` · **Status** merged ([#671](https://github.com/nukipratama/temari/pull/671), squashed as `396b9d13`)
 
 ## Goal
 

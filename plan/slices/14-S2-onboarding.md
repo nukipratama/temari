@@ -1,6 +1,6 @@
 # S2 — Onboarding
 
-**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `B1` · **Status** in review ([#672](https://github.com/nukipratama/temari/pull/672))
+**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `B1` · **Status** merged ([#672](https://github.com/nukipratama/temari/pull/672), squashed as `8c8c804f`)
 
 ## Goal
 
