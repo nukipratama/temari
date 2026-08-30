@@ -23,6 +23,9 @@ import VdotTrend, {
     type VdotHistoryPoint,
 } from '@/components/trends/panels/VdotTrend';
 import RangeToggle, { type TrendRange } from '@/components/trends/RangeToggle';
+import StreakBadge, {
+    type StreakSummaryLike,
+} from '@/components/trends/StreakBadge';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import { appLayout } from '@/layouts/appLayout';
@@ -37,6 +40,7 @@ interface TrendsProps {
     distanceRecords: DistanceRecord[];
     paceRecords: PaceRecord[];
     badgeMilestones: BadgeMilestone[];
+    streak: StreakSummaryLike;
     narration: Record<TrendRange, AnalysisPayload>;
 }
 
@@ -49,6 +53,7 @@ export default function Trends({
     distanceRecords,
     paceRecords,
     badgeMilestones,
+    streak,
     narration,
 }: Readonly<TrendsProps>) {
     const [range, setRange] = useState<TrendRange>('12mo');
@@ -65,7 +70,11 @@ export default function Trends({
                 >
                     <motion.div variants={fadeInUp}>
                         <PageHero eyebrow="Trends">
-                            How things are going
+                            How things
+                            <br />
+                            <em className="italic text-icon-accent">
+                                are going.
+                            </em>
                         </PageHero>
                         <p className="mt-2 max-w-prose text-sm text-text-2">
                             A year of running, read as lines rather than a list.
@@ -93,6 +102,10 @@ export default function Trends({
                             milestones={badgeMilestones}
                             range={range}
                         />
+                    </motion.div>
+
+                    <motion.div variants={fadeInUp}>
+                        <StreakBadge streak={streak} />
                     </motion.div>
 
                     <motion.div variants={fadeInUp}>

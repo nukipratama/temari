@@ -11,9 +11,11 @@ use App\Models\RunCard;
 use App\Models\TrendDailySnapshot;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
+use App\Services\Gamification\SeasonStreakSummaryBuilder;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -25,7 +27,7 @@ use Inertia\Response;
  */
 class TrendsController extends Controller
 {
-    public function __invoke(Request $request, TrainingLoad $trainingLoad, VdotEstimator $vdotEstimator): Response
+    public function __invoke(Request $request, TrainingLoad $trainingLoad, VdotEstimator $vdotEstimator, SeasonStreakSummaryBuilder $seasonStreakBuilder): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -54,6 +56,7 @@ class TrendsController extends Controller
                 ->map(static fn (string $date, string $slug): array => ['key' => $slug, 'date' => $date])
                 ->values()
                 ->all(),
+            'streak' => $seasonStreakBuilder->streakPayload($user, Carbon::today()),
             'narration' => $this->narrationByRange($user),
         ]);
     }

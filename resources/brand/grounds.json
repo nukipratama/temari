@@ -223,13 +223,8 @@
             "over": {
                 "resources/js/components/trends/panels/FitnessTrend.tsx": [
                     "paper"
-                ]
-            },
-            "text": ["foreground"]
-        },
-        "horizon/0.3": {
-            "over": {
-                "resources/js/components/trends/RangeToggle.tsx": ["paper"]
+                ],
+                "resources/js/components/trends/StreakBadge.tsx": ["paper"]
             },
             "text": ["foreground"]
         },

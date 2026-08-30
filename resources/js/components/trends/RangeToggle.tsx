@@ -34,10 +34,7 @@ export default function RangeToggle({
         <div
             role="group"
             aria-label="Time range"
-            className={cn(
-                'inline-flex gap-1 rounded-full border border-border bg-card p-1',
-                className,
-            )}
+            className={cn('flex gap-1 rounded-full bg-muted p-1', className)}
         >
             {TREND_RANGES.map((range) => {
                 const selected = range.key === value;
@@ -49,10 +46,10 @@ export default function RangeToggle({
                         aria-pressed={selected}
                         onClick={() => onChange(range.key)}
                         className={cn(
-                            'rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors',
+                            'flex-1 rounded-full py-1.5 text-center text-xs font-bold whitespace-nowrap transition-colors',
                             selected
-                                ? 'bg-horizon/30 text-foreground'
-                                : 'text-text-3 hover:bg-cream-deep',
+                                ? 'bg-card text-foreground shadow-e1'
+                                : 'text-foreground hover:text-text-2',
                         )}
                     >
                         {range.label}

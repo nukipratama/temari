@@ -10,8 +10,10 @@ use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\TrendDailySnapshot;
 use App\Models\User;
+use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -225,4 +227,36 @@ it('never surfaces another user\'s personal bests or badges', function (): void 
             ->where('distanceRecords', [])
             ->where('paceRecords', [])
             ->where('badgeMilestones', []));
+});
+
+it('reports a zero streak for a fresh user', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/trends')
+        ->assertInertia(fn (Assert $page) => $page->where('streak.weeks', 0));
+});
+
+it('reports the user\'s consecutive-week streak', function (): void {
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => now()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+        'runs' => 3,
+    ]);
+
+    $this->actingAs($user)->get('/trends')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('streak.weeks', 1)
+            ->where('streak.ran_this_week', true));
+});
+
+it('never surfaces another user\'s streak', function (): void {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    WeeklySnapshot::factory()->for($other)->create([
+        'week_ending' => now()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+        'runs' => 3,
+    ]);
+
+    $this->actingAs($user)->get('/trends')
+        ->assertInertia(fn (Assert $page) => $page->where('streak.weeks', 0));
 });

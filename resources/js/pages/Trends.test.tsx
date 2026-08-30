@@ -38,6 +38,13 @@ const BASE_PROPS: ComponentProps<typeof Trends> = {
     distanceRecords: [],
     paceRecords: [],
     badgeMilestones: [],
+    streak: {
+        weeks: 0,
+        rest_weeks_held: 0,
+        rest_weeks_cap: 2,
+        ran_this_week: false,
+        week_ends_on: '2026-08-30',
+    },
     narration: NARRATION,
 };
 
@@ -45,7 +52,8 @@ describe('Trends', () => {
     it('renders the page headline', () => {
         render(<Trends {...BASE_PROPS} />);
 
-        expect(screen.getByText('How things are going')).toBeInTheDocument();
+        expect(screen.getByText('How things')).toBeInTheDocument();
+        expect(screen.getByText('are going.')).toBeInTheDocument();
     });
 
     it('defaults to the 12 month range narration', () => {
@@ -98,5 +106,22 @@ describe('Trends', () => {
         );
 
         expect(screen.getByText('5 km')).toBeInTheDocument();
+    });
+
+    it('renders the streak badge board entry', () => {
+        render(
+            <Trends
+                {...BASE_PROPS}
+                streak={{
+                    weeks: 6,
+                    rest_weeks_held: 0,
+                    rest_weeks_cap: 2,
+                    ran_this_week: true,
+                    week_ends_on: '2026-08-30',
+                }}
+            />,
+        );
+
+        expect(screen.getByText('6 weeks streak')).toBeInTheDocument();
     });
 });
