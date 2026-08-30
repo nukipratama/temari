@@ -1,6 +1,6 @@
 # S1 — Login
 
-**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4` · **Status** in-review
+**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4` · **Status** in-review ([#664](https://github.com/nukipratama/temari/pull/664))
 
 ## Goal
 
