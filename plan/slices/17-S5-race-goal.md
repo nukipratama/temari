@@ -1,6 +1,6 @@
 # S5 — RaceGoal
 
-**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `B1`, `F6` · **Status** in-review
+**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `B1`, `F6` · **Status** in-review ([#670](https://github.com/nukipratama/temari/pull/670))
 
 ## Goal
 
