@@ -14,7 +14,6 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\FeedQuery;
 use App\Services\Run\LifetimeStats;
-use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\PostRunNoteReader;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
@@ -109,10 +108,6 @@ class HistoryController extends Controller
             // backend mood even before the speech (and its note) is ready.
             'moods' => fn (): array => $loadNotes()['moods'],
             'rangeFilter' => $filters->range,
-            'moodFilter' => $filters->moods,
-            'distanceFilter' => $filters->distanceBand,
-            'rarityFilter' => $filters->rarity,
-            'sortMode' => $filters->sort,
             'weekFilter' => $filters->week?->toDateString(),
             'rangeStart' => $filters->rangeStart?->toDateString(),
             'rangeAutoWidened' => $filters->rangeAutoWidened,
@@ -130,7 +125,6 @@ class HistoryController extends Controller
                 $filters->week,
                 $currentWeekEnding,
             ),
-            'journeyMatch' => fn (): ?array => $this->buildJourneyMatch($user),
         ];
     }
 
@@ -207,83 +201,6 @@ class HistoryController extends Controller
             'is_chain_head' => $row->id === $chainHeadId,
             'recap_analysis' => $recapAnalysis,
             'notification_retry_after_seconds' => Analysis::notificationCooldownRemaining($recapAnalysis),
-        ];
-    }
-
-    /**
-     * First-ever activity vs latest activity — surfaces an "all-time progress"
-     * delta. Hides for users with <2 activities. Pace/HR improvements use
-     * signed deltas (positive = faster / lower HR = improvement).
-     *
-     * @return array{
-     *     first: array{date: string|null, name: string|null, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: float|null},
-     *     current: array{date: string|null, name: string|null, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: float|null},
-     *     pace_improvement_sec: float|null,
-     *     hr_improvement_bpm: float|null,
-     *     total_km: float,
-     * }|null
-     */
-    private function buildJourneyMatch(User $user): ?array
-    {
-        // Boundary dates + lifetime distance in one aggregate pass (MIN/MAX skip
-        // NULL start_date_local natively); detail rows for those dates follow in
-        // a second query.
-        $bounds = ActivityDetail::query()
-            ->forUser($user->id)
-            ->selectRaw('MIN(start_date_local) as first_date, MAX(start_date_local) as latest_date, SUM(distance) as total_distance')
-            ->first();
-
-        $firstDate = $bounds?->getAttribute('first_date');
-        $latestDate = $bounds?->getAttribute('latest_date');
-        if ($firstDate === null || $latestDate === null || $firstDate === $latestDate) {
-            return null;
-        }
-
-        $boundaryDetails = ActivityDetail::query()
-            ->forUser($user->id)
-            ->whereIn('start_date_local', [$firstDate, $latestDate])
-            ->orderBy('start_date_local')
-            ->get();
-
-        $first = $boundaryDetails->first();
-        $current = $boundaryDetails->last();
-
-        if ($first === null || $current === null || $first->id === $current->id) {
-            return null;
-        }
-
-        $firstPace = $first->paceSecPerKm();
-        $currentPace = $current->paceSecPerKm();
-        $paceImprovement = ($firstPace !== null && $currentPace !== null)
-            ? $firstPace - $currentPace
-            : null;
-
-        $firstHr = $first->average_heartrate !== null ? (float) $first->average_heartrate : null;
-        $currentHr = $current->average_heartrate !== null ? (float) $current->average_heartrate : null;
-        $hrImprovement = ($firstHr !== null && $currentHr !== null)
-            ? $firstHr - $currentHr
-            : null;
-
-        return [
-            'first' => self::summariseDetail($first, $firstPace),
-            'current' => self::summariseDetail($current, $currentPace),
-            'pace_improvement_sec' => $paceImprovement,
-            'hr_improvement_bpm' => $hrImprovement,
-            'total_km' => DistanceFormatter::km((float) ($bounds->getAttribute('total_distance') ?? 0)),
-        ];
-    }
-
-    /**
-     * @return array{date: string|null, name: string|null, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: float|null}
-     */
-    private static function summariseDetail(ActivityDetail $detail, ?float $paceSec): array
-    {
-        return [
-            'date' => $detail->start_date_local?->toDateString(),
-            'name' => $detail->name,
-            'distance_km' => DistanceFormatter::kmOrNull($detail->distance, DistanceFormatter::EXACT),
-            'pace_sec_per_km' => $paceSec,
-            'avg_hr' => $detail->average_heartrate !== null ? (float) $detail->average_heartrate : null,
         ];
     }
 

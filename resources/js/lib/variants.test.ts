@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
     cardVariants,
     chipVariants,
-    filterOptionVariants,
     iconButtonVariants,
     inputVariants,
     outlineChipVariants,
@@ -157,48 +156,6 @@ describe('iconButtonVariants', () => {
         const cls = tokens(iconButtonVariants({ onSky: true }));
         expect(cls).toContain('text-cream/80');
         expect(cls).toContain('hover:text-cream');
-    });
-});
-
-describe('filterOptionVariants', () => {
-    it('gives an active row a bold sky tint, on top of the shared active tint', () => {
-        const cls = tokens(
-            filterOptionVariants({ layout: 'row', active: true }),
-        );
-        expect(cls).toContain('bg-sky/10');
-        expect(cls).toContain('text-sky');
-        expect(cls).toContain('font-semibold');
-    });
-
-    it('leaves an inactive row plain', () => {
-        const cls = tokens(
-            filterOptionVariants({ layout: 'row', active: false }),
-        );
-        expect(cls).toContain('text-foreground');
-        expect(cls).toContain('hover:bg-accent');
-        expect(cls).not.toContain('font-semibold');
-    });
-
-    it('does not bold an active mood tile, unlike an active row', () => {
-        const cls = tokens(
-            filterOptionVariants({ layout: 'mood', active: true }),
-        );
-        expect(cls).toContain('bg-sky/10');
-        expect(cls).toContain('text-sky');
-        expect(cls).not.toContain('font-semibold');
-    });
-
-    it('stretches a row full width but not a mood tile', () => {
-        expect(tokens(filterOptionVariants({ layout: 'row' }))).toContain(
-            'w-full',
-        );
-        expect(tokens(filterOptionVariants({ layout: 'mood' }))).not.toContain(
-            'w-full',
-        );
-    });
-
-    it('carries the shared focus-ring in its base', () => {
-        expect(tokens(filterOptionVariants())).toContain('focus-ring');
     });
 });
 

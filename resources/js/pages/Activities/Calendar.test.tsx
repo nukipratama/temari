@@ -293,27 +293,19 @@ describe('Calendar', () => {
         expect(screen.getByText('WK 1')).toBeInTheDocument();
     });
 
-    it('renders a Filter button that opens a mood filter menu', () => {
+    it('renders the Feed ⇄ Calendar nav with calendar active', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        const filterButton = screen.getByRole('button', { name: /filter/i });
-        expect(filterButton).toHaveAttribute('aria-expanded', 'false');
-        fireEvent.click(filterButton);
-        expect(filterButton).toHaveAttribute('aria-expanded', 'true');
-        expect(screen.getByRole('button', { name: /Blazing/ })).toHaveAttribute(
-            'aria-pressed',
+        expect(screen.getByText('Calendar').closest('a')).toHaveClass(
+            'bg-card',
         );
     });
 
-    it('dims cells whose mood is not in the active filter set', () => {
-        const { container } = render(
-            <Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />,
-        );
-        fireEvent.click(screen.getByRole('button', { name: /filter/i }));
-        // Toggle only "Nyala" — cells with mood easy/overloaded should now be dimmed.
-        fireEvent.click(screen.getByRole('button', { name: /Blazing/ }));
-        // Find the May 1 cell (mood: easy, activity_id: 100) — it should pick up the dim opacity class.
-        const link = container.querySelector('a[href="/activities/100"]');
-        expect(link?.className).toContain('opacity-30');
+    it('renders the viewed month totals (not lifetime) as a meta line', () => {
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        // Two current-month runs: 5 + 7.2 + 3.5 km = 15.7, 3 runs, 50+80+25 TRIMP = 155.
+        expect(
+            screen.getByText(/3 runs · 15\.7 km · 155 TRIMP/),
+        ).toBeInTheDocument();
     });
 
     it('renders an empty placeholder for cells with no run', () => {
@@ -368,7 +360,7 @@ describe('Calendar', () => {
         expect(
             screen.getByRole('heading', { name: 'May 2026' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('Mood')).toBeInTheDocument();
+        expect(screen.getByText('Blazing')).toBeInTheDocument();
     });
 
     describe('monthly recap card', () => {
@@ -383,19 +375,14 @@ describe('Calendar', () => {
             expect(
                 screen.getByText(/May was full and the rhythm held steady\./),
             ).toBeInTheDocument();
-            expect(
-                screen.getByText(/Temari's notes · May 2026/),
-            ).toBeInTheDocument();
         });
 
         it('is omitted entirely when no recap prop is passed', () => {
             render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-            expect(
-                screen.queryByText(/Temari's notes/),
-            ).not.toBeInTheDocument();
+            expect(screen.queryByText(/May was full/)).not.toBeInTheDocument();
         });
 
-        it('keeps the card heading but renders no narration/trigger when a past month is not yet narrated', () => {
+        it('renders no narration/trigger when a past month is not yet narrated', () => {
             render(
                 <Calendar
                     {...BASE_PROPS}
@@ -408,7 +395,6 @@ describe('Calendar', () => {
                     })}
                 />,
             );
-            expect(screen.getByText(/Temari's notes/)).toBeInTheDocument();
             expect(
                 screen.queryByText(/thinking it over/),
             ).not.toBeInTheDocument();

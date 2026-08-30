@@ -2,45 +2,32 @@ import { Head, Link } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { memo, useRef, type ReactNode } from 'react';
 
-import type { AnalysisPayload, Mood } from '@/types/inertia';
+import type { AnalysisPayload } from '@/types/inertia';
 
-import HistoryFilter from '@/components/history/HistoryFilter';
-import HistoryTabs from '@/components/history/HistoryTabs';
+import HistoryNav from '@/components/history/HistoryNav';
+import RecapCard from '@/components/history/RecapCard';
 import CoachMark from '@/components/onboarding/CoachMark';
-import SendNotificationButton from '@/components/SendNotificationButton';
-import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import Temari from '@/components/temari/Temari';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import { useCountUp } from '@/hooks/useCountUp';
-import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import {
     MOOD_FILL,
-    MOOD_FILTER_OPTIONS,
     MOOD_HINT,
     MOOD_LABEL,
     MOOD_ORDER,
     MOOD_SOFT_FILL,
-    moodSigilColor,
 } from '@/lib/mood';
 import { fadeInUp } from '@/lib/motion';
 import { formatPace, formatShortDateId } from '@/lib/pace';
-import { renderBold, stripEdgeQuotes } from '@/lib/richText';
+import { stripEdgeQuotes } from '@/lib/richText';
 import { activityUrl } from '@/lib/routes';
-import { MOOD_TO_POSE } from '@/lib/temariPose';
 import { cardVariants } from '@/lib/variants';
 
-import {
-    isFilteredOut,
-    useCalendar,
-    type CalendarCell,
-    type WeekRow,
-} from './useCalendar';
+import { useCalendar, type CalendarCell, type WeekRow } from './useCalendar';
 
 export { dominantMoodOf, type CalendarCell } from './useCalendar';
 
@@ -90,21 +77,18 @@ export default function Calendar({
     todayQuote = null,
     monthlyRecap,
 }: Readonly<CalendarProps>) {
-    const {
-        weeks,
-        dominantMood,
-        isCurrentMonth,
-        moodFilter,
-        toggleMood,
-        resetFilter,
-    } = useCalendar({ cells, month, todayMonth });
+    const { weeks, dominantMood, monthTotals, isCurrentMonth } = useCalendar({
+        cells,
+        month,
+        todayMonth,
+    });
     const gridRef = useRef<HTMLDivElement>(null);
 
     return (
         <>
             <Head title={`History · Calendar · ${monthLabel}`} />
             <PageContainer>
-                <header className="mb-8 min-w-0">
+                <header className="flex flex-col gap-5">
                     <PageHero eyebrow={<LifetimeEyebrow lifetime={lifetime} />}>
                         Every run,
                         <br />
@@ -112,35 +96,37 @@ export default function Calendar({
                             has a story.
                         </em>
                     </PageHero>
+                    <HistoryNav active="calendar" />
                 </header>
 
-                <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                    <HistoryTabs active="calendar" />
-                    <div className="flex flex-wrap items-center gap-2.5">
-                        <MonthNav
-                            label={monthLabel}
-                            prevMonth={prevMonth}
-                            nextMonth={nextMonth}
-                            showTodayButton={!isCurrentMonth}
-                        />
-                        <HistoryFilter
-                            mood={{
-                                selected: moodFilter,
-                                options: MOOD_FILTER_OPTIONS,
-                                onToggle: toggleMood,
-                            }}
-                            onReset={resetFilter}
-                        />
-                    </div>
+                <div className="mt-8 mb-2.5 flex items-center justify-between">
+                    <MonthNav
+                        label={monthLabel}
+                        prevMonth={prevMonth}
+                        nextMonth={nextMonth}
+                        showTodayButton={!isCurrentMonth}
+                    />
+                </div>
+
+                <div className="mb-2.5 text-center font-mono text-[9.5px] leading-[1.2] text-text-3">
+                    <MonthMeta totals={monthTotals} />
                 </div>
 
                 {monthlyRecap && (
-                    <MonthlyRecapCard
-                        recap={monthlyRecap}
-                        month={month}
-                        monthLabel={monthLabel}
+                    <RecapCard
                         mood={dominantMood}
+                        analysis={monthlyRecap}
                         awaitingSchedule={isCurrentMonth}
+                        awaitingScheduleLabel="This month's recap isn't ready yet."
+                        isChainHead={monthlyRecap.is_chain_head}
+                        size="month"
+                        inertiaReloadProps={['monthlyRecap']}
+                        notification={{
+                            url: `/recaps/monthly/${month}/send`,
+                            retryAfterSeconds:
+                                monthlyRecap.notification_retry_after_seconds,
+                        }}
+                        className="mb-4"
                     />
                 )}
 
@@ -171,7 +157,6 @@ export default function Calendar({
                                 key={week.weekStart}
                                 week={week}
                                 todayQuote={todayQuote}
-                                moodFilter={moodFilter}
                             />
                         ))}
                     </motion.div>
@@ -212,77 +197,17 @@ function LifetimeEyebrow({ lifetime }: Readonly<{ lifetime?: LifetimeStats }>) {
     );
 }
 
-/**
- * Temari's narrative recap for the viewed month, keyed to that month's
- * MonthlyRecap analysis. MonthlyRecap is a connected + chained kind: the retry
- * and resume actions pick the chain up from the earliest unfilled month, and
- * regenerate shows only on the latest narrated month (`is_chain_head`). No
- * rule-based fallback exists for
- * monthly, so unfilled months simply show the empty / resume state. The
- * still-running current month (`awaitingSchedule`) suppresses every trigger and
- * waits for the scheduler, so its incomplete recap can't be generated on demand.
- * Temari wears the month's dominant run mood, mirroring the weekly recap on the feed.
- */
-function MonthlyRecapCard({
-    recap,
-    month,
-    monthLabel,
-    mood,
-    awaitingSchedule,
-}: Readonly<{
-    recap: MonthlyRecap;
-    month: string;
-    monthLabel: string;
-    mood: Mood | null;
-    awaitingSchedule: boolean;
-}>) {
-    const notificationsReachable = useNotificationsReachable();
+function MonthMeta({
+    totals,
+}: Readonly<{ totals: { runs: number; km: number; trimp: number | null } }>) {
     return (
-        <Card
-            as="section"
-            padding="card"
-            className="mb-4"
-            aria-label={`Temari's notes for ${monthLabel}`}
-        >
-            <div className="text-label-small text-text-2">
-                Temari's notes · {monthLabel}
-            </div>
-            <div className="mt-2 flex items-start gap-3.5">
-                <Temari
-                    pose={mood ? MOOD_TO_POSE[mood] : 'observational'}
-                    size={48}
-                    animate={false}
-                    className="shrink-0"
-                />
-                <div className="min-w-0 flex-1">
-                    <AnalysisStatus
-                        analysis={recap}
-                        inertiaReloadProps={['monthlyRecap']}
-                        chained
-                        isChainHead={recap.is_chain_head}
-                        awaitingSchedule={awaitingSchedule}
-                        awaitingScheduleLabel="This month's recap isn't ready yet."
-                        size="md"
-                        renderContent={(content) => (
-                            <p className="text-sm leading-relaxed text-foreground">
-                                {renderBold(content)}
-                            </p>
-                        )}
-                    />
-                    {recap.status === 'done' && (
-                        <div className="mt-3">
-                            <SendNotificationButton
-                                url={`/recaps/monthly/${month}/send`}
-                                retryAfterSeconds={
-                                    recap.notification_retry_after_seconds
-                                }
-                                reachable={notificationsReachable}
-                            />
-                        </div>
-                    )}
-                </div>
-            </div>
-        </Card>
+        <>
+            {totals.runs} run{totals.runs === 1 ? '' : 's'} ·{' '}
+            {totals.km.toFixed(1)} km ·{' '}
+            {totals.trimp === null
+                ? '— TRIMP'
+                : `${Math.round(totals.trimp)} TRIMP`}
+        </>
     );
 }
 
@@ -298,29 +223,31 @@ function MonthNav({
     showTodayButton: boolean;
 }>) {
     return (
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center justify-between gap-2">
             <NavButton
                 href={`/history?view=calendar&month=${prevMonth}`}
                 icon="mdi:chevron-left"
                 label="Previous month"
             />
-            <h2 className="min-w-[7rem] text-center text-base font-semibold tracking-tight text-foreground lg:text-lg">
-                {label}
-            </h2>
+            <div className="flex items-center gap-2">
+                <h2 className="font-serif text-[15px] leading-[1.2] font-semibold text-foreground">
+                    {label}
+                </h2>
+                {showTodayButton && (
+                    <Link
+                        href="/history?view=calendar"
+                        aria-label="Jump to current month"
+                        className="pressable focus-ring rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1 text-xs font-semibold text-leaf-ink transition hover:border-leaf hover:bg-leaf/15"
+                    >
+                        Today
+                    </Link>
+                )}
+            </div>
             <NavButton
                 href={`/history?view=calendar&month=${nextMonth}`}
                 icon="mdi:chevron-right"
                 label="Next month"
             />
-            {showTodayButton && (
-                <Link
-                    href="/history?view=calendar"
-                    aria-label="Jump to current month"
-                    className="pressable focus-ring ml-1 rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1 text-xs font-semibold text-leaf-ink transition hover:border-leaf hover:bg-leaf/15"
-                >
-                    Today
-                </Link>
-            )}
         </div>
     );
 }
@@ -335,9 +262,9 @@ function NavButton({
             href={href}
             aria-label={label}
             preserveScroll
-            className="pressable focus-ring flex h-9 w-9 items-center justify-center rounded-full border border-border/60 text-text-2 transition hover:border-border hover:bg-accent hover:text-foreground"
+            className="pressable focus-ring flex size-7 flex-none items-center justify-center rounded-full bg-card text-foreground shadow-e1"
         >
-            <Icon icon={icon} width={18} height={18} aria-hidden />
+            <Icon icon={icon} width={16} height={16} aria-hidden />
         </Link>
     );
 }
@@ -370,11 +297,9 @@ function CalendarHeader() {
 function WeekRowView({
     week,
     todayQuote,
-    moodFilter,
 }: Readonly<{
     week: WeekRow;
     todayQuote: string | null;
-    moodFilter: ReadonlySet<Mood>;
 }>) {
     return (
         <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] border-b border-border/50 last:border-b-0 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
@@ -384,7 +309,6 @@ function WeekRowView({
                     key={day.date}
                     cell={day}
                     todayQuote={todayQuote}
-                    filteredOut={isFilteredOut(day, moodFilter)}
                 />
             ))}
         </div>
@@ -418,11 +342,9 @@ function WeekSummary({ week }: Readonly<{ week: WeekRow }>) {
 const DayCellView = memo(function DayCellView({
     cell,
     todayQuote,
-    filteredOut,
 }: Readonly<{
     cell: CalendarCell;
     todayQuote: string | null;
-    filteredOut: boolean;
 }>) {
     if (cell.is_today) {
         return <TodayCell cell={cell} quote={todayQuote} />;
@@ -434,10 +356,7 @@ const DayCellView = memo(function DayCellView({
     const cellChrome = cn(
         'group relative flex min-h-[52px] flex-col gap-1 border-l border-border/50 p-1.5 transition lg:min-h-[140px] lg:gap-1.5 lg:p-3',
         muted && 'opacity-60',
-        filteredOut && 'opacity-30',
-        hasRun && cell.mood && !filteredOut
-            ? MOOD_SOFT_FILL[cell.mood]
-            : 'bg-card',
+        hasRun && cell.mood ? MOOD_SOFT_FILL[cell.mood] : 'bg-card',
     );
 
     const inner = (
@@ -616,39 +535,27 @@ function Legend({ className }: Readonly<{ className?: string }>) {
     return (
         <div
             className={cn(
-                cardVariants({ padding: 'panel' }),
-                'flex flex-wrap items-center gap-x-5 gap-y-2',
+                'flex flex-wrap gap-x-3 gap-y-1.75 px-0.5',
                 className,
             )}
         >
-            <Eyebrow
-                as="span"
-                token="micro"
-                tone="ink-2"
-                className="lg:text-xs"
-            >
-                Mood
-            </Eyebrow>
             {MOOD_ORDER.map((mood) => (
-                <span
+                <div
                     key={mood}
-                    className="inline-flex whitespace-nowrap items-center gap-2 text-xs lg:text-sm"
+                    className="flex items-center gap-1 font-mono text-[8px] leading-[1.2] font-bold tracking-[.03em] text-foreground uppercase"
                 >
                     <span
                         className={cn(
-                            'inline-block h-3.5 w-3.5 rounded-sm border lg:h-4 lg:w-4',
+                            'size-1.5 flex-none rounded-full',
                             MOOD_FILL[mood],
                         )}
-                        style={{ borderColor: moodSigilColor(mood) }}
                         aria-hidden
                     />
-                    <span className="font-medium text-foreground">
-                        {MOOD_LABEL[mood]}
-                    </span>
-                    <span className="font-mono text-[11px] text-text-3 lg:text-xs">
+                    {MOOD_LABEL[mood]}
+                    <span className="normal-case text-text-3">
                         · {MOOD_HINT[mood]}
                     </span>
-                </span>
+                </div>
             ))}
         </div>
     );

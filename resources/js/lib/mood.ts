@@ -51,22 +51,30 @@ export const MOOD_HINT: Record<Mood, string> = {
     chill: 'rest day',
 };
 
-export interface MoodOption {
-    mood: Mood;
-    label: string;
-    hint: string;
-    /** Tailwind class for the chip swatch. */
-    swatchClass: string;
-}
+/**
+ * The most frequent mood among a set of runs, ties broken by MOOD_ORDER
+ * (best-day → rest-day) so the pick is deterministic. Null moods (a run with
+ * no post-run story line yet) don't count. Null when nothing scores.
+ */
+export function dominantMood(moods: ReadonlyArray<Mood | null>): Mood | null {
+    const counts = new Map<Mood, number>();
+    for (const mood of moods) {
+        if (mood === null) continue;
+        counts.set(mood, (counts.get(mood) ?? 0) + 1);
+    }
 
-export const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = MOOD_ORDER.map(
-    (mood) => ({
-        mood,
-        label: MOOD_LABEL[mood],
-        hint: MOOD_HINT[mood],
-        swatchClass: MOOD_FILL[mood],
-    }),
-);
+    let dominant: Mood | null = null;
+    let topCount = 0;
+    for (const mood of MOOD_ORDER) {
+        const count = counts.get(mood) ?? 0;
+        if (count > topCount) {
+            topCount = count;
+            dominant = mood;
+        }
+    }
+
+    return dominant;
+}
 
 export function moodSigilColor(mood: Mood): string {
     switch (mood) {

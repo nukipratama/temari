@@ -5,11 +5,17 @@ import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { formatIdDate } from '@/lib/pace';
-import {
-    RANGE_FILTER_OPTIONS,
-    labelFor,
-    type RangeFilterValue,
-} from '@/pages/Activities/useFeedFilters';
+
+/** Matches FeedFilters::RANGE_DAYS on the backend. */
+export type RangeFilterValue = '8w' | '12w' | '6m' | '1y' | 'all';
+
+const RANGE_LABELS: Record<RangeFilterValue, string> = {
+    '8w': 'Last 2 months',
+    '12w': 'Last 3 months',
+    '6m': 'Last 6 months',
+    '1y': 'Full year',
+    all: 'All runs',
+};
 
 interface InlineNoteProps {
     icon: string;
@@ -51,7 +57,7 @@ export function RunsTruncatedNote({ maxRuns }: Readonly<{ maxRuns: number }>) {
 export function RangeWidenedNote({
     rangeFilter,
 }: Readonly<{ rangeFilter: RangeFilterValue }>) {
-    const label = labelFor(RANGE_FILTER_OPTIONS, rangeFilter);
+    const label = RANGE_LABELS[rangeFilter];
     const message =
         rangeFilter === 'all'
             ? 'Showing all your runs, so your most recent one stays visible.'

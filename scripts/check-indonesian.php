@@ -73,9 +73,6 @@ const ALLOWED = [
     'rute' => [
         ['prefix' => '', 'reason' => "Outstanding pocket: the 'rute' share-card layout token, shared between RunCardImageRenderer and the client Layout union. Moves with the kartu slice."],
     ],
-    'riwayat' => [
-        ['prefix' => 'resources/js/hooks/useLastFilter.ts', 'reason' => "localStorage key temari:riwayat:last-filter, already written into real browsers; renaming it silently drops every user's saved filter."],
-    ],
     'pengaturan' => [
         ['prefix' => 'routes/web.php', 'reason' => 'Legacy /pengaturan permanent redirect — a live URL that must keep resolving.'],
         ['prefix' => 'docs/features/settings.md', 'reason' => 'Describes that same legacy redirect.'],

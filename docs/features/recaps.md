@@ -5,7 +5,7 @@ tags: [feature, recaps]
 status: living
 reviewed: 2026-08-19
 code_refs:
-  - resources/js/components/activities/SummaryCard.tsx
+  - resources/js/components/history/RecapCard.tsx
   - resources/js/pages/Activities/Feed.tsx
   - resources/js/components/history/WeekSection.tsx
   - resources/js/pages/Activities/Calendar.tsx
@@ -31,13 +31,13 @@ Every recap is an `Analysis` row surfaced through the shared [AnalysisStatus](re
 
 ## Weekly recap — on the run log (`/history`, list view)
 
-Rendered inside each [WeekSection](resources/js/components/history/WeekSection.tsx) via [SummaryCard](resources/js/components/activities/SummaryCard.tsx) (the "Temari's Notes" block beside a form-status-posed Temari). `SummaryCard` is `chained`, forwards `isChainHead`, and keeps a rule-based `fallback` (`ruleBasedFallback`, alongside it — "You ran Nx this week for N km.") visible whenever `analysis.status !== 'done'`, so the block never looks empty.
+Rendered inside each [WeekSection](resources/js/components/history/WeekSection.tsx) via the shared [RecapCard](resources/js/components/history/RecapCard.tsx) (a mood-ringed Temari beside the narration, metric chips and the "Send notification" trigger underneath). `RecapCard` is `chained`, forwards `isChainHead`, and keeps a rule-based `fallback` (`ruleBasedFallback`, alongside it — "You ran Nx this week for N km.") visible whenever `analysis.status !== 'done'`, so the block never looks empty.
 
 `HistoryController`'s list branch supplies it: each `WeeklySnapshot` is mapped with `recap_analysis` (from `recapAnalysesFor`, type `AnalysisType::WeeklyRecap`), `is_current_week` (the in-progress week → `awaitingSchedule`, trigger suppressed), and `is_chain_head` (`chainHeadId` = latest completed week with runs > 0, the only link that may regenerate).
 
 ## Monthly recap — on the calendar (`/history?view=calendar`)
 
-Rendered by the local `MonthlyRecapCard` in [Calendar](resources/js/pages/Activities/Calendar.tsx), above the calendar grid as "Temari's notes · {monthLabel}". Temari wears the month's dominant run mood (`dominantMoodOf` → `MOOD_TO_POSE`). It uses `AnalysisStatus` `chained` with `isChainHead={recap.is_chain_head}` and, for the current month, `awaitingSchedule` with the label "This month's recap isn't ready yet." There is **no rule-based fallback** for monthly — an unfilled past month shows nothing until it fails, at which point "Try again" resumes the chain.
+Rendered by the same shared [RecapCard](resources/js/components/history/RecapCard.tsx) in [Calendar](resources/js/pages/Activities/Calendar.tsx), above the calendar grid. Temari wears the month's dominant run mood (`dominantMoodOf` → `MOOD_TO_POSE`). It uses `AnalysisStatus` `chained` with `isChainHead={recap.is_chain_head}` and, for the current month, `awaitingSchedule` with the label "This month's recap isn't ready yet." There is **no rule-based fallback** for monthly (`RecapCard`'s `fallback` prop is omitted here) — an unfilled past month shows nothing until it fails, at which point "Try again" resumes the chain.
 
 `HistoryController`'s calendar branch keys the recap by `Y-m` discriminator (`AnalysisType::MonthlyRecap`) and computes `is_chain_head` via `latestNarratedMonthFor` (the latest closed month with a run). The page type aliases this as `MonthlyRecap = AnalysisPayload & { is_chain_head: boolean }`.
 
