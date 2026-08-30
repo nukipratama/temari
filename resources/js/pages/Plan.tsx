@@ -7,8 +7,8 @@ import { useRef, useState } from 'react';
 import type { AnalysisPayload, PlanSessionSegment } from '@/types/inertia';
 
 import CoachMark from '@/components/onboarding/CoachMark';
+import DaySegments from '@/components/plan/DaySegments';
 import SeasonTrack from '@/components/plan/SeasonTrack';
-import StreakPanel, { type StreakSummary } from '@/components/plan/StreakPanel';
 import PlanRaceTabs from '@/components/race/PlanRaceTabs';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import TemariProto, { type SeasonPhase } from '@/components/temari/TemariProto';
@@ -85,7 +85,6 @@ interface PlanProps {
     sessionsPerWeek: number;
     weeks: PlanWeek[];
     season: SeasonSummary;
-    streak: StreakSummary;
     adaptation: PlanAdaptation | null;
     /** Served from App\Support\TrainingDisclaimer, shared with the legal pages. */
     disclaimerHeadline: string;
@@ -109,12 +108,30 @@ const STATUS_LABEL: Record<string, string> = {
     skip: 'Skipped',
 };
 
+// Mirrors WeekPlanWidget's own credited/missed/skip convention on Home, so a
+// status reads the same color on both pages.
+const STATUS_TONE: Record<string, string> = {
+    done: 'text-horizon-ink',
+    partial: 'text-horizon-ink',
+    overreached: 'text-horizon-ink',
+    missed: 'text-ember-ink',
+    skip: 'text-text-3',
+};
+
 const SESSION_TYPE_LABEL: Record<string, string> = {
     easy: 'Easy',
     long: 'Long run',
     tempo: 'Tempo',
     interval: 'Interval',
     rest: 'Rest',
+};
+
+const SESSION_TYPE_ICON: Record<string, string> = {
+    easy: 'mdi:feather',
+    long: 'mdi:feather',
+    tempo: 'mdi:fire',
+    interval: 'mdi:fire',
+    rest: 'mdi:bed',
 };
 
 const PHASE_LABEL: Record<string, string> = {
@@ -166,7 +183,6 @@ export default function Plan({
     sessionsPerWeek,
     weeks,
     season,
-    streak,
     adaptation,
     disclaimerHeadline,
     disclaimer,
@@ -388,10 +404,6 @@ export default function Plan({
                     </motion.div>
                 </section>
 
-                <section className="mt-10">
-                    <StreakPanel streak={streak} />
-                </section>
-
                 {weeks.length === 0 && (
                     <EmptyPanel
                         pose="proud"
@@ -455,6 +467,18 @@ export default function Plan({
                                                     </span>
                                                     <div className="min-w-0">
                                                         <p className="text-sm font-semibold text-foreground">
+                                                            <Icon
+                                                                icon={
+                                                                    SESSION_TYPE_ICON[
+                                                                        day
+                                                                            .session_type
+                                                                    ] ??
+                                                                    'mdi:feather'
+                                                                }
+                                                                width={13}
+                                                                height={13}
+                                                                className="mr-1 inline-block align-baseline text-text-3"
+                                                            />
                                                             {SESSION_TYPE_LABEL[
                                                                 day.session_type
                                                             ] ??
@@ -493,6 +517,11 @@ export default function Plan({
                                                                 />
                                                             )}
                                                         </p>
+                                                        <DaySegments
+                                                            segments={
+                                                                day.segments
+                                                            }
+                                                        />
                                                         {day.clamp_note && (
                                                             <p className="mt-0.5 text-xs italic text-text-2">
                                                                 {day.clamp_note}
@@ -502,7 +531,16 @@ export default function Plan({
                                                             'history' &&
                                                             day.session_type !==
                                                                 'rest' && (
-                                                                <p className="mt-0.5 text-xs text-text-3">
+                                                                <p
+                                                                    className={cn(
+                                                                        'mt-0.5 text-xs',
+                                                                        STATUS_TONE[
+                                                                            day
+                                                                                .status
+                                                                        ] ??
+                                                                            'text-text-3',
+                                                                    )}
+                                                                >
                                                                     {STATUS_LABEL[
                                                                         day
                                                                             .status
