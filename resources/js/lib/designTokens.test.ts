@@ -421,17 +421,18 @@ describe('auditPanels', () => {
         '--color-ink': '#1a1812',
         '--color-foreground': '#1a1812',
         '--color-ink-on-sky': '#b0a3c9',
+        '--color-text-2': '#34373c',
     };
     const PAPER = [{ name: 'cream-deep', value: '#ece2ce' }];
 
     it('scores a panel on what it composites to, not on the fill it tints', () => {
-        // cream-deep at 60% over cream-deep (registered as "paper" here) is
+        // cream-deep at 70% over cream-deep (registered as "paper" here) is
         // still cream-deep, so the panel keeps the contrast its own family
         // was designed for — the fill tint alone wouldn't tell you that.
         const overPaper = auditPanels(
             { ...VALUES, '--color-cream-deep': '#ece2ce' },
             PAPER,
-        ).find((row) => row.bg.startsWith('cream-deep/0.6'));
+        ).find((row) => row.bg.startsWith('cream-deep/0.7'));
         expect(overPaper?.bg).toContain('on cream-deep');
         expect(overPaper?.pass).toBe(true);
     });

@@ -1,8 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import type { Mood } from '@/types/inertia';
 
-import { MOOD_ORDER } from '@/lib/mood';
+import { dominantMood as pickDominantMood } from '@/lib/mood';
 
 export interface CalendarCell {
     date: string;
@@ -23,36 +23,29 @@ export interface WeekRow {
     days: CalendarCell[];
     totalKm: number;
     runCount: number;
+    /** Null when the week ran but nothing scored (unknown, not zero). */
+    totalTrimp: number | null;
+}
+
+export interface MonthTotals {
+    runs: number;
+    km: number;
+    /** Null when the month ran but nothing scored. */
+    trimp: number | null;
 }
 
 /**
  * The mood Temari wears on the month's recap: the most frequent run mood among
- * the viewed month's own days (padding days from adjacent months are excluded).
- * Ties resolve by {@link MOOD_ORDER} so the pick is deterministic. Null when the
- * month has no runs, letting the card fall back to a neutral pose.
+ * the viewed month's own days (padding days from adjacent months are
+ * excluded). Null when the month has no runs, letting the card fall back to a
+ * neutral pose.
  */
 export function dominantMoodOf(
     cells: ReadonlyArray<CalendarCell>,
 ): Mood | null {
-    const counts = new Map<Mood, number>();
-    for (const cell of cells) {
-        if (!cell.is_current_month || cell.mood === null) {
-            continue;
-        }
-        counts.set(cell.mood, (counts.get(cell.mood) ?? 0) + 1);
-    }
-
-    let dominant: Mood | null = null;
-    let topCount = 0;
-    for (const mood of MOOD_ORDER) {
-        const count = counts.get(mood) ?? 0;
-        if (count > topCount) {
-            topCount = count;
-            dominant = mood;
-        }
-    }
-
-    return dominant;
+    return pickDominantMood(
+        cells.filter((cell) => cell.is_current_month).map((cell) => cell.mood),
+    );
 }
 
 export function chunkIntoWeeks(cells: ReadonlyArray<CalendarCell>): WeekRow[] {
@@ -62,14 +55,15 @@ export function chunkIntoWeeks(cells: ReadonlyArray<CalendarCell>): WeekRow[] {
         if (days.length === 0) continue;
         let totalKm = 0;
         let runCount = 0;
+        let totalTrimp: number | null = null;
         for (const day of days) {
-            if (
-                day.distance_km !== null &&
-                day.distance_km > 0 &&
-                day.is_current_month
-            ) {
+            if (!day.is_current_month) continue;
+            if (day.distance_km !== null && day.distance_km > 0) {
                 totalKm += day.distance_km;
                 runCount += 1;
+            }
+            if (day.trimp !== null) {
+                totalTrimp = (totalTrimp ?? 0) + day.trimp;
             }
         }
         weeks.push({
@@ -78,23 +72,25 @@ export function chunkIntoWeeks(cells: ReadonlyArray<CalendarCell>): WeekRow[] {
             days,
             totalKm,
             runCount,
+            totalTrimp,
         });
     }
     return weeks;
 }
 
-/**
- * Precomputed in the parent so toggling the mood filter passes a stable boolean
- * to each memoized cell, letting React skip cells whose dimmed state is unchanged.
- */
-export function isFilteredOut(
-    cell: CalendarCell,
-    moodFilter: ReadonlySet<Mood>,
-): boolean {
-    return (
-        moodFilter.size > 0 &&
-        (cell.mood === null || !moodFilter.has(cell.mood))
-    );
+/** Sums each week's already-computed totals across the whole displayed month. */
+export function monthTotalsOf(weeks: ReadonlyArray<WeekRow>): MonthTotals {
+    let runs = 0;
+    let km = 0;
+    let trimp: number | null = null;
+    for (const week of weeks) {
+        runs += week.runCount;
+        km += week.totalKm;
+        if (week.totalTrimp !== null) {
+            trimp = (trimp ?? 0) + week.totalTrimp;
+        }
+    }
+    return { runs, km, trimp };
 }
 
 interface CalendarDataProps {
@@ -106,26 +102,13 @@ interface CalendarDataProps {
 export function useCalendar({ cells, month, todayMonth }: CalendarDataProps) {
     const weeks = useMemo<WeekRow[]>(() => chunkIntoWeeks(cells), [cells]);
     const dominantMood = useMemo(() => dominantMoodOf(cells), [cells]);
+    const monthTotals = useMemo(() => monthTotalsOf(weeks), [weeks]);
     const isCurrentMonth = month === todayMonth;
-    const [moodFilter, setMoodFilter] = useState<ReadonlySet<Mood>>(
-        () => new Set(),
-    );
-    const toggleMood = useCallback((mood: Mood) => {
-        setMoodFilter((prev) => {
-            const next = new Set(prev);
-            if (next.has(mood)) next.delete(mood);
-            else next.add(mood);
-            return next;
-        });
-    }, []);
-    const resetFilter = useCallback(() => setMoodFilter(new Set()), []);
 
     return {
         weeks,
         dominantMood,
+        monthTotals,
         isCurrentMonth,
-        moodFilter,
-        toggleMood,
-        resetFilter,
     };
 }

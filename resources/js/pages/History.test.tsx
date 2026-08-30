@@ -21,7 +21,6 @@ describe('History', () => {
                 activeView="list"
                 runs={[]}
                 rangeFilter="8w"
-                rangeStart={null}
                 weeklySnapshots={[]}
             />,
         );
@@ -53,7 +52,6 @@ describe('History', () => {
                 activeView="list"
                 runs={[]}
                 rangeFilter="8w"
-                rangeStart={null}
                 weeklySnapshots={[]}
             />,
         );

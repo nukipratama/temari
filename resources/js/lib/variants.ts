@@ -161,40 +161,6 @@ export const iconButtonVariants = cva(
 );
 
 /**
- * Filter-panel option row — the sky-tinted-vs-plain toggle shared by the
- * range links, distance/sort buttons, and mood buttons in HistoryFilter.tsx.
- * `layout: 'row'` covers the full-width justify-between rows (range,
- * distance, sort); `layout: 'mood'` covers the two-column mood grid, which
- * doesn't stretch full width and carries its own gap + weight.
- */
-export const filterOptionVariants = cva(
-    'focus-ring flex min-h-11 items-center rounded-lg px-2 py-2 text-left text-xs transition',
-    {
-        variants: {
-            layout: {
-                row: 'w-full justify-between lg:text-sm',
-                mood: 'gap-2 font-medium',
-            },
-            active: {
-                true: 'bg-sky/10 text-sky',
-                false: 'text-foreground hover:bg-accent',
-            },
-        },
-        compoundVariants: [
-            {
-                layout: 'row',
-                active: true,
-                class: 'font-semibold',
-            },
-        ],
-        defaultVariants: {
-            layout: 'row',
-            active: false,
-        },
-    },
-);
-
-/**
  * Bordered pill — the hairline-outlined counterpart to
  * {@link toggleButtonVariants}'s solid fill, for a selectable filter (race
  * distance presets, the PRs progression tabs) or an inline row action (the

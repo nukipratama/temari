@@ -84,23 +84,8 @@
             },
             "text": ["citrus-ink"]
         },
-        "cream-deep/0.1": {
-            "over": {
-                "resources/js/components/history/WeekSection.tsx": ["paper"]
-            },
-            "text": ["text-3"]
-        },
-        "cream-deep/0.2": {
-            "text": []
-        },
         "cream-deep/0.4": {
             "text": []
-        },
-        "cream-deep/0.6": {
-            "over": {
-                "resources/js/components/history/WeekSection.tsx": ["paper"]
-            },
-            "text": ["foreground", "text-2"]
         },
         "cream-deep/0.7": {
             "over": {
@@ -263,12 +248,6 @@
             },
             "text": ["foreground", "text-2"]
         },
-        "ink/0.15": {
-            "text": []
-        },
-        "ink/0.2": {
-            "text": []
-        },
         "ink/0.7": {
             "over": {
                 "resources/js/components/run/RouteMap.tsx": ["paper"]
@@ -358,10 +337,6 @@
         "sky/0.06": {
             "over": {
                 "resources/js/components/StravaSyncBadge.tsx": ["paper"],
-                "resources/js/components/history/ActiveFilterChips.tsx": [
-                    "paper"
-                ],
-                "resources/js/components/history/HistoryFilter.tsx": ["paper"],
                 "resources/js/components/ui/ProgressBar.tsx": ["paper"],
                 "resources/js/components/ui/SectionTabs.tsx": ["paper"]
             },
@@ -379,9 +354,7 @@
             "over": {
                 "resources/js/components/plan/SeasonTrack.tsx": ["paper"],
                 "resources/js/components/ui/ProgressBar.test.tsx": ["paper"],
-                "resources/js/components/ui/ProgressBar.tsx": ["paper"],
-                "resources/js/lib/variants.test.ts": ["paper"],
-                "resources/js/lib/variants.ts": ["paper"]
+                "resources/js/components/ui/ProgressBar.tsx": ["paper"]
             },
             "text": ["sky"]
         },
@@ -424,12 +397,6 @@
         },
         "foreground/0.06": {
             "text": []
-        },
-        "accent/0.6": {
-            "over": {
-                "resources/js/components/run/RunListRow.tsx": ["paper"]
-            },
-            "text": ["foreground"]
         },
         "destructive/0.1": {
             "over": {

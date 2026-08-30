@@ -2,12 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Enums\Rarity;
 use App\Http\Requests\FeedFilterRequest;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\RunCard;
-use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\Run\FeedFilters;
 use App\Services\Run\FeedQuery;
@@ -108,74 +105,12 @@ it('bounds a week deep link on both sides', function (): void {
     expect(feedRunNames($user, 'week=2026-06-17'))->toBe(['In week']);
 });
 
-it('filters by mood through the post-run story line', function (): void {
-    $user = User::factory()->create();
-    $gassed = feedRun($user, 'Lemes run', Carbon::now()->subDays(3));
-    feedRun($user, 'No story line', Carbon::now()->subDays(4));
-    StoryLine::factory()->for($gassed)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'gassed']);
-
-    expect(feedRunNames($user, 'mood=gassed'))->toBe(['Lemes run'])
-        ->and(feedRunNames($user, 'mood=blazing'))->toBe([]);
-});
-
-it('filters by distance band with an exclusive upper bound', function (): void {
-    $user = User::factory()->create();
-    feedRun($user, 'Five', Carbon::now()->subDays(3), 4999.0);
-    feedRun($user, 'Ten', Carbon::now()->subDays(4), 5000.0);
-
-    expect(feedRunNames($user, 'dist=0-5'))->toBe(['Five'])
-        ->and(feedRunNames($user, 'dist=5-10'))->toBe(['Ten']);
-});
-
-it('leaves an open-ended top band', function (): void {
-    $user = User::factory()->create();
-    feedRun($user, 'Ultra', Carbon::now()->subDays(3), 80000.0);
-
-    expect(feedRunNames($user, 'dist=21up'))->toBe(['Ultra']);
-});
-
-it('filters by rarity through the earned run_card', function (): void {
-    $user = User::factory()->create();
-    $legendary = feedRun($user, 'Legendary run', Carbon::now()->subDays(3));
-    RunCard::factory()->for($legendary)->create(['rarity' => Rarity::Legendary]);
-    $common = feedRun($user, 'Common run', Carbon::now()->subDays(4));
-    RunCard::factory()->for($common)->create(['rarity' => Rarity::Common]);
-    feedRun($user, 'No card yet', Carbon::now()->subDays(5));
-
-    expect(feedRunNames($user, 'rarity=legendary'))->toBe(['Legendary run'])
-        ->and(feedRunNames($user, 'rarity=common'))->toBe(['Common run']);
-});
-
-it('excludes a cardless (summary-only) run from every rarity filter', function (): void {
-    $user = User::factory()->create();
-    feedRun($user, 'Not carded yet', Carbon::now()->subDays(3));
-
-    expect(feedRunNames($user, 'rarity=common'))->toBe([]);
-});
-
-it('orders newest first by default', function (): void {
+it('orders newest first', function (): void {
     $user = User::factory()->create();
     feedRun($user, 'First', Carbon::now()->subDays(4));
     feedRun($user, 'Second', Carbon::now()->subDays(3));
 
     expect(feedRunNames($user))->toBe(['Second', 'First']);
-});
-
-it('ranks by distance for the longest sort', function (): void {
-    $user = User::factory()->create();
-    feedRun($user, 'Short', Carbon::now()->subDays(3), 3000.0);
-    feedRun($user, 'Long', Carbon::now()->subDays(4), 30000.0);
-
-    expect(feedRunNames($user, 'sort=longest'))->toBe(['Long', 'Short']);
-});
-
-it('ranks by pace for the fastest sort and drops runs with no pace', function (): void {
-    $user = User::factory()->create();
-    feedRun($user, 'Slow', Carbon::now()->subDays(3), 10000.0, 4000);
-    feedRun($user, 'Fast', Carbon::now()->subDays(4), 10000.0, 3000);
-    feedRun($user, 'No pace', Carbon::now()->subDays(5), 0.0, 0);
-
-    expect(feedRunNames($user, 'sort=fastest'))->toBe(['Fast', 'Slow']);
 });
 
 it('never leaks another user\'s runs', function (): void {
