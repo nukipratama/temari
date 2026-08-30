@@ -1,6 +1,6 @@
 # B4 — Plan narration, voice-only
 
-**Wave** 2a · **Slot** worktree-be · **Blockers** `B1` · **Status** in review ([#663](https://github.com/nukipratama/temari/pull/663))
+**Wave** 2a · **Slot** worktree-be · **Blockers** `B1` · **Status** merged ([#663](https://github.com/nukipratama/temari/pull/663), squashed as `afa210ab`)
 
 ## Goal
 
