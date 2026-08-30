@@ -1,6 +1,6 @@
 # S4 — Plan
 
-**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `B1`-`B4` · **Status** in review
+**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `B1`-`B4` · **Status** merged ([#668](https://github.com/nukipratama/temari/pull/668), squashed as `f812dabc`)
 
 ## Goal
 

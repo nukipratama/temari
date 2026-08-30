@@ -99,9 +99,9 @@ the slice itself (see [R3](#r3)); `n/a` for backend-only or docs-only slices.
 | S1 | Login | 2b | [13](slices/13-S1-login.md) | merged | [#664](https://github.com/nukipratama/temari/pull/664) | wt | 95.37% fn (no change) | 160 kB gz budget; Login at 138.8 kB gz; squashed as 8bdfd11e |
 | S2 | Onboarding | 2b | [14](slices/14-S2-onboarding.md) | todo | — | | | |
 | S3 | Today | 2b | [15](slices/15-S3-today.md) | merged | [#669](https://github.com/nukipratama/temari/pull/669) | wt | 95.56→95.63% stmts, 95.40→95.44% fn | streak reframed off-badge, compliance-v2 colors surfaced; squashed as 1d7a95b9 |
-| S4 | Plan | 2b | [16](slices/16-S4-plan.md) | in-review | [#668](https://github.com/nukipratama/temari/pull/668) | wt | 95.56→95.58% stmt | streak panel removed (redesign decision), segment breakdown added |
+| S4 | Plan | 2b | [16](slices/16-S4-plan.md) | merged | [#668](https://github.com/nukipratama/temari/pull/668) | wt | 95.56→95.58% stmt | streak panel removed (redesign decision), segment breakdown added; squashed as f812dabc |
 | S5 | RaceGoal | 2b | [17](slices/17-S5-race-goal.md) | todo | — | | | |
-| S6 | Trends | 2b | [18](slices/18-S6-trends.md) | in review | [#667](https://github.com/nukipratama/temari/pull/667) | wt | 95.6→95.61% stmts | page shell + RangeToggle + NarrationHeadline restyle, charts kept from F6; streak badge-board entry per §5 amendment |
+| S6 | Trends | 2b | [18](slices/18-S6-trends.md) | merged | [#667](https://github.com/nukipratama/temari/pull/667) | wt | 95.6→95.61% stmts | page shell + RangeToggle + NarrationHeadline restyle, charts kept from F6; streak badge-board entry per §5 amendment; squashed as adea9b6d |
 | S7 | History | 2b | [19](slices/19-S7-history.md) | todo | — | | | |
 | S8 | ActivityDetail | 2b | [20](slices/20-S8-activity-detail.md) | todo | — | | | |
 | S9 | Inbox | 2b | [21](slices/21-S9-inbox.md) | merged | [#665](https://github.com/nukipratama/temari/pull/665) | wt | 95.92→95.95% lines | bucketed sections + time toggle, new scope; squashed as cd0ecd08 |
