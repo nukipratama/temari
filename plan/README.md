@@ -107,7 +107,7 @@ the slice itself (see [R3](#r3)); `n/a` for backend-only or docs-only slices.
 | S9 | Inbox | 2b | [21](slices/21-S9-inbox.md) | merged | [#665](https://github.com/nukipratama/temari/pull/665) | wt | 95.92→95.95% lines | bucketed sections + time toggle, new scope; squashed as cd0ecd08 |
 | S10 | Profile | 2b | [22](slices/22-S10-profile.md) | merged | [#671](https://github.com/nukipratama/temari/pull/671) | wt | 95.61→95.62% stmts | persona mix restyle, milestone-display ledger ruling satisfied via SeasonStreakPanel, Accessories tab cut; squashed as 396b9d13 |
 | S11 | Settings | 2b | [23](slices/23-S11-settings.md) | merged | [#666](https://github.com/nukipratama/temari/pull/666) | wt | 95.37→95.40% fn | appearance toggle UI; squashed as cc3f5f5a |
-| S12 | Undrawn survivors | 2b | [24](slices/24-S12-undrawn-survivors.md) | todo | — | | | the forgettable one |
+| S12 | Undrawn survivors | 2b | [24](slices/24-S12-undrawn-survivors.md) | in review | [#PR_PLACEHOLDER](PR_URL_PLACEHOLDER) | wt (slot 3) | 95.7% stmts, 89.5% branches, 95.55% fn, 96.05% lines | Devtools/Design.tsx investigated + confirmed sound against post-F2 tokens (real-browser verified both grounds), not actually broken; Devtools.tsx had a real ground-reactivity bug (raw cream tokens) fixed |
 | W1 | IA cutover | 3 | [25](slices/25-W1-ia-cutover.md) | todo | — | main | | |
 | W2 | Dead-code sweep | 3 | [26](slices/26-W2-dead-code-sweep.md) | todo | — | main | | |
 | W3 | Coverage reconciliation | 3 | [27](slices/27-W3-coverage.md) | todo | — | main | | do not cut |
