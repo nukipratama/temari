@@ -86,7 +86,6 @@ class PlanController extends Controller
             $narrationRequester->ensureDemoFilled($user, $today);
         }
         $seasonPayload = $seasonStreakBuilder->seasonPayload($user, $season, $today, $seasonCtx);
-        $streakPayload = $seasonStreakBuilder->streakPayload($user, $today);
 
         $adaptationPayload = $this->adaptationPayload($user, $currentWeekStart);
 
@@ -102,7 +101,6 @@ class PlanController extends Controller
                 'sessionsPerWeek' => $baseline->forUser($user, $today)['sessions_per_week'],
                 'weeks' => [],
                 'season' => $seasonPayload,
-                'streak' => $streakPayload,
                 'adaptation' => $adaptationPayload,
                 'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
                 'disclaimer' => TrainingDisclaimer::TEXT,
@@ -212,7 +210,6 @@ class PlanController extends Controller
             'sessionsPerWeek' => $baselineData['sessions_per_week'],
             'weeks' => $weeks,
             'season' => $seasonPayload,
-            'streak' => $streakPayload,
             'adaptation' => $adaptationPayload,
             'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
             'disclaimer' => TrainingDisclaimer::TEXT,

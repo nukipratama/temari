@@ -111,7 +111,7 @@ The weekly streak (`WeeklySnapshot::consecutiveWeekStreak()`) hard-resets to 0 a
 
 Because `two_week_streak` is `min(streakWeeks, 2)`, a bridged streak can still reach the `aura_warmup` accessory goal. That is intended: the streak was preserved, so what the streak earns is preserved with it.
 
-The Plan tab renders the streak, the open week's stake, and the held rest weeks — with no control to play one, since there is nothing to play. See [[plan-periodizer]].
+The streak, the open week's stake, and the held rest weeks render on Profile's season & streak panel — with no control to play a rest week, since there is nothing to play. The mobile-UX port's `plan/README.md` §5 ("Streak feature redesign") moved this off the Plan tab, consolidating it onto Trends' badge board instead; see [[plan-periodizer]] and [[profile]].
 
 ## Badge milestones
 

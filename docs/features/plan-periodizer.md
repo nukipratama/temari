@@ -41,7 +41,6 @@ code_refs:
   - app/Jobs/AI/AnalyzePlanSeasonVoiceJob.php
   - resources/js/pages/Plan.tsx
   - resources/js/components/plan/SeasonTrack.tsx
-  - resources/js/components/plan/StreakPanel.tsx
 ---
 
 # Plan — deterministic periodizer and the Plan tab
@@ -129,13 +128,13 @@ Three `AnalysisType` cases narrate what the rules above already decided, never r
 
 **The manual Regenerate button carries a real rate limit, unlike the button that predates this slice.** A full regenerate can dispatch up to 9 narration rows (7 days, the week, the season) — real LLM cost per click — so `PlanController::regenerate()` now checks a dedicated one-hour cooldown (`PlanNarrationRequester::regenerateCooldownRemaining()`/`startRegenerateCooldown()`) before calling the periodizer, started immediately rather than waiting for the async narration jobs to finish (closing the queue-latency window where two rapid clicks could both slip through). It's a standalone `Cooldown` key, not `Analysis::cooldownKey()` reused — every narration row's own completion unconditionally starts its own shorter (15-minute) cooldown in `AnalysisService::markDone()`, so sharing the key would have this longer window silently overwritten within moments. The weekly cron starts the same cooldown after its own regenerate (so a manual click right after Monday's auto-run is still correctly rate-limited) but never checks it — the cron always runs.
 
-### The season track and the weekly streak on the page
+### The season track on the page
 
-Two cards under that summary render what the season-scoped reward engine is actually doing.
+One card under that summary renders what the season-scoped reward engine is actually doing.
 
 [SeasonTrack](../../resources/js/components/plan/SeasonTrack.tsx) is the reward rail: one pip per `SeasonGoal`, filled for each one completed, which is exactly the tier count `GrantSeasonUnlocksAction` grants under `season.{id}.track_{N}`. The earned count is derived on the client from the goals already in the payload rather than shipped twice. Under it sits the only honesty this card owes the user: **the track resets at the season boundary, and nothing collected resets with it.** `season.tiers_kept_from_past_seasons` ([SeasonStreakSummaryBuilder](../../app/Services/Gamification/SeasonStreakSummaryBuilder.php), shared with the [[profile]] page's own season & streak panel) counts the track tiers owned under an *earlier* season's key namespace and proves that claim with a number; it renders only when that number is non-zero, so a first season shows no empty promise.
 
-[StreakPanel](../../resources/js/components/plan/StreakPanel.tsx) renders `WeeklySnapshot::consecutiveWeekStreak()` with the stake attached: whether the open week has a run in it yet, when it closes, and what a runless close would do. Rest weeks (`StreakRestToken`) appear as held pips and a plain statement that Temari plays them automatically — **there is deliberately no spend control**, because `SettleStreakRestTokensAction` spends at week close and a token the user had to remember would fail the runner it exists for. The accrual forecast ("the next one lands at week N") is hidden entirely once the held tokens are at `MAX_HELD`, since no further token can arrive; a broken streak reads as a restart rather than a zero.
+The week-grained lifetime streak (`WeeklySnapshot::consecutiveWeekStreak()`, wrapped by the same `SeasonStreakSummaryBuilder::streakPayload()`) no longer renders on this page: the mobile-UX port's `StreakPanel` removal consolidated it onto Trends' badge board instead (see `plan/README.md` §5, "Streak feature redesign"). `PlanController` still calls `seasonPayload()` for the track above, but no longer calls `streakPayload()`. Profile's own season & streak panel still shows the streak — see [[profile]].
 
 ## Extracted: interval detection
 
