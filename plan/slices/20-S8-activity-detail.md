@@ -1,6 +1,6 @@
 # S8 — ActivityDetail
 
-**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `F5`, `F6`, `L0` · **Status** in-review ([#673](https://github.com/nukipratama/temari/pull/673))
+**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `F5`, `F6`, `L0` · **Status** merged ([#673](https://github.com/nukipratama/temari/pull/673), squashed as `0d0c5576`)
 
 ## Goal
 

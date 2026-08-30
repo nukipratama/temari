@@ -1,6 +1,6 @@
 # S12 — Undrawn survivors
 
-**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4` · **Status** in review ([#674](https://github.com/nukipratama/temari/pull/674), slot 3)
+**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4` · **Status** merged ([#674](https://github.com/nukipratama/temari/pull/674), slot 3, squashed as `0c360f14`)
 
 ## Goal
 
