@@ -128,7 +128,12 @@ export default function Accessories({
                             with what you&apos;ve unlocked.
                         </em>
                     </PageHero>
-                    <MeTabs active="accessories" />
+                    {/* MeTabs no longer has an "accessories" tab (S10 dropped
+                        it, mobile-UX port ledger cut) — this page itself
+                        still awaits removal in that program's W1/W2, so
+                        render the nav with nothing marked active rather than
+                        claiming a tab that no longer exists. */}
+                    <MeTabs active="profile" />
                 </header>
 
                 <HeroPanel className="mt-8 lg:px-14 lg:py-12">

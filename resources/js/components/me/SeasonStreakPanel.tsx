@@ -4,6 +4,7 @@ import { type StreakSummary } from '@/components/plan/StreakPanel';
 import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { type Goal } from '@/components/ui/GoalCard';
+import { Icon } from '@/components/ui/Icon';
 import ProgressBar from '@/components/ui/ProgressBar';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
@@ -57,7 +58,17 @@ export default function SeasonStreakPanel({
                                 </span>
                             )}
                         </div>
-                        <p className="mt-1 font-mono text-2xl tabular-nums text-foreground">
+                        <p className="mt-1 flex items-baseline gap-1.5 font-mono text-2xl tabular-nums text-foreground">
+                            {/* Same medal glyph as Trends' badge-board entry for
+                                this exact metric, not the flame reserved for
+                                the tempo-session day-glyph convention. */}
+                            <Icon
+                                icon="mdi:medal-outline"
+                                width={18}
+                                height={18}
+                                aria-hidden
+                                className="text-rarity-uncommon-ink"
+                            />
                             {streak.weeks}{' '}
                             <span className="text-xs font-semibold text-text-3">
                                 {streak.weeks === 1 ? 'week' : 'weeks'} running
@@ -106,7 +117,16 @@ export default function SeasonStreakPanel({
                                     {season.goals.map((goal) => (
                                         <div key={goal.id}>
                                             <div className="mb-1 flex items-baseline justify-between text-xs">
-                                                <span className="font-semibold text-text-2">
+                                                <span className="inline-flex items-center gap-1 font-semibold text-text-2">
+                                                    {goal.is_completed && (
+                                                        <Icon
+                                                            icon="mdi:check-circle"
+                                                            width={12}
+                                                            height={12}
+                                                            aria-hidden
+                                                            className="text-leaf-ink"
+                                                        />
+                                                    )}
                                                     {goal.title}
                                                 </span>
                                                 <span className="font-mono text-text-3">

@@ -1,6 +1,6 @@
 import SectionTabs, { type SectionTabItem } from '@/components/ui/SectionTabs';
 
-export type MeTab = 'profile' | 'settings' | 'accessories';
+export type MeTab = 'profile' | 'settings';
 
 interface MeTabsProps {
     active: MeTab;
@@ -19,12 +19,6 @@ const TABS: ReadonlyArray<SectionTabItem<MeTab>> = [
         label: 'Settings',
         href: '/settings',
         icon: 'mdi:cog-outline',
-    },
-    {
-        id: 'accessories',
-        label: 'Accessories',
-        href: '/accessories',
-        icon: 'mdi:tshirt-crew-outline',
     },
 ];
 
