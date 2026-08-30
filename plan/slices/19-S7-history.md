@@ -1,6 +1,6 @@
 # S7 — History
 
-**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `B2` · **Status** in review
+**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `B2` · **Status** merged ([#675](https://github.com/nukipratama/temari/pull/675), squashed as `74a9cb9b`)
 
 ## Goal
 
