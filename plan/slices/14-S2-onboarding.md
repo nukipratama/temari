@@ -1,6 +1,6 @@
 # S2 — Onboarding
 
-**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `B1` · **Status** in review ([#PR](https://github.com/nukipratama/temari/pull/PLACEHOLDER))
+**Wave** 2b · **Slot** parallel worktree · **Blockers** `F4`, `B1` · **Status** in review ([#672](https://github.com/nukipratama/temari/pull/672))
 
 ## Goal
 
