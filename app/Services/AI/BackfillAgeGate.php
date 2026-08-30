@@ -71,7 +71,12 @@ class BackfillAgeGate
             // always read as of now regardless of how old the user's history is.
             AnalysisType::AkuProfileVoice,
             AnalysisType::BriefingFeaturedKartuVoice,
-            AnalysisType::TrendRead => false,
+            AnalysisType::TrendRead,
+            // Same shape: plan narration is always about the current week or
+            // season as of now, never a fixed past date to age out.
+            AnalysisType::PlanDayVoice,
+            AnalysisType::PlanWeekVoice,
+            AnalysisType::PlanSeasonVoice => false,
         };
     }
 

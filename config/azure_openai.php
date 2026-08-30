@@ -37,6 +37,9 @@ return [
         'card_flavor' => (string) env('AZURE_OPENAI_CARD_FLAVOR_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'run_question' => (string) env('AZURE_OPENAI_RUN_QUESTION_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'trend_read' => (string) env('AZURE_OPENAI_TREND_READ_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
+        'plan_day_voice' => (string) env('AZURE_OPENAI_PLAN_DAY_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
+        'plan_week_voice' => (string) env('AZURE_OPENAI_PLAN_WEEK_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
+        'plan_season_voice' => (string) env('AZURE_OPENAI_PLAN_SEASON_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
     ],
 
     // Manual per-1M-token USD rates keyed by DEPLOYMENT name (the value recorded

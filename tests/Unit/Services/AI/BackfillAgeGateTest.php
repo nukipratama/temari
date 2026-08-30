@@ -91,7 +91,10 @@ it('never blocks the types whose material is current whatever its date', functio
 
     expect($this->gate->blocksManualTrigger(AnalysisType::AkuProfileVoice, 1, '2019-W03'))->toBeFalse()
         ->and($this->gate->blocksManualTrigger(AnalysisType::BriefingFeaturedKartuVoice, 1, (string) $card->id))->toBeFalse()
-        ->and($this->gate->blocksManualTrigger(AnalysisType::TrendRead, 1, '30d'))->toBeFalse();
+        ->and($this->gate->blocksManualTrigger(AnalysisType::TrendRead, 1, '30d'))->toBeFalse()
+        ->and($this->gate->blocksManualTrigger(AnalysisType::PlanDayVoice, 1, '2019-01-01'))->toBeFalse()
+        ->and($this->gate->blocksManualTrigger(AnalysisType::PlanWeekVoice, 1, null))->toBeFalse()
+        ->and($this->gate->blocksManualTrigger(AnalysisType::PlanSeasonVoice, 1, null))->toBeFalse();
 });
 
 it('states a choice for every analysis type, so a new one cannot slip through unjudged', function (): void {

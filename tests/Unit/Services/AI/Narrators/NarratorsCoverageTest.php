@@ -8,7 +8,10 @@ use App\Exceptions\AI\UnavailableException;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
+use App\Models\PlanAdaptation;
+use App\Models\PlannedSession;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -18,6 +21,9 @@ use App\Services\AI\Agent\Tools\LifetimeStatsTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\Agent\Tools\MonthTotalsTool;
 use App\Services\AI\Agent\Tools\PersonalRecordTool;
+use App\Services\AI\Agent\Tools\PlanDayTool;
+use App\Services\AI\Agent\Tools\PlanSeasonTool;
+use App\Services\AI\Agent\Tools\PlanWeekTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\TrendRangeTool;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
@@ -26,11 +32,15 @@ use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\NarratorContinuity;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
+use App\Services\AI\Narrators\PlanDayVoiceNarrator;
+use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
+use App\Services\AI\Narrators\PlanWeekVoiceNarrator;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Narrators\PrContextNarrator;
 use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
+use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\LifetimeStats;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Actions\Run\Metrics\ResolveRunBaselineAction;
@@ -693,6 +703,103 @@ it('PrContextNarrator feeds the PR run conditions into the context', function ()
     $context = new WeatherTool($activity, $activity->detail)->handle([]);
 
     expect($context['weather_temp_c'])->toBe(33);
+});
+
+// ── PlanDayVoiceNarrator ──────────────────────────────────────────────
+
+it('PlanDayVoiceNarrator returns voice on valid JSON', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create(['session_type' => 'tempo', 'date' => Carbon::today()->toDateString()]);
+    $caller = fakeCaller(json_encode(['voice' => 'tempo work today.'], JSON_THROW_ON_ERROR));
+    $narrator = new PlanDayVoiceNarrator($caller, app(TrainingBaseline::class));
+    expect($narrator->generate($session))->toBe('tempo work today.');
+});
+
+it('PlanDayVoiceNarrator throws on missing voice key', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create();
+    $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
+    $narrator = new PlanDayVoiceNarrator($caller, app(TrainingBaseline::class));
+    $narrator->generate($session);
+})->throws(UnavailableException::class);
+
+it('PlanDayTool reports the prescribed session, distance and skip state', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'session_type' => 'long',
+        'phase' => 'build',
+        'date' => Carbon::today()->toDateString(),
+        'skipped' => false,
+    ]);
+
+    $context = new PlanDayTool($session, app(TrainingBaseline::class))->handle([]);
+
+    expect($context['session_type'])->toBe('long')
+        ->and($context['phase'])->toBe('build')
+        ->and($context['distance_km'])->toBeFloat()
+        ->and($context['skipped'])->toBeFalse();
+});
+
+// ── PlanWeekVoiceNarrator ─────────────────────────────────────────────
+
+it('PlanWeekVoiceNarrator returns voice on valid JSON', function (): void {
+    $user = User::factory()->create();
+    $adaptation = PlanAdaptation::factory()->for($user)->create(['reason' => 'steady', 'deload' => false]);
+    $caller = fakeCaller(json_encode(['voice' => 'steady week ahead.'], JSON_THROW_ON_ERROR));
+    $narrator = new PlanWeekVoiceNarrator($caller);
+    expect($narrator->generate($adaptation))->toBe('steady week ahead.');
+});
+
+it('PlanWeekVoiceNarrator throws on missing voice key', function (): void {
+    $user = User::factory()->create();
+    $adaptation = PlanAdaptation::factory()->for($user)->create();
+    $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
+    $narrator = new PlanWeekVoiceNarrator($caller);
+    $narrator->generate($adaptation);
+})->throws(UnavailableException::class);
+
+it('PlanWeekTool reports the periodizer verdict as rule-based headline/detail text', function (): void {
+    $user = User::factory()->create();
+    $adaptation = PlanAdaptation::factory()->for($user)->create([
+        'reason' => 'missed_week', 'deload' => true, 'quality_delta' => -1, 'adherence_pct' => 20,
+    ]);
+
+    $context = new PlanWeekTool($adaptation)->handle([]);
+
+    expect($context['reason'])->toBe('missed_week')
+        ->and($context['deload'])->toBeTrue()
+        ->and($context['adherence_pct'])->toBe(20)
+        ->and($context['headline'])->toBeString()
+        ->and($context['detail'])->toBeString();
+});
+
+// ── PlanSeasonVoiceNarrator ───────────────────────────────────────────
+
+it('PlanSeasonVoiceNarrator returns voice on valid JSON', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create();
+    $caller = fakeCaller(json_encode(['voice' => 'a self-scaled block.'], JSON_THROW_ON_ERROR));
+    $narrator = new PlanSeasonVoiceNarrator($caller);
+    expect($narrator->generate($season))->toBe('a self-scaled block.');
+});
+
+it('PlanSeasonVoiceNarrator throws on missing voice key', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create();
+    $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
+    $narrator = new PlanSeasonVoiceNarrator($caller);
+    $narrator->generate($season);
+})->throws(UnavailableException::class);
+
+it('PlanSeasonTool reports self-scaled seasons with no race attached', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create(['race_goal_id' => null]);
+
+    $context = new PlanSeasonTool($season)->handle([]);
+
+    expect($context['is_race_oriented'])->toBeFalse()
+        ->and($context['race_name'])->toBeNull()
+        ->and($context['goals'])->toBeArray();
 });
 
 it('WeeklyRecapNarrator sends only the continuity line and reads the week', function (): void {

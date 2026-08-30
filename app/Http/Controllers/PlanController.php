@@ -13,6 +13,7 @@ use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
+use App\Services\AI\PlanNarrationRequester;
 use App\Services\Gamification\SeasonGamificationContext;
 use App\Services\Gamification\SeasonStreakSummaryBuilder;
 use App\Services\Run\Metrics\DistanceFormatter;
@@ -62,6 +63,7 @@ class PlanController extends Controller
         SeasonStreakSummaryBuilder $seasonStreakBuilder,
         GrantSeasonUnlocksAction $grantSeasonUnlocks,
         SessionMatcher $sessionMatcher,
+        PlanNarrationRequester $narrationRequester,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -75,6 +77,14 @@ class PlanController extends Controller
         $season = $seasonService->ensureCurrent($user, $today);
         $seasonCtx = SeasonGamificationContext::forSeason($user, $season, $today, $trainingLoad);
         $grantSeasonUnlocks($user, $season, $seasonCtx);
+
+        // Demo is excluded from plan:regenerate's real narration dispatch (no
+        // LLM billing for the public account), so its Plan page fills any gap
+        // with the same rule-based path its manual "Reread" already resolves
+        // through — otherwise the demo would show perpetually-Pending blocks.
+        if ($user->is_demo) {
+            $narrationRequester->ensureDemoFilled($user, $today);
+        }
         $seasonPayload = $seasonStreakBuilder->seasonPayload($user, $season, $today, $seasonCtx);
         $streakPayload = $seasonStreakBuilder->streakPayload($user, $today);
 
@@ -96,6 +106,8 @@ class PlanController extends Controller
                 'adaptation' => $adaptationPayload,
                 'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
                 'disclaimer' => TrainingDisclaimer::TEXT,
+                'planNarration' => $narrationRequester->payloadsForCurrentWeek($user, $today),
+                'regenerateCooldownSeconds' => $narrationRequester->regenerateCooldownRemaining($user),
             ]);
         }
 
@@ -204,14 +216,23 @@ class PlanController extends Controller
             'adaptation' => $adaptationPayload,
             'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
             'disclaimer' => TrainingDisclaimer::TEXT,
+            'planNarration' => $narrationRequester->payloadsForCurrentWeek($user, $today),
+            'regenerateCooldownSeconds' => $narrationRequester->regenerateCooldownRemaining($user),
         ]);
     }
 
-    public function regenerate(Request $request, Periodizer $periodizer): RedirectResponse
+    public function regenerate(Request $request, Periodizer $periodizer, PlanNarrationRequester $narrationRequester): RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
+
+        if ($narrationRequester->regenerateCooldownRemaining($user) !== null) {
+            return back()->with('info', "Temari's still catching up on the last replan. Give it a little longer.");
+        }
+
         $periodizer->regenerate($user);
+        $narrationRequester->requestForCurrentWeek($user, Carbon::today());
+        $narrationRequester->startRegenerateCooldown($user);
 
         return back()->with('success', "Temari's replanned the weeks ahead against where you are now.");
     }
@@ -222,7 +243,7 @@ class PlanController extends Controller
      * the next regeneration doesn't silently overwrite it, unless the caller
      * passes `pinned: false` to hand control back to the periodizer.
      */
-    public function update(UpdatePlannedSessionRequest $request, PlannedSession $plannedSession): RedirectResponse
+    public function update(UpdatePlannedSessionRequest $request, PlannedSession $plannedSession, PlanNarrationRequester $narrationRequester): RedirectResponse
     {
         $this->authorizeOwner($request, $plannedSession);
 
@@ -232,6 +253,16 @@ class PlanController extends Controller
         }
 
         $plannedSession->update($attributes);
+
+        // Keep the day's narration in sync with the edit — otherwise it keeps
+        // describing whatever was prescribed before the skip/block/move.
+        // Only within the current week: that's the only window day narration
+        // is ever requested for in the first place.
+        $today = Carbon::today();
+        if ($plannedSession->wasChanged(['session_type', 'skipped', 'date'])
+            && $narrationRequester->isWithinCurrentWeek($plannedSession->date, $today)) {
+            $narrationRequester->requestDayNarration($plannedSession->user_id, $plannedSession->date);
+        }
 
         return back();
     }

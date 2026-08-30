@@ -4,12 +4,13 @@ import { Head, Link, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { useRef, useState } from 'react';
 
-import type { PlanSessionSegment } from '@/types/inertia';
+import type { AnalysisPayload, PlanSessionSegment } from '@/types/inertia';
 
 import CoachMark from '@/components/onboarding/CoachMark';
 import SeasonTrack from '@/components/plan/SeasonTrack';
 import StreakPanel, { type StreakSummary } from '@/components/plan/StreakPanel';
 import PlanRaceTabs from '@/components/race/PlanRaceTabs';
+import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import TemariProto, { type SeasonPhase } from '@/components/temari/TemariProto';
 import { Card } from '@/components/ui/card';
 import Chip, { type ChipTone } from '@/components/ui/Chip';
@@ -20,10 +21,16 @@ import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
+import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
-import { formatNaiveIdDate, formatPace, todayLocalIso } from '@/lib/pace';
+import {
+    formatDurationHMS,
+    formatNaiveIdDate,
+    formatPace,
+    todayLocalIso,
+} from '@/lib/pace';
 import { currentSeasonPhase } from '@/lib/seasonPhase';
 import { inputVariants, outlineChipVariants } from '@/lib/variants';
 
@@ -66,6 +73,13 @@ interface PlanAdaptation {
     deload: boolean;
 }
 
+interface PlanNarration {
+    /** Keyed by date (Y-m-d) — only the current week's 7 days are ever requested. */
+    days: Record<string, AnalysisPayload>;
+    week: AnalysisPayload | null;
+    season: AnalysisPayload | null;
+}
+
 interface PlanProps {
     race: { race_date: string; name: string | null } | null;
     sessionsPerWeek: number;
@@ -76,7 +90,16 @@ interface PlanProps {
     /** Served from App\Support\TrainingDisclaimer, shared with the legal pages. */
     disclaimerHeadline: string;
     disclaimer: string;
+    planNarration?: PlanNarration;
+    /** Seconds left before Regenerate may run again, or null when it's free to click. */
+    regenerateCooldownSeconds?: number | null;
 }
+
+const PLAN_NARRATION_DEFAULT: PlanNarration = {
+    days: {},
+    week: null,
+    season: null,
+};
 
 const STATUS_LABEL: Record<string, string> = {
     done: 'Done',
@@ -147,11 +170,15 @@ export default function Plan({
     adaptation,
     disclaimerHeadline,
     disclaimer,
+    planNarration = PLAN_NARRATION_DEFAULT,
+    regenerateCooldownSeconds = null,
 }: Readonly<PlanProps>) {
     const [regenerating, setRegenerating] = useState(false);
     const scheduleRef = useRef<HTMLDivElement>(null);
     const today = todayLocalIso();
     const seasonPhase = currentSeasonPhase(weeks);
+    const regenerateCooldown = useCooldownCountdown(regenerateCooldownSeconds);
+    const regenerateCooling = regenerateCooldown > 0;
 
     const regenerate = () => {
         router.post(
@@ -228,9 +255,13 @@ export default function Plan({
                             tone="sky"
                             data-coachmark="plan-regenerate"
                             onClick={regenerate}
-                            disabled={regenerating}
+                            disabled={regenerating || regenerateCooling}
                         >
-                            {regenerating ? 'Replanning…' : 'Regenerate'}
+                            {regenerating
+                                ? 'Replanning…'
+                                : regenerateCooling
+                                  ? formatDurationHMS(regenerateCooldown)
+                                  : 'Regenerate'}
                         </PillButton>
                     </div>
                 </header>
@@ -256,6 +287,16 @@ export default function Plan({
                             <p className="mt-2 text-sm leading-relaxed text-text-2">
                                 {adaptation.detail}
                             </p>
+                            {planNarration.week && (
+                                <div className="mt-3 border-t border-border/60 pt-3">
+                                    <AnalysisStatus
+                                        analysis={planNarration.week}
+                                        inertiaReloadProps={['planNarration']}
+                                        size="sm"
+                                        showTimestamp={false}
+                                    />
+                                </div>
+                            )}
                         </Card>
                     )}
                     <Card className={cn('px-4 py-3', adaptation && 'mt-3')}>
@@ -303,6 +344,16 @@ export default function Plan({
                             </p>
                         </div>
                     </div>
+                    {planNarration.season && (
+                        <div className="mt-3">
+                            <AnalysisStatus
+                                analysis={planNarration.season}
+                                inertiaReloadProps={['planNarration']}
+                                size="sm"
+                                showTimestamp={false}
+                            />
+                        </div>
+                    )}
                     {season.goals.length > 0 && (
                         <div className="mt-4">
                             <SeasonTrack
@@ -469,6 +520,33 @@ export default function Plan({
                                                                 <p className="mt-0.5 text-xs text-text-3">
                                                                     Ran anyway
                                                                 </p>
+                                                            )}
+                                                        {week.type ===
+                                                            'current' &&
+                                                            planNarration.days[
+                                                                day.date
+                                                            ] && (
+                                                                <div className="mt-1">
+                                                                    <AnalysisStatus
+                                                                        analysis={
+                                                                            planNarration
+                                                                                .days[
+                                                                                day
+                                                                                    .date
+                                                                            ]
+                                                                        }
+                                                                        inertiaReloadProps={[
+                                                                            'planNarration',
+                                                                        ]}
+                                                                        size="sm"
+                                                                        showTimestamp={
+                                                                            false
+                                                                        }
+                                                                        allowReanalyze={
+                                                                            false
+                                                                        }
+                                                                    />
+                                                                </div>
                                                             )}
                                                     </div>
                                                 </div>

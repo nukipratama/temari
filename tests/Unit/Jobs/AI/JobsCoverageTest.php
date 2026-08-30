@@ -10,12 +10,18 @@ use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
+use App\Jobs\AI\AnalyzePlanDayVoiceJob;
+use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
+use App\Jobs\AI\AnalyzePlanWeekVoiceJob;
 use App\Jobs\AI\AnalyzePrContextJob;
 use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
+use App\Models\PlanAdaptation;
+use App\Models\PlannedSession;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
@@ -25,6 +31,9 @@ use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
+use App\Services\AI\Narrators\PlanDayVoiceNarrator;
+use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
+use App\Services\AI\Narrators\PlanWeekVoiceNarrator;
 use App\Services\AI\Narrators\PrContextNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
@@ -260,6 +269,67 @@ it('AnalyzePrContextJob returns flavor', function (): void {
 it('AnalyzePrContextJob throws when PR missing', function (): void {
     $row = rowOf(PersonalRecord::class, 99999, AnalysisType::PrContext);
     new AnalyzePrContextJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+});
+
+// ── AnalyzePlanDayVoiceJob (row) ───────────────────────────────────────
+
+it('AnalyzePlanDayVoiceJob returns voice for the discriminator date', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => '2026-05-18']);
+    mockNarrator(PlanDayVoiceNarrator::class, 'tempo work today.');
+
+    $row = rowOf(AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanDayVoice, '2026-05-18');
+    new AnalyzePlanDayVoiceJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->content)->toBe('tempo work today.');
+});
+
+it('AnalyzePlanDayVoiceJob throws when no PlannedSession exists for that date', function (): void {
+    $user = User::factory()->create();
+    $row = rowOf(AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanDayVoice, '2026-05-18');
+    new AnalyzePlanDayVoiceJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+});
+
+// ── AnalyzePlanWeekVoiceJob (row) ──────────────────────────────────────
+
+it('AnalyzePlanWeekVoiceJob returns voice', function (): void {
+    $user = User::factory()->create();
+    $adaptation = PlanAdaptation::factory()->for($user)->create();
+    mockNarrator(PlanWeekVoiceNarrator::class, 'steady week ahead.');
+
+    $row = rowOf(PlanAdaptation::class, $adaptation->id, AnalysisType::PlanWeekVoice);
+    new AnalyzePlanWeekVoiceJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->content)->toBe('steady week ahead.');
+});
+
+it('AnalyzePlanWeekVoiceJob throws when adaptation missing', function (): void {
+    $row = rowOf(PlanAdaptation::class, 99999, AnalysisType::PlanWeekVoice);
+    new AnalyzePlanWeekVoiceJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+});
+
+// ── AnalyzePlanSeasonVoiceJob (row) ─────────────────────────────────────
+
+it('AnalyzePlanSeasonVoiceJob returns voice', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create();
+    mockNarrator(PlanSeasonVoiceNarrator::class, 'a self-scaled block.');
+
+    $row = rowOf(Season::class, $season->id, AnalysisType::PlanSeasonVoice);
+    new AnalyzePlanSeasonVoiceJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->content)->toBe('a self-scaled block.');
+});
+
+it('AnalyzePlanSeasonVoiceJob throws when season missing', function (): void {
+    $row = rowOf(Season::class, 99999, AnalysisType::PlanSeasonVoice);
+    new AnalyzePlanSeasonVoiceJob($row->id)->handle(app(AnalysisService::class));
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
 });

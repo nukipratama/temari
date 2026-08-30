@@ -71,6 +71,20 @@ const SEASON = {
     goals: [],
 };
 
+const ANALYSIS = (overrides: Record<string, unknown> = {}) => ({
+    id: 1,
+    status: 'done' as const,
+    content: 'a plan narration line.',
+    type: 'plan_day_voice' as const,
+    subject_type: 'plan_day_voice_user_day',
+    subject_id: 1,
+    discriminator: TODAY,
+    attempts: 1,
+    generated_at: '2026-08-10T00:00:00Z',
+    retry_after_seconds: null,
+    ...overrides,
+});
+
 const STREAK = {
     weeks: 6,
     rest_weeks_held: 1,
@@ -725,5 +739,109 @@ describe('Plan', () => {
         );
 
         expect(screen.getByText('Partial')).toBeInTheDocument();
+    });
+
+    it("renders a day's narration only for the current week", () => {
+        render(
+            <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={null}
+                season={SEASON}
+                streak={STREAK}
+                weeks={[
+                    WEEK({ type: 'current' }),
+                    WEEK({
+                        week_start: '2026-08-17',
+                        type: 'lookahead',
+                        days: [DAY({ id: 2, date: '2026-08-17' })],
+                    }),
+                ]}
+                planNarration={{
+                    days: {
+                        [TODAY]: ANALYSIS({ content: 'today, narrated.' }),
+                        '2026-08-17': ANALYSIS({
+                            content: 'a lookahead day, narrated.',
+                        }),
+                    },
+                    week: null,
+                    season: null,
+                }}
+            />,
+        );
+
+        expect(screen.getByText('today, narrated.')).toBeInTheDocument();
+        expect(
+            screen.queryByText('a lookahead day, narrated.'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('renders week and season narration when present', () => {
+        render(
+            <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={{
+                    reason: 'steady',
+                    headline: 'On plan',
+                    detail: 'Nothing to adjust this week.',
+                    deload: false,
+                }}
+                season={SEASON}
+                streak={STREAK}
+                weeks={[WEEK()]}
+                planNarration={{
+                    days: {},
+                    week: ANALYSIS({ content: 'steady week, narrated.' }),
+                    season: ANALYSIS({ content: 'a self-scaled block.' }),
+                }}
+            />,
+        );
+
+        expect(screen.getByText('steady week, narrated.')).toBeInTheDocument();
+        expect(screen.getByText('a self-scaled block.')).toBeInTheDocument();
+    });
+
+    it('disables Regenerate and shows a countdown while its cooldown is active', () => {
+        render(
+            <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={null}
+                season={SEASON}
+                streak={STREAK}
+                weeks={[WEEK()]}
+                regenerateCooldownSeconds={125}
+            />,
+        );
+
+        const button = screen.getByRole('button', { name: '2:05' });
+        expect(button).toBeDisabled();
+    });
+
+    it('leaves Regenerate enabled with no active cooldown', () => {
+        render(
+            <Plan
+                disclaimerHeadline={DISCLAIMER_HEADLINE}
+                disclaimer={DISCLAIMER}
+                race={null}
+                sessionsPerWeek={4}
+                adaptation={null}
+                season={SEASON}
+                streak={STREAK}
+                weeks={[WEEK()]}
+                regenerateCooldownSeconds={null}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: 'Regenerate' }),
+        ).toBeEnabled();
     });
 });
