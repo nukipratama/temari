@@ -224,7 +224,8 @@
             "over": {
                 "resources/js/components/trends/panels/FitnessTrend.tsx": [
                     "paper"
-                ]
+                ],
+                "resources/js/components/trends/StreakBadge.tsx": ["paper"]
             },
             "text": ["foreground"]
         },

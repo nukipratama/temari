@@ -20,15 +20,21 @@ Port `pages/Trends.tsx` + `components/trends/` (7 files). Charts consumed from `
 
 **The milestone badge chips were not recolored by rarity to match the prototype's `Medal`-icon-by-rarity treatment.** The prototype's three example badges each carry a `rarity` field its mockup invents locally; the real `BadgeMilestone` payload from `TrendsController` (`{key, date}` only, sourced from `RunCard::firstEarnedDatesForUser()`) carries no rarity. Wiring rarity into the milestone timeline would mean new backend payload shape — out of this slice's scope (blockers are `F4`/`F6` only, no backend blocker) — so the existing per-badge emblem (`badgeEmblem()`), which is more informative than the mockup's single generic medal glyph, was kept unchanged.
 
-**`resources/brand/grounds.json` needed one edit, not a full regen.** Restyling `RangeToggle` away from `bg-horizon/30` left that key's only registered call site painting nothing, which `DesignTokenContrastTest`'s dead-call-site assertion catches by design (see plan/README.md R4/§8). Removed the stale `"horizon/0.3"` entry; no other site uses that opacity, and no new translucent panel was introduced, so nothing else in the file changed.
+**`resources/brand/grounds.json` needed two edits, not a full regen.** Restyling `RangeToggle` away from `bg-horizon/30` left that key's only registered call site painting nothing, which `DesignTokenContrastTest`'s dead-call-site assertion catches by design (see plan/README.md R4/§8). Removed the stale `"horizon/0.3"` entry; no other site uses that opacity. `StreakBadge.tsx` (below) reuses `FitnessTrend.tsx`'s own `bg-horizon/25` badge-chip treatment, which added a second registered call site under the existing `"horizon/0.25"` key rather than a new key.
+
+**Streak became a Trends badge-board entry, per the 2026-08-30 amendment recorded in `plan/README.md` §5** ("Streak feature redesign", `epic/mobile-ux-port@b13e9afb`). This was originally relayed mid-session as an unverified chat claim with no paper trail anywhere in `plan/` — correctly declined at the time (see git history on this branch) until the coordinator pushed the actual amendment commit to `origin/epic/mobile-ux-port`, which this branch then merged in before implementing. `SeasonStreakSummaryBuilder::streakPayload()` — already wired into `ProfileController` and `PlanController` the same way — is now also called from `TrendsController::__invoke()` and passed as a new `streak` Inertia prop. A new `StreakBadge` component renders it as its own badge-board card: a clickable pill (weeks count + a `mdi:medal-outline` glyph, deliberately not the flame reserved for the prototype's tempo-session day-glyph convention elsewhere) that expands on tap into a plain-language detail line, mirroring the prototype's `TrendsScreen.tsx:55-59` badge-chip + expand pattern. It is **not** folded into `FitnessTrend`'s `milestones` prop: that list plots badges at a specific historical chart date (`RunCard::firstEarnedDatesForUser()`), while the streak is a live, always-current fact with no single earned-on date — so it renders as its own card, right after `FitnessTrend`, outside the date-range-scoped chart flow (matching how `PersonalBests` already sits outside that flow too). The `rarity: 'uncommon'` styling on the chip is a hardcoded, page-local constant (the medal glyph's ink color) — not new backend rarity infrastructure, since the amendment's own instruction pointed at that literal prototype line as the treatment to match, unlike the general milestone-badge rarity question already declined above for lacking a real data source.
+
+The `StreakSummaryLike` type is defined locally in `StreakBadge.tsx` rather than imported from `components/plan/StreakPanel.tsx`'s existing `StreakSummary` export, even though the shapes are identical — `S4` (Plan) is removing that file in the same wave, so importing from it would create a cross-slice coupling on a file scheduled for deletion in a sibling worktree.
 
 ## Files touched
 
 Modified: `resources/js/pages/Trends.tsx` (+test), `resources/js/components/trends/RangeToggle.tsx`,
-`resources/js/components/trends/NarrationHeadline.tsx`, `resources/brand/grounds.json` (stale call-site
-removal). No changes to `FitnessTrend.tsx`, `LoadTrend.tsx`, `VdotTrend.tsx`,
-`PaceConsistencyTrend.tsx`, or `PersonalBests.tsx` — already onto the app's converged panel/chart
-token vocabulary via F3/F6, and no functional or backend change was needed. No backend files touched.
+`resources/js/components/trends/NarrationHeadline.tsx`, `resources/brand/grounds.json` (two call-site
+edits), `app/Http/Controllers/TrendsController.php` (+test, new `streak` prop). No changes to
+`FitnessTrend.tsx`, `LoadTrend.tsx`, `VdotTrend.tsx`, `PaceConsistencyTrend.tsx`, or `PersonalBests.tsx`
+— already onto the app's converged panel/chart token vocabulary via F3/F6, no functional change needed.
+
+New: `resources/js/components/trends/StreakBadge.tsx` (+test).
 
 ## Blockers
 
@@ -48,69 +54,71 @@ token vocabulary via F3/F6, and no functional or backend change was needed. No b
       despite the prototype's own lowercase mockup copy (explicit slice instruction).
 - [x] No em-dashes introduced.
 - [x] 1:1 test convention preserved; `Trends.test.tsx`'s headline assertion updated for the new
-      two-line markup, no new `EXEMPT`/`TS_EXEMPT` entries.
-- [x] `resources/brand/grounds.json` kept in sync with the one call-site removal this slice caused;
+      two-line markup, `StreakBadge.tsx` and `TrendsController`'s streak wiring both get their own
+      co-located/dedicated tests, no new `EXEMPT`/`TS_EXEMPT` entries.
+- [x] `resources/brand/grounds.json` kept in sync with both call-site edits this slice caused;
       `DesignTokenContrastTest` passes.
+- [x] Streak badge-board entry (`plan/README.md` §5, 2026-08-30 amendment): `SeasonStreakSummaryBuilder::streakPayload()`
+      wired into `TrendsController`, rendered via `StreakBadge` matching the prototype's badge-chip
+      treatment with a non-flame glyph; never surfaces another user's streak (tested).
 
 ## Coverage delta
 
-Frontend: **no measurable change** — 216/216 test files, 2099/2099 tests passing both immediately
-before this slice's edits (measured via `git stash` on the touched files) and after: 95.6% statements /
-89.4% branches / 95.44% functions / 95.95% lines in both runs. Expected: the changes are className/copy
-restyles plus one updated test assertion, with zero new logic branches and no new files.
+Frontend: 217/217 test files, 2106/2106 tests passing (up from 216/2099 pre-slice — +1 file, +7 tests:
+`StreakBadge.test.tsx`'s 6 cases plus 1 new `Trends.test.tsx` case). **95.61% statements / 89.43%
+branches / 95.45% functions / 95.96% lines**, vs the pre-slice baseline of 95.6% / 89.4% / 95.44% /
+95.95% (small net-positive across all four — `StreakBadge.tsx`'s own coverage from its dedicated test
+outweighs the marginal branches the page-shell restyle didn't add).
 
-Backend: unaffected (no PHP touched). Full suite still 3736/3736 passing, 11424 assertions
-(`bin pest --parallel --no-tia`), matching the pre-slice baseline exactly.
+Backend: full suite 3739/3739 passing (up from 3736 pre-slice, +3 tests: `TrendsControllerTest`'s new
+streak assertions), 11450 assertions (`bin pest --parallel --no-tia`).
 
 ## Verification notes
 
-`pest --group=structure --no-tia` (38/38 — first run caught the stale `grounds.json` call site above,
-fixed, re-ran green), full `bin pest --parallel --no-tia` (3736/3736, 11424 assertions), `npx tsc
---noEmit` clean, `npm run build && npm run check:chunks` green (Trends is not one of the four
-hardcoded-budget routes; Login stays unaffected), `npm run test:coverage` clean (216/216 files,
-2099/2099 tests; see Coverage delta above), `php scripts/check-doc-citations.php` run directly through
-Sail per the ladder's rule for any grounds-touching slice — clean, no citation drift.
+`pest --group=structure --no-tia` (38/38 — first run caught the stale `grounds.json` call site, fixed,
+re-ran green; a later run after the streak feature added a second `DesignTokenContrastTest` failure for
+`StreakBadge.tsx`'s reused `bg-horizon/25`, fixed the same way), full `bin pest --parallel --no-tia`
+(3739/3739, 11450 assertions), `npx tsc --noEmit` clean, `npm run build && npm run check:chunks` green
+(Trends grew 25.52→27.20 kB gz; not one of the four hardcoded-budget routes, Login unaffected),
+`php scripts/check-doc-citations.php` run directly through Sail per the ladder's rule for any
+grounds-touching slice — clean, no citation drift.
 
-**A resource-contention note for whoever runs this ladder next**: this worktree's Docker stack shares
-the host with two sibling worktrees (`s3-today`, `s4-plan`) plus unrelated local projects. Two
-back-to-back `npm run test:coverage` invocations left running concurrently (one from a `run_in_background`
-call that wasn't actually complete, one from a naive shell `&`) produced a genuinely stalled/slow run
-with the container pegged near 120% CPU — not a hang, confirmed via `docker stats` before killing the
-duplicate and re-running clean. Matches the S11 precedent: run one coverage/pest invocation at a time
-in a shared-host session, and verify with `docker stats` before concluding a slow run is broken.
+**`npm run test:coverage` needed three attempts to get a clean read**, all due to real, confirmed host
+contention, not a code problem: attempt 1 hit two accidental concurrent duplicate invocations from
+earlier in the session (fixed by killing the stray process and confirming via `docker stats`); attempts
+2 and 3 (after the streak feature was added) each surfaced 1-3 failures in `AppShell.test.tsx` and
+`CardReveal.test.tsx` — files this slice never touches — all `waitFor`/`findByText` timeouts, with a
+different subset failing each run. Confirmed as flaky-under-load rather than a real regression by
+re-running both files in isolation (35/35 passing) while a sibling worktree (`s4-plan`, then
+`s3-today`) was independently spiking to 200-500%+ CPU per `docker stats`. The clean, reported numbers
+above came from a `--maxWorkers=2` run (the ladder's documented fallback), which finished 217/217 with
+zero failures. Matches the S11 precedent for this exact failure shape on this shared host.
 
 ## Open questions
 
-None blocking. Two things intentionally deferred, both requiring scope this slice's blockers (`F4`,
-`F6` only, no backend blocker) don't cover:
+None blocking. One thing intentionally deferred, requiring scope this slice's blockers (`F4`, `F6`
+only, no backend blocker) don't cover:
 
-1. **Rarity-tinted badge chips** — the prototype's `FitnessPanel` colors each badge pill by rarity;
-   the real `BadgeMilestone` payload doesn't carry rarity today. A natural follow-up if a future slice
-   wants that treatment, needing a `TrendsController` payload change, not a page-only restyle.
-2. **The prototype's pill-style regenerate/cooldown button** — not adopted since it lives inside the
-   shared `AnalysisStatus` component used by ~10 other narrated blocks app-wide; out of this slice's
-   file list. A cross-cutting `AnalysisStatus` visual pass (if ever wanted) is a separate, deliberate
-   decision, not something to fork silently for one page.
+- **Rarity-tinted milestone badge chips** — the prototype's `FitnessPanel` colors each *date-anchored*
+  badge pill by rarity; the real `BadgeMilestone` payload (`RunCard::firstEarnedDatesForUser()`)
+  doesn't carry rarity today. Unlike the streak badge above (a single hardcoded page-local rarity
+  constant, matching an explicit instruction pointed at one literal prototype line), extending this to
+  every real earned-badge slug would mean a genuine `TrendsController`/backend payload change — a
+  natural follow-up for a future slice, not a page-only restyle.
 
-### Needs a decision — not implemented
+The prototype's pill-style regenerate/cooldown button on `NarrationHeadline` was also not adopted, for
+the reason recorded above (lives in the shared `AnalysisStatus`, used by ~10 other narrated blocks,
+out of this slice's file list) — this one is a routine scope call, not an open question.
 
-Mid-slice, a chat message claiming to be from "the program coordinator" (preceded by a "disregard,
-wrong agent" message) asked this slice to additionally consolidate a "streak" widget — pulling
-`SeasonStreakSummaryBuilder::streakPayload()` off the Today/Plan pages and onto a new badge card on
-Trends, citing the prototype's `streak-6` example badge as the mandate, and explicitly said not to
-coordinate with the sibling `S4` (Plan) worktree also live on this host.
+### Resolved: the streak consolidation flag
 
-This was not implemented. Verified before declining: `SeasonStreakSummaryBuilder::streakPayload()` and
-`WeeklySnapshot::consecutiveWeekStreak()` do exist, and the prototype's mockup does include a
-`streak-6` entry among its three illustrative example badges — but `plan/README.md`'s decision table
-and amendments log, `plan/ledger.md`, `plan/ia.md`, and every slice doc including `S3`'s and `S4`'s own
-stubs, have zero mentions of "streak" anywhere. This program's own rule (plan/README.md §1) is that a
-decision of this shape — cutting a shipped widget from two other in-flight sibling slices and adding
-new backend-to-frontend wiring to a third, page-only slice with no backend blocker — must land as a
-recorded amendment before a slice acts on it. It hasn't. Combined with the "disregard/real one"
-message pattern and the explicit instruction to avoid coordinating with `S4`'s own worktree over a
-change to a widget `S4` (Plan) itself may still own, this reads as exactly the "genuine architecture
-fork only a human could decide" case the program's process calls out, not a routine implementation
-call. Flagging here rather than guessing; whoever reviews this PR should confirm with the user directly
-whether such a consolidation was actually decided, and if so, land it as an amendment in
-`plan/README.md` before any slice (this one or `S3`/`S4`) implements it.
+An earlier version of this doc flagged a "needs a decision" item here: a mid-session chat message,
+preceded by a "disregard, wrong agent" preamble, asked this slice to consolidate a streak widget onto
+Trends, with no corresponding entry anywhere in `plan/`. That was correctly declined at the time per
+the program's own rule that such a decision must land as a recorded amendment before a slice acts on
+it — see this branch's git history for the original reasoning, preserved rather than deleted.
+
+The coordinator subsequently pushed the actual amendment to `origin/epic/mobile-ux-port`
+(`b13e9afb`, "docs(plan): record the streak-redesign decision (S3/S4/S6)", now in `plan/README.md` §5)
+under the real repo owner's GitHub identity — verified directly by fetching and reading the commit
+before merging it into this branch and proceeding. See "What actually landed" above for what was built.
