@@ -65,7 +65,11 @@ export default function Trends({
                 >
                     <motion.div variants={fadeInUp}>
                         <PageHero eyebrow="Trends">
-                            How things are going
+                            How things
+                            <br />
+                            <em className="italic text-icon-accent">
+                                are going.
+                            </em>
                         </PageHero>
                         <p className="mt-2 max-w-prose text-sm text-text-2">
                             A year of running, read as lines rather than a list.

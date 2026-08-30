@@ -101,7 +101,7 @@ the slice itself (see [R3](#r3)); `n/a` for backend-only or docs-only slices.
 | S3 | Today | 2b | [15](slices/15-S3-today.md) | todo | — | | | |
 | S4 | Plan | 2b | [16](slices/16-S4-plan.md) | todo | — | | | |
 | S5 | RaceGoal | 2b | [17](slices/17-S5-race-goal.md) | todo | — | | | |
-| S6 | Trends | 2b | [18](slices/18-S6-trends.md) | todo | — | | | |
+| S6 | Trends | 2b | [18](slices/18-S6-trends.md) | in review | — | wt | 95.6% stmts (no change) | page shell + RangeToggle + NarrationHeadline restyle; charts kept from F6 |
 | S7 | History | 2b | [19](slices/19-S7-history.md) | todo | — | | | |
 | S8 | ActivityDetail | 2b | [20](slices/20-S8-activity-detail.md) | todo | — | | | |
 | S9 | Inbox | 2b | [21](slices/21-S9-inbox.md) | merged | [#665](https://github.com/nukipratama/temari/pull/665) | wt | 95.92→95.95% lines | bucketed sections + time toggle, new scope; squashed as cd0ecd08 |

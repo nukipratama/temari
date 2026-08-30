@@ -45,7 +45,8 @@ describe('Trends', () => {
     it('renders the page headline', () => {
         render(<Trends {...BASE_PROPS} />);
 
-        expect(screen.getByText('How things are going')).toBeInTheDocument();
+        expect(screen.getByText('How things')).toBeInTheDocument();
+        expect(screen.getByText('are going.')).toBeInTheDocument();
     });
 
     it('defaults to the 12 month range narration', () => {

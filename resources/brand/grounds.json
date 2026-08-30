@@ -228,12 +228,6 @@
             },
             "text": ["foreground"]
         },
-        "horizon/0.3": {
-            "over": {
-                "resources/js/components/trends/RangeToggle.tsx": ["paper"]
-            },
-            "text": ["foreground"]
-        },
         "horizon/0.35": {
             "text": []
         },
