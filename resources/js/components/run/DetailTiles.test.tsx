@@ -178,4 +178,51 @@ describe('DetailTiles', () => {
             screen.getByText(/Technical detail hasn't been read yet/),
         ).toBeInTheDocument();
     });
+
+    it('keeps the section landmark on the empty-state card too', () => {
+        const { container } = renderTiles(
+            {
+                average_heartrate: null,
+                max_heartrate: null,
+                average_cadence: null,
+            },
+            {},
+        );
+        expect(container.querySelector('section')).toBeInTheDocument();
+    });
+
+    it('renders a Vitals section label above the tile grid', () => {
+        renderTiles();
+        expect(screen.getByText('Vitals')).toBeInTheDocument();
+    });
+
+    it('forwards className onto the outer card', () => {
+        render(
+            <DetailTiles
+                detail={detail()}
+                summary={baseSummary}
+                className="mt-10"
+            />,
+        );
+        expect(screen.getByText('Vitals').closest('.mt-10')).not.toBeNull();
+    });
+
+    it('forwards className onto the empty-state card too', () => {
+        render(
+            <DetailTiles
+                detail={detail({
+                    average_heartrate: null,
+                    max_heartrate: null,
+                    average_cadence: null,
+                })}
+                summary={{}}
+                className="mt-10"
+            />,
+        );
+        expect(
+            screen
+                .getByText(/Technical detail hasn't been read yet/)
+                .closest('.mt-10'),
+        ).not.toBeNull();
+    });
 });

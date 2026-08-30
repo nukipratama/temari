@@ -11,7 +11,8 @@ interface EmptyPanelProps {
     title: string;
     body?: string;
     action?: ReactNode;
-    className: string;
+    as?: 'div' | 'section' | 'article' | 'aside' | 'li';
+    className?: string;
 }
 
 export default function EmptyPanel({
@@ -19,10 +20,12 @@ export default function EmptyPanel({
     title,
     body,
     action,
+    as = 'div',
     className,
 }: Readonly<EmptyPanelProps>) {
     return (
         <Card
+            as={as}
             tone="empty"
             padding="hero"
             className={cn('text-center', className)}

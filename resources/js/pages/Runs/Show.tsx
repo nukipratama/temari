@@ -2,6 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { lazy, Suspense, useRef, useState } from 'react';
 
+import type { MetricKey } from '@/lib/metricGlossary';
 import type {
     Activity,
     ActivityDetail,
@@ -145,6 +146,29 @@ export default function RunsShow({
         (n) => `${Math.round(n)}`,
     );
 
+    const secondaryStats: Array<{
+        label: string;
+        value: string;
+        unit?: string;
+        sub?: string;
+        explainerKey?: MetricKey;
+    }> = [
+        { label: 'HR', value: hrDisplay, unit: 'bpm' },
+        {
+            label: 'TRIMP',
+            value: trimpDisplay,
+            unit: 'Edwards',
+            sub: effortSub,
+            explainerKey: 'trimp',
+        },
+        {
+            label: 'ELEVATION',
+            value: elevationDisplay,
+            unit: 'm',
+            explainerKey: 'ascent',
+        },
+    ];
+
     const [resyncing, resync] = usePendingPost(
         `/activities/${activity.id}/resync`,
         { preserveScroll: true },
@@ -249,70 +273,53 @@ export default function RunsShow({
                                     variants={staggerContainer}
                                     initial="hidden"
                                     animate="visible"
-                                    className="grid grid-cols-2 gap-5 sm:grid-cols-3 justify-items-center"
                                 >
-                                    <motion.div variants={fadeInUp}>
-                                        <StatTile
-                                            tone="plainSky"
-                                            size="md"
-                                            align="center"
-                                            label="DISTANCE"
-                                            value={kmDisplay}
-                                            unit="km"
-                                        />
-                                    </motion.div>
-                                    <motion.div variants={fadeInUp}>
-                                        <StatTile
-                                            tone="plainSky"
-                                            size="md"
-                                            align="center"
-                                            label="DURATION"
-                                            value={kartuProps.duration}
-                                        />
-                                    </motion.div>
-                                    <motion.div variants={fadeInUp}>
-                                        <StatTile
-                                            tone="plainSky"
-                                            size="md"
-                                            align="center"
-                                            label="PACE"
-                                            value={paceDisplay}
-                                            unit="/km"
-                                        />
-                                    </motion.div>
-                                    <motion.div variants={fadeInUp}>
-                                        <StatTile
-                                            tone="plainSky"
-                                            size="md"
-                                            align="center"
-                                            label="HR"
-                                            value={hrDisplay}
-                                            unit="bpm"
-                                        />
-                                    </motion.div>
-                                    <motion.div variants={fadeInUp}>
-                                        <StatTile
-                                            tone="plainSky"
-                                            size="md"
-                                            align="center"
-                                            label="TRIMP"
-                                            value={trimpDisplay}
-                                            unit="Edwards"
-                                            sub={effortSub}
-                                            explainerKey="trimp"
-                                        />
-                                    </motion.div>
-                                    <motion.div variants={fadeInUp}>
-                                        <StatTile
-                                            tone="plainSky"
-                                            size="md"
-                                            align="center"
-                                            label="ELEVATION"
-                                            value={elevationDisplay}
-                                            unit="m"
-                                            explainerKey="ascent"
-                                        />
-                                    </motion.div>
+                                    <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+                                        <motion.div variants={fadeInUp}>
+                                            <StatTile
+                                                tone="plainSky"
+                                                size="lg"
+                                                label="DISTANCE"
+                                                value={kmDisplay}
+                                                unit="km"
+                                            />
+                                        </motion.div>
+                                        <div className="flex gap-5">
+                                            <motion.div variants={fadeInUp}>
+                                                <StatTile
+                                                    tone="plainSky"
+                                                    size="md"
+                                                    label="DURATION"
+                                                    value={kartuProps.duration}
+                                                />
+                                            </motion.div>
+                                            <motion.div variants={fadeInUp}>
+                                                <StatTile
+                                                    tone="plainSky"
+                                                    size="md"
+                                                    label="PACE"
+                                                    value={paceDisplay}
+                                                    unit="/km"
+                                                />
+                                            </motion.div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4 grid grid-cols-3 gap-2.5">
+                                        {secondaryStats.map((stat) => (
+                                            <motion.div
+                                                key={stat.label}
+                                                variants={fadeInUp}
+                                            >
+                                                <StatTile
+                                                    tone="sky"
+                                                    size="sm"
+                                                    align="center"
+                                                    {...stat}
+                                                />
+                                            </motion.div>
+                                        ))}
+                                    </div>
                                 </motion.div>
                             </div>
 
@@ -521,9 +528,11 @@ export default function RunsShow({
                 </section>
 
                 {/* DETAIL TILES */}
-                <section className="mt-10">
-                    <DetailTiles detail={detail} summary={summary} />
-                </section>
+                <DetailTiles
+                    detail={detail}
+                    summary={summary}
+                    className="mt-10"
+                />
 
                 {/* SPLITS */}
                 {(perKm.length > 0 || partialSplit) && (
