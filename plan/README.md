@@ -106,7 +106,7 @@ the slice itself (see [R3](#r3)); `n/a` for backend-only or docs-only slices.
 | S8 | ActivityDetail | 2b | [20](slices/20-S8-activity-detail.md) | todo | — | | | |
 | S9 | Inbox | 2b | [21](slices/21-S9-inbox.md) | in-review | [#665](https://github.com/nukipratama/temari/pull/665) | wt | 95.92→95.95% lines | bucketed sections + time toggle, new scope |
 | S10 | Profile | 2b | [22](slices/22-S10-profile.md) | todo | — | | | |
-| S11 | Settings | 2b | [23](slices/23-S11-settings.md) | todo | — | | | appearance toggle UI |
+| S11 | Settings | 2b | [23](slices/23-S11-settings.md) | in review | [#666](https://github.com/nukipratama/temari/pull/666) | wt | 95.37→95.40% fn | appearance toggle UI |
 | S12 | Undrawn survivors | 2b | [24](slices/24-S12-undrawn-survivors.md) | todo | — | | | the forgettable one |
 | W1 | IA cutover | 3 | [25](slices/25-W1-ia-cutover.md) | todo | — | main | | |
 | W2 | Dead-code sweep | 3 | [26](slices/26-W2-dead-code-sweep.md) | todo | — | main | | |

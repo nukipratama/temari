@@ -198,12 +198,12 @@ export default function HrZonesDisclosure({
     };
 
     return (
-        <div className="rounded-xl border border-border/60">
+        <div className="rounded-4xl border border-border-strong bg-card shadow-e1">
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
                 aria-expanded={open}
-                className="pressable focus-ring flex w-full items-center justify-between gap-3 rounded-xl p-3.5 text-left transition hover:bg-cream-deep/40"
+                className="pressable focus-ring flex w-full items-center justify-between gap-3 rounded-4xl p-3.5 text-left transition hover:bg-cream-deep/40"
             >
                 <span className="flex items-center gap-3">
                     <Icon
@@ -232,7 +232,7 @@ export default function HrZonesDisclosure({
             </button>
 
             {open && (
-                <div className="border-t border-border/60 p-3.5 pt-4">
+                <div className="border-t border-border-strong p-3.5 pt-4">
                     {source !== 'default' && (
                         <div className="mb-4 flex flex-wrap items-center gap-3">
                             {canShowResync && (

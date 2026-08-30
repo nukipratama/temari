@@ -4,6 +4,7 @@ import { type ReactNode, useState } from 'react';
 import DemoBlockedModal from '@/components/DemoBlockedModal';
 import MeTabs from '@/components/me/MeTabs';
 import PushNotificationToggle from '@/components/PushNotificationToggle';
+import AppearanceCard from '@/components/settings/AppearanceCard';
 import HrZonesDisclosure, {
     type HrZonesPayload,
 } from '@/components/settings/HrZonesDisclosure';
@@ -152,11 +153,25 @@ export default function Settings({
                     <MeTabs active="settings" />
                 </header>
 
+                {/* Leads the page: the appearance toggle is this slice's
+                    headline feature, and nothing else lets a user actually
+                    switch grounds by hand until it ships. Matches the
+                    prototype's own section order. */}
+                <section>
+                    <SectionLabel>Appearance</SectionLabel>
+                    <div className="mt-3">
+                        <AppearanceCard />
+                    </div>
+                </section>
+
                 {/* One notification section, not three. The user holds a single
                     model with two questions — what gets sent, and where it goes —
                     and splitting those across "Notifications", "Push" and
                     "Telegram" made them look unrelated. */}
-                <section data-coachmark="settings-notifications">
+                <section
+                    className="mt-10"
+                    data-coachmark="settings-notifications"
+                >
                     <SectionLabel>Notifications</SectionLabel>
                     <div className="mt-3">
                         <Card className="px-6 py-6">

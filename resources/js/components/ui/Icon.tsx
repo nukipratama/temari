@@ -59,6 +59,7 @@ import {
     Medal,
     MessageCircle,
     MessageSquareQuote,
+    Monitor,
     Moon,
     Navigation,
     Palette,
@@ -82,6 +83,7 @@ import {
     SlidersHorizontal,
     Sparkles,
     Star,
+    Sun,
     Sunrise,
     Table,
     Timer,
@@ -173,6 +175,7 @@ const ICON_MAP: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
     'mdi:map-marker-outline': MapPin,
     'mdi:medal': Medal,
     'mdi:medal-outline': Medal,
+    'mdi:monitor': Monitor,
     'mdi:navigation': Navigation,
     'mdi:palette-swatch-outline': Palette,
     'mdi:pencil-outline': Pencil,
@@ -207,8 +210,10 @@ const ICON_MAP: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
     'mdi:tshirt-crew': Shirt,
     'mdi:tshirt-crew-outline': Shirt,
     'mdi:tune-variant': SlidersHorizontal,
+    'mdi:weather-night': Moon,
     'mdi:weather-sunset-up': Sunrise,
     'mdi:weather-windy': Wind,
+    'mdi:white-balance-sunny': Sun,
 };
 
 /**
