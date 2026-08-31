@@ -118,12 +118,25 @@ Measured: **161 violations, 100% from that tree**, and almost all from one sourc
 A guard that is red for reasons the author cannot act on is a guard everyone learns to skip, which
 is the behaviour that produced today's two round-trips.
 
-Fixed at the root: `collectFiles()` now asks `git ls-files` for the tracked set rather than walking
-the filesystem. This kills the whole class (`node_modules`, `public/build`, `coverage/`, `.vite`,
-anything future), not just the one path. Coverage is provably identical — the tracked set and the
-walked-minus-node_modules set are byte-for-byte the same 1,480 files, and the guard reports the same
-1,446 scanned before and after. Zero-files stays a hard error, so a broken checkout still fails
-loudly instead of reporting a clean sweep over nothing.
+Fixed at the root: `collectFiles()` prunes dependency and build-output directory names during the
+walk, so the fix covers every such tree under `SCAN_DIRS` rather than the one path.
+
+**`git ls-files` was the tidier answer and was tried first. It does not work here.** Composer strips
+`GIT_DIR` from the environment it runs scripts in, and a linked worktree's `.git` is a file pointing
+outside the container's mount — so the guard returned *zero files* under `composer check` in exactly
+the worktrees `PS1`-`PS11` will run in. It passed under `sail php` and failed under `sail composer
+check`, which is the sort of difference that only shows up if you run the real command. Recorded
+here because it is a trap for anyone who reaches for `git ls-files` in a guard later.
+
+`vendor` is deliberately **not** in the prune list: `resources/views/vendor/pulse/` is a tracked,
+published Blade template the guard has always read, and no ignored `vendor` tree lives under
+`SCAN_DIRS`. Pruning it would have cost real coverage to catch nothing — caught by checking, not by
+reasoning.
+
+Coverage is unchanged and measured rather than asserted: with the offending tree restored on disk,
+the walked set and the tracked set are the same **1,479 files, zero difference in either
+direction**. Zero-files stays a hard error, so a broken glob still fails loudly instead of reporting
+a clean sweep over nothing.
 
 `check-doc-citations.php` (scans `docs/`) and `check-see-references.php` (scans `app`, `database`)
 were checked for the same defect and do not have it — no gitignored tree lives under those roots.
@@ -185,8 +198,8 @@ None. Deliberately touches no screen code, so it does not collide with `PS1`-`PS
       three git hooks, `ci-gate`).
 - [x] `composer check` runs exactly what CI runs; the one thing it cannot (PHP coverage) is named.
 - [x] §9 is rewritten to a single command, with narrow-iteration commands marked as not-the-gate.
-- [x] `check-indonesian.php` scans only tracked files, with coverage proven identical (1,480 = 1,480
-      files; 1,446 scanned before and after) rather than asserted.
+- [x] `check-indonesian.php` no longer walks dependency trees, with coverage proven identical
+      (1,479 = 1,479 files, zero difference either way) rather than asserted.
 - [x] No guard removed or weakened except `NoEmDashInPromptsTest`, which the user ruled on.
 - [x] `AppLayoutAssetsExistTest`'s missing group tag reported, **not** silently fixed.
 - [x] Both the old and the new definition of done run green (see Verification notes).
@@ -205,6 +218,11 @@ and the new `composer check` were each run in full from this worktree (slot 1, p
 The `check-indonesian.php` fix was verified against the failure, not just the fix: the offending
 `resources/brand/prototype/node_modules` tree was copied into this worktree, the guard reproduced
 all 161 violations, the fix was applied, and the guard went green **with the tree still on disk**.
+
+`composer check` was then run end to end and reached `check:chunks` green. That run is what caught
+the `git ls-files` regression above — the guard passed standalone and failed under composer, so
+"run the guard" and "run the gate" are not the same test. Full PHP suite 3,638 passed; frontend
+coverage 97.15% statements / 96.78% functions / 97.54% lines, comfortably over the 95% gate.
 
 ## Open questions
 
