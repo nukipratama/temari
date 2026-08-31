@@ -1,4 +1,9 @@
-import type { SeasonPhase } from '@/components/temari/TemariProto';
+/**
+ * The season arc's four real phases. `deload` is deliberately not one: the
+ * caller resolves a deload week back to the last non-deload phase, so progress
+ * pauses instead of resetting.
+ */
+export type SeasonPhase = 'base' | 'build' | 'peak' | 'taper';
 
 interface PhasedWeek {
     phase: string;
@@ -6,11 +11,9 @@ interface PhasedWeek {
 }
 
 /**
- * Resolves the season's current visual phase for the mascot's thread-coverage
- * tie-in (Plan tab only). Walks back from the current week past any `deload`
- * weeks to the last real phase, so a self-scaled deload week pauses coverage
- * accretion instead of resetting it — the ball never looks "less wound" than
- * it already was.
+ * Resolves the season's current phase for the Plan tab's season summary. Walks
+ * back from the current week past any `deload` weeks to the last real phase,
+ * so a self-scaled deload week pauses the arc instead of resetting it.
  */
 export function currentSeasonPhase(weeks: PhasedWeek[]): SeasonPhase {
     const currentIndex = weeks.findIndex((week) => week.type === 'current');

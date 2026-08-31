@@ -14,7 +14,6 @@ import SeasonPhaseBar, {
 import SeasonWeekTimeline from '@/components/plan/SeasonWeekTimeline';
 import PlanRaceTabs from '@/components/race/PlanRaceTabs';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import TemariProto, { type SeasonPhase } from '@/components/temari/TemariProto';
 import { Card } from '@/components/ui/card';
 import Chip, { type ChipTone } from '@/components/ui/Chip';
 import EmptyPanel from '@/components/ui/EmptyPanel';
@@ -167,13 +166,6 @@ const ADAPTATION_DOT: Record<string, string> = {
 // The mascot's thread coverage builds up as the season progresses — deload
 // weeks pause accretion rather than reset it, so a deload week borrows the
 // last non-deload phase's coverage instead of rendering its own.
-const SEASON_VISUAL_CAPTION: Record<SeasonPhase, string> = {
-    base: 'Thread just getting started, sparse and loosely wound.',
-    build: 'Coverage building, bands starting to lock in.',
-    peak: 'Fully wound, the most intricate the pattern gets.',
-    taper: 'Pattern held at full coverage, with a rested shine.',
-};
-
 function paceLabel(day: PlanDay): string | null {
     const core = day.segments.find(
         (s) => s.key === 'main' || s.key === 'interval',
@@ -349,21 +341,10 @@ export default function Plan({
                             Badge board
                         </Link>
                     </div>
-                    <div className="mt-3 flex items-center gap-3">
-                        <TemariProto
-                            pose="observational"
-                            size={56}
-                            dropShadow={false}
-                            seasonPhase={seasonPhase}
-                        />
-                        <div>
-                            <Chip tone={PHASE_TONE[seasonPhase] ?? 'neutral'}>
-                                {PHASE_LABEL[seasonPhase] ?? seasonPhase}
-                            </Chip>
-                            <p className="mt-1 text-xs text-text-2">
-                                {SEASON_VISUAL_CAPTION[seasonPhase]}
-                            </p>
-                        </div>
+                    <div className="mt-3">
+                        <Chip tone={PHASE_TONE[seasonPhase] ?? 'neutral'}>
+                            {PHASE_LABEL[seasonPhase] ?? seasonPhase}
+                        </Chip>
                     </div>
                     {planNarration.season && (
                         <div className="mt-3">

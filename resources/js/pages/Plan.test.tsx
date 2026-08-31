@@ -466,27 +466,7 @@ describe('Plan', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('shows the current week’s phase as the season visual caption', () => {
-        render(
-            <Plan
-                disclaimerHeadline={DISCLAIMER_HEADLINE}
-                disclaimer={DISCLAIMER}
-                race={null}
-                sessionsPerWeek={4}
-                adaptation={null}
-                season={SEASON}
-                weeks={[WEEK({ phase: 'peak' })]}
-            />,
-        );
-
-        // "Peak" also labels the per-week chip in the schedule below, so
-        // assert on the season caption text instead, which is unique.
-        expect(
-            screen.getByText(/most intricate the pattern gets/),
-        ).toBeInTheDocument();
-    });
-
-    it('pauses season-visual accretion on a deload week instead of resetting it', () => {
+    it('pauses the season arc on a deload week instead of resetting it', () => {
         render(
             <Plan
                 disclaimerHeadline={DISCLAIMER_HEADLINE}
@@ -507,11 +487,10 @@ describe('Plan', () => {
         );
 
         // The deload week borrows the last non-deload phase (build) rather
-        // than falling back to base — asserted via the build caption, since
-        // "Build" also labels the history week's own chip below.
-        expect(
-            screen.getByText(/Coverage building, bands starting to lock in/),
-        ).toBeInTheDocument();
+        // than falling back to base. "Build" also labels the history week's
+        // own chip below, so the season chip is the second occurrence.
+        expect(screen.getAllByText('Build')).toHaveLength(2);
+        expect(screen.queryByText('Base')).not.toBeInTheDocument();
     });
 
     it('falls back to the base season phase when no current week exists', () => {
