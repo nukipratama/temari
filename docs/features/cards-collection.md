@@ -6,7 +6,6 @@ status: living
 reviewed: 2026-08-19
 code_refs:
   - resources/js/components/card/Kartu.tsx
-  - resources/js/components/card/FeaturedCardHero.tsx
   - resources/js/components/card/ShareCardModal.tsx
   - resources/js/components/card/RouteGlyph.tsx
   - resources/js/components/card/ZoneBar.tsx
@@ -26,7 +25,7 @@ Every Strava run that syncs becomes a **kartu** — a trading-card view of that 
 
 ## Card presenter — the single owner of the card shape
 
-[CardPresenter](../../app/Services/Run/Story/CardPresenter.php) holds the rarity counts, both edition strategies (a bulk index map and a single-card aggregate query), the column whitelist that keeps internal columns out of Inertia, the mood fallback, and the `CardFlavor` payload. The run-detail full view, [FeaturedKartuPanel](../../resources/js/components/dashboard/FeaturedKartuPanel.tsx) (via [FeaturedCardHero](../../resources/js/components/card/FeaturedCardHero.tsx)), both read it, so the two can't drift apart.
+[CardPresenter](../../app/Services/Run/Story/CardPresenter.php) holds the rarity counts, both edition strategies (a bulk index map and a single-card aggregate query), the column whitelist that keeps internal columns out of Inertia, the mood fallback, and the `CardFlavor` payload. The run-detail full view is now its only reader — Today's featured-kartu panel was cut in `PP3`.
 
 ## The card's full view (on [[run-detail]])
 

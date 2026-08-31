@@ -1,6 +1,6 @@
 ---
 title: Dashboard
-description: The home page — this week's plan widget, the Past You verdict and its evidence, today's session, then vitals, last run, training load and the featured kartu
+description: The home page — this week's plan widget, the Past You verdict and its evidence, today's session, then vitals, last run and training load
 tags: [feature, dashboard]
 status: living
 reviewed: 2026-08-19
@@ -15,14 +15,13 @@ code_refs:
   - resources/js/components/home/TodaySession.tsx
   - resources/js/lib/verdict.ts
   - resources/js/components/dashboard/VitalChips.tsx
-  - resources/js/components/dashboard/FeaturedKartuPanel.tsx
   - resources/js/components/dashboard/LastRunCard.tsx
   - resources/js/components/dashboard/TrainingLoadCard.tsx
 ---
 
 # Dashboard
 
-The app's home (`/`). [WeekPlanWidget](resources/js/components/home/WeekPlanWidget.tsx) leads when the runner has a plan, then the page answers its other question, **"am I getting better?"**, with a verdict and the evidence behind it, then shows today's session. Everything the page used to open with (vitals, last run, training load, featured kartu) sits below that as supporting detail. Server entry is [DashboardController](app/Http/Controllers/DashboardController.php) (`__invoke`), rendering the [Home](resources/js/pages/Home.tsx) page.
+The app's home (`/`). [WeekPlanWidget](resources/js/components/home/WeekPlanWidget.tsx) leads when the runner has a plan, then the page answers its other question, **"am I getting better?"**, with a verdict and the evidence behind it, then shows today's session. Everything the page used to open with (vitals, last run, training load) sits below that as supporting detail. Server entry is [DashboardController](app/Http/Controllers/DashboardController.php) (`__invoke`), rendering the [Home](resources/js/pages/Home.tsx) page.
 
 **Navigation:** `route('dashboard')` → `/`. Named route: `dashboard`. `/` is dispatched by [RootController](app/Http/Controllers/RootController.php), which branches on auth: a guest gets the landing page ([[landing]]) and a signed-in user is delegated here. `route('dashboard')` therefore resolves for guests too — it answers with the landing page rather than a redirect.
 
@@ -78,7 +77,10 @@ Everything under here supports the verdict rather than competing with it, in thi
 - [VitalChips](resources/js/components/dashboard/VitalChips.tsx) — a 3-up row: **Vibe** (the `vibeLabel` word — `load.form`'s magnitude only drives the hidden `<meter>` gauge, not visible text), **Readiness** (`load.form` signed, with `formStatusLabel`), and **Break** (`recoveryHoursLabel` / streak / recovery label). All three values use a fluid font-size clamp tuned against the narrowest supported width (iPhone SE, 320px) so real values never silently truncate in the 1/3-width tile.
 - [LastRunCard](resources/js/components/dashboard/LastRunCard.tsx) — the most recent run (`recentRuns[0]`) as a `LinkCard` to its detail page, with km / pace / TRIMP tiles and an optional post-run note one-liner (`lastRunNote`, from `PostRunNoteReader::forActivity`). Temari's pose comes from `poseForRun`.
 - [TrainingLoadCard](resources/js/components/dashboard/TrainingLoadCard.tsx) — training load read-out: **Fitness** (CTL 42d), **Fatigue** (ATL 7d), **Strain**, **Monotony**, each with a plain-language hint. Links out to `/activities`. See [[run-history]] for the weekly metrics this mirrors.
-- [FeaturedKartuPanel](resources/js/components/dashboard/FeaturedKartuPanel.tsx) — `FeaturedCardHero` + a full `Kartu`, picked client-side by `featuredCardFor(recentRuns, briefing.featuredCardId)`. Its voice line (`briefing.featuredKartuVoice`) is another `AnalysisStatus` block, here `onSky` and `allowReanalyze={false}`. The controller deliberately selects `summary_polyline` + `stream_summary` on `recentRuns` so this hero can draw the route, zone bar, and pace-shape. It carries the onboarding coach mark. See [[cards-collection]].
+
+`PP3` cut the featured-kartu panel (P29) — the prototype's Today screen draws no Kartu surface — and
+with it `briefing.featuredCardId` / `briefing.featuredKartuVoice`. The `briefing_featured_kartu_voice`
+narrator, its job and its enum case are still generated; `W2` sweeps them.
 
 ## Empty state
 

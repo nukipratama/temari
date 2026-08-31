@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 
 import type {
     ActivityDetail,
@@ -11,7 +11,6 @@ import type {
     WeeklySnapshot,
 } from '@/types/inertia';
 
-import FeaturedKartuPanel from '@/components/dashboard/FeaturedKartuPanel';
 import KpiTile from '@/components/dashboard/KpiTile';
 import LastRunCard, {
     type LastRunNote,
@@ -23,7 +22,6 @@ import NoVerdictPanel from '@/components/home/NoVerdictPanel';
 import TodaySession from '@/components/home/TodaySession';
 import VerdictHero from '@/components/home/VerdictHero';
 import WeekPlanWidget from '@/components/home/WeekPlanWidget';
-import CoachMark from '@/components/onboarding/CoachMark';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
 import {
     Collapsible,
@@ -38,7 +36,7 @@ import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { poseForRun } from '@/lib/temariPose';
 
-import { featuredCardFor, weekRangeLabel } from './Home/helpers';
+import { weekRangeLabel } from './Home/helpers';
 
 interface HomeProps {
     briefing: BriefingResult;
@@ -66,13 +64,6 @@ export default function Home({
     pastYouTrend = null,
     weekPlan = null,
 }: Readonly<HomeProps>) {
-    const featuredRef = useRef<HTMLDivElement>(null);
-
-    const featured = featuredCardFor(
-        recentRuns,
-        briefing.featuredCardId,
-        recentMoods,
-    );
     const lastRun = recentRuns[0] ?? null;
 
     // Frozen at mount (lazy init) so the week label isn't recomputed impurely on every render.
@@ -196,29 +187,6 @@ export default function Home({
                                     </CollapsibleContent>
                                 </Collapsible>
                             </section>
-
-                            {featured && (
-                                <section>
-                                    <div
-                                        ref={featuredRef}
-                                        data-coachmark="today-featured-card"
-                                    >
-                                        <FeaturedKartuPanel
-                                            featured={featured}
-                                            featuredKartuVoice={
-                                                briefing.featuredKartuVoice
-                                            }
-                                        />
-                                    </div>
-                                    <CoachMark
-                                        id="today-featured-card"
-                                        anchorRef={featuredRef}
-                                        placement="bottom"
-                                        title="Every run gets a card"
-                                        body="This one's my pick of your recent runs, and the rest are waiting in Collection."
-                                    />
-                                </section>
-                            )}
                         </div>
                     </>
                 )}

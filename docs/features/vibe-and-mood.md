@@ -63,7 +63,9 @@ The bridge between the two systems is `moodForVibe` ([Temari.php:148](../../app/
 
 ## Featured kartu
 
-[ResolveFeaturedKartuAction::__invoke](../../app/Actions/Run/Story/ResolveFeaturedKartuAction.php) picks the one card the dashboard hero shows: scan the last few runs (window constant at [ResolveFeaturedKartuAction.php:21](../../app/Actions/Run/Story/ResolveFeaturedKartuAction.php#L21)), keep the **highest [[cards-collection|rarity]]**, break ties toward the **most recent** run. Because the resolver is the single source of truth, the rendered card and its Temari quote can never describe different cards — the briefing keys the quote's analysis row off the *card id*, not the day ([BriefingComposer.php:42](../../app/Services/Run/Story/BriefingComposer.php#L42)), so a fresh run sliding the pick re-fetches the matching voice. The client mirrors the same tie rule in `featuredCardFor`; see [[dashboard]].
+**No longer rendered.** `PP3` cut Today's featured-kartu panel (P29), and with it the
+`featuredCardId` / `featuredKartuVoice` briefing props. [ResolveFeaturedKartuAction::__invoke](../../app/Actions/Run/Story/ResolveFeaturedKartuAction.php)
+still picks a card — scan the last few runs (window constant at [ResolveFeaturedKartuAction.php:21](../../app/Actions/Run/Story/ResolveFeaturedKartuAction.php#L21)), keep the **highest [[cards-collection|rarity]]**, break ties toward the **most recent** run — and `ai:daily-briefing` still keys a `briefing_featured_kartu_voice` row off that card id, but nothing renders either. `W2` sweeps the resolver, the narrator and the job.
 
 ## Past-you matcher
 

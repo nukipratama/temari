@@ -140,8 +140,6 @@ export interface BriefingResult {
     vibeLabel: string;
     vibeEmoji: string;
     mascotVoice: AnalysisPayload;
-    featuredKartuVoice: AnalysisPayload;
-    featuredCardId: number | null;
     recoveryLabel: string;
     recoveryTone: RecoveryTone;
     recoveryHoursLabel: string | null;

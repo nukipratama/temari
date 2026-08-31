@@ -26,8 +26,6 @@ const briefing: BriefingResult = {
     vibeLabel: 'Pumped',
     vibeEmoji: '💥',
     mascotVoice: payload(),
-    featuredKartuVoice: payload(),
-    featuredCardId: null,
     recoveryLabel: 'Recovery: 41h',
     recoveryTone: 'positive',
     recoveryHoursLabel: '41h',
