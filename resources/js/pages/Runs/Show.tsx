@@ -46,11 +46,7 @@ import { formatIdDate, formatPace, formatShortDateTimeId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 import { BADGE_ABILITY, badgeName } from '@/lib/runcard';
 
-import {
-    useRunShow,
-    type RelativeEffortPayload,
-    type RunCardDetail,
-} from './useRunShow';
+import { useRunShow, type RunCardDetail } from './useRunShow';
 
 // Carries the ~1200-line canvas engine; fetched on the share tap.
 const ShareCardModal = lazy(() => import('@/components/card/ShareCardModal'));
@@ -83,8 +79,6 @@ interface ShowProps {
     /** Remaining Telegram-send cooldown for this run's speech, or null. */
     notificationRetryAfterSeconds: number | null;
     pastYou: PastYouMatch | null;
-    /** This run's effort vs the runner's own 28-day baseline, or null (no HR). */
-    relativeEffort: RelativeEffortPayload | null;
 }
 
 export default function RunsShow({
@@ -99,7 +93,6 @@ export default function RunsShow({
     isChainHead,
     notificationRetryAfterSeconds,
     pastYou,
-    relativeEffort,
 }: Readonly<ShowProps>) {
     const notificationsReachable = useNotificationsReachable();
     const shareRef = useRef<HTMLDivElement>(null);
@@ -113,12 +106,11 @@ export default function RunsShow({
         paceSec,
         hr,
         trimp,
-        effortSub,
         kartuProps,
         cardBadges,
         rarityLabel,
         shareData,
-    } = useRunShow({ detail, card, storyLine, moodFallback, relativeEffort });
+    } = useRunShow({ detail, card, storyLine, moodFallback });
 
     const distanceKmCount = useCountUp(
         detail.distance != null ? detail.distance / 1000 : 0,
@@ -148,7 +140,6 @@ export default function RunsShow({
         label: string;
         value: string;
         unit?: string;
-        sub?: string;
         explainerKey?: MetricKey;
     }> = [
         { label: 'HR', value: hrDisplay, unit: 'bpm' },
@@ -156,7 +147,6 @@ export default function RunsShow({
             label: 'TRIMP',
             value: trimpDisplay,
             unit: 'Edwards',
-            sub: effortSub,
             explainerKey: 'trimp',
         },
         {

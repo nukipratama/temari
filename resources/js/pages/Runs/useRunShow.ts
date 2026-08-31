@@ -38,28 +38,11 @@ export type RunCardDetail = Omit<RunCard, 'activity' | 'edition'> & {
     public_share_url: string;
 };
 
-/** Effort of this run vs the runner's own 28-day TRIMP baseline (see RelativeEffort). */
-export interface RelativeEffortPayload {
-    trimp: number;
-    baseline: number | null;
-    ratio: number | null;
-    band: 'well_above' | 'above' | 'typical' | 'below' | null;
-}
-
-/** Human "vs usual" line per band. Null band (thin baseline) shows nothing. */
-const EFFORT_SUB: Record<NonNullable<RelativeEffortPayload['band']>, string> = {
-    well_above: 'harder than usual',
-    above: 'a bit harder than usual',
-    typical: 'about usual',
-    below: 'easier than usual',
-};
-
 interface UseRunShowArgs {
     detail: ActivityDetail;
     card: RunCardDetail | null;
     storyLine: StoryLine | null;
     moodFallback: Mood;
-    relativeEffort: RelativeEffortPayload | null;
 }
 
 export function useRunShow({
@@ -67,7 +50,6 @@ export function useRunShow({
     card,
     storyLine,
     moodFallback,
-    relativeEffort,
 }: UseRunShowArgs) {
     const summary: StreamSummary = detail.stream_summary ?? {};
     const perKm = summary.per_km ?? [];
@@ -86,11 +68,6 @@ export function useRunShow({
             : null;
     const trimp =
         detail.trimp_edwards != null ? Math.round(detail.trimp_edwards) : null;
-    const effortSub =
-        relativeEffort?.band != null
-            ? EFFORT_SUB[relativeEffort.band]
-            : undefined;
-
     const kartuProps = useMemo(() => kartuPropsFromDetail(detail), [detail]);
     const cardBadges = useMemo(() => (card?.badges ?? []).slice(0, 3), [card]);
     const cadence = avgCadenceFromDetail(detail);
@@ -187,7 +164,6 @@ export function useRunShow({
         paceSec,
         hr,
         trimp,
-        effortSub,
         kartuProps,
         cardBadges,
         cadence,
