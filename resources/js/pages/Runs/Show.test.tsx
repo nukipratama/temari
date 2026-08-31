@@ -252,7 +252,6 @@ describe('Runs/Show', () => {
         renderShow();
         expect(screen.getAllByText('Iron Lungs').length).toBeGreaterThan(0);
         expect(screen.getByText('Share')).toBeInTheDocument();
-        expect(screen.getByText(/Why this earned Epic/)).toBeInTheDocument();
     });
 
     it('omits the kartu section when card is null', () => {

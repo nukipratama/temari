@@ -26,25 +26,20 @@ import SendNotificationButton from '@/components/SendNotificationButton';
 import StravaAction from '@/components/StravaAction';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
-import { Card } from '@/components/ui/card';
-import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
 import { Icon } from '@/components/ui/Icon';
 import MoodChip from '@/components/ui/MoodChip';
 import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
-import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { usePendingPost } from '@/hooks/usePendingPost';
 import { appLayout } from '@/layouts/appLayout';
-import { cn } from '@/lib/cn';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatIdDate, formatPace, formatShortDateTimeId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
-import { BADGE_ABILITY, badgeName } from '@/lib/runcard';
 
 import { useRunShow, type RunCardDetail } from './useRunShow';
 
@@ -389,44 +384,6 @@ export default function RunsShow({
                                     body="I'll turn this run into an image you can send anywhere."
                                 />
                             </div>
-
-                            {/* The rarity explainer is always shown, even with no
-                                badges: rarity is a composite score, so a badge-less
-                                card still deserves an honest reason, not a blank. */}
-                            <Card className="flex flex-col gap-4 px-4 py-4">
-                                <SectionLabel>
-                                    Why this earned {rarityLabel}
-                                </SectionLabel>
-                                <p className="text-sm text-text-2">
-                                    Determined by a mix of great things in this
-                                    run: a PR, steady or negative-split pace,
-                                    long distance, weekly consistency, plus the
-                                    badges you brought home.
-                                </p>
-                                {cardBadges.length > 0 && (
-                                    <div className="flex flex-col gap-3">
-                                        {cardBadges.map((b, i) => (
-                                            <div
-                                                key={b}
-                                                className={cn(
-                                                    'flex items-start gap-3 pb-3',
-                                                    i < cardBadges.length - 1
-                                                        ? 'border-b border-dashed border-cream-deep'
-                                                        : '',
-                                                )}
-                                            >
-                                                <Chip tone="horizon">
-                                                    {badgeName(b)}
-                                                </Chip>
-                                                <p className="flex-1 text-sm text-text-2">
-                                                    {BADGE_ABILITY[b] ??
-                                                        'A special condition that makes this run stand out.'}
-                                                </p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </Card>
                         </div>
                     </section>
                 )}
