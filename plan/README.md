@@ -118,6 +118,7 @@ the slice itself (see [R3](#r3)); `n/a` for backend-only or docs-only slices.
 | W3 | Coverage reconciliation | 3 | [27](slices/27-W3-coverage.md) | todo | — | main | | do not cut |
 | W4 | Docs | 3 | [28](slices/28-W4-docs.md) | todo | — | main | n/a | |
 | W5 | Merge readiness | 3 | [29](slices/29-W5-merge-readiness.md) | todo | — | main | n/a | deletes the prototype |
+| W6 | Persisted Indonesian pockets | 3 | [32](slices/32-W6-indonesian-pockets.md) | todo | — | main | n/a | carries the record `C1` freed when it cut `check-indonesian.php`; needs a data migration + a prod env change |
 
 ---
 

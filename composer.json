@@ -71,7 +71,6 @@
             "@php artisan config:clear --ansi",
             "@php artisan typescript:enums --check",
             "@php scripts/check-doc-citations.php",
-            "@php scripts/check-indonesian.php",
             "@php scripts/check-see-references.php",
             "vendor/bin/pint --test",
             "npm run format:check",

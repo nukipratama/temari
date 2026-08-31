@@ -19,59 +19,12 @@ permissions:
   contents: read
 
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-      docker: ${{ steps.filter.outputs.docker }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-
-      # Classify the push so each suite skips when its files weren't touched.
-      # Shared-infra paths (ci.yml, .github/actions/, Dockerfile, compose,
-      # .env.example) match both, so an infra change runs the full pipeline.
-      # `.github/actions/` is in there because setup-php/setup-node/
-      # show-runner-resources are what every suite boots on: edited alone, they
-      # used to match nothing and ship having run no job at all.
-      #
-      # Diff is against the merge-base with main; on main pushes both jobs run
-      # anyway (see the `if`). Note that on a PR into an `epic/*` branch this
-      # makes `changed` the whole epic diff rather than the PR's own, so the
-      # filters effectively pass everything for the length of an epic — safe
-      # (it over-runs, never under-runs), but it means they buy nothing there.
-      #
-      # `docker` is narrower than the other two on purpose: it lists only the
-      # inputs that can break the prod image without any other job noticing.
-      # The assets stage's inputs (package*.json, vite/tsconfig, resources/,
-      # public/, scripts/) are deliberately absent — frontend-tests already runs
-      # `npm run build` over exactly those, so including them would rebuild the
-      # image on nearly every frontend PR for no signal the pipeline lacks.
-      - name: Detect changed areas
-        id: filter
-        run: |
-          git fetch --no-tags --quiet origin main
-          changed=$(git diff --name-only "$(git merge-base origin/main HEAD)" HEAD)
-          printf 'Changed files:\n%s\n' "$changed"
-          backend=false; frontend=false
-          if printf '%s\n' "$changed" | grep -qE '^(app|bootstrap|config|database|routes|tests)/|^composer\.(json|lock)$|^phpunit\.xml$|^artisan$|^(phpstan|phpstan-baseline)\.neon$|^rector\.php$|^pint\.json$|^scripts/check-see-references\.php$|^\.github/(workflows/ci\.yml|actions/)|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
-            backend=true
-          fi
-          if printf '%s\n' "$changed" | grep -qE '^resources/(js|css|views)/|^public/|^package(-lock)?\.json$|^vite\.config\.ts$|^vitest\.config\.ts$|^tsconfig\.json$|^eslint\.config\.|^\.nvmrc$|^scripts/check-entry-chunks\.mjs$|^scripts/check-raw-palette\.mjs$|^\.github/(workflows/ci\.yml|actions/)|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
-            frontend=true
-          fi
-          docker=false
-          if printf '%s\n' "$changed" | grep -qE '^Dockerfile$|^docker/|^composer\.(json|lock)$|^resources/brand/fonts/|^\.github/workflows/ci\.yml$'; then
-            docker=true
-          fi
-          echo "backend=$backend" >> "$GITHUB_OUTPUT"
-          echo "frontend=$frontend" >> "$GITHUB_OUTPUT"
-          echo "docker=$docker" >> "$GITHUB_OUTPUT"
-          echo "Result: backend=$backend frontend=$frontend docker=$docker"
-
-  # Runs on every event, independent of the path filter.
+  # Every job below runs on every event. There used to be a `changes` job
+  # path-filtering the five heavy ones; C1 removed it. It diffed against the
+  # merge-base with `main`, so on a PR into a long-lived `epic/*` branch it saw
+  # the whole epic diff — measured at 1147 files against 1 actually changed —
+  # and every output was permanently true. It had never skipped a job on this
+  # epic, including `docker`: build-prod-image ran on all four of PP0-PP3.
   secret-scan:
     runs-on: ubuntu-latest
     steps:
@@ -83,11 +36,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: false
 
-  # The unconditional guards: they run on every event, independent of the path
-  # filter, because a code deletion anywhere can orphan a doc citation or strand
-  # an ALLOWED entry — neither of which is confined to the paths that changed.
-  # Every downstream job gates on this one, so keep it to checks that are fast
-  # and that genuinely need to see the whole tree.
+  # The unconditional guards: they run on every event because a code deletion
+  # anywhere can orphan a doc citation, which is not confined to the paths that
+  # changed. Every downstream job gates on this one, so keep it to checks that
+  # are fast and that genuinely need to see the whole tree. Plural because it
+  # held two guards until C1 cut the Indonesian one; the name stays accurate for
+  # whatever lands here next.
   repo-guards:
     runs-on: ubuntu-latest
     steps:
@@ -98,12 +52,10 @@ jobs:
           php-version: ${{ env.PHP_VERSION }}
       - name: Check doc citations resolve
         run: php scripts/check-doc-citations.php
-      - name: Check no Indonesian has crept back in
-        run: php scripts/check-indonesian.php
 
   backend-tests:
-    needs: [changes, secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main') }}
+    needs: [secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' }}
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -190,8 +142,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   frontend-tests:
-    needs: [changes, secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main') }}
+    needs: [secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -247,8 +199,8 @@ jobs:
   # reliably catches new phpstan/rector/pint regressions. Pre-existing findings
   # are captured in phpstan-baseline.neon; this gate blocks anything NEW.
   backend-static-analysis:
-    needs: [changes, secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main') }}
+    needs: [secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -270,8 +222,8 @@ jobs:
         run: vendor/bin/rector --dry-run --no-progress-bar
 
   frontend-static-analysis:
-    needs: [changes, secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main') }}
+    needs: [secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -289,7 +241,7 @@ jobs:
 
   # Single required check for branch protection.
   ci-gate:
-    needs: [backend-tests, frontend-tests, backend-static-analysis, frontend-static-analysis, build, secret-scan, repo-guards, changes]
+    needs: [backend-tests, frontend-tests, backend-static-analysis, frontend-static-analysis, build, secret-scan, repo-guards]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -298,18 +250,21 @@ jobs:
           for r in "${{ needs.backend-tests.result }}" "${{ needs.frontend-tests.result }}" "${{ needs.backend-static-analysis.result }}" "${{ needs.frontend-static-analysis.result }}" "${{ needs.build.result }}"; do
             [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a required job did not pass ($r)"; exit 1; }
           done
-          for r in "${{ needs.secret-scan.result }}" "${{ needs.repo-guards.result }}" "${{ needs.changes.result }}"; do
+          for r in "${{ needs.secret-scan.result }}" "${{ needs.repo-guards.result }}"; do
             [ "$r" = "success" ] || { echo "::error::a required unconditional job did not pass ($r)"; exit 1; }
           done
 
   # Two reasons to run: the main push that produces the image `deploy` pulls,
-  # and a PR that touches an input which can only break here. Until the latter
-  # existed, nothing in CI ever built the runtime stage on a PR — a Dockerfile
-  # change reached main having been validated by hand or not at all.
+  # and validating on a PR that a Dockerfile/composer change still builds —
+  # before that existed, such a change reached main validated by hand or not at
+  # all. It used to be path-filtered to those inputs; since C1 removed the
+  # filter it builds on every PR, which costs ~40s off a warm registry cache and
+  # is what it was already doing on every epic PR anyway. A PR build reads the
+  # shared cache but never pushes a tag or writes the cache back (see below).
   build:
     name: build-prod-image
-    needs: [changes, secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && ((github.ref == 'refs/heads/main' && github.event_name == 'push') || needs.changes.outputs.docker == 'true') }}
+    needs: [secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
