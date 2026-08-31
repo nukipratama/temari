@@ -56,7 +56,7 @@ Three are recorded rather than implemented, each for a stated reason:
 
 | # | reflow | why not carried |
 |---|---|---|
-| 2 | Login headline `text-[34px]` → `text-[46px]` | The app replaced literal type sizes with the `text-display-*` token ladder in `F2`/`F3`, and `PageHero` has no responsive size step. Adding one is a type-system change, not a layout change. `PS1` owns it. |
+| 2 | Login headline `text-[34px]` → `text-[46px]` | The app replaced literal type sizes with the `text-display-*` token ladder in `F2`/`F3`, and `PageHero` has no responsive size step. Adding one is a type-system change, not a layout change. `PS1` owns it. **Resolved in `PS1`** — no type-system change was needed: `PS1`'s hero composes its own `h1`, and every step on the ladder was measured against the prototype's two values. Flat `text-display-sm` ships, exact at the three capture viewports below the breakpoint; every discrete `min-[900px]:` step measured worse above it, and the nearest one inverts the reflow's direction. Table and residual in [PS1-login](PS1-login.md). |
 | 10 | Settings HR-zone bounds grid `grid-cols-2` → `grid-cols-4` | The prototype mocks three inputs in that grid; the shipped `HrZonesDisclosure` has **two** (Max HR, Resting HR). Four columns for two fields leaves half the row empty and each input a quarter-width. The base `grid-cols-2` **is** now carried (it was `grid gap-4`, single-column until `sm:`), which is the part that reads correctly with the real field count. |
 | 11 | Settings `AccountActions` row `flex-col` → `flex-row` | The prototype draws a button pair; the app draws a `SettingsRow` list with `mdi:logout`. There is no row to turn sideways until `PS11` restructures the section. |
 
@@ -218,6 +218,8 @@ frosted pill mid-scroll, which is the prototype's `backdrop-blur-xl` design, not
    that every other parity slice branches from buys nothing but conflicts. Worth doing in `W2`.
 2. **Per-screen bottom padding** (§1.1's `pb` column) is unimplemented, by design — the `PS` slices
    own it. If it turns out to matter uniformly, `AppShell` needs a second component-keyed map.
+   `PS1` confirmed Login needs nothing here: it has no root wrapper, so its bottom pad is the
+   footer's own `pb-7`, and `BareShell` adds no nav clearance to subtract.
 3. **Reflow #10** (Settings' HR-zone grid) becomes portable verbatim if `PS11` adds the third and
    fourth zone-bounds inputs the prototype draws.
 4. `CLAUDE.md` still says the app is "light-mode only: `.dark` is never applied". Two grounds
