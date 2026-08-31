@@ -1,20 +1,19 @@
 ---
-title: Kartu — full view on the run page
-description: How a run becomes a Kartu (rarity, badges, special move) and its full view on the run detail page. Browsing/filtering by rarity happens inline on History, not a dedicated page.
+title: Kartu — earned per run, seen as a share image
+description: How a run becomes a Kartu (rarity, badges, special move), and the share button on the run detail page that is now the only way to see one. Browsing/filtering by rarity happens inline on History, not a dedicated page.
 tags: [feature, cards]
 status: living
-reviewed: 2026-08-19
+reviewed: 2026-09-01
 code_refs:
-  - resources/js/components/card/Kartu.tsx
   - resources/js/components/card/ShareCardModal.tsx
   - resources/js/components/card/RouteGlyph.tsx
-  - resources/js/components/card/ZoneBar.tsx
   - resources/js/components/card/KartuMini.tsx
+  - resources/js/components/run/RunHero.tsx
 ---
 
-# Kartu — full view on the run page
+# Kartu — earned per run, seen as a share image
 
-Every Strava run that syncs becomes a **kartu** — a trading-card view of that run with a rarity, a few badges, and a Temari-written "special move" name. There is no standalone card gallery or URL: a card is shown wherever its run is — leading each row of [[run-history]] (server-side rarity filter lives there too) and, in full, as a section of [[run-detail]]. Tapping a card in either place opens (or is already on) `route('activities.show', activity)`.
+Every Strava run that syncs becomes a **kartu** — a trading-card view of that run with a rarity, a few badges, and a Temari-written "special move" name. There is no standalone card gallery or URL, and since `PS8` no full-face card is drawn in the app at all: a card surfaces as the compact [KartuMini](../../resources/js/components/card/KartuMini.tsx) leading each row of [[run-history]] (server-side rarity filter lives there too) and Login's sample, and in full only as the **share image** the run's own detail page can generate.
 
 ## System dependencies
 
@@ -27,11 +26,11 @@ Every Strava run that syncs becomes a **kartu** — a trading-card view of that 
 
 [CardPresenter](../../app/Services/Run/Story/CardPresenter.php) holds the rarity counts, both edition strategies (a bulk index map and a single-card aggregate query), the column whitelist that keeps internal columns out of Inertia, the mood fallback, and the `CardFlavor` payload. The run-detail full view is now its only reader — Today's featured-kartu panel was cut in `PP3`.
 
-## The card's full view (on [[run-detail]])
+## The share button (on [[run-detail]])
 
-A card's full view — the big card + lore — lives in its own section on `/activities/{activity}`, right below the hero, built by `RunController::show` in [RunController.php](../../app/Http/Controllers/RunController.php): it enriches the run's `RunCard` with the `CardFlavor` analysis, its edition (`index`/`total` within its rarity), and a signed `public_share_url`. [Show.tsx](../../resources/js/pages/Runs/Show.tsx) lays out a sky hero with the big card + actions on the left, and the lore on the right: the special-move title and the streamed flavor quote (re-analyzable here). The "why this earned [rarity]" block that used to explain each badge was cut in `PP3` (P14/P28). The full-face render is [Kartu](../../resources/js/components/card/Kartu.tsx): route glyph ([RouteGlyph](../../resources/js/components/card/RouteGlyph.tsx)), HR-zone bar ([ZoneBar](../../resources/js/components/card/ZoneBar.tsx)), badges, and stats. [KartuMini](../../resources/js/components/card/KartuMini.tsx) is the compact variant used elsewhere — [[run-history]]'s list row, the dashboard.
+`RunController::show` in [RunController.php](../../app/Http/Controllers/RunController.php) enriches the run's `RunCard` with the `CardFlavor` analysis, its edition (`index`/`total` within its rarity), and a signed `public_share_url`. `PS8` rebuilt the page to the prototype's section list, which draws **no collectible block anywhere** — so the on-page card, its rarity chip and its lore column are gone, and with them the `Kartu`, `KartuMount` and `ZoneBar` components they were the only readers of. The `CardFlavor` quote survives as the share image's caption.
 
-One action sits under the hero: **Bagikan** opens [ShareCardModal](../../resources/js/components/card/ShareCardModal.tsx), which draws a downloadable share image (card or route layout) on a canvas. The pack-tear reveal modal that used to sit beside it was cut in `PP3` — the prototype draws no reveal, so a card is only ever seen in place.
+What is left is one control: a **Share** button in the run hero ([RunHero.tsx](../../resources/js/components/run/RunHero.tsx)), rendered only when the run actually has a card, opening [ShareCardModal](../../resources/js/components/card/ShareCardModal.tsx) — which draws the downloadable share image (card or route layout) on a canvas. The prototype draws no share button and no dialog at all; keeping one is a deliberate divergence (`cut-list.md` §4), because without it a generated card would be permanently unviewable and Login's "a card for every run" teaser would promise nothing. The pack-tear reveal modal and the "why this earned [rarity]" explainer were cut earlier, in `PP3`.
 
 ## Where rarities and badges come from
 
