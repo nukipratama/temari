@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
-import PageHero from '@/components/ui/PageHero';
 import { bareLayout } from '@/layouts/BareShell';
 import { cn } from '@/lib/cn';
 
@@ -171,21 +170,14 @@ function Hero() {
             <div className="relative">
                 <BrandMark tone="cream" />
 
-                <PageHero
-                    size="sm"
-                    onSky
-                    italic
-                    className="mt-4.5"
-                    eyebrow={
-                        <Eyebrow token="hero" tone="horizon" className="mb-2">
-                            running companion
-                        </Eyebrow>
-                    }
-                >
+                <Eyebrow token="hero" tone="horizon" className="mt-4.5">
+                    running companion
+                </Eyebrow>
+                <h1 className="mt-2 font-serif text-display-sm font-semibold text-cream italic">
                     you vs
                     <br />
                     <em className="text-horizon italic">past you.</em>
-                </PageHero>
+                </h1>
 
                 <p className="mt-2.5 max-w-[32ch] text-sm leading-relaxed text-cream min-[900px]:max-w-[44ch] min-[900px]:text-base">
                     every run gets matched against one you have already done.
