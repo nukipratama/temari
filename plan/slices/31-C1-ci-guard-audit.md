@@ -107,6 +107,17 @@ One residual, documented rather than papered over: **CI gates PHP coverage at `-
 PR, and there is no coverage driver in the Sail image.** That single gate is unreproducible locally
 and is the only way a green `composer check` can still meet a red CI.
 
+> **Regression, caught by `PS4` on 2026-09-01 and fixed there.** Widening `check` to fifteen steps
+> pushed it past **composer's 300s default `process-timeout`**, which applies per script command:
+> `vendor/bin/phpstan analyse` was killed mid-run and the script exited 1 regardless of the code
+> under test. CI never saw it — CI runs these as separate workflow steps and never invokes
+> `composer check` — so "one definition of done" was, from the day it landed, not runnable to
+> completion on any developer machine. The fix is the idiom the `dev` script already used and
+> `check` never inherited: `Composer\Config::disableProcessTimeout` as the script's first entry.
+> Deliberately **not** a global `config.process-timeout`, which would also lift the limit on
+> installs and every other composer command. The lesson generalises past this one line: a gate
+> nobody has run end to end is not a gate, and `C1` shipped without doing so.
+
 ### 2. `check-indonesian.php` no longer walks gitignored trees
 
 `SCAN_DIRS` includes `resources`, and the walk was a plain `RecursiveDirectoryIterator`, so it read
