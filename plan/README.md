@@ -91,7 +91,7 @@ the slice itself (see [R3](#r3)); `n/a` for backend-only or docs-only slices.
 | F4 | Shell + nav | 1 | [05](slices/05-F4-shell-and-nav.md) | merged | [#657](https://github.com/nukipratama/temari/pull/657) | main | 95.04→95.11% fn | squashed as ae8a92d7 |
 | F5 | Two-ground art | 1 | [06](slices/06-F5-two-ground-art.md) | merged | [#659](https://github.com/nukipratama/temari/pull/659) | wt | 95.05% fn (no change) | squashed as 6aa3f9fc |
 | F6 | Charts, two grounds | 1 | [07](slices/07-F6-charts.md) | merged | [#658](https://github.com/nukipratama/temari/pull/658) | wt | 95.11→95.05% fn | squashed as ee4f7881 |
-| F7 | Demo data + fixtures | 1 | [08](slices/08-F7-demo-data-and-fixtures.md) | todo | — | wt | | after B2/B3 |
+| F7 | Demo data + fixtures | 1 | [08](slices/08-F7-demo-data-and-fixtures.md) | in-review | [#PR_PLACEHOLDER](#PR_PLACEHOLDER) | wt | n/a | PlannedSession/InboxNotification/trend_read gaps closed; shared fixtures module deferred |
 | B3 | Structured session segments | 2a | [09](slices/09-B3-session-segments.md) | merged | [#660](https://github.com/nukipratama/temari/pull/660) | wt-be | n/a | freezes `WeekPlanDay`; squashed as ab8f33aa |
 | B2 | Compliance v2 | 2a | [10](slices/10-B2-compliance-v2.md) | merged | [#661](https://github.com/nukipratama/temari/pull/661) | wt-be | n/a | persisted score, daily scoring pass; squashed as 5ec8d3e6 |
 | B1 | Training preferences | 2a | [11](slices/11-B1-training-preferences.md) | merged | [#662](https://github.com/nukipratama/temari/pull/662) | wt-be | n/a | preference-over-behavior override, 2-day template; squashed as c9338293 |
