@@ -283,10 +283,11 @@ the confetti burst — reads the same preference itself through
    (`useCountUp` + `countUpEase`, an ease-out curve with no overshoot — a tallying number should
    land exactly on target), chart/route draw-ins (`drawIn`, SVG `pathLength` 0→1), and staggered
    group reveals (`staggerContainer` wrapping `fadeInUp` children).
-3. **Celebratory** — the mascot's `idleByMood` / fidget keyframes in `lib/motion.ts`. Reserved
-   for moments that are actually earned — never layer tier 3 onto routine navigation or data
-   loading. The celebration overlays this tier was written for (the card reveal, the unlock toast
-   and the accessory takeover) were cut in `PP3`.
+3. **Celebratory** — the `idleByMood` / fidget keyframes in `lib/motion.ts`. Reserved for moments
+   that are actually earned — never layer tier 3 onto routine navigation or data loading. Nothing
+   uses this tier now: the overlays it was written for (the card reveal, the unlock toast and the
+   accessory takeover) were cut in `PP3`, and the mascot those keyframes animated in `PP2`. The
+   constants are left for `W2` to sweep.
 
 ## Gradients & atmospherics
 

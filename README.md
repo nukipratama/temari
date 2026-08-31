@@ -2,11 +2,11 @@
 
 A self-hosted, Strava-connected personal running dashboard with a built-in companion (**Temari**) that narrates each run. Containerized end-to-end — Laravel Sail in dev, FrankenPHP behind a Cloudflare Tunnel in prod — and continuously deployed to a single self-hosted host on every merge to `main`.
 
-> **Status**: Live in prod. Strava OAuth + activity sync, briefing/verdict narration (Azure OpenAI with rule-based fallback), training-load (CTL/ATL/Form), per-run RunCards, weekly snapshots, and the Temari mascot are all shipping. design-token palette (gold `horizon` + warm linen canvas + deep indigo `sky`), intentionally far from Strava orange. Light-mode only.
+> **Status**: Live in prod. Strava OAuth + activity sync, briefing/verdict narration (Azure OpenAI with rule-based fallback), training-load (CTL/ATL/Form), per-run RunCards, weekly snapshots, and Temari's narration are all shipping. design-token palette (gold `horizon` + warm linen canvas + deep indigo `sky`), intentionally far from Strava orange. Two grounds, dark by default.
 
 ## What it is
 
-Temari ("running buddy") turns your Strava runs into something you look forward to opening. Each run is ingested and scored with proper running metrics — pace, splits, HR zones, training load — then dealt as a collectible **card** with a rarity and a vibe, and narrated by **Temari**, a ball-bodied mascot companion — built from hand-wound thread, its coverage growing with your training season — who reads your day back to you in a warm, casual voice.
+Temari ("running buddy") turns your Strava runs into something you look forward to opening. Each run is ingested and scored with proper running metrics — pace, splits, HR zones, training load — then dealt as a collectible **card** with a rarity and a vibe, and narrated by **Temari**, a running companion drawn as one line-art face, who reads your day back to you in a warm, casual voice.
 
 It is deliberately **not** a Strava clone. The run-tracker core is correct and honest, but the point is the companion layer on top: it's built for the solo runner who finds raw dashboards cold and wants their training to feel like a story. Single-tenant and self-hosted by design.
 
@@ -17,7 +17,7 @@ It is deliberately **not** a Strava clone. The run-tracker core is correct and h
 - **Run detail** — four-lens breakdown, route map, splits, HR zones, AI insights per run. See [docs/features/run-detail.md](docs/features/run-detail.md).
 - **Training load & records** — CTL/ATL/Form, personal records, progression. See [docs/features/records.md](docs/features/records.md).
 - **Recaps** — weekly, monthly, and persona narratives in Temari's voice. See [docs/features/recaps.md](docs/features/recaps.md).
-- **Targets & accessories** — goals and unlockable mascot accessories. See [docs/features/targets-accessories.md](docs/features/targets-accessories.md).
+- **Targets & accessories** — goals and unlockable accessories, granted at ingest. See [docs/features/targets-accessories.md](docs/features/targets-accessories.md).
 
 Full feature map: [docs/features/index.md](docs/features/index.md).
 

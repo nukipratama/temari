@@ -9,10 +9,10 @@ use App\Models\UserUnlock;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * Resolves which accessories a user has equipped into the shape the Temari
- * mascot renders ({@see resources/js/components/temari/TemariProto.tsx}). One
- * source of truth shared by the Accessories page and the global Inertia prop, so
- * the equipped look stays consistent everywhere the mascot appears.
+ * Resolves which accessories a user has equipped, per slot. The mascot that
+ * wore them and the page that chose them were cut by the parity program's
+ * `PP2`; this still backs the `equippedAccessories` shared prop, which nothing
+ * reads and nothing can now change. Left standing for the dead-code sweep.
  */
 class EquippedAccessories
 {

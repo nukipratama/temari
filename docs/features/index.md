@@ -40,5 +40,5 @@ _Systems_
 - [[telegram-notifications]] — link a Telegram account, the master switch and channel mutes, post-run + weekly-recap push
 - [[notification-inbox]] — /inbox, the durable record of what Temari sent, with celebration replay
 - [[streak-reminders]] — Saturday nudges for at-risk weekly streaks, on any wired channel
-- [[temari-mascot]] — poses, accessories, vibes
+- [[temari-mascot]] — the face and the brand mark, the app's whole identity art
 - [[installed-app-shell]] — Home-Screen install: edge-to-edge status bar, launch image, top bar with back button, touch feel, edge-swipe back

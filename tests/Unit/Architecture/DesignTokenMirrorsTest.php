@@ -29,41 +29,12 @@ const OFF_TOKEN = [
     '#b8302f' => 'chartTokens hrZone Z5',
     '#2a1017' => 'shareCard/RunCardImageRenderer emberDark — the ember hue carried to canvas-background darkness',
     '#fcf9f3' => 'shareCard paper highlight, lighter than any surface token',
-    // TemariProto halo strokes. The halo palette reuses the exact token value
-    // where one fits (easy is --color-leaf, chill is --color-mood-chill, stone
-    // is --color-stone); these are the muted stroke variants with no token
-    // equivalent.
-    '#8a8474' => 'TemariProto halo neutral',
-    '#a87e1a' => 'TemariProto halo blazing',
-    '#6f8f2d' => 'TemariProto halo gold',
-    // TemariProto medal metals. Gold alone has a token (--color-horizon).
-    '#a98f6b' => 'TemariProto medal bronze',
-    '#b9c0c9' => 'TemariProto medal silver',
-    '#d8f0ff' => 'TemariProto medal platinum',
-    '#fffaf0' => 'TemariProto eye highlight, lighter than any surface token',
-    '#3b2f1f' => 'TemariProto drop-shadow floodColor',
-    // TemariProto HALO_DARK/AURA_ITEMS_DARK/SEASON_COLORS_DARK (F5) — the
-    // halo/aura/season rings draw against the page ground, not the mascot's
-    // own cream body, so each needs its own dark-legible value derived via
-    // inkOnDark() (resources/brand/build-tokens.mjs), same rationale as the
-    // light halo strokes above. Several dark values reuse a light token
-    // unmodified (already legible both directions) and are not repeated here.
-    '#cdc4ac' => 'TemariProto halo neutral, dark ground',
-    '#7b71a8' => 'TemariProto halo chill / aura calm, dark ground',
-    '#75787c' => 'TemariProto halo stone, dark ground',
-    '#bd5769' => 'TemariProto halo wobbly, dark ground',
-    '#a46772' => 'TemariProto halo gassed, dark ground',
-    '#ab636f' => 'TemariProto aura heatwave / season ember-deep, dark ground',
-    '#727881' => 'TemariProto season sky-2, dark ground',
-    '#448466' => 'TemariProto season leaf-deep, dark ground',
-    '#8a68b4' => 'TemariProto season overloaded, dark ground',
 ];
 
 const MIRROR_FILES = [
     'resources/js/lib/chartTokens.ts',
     'resources/js/lib/shareCard.ts',
     'resources/js/lib/runcard.ts',
-    'resources/js/components/temari/TemariProto.tsx',
     'resources/views/app.blade.php',
     'resources/views/errors/layout.blade.php',
     'app/Services/Run/Story/RunCardImageRenderer.php',

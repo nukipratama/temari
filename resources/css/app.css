@@ -721,31 +721,3 @@ body {
     }
 }
 
-/* Temari mascot animations — pose-driven keyframes used by
-   <TemariProto>. Mounted globally so the SVG layers can run them via
-   the `animation` style prop or the `animation` Tailwind shortcut. */
-@layer base {
-    @keyframes temari-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.015); } }
-    @keyframes temari-bob     { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-    @keyframes temari-bounce {
-        0%, 100% { transform: translateY(0); }
-        30%      { transform: translateY(-10px) scaleY(1.04); }
-        60%      { transform: translateY(2px)  scaleY(0.96); }
-    }
-    @keyframes temari-sway   { 0%, 100% { transform: rotate(-4deg) translateX(-2px); } 50% { transform: rotate(4deg) translateX(2px); } }
-    @keyframes temari-nod    { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
-    @keyframes temari-tilt   { 0%, 100% { transform: rotate(-3deg) translateY(0); } 50% { transform: rotate(2deg) translateY(-2px); } }
-    @keyframes temari-spin-sparkle { 0% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
-    @keyframes temari-aura-pulse {
-        0%, 100% { opacity: 0.55; transform: scale(1); }
-        50%      { opacity: 0.90; transform: scale(1.08); }
-    }
-    @keyframes temari-blink { 0%, 92%, 100% { transform: scaleY(1); } 94%, 98% { transform: scaleY(0.1); } }
-
-    .temari-root { display: inline-block; transform-origin: 50% 80%; }
-
-    @media (prefers-reduced-motion: reduce) {
-        .temari-root,
-        .temari-root * { animation: none !important; }
-    }
-}

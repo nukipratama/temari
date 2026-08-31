@@ -9,7 +9,7 @@ code_refs:
   - app/Http/Controllers/ProfileController.php
   - resources/js/components/temari/AnalysisStatus.tsx
   - resources/js/components/collection/ProgressionChart.tsx
-  - resources/js/components/temari/Temari.tsx
+  - resources/js/components/temari/FaceIcon.tsx
   - resources/js/components/UserAvatarLink.tsx
   - app/Services/Run/Metrics/VdotEstimator.php
   - app/Actions/Run/Metrics/EstimateThresholdAction.php
@@ -32,7 +32,7 @@ The Profile page (`/profile`) is the runner's about-me: who they are, how Temari
 
 ## Identity + What Temari says about you
 
-The header eyebrow is built from first-run date and months-since-first-run, over an "{firstName} Runner, / *your story.*" headline. Below it a `HeroPanel` pairs the [Temari](resources/js/components/temari/Temari.tsx) mascot (pose `proud`) with **"★ What Temari says about you"** — the AI profile voice (`profileVoice`), rendered through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx) `onSky` as an italic quote. Strava status (`identity.strava_connected`) shows as a "Reconnect" action when revoked, and a "With Temari since" date anchors the panel's right edge on desktop.
+The header eyebrow is built from first-run date and months-since-first-run, over an "{firstName} Runner, / *your story.*" headline. Below it a `HeroPanel` pairs a 64px leaf-ringed [FaceIcon](resources/js/components/temari/FaceIcon.tsx) with **"★ What Temari says about you"** — the AI profile voice (`profileVoice`), rendered through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx) `onSky` as an italic quote. Strava status (`identity.strava_connected`) shows as a "Reconnect" action when revoked, and a "With Temari since" date anchors the panel's right edge on desktop.
 
 This is the merged Aku voice: it reads who the runner is from their 12-week mood mix and backs that reading with their lifetime numbers, in one billed call ([AkuProfileVoiceNarrator](app/Services/AI/Narrators/AkuProfileVoiceNarrator.php) carries `get_persona_mix` alongside `get_lifetime_stats`, `get_training_paces` and `get_progression_signal`). Server side, `ProfileController::resolveProfileVoice` looks up the `AkuProfileVoice` analysis keyed by **ISO week** (`isoFormat('GGGG-[W]WW')`) and returns `Analysis::toPayload`. The numbers on the page are live; the prose is refreshed once a week by `ai:weekly-profile` (`invalidate: false`, so the week key is the refresh) or on demand via "Reread". See [[recaps]] and [[ai-pipeline]].
 
@@ -82,5 +82,4 @@ Profile carries no settings section of its own; the Telegram notification panel 
 ## Notes / gotchas
 
 - `profileVoice` is keyed **per ISO week**, and `ProfileController` must compute that key the same way `WeeklyProfileCommand` and `DemoRunSeeder` do. `resolveProfileVoice` always returns a payload — `Analysis::toPayload(null, …)` stages a `pending` one when no row matches — and a plain `pending` block renders nothing at all, so a key mismatch shows up as a silently empty hero quote rather than an error.
-- The mascot here renders via the shared [Temari](resources/js/components/temari/Temari.tsx) wrapper, so any equipped accessory shows up automatically.
 - The voice block leans on the same [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx) state machine as the rest of the app — see [[ai-pipeline]] and [[data-model]] (`Analysis`, `PersonalRecord`).

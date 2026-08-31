@@ -8,8 +8,8 @@ export default defineConfig({
         alias: {
             '@': path.resolve(__dirname, 'resources/js'),
             // Test-only: the brand generators are the source of truth for the
-            // mascot and its catalogue, and are pinned from Vitest. They are
-            // never aliased in vite.config.ts, so none of this reaches a bundle.
+            // derived token set, and are pinned from Vitest. They are never
+            // aliased in vite.config.ts, so none of this reaches a bundle.
             '@brand': path.resolve(__dirname, 'resources/brand'),
             // Test-only, same reasoning: source-guard scripts export their
             // rule tables for direct testing. Never aliased in vite.config.ts.
