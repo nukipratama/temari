@@ -14,7 +14,7 @@ code_refs:
 
 # Settings
 
-`/settings` is the one home for user settings. They were once scattered on Profile (`/profile`), then reached via a single row at the bottom of that page; the legacy `/pengaturan` redirect still points at the real page ([routes/web.php](../../routes/web.php)).
+`/settings` is the one home for user settings. They were once scattered on Profile (`/profile`), then reached via a single row at the bottom of that page. The legacy `/pengaturan` redirect was deleted in `C1` along with every other legacy redirect ([routes/web.php](../../routes/web.php)).
 
 **Navigation:** one entry point, two hops. The avatar in [MobileTopBar](../../resources/js/components/MobileTopBar.tsx) links to `/profile` from every bottom-nav screen; that screen's own topbar carries a gear to `/settings`. Settings is a **pushed screen** — a back chevron to Profile, no bottom nav — so it has no in-page nav of its own. `route('settings')` → `/settings` (GET). Named route: `settings`.
 

@@ -25,17 +25,6 @@ it('requires authentication for the show page', function (): void {
     $this->get("/activities/{$activity->id}")->assertRedirect('/login');
 });
 
-it('requires authentication for the /catatan redirect', function (): void {
-    $this->get('/catatan')->assertRedirect('/login');
-});
-
-it('redirects /catatan to /activities', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/catatan')
-        ->assertRedirect('/activities');
-});
-
 it('shows a single run detail with Temari speech + run card', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();

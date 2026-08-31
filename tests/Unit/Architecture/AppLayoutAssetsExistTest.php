@@ -48,7 +48,7 @@ it('resolves every asset() call the layout makes', function (): void {
         'An asset() call in app.blade.php is not covered by this test. Teach it the new '
         .'reference rather than letting the file drop out of the existence sweep.',
     );
-});
+})->group('structure');
 
 it('points every layout asset at a file that exists', function (): void {
     $blade = appLayoutBlade();
@@ -62,4 +62,4 @@ it('points every layout asset at a file that exists', function (): void {
     ));
 
     expect($missing)->toBe([], 'Referenced from app.blade.php but absent from public/: '.implode(', ', $missing));
-});
+})->group('structure');

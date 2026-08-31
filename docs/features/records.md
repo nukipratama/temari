@@ -18,8 +18,9 @@ standalone `/records` scoreboard (retired), a **Personal Bests** panel on `/tren
 `PP3`**, decision P25 — the prototype's Trends screen draws four blocks and a personal-bests table
 is not one of them), and their surviving home, **[[profile]]'s progression charts**.
 
-`/rekor` (the Indonesian-named legacy redirect) still points at `/trends`; the old
-`/records` / `/badges` routes themselves 404, no redirect, since neither had external consumers.
+The old `/records` / `/badges` routes 404, no redirect, since neither had external consumers. The
+Indonesian-named `/rekor` redirect that used to point at `/trends` was deleted in `C1` along with
+every other legacy redirect.
 
 ## System dependencies
 

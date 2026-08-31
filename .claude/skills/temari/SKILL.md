@@ -23,7 +23,7 @@ Two DB connections: default `mysql` plus a second **`analytics`** schema for met
 
 ## Voice & copy
 
-- **No em-dashes (`—`)** in UI copy *or* LLM prompt strings — they read as an AI/translation tell. Use commas, periods, colons, or `·`. (The `'—'` glyph as a *null placeholder* in data display is fine.)
+- **Prefer commas, periods, colons or `·` over em-dashes (`—`)** in UI copy and LLM prompt strings — a reflexive em-dash reads as an AI tell. This is a preference, not a ban: a deliberate one is fine, and the `'—'` glyph as a *null placeholder* in data display always was. Nothing gates it (the hard test was cut in `C1`); it is a judgement call at review time. `TemariPersona`'s prompt still instructs the model itself to avoid them, which is separate and unchanged.
 - Temari is a training partner who keeps score, not a soft cheerleader: warm, but competitive about the user's own numbers (never against other runners), willing to name a coast once and plainly, and stingy with praise so it means something when given. Her narrated voice leans lowercase (a soft tendency, not a rule) and dry-funny; **UI chrome stays Title Case** and does not adopt the lowercase tendency. Shared across both: plain running-domain vocabulary (`pace`, `HR`, `km`, `TRIMP`, `splits`), a jargon-accessibility tier for technical terms, a `**bold**` emphasis rule, and a tight emoji rule (zero by default, one max, only for a genuine PR/first-ever, glyphs limited to 🔥/✨/🛌).
 - Full rules: [docs/voice-and-tone.md](../../../docs/voice-and-tone.md). Persona source of truth: [TemariPersona.php](../../../app/Services/AI/TemariPersona.php). Read it before writing or reviewing copy.
 
@@ -264,6 +264,12 @@ worktree's install just replays from cache instead of re-downloading over the ne
 `worktree-setup.sh` chowns all three cache-type volumes (`node_modules` included) to `www-data`
 right after bringing the stack up, since they're created root-owned on first boot and the container
 always runs as `www-data` — no manual fix needed.
+
+**Git hooks are shared, not per-worktree.** `core.hooksPath` lives in the common `.git/config` that
+linked worktrees inherit, so every worktree runs the *main checkout's* `.githooks/` at whatever
+version that checkout has on disk. A hook edited on a worktree branch is not exercised by that
+worktree's commits — invoke the script directly to test it. (If the stored value is absolute, it
+pins every worktree to the main checkout; `composer install` re-sets it relative.)
 
 **One fresh-worktree gotcha**, not concurrency-specific: if several worktrees cold-install at the
 same moment, one can occasionally fail mid-extraction on a transient bind-mount visibility race —
