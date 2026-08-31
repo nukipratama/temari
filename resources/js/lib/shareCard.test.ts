@@ -1,9 +1,12 @@
 import polylineCodec from '@mapbox/polyline';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { PALETTE } from '@/lib/chartTokens';
+
 import {
     CARD_GROUND,
     COLORWAYS,
+    brandMarkSvg,
     drawShareCard,
     shareCardBlob,
     type Layout,
@@ -159,7 +162,7 @@ describe('drawShareCard', () => {
     ];
 
     it.each(rarities)(
-        'renders the redesigned kartu hero for %s rarity (route + mascot)',
+        'renders the redesigned kartu hero for %s rarity (route + brand mark)',
         async (rarity) => {
             const ctx = makeCtx();
             const canvas = {
@@ -172,7 +175,7 @@ describe('drawShareCard', () => {
                 layout: 'kartu',
                 format: 'story',
             });
-            // Pearl backdrop gradients + glowing route stroke + corner mascot.
+            // Pearl backdrop gradients + glowing route stroke + corner brand mark.
             expect(ctx.createLinearGradient).toHaveBeenCalled();
             expect(ctx.createRadialGradient).toHaveBeenCalled();
             expect(ctx.stroke).toHaveBeenCalled();
@@ -435,11 +438,31 @@ describe('drawShareCard — edge / branch cases', () => {
         expect(ctx.fillText).toHaveBeenCalled();
     });
 
+    it('signs every layout with the two-arc brand mark, never a face', () => {
+        // Hand-ported from components/TemariMark.tsx: two nested open arcs,
+        // the outer one on the brand hue (or the card's mood, for the
+        // art-window signature), the inner one following the card's tone.
+        for (const [tone, inner] of [
+            ['ink', PALETTE.ink],
+            ['cream', '#f1f5f8'],
+        ] as const) {
+            const svg = brandMarkSvg(tone);
+            expect(svg).toContain('M50 12.5 A37.5 37.5 0 1 1 31.25 17.52');
+            expect(svg).toContain('M50 27 A23 23 0 1 1 30.09 61.5');
+            expect(svg).toContain(`stroke="${PALETTE.horizon}"`);
+            expect(svg).toContain(`stroke="${inner}"`);
+            expect(svg).toContain('fill="none"');
+            expect(svg).not.toContain('<circle');
+        }
+
+        expect(brandMarkSvg('ink', '#b23a4f')).toContain('stroke="#b23a4f"');
+    });
+
     it.each(['kartu', 'rute'] as Layout[])(
-        'draws the %s layout without a mascot/glyph when SVG glyph decode fails',
+        'draws the %s layout without the brand mark when SVG decode fails',
         async (layout) => {
             // Image that always errors -> loadTemari resolves null -> the hero
-            // (kartu) skips its mascot and the rute brand lockup omits the glyph.
+            // (kartu) and the rute brand lockup both omit the mark.
             class FailingImage {
                 onload: (() => void) | null = null;
                 onerror: (() => void) | null = null;
