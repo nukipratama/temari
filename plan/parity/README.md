@@ -153,7 +153,7 @@ Status vocabulary: `todo` · `in-progress` · `in-review` · `merged` · `blocke
 | id | name | status | PR | slot | notes |
 |---|---|---|---|---|---|
 | PP0 | Full-scroll reference capture | merged | [#681](https://github.com/nukipratama/temari/pull/681) | main | 90 captures + [reference.md](reference.md); found 5 factual errors in this plan; squashed as 1e45a122 |
-| PP1 | Shell, nav, responsive | in-review | [#682](https://github.com/nukipratama/temari/pull/682) | main | [PP1-shell-nav](slices/PP1-shell-nav.md); 8 of 11 wide-only reflows carried, 3 recorded |
+| PP1 | Shell, nav, responsive | merged | [#682](https://github.com/nukipratama/temari/pull/682) | main | [PP1-shell-nav](slices/PP1-shell-nav.md); `TopNav`+`MeTabs` deleted, push-screen nav, 900px/760px layer across 24 files; 8 of 11 wide-only reflows carried, 3 deferred to `PS1`/`PS11`; no budget re-baselined; squashed as ed227cc1 |
 | PP2 | FaceIcon + share card | todo | — | main | |
 | PP3 | The cut | todo | — | main | |
 | PS1 | Login | todo | — | wt | |
