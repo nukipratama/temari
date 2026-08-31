@@ -21,7 +21,7 @@ code_refs:
 
 The Profile page (`/profile`) is the runner's about-me: who they are, how Temari sees them, their lifetime totals, and their PR progression over time. Server entry is [ProfileController](app/Http/Controllers/ProfileController.php) (`__invoke`), rendering the [Profile](resources/js/pages/Profile.tsx) page.
 
-**Navigation:** `route('profile')` → `/profile`. Named route: `profile`. There is no bottom-nav "Me" tab — [UserAvatarLink](resources/js/components/UserAvatarLink.tsx) links the avatar in [MobileTopBar](resources/js/components/MobileTopBar.tsx) straight to Profile from every bottom-nav screen. Profile is itself a **pushed screen**: its topbar carries a back chevron to Today and a gear to Settings, and it renders no bottom nav. Profile and Settings stay two separate routes/controllers, not a merged `/me?segment=` route. There is no `/aku` route, and `/profil` is a permanent redirect to `/profile`. The segmented `MeTabs` nav that used to sit atop both pages was cut by the parity program's `PP1`; the `/accessories` route/controller/page are still live pending removal in `W1`/`W2`, just no longer linked from here.
+**Navigation:** `route('profile')` → `/profile`. Named route: `profile`. There is no bottom-nav "Me" tab — [UserAvatarLink](resources/js/components/UserAvatarLink.tsx) links the avatar in [MobileTopBar](resources/js/components/MobileTopBar.tsx) straight to Profile from every bottom-nav screen. Profile is itself a **pushed screen**: its topbar carries a back chevron to Today and a gear to Settings, and it renders no bottom nav. Profile and Settings stay two separate routes/controllers, not a merged `/me?segment=` route. There is no `/aku` route, and `/profil` is a permanent redirect to `/profile`. The segmented `MeTabs` nav that used to sit atop both pages was cut by the parity program's `PP1`, and the `/accessories` route, controller and page by `PP2`.
 
 ## System dependencies
 
@@ -73,7 +73,7 @@ season-creation side effects a Plan page load does.
 
 ## Not on this page
 
-Accessories are **not** rendered here — Profile shows no accessory strip. PRs surface only as the progression charts above; the Personal Bests panel that used to list them on `/trends` was cut in `PP3` ([[records]]). The accessory unlock catalog has no more nav entry point at all since `S10` dropped the Accessories tab (see [[targets-accessories]]).
+Accessories are **not** rendered here — Profile shows no accessory strip. PRs surface only as the progression charts above; the Personal Bests panel that used to list them on `/trends` was cut in `PP3` ([[records]]). The accessory unlock catalog has no surface anywhere since `PP2` deleted its page (see [[targets-accessories]]).
 
 ## Settings
 

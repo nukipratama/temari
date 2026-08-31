@@ -17,11 +17,11 @@ use Inertia\Testing\AssertableInertia as Assert;
 uses(RefreshDatabase::class);
 
 /**
- * A stale shared prop is a user-visible bug — the mascot keeps wearing an
- * accessory you swapped off, or "Kirim notifikasi" stays greyed out after you
- * connect Telegram. One case per write path that can move one of the four
- * newly-cached props, each asserting the *next* request already sees the change
- * rather than waiting out the TTL.
+ * A stale shared prop is a user-visible bug — "Kirim notifikasi" stays greyed
+ * out after you connect Telegram, or a revoked Strava link keeps reading as
+ * live. One case per write path that can move one of the cached props, each
+ * asserting the *next* request already sees the change rather than waiting out
+ * the TTL.
  */
 
 /**
@@ -61,22 +61,6 @@ it('serves a cached prop without recomputing it on the next request', function (
             ->where('equippedAccessories.medal', 'accessory.medal_gold'));
 
     expect($queries)->toBe(0);
-});
-
-it('reflects an accessory swap on the very next request', function (): void {
-    $user = User::factory()->create();
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_gold']);
-    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_silver', 'equipped' => false]);
-
-    warmSharedProps($user);
-
-    $this->actingAs($user)
-        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_silver'])
-        ->assertRedirect();
-
-    visitAs($user)
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('equippedAccessories.medal', 'accessory.medal_silver'));
 });
 
 it('reflects a Telegram connect on the very next request', function (): void {
@@ -221,18 +205,17 @@ it('reflects a first Strava connect in stravaSync on the very next request', fun
 });
 
 it('busts only the acting user cache, never a bystander', function (): void {
+    config(['services.telegram.bot_token' => 'test-token']);
     $user = User::factory()->create();
     $other = User::factory()->create();
-    UserUnlock::factory()->for($other)->equipped()->create(['unlock_key' => 'accessory.medal_gold']);
+    TelegramConnection::factory()->for($user)->create(['revoked_at' => null]);
+    TelegramConnection::factory()->for($other)->create(['revoked_at' => null]);
 
     warmSharedProps($other);
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_silver']);
     warmSharedProps($user);
 
-    $this->actingAs($user)
-        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_silver'])
-        ->assertRedirect();
+    $this->actingAs($user)->delete('/profile/telegram')->assertRedirect();
 
-    expect(Cache::has(SharedPropCacheKey::EquippedAccessories->key($other->id)))->toBeTrue()
-        ->and(Cache::has(SharedPropCacheKey::EquippedAccessories->key($user->id)))->toBeFalse();
+    expect(Cache::has(SharedPropCacheKey::TelegramConnected->key($other->id)))->toBeTrue()
+        ->and(Cache::has(SharedPropCacheKey::TelegramConnected->key($user->id)))->toBeFalse();
 });

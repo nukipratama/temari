@@ -5,13 +5,11 @@ import BackLink from './BackLink';
 
 describe('BackLink', () => {
     it('renders a link to href with the label', () => {
-        render(
-            <BackLink href="/accessories">Collection · Accessories</BackLink>,
-        );
+        render(<BackLink href="/history">History · Weeks</BackLink>);
         const link = screen.getByRole('link', {
-            name: /collection · accessories/i,
+            name: /history · weeks/i,
         });
-        expect(link).toHaveAttribute('href', '/accessories');
+        expect(link).toHaveAttribute('href', '/history');
     });
 
     it('uses the muted tint by default', () => {

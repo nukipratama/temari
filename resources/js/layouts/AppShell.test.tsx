@@ -133,8 +133,8 @@ describe('AppShell', () => {
 
         setMockPage(
             { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
-            '/accessories',
-            'Collection/Accessories',
+            '/inbox',
+            'Inbox',
         );
         rerender(
             <AppShell>
@@ -194,11 +194,7 @@ describe('AppShell', () => {
     });
 
     it('shows the mobile top bar on every page', () => {
-        setMockPage(
-            { auth: { user: makeUser() } },
-            '/accessories',
-            'Collection/Accessories',
-        );
+        setMockPage({ auth: { user: makeUser() } }, '/inbox', 'Inbox');
         render(<AppShell>content</AppShell>);
         // Scoped by testid, not by tag: TopNav is also a <header> and stays in
         // the DOM on mobile, hidden by CSS alone.

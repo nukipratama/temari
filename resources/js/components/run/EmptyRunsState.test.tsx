@@ -50,9 +50,6 @@ function expectHeroContent(state: StravaSyncState) {
 function expectActionLinks() {
     expect(screen.getByText('While you wait')).toBeInTheDocument();
 
-    const accessories = screen.getByText('Dress up Temari').closest('a');
-    expect(accessories).toHaveAttribute('href', '/accessories');
-
     const activities = screen.getByText('See your run recap').closest('a');
     expect(activities).toHaveAttribute('href', '/history');
 }
