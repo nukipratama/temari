@@ -322,7 +322,7 @@ export default function Profile({
                             >
                                 <motion.div variants={fadeInUp}>
                                     <StatTile
-                                        tone="cream"
+                                        tone="card"
                                         size="sm"
                                         align="center"
                                         label="Easy"
@@ -333,7 +333,7 @@ export default function Profile({
                                 </motion.div>
                                 <motion.div variants={fadeInUp}>
                                     <StatTile
-                                        tone="cream"
+                                        tone="card"
                                         size="sm"
                                         align="center"
                                         label="Marathon"
@@ -344,7 +344,7 @@ export default function Profile({
                                 </motion.div>
                                 <motion.div variants={fadeInUp}>
                                     <StatTile
-                                        tone="cream"
+                                        tone="card"
                                         size="sm"
                                         align="center"
                                         label="Tempo"
@@ -355,7 +355,7 @@ export default function Profile({
                                 </motion.div>
                                 <motion.div variants={fadeInUp}>
                                     <StatTile
-                                        tone="cream"
+                                        tone="card"
                                         size="sm"
                                         align="center"
                                         label="Interval"

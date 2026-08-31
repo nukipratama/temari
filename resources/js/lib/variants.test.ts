@@ -56,14 +56,14 @@ describe('pillButtonVariants', () => {
         ['horizon', 'bg-horizon'],
         ['sky', 'bg-sky'],
         ['ghost', 'border-ink/[0.18]'],
-        ['outline', 'border-cream-deep'],
+        ['outline', 'border-border'],
     ] as const)('renders tone %s', (tone, expected) => {
         expect(tokens(pillButtonVariants({ tone }))).toContain(expected);
     });
 
-    it('gives the outline tone a cream fill with an ink-2 label', () => {
+    it('gives the outline tone a card fill with an ink-2 label', () => {
         const cls = tokens(pillButtonVariants({ tone: 'outline' }));
-        expect(cls).toContain('bg-cream');
+        expect(cls).toContain('bg-card');
         expect(cls).toContain('text-text-2');
         expect(cls).toContain('hover:border-ink-3');
     });
