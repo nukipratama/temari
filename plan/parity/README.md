@@ -48,6 +48,10 @@ later slice must not silently re-open one of these. To change one, add a row to 
 | P7 | **Nav entry points follow the prototype's topbars.** The brand topbar (on the 5 nav screens) carries a bell → Inbox and an avatar circle → Profile. Profile's own topbar carries a gear → Settings. Every pushed screen gets a back chevron. |
 | P8 | **`MeTabs` is cut.** The Profile/Settings tab bar has no prototype equivalent; P7's topbar affordances replace it. |
 | P9 | **Desktop `TopNav` is deleted entirely.** The floating bottom pill is the only nav at every width. This **reverts fork 5** of `V0` (merged in [#678](https://github.com/nukipratama/temari/pull/678)), which built a desktop nav bar — a decision made before P5 and P6 existed. |
+| P31 | **The content column caps at ~512px.** P5's "comfortable max-width", made concrete. The prototype's cards, type scale and spacing are drawn for a 390px column; 512px gives breathing room without stretching compact stat tiles into sparseness. Replaces `max-w-page` / `max-w-page-2xl` and their `sm:`/`lg:`/`2xl:` padding steps in `PageContainer`. |
+| P32 | **The bottom-nav pill is constrained to the content column**, centred, rather than spanning the viewport as the prototype's `inset-x-3.5` literally does. At 1536px the literal version is a very wide pill holding four items. A deliberate, recorded divergence — the prototype has no wide-viewport opinion. |
+| P33 | **Back goes to a fixed parent per pushed screen**: Activity → History, Inbox → Today, Profile → Today, Settings → Profile. Not browser history, which does nothing useful when a user deep-links in from a notification or a shared URL. `F4`'s existing `BACK_TARGETS` map is the mechanism. |
+| P34 | **Onboarding moves onto `BareShell`**, the existing chrome-free layout Login already uses. **Entry-chunk budgets in `scripts/check-entry-chunks.mjs` may be re-baselined** as part of this program — the rebrand legitimately changes what each route loads. Re-measure and set honest new numbers; do not delete or weaken the guard itself. |
 
 ### Identity and art
 
