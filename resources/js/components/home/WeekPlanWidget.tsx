@@ -171,7 +171,7 @@ export default function WeekPlanWidget({
                 </div>
             </div>
 
-            <div className="mt-4 flex flex-col items-center gap-4">
+            <div className="mt-4 flex flex-col items-center gap-4 min-[900px]:gap-6">
                 <SessionsRing
                     value={
                         weekPlan.sessions_per_week > 0

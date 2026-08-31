@@ -119,8 +119,8 @@ export default function Login({
             {/* Connect card overlaps the hero's bottom edge, matching the
                 prototype's single-panel placement (no side-by-side desktop
                 grid, no duplicated CTA further down the page). */}
-            <div className="relative z-10 -mt-10 px-4">
-                <div className="mx-auto max-w-md">{connect}</div>
+            <div className="relative z-10 -mt-10 px-4 min-[900px]:-mt-14">
+                <div className="mx-auto min-[900px]:max-w-md">{connect}</div>
             </div>
 
             <main className="mx-auto w-full px-4 pb-16 min-[900px]:max-w-[760px] min-[900px]:px-6">
@@ -317,7 +317,7 @@ function RouteEcho() {
 function Hero() {
     return (
         <header
-            className="relative overflow-hidden px-4 pb-20 pt-10 text-cream min-[900px]:px-14"
+            className="relative overflow-hidden px-4 pb-20 pt-10 text-cream min-[900px]:px-14 min-[900px]:pb-24 min-[900px]:pt-16"
             style={{ background: HERO_GRADIENT }}
         >
             <span
@@ -339,7 +339,7 @@ function Hero() {
                         <br />
                         <em className="italic text-horizon">past you.</em>
                     </PageHero>
-                    <p className="mt-5 max-w-xl font-sans text-base leading-relaxed text-cream/85">
+                    <p className="mt-5 max-w-xl font-sans text-base leading-relaxed text-cream/85 min-[900px]:max-w-2xl">
                         every run you finish is matched against a run you have
                         already done. same kind of session, same sort of
                         distance, same you, on an earlier day. temari reads the
