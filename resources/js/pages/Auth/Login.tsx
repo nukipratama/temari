@@ -4,7 +4,6 @@ import { lazy, Suspense } from 'react';
 import type { SharedProps } from '@/types/inertia';
 
 import BrandMark from '@/components/BrandMark';
-import TemariProto from '@/components/temari/TemariProto';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
@@ -351,12 +350,9 @@ function Hero() {
                         runner you were six weeks ago, and whether you have
                         caught them yet.”
                     </p>
-                    <div className="mt-6 flex items-center gap-2.5 font-sans text-sm text-cream/75">
-                        <TemariProto pose="glow" tone="sky" size={44} />
-                        <span>
-                            temari, who is going to keep score either way.
-                        </span>
-                    </div>
+                    <p className="mt-6 font-sans text-sm text-cream/75">
+                        temari, who is going to keep score either way.
+                    </p>
                 </div>
             </div>
         </header>

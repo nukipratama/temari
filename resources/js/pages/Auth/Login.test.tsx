@@ -95,10 +95,11 @@ describe('Login', () => {
         ).toBeInTheDocument();
     });
 
-    it('renders the Temari mascot in the hero panel', () => {
+    it("draws no face in the hero panel — the prototype's login has none", () => {
         const { container } = render(<Login authStravaUrl="/x" />);
+        expect(container.querySelector('[data-face-icon]')).toBeNull();
         expect(
-            container.querySelector('[data-pose="glow"]'),
+            screen.getByText(/temari, who is going to keep score either way/),
         ).toBeInTheDocument();
     });
 
