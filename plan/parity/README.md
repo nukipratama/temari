@@ -155,7 +155,7 @@ Status vocabulary: `todo` · `in-progress` · `in-review` · `merged` · `blocke
 | PP0 | Full-scroll reference capture | merged | [#681](https://github.com/nukipratama/temari/pull/681) | main | 90 captures + [reference.md](reference.md); found 5 factual errors in this plan; squashed as 1e45a122 |
 | PP1 | Shell, nav, responsive | merged | [#682](https://github.com/nukipratama/temari/pull/682) | main | [PP1-shell-nav](slices/PP1-shell-nav.md); `TopNav`+`MeTabs` deleted, push-screen nav, 900px/760px layer across 24 files; 8 of 11 wide-only reflows carried, 3 deferred to `PS1`/`PS11`; no budget re-baselined; squashed as ed227cc1 |
 | PP2 | FaceIcon + share card | todo | — | main | |
-| PP3 | The cut | in-review | [#TBD](https://github.com/nukipratama/temari/pull/TBD) | main | [PP3-the-cut](slices/PP3-the-cut.md); 10 commits, -7056 lines; every §1 row cut except `TemariProto` (`PP2`), Onboarding chrome (`PP1` already did it) and Accessories (`W1`); one cut-list error found (dawn-shift's `shareCard.ts` consumer is a colorway id, not a consumer); coverage 95.51% → 97.25% |
+| PP3 | The cut | in-review | [#683](https://github.com/nukipratama/temari/pull/683) | main | [PP3-the-cut](slices/PP3-the-cut.md); 10 commits, -7056 lines; every §1 row cut except `TemariProto` (`PP2`), Onboarding chrome (`PP1` already did it) and Accessories (`W1`); one cut-list error found (dawn-shift's `shareCard.ts` consumer is a colorway id, not a consumer); coverage 95.51% → 97.25% |
 | PS1 | Login | todo | — | wt | |
 | PS2 | Onboarding | todo | — | wt | |
 | PS3 | Today | todo | — | wt | |
