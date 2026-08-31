@@ -194,6 +194,15 @@ export function formatMonthDayId(date: Date): string {
     return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
 }
 
+// "Aug 25" — short month + day for NAIVE wall-clock values, no weekday. The
+// compact counterpart to formatNaiveIdDate for space-constrained rows.
+export function formatNaiveMonthDayId(iso: string | null | undefined): string {
+    if (!iso) return '—';
+    const d = parseNaiveLocalDate(iso);
+    if (d === null) return '—';
+    return formatMonthDayId(d);
+}
+
 /** "11 Mon" — numeric day + short weekday only. */
 export function formatWeekdayDayId(date: Date): string {
     return date.toLocaleDateString('en-US', {

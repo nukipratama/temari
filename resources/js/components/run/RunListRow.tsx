@@ -10,7 +10,7 @@ import { moodFromActivity } from '@/lib/moodFromActivity';
 import {
     formatDurationHMS,
     formatKm,
-    formatNaiveIdDate,
+    formatNaiveMonthDayId,
     formatNaiveTimeId,
     formatPace,
     paceSecPerKm,
@@ -82,7 +82,7 @@ function RunListRow({
                     )}
                 </div>
                 <span className="flex-none font-mono text-[9.5px] leading-[1.2] text-text-3">
-                    {formatNaiveIdDate(detail.start_date_local)}
+                    {formatNaiveMonthDayId(detail.start_date_local)}
                     {startTime && ` · ${startTime}`}
                 </span>
             </div>

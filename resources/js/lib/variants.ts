@@ -53,7 +53,7 @@ export const pillButtonVariants = cva(
                 sky: 'bg-sky text-cream hover:bg-sky-deep',
                 ghost: 'bg-transparent text-foreground border-[1.5px] border-ink/[0.18] hover:border-ink-2',
                 outline:
-                    'bg-cream border-[1.5px] border-cream-deep text-text-2 hover:border-ink-3 hover:text-foreground',
+                    'bg-card border-[1.5px] border-border text-text-2 hover:border-ink-3 hover:text-foreground',
             },
             size: {
                 sm: 'px-3.5 py-2 text-[13px]',
