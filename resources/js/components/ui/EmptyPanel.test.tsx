@@ -45,14 +45,14 @@ describe('EmptyPanel', () => {
         expect(screen.getByText('Sub-copy di sini.')).toBeInTheDocument();
     });
 
-    it('renders the Temari mascot when a pose is given', () => {
+    it("renders Temari's face when the caller asks for one", () => {
         const { container } = render(
-            <EmptyPanel pose="excited" title="Judul" className="" />,
+            <EmptyPanel face title="Judul" className="" />,
         );
-        expect(container.querySelector('svg')).toBeInTheDocument();
+        expect(container.querySelector('[data-face-icon]')).toBeInTheDocument();
     });
 
-    it('omits the mascot when no pose is given', () => {
+    it('omits the face by default', () => {
         const { container } = render(<EmptyPanel title="Judul" className="" />);
         expect(container.querySelector('svg')).not.toBeInTheDocument();
     });

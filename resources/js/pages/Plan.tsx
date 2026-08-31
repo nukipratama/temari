@@ -413,7 +413,7 @@ export default function Plan({
 
                 {weeks.length === 0 && (
                     <EmptyPanel
-                        pose="proud"
+                        face
                         title="No plan yet."
                         body="Hit Regenerate and Temari will lay out the weeks ahead."
                         className="mt-10"
