@@ -122,7 +122,9 @@ describe('RunLenses', () => {
 
     it('shows the head-only reread control on the chain head', () => {
         render(<RunLenses {...defaultProps} isChainHead />);
-        expect(screen.getByRole('button', { name: /reread/i })).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /reread/i }),
+        ).toBeInTheDocument();
     });
 
     it('hides the reread control on a historical (non-head) run', () => {

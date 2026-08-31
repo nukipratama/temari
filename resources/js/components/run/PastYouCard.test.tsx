@@ -55,7 +55,9 @@ describe('PastYouCard', () => {
                 })}
             />,
         );
-        expect(screen.getByText(/the same run, 21 days ago/)).toBeInTheDocument();
+        expect(
+            screen.getByText(/the same run, 21 days ago/),
+        ).toBeInTheDocument();
     });
 
     it('links to the matched run only when it has an id', () => {
@@ -66,9 +68,7 @@ describe('PastYouCard', () => {
         unmount();
 
         render(
-            <PastYouCard
-                match={match({ past: { start_date_local: null } })}
-            />,
+            <PastYouCard match={match({ past: { start_date_local: null } })} />,
         );
         expect(screen.queryByText('View that run')).not.toBeInTheDocument();
     });

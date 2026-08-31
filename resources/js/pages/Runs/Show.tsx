@@ -62,8 +62,18 @@ export default function RunsShow({
 }: Readonly<ShowProps>) {
     const shareRef = useRef<HTMLButtonElement>(null);
     const [shareOpen, setShareOpen] = useState(false);
-    const { summary, perKm, laps, partialSplit, mood, paceSec, hr, trimp, kartuProps, shareData } =
-        useRunShow({ detail, card, storyLine, moodFallback });
+    const {
+        summary,
+        perKm,
+        laps,
+        partialSplit,
+        mood,
+        paceSec,
+        hr,
+        trimp,
+        kartuProps,
+        shareData,
+    } = useRunShow({ detail, card, storyLine, moodFallback });
 
     // The deeper fetch owns everything below the hero, so while it is in flight
     // the page shows the notice and the summary it does have, not a column of
@@ -123,17 +133,19 @@ export default function RunsShow({
                         <VitalsCard detail={detail} summary={summary} />
 
                         {(perKm.length > 0 || partialSplit) && (
-                            <SplitsChart
-                                rows={perKm}
-                                partial={partialSplit}
-                            />
+                            <SplitsChart rows={perKm} partial={partialSplit} />
                         )}
 
                         {laps.length > 0 && <LapsCarousel laps={laps} />}
                     </>
                 )}
 
-                <Eyebrow as="footer" token="micro" tone="ink-3" className="mt-2 text-center">
+                <Eyebrow
+                    as="footer"
+                    token="micro"
+                    tone="ink-3"
+                    className="mt-2 text-center"
+                >
                     Synced from Strava · {syncedAt}
                     {activity.strava_external_id != null &&
                         ` · #${activity.strava_external_id}`}

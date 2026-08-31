@@ -27,7 +27,10 @@ function hrScalePct(bpm: number): number {
  * threshold, so a genuinely bad run pins the red end rather than falling off it.
  */
 function decouplingPct(value: number): number {
-    return Math.min(Math.max(value, 0), DECOUPLING_HIGH * 2) * (100 / (DECOUPLING_HIGH * 2));
+    return (
+        Math.min(Math.max(value, 0), DECOUPLING_HIGH * 2) *
+        (100 / (DECOUPLING_HIGH * 2))
+    );
 }
 
 function decouplingNote(

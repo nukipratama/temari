@@ -225,7 +225,9 @@ describe('Runs/Show', () => {
         ).toBeInTheDocument();
         expect(screen.queryByText('You vs past you')).not.toBeInTheDocument();
         expect(screen.queryByText('What Temari says')).not.toBeInTheDocument();
-        expect(screen.queryByText('Ask about this run')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Ask about this run'),
+        ).not.toBeInTheDocument();
         expect(screen.queryByText('The breakdown')).not.toBeInTheDocument();
         expect(screen.queryByText('Splits per km')).not.toBeInTheDocument();
     });
@@ -285,7 +287,12 @@ describe('Runs/Show', () => {
             stream_summary: {
                 ...detail.stream_summary,
                 laps: [
-                    { lap: 1, distance_m: 1000, elapsed_sec: 360, pace: '6:00' },
+                    {
+                        lap: 1,
+                        distance_m: 1000,
+                        elapsed_sec: 360,
+                        pace: '6:00',
+                    },
                     { lap: 2, distance_m: 647, elapsed_sec: 233, pace: '6:00' },
                 ],
             },
@@ -422,6 +429,8 @@ describe('Runs/Show', () => {
             },
             detail: noName,
         });
-        expect(screen.getByRole('heading', { name: 'run' })).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', { name: 'run' }),
+        ).toBeInTheDocument();
     });
 });

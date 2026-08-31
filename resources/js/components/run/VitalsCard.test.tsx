@@ -25,9 +25,7 @@ function renderCard(
     summary: StreamSummary = {},
     overrides: Partial<ActivityDetail> = {},
 ) {
-    return render(
-        <VitalsCard detail={detail(overrides)} summary={summary} />,
-    );
+    return render(<VitalsCard detail={detail(overrides)} summary={summary} />);
 }
 
 describe('VitalsCard', () => {

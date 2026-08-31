@@ -78,116 +78,121 @@ export default function AskAboutRun({
         <section className={className} data-coachmark="run-ask">
             <Card tone="narration" padding="hero">
                 <div className="flex items-center gap-1.5">
-                <Icon
-                    icon="mdi:chat-outline"
-                    width={12}
-                    height={12}
-                    aria-hidden
-                />
-                <Eyebrow token="micro" tone="icon-accent" as="span">
-                    Ask about this run
-                </Eyebrow>
-            </div>
-            <p className="mt-2 font-serif text-quote-sm italic leading-snug text-foreground">
-                The numbers are up there. Ask me why.
-            </p>
-            <p className="mt-1.5 font-sans text-xs leading-relaxed text-text-2">
-                One run, one question at a time. I can only read this run and
-                your own history.
-            </p>
-
-            {summaryOnly && (
-                <p
-                    role="status"
-                    className="mt-4 rounded-sm border border-border bg-muted px-3.5 py-2.5 font-sans text-xs leading-relaxed text-text-2"
-                >
-                    Only the summary has landed for this run, so no splits,
-                    zones or terrain yet. I'll answer from what's here.
-                </p>
-            )}
-
-            {questions.length > 0 && (
-                <ol className="mt-3 list-none">
-                    {questions.map((question) => (
-                        <QuestionRow
-                            key={question.id}
-                            question={question}
-                            stalled={stalled}
-                            onCheckAgain={checkAgain}
-                            onReuse={reuse}
-                        />
-                    ))}
-                </ol>
-            )}
-
-            {unasked.length > 0 && (
-                <>
-                    <Eyebrow
-                        token="micro"
-                        tone="ink-3"
-                        className="mb-2 mt-3.5"
-                    >
-                        Starting points
-                    </Eyebrow>
-                    <div className="mb-3.5 flex flex-wrap gap-1.5">
-                        {unasked.map((suggestion) => (
-                            <button
-                                key={suggestion}
-                                type="button"
-                                disabled={asking}
-                                onClick={() => void send(suggestion)}
-                                className={cn(
-                                    outlineChipVariants({ selected: false }),
-                                    'text-left disabled:opacity-50',
-                                )}
-                            >
-                                {suggestion}
-                            </button>
-                        ))}
-                    </div>
-                </>
-            )}
-
-            <form onSubmit={onSubmit} className="mt-3.5 flex flex-wrap gap-2">
-                <label htmlFor="run-question" className="sr-only">
-                    Your question about this run
-                </label>
-                <input
-                    id="run-question"
-                    ref={inputRef}
-                    type="text"
-                    value={draft}
-                    maxLength={MAX_QUESTION_LENGTH}
-                    disabled={asking}
-                    onChange={(event) => setDraft(event.target.value)}
-                    placeholder="Ask anything about this run"
-                    className={cn(inputVariants(), 'min-w-0 flex-1')}
-                />
-                <Button
-                    type="submit"
-                    disabled={!canSend}
-                    className="disabled:cursor-not-allowed disabled:opacity-50"
-                >
                     <Icon
-                        icon={asking ? 'mdi:loading' : 'mdi:send'}
-                        width={15}
-                        height={15}
-                        className={asking ? 'animate-spin' : undefined}
+                        icon="mdi:chat-outline"
+                        width={12}
+                        height={12}
                         aria-hidden
                     />
-                    {asking ? 'Sending…' : 'Ask'}
-                </Button>
-            </form>
-
-            {error !== null && (
-                <p
-                    role="status"
-                    aria-live="polite"
-                    className="mt-3 font-sans text-xs text-ember-ink"
-                >
-                    {ERROR_COPY[error]}
+                    <Eyebrow token="micro" tone="icon-accent" as="span">
+                        Ask about this run
+                    </Eyebrow>
+                </div>
+                <p className="mt-2 font-serif text-quote-sm italic leading-snug text-foreground">
+                    The numbers are up there. Ask me why.
                 </p>
-            )}
+                <p className="mt-1.5 font-sans text-xs leading-relaxed text-text-2">
+                    One run, one question at a time. I can only read this run
+                    and your own history.
+                </p>
+
+                {summaryOnly && (
+                    <p
+                        role="status"
+                        className="mt-4 rounded-sm border border-border bg-muted px-3.5 py-2.5 font-sans text-xs leading-relaxed text-text-2"
+                    >
+                        Only the summary has landed for this run, so no splits,
+                        zones or terrain yet. I'll answer from what's here.
+                    </p>
+                )}
+
+                {questions.length > 0 && (
+                    <ol className="mt-3 list-none">
+                        {questions.map((question) => (
+                            <QuestionRow
+                                key={question.id}
+                                question={question}
+                                stalled={stalled}
+                                onCheckAgain={checkAgain}
+                                onReuse={reuse}
+                            />
+                        ))}
+                    </ol>
+                )}
+
+                {unasked.length > 0 && (
+                    <>
+                        <Eyebrow
+                            token="micro"
+                            tone="ink-3"
+                            className="mb-2 mt-3.5"
+                        >
+                            Starting points
+                        </Eyebrow>
+                        <div className="mb-3.5 flex flex-wrap gap-1.5">
+                            {unasked.map((suggestion) => (
+                                <button
+                                    key={suggestion}
+                                    type="button"
+                                    disabled={asking}
+                                    onClick={() => void send(suggestion)}
+                                    className={cn(
+                                        outlineChipVariants({
+                                            selected: false,
+                                        }),
+                                        'text-left disabled:opacity-50',
+                                    )}
+                                >
+                                    {suggestion}
+                                </button>
+                            ))}
+                        </div>
+                    </>
+                )}
+
+                <form
+                    onSubmit={onSubmit}
+                    className="mt-3.5 flex flex-wrap gap-2"
+                >
+                    <label htmlFor="run-question" className="sr-only">
+                        Your question about this run
+                    </label>
+                    <input
+                        id="run-question"
+                        ref={inputRef}
+                        type="text"
+                        value={draft}
+                        maxLength={MAX_QUESTION_LENGTH}
+                        disabled={asking}
+                        onChange={(event) => setDraft(event.target.value)}
+                        placeholder="Ask anything about this run"
+                        className={cn(inputVariants(), 'min-w-0 flex-1')}
+                    />
+                    <Button
+                        type="submit"
+                        disabled={!canSend}
+                        className="disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        <Icon
+                            icon={asking ? 'mdi:loading' : 'mdi:send'}
+                            width={15}
+                            height={15}
+                            className={asking ? 'animate-spin' : undefined}
+                            aria-hidden
+                        />
+                        {asking ? 'Sending…' : 'Ask'}
+                    </Button>
+                </form>
+
+                {error !== null && (
+                    <p
+                        role="status"
+                        aria-live="polite"
+                        className="mt-3 font-sans text-xs text-ember-ink"
+                    >
+                        {ERROR_COPY[error]}
+                    </p>
+                )}
             </Card>
         </section>
     );

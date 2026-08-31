@@ -21,19 +21,23 @@ describe('SplitsChart', () => {
 
     it('calls out the fastest km with its pace and heart rate', () => {
         render(<SplitsChart rows={rows} />);
-        expect(screen.getByText('Km 2 · fastest · 152 bpm')).toBeInTheDocument();
+        expect(
+            screen.getByText('Km 2 · fastest · 152 bpm'),
+        ).toBeInTheDocument();
         expect(screen.getByText('4:40/km')).toBeInTheDocument();
     });
 
     it('reveals a split’s numbers on tap and dims the other bars', () => {
         render(<SplitsChart rows={rows} />);
-        fireEvent.click(screen.getByRole('button', { name: 'Km 1, 5:10 pace' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Km 1, 5:10 pace' }),
+        );
 
         expect(screen.getByRole('status')).toHaveTextContent('5:10/km');
         expect(screen.getByRole('status')).toHaveTextContent('♡ 144 · 172 spm');
-        expect(
-            document.querySelectorAll('.opacity-40').length,
-        ).toBeGreaterThan(0);
+        expect(document.querySelectorAll('.opacity-40').length).toBeGreaterThan(
+            0,
+        );
     });
 
     it('clears the tooltip on a second tap of the same bar', () => {
@@ -46,14 +50,20 @@ describe('SplitsChart', () => {
 
     it('moves the tooltip to another bar rather than closing it', () => {
         render(<SplitsChart rows={rows} />);
-        fireEvent.click(screen.getByRole('button', { name: 'Km 1, 5:10 pace' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Km 3, 4:55 pace' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Km 1, 5:10 pace' }),
+        );
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Km 3, 4:55 pace' }),
+        );
         expect(screen.getByRole('status')).toHaveTextContent('4:55/km');
     });
 
     it('dashes readings the split does not carry', () => {
         render(<SplitsChart rows={[{ km: 1, pace: '5:10' }]} />);
-        fireEvent.click(screen.getByRole('button', { name: 'Km 1, 5:10 pace' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Km 1, 5:10 pace' }),
+        );
         expect(screen.getByRole('status')).toHaveTextContent('♡ — · — spm');
     });
 
@@ -68,7 +78,9 @@ describe('SplitsChart', () => {
         expect(screen.getByText('0.4')).toBeInTheDocument();
         expect(container.querySelector('.border-dashed')).not.toBeNull();
         // The remainder never wins "fastest" even at a quicker normalized pace.
-        expect(screen.getByText('Km 2 · fastest · 152 bpm')).toBeInTheDocument();
+        expect(
+            screen.getByText('Km 2 · fastest · 152 bpm'),
+        ).toBeInTheDocument();
     });
 
     it('traces heart rate over the bars when at least two kms recorded it', () => {
@@ -78,14 +90,22 @@ describe('SplitsChart', () => {
 
     it('draws no heart-rate trace for a run without one', () => {
         const { container } = render(
-            <SplitsChart rows={[{ km: 1, pace: '5:10' }, { km: 2, pace: '5:00' }]} />,
+            <SplitsChart
+                rows={[
+                    { km: 1, pace: '5:10' },
+                    { km: 2, pace: '5:00' },
+                ]}
+            />,
         );
         expect(container.querySelector('polyline')).toBeNull();
     });
 
     it('renders a partial-only run with no fastest-km callout', () => {
         render(
-            <SplitsChart rows={[]} partial={{ distance_m: 800, pace: '5:00' }} />,
+            <SplitsChart
+                rows={[]}
+                partial={{ distance_m: 800, pace: '5:00' }}
+            />,
         );
         expect(screen.getByText('0.8')).toBeInTheDocument();
         expect(screen.queryByText(/fastest/)).not.toBeInTheDocument();

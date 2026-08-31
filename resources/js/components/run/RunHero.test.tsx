@@ -57,7 +57,9 @@ describe('RunHero', () => {
 
     it('falls back to "run" when the activity has no name', () => {
         renderHero({}, { name: null });
-        expect(screen.getByRole('heading', { name: 'run' })).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', { name: 'run' }),
+        ).toBeInTheDocument();
     });
 
     it('makes distance the headline stat with duration and pace beside it', async () => {
