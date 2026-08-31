@@ -69,8 +69,8 @@ export default function Trends({
                     className="flex flex-col gap-8"
                 >
                     <motion.div variants={fadeInUp}>
-                        <PageHero eyebrow="Trends">
-                            How things
+                        <PageHero eyebrow="Trends" size="quote-lg" italic>
+                            how things
                             <br />
                             <em className="italic text-icon-accent">
                                 are going.

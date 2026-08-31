@@ -140,8 +140,10 @@ export default function Profile({
                                 {eyebrowParts.join(' · ')}
                             </Eyebrow>
                         }
+                        size="quote-lg"
+                        italic
                     >
-                        {firstName ? `${firstName} Runner,` : 'Runner,'}
+                        {firstName ? `${firstName} runner,` : 'runner,'}
                         <br />
                         <em className="italic text-horizon-ink">your story.</em>
                     </PageHero>

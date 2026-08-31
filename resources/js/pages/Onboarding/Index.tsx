@@ -274,8 +274,12 @@ export default function OnboardingIndex() {
                         className="flex flex-col items-center gap-5 py-2 text-center sm:py-10"
                     >
                         <Temari pose="glow" size={112} animate />
-                        <PageHero size="lg" className="text-center">
-                            You&rsquo;re connected, {firstName}.
+                        <PageHero
+                            size="quote-lg"
+                            italic
+                            className="text-center"
+                        >
+                            you&rsquo;re connected, {firstName}.
                         </PageHero>
 
                         <Card className="w-full px-6 py-6 text-left">
@@ -471,8 +475,8 @@ export default function OnboardingIndex() {
                         initial="hidden"
                         animate="visible"
                     >
-                        <PageHero size="lg" eyebrow="Optional">
-                            Got a race in mind?
+                        <PageHero size="quote-lg" italic eyebrow="Optional">
+                            got a race in mind?
                         </PageHero>
                         <p className="mt-3 font-sans text-sm leading-relaxed text-text-2">
                             Give Temari something to build toward. Skip it if

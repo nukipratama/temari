@@ -37,10 +37,10 @@ describe('Profile', () => {
     it('renders the editorial greeting with the first name', () => {
         render(<Profile identity={identity} stats={stats} />);
         expect(screen.getByText(/running since/i)).toBeInTheDocument();
-        expect(screen.getByText('Ada Runner,')).toBeInTheDocument();
+        expect(screen.getByText('Ada runner,')).toBeInTheDocument();
     });
 
-    it('falls back to "Runner," when no first name is available', () => {
+    it('falls back to "runner," when no first name is available', () => {
         setMockPage({
             auth: { user: null },
             flash: {},
@@ -48,7 +48,7 @@ describe('Profile', () => {
         });
         const noFirstName = { ...identity, name: '' };
         render(<Profile identity={noFirstName} stats={stats} />);
-        expect(screen.getByText('Runner,')).toBeInTheDocument();
+        expect(screen.getByText('runner,')).toBeInTheDocument();
     });
 
     it('renders the Me segmented nav with Profile active', () => {

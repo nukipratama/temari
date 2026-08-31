@@ -52,7 +52,7 @@ describe('Trends', () => {
     it('renders the page headline', () => {
         render(<Trends {...BASE_PROPS} />);
 
-        expect(screen.getByText('How things')).toBeInTheDocument();
+        expect(screen.getByText('how things')).toBeInTheDocument();
         expect(screen.getByText('are going.')).toBeInTheDocument();
     });
 
