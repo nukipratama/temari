@@ -39,7 +39,7 @@ function tokenContrast(string $a, string $b): float
 }
 
 /**
- * @return array{tokens: array<string, string>, shifts: array<string, string>}
+ * @return array{tokens: array<string, string>}
  */
 function designTokens(): array
 {
@@ -53,19 +53,7 @@ function designTokens(): array
         $tokens[$name] = $value;
     }
 
-    preg_match_all(
-        '/body\[data-time-of-day=\'([a-z]+)\'\]\s*\{\s*--color-surface:\s*(#[0-9a-f]{6});/',
-        $css,
-        $matches,
-        PREG_SET_ORDER,
-    );
-
-    $shifts = [];
-    foreach ($matches as [, $name, $value]) {
-        $shifts[$name] = $value;
-    }
-
-    return ['tokens' => $tokens, 'shifts' => $shifts];
+    return ['tokens' => $tokens];
 }
 
 /**
@@ -173,21 +161,16 @@ function paintedBackgrounds(): array
 }
 
 /**
- * The papers any `-ink` can land on: every background grounds.json calls paper,
- * plus each surface dawn-shift drifts to.
+ * The papers any `-ink` can land on: every background grounds.json calls paper.
  *
  * @param  array<string, string>  $tokens
- * @param  array<string, string>  $shifts
  * @return array<string, string>
  */
-function paperGrounds(array $tokens, array $shifts): array
+function paperGrounds(array $tokens): array
 {
     $grounds = [];
     foreach (groundKinds()['paper'] as $name) {
         $grounds[$name] = $tokens[$name];
-    }
-    foreach ($shifts as $bucket => $value) {
-        $grounds["surface · {$bucket}"] = $value;
     }
 
     return $grounds;
@@ -224,19 +207,15 @@ it('backs every classified colour ground with a declared token', function (): vo
     ));
 })->group('structure');
 
-it('finds more grounds than dawn-shift alone declares', function (): void {
-    ['tokens' => $tokens, 'shifts' => $shifts] = designTokens();
+it('finds more grounds than --color-surface alone', function (): void {
+    ['tokens' => $tokens] = designTokens();
 
-    // The S2.9 blind spot was scoring only --color-surface and its drifts. A
-    // paper ground outside that set is exactly what went unscored, so the
-    // derivation is only doing its job while it reaches past them.
-    $beyondDawnShift = array_diff_key(
-        paperGrounds($tokens, $shifts),
-        array_flip(array_map(fn (string $b): string => "surface · {$b}", array_keys($shifts))),
-        ['surface' => ''],
-    );
+    // The S2.9 blind spot was scoring only --color-surface. A paper ground
+    // outside that one is exactly what went unscored, so the derivation is
+    // only doing its job while it reaches past it.
+    $beyondSurface = array_diff_key(paperGrounds($tokens), ['surface' => '']);
 
-    expect($beyondDawnShift)->not->toBeEmpty();
+    expect($beyondSurface)->not->toBeEmpty();
 })->group('structure');
 
 it('records the tint every ink actually prints on', function (): void {
@@ -247,8 +226,8 @@ it('records the tint every ink actually prints on', function (): void {
 })->group('structure');
 
 it('keeps every -ink token above AA on every ground it lands on', function (): void {
-    ['tokens' => $tokens, 'shifts' => $shifts] = designTokens();
-    $papers = paperGrounds($tokens, $shifts);
+    ['tokens' => $tokens] = designTokens();
+    $papers = paperGrounds($tokens);
     ['scoped' => $scoped, 'tint' => $tints] = groundKinds();
     $darkestPaper = collect($papers)->sortBy(fn (string $hex): float => tokenLuminance($hex))->first();
 
@@ -292,9 +271,9 @@ it('keeps every -ink token above AA on every ground it lands on', function (): v
 })->group('structure');
 
 it('keeps the separator above its floor on every ground', function (): void {
-    ['tokens' => $tokens, 'shifts' => $shifts] = designTokens();
+    ['tokens' => $tokens] = designTokens();
 
-    foreach (paperGrounds($tokens, $shifts) as $ground => $paper) {
+    foreach (paperGrounds($tokens) as $ground => $paper) {
         expect(tokenContrast($tokens['line'], $paper))
             ->toBeGreaterThanOrEqual(1.4, "--color-line is under 1.4:1 on {$ground}.");
     }
@@ -465,8 +444,8 @@ function paintedPanelText(array $tokens): array
  */
 function panelPairRatios(): array
 {
-    ['tokens' => $tokens, 'shifts' => $shifts] = designTokens();
-    $papers = paperGrounds($tokens, $shifts);
+    ['tokens' => $tokens] = designTokens();
+    $papers = paperGrounds($tokens);
 
     $ratios = [];
     foreach (groundKinds()['panel'] as $spec => $entry) {

@@ -101,19 +101,14 @@
         },
         "cream/0.08": {
             "over": {
-                "resources/js/components/run/EmptyRunsState.tsx": ["sky"],
-                "resources/js/components/PersonaBar.tsx": ["sky"]
+                "resources/js/components/run/EmptyRunsState.tsx": ["sky"]
             },
             "text": ["cream", "ink-on-sky"]
         },
         "cream/0.1": {
             "over": {
-                "resources/js/components/card/FeaturedCardHero.tsx": ["sky"],
                 "resources/js/components/card/Kartu.tsx": ["sky"],
                 "resources/js/components/card/ZoneBar.tsx": ["sky"],
-                "resources/js/components/celebrations/AccessoryUnlockModal.tsx": [
-                    "sky"
-                ],
                 "resources/js/components/run/EmptyRunsState.tsx": ["sky"],
                 "resources/js/components/ui/Chip.test.tsx": ["sky"],
                 "resources/js/components/ui/MoodChip.tsx": ["sky"],
@@ -207,8 +202,7 @@
                 "resources/js/components/ui/Chip.test.tsx": ["paper"],
                 "resources/js/lib/variants.ts": ["paper"],
                 "resources/js/pages/Auth/Login.tsx": ["paper"],
-                "resources/js/pages/Devtools.tsx": ["paper"],
-                "resources/js/components/me/SeasonStreakPanel.tsx": ["paper"]
+                "resources/js/pages/Devtools.tsx": ["paper"]
             },
             "text": ["horizon-ink"]
         },
@@ -283,12 +277,6 @@
         "line/0.2": {
             "text": []
         },
-        "line/0.4": {
-            "over": {
-                "resources/js/components/temari/UnlockToast.tsx": ["paper"]
-            },
-            "text": ["foreground"]
-        },
         "line/0.6": {
             "over": {
                 "resources/js/components/MetricExplainer.tsx": ["paper"]
@@ -316,24 +304,6 @@
             },
             "text": ["mood-gassed-ink"]
         },
-        "rarity-common/0.25": {
-            "text": []
-        },
-        "rarity-epic/0.3": {
-            "text": []
-        },
-        "rarity-legendary/0.35": {
-            "text": []
-        },
-        "rarity-rare/0.3": {
-            "text": []
-        },
-        "rarity-uncommon/0.25": {
-            "text": []
-        },
-        "sky-deep/0.8": {
-            "text": []
-        },
         "sky/0.06": {
             "over": {
                 "resources/js/components/StravaSyncBadge.tsx": ["paper"],
@@ -352,7 +322,6 @@
         },
         "sky/0.1": {
             "over": {
-                "resources/js/components/plan/SeasonTrack.tsx": ["paper"],
                 "resources/js/components/ui/ProgressBar.test.tsx": ["paper"],
                 "resources/js/components/ui/ProgressBar.tsx": ["paper"]
             },

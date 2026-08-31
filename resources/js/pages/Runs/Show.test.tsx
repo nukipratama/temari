@@ -1,5 +1,4 @@
-import { router } from '@inertiajs/react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type {
@@ -115,20 +114,11 @@ function runInsight(
     };
 }
 
-function renderShow(
-    overrides: Partial<Parameters<typeof RunsShow>[0]> = {},
-    {
-        telegramConnected = false,
-        stravaPaused = false,
-    }: { telegramConnected?: boolean; stravaPaused?: boolean } = {},
-) {
-    // telegramConnected is now a shared Inertia prop, read via usePage.
+function renderShow(overrides: Partial<Parameters<typeof RunsShow>[0]> = {}) {
     setMockPage({
         auth: { user: { id: 1, name: 'A', first_name: 'A', avatar_url: null } },
         flash: {},
         demoLoginEnabled: false,
-        telegramConnected,
-        stravaPaused,
     });
     return render(
         <RunsShow
@@ -434,75 +424,5 @@ describe('Runs/Show', () => {
         expect(
             screen.getByText(/Technical detail hasn't been read yet/),
         ).toBeInTheDocument();
-    });
-
-    it('resyncs the activity from Strava when the Resync button is clicked', () => {
-        vi.mocked(router.post).mockReset();
-        renderShow();
-        fireEvent.click(screen.getByText('Resync from Strava'));
-        expect(router.post).toHaveBeenCalledWith(
-            '/activities/99/resync',
-            {},
-            expect.objectContaining({
-                preserveScroll: true,
-                onStart: expect.any(Function),
-                onFinish: expect.any(Function),
-            }),
-        );
-    });
-
-    it('hides the Resync button entirely while the Strava kill-switch is off', () => {
-        renderShow({}, { stravaPaused: true });
-        expect(
-            screen.queryByText('Resync from Strava'),
-        ).not.toBeInTheDocument();
-    });
-
-    it('disables the Resync button and shows a pending label while the request is in flight', () => {
-        vi.mocked(router.post).mockReset();
-        vi.mocked(router.post).mockImplementation((_url, _data, options) => {
-            options?.onStart?.({} as never);
-        });
-        renderShow();
-        const button = screen
-            .getByText('Resync from Strava')
-            .closest('button')!;
-        fireEvent.click(button);
-        expect(button).toBeDisabled();
-        expect(button).toHaveTextContent('Syncing…');
-    });
-
-    it('shows a muted send button that nudges (no send) when no channel is wired', () => {
-        vi.mocked(router.post).mockReset();
-        renderShow();
-        fireEvent.click(screen.getByText('Send notification'));
-        expect(router.post).not.toHaveBeenCalled();
-    });
-
-    it('pushes the run to Telegram when connected and the button is clicked', () => {
-        vi.mocked(router.post).mockReset();
-        renderShow({}, { telegramConnected: true });
-        fireEvent.click(screen.getByText('Send notification'));
-        expect(router.post).toHaveBeenCalledWith(
-            '/activities/99/send',
-            {},
-            expect.objectContaining({
-                preserveScroll: true,
-                onStart: expect.any(Function),
-                onFinish: expect.any(Function),
-            }),
-        );
-    });
-
-    it('disables the Telegram button and shows a pending label while the request is in flight', () => {
-        vi.mocked(router.post).mockReset();
-        vi.mocked(router.post).mockImplementation((_url, _data, options) => {
-            options?.onStart?.({} as never);
-        });
-        renderShow({}, { telegramConnected: true });
-        const button = screen.getByText('Send notification').closest('button')!;
-        fireEvent.click(button);
-        expect(button).toBeDisabled();
-        expect(button).toHaveTextContent('Sending…');
     });
 });

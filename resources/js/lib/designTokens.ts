@@ -13,13 +13,12 @@
 import GROUND_KINDS from '../../brand/grounds.json';
 
 const ROOT_SELECTOR = /(^|,)\s*:root\b/;
-const GROUND_SELECTOR = /body\[data-time-of-day=['"]?([a-z0-9-]+)['"]?\]/i;
 
 interface StyleSheetLike {
     readonly cssRules?: ArrayLike<unknown> | null;
 }
 
-/** A paper the app can render: the base surface, or one dawn-shift overrides it to. */
+/** A paper the app can render. */
 export interface Ground {
     name: string;
     value: string;
@@ -76,74 +75,22 @@ export function collectTokenNames(
     return [...names].sort();
 }
 
-function collectGroundsFromRule(
-    rule: unknown,
-    into: Map<string, string>,
-): void {
-    const { style, selectorText } = rule as {
-        style?: CSSStyleDeclaration;
-        selectorText?: string;
-    };
-
-    const match = selectorText ? GROUND_SELECTOR.exec(selectorText) : null;
-    if (style && match) {
-        const surface = style.getPropertyValue('--color-surface').trim();
-        if (surface !== '') {
-            into.set(match[1], surface);
-        }
-    }
-
-    const nested = (rule as { cssRules?: ArrayLike<unknown> | null }).cssRules;
-    if (nested) {
-        for (const child of Array.from(nested)) {
-            collectGroundsFromRule(child, into);
-        }
-    }
-}
-
 /**
- * Every paper an `-ink` token can land on, read back out of the live values:
- * one per `body[data-time-of-day]` rule dawn-shift declares, plus every
- * background
- * [grounds.json](../../brand/grounds.json) classifies as paper. Scraped and
- * resolved rather than listed, so a sixth dawn-shift bucket, or a new page
- * ground the components start painting, is audited as soon as it is classified.
+ * Every paper an `-ink` token can land on: every background
+ * [grounds.json](../../brand/grounds.json) classifies as paper, resolved
+ * against the live values. Derived from the classification rather than listed,
+ * so a new page ground the components start painting is audited as soon as it
+ * is classified.
  *
  * A classified ground the stylesheet no longer resolves is kept with an empty
  * value on purpose: it scores `null` and reports as a failure, rather than
  * quietly shrinking the set the way the missing `--color-cream-deep` did.
  */
-export function collectPaperGrounds(
-    sheets: Iterable<StyleSheetLike> | ArrayLike<StyleSheetLike>,
-    values: Record<string, string>,
-): Ground[] {
-    const found = new Map<string, string>();
-
-    for (const sheet of Array.from(sheets as ArrayLike<StyleSheetLike>)) {
-        let rules: ArrayLike<unknown> | null | undefined;
-        try {
-            rules = sheet.cssRules;
-        } catch {
-            continue;
-        }
-        if (!rules) {
-            continue;
-        }
-        for (const rule of Array.from(rules)) {
-            collectGroundsFromRule(rule, found);
-        }
-    }
-
-    return [
-        ...GROUND_KINDS.paper.map((name) => ({
-            name,
-            value: values[`--color-${name}`] ?? '',
-        })),
-        ...[...found.entries()].map(([name, value]) => ({
-            name: `surface · ${name}`,
-            value,
-        })),
-    ];
+export function collectPaperGrounds(values: Record<string, string>): Ground[] {
+    return GROUND_KINDS.paper.map((name) => ({
+        name,
+        value: values[`--color-${name}`] ?? '',
+    }));
 }
 
 /** `fill` at `alpha` over `ground`, the way the compositor does it. */

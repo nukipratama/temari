@@ -31,7 +31,6 @@ The app's home (`/`). [WeekPlanWidget](resources/js/components/home/WeekPlanWidg
 - **AI narration** — today's voice block is an `Analysis` row from the [[ai-pipeline]].
 - **Training metrics** — `load` comes from `TrainingLoad::summary`. See [[training-load-metrics]].
 - **Gamification** — the featured kartu is picked by rarity rank. See [[gamification]].
-- **Dawn-shift** — surface tints drift by time of day via `useDawnShift`. See [[frontend-architecture]].
 - **Plan** — `weekPlan` comes from `CurrentWeekPlanBuilder::forUser`, the same phase/volume computation [[plan-periodizer]] uses for the full multi-week arc. See below.
 
 ## This week's plan

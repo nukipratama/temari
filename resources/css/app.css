@@ -148,9 +148,8 @@
     --color-citrus-ink: #7b5c13;
     --color-stone: #64686c;
 
-    /* Surface tier — Pewter: cold near-white. dawn-shift drifts the base
-       across the day (see body[data-time-of-day=…] below). `surface-card` is
-       the single ground every card shares; `surface-elev` is floating UI only. */
+    /* Surface tier — Pewter: cold near-white. `surface-card` is the single
+       ground every card shares; `surface-elev` is floating UI only. */
     --color-surface: #f1f5f8;
     --color-surface-card: #f1f5f8;
     --color-surface-elev: #f8fbfe;
@@ -667,38 +666,6 @@ body {
         box-shadow:
             0 0 0 1px color-mix(in oklab, var(--rarity, white) 55%, transparent),
             inset 0 0 calc(16px * var(--glow-strength, 1)) color-mix(in oklab, var(--rarity, white) 65%, transparent);
-    }
-}
-
-/* Dawn-shift theme — subtle page-bg tint based on user's local
-   time-of-day. Drifts the cream surface across the day: cool pre-dawn,
-   warmer in morning + dusk, calm at night. Light-mode only (F5): guarded by
-   `html:not([data-theme='dark'])` so the dark ground's fixed sky-deep
-   background never gets fought by a stale time-of-day bucket.
-
-   Writes both `--color-surface` (unused by any live utility post-F3's sweep
-   to `bg-background`, kept only because resources/brand/grounds.mjs's
-   readDawnShiftSurfaces(), build-directions.mjs and apply-pewter.mjs all key
-   dawn-shift's ground set off this exact property name) and
-   `--color-background` (what `bg-background` — the page root's own class —
-   actually reads), so the tint is visible again without touching those three
-   scripts' contract. */
-@layer base {
-    html:not([data-theme='dark']) body[data-time-of-day='dawn'] {
-        --color-surface: #eceff4;
-        --color-background: #eceff4;
-    }
-    html:not([data-theme='dark']) body[data-time-of-day='morning'] {
-        --color-surface: #f2f7fc;
-        --color-background: #f2f7fc;
-    }
-    html:not([data-theme='dark']) body[data-time-of-day='dusk'] {
-        --color-surface: #eaf0f6;
-        --color-background: #eaf0f6;
-    }
-    html:not([data-theme='dark']) body[data-time-of-day='night'] {
-        --color-surface: #e9edf1;
-        --color-background: #e9edf1;
     }
 }
 

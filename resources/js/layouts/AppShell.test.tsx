@@ -25,7 +25,6 @@ const andiUser = { id: 1, name: 'Andi', first_name: 'Andi', avatar_url: null };
 
 describe('AppShell', () => {
     afterEach(() => {
-        delete document.body.dataset.timeOfDay;
         motionConfigSpy.mockClear();
     });
 
@@ -41,22 +40,6 @@ describe('AppShell', () => {
             </AppShell>,
         );
         expect(motionConfigSpy).toHaveBeenCalledWith('user');
-    });
-
-    it('sets a data-time-of-day attribute on body via useDawnShift', () => {
-        setMockPage({
-            auth: { user: andiUser },
-            flash: {},
-            demoLoginEnabled: false,
-        });
-        render(
-            <AppShell>
-                <p>x</p>
-            </AppShell>,
-        );
-        expect(document.body.dataset.timeOfDay).toMatch(
-            /^(dawn|morning|day|dusk|night)$/,
-        );
     });
 
     it('renders the 4 primary tabs + children by default', () => {

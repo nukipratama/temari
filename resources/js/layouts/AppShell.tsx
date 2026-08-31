@@ -14,7 +14,6 @@ import MobileTopBar from '@/components/MobileTopBar';
 import RouteProgressBar from '@/components/RouteProgressBar';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
-import { useDawnShift } from '@/hooks/useDawnShift';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useSystemTheme } from '@/hooks/useSystemTheme';
 import { cn } from '@/lib/cn';
@@ -25,7 +24,6 @@ interface AppShellProps {
 }
 
 export default function AppShell({ children }: Readonly<AppShellProps>) {
-    useDawnShift();
     useSwipeBack();
     useSystemTheme();
     const { component } = usePage<SharedProps>();

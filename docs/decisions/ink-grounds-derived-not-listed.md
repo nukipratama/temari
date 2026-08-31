@@ -17,6 +17,13 @@ code_refs:
 
 **Status:** Accepted (documented 2026-08-14)
 
+> **2026-08-31 — one fact below has changed, the decision has not.** `PP3` cut dawn-shift
+> (`plan/parity` decision P17): the light ground is one static palette and no
+> `body[data-time-of-day]` rule remains. The five drifting `--color-surface` values the Context
+> describes are history. The derivation itself is unchanged and still enforced — the ground set is
+> now every background `grounds.json` classifies as paper, scraped from the components rather than
+> listed.
+
 ## Context
 
 The fill/text split gives every saturated family a derived `-ink` member, darkened

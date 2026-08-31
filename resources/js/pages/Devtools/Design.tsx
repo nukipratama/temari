@@ -151,10 +151,7 @@ export default function Design() {
         const names = collectTokenNames(document.styleSheets);
         return readTokenValues(names, document.documentElement);
     }, []);
-    const grounds = useMemo(
-        () => collectPaperGrounds(document.styleSheets, tokens),
-        [tokens],
-    );
+    const grounds = useMemo(() => collectPaperGrounds(tokens), [tokens]);
     const contrast = useMemo<ContrastRow[]>(
         () => [
             ...auditContrast(tokens, grounds),
