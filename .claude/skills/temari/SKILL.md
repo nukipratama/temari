@@ -265,6 +265,12 @@ worktree's install just replays from cache instead of re-downloading over the ne
 right after bringing the stack up, since they're created root-owned on first boot and the container
 always runs as `www-data` — no manual fix needed.
 
+**Git hooks are shared, not per-worktree.** `core.hooksPath` lives in the common `.git/config` that
+linked worktrees inherit, so every worktree runs the *main checkout's* `.githooks/` at whatever
+version that checkout has on disk. A hook edited on a worktree branch is not exercised by that
+worktree's commits — invoke the script directly to test it. (If the stored value is absolute, it
+pins every worktree to the main checkout; `composer install` re-sets it relative.)
+
 **One fresh-worktree gotcha**, not concurrency-specific: if several worktrees cold-install at the
 same moment, one can occasionally fail mid-extraction on a transient bind-mount visibility race —
 just re-run `worktree-setup.sh`, which resumes rather than redoing. (The old `MissingAppKeyException`
