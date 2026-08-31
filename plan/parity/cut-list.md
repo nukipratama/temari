@@ -81,6 +81,6 @@ Recorded so a later slice does not "fix" them back toward the mockup.
 | **Badge chips wrap to show every earned badge** | The prototype hardcodes three. A real account earns a variable number; truncating to three would hide real progress. P15. |
 | **Range tabs and "load older" actually work** | The prototype sets state nothing reads and swaps hardcoded arrays. Mockup limitation, not design intent. P3. |
 | **Token-nearest sizing, not literal pixels** | The prototype hardcodes values (`rounded-[14px]`, `text-[9px]`, `size-[18px]`) the app deliberately replaced with token scales in `F2`/`F3`. Matching them literally would need one-off tokens and guard exceptions. P2. |
-| **A max-width, not a fixed 390px column** | The prototype has no responsive opinion at all. A fixed phone-width strip on a desktop monitor is a worse outcome than the same design breathing to a readable width. P5. |
+| **The nav pill is column-width, not full-bleed** | The prototype gives `AppTopbar`/`AppBottomNav` no container queries at all, deliberately keeping chrome full-bleed while content narrows to 760px. We diverge: at 1536px a full-bleed pill spreads its four items uncomfortably far apart. P32. (An earlier version of this row claimed the prototype "has no responsive opinion at all" — false, see [README.md](README.md) §6.) |
 | **Real-data plumbing exists** | P1. |
 | **Operator console exists** | P20. |
