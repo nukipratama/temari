@@ -63,6 +63,7 @@ import {
     MessageSquareQuote,
     Monitor,
     Moon,
+    Mountain,
     Navigation,
     Palette,
     Pencil,
@@ -92,6 +93,7 @@ import {
     Table,
     Target,
     Timer,
+    TrendingUp,
     Trophy,
     Undo2,
     Unlink,
@@ -100,6 +102,7 @@ import {
     UserX,
     Wind,
     X,
+    Zap,
 } from 'lucide-react';
 
 /**
@@ -173,6 +176,7 @@ const ICON_MAP: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
     'mdi:information-outline': Info,
     'mdi:layers-outline': Layers,
     'mdi:lightbulb-on-outline': Lightbulb,
+    'mdi:lightning-bolt': Zap,
     'mdi:lingerie': Shirt,
     'mdi:link-off': Unlink,
     'mdi:loading': LoaderCircle,
@@ -216,7 +220,9 @@ const ICON_MAP: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
     'mdi:sync-off': RefreshCwOff,
     'mdi:table': Table,
     'mdi:target': Target,
+    'mdi:terrain': Mountain,
     'mdi:timer-outline': Timer,
+    'mdi:trending-up': TrendingUp,
     'mdi:trophy': Trophy,
     'mdi:trophy-outline': Trophy,
     'mdi:tshirt-crew': Shirt,
