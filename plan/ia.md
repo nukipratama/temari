@@ -75,7 +75,7 @@ routes, `W2` removes the backend they call.
 | route | name | renders | class | tab |
 |---|---|---|---|---|---|
 | `GET /` | `dashboard` | `Home` | **tab** | today |
-| `GET /plan`, `POST /plan/regenerate`, `PATCH/DELETE /plan/sessions/{id}` | `plan.*` | `Plan` | **tab** + actions | plan |
+| `GET /plan`, `POST /plan/regenerate`, `PATCH /plan/sessions/{id}` | `plan.*` | `Plan` | **tab** + actions | plan |
 | `GET /race`, `POST /race` | `race`, `race.store` | `Race` | pushed, under `plan` prefix | plan |
 | `GET /trends` | `trends` | `Trends` | **tab** | trends |
 | `GET /history` | `history` | `History` | **tab** | history |
