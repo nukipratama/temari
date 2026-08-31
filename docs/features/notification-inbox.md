@@ -85,8 +85,7 @@ Reading is per-row and idempotent: opening a deep link or replaying a celebratio
 [NotificationReadController](../../app/Http/Controllers/Api/NotificationReadController.php#L19),
 which is scoped through the user's own relation. The page marks the row read optimistically and
 reloads only `unreadNotifications`, which is what the bell in
-[TopNav](../../resources/js/components/TopNav.tsx) / [MobileTopBar](../../resources/js/components/MobileTopBar.tsx)
-renders. There is no "mark all read": the unread count is a count of things not looked at, and a
+[MobileTopBar](../../resources/js/components/MobileTopBar.tsx) renders. There is no "mark all read": the unread count is a count of things not looked at, and a
 button that lies about that is worse than a count that stays high.
 
 `/inbox?item={id}` is the per-row deep link. The controller resolves which page that row sits on

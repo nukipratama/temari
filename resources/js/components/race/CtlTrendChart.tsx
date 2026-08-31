@@ -158,7 +158,7 @@ export default function CtlTrendChart({
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
-                className="h-[240px] sm:h-[280px]"
+                className="h-[240px]"
             >
                 <span className="sr-only">{summarySentence}</span>
                 <Suspense

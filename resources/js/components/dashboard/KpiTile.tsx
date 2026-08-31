@@ -42,7 +42,7 @@ export default function KpiTile({
     return (
         <div
             className={cn(
-                'rounded-lg border p-3 shadow-e1 sm:px-4 sm:py-3.5',
+                'rounded-lg border p-3 shadow-e1',
                 onSky
                     ? 'border-cream/[0.12] bg-cream/[0.06]'
                     : 'border-border bg-card',
@@ -50,7 +50,7 @@ export default function KpiTile({
         >
             <div
                 className={cn(
-                    'flex items-center gap-1 font-mono text-[12px] font-bold uppercase tracking-wider sm:text-xs',
+                    'flex items-center gap-1 font-mono text-[12px] font-bold uppercase tracking-wider',
                     onSky ? 'text-ink-on-sky' : 'text-text-2',
                 )}
             >
@@ -61,7 +61,7 @@ export default function KpiTile({
             </div>
             <div
                 className={cn(
-                    'mt-1.5 font-mono text-2xl font-bold tabular-nums sm:mt-2 sm:text-3xl',
+                    'mt-1.5 font-mono text-2xl font-bold tabular-nums',
                     onSky ? TONE_CLASS_ON_SKY[tone] : TONE_CLASS[tone],
                 )}
             >

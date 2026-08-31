@@ -10,13 +10,13 @@ interface PageContainerProps {
 }
 
 /**
- * Standard page shell: centers content and caps its width so it stops
- * sprawling edge-to-edge on large screens. The cap eases up at `2xl`
- * (1440 → 1680) so a 2K panel never feels marooned in empty gutters.
- * Carries the shared fadeInUp entrance so pages stay a one-line swap.
+ * Standard page shell, reproducing the prototype's own responsive model: the
+ * single mobile column below 900px, a centred 760px column above it. One
+ * breakpoint, no intermediate steps. Carries the shared fadeInUp entrance so
+ * pages stay a one-line swap.
  */
 const CONTAINER =
-    'mx-auto w-full max-w-page px-5 py-6 sm:px-8 lg:px-14 lg:py-8 2xl:max-w-page-2xl 2xl:px-20';
+    'mx-auto w-full px-4 py-6 min-[900px]:max-w-[760px] min-[900px]:px-6';
 
 export default function PageContainer({
     children,

@@ -91,10 +91,9 @@ describe('AppShell', () => {
         ['Today', 'Plan', 'Trends', 'History'].forEach((label) => {
             expect(screen.getAllByText(label).length).toBeGreaterThan(0);
         });
-        // <main> keeps bottom clearance for the fixed mobile bottom nav (cleared on lg).
+        // <main> keeps bottom clearance for the floating bottom nav.
         const main = document.getElementById('main-content');
         expect(main?.className).toContain('pb-28');
-        expect(main?.className).toContain('lg:pb-0');
     });
 
     it('mounts the route progress bar as shell chrome, idle by default', () => {
@@ -193,11 +192,11 @@ describe('AppShell', () => {
         );
 
         const main = document.getElementById('main-content');
-        expect(main).toHaveClass('pb-28', 'outline-none', 'lg:pb-0');
-        // Exactly those three: an enter animation would have to add a class
+        expect(main).toHaveClass('outline-none', 'pb-28');
+        // Exactly those two: an enter animation would have to add a class
         // here, and starting one at opacity 0 is what read as "old page ->
         // blank -> fade in".
-        expect(main?.className.split(' ')).toHaveLength(3);
+        expect(main?.className.split(' ')).toHaveLength(2);
     });
 
     it('keeps the content region mounted across a partial reload of the same page', () => {

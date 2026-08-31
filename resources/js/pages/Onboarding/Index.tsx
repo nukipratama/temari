@@ -21,7 +21,7 @@ import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
 import { useCountUp } from '@/hooks/useCountUp';
-import { appLayout } from '@/layouts/appLayout';
+import { bareLayout } from '@/layouts/BareShell';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { formatPace } from '@/lib/pace';
@@ -262,7 +262,7 @@ export default function OnboardingIndex() {
     return (
         <>
             <Head title="Welcome" />
-            <PageContainer className="max-w-2xl">
+            <PageContainer className="pt-16 min-[900px]:max-w-[520px]">
                 <StepProgress step={step} subIndex={subIndex} />
 
                 {step === 'connected' ? (
@@ -271,7 +271,7 @@ export default function OnboardingIndex() {
                         variants={fadeInUp}
                         initial="hidden"
                         animate="visible"
-                        className="flex flex-col items-center gap-5 py-2 text-center sm:py-10"
+                        className="flex flex-col items-center gap-5 py-2 text-center"
                     >
                         <Temari pose="glow" size={112} animate />
                         <PageHero
@@ -529,7 +529,7 @@ export default function OnboardingIndex() {
                         <Card className="px-6 py-6">
                             <form
                                 onSubmit={submitGoal}
-                                className="grid grid-cols-1 gap-5 sm:grid-cols-2"
+                                className="grid grid-cols-1 gap-5"
                             >
                                 <div>
                                     <label
@@ -571,7 +571,7 @@ export default function OnboardingIndex() {
                                     <FieldError message={errors.race_date} />
                                 </div>
 
-                                <div className="sm:col-span-2">
+                                <div>
                                     <span className="text-label-micro text-text-3">
                                         Distance
                                     </span>
@@ -597,7 +597,7 @@ export default function OnboardingIndex() {
                                     <FieldError message={errors.distance_m} />
                                 </div>
 
-                                <div className="sm:col-span-2">
+                                <div>
                                     <span className="text-label-micro text-text-3">
                                         Goal time
                                     </span>
@@ -641,7 +641,7 @@ export default function OnboardingIndex() {
                                     />
                                 </div>
 
-                                <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+                                <div className="flex flex-wrap items-center gap-3">
                                     <Button
                                         type="submit"
                                         disabled={processing || !canSubmitGoal}
@@ -710,4 +710,4 @@ function FieldError({ message }: Readonly<{ message?: string | null }>) {
     );
 }
 
-OnboardingIndex.layout = appLayout;
+OnboardingIndex.layout = bareLayout;

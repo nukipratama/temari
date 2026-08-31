@@ -101,7 +101,7 @@ export default function HeroPanel({
     return (
         <div
             className={cn(
-                'relative rounded-lg px-6 py-6 text-cream sm:px-8 sm:py-7',
+                'relative rounded-lg px-6 py-6 text-cream',
                 gradient ? GRADIENT : 'bg-sky',
                 className,
             )}

@@ -266,7 +266,7 @@ export default function Race({
                     <Card className="mt-3 px-6 py-6">
                         <form
                             onSubmit={submit}
-                            className="grid grid-cols-1 gap-5 sm:grid-cols-2"
+                            className="grid grid-cols-1 gap-5"
                         >
                             <div>
                                 <label
@@ -305,7 +305,7 @@ export default function Race({
                                 />
                             </div>
 
-                            <div className="sm:col-span-2">
+                            <div>
                                 <span className="text-label-micro text-text-3">
                                     Distance
                                 </span>
@@ -351,7 +351,7 @@ export default function Race({
                                 </div>
                             </div>
 
-                            <div className="sm:col-span-2">
+                            <div>
                                 <span className="text-label-micro text-text-3">
                                     Goal time
                                 </span>
@@ -433,7 +433,7 @@ export default function Race({
                                 )}
                             </div>
 
-                            <div className="sm:col-span-2">
+                            <div>
                                 <Button
                                     type="submit"
                                     disabled={

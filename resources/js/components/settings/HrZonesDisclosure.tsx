@@ -284,7 +284,7 @@ export default function HrZonesDisclosure({
                         <SectionLabel size="micro">
                             Max &amp; Resting HR
                         </SectionLabel>
-                        <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="grid grid-cols-2 gap-4">
                             <NumberField
                                 label="Max HR"
                                 suffix="bpm"

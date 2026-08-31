@@ -35,7 +35,7 @@ export default function NarrationHeadline({
     return (
         <div
             className={cn(
-                'relative overflow-hidden rounded-(--radius-panel) border border-horizon-ink/25 bg-horizon/10 p-6 sm:p-8',
+                'relative overflow-hidden rounded-(--radius-panel) border border-horizon-ink/25 bg-horizon/10 p-6',
                 className,
             )}
         >
@@ -67,11 +67,11 @@ export default function NarrationHeadline({
                         const { title, description } = splitContent(content);
                         return (
                             <>
-                                <p className="font-serif text-xl leading-snug text-foreground italic sm:text-2xl">
+                                <p className="font-serif text-xl leading-snug text-foreground italic">
                                     {title}
                                 </p>
                                 {description !== '' && (
-                                    <p className="mt-2 max-w-full font-serif text-sm leading-relaxed text-text-2 italic sm:text-base">
+                                    <p className="mt-2 max-w-full font-serif text-sm leading-relaxed text-text-2 italic">
                                         {description}
                                     </p>
                                 )}

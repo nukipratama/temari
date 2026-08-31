@@ -15,10 +15,11 @@ import RouteProgressBar from '@/components/RouteProgressBar';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
 import UnlockToast from '@/components/temari/UnlockToast';
-import TopNav from '@/components/TopNav';
 import { useDawnShift } from '@/hooks/useDawnShift';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useSystemTheme } from '@/hooks/useSystemTheme';
+import { cn } from '@/lib/cn';
+import { navTabFor } from '@/lib/nav';
 
 // The pack reveal drags the whole share-card canvas engine in behind it, and
 // this layout wraps every page — so it stays off the first-paint path and is
@@ -33,7 +34,9 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
     useDawnShift();
     useSwipeBack();
     useSystemTheme();
-    const { pendingReveal, flash } = usePage<SharedProps>().props;
+    const { props, component } = usePage<SharedProps>();
+    const { pendingReveal, flash } = props;
+    const hasBottomNav = navTabFor(component) !== null;
     const pending = pendingReveal ?? null;
     const unlock = flash?.unlock ?? null;
     const [majorUnlock, setMajorUnlock] = useState<UnlockFlash | null>(() =>
@@ -61,13 +64,13 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                     Skip to content
                 </a>
 
-                <TopNav />
                 <MobileTopBar />
 
                 {/* MobileTopBar floats over content (absolute, no background — see its
-                own comment), so this padding is what actually clears it on mobile;
-                TopNav is desktop-only and already in normal flow, hence lg:pt-0. */}
-                <div className="pt-20 lg:pt-0">
+                own comment), so this padding is what actually clears it. Above 900px
+                the column narrows to 760px and the bar's chips sit outside it, so the
+                clearance drops to the prototype's own pt-6. */}
+                <div className="pt-[max(4rem,calc(env(safe-area-inset-top)+3rem))] min-[900px]:pt-6">
                     <ErrorBanner />
                     <FlashNotice />
                     <StravaZoneReconnectBanner />
@@ -85,7 +88,12 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                     <main
                         id="main-content"
                         tabIndex={-1}
-                        className="pb-28 outline-none lg:pb-0"
+                        className={cn(
+                            'outline-none',
+                            hasBottomNav
+                                ? 'pb-28'
+                                : 'pb-[calc(1.75rem+env(safe-area-inset-bottom))]',
+                        )}
                     >
                         {children}
                     </main>

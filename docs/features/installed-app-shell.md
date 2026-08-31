@@ -74,18 +74,13 @@ Settings and Log out into the avatar menu precisely so account actions were
 reachable everywhere.
 
 On a **pushed** screen the brand mark gives way to a back button — roots show
-identity, pushes show a way out. Which screens count is an explicit map in
-`MobileTopBar`, not something derived from `activeTabFromUrl`, for two reasons:
-
-- `/calendar`, `/records`, `/accessories`, `/badges` and `/race` resolve to a tab
-  too, but are reached through in-page tab strips, so they are siblings of their
-  root rather than a stack, and keep the brand mark.
-- `/settings` is deliberately absent from the map even though it is nested by
-  URL. It's a lateral MeTabs tab reached from Profile (itself one tap away via
-  the avatar link), not a pushed screen, so it behaves as a root. HR zones,
-  once a standalone `/settings/zones` page and the one exception that kept a
-  back button, is now an inline disclosure on Settings itself — see
-  [[settings-hr-zones]].
+identity, pushes show a way out. Which screens count is decided in
+[nav.ts](resources/js/lib/nav.ts), by Inertia page component rather than by URL
+prefix: exactly five components carry the bottom nav (Today, Plan, Race, Trends,
+History — Race lights the `plan` tab, being a sub-page of Plan), and **everything
+else routed through `AppShell` is pushed**. That inversion is the parity
+program's P6/P35, and it is what moved Profile, Settings, Inbox and activity
+detail onto the back-chevron treatment.
 
 Two details worth keeping:
 
@@ -93,14 +88,12 @@ Two details worth keeping:
   link opens `/activities/{id}` cold with nothing behind it, and `history.back()`
   would strand the user or exit the app. [useSwipeBack](resources/js/hooks/useSwipeBack.ts)
   remains the gesture equivalent.
-- **Desktop keeps the in-page breadcrumb** where one exists. The bar is
-  `lg:hidden`, so the [BackLink](resources/js/components/ui/BackLink.tsx) on
-  pushed pages is hidden below `lg` rather than deleted — each viewport gets
-  exactly one back affordance. Settings itself has no breadcrumb on either
-  viewport.
+- **One back affordance, at every width.** The bar is no longer `lg:hidden`, so
+  the in-page `BackLink` that used to cover desktop on pushed pages is gone —
+  the topbar chevron is the only way out, on every viewport.
 
-`TopNav` is a separate component and also a `<header>`, which is why tests
-select the mobile bar by `data-testid` rather than by tag.
+`MobileTopBar` is selected by `data-testid` in tests rather than by tag, a habit
+from when a second `<header>` (the deleted desktop `TopNav`) existed.
 
 ## Launch image
 

@@ -171,7 +171,7 @@ export default function WeekPlanWidget({
                 </div>
             </div>
 
-            <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-stretch">
+            <div className="mt-4 flex flex-col items-center gap-4 min-[900px]:gap-6">
                 <SessionsRing
                     value={
                         weekPlan.sessions_per_week > 0
@@ -233,7 +233,7 @@ export default function WeekPlanWidget({
 
             {today !== null && (
                 <div className="mt-4 rounded-lg bg-accent p-3">
-                    <span className="text-sm font-bold text-foreground sm:text-base">
+                    <span className="text-sm font-bold text-foreground">
                         Today ·{' '}
                         {SESSION_TYPE_LABEL[today.session_type] ??
                             today.session_type}

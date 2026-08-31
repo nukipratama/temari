@@ -16,8 +16,7 @@ import {
     paceSecOf,
 } from '@/lib/splits';
 
-const ROW_GRID =
-    'grid-cols-[34px_140px_56px_56px_56px] items-center gap-2.5 lg:grid-cols-[40px_1fr_70px_70px_70px] lg:gap-3';
+const ROW_GRID = 'grid-cols-[34px_140px_56px_56px_56px] items-center gap-2.5';
 
 export default function SplitsTable({
     rows,
@@ -86,14 +85,14 @@ export default function SplitsTable({
                                 ROW_GRID,
                                 // Every row gets the same rounded background box — only the
                                 // bar color should differ (see computeBarWidth caller).
-                                'rounded-lg px-3 py-2 lg:py-2.5',
+                                'rounded-lg px-3 py-2',
                                 rowFill,
                             )}
                         >
                             <Eyebrow token="micro" tone="ink-2">
                                 KM {row.km ?? '?'}
                             </Eyebrow>
-                            <div className="h-2.5 overflow-hidden rounded bg-foreground/[0.06] lg:h-3">
+                            <div className="h-2.5 overflow-hidden rounded bg-foreground/[0.06]">
                                 <motion.div
                                     className={cn(
                                         'h-full origin-left rounded',
@@ -144,13 +143,13 @@ function SplitPartialRow({
             className={cn(
                 'grid',
                 ROW_GRID,
-                'mt-1 rounded-lg border-t border-border px-3 py-2 lg:py-2.5',
+                'mt-1 rounded-lg border-t border-border px-3 py-2',
             )}
         >
             <div className="text-label-micro text-text-3">
                 {formatKm(partial.distance_m, 1)} KM
             </div>
-            <div className="h-2.5 rounded border border-dashed border-foreground/20 bg-foreground/[0.06] lg:h-3" />
+            <div className="h-2.5 rounded border border-dashed border-foreground/20 bg-foreground/[0.06]" />
             <div className="text-right font-sans text-sm font-semibold tabular-nums text-text-3">
                 {partial.pace ?? '—'}
             </div>

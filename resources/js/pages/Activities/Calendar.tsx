@@ -181,7 +181,7 @@ function LifetimeEyebrow({ lifetime }: Readonly<{ lifetime?: LifetimeStats }>) {
     const totalKm = useCountUp(lifetime?.total_km ?? 0);
 
     return (
-        <Eyebrow token="hero" tone="ink-2" className="mb-3.5 lg:text-xs">
+        <Eyebrow token="hero" tone="ink-2" className="mb-3.5">
             History
             {hasLifetime && (
                 <>
@@ -273,11 +273,11 @@ function NavButton({
 
 function CalendarHeader() {
     return (
-        <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] border-b border-border/60 bg-muted/60 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
+        <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] border-b border-border/60 bg-muted/60">
             <Eyebrow
                 token="micro"
                 tone="ink-2"
-                className="px-1 py-2.5 text-center lg:px-3 lg:text-left lg:text-xs lg:tracking-[0.14em]"
+                className="px-1 py-2.5 text-center"
             >
                 <span className="sr-only">Week, distance in kilometers</span>
                 <span aria-hidden>KM</span>
@@ -287,7 +287,7 @@ function CalendarHeader() {
                     key={label}
                     token="micro"
                     tone="ink-2"
-                    className="px-1 py-2.5 text-center lg:px-2 lg:text-xs lg:tracking-[0.14em]"
+                    className="px-1 py-2.5 text-center"
                 >
                     {label}
                 </Eyebrow>
@@ -304,7 +304,7 @@ function WeekRowView({
     todayQuote: string | null;
 }>) {
     return (
-        <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] border-b border-border/50 last:border-b-0 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
+        <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] border-b border-border/50 last:border-b-0">
             <WeekSummary week={week} />
             {week.days.map((day) => (
                 <DayCellView
@@ -319,18 +319,13 @@ function WeekRowView({
 
 function WeekSummary({ week }: Readonly<{ week: WeekRow }>) {
     return (
-        <div className="flex flex-col items-center justify-center gap-0.5 border-r border-border/50 p-1.5 text-center lg:items-start lg:gap-1 lg:p-3 lg:text-left">
+        <div className="flex flex-col items-center justify-center gap-0.5 border-r border-border/50 p-1.5 text-center">
             {week.runCount > 0 ? (
                 <>
-                    <span className="text-xs font-bold tabular-nums leading-none text-foreground lg:text-lg">
+                    <span className="text-xs font-bold tabular-nums leading-none text-foreground">
                         {week.totalKm.toFixed(1)}
                     </span>
-                    <Eyebrow
-                        as="span"
-                        token="micro"
-                        tone="ink-2"
-                        className="lg:tracking-[0.14em]"
-                    >
+                    <Eyebrow as="span" token="micro" tone="ink-2">
                         WK {week.weekNumber}
                     </Eyebrow>
                 </>
@@ -356,17 +351,17 @@ const DayCellView = memo(function DayCellView({
     const muted = !cell.is_current_month;
 
     const cellChrome = cn(
-        'group relative flex min-h-[52px] flex-col gap-1 border-l border-border/50 p-1.5 transition lg:min-h-[140px] lg:gap-1.5 lg:p-3',
+        'group relative flex min-h-[52px] flex-col gap-1 border-l border-border/50 p-1.5 transition',
         muted && 'opacity-60',
         hasRun && cell.mood ? MOOD_SOFT_FILL[cell.mood] : 'bg-card',
     );
 
     const inner = (
         <>
-            <div className="flex items-center justify-between gap-1 lg:items-start">
+            <div className="flex items-center justify-between gap-1">
                 <span
                     className={cn(
-                        'text-xs font-bold tabular-nums lg:text-lg',
+                        'text-xs font-bold tabular-nums',
                         hasRun ? 'text-foreground' : 'text-text-2',
                     )}
                 >
@@ -378,7 +373,7 @@ const DayCellView = memo(function DayCellView({
                     <span
                         aria-hidden
                         className={cn(
-                            'h-1.5 w-1.5 shrink-0 rounded-full lg:h-2 lg:w-2',
+                            'h-1.5 w-1.5 shrink-0 rounded-full',
                             MOOD_FILL[cell.mood],
                         )}
                         title={MOOD_LABEL[cell.mood]}
@@ -386,16 +381,16 @@ const DayCellView = memo(function DayCellView({
                 )}
             </div>
             {hasRun && (
-                <div className="mt-auto hidden lg:block">
+                <div className="mt-auto">
                     <div className="text-headline-xs font-black leading-none tabular-nums text-foreground">
                         {cell.distance_km?.toFixed(2)}
-                        <span className="ml-0.5 text-[11px] font-bold text-text-2 lg:text-xs">
+                        <span className="ml-0.5 text-[11px] font-bold text-text-2">
                             km
                         </span>
                     </div>
                     {(cell.pace_sec_per_km !== null ||
                         cell.avg_hr !== null) && (
-                        <div className="mt-1.5 flex items-baseline gap-1.5 font-mono text-[11px] tabular-nums text-text-2 lg:text-xs">
+                        <div className="mt-1.5 flex items-baseline gap-1.5 font-mono text-[11px] tabular-nums text-text-2">
                             {cell.pace_sec_per_km !== null && (
                                 <span>{formatPace(cell.pace_sec_per_km)}</span>
                             )}
@@ -446,22 +441,22 @@ function TodayCell({
     quote,
 }: Readonly<{ cell: CalendarCell; quote: string | null }>) {
     const chrome =
-        'group relative flex min-h-[52px] flex-col gap-1 border-l border-border/50 bg-sky p-1.5 text-cream transition lg:min-h-[140px] lg:gap-2 lg:p-3';
+        'group relative flex min-h-[52px] flex-col gap-1 border-l border-border/50 bg-sky p-1.5 text-cream transition';
     const hasRun = cell.distance_km !== null && cell.distance_km > 0;
 
     let body: ReactNode = null;
     if (quote) {
         body = (
-            <p className="mt-auto hidden font-serif text-xs italic leading-snug text-cream/90 lg:block lg:text-sm">
+            <p className="mt-auto font-serif text-xs italic leading-snug text-cream/90">
                 “{stripEdgeQuotes(quote)}”
             </p>
         );
     } else if (hasRun) {
         body = (
-            <div className="mt-auto hidden lg:block">
+            <div className="mt-auto">
                 <div className="text-headline-xs font-black leading-none tabular-nums text-cream">
                     {cell.distance_km?.toFixed(2)}
-                    <span className="ml-0.5 text-[11px] font-bold text-cream/70 lg:text-xs">
+                    <span className="ml-0.5 text-[11px] font-bold text-cream/70">
                         km
                     </span>
                 </div>
@@ -471,8 +466,8 @@ function TodayCell({
 
     const inner = (
         <>
-            <div className="flex items-center justify-between gap-1 lg:items-start lg:gap-2">
-                <span className="inline-flex items-center gap-1 text-xs font-bold tabular-nums text-cream lg:text-lg">
+            <div className="flex items-center justify-between gap-1">
+                <span className="inline-flex items-center gap-1 text-xs font-bold tabular-nums text-cream">
                     {cell.day}
                     {/* Below lg, "Today" is hidden and the navy fill is the only
                         chrome difference from a highlighted/selected cell — add a
@@ -480,25 +475,20 @@ function TodayCell({
                         alone. */}
                     <span
                         aria-hidden
-                        className="h-1 w-1 rounded-full bg-horizon lg:hidden"
+                        className="h-1 w-1 rounded-full bg-horizon"
                     />
                 </span>
                 {hasRun && cell.mood && (
                     <span
                         aria-hidden
                         className={cn(
-                            'h-1.5 w-1.5 shrink-0 rounded-full lg:hidden',
+                            'h-1.5 w-1.5 shrink-0 rounded-full',
                             MOOD_FILL[cell.mood],
                         )}
                         title={MOOD_LABEL[cell.mood]}
                     />
                 )}
-                <Eyebrow
-                    as="span"
-                    token="hero"
-                    tone="horizon"
-                    className="hidden lg:inline"
-                >
+                <Eyebrow as="span" token="hero" tone="horizon">
                     Today
                 </Eyebrow>
             </div>

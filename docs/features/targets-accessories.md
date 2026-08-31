@@ -9,7 +9,6 @@ code_refs:
   - app/Http/Controllers/AccessoryController.php
   - resources/js/components/temari/TemariProto.tsx
   - resources/js/components/celebrations/AccessoryUnlockModal.tsx
-  - resources/js/components/me/MeTabs.tsx
 ---
 
 # Accessories
@@ -18,7 +17,7 @@ code_refs:
 
 The badge board that used to sit alongside this page as a second Collection sub-tab (`/badges`) retired once its content moved onto `/trends` as badge milestones on the Fitness/Fatigue timeline — see [[gamification]]. `/cards` retired the same way once every earned card became browsable inline on [[run-history]] instead. There is no more standalone "Collection" bottom-nav tab either.
 
-**Accessories itself is a final cut in the mobile-UX port** (`plan/ledger.md`): the page, `/accessories` route, `AccessoryController`, and every inbound link are slated for removal in that program's `W1`/`W2`. `S10` already dropped the `MeTabs` tab that used to link here alongside Profile and Settings, so this page is reachable only by direct URL now — see [[profile]]. The rest of this note describes the page as it still stands, pending that removal.
+**Accessories itself is a final cut in the mobile-UX port** (`plan/ledger.md`): the page, `/accessories` route, `AccessoryController`, and every inbound link are slated for removal in that program's `W1`/`W2`. `S10` dropped the tab that used to link here alongside Profile and Settings, and `PP1` cut that segmented nav entirely, so this page is reachable only by direct URL now — see [[profile]]. The rest of this note describes the page as it still stands, pending that removal.
 
 **Navigation:** `route('accessories')` → `/accessories` (`AccessoryController::index`). The old `/goals` accessory-progress page (Slice 5 through Slice 6) and its `/target` legacy redirect both retired in Slice 7 — both now redirect straight to `/accessories`, where the progress numbers moved.
 

@@ -120,9 +120,8 @@ describe('Settings', () => {
         expect(screen.getByText('Where it goes')).toBeInTheDocument();
     });
 
-    // No breadcrumb-style back affordance: the MeTabs segmented nav (rendered
-    // below) already links to Profile as a lateral tab, not a "back" action,
-    // so a BackLink (mdi:arrow-left) would be a redundant second way back.
+    // No breadcrumb-style back affordance in the page body: Settings is a
+    // pushed screen and the shell topbar's back chevron owns the way out.
     it('has no breadcrumb-style back link', () => {
         const { container } = render(<Settings />);
         expect(
@@ -130,17 +129,11 @@ describe('Settings', () => {
         ).toBeNull();
     });
 
-    it('renders the Me segmented nav with Settings active', () => {
+    it('renders no in-page Me nav — the topbar chrome replaces it', () => {
         render(<Settings />);
-        expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
-            'aria-current',
-            'page',
-        );
-        expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute(
-            'href',
-            '/profile',
-        );
-        // Accessories is cut from MeTabs (mobile-UX port ledger, S10).
+        expect(
+            screen.queryByRole('link', { name: 'Profile' }),
+        ).not.toBeInTheDocument();
         expect(
             screen.queryByRole('link', { name: 'Accessories' }),
         ).not.toBeInTheDocument();

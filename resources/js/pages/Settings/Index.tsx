@@ -2,7 +2,6 @@ import { Head, router } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
-import MeTabs from '@/components/me/MeTabs';
 import PushNotificationToggle from '@/components/PushNotificationToggle';
 import AppearanceCard from '@/components/settings/AppearanceCard';
 import HrZonesDisclosure, {
@@ -142,15 +141,11 @@ export default function Settings({
         <>
             <Head title="Settings" />
             <PageContainer>
-                {/* No back affordance: Settings is reachable via MeTabs from
-                    Profile (itself one tap away via the avatar), so a
-                    breadcrumb here would be chrome without a job. */}
                 <header className="mb-8 flex flex-col gap-5">
                     <PageHero eyebrow="Settings" size="quote-lg" italic>
                         set up temari,{' '}
                         <em className="italic text-horizon-ink">your way.</em>
                     </PageHero>
-                    <MeTabs active="settings" />
                 </header>
 
                 {/* Leads the page: the appearance toggle is this slice's

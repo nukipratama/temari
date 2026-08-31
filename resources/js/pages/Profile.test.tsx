@@ -51,16 +51,11 @@ describe('Profile', () => {
         expect(screen.getByText('runner,')).toBeInTheDocument();
     });
 
-    it('renders the Me segmented nav with Profile active', () => {
+    it('renders no in-page Me nav — the topbar gear replaces it', () => {
         render(<Profile identity={identity} stats={stats} />);
-        expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute(
-            'aria-current',
-            'page',
-        );
-        expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
-            'href',
-            '/settings',
-        );
+        expect(
+            screen.queryByRole('link', { name: 'Settings' }),
+        ).not.toBeInTheDocument();
         expect(
             screen.queryByRole('link', { name: 'Accessories' }),
         ).not.toBeInTheDocument();
@@ -73,9 +68,9 @@ describe('Profile', () => {
         expect(screen.getByText('Longest run')).toBeInTheDocument();
     });
 
-    // Settings moved out of this page into MeTabs, reachable from Profile
-    // rather than carried here as its own row. The entry point is asserted
-    // in MeTabs.test.tsx and Settings/Index.test.tsx.
+    // Settings is reached from the shell topbar's gear on this screen, not
+    // from a row in the page body. That entry point is asserted in
+    // MeTabs' replacement, MobileTopBar.test.tsx.
     it('no longer carries a settings row of its own', () => {
         render(<Profile identity={identity} stats={stats} />);
         expect(

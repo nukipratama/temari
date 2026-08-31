@@ -26,7 +26,6 @@ import SendNotificationButton from '@/components/SendNotificationButton';
 import StravaAction from '@/components/StravaAction';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
-import BackLink from '@/components/ui/BackLink';
 import { Card } from '@/components/ui/card';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
@@ -202,13 +201,6 @@ export default function RunsShow({
         <>
             <Head title={detail.name ?? 'Run'} />
             <PageContainer>
-                <BackLink
-                    href="/history"
-                    className="mb-4 hidden lg:inline-flex"
-                >
-                    History · Log
-                </BackLink>
-
                 <RunHydratingNotice hydrating={awaitingDetail} />
 
                 <div className="mb-5 flex flex-wrap gap-2">
@@ -241,8 +233,8 @@ export default function RunsShow({
 
                 {/* HERO — one panel, stats left + route map right */}
                 <section>
-                    <HeroPanel className="lg:px-9 lg:py-8">
-                        <div className="relative grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr] lg:items-stretch">
+                    <HeroPanel>
+                        <div className="relative grid grid-cols-1 gap-6">
                             <div className="flex h-full flex-col justify-center">
                                 <div className="mb-5 flex items-start gap-4">
                                     <Temari
@@ -351,7 +343,7 @@ export default function RunsShow({
                 {card && (
                     <section
                         data-coachmark="run-kartu"
-                        className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,340px)_1fr] lg:items-start"
+                        className="mt-10 grid gap-8"
                     >
                         <KartuMount>
                             <Kartu
