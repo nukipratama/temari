@@ -19,7 +19,6 @@ import {
     paceSecPerKm,
 } from '@/lib/pace';
 import {
-    RARITY_LABELS,
     avgCadenceFromDetail,
     badgeEmblem,
     badgeName,
@@ -69,7 +68,6 @@ export function useRunShow({
     const cardBadges = useMemo(() => (card?.badges ?? []).slice(0, 3), [card]);
     const cadence = avgCadenceFromDetail(detail);
     const fastestKm = fastestKmFromDetail(detail);
-    const rarityLabel = card ? RARITY_LABELS[card.rarity] : null;
 
     const shareDate = detail.start_date_local
         ? (() => {
@@ -164,7 +162,6 @@ export function useRunShow({
         cardBadges,
         cadence,
         fastestKm,
-        rarityLabel,
         shareData,
     };
 }
