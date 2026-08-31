@@ -150,7 +150,6 @@ function renderShow(
             )}
             moodFallback="chill"
             isChainHead
-            notificationRetryAfterSeconds={null}
             pastYou={null}
             {...overrides}
         />,

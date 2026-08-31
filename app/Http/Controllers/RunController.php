@@ -101,9 +101,6 @@ class RunController extends Controller
             // later runs that quoted their old narrative.
             'isChainHead' => fn (): bool => Activity::latestIdForUser($user->id) === $activity->id,
             'speechAnalysis' => fn (): array => $payloadFor(AnalysisType::PostRunSpeech),
-            'notificationRetryAfterSeconds' => fn (): ?int => Analysis::notificationCooldownRemaining(
-                $payloadFor(AnalysisType::PostRunSpeech),
-            ),
             'runInsight' => fn (): array => $payloadFor(AnalysisType::RunInsight),
             'pastYou' => function () use ($matcher, $hydrator, $activity, $detail): ?array {
                 $match = $matcher->findMatch($activity, $detail);

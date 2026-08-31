@@ -22,8 +22,6 @@ import PastYouHero, { type PastYouMatch } from '@/components/run/PastYouHero';
 import RunHydratingNotice from '@/components/run/RunHydratingNotice';
 import RunLenses from '@/components/run/RunLenses';
 import SplitsTable from '@/components/run/SplitsTable';
-import SendNotificationButton from '@/components/SendNotificationButton';
-import StravaAction from '@/components/StravaAction';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
 import Eyebrow from '@/components/ui/Eyebrow';
@@ -34,8 +32,6 @@ import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
 import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';
-import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
-import { usePendingPost } from '@/hooks/usePendingPost';
 import { appLayout } from '@/layouts/appLayout';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatIdDate, formatPace, formatShortDateTimeId } from '@/lib/pace';
@@ -71,8 +67,6 @@ interface ShowProps {
     moodFallback: Mood;
     /** This run is the head of the per-activity narration chain (latest run). */
     isChainHead: boolean;
-    /** Remaining Telegram-send cooldown for this run's speech, or null. */
-    notificationRetryAfterSeconds: number | null;
     pastYou: PastYouMatch | null;
 }
 
@@ -86,10 +80,8 @@ export default function RunsShow({
     runInsight,
     moodFallback,
     isChainHead,
-    notificationRetryAfterSeconds,
     pastYou,
 }: Readonly<ShowProps>) {
-    const notificationsReachable = useNotificationsReachable();
     const shareRef = useRef<HTMLDivElement>(null);
     const {
         summary,
@@ -152,11 +144,6 @@ export default function RunsShow({
         },
     ];
 
-    const [resyncing, resync] = usePendingPost(
-        `/activities/${activity.id}/resync`,
-        { preserveScroll: true },
-    );
-
     const [shareOpen, setShareOpen] = useState(false);
 
     return (
@@ -164,34 +151,6 @@ export default function RunsShow({
             <Head title={detail.name ?? 'Run'} />
             <PageContainer>
                 <RunHydratingNotice hydrating={awaitingDetail} />
-
-                <div className="mb-5 flex flex-wrap gap-2">
-                    <StravaAction>
-                        <PillButton
-                            tone="outline"
-                            size="sm"
-                            disabled={resyncing}
-                            className="disabled:opacity-60 disabled:cursor-not-allowed"
-                            onClick={resync}
-                        >
-                            <Icon
-                                icon={resyncing ? 'mdi:loading' : 'mdi:sync'}
-                                width={15}
-                                height={15}
-                                className={
-                                    resyncing ? 'animate-spin' : undefined
-                                }
-                                aria-hidden
-                            />
-                            {resyncing ? 'Syncing…' : 'Resync from Strava'}
-                        </PillButton>
-                    </StravaAction>
-                    <SendNotificationButton
-                        url={`/activities/${activity.id}/send`}
-                        retryAfterSeconds={notificationRetryAfterSeconds}
-                        reachable={notificationsReachable}
-                    />
-                </div>
 
                 {/* HERO — one panel, stats left + route map right */}
                 <section>

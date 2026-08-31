@@ -29,7 +29,7 @@ a single activity, so the boundary is structural rather than a prompt rule. See
 ## The two endpoints
 
 Both live in [RunQuestionController](app/Http/Controllers/Api/RunQuestionController.php)
-and are registered in [routes/web.php](routes/web.php#L224) behind the normal
+and are registered in [routes/web.php](routes/web.php#L201) behind the normal
 auth group.
 
 - `GET /api/activities/{activity}/questions` — this run's thread (oldest first)
