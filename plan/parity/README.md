@@ -152,7 +152,7 @@ Status vocabulary: `todo` · `in-progress` · `in-review` · `merged` · `blocke
 
 | id | name | status | PR | slot | notes |
 |---|---|---|---|---|---|
-| PP0 | Full-scroll reference capture | in-review | [#681](https://github.com/nukipratama/temari/pull/681) | main | [reference.md](reference.md) |
+| PP0 | Full-scroll reference capture | merged | [#681](https://github.com/nukipratama/temari/pull/681) | main | 90 captures + [reference.md](reference.md); found 5 factual errors in this plan; squashed as 1e45a122 |
 | PP1 | Shell, nav, responsive | todo | — | main | blocks everything |
 | PP2 | FaceIcon + share card | todo | — | main | |
 | PP3 | The cut | todo | — | main | |
