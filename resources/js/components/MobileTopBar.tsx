@@ -2,7 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 
 import type { SharedProps } from '@/types/inertia';
 
-import BrandMark from '@/components/BrandMark';
+import HeaderBrandMark from '@/components/HeaderBrandMark';
 import NotificationBell from '@/components/NotificationBell';
 import StravaSyncBadge from '@/components/StravaSyncBadge';
 import { Icon } from '@/components/ui/Icon';
@@ -66,7 +66,7 @@ export default function MobileTopBar() {
                     aria-label="Home"
                     className="pressable focus-ring inline-flex items-center gap-2.5 rounded-full bg-muted py-1.75 pr-3.25 pl-2.5 shadow-e1"
                 >
-                    <BrandMark wordmarkClassName="hidden min-[350px]:inline" />
+                    <HeaderBrandMark wordmarkClassName="hidden min-[350px]:inline" />
                 </Link>
             )}
             <div className="flex items-center gap-2">
