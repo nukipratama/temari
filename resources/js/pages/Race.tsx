@@ -135,10 +135,10 @@ export default function Race({
                 <header className="flex flex-col gap-5">
                     <PlanRaceTabs active="race" />
                     <div>
-                        <PageHero eyebrow="Race">
+                        <PageHero eyebrow="Race" size="quote-lg" italic>
                             {race ? (
                                 <>
-                                    Your race,
+                                    your race,
                                     <br />
                                     <em className="italic text-icon-accent">
                                         on the calendar.
@@ -146,7 +146,7 @@ export default function Race({
                                 </>
                             ) : (
                                 <>
-                                    Give the plan
+                                    give the plan
                                     <br />
                                     <em className="italic text-icon-accent">
                                         something to aim at.

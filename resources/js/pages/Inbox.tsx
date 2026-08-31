@@ -111,8 +111,10 @@ export default function Inbox({
                             ? `Inbox · ${unread} unread on this page`
                             : 'Inbox'
                     }
+                    size="quote-lg"
+                    italic
                 >
-                    Everything I told you,
+                    everything i told you,
                     <br />
                     <em className="italic text-text-2">still here.</em>
                 </PageHero>

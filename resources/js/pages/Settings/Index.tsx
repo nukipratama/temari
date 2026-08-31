@@ -146,8 +146,8 @@ export default function Settings({
                     Profile (itself one tap away via the avatar), so a
                     breadcrumb here would be chrome without a job. */}
                 <header className="mb-8 flex flex-col gap-5">
-                    <PageHero eyebrow="Settings">
-                        Set up Temari,{' '}
+                    <PageHero eyebrow="Settings" size="quote-lg" italic>
+                        set up temari,{' '}
                         <em className="italic text-horizon-ink">your way.</em>
                     </PageHero>
                     <MeTabs active="settings" />

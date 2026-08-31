@@ -89,12 +89,14 @@ export default function Calendar({
             <Head title={`History · Calendar · ${monthLabel}`} />
             <PageContainer>
                 <header className="flex flex-col gap-5">
-                    <PageHero eyebrow={<LifetimeEyebrow lifetime={lifetime} />}>
-                        Every run,
+                    <PageHero
+                        eyebrow={<LifetimeEyebrow lifetime={lifetime} />}
+                        size="quote-lg"
+                        italic
+                    >
+                        every run,
                         <br />
-                        <em className="not-italic text-horizon-ink">
-                            has a story.
-                        </em>
+                        <em className="text-horizon-ink">has a story.</em>
                     </PageHero>
                     <HistoryNav active="calendar" />
                 </header>

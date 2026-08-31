@@ -108,7 +108,7 @@ describe('Settings', () => {
         render(<Settings />);
         expect(screen.getAllByText('Settings').length).toBeGreaterThan(0);
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-            'Set up Temari, your way.',
+            'set up temari, your way.',
         );
     });
 
