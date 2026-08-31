@@ -1,7 +1,6 @@
 import type { PastYouTrend, TrendVerdict } from '@/types/inertia';
 
-import Temari from '@/components/temari/Temari';
-import { type TemariPose } from '@/components/temari/TemariProto';
+import FaceIcon from '@/components/temari/FaceIcon';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
 import { verdictHeadline, verdictSupport } from '@/lib/verdict';
@@ -13,12 +12,6 @@ const TONE: Record<JudgedVerdict, string> = {
     improving: 'text-leaf-ink',
     plateaued: 'text-foreground',
     slipped: 'text-ember-ink',
-};
-
-const VERDICT_POSE: Record<JudgedVerdict, TemariPose> = {
-    improving: 'proud',
-    plateaued: 'observational',
-    slipped: 'wobble',
 };
 
 /**
@@ -50,11 +43,7 @@ export default function VerdictHero({
             </p>
 
             <div className="mt-4 flex items-center gap-2">
-                <Temari
-                    pose={VERDICT_POSE[verdict]}
-                    size={34}
-                    animate={false}
-                />
+                <FaceIcon size={34} />
                 <span className="font-mono text-[11px] font-semibold tracking-[0.06em] text-text-3">
                     temari
                 </span>

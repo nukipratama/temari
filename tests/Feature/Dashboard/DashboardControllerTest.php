@@ -49,18 +49,6 @@ it('includes the route polyline + stream summary on recent runs so the cards dra
             ->has('recentRuns.0.stream_summary'));
 });
 
-it('ships the persisted post-run mood per recent run for the featured card + last-run mascot', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create();
-    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'easy']);
-
-    $this->actingAs($user)->get('/')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where("recentMoods.{$activity->id}", 'easy'));
-});
-
 it('renders KPIs + recent runs when the user has training-load history', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
     $user = User::factory()->create();
@@ -178,8 +166,8 @@ it('does not fetch recent runs or weekly snapshots on a briefing-only partial re
 
     $response = $this->actingAs($user)->get('/', $headers)->assertSuccessful();
 
-    // `summary_polyline` is unique to the recent-run select, which `recentRuns`,
-    // `lastRunNote` and `recentMoods` all share behind one memoized closure.
+    // `summary_polyline` is unique to the recent-run select, which `recentRuns`
+    // and `lastRunNote` share behind one memoized closure.
     $recentRunFetches = array_filter($queries, fn (string $sql): bool => str_contains($sql, 'summary_polyline'));
     $snapshotReads = array_filter($queries, fn (string $sql): bool => str_contains($sql, '`weekly_snapshots`'));
 
@@ -189,7 +177,7 @@ it('does not fetch recent runs or weekly snapshots on a briefing-only partial re
     $response->assertJsonPath('component', 'Home');
     // The one prop the poll does name still has to resolve.
     $response->assertJsonPath('props.briefing.mood', fn (mixed $mood): bool => is_string($mood));
-    foreach (['load', 'snapshot', 'recentRuns', 'lastRunNote', 'recentMoods', 'weekPlan'] as $skipped) {
+    foreach (['load', 'snapshot', 'recentRuns', 'lastRunNote', 'weekPlan'] as $skipped) {
         $response->assertJsonMissingPath("props.{$skipped}");
     }
 });
@@ -207,7 +195,6 @@ it('still returns every dashboard prop on a full page load', function (): void {
             ->has('briefing')
             ->has('snapshot')
             ->has('recentRuns', 1)
-            ->has('recentMoods')
             ->has('pastYouTrend')
             ->has('weekPlan'));
 });

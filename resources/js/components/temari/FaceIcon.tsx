@@ -1,3 +1,13 @@
+/**
+ * The prototype's inverted face — a dark disc with cream features. Drawn on
+ * the recap cards and on the app's own sky-gradient hero panels, where the
+ * ground-reactive defaults would sink into the surface on the dark ground.
+ */
+export const DARK_FACE = {
+    fill: 'var(--color-sky-2)',
+    feature: 'var(--color-cream)',
+} as const;
+
 interface FaceIconProps {
     size?: number;
     /** Outer ring stroke. Mood-tinted where a surface carries a mood, brand horizon otherwise. */
