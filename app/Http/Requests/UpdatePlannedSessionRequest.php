@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
-use App\Enums\SessionType;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 /**
- * Validates a planned-session edit: move (date), block (session_type =
- * rest), skip (excuse the day before it passes — see
- * {@see \App\Models\PlannedSession::$skipped}), and/or an explicit
+ * Validates a planned-session edit: move (date — a swap with whatever
+ * already sits on the target day), skip (excuse the day before it passes —
+ * see {@see \App\Models\PlannedSession::$skipped}), and/or an explicit
  * pin/unpin toggle. Any field left out keeps its current stored value
  * ({@see \App\Http\Controllers\PlanController::update()}). Per-segment
  * editing (a Tempo day's warmup length, an Interval day's rep count) isn't a
@@ -32,7 +30,6 @@ class UpdatePlannedSessionRequest extends FormRequest
     {
         return [
             'date' => ['sometimes', 'date'],
-            'session_type' => ['sometimes', Rule::enum(SessionType::class)],
             'skipped' => ['sometimes', 'boolean'],
             'pinned' => ['sometimes', 'boolean'],
         ];
