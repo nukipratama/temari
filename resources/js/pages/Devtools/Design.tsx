@@ -1,10 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import TemariProto, {
-    TEMARI_EXPRESSIONS,
-    type TemariEquipped,
-} from '@/components/temari/TemariProto';
+import FaceIcon, { DARK_FACE } from '@/components/temari/FaceIcon';
 import { cn } from '@/lib/cn';
 import {
     type ContrastRow,
@@ -23,25 +20,8 @@ import { cardVariants } from '@/lib/variants';
 const CARD_TONES = ['card', 'onSky', 'empty'] as const;
 const CARD_PADDINGS = ['panel', 'card', 'hero'] as const;
 
-const SLOT_SPECIMENS: ReadonlyArray<[string, TemariEquipped]> = [
-    ['headband', { headband: 'legendary' }],
-    ['shirt', { shirt: 'rainWarrior' }],
-    ['shorts', { shorts: 'negativeSplit' }],
-    ['shoes', { shoes: 'rugged' }],
-    ['medal', { medal: 'platinum' }],
-    ['aura', { aura: 'windrunner' }],
-];
-
-const FULLY_EQUIPPED: TemariEquipped = {
-    headband: 'legendary',
-    shirt: 'rainWarrior',
-    shorts: 'negativeSplit',
-    shoes: 'rugged',
-    medal: 'platinum',
-    aura: 'windrunner',
-};
-
-const SEASON_PHASES = ['base', 'build', 'peak', 'taper'] as const;
+/** Every size the app draws Temari's face at, smallest first. */
+const FACE_SIZES = [26, 34, 36, 40, 42, 48, 56, 64, 72] as const;
 
 const TYPE_SPECIMENS: ReadonlyArray<[string, string, string]> = [
     ['display-lg', 'font-serif italic text-display-lg', 'Eight point two'],
@@ -469,95 +449,31 @@ export default function Design() {
                     </Section>
 
                     <Section
-                        title="Mascot faces"
-                        note="The ten drawn states, generated from one geometry so every face shares a skull. The halo carries mood through colour and weight and is always a closed ring, never a fill, so it can't be misread as a progress meter."
+                        title="Temari's face"
+                        note="One drawn mark at every size the app uses it, from the Kartu tile's 26px corner to Onboarding's 72px hero. Ring, disc and features are three separate colours so a surface can tint the ring to a mood without touching the face."
                     >
-                        <div className="flex flex-wrap gap-2.5">
-                            {TEMARI_EXPRESSIONS.map((expression) => (
-                                <Specimen key={expression} label={expression}>
-                                    <TemariProto
-                                        pose={expression}
-                                        size={96}
-                                        animate={false}
-                                    />
+                        <div className="flex flex-wrap items-end gap-2.5">
+                            {FACE_SIZES.map((size) => (
+                                <Specimen key={size} label={`${size}px`}>
+                                    <FaceIcon size={size} />
                                 </Specimen>
                             ))}
                         </div>
                     </Section>
 
                     <Section
-                        title="Mascot on sky"
-                        note="The one dark placement. Only the silhouette outline swaps; the face stays indigo because it sits on the cream body either way."
+                        title="Temari's face on sky"
+                        note="The inverted read: a dark disc with cream features, drawn on the recap cards and on the sky-gradient hero panels. The ring carries the surface's mood where it has one."
                     >
-                        <div className="flex flex-wrap gap-2.5 rounded-md bg-sky pad-card">
+                        <div className="flex flex-wrap items-end gap-2.5 rounded-md bg-sky pad-card">
                             {(
-                                [
-                                    'resting',
-                                    'challenging',
-                                    'celebrating',
-                                ] as const
-                            ).map((expression) => (
-                                <Specimen
-                                    key={expression}
-                                    label={expression}
-                                    onSky
-                                >
-                                    <TemariProto
-                                        pose={expression}
-                                        tone="sky"
-                                        size={96}
-                                        animate={false}
-                                    />
-                                </Specimen>
-                            ))}
-                        </div>
-                    </Section>
-
-                    <Section
-                        title="Wearable slots"
-                        note="Six slots, 25 catalogue items. Garments are flat bands clipped to the body circle, so they take the ball's curve for free and can never escape the silhouette. Colour carries rarity, a small detail carries the theme."
-                    >
-                        <div className="flex flex-wrap gap-2.5">
-                            {SLOT_SPECIMENS.map(([slot, equipped]) => (
-                                <Specimen key={slot} label={slot}>
-                                    <TemariProto
-                                        size={96}
-                                        equipped={equipped}
-                                        animate={false}
-                                    />
-                                </Specimen>
-                            ))}
-                            <Specimen label="all six">
-                                <TemariProto
-                                    pose="challenging"
-                                    size={96}
-                                    equipped={FULLY_EQUIPPED}
-                                    animate={false}
-                                />
-                            </Specimen>
-                            <Specimen label="all six · 28px">
-                                <TemariProto
-                                    pose="challenging"
-                                    size={28}
-                                    equipped={FULLY_EQUIPPED}
-                                    animate={false}
-                                />
-                            </Specimen>
-                        </div>
-                    </Section>
-
-                    <Section
-                        title="Season coverage"
-                        note="Plan tab only. Discrete rather than procedural: each phase is a fixed band set at rising density, and taper keeps peak's coverage and adds a rested shine instead of unwinding it."
-                    >
-                        <div className="flex flex-wrap gap-2.5">
-                            {SEASON_PHASES.map((phase) => (
-                                <Specimen key={phase} label={phase}>
-                                    <TemariProto
-                                        pose="observational"
-                                        size={96}
-                                        seasonPhase={phase}
-                                        animate={false}
+                                ['leaf', 'mood-easy', 'mood-wobbly'] as const
+                            ).map((ring) => (
+                                <Specimen key={ring} label={ring} onSky>
+                                    <FaceIcon
+                                        size={48}
+                                        ring={`var(--color-${ring})`}
+                                        {...DARK_FACE}
                                     />
                                 </Specimen>
                             ))}
