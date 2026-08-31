@@ -21,7 +21,7 @@ import VitalsCard from '@/components/run/VitalsCard';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
-import { formatIdDate, formatNaiveTimeId } from '@/lib/pace';
+import { formatAbsoluteId } from '@/lib/pace';
 
 import { useRunShow, type RunCardDetail } from './useRunShow';
 
@@ -69,8 +69,9 @@ export default function RunsShow({
     // the page shows the notice and the summary it does have, not a column of
     // empty panels — the prototype's `awaitingDetail: 'hydrating'` shape.
     const detailed = !awaitingDetail;
-    const syncedAt = formatIdDate(activity.analyzed_at ?? null, 'long');
-    const syncedTime = formatNaiveTimeId(detail.start_date_local);
+    // The sync moment, not the run's own clock — analyzed_at is a true instant,
+    // so it takes the absolute (date + local time) formatter.
+    const syncedAt = formatAbsoluteId(activity.analyzed_at);
 
     return (
         <>
@@ -134,7 +135,6 @@ export default function RunsShow({
 
                 <Eyebrow as="footer" token="micro" tone="ink-3" className="mt-2 text-center">
                     Synced from Strava · {syncedAt}
-                    {syncedTime !== null && ` · ${syncedTime}`}
                     {activity.strava_external_id != null &&
                         ` · #${activity.strava_external_id}`}
                 </Eyebrow>
