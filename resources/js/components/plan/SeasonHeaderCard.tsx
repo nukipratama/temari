@@ -1,11 +1,11 @@
-import type { AnalysisPayload } from '@/types/inertia';
 import type { SeasonSummaryWeek } from '@/lib/plan';
+import type { AnalysisPayload } from '@/types/inertia';
 
 import TemariTake from '@/components/plan/TemariTake';
 import Card from '@/components/ui/LegacyCard';
 import { PHASE_COLORS, type PlanPhaseKey } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
-import { formatNaiveIdDate } from '@/lib/pace';
+import { formatNaiveMonthDayId } from '@/lib/pace';
 import { PHASE_LABEL } from '@/lib/plan';
 
 /** Shortest bar in the arc, as a percentage of the tallest. */
@@ -47,7 +47,10 @@ export function phasesOf(weeks: SeasonSummaryWeek[]): Phase[] {
         if (week.type === 'current') {
             states.set(week.phase, 'current');
         } else if (seen === undefined) {
-            states.set(week.phase, week.type === 'history' ? 'done' : 'upcoming');
+            states.set(
+                week.phase,
+                week.type === 'history' ? 'done' : 'upcoming',
+            );
         } else if (seen === 'done' && week.type === 'lookahead') {
             states.set(week.phase, 'upcoming');
         }
@@ -71,8 +74,7 @@ function barHeightPct(phase: Phase, phases: Phase[]): number {
         return 100;
     }
     return (
-        MIN_BAR_PCT +
-        ((phase.avgKm - min) / (max - min)) * (100 - MIN_BAR_PCT)
+        MIN_BAR_PCT + ((phase.avgKm - min) / (max - min)) * (100 - MIN_BAR_PCT)
     );
 }
 
@@ -112,8 +114,8 @@ export default function SeasonHeaderCard({
                         {currentPhase
                             ? `${PHASE_LABEL[currentPhase] ?? currentPhase} · `
                             : ''}
-                        {formatNaiveIdDate(startsAt, 'short')} –{' '}
-                        {formatNaiveIdDate(endsAt, 'short')}
+                        {formatNaiveMonthDayId(startsAt)} –{' '}
+                        {formatNaiveMonthDayId(endsAt)}
                     </p>
                 </div>
                 {adherencePct != null && (
@@ -175,9 +177,7 @@ export default function SeasonHeaderCard({
                 </div>
             )}
 
-            {narration && (
-                <TemariTake analysis={narration} className="mt-3" />
-            )}
+            {narration && <TemariTake analysis={narration} className="mt-3" />}
         </Card>
     );
 }

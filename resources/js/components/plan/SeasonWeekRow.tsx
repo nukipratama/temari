@@ -1,5 +1,5 @@
-import type { AnalysisPayload } from '@/types/inertia';
 import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
+import type { AnalysisPayload } from '@/types/inertia';
 
 import TemariTake from '@/components/plan/TemariTake';
 import WeekDayRow from '@/components/plan/WeekDayRow';
@@ -99,8 +99,8 @@ export default function SeasonWeekRow({
                             </p>
                         </div>
                         <p className="mt-2 text-xs text-text-2">
-                            {Math.round(week.planned_km)} km ·{' '}
-                            {week.sessions} sessions
+                            {Math.round(week.planned_km)} km · {week.sessions}{' '}
+                            sessions
                         </p>
                     </div>
                 ) : (
@@ -168,9 +168,7 @@ export default function SeasonWeekRow({
                                         narration={
                                             dayNarration[day.date] ?? null
                                         }
-                                        onMove={(toDate) =>
-                                            onMove(day, toDate)
-                                        }
+                                        onMove={(toDate) => onMove(day, toDate)}
                                         onSkip={() => onSkip(day)}
                                     />
                                 ))}

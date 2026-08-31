@@ -85,14 +85,14 @@ export default function SessionBarGraph({
     return (
         <div className="mt-2.5">
             <div className="flex h-8 items-end gap-0.5">
-                {segments.map((segment, index) => (
+                {Array.from({ length: segments.length }, (_, index) => (
                     <div
                         key={index}
                         className="rounded-t-xs"
                         style={{
-                            width: `${((segment.minutes ?? 0) / total) * 100}%`,
-                            height: `${ZONE_HEIGHT_PCT[segment.zone] ?? 50}%`,
-                            backgroundColor: zoneColor(segment.zone),
+                            width: `${((segments[index].minutes ?? 0) / total) * 100}%`,
+                            height: `${ZONE_HEIGHT_PCT[segments[index].zone] ?? 50}%`,
+                            backgroundColor: zoneColor(segments[index].zone),
                         }}
                     />
                 ))}
@@ -125,13 +125,13 @@ export default function SessionBarGraph({
                         )}
                     </>
                 ) : (
-                    segments.map((segment, index) => (
+                    Array.from({ length: segments.length }, (_, index) => (
                         <LegendItem
                             key={index}
-                            label={SEGMENT_LABEL[segment.key]}
-                            zone={segment.zone}
-                            figure={minutesText(segment.minutes)}
-                            sub={paceSub(segment)}
+                            label={SEGMENT_LABEL[segments[index].key]}
+                            zone={segments[index].zone}
+                            figure={minutesText(segments[index].minutes)}
+                            sub={paceSub(segments[index])}
                         />
                     ))
                 )}

@@ -21,13 +21,13 @@ export default function MiniSessionBar({
 
     return (
         <div className="mt-1.5 flex h-1 gap-px" aria-hidden>
-            {segments.map((segment, index) => (
+            {Array.from({ length: segments.length }, (_, index) => (
                 <div
                     key={index}
                     className="rounded-full"
                     style={{
-                        width: `${((segment.minutes ?? 0) / total) * 100}%`,
-                        backgroundColor: zoneColor(segment.zone),
+                        width: `${((segments[index].minutes ?? 0) / total) * 100}%`,
+                        backgroundColor: zoneColor(segments[index].zone),
                     }}
                 />
             ))}

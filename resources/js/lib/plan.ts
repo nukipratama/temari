@@ -1,4 +1,4 @@
-import type { AnalysisPayload, PlanSessionSegment } from '@/types/inertia';
+import type { AnalysisPayload, WeekPlanDay } from '@/types/inertia';
 
 import {
     formatMonthDayId,
@@ -7,22 +7,8 @@ import {
     sundayOf,
 } from '@/lib/pace';
 
-export interface PlanDay {
-    id: number;
-    date: string;
-    phase: string;
-    session_type: string;
-    segments: PlanSessionSegment[];
-    distance_km: number;
-    pinned: boolean;
-    skipped: boolean;
-    status: string;
-    compliance_score: number | null;
-    ran_anyway: boolean;
-    clamp_note: string | null;
-    actual_km: number | null;
-    activity: { id: number; seconds: number | null } | null;
-}
+/** The Plan page's day rows read the same payload Home's week widget does. */
+export type PlanDay = WeekPlanDay;
 
 export interface PlanWeek {
     week_start: string;

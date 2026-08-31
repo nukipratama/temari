@@ -1,3 +1,6 @@
+import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
+
 import type {
     PlanDay,
     PlanNarration,
@@ -5,21 +8,22 @@ import type {
     SeasonSummaryWeek,
 } from '@/lib/plan';
 
-import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
-
 import SeasonHeaderCard from '@/components/plan/SeasonHeaderCard';
 import SeasonTimeline from '@/components/plan/SeasonTimeline';
 import PlanRaceTabs from '@/components/race/PlanRaceTabs';
-import Card from '@/components/ui/LegacyCard';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
 import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { appLayout } from '@/layouts/appLayout';
-import { formatDurationHMS, formatNaiveIdDate, todayLocalIso } from '@/lib/pace';
+import {
+    formatDurationHMS,
+    formatNaiveIdDate,
+    todayLocalIso,
+} from '@/lib/pace';
 
 interface SeasonSummary {
     starts_at: string;

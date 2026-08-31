@@ -1,7 +1,7 @@
-import type { AnalysisPayload } from '@/types/inertia';
-import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
-
 import { useState } from 'react';
+
+import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
+import type { AnalysisPayload } from '@/types/inertia';
 
 import SeasonWeekRow from '@/components/plan/SeasonWeekRow';
 import WeekCluster from '@/components/plan/WeekCluster';
@@ -9,6 +9,22 @@ import { PHASE_LABEL } from '@/lib/plan';
 
 function plural(count: number, noun: string): string {
     return `${count} ${noun}${count === 1 ? '' : 's'}`;
+}
+
+/** The season split into runs of consecutive same-phase weeks, in season order. */
+function contiguousPhaseRuns(
+    weeks: SeasonSummaryWeek[],
+): SeasonSummaryWeek[][] {
+    const runs: SeasonSummaryWeek[][] = [];
+    for (const week of weeks) {
+        const last = runs[runs.length - 1];
+        if (last && last[0].phase === week.phase) {
+            last.push(week);
+        } else {
+            runs.push([week]);
+        }
+    }
+    return runs;
 }
 
 /**
@@ -48,29 +64,18 @@ export default function SeasonTimeline({
     const current = weeks[currentIndex];
     const numberOf = (week: SeasonSummaryWeek) => weeks.indexOf(week) + 1;
 
-    const inCurrentPhase = weeks.filter((w) => w.phase === current.phase);
-    const pastInPhase = inCurrentPhase.filter(
-        (w) => w.week_start < current.week_start,
-    );
-    const futureInPhase = inCurrentPhase.filter(
-        (w) => w.week_start > current.week_start,
-    );
-    const laterPhaseWeeks = weeks.filter(
-        (w) => w.week_start > current.week_start && w.phase !== current.phase,
-    );
+    // The phase block is the contiguous run holding the current week, not
+    // every week sharing its name: a self-scaled season cycles build/deload
+    // repeatedly, so each pass through a phase is its own block of the
+    // timeline and the weeks between two Build blocks are not "in" either.
+    const runs = contiguousPhaseRuns(weeks);
+    const currentRun = runs.find((run) => run.includes(current)) ?? [current];
+    const runIndex = runs.indexOf(currentRun);
 
-    // Grouped by contiguous run, not by distinct phase name: a self-scaled
-    // season cycles build/deload repeatedly, and each pass through a phase is
-    // its own block of the timeline.
-    const laterPhaseRuns: SeasonSummaryWeek[][] = [];
-    for (const week of laterPhaseWeeks) {
-        const last = laterPhaseRuns[laterPhaseRuns.length - 1];
-        if (last && last[0].phase === week.phase) {
-            last.push(week);
-        } else {
-            laterPhaseRuns.push([week]);
-        }
-    }
+    const pastInPhase = currentRun.slice(0, currentRun.indexOf(current));
+    const futureInPhase = currentRun.slice(currentRun.indexOf(current) + 1);
+    const laterPhaseRuns = runs.slice(runIndex + 1);
+    const laterPhaseWeeks = laterPhaseRuns.flat();
 
     const row = (week: SeasonSummaryWeek, isLast: boolean) => (
         <SeasonWeekRow

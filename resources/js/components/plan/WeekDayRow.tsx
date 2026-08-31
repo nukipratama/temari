@@ -1,8 +1,8 @@
-import type { AnalysisPayload } from '@/types/inertia';
-import type { PlanDay } from '@/lib/plan';
-
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
+
+import type { PlanDay } from '@/lib/plan';
+import type { AnalysisPayload } from '@/types/inertia';
 
 import MiniSessionBar, { zoneColor } from '@/components/plan/MiniSessionBar';
 import SessionBarGraph from '@/components/plan/SessionBarGraph';
@@ -13,7 +13,6 @@ import {
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { Icon } from '@/components/ui/Icon';
-import { cardVariants } from '@/lib/variants';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS, formatPace } from '@/lib/pace';
 import {
@@ -23,6 +22,7 @@ import {
     STATUS_TONE,
     weekdayLabel,
 } from '@/lib/plan';
+import { cardVariants } from '@/lib/variants';
 
 function paceLabel(day: PlanDay): string | null {
     const core = day.segments.find(
@@ -45,9 +45,7 @@ function activitySummary(day: PlanDay): string {
 /** The zone the day's hardest segment sits in, which colours its type icon. */
 function iconColor(day: PlanDay): string {
     if (day.session_type === 'rest') {
-        return day.ran_anyway
-            ? 'var(--color-leaf)'
-            : 'var(--color-text-3)';
+        return day.ran_anyway ? 'var(--color-leaf)' : 'var(--color-text-3)';
     }
     const zones = day.segments.map((s) => s.zone).sort();
     return zones.length === 0
@@ -89,8 +87,7 @@ export default function WeekDayRow({
         target.date > today &&
         target.session_type === 'rest';
 
-    const canMove =
-        editable && !isRest && weekDays.some(isValidMoveTarget);
+    const canMove = editable && !isRest && weekDays.some(isValidMoveTarget);
     const canSkip = editable && !isRest && !day.skipped;
 
     return (
@@ -110,8 +107,7 @@ export default function WeekDayRow({
                     </span>
                     <Icon
                         icon={
-                            SESSION_TYPE_ICON[day.session_type] ??
-                            'mdi:feather'
+                            SESSION_TYPE_ICON[day.session_type] ?? 'mdi:feather'
                         }
                         className="size-3.5"
                         style={{ color: iconColor(day) }}
@@ -155,7 +151,9 @@ export default function WeekDayRow({
                 />
             </CollapsibleTrigger>
             <CollapsibleContent className="border-t border-border-strong px-4 py-3">
-                {narration && <TemariTake analysis={narration} allowReanalyze={false} />}
+                {narration && (
+                    <TemariTake analysis={narration} allowReanalyze={false} />
+                )}
                 {day.clamp_note && (
                     <p className="mt-2 text-xs italic text-text-2">
                         {day.clamp_note}
