@@ -8,12 +8,7 @@ import StravaSyncBadge from '@/components/StravaSyncBadge';
 import { Icon } from '@/components/ui/Icon';
 import UserAvatarLink from '@/components/UserAvatarLink';
 import { cn } from '@/lib/cn';
-
-// Explicit map (not derived from activeTabFromUrl): calendar/records/accessories/badges/race
-// resolve to a tab too, but reach it via an in-page tab strip, so they keep the brand mark.
-const BACK_TARGETS: Record<string, { href: string; label: string }> = {
-    'Runs/Show': { href: '/history', label: 'History' },
-};
+import { backTargetFor } from '@/lib/nav';
 
 // A shared chip backdrop for the icon-only buttons — bg-muted is the exact
 // ground-reactive equivalent of the bar's old fixed cream-deep background (see
@@ -24,24 +19,32 @@ const BACK_TARGETS: Record<string, { href: string; label: string }> = {
 const CHIP =
     'inline-flex items-center justify-center overflow-hidden rounded-full bg-muted shadow-e1';
 
+/** Pushed screens whose prototype topbar keeps the bell beside the back chevron. */
+const PUSHED_WITH_BELL: ReadonlySet<string> = new Set([
+    'Profile',
+    'Settings/Index',
+]);
+
 /**
  * Floating transparent chips, per the prototype's AppTopbar/ProfileTopbar —
- * replaces the previous sticky bordered bar. `absolute` (not `sticky`): the
- * bar no longer reserves flow space or paints a background, so content
- * scrolls underneath it — AppShell reserves the clearance with top padding
- * instead. `max()` keeps the row clear of the notch under black-translucent;
- * falls back to 1rem in a browser tab.
+ * `absolute` (not `sticky`): the bar no longer reserves flow space or paints a
+ * background, so content scrolls underneath it; AppShell reserves the clearance
+ * with top padding instead. Full-bleed at every width, as the prototype's own
+ * chrome is: above 900px the content column narrows to 760px and the chips sit
+ * outside it, which is what lets the column's top padding shrink to `pt-6`.
+ * `max()` keeps the row clear of the notch under black-translucent; falls back
+ * to 1rem in a browser tab.
  */
 export default function MobileTopBar() {
     const page = usePage<SharedProps>();
     const user = page.props.auth.user;
     const stravaSync = page.props.stravaSync ?? null;
-    const back = BACK_TARGETS[page.component];
+    const back = backTargetFor(page.component);
 
     return (
         <header
             data-testid="mobile-top-bar"
-            className="absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-3 px-4 pb-2.5 pt-[max(1rem,env(safe-area-inset-top))] lg:hidden"
+            className="absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-3 px-4 pb-2.5 pt-[max(1rem,env(safe-area-inset-top))]"
         >
             {back ? (
                 // Real href, not history.back(): a deep link can open this cold with nothing behind it.
@@ -69,20 +72,41 @@ export default function MobileTopBar() {
                     <HeaderBrandMark wordmarkClassName="hidden min-[350px]:inline" />
                 </Link>
             )}
+
             <div className="flex items-center gap-2">
-                <StravaSyncBadge sync={stravaSync} density="compact" />
-                {user && (
-                    <>
+                {back === null && (
+                    <StravaSyncBadge sync={stravaSync} density="compact" />
+                )}
+                {page.component === 'Profile' && (
+                    <Link
+                        href="/settings"
+                        aria-label="Settings"
+                        className={cn(
+                            CHIP,
+                            'pressable focus-ring size-9 text-text-3',
+                        )}
+                    >
+                        <Icon
+                            icon="mdi:cog-outline"
+                            width={18}
+                            height={18}
+                            aria-hidden
+                        />
+                    </Link>
+                )}
+                {user &&
+                    (back === null || PUSHED_WITH_BELL.has(page.component)) && (
                         <span className={CHIP}>
                             <NotificationBell density="compact" />
                         </span>
-                        <span className={CHIP}>
-                            <UserAvatarLink
-                                name={user.name}
-                                avatarUrl={user.avatar_url}
-                            />
-                        </span>
-                    </>
+                    )}
+                {user && back === null && (
+                    <span className={CHIP}>
+                        <UserAvatarLink
+                            name={user.name}
+                            avatarUrl={user.avatar_url}
+                        />
+                    </span>
                 )}
             </div>
         </header>

@@ -81,7 +81,7 @@ export default function EmptyRunsState({
     }, [isSyncing, start, stop]);
 
     return (
-        <div className="flex flex-col items-center gap-8 px-5 py-10 sm:px-8 lg:px-14">
+        <div className="flex flex-col items-center gap-8 px-4 py-10">
             {/* Temari + headline */}
             <div className="flex flex-col items-center gap-5 text-center">
                 <Temari pose="reading" size={140} />

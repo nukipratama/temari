@@ -4,7 +4,6 @@ import { useRef, useState } from 'react';
 
 import type { EquippedSlot, Rarity } from '@/types/inertia';
 
-import MeTabs from '@/components/me/MeTabs';
 import CoachMark from '@/components/onboarding/CoachMark';
 import TemariProto, {
     type TemariEquipped,
@@ -128,12 +127,6 @@ export default function Accessories({
                             with what you&apos;ve unlocked.
                         </em>
                     </PageHero>
-                    {/* MeTabs no longer has an "accessories" tab (S10 dropped
-                        it, mobile-UX port ledger cut) — this page itself
-                        still awaits removal in that program's W1/W2, so
-                        render the nav with nothing marked active rather than
-                        claiming a tab that no longer exists. */}
-                    <MeTabs active="profile" />
                 </header>
 
                 <HeroPanel className="mt-8 lg:px-14 lg:py-12">

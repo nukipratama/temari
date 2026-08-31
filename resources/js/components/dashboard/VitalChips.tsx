@@ -283,7 +283,7 @@ function VitalChip({
     return (
         <div
             className={cn(
-                'flex h-full flex-col justify-between rounded-lg border px-3.5 py-4 shadow-e1 sm:px-4 sm:py-3.5',
+                'flex h-full flex-col justify-between rounded-lg border px-3.5 py-4 shadow-e1',
                 onSky
                     ? 'border-cream/[0.12] bg-cream/[0.06]'
                     : 'border-border bg-card',
@@ -298,7 +298,7 @@ function VitalChip({
                 {/* Tighten the tracking + icon gap at the narrowest width so the
                     longest label ("Readiness") keeps its (?) icon inside the tile at
                     320px; both relax back to the full spec from sm up. */}
-                <span className="inline-flex items-center gap-1 tracking-[0.02em] sm:gap-1.5 sm:tracking-[0.12em]">
+                <span className="inline-flex items-center gap-1 tracking-[0.02em]">
                     {label}
                     {explainerKey && (
                         <MetricExplainer metricKey={explainerKey} size="xs" />

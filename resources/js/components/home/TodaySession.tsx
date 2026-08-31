@@ -27,7 +27,7 @@ function SessionVoice({ text }: Readonly<{ text: string }>) {
 
     return (
         <div className="space-y-1.5">
-            <p className="font-sans text-xl font-bold leading-tight tracking-[-0.02em] text-cream sm:text-2xl">
+            <p className="font-sans text-xl font-bold leading-tight tracking-[-0.02em] text-cream">
                 {renderBold(stripEdgeQuotes(lead))}
             </p>
             {body !== '' && (

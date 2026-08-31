@@ -1,6 +1,6 @@
 ---
 title: Settings
-description: The settings hub at /settings — notification types and channels, the HR-zone entry, account deletion, and logout — reached via MeTabs from Profile.
+description: The settings hub at /settings — notification types and channels, the HR-zone entry, account deletion, and logout — a pushed screen reached from the gear on Profile's top bar.
 tags: [feature, settings]
 status: living
 reviewed: 2026-08-19
@@ -8,7 +8,6 @@ code_refs:
     - app/Http/Controllers/SettingsController.php
     - app/Http/Controllers/AccountController.php
     - resources/js/pages/Settings/Index.tsx
-    - resources/js/components/me/MeTabs.tsx
     - resources/js/components/UserAvatarLink.tsx
     - routes/web.php
 ---
@@ -17,7 +16,7 @@ code_refs:
 
 `/settings` is the one home for user settings. They were once scattered on Profile (`/profile`), then reached via a single row at the bottom of that page; the legacy `/pengaturan` redirect still points at the real page ([routes/web.php](../../routes/web.php)).
 
-**Navigation:** one entry point. [UserAvatarLink](../../resources/js/components/UserAvatarLink.tsx), shared by [TopNav](../../resources/js/components/TopNav.tsx) and [MobileTopBar](../../resources/js/components/MobileTopBar.tsx), links the avatar straight to `/profile` from every page on both mobile and desktop — there is no dropdown any more. From there, the [MeTabs](../../resources/js/components/me/MeTabs.tsx) segmented nav, rendered atop Profile and Settings alike (the mobile-UX port's `S10` dropped the third Accessories tab — see [[profile]]), reaches Settings as a lateral tab. `route('settings')` → `/settings` (GET). Named route: `settings`.
+**Navigation:** one entry point, two hops. The avatar in [MobileTopBar](../../resources/js/components/MobileTopBar.tsx) links to `/profile` from every bottom-nav screen; that screen's own topbar carries a gear to `/settings`. Settings is a **pushed screen** — a back chevron to Profile, no bottom nav — so it has no in-page nav of its own. `route('settings')` → `/settings` (GET). Named route: `settings`.
 
 Server entry is [SettingsController](../../app/Http/Controllers/SettingsController.php) (`__invoke`), rendering [Settings/Index](../../resources/js/pages/Settings/Index.tsx). It resolves the same Telegram payload the profile page used to (`resolveTelegram()`), including a fresh signed deep-link token per render.
 
@@ -35,7 +34,7 @@ Every line is one primitive. [SettingsRow](../../resources/js/components/ui/Sett
 
 The page opens with [PageHero](../../resources/js/components/ui/PageHero.tsx) like every other screen. It previously used a bare `<h1>`, which made it the one page that looked like it belonged to a different product.
 
-It carries **no back affordance at all** — not in the page and not in the top bar. Settings is a lateral MeTabs tab, one hop from Profile (itself one tap away via the avatar link), not a pushed screen, so a breadcrumb would be chrome without a job. HR zones is an inline disclosure on this same page now, not a pushed screen either — see [[installed-app-shell]] for how the top bar decides what gets a back button.
+It carries **no back affordance in the page body**: Settings is a pushed screen, and the top bar's back chevron (to Profile) is the one way out, so a breadcrumb would be a redundant second. HR zones is an inline disclosure on this same page, not a pushed screen of its own — see [[installed-app-shell]] for how the top bar decides what gets a back button.
 
 ## Account deletion
 

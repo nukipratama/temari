@@ -119,17 +119,17 @@ export default function Login({
             {/* Connect card overlaps the hero's bottom edge, matching the
                 prototype's single-panel placement (no side-by-side desktop
                 grid, no duplicated CTA further down the page). */}
-            <div className="relative z-10 -mt-10 px-5 sm:-mt-14 sm:px-8 lg:px-14">
+            <div className="relative z-10 -mt-10 px-4">
                 <div className="mx-auto max-w-md">{connect}</div>
             </div>
 
-            <main className="mx-auto w-full max-w-page px-5 pb-16 sm:px-8 lg:px-14">
+            <main className="mx-auto w-full px-4 pb-16 min-[900px]:max-w-[760px] min-[900px]:px-6">
                 <section className="mt-12">
                     <SectionLabel>how the comparison works</SectionLabel>
                     <h2 className="font-serif text-headline-sm text-foreground">
                         a verdict you can check the working on.
                     </h2>
-                    <ul className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <ul className="mt-6 grid grid-cols-1 gap-4 min-[900px]:grid-cols-3">
                         {MATCHING.map((item) => (
                             <FeatureCard key={item.label} {...item} />
                         ))}
@@ -138,7 +138,7 @@ export default function Login({
 
                 <section className="mt-12">
                     <SectionLabel>what you get</SectionLabel>
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+                    <div className="grid grid-cols-1 gap-4">
                         <Card className="flex items-center gap-5 px-6 py-6">
                             <Suspense
                                 fallback={
@@ -169,7 +169,7 @@ export default function Login({
                                 </p>
                             </div>
                         </Card>
-                        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-1">
+                        <ul className="grid grid-cols-1 gap-4 min-[900px]:grid-cols-2">
                             {GETS.map((item) => (
                                 <FeatureCard key={item.label} {...item} />
                             ))}
@@ -317,7 +317,7 @@ function RouteEcho() {
 function Hero() {
     return (
         <header
-            className="relative overflow-hidden px-5 pb-20 pt-10 text-cream sm:px-8 sm:pb-24 lg:px-14"
+            className="relative overflow-hidden px-4 pb-20 pt-10 text-cream min-[900px]:px-14"
             style={{ background: HERO_GRADIENT }}
         >
             <span
@@ -327,7 +327,7 @@ function Hero() {
             />
             <RouteEcho />
 
-            <div className="login-fade-in-up relative z-10 mx-auto w-full max-w-page">
+            <div className="login-fade-in-up relative z-10 mx-auto w-full min-[900px]:max-w-[760px]">
                 <BrandMark tone="cream" />
 
                 <div className="mt-10 max-w-2xl">

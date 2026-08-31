@@ -5,7 +5,6 @@ import { useState } from 'react';
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
 import ProgressionChart from '@/components/collection/ProgressionChart';
-import MeTabs from '@/components/me/MeTabs';
 import SeasonStreakPanel, {
     type SeasonSummary,
 } from '@/components/me/SeasonStreakPanel';
@@ -135,7 +134,7 @@ export default function Profile({
                             <Eyebrow
                                 token="hero"
                                 tone="ink-2"
-                                className="mb-3.5 lg:text-xs"
+                                className="mb-3.5"
                             >
                                 {eyebrowParts.join(' · ')}
                             </Eyebrow>
@@ -147,19 +146,14 @@ export default function Profile({
                         <br />
                         <em className="italic text-horizon-ink">your story.</em>
                     </PageHero>
-                    <MeTabs active="profile" />
                 </header>
 
-                <HeroPanel className="lg:px-9 lg:py-8">
-                    {/* Stacks below sm: the 100px mascot plus the gap leaves only
-                        ~150px of column on a 320px screen, too narrow for the
-                        narration CTA beside it, which wrapped one word per line into
-                        a tall, cramped pill. Side-by-side from sm up. */}
-                    <div className="mb-5 flex flex-col items-start gap-4 sm:flex-row sm:items-start sm:gap-6">
+                <HeroPanel>
+                    <div className="mb-5 flex flex-col items-start gap-4">
                         <div className="shrink-0">
                             <Temari pose="proud" size={100} animate={false} />
                         </div>
-                        <div className="w-full min-w-0 sm:flex-1 sm:self-center">
+                        <div className="w-full min-w-0">
                             <Eyebrow
                                 token="hero"
                                 tone="horizon"
@@ -202,7 +196,7 @@ export default function Profile({
                         {/* Anchors the row's far right on desktop, where the quote's
                             natural width otherwise leaves the hero looking empty. */}
                         {identity.member_since && (
-                            <div className="hidden shrink-0 self-center text-right lg:ml-auto lg:block">
+                            <div className="hidden shrink-0 self-center text-right min-[900px]:ml-auto min-[900px]:block">
                                 <Eyebrow
                                     token="micro"
                                     tone="ink-on-sky"
@@ -227,7 +221,7 @@ export default function Profile({
                         initial="hidden"
                         animate="visible"
                         data-coachmark="profile-stats"
-                        className="grid grid-cols-2 gap-5 sm:grid-cols-5 justify-items-center"
+                        className="grid grid-cols-2 gap-5 justify-items-center"
                     >
                         <motion.div variants={fadeInUp}>
                             <StatTile
@@ -320,7 +314,7 @@ export default function Profile({
                                 variants={staggerContainer}
                                 initial="hidden"
                                 animate="visible"
-                                className="grid grid-cols-2 gap-5 sm:grid-cols-4"
+                                className="grid grid-cols-2 gap-5"
                             >
                                 <motion.div variants={fadeInUp}>
                                     <StatTile
@@ -441,7 +435,7 @@ function ProgressionSection({
                         ))}
                     </div>
                 )}
-                <div className="grid grid-cols-1 items-start gap-7 lg:grid-cols-[1fr_1.4fr]">
+                <div className="grid grid-cols-1 items-start gap-7">
                     <div>
                         <SectionLabel>Journey · {label}</SectionLabel>
                         <p className="font-serif text-headline-sm text-foreground">

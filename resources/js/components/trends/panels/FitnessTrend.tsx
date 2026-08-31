@@ -301,7 +301,7 @@ export default function FitnessTrend({
     return (
         <div
             className={cn(
-                'flex flex-col gap-4 rounded-(--radius-panel) border border-border bg-card p-6 shadow-(--shadow-panel) sm:p-8',
+                'flex flex-col gap-4 rounded-(--radius-panel) border border-border bg-card p-6 shadow-(--shadow-panel)',
                 className,
             )}
         >
@@ -321,7 +321,7 @@ export default function FitnessTrend({
                 initial="hidden"
                 animate="visible"
                 variants={staggerContainer}
-                className="grid grid-cols-3 gap-2 sm:gap-3"
+                className="grid grid-cols-3 gap-2"
             >
                 <motion.div variants={fadeInUp}>
                     <StatTile
@@ -396,7 +396,7 @@ export default function FitnessTrend({
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
-                className="h-[220px] sm:h-[300px]"
+                className="h-[220px]"
             >
                 <span className="sr-only">{summarySentence}</span>
                 <Suspense

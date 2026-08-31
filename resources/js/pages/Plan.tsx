@@ -396,7 +396,7 @@ export default function Plan({
                         initial="hidden"
                         animate="visible"
                         variants={staggerContainer}
-                        className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5"
+                        className="mt-4 grid gap-3"
                     >
                         {season.goals.map((goal) => (
                             <motion.div

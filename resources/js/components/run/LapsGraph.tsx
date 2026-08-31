@@ -16,7 +16,7 @@ import {
 } from '@/lib/splits';
 
 const ROW_GRID =
-    'grid-cols-[48px_140px_56px_56px_56px_56px] items-center gap-2.5 lg:grid-cols-[56px_1fr_70px_70px_70px_70px] lg:gap-3';
+    'grid-cols-[48px_140px_56px_56px_56px_56px] items-center gap-2.5';
 
 export default function LapsGraph({
     laps,
@@ -68,7 +68,7 @@ export default function LapsGraph({
                             className={cn(
                                 'grid',
                                 ROW_GRID,
-                                'rounded-lg px-3 py-2 lg:py-2.5',
+                                'rounded-lg px-3 py-2',
                                 barRowFill(isFast, idx),
                             )}
                         >
@@ -78,7 +78,7 @@ export default function LapsGraph({
                             <div
                                 role="img"
                                 aria-label={`Lap ${lap.lap}, ${lap.distance_m} m, ${lap.pace} per km`}
-                                className="h-2.5 overflow-hidden rounded bg-foreground/[0.06] lg:h-3"
+                                className="h-2.5 overflow-hidden rounded bg-foreground/[0.06]"
                             >
                                 <motion.div
                                     className={cn(

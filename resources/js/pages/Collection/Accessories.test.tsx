@@ -66,22 +66,16 @@ describe('Collection/Accessories', () => {
         ).toBeInTheDocument();
     });
 
-    // MeTabs no longer has an Accessories tab at all (S10 dropped it, mobile-UX
-    // port ledger cut) — this page itself still awaits removal, so the nav it
-    // renders atop of just carries the two surviving tabs, neither active.
-    it('renders the Me segmented nav without an Accessories tab', () => {
+    // The page carries no nav of its own: MeTabs is cut, and the shell's
+    // topbar back chevron is the only affordance off this pushed screen.
+    it('renders no in-page Profile/Settings nav', () => {
         render(<Accessories items={[]} equipped={emptyEquipped} />);
         expect(
-            screen.queryByRole('link', { name: 'Accessories' }),
+            screen.queryByRole('link', { name: 'Profile' }),
         ).not.toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute(
-            'href',
-            '/profile',
-        );
-        expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
-            'href',
-            '/settings',
-        );
+        expect(
+            screen.queryByRole('link', { name: 'Settings' }),
+        ).not.toBeInTheDocument();
     });
 
     it('renders headers + equipped slot labels when nothing is equipped', () => {

@@ -11,7 +11,13 @@ describe('MobileTopBar', () => {
         expect(screen.getByLabelText('Home')).toHaveAttribute('href', '/');
     });
 
-    it.each([['Runs/Show', '/history', 'History']])(
+    it.each([
+        ['Runs/Show', '/history', 'History'],
+        ['Inbox', '/', 'Today'],
+        ['Profile', '/', 'Today'],
+        ['Settings/Index', '/profile', 'Profile'],
+        ['Collection/Accessories', '/', 'Today'],
+    ])(
         'replaces the brand mark with a back button on %s',
         (component, href, label) => {
             setMockPage({}, '/x', component);
@@ -23,20 +29,57 @@ describe('MobileTopBar', () => {
         },
     );
 
-    it.each([
-        'Today',
-        'Collection/Accessories',
-        'History',
-        'Profile',
-        'Trends',
-        'Settings/Index',
-        'Race',
-    ])('keeps the brand mark and shows no back button on %s', (component) => {
-        setMockPage({}, '/x', component);
-        render(<MobileTopBar />);
+    it.each(['Home', 'History', 'Trends', 'Plan', 'Race'])(
+        'keeps the brand mark and shows no back button on %s',
+        (component) => {
+            setMockPage({}, '/x', component);
+            render(<MobileTopBar />);
 
-        expect(screen.getByLabelText('Home')).toBeInTheDocument();
-        expect(screen.queryByLabelText(/^Back to/)).not.toBeInTheDocument();
+            expect(screen.getByLabelText('Home')).toBeInTheDocument();
+            expect(screen.queryByLabelText(/^Back to/)).not.toBeInTheDocument();
+        },
+    );
+
+    it('carries the gear to Settings on Profile, as the prototype does', () => {
+        setMockPage({ auth: { user: makeUser() } }, '/profile', 'Profile');
+        render(<MobileTopBar />);
+        expect(screen.getByLabelText('Settings')).toHaveAttribute(
+            'href',
+            '/settings',
+        );
+        expect(screen.getByLabelText('Inbox')).toBeInTheDocument();
+    });
+
+    it('keeps the bell but drops the gear on Settings', () => {
+        setMockPage(
+            { auth: { user: makeUser() } },
+            '/settings',
+            'Settings/Index',
+        );
+        render(<MobileTopBar />);
+        expect(screen.getByLabelText('Inbox')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Settings')).not.toBeInTheDocument();
+    });
+
+    it.each(['Runs/Show', 'Inbox'])(
+        'leaves %s with the back chevron alone, no trailing controls',
+        (component) => {
+            setMockPage({ auth: { user: makeUser() } }, '/x', component);
+            render(<MobileTopBar />);
+            expect(screen.queryByLabelText('Inbox')).not.toBeInTheDocument();
+            expect(screen.queryByLabelText('Settings')).not.toBeInTheDocument();
+            expect(
+                screen.queryByLabelText(/'s profile/),
+            ).not.toBeInTheDocument();
+        },
+    );
+
+    it('drops the Strava sync badge on a pushed screen', () => {
+        setMockPage({ auth: { user: null }, stravaSync: null }, '/x', 'Inbox');
+        render(<MobileTopBar />);
+        expect(
+            screen.queryByLabelText('Strava not connected'),
+        ).not.toBeInTheDocument();
     });
 
     it('points back at a real url rather than relying on history', () => {
