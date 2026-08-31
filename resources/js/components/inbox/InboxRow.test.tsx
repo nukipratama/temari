@@ -85,14 +85,10 @@ describe('InboxRow', () => {
         expect(screen.queryByText('Open')).not.toBeInTheDocument();
     });
 
-    it('replays the reveal for a row carrying a card id', async () => {
-        const { onReplay } = renderRow({ run_card_id: 9, rarity: 'epic' });
+    it('offers no replay for a post-run row carrying only a card id', () => {
+        renderRow({ run_card_id: 9, rarity: 'epic' });
 
-        await userEvent.click(screen.getByText('Replay Reveal'));
-
-        expect(onReplay).toHaveBeenCalledWith(
-            expect.objectContaining({ run_card_id: 9 }),
-        );
+        expect(screen.queryByText(/^Replay/)).not.toBeInTheDocument();
     });
 
     it('replays the takeover for an unlock row', async () => {
@@ -112,7 +108,18 @@ describe('InboxRow', () => {
     });
 
     it('disables the replay while one is in flight', () => {
-        renderRow({ run_card_id: 9 }, { replaying: true });
+        renderRow(
+            {
+                kind: 'unlock',
+                unlock: {
+                    unlock_key: 'accessory.headband_legendary',
+                    name: 'Legendary headband',
+                    icon: 'mdi:hanger',
+                    is_major: true,
+                },
+            },
+            { replaying: true },
+        );
 
         expect(screen.getByText('Replaying').closest('button')).toBeDisabled();
     });

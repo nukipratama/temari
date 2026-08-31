@@ -32,24 +32,6 @@ export interface AuthUser {
     is_demo: boolean;
 }
 
-export interface PendingReveal {
-    card_id: number;
-    activity_id: number;
-    rarity: Rarity;
-    special_move: string;
-    mood: Mood;
-    badges: string[] | null;
-    detail_name: string | null;
-    distance_m: number | null;
-    elapsed_time_sec: number | null;
-    trimp_edwards: number | null;
-    average_heartrate?: number | null;
-    stream_summary?: StreamSummary | null;
-    summary_polyline?: string | null;
-    public_share_url: string;
-    edition: CardEdition;
-}
-
 export type StravaSyncState = 'disconnected' | 'revoked' | 'syncing' | 'ready';
 
 export interface StravaSync {
@@ -125,7 +107,6 @@ export interface SharedProps {
         unlock?: UnlockFlash | null;
     };
     demoLoginEnabled: boolean;
-    pendingReveal?: PendingReveal | null;
     equippedAccessories?: EquippedAccessories | null;
     stravaSync?: StravaSync | null;
     activeRace?: ActiveRace | null;

@@ -44,13 +44,11 @@ inbox usable without deciding how long a record lives.
 
 ## Replay, not a summary
 
-Two row kinds carry enough to re-run the celebration they are a record of:
+Unlock rows carry enough to re-run the celebration they are a record of. Post-run rows still carry
+`run_card_id` and the card's `rarity` so the list can style them without a join, but there is no
+card-reveal celebration to replay any more — the reveal modal and its `api.cards.*` endpoints were
+cut in `PP3`.
 
-- **Post-run** rows carry `run_card_id`. The button POSTs to `api.cards.replay`
-  ([CardReplayController](../../app/Http/Controllers/Api/CardReplayController.php#L18)), which
-  re-arms `pending_reveal_card_id`, then reloads the `pendingReveal` shared prop so the real
-  full-screen `CardReveal` mounted in [AppShell](../../resources/js/layouts/AppShell.tsx#L93)
-  plays again. Same endpoint and same sequence the run detail page uses.
 - **Unlock** rows carry the celebration verbatim, so the page hands it straight back to
   [AccessoryUnlockModal](../../resources/js/components/celebrations/AccessoryUnlockModal.tsx) — the
   same takeover that played at grant time. The modal no longer gates itself on `is_major`: the

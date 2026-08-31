@@ -85,28 +85,6 @@ describe('Inbox', () => {
         ).toBeInTheDocument();
     });
 
-    it('re-arms the real reveal through the card replay endpoint', async () => {
-        const fetchMock = okFetch();
-        render(
-            <Inbox
-                notifications={page([item({ run_card_id: 77 })])}
-                focusId={null}
-            />,
-        );
-
-        await userEvent.click(screen.getByText('Replay Reveal'));
-
-        expect(fetchMock).toHaveBeenCalledWith(
-            '/api/cards/77/replay',
-            expect.objectContaining({ method: 'POST' }),
-        );
-        await waitFor(() =>
-            expect(router.reload).toHaveBeenCalledWith({
-                only: ['pendingReveal'],
-            }),
-        );
-    });
-
     it('replays an unlock through the same takeover that granted it', async () => {
         okFetch();
         render(
@@ -167,14 +145,25 @@ describe('Inbox', () => {
         const fetchMock = okFetch();
         render(
             <Inbox
-                notifications={page([item({ id: 3, run_card_id: 12 })])}
+                notifications={page([
+                    item({
+                        id: 3,
+                        kind: 'unlock',
+                        unlock: {
+                            unlock_key: 'badge.first_10k',
+                            name: 'First 10K',
+                            icon: 'mdi:medal',
+                            is_major: false,
+                        },
+                    }),
+                ])}
                 focusId={null}
             />,
         );
 
         expect(screen.getByLabelText('Unread')).toBeInTheDocument();
 
-        await userEvent.click(screen.getByText('Replay Reveal'));
+        await userEvent.click(screen.getByText('Replay Unlock'));
 
         expect(fetchMock).toHaveBeenCalledWith(
             '/api/notifications/3/read',

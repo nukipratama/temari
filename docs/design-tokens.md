@@ -278,14 +278,13 @@ the confetti burst — reads the same preference itself through
    a thin top bar mounted as a **sibling** of AppShell's `<main>`, never a wrapper around it — that
    element is deliberately unkeyed (keying it once caused 25 card remounts on Collection). It's
    gated on Inertia's own `visit.showProgress` flag, so background/partial reloads (AI-analysis
-   polling, card-reveal `only` refreshes) never light the bar.
+   polling and other `only` refreshes) never light the bar.
 2. **Data reveal** — a page's first showing of real data, not every render. Stat count-ups
    (`useCountUp` + `countUpEase`, an ease-out curve with no overshoot — a tallying number should
    land exactly on target), chart/route draw-ins (`drawIn`, SVG `pathLength` 0→1), and staggered
    group reveals (`staggerContainer` wrapping `fadeInUp` children).
 3. **Celebratory** — unlocks, PRs, streaks: the existing celebration overlays
-   ([CardReveal](../resources/js/components/card/CardReveal.tsx),
-   [AccessoryUnlockModal](../resources/js/components/celebrations/AccessoryUnlockModal.tsx),
+   ([AccessoryUnlockModal](../resources/js/components/celebrations/AccessoryUnlockModal.tsx),
    [UnlockToast](../resources/js/components/temari/UnlockToast.tsx)) and the mascot's
    `idleByMood` / fidget keyframes in `lib/motion.ts`. Reserved for moments that are actually
    earned — never layer tier 3 onto routine navigation or data loading.

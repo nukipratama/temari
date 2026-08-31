@@ -28,7 +28,6 @@ it('shares every documented key on every response', function (): void {
         'demoLoginEnabled',
         'webPushPublicKey',
         'equippedAccessories',
-        'pendingReveal',
         'activeRace',
         'stravaSync',
         'stravaPaused',
@@ -46,7 +45,7 @@ it('keeps every derived prop a closure so a partial reload can skip it', functio
     $props = sharedPropsFor(User::factory()->create());
 
     foreach ([
-        'equippedAccessories', 'pendingReveal', 'stravaSync',
+        'equippedAccessories', 'stravaSync',
         'activeRace', 'hrZonesChangedAt', 'telegramConnected', 'webPushSubscribed', 'unreadNotifications',
         'stravaZoneScopeMissing', 'aiPaused', 'aiCatchingUp', 'stravaPaused',
     ] as $key) {
@@ -77,7 +76,6 @@ it('answers with safe guest defaults when nobody is signed in', function (): voi
         ->and(($props['stravaZoneScopeMissing'])())->toBeFalse()
         ->and(($props['aiPaused'])())->toBeFalse()
         ->and(($props['aiCatchingUp'])())->toBeFalse()
-        ->and(($props['pendingReveal'])())->toBeNull()
         ->and(($props['equippedAccessories'])())->toBe([
             'medal' => null,
             'headband' => null,

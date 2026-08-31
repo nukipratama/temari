@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\Api\CardReplayController;
-use App\Http\Controllers\Api\CardSeenController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
 use App\Http\Controllers\Notifications\Concerns\PushesAnalysisNotification;
@@ -51,8 +49,6 @@ it('has a test class for every concrete app class', function (): void {
     // Concrete classes intentionally without their own {Name}Test file.
     $exemptClasses = [
         // Controllers exercised by behaviour-named feature tests.
-        CardSeenController::class,    // CardSeenTest
-        CardReplayController::class,  // CardSeenTest (replay cases)
         LoginController::class,       // auth feature tests
         StravaAuthController::class,  // StravaAuthTest
         HandleInertiaRequests::class, // framework wiring

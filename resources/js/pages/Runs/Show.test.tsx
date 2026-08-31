@@ -1,11 +1,5 @@
 import { router } from '@inertiajs/react';
-import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type {
@@ -283,7 +277,6 @@ describe('Runs/Show', () => {
         renderShow();
         expect(screen.getAllByText('Iron Lungs').length).toBeGreaterThan(0);
         expect(screen.getByText('Share')).toBeInTheDocument();
-        expect(screen.getByText('Replay card reveal')).toBeInTheDocument();
         expect(screen.getByText(/Why this earned Epic/)).toBeInTheDocument();
     });
 
@@ -291,50 +284,6 @@ describe('Runs/Show', () => {
         renderShow({ card: null });
         expect(screen.queryByText('Iron Lungs')).not.toBeInTheDocument();
         expect(screen.queryByText('Share')).not.toBeInTheDocument();
-    });
-
-    it('surfaces an error and does not reveal when the replay POST fails (419/429/500)', async () => {
-        const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 419 });
-        const original = globalThis.fetch;
-        globalThis.fetch = fetchMock as unknown as typeof fetch;
-        vi.mocked(router.reload).mockReset();
-        try {
-            renderShow();
-            await act(async () => {
-                fireEvent.click(screen.getByText('Replay card reveal'));
-            });
-            expect(
-                await screen.findByText(/Couldn't replay the card/),
-            ).toBeInTheDocument();
-            expect(router.reload).not.toHaveBeenCalledWith({
-                only: ['pendingReveal'],
-            });
-        } finally {
-            globalThis.fetch = original;
-        }
-    });
-
-    it('reloads the pendingReveal prop on a successful replay POST', async () => {
-        const fetchMock = vi.fn().mockResolvedValue({ ok: true });
-        const original = globalThis.fetch;
-        globalThis.fetch = fetchMock as unknown as typeof fetch;
-        vi.mocked(router.reload).mockReset();
-        try {
-            renderShow();
-            await act(async () => {
-                fireEvent.click(screen.getByText('Replay card reveal'));
-            });
-            await waitFor(() =>
-                expect(router.reload).toHaveBeenCalledWith({
-                    only: ['pendingReveal'],
-                }),
-            );
-            expect(
-                screen.queryByText(/Couldn't replay the card/),
-            ).not.toBeInTheDocument();
-        } finally {
-            globalThis.fetch = original;
-        }
     });
 
     it('mounts the map+weather panel with the run detail', () => {

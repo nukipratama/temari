@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { lazy, Suspense, useRef, useState } from 'react';
 
@@ -41,7 +41,6 @@ import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { usePendingPost } from '@/hooks/usePendingPost';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
-import { postJson } from '@/lib/http';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatIdDate, formatPace, formatShortDateTimeId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
@@ -174,28 +173,6 @@ export default function RunsShow({
     );
 
     const [shareOpen, setShareOpen] = useState(false);
-    const [replaying, setReplaying] = useState(false);
-    const [replayError, setReplayError] = useState(false);
-
-    // Re-arm the reveal for this card, then reload the pendingReveal prop so the
-    // CardReveal modal (mounted in AppShell) plays again. A non-ok response
-    // (419/429/500) surfaces a transient error instead of faking success.
-    const replayReveal = () => {
-        if (replaying || card === null) {
-            return;
-        }
-        setReplaying(true);
-        setReplayError(false);
-        void postJson(`/api/cards/${card.id}/replay`)
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error(`Replay failed (${response.status})`);
-                }
-                router.reload({ only: ['pendingReveal'] });
-            })
-            .catch(() => setReplayError(true))
-            .finally(() => setReplaying(false));
-    };
 
     return (
         <>
@@ -413,27 +390,6 @@ export default function RunsShow({
                                         />
                                         Share
                                     </PillButton>
-                                    <PillButton
-                                        tone="outline"
-                                        size="sm"
-                                        onClick={replayReveal}
-                                        disabled={replaying}
-                                    >
-                                        <Icon
-                                            icon="mdi:refresh"
-                                            width={14}
-                                            height={14}
-                                            className={
-                                                replaying
-                                                    ? 'animate-spin'
-                                                    : undefined
-                                            }
-                                            aria-hidden
-                                        />
-                                        {replaying
-                                            ? 'Preparing…'
-                                            : 'Replay card reveal'}
-                                    </PillButton>
                                 </div>
                                 <CoachMark
                                     id="run-share"
@@ -442,16 +398,6 @@ export default function RunsShow({
                                     title="Share the card"
                                     body="I'll turn this run into an image you can send anywhere."
                                 />
-                                {replayError && (
-                                    <p
-                                        role="status"
-                                        aria-live="polite"
-                                        className="mt-2 font-sans text-xs text-ember-ink"
-                                    >
-                                        Couldn't replay the card. Try again in a
-                                        bit.
-                                    </p>
-                                )}
                             </div>
 
                             {/* The rarity explainer is always shown, even with no

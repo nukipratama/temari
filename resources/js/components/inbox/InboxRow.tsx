@@ -59,8 +59,7 @@ export default function InboxRow({
     onOpen,
 }: Readonly<InboxRowProps>) {
     const [showAbsolute, setShowAbsolute] = useState(false);
-    const replayLabel = item.unlock ? 'Replay Unlock' : 'Replay Reveal';
-    const canReplay = item.unlock !== null || item.run_card_id !== null;
+    const canReplay = item.unlock !== null;
     const showRarityBadge = item.kind === 'unlock' && item.rarity !== null;
 
     return (
@@ -155,7 +154,7 @@ export default function InboxRow({
                                             replaying && 'animate-spin',
                                         )}
                                     />
-                                    {replaying ? 'Replaying' : replayLabel}
+                                    {replaying ? 'Replaying' : 'Replay Unlock'}
                                 </Button>
                             )}
                             {item.url && (
