@@ -22,9 +22,7 @@ use LogicException;
  * distance, only its status glyph), but the same trailing-history window
  * {@see \App\Http\Controllers\PlanController} queries, so
  * {@see PlanRenderer::weekPhasesAndMultipliers()} computes an identical
- * multiplier for the shared week. `streak_days` is a new metric, day-grained
- * and scoped to this week only — distinct from {@see \App\Models\WeeklySnapshot::consecutiveWeekStreak()}'s
- * week-grained lifetime streak already shown on Plan.
+ * multiplier for the shared week.
  */
 final readonly class CurrentWeekPlanBuilder
 {
@@ -41,7 +39,7 @@ final readonly class CurrentWeekPlanBuilder
     }
 
     /**
-     * @return array{sessions_per_week: int, phase: string, planned_km_this_week: float, credited_this_week: int, streak_days: int, days: array<int, array<string, mixed>>}|null
+     * @return array{sessions_per_week: int, phase: string, planned_km_this_week: float, credited_this_week: int, days: array<int, array<string, mixed>>}|null
      */
     public function forUser(User $user, Carbon $today): ?array
     {
@@ -124,9 +122,6 @@ final readonly class CurrentWeekPlanBuilder
             )
             : null;
 
-        // ->values() reindexes to 0-based sequential keys — streakDays() walks
-        // $days by position, which groupBy()'s preserved-original-keys
-        // grouping would otherwise break.
         $days = $currentWeekSessions->map(fn (PlannedSession $s): array => PlanRenderer::dayPayload(
             $s,
             $today,
@@ -148,34 +143,7 @@ final readonly class CurrentWeekPlanBuilder
                 $resolvedStatuses,
                 static fn (PlannedSessionStatus $status): bool => $status->isCredited(),
             )),
-            'streak_days' => $this->streakDays($days, $today),
             'days' => $days,
         ];
-    }
-
-    /**
-     * Walks backward from today counting consecutive credited days. If
-     * today itself isn't credited yet (still `planned`), it's skipped rather
-     * than treated as a break — a streak "still building into today" reads
-     * correctly instead of showing 0 on a not-yet-run day.
-     *
-     * @param  array<int, array<string, mixed>>  $days
-     */
-    private function streakDays(array $days, Carbon $today): int
-    {
-        $todayIso = $today->toDateString();
-        $i = array_find_key($days, fn ($day) => $day['date'] === $todayIso);
-        $i ??= count($days) - 1;
-
-        if (! PlannedSessionStatus::from($days[$i]['status'])->isCredited()) {
-            $i--;
-        }
-
-        $count = 0;
-        for (; $i >= 0 && PlannedSessionStatus::from($days[$i]['status'])->isCredited(); $i--) {
-            $count++;
-        }
-
-        return $count;
     }
 }

@@ -142,58 +142,6 @@ describe('Plan', () => {
         expect(screen.getByText('No plan yet.')).toBeInTheDocument();
     });
 
-    it('pays the season track one tier per completed goal, and holds it back with no goals at all', () => {
-        const goal = (id: number, is_completed: boolean) => ({
-            id,
-            title: `Goal ${id}`,
-            current: is_completed ? 10 : 2,
-            target: 10,
-            unit: 'sessions',
-            is_completed,
-        });
-
-        const { rerender } = render(
-            <Plan
-                disclaimerHeadline={DISCLAIMER_HEADLINE}
-                disclaimer={DISCLAIMER}
-                race={null}
-                sessionsPerWeek={4}
-                adaptation={null}
-                season={{
-                    ...SEASON,
-                    goals: [
-                        goal(1, true),
-                        goal(2, true),
-                        goal(3, false),
-                        goal(4, false),
-                        goal(5, false),
-                    ],
-                }}
-                weeks={[WEEK()]}
-            />,
-        );
-
-        expect(
-            screen.getByRole('img', {
-                name: 'Season track: 2 of 5 tiers earned',
-            }),
-        ).toBeInTheDocument();
-
-        rerender(
-            <Plan
-                disclaimerHeadline={DISCLAIMER_HEADLINE}
-                disclaimer={DISCLAIMER}
-                race={null}
-                sessionsPerWeek={4}
-                adaptation={null}
-                season={SEASON}
-                weeks={[WEEK()]}
-            />,
-        );
-
-        expect(screen.queryByText('Season Track')).not.toBeInTheDocument();
-    });
-
     it("renders a session's type, distance, and pace", () => {
         render(
             <Plan

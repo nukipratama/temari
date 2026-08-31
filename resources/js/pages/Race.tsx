@@ -2,9 +2,6 @@ import { Head, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { type FormEvent, useState } from 'react';
 
-import CtlTrendChart, {
-    type CtlTrendPoint,
-} from '@/components/race/CtlTrendChart';
 import PlanRaceTabs from '@/components/race/PlanRaceTabs';
 import ProjectionGauge from '@/components/race/ProjectionGauge';
 import { Button } from '@/components/ui/button';
@@ -48,7 +45,6 @@ interface ProjectionPayload {
 interface RaceProps {
     race: RacePayload | null;
     projection: ProjectionPayload | null;
-    ctlTrend: CtlTrendPoint[];
 }
 
 const DISTANCE_PRESETS = [
@@ -71,11 +67,7 @@ function daysUntil(dateStr: string): number {
     return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
-export default function Race({
-    race,
-    projection,
-    ctlTrend,
-}: Readonly<RaceProps>) {
+export default function Race({ race, projection }: Readonly<RaceProps>) {
     const [raceDate, setRaceDate] = useState(race?.race_date ?? '');
     const [distanceKm, setDistanceKm] = useState(
         race ? race.distance_m / 1000 : 10,
@@ -448,13 +440,6 @@ export default function Race({
                                 </Button>
                             </div>
                         </form>
-                    </Card>
-                </section>
-
-                <section className="mt-10" data-coachmark="race-fitness-trend">
-                    <SectionLabel>Fitness · last 90 days</SectionLabel>
-                    <Card className="mt-3 px-6 py-6">
-                        <CtlTrendChart trend={ctlTrend} />
                     </Card>
                 </section>
             </PageContainer>

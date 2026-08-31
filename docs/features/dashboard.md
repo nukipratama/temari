@@ -38,7 +38,7 @@ The app's home (`/`). [WeekPlanWidget](resources/js/components/home/WeekPlanWidg
 
 [WeekPlanWidget](resources/js/components/home/WeekPlanWidget.tsx) leads the page whenever `weekPlan` is non-null (a brand new account with no plan yet omits it entirely). It shows a sessions-done ring, this week's planned distance, the phase, a 7-day day-status grid (today's tile ringed), and today's row expanded into a sentence, all lifted straight from `CurrentWeekPlanBuilder::forUser`'s payload — the same [PlanRenderer::dayPayload](app/Services/Run/Plan/PlanRenderer.php) shape Plan's own week rows render, so nothing shown here can numerically drift from the Plan page.
 
-`streak_days` is a **day-grained streak scoped to the current week only** — consecutive credited (`done`/`partial`) days walking back from today, skipping today itself if it is still `planned` rather than counting that as a break. This is a different metric from [WeeklySnapshot::consecutiveWeekStreak()](app/Models/WeeklySnapshot.php), the week-grained lifetime streak that lives on Trends' badge board (moved off Plan's now-removed `StreakPanel`; see `plan/README.md` §5, "Streak feature redesign") — the two can disagree (e.g. a broken day streak inside a week that still counts toward the weekly one) and that is expected, not a bug.
+`PP3` cut the widget's `N Credited In A Row` line and the `streak_days` metric behind it (P27): the prototype's plan card draws a credited/total ring and a phase badge, and no "in a row" line. "Streak" now survives in exactly one place, the week-grained [WeeklySnapshot::consecutiveWeekStreak()](app/Models/WeeklySnapshot.php) chip on Trends.
 
 ## The verdict
 

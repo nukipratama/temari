@@ -153,7 +153,6 @@ const weekPlan: WeekPlan = {
     phase: 'build',
     planned_km_this_week: 32,
     credited_this_week: 2,
-    streak_days: 0,
     days: [
         {
             id: 1,

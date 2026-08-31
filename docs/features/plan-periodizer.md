@@ -40,7 +40,6 @@ code_refs:
   - app/Jobs/AI/AnalyzePlanWeekVoiceJob.php
   - app/Jobs/AI/AnalyzePlanSeasonVoiceJob.php
   - resources/js/pages/Plan.tsx
-  - resources/js/components/plan/SeasonTrack.tsx
 ---
 
 # Plan — deterministic periodizer and the Plan tab
@@ -136,13 +135,20 @@ Three `AnalysisType` cases narrate what the rules above already decided, never r
 
 **The manual Regenerate button carries a real rate limit, unlike the button that predates this slice.** A full regenerate can dispatch up to 9 narration rows (7 days, the week, the season) — real LLM cost per click — so `PlanController::regenerate()` now checks a dedicated one-hour cooldown (`PlanNarrationRequester::regenerateCooldownRemaining()`/`startRegenerateCooldown()`) before calling the periodizer, started immediately rather than waiting for the async narration jobs to finish (closing the queue-latency window where two rapid clicks could both slip through). It's a standalone `Cooldown` key, not `Analysis::cooldownKey()` reused — every narration row's own completion unconditionally starts its own shorter (15-minute) cooldown in `AnalysisService::markDone()`, so sharing the key would have this longer window silently overwritten within moments. The weekly cron starts the same cooldown after its own regenerate (so a manual click right after Monday's auto-run is still correctly rate-limited) but never checks it — the cron always runs.
 
-### The season track on the page
+### No season track on the page
 
-One card under that summary renders what the season-scoped reward engine is actually doing.
+`PP3` cut the `SeasonTrack` tier module (P24): the prototype's Plan screen draws a
+`SeasonHeaderCard` with a single progress line, not a pip rail. The season-scoped reward engine is
+unchanged — `GrantSeasonUnlocksAction` still grants a tier under `season.{id}.track_{N}` per
+completed `SeasonGoal`, and `season.tiers_kept_from_past_seasons`
+([SeasonStreakSummaryBuilder](../../app/Services/Gamification/SeasonStreakSummaryBuilder.php)) still
+counts the tiers owned under an earlier season's key namespace. Nothing renders that count now;
+`PS4` decides whether the prototype's single line carries it.
 
-[SeasonTrack](../../resources/js/components/plan/SeasonTrack.tsx) is the reward rail: one pip per `SeasonGoal`, filled for each one completed, which is exactly the tier count `GrantSeasonUnlocksAction` grants under `season.{id}.track_{N}`. The earned count is derived on the client from the goals already in the payload rather than shipped twice. Under it sits the only honesty this card owes the user: **the track resets at the season boundary, and nothing collected resets with it.** `season.tiers_kept_from_past_seasons` ([SeasonStreakSummaryBuilder](../../app/Services/Gamification/SeasonStreakSummaryBuilder.php), shared with the [[profile]] page's own season & streak panel) counts the track tiers owned under an *earlier* season's key namespace and proves that claim with a number; it renders only when that number is non-zero, so a first season shows no empty promise.
-
-The week-grained lifetime streak (`WeeklySnapshot::consecutiveWeekStreak()`, wrapped by the same `SeasonStreakSummaryBuilder::streakPayload()`) no longer renders on this page: the mobile-UX port's `StreakPanel` removal consolidated it onto Trends' badge board instead (see `plan/README.md` §5, "Streak feature redesign"). `PlanController` still calls `seasonPayload()` for the track above, but no longer calls `streakPayload()`. Profile's own season & streak panel still shows the streak — see [[profile]].
+The per-goal `GoalCard` grid under the season summary survives. The week-grained lifetime streak
+(`WeeklySnapshot::consecutiveWeekStreak()`, wrapped by `SeasonStreakSummaryBuilder::streakPayload()`)
+does not render here either — it lives on Trends as a badge chip. `PlanController` still calls
+`seasonPayload()`, never `streakPayload()`.
 
 ## Extracted: interval detection
 

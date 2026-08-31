@@ -71,26 +71,14 @@ it('requires auth', function (): void {
     $this->get('/profile')->assertRedirect('/login');
 });
 
-it('reports a null season and a zero streak when the user has never visited Plan', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/profile')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('seasonStreak.season', null)
-            ->where('seasonStreak.streak.weeks', 0));
-
-    expect(Season::query()->where('user_id', $user->id)->count())->toBe(0);
-});
-
-it('reports the season Plan already created, without ensuring or mutating it itself', function (): void {
+it('never ensures or mutates a season of its own', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
-    $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
+    app(SeasonService::class)->ensureCurrent($user, Carbon::today());
 
     $this->actingAs($user)->get('/profile')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('seasonStreak.season.starts_at', $season->starts_at->toDateString())
-            ->has('seasonStreak.season.goals', 5));
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->missing('seasonStreak'));
 
     expect(Season::query()->where('user_id', $user->id)->count())->toBe(1);
     Carbon::setTestNow();

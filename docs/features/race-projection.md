@@ -1,6 +1,6 @@
 ---
 title: Race — goal race and Riegel projection
-description: The first user-authored object in the app — a race the user is training for, a fitted-Riegel finish-time projection, and the 90-day fitness trend
+description: The first user-authored object in the app — a race the user is training for and a fitted-Riegel finish-time projection
 tags: [feature, run]
 status: living
 reviewed: 2026-08-10
@@ -12,7 +12,6 @@ code_refs:
   - app/Services/Run/Metrics/TrainingLoad.php
   - app/Services/Inertia/GamificationProps.php
   - resources/js/pages/Race.tsx
-  - resources/js/components/race/CtlTrendChart.tsx
 ---
 
 # Race — goal race and Riegel projection
@@ -43,9 +42,9 @@ Effort-window PRs (`Best5Min` etc.) store a **pace** (sec/km), not elapsed time 
 
 This is deliberately **not** reconciled with [VdotEstimator](app/Services/Run/Metrics/VdotEstimator.php), which solves training-pace prescription (a `min()` reduction across PRs), not race-time projection — different questions, no shared math.
 
-## 90-day fitness trend
+## No fitness trend here any more
 
-[TrainingLoad::ctlTrend()](app/Services/Run/Metrics/TrainingLoad.php) needed no new storage: `rollDailySeries` (the EWMA roll every CTL/ATL computation already runs) now returns every day's pair instead of only the last one, and `ctlTrend` slices the tail. See [[training-load-metrics]] for the full CTL/ATL engine.
+`PP3` cut `/race`'s 90-day CTL chart (P26): the prototype draws that chart once, on Trends, and gives Race three blocks — race card, projection gauge, goal form. `CtlTrendChart` itself survives, unused by this page; [TrainingLoad::ctlTrend()](app/Services/Run/Metrics/TrainingLoad.php) still feeds Trends' fitness panel. See [[training-load-metrics]] for the full CTL/ATL engine.
 
 ## Sharing and cache busting
 

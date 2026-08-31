@@ -236,8 +236,7 @@ it('ships a real weekPlan when the user has a plan for the current week', functi
             ->component('Home')
             ->where('weekPlan.days', fn (mixed $days): bool => count($days) === 7)
             ->has('weekPlan.sessions_per_week')
-            ->has('weekPlan.phase')
-            ->has('weekPlan.streak_days'));
+            ->has('weekPlan.phase'));
 
     Carbon::setTestNow();
 });

@@ -395,7 +395,6 @@ export interface WeekPlan {
     phase: string;
     planned_km_this_week: number;
     credited_this_week: number;
-    streak_days: number;
     days: WeekPlanDay[];
 }
 

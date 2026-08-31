@@ -43,7 +43,7 @@ it('renders the page with no race and no projection for a fresh user', function 
             ->component('Race')
             ->where('race', null)
             ->where('projection', null)
-            ->where('ctlTrend', []));
+            ->missing('ctlTrend'));
 });
 
 it('renders the active race and its projection when one exists', function (): void {
