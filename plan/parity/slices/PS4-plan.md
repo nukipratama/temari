@@ -70,6 +70,12 @@ the same commit as the deletions, per §8's own instruction.
 Gate is `./vendor/bin/sail composer check` — the single command since `C1`, which now runs exactly
 what CI runs.
 
+`grounds.json` was **not** regenerated: no panel background changed. The timeline's cards use the
+existing `cardVariants` `card` tone (`bg-card`), and the only new colour values are inline `style`
+fills for bars and dots, which are graphic marks rather than registered panel grounds.
+
+Ran in the `ps4-plan` worktree on slot 1 (ports 7011/7012), alongside `PS8` and `PS1`.
+
 ## Open questions
 
 1. **Move became a swap, not a re-date.** `planned_sessions` is unique on `(user_id, date)` and the
@@ -89,7 +95,49 @@ what CI runs.
    them, so this is Today's real payload too — which is why `Home.test.tsx`'s fixtures moved.
    `WeekPlanWidget` itself is unchanged. `PS3` should know this happened.
 
-4. The adaptation verdict now lives as the current week's focus line, where the prototype puts its
-   per-week focus text, rather than as its own card the prototype does not draw. Week and day
+4. **The adaptation verdict now lives as the current week's focus line**, where the prototype puts
+   its per-week focus text, rather than as its own card the prototype does not draw. Week and day
    narration moved into the week and day rows' "Temari's take"; the training disclaimer stayed but
    moved to the foot of the page.
+
+   The prototype's `focus` is a hand-written sentence on *every* week. The app has no such field,
+   and the nearest real data — the `PlanAdaptation` verdict — exists only for the current week. So
+   past and future week cards carry **no focus line** rather than a fabricated one. Recorded as a
+   deliberate gap, not an oversight.
+
+5. **Past weeks show no "Temari's take", where the prototype shows one on every done week.** The
+   app narrates only the current week's seven days plus the current week and the season
+   (`PlanNarrationRequester::payloadsForCurrentWeek()`). Serving past weeks would mean rendering
+   `Analysis::toPayload(null, …)` for each, which is a *pending* block with a live retry affordance
+   — one LLM call per historical week, triggerable by a reader who thinks it is just a spinner. Left
+   as-is deliberately; extending week narration backwards is a billing decision, not a parity one.
+
+6. **Two P2 (token-nearest) calls worth a reviewer's eye.**
+   - **Phase colours** stay the app's validated `PHASE_COLORS` (`chartTokens.ts`), not the
+     prototype's raw `#0d9488/#1e6fe0/#a21caf/#db2777`. The app's set is CVD-validated, is already
+     used elsewhere, and covers the fifth phase (`deload`) that a self-scaled season has and the
+     prototype's fixed four do not.
+   - **Card radius**: the timeline's cards use `cardVariants` (`rounded-md` = 14px), which is what
+     the prototype's `rounded-[14px]` snaps to. The Plan page previously used the shadcn `Card`
+     (`rounded-4xl` = 26px). This slice is the first screen port, so it sets the precedent — if the
+     other ten slices should follow, that is a cross-screen call, not one PS4 can make alone.
+
+## Plan / prototype discrepancies found
+
+`reference.md`'s Plan section (§6) held up against `PlanScreen.tsx` on every point I checked —
+section list, line citations, the nesting diagram, the interaction table, the `canMove`/`canSkip`
+guards, and "Explicitly absent". No corrections needed to it.
+
+Two inconsistencies **inside the plan**, both resolved in favour of the decision text:
+
+1. **`cut-list.md` §1 and P24 disagree about the season-goal grid.** The cut-list's "Plan: Season
+   Track tier module" row records `PP3` as having cut the `SeasonTrack` rail while *keeping* the
+   `GoalCard` grid. P24 and `reference.md`'s "Explicitly absent" both say the 5-goal-tier module
+   goes and that the only tiered element is the 4-phase bar. The prototype draws no goal cards on
+   Plan at all, so P1 settles it: the grid is cut here. `season.goals` still ships from the server
+   and is now unread by Plan — a `W2` orphan, per P4's UI-and-routes-only depth.
+
+2. **P24 says season goals survive "as the prototype's single headline line".** There is no such
+   line on the prototype's Plan screen; `SeasonHeaderCard` draws week/adherence/phases/narration and
+   nothing about goals. The phrase fits Profile's small `SeasonCard`, which is `PS10`'s. Read that
+   way, nothing is owed here.
