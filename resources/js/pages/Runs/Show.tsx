@@ -23,7 +23,7 @@ import RunHydratingNotice from '@/components/run/RunHydratingNotice';
 import RunLenses from '@/components/run/RunLenses';
 import SplitsTable from '@/components/run/SplitsTable';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import Temari from '@/components/temari/Temari';
+import FaceIcon, { DARK_FACE } from '@/components/temari/FaceIcon';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
 import { Icon } from '@/components/ui/Icon';
@@ -89,7 +89,6 @@ export default function RunsShow({
         laps,
         partialSplit,
         mood,
-        pose,
         paceSec,
         hr,
         trimp,
@@ -158,11 +157,7 @@ export default function RunsShow({
                         <div className="relative grid grid-cols-1 gap-6">
                             <div className="flex h-full flex-col justify-center">
                                 <div className="mb-5 flex items-start gap-4">
-                                    <Temari
-                                        pose={pose}
-                                        size={72}
-                                        animate={false}
-                                    />
+                                    <FaceIcon size={56} {...DARK_FACE} />
                                     <div className="min-w-0 flex-1">
                                         <div className="mb-1.5 flex flex-wrap items-center gap-2">
                                             <MoodChip mood={mood} onSky />
@@ -350,11 +345,7 @@ export default function RunsShow({
                 {/* WHAT TEMARI SAYS */}
                 <section data-coachmark="run-narration" className="mt-10">
                     <header className="mb-4 flex items-center gap-3.5">
-                        <Temari
-                            pose="observational"
-                            size={48}
-                            animate={false}
-                        />
+                        <FaceIcon size={40} />
                         <div>
                             <h2 className="font-serif text-headline-sm text-foreground">
                                 What Temari says

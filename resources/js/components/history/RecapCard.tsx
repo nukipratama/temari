@@ -4,11 +4,10 @@ import type { AnalysisPayload, Mood } from '@/types/inertia';
 
 import SendNotificationButton from '@/components/SendNotificationButton';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import Temari from '@/components/temari/Temari';
+import FaceIcon, { DARK_FACE } from '@/components/temari/FaceIcon';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { cn } from '@/lib/cn';
 import { renderBold } from '@/lib/richText';
-import { MOOD_TO_POSE } from '@/lib/temariPose';
 
 interface RecapCardProps {
     mood: Mood | null;
@@ -37,7 +36,7 @@ interface RecapCardProps {
 const DEFAULT_RELOAD_PROPS = ['weeklySnapshots', 'historicalSnapshots'];
 
 /**
- * Temari's narrative recap for a week or a month: a mood-ringed mascot next to
+ * Temari's narrative recap for a week or a month: a mood-ringed face next to
  * the narration, chips underneath, and a "send it" affordance once the block
  * is done. Shared shape for the Feed's weekly recap and the Calendar's monthly
  * recap so both read as the same feature at two grains.
@@ -65,11 +64,12 @@ export default function RecapCard({
                 className,
             )}
         >
-            <Temari
-                pose={mood ? MOOD_TO_POSE[mood] : 'observational'}
+            <FaceIcon
                 size={36}
-                animate={false}
-                className="shrink-0"
+                ring={
+                    mood ? `var(--color-mood-${mood})` : 'var(--color-horizon)'
+                }
+                {...DARK_FACE}
             />
             <div className="min-w-0 flex-1">
                 <AnalysisStatus
