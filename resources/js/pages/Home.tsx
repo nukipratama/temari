@@ -4,7 +4,6 @@ import { useState } from 'react';
 import type {
     ActivityDetail,
     BriefingResult,
-    Mood,
     PastYouTrend,
     TrainingLoad,
     WeekPlan,
@@ -34,7 +33,6 @@ import SectionLabel from '@/components/ui/SectionLabel';
 import { useCountUp } from '@/hooks/useCountUp';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
-import { poseForRun } from '@/lib/temariPose';
 
 import { weekRangeLabel } from './Home/helpers';
 
@@ -44,7 +42,6 @@ interface HomeProps {
     snapshot: WeeklySnapshot | null;
     recentRuns: ActivityDetail[];
     lastRunNote?: LastRunNote | null;
-    recentMoods?: Record<number, Mood>;
     pastYouTrend?: PastYouTrend | null;
     weekPlan?: WeekPlan | null;
 }
@@ -60,7 +57,6 @@ export default function Home({
     snapshot,
     recentRuns,
     lastRunNote = null,
-    recentMoods = {},
     pastYouTrend = null,
     weekPlan = null,
 }: Readonly<HomeProps>) {
@@ -170,12 +166,6 @@ export default function Home({
                                             {lastRun && (
                                                 <LastRunCard
                                                     run={lastRun}
-                                                    pose={poseForRun(
-                                                        lastRun,
-                                                        recentMoods[
-                                                            lastRun.activity_id
-                                                        ] ?? null,
-                                                    )}
                                                     note={lastRunNote}
                                                 />
                                             )}

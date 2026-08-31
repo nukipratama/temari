@@ -176,7 +176,7 @@ function EmptyState() {
     // running (nothing for the user to do but wait).
     return (
         <EmptyPanel
-            pose="excited"
+            face
             title={line}
             body={sub}
             action={

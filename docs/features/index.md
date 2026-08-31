@@ -29,7 +29,7 @@ _Pages_
 _Collection_
 - [[cards-collection]] — the Kartu's reveal + full view (rarities, badges, special moves); browsing/filtering by rarity is inline on [[run-history]]
 - [[records]] — PRs, progression chart
-- [[targets-accessories]] — Accessories, with live unlock progress (badge board moved to Trends)
+- [[targets-accessories]] — the accessory unlock catalog, granted at ingest and drawn nowhere since `PP2`
 
 _Systems_
 - [[recaps]] — weekly/monthly/persona narratives across the app
@@ -40,5 +40,5 @@ _Systems_
 - [[telegram-notifications]] — link a Telegram account, the master switch and channel mutes, post-run + weekly-recap push
 - [[notification-inbox]] — /inbox, the durable record of what Temari sent, with celebration replay
 - [[streak-reminders]] — Saturday nudges for at-risk weekly streaks, on any wired channel
-- [[temari-mascot]] — poses, accessories, vibes
+- [[temari-mascot]] — the face and the brand mark, the app's whole identity art
 - [[installed-app-shell]] — Home-Screen install: edge-to-edge status bar, launch image, top bar with back button, touch feel, edge-swipe back

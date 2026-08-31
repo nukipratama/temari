@@ -1,7 +1,5 @@
 import type { ActivityDetail, Mood } from '@/types/inertia';
 
-import Temari from '@/components/temari/Temari';
-import { type TemariPose } from '@/components/temari/TemariProto';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import LinkCard from '@/components/ui/LinkCard';
@@ -31,12 +29,10 @@ export interface LastRunNote {
 
 export default function LastRunCard({
     run,
-    pose,
     note,
     onSky = false,
 }: Readonly<{
     run: ActivityDetail;
-    pose: TemariPose;
     note?: LastRunNote | null;
     /** Cream-on-dark treatment for use on a HeroPanel/sky background. */
     onSky?: boolean;
@@ -67,7 +63,6 @@ export default function LastRunCard({
                 Last run · {dateLabel}
             </SectionLabel>
             <div className="flex items-start gap-3">
-                <Temari pose={pose} size={48} />
                 <div className="min-w-0 flex-1">
                     <div
                         className={cn(

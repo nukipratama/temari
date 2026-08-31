@@ -11,13 +11,12 @@ code_refs:
   - app/Actions/Run/Story/ResolveFeaturedKartuAction.php
   - app/Services/Run/Story/PastYouMatcher.php
   - app/Services/Run/Story/BriefingComposer.php
-  - resources/js/lib/temariPose.ts
   - app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php
 ---
 
 # Vibe & mood system
 
-Two distinct "feelings" drive how the app speaks. The **vibe** is a daily, *whole-runner* read derived from training-load signals — it colours the dashboard headline, picks [[temari-mascot]]'s pose, and steers the LLM's tone. The **mood** is a *per-run* reaction attached to a single activity's card. They share a vocabulary at the seams (the vibe maps onto a mood for the daily greeting) but answer different questions: "how are you doing lately?" vs "how did *that run* go?".
+Two distinct "feelings" drive how the app speaks. The **vibe** is a daily, *whole-runner* read derived from training-load signals — it colours the dashboard headline and steers the LLM's tone. The **mood** is a *per-run* reaction attached to a single activity's card. They share a vocabulary at the seams (the vibe maps onto a mood for the daily greeting) but answer different questions: "how are you doing lately?" vs "how did *that run* go?".
 
 **No dedicated route** — this is a service-layer system that feeds [[dashboard]], [[run-detail]], and [[profile]].
 
@@ -53,11 +52,11 @@ A fixed vocabulary — keys are internal, the labels + emoji are the display sur
 
 A finished run gets a single **mood** instead — six values on [Temari](../../app/Services/Run/Story/Temari.php): `blazing` (PR / hard win), `easy` (easy / negative split), `wobbly` (heat strain), `gassed` (decoupling drift), `overloaded` (hard-zone heavy / overreaching), `chill` (rest / default). The selection cascade is `moodForActivity` ([Temari.php:116](../../app/Services/Run/Story/Temari.php#L116)); it reads the run's [[stream-analysis|stream summary]] and weather. This mood is what [[gamification]] writes onto the run's `StoryLine`, and each mood also carries a 4-char "sigil" and an optional accessory hint for the SVG renderer ([Temari.php:31](../../app/Services/Run/Story/Temari.php#L31)).
 
-The bridge between the two systems is `moodForVibe` ([Temari.php:148](../../app/Services/Run/Story/Temari.php#L148)): when there's no run to react to, the daily greeting still needs a mascot mood, so each vibe collapses onto the nearest run-mood.
+The bridge between the two systems is `moodForVibe` ([Temari.php:148](../../app/Services/Run/Story/Temari.php#L148)): when there's no run to react to, the daily greeting still needs a mood, so each vibe collapses onto the nearest run-mood.
 
 ## How the vibe is consumed
 
-- **Dashboard pose.** The vibe does *not* drive the mascot's pose. [poseForRun](../../resources/js/lib/temariPose.ts#L17) keys off the last run's `Mood` through `MOOD_TO_POSE` (`blazing` → `proud`, `gassed`/`wobbly`/`overloaded` → `wobble`, `chill` → `reading`), falling back to the `moodFromActivity` heuristic when no persisted mood exists — see [[temari-mascot]].
+- **Face ring colour.** The vibe does *not* drive it, and nor does it drive a pose any more — `PP2` cut the pose vocabulary with the mascot rig. A run `Mood` now picks only the ring colour on the surfaces that carry one, chiefly [RecapCard](../../resources/js/components/history/RecapCard.tsx) — see [[temari-mascot]].
 - **Vibe chip.** The label surfaces as text, in the "Vibe" tile of [VitalChips](../../resources/js/components/dashboard/VitalChips.tsx#L55), with `VIBE_SUB` glossing what the vibe means underneath — see [[dashboard]] for the page wiring.
 - **LLM tone.** [BriefingComposer::compose](../../app/Services/Run/Story/BriefingComposer.php) resolves the vibe once and hangs the briefing off it. The vibe *key* is then a context field the narrators key their tone to: the mascot voice keys its register to the vibe band ([BriefingMascotVoiceNarrator.php](../../app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php)) — energetic for `pumped`/`fresh`/`bouncy`, gentle for `worn_down`/`cooked`, coaxing for `hibernating`. The pipeline itself is documented in [[ai-pipeline]].
 

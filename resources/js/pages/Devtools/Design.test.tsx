@@ -1,8 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { TEMARI_EXPRESSIONS } from '@/components/temari/TemariProto';
-
 import Design from './Design';
 
 const TOKENS: Record<string, string> = {
@@ -112,25 +110,31 @@ describe('Devtools/Design', () => {
         ).toBeInTheDocument();
     });
 
-    it('renders every mascot face, slot and season phase against the live tokens', () => {
+    it("renders Temari's face at every shipped size against the live tokens", () => {
         cleanup = declareTokens();
         const { container } = render(<Design />);
 
-        for (const heading of [
-            'Mascot faces',
-            'Mascot on sky',
-            'Wearable slots',
-            'Season coverage',
-        ]) {
+        for (const heading of ["Temari's face", "Temari's face on sky"]) {
             expect(
                 screen.getByRole('heading', { name: heading }),
             ).toBeInTheDocument();
         }
 
-        for (const expression of TEMARI_EXPRESSIONS) {
-            expect(
-                container.querySelector(`[data-expression="${expression}"]`),
-            ).toBeInTheDocument();
+        const faces = Array.from(
+            container.querySelectorAll('[data-face-icon]'),
+        ).map((el) => el.getAttribute('width'));
+        for (const size of [
+            '26',
+            '34',
+            '36',
+            '40',
+            '42',
+            '48',
+            '56',
+            '64',
+            '72',
+        ]) {
+            expect(faces).toContain(size);
         }
     });
 

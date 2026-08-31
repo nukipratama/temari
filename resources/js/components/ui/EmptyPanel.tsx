@@ -1,13 +1,12 @@
 import type { ReactNode } from 'react';
 
-import type { TemariPose } from '@/components/temari/TemariProto';
-
-import Temari from '@/components/temari/Temari';
+import FaceIcon from '@/components/temari/FaceIcon';
 import Card from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
 
 interface EmptyPanelProps {
-    pose?: TemariPose;
+    /** Draw Temari's face above the copy, as the prototype's empty states do. */
+    face?: boolean;
     title: string;
     body?: string;
     action?: ReactNode;
@@ -16,7 +15,7 @@ interface EmptyPanelProps {
 }
 
 export default function EmptyPanel({
-    pose,
+    face = false,
     title,
     body,
     action,
@@ -30,11 +29,11 @@ export default function EmptyPanel({
             padding="hero"
             className={cn('text-center', className)}
         >
-            {pose && <Temari pose={pose} size={128} animate />}
+            {face && <FaceIcon size={48} />}
             <p
                 className={cn(
                     'font-serif italic text-2xl text-text-2',
-                    pose && 'mt-4',
+                    face && 'mt-4',
                 )}
             >
                 {title}

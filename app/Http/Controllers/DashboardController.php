@@ -81,9 +81,6 @@ class DashboardController extends Controller
 
                 return $lastRunActivityId === null ? null : $noteReader->forActivity($lastRunActivityId);
             },
-            // Persisted post-run mood per recent run, so the featured card and
-            // last-run mascot match the backend mood without a frontend heuristic.
-            'recentMoods' => fn (): array => $noteReader->moodsFor($loadRecentRuns()->pluck('activity_id')->all()),
         ]);
     }
 

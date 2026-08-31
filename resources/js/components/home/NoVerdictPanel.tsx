@@ -27,7 +27,7 @@ export default function NoVerdictPanel({
 
             <EmptyPanel
                 className="mt-0"
-                pose="reading"
+                face
                 title={verdictHeadline(trend)}
                 body={verdictSupport(trend)}
             />

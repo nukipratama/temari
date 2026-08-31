@@ -4,14 +4,13 @@ import type { CardEdition, Mood, Rarity } from '@/types/inertia';
 
 import RouteGlyph from '@/components/card/RouteGlyph';
 import ThreadBandGlyph from '@/components/card/ThreadBandGlyph';
-import Temari from '@/components/temari/Temari';
+import TemariMark from '@/components/TemariMark';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 import { moodSigilColor } from '@/lib/mood';
 import {
     RARITY_HEX,
     RARITY_LABELS,
-    RARITY_POSE,
     RARITY_SYMBOL,
     RARITY_TEXT,
 } from '@/lib/runcard';
@@ -29,8 +28,8 @@ interface KartuMiniProps {
 
 /**
  * Compact mini-TCG tile: the same dark-frame language as the full card at
- * 140px. Bright art window with the route hero + a tiny corner glyph, a dark
- * stat block with the rarity ribbon, name, and edition/date.
+ * 140px. Bright art window with the route hero + a tiny corner brand mark, a
+ * dark stat block with the rarity ribbon, name, and edition/date.
  */
 export default function KartuMini({
     name,
@@ -87,12 +86,7 @@ export default function KartuMini({
                     aria-hidden
                     className="pointer-events-none absolute bottom-0.5 right-0.5"
                 >
-                    <Temari
-                        pose={RARITY_POSE[rarity]}
-                        size={26}
-                        animate={false}
-                        dropShadow={false}
-                    />
+                    <TemariMark size={26} color="var(--color-ink)" />
                 </span>
             </div>
 

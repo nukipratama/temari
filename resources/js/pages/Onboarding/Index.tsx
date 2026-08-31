@@ -13,7 +13,7 @@ import SessionsDial from '@/components/onboarding/SessionsDial';
 import StepProgress, {
     type OnboardingStep,
 } from '@/components/onboarding/StepProgress';
-import Temari from '@/components/temari/Temari';
+import FaceIcon from '@/components/temari/FaceIcon';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/Icon';
@@ -273,7 +273,7 @@ export default function OnboardingIndex() {
                         animate="visible"
                         className="flex flex-col items-center gap-5 py-2 text-center"
                     >
-                        <Temari pose="glow" size={112} animate />
+                        <FaceIcon size={72} />
                         <PageHero
                             size="quote-lg"
                             italic
@@ -513,7 +513,7 @@ export default function OnboardingIndex() {
                                     />
                                 </svg>
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <Temari pose="glow" size={26} />
+                                    <FaceIcon size={26} />
                                 </div>
                             </div>
                             <div className="min-w-0 flex-1">

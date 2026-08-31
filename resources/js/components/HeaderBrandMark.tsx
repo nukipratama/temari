@@ -1,3 +1,4 @@
+import TemariMark from '@/components/TemariMark';
 import { cn } from '@/lib/cn';
 
 interface HeaderBrandMarkProps {
@@ -7,10 +8,8 @@ interface HeaderBrandMarkProps {
 }
 
 /**
- * The persistent shell header's brand mark: the frozen prototype's abstract
- * ring glyph + lowercase wordmark (`TemariMark.tsx`). Distinct from
- * BrandMark's mascot-face glyph, which keeps rendering everywhere else
- * (hero avatars, Kartu art, share cards) — see plan/README.md §5 fork 2.
+ * The persistent shell header's brand mark: the prototype's ring glyph plus a
+ * lowercase wordmark, matching its `AppTopbar`.
  */
 export default function HeaderBrandMark({
     className,
@@ -18,7 +17,7 @@ export default function HeaderBrandMark({
 }: Readonly<HeaderBrandMarkProps>) {
     return (
         <div className={cn('flex items-center gap-2', className)}>
-            <TemariRingGlyph size={22} />
+            <TemariMark size={22} className="shrink-0" />
             <span
                 className={cn(
                     'text-sm leading-none font-extrabold tracking-tight text-foreground',
@@ -28,28 +27,5 @@ export default function HeaderBrandMark({
                 temari
             </span>
         </div>
-    );
-}
-
-function TemariRingGlyph({ size }: Readonly<{ size: number }>) {
-    return (
-        <svg
-            aria-hidden
-            width={size}
-            height={size}
-            viewBox="0 0 100 100"
-            className="shrink-0"
-        >
-            <g fill="none" strokeWidth="11" strokeLinecap="round">
-                <path
-                    stroke="var(--color-horizon)"
-                    d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"
-                />
-                <path
-                    stroke="var(--color-foreground)"
-                    d="M50 27 A23 23 0 1 1 30.09 61.5"
-                />
-            </g>
-        </svg>
     );
 }

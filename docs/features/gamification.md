@@ -29,7 +29,7 @@ code_refs:
 
 # Gamification
 
-Gamification isn't a page — it's an engine that runs as each activity is ingested. The visible payoffs (cards, rarities, records, unlock progress) surface across [[cards-collection]], [[records]] and [[targets-accessories]] (live accessory progress); badges surface as chips on `/trends`' fitness panel, PRs as [[profile]]'s progression charts. This note describes the engine and where each piece is wired.
+Gamification isn't a page — it's an engine that runs as each activity is ingested. The visible payoffs (cards, rarities, records) surface across [[cards-collection]] and [[records]]; badges surface as chips on `/trends`' fitness panel, PRs as [[profile]]'s progression charts. Accessory unlocks are still granted but have no surface left at all — see [[targets-accessories]]. This note describes the engine and where each piece is wired.
 
 **No dedicated route** — this is a service-layer engine, not a page.
 
@@ -78,7 +78,7 @@ A PR is written by `app/Services/Run/Metrics/PersonalRecords` via `updateOrCreat
 
 `config/temari_goals.php` is the single canonical catalog of grant criteria: each of the 25 keys declares a `metric`/`metric_key`/`target` triple against [GamificationContext](../../app/Services/Gamification/GamificationContext.php). [GoalResolver::currentValue()](../../app/Services/Gamification/GoalResolver.php#L87) resolves that triple to a current value for progress bars, and `GrantEligibleUnlocksAction` reuses the same method to decide grants generically (`current >= target`) instead of a hardcoded `if` per key — adding an unlock needs a config entry only, no PHP change. `config/temari_unlocks.php` stays display-only: name, icon, rarity, flavor description, keyed by the same unlock key.
 
-[GoalResolver](../../app/Services/Gamification/GoalResolver.php) (`forUser()`, `completedCount()`, `closestToCompletion()`) computes progress toward *every* unlock in the catalog — current vs target — to feed the [[targets-accessories]] progress bars, including the ones not yet earned. **Only the page-level surface retired in Slice 7** (`GoalController`, `Goals.tsx`, the `goalsSummary` shared prop) — `GoalResolver` itself stays, since `GrantEligibleUnlocksAction` and the live progress numbers on `/accessories` both still depend on it.
+[GoalResolver](../../app/Services/Gamification/GoalResolver.php) (`forUser()`, `completedCount()`, `closestToCompletion()`) computes progress toward *every* unlock in the catalog — current vs target — including the ones not yet earned. Every page that drew those numbers is now gone (`/goals` in Slice 7, `/accessories` in `PP2`), but `GoalResolver` stays: `GrantEligibleUnlocksAction` decides grants through it, and `LifetimeStatsTool` reads its completed count as narration context.
 
 ## Season goals and the rest-day reward
 

@@ -6,7 +6,7 @@ import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
 import ProgressionChart from '@/components/collection/ProgressionChart';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import Temari from '@/components/temari/Temari';
+import FaceIcon, { DARK_FACE } from '@/components/temari/FaceIcon';
 import { Card } from '@/components/ui/card';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
@@ -137,7 +137,11 @@ export default function Profile({
                 <HeroPanel>
                     <div className="mb-5 flex flex-col items-start gap-4">
                         <div className="shrink-0">
-                            <Temari pose="proud" size={100} animate={false} />
+                            <FaceIcon
+                                size={64}
+                                ring="var(--color-leaf)"
+                                {...DARK_FACE}
+                            />
                         </div>
                         <div className="w-full min-w-0">
                             <Eyebrow

@@ -66,10 +66,9 @@ final readonly class GamificationProps
 
     /**
      * Which accessories the mascot is wearing. Cached because it costs a
-     * `user_unlocks` scan on every page load while only ever moving when the
-     * user equips something ({@see \App\Http\Controllers\AccessoryController}
-     * busts it there). Granting an unlock cannot change it: rows are inserted
-     * without `equipped`, which defaults to false.
+     * `user_unlocks` scan on every page load. Nothing writes it any more: the
+     * equip surface went with the mascot, and granting an unlock cannot change
+     * it, since rows are inserted without `equipped`, which defaults to false.
      *
      * @return array<string, string|null>
      */

@@ -76,8 +76,8 @@ export interface InboxItem {
 
 /**
  * The race the user is currently training for, shared app-wide. "Race" is the
- * user-facing name; live accessory-unlock progress lives on `/accessories`,
- * see AccessoriesItem.
+ * user-facing name, kept distinct from the unrelated accessory-unlock catalog
+ * the backend still tracks.
  */
 export interface ActiveRace {
     id: number;

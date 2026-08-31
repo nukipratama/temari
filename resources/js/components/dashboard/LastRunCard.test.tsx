@@ -40,7 +40,6 @@ describe('LastRunCard', () => {
         render(
             <LastRunCard
                 run={richRun}
-                pose="proud"
                 note={{ oneline: 'A solid session.', mood: 'blazing' }}
             />,
         );
@@ -53,14 +52,14 @@ describe('LastRunCard', () => {
     });
 
     it('uses the "Run" name fallback and em-dash placeholders for a bare run', () => {
-        render(<LastRunCard run={bareRun} pose="observational" note={null} />);
+        render(<LastRunCard run={bareRun} note={null} />);
         expect(screen.getByText('Run')).toBeInTheDocument();
         expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
         expect(screen.queryByText(/Gelora/)).not.toBeInTheDocument();
     });
 
     it('links to the activity detail page', () => {
-        render(<LastRunCard run={richRun} pose="proud" note={null} />);
+        render(<LastRunCard run={richRun} note={null} />);
         const link = screen.getByRole('link');
         expect(link).toHaveAttribute('href', '/activities/99');
     });
@@ -70,7 +69,6 @@ describe('LastRunCard', () => {
         render(
             <LastRunCard
                 run={richRun}
-                pose="proud"
                 note={{ oneline: 'x', mood: 'overloaded' }}
             />,
         );

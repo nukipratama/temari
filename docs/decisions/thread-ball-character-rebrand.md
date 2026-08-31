@@ -6,8 +6,8 @@ status: superseded
 superseded_by: temari-keeps-score-persona
 reviewed: 2026-08-11
 code_refs:
-  - resources/js/components/temari/TemariProto.tsx
-  - resources/js/components/BrandMark.tsx
+  - resources/js/components/temari/FaceIcon.tsx
+  - resources/js/components/TemariMark.tsx
   - resources/js/lib/shareCard.ts
   - app/Enums/Rarity.php
   - resources/css/app.css
@@ -16,6 +16,14 @@ code_refs:
 
 # Rebrand Temari from bunny/Daybreak to a thread-ball character
 
+> **The art this note describes no longer ships (2026-08-31).** `PP2` of the prototype-parity
+> program deleted `TemariProto.tsx`, the ten faces, the eight pose names, thread coverage, the
+> per-slot accessory rendering and `BrandMark`'s `TemariGlyph`. The character is now one flat
+> line-art face plus the ring brand mark — see [[temari-mascot]]. The decision below stands as the
+> record of why the bunny was replaced and why the accessory *data model* was left alone (it still
+> is); only the drawing it chose is gone. Rarity's hex ladder and the Threadwork palette are
+> unchanged.
+>
 > **Partially superseded (2026-08-13) by [[temari-keeps-score-persona]].** Only the *persona* stance below is replaced: the "friend who runs alongside you" framing this note cites as the reason the character kept a face and an expression carrier. Temari is now a training partner who keeps score. Everything else here still stands and is the current design: the ball-bodied form, the 8 pose names, thread coverage as the season-phase progress language, the accessory rendering-vs-data-model split, the unchanged rarity hex ladder, and the Threadwork palette.
 
 **Status:** Accepted (documented 2026-08-11, resolved in a full `/grilling` session 2026-08-10/11).
@@ -28,7 +36,7 @@ Nothing in the prior codebase or docs referenced the temari (手鞠) etymology �
 
 ## Decision
 
-- **Full character replacement, not a reskin.** The bunny form ([TemariProto.tsx](../../resources/js/components/temari/TemariProto.tsx), `BrandMark.tsx`'s `BunnyGlyph`, `shareCard.ts`'s `bunnySvg()`/`loadBunny()`) retired in favor of a ball-bodied character with a face (eyes/mouth on the ball's surface) — chosen over a limbed thread-wrapped hybrid or a faceless abstract icon so the "friend who runs alongside you" persona keeps an expression/warmth carrier in narration UI. It moves by bouncing/rolling, not walking. The same 8 pose names carry over unchanged (`proud`/`pumped`/`excited`/`holding`/`reading`/`wobble`/`observational`/`glow`, [TemariProto.tsx:5-13](../../resources/js/components/temari/TemariProto.tsx#L5-L13)) since narrators and components across the app reference them by name; renaming would have been unrelated churn. `BunnyGlyph`/`bunnySvg`/`loadBunny` ported to `TemariGlyph`/`temariSvg`/`loadTemari` ([BrandMark.tsx:35](../../resources/js/components/BrandMark.tsx#L35), [shareCard.ts:397](../../resources/js/lib/shareCard.ts#L397), [shareCard.ts:418](../../resources/js/lib/shareCard.ts#L418)).
+- **Full character replacement, not a reskin.** The bunny form (`TemariProto.tsx`, `BrandMark.tsx`'s `BunnyGlyph`, `shareCard.ts`'s `bunnySvg()`/`loadBunny()`) retired in favor of a ball-bodied character with a face (eyes/mouth on the ball's surface) — chosen over a limbed thread-wrapped hybrid or a faceless abstract icon so the "friend who runs alongside you" persona keeps an expression/warmth carrier in narration UI. It moves by bouncing/rolling, not walking. The same 8 pose names carry over unchanged (`proud`/`pumped`/`excited`/`holding`/`reading`/`wobble`/`observational`/`glow`) since narrators and components across the app reference them by name; renaming would have been unrelated churn. `BunnyGlyph`/`bunnySvg`/`loadBunny` ported to `TemariGlyph`/`temariSvg`/`loadTemari`.
 - **The training arc gets a real rendering tie-in, scoped to one site.** Thread coverage over the ball's core builds through discrete season-phase states (`base`/`build`/`peak`/`taper`), rendered only in the Plan tab's season summary — not globally, since a phase-aware mascot everywhere would require every call site to track the current phase. Self-scaled deload weeks pause accretion rather than reset it, matching the season's own self-scaling design.
 - **Accessory rendering changed, the data model didn't.** The 6-slot enum, 25-item unlock catalog, and `EquippedAccessories`'s schema stay exactly as Slice 2f/4 left them ([EquippedAccessories.php:26](../../app/Services/Gamification/EquippedAccessories.php#L26)) — no new migration. Only `TemariProto.tsx`'s per-slot SVG rendering changed to fit a limbless ball: `medal` hangs from a loop at the crown, `aura` is an ambient glow ring, `headband` is a ribbon bow at the crown, `shirt`/`shorts` are thread-band wraps around the ball's upper/lower hemisphere, and `shoes` is a trailing ribbon suggesting motion.
 - **Rarity's hex ladder stays exactly as-is.** `Rarity::hexColor()` (gray→green→blue→purple→gold, [Rarity.php:46](../../app/Enums/Rarity.php#L46)) was never re-hued — re-hueing a proven, widely-used loot-ladder signal (filter chips, dots, section headers) is separate blast radius this decision didn't ask for. Card chrome instead gained an additive thread-band accent whose density scales with tier, layered on the unchanged rarity colors.

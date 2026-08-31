@@ -501,13 +501,15 @@ function ensureFonts(): Promise<void> {
     return fontsReady;
 }
 
-// Flat, canvas-safe port of TemariGlyph in components/BrandMark.tsx (no
-// gradients/highlights). Keep the core geometry in sync with that source.
-function temariSvg(tone: 'ink' | 'cream', bandHex: string = C.horizon): string {
-    const isInk = tone === 'ink';
-    const face = isInk ? C.ink : C.cream;
-    const features = isInk ? C.cream : C.ink;
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><defs><clipPath id="b"><circle cx="50" cy="52" r="42"/></clipPath></defs><path d="M 42 10 Q 50 4 58 10 Q 52 12 50 16 Q 48 12 42 10 Z" fill="${face}"/><circle cx="50" cy="52" r="42" fill="${face}"/><g clip-path="url(#b)"><rect x="8" y="34" width="84" height="13" fill="${bandHex}"/></g><circle cx="38" cy="62" r="4.5" fill="${features}"/><circle cx="62" cy="62" r="4.5" fill="${features}"/><path d="M 44 74 Q 50 79 56 74" fill="none" stroke="${features}" stroke-width="2.4" stroke-linecap="round"/></svg>`;
+// Canvas-safe port of TemariMark in components/TemariMark.tsx: two nested open
+// arcs, the outer one on the brand hue (or the card's mood, for the art-window
+// corner mark). Keep the geometry in sync with that source.
+export function brandMarkSvg(
+    tone: 'ink' | 'cream',
+    bandHex: string = C.horizon,
+): string {
+    const inner = tone === 'ink' ? C.ink : C.cream;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><g fill="none" stroke-width="11" stroke-linecap="round"><path stroke="${bandHex}" d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"/><path stroke="${inner}" d="M50 27 A23 23 0 1 1 30.09 61.5"/></g></svg>`;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -519,8 +521,8 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     });
 }
 
-// Few tone/band combinations exist and each glyph never changes; cache every
-// decoded image (keyed by tone + headband hex) so repeated repaints reuse it
+// Few tone/band combinations exist and each mark never changes; cache every
+// decoded image (keyed by tone + arc hex) so repeated repaints reuse it
 // instead of re-encoding and re-decoding the SVG.
 const temariCache: Record<string, HTMLImageElement> = {};
 
@@ -534,7 +536,7 @@ async function loadTemari(
     }
     try {
         const img = await loadImage(
-            `data:image/svg+xml;utf8,${encodeURIComponent(temariSvg(tone, bandHex))}`,
+            `data:image/svg+xml;utf8,${encodeURIComponent(brandMarkSvg(tone, bandHex))}`,
         );
         temariCache[key] = img;
         return img;
@@ -568,7 +570,7 @@ function drawRarityFlag(
     return h;
 }
 
-/** Brand lockup (Temari glyph + wordmark) right-aligned to `rightX`. */
+/** Brand lockup (Temari mark + wordmark) right-aligned to `rightX`. */
 function drawBrand(
     ctx: CanvasRenderingContext2D,
     rightX: number,
@@ -599,7 +601,7 @@ interface DrawCtx {
     cfg: ShareCardConfig;
     pal: Palette;
     temari: HTMLImageElement | null;
-    /** Temari glyph with its headband tinted to the card's mood. */
+    /** Temari mark with its outer arc tinted to the card's mood. */
     moodTemari: HTMLImageElement | null;
 }
 
@@ -881,7 +883,7 @@ function drawHeroShimmer(
 /**
  * Floating pills over the bright art window, one per corner: rarity chip (top-L,
  * "★ ISTIMEWA" in the rarity hue) so the tier reads over the map, TRIMP power
- * (top-R), and the edition number (bottom-L). The mascot owns the bottom-R.
+ * (top-R), and the edition number (bottom-L). The brand mark owns the bottom-R.
  */
 function drawHeroArtBadges(
     ctx: CanvasRenderingContext2D,
@@ -1034,9 +1036,8 @@ function drawHeroArtWindow(
     );
     drawHeroShimmer(ctx, box.x, box.y, box.w, box.h, k.rarity, rarityCol);
 
-    // Brand mark (Temari glyph + wordmark), tucked into the map's bottom-right
-    // corner instead of a big Temari mascot watermark — a quiet signature
-    // rather than a character floating over the route.
+    // Brand mark (Temari mark + wordmark), tucked into the map's bottom-right
+    // corner — a quiet signature rather than art floating over the route.
     const brandPad = 20;
     drawBrand(
         ctx,
@@ -1491,7 +1492,7 @@ function drawZoneBar(
 
 /**
  * Dark-frame TCG hero: a dark navy card with a single vivid rarity border, a
- * bright art window up top (big mascot watermark + route hero + floating
+ * bright art window up top (route hero + corner brand mark + floating
  * rarity/TRIMP/edition pills), and a dark stat block below (centred name, KM
  * hero, badges, stat grid, zone bar, location/wind/date context strip).
  * Mirrors the React Kartu component.
@@ -1531,7 +1532,7 @@ function drawHero(d: DrawCtx): void {
         gapBonus,
     });
 
-    // Both formats: art window on top (route hero + mascot), stat block below.
+    // Both formats: art window on top (route hero + brand mark), stat block below.
     // Measure the block's natural height, cap the map height (maxArtFrac) so it
     // doesn't dominate, then spread any leftover space EVENLY across every section
     // (gapBonus) so the block fills the card with a consistent rhythm instead of

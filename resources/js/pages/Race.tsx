@@ -244,7 +244,7 @@ export default function Race({ race, projection }: Readonly<RaceProps>) {
 
                 {!race && (
                     <EmptyPanel
-                        pose="proud"
+                        face
                         title="No race on the calendar yet."
                         body="Set one below and Temari will start projecting your finish time."
                         className="mt-8"

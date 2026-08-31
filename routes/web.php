@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\AccountController;
-use App\Http\Controllers\AccessoryController;
 use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Controllers\Api\RunQuestionController;
 use App\Http\Controllers\Api\NotificationReadController;
@@ -134,10 +133,6 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::post('/plan/regenerate', [PlanController::class, 'regenerate'])->name('plan.regenerate');
     Route::patch('/plan/sessions/{plannedSession}', [PlanController::class, 'update'])->name('plan.sessions.update');
     Route::delete('/plan/sessions/{plannedSession}', [PlanController::class, 'destroy'])->name('plan.sessions.destroy');
-    Route::get('/accessories', [AccessoryController::class, 'index'])->name('accessories');
-    Route::post('/api/accessories/equip', [AccessoryController::class, 'equip'])
-        ->name('api.accessories.equip');
-
     Route::get('/inbox', InboxController::class)->name('inbox');
 
     Route::get('/profile', ProfileController::class)->name('profile');
@@ -178,13 +173,7 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::permanentRedirect('/profil', '/profile');
     Route::permanentRedirect('/kalender', '/calendar');
     Route::permanentRedirect('/rekor', '/trends');
-    Route::permanentRedirect('/aksesori', '/accessories');
     Route::permanentRedirect('/akun', '/account');
-    // /goals (the old accessory-progress catalog page) retired in favor of
-    // live progress on /accessories — collapse the old /target -> /goals hop
-    // to go straight there, and keep /goals itself resolving for bookmarks.
-    Route::permanentRedirect('/target', '/accessories');
-    Route::permanentRedirect('/goals', '/accessories');
 
     Route::post('/api/notifications/{notification}/read', NotificationReadController::class)
         ->whereNumber('notification')

@@ -146,4 +146,4 @@ narration surface stays at the month grain.
 - [[data-model]] — `Activity`, `ActivityDetail`, `WeeklySnapshot` shapes
 - [[run-ingest-pipeline]] — how a run becomes a row these pages read
 - [[recaps]] — weekly/monthly narrative generation
-- [[temari-mascot]] — the mascot voicing each recap
+- [[temari-mascot]] — the face that fronts each recap card

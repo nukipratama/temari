@@ -88,7 +88,7 @@ export default function Inbox({
 
                 {items.length === 0 ? (
                     <EmptyPanel
-                        pose="reading"
+                        face
                         title="Nothing here yet."
                         body="Every run, recap, and unlock lands here on its own. Nothing for you to do."
                         className="mt-8"

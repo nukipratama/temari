@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 
-import type { TemariPose } from '@/components/temari/TemariProto';
 import type { ShareKartuData } from '@/lib/shareCard';
 import type {
     ActivityDetail,
@@ -27,7 +26,6 @@ import {
     fastestKmFromDetail,
     kartuPropsFromDetail,
 } from '@/lib/runcard';
-import { MOOD_TO_POSE } from '@/lib/temariPose';
 import { districtFromLocation } from '@/pages/Home/helpers';
 
 /** The run's RunCard, enriched with the flavor/edition/share fields this page's
@@ -57,7 +55,6 @@ export function useRunShow({
     const partialSplit = summary.partial_split ?? null;
 
     const mood: Mood = storyLine?.mood ?? moodFallback;
-    const pose: TemariPose = MOOD_TO_POSE[mood];
 
     const km = formatKm(detail.distance);
     const paceSec = paceSecPerKm(detail.elapsed_time, detail.distance);
@@ -158,7 +155,6 @@ export function useRunShow({
         laps,
         partialSplit,
         mood,
-        pose,
         km,
         pace,
         paceSec,

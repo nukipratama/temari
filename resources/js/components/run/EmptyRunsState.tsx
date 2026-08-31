@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import type { SharedProps, StravaSyncState } from '@/types/inertia';
 
 import StravaSyncButton from '@/components/StravaSyncButton';
-import Temari from '@/components/temari/Temari';
+import FaceIcon from '@/components/temari/FaceIcon';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
@@ -38,12 +38,6 @@ const HERO: Record<
 };
 
 const ACTIONS = [
-    {
-        icon: 'mdi:tshirt-crew-outline',
-        title: 'Dress up Temari',
-        desc: 'Pick an accessory combo for your profile.',
-        href: '/accessories',
-    },
     {
         icon: 'mdi:chart-line',
         title: 'See your run recap',
@@ -84,7 +78,7 @@ export default function EmptyRunsState({
         <div className="flex flex-col items-center gap-8 px-4 py-10">
             {/* Temari + headline */}
             <div className="flex flex-col items-center gap-5 text-center">
-                <Temari pose="reading" size={140} />
+                <FaceIcon size={72} />
                 <div>
                     <Eyebrow token="hero" tone="horizon-ink" className="mb-3">
                         {hero.eyebrow}

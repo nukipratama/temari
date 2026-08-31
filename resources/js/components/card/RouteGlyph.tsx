@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 
 import type { Rarity } from '@/types/inertia';
 
-import { TemariGlyph } from '@/components/BrandMark';
+import TemariMark from '@/components/TemariMark';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { cn } from '@/lib/cn';
 import { drawIn } from '@/lib/motion';
@@ -129,7 +129,7 @@ export default function RouteGlyph({
                 style={{ backgroundColor: stroke }}
             />
             <span className="relative opacity-50">
-                <TemariGlyph size={56} tone="ink" />
+                <TemariMark size={56} color="var(--color-ink)" />
             </span>
         </div>
     );

@@ -97,9 +97,6 @@ const ALLOWED = [
     'akun' => [
         ['prefix' => 'routes/web.php', 'reason' => 'Legacy /akun permanent redirect — a live URL.'],
     ],
-    'aksesori' => [
-        ['prefix' => 'routes/web.php', 'reason' => 'Legacy /aksesori permanent redirect — a live URL.'],
-    ],
     'rekor' => [
         ['prefix' => 'routes/web.php', 'reason' => 'Legacy /rekor permanent redirect — a live URL.'],
         ['prefix' => 'docs/features/records.md', 'reason' => 'Documents the /rekor legacy redirect route path, same as routes/web.php.'],

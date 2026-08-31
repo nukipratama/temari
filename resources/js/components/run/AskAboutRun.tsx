@@ -1,6 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
 
-import Temari from '@/components/temari/Temari';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/Icon';
@@ -75,7 +74,6 @@ export default function AskAboutRun({
             <SectionLabel>Ask about this run</SectionLabel>
             <Card className="mt-3 px-6 py-6">
                 <header className="flex items-start gap-3.5">
-                    <Temari pose="observational" size={44} animate={false} />
                     <div className="min-w-0">
                         <p className="font-serif text-quote-md italic leading-snug text-text-2">
                             The numbers are up there. Ask me why.

@@ -77,14 +77,16 @@ describe('TodaySession', () => {
         expect(screen.getByRole('status')).toBeInTheDocument();
     });
 
-    it("renders Temari's mascot posed for the briefing's mood", () => {
+    it("renders Temari's face on the leaf ring the prototype's today card uses", () => {
         const { container } = render(
             <TodaySession briefing={briefing('Easy 6k.')} />,
         );
 
-        expect(container.querySelector('.temari-root')).toHaveAttribute(
-            'data-pose',
-            'proud',
+        const face = container.querySelector('[data-face-icon]');
+        expect(face).toBeInTheDocument();
+        expect(face?.querySelector('circle')).toHaveAttribute(
+            'stroke',
+            'var(--color-leaf)',
         );
     });
 });
