@@ -94,13 +94,6 @@ it feel premium, not Las-Vegas. Backdrop atmospherics (e.g. the login page) are 
 `linear-gradient` + `radial-gradient` layers on the sky→horizon ramp, not a shared component;
 in-app pages stay clean.
 
-### Dawn-shift theme
-
-[`useDawnShift`](../../../resources/js/hooks/useDawnShift.ts) is mounted in
-[AppShell](../../../resources/js/layouts/AppShell.tsx); it writes
-`data-time-of-day="dawn|morning|day|dusk|night"` on `<body>` so CSS surface tints respond to the
-user's local time. Light mode only — never auto-flips to dark mode.
-
 ### Text contrast tiers
 
 3-stop semantic system — use the tier that matches the text role, not "pick whichever color looks right".
