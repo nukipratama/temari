@@ -3,7 +3,7 @@ title: The demo identity is routed inbox-only, not silenced
 description: Demo notifications are routed to the in-app inbox and to no outbound channel, so the public demo shows a populated notification centre while never spending the shared identity's Telegram thread or lock screen.
 tags: [decision, notifications]
 status: accepted
-reviewed: 2026-08-13
+reviewed: 2026-08-31
 code_refs:
   - app/Services/Notifications/ChannelRouter.php
   - app/Notifications/AnalysisReadyNotification.php
@@ -56,17 +56,28 @@ Two lines hold:
 ## Consequences
 
 - The public demo's inbox is populated by the unlocks granted during
-  `demo:seed` (21 rows on the current blueprint), each replaying its real
-  celebration takeover.
-- It is **not** populated with post-run or recap rows. `AnalysisService::withoutDispatching()`,
-  the demo seed's no-LLM wrapper, suppresses the notification fan-out along with
-  the job dispatch, so no `AnalysisReadyNotification` is ever raised for the demo
-  account. Letting the inbox record survive that wrapper is a separate change to
-  the seed path, not to routing, and has not been made.
+  `demo:seed`, each replaying its real celebration takeover.
 - This revises one consequence of [[inbox-is-an-always-on-channel]] ("the demo
   account still receives nothing"). The rest of that decision stands unchanged:
   the inbox is still a router channel, still unmuteable, and `canReach()` still
   means outbound.
+
+**2026-08-31 correction (`F7`):** the first bullet above never actually held —
+`UnlockGrantedNotification implements ShouldQueue`, and nothing in `demo:seed`
+ever runs a queue worker, so the notification sat in the `jobs` table and
+`InAppChannel::send()` never ran; the demo inbox was silently empty (0 rows,
+not 21) until `F7` fixed the seed path itself (`DemoRunSeeder::withSyncQueue()`
+forces the queue connection to `sync` around the unlock-granting call so it
+executes inline). Separately, the second bullet's "has not been made" is no
+longer true either: `F7` added `DemoRunSeeder::seedNarrationInboxEntries()`,
+which builds a post-run and a weekly-recap inbox row directly from an
+already-`Done` Analysis row's `AnalysisReadyNotification::toInbox()` output and
+persists it via `InboxNotification::record()` — deliberately bypassing
+`AnalysisService::withoutDispatching()`'s notification suppression rather than
+lifting it (which would also need to reason about job dispatch, cooldowns and
+real-Azure-eligibility checks this seed path must never trigger). Both fixes
+are seed-path changes only; `ChannelRouter`, `via()`, and the decision recorded
+above are unchanged. See `plan/slices/08-F7-demo-data-and-fixtures.md`.
 
 ## See also
 

@@ -3,11 +3,14 @@
 declare(strict_types=1);
 
 use App\Services\Gamification\EquippedAccessories;
+use App\Enums\PlannedSessionStatus;
 use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\ActivityDetail;
+use App\Models\InboxNotification;
 use App\Models\PersonalRecord;
+use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\StravaConnection;
@@ -17,6 +20,7 @@ use App\Models\WeeklySnapshot;
 use App\Notifications\Channels\InAppChannel;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\RecapPeriod;
+use App\Services\Run\Plan\Periodizer;
 use App\Support\SharedPropCacheKey;
 use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -156,6 +160,41 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
         ->where('discriminator', '>', RecapPeriod::lastClosedMonth())
         ->count())->toBe(0);
 
+    // F7: a full 12-week planned-session horizon, self-scaled (no active
+    // race), with the current week's past days scored/skipped rather than
+    // left stuck at Planned — the exact gap this slice closes.
+    $plannedSessionCount = PlannedSession::query()->where('user_id', $user->id)->count();
+    expect($plannedSessionCount)->toBe(7 * Periodizer::HORIZON_WEEKS)
+        ->and(PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->where('date', '<', Carbon::today()->toDateString())
+            ->where('status', PlannedSessionStatus::Planned)
+            ->count())->toBe(0)
+        ->and(PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->where('date', '>=', Carbon::today()->toDateString())
+            ->where('status', '!=', PlannedSessionStatus::Planned)
+            ->count())->toBe(0);
+
+    // F7: plan narration filled rule-based for the current week (7 days),
+    // this week's adaptation, and the active season.
+    expect(Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->where('status', 'done')->count())->toBe(7)
+        ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanWeekVoice)->where('status', 'done')->count())->toBe(1)
+        ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanSeasonVoice)->where('status', 'done')->count())->toBe(1);
+
+    // F7: trend_read narrated for all three windows (30d/90d/12mo).
+    expect(Analysis::query()
+        ->where('subject_type', AnalysisType::TREND_READ_SUBJECT_TYPE)
+        ->where('subject_id', $user->id)
+        ->where('analysis_type', AnalysisType::TrendRead)
+        ->where('status', 'done')
+        ->count())->toBe(count(AnalysisType::TREND_READ_RANGES));
+
+    // F7: the inbox is populated (today's post-run summary at minimum), not
+    // the empty state R5 flagged.
+    $inboxCount = InboxNotification::query()->where('user_id', $user->id)->count();
+    expect($inboxCount)->toBeGreaterThanOrEqual(1);
+
     // A second bare seed (no wipe) converges to the same row counts.
     $cardCount = RunCard::query()->whereIn('activity_id', $activityIds)->count();
     $snapshotCount = WeeklySnapshot::query()->where('user_id', $user->id)->count();
@@ -187,4 +226,17 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
         ->and(RunCard::query()->whereIn('activity_id', $reseededActivityIds)->count())->toBe($cardCount)
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe($snapshotCount)
         ->and(PersonalRecord::query()->where('user_id', $user->id)->count())->toBe($prCount);
+
+    // F7: re-seeding under the same frozen clock converges rather than
+    // duplicating rows for the plan/narration/inbox surfaces this slice adds.
+    expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBe($plannedSessionCount)
+        ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->count())->toBe(7)
+        ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanWeekVoice)->count())->toBe(1)
+        ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanSeasonVoice)->count())->toBe(1)
+        ->and(Analysis::query()
+            ->where('subject_type', AnalysisType::TREND_READ_SUBJECT_TYPE)
+            ->where('subject_id', $user->id)
+            ->where('analysis_type', AnalysisType::TrendRead)
+            ->count())->toBe(count(AnalysisType::TREND_READ_RANGES))
+        ->and(InboxNotification::query()->where('user_id', $user->id)->count())->toBe($inboxCount);
 });

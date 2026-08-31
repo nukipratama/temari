@@ -7,20 +7,28 @@ namespace Database\Seeders\Demo;
 use App\Actions\Gamification\GrantEligibleUnlocksAction;
 use App\Actions\Run\Story\ResolveFeaturedKartuAction;
 use App\Enums\IngestState;
+use App\Enums\PlannedSessionStatus;
+use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Models\AI\Analysis;
+use App\Models\InboxNotification;
 use App\Models\PersonalRecord;
+use App\Models\PlannedSession;
+use App\Models\RaceGoal;
 use App\Models\RunCard;
 use App\Models\StravaConnection;
+use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Support\SharedPropCacheKey;
 use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
+use App\Notifications\AnalysisReadyNotification;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\PlanNarrationRequester;
 use App\Services\AI\RecapPeriod;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\Geo\PolylineEncoder;
@@ -29,6 +37,9 @@ use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use App\Services\Run\Plan\Periodizer;
+use App\Services\Run\Plan\TrainingBaseline;
+use App\Services\Run\Plan\WeekPlanBuilder;
 use App\Services\Run\Story\RunCardFactory;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
@@ -60,6 +71,10 @@ class DemoRunSeeder
         private readonly RuleBasedNarrationFiller $filler,
         private readonly GrantEligibleUnlocksAction $unlockEngine,
         private readonly ResolveFeaturedKartuAction $featuredKartu,
+        private readonly Periodizer $periodizer,
+        private readonly WeekPlanBuilder $weekPlanBuilder,
+        private readonly TrainingBaseline $trainingBaseline,
+        private readonly PlanNarrationRequester $planNarrationRequester,
         private readonly PolylineEncoder $polylineEncoder = new PolylineEncoder(),
     ) {
     }
@@ -131,11 +146,19 @@ class DemoRunSeeder
             $weeks = $this->weeklyAggregator->rebuildFor($user);
             $log(sprintf('  %d weekly snapshots written', $weeks));
 
+            $log("Regenerating this week's training plan...");
+            $this->seedCurrentWeekPlan($user);
+
+            $this->seedTrendRead($user);
+
             // PR-driven unlocks fire incrementally during seedOne, but the
             // card-rarity ones (legendaris/epik) and the weekly-streak one
             // depend on cards + snapshots that only exist after the loop. One
             // final sweep grants everything the dataset now qualifies for.
-            $granted = ($this->unlockEngine)($user);
+            // Wrapped in withSyncQueue so UnlockGrantedNotification (queued)
+            // actually writes its InboxNotification row during seeding
+            // instead of sitting unprocessed in the jobs table.
+            $granted = $this->withSyncQueue(fn (): array => ($this->unlockEngine)($user));
             $log(sprintf('  %d accessory unlocks granted (%s)', count($granted), $granted === [] ? 'all already unlocked' : implode(', ', $granted)));
 
             // Equip the best-in-slot accessories (one per slot) so the demo
@@ -174,6 +197,8 @@ class DemoRunSeeder
             // enqueued (no-op) notification job per row would just be waste.
             $filled = $this->backfillWithFiller($user);
             $log(sprintf('  %d AI analyses backfilled with rule-based content (hit "Reread" in the UI for real LLM narration).', $filled));
+
+            $this->seedNarrationInboxEntries($user);
         });
 
         return $count;
@@ -209,7 +234,7 @@ class DemoRunSeeder
             // CTL is cumulative, so roll the new run forward into every later
             // week's snapshot, then refresh today's greeting + briefing narration.
             $this->weeklyAggregator->rebuildForwardFrom($user, $today);
-            ($this->unlockEngine)($user);
+            $this->withSyncQueue(fn (): array => ($this->unlockEngine)($user));
             $this->temari->dailyGreeting($user, $this->vibe->current($user));
 
             // Re-stage the date-keyed surfaces (briefing set, greeting, trend,
@@ -389,6 +414,222 @@ class DemoRunSeeder
         }
 
         return $rows->count();
+    }
+
+    /**
+     * Regenerates the real 12-week horizon via {@see Periodizer::regenerate()},
+     * then backfills the current week's *past* days, which that call always
+     * skips (`Periodizer` only ever writes today-forward — see its own
+     * docblock). Reuses {@see WeekPlanBuilder} with `notBefore: null` so the
+     * past days come from the exact same session-type template as the days
+     * `regenerate()` just wrote, then hand-assigns a status/compliance-score
+     * cycle across the real `PlannedSessionStatus` bands (see
+     * {@see \App\Services\Run\Plan\SessionMatcher}) so Today's day-glyph strip
+     * shows real variety instead of an all-`Planned` week.
+     */
+    private function seedCurrentWeekPlan(User $user): void
+    {
+        $today = Carbon::today();
+
+        $this->periodizer->regenerate($user);
+
+        $currentWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
+        $todaysRow = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->where('date', $today->toDateString())
+            ->first();
+        if ($todaysRow === null) {
+            return;
+        }
+
+        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
+        $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
+        $sessionsPerWeek = $this->trainingBaseline->forUser($user, $today)['sessions_per_week'];
+
+        $weekRows = $this->weekPlanBuilder->build(
+            $currentWeekStart,
+            $todaysRow->phase,
+            $sessionsPerWeek,
+            [],
+            $race !== null ? (float) $race->distance_m : null,
+            $race === null,
+            null,
+            0,
+            $preference?->run_days,
+            $preference?->long_run_day,
+        );
+
+        $pastDayStatuses = [
+            PlannedSessionStatus::Overreached,
+            PlannedSessionStatus::Done,
+            PlannedSessionStatus::Partial,
+            PlannedSessionStatus::Skip,
+        ];
+        $scoreFor = [
+            PlannedSessionStatus::Overreached->value => 145,
+            PlannedSessionStatus::Done->value => 100,
+            PlannedSessionStatus::Partial->value => 55,
+        ];
+
+        $trainingDayIndex = 0;
+        foreach ($weekRows as $date => $row) {
+            if (! Carbon::parse($date)->lt($today)) {
+                continue;
+            }
+
+            if ($row['session_type'] === SessionType::Rest) {
+                PlannedSession::query()->updateOrCreate(
+                    ['user_id' => $user->id, 'date' => $date],
+                    [
+                        'phase' => $row['phase'],
+                        'session_type' => $row['session_type'],
+                        'pinned' => false,
+                        'skipped' => false,
+                        'status' => PlannedSessionStatus::Done,
+                        'compliance_score' => null,
+                        'ran_anyway' => false,
+                    ],
+                );
+
+                continue;
+            }
+
+            $status = $pastDayStatuses[$trainingDayIndex % count($pastDayStatuses)];
+            $trainingDayIndex++;
+
+            PlannedSession::query()->updateOrCreate(
+                ['user_id' => $user->id, 'date' => $date],
+                [
+                    'phase' => $row['phase'],
+                    'session_type' => $row['session_type'],
+                    'pinned' => false,
+                    'skipped' => $status === PlannedSessionStatus::Skip,
+                    'status' => $status,
+                    'compliance_score' => $scoreFor[$status->value] ?? null,
+                    'ran_anyway' => false,
+                ],
+            );
+        }
+
+        // Fills plan_day_voice (current week's 7 days) / plan_week_voice
+        // (this week's PlanAdaptation) / plan_season_voice (the active
+        // Season) rule-based, mirroring the demo Plan page's own "Reread"
+        // path — see PlanNarrationRequester::ensureDemoFilled's docblock.
+        $this->planNarrationRequester->ensureDemoFilled($user, $today);
+    }
+
+    /**
+     * trend_read has no per-user cadence command reachable from a seeder
+     * (TrendReadCommand explicitly excludes demo users, matching the demo
+     * billing exclusion), so the demo's three range narrations are staged
+     * and rule-based-filled here directly instead.
+     */
+    private function seedTrendRead(User $user): void
+    {
+        foreach (AnalysisType::TREND_READ_RANGES as $range) {
+            $this->analysisService->requestRuleBased(
+                AnalysisType::TREND_READ_SUBJECT_TYPE,
+                $user->id,
+                AnalysisType::TrendRead,
+                $range,
+                refillDone: false,
+            );
+        }
+    }
+
+    /**
+     * Two representative inbox rows built straight from already-narrated
+     * Analysis content, mirroring AnalysisReadyNotification::toInbox()'s own
+     * shape (title/payload) without going through the queued notify() path:
+     * today's post-run summary (bucketed "today"), and the last closed
+     * week's recap backdated to when it would really have landed (bucketed
+     * "this week"), so the Inbox page's grouped empty state has real content
+     * in both buckets, not just whatever unlocks happened to fire.
+     */
+    private function seedNarrationInboxEntries(User $user): void
+    {
+        // Filler blueprints can coincidentally land on the same calendar date
+        // as the D-0 keep-alive run seeded in seed()/refreshToday() (more
+        // than one activity on "today" is common in this dataset), so this
+        // orders by id to deterministically pick that keep-alive run — it's
+        // always seeded last — rather than an unordered first() that could
+        // pick a different row across re-seeds.
+        $todayActivity = Activity::query()
+            ->where('user_id', $user->id)
+            ->whereHas('detail', fn ($q) => $q->whereDate('start_date_local', Carbon::today()))
+            ->latest('id')
+            ->first();
+        if ($todayActivity !== null) {
+            $this->recordInboxFromAnalysis($user, Activity::class, $todayActivity->id, AnalysisType::PostRunSpeech);
+        }
+
+        $lastClosedWeekEnding = RecapPeriod::lastClosedWeekEnding();
+        $weekly = WeeklySnapshot::query()
+            ->where('user_id', $user->id)
+            ->whereDate('week_ending', $lastClosedWeekEnding)
+            ->first();
+        if ($weekly !== null) {
+            $this->recordInboxFromAnalysis(
+                $user,
+                WeeklySnapshot::class,
+                $weekly->id,
+                AnalysisType::WeeklyRecap,
+                $weekly->week_ending->copy()->addDay(),
+            );
+        }
+    }
+
+    private function recordInboxFromAnalysis(User $user, string $subjectType, int $subjectId, AnalysisType $type, ?Carbon $at = null): void
+    {
+        $analysis = Analysis::query()
+            ->where('subject_type', $subjectType)
+            ->where('subject_id', $subjectId)
+            ->where('analysis_type', $type)
+            ->where('status', AnalysisStatus::Done)
+            ->first();
+        if ($analysis === null) {
+            return;
+        }
+
+        $message = new AnalysisReadyNotification($analysis)->toInbox($user);
+        if ($message === null) {
+            return;
+        }
+
+        $dedupeKey = $message->dedupeKey ?? (string) $analysis->id;
+        InboxNotification::record($user, $message, $dedupeKey);
+
+        if ($at !== null) {
+            InboxNotification::query()
+                ->where('user_id', $user->id)
+                ->where('dedupe_key', $dedupeKey)
+                ->update(['created_at' => $at]);
+        }
+    }
+
+    /**
+     * Runs $work with the queue connection forced to `sync`, so a
+     * ShouldQueue notification (e.g. UnlockGrantedNotification) fires
+     * inline instead of sitting unprocessed in the `jobs` table — nothing
+     * in the demo seed ever runs a queue worker. Safe for the demo account:
+     * ChannelRouter resolves every notification's `via()` to InAppChannel
+     * only here, so this never fires a real Telegram/web-push side effect,
+     * only the InboxNotification row itself.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $work
+     * @return T
+     */
+    private function withSyncQueue(Closure $work): mixed
+    {
+        $previous = config('queue.default');
+        config(['queue.default' => 'sync']);
+        try {
+            return $work();
+        } finally {
+            config(['queue.default' => $previous]);
+        }
     }
 
     private function ensureDemoUser(Closure $log): User
