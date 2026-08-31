@@ -376,7 +376,8 @@
         },
         "card/0.6": {
             "over": {
-                "resources/js/components/MobileBottomNav.tsx": ["paper"]
+                "resources/js/components/MobileBottomNav.tsx": ["paper"],
+                "resources/js/components/TopNav.tsx": ["paper"]
             },
             "text": ["icon-accent", "text-3"]
         },

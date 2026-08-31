@@ -41,8 +41,9 @@ piece to this slice rather than folded into it.
 (fork 1), header brand mark switching to the prototype's abstract ring (fork 2), Plan's phase-bar
 and week timeline getting a real backend follow-up (fork 3), Today's supporting-detail disclosure
 confirmed staying open by default as shipped (fork 4), and desktop `TopNav` getting a redesign
-despite the prototype having no desktop nav spec at all (fork 5). Implementation of forks 1/2/3/5
-is tracked as follow-up work, not part of this slice's own diff.
+despite the prototype having no desktop nav spec at all (fork 5, **implemented** — see below).
+Fork 3 is **implemented** below too; fork 1's implementation is tracked as its own follow-up
+slice, not part of this diff.
 
 **First bug-fix batch** (dark-mode contrast + History truncation, confirmed via the sweep):
 [Profile.tsx](../../resources/js/pages/Profile.tsx),
@@ -50,7 +51,35 @@ is tracked as follow-up work, not part of this slice's own diff.
 [pace.ts](../../resources/js/lib/pace.ts),
 [RunListRow.tsx](../../resources/js/components/run/RunListRow.tsx).
 
-### Fork 3 — Plan's phase bar and week timeline
+### Fork 2 + fork 5 — header brand mark + desktop nav (implemented, `slice/v0-header-nav-redesign`)
+
+**Fork 2 + fork 5**: the persistent shell header's brand mark now renders the prototype's abstract
+ring glyph (`TemariMark.tsx`, ported into a new `HeaderBrandMark`) + lowercase "temari" wordmark,
+in both `TopNav.tsx` and `MobileTopBar.tsx`. `BrandMark.tsx`'s mascot-face `TemariGlyph` was left
+completely untouched — it's still shared by `RouteGlyph`/`PackWrapper` (Kartu art), `shareCard.ts`
+(share-card canvas), and `Login.tsx`, none of which are shell chrome — so a distinct component was
+added rather than restyling the shared one, per the fork's own scoping instruction.
+
+`TopNav` (the `≥lg` desktop nav) was redesigned onto `F4`'s mobile frosted-glass/floating-pill
+language: `sticky top-0`, a single `rounded-full border-white/30 bg-card/60 backdrop-blur-xl`
+pill (inset from the viewport edges via header padding, not full-bleed) holding brand mark + the
+4 nav tabs on the left and Strava sync/notification bell/avatar on the right. Chose one continuous
+pill (matching the existing desktop structure — brand, nav, and actions were already one row) over
+mirroring mobile's split brand-chip/bottom-nav-pill layout, since desktop has the horizontal room
+mobile doesn't and splitting it would be a purely cosmetic port with no functional reason. Tabs
+gained lucide icons (from `nav.ts`'s existing `icon` field, previously unused on desktop) alongside
+labels, and the active tab now gets the same `horizon` gradient fill + `icon-accent` text
+`MobileBottomNav` uses, replacing the old underline indicator — the "active-tab grow" part of that
+language was left mobile-only since desktop tabs already show their label at all times, so there's
+nothing to grow into. `sticky` (not the mobile pill's `fixed`) was a deliberate choice: it keeps
+`TopNav` in normal document flow, so no `AppShell.tsx` padding changes were needed to clear it
+(unlike mobile's `pt-20`), while still reading as "floating" chrome once the page scrolls under it.
+Routing, `activeTabFromUrl()`, and the right-side content are all unchanged — a visual-only pass.
+`grounds.json`'s existing `card/0.6` panel registration (from `F4`) gained `TopNav.tsx` as a second
+call site, both `over: paper`, same `text: [icon-accent, text-3]` — no new tint value introduced, so
+no `belowAa` change and `DesignTokenContrastTest` needed only the one call-site addition.
+
+### Fork 3 — Plan's phase bar and week timeline (implemented, `slice/v0-plan-phasebar`)
 
 `S4` had explicitly deferred the prototype's season-wide phase-progress bar and week-by-week
 volume chart as a genuine data-availability fork (`PlanController::index()` only serves a rolling
@@ -111,9 +140,11 @@ read-only summary section, not a wrapper around the existing day cards.
 
 ## Files touched
 
-The bug-fix batch above. The rest of this slice's "touch" is the audit and the doc/tracker
-amendments — the actual fork implementations (headline voice, brand mark, Plan phase bar, desktop
-nav) land in their own follow-up slices, not counted here.
+The bug-fix batch above. Fork 2+5's own files: new `HeaderBrandMark.tsx` (+ test); edited
+`TopNav.tsx` (+ test assertions unchanged — existing coverage held), `MobileTopBar.tsx`,
+`grounds.json` (`card/0.6` gained a second `over` call site). The rest of this slice's "touch" is
+the audit and the doc/tracker amendments — the headline-voice fork lands in its own follow-up
+slice, not counted here.
 
 **Fork 3's own files**: new
 [SeasonSummaryBuilder.php](../../app/Services/Run/Plan/SeasonSummaryBuilder.php) (+test),
