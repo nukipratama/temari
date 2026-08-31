@@ -52,9 +52,8 @@ describe('KartuMini', () => {
         expect(screen.getByText('·')).toBeInTheDocument();
     });
 
-    it('renders the TemariProto mascot in the art zone', () => {
+    it('signs the art zone with the brand mark', () => {
         const { container } = render(<KartuMini name="x" />);
-        // Art zone always contains the mascot SVG.
         expect(container.querySelector('svg')).not.toBeNull();
     });
 

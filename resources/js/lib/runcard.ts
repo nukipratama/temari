@@ -1,4 +1,3 @@
-import type { TemariPose } from '@/components/temari/TemariProto';
 import type { ActivityDetail, Rarity, ZonePct } from '@/types/inertia';
 
 import {
@@ -171,15 +170,6 @@ export const RARITY_DOT: Record<Rarity, string> = {
     rare: 'bg-rarity-rare',
     epic: 'bg-rarity-epic',
     legendary: 'bg-rarity-legendary',
-};
-
-// Mascot pose driven by rarity — reinforces the tier hierarchy on cards and detail page.
-export const RARITY_POSE: Record<Rarity, TemariPose> = {
-    common: 'observational',
-    uncommon: 'proud',
-    rare: 'excited',
-    epic: 'pumped',
-    legendary: 'glow',
 };
 
 // Slug → Title Case ("early_bird" → "Early Bird"). Fallback for unknown slugs.
