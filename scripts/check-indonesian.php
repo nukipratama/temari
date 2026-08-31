@@ -168,6 +168,29 @@ const SCAN_DIRS = ['app', 'config', 'database', 'resources', 'routes', 'scripts'
 /** @var list<string> */
 const SCAN_EXTENSIONS = ['php', 'ts', 'tsx', 'js', 'mjs', 'css', 'blade.php', 'md'];
 
+/**
+ * Directory names that never hold first-party source, pruned wherever they
+ * appear under SCAN_DIRS. Without this the walk descends into installed
+ * dependencies and build output: `resources/brand/prototype/node_modules`
+ * alone produced 161 violations, almost all of them lucide-react's
+ * `GeorgianLari` icon, which segment() splits into "Georgian Lari" so
+ * `\blari\b` matches. None of it is code anyone here can rename.
+ *
+ * Pruned by name rather than by asking git what is ignored: composer strips
+ * GIT_DIR from the environment it runs scripts in, and a linked worktree's
+ * `.git` is a file pointing outside the container's mount, so `git ls-files`
+ * returns nothing under `composer check` in exactly the worktrees the parallel
+ * slices run in.
+ *
+ * Deliberately does NOT prune `vendor`: `resources/views/vendor/pulse/` is a
+ * tracked, published Blade template that the guard has always read, and no
+ * gitignored `vendor` tree lives under SCAN_DIRS. Pruning it would have cost
+ * real coverage to catch nothing.
+ *
+ * @var list<string>
+ */
+const PRUNED_DIRS = ['node_modules', 'dist', 'build', 'coverage'];
+
 /** @return list<string> repo-relative paths */
 function collectFiles(string $root): array
 {
@@ -180,8 +203,14 @@ function collectFiles(string $root): array
             continue;
         }
 
+        $directories = new RecursiveDirectoryIterator($base, FilesystemIterator::SKIP_DOTS);
+
         $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($base, FilesystemIterator::SKIP_DOTS),
+            new RecursiveCallbackFilterIterator(
+                $directories,
+                fn (SplFileInfo $current): bool => ! $current->isDir()
+                    || ! in_array($current->getFilename(), PRUNED_DIRS, true),
+            ),
         );
 
         foreach ($iterator as $file) {
