@@ -18,8 +18,8 @@ into six equipment **slots**: medal, headband, shirt, shorts, shoes, aura.
 **There is no accessory surface any more.** The prototype draws no wardrobe, and `PP2` cut the
 mascot rig that was the only thing capable of wearing an item, so the page went with it: the
 `/accessories` route, its `/api/accessories/equip` write, `AccessoryController`,
-`EquipAccessoryRequest`, `Collection/Accessories.tsx`, `lib/equippedAccessories.ts`, and the
-`/aksesori` · `/target` · `/goals` redirects that pointed at it are all gone. The badge board and
+`EquipAccessoryRequest`, `Collection/Accessories.tsx`, `lib/equippedAccessories.ts`, and the three
+legacy redirects that pointed at it are all gone. The badge board and
 `/cards` had already retired the same way — badges surface as chips on `/trends`' fitness panel,
 cards inline on [[run-history]].
 
