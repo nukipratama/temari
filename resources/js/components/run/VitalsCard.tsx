@@ -174,7 +174,7 @@ export default function VitalsCard({
                         {maxHr !== null && (
                             <div
                                 aria-hidden
-                                className="absolute top-1/2 h-3.5 w-0.5 -translate-y-1/2 rounded-full bg-text-2"
+                                className="absolute top-1/2 h-3.5 w-0.5 -translate-y-1/2 rounded-full bg-foreground"
                                 style={{ left: `${hrScalePct(maxHr)}%` }}
                             />
                         )}
