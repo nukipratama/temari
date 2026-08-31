@@ -1,7 +1,7 @@
-import type { PlanDay } from '@/lib/plan';
-
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+
+import type { PlanDay } from '@/lib/plan';
 
 import WeekDayRow from './WeekDayRow';
 
@@ -240,7 +240,10 @@ describe('WeekDayRow', () => {
 
     it('surfaces the readiness clamp note when today was scaled back', () => {
         renderRow({
-            day: day({ date: TODAY, clamp_note: 'Eased off, you slept badly.' }),
+            day: day({
+                date: TODAY,
+                clamp_note: 'Eased off, you slept badly.',
+            }),
         });
         expand();
 

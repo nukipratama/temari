@@ -1,7 +1,7 @@
-import type { PlanSessionSegment } from '@/types/inertia';
-
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
+import type { PlanSessionSegment } from '@/types/inertia';
 
 import SessionBarGraph from './SessionBarGraph';
 
@@ -20,11 +20,26 @@ function segment(
 
 const INTERVAL_SESSION: PlanSessionSegment[] = [
     segment({ key: 'warmup', minutes: 10, zone: 'Z1' }),
-    segment({ key: 'interval', minutes: 3, zone: 'Z5', pace_label: 'interval' }),
+    segment({
+        key: 'interval',
+        minutes: 3,
+        zone: 'Z5',
+        pace_label: 'interval',
+    }),
     segment({ key: 'recovery', minutes: 2, zone: 'Z1' }),
-    segment({ key: 'interval', minutes: 3, zone: 'Z5', pace_label: 'interval' }),
+    segment({
+        key: 'interval',
+        minutes: 3,
+        zone: 'Z5',
+        pace_label: 'interval',
+    }),
     segment({ key: 'recovery', minutes: 2, zone: 'Z1' }),
-    segment({ key: 'interval', minutes: 3, zone: 'Z5', pace_label: 'interval' }),
+    segment({
+        key: 'interval',
+        minutes: 3,
+        zone: 'Z5',
+        pace_label: 'interval',
+    }),
     segment({ key: 'cooldown', minutes: 10, zone: 'Z1' }),
 ];
 
@@ -55,9 +70,7 @@ describe('SessionBarGraph', () => {
         render(<SessionBarGraph segments={INTERVAL_SESSION} />);
 
         expect(screen.getByText('3× Interval')).toBeInTheDocument();
-        expect(
-            screen.getByText('3 min hard / 2 min easy'),
-        ).toBeInTheDocument();
+        expect(screen.getByText('3 min hard / 2 min easy')).toBeInTheDocument();
         expect(screen.queryByText('Recovery')).not.toBeInTheDocument();
     });
 

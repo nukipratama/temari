@@ -1,7 +1,7 @@
-import type { PlanSessionSegment } from '@/types/inertia';
-
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
+import type { PlanSessionSegment } from '@/types/inertia';
 
 import MiniSessionBar, { zoneColor } from './MiniSessionBar';
 

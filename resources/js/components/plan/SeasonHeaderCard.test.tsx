@@ -1,8 +1,8 @@
-import type { AnalysisPayload } from '@/types/inertia';
-import type { SeasonSummaryWeek } from '@/lib/plan';
-
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
+import type { SeasonSummaryWeek } from '@/lib/plan';
+import type { AnalysisPayload } from '@/types/inertia';
 
 import SeasonHeaderCard, { phasesOf } from './SeasonHeaderCard';
 
@@ -72,7 +72,11 @@ describe('phasesOf', () => {
     it('keeps a self-scaled season’s repeating build/deload cycle as two phases, not four', () => {
         const phases = phasesOf([
             week({ phase: 'build', type: 'history' }),
-            week({ week_start: '2026-06-22', phase: 'deload', type: 'current' }),
+            week({
+                week_start: '2026-06-22',
+                phase: 'deload',
+                type: 'current',
+            }),
             week({
                 week_start: '2026-06-29',
                 phase: 'build',
@@ -89,9 +93,7 @@ describe('SeasonHeaderCard', () => {
         renderCard();
 
         expect(screen.getByText('Season · Week 2 of 12')).toBeInTheDocument();
-        expect(
-            screen.getByText('Build · Jun 15 – Sep 4'),
-        ).toBeInTheDocument();
+        expect(screen.getByText('Build · Jun 15 – Sep 4')).toBeInTheDocument();
     });
 
     it('shows the season adherence figure', () => {

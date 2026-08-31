@@ -1,7 +1,7 @@
-import type { PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
-
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+
+import type { PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 
 import SeasonTimeline from './SeasonTimeline';
 
@@ -120,7 +120,11 @@ describe('SeasonTimeline', () => {
     it('groups a self-scaled season by each pass through a phase, not by phase name', () => {
         renderTimeline({
             weeks: [
-                week({ week_start: '2026-06-15', phase: 'build', type: 'current' }),
+                week({
+                    week_start: '2026-06-15',
+                    phase: 'build',
+                    type: 'current',
+                }),
                 week({
                     week_start: '2026-06-22',
                     phase: 'deload',

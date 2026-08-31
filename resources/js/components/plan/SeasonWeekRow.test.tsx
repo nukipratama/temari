@@ -1,8 +1,8 @@
-import type { AnalysisPayload } from '@/types/inertia';
-import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
-
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+
+import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
+import type { AnalysisPayload } from '@/types/inertia';
 
 import SeasonWeekRow, { SeasonRailNode } from './SeasonWeekRow';
 
