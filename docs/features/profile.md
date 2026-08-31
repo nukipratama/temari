@@ -65,7 +65,7 @@ The payload is built by [SeasonStreakSummaryBuilder](app/Services/Gamification/S
 
 ## Not on this page
 
-PRs and accessories are **not** rendered here — Profile shows no PR cards and no accessory strip. The full PR list is the Personal Bests panel on `/trends` ([[records]]); the accessory unlock catalog has no more nav entry point at all since `S10` dropped the Accessories tab (see [[targets-accessories]]).
+Accessories are **not** rendered here — Profile shows no accessory strip. PRs surface only as the progression charts above; the Personal Bests panel that used to list them on `/trends` was cut in `PP3` ([[records]]). the accessory unlock catalog has no more nav entry point at all since `S10` dropped the Accessories tab (see [[targets-accessories]]).
 
 ## Settings
 

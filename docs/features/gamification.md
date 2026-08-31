@@ -29,7 +29,7 @@ code_refs:
 
 # Gamification
 
-Gamification isn't a page — it's an engine that runs as each activity is ingested. The visible payoffs (cards, rarities, records, unlock progress) surface across [[cards-collection]], [[records]] and [[targets-accessories]] (live accessory progress); badge milestones and PRs live on `/trends`. This note describes the engine and where each piece is wired.
+Gamification isn't a page — it's an engine that runs as each activity is ingested. The visible payoffs (cards, rarities, records, unlock progress) surface across [[cards-collection]], [[records]] and [[targets-accessories]] (live accessory progress); badges surface as chips on `/trends`' fitness panel, PRs as [[profile]]'s progression charts. This note describes the engine and where each piece is wired.
 
 **No dedicated route** — this is a service-layer engine, not a page.
 
