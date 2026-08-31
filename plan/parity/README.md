@@ -152,7 +152,7 @@ Status vocabulary: `todo` · `in-progress` · `in-review` · `merged` · `blocke
 
 | id | name | status | PR | slot | notes |
 |---|---|---|---|---|---|
-| PP0 | Full-scroll reference capture | todo | — | main | |
+| PP0 | Full-scroll reference capture | in-review | [#PR](https://github.com/nukipratama/temari/pull/PR) | main | [reference.md](reference.md) |
 | PP1 | Shell, nav, responsive | todo | — | main | blocks everything |
 | PP2 | FaceIcon + share card | todo | — | main | |
 | PP3 | The cut | todo | — | main | |
