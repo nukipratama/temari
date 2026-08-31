@@ -99,22 +99,19 @@ describe('FitnessTrend', () => {
         expect(screen.getByText('Carrying load')).toBeInTheDocument();
     });
 
-    describe('badge milestones', () => {
+    describe('badge chips', () => {
         const trend: FitnessTrendPoint[] = [
             { date: '2026-01-01', ctl: 40, atl: 30 },
             { date: '2026-01-02', ctl: 41, atl: 31 },
         ];
 
-        it('shows the no-badges message when no milestone falls in the window', () => {
+        it('draws no chip row when no badge falls in the window', () => {
             render(<FitnessTrend trend={trend} milestones={[]} range="30d" />);
 
-            expect(screen.getByText('0 badges')).toBeInTheDocument();
-            expect(
-                screen.getByText(/No badges landed in this window/),
-            ).toBeInTheDocument();
+            expect(screen.queryByRole('list')).not.toBeInTheDocument();
         });
 
-        it('only counts milestones whose date is inside the windowed trend', () => {
+        it('only shows badges whose date is inside the windowed trend', () => {
             const milestones: BadgeMilestone[] = [
                 { key: 'early_bird', date: '2026-01-01' },
                 { key: 'speedster', date: '2099-01-01' }, // not in trend at all
@@ -127,7 +124,6 @@ describe('FitnessTrend', () => {
                 />,
             );
 
-            expect(screen.getByText('1 badges')).toBeInTheDocument();
             expect(screen.getByText('Early Bird')).toBeInTheDocument();
             expect(screen.queryByText('Speedster')).not.toBeInTheDocument();
         });
@@ -145,23 +141,20 @@ describe('FitnessTrend', () => {
             );
 
             expect(
-                screen.getByText(/Pick a badge to mark it on the line/),
-            ).toBeInTheDocument();
+                screen.queryByText('Out the door before 6am.'),
+            ).not.toBeInTheDocument();
 
             fireEvent.click(screen.getByRole('button', { name: /Early Bird/ }));
 
             expect(
                 screen.getByText('Out the door before 6am.'),
             ).toBeInTheDocument();
-            expect(
-                screen.queryByText(/Pick a badge to mark it on the line/),
-            ).not.toBeInTheDocument();
 
             fireEvent.click(screen.getByRole('button', { name: /Early Bird/ }));
 
             expect(
-                screen.getByText(/Pick a badge to mark it on the line/),
-            ).toBeInTheDocument();
+                screen.queryByText('Out the door before 6am.'),
+            ).not.toBeInTheDocument();
         });
     });
 });

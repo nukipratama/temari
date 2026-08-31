@@ -1,12 +1,12 @@
+import type { ReactNode } from 'react';
+
 import { usePage } from '@inertiajs/react';
 import { MotionConfig } from 'framer-motion';
-import { lazy, type ReactNode, Suspense, useState } from 'react';
 
-import type { SharedProps, UnlockFlash } from '@/types/inertia';
+import type { SharedProps } from '@/types/inertia';
 
 import AiCatchingUpBanner from '@/components/AiCatchingUpBanner';
 import AiOutageBanner from '@/components/AiOutageBanner';
-import AccessoryUnlockModal from '@/components/celebrations/AccessoryUnlockModal';
 import ErrorBanner from '@/components/ErrorBanner';
 import FlashNotice from '@/components/FlashNotice';
 import MobileBottomNav from '@/components/MobileBottomNav';
@@ -14,44 +14,20 @@ import MobileTopBar from '@/components/MobileTopBar';
 import RouteProgressBar from '@/components/RouteProgressBar';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
-import UnlockToast from '@/components/temari/UnlockToast';
-import { useDawnShift } from '@/hooks/useDawnShift';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useSystemTheme } from '@/hooks/useSystemTheme';
 import { cn } from '@/lib/cn';
 import { navTabFor } from '@/lib/nav';
-
-// The pack reveal drags the whole share-card canvas engine in behind it, and
-// this layout wraps every page — so it stays off the first-paint path and is
-// fetched only when a reveal is actually pending.
-const CardReveal = lazy(() => import('@/components/card/CardReveal'));
 
 interface AppShellProps {
     children: ReactNode;
 }
 
 export default function AppShell({ children }: Readonly<AppShellProps>) {
-    useDawnShift();
     useSwipeBack();
     useSystemTheme();
-    const { props, component } = usePage<SharedProps>();
-    const { pendingReveal, flash } = props;
+    const { component } = usePage<SharedProps>();
     const hasBottomNav = navTabFor(component) !== null;
-    const pending = pendingReveal ?? null;
-    const unlock = flash?.unlock ?? null;
-    const [majorUnlock, setMajorUnlock] = useState<UnlockFlash | null>(() =>
-        unlock?.is_major ? unlock : null,
-    );
-    const [lastUnlock, setLastUnlock] = useState(unlock);
-
-    // Capture a major unlock flash for the reveal — adjusted during render
-    // (React-endorsed) so the sync setState isn't inside an effect.
-    if (unlock !== lastUnlock) {
-        setLastUnlock(unlock);
-        if (unlock?.is_major) {
-            setMajorUnlock(unlock);
-        }
-    }
 
     return (
         <MotionConfig reducedMotion="user">
@@ -100,20 +76,6 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                 </div>
 
                 <MobileBottomNav />
-                {/* Celebration overlays are sequenced, not stacked: CardReveal (a pack
-                reveal) takes priority over the accessory-unlock modal, which in turn
-                takes priority over the UnlockToast, so a sync that fires more than
-                one celebration plays them back-to-back instead of all at once. */}
-                {!pending && majorUnlock === null && <UnlockToast />}
-                {pending && (
-                    <Suspense fallback={null}>
-                        <CardReveal pending={pending} />
-                    </Suspense>
-                )}
-                <AccessoryUnlockModal
-                    unlock={pending ? null : majorUnlock}
-                    onClose={() => setMajorUnlock(null)}
-                />
             </div>
         </MotionConfig>
     );

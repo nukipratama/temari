@@ -5,11 +5,6 @@ import { useState } from 'react';
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
 import ProgressionChart from '@/components/collection/ProgressionChart';
-import SeasonStreakPanel, {
-    type SeasonSummary,
-} from '@/components/me/SeasonStreakPanel';
-import PersonaBar, { type PersonaSlice } from '@/components/PersonaBar';
-import { type StreakSummary } from '@/components/plan/StreakPanel';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
 import { Card } from '@/components/ui/card';
@@ -71,29 +66,20 @@ interface FitnessPayload {
     training_paces: TrainingPaces | null;
 }
 
-interface SeasonStreakPayload {
-    season: SeasonSummary | null;
-    streak: StreakSummary;
-}
-
 interface ProfileProps {
     identity: IdentityPayload;
     stats: StatsPayload;
-    personaMix?: PersonaSlice[];
     profileVoice?: AnalysisPayload;
     progressionByCategory?: Record<string, ProgressionSeries> | null;
     fitness?: FitnessPayload | null;
-    seasonStreak?: SeasonStreakPayload;
 }
 
 export default function Profile({
     identity,
     stats,
-    personaMix = [],
     profileVoice,
     progressionByCategory = null,
     fitness = null,
-    seasonStreak,
 }: Readonly<ProfileProps>) {
     const { auth, stravaSync } = usePage<SharedProps>().props;
     const sharedUser = auth.user;
@@ -210,12 +196,6 @@ export default function Profile({
                             </div>
                         )}
                     </div>
-                    <div className="mb-6" data-coachmark="profile-persona">
-                        <SectionLabel onSky size="micro">
-                            Persona · last 12 weeks
-                        </SectionLabel>
-                        <PersonaBar mix={personaMix} onSky />
-                    </div>
                     <motion.div
                         variants={staggerContainer}
                         initial="hidden"
@@ -298,13 +278,6 @@ export default function Profile({
                         Set your race &rarr;
                     </span>
                 </LinkCard>
-
-                {seasonStreak && (
-                    <SeasonStreakPanel
-                        season={seasonStreak.season}
-                        streak={seasonStreak.streak}
-                    />
-                )}
 
                 {fitness?.training_paces && (
                     <section className="mt-10">

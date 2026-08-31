@@ -124,8 +124,7 @@ it('renders the run-detail page for a summary-only run and queues its hydration'
             ->component('Runs/Show')
             ->where('activity.ingest_state', IngestState::Summary->value)
             ->where('awaitingDetail', true)
-            ->where('card', null)
-            ->where('relativeEffort', null));
+            ->where('card', null));
 
     Bus::assertDispatched(IngestActivityJob::class, fn (IngestActivityJob $job): bool => $job->activityId === $activity->id);
 });

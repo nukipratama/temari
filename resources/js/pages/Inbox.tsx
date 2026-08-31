@@ -2,13 +2,8 @@ import { Head, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
-import type {
-    InboxItem,
-    PaginatedResponse,
-    UnlockFlash,
-} from '@/types/inertia';
+import type { InboxItem, PaginatedResponse } from '@/types/inertia';
 
-import AccessoryUnlockModal from '@/components/celebrations/AccessoryUnlockModal';
 import { BUCKET_LABEL, groupByBucket } from '@/components/inbox/inboxBuckets';
 import InboxRow from '@/components/inbox/InboxRow';
 import EmptyPanel from '@/components/ui/EmptyPanel';
@@ -47,8 +42,6 @@ export default function Inbox({
     const [readIds, setReadIds] = useState<ReadonlySet<number>>(() =>
         focusUnreadId === null ? new Set() : new Set([focusUnreadId]),
     );
-    const [replayingId, setReplayingId] = useState<number | null>(null);
-    const [unlockReplay, setUnlockReplay] = useState<UnlockFlash | null>(null);
 
     const isRead = (item: InboxItem) =>
         item.read_at !== null || readIds.has(item.id);
@@ -72,32 +65,6 @@ export default function Inbox({
             void sendRead(focusUnreadId);
         }
     }, [focusId, focusUnreadId]);
-
-    // Both replays re-run the original celebration rather than describing it:
-    // an unlock re-opens the takeover it was granted with, a post-run re-arms
-    // the reveal through the same endpoint the run page uses, then reloads
-    // `pendingReveal` so AppShell plays it.
-    const replay = (item: InboxItem) => {
-        markRead(item);
-
-        if (item.unlock !== null) {
-            setUnlockReplay(item.unlock);
-            return;
-        }
-        if (item.run_card_id === null || replayingId !== null) {
-            return;
-        }
-
-        setReplayingId(item.id);
-        void postJson(`/api/cards/${item.run_card_id}/replay`)
-            .then((response) => {
-                if (response.ok) {
-                    router.reload({ only: ['pendingReveal'] });
-                }
-            })
-            .catch(() => undefined)
-            .finally(() => setReplayingId(null));
-    };
 
     const unread = items.filter((item) => !isRead(item)).length;
 
@@ -156,10 +123,6 @@ export default function Inbox({
                                                     focused={
                                                         item.id === focusId
                                                     }
-                                                    replaying={
-                                                        replayingId === item.id
-                                                    }
-                                                    onReplay={replay}
                                                     onOpen={markRead}
                                                 />
                                             </motion.div>
@@ -206,11 +169,6 @@ export default function Inbox({
                     </nav>
                 )}
             </PageContainer>
-
-            <AccessoryUnlockModal
-                unlock={unlockReplay}
-                onClose={() => setUnlockReplay(null)}
-            />
         </>
     );
 }

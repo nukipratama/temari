@@ -78,55 +78,6 @@ describe('Profile', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('renders the season & streak panel when the server hands it a seasonStreak prop', () => {
-        render(
-            <Profile
-                identity={identity}
-                stats={stats}
-                seasonStreak={{
-                    season: null,
-                    streak: {
-                        weeks: 0,
-                        rest_weeks_held: 0,
-                        rest_weeks_cap: 2,
-                        weeks_to_next_rest_week: 3,
-                        ran_this_week: false,
-                        week_ends_on: '2026-08-16',
-                        last_forgiven_week: null,
-                    },
-                }}
-            />,
-        );
-        expect(screen.getByText('Season & streak')).toBeInTheDocument();
-    });
-
-    it('omits the season & streak panel when no seasonStreak prop is given', () => {
-        render(<Profile identity={identity} stats={stats} />);
-        expect(screen.queryByText('Season & streak')).not.toBeInTheDocument();
-    });
-
-    it('renders the persona bar without a narration block of its own', () => {
-        const mix = [
-            { mood: 'easy' as const, count: 22, percent: 34.9 },
-            { mood: 'chill' as const, count: 21, percent: 33.3 },
-        ];
-        render(<Profile identity={identity} stats={stats} personaMix={mix} />);
-        expect(screen.getByText(/Persona/)).toBeInTheDocument();
-        expect(screen.queryByText(/thinking it over/)).not.toBeInTheDocument();
-        expect(
-            screen.queryByRole('button', { name: /Try again/ }),
-        ).not.toBeInTheDocument();
-    });
-
-    // The persona bar moved into the hero panel (it's the data behind "Kata
-    // Temari"'s read on you) instead of its own section below — a standalone
-    // <section class="mt-10"> would mean it slipped back out of the hero.
-    it('renders the persona bar inside the hero panel, not a separate section below it', () => {
-        const mix = [{ mood: 'blazing' as const, count: 3, percent: 100 }];
-        render(<Profile identity={identity} stats={stats} personaMix={mix} />);
-        expect(screen.getByText(/Persona/).closest('section')).toBeNull();
-    });
-
     it('shows the "With Temari since" join date when member_since is present', () => {
         render(<Profile identity={identity} stats={stats} />);
         expect(screen.getByText('With Temari since')).toBeInTheDocument();

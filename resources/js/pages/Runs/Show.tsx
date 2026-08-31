@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { lazy, Suspense, useRef, useState } from 'react';
 
@@ -22,36 +22,22 @@ import PastYouHero, { type PastYouMatch } from '@/components/run/PastYouHero';
 import RunHydratingNotice from '@/components/run/RunHydratingNotice';
 import RunLenses from '@/components/run/RunLenses';
 import SplitsTable from '@/components/run/SplitsTable';
-import SendNotificationButton from '@/components/SendNotificationButton';
-import StravaAction from '@/components/StravaAction';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
-import { Card } from '@/components/ui/card';
-import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
 import { Icon } from '@/components/ui/Icon';
 import MoodChip from '@/components/ui/MoodChip';
 import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
-import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';
-import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
-import { usePendingPost } from '@/hooks/usePendingPost';
 import { appLayout } from '@/layouts/appLayout';
-import { cn } from '@/lib/cn';
-import { postJson } from '@/lib/http';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatIdDate, formatPace, formatShortDateTimeId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
-import { BADGE_ABILITY, badgeName } from '@/lib/runcard';
 
-import {
-    useRunShow,
-    type RelativeEffortPayload,
-    type RunCardDetail,
-} from './useRunShow';
+import { useRunShow, type RunCardDetail } from './useRunShow';
 
 // Carries the ~1200-line canvas engine; fetched on the share tap.
 const ShareCardModal = lazy(() => import('@/components/card/ShareCardModal'));
@@ -81,11 +67,7 @@ interface ShowProps {
     moodFallback: Mood;
     /** This run is the head of the per-activity narration chain (latest run). */
     isChainHead: boolean;
-    /** Remaining Telegram-send cooldown for this run's speech, or null. */
-    notificationRetryAfterSeconds: number | null;
     pastYou: PastYouMatch | null;
-    /** This run's effort vs the runner's own 28-day baseline, or null (no HR). */
-    relativeEffort: RelativeEffortPayload | null;
 }
 
 export default function RunsShow({
@@ -98,11 +80,8 @@ export default function RunsShow({
     runInsight,
     moodFallback,
     isChainHead,
-    notificationRetryAfterSeconds,
     pastYou,
-    relativeEffort,
 }: Readonly<ShowProps>) {
-    const notificationsReachable = useNotificationsReachable();
     const shareRef = useRef<HTMLDivElement>(null);
     const {
         summary,
@@ -114,12 +93,11 @@ export default function RunsShow({
         paceSec,
         hr,
         trimp,
-        effortSub,
         kartuProps,
         cardBadges,
         rarityLabel,
         shareData,
-    } = useRunShow({ detail, card, storyLine, moodFallback, relativeEffort });
+    } = useRunShow({ detail, card, storyLine, moodFallback });
 
     const distanceKmCount = useCountUp(
         detail.distance != null ? detail.distance / 1000 : 0,
@@ -149,7 +127,6 @@ export default function RunsShow({
         label: string;
         value: string;
         unit?: string;
-        sub?: string;
         explainerKey?: MetricKey;
     }> = [
         { label: 'HR', value: hrDisplay, unit: 'bpm' },
@@ -157,7 +134,6 @@ export default function RunsShow({
             label: 'TRIMP',
             value: trimpDisplay,
             unit: 'Edwards',
-            sub: effortSub,
             explainerKey: 'trimp',
         },
         {
@@ -168,68 +144,13 @@ export default function RunsShow({
         },
     ];
 
-    const [resyncing, resync] = usePendingPost(
-        `/activities/${activity.id}/resync`,
-        { preserveScroll: true },
-    );
-
     const [shareOpen, setShareOpen] = useState(false);
-    const [replaying, setReplaying] = useState(false);
-    const [replayError, setReplayError] = useState(false);
-
-    // Re-arm the reveal for this card, then reload the pendingReveal prop so the
-    // CardReveal modal (mounted in AppShell) plays again. A non-ok response
-    // (419/429/500) surfaces a transient error instead of faking success.
-    const replayReveal = () => {
-        if (replaying || card === null) {
-            return;
-        }
-        setReplaying(true);
-        setReplayError(false);
-        void postJson(`/api/cards/${card.id}/replay`)
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error(`Replay failed (${response.status})`);
-                }
-                router.reload({ only: ['pendingReveal'] });
-            })
-            .catch(() => setReplayError(true))
-            .finally(() => setReplaying(false));
-    };
 
     return (
         <>
             <Head title={detail.name ?? 'Run'} />
             <PageContainer>
                 <RunHydratingNotice hydrating={awaitingDetail} />
-
-                <div className="mb-5 flex flex-wrap gap-2">
-                    <StravaAction>
-                        <PillButton
-                            tone="outline"
-                            size="sm"
-                            disabled={resyncing}
-                            className="disabled:opacity-60 disabled:cursor-not-allowed"
-                            onClick={resync}
-                        >
-                            <Icon
-                                icon={resyncing ? 'mdi:loading' : 'mdi:sync'}
-                                width={15}
-                                height={15}
-                                className={
-                                    resyncing ? 'animate-spin' : undefined
-                                }
-                                aria-hidden
-                            />
-                            {resyncing ? 'Syncing…' : 'Resync from Strava'}
-                        </PillButton>
-                    </StravaAction>
-                    <SendNotificationButton
-                        url={`/activities/${activity.id}/send`}
-                        retryAfterSeconds={notificationRetryAfterSeconds}
-                        reachable={notificationsReachable}
-                    />
-                </div>
 
                 {/* HERO — one panel, stats left + route map right */}
                 <section>
@@ -413,27 +334,6 @@ export default function RunsShow({
                                         />
                                         Share
                                     </PillButton>
-                                    <PillButton
-                                        tone="outline"
-                                        size="sm"
-                                        onClick={replayReveal}
-                                        disabled={replaying}
-                                    >
-                                        <Icon
-                                            icon="mdi:refresh"
-                                            width={14}
-                                            height={14}
-                                            className={
-                                                replaying
-                                                    ? 'animate-spin'
-                                                    : undefined
-                                            }
-                                            aria-hidden
-                                        />
-                                        {replaying
-                                            ? 'Preparing…'
-                                            : 'Replay card reveal'}
-                                    </PillButton>
                                 </div>
                                 <CoachMark
                                     id="run-share"
@@ -442,55 +342,7 @@ export default function RunsShow({
                                     title="Share the card"
                                     body="I'll turn this run into an image you can send anywhere."
                                 />
-                                {replayError && (
-                                    <p
-                                        role="status"
-                                        aria-live="polite"
-                                        className="mt-2 font-sans text-xs text-ember-ink"
-                                    >
-                                        Couldn't replay the card. Try again in a
-                                        bit.
-                                    </p>
-                                )}
                             </div>
-
-                            {/* The rarity explainer is always shown, even with no
-                                badges: rarity is a composite score, so a badge-less
-                                card still deserves an honest reason, not a blank. */}
-                            <Card className="flex flex-col gap-4 px-4 py-4">
-                                <SectionLabel>
-                                    Why this earned {rarityLabel}
-                                </SectionLabel>
-                                <p className="text-sm text-text-2">
-                                    Determined by a mix of great things in this
-                                    run: a PR, steady or negative-split pace,
-                                    long distance, weekly consistency, plus the
-                                    badges you brought home.
-                                </p>
-                                {cardBadges.length > 0 && (
-                                    <div className="flex flex-col gap-3">
-                                        {cardBadges.map((b, i) => (
-                                            <div
-                                                key={b}
-                                                className={cn(
-                                                    'flex items-start gap-3 pb-3',
-                                                    i < cardBadges.length - 1
-                                                        ? 'border-b border-dashed border-cream-deep'
-                                                        : '',
-                                                )}
-                                            >
-                                                <Chip tone="horizon">
-                                                    {badgeName(b)}
-                                                </Chip>
-                                                <p className="flex-1 text-sm text-text-2">
-                                                    {BADGE_ABILITY[b] ??
-                                                        'A special condition that makes this run stand out.'}
-                                                </p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </Card>
                         </div>
                     </section>
                 )}

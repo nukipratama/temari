@@ -6,8 +6,6 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AccessoryController;
 use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Controllers\Api\RunQuestionController;
-use App\Http\Controllers\Api\CardReplayController;
-use App\Http\Controllers\Api\CardSeenController;
 use App\Http\Controllers\Api\NotificationReadController;
 use App\Http\Controllers\Auth\DemoAuthController;
 use App\Http\Controllers\Auth\LoginController;
@@ -28,10 +26,8 @@ use App\Http\Controllers\RootController;
 use App\Http\Controllers\RunController;
 use App\Http\Controllers\RunnerZonesController;
 use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\Strava\ResyncActivityController;
 use App\Http\Controllers\Strava\StravaWebhookController;
 use App\Http\Controllers\Strava\SyncController;
-use App\Http\Controllers\Notifications\SendActivityNotificationController;
 use App\Http\Controllers\Notifications\SendMonthlyRecapNotificationController;
 use App\Http\Controllers\Notifications\SendWeeklyRecapNotificationController;
 use App\Http\Controllers\Telegram\TelegramConnectionController;
@@ -119,13 +115,6 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::get('/activities/{activity}', [RunController::class, 'show'])
         ->middleware('inertia-etag')
         ->name('activities.show');
-    Route::post('/activities/{activity}/resync', ResyncActivityController::class)
-        ->middleware('throttle:strava-sync')
-        ->name('activities.resync');
-    Route::post('/activities/{activity}/send', SendActivityNotificationController::class)
-        ->middleware('block-demo-telegram')
-        ->name('activities.send');
-
     Route::post('/recaps/weekly/{snapshot}/send', SendWeeklyRecapNotificationController::class)
         ->middleware('block-demo-telegram')
         ->name('recaps.weekly.send');
@@ -196,11 +185,6 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     // to go straight there, and keep /goals itself resolving for bookmarks.
     Route::permanentRedirect('/target', '/accessories');
     Route::permanentRedirect('/goals', '/accessories');
-
-    Route::post('/api/cards/{card}/seen', CardSeenController::class)
-        ->name('api.cards.seen');
-    Route::post('/api/cards/{card}/replay', CardReplayController::class)
-        ->name('api.cards.replay');
 
     Route::post('/api/notifications/{notification}/read', NotificationReadController::class)
         ->whereNumber('notification')

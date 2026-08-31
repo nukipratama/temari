@@ -19,7 +19,6 @@ const item = (overrides: Partial<InboxItem> = {}): InboxItem => ({
     url: null,
     run_card_id: null,
     rarity: null,
-    unlock: null,
     ...overrides,
 });
 
@@ -85,99 +84,21 @@ describe('Inbox', () => {
         ).toBeInTheDocument();
     });
 
-    it('re-arms the real reveal through the card replay endpoint', async () => {
+    it('marks a row read when its deep link is opened and refreshes the bell count', async () => {
         const fetchMock = okFetch();
         render(
             <Inbox
-                notifications={page([item({ run_card_id: 77 })])}
-                focusId={null}
-            />,
-        );
-
-        await userEvent.click(screen.getByText('Replay Reveal'));
-
-        expect(fetchMock).toHaveBeenCalledWith(
-            '/api/cards/77/replay',
-            expect.objectContaining({ method: 'POST' }),
-        );
-        await waitFor(() =>
-            expect(router.reload).toHaveBeenCalledWith({
-                only: ['pendingReveal'],
-            }),
-        );
-    });
-
-    it('replays an unlock through the same takeover that granted it', async () => {
-        okFetch();
-        render(
-            <Inbox
-                notifications={page([
-                    item({
-                        id: 5,
-                        kind: 'unlock',
-                        title: 'Unlocked: Legendary headband',
-                        unlock: {
-                            unlock_key: 'accessory.headband_legendary',
-                            name: 'Legendary headband',
-                            icon: 'mdi:hanger',
-                            is_major: true,
-                        },
-                    }),
-                ])}
-                focusId={null}
-            />,
-        );
-
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-
-        await userEvent.click(screen.getByText('Replay Unlock'));
-
-        const dialog = await screen.findByRole('dialog');
-        expect(dialog).toHaveTextContent('Legendary headband');
-    });
-
-    it('replays a minor unlock as the same takeover, not a lesser summary', async () => {
-        okFetch();
-        render(
-            <Inbox
-                notifications={page([
-                    item({
-                        id: 6,
-                        kind: 'unlock',
-                        unlock: {
-                            unlock_key: 'accessory.medal_first',
-                            name: 'First medal',
-                            icon: 'mdi:medal',
-                            is_major: false,
-                        },
-                    }),
-                ])}
-                focusId={null}
-            />,
-        );
-
-        await userEvent.click(screen.getByText('Replay Unlock'));
-
-        expect(await screen.findByRole('dialog')).toHaveTextContent(
-            'First medal',
-        );
-    });
-
-    it('marks a row read on replay and refreshes the bell count', async () => {
-        const fetchMock = okFetch();
-        render(
-            <Inbox
-                notifications={page([item({ id: 3, run_card_id: 12 })])}
+                notifications={page([item({ id: 4, url: '/activities/42' })])}
                 focusId={null}
             />,
         );
 
         expect(screen.getByLabelText('Unread')).toBeInTheDocument();
 
-        await userEvent.click(screen.getByText('Replay Reveal'));
+        await userEvent.click(screen.getByText('Open'));
 
         expect(fetchMock).toHaveBeenCalledWith(
-            '/api/notifications/3/read',
+            '/api/notifications/4/read',
             expect.objectContaining({ method: 'POST' }),
         );
         await waitFor(() =>
@@ -187,23 +108,6 @@ describe('Inbox', () => {
             expect(router.reload).toHaveBeenCalledWith({
                 only: ['unreadNotifications'],
             }),
-        );
-    });
-
-    it('marks a row read when its deep link is opened', async () => {
-        const fetchMock = okFetch();
-        render(
-            <Inbox
-                notifications={page([item({ id: 4, url: '/activities/42' })])}
-                focusId={null}
-            />,
-        );
-
-        await userEvent.click(screen.getByText('Open'));
-
-        expect(fetchMock).toHaveBeenCalledWith(
-            '/api/notifications/4/read',
-            expect.objectContaining({ method: 'POST' }),
         );
     });
 

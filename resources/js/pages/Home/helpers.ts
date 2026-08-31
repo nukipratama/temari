@@ -1,91 +1,11 @@
-import type {
-    ActivityDetail,
-    Mood,
-    Rarity,
-    RunCard,
-    ZonePct,
-} from '@/types/inertia';
-
-import { moodFromActivity } from '@/lib/moodFromActivity';
 import {
-    formatDurationHMS,
-    formatKm,
     formatMonthDayId,
-    formatNaiveRelativeId,
     formatShortWeekdayDateId,
     isoDateLocal,
     mondayOf,
     parseNaiveLocalDate,
     sundayOf,
 } from '@/lib/pace';
-import {
-    RARITY_LABELS,
-    buildCardStats,
-    paceShapeFromDetail,
-    zonePctFromDetail,
-    type CardStatStrings,
-} from '@/lib/runcard';
-
-export interface FeaturedCard {
-    cardId: number;
-    activityId: number;
-    name: string;
-    subtitle: string;
-    km: string;
-    duration: string;
-    trimp: string;
-    rarity: Rarity;
-    mood: Mood;
-    badges: ReadonlyArray<string>;
-    stats: CardStatStrings;
-    zonePct: ZonePct | null;
-    polyline: string | null;
-    paceShape: number[];
-    startDate: string | null;
-}
-
-function toFeaturedCard(
-    r: ActivityDetail,
-    card: RunCard,
-    mood?: Mood | null,
-): FeaturedCard {
-    return {
-        cardId: card.id,
-        activityId: r.activity_id,
-        name: card.special_move,
-        subtitle: `${RARITY_LABELS[card.rarity]} · ${formatNaiveRelativeId(r.start_date_local)}`,
-        km: formatKm(r.distance),
-        duration:
-            r.elapsed_time != null ? formatDurationHMS(r.elapsed_time) : '—',
-        trimp:
-            r.trimp_edwards != null ? String(Math.round(r.trimp_edwards)) : '—',
-        rarity: card.rarity,
-        mood: mood ?? moodFromActivity(r),
-        badges: (card.badges ?? []).slice(0, 3),
-        stats: buildCardStats(r),
-        zonePct: zonePctFromDetail(r),
-        polyline: r.summary_polyline ?? null,
-        paceShape: paceShapeFromDetail(r),
-        startDate: r.start_date_local,
-    };
-}
-
-// The featured card is chosen server-side (FeaturedKartuResolver) and its id is
-// passed down, so the hero and its Temari quote can never describe different
-// cards. We only build the display model for that one run here.
-export function featuredCardFor(
-    runs: ReadonlyArray<ActivityDetail>,
-    cardId: number | null,
-    moods: Record<number, Mood> = {},
-): FeaturedCard | null {
-    if (cardId == null) return null;
-    for (const r of runs) {
-        const card = r.activity?.run_card;
-        if (card?.id === cardId)
-            return toFeaturedCard(r, card, moods[r.activity_id] ?? null);
-    }
-    return null;
-}
 
 export function formatSignedForm(form: number): string {
     return form >= 0 ? `+${form.toFixed(1)}` : form.toFixed(1);

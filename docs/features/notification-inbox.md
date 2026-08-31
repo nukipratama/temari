@@ -1,6 +1,6 @@
 ---
 title: Notification inbox
-description: The /inbox notification centre — a paginated record of everything Temari sent, with unlock and post-run rows that re-run the original celebration rather than summarising it.
+description: The /inbox notification centre — a paginated record of everything Temari sent, each row a deep link back into the page it was about.
 tags: [feature, notifications]
 status: living
 reviewed: 2026-08-30
@@ -13,7 +13,6 @@ code_refs:
   - resources/js/components/inbox/InboxRow.tsx
   - resources/js/components/inbox/inboxBuckets.ts
   - resources/js/components/NotificationBell.tsx
-  - resources/js/components/celebrations/AccessoryUnlockModal.tsx
 ---
 
 # Notification inbox
@@ -42,22 +41,12 @@ The list is paginated at 20 ([InboxController](../../app/Http/Controllers/InboxC
 Retention is undecided and nothing prunes the table, so pagination is what keeps an old account's
 inbox usable without deciding how long a record lives.
 
-## Replay, not a summary
+## Deep links, not replays
 
-Two row kinds carry enough to re-run the celebration they are a record of:
-
-- **Post-run** rows carry `run_card_id`. The button POSTs to `api.cards.replay`
-  ([CardReplayController](../../app/Http/Controllers/Api/CardReplayController.php#L18)), which
-  re-arms `pending_reveal_card_id`, then reloads the `pendingReveal` shared prop so the real
-  full-screen `CardReveal` mounted in [AppShell](../../resources/js/layouts/AppShell.tsx#L93)
-  plays again. Same endpoint and same sequence the run detail page uses.
-- **Unlock** rows carry the celebration verbatim, so the page hands it straight back to
-  [AccessoryUnlockModal](../../resources/js/components/celebrations/AccessoryUnlockModal.tsx) — the
-  same takeover that played at grant time. The modal no longer gates itself on `is_major`: the
-  caller owns that call, so AppShell still only takes over for a major grant while a replay the
-  user explicitly asked for always gets the full thing.
-
-Everything else (recaps, the streak nudge) is a deep link into the page the notification was
+`PP3` cut both celebration replays: the card-reveal modal and its `api.cards.*` endpoints, and the
+accessory-unlock takeover. Rows are now a record and a deep link, nothing more. A post-run row still
+carries `run_card_id` and the card's `rarity` — the rarity is what styles an unlock row's badge
+without a join — and every row's only action is the "Open" link into the page the notification was
 about, which is the same URL its web push already carried.
 
 ## Grouped sections and the time toggle

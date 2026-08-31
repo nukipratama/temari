@@ -71,33 +71,10 @@ it('flattens the post-run replay handles out of the payload', function (): void 
 
     expect($row['url'])->toBe('https://temari.test/activities/42')
         ->and($row['run_card_id'])->toBe(99)
-        ->and($row['rarity'])->toBe('epic')
-        ->and($row['unlock'])->toBeNull();
+        ->and($row['rarity'])->toBe('epic');
 });
 
-it('ships the unlock celebration verbatim so the takeover can replay it', function (): void {
-    $user = User::factory()->create();
-    InboxNotification::factory()->for($user)->create([
-        'kind' => NotificationKind::Unlock,
-        'payload' => [
-            'unlock_key' => 'accessory.headband_legendary',
-            'name' => 'Legendary headband',
-            'icon' => 'mdi:hanger',
-            'is_major' => true,
-        ],
-    ]);
-
-    $row = inboxRows($this->actingAs($user)->get('/inbox'))[0];
-
-    expect($row['unlock'])->toBe([
-        'unlock_key' => 'accessory.headband_legendary',
-        'name' => 'Legendary headband',
-        'icon' => 'mdi:hanger',
-        'is_major' => true,
-    ])->and($row['run_card_id'])->toBeNull();
-});
-
-it('leaves a row with no payload with no replay handles', function (): void {
+it('leaves a row with no payload with no handles', function (): void {
     $user = User::factory()->create();
     InboxNotification::factory()->for($user)->create(['kind' => NotificationKind::Test, 'payload' => null]);
 
@@ -105,8 +82,7 @@ it('leaves a row with no payload with no replay handles', function (): void {
 
     expect($row['url'])->toBeNull()
         ->and($row['run_card_id'])->toBeNull()
-        ->and($row['rarity'])->toBeNull()
-        ->and($row['unlock'])->toBeNull();
+        ->and($row['rarity'])->toBeNull();
 });
 
 it('opens on the page holding the deep-linked row', function (): void {

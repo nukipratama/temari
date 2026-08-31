@@ -1,17 +1,15 @@
 ---
 title: Profile
-description: The runner's identity page — Temari's profile voice, lifetime stats, 12-week persona mix, PR progression charts, Strava status
+description: The runner's identity page — Temari's profile voice, lifetime stats, PR progression charts, Strava status
 tags: [feature, profile]
 status: living
 reviewed: 2026-08-19
 code_refs:
   - resources/js/pages/Profile.tsx
   - app/Http/Controllers/ProfileController.php
-  - resources/js/components/PersonaBar.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
   - resources/js/components/collection/ProgressionChart.tsx
   - resources/js/components/temari/Temari.tsx
-  - resources/js/components/me/SeasonStreakPanel.tsx
   - resources/js/components/UserAvatarLink.tsx
   - app/Services/Run/Metrics/VdotEstimator.php
   - app/Actions/Run/Metrics/EstimateThresholdAction.php
@@ -21,7 +19,7 @@ code_refs:
 
 # Profile
 
-The Profile page (`/profile`) is the runner's about-me: who they are, how Temari sees them, their lifetime totals, a 12-week mood persona, and their PR progression over time. Server entry is [ProfileController](app/Http/Controllers/ProfileController.php) (`__invoke`), rendering the [Profile](resources/js/pages/Profile.tsx) page.
+The Profile page (`/profile`) is the runner's about-me: who they are, how Temari sees them, their lifetime totals, and their PR progression over time. Server entry is [ProfileController](app/Http/Controllers/ProfileController.php) (`__invoke`), rendering the [Profile](resources/js/pages/Profile.tsx) page.
 
 **Navigation:** `route('profile')` → `/profile`. Named route: `profile`. There is no bottom-nav "Me" tab — [UserAvatarLink](resources/js/components/UserAvatarLink.tsx) links the avatar in [MobileTopBar](resources/js/components/MobileTopBar.tsx) straight to Profile from every bottom-nav screen. Profile is itself a **pushed screen**: its topbar carries a back chevron to Today and a gear to Settings, and it renders no bottom nav. Profile and Settings stay two separate routes/controllers, not a merged `/me?segment=` route. There is no `/aku` route, and `/profil` is a permanent redirect to `/profile`. The segmented `MeTabs` nav that used to sit atop both pages was cut by the parity program's `PP1`; the `/accessories` route/controller/page are still live pending removal in `W1`/`W2`, just no longer linked from here.
 
@@ -52,7 +50,7 @@ These are the same estimators [AkuProfileVoiceNarrator](app/Services/AI/Narrator
 
 ## Persona · last 12 weeks
 
-The "Persona" section renders [PersonaBar](resources/js/components/PersonaBar.tsx): gapped, individually-rounded mood segments (`personaMix`), each colored by `MOOD_FILL` — mirroring the mobile-UX prototype's own time-in-zone bar treatment rather than one continuous track — with a legend of `MOOD_LABEL` + percent, each entry its own mood-tinted chip (`MOOD_SOFT_FILL` on paper, a translucent cream chip `onSky`). The mix comes from `AkuProfileVoiceNarrator::personaMix($user)`. The bar carries no narration block of its own: the mix is narrated once, in the hero voice above. Empty mix → PersonaBar shows "Not enough runs yet to read your persona." Persona mix earned a deliberate design pass in the mobile-UX port (`plan/README.md`'s `S10` ledger ruling), not a mechanical token swap.
+**Cut in `PP3` (P13).** The prototype's Profile hero draws a Z1-Z5 heart-rate-zone bar in the slot the app drew its behavioural persona mix, so `PersonaBar` and the `personaMix` Inertia prop are gone; `PS10` builds the zone bar in that slot. `AkuProfileVoiceNarrator::personaMix()` and `PersonaMixTool` survive — the hero voice still reads the mix as narration context — and `W2` decides whether the method itself stays.
 
 ## Journey (progression)
 
@@ -60,13 +58,22 @@ When `progressionByCategory` is non-empty, a tabbed section (5K / 10K / HM / FM)
 
 ## Season & streak
 
-Below the "Got a race coming up?" link card, [SeasonStreakPanel](resources/js/components/me/SeasonStreakPanel.tsx) surfaces the same season and weekly-streak data `/plan` computes — a streak tile (weeks running, a "Live" pill, rest-week dots) and a season tile (date range, per-goal progress bars). It's a compact, prototype-inspired layout, not the Plan page's `SeasonTrack` re-mounted. Plan itself dropped its own streak display in the mobile-UX port (`plan/README.md` §5, "Streak feature redesign"); Profile's panel is now the streak's only other home besides Trends' badge board. The streak tile carries the same `mdi:medal-outline` glyph as Trends' `StreakBadge` (not the flame reserved for the prototype's tempo-session day-glyph convention), and a completed season goal gets an inline `mdi:check-circle` glyph — this panel is `S10`'s answer to the mobile-UX port ledger's "badge/milestone display" ruling: the standalone badge board already lives on Trends (see [[gamification]]) and unlock celebrations already fire as a toast/inbox entry, so no separate badge gallery was built on Profile; its existing milestone-adjacent surface (season goal progress) got the real design pass instead.
+**Cut in `PP3` (P24).** `SeasonStreakPanel`'s five-row layout — a streak tile (weeks running, a
+"Live" pill, rest-week dots) and a season tile (date range, per-goal progress bars) — is replaced by
+the prototype's small `SeasonCard`: a phase bar and one progress line. `PS10` builds it, and re-adds
+the `seasonStreak` Inertia prop it needs; the prop was removed with the panel rather than left
+dangling with nothing rendering it.
 
-The payload is built by [SeasonStreakSummaryBuilder](app/Services/Gamification/SeasonStreakSummaryBuilder.php), extracted from what used to be private `PlanController` methods so both pages read the exact same shapes. Streak is always present (`WeeklySnapshot`/`StreakRestToken` reads have no season dependency). Season can be `null`: `ProfileController` calls `SeasonService::peekCurrent()`, a read-only counterpart to `ensureCurrent()` that returns the current season **if one already exists**, never creating one — visiting Profile must not trigger the same season-creation / badge-board-grant side effects a Plan page load does. A `null` season renders a "No season yet — start one on Plan" link instead of goal progress.
+[SeasonStreakSummaryBuilder](app/Services/Gamification/SeasonStreakSummaryBuilder.php) survives
+unchanged and is still called by `PlanController` (`seasonPayload`) and `TrendsController`
+(`streakPayload`). When `PS10` wires the card back up it should call `SeasonService::peekCurrent()`
+as this controller did — a read-only counterpart to `ensureCurrent()` that returns the current
+season **if one already exists**, never creating one, because visiting Profile must not trigger the
+season-creation side effects a Plan page load does.
 
 ## Not on this page
 
-PRs and accessories are **not** rendered here — Profile shows no PR cards and no accessory strip. The full PR list is the Personal Bests panel on `/trends` ([[records]]); the accessory unlock catalog has no more nav entry point at all since `S10` dropped the Accessories tab (see [[targets-accessories]]).
+Accessories are **not** rendered here — Profile shows no accessory strip. PRs surface only as the progression charts above; the Personal Bests panel that used to list them on `/trends` was cut in `PP3` ([[records]]). The accessory unlock catalog has no more nav entry point at all since `S10` dropped the Accessories tab (see [[targets-accessories]]).
 
 ## Settings
 

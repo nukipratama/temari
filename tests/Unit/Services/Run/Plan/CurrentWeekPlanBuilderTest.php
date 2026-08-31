@@ -110,39 +110,6 @@ it('credits a past day whose completed distance met the prescribed km', function
     Carbon::setTestNow();
 });
 
-it('streak_days walks back from today, skipping today itself', function (): void {
-    Carbon::setTestNow('2026-08-12'); // Wednesday — 2 credited days precede it (Mon, Tue)
-    $user = User::factory()->create();
-    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
-    seedWeekOfSessions($user, $weekStart);
-
-    foreach ([0, 1] as $dayOffset) {
-        $activity = Activity::factory()->for($user)->create();
-        ActivityDetail::factory()->for($activity)->create([
-            'start_date_local' => $weekStart->copy()->addDays($dayOffset)->setTime(7, 0),
-            'distance' => 6_000,
-        ]);
-    }
-
-    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
-
-    expect($result['streak_days'])->toBe(2);
-    Carbon::setTestNow();
-});
-
-it('streak_days is 0 when yesterday was missed', function (): void {
-    Carbon::setTestNow('2026-08-12'); // Wednesday
-    $user = User::factory()->create();
-    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
-    seedWeekOfSessions($user, $weekStart);
-    // No activities logged at all — Monday and Tuesday are both Missed.
-
-    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
-
-    expect($result['streak_days'])->toBe(0);
-    Carbon::setTestNow();
-});
-
 it('applies the multi-week Build ramp, not an isolated week-1 multiplier', function (): void {
     Carbon::setTestNow('2026-08-24'); // a Monday, so "current week" starts exactly here
     $user = User::factory()->create();

@@ -137,9 +137,8 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
     }
 
     /**
-     * What the inbox needs to replay this weeks later. A post-run row carries the
-     * card id, which the existing `api.cards.replay` endpoint re-arms into a full
-     * reveal, plus the rarity so the list can style the row without a join.
+     * What the inbox needs to render this weeks later. A post-run row carries the
+     * card id and its rarity, so the list can style the row without a join.
      * Everything else is a deep link.
      *
      * @return array<string, mixed>

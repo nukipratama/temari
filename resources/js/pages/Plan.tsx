@@ -11,7 +11,6 @@ import DaySegments from '@/components/plan/DaySegments';
 import SeasonPhaseBar, {
     type SeasonSummaryWeek,
 } from '@/components/plan/SeasonPhaseBar';
-import SeasonTrack from '@/components/plan/SeasonTrack';
 import SeasonWeekTimeline from '@/components/plan/SeasonWeekTimeline';
 import PlanRaceTabs from '@/components/race/PlanRaceTabs';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
@@ -373,21 +372,6 @@ export default function Plan({
                                 inertiaReloadProps={['planNarration']}
                                 size="sm"
                                 showTimestamp={false}
-                            />
-                        </div>
-                    )}
-                    {season.goals.length > 0 && (
-                        <div className="mt-4">
-                            <SeasonTrack
-                                earned={
-                                    season.goals.filter((g) => g.is_completed)
-                                        .length
-                                }
-                                total={season.goals.length}
-                                endsAt={season.ends_at}
-                                tiersKeptFromPastSeasons={
-                                    season.tiers_kept_from_past_seasons
-                                }
                             />
                         </div>
                     )}

@@ -263,8 +263,8 @@ function captureAnalysisServiceRequests(array &$captured): AnalysisService
 /**
  * Stages an Analysis row for a Telegram push-notification test: Done (with
  * $content) by default, or still-pending when $done is false. Shared by the
- * SendActivityNotificationControllerTest/SendMonthlyRecapNotificationControllerTest/
- * SendWeeklyRecapNotificationControllerTest push tests, which all stage the
+ * SendMonthlyRecapNotificationControllerTest / SendWeeklyRecapNotificationControllerTest
+ * push tests, which both stage the
  * same shape (analysis_type/subject_type/subject_id/discriminator) and only
  * differ in which subject/type/discriminator they use.
  */

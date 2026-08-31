@@ -71,26 +71,14 @@ it('requires auth', function (): void {
     $this->get('/profile')->assertRedirect('/login');
 });
 
-it('reports a null season and a zero streak when the user has never visited Plan', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/profile')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('seasonStreak.season', null)
-            ->where('seasonStreak.streak.weeks', 0));
-
-    expect(Season::query()->where('user_id', $user->id)->count())->toBe(0);
-});
-
-it('reports the season Plan already created, without ensuring or mutating it itself', function (): void {
+it('never ensures or mutates a season of its own', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
-    $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
+    app(SeasonService::class)->ensureCurrent($user, Carbon::today());
 
     $this->actingAs($user)->get('/profile')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('seasonStreak.season.starts_at', $season->starts_at->toDateString())
-            ->has('seasonStreak.season.goals', 5));
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->missing('seasonStreak'));
 
     expect(Season::query()->where('user_id', $user->id)->count())->toBe(1);
     Carbon::setTestNow();
@@ -119,7 +107,7 @@ it('reports null training_paces when the user has no VDOT-eligible PR', function
             ->where('fitness', null));
 });
 
-it('exposes personaMix derived from StoryLine moods + the week-keyed profileVoice payload', function (): void {
+it('exposes the week-keyed profileVoice payload', function (): void {
     Carbon::setTestNow('2026-05-18 09:00:00');
 
     $user = User::factory()->create();
@@ -134,9 +122,7 @@ it('exposes personaMix derived from StoryLine moods + the week-keyed profileVoic
         ->assertInertia(fn (Assert $page) => $page
             ->component('Profile')
             ->missing('personaSummary')
-            ->has('personaMix', 1)
-            ->where('personaMix.0.mood', 'blazing')
-            ->where('personaMix.0.percent', 100)
+            ->missing('personaMix')
             ->has('profileVoice')
             ->where('profileVoice.type', 'aku_profile_voice')
             ->where('profileVoice.subject_type', 'aku_profile_voice_user')

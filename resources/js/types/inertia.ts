@@ -32,24 +32,6 @@ export interface AuthUser {
     is_demo: boolean;
 }
 
-export interface PendingReveal {
-    card_id: number;
-    activity_id: number;
-    rarity: Rarity;
-    special_move: string;
-    mood: Mood;
-    badges: string[] | null;
-    detail_name: string | null;
-    distance_m: number | null;
-    elapsed_time_sec: number | null;
-    trimp_edwards: number | null;
-    average_heartrate?: number | null;
-    stream_summary?: StreamSummary | null;
-    summary_polyline?: string | null;
-    public_share_url: string;
-    edition: CardEdition;
-}
-
 export type StravaSyncState = 'disconnected' | 'revoked' | 'syncing' | 'ready';
 
 export interface StravaSync {
@@ -75,19 +57,9 @@ export interface EquippedAccessories {
     aura: string | null;
 }
 
-/** Flashed by GrantEligibleUnlocksAction when a user earns their first new accessory in a request. */
-export interface UnlockFlash {
-    unlock_key: string;
-    name: string;
-    icon: string;
-    is_major: boolean;
-}
-
 /**
  * One row of the notification centre, flattened by `InboxController` so the
- * page never reads the raw `payload` blob. `run_card_id` and `unlock` are the
- * replay handles: either one re-runs the celebration this row is a record of,
- * rather than describing it.
+ * page never reads the raw `payload` blob.
  */
 export interface InboxItem {
     id: number;
@@ -100,7 +72,6 @@ export interface InboxItem {
     url: string | null;
     run_card_id: number | null;
     rarity: Rarity | null;
-    unlock: UnlockFlash | null;
 }
 
 /**
@@ -122,10 +93,8 @@ export interface SharedProps {
         success: string | null;
         error: string | null;
         info: string | null;
-        unlock?: UnlockFlash | null;
     };
     demoLoginEnabled: boolean;
-    pendingReveal?: PendingReveal | null;
     equippedAccessories?: EquippedAccessories | null;
     stravaSync?: StravaSync | null;
     activeRace?: ActiveRace | null;
@@ -171,8 +140,6 @@ export interface BriefingResult {
     vibeLabel: string;
     vibeEmoji: string;
     mascotVoice: AnalysisPayload;
-    featuredKartuVoice: AnalysisPayload;
-    featuredCardId: number | null;
     recoveryLabel: string;
     recoveryTone: RecoveryTone;
     recoveryHoursLabel: string | null;
@@ -428,7 +395,6 @@ export interface WeekPlan {
     phase: string;
     planned_km_this_week: number;
     credited_this_week: number;
-    streak_days: number;
     days: WeekPlanDay[];
 }
 

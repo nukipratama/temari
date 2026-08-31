@@ -9,19 +9,6 @@ import FitnessTrend, {
     type BadgeMilestone,
     type FitnessTrendPoint,
 } from '@/components/trends/panels/FitnessTrend';
-import LoadTrend, {
-    type LoadTrendPoint,
-} from '@/components/trends/panels/LoadTrend';
-import PaceConsistencyTrend, {
-    type PaceConsistencyPoint,
-} from '@/components/trends/panels/PaceConsistencyTrend';
-import PersonalBests, {
-    type DistanceRecord,
-    type PaceRecord,
-} from '@/components/trends/panels/PersonalBests';
-import VdotTrend, {
-    type VdotHistoryPoint,
-} from '@/components/trends/panels/VdotTrend';
 import RangeToggle, { type TrendRange } from '@/components/trends/RangeToggle';
 import StreakBadge, {
     type StreakSummaryLike,
@@ -33,12 +20,6 @@ import { fadeInUp, staggerContainer } from '@/lib/motion';
 
 interface TrendsProps {
     ctlTrend: FitnessTrendPoint[];
-    loadTrend: LoadTrendPoint[];
-    vdotHistory: VdotHistoryPoint[];
-    vdotSourceCategory: string | null;
-    paceConsistencyHistory: PaceConsistencyPoint[];
-    distanceRecords: DistanceRecord[];
-    paceRecords: PaceRecord[];
     badgeMilestones: BadgeMilestone[];
     streak: StreakSummaryLike;
     narration: Record<TrendRange, AnalysisPayload>;
@@ -46,12 +27,6 @@ interface TrendsProps {
 
 export default function Trends({
     ctlTrend,
-    loadTrend,
-    vdotHistory,
-    vdotSourceCategory,
-    paceConsistencyHistory,
-    distanceRecords,
-    paceRecords,
     badgeMilestones,
     streak,
     narration,
@@ -106,45 +81,6 @@ export default function Trends({
 
                     <motion.div variants={fadeInUp}>
                         <StreakBadge streak={streak} />
-                    </motion.div>
-
-                    <motion.div variants={fadeInUp}>
-                        <LoadTrend trend={loadTrend} range={range} />
-                    </motion.div>
-
-                    <motion.div variants={fadeInUp}>
-                        <VdotTrend
-                            trend={vdotHistory}
-                            sourceCategory={vdotSourceCategory}
-                            range={range}
-                        />
-                    </motion.div>
-
-                    <motion.div variants={fadeInUp}>
-                        <PaceConsistencyTrend
-                            trend={paceConsistencyHistory}
-                            range={range}
-                        />
-                    </motion.div>
-
-                    <motion.div
-                        variants={fadeInUp}
-                        className="flex flex-col gap-1"
-                    >
-                        <span className="text-label-micro text-text-3">
-                            Always full history
-                        </span>
-                        <p className="text-xs text-text-3">
-                            Personal bests don&apos;t change with the range
-                            above — they&apos;re your all-time numbers.
-                        </p>
-                    </motion.div>
-
-                    <motion.div variants={fadeInUp}>
-                        <PersonalBests
-                            distanceRecords={distanceRecords}
-                            paceRecords={paceRecords}
-                        />
                     </motion.div>
                 </motion.div>
             </PageContainer>

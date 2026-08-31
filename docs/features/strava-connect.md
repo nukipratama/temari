@@ -9,7 +9,6 @@ code_refs:
   - app/Http/Controllers/Auth/StravaAuthController.php
   - app/Http/Controllers/Strava/SyncController.php
   - app/Http/Controllers/Strava/StravaWebhookController.php
-  - app/Http/Controllers/Strava/ResyncActivityController.php
   - app/Http/Controllers/RunnerZonesController.php
   - resources/js/components/StravaSyncButton.tsx
   - resources/js/components/StravaSyncBadge.tsx
@@ -54,7 +53,7 @@ Routes: `auth.strava.redirect` / `auth.strava.callback` in [web.php](../../route
 
 [StravaSyncBadge](../../resources/js/components/StravaSyncBadge.tsx) reflects status in the nav: a green dot + relative "Strava synced" time when ready, a pulsing "Syncing" while syncing, an ember "Strava disconnected · Reconnect" when revoked.
 
-Two more manual re-pulls exist beyond "Sync now": [ResyncActivityController](../../app/Http/Controllers/Strava/ResyncActivityController.php) behind the run detail page's "Resync from Strava", and `RunnerZonesController::resyncFromStrava` behind the HR-zones disclosure's "Resync from Strava" on [[settings-hr-zones]] (which runs [SyncZonesJob](../../app/Jobs/Strava/SyncZonesJob.php) inline rather than queued).
+One more manual re-pull exists beyond "Sync now": `RunnerZonesController::resyncFromStrava` behind the HR-zones disclosure's "Resync from Strava" on [[settings-hr-zones]] (which runs [SyncZonesJob](../../app/Jobs/Strava/SyncZonesJob.php) inline rather than queued). The run detail page had a third — `ResyncActivityController` behind its own "Resync from Strava" — cut in `PP3` (P28) along with its route; [ResyncActivityJob](../../app/Jobs/Strava/ResyncActivityJob.php) survives, still driven by the webhook path.
 
 ## Kill-switch pause
 

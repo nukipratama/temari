@@ -5,19 +5,15 @@ declare(strict_types=1);
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
-use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Story\PastYouMatcher;
-use App\Support\Cooldown;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -86,25 +82,6 @@ it('numbers the run card\'s edition within its rarity across the user\'s collect
         ->assertInertia(fn (Assert $page) => $page
             ->where('card.edition', ['index' => 2, 'total' => 3]));
 });
-
-it('surfaces the run speech Telegram cooldown when a send is on cooldown', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create();
-    $speech = Analysis::factory()->done('Mantap!')->create([
-        'analysis_type' => AnalysisType::PostRunSpeech,
-        'subject_type' => Activity::class,
-        'subject_id' => $activity->id,
-        'discriminator' => null,
-    ]);
-    RateLimiter::hit(Cooldown::notificationKey($speech->id), Cooldown::WINDOW_SECONDS);
-
-    $this->actingAs($user)->get("/activities/{$activity->id}")
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('notificationRetryAfterSeconds', fn (?int $s): bool => $s !== null && $s > 0)
-            ->etc());
-});
-
 
 it('404s when trying to view another user\'s run', function (): void {
     $other = User::factory()->create();
@@ -249,14 +226,13 @@ it('does not run the past-you match or the relative-effort baseline on an insigh
     $headers = insightOnlyHeaders($this->actingAs($user), $activity->id);
 
     $this->mock(PastYouMatcher::class, fn ($mock) => $mock->shouldNotReceive('findMatch'));
-    $this->mock(RelativeEffort::class, fn ($mock) => $mock->shouldNotReceive('forRun'));
 
     $response = $this->actingAs($user)->get("/activities/{$activity->id}", $headers)->assertSuccessful();
 
     $response->assertJsonPath('component', 'Runs/Show');
     $response->assertJsonPath('props.speechAnalysis.type', AnalysisType::PostRunSpeech->value);
     $response->assertJsonPath('props.runInsight.type', AnalysisType::RunInsight->value);
-    foreach (['pastYou', 'relativeEffort', 'card', 'storyLine', 'moodFallback', 'isChainHead'] as $skipped) {
+    foreach (['pastYou', 'card', 'storyLine', 'moodFallback', 'isChainHead'] as $skipped) {
         $response->assertJsonMissingPath("props.{$skipped}");
     }
 });
@@ -315,14 +291,12 @@ it('still runs the past-you match and the relative-effort baseline on a full run
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
 
     $this->mock(PastYouMatcher::class, fn ($mock) => $mock->shouldReceive('findMatch')->once()->andReturn(null));
-    $this->mock(RelativeEffort::class, fn ($mock) => $mock->shouldReceive('forRun')->once()->andReturn(null));
 
     $this->actingAs($user)->get("/activities/{$activity->id}")
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Runs/Show')
-            ->where('pastYou', null)
-            ->where('relativeEffort', null));
+            ->where('pastYou', null));
 });
 
 it('runs no story-line queries when only the run insights are requested', function (): void {

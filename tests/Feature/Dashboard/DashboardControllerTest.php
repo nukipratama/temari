@@ -156,8 +156,8 @@ it('reuses the same daily greeting on a second open within the day', function ()
 });
 
 /**
- * Every briefing trigger on this page (`SuggestionCard`, `KataTemariCompact`,
- * `FeaturedKartuPanel`) polls `router.reload({ only: ['briefing'] })` every
+ * Every briefing trigger on this page (`SuggestionCard`, `KataTemariCompact`)
+ * polls `router.reload({ only: ['briefing'] })` every
  * 3-15s while the analysis generates. Every prop used to be computed in the
  * method body, so each tick re-ran the eight-row recent-run fetch — polylines
  * and stream summaries included — plus the weekly-snapshot read, for props the
@@ -236,8 +236,7 @@ it('ships a real weekPlan when the user has a plan for the current week', functi
             ->component('Home')
             ->where('weekPlan.days', fn (mixed $days): bool => count($days) === 7)
             ->has('weekPlan.sessions_per_week')
-            ->has('weekPlan.phase')
-            ->has('weekPlan.streak_days'));
+            ->has('weekPlan.phase'));
 
     Carbon::setTestNow();
 });

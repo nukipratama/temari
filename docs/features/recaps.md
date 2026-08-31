@@ -43,7 +43,7 @@ Rendered by the same shared [RecapCard](resources/js/components/history/RecapCar
 
 ## Persona / profile voice — on Profile
 
-The profile page surfaces one more Temari narrative (see [[profile]]): **`profileVoice`** ("What Temari says about you"), `AnalysisType::AkuProfileVoice`, keyed **per ISO week**. It carries both readings the page used to bill separately, the 12-week mood persona behind `PersonaBar` and the lifetime/progression numbers, in a single call.
+The profile page surfaces one more Temari narrative (see [[profile]]): **`profileVoice`** ("What Temari says about you"), `AnalysisType::AkuProfileVoice`, keyed **per ISO week**. It carries both readings the page used to bill separately, the 12-week mood persona and the lifetime/progression numbers, in a single call.
 
 It comes from [ProfileController](app/Http/Controllers/ProfileController.php) (`resolveProfileVoice`) and renders via a plain (non-chained) `AnalysisStatus` block. `ai:weekly-profile` re-narrates it once a week with `invalidate: false`, so a mid-week "Reread" is never re-billed by the scheduler.
 

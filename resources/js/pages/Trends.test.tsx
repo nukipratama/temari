@@ -31,12 +31,6 @@ const NARRATION = {
 
 const BASE_PROPS: ComponentProps<typeof Trends> = {
     ctlTrend: [],
-    loadTrend: [],
-    vdotHistory: [],
-    vdotSourceCategory: null,
-    paceConsistencyHistory: [],
-    distanceRecords: [],
-    paceRecords: [],
     badgeMilestones: [],
     streak: {
         weeks: 0,
@@ -79,33 +73,6 @@ describe('Trends', () => {
                 'Not enough training history yet to draw a trend.',
             ),
         ).toBeInTheDocument();
-    });
-
-    it('shows the personal-bests prompt when the user has no records yet', () => {
-        render(<Trends {...BASE_PROPS} />);
-
-        expect(
-            screen.getByText(/Run to set your first personal best/),
-        ).toBeInTheDocument();
-    });
-
-    it('renders a distance record tile when given personal bests', () => {
-        render(
-            <Trends
-                {...BASE_PROPS}
-                distanceRecords={[
-                    {
-                        category: '5km',
-                        label: '5 km',
-                        distanceM: 5000,
-                        valueSec: 1500,
-                        setAt: '2026-06-01',
-                    },
-                ]}
-            />,
-        );
-
-        expect(screen.getByText('5 km')).toBeInTheDocument();
     });
 
     it('renders the streak badge board entry', () => {

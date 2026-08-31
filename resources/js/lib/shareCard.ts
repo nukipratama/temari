@@ -120,8 +120,7 @@ const BORDER_GLOW_BLUR = 60;
  * The mat the card sits on. `--color-cream-deep` is the app's own ground
  * (`AppShell`) and the fill of the share modal's own preview column, so the
  * exported image reads continuous with the app around it. Deliberately NOT
- * `--color-surface`: `useDawnShift` drifts that across five values by time of
- * day, and an exported image has no time of day.
+ * `--color-surface`, which is the page ground rather than the shell's own.
  */
 export const CARD_GROUND = C.creamDeep;
 

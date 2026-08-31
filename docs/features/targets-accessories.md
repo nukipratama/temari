@@ -8,7 +8,6 @@ code_refs:
   - resources/js/pages/Collection/Accessories.tsx
   - app/Http/Controllers/AccessoryController.php
   - resources/js/components/temari/TemariProto.tsx
-  - resources/js/components/celebrations/AccessoryUnlockModal.tsx
 ---
 
 # Accessories
@@ -42,7 +41,10 @@ The [AccessoryController](../../app/Http/Controllers/AccessoryController.php) `i
 
 ### Unlock celebration
 
-When a run earns a *major* accessory, [AccessoryUnlockModal](../../resources/js/components/celebrations/AccessoryUnlockModal.tsx) (mounted globally) pops with Temari wearing the new item and a CTA that routes to `/accessories`. It only opens when the unlock flash carries `is_major`. The unlock itself is granted upstream during ingest — see [[gamification]].
+Cut in `PP3` (P14): the prototype draws no unlock takeover and no toast, so both the modal and the
+`flash.unlock` shared prop that fed them are gone. The unlock itself is still granted upstream
+during ingest (see [[gamification]]) and still lands as an inbox row; `GrantEligibleUnlocksAction`
+still flashes `unlock` into the session, with nothing reading it — `W2` sweeps that.
 
 ## Notes
 

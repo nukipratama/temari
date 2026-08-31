@@ -1,11 +1,4 @@
-import { router } from '@inertiajs/react';
-import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor,
-} from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type {
@@ -121,20 +114,11 @@ function runInsight(
     };
 }
 
-function renderShow(
-    overrides: Partial<Parameters<typeof RunsShow>[0]> = {},
-    {
-        telegramConnected = false,
-        stravaPaused = false,
-    }: { telegramConnected?: boolean; stravaPaused?: boolean } = {},
-) {
-    // telegramConnected is now a shared Inertia prop, read via usePage.
+function renderShow(overrides: Partial<Parameters<typeof RunsShow>[0]> = {}) {
     setMockPage({
         auth: { user: { id: 1, name: 'A', first_name: 'A', avatar_url: null } },
         flash: {},
         demoLoginEnabled: false,
-        telegramConnected,
-        stravaPaused,
     });
     return render(
         <RunsShow
@@ -156,9 +140,7 @@ function renderShow(
             )}
             moodFallback="chill"
             isChainHead
-            notificationRetryAfterSeconds={null}
             pastYou={null}
-            relativeEffort={null}
             {...overrides}
         />,
     );
@@ -194,30 +176,6 @@ describe('Runs/Show', () => {
     it('uses the backend moodFallback when there is no post-run story line', () => {
         renderShow({ storyLine: null, moodFallback: 'wobbly' });
         expect(screen.getAllByText('Wobbly').length).toBeGreaterThan(0);
-    });
-
-    it('shows the relative-effort sub-line under the TRIMP tile when banded', () => {
-        renderShow({
-            relativeEffort: {
-                trimp: 98,
-                baseline: 70,
-                ratio: 1.4,
-                band: 'well_above',
-            },
-        });
-        expect(screen.getByText('harder than usual')).toBeInTheDocument();
-    });
-
-    it('shows no relative-effort sub-line when the baseline is too thin (null band)', () => {
-        renderShow({
-            relativeEffort: {
-                trimp: 98,
-                baseline: null,
-                ratio: null,
-                band: null,
-            },
-        });
-        expect(screen.queryByText(/than usual/)).not.toBeInTheDocument();
     });
 
     it('feeds the detail tiles from the stream summary', () => {
@@ -283,58 +241,12 @@ describe('Runs/Show', () => {
         renderShow();
         expect(screen.getAllByText('Iron Lungs').length).toBeGreaterThan(0);
         expect(screen.getByText('Share')).toBeInTheDocument();
-        expect(screen.getByText('Replay card reveal')).toBeInTheDocument();
-        expect(screen.getByText(/Why this earned Epic/)).toBeInTheDocument();
     });
 
     it('omits the kartu section when card is null', () => {
         renderShow({ card: null });
         expect(screen.queryByText('Iron Lungs')).not.toBeInTheDocument();
         expect(screen.queryByText('Share')).not.toBeInTheDocument();
-    });
-
-    it('surfaces an error and does not reveal when the replay POST fails (419/429/500)', async () => {
-        const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 419 });
-        const original = globalThis.fetch;
-        globalThis.fetch = fetchMock as unknown as typeof fetch;
-        vi.mocked(router.reload).mockReset();
-        try {
-            renderShow();
-            await act(async () => {
-                fireEvent.click(screen.getByText('Replay card reveal'));
-            });
-            expect(
-                await screen.findByText(/Couldn't replay the card/),
-            ).toBeInTheDocument();
-            expect(router.reload).not.toHaveBeenCalledWith({
-                only: ['pendingReveal'],
-            });
-        } finally {
-            globalThis.fetch = original;
-        }
-    });
-
-    it('reloads the pendingReveal prop on a successful replay POST', async () => {
-        const fetchMock = vi.fn().mockResolvedValue({ ok: true });
-        const original = globalThis.fetch;
-        globalThis.fetch = fetchMock as unknown as typeof fetch;
-        vi.mocked(router.reload).mockReset();
-        try {
-            renderShow();
-            await act(async () => {
-                fireEvent.click(screen.getByText('Replay card reveal'));
-            });
-            await waitFor(() =>
-                expect(router.reload).toHaveBeenCalledWith({
-                    only: ['pendingReveal'],
-                }),
-            );
-            expect(
-                screen.queryByText(/Couldn't replay the card/),
-            ).not.toBeInTheDocument();
-        } finally {
-            globalThis.fetch = original;
-        }
     });
 
     it('mounts the map+weather panel with the run detail', () => {
@@ -512,75 +424,5 @@ describe('Runs/Show', () => {
         expect(
             screen.getByText(/Technical detail hasn't been read yet/),
         ).toBeInTheDocument();
-    });
-
-    it('resyncs the activity from Strava when the Resync button is clicked', () => {
-        vi.mocked(router.post).mockReset();
-        renderShow();
-        fireEvent.click(screen.getByText('Resync from Strava'));
-        expect(router.post).toHaveBeenCalledWith(
-            '/activities/99/resync',
-            {},
-            expect.objectContaining({
-                preserveScroll: true,
-                onStart: expect.any(Function),
-                onFinish: expect.any(Function),
-            }),
-        );
-    });
-
-    it('hides the Resync button entirely while the Strava kill-switch is off', () => {
-        renderShow({}, { stravaPaused: true });
-        expect(
-            screen.queryByText('Resync from Strava'),
-        ).not.toBeInTheDocument();
-    });
-
-    it('disables the Resync button and shows a pending label while the request is in flight', () => {
-        vi.mocked(router.post).mockReset();
-        vi.mocked(router.post).mockImplementation((_url, _data, options) => {
-            options?.onStart?.({} as never);
-        });
-        renderShow();
-        const button = screen
-            .getByText('Resync from Strava')
-            .closest('button')!;
-        fireEvent.click(button);
-        expect(button).toBeDisabled();
-        expect(button).toHaveTextContent('Syncing…');
-    });
-
-    it('shows a muted send button that nudges (no send) when no channel is wired', () => {
-        vi.mocked(router.post).mockReset();
-        renderShow();
-        fireEvent.click(screen.getByText('Send notification'));
-        expect(router.post).not.toHaveBeenCalled();
-    });
-
-    it('pushes the run to Telegram when connected and the button is clicked', () => {
-        vi.mocked(router.post).mockReset();
-        renderShow({}, { telegramConnected: true });
-        fireEvent.click(screen.getByText('Send notification'));
-        expect(router.post).toHaveBeenCalledWith(
-            '/activities/99/send',
-            {},
-            expect.objectContaining({
-                preserveScroll: true,
-                onStart: expect.any(Function),
-                onFinish: expect.any(Function),
-            }),
-        );
-    });
-
-    it('disables the Telegram button and shows a pending label while the request is in flight', () => {
-        vi.mocked(router.post).mockReset();
-        vi.mocked(router.post).mockImplementation((_url, _data, options) => {
-            options?.onStart?.({} as never);
-        });
-        renderShow({}, { telegramConnected: true });
-        const button = screen.getByText('Send notification').closest('button')!;
-        fireEvent.click(button);
-        expect(button).toBeDisabled();
-        expect(button).toHaveTextContent('Sending…');
     });
 });

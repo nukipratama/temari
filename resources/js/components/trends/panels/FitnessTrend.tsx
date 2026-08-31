@@ -1,15 +1,5 @@
-import type { Chart, ChartEvent, Plugin } from 'chart.js';
-
 import { motion } from 'framer-motion';
-import {
-    lazy,
-    Suspense,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Skeleton from '@/components/ui/Skeleton';
@@ -38,10 +28,6 @@ export interface FitnessTrendPoint {
 export interface BadgeMilestone {
     key: string;
     date: string;
-}
-
-interface MarkedMilestone extends BadgeMilestone {
-    index: number;
 }
 
 interface FitnessTrendProps {
@@ -74,12 +60,9 @@ function fatigueHint(atl: number): string {
 }
 
 /**
- * Fitness/Fatigue panel, plus badges plotted as milestones on the timeline —
- * the badge-earned dates come from RunCard::firstEarnedDatesForUser(), first
- * occurrence only. react-chartjs-2 registers `plugins` once at chart
- * creation, so the plugin reads live values through refs and an effect asks
- * the chart to repaint explicitly on selection/range change, rather than
- * closing over state that would go stale.
+ * Fitness/Fatigue panel, with the badges earned in the window as chips beneath
+ * it — the badge-earned dates come from RunCard::firstEarnedDatesForUser(),
+ * first occurrence only.
  */
 export default function FitnessTrend({
     trend,
@@ -96,104 +79,12 @@ export default function FitnessTrend({
         [trend, range],
     );
 
-    const marks = useMemo<MarkedMilestone[]>(() => {
-        const index = new Map(windowed.map((p, i) => [p.date, i]));
-        return milestones
-            .filter((m) => index.has(m.date))
-            .map((m) => ({ ...m, index: index.get(m.date)! }));
+    const marks = useMemo<BadgeMilestone[]>(() => {
+        const dates = new Set(windowed.map((p) => p.date));
+        return milestones.filter((m) => dates.has(m.date));
     }, [windowed, milestones]);
 
     const active = marks.find((m) => m.key === selected) ?? null;
-
-    const marksRef = useRef(marks);
-    const selectedRef = useRef(selected);
-    const groundRef = useRef(ground);
-    marksRef.current = marks;
-    selectedRef.current = selected;
-    groundRef.current = ground;
-
-    const chartRef = useRef<Chart<'line'> | null>(null);
-    useEffect(() => {
-        chartRef.current?.update('none');
-    }, [marks, selected, ground]);
-
-    // Badges earned days apart land on the same pixel on a phone at 12
-    // months, so markers within a marker's width of each other collapse
-    // into one that carries a count. The chip list below stays the precise
-    // control for reaching any individual badge.
-    const cluster = useCallback((xFor: (index: number) => number) => {
-        const groups: Array<{ x: number; members: MarkedMilestone[] }> = [];
-        for (const mark of marksRef.current) {
-            const x = xFor(mark.index);
-            const last = groups.at(-1);
-            if (last && x - last.x < 22) last.members.push(mark);
-            else groups.push({ x, members: [mark] });
-        }
-        return groups;
-    }, []);
-
-    const milestonePlugin = useMemo<Plugin<'line'>>(
-        () => ({
-            id: 'milestones',
-            afterDatasetsDraw(chart) {
-                const { ctx, chartArea, scales: s } = chart;
-                if (marksRef.current.length === 0) return;
-                ctx.save();
-                for (const group of cluster((i) => s.x.getPixelForValue(i))) {
-                    const { x, members } = group;
-                    const isActive = members.some(
-                        (m) => m.key === selectedRef.current,
-                    );
-                    const g = groundRef.current;
-                    ctx.beginPath();
-                    ctx.setLineDash(isActive ? [] : [2, 4]);
-                    ctx.strokeStyle = isActive
-                        ? g.line
-                        : `${g.secondaryLine}59`;
-                    ctx.lineWidth = 1;
-                    ctx.moveTo(x, chartArea.top + 20);
-                    ctx.lineTo(x, chartArea.bottom);
-                    ctx.stroke();
-
-                    ctx.setLineDash([]);
-                    ctx.beginPath();
-                    ctx.arc(
-                        x,
-                        chartArea.top + 10,
-                        isActive ? 11 : 9,
-                        0,
-                        Math.PI * 2,
-                    );
-                    ctx.fillStyle = isActive ? PALETTE.horizon : g.pointBorder;
-                    ctx.fill();
-                    ctx.lineWidth = isActive ? 2 : 1;
-                    ctx.strokeStyle = isActive ? g.line : g.border;
-                    ctx.stroke();
-
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    if (members.length === 1) {
-                        ctx.font = `${isActive ? 13 : 11}px system-ui`;
-                        ctx.fillText(
-                            badgeEmblem(members[0].key),
-                            x,
-                            chartArea.top + 11,
-                        );
-                    } else {
-                        ctx.font = '600 11px system-ui';
-                        ctx.fillStyle = g.tick;
-                        ctx.fillText(
-                            `${members.length}`,
-                            x,
-                            chartArea.top + 11,
-                        );
-                    }
-                }
-                ctx.restore();
-            },
-        }),
-        [cluster],
-    );
 
     const labels = useMemo(
         () => windowed.map((p) => formatNaiveIdDate(p.date, 'short')),
@@ -236,41 +127,7 @@ export default function FitnessTrend({
             maintainAspectRatio: false,
             animation: { duration: 900, easing: 'easeOutQuart' as const },
             layout: { padding: { top: 24 } },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        title: (items: Array<{ dataIndex: number }>) => {
-                            const i = items[0]?.dataIndex ?? 0;
-                            const row = windowed[i];
-                            const dateLabel = row
-                                ? formatNaiveIdDate(row.date, 'short')
-                                : '';
-                            const mark = marks.find(
-                                (m) => m.date === row?.date,
-                            );
-                            return mark
-                                ? `${dateLabel} · ${badgeEmblem(mark.key)} ${badgeName(mark.key)}`
-                                : dateLabel;
-                        },
-                    },
-                },
-            },
-            onClick: (_e: ChartEvent, _els: unknown, chart: Chart) => {
-                const px = chart.tooltip?.caretX;
-                if (px == null) return;
-                const near = cluster((i) => chart.scales.x.getPixelForValue(i))
-                    .map((g) => ({ g, d: Math.abs(g.x - px) }))
-                    .sort((a, b) => a.d - b.d)[0];
-                if (!near || near.d >= 18) return;
-                // Repeat taps step through a cluster rather than sticking on
-                // its first badge.
-                setSelected((cur) => {
-                    const keys = near.g.members.map((m) => m.key);
-                    const at = cur === null ? -1 : keys.indexOf(cur);
-                    return at === keys.length - 1 ? null : keys[at + 1];
-                });
-            },
+            plugins: { legend: { display: false } },
             scales: {
                 x: { grid: { display: false }, ticks: { display: false } },
                 y: {
@@ -279,7 +136,7 @@ export default function FitnessTrend({
                 },
             },
         }),
-        [windowed, marks, cluster, ground],
+        [ground],
     );
 
     const latest = windowed[windowed.length - 1];
@@ -379,15 +236,6 @@ export default function FitnessTrend({
                     />
                     Fatigue
                 </span>
-                <span className="inline-flex items-center gap-2">
-                    <span
-                        aria-hidden
-                        className="grid size-4 place-items-center rounded-full border border-border bg-popover text-[9px]"
-                    >
-                        🏅
-                    </span>
-                    Badge earned
-                </span>
             </div>
 
             <motion.div
@@ -402,31 +250,12 @@ export default function FitnessTrend({
                 <Suspense
                     fallback={<Skeleton className="h-full w-full rounded-xl" />}
                 >
-                    <Line
-                        ref={chartRef}
-                        data={data}
-                        options={options}
-                        plugins={[milestonePlugin]}
-                    />
+                    <Line data={data} options={options} />
                 </Suspense>
             </motion.div>
 
             <div className="flex flex-col gap-3">
-                <div className="flex items-baseline justify-between gap-3">
-                    <h3 className="text-sm font-semibold text-foreground">
-                        Milestones on this stretch
-                    </h3>
-                    <span className="text-xs text-text-3">
-                        {marks.length} badges
-                    </span>
-                </div>
-
-                {marks.length === 0 ? (
-                    <p className="text-sm text-text-3">
-                        No badges landed in this window. Widen the range to see
-                        the rest of the year.
-                    </p>
-                ) : (
+                {marks.length > 0 && (
                     <ul className="flex flex-wrap gap-2">
                         {marks.map((mark) => (
                             <li key={mark.key} className="shrink-0">
@@ -461,7 +290,7 @@ export default function FitnessTrend({
                     </ul>
                 )}
 
-                {active ? (
+                {active !== null && (
                     <div className="rounded-(--radius-panel) border border-horizon-ink/30 bg-horizon/12 p-4">
                         <p className="text-sm font-semibold text-foreground">
                             {badgeEmblem(active.key)} {badgeName(active.key)}
@@ -473,11 +302,6 @@ export default function FitnessTrend({
                             {BADGE_ABILITY[active.key]}
                         </p>
                     </div>
-                ) : (
-                    <p className="text-xs text-text-3">
-                        Pick a badge to mark it on the line, or tap a marker on
-                        the chart.
-                    </p>
                 )}
             </div>
         </div>

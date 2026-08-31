@@ -117,7 +117,7 @@ edge carries the contrast. Never darken them instead.
 | Horizon | `horizon` (`#ade047`), `horizon-deep`, `horizon-ink` | Primary CTA, "earned" / PR state, Temari accent. Pewter: lime. `horizon-ink` for the lime **as text**; `horizon-deep` is a *fill* and is never text. |
 | Cream | `cream` (`#f1f5f8`), `cream-deep` | Paper / secondary surface, on-dark text. Pewter: cold near-white. |
 | Ink | `ink` / `ink-2` / `ink-3` (+ `ink-on-sky`, `ink-on-rarity`) | 3-tier text contrast (primary / supporting / meta); `ink-on-sky` = muted label on a dark sky panel, `ink-on-rarity` = label on a vivid rarity fill |
-| Surface | `surface`, `surface-card`, `surface-elev`, `surface-warm`, `surface-sunken` | App surfaces (dawn-shift drifts `surface`); `surface-card` = the one linen every card shares; `surface-elev` = floating UI only |
+| Surface | `surface`, `surface-card`, `surface-elev`, `surface-warm`, `surface-sunken` | App surfaces; `surface-card` = the one linen every card shares; `surface-elev` = floating UI only |
 | Line | `line`, `line-strong` | Borders. `line` is the default hairline; `line-strong` is the dashed placeholder edge |
 | Mood | `mood-{blazing,easy,wobbly,gassed,overloaded,chill}` (+ `-bg`, `-ink`) | Calendar cells, mood badges. `-bg` is the pastel cell tint, `-ink` the label |
 | Rarity | `rarity-{common,uncommon,rare,epic,legendary}` (+ `-ink`) | Card rarity. Loud on purpose: it is the collectible signal |
@@ -245,7 +245,7 @@ Four warm-tinted steps. Warm, not neutral: a grey shadow on a cream ground reads
 | Resting | `shadow-e1` | `surface-card` / `surface-warm` | Cards in the normal document flow |
 | Floating | `shadow-e2` | `surface-elev` | Popovers, dropdowns, toasts, tooltips |
 | Sheet | `shadow-e3` | `surface-elev` / `cream` | Bottom sheets, large detached panels |
-| Modal | `shadow-e4` | `cream` / `sky-deep` | Full modals and takeovers (share card, unlock, kartu mount) |
+| Modal | `shadow-e4` | `cream` / `sky-deep` | Full modals (share card, kartu mount) |
 
 Tailwind's default `shadow-*` scale is not used and is rejected by the source guard.
 `surface-elev` is reserved for the floating step — never a resting card (that is `surface-card` /
@@ -278,17 +278,15 @@ the confetti burst — reads the same preference itself through
    a thin top bar mounted as a **sibling** of AppShell's `<main>`, never a wrapper around it — that
    element is deliberately unkeyed (keying it once caused 25 card remounts on Collection). It's
    gated on Inertia's own `visit.showProgress` flag, so background/partial reloads (AI-analysis
-   polling, card-reveal `only` refreshes) never light the bar.
+   polling and other `only` refreshes) never light the bar.
 2. **Data reveal** — a page's first showing of real data, not every render. Stat count-ups
    (`useCountUp` + `countUpEase`, an ease-out curve with no overshoot — a tallying number should
    land exactly on target), chart/route draw-ins (`drawIn`, SVG `pathLength` 0→1), and staggered
    group reveals (`staggerContainer` wrapping `fadeInUp` children).
-3. **Celebratory** — unlocks, PRs, streaks: the existing celebration overlays
-   ([CardReveal](../resources/js/components/card/CardReveal.tsx),
-   [AccessoryUnlockModal](../resources/js/components/celebrations/AccessoryUnlockModal.tsx),
-   [UnlockToast](../resources/js/components/temari/UnlockToast.tsx)) and the mascot's
-   `idleByMood` / fidget keyframes in `lib/motion.ts`. Reserved for moments that are actually
-   earned — never layer tier 3 onto routine navigation or data loading.
+3. **Celebratory** — the mascot's `idleByMood` / fidget keyframes in `lib/motion.ts`. Reserved
+   for moments that are actually earned — never layer tier 3 onto routine navigation or data
+   loading. The celebration overlays this tier was written for (the card reveal, the unlock toast
+   and the accessory takeover) were cut in `PP3`.
 
 ## Gradients & atmospherics
 
@@ -360,7 +358,7 @@ plain `Record` lookups; do **not** fold those into cva.
 
 - **Using a fill colour as a label.** `text-mood-blazing` / `text-rarity-legendary` / `text-horizon-deep` / `text-leaf-deep` / `text-ember-deep` fail contrast on paper. Reach for the `-ink` member. This is exactly the bug the fill/text split exists to prevent, and it happened once inside the generator itself.
 - **Reading `-deep` as "the dark one".** `-deep` is a *fill* for a dark CTA, sized to carry `text-cream`; it is never a label colour. The semantic accents had no `-ink` member until the tier gained one, which is how ~85 call sites reached for `-deep` and how `citrus-deep` shipped at **2.96:1** on the page ground and **2.68:1** on its own `bg-citrus/15` chip. On a *dark* ground the vivid fill is still the right label colour (`text-leaf` on a sky panel), not the ink.
-- **Checking contrast against a ground list you wrote by hand.** Paper drifts with dawn-shift, the app's own page ground is `cream-deep`, a mood chip sits on its `-bg` cell, and a tinted chip sits on the tint rather than the paper. Score against every ground the render produces and take the worst; if you are adding a background, classify it in [grounds.json](../resources/brand/grounds.json) — the build fails until you do.
+- **Checking contrast against a ground list you wrote by hand.** The app's own page ground is `cream-deep`, not `surface`, a mood chip sits on its `-bg` cell, and a tinted chip sits on the tint rather than the paper. Score against every ground the render produces and take the worst; if you are adding a background, classify it in [grounds.json](../resources/brand/grounds.json) — the build fails until you do.
 - **Darkening a light fill instead of outlining it.** Legendary gold and uncommon green stay vivid and take a 2px `-ink` outline; the edge carries the contrast.
 - **Raw Tailwind colors, default shadows, off-scale radii.** Every utility must resolve to a token. Enforced in CI by [scripts/check-raw-palette.mjs](../scripts/check-raw-palette.mjs).
 - **`text-text-3` on body prose.** The `ink-3` tier is for labels/timestamps/metadata only, never wrapping a `<p>` of running text. Sweep `grep text-text-3` before merging.

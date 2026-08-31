@@ -28,16 +28,6 @@ const briefing: BriefingResult = {
         subject_id: 1,
         discriminator: '2026-06-12',
     },
-    featuredKartuVoice: {
-        id: 5,
-        status: 'done',
-        content: 'This card proves you can go further than you think.',
-        type: 'briefing_featured_kartu_voice',
-        subject_type: 'briefing_user_day',
-        subject_id: 1,
-        discriminator: '7',
-    },
-    featuredCardId: 7,
     recoveryLabel: 'Recovery: 41h',
     recoveryTone: 'positive',
     recoveryHoursLabel: '41h',
@@ -163,7 +153,6 @@ const weekPlan: WeekPlan = {
     phase: 'build',
     planned_km_this_week: 32,
     credited_this_week: 2,
-    streak_days: 0,
     days: [
         {
             id: 1,
@@ -299,13 +288,12 @@ describe('Home', () => {
         ).toBeInTheDocument();
     });
 
-    it('demotes the week, vitals, last run and kartu below the verdict', () => {
+    it('demotes the week, vitals and last run below the verdict', () => {
         renderHome();
 
         expect(screen.getByText(/This week ·/)).toBeInTheDocument();
         expect(screen.getByText('Vibe')).toBeInTheDocument();
         expect(screen.getByText('Morning negative-split')).toBeInTheDocument();
-        expect(screen.getAllByText('Game Changer').length).toBeGreaterThan(0);
     });
 
     it('opens the "this week" disclosure by default, so nothing is hidden on first paint', () => {

@@ -6,9 +6,7 @@ use App\Enums\Badge;
 use App\Models\AI\Analysis;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\PersonalRecord;
 use App\Models\RunCard;
-use App\Models\TrendDailySnapshot;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
@@ -110,93 +108,11 @@ it('never surfaces another user\'s narration', function (): void {
         ->assertInertia(fn (Assert $page) => $page->where('narration.30d.status', 'pending'));
 });
 
-it('renders an empty load trend for a fresh user', function (): void {
+it('renders empty badge milestones for a fresh user', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page->where('loadTrend', []));
-});
-
-it('renders a load trend from the user\'s TRIMP history', function (): void {
-    $user = User::factory()->create();
-    seedTrendsTrimpDay($user, 80);
-
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('loadTrend', fn (mixed $trend): bool => collect($trend)
-                ->contains(fn (array $day): bool => $day['strain'] !== null)));
-});
-
-it('renders empty VDOT and pace consistency histories for a fresh user', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('vdotHistory', [])
-            ->where('vdotSourceCategory', null)
-            ->where('paceConsistencyHistory', []));
-});
-
-it('renders VDOT and pace consistency histories from the user\'s snapshots', function (): void {
-    $user = User::factory()->create();
-    TrendDailySnapshot::factory()->for($user)->create([
-        'snapshot_date' => now()->toDateString(),
-        'vdot' => 42.5,
-        'pace_variability_sec' => 9.5,
-    ]);
-
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('vdotHistory.0.vdot', 42.5)
-            ->where('paceConsistencyHistory.0.variabilitySec', 9.5));
-});
-
-it('sets vdotSourceCategory from the user\'s limiting personal record', function (): void {
-    $user = User::factory()->create();
-    PersonalRecord::factory()->for($user)->create([
-        'category' => '10km',
-        'value_sec' => 3600,
-    ]);
-
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page->where('vdotSourceCategory', '10 km'));
-});
-
-it('never surfaces another user\'s load or snapshot history', function (): void {
-    $user = User::factory()->create();
-    $other = User::factory()->create();
-    seedTrendsTrimpDay($other, 80);
-    TrendDailySnapshot::factory()->for($other)->create();
-
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('loadTrend', [])
-            ->where('vdotHistory', [])
-            ->where('paceConsistencyHistory', []));
-});
-
-it('renders empty personal bests and badge milestones for a fresh user', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('distanceRecords', [])
-            ->where('paceRecords', [])
-            ->where('badgeMilestones', []));
-});
-
-it('splits personal records into distanceRecords and paceRecords, distance-ascending', function (): void {
-    $user = User::factory()->create();
-    PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 3000]);
-    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
-    PersonalRecord::factory()->for($user)->create(['category' => 'best_5min', 'value_sec' => 220]);
-
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('distanceRecords.0.category', '5km')
-            ->where('distanceRecords.1.category', '10km')
-            ->where('paceRecords.0.category', 'best_5min')
-            ->where('paceRecords.0.paceSec', 220));
+        ->assertInertia(fn (Assert $page) => $page->where('badgeMilestones', []));
 });
 
 it('sets a badge milestone at its first-earned date only', function (): void {
@@ -214,19 +130,15 @@ it('sets a badge milestone at its first-earned date only', function (): void {
                 && $milestones[0]['key'] === Badge::EarlyBird->value));
 });
 
-it('never surfaces another user\'s personal bests or badges', function (): void {
+it('never surfaces another user\'s badges', function (): void {
     $user = User::factory()->create();
     $other = User::factory()->create();
-    PersonalRecord::factory()->for($other)->create(['category' => '5km']);
     $activity = Activity::factory()->for($other)->create();
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()->subDay()]);
     RunCard::factory()->for($activity)->create(['badges' => [Badge::EarlyBird->value]]);
 
     $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('distanceRecords', [])
-            ->where('paceRecords', [])
-            ->where('badgeMilestones', []));
+        ->assertInertia(fn (Assert $page) => $page->where('badgeMilestones', []));
 });
 
 it('reports a zero streak for a fresh user', function (): void {

@@ -8,7 +8,6 @@ use App\Http\Requests\StoreRaceGoalRequest;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Services\Run\Metrics\RiegelProjector;
-use App\Services\Run\Metrics\TrainingLoad;
 use App\Support\SharedPropCacheKey;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,7 +23,7 @@ use Inertia\Response;
  */
 class RaceController extends Controller
 {
-    public function index(Request $request, RiegelProjector $projector, TrainingLoad $trainingLoad): Response
+    public function index(Request $request, RiegelProjector $projector): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -34,7 +33,6 @@ class RaceController extends Controller
         return Inertia::render('Race', [
             'race' => $this->racePayload($race),
             'projection' => $race === null ? null : $projector->project($user, (float) $race->distance_m),
-            'ctlTrend' => $trainingLoad->ctlTrend($user),
         ]);
     }
 

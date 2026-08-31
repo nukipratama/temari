@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Models\Activity;
-use App\Models\RunCard;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Models\UserUnlock;
@@ -66,14 +64,6 @@ it('does not block a demo user from equipping an accessory (interactive sandbox)
         ->where('user_id', $user->id)
         ->where('unlock_key', 'accessory.medal_first')
         ->value('equipped'))->toBeTrue();
-});
-
-it('does not block a demo user from marking a card seen (passive UX write)', function (): void {
-    $user = User::factory()->create(['is_demo' => true]);
-    $card = RunCard::factory()->for(Activity::factory()->for($user))->create();
-
-    expect($this->actingAs($user)->postJson("/api/cards/{$card->id}/seen")->status())
-        ->not->toBe(403);
 });
 
 it('does not block a GET read from the demo user', function (): void {

@@ -2,7 +2,6 @@ import { useState } from 'react';
 
 import type { InboxItem, NotificationKind } from '@/types/inertia';
 
-import { Button } from '@/components/ui/button';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
@@ -45,8 +44,6 @@ interface InboxRowProps {
     read: boolean;
     /** The deep-link target: outlined so a push tap lands somewhere obvious. */
     focused: boolean;
-    replaying: boolean;
-    onReplay: (item: InboxItem) => void;
     onOpen: (item: InboxItem) => void;
 }
 
@@ -54,13 +51,9 @@ export default function InboxRow({
     item,
     read,
     focused,
-    replaying,
-    onReplay,
     onOpen,
 }: Readonly<InboxRowProps>) {
     const [showAbsolute, setShowAbsolute] = useState(false);
-    const replayLabel = item.unlock ? 'Replay Unlock' : 'Replay Reveal';
-    const canReplay = item.unlock !== null || item.run_card_id !== null;
     const showRarityBadge = item.kind === 'unlock' && item.rarity !== null;
 
     return (
@@ -134,40 +127,16 @@ export default function InboxRow({
                         </p>
                     )}
 
-                    {(canReplay || item.url) && (
+                    {item.url && (
                         <div className="mt-3 flex flex-wrap items-center gap-2">
-                            {canReplay && (
-                                <Button
-                                    size="sm"
-                                    disabled={replaying}
-                                    onClick={() => onReplay(item)}
-                                >
-                                    <Icon
-                                        icon={
-                                            replaying
-                                                ? 'mdi:loading'
-                                                : 'mdi:play-circle-outline'
-                                        }
-                                        width={15}
-                                        height={15}
-                                        aria-hidden
-                                        className={cn(
-                                            replaying && 'animate-spin',
-                                        )}
-                                    />
-                                    {replaying ? 'Replaying' : replayLabel}
-                                </Button>
-                            )}
-                            {item.url && (
-                                <PillLink
-                                    href={item.url}
-                                    tone="outline"
-                                    size="sm"
-                                    onClick={() => onOpen(item)}
-                                >
-                                    Open
-                                </PillLink>
-                            )}
+                            <PillLink
+                                href={item.url}
+                                tone="outline"
+                                size="sm"
+                                onClick={() => onOpen(item)}
+                            >
+                                Open
+                            </PillLink>
                         </div>
                     )}
                 </div>

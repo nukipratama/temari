@@ -33,7 +33,7 @@ function lastPostCall() {
 
 describe('Race', () => {
     it('shows the empty state and default form when there is no race', () => {
-        render(<Race race={null} projection={null} ctlTrend={[]} />);
+        render(<Race race={null} projection={null} />);
 
         expect(
             screen.getByText('No race on the calendar yet.'),
@@ -44,7 +44,7 @@ describe('Race', () => {
     });
 
     it('renders the active race summary and projection', async () => {
-        render(<Race race={RACE} projection={PROJECTION} ctlTrend={[]} />);
+        render(<Race race={RACE} projection={PROJECTION} />);
 
         expect(screen.getByText('Jakarta 10K')).toBeInTheDocument();
         expect(screen.getByText('10.0')).toBeInTheDocument();
@@ -62,7 +62,7 @@ describe('Race', () => {
     });
 
     it('explains there is no projection yet when the race has no PR to anchor from', () => {
-        render(<Race race={RACE} projection={null} ctlTrend={[]} />);
+        render(<Race race={RACE} projection={null} />);
 
         expect(screen.getByText(/No personal record yet/)).toBeInTheDocument();
     });
@@ -71,7 +71,7 @@ describe('Race', () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date('2026-11-26T12:00:00'));
 
-        render(<Race race={RACE} projection={null} ctlTrend={[]} />);
+        render(<Race race={RACE} projection={null} />);
 
         // The initial render already captured the countdown target under the
         // fake system time; switch back to real timers so the count-up's
@@ -83,7 +83,7 @@ describe('Race', () => {
     });
 
     it('submits the form with distance in meters and goal time in seconds', () => {
-        render(<Race race={null} projection={null} ctlTrend={[]} />);
+        render(<Race race={null} projection={null} />);
 
         fireEvent.change(screen.getByLabelText('Race day'), {
             target: { value: '2026-12-25' },
@@ -115,7 +115,7 @@ describe('Race', () => {
     });
 
     it('accepts a custom distance typed directly, not just a preset pill', () => {
-        render(<Race race={null} projection={null} ctlTrend={[]} />);
+        render(<Race race={null} projection={null} />);
 
         // race_date is required for the native form submit event to fire at
         // all — without it the click never reaches router.post.
@@ -132,7 +132,7 @@ describe('Race', () => {
     });
 
     it('shows a saving state between the router request starting and finishing', () => {
-        render(<Race race={null} projection={null} ctlTrend={[]} />);
+        render(<Race race={null} projection={null} />);
 
         fireEvent.change(screen.getByLabelText('Race day'), {
             target: { value: '2026-12-25' },
@@ -155,7 +155,7 @@ describe('Race', () => {
     });
 
     it('refuses to submit a goal time the server would reject outright', () => {
-        render(<Race race={null} projection={null} ctlTrend={[]} />);
+        render(<Race race={null} projection={null} />);
 
         fireEvent.change(screen.getByLabelText('Minutes'), {
             target: { value: '0' },
@@ -168,7 +168,7 @@ describe('Race', () => {
     });
 
     it('stops the date picker short of a race day the server would reject', () => {
-        render(<Race race={null} projection={null} ctlTrend={[]} />);
+        render(<Race race={null} projection={null} />);
 
         const min = screen.getByLabelText('Race day').getAttribute('min') ?? '';
 
@@ -179,7 +179,7 @@ describe('Race', () => {
     });
 
     it('sends a null name when left blank', () => {
-        render(<Race race={null} projection={null} ctlTrend={[]} />);
+        render(<Race race={null} projection={null} />);
 
         fireEvent.change(screen.getByLabelText('Race day'), {
             target: { value: '2026-12-25' },
@@ -191,7 +191,7 @@ describe('Race', () => {
     });
 
     it('warns without blocking submission when the goal implies an implausible pace', () => {
-        render(<Race race={RACE} projection={PROJECTION} ctlTrend={[]} />);
+        render(<Race race={RACE} projection={PROJECTION} />);
 
         // 10K in 25:00 = 150 sec/km, under the world-record-pace floor.
         fireEvent.change(screen.getByLabelText('Minutes'), {
@@ -210,7 +210,7 @@ describe('Race', () => {
     });
 
     it("warns when the goal is well ahead of the athlete's own projected range for the same distance", () => {
-        render(<Race race={RACE} projection={PROJECTION} ctlTrend={[]} />);
+        render(<Race race={RACE} projection={PROJECTION} />);
 
         // 10K in 33:20 = 200 sec/km: a plausible pace, but well inside
         // PERSONALIZED_STRETCH_RATIO of the projection's own low_sec (2,900).
@@ -227,7 +227,7 @@ describe('Race', () => {
     });
 
     it('stays quiet about ambition once the custom distance no longer matches the projection', () => {
-        render(<Race race={RACE} projection={PROJECTION} ctlTrend={[]} />);
+        render(<Race race={RACE} projection={PROJECTION} />);
 
         fireEvent.change(screen.getByLabelText('Minutes'), {
             target: { value: '33' },
@@ -246,7 +246,7 @@ describe('Race', () => {
     });
 
     it('pre-fills the form from the active race for editing', () => {
-        render(<Race race={RACE} projection={null} ctlTrend={[]} />);
+        render(<Race race={RACE} projection={null} />);
 
         expect(
             (screen.getByLabelText('Race day') as HTMLInputElement).value,

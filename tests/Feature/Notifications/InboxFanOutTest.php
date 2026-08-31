@@ -93,9 +93,9 @@ it('does not add a second inbox row when the notification is retried', function 
     expect(InboxNotification::query()->count())->toBe(1);
 });
 
-// "Replay" means the row can re-arm the real reveal, not that it stored a
-// screenshot of one: api.cards.replay takes the card id straight from here.
-it('carries enough payload to replay the card reveal weeks later', function (): void {
+// The row carries the card's own facts rather than a rendered snapshot, so the
+// inbox can style it weeks later without a join.
+it('carries the card id and rarity alongside the activity', function (): void {
     expectPushSends(1);
     $user = fullyWiredUser();
     $activity = Activity::factory()->for($user)->create();
@@ -109,12 +109,6 @@ it('carries enough payload to replay the card reveal weeks later', function (): 
     expect($payload['run_card_id'])->toBe($card->id)
         ->and($payload['activity_id'])->toBe($activity->id)
         ->and($payload['rarity'])->toBe($card->rarity->value);
-
-    $this->actingAs($user)
-        ->post(route('api.cards.replay', $payload['run_card_id']))
-        ->assertOk();
-
-    expect($user->fresh()->pending_reveal_card_id)->toBe($card->id);
 });
 
 // The public demo is the shop window: the notification centre has to be

@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 
 import ErrorBanner from '@/components/ErrorBanner';
-import { useDawnShift } from '@/hooks/useDawnShift';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useSystemTheme } from '@/hooks/useSystemTheme';
 
@@ -10,7 +9,6 @@ interface BareShellProps {
 }
 
 export default function BareShell({ children }: Readonly<BareShellProps>) {
-    useDawnShift();
     useSwipeBack();
     useSystemTheme();
 

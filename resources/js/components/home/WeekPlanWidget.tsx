@@ -159,16 +159,9 @@ export default function WeekPlanWidget({
                 <SectionLabel dot dotClass="bg-leaf" className="mb-0">
                     This week&apos;s plan
                 </SectionLabel>
-                <div className="flex items-center gap-2">
-                    {weekPlan.streak_days > 0 && (
-                        <span className="text-label-micro text-text-3">
-                            {weekPlan.streak_days} Credited In A Row
-                        </span>
-                    )}
-                    <Chip tone={PHASE_TONE[weekPlan.phase] ?? 'neutral'}>
-                        {PHASE_LABEL[weekPlan.phase] ?? weekPlan.phase}
-                    </Chip>
-                </div>
+                <Chip tone={PHASE_TONE[weekPlan.phase] ?? 'neutral'}>
+                    {PHASE_LABEL[weekPlan.phase] ?? weekPlan.phase}
+                </Chip>
             </div>
 
             <div className="mt-4 flex flex-col items-center gap-4 min-[900px]:gap-6">

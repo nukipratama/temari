@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ActivityDetail, Rarity } from '@/types/inertia';
-
 import {
     atlHint,
     atlTone,
@@ -9,7 +7,6 @@ import {
     districtFromLocation,
     formatIdDateUpper,
     formatSignedForm,
-    featuredCardFor,
     formatWeather,
     monotonyHint,
     monotonyTone,
@@ -18,38 +15,6 @@ import {
     strainTone,
 } from './helpers';
 
-function runWith(
-    overrides: Partial<ActivityDetail>,
-    cardOverrides?: { rarity?: Rarity; id?: number; special_move?: string },
-): ActivityDetail {
-    return {
-        id: overrides.id ?? 1,
-        activity_id: overrides.activity_id ?? 99,
-        name: 'Run',
-        start_date_local: '2026-05-20T07:00',
-        distance: 5000,
-        elapsed_time: 1800,
-        trimp_edwards: 60,
-        average_heartrate: 145,
-        ...overrides,
-        activity: cardOverrides
-            ? {
-                  id: 99,
-                  user_id: 1,
-                  analyzed_at: '2026-05-20',
-                  run_card: {
-                      id: cardOverrides.id ?? 7,
-                      activity_id: 99,
-                      rarity: cardOverrides.rarity ?? 'common',
-                      special_move:
-                          cardOverrides.special_move ?? 'Steady Stride',
-                      badges: ['negative_split'],
-                  },
-              }
-            : undefined,
-    } as ActivityDetail;
-}
-
 describe('formatSignedForm', () => {
     it('prepends + for positive form', () => {
         expect(formatSignedForm(2.3)).toBe('+2.3');
@@ -57,39 +22,6 @@ describe('formatSignedForm', () => {
 
     it('keeps the - sign for negative form', () => {
         expect(formatSignedForm(-1.7)).toBe('-1.7');
-    });
-});
-
-describe('featuredCardFor', () => {
-    it('returns null when the featured card id is null', () => {
-        const run = runWith(
-            {},
-            { id: 7, rarity: 'epic', special_move: 'Some Move' },
-        );
-        expect(featuredCardFor([run], null)).toBeNull();
-    });
-
-    it('returns null when no run matches the featured card id', () => {
-        const run = runWith(
-            {},
-            { id: 7, rarity: 'epic', special_move: 'Some Move' },
-        );
-        expect(featuredCardFor([run], 999)).toBeNull();
-    });
-
-    it('builds the display model for the server-chosen card', () => {
-        const chosen = runWith(
-            { id: 2, activity_id: 2, start_date_local: '2026-05-20' },
-            { id: 2, rarity: 'epic', special_move: 'Chosen One' },
-        );
-        const other = runWith(
-            { id: 3, activity_id: 3, start_date_local: '2026-05-21' },
-            { id: 3, rarity: 'legendary', special_move: 'Not This' },
-        );
-        const featured = featuredCardFor([other, chosen], 2);
-        expect(featured?.name).toBe('Chosen One');
-        // The CTA links to the card detail page, so it carries the card id, not the run id.
-        expect(featured?.cardId).toBe(2);
     });
 });
 

@@ -46,7 +46,6 @@ function weekOf(
         phase: 'build',
         planned_km_this_week: 32,
         credited_this_week: 2,
-        streak_days: 0,
         days,
         ...overrides,
     };
@@ -72,23 +71,6 @@ describe('WeekPlanWidget', () => {
             expect(screen.getByText('32.0')).toBeInTheDocument();
         });
         expect(screen.getByText('Build')).toBeInTheDocument();
-    });
-
-    it('shows a plain credited-in-a-row readout only when streak_days is positive, never a streak chip', () => {
-        const days = MON_TO_SUN.map((date) => day({ date }));
-
-        const { rerender } = render(
-            <WeekPlanWidget weekPlan={weekOf(days, { streak_days: 3 })} />,
-        );
-        const readout = screen.getByText('3 Credited In A Row');
-        expect(readout).toBeInTheDocument();
-        expect(readout.querySelector('[data-icon]')).toBeNull();
-        expect(screen.queryByText(/streak/i)).not.toBeInTheDocument();
-
-        rerender(
-            <WeekPlanWidget weekPlan={weekOf(days, { streak_days: 0 })} />,
-        );
-        expect(screen.queryByText(/Credited In A Row/)).not.toBeInTheDocument();
     });
 
     it('renders a day glyph icon by session type, not by status', () => {

@@ -8,18 +8,14 @@ use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Actions\Run\Metrics\EstimateThresholdAction;
-use App\Services\Gamification\SeasonStreakSummaryBuilder;
 use App\Services\Run\LifetimeStats;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
-use App\Services\Run\Plan\SeasonService;
 use App\Services\Run\ProgressionSeriesBuilder;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Collection;
 use App\Enums\PrCategory;
-use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -37,19 +33,14 @@ class ProfileController extends Controller
 
     public function __invoke(
         Request $request,
-        AkuProfileVoiceNarrator $profileVoiceNarrator,
         ProgressionSeriesBuilder $progressionSeriesBuilder,
         LifetimeStats $lifetimeStats,
         VdotEstimator $vdotEstimator,
         EstimateThresholdAction $thresholdEstimator,
         TrainingPaceCalculator $trainingPaceCalculator,
-        SeasonService $seasonService,
-        SeasonStreakSummaryBuilder $seasonStreakBuilder,
     ): Response {
         /** @var User $user */
         $user = $request->user();
-        $today = Carbon::today();
-
         $lifetime = $lifetimeStats->forUser($user);
 
         $personalRecords = PersonalRecord::query()
@@ -58,8 +49,6 @@ class ProfileController extends Controller
             ->get();
 
         $progressionByCategory = $this->buildProgressionByCategory($progressionSeriesBuilder, $user, $personalRecords);
-
-        $season = $seasonService->peekCurrent($user, $today);
 
         return Inertia::render('Profile', [
             'identity' => [
@@ -74,14 +63,9 @@ class ProfileController extends Controller
                 'total_km' => $lifetime['total_km'],
                 'longest_run_km' => $lifetime['longest_km'],
             ],
-            'personaMix' => $profileVoiceNarrator->personaMix($user),
             'profileVoice' => $this->resolveProfileVoice($user),
             'progressionByCategory' => $progressionByCategory,
             'fitness' => $this->fitness($vdotEstimator, $thresholdEstimator, $trainingPaceCalculator, $user),
-            'seasonStreak' => [
-                'season' => $seasonStreakBuilder->seasonPayload($user, $season, $today),
-                'streak' => $seasonStreakBuilder->streakPayload($user, $today),
-            ],
         ]);
     }
 
