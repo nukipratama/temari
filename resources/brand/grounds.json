@@ -204,7 +204,7 @@
                 "resources/js/pages/Auth/Login.tsx": ["paper"],
                 "resources/js/pages/Devtools.tsx": ["paper"]
             },
-            "text": ["horizon-ink"]
+            "text": ["horizon-ink", "icon-accent"]
         },
         "horizon/0.25": {
             "over": {
