@@ -1,12 +1,12 @@
+import type { ReactNode } from 'react';
+
 import { usePage } from '@inertiajs/react';
 import { MotionConfig } from 'framer-motion';
-import { type ReactNode, useState } from 'react';
 
-import type { SharedProps, UnlockFlash } from '@/types/inertia';
+import type { SharedProps } from '@/types/inertia';
 
 import AiCatchingUpBanner from '@/components/AiCatchingUpBanner';
 import AiOutageBanner from '@/components/AiOutageBanner';
-import AccessoryUnlockModal from '@/components/celebrations/AccessoryUnlockModal';
 import ErrorBanner from '@/components/ErrorBanner';
 import FlashNotice from '@/components/FlashNotice';
 import MobileBottomNav from '@/components/MobileBottomNav';
@@ -14,7 +14,6 @@ import MobileTopBar from '@/components/MobileTopBar';
 import RouteProgressBar from '@/components/RouteProgressBar';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
-import UnlockToast from '@/components/temari/UnlockToast';
 import { useDawnShift } from '@/hooks/useDawnShift';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useSystemTheme } from '@/hooks/useSystemTheme';
@@ -29,23 +28,8 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
     useDawnShift();
     useSwipeBack();
     useSystemTheme();
-    const { props, component } = usePage<SharedProps>();
-    const { flash } = props;
+    const { component } = usePage<SharedProps>();
     const hasBottomNav = navTabFor(component) !== null;
-    const unlock = flash?.unlock ?? null;
-    const [majorUnlock, setMajorUnlock] = useState<UnlockFlash | null>(() =>
-        unlock?.is_major ? unlock : null,
-    );
-    const [lastUnlock, setLastUnlock] = useState(unlock);
-
-    // Capture a major unlock flash for the reveal — adjusted during render
-    // (React-endorsed) so the sync setState isn't inside an effect.
-    if (unlock !== lastUnlock) {
-        setLastUnlock(unlock);
-        if (unlock?.is_major) {
-            setMajorUnlock(unlock);
-        }
-    }
 
     return (
         <MotionConfig reducedMotion="user">
@@ -94,15 +78,6 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                 </div>
 
                 <MobileBottomNav />
-                {/* Celebration overlays are sequenced, not stacked: the
-                accessory-unlock modal takes priority over the UnlockToast, so a
-                sync that fires more than one celebration plays them back-to-back
-                instead of both at once. */}
-                {majorUnlock === null && <UnlockToast />}
-                <AccessoryUnlockModal
-                    unlock={majorUnlock}
-                    onClose={() => setMajorUnlock(null)}
-                />
             </div>
         </MotionConfig>
     );

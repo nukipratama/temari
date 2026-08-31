@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Enums\NotificationKind;
 use App\Models\InboxNotification;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -45,7 +44,7 @@ final class InboxController extends Controller
     }
 
     /**
-     * @return array{id: int, kind: string, title: string, body: string|null, created_at: string|null, read_at: string|null, url: string|null, run_card_id: int|null, rarity: string|null, unlock: array{unlock_key: string, name: string, icon: string, is_major: bool}|null}
+     * @return array{id: int, kind: string, title: string, body: string|null, created_at: string|null, read_at: string|null, url: string|null, run_card_id: int|null, rarity: string|null}
      */
     private function present(InboxNotification $row): array
     {
@@ -61,30 +60,6 @@ final class InboxController extends Controller
             'url' => self::stringOrNull($payload['url'] ?? null),
             'run_card_id' => self::intOrNull($payload['run_card_id'] ?? null),
             'rarity' => self::stringOrNull($payload['rarity'] ?? null),
-            'unlock' => self::celebration($row->kind, $payload),
-        ];
-    }
-
-    /**
-     * The unlock celebration verbatim, so the page can hand it straight back to
-     * the takeover component that played it the first time.
-     *
-     * @param  array<string, mixed>  $payload
-     * @return array{unlock_key: string, name: string, icon: string, is_major: bool}|null
-     */
-    private static function celebration(NotificationKind $kind, array $payload): ?array
-    {
-        $key = self::stringOrNull($payload['unlock_key'] ?? null);
-        $name = self::stringOrNull($payload['name'] ?? null);
-        if ($kind !== NotificationKind::Unlock || $key === null || $name === null) {
-            return null;
-        }
-
-        return [
-            'unlock_key' => $key,
-            'name' => $name,
-            'icon' => self::stringOrNull($payload['icon'] ?? null) ?? 'mdi:medal',
-            'is_major' => (bool) ($payload['is_major'] ?? false),
         ];
     }
 

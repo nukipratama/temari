@@ -2,13 +2,8 @@ import { Head, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
-import type {
-    InboxItem,
-    PaginatedResponse,
-    UnlockFlash,
-} from '@/types/inertia';
+import type { InboxItem, PaginatedResponse } from '@/types/inertia';
 
-import AccessoryUnlockModal from '@/components/celebrations/AccessoryUnlockModal';
 import { BUCKET_LABEL, groupByBucket } from '@/components/inbox/inboxBuckets';
 import InboxRow from '@/components/inbox/InboxRow';
 import EmptyPanel from '@/components/ui/EmptyPanel';
@@ -47,7 +42,6 @@ export default function Inbox({
     const [readIds, setReadIds] = useState<ReadonlySet<number>>(() =>
         focusUnreadId === null ? new Set() : new Set([focusUnreadId]),
     );
-    const [unlockReplay, setUnlockReplay] = useState<UnlockFlash | null>(null);
 
     const isRead = (item: InboxItem) =>
         item.read_at !== null || readIds.has(item.id);
@@ -71,16 +65,6 @@ export default function Inbox({
             void sendRead(focusUnreadId);
         }
     }, [focusId, focusUnreadId]);
-
-    // A replay re-runs the original celebration rather than describing it: an
-    // unlock re-opens the takeover it was granted with.
-    const replay = (item: InboxItem) => {
-        markRead(item);
-
-        if (item.unlock !== null) {
-            setUnlockReplay(item.unlock);
-        }
-    };
 
     const unread = items.filter((item) => !isRead(item)).length;
 
@@ -139,8 +123,6 @@ export default function Inbox({
                                                     focused={
                                                         item.id === focusId
                                                     }
-                                                    replaying={false}
-                                                    onReplay={replay}
                                                     onOpen={markRead}
                                                 />
                                             </motion.div>
@@ -187,11 +169,6 @@ export default function Inbox({
                     </nav>
                 )}
             </PageContainer>
-
-            <AccessoryUnlockModal
-                unlock={unlockReplay}
-                onClose={() => setUnlockReplay(null)}
-            />
         </>
     );
 }

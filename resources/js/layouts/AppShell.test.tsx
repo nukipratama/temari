@@ -1,6 +1,6 @@
 import type { MotionConfigProps } from 'framer-motion';
 
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
@@ -220,31 +220,6 @@ describe('AppShell', () => {
         // Scoped by testid, not by tag: TopNav is also a <header> and stays in
         // the DOM on mobile, hidden by CSS alone.
         expect(screen.getByTestId('mobile-top-bar')).toBeInTheDocument();
-    });
-
-    it('shows AccessoryUnlockModal and dismisses it when a major unlock is flashed', async () => {
-        setMockPage({
-            auth: { user: andiUser },
-            flash: {
-                unlock: {
-                    unlock_key: 'accessory.headband_epic',
-                    name: 'Ikat Kepala Istimewa',
-                    icon: 'mdi:star',
-                    is_major: true,
-                },
-            },
-            demoLoginEnabled: false,
-        });
-        render(
-            <AppShell>
-                <p>x</p>
-            </AppShell>,
-        );
-        expect(screen.getByText(/Ikat Kepala Istimewa/)).toBeInTheDocument();
-        // Clicking "Not now" triggers onClose (covers () => setMajorUnlock(null))
-        await act(async () => {
-            fireEvent.click(screen.getByText('Not now'));
-        });
     });
 
     // Without tabindex the fragment target is unfocusable, so activating the

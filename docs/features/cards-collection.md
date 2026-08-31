@@ -11,7 +11,6 @@ code_refs:
   - resources/js/components/card/RouteGlyph.tsx
   - resources/js/components/card/ZoneBar.tsx
   - resources/js/components/card/KartuMini.tsx
-  - resources/js/components/ConfettiBurst.tsx
 ---
 
 # Kartu — full view on the run page

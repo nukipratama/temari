@@ -16,25 +16,21 @@ const item = (overrides: Partial<InboxItem> = {}): InboxItem => ({
     url: null,
     run_card_id: null,
     rarity: null,
-    unlock: null,
     ...overrides,
 });
 
 function renderRow(overrides: Partial<InboxItem> = {}, props = {}) {
-    const onReplay = vi.fn();
     const onOpen = vi.fn();
     render(
         <InboxRow
             item={item(overrides)}
             read={false}
             focused={false}
-            replaying={false}
-            onReplay={onReplay}
             onOpen={onOpen}
             {...props}
         />,
     );
-    return { onReplay, onOpen };
+    return { onOpen };
 }
 
 describe('InboxRow', () => {
@@ -50,14 +46,7 @@ describe('InboxRow', () => {
 
     it('renders the created instant as a machine-readable time', () => {
         const { container } = render(
-            <InboxRow
-                item={item()}
-                read
-                focused={false}
-                replaying={false}
-                onReplay={vi.fn()}
-                onOpen={vi.fn()}
-            />,
+            <InboxRow item={item()} read focused={false} onOpen={vi.fn()} />,
         );
 
         expect(container.querySelector('time')).toHaveAttribute(
@@ -78,50 +67,10 @@ describe('InboxRow', () => {
         expect(screen.queryByLabelText('Unread')).not.toBeInTheDocument();
     });
 
-    it('offers no replay or open action for a row with nothing to open or replay', () => {
+    it('offers no action for a row with nothing to open', () => {
         renderRow();
 
-        expect(screen.queryByText(/^Replay/)).not.toBeInTheDocument();
         expect(screen.queryByText('Open')).not.toBeInTheDocument();
-    });
-
-    it('offers no replay for a post-run row carrying only a card id', () => {
-        renderRow({ run_card_id: 9, rarity: 'epic' });
-
-        expect(screen.queryByText(/^Replay/)).not.toBeInTheDocument();
-    });
-
-    it('replays the takeover for an unlock row', async () => {
-        const { onReplay } = renderRow({
-            kind: 'unlock',
-            unlock: {
-                unlock_key: 'accessory.headband_legendary',
-                name: 'Legendary headband',
-                icon: 'mdi:hanger',
-                is_major: true,
-            },
-        });
-
-        await userEvent.click(screen.getByText('Replay Unlock'));
-
-        expect(onReplay).toHaveBeenCalledTimes(1);
-    });
-
-    it('disables the replay while one is in flight', () => {
-        renderRow(
-            {
-                kind: 'unlock',
-                unlock: {
-                    unlock_key: 'accessory.headband_legendary',
-                    name: 'Legendary headband',
-                    icon: 'mdi:hanger',
-                    is_major: true,
-                },
-            },
-            { replaying: true },
-        );
-
-        expect(screen.getByText('Replaying').closest('button')).toBeDisabled();
     });
 
     it('opens the deep link and reports it read', async () => {
@@ -139,14 +88,7 @@ describe('InboxRow', () => {
 
     it('rings the deep-linked row', () => {
         const { container } = render(
-            <InboxRow
-                item={item()}
-                read
-                focused
-                replaying={false}
-                onReplay={vi.fn()}
-                onOpen={vi.fn()}
-            />,
+            <InboxRow item={item()} read focused onOpen={vi.fn()} />,
         );
 
         expect(container.firstElementChild?.className).toContain(

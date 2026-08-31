@@ -245,7 +245,7 @@ Four warm-tinted steps. Warm, not neutral: a grey shadow on a cream ground reads
 | Resting | `shadow-e1` | `surface-card` / `surface-warm` | Cards in the normal document flow |
 | Floating | `shadow-e2` | `surface-elev` | Popovers, dropdowns, toasts, tooltips |
 | Sheet | `shadow-e3` | `surface-elev` / `cream` | Bottom sheets, large detached panels |
-| Modal | `shadow-e4` | `cream` / `sky-deep` | Full modals and takeovers (share card, unlock, kartu mount) |
+| Modal | `shadow-e4` | `cream` / `sky-deep` | Full modals (share card, kartu mount) |
 
 Tailwind's default `shadow-*` scale is not used and is rejected by the source guard.
 `surface-elev` is reserved for the floating step — never a resting card (that is `surface-card` /
@@ -283,11 +283,10 @@ the confetti burst — reads the same preference itself through
    (`useCountUp` + `countUpEase`, an ease-out curve with no overshoot — a tallying number should
    land exactly on target), chart/route draw-ins (`drawIn`, SVG `pathLength` 0→1), and staggered
    group reveals (`staggerContainer` wrapping `fadeInUp` children).
-3. **Celebratory** — unlocks, PRs, streaks: the existing celebration overlays
-   ([AccessoryUnlockModal](../resources/js/components/celebrations/AccessoryUnlockModal.tsx),
-   [UnlockToast](../resources/js/components/temari/UnlockToast.tsx)) and the mascot's
-   `idleByMood` / fidget keyframes in `lib/motion.ts`. Reserved for moments that are actually
-   earned — never layer tier 3 onto routine navigation or data loading.
+3. **Celebratory** — the mascot's `idleByMood` / fidget keyframes in `lib/motion.ts`. Reserved
+   for moments that are actually earned — never layer tier 3 onto routine navigation or data
+   loading. The celebration overlays this tier was written for (the card reveal, the unlock toast
+   and the accessory takeover) were cut in `PP3`.
 
 ## Gradients & atmospherics
 

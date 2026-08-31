@@ -57,19 +57,9 @@ export interface EquippedAccessories {
     aura: string | null;
 }
 
-/** Flashed by GrantEligibleUnlocksAction when a user earns their first new accessory in a request. */
-export interface UnlockFlash {
-    unlock_key: string;
-    name: string;
-    icon: string;
-    is_major: boolean;
-}
-
 /**
  * One row of the notification centre, flattened by `InboxController` so the
- * page never reads the raw `payload` blob. `run_card_id` and `unlock` are the
- * replay handles: either one re-runs the celebration this row is a record of,
- * rather than describing it.
+ * page never reads the raw `payload` blob.
  */
 export interface InboxItem {
     id: number;
@@ -82,7 +72,6 @@ export interface InboxItem {
     url: string | null;
     run_card_id: number | null;
     rarity: Rarity | null;
-    unlock: UnlockFlash | null;
 }
 
 /**
@@ -104,7 +93,6 @@ export interface SharedProps {
         success: string | null;
         error: string | null;
         info: string | null;
-        unlock?: UnlockFlash | null;
     };
     demoLoginEnabled: boolean;
     equippedAccessories?: EquippedAccessories | null;
