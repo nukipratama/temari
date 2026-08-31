@@ -31,9 +31,17 @@ jobs:
           fetch-depth: 0
 
       # Classify the push so each suite skips when its files weren't touched.
-      # Shared-infra paths (ci.yml, Dockerfile, compose, .env.example) match
-      # both, so an infra change runs the full pipeline. Diff is against the
-      # merge-base with main; on main pushes both jobs run anyway (see the `if`).
+      # Shared-infra paths (ci.yml, .github/actions/, Dockerfile, compose,
+      # .env.example) match both, so an infra change runs the full pipeline.
+      # `.github/actions/` is in there because setup-php/setup-node/
+      # show-runner-resources are what every suite boots on: edited alone, they
+      # used to match nothing and ship having run no job at all.
+      #
+      # Diff is against the merge-base with main; on main pushes both jobs run
+      # anyway (see the `if`). Note that on a PR into an `epic/*` branch this
+      # makes `changed` the whole epic diff rather than the PR's own, so the
+      # filters effectively pass everything for the length of an epic — safe
+      # (it over-runs, never under-runs), but it means they buy nothing there.
       #
       # `docker` is narrower than the other two on purpose: it lists only the
       # inputs that can break the prod image without any other job noticing.
@@ -48,10 +56,10 @@ jobs:
           changed=$(git diff --name-only "$(git merge-base origin/main HEAD)" HEAD)
           printf 'Changed files:\n%s\n' "$changed"
           backend=false; frontend=false
-          if printf '%s\n' "$changed" | grep -qE '^(app|bootstrap|config|database|routes|tests)/|^composer\.(json|lock)$|^phpunit\.xml$|^artisan$|^(phpstan|phpstan-baseline)\.neon$|^rector\.php$|^pint\.json$|^scripts/check-see-references\.php$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
+          if printf '%s\n' "$changed" | grep -qE '^(app|bootstrap|config|database|routes|tests)/|^composer\.(json|lock)$|^phpunit\.xml$|^artisan$|^(phpstan|phpstan-baseline)\.neon$|^rector\.php$|^pint\.json$|^scripts/check-see-references\.php$|^\.github/(workflows/ci\.yml|actions/)|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
             backend=true
           fi
-          if printf '%s\n' "$changed" | grep -qE '^resources/(js|css|views)/|^public/|^package(-lock)?\.json$|^vite\.config\.ts$|^vitest\.config\.ts$|^tsconfig\.json$|^eslint\.config\.|^\.nvmrc$|^scripts/check-entry-chunks\.mjs$|^scripts/check-raw-palette\.mjs$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
+          if printf '%s\n' "$changed" | grep -qE '^resources/(js|css|views)/|^public/|^package(-lock)?\.json$|^vite\.config\.ts$|^vitest\.config\.ts$|^tsconfig\.json$|^eslint\.config\.|^\.nvmrc$|^scripts/check-entry-chunks\.mjs$|^scripts/check-raw-palette\.mjs$|^\.github/(workflows/ci\.yml|actions/)|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
             frontend=true
           fi
           docker=false
@@ -75,9 +83,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: false
 
-  # Runs on every event, independent of the path filter: a code deletion anywhere
-  # can orphan a citation in docs/, so guard against "the doc references code that's gone".
-  docs-citation-guard:
+  # The unconditional guards: they run on every event, independent of the path
+  # filter, because a code deletion anywhere can orphan a doc citation or strand
+  # an ALLOWED entry — neither of which is confined to the paths that changed.
+  # Every downstream job gates on this one, so keep it to checks that are fast
+  # and that genuinely need to see the whole tree.
+  repo-guards:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -91,8 +102,8 @@ jobs:
         run: php scripts/check-indonesian.php
 
   backend-tests:
-    needs: [changes, secret-scan, docs-citation-guard]
-    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && (needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main') }}
+    needs: [changes, secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -179,8 +190,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   frontend-tests:
-    needs: [changes, secret-scan, docs-citation-guard]
-    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && (needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main') }}
+    needs: [changes, secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -236,8 +247,8 @@ jobs:
   # reliably catches new phpstan/rector/pint regressions. Pre-existing findings
   # are captured in phpstan-baseline.neon; this gate blocks anything NEW.
   backend-static-analysis:
-    needs: [changes, secret-scan, docs-citation-guard]
-    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && (needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main') }}
+    needs: [changes, secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -259,8 +270,8 @@ jobs:
         run: vendor/bin/rector --dry-run --no-progress-bar
 
   frontend-static-analysis:
-    needs: [changes, secret-scan, docs-citation-guard]
-    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && (needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main') }}
+    needs: [changes, secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -278,7 +289,7 @@ jobs:
 
   # Single required check for branch protection.
   ci-gate:
-    needs: [backend-tests, frontend-tests, backend-static-analysis, frontend-static-analysis, build, secret-scan, docs-citation-guard, changes]
+    needs: [backend-tests, frontend-tests, backend-static-analysis, frontend-static-analysis, build, secret-scan, repo-guards, changes]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -287,7 +298,7 @@ jobs:
           for r in "${{ needs.backend-tests.result }}" "${{ needs.frontend-tests.result }}" "${{ needs.backend-static-analysis.result }}" "${{ needs.frontend-static-analysis.result }}" "${{ needs.build.result }}"; do
             [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a required job did not pass ($r)"; exit 1; }
           done
-          for r in "${{ needs.secret-scan.result }}" "${{ needs.docs-citation-guard.result }}" "${{ needs.changes.result }}"; do
+          for r in "${{ needs.secret-scan.result }}" "${{ needs.repo-guards.result }}" "${{ needs.changes.result }}"; do
             [ "$r" = "success" ] || { echo "::error::a required unconditional job did not pass ($r)"; exit 1; }
           done
 
@@ -297,8 +308,8 @@ jobs:
   # change reached main having been validated by hand or not at all.
   build:
     name: build-prod-image
-    needs: [changes, secret-scan, docs-citation-guard]
-    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && ((github.ref == 'refs/heads/main' && github.event_name == 'push') || needs.changes.outputs.docker == 'true') }}
+    needs: [changes, secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && ((github.ref == 'refs/heads/main' && github.event_name == 'push') || needs.changes.outputs.docker == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
