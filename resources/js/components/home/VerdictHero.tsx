@@ -38,7 +38,7 @@ export default function VerdictHero({
 
             <p
                 className={cn(
-                    'font-serif italic text-display-xs leading-tight',
+                    'font-serif italic text-quote-lg leading-tight',
                     TONE[verdict],
                 )}
             >

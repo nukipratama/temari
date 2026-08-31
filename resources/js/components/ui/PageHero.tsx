@@ -3,16 +3,17 @@ import type { ReactNode } from 'react';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 
-export type PageHeroSize = '2xl' | 'xl' | 'lg' | 'md' | 'sm';
+export type PageHeroSize = '2xl' | 'xl' | 'lg' | 'md' | 'sm' | 'quote-lg';
 
 interface PageHeroProps {
     /** A plain string renders as the standard hero eyebrow. Pass a ReactNode
      *  (e.g. a <BackLink>, or an <Eyebrow> with its own className) for
      *  anything else. Omit for a headline with no label. */
     eyebrow?: ReactNode;
-    /** Display-scale step (`text-display-{size}`). Default 'lg', the app's
-     *  standard page-title weight; pick a bigger/smaller step to shape the
-     *  page's own top-fold hierarchy. */
+    /** Display-scale step (`text-display-{size}`), or `'quote-lg'` for the
+     *  Temari-voice quote register (`text-quote-lg`, paired with `italic`).
+     *  Default 'lg', the app's standard page-title weight; pick a bigger/
+     *  smaller step to shape the page's own top-fold hierarchy. */
     size?: PageHeroSize;
     /** Dark HeroPanel/sky-panel context: cream headline text. Default false. */
     onSky?: boolean;
@@ -31,6 +32,7 @@ const SIZE_CLASS: Record<PageHeroSize, string> = {
     lg: 'text-display-lg',
     md: 'text-display-md',
     sm: 'text-display-sm',
+    'quote-lg': 'text-quote-lg',
 };
 
 /**

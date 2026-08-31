@@ -263,8 +263,8 @@ export default function RunsShow({
                                                 )}
                                             </Eyebrow>
                                         </div>
-                                        <h1 className="font-serif text-display-sm text-cream">
-                                            {detail.name ?? 'Run'}
+                                        <h1 className="font-serif text-quote-lg text-cream italic">
+                                            {detail.name ?? 'run'}
                                         </h1>
                                     </div>
                                 </div>

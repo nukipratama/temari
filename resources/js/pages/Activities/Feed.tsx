@@ -79,11 +79,13 @@ export default function RunsIndex({
             <Head title="History · Log" />
             <PageContainer>
                 <header className="flex flex-col gap-5">
-                    <PageHero eyebrow={`History · ${runs.length} activities`}>
-                        Every run{' '}
-                        <em className="not-italic text-horizon-ink">
-                            has a story.
-                        </em>
+                    <PageHero
+                        eyebrow={`History · ${runs.length} activities`}
+                        size="quote-lg"
+                        italic
+                    >
+                        every run{' '}
+                        <em className="text-horizon-ink">has a story.</em>
                     </PageHero>
                     <HistoryNav active="feed" />
                 </header>

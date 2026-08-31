@@ -258,8 +258,8 @@ export default function Plan({
                             >
                                 Plan
                             </Eyebrow>
-                            <h1 className="font-serif text-display-lg text-foreground">
-                                The weeks ahead.
+                            <h1 className="font-serif text-quote-lg text-foreground italic">
+                                the weeks ahead.
                             </h1>
                             <p className="mt-2 max-w-xl font-sans text-sm leading-relaxed text-text-2">
                                 {race

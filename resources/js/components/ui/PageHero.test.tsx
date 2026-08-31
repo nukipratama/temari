@@ -21,6 +21,13 @@ describe('PageHero', () => {
         );
     });
 
+    it('applies the quote-lg step for the Temari-voice register', () => {
+        render(<PageHero size="quote-lg">the weeks ahead.</PageHero>);
+        expect(screen.getByText('the weeks ahead.').className).toContain(
+            'text-quote-lg',
+        );
+    });
+
     it('defaults to the lg step and ink text on a cream surface', () => {
         render(<PageHero>Plain headline</PageHero>);
         const h1 = screen.getByText('Plain headline');

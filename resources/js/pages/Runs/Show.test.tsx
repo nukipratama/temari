@@ -452,7 +452,7 @@ describe('Runs/Show', () => {
         ).toBeInTheDocument();
     });
 
-    it('falls back to "Run" when detail.name is null', () => {
+    it('falls back to "run" when detail.name is null', () => {
         const noName = { ...detail, name: null };
         renderShow({
             activity: {
@@ -463,7 +463,7 @@ describe('Runs/Show', () => {
             },
             detail: noName,
         });
-        expect(screen.getAllByText(/^Run$/).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/^run$/).length).toBeGreaterThan(0);
     });
 
     it('handles null distance/elapsed_time gracefully (dash in hero stats)', () => {
