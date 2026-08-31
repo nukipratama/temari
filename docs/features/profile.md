@@ -7,7 +7,6 @@ reviewed: 2026-08-19
 code_refs:
   - resources/js/pages/Profile.tsx
   - app/Http/Controllers/ProfileController.php
-  - resources/js/components/PersonaBar.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
   - resources/js/components/collection/ProgressionChart.tsx
   - resources/js/components/temari/Temari.tsx
@@ -52,7 +51,7 @@ These are the same estimators [AkuProfileVoiceNarrator](app/Services/AI/Narrator
 
 ## Persona · last 12 weeks
 
-The "Persona" section renders [PersonaBar](resources/js/components/PersonaBar.tsx): gapped, individually-rounded mood segments (`personaMix`), each colored by `MOOD_FILL` — mirroring the mobile-UX prototype's own time-in-zone bar treatment rather than one continuous track — with a legend of `MOOD_LABEL` + percent, each entry its own mood-tinted chip (`MOOD_SOFT_FILL` on paper, a translucent cream chip `onSky`). The mix comes from `AkuProfileVoiceNarrator::personaMix($user)`. The bar carries no narration block of its own: the mix is narrated once, in the hero voice above. Empty mix → PersonaBar shows "Not enough runs yet to read your persona." Persona mix earned a deliberate design pass in the mobile-UX port (`plan/README.md`'s `S10` ledger ruling), not a mechanical token swap.
+**Cut in `PP3` (P13).** The prototype's Profile hero draws a Z1-Z5 heart-rate-zone bar in the slot the app drew its behavioural persona mix, so `PersonaBar` and the `personaMix` Inertia prop are gone; `PS10` builds the zone bar in that slot. `AkuProfileVoiceNarrator::personaMix()` and `PersonaMixTool` survive — the hero voice still reads the mix as narration context — and `W2` decides whether the method itself stays.
 
 ## Journey (progression)
 

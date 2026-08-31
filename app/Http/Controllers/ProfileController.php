@@ -15,7 +15,6 @@ use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\SeasonService;
 use App\Services\Run\ProgressionSeriesBuilder;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Collection;
 use App\Enums\PrCategory;
@@ -37,7 +36,6 @@ class ProfileController extends Controller
 
     public function __invoke(
         Request $request,
-        AkuProfileVoiceNarrator $profileVoiceNarrator,
         ProgressionSeriesBuilder $progressionSeriesBuilder,
         LifetimeStats $lifetimeStats,
         VdotEstimator $vdotEstimator,
@@ -74,7 +72,6 @@ class ProfileController extends Controller
                 'total_km' => $lifetime['total_km'],
                 'longest_run_km' => $lifetime['longest_km'],
             ],
-            'personaMix' => $profileVoiceNarrator->personaMix($user),
             'profileVoice' => $this->resolveProfileVoice($user),
             'progressionByCategory' => $progressionByCategory,
             'fitness' => $this->fitness($vdotEstimator, $thresholdEstimator, $trainingPaceCalculator, $user),

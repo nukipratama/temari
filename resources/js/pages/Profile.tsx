@@ -8,7 +8,6 @@ import ProgressionChart from '@/components/collection/ProgressionChart';
 import SeasonStreakPanel, {
     type SeasonSummary,
 } from '@/components/me/SeasonStreakPanel';
-import PersonaBar, { type PersonaSlice } from '@/components/PersonaBar';
 import { type StreakSummary } from '@/components/plan/StreakPanel';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
@@ -79,7 +78,6 @@ interface SeasonStreakPayload {
 interface ProfileProps {
     identity: IdentityPayload;
     stats: StatsPayload;
-    personaMix?: PersonaSlice[];
     profileVoice?: AnalysisPayload;
     progressionByCategory?: Record<string, ProgressionSeries> | null;
     fitness?: FitnessPayload | null;
@@ -89,7 +87,6 @@ interface ProfileProps {
 export default function Profile({
     identity,
     stats,
-    personaMix = [],
     profileVoice,
     progressionByCategory = null,
     fitness = null,
@@ -209,12 +206,6 @@ export default function Profile({
                                 </p>
                             </div>
                         )}
-                    </div>
-                    <div className="mb-6" data-coachmark="profile-persona">
-                        <SectionLabel onSky size="micro">
-                            Persona · last 12 weeks
-                        </SectionLabel>
-                        <PersonaBar mix={personaMix} onSky />
                     </div>
                     <motion.div
                         variants={staggerContainer}

@@ -119,7 +119,7 @@ it('reports null training_paces when the user has no VDOT-eligible PR', function
             ->where('fitness', null));
 });
 
-it('exposes personaMix derived from StoryLine moods + the week-keyed profileVoice payload', function (): void {
+it('exposes the week-keyed profileVoice payload', function (): void {
     Carbon::setTestNow('2026-05-18 09:00:00');
 
     $user = User::factory()->create();
@@ -134,9 +134,7 @@ it('exposes personaMix derived from StoryLine moods + the week-keyed profileVoic
         ->assertInertia(fn (Assert $page) => $page
             ->component('Profile')
             ->missing('personaSummary')
-            ->has('personaMix', 1)
-            ->where('personaMix.0.mood', 'blazing')
-            ->where('personaMix.0.percent', 100)
+            ->missing('personaMix')
             ->has('profileVoice')
             ->where('profileVoice.type', 'aku_profile_voice')
             ->where('profileVoice.subject_type', 'aku_profile_voice_user')
