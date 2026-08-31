@@ -33,7 +33,7 @@ Everything runs in Docker via **Sail** (no host PHP/Node). Stop at the first fai
 ./vendor/bin/sail npm run test               # frontend (Vitest); `test:coverage` for the 95% gate
 ./vendor/bin/sail npm run build              # build assets (`npm run dev` for HMR)
 ./vendor/bin/sail bin pint                    # format PHP (pre-commit also runs phpstan + rector)
-./vendor/bin/sail composer check             # full gate: pint + phpstan + rector + pest + tsc + vitest (pre-push)
+./vendor/bin/sail composer check             # THE gate, pre-push: runs exactly what CI runs
 ```
 
 Running several agents at once, each in its own `git worktree`? See the `temari` skill's

@@ -70,14 +70,20 @@
         "check": [
             "@php artisan config:clear --ansi",
             "@php artisan typescript:enums --check",
-            "vendor/bin/pint --test",
-            "@php scripts/check-see-references.php",
+            "@php scripts/check-doc-citations.php",
             "@php scripts/check-indonesian.php",
+            "@php scripts/check-see-references.php",
+            "vendor/bin/pint --test",
+            "npm run format:check",
+            "npm run typecheck",
+            "npm run lint",
+            "npm run check:palette",
             "vendor/bin/phpstan analyse",
             "vendor/bin/rector --dry-run",
             "vendor/bin/pest --parallel",
-            "npm run typecheck",
-            "npm run test"
+            "npm run test:coverage",
+            "npm run build",
+            "npm run check:chunks"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

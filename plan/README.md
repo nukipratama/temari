@@ -112,7 +112,8 @@ the slice itself (see [R3](#r3)); `n/a` for backend-only or docs-only slices.
 | S11 | Settings | 2b | [23](slices/23-S11-settings.md) | merged | [#666](https://github.com/nukipratama/temari/pull/666) | wt | 95.37→95.40% fn | appearance toggle UI; squashed as cc3f5f5a |
 | S12 | Undrawn survivors | 2b | [24](slices/24-S12-undrawn-survivors.md) | merged | [#674](https://github.com/nukipratama/temari/pull/674) | wt (slot 3) | 95.7% stmts, 89.5% branches, 95.55% fn, 96.05% lines | Devtools/Design.tsx investigated + confirmed sound against post-F2 tokens (real-browser verified both grounds), not actually broken; Devtools.tsx had a real ground-reactivity bug (raw cream tokens) fixed; squashed as 0c360f14 |
 | V0 | Visual parity audit | 3 | [30](slices/30-V0-visual-parity-audit.md) | merged | [#676](https://github.com/nukipratama/temari/pull/676) [#677](https://github.com/nukipratama/temari/pull/677) [#678](https://github.com/nukipratama/temari/pull/678) [#679](https://github.com/nukipratama/temari/pull/679) [#680](https://github.com/nukipratama/temari/pull/680) | main | n/a | dark-mode contrast + History truncation fixed; F7 demo-data gaps closed; all 5 forks resolved (headline voice, brand mark, Plan phase-bar, Today disclosure, desktop nav); squashed as 7dd79c5f/52a7e2a6/0a1e785b/aa109db6/ff942e7a |
-| W1 | IA cutover | 3 | [25](slices/25-W1-ia-cutover.md) | todo | — | main | | |
+| C1 | CI + guard audit | 3 | [31](slices/31-C1-ci-guard-audit.md) | in-review | — | wt (slot 1) | n/a | outside the original 30 — see §5. One definition of done; guard verdict table; legacy redirects deleted (pulled forward from `W1`) |
+| W1 | IA cutover | 3 | [25](slices/25-W1-ia-cutover.md) | todo | — | main | | legacy-redirect deletion done early by `C1` |
 | W2 | Dead-code sweep | 3 | [26](slices/26-W2-dead-code-sweep.md) | todo | — | main | | |
 | W3 | Coverage reconciliation | 3 | [27](slices/27-W3-coverage.md) | todo | — | main | | do not cut |
 | W4 | Docs | 3 | [28](slices/28-W4-docs.md) | todo | — | main | n/a | |
@@ -155,6 +156,7 @@ Every deviation from §1 lands here, dated, with the reason. Empty is the health
 | 2026-08-31 | new | **`V0` fork 3 — Plan's phase bar and week timeline.** `S4` explicitly deferred the prototype's season-wide phase-progress bar (Base/Build/Peak/Taper) and week-by-week expandable timeline as "a real fork, not a routine call," since `PlanController::index()` only serves a 3-history/4-lookahead window, not the full season. A new backend aggregate plus the frontend `SeasonHeaderCard`/`SeasonTimeline`/`WeekVolumeChart` port is now in scope, as a follow-up slice. | `S4`'s own slice doc left this as an open question pending a human call on backend cost. `V0` surfaced it again during the parity audit; put to the user, who chose to build it now rather than leave Plan without it. |
 | 2026-08-31 | new | **`V0` fork 4 — Today's supporting-detail disclosure stays open by default.** No change from what `S3` shipped: the "this week" stats block (weekly tiles, Vibe/Readiness/Break, last-run detail, training-load card) stays wrapped in a `Collapsible` set `defaultOpen`, not collapsed to match the prototype's denser default. | `S3`'s own reasoning (a full pixel rebuild of six components into the prototype's condensed shape was out of proportion to the value, and defaulting open loses no existing visibility) reconfirmed by the user during `V0`'s audit — recorded so this isn't re-litigated by a future slice. |
 | 2026-08-31 | 5, 19 | **Program re-scoped: the prototype becomes a hard source of truth, and the remaining work moves to [parity/](parity/).** Decision 5's amendment above (parity required) is hardened further: anything the prototype does not draw is now **cut**, not merely reconciled. Thirty new decisions (P1-P30), a full per-feature cut list, and a fresh slice map live in [parity/README.md](parity/README.md) and [parity/cut-list.md](parity/cut-list.md). Several verdicts in [ledger.md](ledger.md) are reversed there (persona mix, dawn-shift, relative effort, the `TemariProto` mascot, parts of Kartu and the badge system); **`ledger.md` itself is left unedited** as the accurate record of what was decided on 2026-08-28. `V0` fork 5 (the desktop `TopNav`, one row below) is reverted by P9. Wave 3's `W1`/`W2`/`W5` still run, after the parity slices; `W3` is dropped, since the screens it would reconcile coverage for are being rewritten. | The user reviewed the fully-ported app and found it still materially unlike the prototype ("i think its getting near similar to prototype but several detail still nah"), then set a hard constraint: "prototype is source of truth", cut features to what the prototype has. Grilled across eight rounds on 2026-08-31. The grill also found that `V0`'s own audit had been misled by screenshots captured at the prototype's fixed 844px frame height with its disclosures collapsed — several things it reported "absent from the prototype" are in fact drawn, which is why the re-scope needed its own full-scroll reference pass rather than reusing `V0`'s findings. |
+| 2026-08-31 | new | **`C1` added — a 31st slice, outside the original 30, auditing CI and the guard set.** Three competing definitions of "am I done" existed — `composer check`, `.github/workflows/ci.yml`, and §9 of this file — and they disagreed on nine checks. `C1` collapses them: `composer check` now runs exactly what CI runs and §9 says to run only that. It also produces an evidence-backed keep/cut/fix verdict on all eleven repo guards (in [31-C1-ci-guard-audit.md](slices/31-C1-ci-guard-audit.md)); the cuts themselves are the user's call, taken off that table, not this slice's to make. Two user rulings landed during it: `NoEmDashInPromptsTest` is cut (de-escalated from a hard test to a preference in the skill file), and all nine legacy 301 redirects are deleted — the latter pulled forward out of `W1`. `V0`'s row is the precedent for a slice existing outside the committed 30. | Two consecutive red-CI round-trips in one day on a slice whose author believed the local gate was green, both on guards `composer check` does not run (`check-doc-citations.php` and `check-see-references.php`). The root cause was structural, not a mistake: no single command existed that could tell an author they were done, so everyone ran a personal subset. `PS1`-`PS11` and `PP4` — twelve slices, all in worktrees — were about to inherit the same trap. Scoped by the user directly: "maybe we should add new slice that grills our ci so it can be much more efficient, removes clutter". |
 | 2026-08-31 | new | **`V0` fork 5 — desktop `TopNav` gets a real redesign, despite no prototype spec.** `TopNav` (`≥1024px`, the `lg` breakpoint) is redesigned onto the same frosted-glass/floating-pill/ground-reactive language `F4` already gave `MobileBottomNav`/`MobileTopBar`, even though the prototype itself never specs desktop nav — its own `Rack`/`PhoneFrame`/`AppBottomNav` review harness has no responsive branch at all; "desktop"/"wide" viewport previews just resize the same floating mobile pill nav into a wider browser-chrome frame. `TopNav` is otherwise functionally correct (4 tabs, right routes, lucide icons, per `F4`) — this is a pure visual-coherence follow-up, owned by whichever slice picks it up. | User noticed desktop doesn't carry a prototype-matched nav design. Confirmed via `F4`'s own slice doc ("`TopNav` needed zero code changes") and the prototype's `AppBottomNav.tsx` source (no breakpoint logic) that this isn't a missed port step, just genuinely unspecified scope — F4 had nothing to port TopNav onto. Put to the user anyway since leaving it stuck in its pre-port visual language now reads as inconsistent against every other post-port surface; chose to extrapolate the new mobile language upward rather than leave it untouched. |
 
 ---
@@ -263,18 +265,35 @@ colliding PR.
 ## 9. Verification ladder
 
 Per slice, before the PR opens — run the three subagent rubrics against the diff and resolve every
-finding, then this ladder, stopping at the first failure:
+finding, then:
 
 ```bash
-./vendor/bin/sail pest --group=structure          # DB-free 1:1 gate, run first
-./vendor/bin/sail bin pest --filter=<Name>        # the narrowest thing that can fail
-./vendor/bin/sail npm run test:coverage           # frontend DoD — record the delta in §3
-./vendor/bin/sail npm run build && npm run check:chunks
-./vendor/bin/sail composer check                  # full gate, pre-push
+./vendor/bin/sail composer check
 ```
 
-Any slice touching tokens, grounds or artwork additionally regenerates `grounds.json` and runs
-`php scripts/check-doc-citations.php` directly — a green `composer check` does **not** cover it.
+**That is the whole gate.** Since `C1` (see §5) `composer check` runs exactly what CI runs, in
+fail-fast order, so a green `composer check` means a green CI. Do not assemble your own subset of
+it — that habit is what put two guard failures into CI in one day.
+
+While *iterating*, run the narrowest thing that can fail instead, and save `composer check` for
+before the push:
+
+```bash
+./vendor/bin/sail pest --group=structure          # DB-free structural gate, ~1.5s
+./vendor/bin/sail bin pest --filter=<Name>        # a single test / file
+./vendor/bin/sail npm run test -- <path>          # a single Vitest file
+```
+
+Two things `composer check` still cannot do for you:
+
+- **Record the frontend coverage delta in §3.** `composer check` runs `npm run test:coverage`, so
+  the numbers are on screen; reading them into the table is yours.
+- **PHP coverage.** CI gates PHP at `--min=95` on every PR; there is no coverage driver in the Sail
+  image (pcov/xdebug are CI-only), so this one gate is genuinely unreproducible locally. It is the
+  single way a green `composer check` can still meet a red CI.
+
+Any slice touching tokens, grounds or artwork additionally regenerates `grounds.json` first —
+`composer check` verifies it but does not rebuild it.
 
 Per wave — work [verification/product-manager.md](verification/product-manager.md) and
 [verification/designer.md](verification/designer.md), and run a `browser-review` sweep **after**
