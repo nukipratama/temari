@@ -8,7 +8,11 @@ import type { AnalysisPayload, PlanSessionSegment } from '@/types/inertia';
 
 import CoachMark from '@/components/onboarding/CoachMark';
 import DaySegments from '@/components/plan/DaySegments';
+import SeasonPhaseBar, {
+    type SeasonSummaryWeek,
+} from '@/components/plan/SeasonPhaseBar';
 import SeasonTrack from '@/components/plan/SeasonTrack';
+import SeasonWeekTimeline from '@/components/plan/SeasonWeekTimeline';
 import PlanRaceTabs from '@/components/race/PlanRaceTabs';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import TemariProto, { type SeasonPhase } from '@/components/temari/TemariProto';
@@ -85,6 +89,7 @@ interface PlanProps {
     sessionsPerWeek: number;
     weeks: PlanWeek[];
     season: SeasonSummary;
+    seasonSummary?: SeasonSummaryWeek[];
     adaptation: PlanAdaptation | null;
     /** Served from App\Support\TrainingDisclaimer, shared with the legal pages. */
     disclaimerHeadline: string;
@@ -134,7 +139,7 @@ const SESSION_TYPE_ICON: Record<string, string> = {
     rest: 'mdi:bed',
 };
 
-const PHASE_LABEL: Record<string, string> = {
+export const PHASE_LABEL: Record<string, string> = {
     base: 'Base',
     build: 'Build',
     peak: 'Peak',
@@ -142,7 +147,7 @@ const PHASE_LABEL: Record<string, string> = {
     deload: 'Deload',
 };
 
-const PHASE_TONE: Record<string, ChipTone> = {
+export const PHASE_TONE: Record<string, ChipTone> = {
     base: 'neutral',
     build: 'sky',
     peak: 'horizon',
@@ -183,6 +188,7 @@ export default function Plan({
     sessionsPerWeek,
     weeks,
     season,
+    seasonSummary = [],
     adaptation,
     disclaimerHeadline,
     disclaimer,
@@ -403,6 +409,23 @@ export default function Plan({
                         ))}
                     </motion.div>
                 </section>
+
+                {seasonSummary.length > 0 && (
+                    <section className="mt-10 flex flex-col gap-6">
+                        <Card className="px-4 py-4">
+                            <SectionLabel className="mb-3">
+                                Season by phase
+                            </SectionLabel>
+                            <SeasonPhaseBar weeks={seasonSummary} />
+                        </Card>
+                        <Card className="px-4 py-2">
+                            <SectionLabel className="mb-1 px-1 pt-2">
+                                Week by week
+                            </SectionLabel>
+                            <SeasonWeekTimeline weeks={seasonSummary} />
+                        </Card>
+                    </section>
+                )}
 
                 {weeks.length === 0 && (
                     <EmptyPanel

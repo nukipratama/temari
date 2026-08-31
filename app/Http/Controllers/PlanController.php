@@ -25,6 +25,7 @@ use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\SeasonService;
+use App\Services\Run\Plan\SeasonSummaryBuilder;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\SessionSegment;
@@ -61,6 +62,7 @@ class PlanController extends Controller
         TrainingPaceCalculator $paceCalculator,
         SeasonService $seasonService,
         SeasonStreakSummaryBuilder $seasonStreakBuilder,
+        SeasonSummaryBuilder $seasonSummaryBuilder,
         GrantSeasonUnlocksAction $grantSeasonUnlocks,
         SessionMatcher $sessionMatcher,
         PlanNarrationRequester $narrationRequester,
@@ -86,6 +88,7 @@ class PlanController extends Controller
             $narrationRequester->ensureDemoFilled($user, $today);
         }
         $seasonPayload = $seasonStreakBuilder->seasonPayload($user, $season, $today, $seasonCtx);
+        $seasonSummary = $seasonSummaryBuilder->build($user, $season, $today);
 
         $adaptationPayload = $this->adaptationPayload($user, $currentWeekStart);
 
@@ -101,6 +104,7 @@ class PlanController extends Controller
                 'sessionsPerWeek' => $baseline->forUser($user, $today)['sessions_per_week'],
                 'weeks' => [],
                 'season' => $seasonPayload,
+                'seasonSummary' => $seasonSummary,
                 'adaptation' => $adaptationPayload,
                 'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
                 'disclaimer' => TrainingDisclaimer::TEXT,
@@ -210,6 +214,7 @@ class PlanController extends Controller
             'sessionsPerWeek' => $baselineData['sessions_per_week'],
             'weeks' => $weeks,
             'season' => $seasonPayload,
+            'seasonSummary' => $seasonSummary,
             'adaptation' => $adaptationPayload,
             'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
             'disclaimer' => TrainingDisclaimer::TEXT,

@@ -88,3 +88,26 @@ export const HR_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const;
 
 /** Alias of {@link hrZone}, named for the "zone fill colour" reading at call sites. */
 export const HR_ZONE_COLORS: Record<HrZoneKey, string> = hrZone;
+
+/**
+ * Periodization-phase fills for the Plan season summary (phase-progress bar,
+ * week timeline). A validated-distinct (dataviz skill's `validate_palette.js`,
+ * CVD ΔE >= 15 on every co-occurring pair) categorical hue per phase,
+ * deliberately drawn away from `PALETTE.overloaded`/`gassed`/
+ * `chill` — those three are already committed to per-run Mood colors
+ * (see `lib/mood.ts`) and reusing one here for a phase would collide with
+ * that existing meaning on the same page. `deload` only ever co-occurs with
+ * `build` (self-scaled seasons only cycle those two — race-oriented seasons
+ * only ever see `base`/`build`/`peak`/`taper`, see `App\Enums\PlanPhase`), so
+ * its deliberately desaturated `stone` reads as "resting" without needing to
+ * be hue-distinct from `peak`/`taper`, which it never shares a chart with.
+ */
+export const PHASE_COLORS = {
+    base: PALETTE.leaf,
+    build: PALETTE.horizonDeep,
+    peak: PALETTE.ember,
+    taper: PALETTE.citrus,
+    deload: PALETTE.stone,
+} as const;
+
+export type PlanPhaseKey = keyof typeof PHASE_COLORS;
