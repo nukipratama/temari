@@ -63,11 +63,6 @@ it('reports the connection state and the channel-neutral preferences', function 
             ->where('notificationPrefs.push_enabled', false));
 });
 
-it('redirects the legacy /pengaturan path to the settings page', function (): void {
-    $this->actingAs(User::factory()->create())->get('/pengaturan')
-        ->assertRedirect('/settings');
-});
-
 it('hands the page the config-fallback HR-zones profile for a fresh user', function (): void {
     $user = User::factory()->create();
 

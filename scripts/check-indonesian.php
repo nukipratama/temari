@@ -74,32 +74,20 @@ const ALLOWED = [
         ['prefix' => '', 'reason' => "Outstanding pocket: the 'rute' share-card layout token, shared between RunCardImageRenderer and the client Layout union. Moves with the kartu slice."],
     ],
     'pengaturan' => [
-        ['prefix' => 'routes/web.php', 'reason' => 'Legacy /pengaturan permanent redirect — a live URL that must keep resolving.'],
-        ['prefix' => 'docs/features/settings.md', 'reason' => 'Describes that same legacy redirect.'],
-        ['prefix' => 'tests/Feature/Http/Controllers/SettingsControllerTest.php', 'reason' => 'Covers that redirect.'],
+        ['prefix' => 'docs/features/settings.md', 'reason' => 'Names the deleted /pengaturan redirect while recording that it is gone.'],
         ['prefix' => 'resources/js/pages/Settings/Index.test.tsx', 'reason' => 'Comment recording the page\'s past bare <h1>Pengaturan</h1> — true as written.'],
         ['prefix' => 'tests/Unit/Services/AI/MaintainerAlerterTest.php', 'reason' => 'Comment quoting retired copy; scheduled with the comment-quote sweep.'],
         ['prefix' => 'tests/Feature/Http/Controllers/HistoryControllerTest.php', 'reason' => 'Comment quoting retired copy; scheduled with the comment-quote sweep.'],
     ],
     'profil' => [
-        ['prefix' => 'routes/web.php', 'reason' => 'Legacy /profil permanent redirect — a live URL.'],
-        ['prefix' => 'docs/features/profile.md', 'reason' => 'Describes that same legacy redirect.'],
+        ['prefix' => 'docs/features/profile.md', 'reason' => 'Names the deleted /profil redirect while recording that it is gone.'],
     ],
     'kalender' => [
-        ['prefix' => 'routes/web.php', 'reason' => 'Legacy /kalender permanent redirect — a live URL.'],
         ['prefix' => 'tests/Feature/Http/Controllers/HistoryControllerTest.php', 'reason' => 'Test name still says "Kalender page"; harmless, folds into the comment-quote sweep.'],
         ['prefix' => 'tests/Unit/Services/AI/TemariPersonaTest.php', 'reason' => 'Manual-QA docblock listing old URLs; folds into the comment-quote sweep.'],
     ],
-    'catatan' => [
-        ['prefix' => 'routes/web.php', 'reason' => 'Legacy /catatan permanent redirect — a live URL.'],
-        ['prefix' => 'tests/Feature/Runs/RunControllerTest.php', 'reason' => 'Covers that redirect.'],
-    ],
-    'akun' => [
-        ['prefix' => 'routes/web.php', 'reason' => 'Legacy /akun permanent redirect — a live URL.'],
-    ],
     'rekor' => [
-        ['prefix' => 'routes/web.php', 'reason' => 'Legacy /rekor permanent redirect — a live URL.'],
-        ['prefix' => 'docs/features/records.md', 'reason' => 'Documents the /rekor legacy redirect route path, same as routes/web.php.'],
+        ['prefix' => 'docs/features/records.md', 'reason' => 'Names the deleted /rekor redirect while recording that it is gone.'],
     ],
     'angin' => [
         ['prefix' => 'tests/Unit/Services/Run/Story/RunCardImageRendererTest.php', 'reason' => 'Regression test asserting the card no longer says "angin" — the word must stay for the assertion to mean anything.'],

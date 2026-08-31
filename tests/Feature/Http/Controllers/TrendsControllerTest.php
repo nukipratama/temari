@@ -29,12 +29,11 @@ it('requires authentication', function (): void {
     $this->get('/trends')->assertRedirect('/login');
 });
 
-it('retired /records and /badges outright, and retargets /rekor to /trends', function (): void {
+it('retired /records and /badges outright', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)->get('/records')->assertNotFound();
     $this->actingAs($user)->get('/badges')->assertNotFound();
-    $this->get('/rekor')->assertRedirect('/trends');
 });
 
 it('renders an empty fitness trend for a fresh user', function (): void {

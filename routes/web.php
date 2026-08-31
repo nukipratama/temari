@@ -121,9 +121,6 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
         ->middleware('block-demo-telegram')
         ->name('recaps.monthly.send');
 
-    // Catatan merged into Activities — keep deep links working.
-    Route::permanentRedirect('/catatan', '/activities');
-
     Route::get('/trends', TrendsController::class)->name('trends');
 
     Route::get('/race', [RaceController::class, 'index'])->name('race');
@@ -164,16 +161,6 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::post('/strava/sync', SyncController::class)
         ->middleware('throttle:strava-sync')
         ->name('strava.sync');
-
-    // Legacy 301 redirects — keep deep links working from external bookmarks.
-    Route::permanentRedirect('/runs', '/activities');
-    Route::redirect('/runs/{activity}', '/activities/{activity}', 301);
-    Route::permanentRedirect('/progress', '/activities');
-    Route::permanentRedirect('/pengaturan', '/settings');
-    Route::permanentRedirect('/profil', '/profile');
-    Route::permanentRedirect('/kalender', '/calendar');
-    Route::permanentRedirect('/rekor', '/trends');
-    Route::permanentRedirect('/akun', '/account');
 
     Route::post('/api/notifications/{notification}/read', NotificationReadController::class)
         ->whereNumber('notification')
