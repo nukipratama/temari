@@ -50,11 +50,80 @@ is tracked as follow-up work, not part of this slice's own diff.
 [pace.ts](../../resources/js/lib/pace.ts),
 [RunListRow.tsx](../../resources/js/components/run/RunListRow.tsx).
 
+### Fork 3 — Plan's phase bar and week timeline
+
+`S4` had explicitly deferred the prototype's season-wide phase-progress bar and week-by-week
+volume chart as a genuine data-availability fork (`PlanController::index()` only serves a rolling
+3-history/4-lookahead window, not the full season). Closed by adding a dedicated, season-wide read
+model rather than stretching the existing rolling-window payload to cover it.
+
+**Backend**: [SeasonSummaryBuilder](../../app/Services/Run/Plan/SeasonSummaryBuilder.php) (new
+class, wired into `PlanController::index()` as a `seasonSummary` Inertia prop alongside the
+existing `season`/`weeks` props, untouched). One entry per week from `Season::$starts_at` to
+`$ends_at` — phase, `history`/`current`/`lookahead` type, `planned_km`, and `actual_km` (from
+`WeeklySnapshot` once one exists for that week). `planned_km` reuses the same deterministic,
+season-start-anchored computation (`PhaseSchedule`/`WeekPlanBuilder`/`SegmentGenerator`) that
+`SeasonService::generateGoals()` already sizes `SeasonGoal` targets with, rather than reading
+materialized `PlannedSession` rows — those only ever cover the periodizer's rolling 12-week
+horizon and get deleted/recreated on every weekly regeneration, so they're the wrong source for a
+stable, whole-season figure (the exact reasoning `S4` already applied to `SeasonGoal` targets).
+See [docs/features/plan-periodizer.md](../../docs/features/plan-periodizer.md)'s new "Season-wide
+summary" subsection for the full writeup, including the accepted trade-off (a week's `planned_km`
+won't reflect a real-time adaptation like an in-week deload the way the day-by-day schedule below
+it on the page does).
+
+**A genuine design fork surfaced and resolved without escalating**: the prototype's phase bar
+hardcodes 4 fixed Base/Build/Peak/Taper buckets, but `App\Enums\PlanPhase`'s own docblock confirms
+`Peak`/`Taper` only ever exist in race-oriented mode and `Deload` only in self-scaled mode — a
+self-scaled season (no active race) never has a Base/Peak/Taper week at all, only a repeating
+Build/Deload cycle. Porting the prototype's fixed-4-bucket model as-is would have silently divided
+by zero / rendered a vacuously "done" empty bucket for roughly half of users. Resolved by grouping
+*consecutive* same-phase weeks into bar segments instead of a fixed 4-column layout: a
+race-oriented season still renders exactly 4 segments in the expected order, and a self-scaled one
+renders its real repeating cycle instead of a fabricated race-shaped arc. This is a mechanical
+generalization of the same idea (real phase data, no invented buckets), not a product-level
+ambiguity, so it didn't warrant stopping to ask.
+
+**Frontend**: [SeasonPhaseBar](../../resources/js/components/plan/SeasonPhaseBar.tsx) (the
+grouped-segment bar above, plus a compact legend and a "logged so far" line) and
+[SeasonWeekTimeline](../../resources/js/components/plan/SeasonWeekTimeline.tsx) (a planned-vs-
+actual bar per week across the whole arc, windowed to 2 weeks either side of the current week with
+the rest collapsed behind a toggle reusing `S4`'s `Collapsible` port) render additively on
+`Plan.tsx`, below the existing season-goals grid and above the untouched day-by-day week list — no
+existing mascot/phase-caption/`SeasonTrack`/day-card markup moved, hidden, or restyled. Phase fill
+colors are a new `PHASE_COLORS` export in
+[chartTokens.ts](../../resources/js/lib/chartTokens.ts): `leaf`/`horizonDeep`/`ember`/`citrus`/
+`stone` for Base/Build/Peak/Taper/Deload, validated distinct via the dataviz skill's
+`validate_palette.js` (CVD ΔE well above the 15 floor on every co-occurring pair) and deliberately
+kept off `PALETTE.overloaded`/`gassed`/`chill`, which already carry per-run Mood meaning elsewhere
+on the app.
+
+**Scope deliberately left out**, consistent with the fork brief's "don't over-invest in
+speculative edge cases": the prototype's per-week `WeekVolumeChart` plots planned-vs-actual at
+*day* granularity within one expanded week — `WeeklySnapshot` only ever aggregates at week
+granularity, so that gap from `S4`'s own notes is still real and still out of scope; my week
+timeline instead compares planned-vs-actual at *week* granularity across the whole season, which
+the brief's own wording ("week-by-week ... volume per week") asked for and the data supports. The
+prototype's `WeekCluster`/`SeasonWeekRow` whole-week disclosure (which would nest the existing
+Pin/Skip/Block/Move/Delete day controls behind a click) was not adopted, for the same
+interaction-model reason `S4` already gave for skipping it — `SeasonWeekTimeline` is a separate,
+read-only summary section, not a wrapper around the existing day cards.
+
 ## Files touched
 
 The bug-fix batch above. The rest of this slice's "touch" is the audit and the doc/tracker
 amendments — the actual fork implementations (headline voice, brand mark, Plan phase bar, desktop
 nav) land in their own follow-up slices, not counted here.
+
+**Fork 3's own files**: new
+[SeasonSummaryBuilder.php](../../app/Services/Run/Plan/SeasonSummaryBuilder.php) (+test),
+[SeasonPhaseBar.tsx](../../resources/js/components/plan/SeasonPhaseBar.tsx) (+test),
+[SeasonWeekTimeline.tsx](../../resources/js/components/plan/SeasonWeekTimeline.tsx) (+test).
+Modified: [PlanController.php](../../app/Http/Controllers/PlanController.php) (`seasonSummary`
+prop wiring), [PlanControllerTest.php](../../tests/Feature/Http/Controllers/PlanControllerTest.php),
+[Plan.tsx](../../resources/js/pages/Plan.tsx) (additive section + `PHASE_LABEL`/`PHASE_TONE`
+exported for reuse), [chartTokens.ts](../../resources/js/lib/chartTokens.ts) (+test, new
+`PHASE_COLORS` export), [plan-periodizer.md](../../docs/features/plan-periodizer.md).
 
 ## Blockers
 

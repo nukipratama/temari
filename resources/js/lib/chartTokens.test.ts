@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CHART_GROUND, PALETTE, hrZone } from './chartTokens';
+import { CHART_GROUND, PALETTE, PHASE_COLORS, hrZone } from './chartTokens';
 
 describe('PALETTE chart token bridge', () => {
     it('mirrors the canonical hex values from app.css @theme', () => {
@@ -47,6 +47,35 @@ describe('CHART_GROUND', () => {
     it('mirrors the light/dark border token pair for neutral marker outlines', () => {
         expect(CHART_GROUND.light.border).toBe('#bfc5cc'); // = border on light
         expect(CHART_GROUND.dark.border).toBe('#4d5560'); // = border on dark
+    });
+});
+
+describe('PHASE_COLORS', () => {
+    it('covers all five plan phases', () => {
+        expect(Object.keys(PHASE_COLORS)).toEqual([
+            'base',
+            'build',
+            'peak',
+            'taper',
+            'deload',
+        ]);
+    });
+
+    it('never reuses a Mood-committed PALETTE color (overloaded/gassed/chill)', () => {
+        const moodColors = new Set<string>([
+            PALETTE.overloaded,
+            PALETTE.gassed,
+            PALETTE.chill,
+        ]);
+        for (const value of Object.values(PHASE_COLORS)) {
+            expect(moodColors.has(value)).toBe(false);
+        }
+    });
+
+    it('exposes every value as a 6-digit lowercase hex', () => {
+        for (const value of Object.values(PHASE_COLORS)) {
+            expect(value).toMatch(/^#[0-9a-f]{6}$/);
+        }
     });
 });
 

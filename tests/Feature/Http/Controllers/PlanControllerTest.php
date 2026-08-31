@@ -31,6 +31,20 @@ it('renders an empty week list for a fresh user with no plan yet', function (): 
         ->assertInertia(fn (Assert $page) => $page->component('Plan')->where('weeks', []));
 });
 
+it('renders a season-wide week summary even before any plan has been generated', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/plan')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('seasonSummary')
+            ->has('seasonSummary.0.week_start')
+            ->has('seasonSummary.0.phase')
+            ->has('seasonSummary.0.type')
+            ->has('seasonSummary.0.planned_km')
+            ->where('seasonSummary.0.type', 'current'));
+});
+
 it('creates a season and its 5 goals on a fresh user\'s first Plan view, before any regeneration', function (): void {
     $user = User::factory()->create();
 
