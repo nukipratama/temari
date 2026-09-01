@@ -20,7 +20,6 @@ it('requires authentication for every plan route', function (): void {
     $this->get('/plan')->assertRedirect('/login');
     $this->post('/plan/regenerate')->assertRedirect('/login');
     $this->patch('/plan/sessions/1')->assertRedirect('/login');
-    $this->delete('/plan/sessions/1')->assertRedirect('/login');
 });
 
 it('renders an empty week list for a fresh user with no plan yet', function (): void {
@@ -108,16 +107,6 @@ it('rejects updating another user\'s planned session', function (): void {
         ->assertForbidden();
 });
 
-it('rejects deleting another user\'s planned session', function (): void {
-    $owner = User::factory()->create();
-    $session = PlannedSession::factory()->for($owner)->create(['date' => Carbon::today()->addDay()->toDateString()]);
-    $intruder = User::factory()->create();
-
-    $this->actingAs($intruder)
-        ->delete("/plan/sessions/{$session->id}")
-        ->assertForbidden();
-});
-
 it('updating a session automatically pins it, so the next regeneration leaves it alone', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create([
@@ -126,11 +115,11 @@ it('updating a session automatically pins it, so the next regeneration leaves it
     ]);
 
     $this->actingAs($user)
-        ->patch("/plan/sessions/{$session->id}", ['session_type' => 'rest'])
+        ->patch("/plan/sessions/{$session->id}", ['skipped' => true])
         ->assertRedirect();
 
     $fresh = $session->fresh();
-    expect($fresh->session_type->value)->toBe('rest')
+    expect($fresh->skipped)->toBeTrue()
         ->and($fresh->pinned)->toBeTrue();
 });
 
@@ -146,7 +135,7 @@ it('allows an explicit unpin alongside an edit', function (): void {
     expect($session->fresh()->pinned)->toBeFalse();
 });
 
-it('skips a day via the skipped flag, distinct from blocking', function (): void {
+it('skips a day via the skipped flag, leaving the prescribed session in place', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->addDay()->toDateString(),
@@ -163,25 +152,49 @@ it('skips a day via the skipped flag, distinct from blocking', function (): void
         ->and($fresh->session_type->value)->toBe('tempo');
 });
 
-it('blocks a day via session_type = rest', function (): void {
+it('cuts block and delete, per decision P23', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->addDay()->toDateString(),
         'session_type' => 'tempo',
     ]);
 
+    // The route is gone, not merely unlinked.
+    $this->actingAs($user)
+        ->delete("/plan/sessions/{$session->id}")
+        ->assertMethodNotAllowed();
+
+    // session_type is no longer a validated field, so a block attempt is a no-op.
     $this->actingAs($user)->patch("/plan/sessions/{$session->id}", ['session_type' => 'rest']);
 
-    expect($session->fresh()->session_type->value)->toBe('rest');
+    expect($session->fresh()->session_type->value)->toBe('tempo')
+        ->and(PlannedSession::query()->find($session->id))->not->toBeNull();
 });
 
-it('deletes a planned session', function (): void {
+it('moves a session by swapping it with whatever already sits on the target day', function (): void {
     $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->addDay()->toDateString()]);
+    $from = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDay()->toDateString(),
+        'session_type' => 'tempo',
+        'pinned' => false,
+    ]);
+    $to = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDays(2)->toDateString(),
+        'session_type' => 'rest',
+        'pinned' => false,
+    ]);
 
-    $this->actingAs($user)->delete("/plan/sessions/{$session->id}")->assertRedirect();
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$from->id}", ['date' => $to->date->toDateString()])
+        ->assertRedirect();
 
-    expect(PlannedSession::query()->find($session->id))->toBeNull();
+    // Each row keeps its own calendar slot; what they prescribe is what moves.
+    expect($from->fresh()->date->toDateString())->toBe(Carbon::today()->addDay()->toDateString())
+        ->and($from->fresh()->session_type->value)->toBe('rest')
+        ->and($to->fresh()->date->toDateString())->toBe(Carbon::today()->addDays(2)->toDateString())
+        ->and($to->fresh()->session_type->value)->toBe('tempo')
+        ->and($from->fresh()->pinned)->toBeTrue()
+        ->and($to->fresh()->pinned)->toBeTrue();
 });
 
 it('clamps today\'s session against the readiness ceiling without mutating the stored row', function (): void {

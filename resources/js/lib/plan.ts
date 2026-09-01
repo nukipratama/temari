@@ -80,7 +80,7 @@ export const STATUS_BAR_FILL: Record<string, string> = {
     partial: 'bg-citrus',
     missed: 'bg-ember',
     overreached: 'bg-citrus',
-    skip: 'bg-text-3',
+    skip: 'bg-ink-3',
 };
 
 /**

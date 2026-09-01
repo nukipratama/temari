@@ -28,12 +28,11 @@ it('rejects an invalid date', function (): void {
     expect(validatePlannedSessionUpdate(['date' => 'not-a-date'])->fails())->toBeTrue();
 });
 
-it('passes a valid block (session_type = rest)', function (): void {
-    expect(validatePlannedSessionUpdate(['session_type' => 'rest'])->passes())->toBeTrue();
-});
-
-it('rejects an unknown session_type', function (): void {
-    expect(validatePlannedSessionUpdate(['session_type' => 'sprint'])->fails())->toBeTrue();
+it('no longer validates session_type, block having been cut by P23', function (): void {
+    // Not a rule any more, so it neither passes nor fails — it is simply
+    // dropped, and PlanController never reads it.
+    expect(validatePlannedSessionUpdate(['session_type' => 'sprint'])->validated())
+        ->not->toHaveKey('session_type');
 });
 
 it('passes an explicit pin/unpin toggle', function (): void {
