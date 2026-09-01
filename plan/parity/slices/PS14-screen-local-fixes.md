@@ -76,8 +76,10 @@ row**, under a `justify-between`.
 
 Ships as the prototype's shape, with the states P1 keeps folded into it rather than dropped:
 sending and cooling swap the glyph and disable the button, and the cooldown's remaining time moves
-into the `title` and the accessible label. The gating is unchanged — an unreachable or not-yet-done
-recap still draws no button at all, per the no-false-hope rule.
+into the `title` and the accessible label. The gating is unchanged, including the part that reads
+as an exception: a recap whose narration is not `done` draws no button, but a user with **no channel
+wired** still gets it, muted, opening the "turn notifications on" nudge. That is deliberate and
+predates this slice — the control is a discovery surface there, not a false affordance.
 
 ### 8 — P38's premise does not survive verification
 

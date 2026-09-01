@@ -16,7 +16,6 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
-import PillButton from '@/components/ui/PillButton';
 import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { appLayout } from '@/layouts/appLayout';
 import {
@@ -125,10 +124,9 @@ export default function Plan({
                         <br />
                         <em className="text-horizon-ink">ahead.</em>
                     </h1>
-                    <PillButton
-                        tone="ghost"
-                        size="sm"
-                        className="mt-1 flex-none"
+                    <button
+                        type="button"
+                        className="focus-ring pad-chip text-label-micro pressable mt-1 inline-flex flex-none items-center gap-1 rounded-full bg-muted text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-60"
                         onClick={regenerate}
                         disabled={regenerating || regenerateCooling}
                     >
@@ -146,7 +144,7 @@ export default function Plan({
                             : regenerateCooling
                               ? `next in ${formatDurationHMS(regenerateCooldown)}`
                               : 'regenerate'}
-                    </PillButton>
+                    </button>
                 </div>
                 <p className="mb-4 text-sm leading-relaxed text-text-2">
                     {race

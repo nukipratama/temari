@@ -81,7 +81,7 @@ describe('InboxRow', () => {
             url: '/activities?week=2026-08-09',
         });
 
-        const link = screen.getByText('Open');
+        const link = screen.getByRole('link', { name: /open/i });
         expect(link).toHaveAttribute('href', '/activities?week=2026-08-09');
 
         await userEvent.click(link);

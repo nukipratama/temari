@@ -88,7 +88,7 @@ describe('Inbox', () => {
 
         expect(screen.getByLabelText('Unread')).toBeInTheDocument();
 
-        await userEvent.click(screen.getByText('Open'));
+        await userEvent.click(screen.getByRole('link', { name: /open/i }));
 
         expect(fetchMock).toHaveBeenCalledWith(
             '/api/notifications/4/read',
@@ -114,7 +114,7 @@ describe('Inbox', () => {
             }),
         ]);
 
-        await userEvent.click(screen.getByText('Open'));
+        await userEvent.click(screen.getByRole('link', { name: /open/i }));
 
         expect(fetchMock).not.toHaveBeenCalled();
     });

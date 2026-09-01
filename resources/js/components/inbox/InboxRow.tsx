@@ -167,7 +167,12 @@ export default function InboxRow({
                                 size="sm"
                                 onClick={() => onOpen(item)}
                             >
-                                Open
+                                open
+                                <Icon
+                                    icon="mdi:arrow-right"
+                                    className="size-3"
+                                    aria-hidden
+                                />
                             </PillLink>
                         </div>
                     )}

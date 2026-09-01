@@ -1,16 +1,9 @@
-import type { FormStatus, WeeklySnapshotWithRecap } from '@/types/inertia';
+import type { WeeklySnapshotWithRecap } from '@/types/inertia';
 
 import MetricExplainer from '@/components/MetricExplainer';
 import { cn } from '@/lib/cn';
 import { formStatusLabel } from '@/lib/formStatus';
 import { type MetricKey } from '@/lib/metricGlossary';
-
-const FORM_CHIP_CLASS: Record<FormStatus, string> = {
-    fresh: 'bg-leaf/15 text-leaf-ink',
-    optimal: 'bg-mood-easy/15 text-mood-easy-ink',
-    fatigued: 'bg-mood-blazing/15 text-mood-blazing-ink',
-    overreaching: 'bg-mood-gassed/15 text-mood-gassed-ink',
-};
 
 const MONOTONY_ALERT_AT = 1.5;
 const DECOUPLING_ALERT_PCT_AT = 8;
@@ -67,25 +60,21 @@ export default function WeeklyStatusChips({
                 />
             )}
             {snapshot.ctl_42d !== null && (
-                <span className={cn(CHIP_BASE, 'bg-leaf/15 text-leaf-ink')}>
-                    Fitness {snapshot.ctl_42d.toFixed(1)}
-                </span>
+                <Chip
+                    label="Fitness"
+                    value={snapshot.ctl_42d.toFixed(1)}
+                    neutral={neutral}
+                />
             )}
             {snapshot.form !== null && (
-                <span
-                    className={cn(CHIP_BASE, 'bg-horizon/15 text-horizon-ink')}
-                >
-                    Readiness {snapshot.form >= 0 ? '+' : ''}
-                    {snapshot.form.toFixed(1)}
-                </span>
+                <Chip
+                    label="Readiness"
+                    value={`${snapshot.form >= 0 ? '+' : ''}${snapshot.form.toFixed(1)}`}
+                    neutral={neutral}
+                />
             )}
             {snapshot.form_status && (
-                <span
-                    className={cn(
-                        CHIP_BASE,
-                        FORM_CHIP_CLASS[snapshot.form_status],
-                    )}
-                >
+                <span className={cn(CHIP_BASE, neutral, 'text-foreground')}>
                     {formStatusLabel(snapshot.form_status)}
                 </span>
             )}
