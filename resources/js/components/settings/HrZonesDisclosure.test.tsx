@@ -1,16 +1,27 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { setMockPage } from '@/test/setup';
+
 import HrZonesDisclosure, {
-    deriveZones,
+    deriveBounds,
+    toZonePairs,
     type HrZonesPayload,
 } from './HrZonesDisclosure';
+
+const DEFAULT_BOUNDS = deriveBounds(180, 55);
 
 const DEFAULT_PROFILE = {
     max_hr: 180,
     resting_hr: 55,
-    hr_zones: deriveZones(180, 55),
+    hr_zones: {
+        Z1: { lo: DEFAULT_BOUNDS.Z1, hi: DEFAULT_BOUNDS.Z2 },
+        Z2: { lo: DEFAULT_BOUNDS.Z2, hi: DEFAULT_BOUNDS.Z3 },
+        Z3: { lo: DEFAULT_BOUNDS.Z3, hi: DEFAULT_BOUNDS.Z4 },
+        Z4: { lo: DEFAULT_BOUNDS.Z4, hi: DEFAULT_BOUNDS.Z5 },
+        Z5: { lo: DEFAULT_BOUNDS.Z5, hi: 999 },
+    },
     optimal_cadence_spm: 170,
 };
 
@@ -22,25 +33,41 @@ const DEFAULT_PAYLOAD: HrZonesPayload = {
 };
 
 function open() {
-    fireEvent.click(screen.getByRole('button', { name: /HR zones/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Heart-rate zones/ }));
 }
 
-describe('deriveZones', () => {
-    it('derives ascending, gapless zones with an open-ended Z5', () => {
-        const zones = deriveZones(190, 50);
-        expect(zones.Z1.lo).toBe(118);
-        expect(zones.Z1.hi).toBe(zones.Z2.lo);
-        expect(zones.Z5.hi).toBe(999);
+describe('deriveBounds', () => {
+    it('derives ascending lower bounds from the heart-rate reserve', () => {
+        const bounds = deriveBounds(190, 50);
+        expect(bounds.Z1).toBe(118);
+        expect(bounds.Z2).toBeGreaterThan(bounds.Z1);
+        expect(bounds.Z5).toBeGreaterThan(bounds.Z4);
+    });
+});
+
+describe('toZonePairs', () => {
+    // The server rejects any submission where a zone's hi is not the next
+    // zone's lo, so the pairs are reconstituted rather than entered.
+    it('widens five lower bounds into gapless pairs with an open-ended Z5', () => {
+        expect(toZonePairs(deriveBounds(190, 50))).toEqual([
+            { lo: 118, hi: 143 },
+            { lo: 143, hi: 161 },
+            { lo: 161, hi: 177 },
+            { lo: 177, hi: 186 },
+            { lo: 186, hi: 999 },
+        ]);
     });
 });
 
 describe('HrZonesDisclosure', () => {
+    beforeEach(() => {
+        setMockPage({ errors: {} });
+    });
+
     it('stays collapsed until the trigger is clicked, naming the current source', () => {
         render(<HrZonesDisclosure hrZones={DEFAULT_PAYLOAD} />);
-        expect(screen.getByText('HR zones')).toBeInTheDocument();
-        expect(
-            screen.getByText(/you're on the defaults for now/i),
-        ).toBeInTheDocument();
+        expect(screen.getByText('Heart-rate zones')).toBeInTheDocument();
+        expect(screen.getByText('Using default estimates')).toBeInTheDocument();
         expect(screen.queryByLabelText('Max HR')).not.toBeInTheDocument();
 
         open();
@@ -62,6 +89,33 @@ describe('HrZonesDisclosure', () => {
         ).toBeInTheDocument();
     });
 
+    // The prototype draws one bound per zone, and the extra `hi` fields the
+    // page used to render could only ever express submissions the server
+    // rejects.
+    it('draws one bound per zone, never a second upper-bound field', () => {
+        render(<HrZonesDisclosure hrZones={DEFAULT_PAYLOAD} />);
+        open();
+
+        for (const key of ['Z1', 'Z2', 'Z3', 'Z4', 'Z5']) {
+            expect(screen.getByTestId(`zone-${key}-lo`)).toBeInTheDocument();
+            expect(
+                screen.queryByTestId(`zone-${key}-hi`),
+            ).not.toBeInTheDocument();
+        }
+    });
+
+    // Reflow #10: the prototype's own wide step on this two-field grid.
+    it('takes the wide four-column step on the max/resting grid', () => {
+        const { container } = render(
+            <HrZonesDisclosure hrZones={DEFAULT_PAYLOAD} />,
+        );
+        open();
+
+        expect(
+            container.querySelector('.min-\\[900px\\]\\:grid-cols-4'),
+        ).not.toBeNull();
+    });
+
     it('recomputes zones from Max/Resting HR only when Auto-calculate is pressed', () => {
         render(<HrZonesDisclosure hrZones={DEFAULT_PAYLOAD} />);
         open();
@@ -70,21 +124,16 @@ describe('HrZonesDisclosure', () => {
             target: { value: '200' },
         });
         // Editing the field alone must not touch the rendered zones.
+        expect(screen.getByTestId('zone-Z1-lo')).toHaveValue(DEFAULT_BOUNDS.Z1);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Auto-calculate' }));
+
         expect(screen.getByTestId('zone-Z1-lo')).toHaveValue(
-            DEFAULT_PROFILE.hr_zones.Z1.lo,
+            deriveBounds(200, DEFAULT_PROFILE.resting_hr).Z1,
         );
-
-        fireEvent.click(
-            screen.getByRole('button', {
-                name: /Auto-calculate from Max & Resting/,
-            }),
-        );
-
-        const expected = deriveZones(200, DEFAULT_PROFILE.resting_hr);
-        expect(screen.getByTestId('zone-Z1-lo')).toHaveValue(expected.Z1.lo);
     });
 
-    it('keeps each zone boundary individually editable', () => {
+    it('keeps each zone bound individually editable', () => {
         render(<HrZonesDisclosure hrZones={DEFAULT_PAYLOAD} />);
         open();
 
@@ -92,16 +141,6 @@ describe('HrZonesDisclosure', () => {
             target: { value: '145' },
         });
         expect(screen.getByTestId('zone-Z2-lo')).toHaveValue(145);
-    });
-
-    it("renders Z5's upper bound as an unbounded, non-editable symbol", () => {
-        render(<HrZonesDisclosure hrZones={DEFAULT_PAYLOAD} />);
-        open();
-
-        expect(screen.getByTestId('zone-Z5-hi')).toHaveTextContent('∞');
-        expect(
-            screen.queryByLabelText('Z5 upper bound'),
-        ).not.toBeInTheDocument();
     });
 
     it('disables Save until something actually changed', () => {
@@ -120,7 +159,7 @@ describe('HrZonesDisclosure', () => {
         ).toBeEnabled();
     });
 
-    it('submits max_hr, resting_hr and the five zones on save', () => {
+    it('submits max_hr, resting_hr and the five reconstituted pairs on save', () => {
         vi.mocked(router.patch).mockReset();
         render(<HrZonesDisclosure hrZones={DEFAULT_PAYLOAD} />);
         open();
@@ -132,14 +171,30 @@ describe('HrZonesDisclosure', () => {
 
         expect(router.patch).toHaveBeenCalledWith(
             '/settings/zones',
-            expect.objectContaining({
+            {
                 max_hr: DEFAULT_PROFILE.max_hr,
                 resting_hr: 50,
-                zones: expect.arrayContaining([
-                    expect.objectContaining(DEFAULT_PROFILE.hr_zones.Z1),
-                ]),
-            }),
+                zones: toZonePairs(DEFAULT_BOUNDS),
+            },
             expect.objectContaining({ preserveScroll: true }),
+        );
+    });
+
+    // A server complaint about `zones.N.hi` is now a complaint about the next
+    // zone's lower bound, since that is the only field the user can reach.
+    it('marks the next zone invalid when the server rejects a derived upper bound', () => {
+        setMockPage({
+            errors: { 'zones.1.hi': 'Zone upper bound must be greater.' },
+        });
+        render(<HrZonesDisclosure hrZones={DEFAULT_PAYLOAD} />);
+        open();
+
+        expect(screen.getByTestId('zone-Z3-lo')).toHaveAttribute(
+            'aria-invalid',
+            'true',
+        );
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            /has to start above the one before it/,
         );
     });
 
@@ -149,7 +204,7 @@ describe('HrZonesDisclosure', () => {
         );
         open();
         expect(
-            screen.queryByRole('button', { name: /Reset to default zones/ }),
+            screen.queryByRole('button', { name: /Reset to default/ }),
         ).not.toBeInTheDocument();
 
         rerender(
@@ -158,8 +213,37 @@ describe('HrZonesDisclosure', () => {
             />,
         );
         expect(
-            screen.getByRole('button', { name: /Reset to default zones/ }),
+            screen.getByRole('button', { name: /Reset to default/ }),
         ).toBeInTheDocument();
+    });
+
+    it('flashes Saved once the patch succeeds', () => {
+        vi.mocked(router.patch).mockReset();
+        render(<HrZonesDisclosure hrZones={DEFAULT_PAYLOAD} />);
+        open();
+
+        fireEvent.change(screen.getByLabelText('Max HR'), {
+            target: { value: '200' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /Save zones/ }));
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+        const [, , options] = vi.mocked(router.patch).mock.calls[0] as [
+            string,
+            unknown,
+            {
+                onStart?: () => void;
+                onSuccess?: () => void;
+                onFinish?: () => void;
+            },
+        ];
+        act(() => {
+            options.onStart?.();
+            options.onSuccess?.();
+            options.onFinish?.();
+        });
+
+        expect(screen.getByRole('status')).toHaveTextContent('Saved');
     });
 
     it('only shows Resync from Strava when canSyncFromStrava is true and the source is manual', () => {
@@ -178,6 +262,40 @@ describe('HrZonesDisclosure', () => {
         ).toBeInTheDocument();
     });
 
+    it('resyncs from Strava and reloads just the hrZones prop', () => {
+        vi.mocked(router.post).mockReset();
+        vi.mocked(router.reload).mockReset();
+
+        render(
+            <HrZonesDisclosure
+                hrZones={{
+                    ...DEFAULT_PAYLOAD,
+                    source: 'manual',
+                    canSyncFromStrava: true,
+                }}
+            />,
+        );
+        open();
+        fireEvent.click(
+            screen.getByRole('button', { name: /Resync from Strava/ }),
+        );
+
+        expect(router.post).toHaveBeenCalledWith(
+            '/settings/zones/resync-strava',
+            {},
+            expect.objectContaining({ onSuccess: expect.any(Function) }),
+        );
+
+        const [, , options] = vi.mocked(router.post).mock.calls[0] as [
+            string,
+            unknown,
+            { onSuccess?: () => void },
+        ];
+        act(() => options.onSuccess?.());
+
+        expect(router.reload).toHaveBeenCalledWith({ only: ['hrZones'] });
+    });
+
     it('deletes and reloads just the hrZones prop when Reset to default is clicked', () => {
         vi.mocked(router.delete).mockReset();
         vi.mocked(router.reload).mockReset();
@@ -189,7 +307,7 @@ describe('HrZonesDisclosure', () => {
         );
         open();
         fireEvent.click(
-            screen.getByRole('button', { name: /Reset to default zones/ }),
+            screen.getByRole('button', { name: /Reset to default/ }),
         );
 
         expect(router.delete).toHaveBeenCalledWith(

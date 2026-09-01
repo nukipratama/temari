@@ -99,7 +99,9 @@ describe('Devtools/Design', () => {
             screen.getByText('rarity-legendary fill outline'),
         ).toBeInTheDocument();
         expect(screen.getByText('bg-ink/0.7 panel')).toBeInTheDocument();
-        expect(screen.getByText('contrast 7/7')).toBeInTheDocument();
+        // Passed/total rather than a literal count: grounds.json gains rows as
+        // screens land, and what this asserts is that none of them fail.
+        expect(screen.getByText(/^contrast (\d+)\/\1$/)).toBeInTheDocument();
     });
 
     it('says so when no custom properties are readable', () => {

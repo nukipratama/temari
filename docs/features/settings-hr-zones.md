@@ -1,6 +1,6 @@
 ---
 title: HR zones
-description: Max/resting HR input, Karvonen-derived Z1–Z5 with manual per-zone overrides, source badges — inlined into Settings as an expand/collapse disclosure.
+description: Max/resting HR input, Karvonen-derived Z1–Z5 with one editable bound per zone, source badges — inlined into Settings as an expand/collapse disclosure.
 tags: [feature, settings]
 status: living
 reviewed: 2026-08-19
@@ -28,12 +28,14 @@ A runner's personal heart-rate zones, so every run is scored against *their* phy
 
 ## The disclosure
 
-[HrZonesDisclosure](../../resources/js/components/settings/HrZonesDisclosure.tsx) opens on a trigger row (icon, "HR zones", and a collapsed line naming the current source — default / synced from Strava with a last-synced label / set manually) with a chevron that flips on toggle. Expanded, it's two stacked cards, ported verbatim from the retired page:
+[HrZonesDisclosure](../../resources/js/components/settings/HrZonesDisclosure.tsx) opens on a trigger row (a heart-pulse glyph, "Heart-rate zones", and a collapsed line naming the current source — default estimates / synced from Strava with a last-synced label / set manually) with a chevron that rotates on toggle. It is **closed by default**. Expanded, it is one panel in the prototype's order:
 
-1. **Max & Resting HR** — two bpm inputs. An "Auto-calculate from Max & Resting" button recomputes the zones from these — the recalculation is button-gated, not live as you type.
-2. **Your zones** — the Z1–Z5 breakdown, both the derived preview and the hand-tuning in one place. Zones are derived client-side by the exported `deriveZones(maxHr, restingHr)`, where each zone's `lo` is `round(resting + pct × (max − resting))` using the **Karvonen %HRR** breakpoints `[0.488, 0.664, 0.792, 0.904, 0.968]`; each `hi` is the next zone's `lo`, and Z5's `hi` is an open-ended sentinel (`999`, shown as `∞`). The breakpoints are mirrored from the server request so the preview matches the stored result byte for byte. Each zone's `lo`/`hi` stays individually editable via `BoundaryInput` fields — the rule (and the validation) is that each zone's upper bound must equal the next zone's lower bound, so there are no gaps.
+1. **Max and Resting HR** — two bpm inputs in a grid that goes two-up on the mobile column and four-up above 900px, so a three-digit field is not given a third of the row. An "Auto-calculate" button recomputes the bounds from these — button-gated, not live as you type.
+2. **The five zone bounds** — one input per zone, its **lower** bound. Bounds are derived client-side by the exported `deriveBounds(maxHr, restingHr)` as `round(resting + pct × (max − resting))` using the **Karvonen %HRR** breakpoints `[0.488, 0.664, 0.792, 0.904, 0.968]`, mirrored from the server request so the preview matches the stored result byte for byte.
 
-Source `strava`/`manual` also show a "Resync from Strava" (scope-gated) and "Reset to default zones" action row above the two cards. Both mutate server-side, then reload just the `hrZones` Inertia prop (`router.reload({ only: ['hrZones'] })`) rather than the whole page — the disclosure and any unrelated in-progress state elsewhere on Settings (a toggled notification, say) survive the round-trip.
+There is deliberately **no upper-bound field**. `UpdateHrZonesRequest` rejects any submission where a zone's `hi` is not the next zone's `lo`, so every upper bound is already determined by the five lower ones; the exported `toZonePairs()` widens them back into the `{lo, hi}` payload on submit, with Z5's `hi` fixed at the open-ended sentinel (`999`). The gap/overlap error the old paired inputs could produce is therefore unreachable rather than merely validated, and a server complaint on `zones.N.hi` is surfaced against zone **N+1**'s field, the only one the user can reach.
+
+Source `strava`/`manual` also show a "Reset to default" action beside Save, and `manual` a scope-gated "Resync from Strava" beneath it. Both mutate server-side, then reload just the `hrZones` Inertia prop (`router.reload({ only: ['hrZones'] })`) rather than the whole page — the disclosure and any unrelated in-progress state elsewhere on Settings (a toggled notification, say) survive the round-trip.
 
 Submit posts `router.patch('/settings/zones', …)` with `max_hr`, `resting_hr` and the five `{lo, hi}` zones — same payload shape as before.
 
