@@ -163,7 +163,7 @@ Status vocabulary: `todo` · `in-progress` · `in-review` · `merged` · `blocke
 | PS5 | Race | todo | — | wt | |
 | PS6 | Trends | todo | — | wt | |
 | PS7 | History | todo | — | wt | |
-| PS8 | Activity detail | todo | — | wt | |
+| PS8 | Activity detail | in-review | [#687](https://github.com/nukipratama/temari/pull/687) | 2 | [PS8-activity-detail](slices/PS8-activity-detail.md); 15 commits, 44 files; rebuilt to the prototype's section list — all five sections `V0` wrongly called absent kept; four renames to the prototype's vocabulary (`PastYouHero`→`PastYouCard`, `DetailTiles`→`VitalsCard`, `SplitsTable`→`SplitsChart`, `LapsGraph`→`LapsCarousel`) plus a new `RunHero`; the on-page kartu block cut, orphaning `Kartu`/`KartuMount`/`ZoneBar` (share path via `ShareCardModal` verified untouched); no plan/prototype discrepancy found; coverage 97.15% → 97.21%; `Runs/Show` 206.3 kB gz against a 245 kB budget, no re-baseline |
 | PS9 | Inbox | todo | — | wt | |
 | PS10 | Profile | todo | — | wt | |
 | PS11 | Settings | todo | — | wt | |
