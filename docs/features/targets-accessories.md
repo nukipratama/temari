@@ -40,7 +40,9 @@ The engine underneath is untouched, and is `W2`'s to sweep:
   [build-accessories.mjs](../../resources/brand/build-accessories.mjs) are still in the tree.
 
 An unlock still lands as an inbox row with its rarity badge, which is the one place the prototype
-does draw unlocks — see [[notification-inbox]].
+does draw unlocks. The badge reads its tier out of `config/temari_unlocks.php` by `unlock_key` at
+render time — `UnlockGrantedNotification`'s stored payload has never carried one, so until `PS9`
+resolved it read-side the badge had a branch and no data — see [[notification-inbox]].
 
 ## Notes
 

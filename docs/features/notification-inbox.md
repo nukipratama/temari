@@ -1,9 +1,9 @@
 ---
 title: Notification inbox
-description: The /inbox notification centre — a paginated record of everything Temari sent, each row a deep link back into the page it was about.
+description: The /inbox notification centre — a growing window over everything Temari sent, each row a deep link back into the page it was about.
 tags: [feature, notifications]
 status: living
-reviewed: 2026-08-30
+reviewed: 2026-09-01
 code_refs:
   - app/Http/Controllers/InboxController.php
   - app/Models/InboxNotification.php
@@ -23,13 +23,13 @@ Every row is something Temari already sent; nothing is written here, and nothing
 ## The prop shape
 
 There is no listing API. The page is a normal Inertia page
-([InboxController](../../app/Http/Controllers/InboxController.php#L27)) because the inbox is a
+([InboxController](../../app/Http/Controllers/InboxController.php#L36)) because the inbox is a
 destination with its own URL, not a widget that polls: a push tap has to land on it cold, and
 `unreadNotifications` already rides on every page as a shared prop
 ([NotificationProps](../../app/Services/Inertia/NotificationProps.php#L37)).
 
 Rows arrive **flattened**, not as the stored `payload` blob. The controller lifts out the deep
-link and the replay handles ([InboxController](../../app/Http/Controllers/InboxController.php#L50))
+link and the replay handles ([InboxController](../../app/Http/Controllers/InboxController.php#L70))
 so the page never reads untyped JSON, and the shape is a declared TypeScript interface
 (`InboxItem` in [types/inertia.ts](../../resources/js/types/inertia.ts)) rather than
 `Record<string, unknown>`. `created_at` ships as `toIso8601String()` — a true instant with its
@@ -37,23 +37,35 @@ so the page never reads untyped JSON, and the shape is a declared TypeScript int
 ([pace.ts](../../resources/js/lib/pace.ts#L104)) and never with the naive wall-clock parser the
 Strava dates need.
 
-The list is paginated at 20 ([InboxController](../../app/Http/Controllers/InboxController.php#L25)).
-Retention is undecided and nothing prunes the table, so pagination is what keeps an old account's
-inbox usable without deciding how long a record lives.
+The list is a **growing window**, not a pager. The first request ships 20 rows
+([InboxController](../../app/Http/Controllers/InboxController.php#L32)); each "load older" press
+asks for `?shown=` twenty more and the server also says whether anything sits behind what it sent,
+so the button hides itself at the end. The requested size is snapped up to the page step and capped
+([InboxController](../../app/Http/Controllers/InboxController.php#L130)), so a hand-typed `?shown=`
+cannot ask for an unbounded scan. Retention is undecided and nothing prunes the table, so the window
+is what keeps an old account's inbox usable without deciding how long a record lives.
 
 ## Deep links, not replays
 
 `PP3` cut both celebration replays: the card-reveal modal and its `api.cards.*` endpoints, and the
-accessory-unlock takeover. Rows are now a record and a deep link, nothing more. A post-run row still
-carries `run_card_id` and the card's `rarity` — the rarity is what styles an unlock row's badge
-without a join — and every row's only action is the "Open" link into the page the notification was
-about, which is the same URL its web push already carried.
+accessory-unlock takeover. Rows are now a record and a deep link, nothing more. Every row's only
+action is the "Open" link into the page the notification was about, which is the same URL its web
+push already carried.
+
+An **unlock** row's rarity badge is resolved read-side from the unlock catalog by `unlock_key`
+([InboxController](../../app/Http/Controllers/InboxController.php#L150)) rather than read out of the
+stored payload, which never carried one — so rows recorded before the badge existed are rated too,
+and a key outside the catalog (the per-season `season.{id}.*` namespace) simply stays unrated and
+falls back to the plain kind label. A **post-run** row carries its run's distance and moving time,
+looked up over the whole window in one query
+([InboxController](../../app/Http/Controllers/InboxController.php#L102)), which is what the row's
+distance/pace stat chips render.
 
 ## Grouped sections and the time toggle
 
 Rows render grouped into **Today / This Week / Earlier**
 ([inboxBuckets.ts](../../resources/js/components/inbox/inboxBuckets.ts)), a pure client-side
-grouping over whatever page of rows is already loaded, no backend shape change. The "this week"
+grouping over whatever rows the window holds, no backend shape change. The "this week"
 boundary is Monday-start, matching the backend's own week convention (`startOfWeek(Carbon::MONDAY)`,
 e.g. [Periodizer](../../app/Services/Run/Plan/Periodizer.php#L56)) rather than a locale default.
 `created_at` is a true instant, so bucketing reads it with plain `Date` parsing and deliberately does
@@ -62,11 +74,9 @@ not reuse `pace.ts`'s `mondayOf`, which is built for Strava's naive `start_date_
 Tapping a row's timestamp toggles it between relative (`formatRelativeId`) and absolute
 (`formatAbsoluteId`) display, per row, client-only state.
 
-Pagination stays the existing Newer/Older page nav rather than adopting a cumulative "load more":
-the deep-link resolver ([InboxController](../../app/Http/Controllers/InboxController.php#L92)) jumps
-straight to the page a given row sits on, which assumes a single page is rendered at a time. A
-cumulative loader would need every page up to that one merged client-side first, a materially
-different pagination shape than what's wired today.
+"Load older" is a real server round-trip, not a client-side reveal: it re-requests the page with a
+wider `?shown=` and Inertia refetches only the list props, `preserveScroll` keeping what has already
+been read where it was.
 
 ## Read state
 
@@ -77,9 +87,9 @@ reloads only `unreadNotifications`, which is what the bell in
 [MobileTopBar](../../resources/js/components/MobileTopBar.tsx) renders. There is no "mark all read": the unread count is a count of things not looked at, and a
 button that lies about that is worse than a count that stays high.
 
-`/inbox?item={id}` is the per-row deep link. The controller resolves which page that row sits on
-([InboxController](../../app/Http/Controllers/InboxController.php#L92)) so the target is on screen
-even when it has been paged past, and arriving on a row counts as reading it.
+`/inbox?item={id}` is the per-row deep link. The controller widens the window far enough to contain
+that row ([InboxController](../../app/Http/Controllers/InboxController.php#L130)) so the target is on
+screen even when it sits well behind the first twenty, and arriving on a row counts as reading it.
 
 ## Empty inbox
 
