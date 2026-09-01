@@ -320,6 +320,33 @@ describe('Onboarding/Index', () => {
         ).toBeInTheDocument();
     });
 
+    it('recaps the answered preferences on the goal step', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        fireEvent.click(screen.getByRole('button', { name: 'New to running' }));
+        fireEvent.click(screen.getByRole('button', { name: '3x' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Stay consistent' }),
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+
+        expect(
+            screen.getByText(
+                'Got it: New to running · 3x a week · Stay consistent.',
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('leaves the recap out when every preference was skipped', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        advanceToGoal();
+
+        expect(screen.queryByText(/^Got it:/)).not.toBeInTheDocument();
+    });
+
     it('submits the chosen training preferences alongside the race goal', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
