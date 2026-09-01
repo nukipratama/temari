@@ -22,7 +22,13 @@ vi.mock('@/components/run/RouteMap', () => ({
 // The share popup carries the ~1200-line canvas engine behind a lazy import;
 // this file only asserts that the button reaches it.
 vi.mock('@/components/card/ShareCardModal', () => ({
-    default: () => <div data-testid="share-card-modal" />,
+    default: ({ onClose }: { onClose: () => void }) => (
+        <div data-testid="share-card-modal">
+            <button type="button" onClick={onClose}>
+                Close share
+            </button>
+        </div>
+    ),
 }));
 
 beforeEach(() => {
@@ -370,6 +376,17 @@ describe('Runs/Show', () => {
         expect(
             await screen.findByTestId('share-card-modal'),
         ).toBeInTheDocument();
+    });
+
+    it('closes the share popup again from inside it', async () => {
+        renderShow();
+        fireEvent.click(screen.getByRole('button', { name: /^Share$/ }));
+        fireEvent.click(
+            await screen.findByRole('button', { name: 'Close share' }),
+        );
+        expect(
+            screen.queryByTestId('share-card-modal'),
+        ).not.toBeInTheDocument();
     });
 
     it('hides the share button when the run has no card to share', () => {

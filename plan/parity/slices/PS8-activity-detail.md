@@ -167,14 +167,55 @@ Measured on this branch, `epic/mobile-ux-port` at `8415d1f7` vs the slice, same 
 
 | | before | after |
 |---|---|---|
-| statements | 97.15% (3962/4078) | **PENDING** |
-| branches | 90.49% (3229/3568) | **PENDING** |
-| functions | 96.78% (1052/1087) | **PENDING** |
-| lines | 97.54% (3769/3864) | **PENDING** |
+| statements | 97.15% (3962/4078) | **97.21%** (3946/4059) |
+| branches | 90.49% (3229/3568) | 90.39% (3211/3552) |
+| functions | 96.78% (1052/1087) | **97.03%** (1048/1080) |
+| lines | 97.54% (3769/3864) | **97.60%** (3751/3843) |
+
+Flat, on a denominator 19 statements smaller: the five new components land at **98.32%**
+statements for `components/run` as a directory, which offsets the well-covered `Kartu`/`ZoneBar`
+leaving. Branches slip 0.10pt — `SplitsChart`'s clamp arms and `useRunShow`'s share-payload
+null-coalescing chain are the only material gaps, and `Runs/Show.tsx` itself is now 100% statements
+/ 100% functions (it was 88.88% / 72.72% after `PP3`, which that slice flagged as `PS8`'s to
+raise). Nowhere near the 95% gate.
 
 ## Verification notes
 
-PENDING — filled from the gate run.
+`./vendor/bin/sail composer check` — the single gate since `C1`, running exactly what CI runs —
+green end to end. Run as `sail exec -e COMPOSER_PROCESS_TIMEOUT=0 app composer check`: the default
+300s composer process timeout kills `phpstan` and then `rector` on this machine. `PS4` is landing
+the `Composer\Config::disableProcessTimeout` fix in `composer.json`; not duplicated here to avoid
+colliding with it.
+
+| step | result |
+|---|---|
+| `typescript:enums --check` | up to date |
+| `check-doc-citations.php` | all citations resolve ✓ (run directly as well as via the gate) |
+| `check-see-references.php` | all App references resolve ✓ |
+| `pint --test` · `prettier --check` | passed · clean |
+| `tsc` · `eslint --max-warnings 0` | clean · clean |
+| `check:palette` | 420 files, zero off-token utilities ✓ |
+| `phpstan analyse` | 0 errors |
+| `rector --dry-run` | 0 changed |
+| `pest --parallel` | 3638 passed |
+| `npm run test:coverage` | 1938 passed, 97.21% statements |
+| `npm run build` + `check:chunks` | within budget on all four routes |
+
+**Entry-chunk budgets — no re-baseline needed.** `Runs/Show` lands at **627.8 kB raw / 206.3 kB
+gzipped against its 245 kB budget**, 38.7 kB of headroom. The route's own chunk is 32.55 kB raw /
+10.11 kB gzipped; `RouteMap` (1.78 kB) and `ShareCardModal` (22.21 kB) both stay lazy, and `maps`
+and `charts` stay out of the closure. The four hardcoded paths in `check-entry-chunks.mjs` all
+still resolve — `Runs/Show.tsx` was neither moved nor renamed.
+
+**`grounds.json`** was hand-corrected, not regenerated (it has no generator; the contrast test
+names what to add). Three edits, all driven by a test failure message: the laps carousel's
+fastest-lap tint joined `horizon/0.1`'s call sites, the `cream/0.04` spec and `cream/0.1`'s two
+`card/{Kartu,ZoneBar}` entries came out as stale, and the vitals max-HR tick moved off `bg-text-2`
+onto `bg-foreground` rather than classifying a *text* token as a ground.
+
+**Not verified in a browser.** No visual sweep was run — `/browser-review` needs a build served
+from this worktree's own stack and the change is large enough that a reviewer's eye is worth more
+than one screenshot round. The PR body lists what to look at.
 
 ## Open questions
 
