@@ -7,6 +7,7 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import { usePendingPost } from '@/hooks/usePendingPost';
+import { HR_ZONE_LABELS } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { cardVariants } from '@/lib/variants';
@@ -22,14 +23,6 @@ type ZoneKey = (typeof ZONE_KEYS)[number];
  */
 const ZONE_BREAKPOINTS = [0.488, 0.664, 0.792, 0.904, 0.968] as const;
 const Z5_SENTINEL_HI = 999;
-
-const ZONE_LABEL: Record<ZoneKey, string> = {
-    Z1: 'Z1 · Recovery',
-    Z2: 'Z2 · Easy',
-    Z3: 'Z3 · Aerobic',
-    Z4: 'Z4 · Threshold',
-    Z5: 'Z5 · Max',
-};
 
 type ZoneSource = 'default' | 'strava' | 'manual';
 
@@ -294,10 +287,10 @@ export default function HrZonesDisclosure({
                                     tone="ink-2"
                                     className="w-24 flex-none truncate"
                                 >
-                                    {ZONE_LABEL[key]}
+                                    {HR_ZONE_LABELS[key]}
                                 </Eyebrow>
                                 <BoundInput
-                                    label={`${ZONE_LABEL[key]} lower bound`}
+                                    label={`${HR_ZONE_LABELS[key]} lower bound`}
                                     testId={`zone-${key}-lo`}
                                     value={bounds[key]}
                                     invalid={invalidBounds.has(key)}

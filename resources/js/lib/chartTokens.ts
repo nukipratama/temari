@@ -90,6 +90,19 @@ export const HR_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const;
 export const HR_ZONE_COLORS: Record<HrZoneKey, string> = hrZone;
 
 /**
+ * What each band is called wherever one is named to the athlete — the zones
+ * editor in Settings and Profile's time-in-zone legend read the same wording,
+ * since they describe the same five bands.
+ */
+export const HR_ZONE_LABELS: Record<HrZoneKey, string> = {
+    Z1: 'Z1 · Recovery',
+    Z2: 'Z2 · Easy',
+    Z3: 'Z3 · Aerobic',
+    Z4: 'Z4 · Threshold',
+    Z5: 'Z5 · Max',
+};
+
+/**
  * Periodization-phase fills for the Plan season summary (phase-progress bar,
  * week timeline). A validated-distinct (dataviz skill's `validate_palette.js`,
  * CVD ΔE >= 15 on every co-occurring pair) categorical hue per phase,

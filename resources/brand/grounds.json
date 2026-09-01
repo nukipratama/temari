@@ -73,6 +73,7 @@
         "current",
         "gradient-to-br",
         "gradient-to-l",
+        "gradient-to-r",
         "transparent",
         "white"
     ],
