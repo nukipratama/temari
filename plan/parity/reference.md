@@ -347,7 +347,7 @@ Props `{ planState: 'has' | 'empty' }` at [:415-417](../../resources/brand/proto
 |---|---|---|
 | today-session footer link | 270-282 | dead `href="#"` |
 | "set up a plan" (empty state) | 303-309 | dead `href="#"` |
-| "this week's stats" disclosure | 464-545 | real toggle. **No `defaultOpen`, so it renders closed.** Decision P1 / `V0` fork 4 opens it by default in the shipped app - a recorded divergence |
+| "this week's stats" disclosure | 464-545 | real toggle. **No `defaultOpen`, so it renders closed** - and closed is what ships, per README.md §6's 2026-08-31 amendment (d), which superseded `V0` fork 4. (This row previously read as if open-by-default were the shipped divergence; corrected by `PS3`, which found it contradicting §9 discrepancy 3 and [cut-list.md](cut-list.md) §2.) |
 | "view run detail" | 520-526 | dead `href="#"` |
 | "technical detail" | 535-541 | dead `href="#"` |
 

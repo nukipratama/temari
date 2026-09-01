@@ -7,7 +7,7 @@ import { activityUrl } from '@/lib/routes';
 import { evidenceRows } from '@/lib/verdict';
 
 const DELTA_TONE: Record<TrendDirection, string> = {
-    better: 'bg-horizon/20 text-icon-accent',
+    better: 'bg-horizon/[0.18] text-icon-accent',
     flat: 'bg-muted text-text-3',
     worse: 'bg-ember/[0.15] text-ember-ink',
 };
