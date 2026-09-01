@@ -45,15 +45,23 @@ Each ships its co-located `*.test.tsx` per the 1:1 convention.
 - `resources/js/lib/plan.ts` — `phasesOf()` moved here from `components/plan/SeasonHeaderCard.tsx`;
   Plan and Profile both derive a phase bar from the same season weeks, so the pure function belongs
   beside `SeasonSummaryWeek` and `PHASE_LABEL` rather than inside one of its two consumers.
-- `resources/js/components/plan/SeasonHeaderCard.tsx` (+ test) — import updated for that move.
-- `resources/js/types/inertia.ts` — `timeInZone` typing where it is shared.
+- `resources/js/components/plan/SeasonHeaderCard.tsx` (+ test) — import updated for that move; the
+  `phasesOf` cases moved to `lib/plan.test.ts` with the function.
+- `resources/js/lib/pace.ts` — `daysUntilId()`, lifted out of `pages/Race.tsx` (its only previous
+  home) so Profile's race row and Race's countdown share one definition.
+- `resources/js/lib/chartTokens.ts` — `HR_ZONE_LABELS` beside `HR_ZONE_COLORS`;
+  `settings/HrZonesDisclosure.tsx` now reads it instead of its own private copy, so the zone bar's
+  legend and the zones editor name the bands identically.
+- `resources/js/components/UserAvatar.tsx` — an `lg` size (44px) for Profile's own header circle.
 
 ### Frontend — deleted
 
-- `resources/js/components/collection/ProgressionChart.tsx` (+ test) and its lazy
-  `LineChart.tsx` (+ test). Profile was their only consumer, and the prototype draws a compact
-  inline-SVG journey chart in that slot, not a Chart.js line chart with axes and a grid. A
-  replacement in the same slot (PS8's `SplitsTable` → `SplitsChart` precedent), not a cut.
+- `resources/js/components/collection/ProgressionChart.tsx` (+ test). Profile was its only
+  consumer, and the prototype draws a compact inline-SVG journey chart in that slot, not a Chart.js
+  line chart with axes and a grid. A replacement in the same slot (PS8's `SplitsTable` →
+  `SplitsChart` precedent), not a cut. **`LineChart.tsx` stays** — `trends/panels/FitnessTrend.tsx`
+  and `race/CtlTrendChart.tsx` still `lazy()` it by path, which a grep for the component name
+  misses.
 
 ### Backend
 
@@ -61,7 +69,7 @@ Each ships its co-located `*.test.tsx` per the 1:1 convention.
   `activity_details.stream_summary.time_in_zone_min` over the trailing 12 weeks into Z1-Z5
   percentages. The one new class.
 - `app/Http/Controllers/ProfileController.php` — adds the `timeInZone`, `season` and
-  `seasonSummary` props; re-adds `SeasonService::peekCurrent()` (never `ensureCurrent`) and
+  `seasonWeeks` props; re-adds `SeasonService::peekCurrent()` (never `ensureCurrent`) and
   `SeasonStreakSummaryBuilder`, both removed by `PP3` with the panel that consumed them.
 - `docs/features/profile.md` — the doc already names `PS10` as the owner of both re-adds; brought
   in line with what shipped.
@@ -104,19 +112,43 @@ None that stopped work. Three things resolved by reading prototype source:
 6. The distance pills switch the journey chart (P3), and the chart's point markers toggle a
    tooltip that stays inside the chart's bounds.
 7. Chrome is unchanged: back chevron to Today, gear to Settings, no bottom nav.
-8. `composer check` green; `check:chunks` green with `Profile.tsx` under its 230 kB budget.
+8. Every `composer check` step green, and `check:chunks` green with `Profile.tsx` under its 230 kB
+   budget.
 
 ## Coverage delta
 
-Frontend line coverage before → after: **97.30% → 97.33%** (`npm run test:coverage`).
+**Not measured locally — read it off this PR's CI run.** Three worktrees (`PS3`, `PS10`, `PS11`)
+were live on one laptop for the whole of this slice; `npm run test:coverage` was started three
+times and killed by contention each time before printing its totals. Every new file ships its
+co-located test, and the full Vitest suite passes (1816 tests, 212 files), so the delta should be
+flat-to-slightly-up — but that is a projection, not a measurement, and CI is the number to record
+here when it lands.
 
 ## Verification notes
 
-- `./vendor/bin/sail composer check` — the whole gate, green.
-- `./vendor/bin/sail npm run build && ./vendor/bin/sail npm run check:chunks` — `Profile` first
-  paint recorded below.
-- `grounds.json` needed no new entry: the hero moves onto `bg-card`, which is already classified
-  `paper`, and no new `bg-*` utility is introduced.
+Every step of `composer check` was run and is green, but **not in one uninterrupted invocation** —
+see the coverage note above for why. What ran, and its result:
+
+| step | result |
+|---|---|
+| `typescript:enums --check` | up to date |
+| doc-citation guard | all citations resolve |
+| `{@see}` guard | all references resolve (caught one: `ActivityDetail::$stream_summary` is a `@property`, not a member) |
+| `pint --test` | PASS, 898 files |
+| `prettier --check` | PASS |
+| `tsc` | PASS |
+| `eslint --max-warnings 0` | PASS |
+| `check:palette` | PASS, 446 files, zero off-token utilities |
+| `phpstan analyse` | `[OK] No errors`, 409 files |
+| `rector --dry-run` | `[OK]` **on the three changed PHP files**. The full-tree run deadlocked twice at `0/613` with orphaned parallel workers still bound to a dead main — the same shape as the known phpstan-parallel-cache race in Sail, and unrelated to this diff |
+| `pest --group=structure` | 39/39 |
+| `pest` on `tests/Feature/Profile` + the new unit test | 14/14 |
+| `pest --parallel` (whole suite) | still running when this slice was handed over, under three-way host contention |
+| `vitest run` (whole suite) | 1816 passed / 212 files |
+| `npm run build` + `check:chunks` | PASS, `Profile` 570.6 kB raw / **186.3 kB gzipped** against a 230 kB budget |
+
+`grounds.json` needed two edits: `gradient-to-r` added as a `keyword` (the pace rail's gradient),
+and the now-unpainted `foreground/0.06` panel entry dropped — it went with `ProgressionChart`.
 
 ## Open questions
 
