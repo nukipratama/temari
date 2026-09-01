@@ -11,10 +11,10 @@ use Illuminate\Support\Carbon;
 /**
  * Where the athlete's training time actually went, Z1 through Z5, across a
  * trailing window. Per-run zone minutes are already written by
- * {@see \App\Services\Run\Ingest\StreamAnalysis} onto
- * {@see \App\Models\ActivityDetail::$stream_summary}; this sums them and
- * normalises to percentages, so the answer reflects how long was spent in each
- * band rather than how many runs touched it.
+ * {@see \App\Services\Run\Ingest\StreamAnalysis} onto the `stream_summary`
+ * blob of {@see \App\Models\ActivityDetail}; this sums them and normalises to
+ * percentages, so the answer reflects how long was spent in each band rather
+ * than how many runs touched it.
  */
 final readonly class TimeInZoneSummary
 {
