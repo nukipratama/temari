@@ -17,8 +17,11 @@ the inclusions.
 
 ### In scope
 
-- **The eleven screens and their chrome.** 292 candidate strings across 71 files, from the scan in
-  `plan/parity/ps13-strings.json` (committed as the review artifact, the way `F3`'s codemods were).
+- **The eleven screens and their chrome.** A scan of `resources/js` found 292 candidate strings
+  across 71 files. The scan was a working checklist, not the deliverable: it is line-based and
+  therefore blind to multi-line JSX (see "What the browser pass caught"), so **the diff is the
+  review artifact**, not a generated decision file. `F3`'s codemod bargain does not transfer here,
+  because unlike a rename this change needs a judgement per string.
 - **Data-derived strings**, which P37 explicitly includes: dates render `base · 12 jun – 4 sep`, not
   `Base · Sep 1 – Nov 30`. The choke points are `lib/pace.ts` (five `toLocaleDateString` sites),
   `lib/verdict.ts`, and the label maps — `WeekPlanWidget`'s `SESSION_TYPE_LABEL` / `PHASE_LABEL` /
@@ -72,8 +75,11 @@ Record before/after. Expected flat: this changes string values, not branches.
 
 ## Verification notes
 
-- The decision file is the review artifact. A reviewer reads it rather than 71 files of diff, the
-  same bargain `F3` struck with its codemods (program risk R2).
+- **Read the diff, and read it for what did *not* change.** Two mechanical attempts at this were
+  reverted: a blanket substring replace across test files corrupted identifiers by matching `Sync`,
+  `Card` and `Ask` inside `StravaSyncBadge`, `ShareCardModal` and `AskAboutRun`. Test expectations
+  were ultimately updated from the suite's own failure output, one round at a time, which is slower
+  but cannot invent a change no test asked for.
 - **A blind lowercase is the failure mode here.** `Strava`, `HR`, `CTL` and every acronym survive,
   and so does any string that is a data value rather than chrome.
 - Sentence-initial capitals inside *narrated* text are not this slice's business — that text comes
