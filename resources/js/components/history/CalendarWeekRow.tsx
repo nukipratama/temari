@@ -8,7 +8,7 @@ import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { MOOD_FILL, MOOD_LABEL } from '@/lib/mood';
 import { formatPace } from '@/lib/pace';
-import { renderBold } from '@/lib/richText';
+import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 import { activityUrl } from '@/lib/routes';
 import { RARITY_INK, RARITY_LABELS } from '@/lib/runcard';
 import {
@@ -61,7 +61,8 @@ export default function CalendarWeekRow({
                         size="sm"
                         renderContent={(content) => (
                             <p className="m-0 font-serif text-[11.5px] leading-[1.45] text-foreground italic">
-                                &quot;{renderBold(content)}&quot;
+                                &quot;{renderBold(stripEdgeQuotes(content))}
+                                &quot;
                             </p>
                         )}
                     />
