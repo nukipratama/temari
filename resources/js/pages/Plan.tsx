@@ -142,21 +142,21 @@ export default function Plan({
                             aria-hidden
                         />
                         {regenerating
-                            ? 'Replanning…'
+                            ? 'replanning…'
                             : regenerateCooling
-                              ? `Next in ${formatDurationHMS(regenerateCooldown)}`
-                              : 'Regenerate'}
+                              ? `next in ${formatDurationHMS(regenerateCooldown)}`
+                              : 'regenerate'}
                     </PillButton>
                 </div>
                 <p className="mb-4 text-sm leading-relaxed text-text-2">
                     {race
-                        ? `Built around ${race.name ?? 'your race'} on ${formatNaiveIdDate(race.race_date, 'long')}, about ${sessionsPerWeek} sessions a week.`
-                        : `No race set yet, so this cycles a steady build-and-deload rhythm, about ${sessionsPerWeek} sessions a week.`}{' '}
+                        ? `built around ${race.name ?? 'your race'} on ${formatNaiveIdDate(race.race_date, 'long')}, about ${sessionsPerWeek} sessions a week.`
+                        : `no race set yet, so this cycles a steady build-and-deload rhythm, about ${sessionsPerWeek} sessions a week.`}{' '}
                     <Link
                         href="/race"
                         className="focus-ring inline-flex items-center gap-0.5 font-semibold text-horizon-ink"
                     >
-                        {race ? 'Change your race' : 'Set a race'}
+                        {race ? 'change your race' : 'set a race'}
                         <Icon
                             icon="mdi:arrow-right"
                             className="size-3"
@@ -170,8 +170,8 @@ export default function Plan({
                 {weeks.length === 0 || season === null ? (
                     <EmptyPanel
                         face
-                        title="No plan yet."
-                        body="Hit Regenerate and Temari will lay out the weeks ahead."
+                        title="no plan yet."
+                        body="hit regenerate and temari will lay out the weeks ahead."
                         className="mt-6"
                     />
                 ) : (

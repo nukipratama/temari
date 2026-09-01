@@ -23,20 +23,20 @@ const EXPERIENCE_OPTIONS: ReadonlyArray<{
 }> = [
     {
         value: 'new_to_running',
-        label: 'New to running',
-        description: 'First few months, learning the ropes.',
+        label: 'new to running',
+        description: 'first few months, learning the ropes.',
         icon: 'mdi:sprout',
     },
     {
         value: 'returning',
-        label: 'Getting back into it',
-        description: 'Coming back after time off.',
+        label: 'getting back into it',
+        description: 'coming back after time off.',
         icon: 'mdi:restore',
     },
     {
         value: 'experienced',
-        label: 'Experienced',
-        description: 'Know your paces, chasing more.',
+        label: 'experienced',
+        description: 'know your paces, chasing more.',
         icon: 'mdi:trophy',
     },
 ];
@@ -51,26 +51,26 @@ const GOAL_OPTIONS: ReadonlyArray<{
 }> = [
     {
         value: 'consistent',
-        label: 'Stay consistent',
-        description: 'Show up steady, week after week.',
+        label: 'stay consistent',
+        description: 'show up steady, week after week.',
         icon: 'mdi:target',
     },
     {
         value: 'race',
-        label: 'Chase a race time',
-        description: 'Training toward a real finish time.',
+        label: 'chase a race time',
+        description: 'training toward a real finish time.',
         icon: 'mdi:flag-checkered',
     },
     {
         value: 'base',
-        label: 'Build a base',
-        description: 'Stack easy miles, no pressure yet.',
+        label: 'build a base',
+        description: 'stack easy miles, no pressure yet.',
         icon: 'mdi:layers-outline',
     },
     {
         value: 'return',
-        label: 'Ease back in',
-        description: 'Rebuilding gently after a break.',
+        label: 'ease back in',
+        description: 'rebuilding gently after a break.',
         icon: 'mdi:undo-variant',
     },
 ];
@@ -243,7 +243,7 @@ export default function TrainingPreferencesCard({
             <FieldGroup label="Usual run days">
                 <p className="mb-2 font-sans text-xs text-text-3">
                     {sessionsPerWeek === null
-                        ? 'Pick your sessions per week first.'
+                        ? 'pick your sessions per week first.'
                         : `Pick ${sessionsPerWeek} · ${runDays.length} of ${sessionsPerWeek} selected.`}
                 </p>
                 <DayRow

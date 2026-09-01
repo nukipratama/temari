@@ -10,11 +10,11 @@ import { formatIdDate } from '@/lib/pace';
 export type RangeFilterValue = '8w' | '12w' | '6m' | '1y' | 'all';
 
 const RANGE_LABELS: Record<RangeFilterValue, string> = {
-    '8w': 'Last 2 months',
-    '12w': 'Last 3 months',
-    '6m': 'Last 6 months',
-    '1y': 'Full year',
-    all: 'All runs',
+    '8w': 'last 2 months',
+    '12w': 'last 3 months',
+    '6m': 'last 6 months',
+    '1y': 'full year',
+    all: 'all runs',
 };
 
 interface InlineNoteProps {
@@ -51,7 +51,7 @@ export function RangeWidenedNote({
     const label = RANGE_LABELS[rangeFilter];
     const message =
         rangeFilter === 'all'
-            ? 'Showing all your runs, so your most recent one stays visible.'
+            ? 'showing all your runs, so your most recent one stays visible.'
             : `Range automatically widened to ${label} so your latest run stays visible.`;
     return (
         <InlineNote icon="mdi:arrow-expand-horizontal">{message}</InlineNote>

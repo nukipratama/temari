@@ -30,8 +30,8 @@ interface RaceGoalFormProps {
 const DISTANCE_PRESETS = [
     { label: '5K', km: 5 },
     { label: '10K', km: 10 },
-    { label: 'Half', km: 21.1 },
-    { label: 'Marathon', km: 42.2 },
+    { label: 'half', km: 21.1 },
+    { label: 'marathon', km: 42.2 },
 ] as const;
 
 const FIELD_LABEL = 'text-label-micro text-text-2';
@@ -98,7 +98,7 @@ export default function RaceGoalForm({
     return (
         <Card className={className}>
             <Eyebrow token="micro" tone="ink-2">
-                {race ? 'Edit your race' : 'Set your race'}
+                {race ? 'edit your race' : 'set your race'}
             </Eyebrow>
             <form onSubmit={submit} className="mt-3.5 flex flex-col gap-3.5">
                 <div>
@@ -242,7 +242,7 @@ export default function RaceGoalForm({
                     disabled={processing || goalTimeIssue !== null}
                     className="mt-0.5 w-full justify-center"
                 >
-                    {processing ? 'Saving…' : race ? 'Update race' : 'Set race'}
+                    {processing ? 'saving…' : race ? 'update race' : 'set race'}
                 </PillButton>
             </form>
         </Card>

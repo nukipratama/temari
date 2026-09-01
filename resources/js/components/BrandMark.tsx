@@ -33,7 +33,7 @@ export default function BrandMark({
                 )}
                 style={{ fontSize: 20 }}
             >
-                Temari
+                temari
             </span>
         </div>
     );

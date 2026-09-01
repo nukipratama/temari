@@ -31,22 +31,22 @@ import { inputVariants, outlineChipVariants } from '@/lib/variants';
 const DISTANCE_PRESETS = [
     { label: '5K', km: 5 },
     { label: '10K', km: 10 },
-    { label: 'Half', km: 21.1 },
-    { label: 'Marathon', km: 42.2 },
+    { label: 'half', km: 21.1 },
+    { label: 'marathon', km: 42.2 },
 ] as const;
 
 const WHAT_LANDS: ReadonlyArray<{ icon: string; text: string }> = [
     {
         icon: 'mdi:history',
-        text: 'Every run Strava already has for you is landing now, with its distance, time and pace.',
+        text: 'every run Strava already has for you is landing now, with its distance, time and pace.',
     },
     {
         icon: 'mdi:progress-download',
-        text: "The deeper read (splits, HR zones, effort, and the run's card) is fetched per run, the first time you open it.",
+        text: "the deeper read (splits, HR zones, effort, and the run's card) is fetched per run, the first time you open it.",
     },
     {
         icon: 'mdi:scale-balance',
-        text: 'That history is the point. It is what every run you do from here gets measured against.',
+        text: 'that history is the point. it is what every run you do from here gets measured against.',
     },
 ];
 
@@ -58,20 +58,20 @@ const EXPERIENCE_OPTIONS: ReadonlyArray<{
 }> = [
     {
         value: 'new_to_running',
-        label: 'New to running',
-        description: 'First few months, learning the ropes.',
+        label: 'new to running',
+        description: 'first few months, learning the ropes.',
         icon: 'mdi:sprout',
     },
     {
         value: 'returning',
-        label: 'Getting back into it',
-        description: 'Coming back after time off.',
+        label: 'getting back into it',
+        description: 'coming back after time off.',
         icon: 'mdi:restore',
     },
     {
         value: 'experienced',
-        label: 'Experienced',
-        description: 'Know your paces, chasing more.',
+        label: 'experienced',
+        description: 'know your paces, chasing more.',
         icon: 'mdi:trophy',
     },
 ];
@@ -86,26 +86,26 @@ const GOAL_OPTIONS: ReadonlyArray<{
 }> = [
     {
         value: 'consistent',
-        label: 'Stay consistent',
-        description: 'Show up steady, week after week.',
+        label: 'stay consistent',
+        description: 'show up steady, week after week.',
         icon: 'mdi:target',
     },
     {
         value: 'race',
-        label: 'Chase a race time',
-        description: 'Training toward a real finish time.',
+        label: 'chase a race time',
+        description: 'training toward a real finish time.',
         icon: 'mdi:flag-checkered',
     },
     {
         value: 'base',
-        label: 'Build a base',
-        description: 'Stack easy miles, no pressure yet.',
+        label: 'build a base',
+        description: 'stack easy miles, no pressure yet.',
         icon: 'mdi:layers-outline',
     },
     {
         value: 'return',
-        label: 'Ease back in',
-        description: 'Rebuilding gently after a break.',
+        label: 'ease back in',
+        description: 'rebuilding gently after a break.',
         icon: 'mdi:undo-variant',
     },
 ];
@@ -425,7 +425,7 @@ export default function OnboardingIndex() {
                         )}
 
                         {subIndex === 1 && (
-                            <PreferenceQuestion heading="How many days a week can you realistically show up?">
+                            <PreferenceQuestion heading="how many days a week can you realistically show up?">
                                 <motion.div
                                     variants={fadeInUp}
                                     initial="hidden"
@@ -444,7 +444,7 @@ export default function OnboardingIndex() {
                         )}
 
                         {subIndex === 2 && (
-                            <PreferenceQuestion heading="What are you chasing right now?">
+                            <PreferenceQuestion heading="what are you chasing right now?">
                                 <ChoiceList>
                                     {GOAL_OPTIONS.map((option) => (
                                         <motion.div
@@ -552,7 +552,7 @@ export default function OnboardingIndex() {
                                 got a race <br />
                                 <em className="text-icon-accent">in mind?</em>
                             </PageHero>
-                            <Chip className="mt-1 self-start">Optional</Chip>
+                            <Chip className="mt-1 self-start">optional</Chip>
                         </div>
                         <p className="mt-3 font-sans text-sm leading-relaxed text-text-2">
                             Give Temari something to build toward. Skip it if
@@ -736,7 +736,7 @@ export default function OnboardingIndex() {
                                 >
                                     {processing
                                         ? 'Saving…'
-                                        : 'Set my goal & finish'}
+                                        : 'set my goal & finish'}
                                 </PillButton>
                                 <PillButton
                                     type="button"

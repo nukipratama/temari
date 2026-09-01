@@ -169,20 +169,20 @@ function LoadOlderWeeks({ weeksShown }: Readonly<{ weeksShown: number }>) {
 
 const EMPTY_COPY: Record<StravaSyncState, { line: string; sub: string }> = {
     disconnected: {
-        line: 'Connect Strava first',
-        sub: 'I read your runs from Strava. Connect it to fill in your history.',
+        line: 'connect Strava first',
+        sub: 'i read your runs from Strava. connect it to fill in your history.',
     },
     revoked: {
         line: 'Strava connection dropped',
-        sub: "Your token isn't active anymore. Reconnect so new runs get picked up.",
+        sub: "your token isn't active anymore. reconnect so new runs get picked up.",
     },
     syncing: {
-        line: 'Pulling in your runs',
-        sub: 'Hang tight, your history shows up as soon as the first run finishes processing.',
+        line: 'pulling in your runs',
+        sub: 'hang tight, your history shows up as soon as the first run finishes processing.',
     },
     ready: {
-        line: 'No runs to show yet',
-        sub: "New runs appear here once they're processed. Try syncing again if you just finished a run.",
+        line: 'no runs to show yet',
+        sub: "new runs appear here once they're processed. try syncing again if you just finished a run.",
     },
 };
 

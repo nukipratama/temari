@@ -89,12 +89,12 @@ function collapsedCopy(hrZones: HrZonesPayload): string {
     if (hrZones.source === 'strava') {
         return hrZones.stravaSyncedLabel
             ? `Synced from Strava · last synced ${hrZones.stravaSyncedLabel}`
-            : 'Synced from Strava';
+            : 'synced from Strava';
     }
     if (hrZones.source === 'manual') {
-        return "You've set your own zones";
+        return "you've set your own zones";
     }
-    return 'Using default estimates';
+    return 'using default estimates';
 }
 
 /**
@@ -369,7 +369,7 @@ export default function HrZonesDisclosure({
                                     />
                                     {resyncing
                                         ? 'Syncing…'
-                                        : 'Resync from Strava'}
+                                        : 'resync from Strava'}
                                 </PillButton>
                             </StravaAction>
                         </div>

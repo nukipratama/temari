@@ -59,10 +59,10 @@ interface SettingsProps {
 }
 
 const LEGAL_ROWS: ReadonlyArray<{ href: string; label: string }> = [
-    { href: '/terms', label: 'Terms of use' },
-    { href: '/privacy', label: 'Privacy policy' },
-    { href: '/ai-use', label: 'How Temari uses AI' },
-    { href: '/training-disclaimer', label: 'Training disclaimer' },
+    { href: '/terms', label: 'terms of use' },
+    { href: '/privacy', label: 'privacy policy' },
+    { href: '/ai-use', label: 'how temari uses AI' },
+    { href: '/training-disclaimer', label: 'training disclaimer' },
 ];
 
 const TELEGRAM_DEFAULT: TelegramPayload = {
@@ -249,7 +249,7 @@ function AccountActions() {
             <TemariNudgeModal
                 open={confirmOpen}
                 onClose={() => setConfirmOpen(false)}
-                title="Sure you want to delete your account?"
+                title="sure you want to delete your account?"
                 body={
                     <>
                         All your runs, cards, and Strava connection will be
@@ -257,7 +257,7 @@ function AccountActions() {
                         Strava accounts, this is also how.
                     </>
                 }
-                primaryLabel="Yes, delete my account"
+                primaryLabel="yes, delete my account"
                 primaryIcon="mdi:account-remove-outline"
                 primaryClassName="bg-ember-deep text-cream hover:opacity-90"
                 onPrimary={() => router.delete('/account')}
@@ -299,11 +299,11 @@ function NotificationPrefsPanel({
                 <div className="flex flex-col">
                     <SettingsRow
                         icon="mdi:bell-outline"
-                        label="Keep me posted"
-                        description="Post-run recaps, weekly and monthly summaries, plus a nudge when your streak's about to end."
+                        label="keep me posted"
+                        description="post-run recaps, weekly and monthly summaries, plus a nudge when your streak's about to end."
                         control={
                             <Toggle
-                                label="Keep me posted"
+                                label="keep me posted"
                                 checked={notificationsEnabled}
                                 onChange={setNotificationsEnabled}
                             />
@@ -370,7 +370,7 @@ function TestSendButton({
     const remaining = useCooldownCountdown(cooldownSeconds);
     const cooling = remaining > 0;
 
-    let label = 'Send test notification';
+    let label = 'send test notification';
     if (cooling) {
         label = formatDurationHMS(remaining);
     } else if (sending) {
@@ -426,7 +426,7 @@ function TelegramPanel({
                 <SettingsRow
                     icon="mdi:telegram"
                     label="Telegram"
-                    description="The Telegram bot isn't configured yet."
+                    description="the Telegram bot isn't configured yet."
                     control={<span aria-hidden />}
                 />
             );
@@ -439,7 +439,7 @@ function TelegramPanel({
                 <SettingsRow
                     icon="mdi:telegram"
                     label="Telegram"
-                    description="Connect it so Temari can keep you posted."
+                    description="connect it so temari can keep you posted."
                     onClick={() => setOpen(true)}
                 >
                     <DemoBlockedModal
@@ -454,7 +454,7 @@ function TelegramPanel({
             <SettingsRow
                 icon="mdi:telegram"
                 label="Telegram"
-                description="Connect it so Temari can keep you posted."
+                description="connect it so temari can keep you posted."
                 externalHref={telegram.connect_url}
             />
         );
@@ -464,11 +464,11 @@ function TelegramPanel({
     // a connection — a mute on an unwired channel would mean nothing.
     let description = telegram.username
         ? `Active · @${telegram.username}`
-        : 'Active';
+        : 'active';
     if (muted) {
         description = telegram.username
             ? `Muted · @${telegram.username}`
-            : 'Muted';
+            : 'muted';
     }
 
     return (
@@ -479,7 +479,7 @@ function TelegramPanel({
                 description={description}
                 control={
                     <Toggle
-                        label="Send run notifications to Telegram"
+                        label="send run notifications to Telegram"
                         checked={!muted}
                         onChange={(on) => onMuteChange(!on)}
                     />

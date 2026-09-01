@@ -87,19 +87,19 @@ export function phasesOf(weeks: SeasonSummaryWeek[]): Phase[] {
 }
 
 export const PHASE_LABEL: Record<string, string> = {
-    base: 'Base',
-    build: 'Build',
-    peak: 'Peak',
-    taper: 'Taper',
-    deload: 'Deload',
+    base: 'base',
+    build: 'build',
+    peak: 'peak',
+    taper: 'taper',
+    deload: 'deload',
 };
 
 export const SESSION_TYPE_LABEL: Record<string, string> = {
-    easy: 'Easy',
-    long: 'Long run',
-    tempo: 'Tempo',
-    interval: 'Interval',
-    rest: 'Rest',
+    easy: 'easy',
+    long: 'long run',
+    tempo: 'tempo',
+    interval: 'interval',
+    rest: 'rest',
 };
 
 export const SESSION_TYPE_ICON: Record<string, string> = {
@@ -111,11 +111,11 @@ export const SESSION_TYPE_ICON: Record<string, string> = {
 };
 
 export const STATUS_LABEL: Record<string, string> = {
-    done: 'Done',
-    partial: 'Partial',
-    missed: 'Missed',
-    overreached: 'Overreached',
-    skip: 'Skipped',
+    done: 'done',
+    partial: 'partial',
+    missed: 'missed',
+    overreached: 'overreached',
+    skip: 'skipped',
 };
 
 /** Label colour per compliance verdict. `planned` reads as neutral and is unlabelled. */
