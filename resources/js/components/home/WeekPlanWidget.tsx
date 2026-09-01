@@ -216,7 +216,7 @@ export default function WeekPlanWidget({
                 <Eyebrow token="micro" className="text-foreground">
                     this week&apos;s plan
                 </Eyebrow>
-                <Chip className="bg-muted text-foreground">
+                <Chip className="text-label-micro bg-muted text-foreground">
                     {PHASE_LABEL[weekPlan.phase] ?? weekPlan.phase}
                 </Chip>
             </div>

@@ -23,6 +23,11 @@ interface KartuMiniProps {
     date?: string;
     polyline?: string | null;
     edition?: CardEdition | null;
+    /**
+     * Login's teaser slot, which the prototype draws at 78x84: the art window
+     * and the rarity ribbon only, with no name, edition or date.
+     */
+    compact?: boolean;
     className?: string;
 }
 
@@ -38,6 +43,7 @@ export default function KartuMini({
     date,
     polyline,
     edition,
+    compact = false,
     className,
 }: Readonly<KartuMiniProps>) {
     const rarityHex = RARITY_HEX[rarity];
@@ -63,14 +69,18 @@ export default function KartuMini({
             aria-label={name}
             style={rootStyle}
             className={cn(
-                'relative flex w-[140px] flex-none flex-col overflow-hidden rounded-[12px] border-[1.5px] bg-sky-deep p-1',
+                'relative flex flex-none flex-col overflow-hidden rounded-[12px] border-[1.5px] bg-sky-deep p-1',
+                compact ? 'h-[84px] w-[78px]' : 'w-[140px]',
                 rarityVariants.border({ rarity }),
                 className,
             )}
         >
             {/* ART WINDOW */}
             <div
-                className="relative aspect-[4/3] w-full overflow-hidden rounded-[8px]"
+                className={cn(
+                    'relative w-full overflow-hidden rounded-[8px]',
+                    compact ? 'min-h-0 flex-1' : 'aspect-[4/3]',
+                )}
                 style={artStyle}
             >
                 {polyline != null && polyline !== '' && (
@@ -82,16 +92,23 @@ export default function KartuMini({
                         />
                     </div>
                 )}
-                <span
-                    aria-hidden
-                    className="pointer-events-none absolute bottom-0.5 right-0.5"
-                >
-                    <TemariMark size={26} color="var(--color-ink)" />
-                </span>
+                {!compact && (
+                    <span
+                        aria-hidden
+                        className="pointer-events-none absolute bottom-0.5 right-0.5"
+                    >
+                        <TemariMark size={26} color="var(--color-ink)" />
+                    </span>
+                )}
             </div>
 
             {/* STAT BLOCK */}
-            <div className="px-1.5 pt-1 pb-0.5 text-cream">
+            <div
+                className={cn(
+                    'text-cream',
+                    compact ? 'px-0.5 pt-1' : 'px-1.5 pt-1 pb-0.5',
+                )}
+            >
                 <div className="flex items-center gap-1">
                     <span
                         aria-hidden
@@ -113,33 +130,38 @@ export default function KartuMini({
                         {RARITY_LABELS[rarity]}
                     </Eyebrow>
                 </div>
-                <div className="mt-0.5 line-clamp-2 font-sans text-[12px] font-extrabold uppercase leading-[1.06] tracking-[0.01em] text-cream">
-                    {name}
-                </div>
-                {(edition != null || (date != null && date !== '')) && (
-                    <div className="mt-0.5 font-mono text-[9px] tabular-nums leading-tight text-ink-on-sky">
-                        {edition != null && (
-                            <span>
-                                #{edition.index}/{edition.total}
-                            </span>
-                        )}
-                        {edition != null && date != null && date !== '' && (
-                            <span className="mx-1 opacity-40">·</span>
-                        )}
-                        {date != null && date !== '' && <span>{date}</span>}
+                {!compact && (
+                    <div className="mt-0.5 line-clamp-2 font-sans text-[12px] font-extrabold uppercase leading-[1.06] tracking-[0.01em] text-cream">
+                        {name}
                     </div>
                 )}
+                {!compact &&
+                    (edition != null || (date != null && date !== '')) && (
+                        <div className="mt-0.5 font-mono text-[9px] tabular-nums leading-tight text-ink-on-sky">
+                            {edition != null && (
+                                <span>
+                                    #{edition.index}/{edition.total}
+                                </span>
+                            )}
+                            {edition != null && date != null && date !== '' && (
+                                <span className="mx-1 opacity-40">·</span>
+                            )}
+                            {date != null && date !== '' && <span>{date}</span>}
+                        </div>
+                    )}
             </div>
 
             {/* Thread-band rarity accent (Slice 9c) — mirrors Kartu's, scaled
                 down for the mini tile. Additive to the rarity border above,
                 not a re-hue. */}
-            <div
-                aria-hidden
-                className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center"
-            >
-                <ThreadBandGlyph rarity={rarity} width={44} height={5} />
-            </div>
+            {!compact && (
+                <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center"
+                >
+                    <ThreadBandGlyph rarity={rarity} width={44} height={5} />
+                </div>
+            )}
         </div>
     );
 }

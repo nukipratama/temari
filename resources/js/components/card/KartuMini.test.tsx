@@ -52,6 +52,26 @@ describe('KartuMini', () => {
         expect(screen.getByText('·')).toBeInTheDocument();
     });
 
+    it('drops the name, edition and date in compact mode, keeping the rarity ribbon', () => {
+        render(
+            <KartuMini
+                compact
+                name="Sunset 5K"
+                rarity="legendary"
+                date="18 Mei"
+                edition={{ index: 2, total: 5 }}
+            />,
+        );
+        expect(screen.queryByText('Sunset 5K')).not.toBeInTheDocument();
+        expect(screen.queryByText('#2/5')).not.toBeInTheDocument();
+        expect(screen.queryByText('18 Mei')).not.toBeInTheDocument();
+        expect(screen.getByText(/legendary/i)).toBeInTheDocument();
+        expect(screen.getByLabelText('Sunset 5K')).toHaveClass(
+            'h-[84px]',
+            'w-[78px]',
+        );
+    });
+
     it('signs the art zone with the brand mark', () => {
         const { container } = render(<KartuMini name="x" />);
         expect(container.querySelector('svg')).not.toBeNull();

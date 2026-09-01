@@ -103,8 +103,13 @@ describe('chipVariants', () => {
         expect(tokens(chipVariants({ tone }))).toContain(expected);
     });
 
-    it('adopts the text-label-micro utility in its base', () => {
-        expect(tokens(chipVariants())).toContain('text-label-micro');
+    it('leaves the label tier to the caller, since a size variant would strip it', () => {
+        // Both text-label-micro and the size variants live in tailwind-merge's
+        // font-size group (see lib/cn.ts), so a base that declared the utility
+        // had it dropped at every call site. A caller passes it via className,
+        // which is merged last and therefore wins.
+        expect(tokens(chipVariants())).not.toContain('text-label-micro');
+        expect(tokens(chipVariants())).toContain('text-[11px]');
     });
 
     it('uses md sizing when size="md"', () => {

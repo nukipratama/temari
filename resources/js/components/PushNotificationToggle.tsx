@@ -142,7 +142,7 @@ export default function PushNotificationToggle({
     return (
         <>
             <SettingsRow
-                icon="mdi:cellphone-message"
+                icon="mdi:cellphone"
                 label="push notifications"
                 description={description}
                 control={

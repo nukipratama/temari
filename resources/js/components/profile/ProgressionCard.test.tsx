@@ -52,9 +52,9 @@ describe('ProgressionCard', () => {
 
     it('shows the goal chip only for a distance that has one', () => {
         render(<ProgressionCard byCategory={BY_CATEGORY} />);
-        expect(screen.queryByText(/Goal: Sub-/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/goal: sub-/)).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('tab', { name: '5K' }));
-        expect(screen.getByText(/Goal: Sub-29:00/)).toBeInTheDocument();
+        expect(screen.getByText(/goal: sub-29:00/)).toBeInTheDocument();
     });
 });

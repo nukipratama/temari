@@ -308,16 +308,15 @@ function KartuTeaser() {
                 fallback={
                     <div
                         aria-hidden
-                        className="h-[150px] w-[140px] flex-none rounded-sm bg-cream-deep"
+                        className="h-[84px] w-[78px] flex-none rounded-sm bg-cream-deep"
                     />
                 }
             >
                 <KartuMini
+                    compact
                     name="10K Sunrise"
                     rarity="legendary"
                     mood="blazing"
-                    date="12 Jun"
-                    edition={{ index: 3, total: 12 }}
                     polyline="~s{d@ofekSoRaMcPdMg@b^zFtV?bN{FtVf@b^bPdMnRaMlIqTdHqFfQcAfQcP?g[gQcPgQcAeHqFmIqT"
                     className="shadow-e1"
                 />

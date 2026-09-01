@@ -96,16 +96,18 @@ export default function RecapCard({
                         {fallback}
                     </p>
                 )}
-                {chips && (
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">{chips}</div>
-                )}
-                {notification && analysis.status === 'done' && (
-                    <div className="mt-2">
-                        <SendNotificationButton
-                            url={notification.url}
-                            retryAfterSeconds={notification.retryAfterSeconds}
-                            reachable={notificationsReachable}
-                        />
+                {(chips || (notification && analysis.status === 'done')) && (
+                    <div className="mt-1.5 flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap gap-1.5">{chips}</div>
+                        {notification && analysis.status === 'done' && (
+                            <SendNotificationButton
+                                url={notification.url}
+                                retryAfterSeconds={
+                                    notification.retryAfterSeconds
+                                }
+                                reachable={notificationsReachable}
+                            />
+                        )}
                     </div>
                 )}
             </div>

@@ -92,7 +92,7 @@ export const pillButtonVariants = cva(
 
 /** Chip tone + size. Mirrors TONE_CLASS + size ternary in components/ui/Chip.tsx. */
 export const chipVariants = cva(
-    'pad-chip inline-flex items-center gap-1 whitespace-nowrap rounded-full text-label-micro font-semibold tracking-[0.08em]',
+    'pad-chip inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold tracking-[0.08em]',
     {
         variants: {
             tone: {

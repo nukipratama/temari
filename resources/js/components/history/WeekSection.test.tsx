@@ -230,7 +230,11 @@ describe('WeekSection', () => {
                 />,
             );
 
-            fireEvent.click(screen.getByText('send notification'));
+            fireEvent.click(
+                screen.getByRole('button', {
+                    name: 'turn on notifications to send',
+                }),
+            );
             expect(router.post).not.toHaveBeenCalled();
         });
 
@@ -252,7 +256,9 @@ describe('WeekSection', () => {
                 />,
             );
 
-            fireEvent.click(screen.getByText('send notification'));
+            fireEvent.click(
+                screen.getByRole('button', { name: 'send notification' }),
+            );
             expect(router.post).toHaveBeenCalledWith(
                 '/recaps/weekly/7/send',
                 {},
@@ -277,7 +283,9 @@ describe('WeekSection', () => {
             );
 
             expect(
-                screen.queryByText('send notification'),
+                screen.queryByRole('button', {
+                    name: /send notification|turn on notifications/i,
+                }),
             ).not.toBeInTheDocument();
             expect(
                 screen.getByText(/You ran 4x this week for 35.5 km/),

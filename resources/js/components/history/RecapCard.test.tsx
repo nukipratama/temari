@@ -71,7 +71,11 @@ describe('RecapCard', () => {
             />,
         );
 
-        expect(screen.queryByText('send notification')).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', {
+                name: /send notification|turn on notifications/i,
+            }),
+        ).not.toBeInTheDocument();
     });
 
     it('force-sends the recap when a channel is wired and the button is clicked', () => {
@@ -96,7 +100,9 @@ describe('RecapCard', () => {
             />,
         );
 
-        fireEvent.click(screen.getByText('send notification'));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'send notification' }),
+        );
         expect(router.post).toHaveBeenCalledWith(
             '/recaps/weekly/7/send',
             {},
@@ -113,6 +119,10 @@ describe('RecapCard', () => {
             />,
         );
 
-        expect(screen.queryByText('send notification')).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', {
+                name: /send notification|turn on notifications/i,
+            }),
+        ).not.toBeInTheDocument();
     });
 });

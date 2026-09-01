@@ -7,6 +7,7 @@ use App\Models\StoryLine;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
+use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\StravaConnection;
 use App\Models\User;
@@ -212,4 +213,56 @@ it('reuses the LifetimeStats cache instead of re-running the aggregate per /aku 
     $this->actingAs($user)->get('/profile')->assertSuccessful();
 
     expect($aggregates)->toBeEmpty();
+});
+
+it('reads the progression goal line off the active race, on that race distance only', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create([
+        'distance_m' => 10_000,
+        'goal_time_sec' => 3_000,
+        'completed_at' => null,
+    ]);
+
+    foreach (['10km' => 10_000.0, 'half_marathon' => 21_097.5] as $category => $distance) {
+        PersonalRecord::factory()->for($user)->create([
+            'category' => $category,
+            'value_sec' => $distance / 3.5,
+        ]);
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'distance' => $distance,
+            'elapsed_time' => (int) round($distance / 3.5),
+            'start_date_local' => Carbon::today()->subWeek(),
+        ]);
+    }
+
+    $this->actingAs($user)->get('/profile')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('progressionByCategory.10km.goal_sec', 3_000)
+            ->where('progressionByCategory.half_marathon.goal_sec', null)
+            ->etc());
+});
+
+it('leaves the progression goal line empty when no race is active', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create([
+        'distance_m' => 10_000,
+        'goal_time_sec' => 3_000,
+        'completed_at' => Carbon::yesterday(),
+    ]);
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '10km',
+        'value_sec' => 2_900.0,
+    ]);
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 10_000.0,
+        'elapsed_time' => 2_900,
+        'start_date_local' => Carbon::today()->subWeek(),
+    ]);
+
+    $this->actingAs($user)->get('/profile')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('progressionByCategory.10km.goal_sec', null)
+            ->etc());
 });
