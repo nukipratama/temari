@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import TrainingPreferencesCard, {
@@ -151,6 +151,32 @@ describe('TrainingPreferencesCard', () => {
             },
             expect.objectContaining({ preserveScroll: true }),
         );
+    });
+
+    it('flashes Saved once the patch succeeds', () => {
+        vi.mocked(router.patch).mockReset();
+        render(<TrainingPreferencesCard trainingPreferences={SET_PAYLOAD} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Build a base' }));
+        fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+        const [, , options] = vi.mocked(router.patch).mock.calls[0] as [
+            string,
+            unknown,
+            {
+                onStart?: () => void;
+                onSuccess?: () => void;
+                onFinish?: () => void;
+            },
+        ];
+        act(() => {
+            options.onStart?.();
+            options.onSuccess?.();
+            options.onFinish?.();
+        });
+
+        expect(screen.getByRole('status')).toHaveTextContent('Saved');
     });
 
     it('sends null run_days when every day has been cleared', () => {

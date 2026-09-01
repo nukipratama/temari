@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { setMockPage } from '@/test/setup';
@@ -217,6 +217,35 @@ describe('HrZonesDisclosure', () => {
         ).toBeInTheDocument();
     });
 
+    it('flashes Saved once the patch succeeds', () => {
+        vi.mocked(router.patch).mockReset();
+        render(<HrZonesDisclosure hrZones={DEFAULT_PAYLOAD} />);
+        open();
+
+        fireEvent.change(screen.getByLabelText('Max HR'), {
+            target: { value: '200' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /Save zones/ }));
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+        const [, , options] = vi.mocked(router.patch).mock.calls[0] as [
+            string,
+            unknown,
+            {
+                onStart?: () => void;
+                onSuccess?: () => void;
+                onFinish?: () => void;
+            },
+        ];
+        act(() => {
+            options.onStart?.();
+            options.onSuccess?.();
+            options.onFinish?.();
+        });
+
+        expect(screen.getByRole('status')).toHaveTextContent('Saved');
+    });
+
     it('only shows Resync from Strava when canSyncFromStrava is true and the source is manual', () => {
         render(
             <HrZonesDisclosure
@@ -231,6 +260,40 @@ describe('HrZonesDisclosure', () => {
         expect(
             screen.getByRole('button', { name: /Resync from Strava/ }),
         ).toBeInTheDocument();
+    });
+
+    it('resyncs from Strava and reloads just the hrZones prop', () => {
+        vi.mocked(router.post).mockReset();
+        vi.mocked(router.reload).mockReset();
+
+        render(
+            <HrZonesDisclosure
+                hrZones={{
+                    ...DEFAULT_PAYLOAD,
+                    source: 'manual',
+                    canSyncFromStrava: true,
+                }}
+            />,
+        );
+        open();
+        fireEvent.click(
+            screen.getByRole('button', { name: /Resync from Strava/ }),
+        );
+
+        expect(router.post).toHaveBeenCalledWith(
+            '/settings/zones/resync-strava',
+            {},
+            expect.objectContaining({ onSuccess: expect.any(Function) }),
+        );
+
+        const [, , options] = vi.mocked(router.post).mock.calls[0] as [
+            string,
+            unknown,
+            { onSuccess?: () => void },
+        ];
+        act(() => options.onSuccess?.());
+
+        expect(router.reload).toHaveBeenCalledWith({ only: ['hrZones'] });
     });
 
     it('deletes and reloads just the hrZones prop when Reset to default is clicked', () => {
