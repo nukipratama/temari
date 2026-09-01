@@ -1,7 +1,8 @@
-import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/Icon';
+import SectionLabel from '@/components/ui/SectionLabel';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
+import { cardVariants } from '@/lib/variants';
 
 const OPTIONS: ReadonlyArray<{
     value: ThemePreference;
@@ -31,7 +32,8 @@ export default function AppearanceCard() {
     const { preference, setTheme } = useTheme();
 
     return (
-        <Card className="px-6 py-6">
+        <div className={cardVariants()}>
+            <SectionLabel size="micro">Theme</SectionLabel>
             <ToggleGroup
                 value={[preference]}
                 onValueChange={(value) => {
@@ -64,6 +66,6 @@ export default function AppearanceCard() {
                     </ToggleGroupItem>
                 ))}
             </ToggleGroup>
-        </Card>
+        </div>
     );
 }

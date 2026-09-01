@@ -3,14 +3,13 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import StravaAction from '@/components/StravaAction';
-import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
-import SectionLabel from '@/components/ui/SectionLabel';
 import { usePendingPost } from '@/hooks/usePendingPost';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
+import { cardVariants } from '@/lib/variants';
 
 const SAVED_FLASH_MS = 2000;
 
@@ -34,12 +33,6 @@ const ZONE_LABEL: Record<ZoneKey, string> = {
 
 type ZoneSource = 'default' | 'strava' | 'manual';
 
-const SOURCE_ICON: Record<ZoneSource, string> = {
-    default: 'mdi:tune-variant',
-    strava: 'mdi:cloud-check-variant-outline',
-    manual: 'mdi:pencil-outline',
-};
-
 interface Zone {
     lo: number;
     hi: number;
@@ -61,27 +54,42 @@ export interface HrZonesPayload {
     canSyncFromStrava: boolean;
 }
 
+type ZoneBounds = Record<ZoneKey, number>;
+
 /**
- * Derive Z1-Z5 bands from max/resting HR. Each zone's `lo` is
- * `round(resting + pct * (max - resting))`; its `hi` is the next zone's `lo`,
- * with Z5's `hi` fixed at the open-ended sentinel.
+ * Derive Z1-Z5 lower bounds from max/resting HR. Each is
+ * `round(resting + pct * (max - resting))`.
  */
-export function deriveZones(maxHr: number, restingHr: number): HrZones {
+export function deriveBounds(maxHr: number, restingHr: number): ZoneBounds {
     const reserve = maxHr - restingHr;
-    const los = ZONE_BREAKPOINTS.map((pct) =>
-        Math.round(restingHr + pct * reserve),
-    );
-
-    const zones = {} as HrZones;
+    const bounds = {} as ZoneBounds;
     ZONE_KEYS.forEach((key, index) => {
-        const isLast = index === ZONE_KEYS.length - 1;
-        zones[key] = {
-            lo: los[index],
-            hi: isLast ? Z5_SENTINEL_HI : los[index + 1],
-        };
+        bounds[key] = Math.round(restingHr + ZONE_BREAKPOINTS[index] * reserve);
     });
+    return bounds;
+}
 
-    return zones;
+/**
+ * Widen the five lower bounds back into the `{lo, hi}` pairs the API takes.
+ * Each zone's upper bound is the next zone's lower bound by definition — the
+ * server enforces exactly that — and Z5 gets the open-ended sentinel.
+ */
+export function toZonePairs(bounds: ZoneBounds): Array<Record<string, number>> {
+    return ZONE_KEYS.map((key, index) => ({
+        lo: bounds[key],
+        hi:
+            index === ZONE_KEYS.length - 1
+                ? Z5_SENTINEL_HI
+                : bounds[ZONE_KEYS[index + 1]],
+    }));
+}
+
+function boundsFromProfile(zones: HrZones): ZoneBounds {
+    const bounds = {} as ZoneBounds;
+    ZONE_KEYS.forEach((key) => {
+        bounds[key] = zones[key].lo;
+    });
+    return bounds;
 }
 
 function collapsedCopy(hrZones: HrZonesPayload): string {
@@ -93,14 +101,34 @@ function collapsedCopy(hrZones: HrZonesPayload): string {
     if (hrZones.source === 'manual') {
         return "You've set your own zones";
     }
-    return "Set your own zones — you're on the defaults for now";
+    return 'Using default estimates';
 }
 
 /**
- * Inline HR-zone editing, expand/collapse rather than a separate page: real
- * Max/Resting HR + all five zone boundaries stay individually editable (not
- * just derived), matching what `/settings/zones` used to offer as its own
- * route.
+ * A zone error the server reports on `zones.N.hi` is really a complaint about
+ * the *next* zone's lower bound now that `hi` is derived rather than entered,
+ * so it highlights zone N+1's field.
+ */
+function invalidBoundKeys(errors: Record<string, string>): Set<ZoneKey> {
+    const invalid = new Set<ZoneKey>();
+    Object.keys(errors).forEach((field) => {
+        const match = /^zones\.(\d+)\.(lo|hi)$/.exec(field);
+        if (!match) {
+            return;
+        }
+        const index = Number(match[1]) + (match[2] === 'hi' ? 1 : 0);
+        const key = ZONE_KEYS[index];
+        if (key !== undefined) {
+            invalid.add(key);
+        }
+    });
+    return invalid;
+}
+
+/**
+ * Inline HR-zone editing, on the prototype's shape: a collapsed-by-default
+ * disclosure holding max/resting HR, an auto-calculate, and one bound per
+ * zone.
  */
 export default function HrZonesDisclosure({
     hrZones,
@@ -110,22 +138,20 @@ export default function HrZonesDisclosure({
 
     const [maxHr, setMaxHr] = useState<number>(profile.max_hr);
     const [restingHr, setRestingHr] = useState<number>(profile.resting_hr);
-    const [zones, setZones] = useState<HrZones>(profile.hr_zones);
+    const [bounds, setBounds] = useState<ZoneBounds>(() =>
+        boundsFromProfile(profile.hr_zones),
+    );
 
+    const savedBounds = boundsFromProfile(profile.hr_zones);
     const isDirty =
         maxHr !== profile.max_hr ||
         restingHr !== profile.resting_hr ||
-        ZONE_KEYS.some(
-            (key) =>
-                zones[key].lo !== profile.hr_zones[key].lo ||
-                zones[key].hi !== profile.hr_zones[key].hi,
-        );
+        ZONE_KEYS.some((key) => bounds[key] !== savedBounds[key]);
 
     const pageProps = usePage<{ errors?: Record<string, string> }>().props;
     const errors = pageProps.errors ?? {};
-    const hasZoneError = Object.keys(errors).some((k) => k.startsWith('zones'));
-    const zoneFieldInvalid = (index: number, field: 'lo' | 'hi') =>
-        errors[`zones.${index}.${field}`] !== undefined;
+    const invalidBounds = invalidBoundKeys(errors);
+    const hasZoneError = invalidBounds.size > 0;
     const zonesErrorId = useId();
     const [processing, setProcessing] = useState(false);
     const [justSaved, setJustSaved] = useState(false);
@@ -140,14 +166,11 @@ export default function HrZonesDisclosure({
     }, []);
 
     const applyDerived = () => {
-        setZones(deriveZones(maxHr, restingHr));
+        setBounds(deriveBounds(maxHr, restingHr));
     };
 
-    const editBoundary = (key: ZoneKey, field: keyof Zone, value: number) => {
-        setZones((prev) => ({
-            ...prev,
-            [key]: { ...prev[key], [field]: value },
-        }));
+    const editBound = (key: ZoneKey, value: number) => {
+        setBounds((prev) => ({ ...prev, [key]: value }));
     };
 
     // Reset and resync change the zones server-side; a scoped reload of just
@@ -167,6 +190,7 @@ export default function HrZonesDisclosure({
     );
 
     const canShowResync = canSyncFromStrava && source === 'manual';
+    const canShowReset = source !== 'default';
 
     const submit = () => {
         router.patch(
@@ -174,10 +198,7 @@ export default function HrZonesDisclosure({
             {
                 max_hr: maxHr,
                 resting_hr: restingHr,
-                zones: ZONE_KEYS.map((key) => ({
-                    lo: zones[key].lo,
-                    hi: zones[key].hi,
-                })),
+                zones: toZonePairs(bounds),
             },
             {
                 preserveScroll: true,
@@ -198,244 +219,189 @@ export default function HrZonesDisclosure({
     };
 
     return (
-        <div className="rounded-4xl border border-border-strong bg-card shadow-e1">
+        <div
+            className={cn(cardVariants({ padding: 'none' }), 'overflow-hidden')}
+        >
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
                 aria-expanded={open}
-                className="pressable focus-ring flex w-full items-center justify-between gap-3 rounded-4xl p-3.5 text-left transition hover:bg-cream-deep/40"
+                className="pressable focus-ring flex w-full items-center gap-2.5 p-4 text-left transition hover:bg-cream-deep/40"
             >
-                <span className="flex items-center gap-3">
-                    <Icon
-                        icon={SOURCE_ICON[source]}
-                        width={20}
-                        height={20}
-                        className="text-text-3"
-                        aria-hidden
-                    />
-                    <span className="flex flex-col">
-                        <span className="font-sans text-sm font-semibold text-foreground">
-                            HR zones
-                        </span>
-                        <span className="font-sans text-[12px] text-text-3">
-                            {collapsedCopy(hrZones)}
-                        </span>
+                <Icon
+                    icon="mdi:heart-pulse"
+                    width={19}
+                    height={19}
+                    className="shrink-0 text-icon-accent"
+                    aria-hidden
+                />
+                <span className="min-w-0 flex-1">
+                    <span className="block font-sans text-sm font-bold text-foreground">
+                        Heart-rate zones
+                    </span>
+                    <span className="mt-0.5 block font-sans text-xs text-text-3">
+                        {collapsedCopy(hrZones)}
                     </span>
                 </span>
                 <Icon
-                    icon={open ? 'mdi:chevron-up' : 'mdi:chevron-down'}
+                    icon="mdi:chevron-down"
                     width={18}
                     height={18}
-                    className="shrink-0 text-text-3"
+                    className={cn(
+                        'shrink-0 text-text-3 transition-transform',
+                        open && 'rotate-180',
+                    )}
                     aria-hidden
                 />
             </button>
 
             {open && (
-                <div className="border-t border-border-strong p-3.5 pt-4">
-                    {source !== 'default' && (
-                        <div className="mb-4 flex flex-wrap items-center gap-3">
-                            {canShowResync && (
-                                <StravaAction>
-                                    <PillButton
-                                        tone="outline"
-                                        size="sm"
-                                        onClick={resyncFromStrava}
-                                        disabled={resyncing}
-                                    >
-                                        <Icon
-                                            icon={
-                                                resyncing
-                                                    ? 'mdi:loading'
-                                                    : 'mdi:sync'
-                                            }
-                                            width={14}
-                                            height={14}
-                                            className={
-                                                resyncing
-                                                    ? 'animate-spin'
-                                                    : undefined
-                                            }
-                                            aria-hidden
-                                        />
-                                        {resyncing
-                                            ? 'Syncing…'
-                                            : 'Resync from Strava'}
-                                    </PillButton>
-                                </StravaAction>
-                            )}
-                            <PillButton
-                                tone="outline"
-                                size="sm"
-                                onClick={resetToDefault}
-                            >
-                                <Icon
-                                    icon="mdi:backup-restore"
-                                    width={14}
-                                    height={14}
-                                    aria-hidden
-                                />
-                                Reset to default zones
-                            </PillButton>
-                        </div>
-                    )}
+                <div className="border-t border-border-strong px-4 pb-4">
+                    <div className="mt-3.5 grid grid-cols-2 gap-2.5 min-[900px]:grid-cols-4">
+                        <NumberField
+                            label="Max HR"
+                            value={maxHr}
+                            error={errors.max_hr}
+                            onChange={setMaxHr}
+                        />
+                        <NumberField
+                            label="Resting HR"
+                            value={restingHr}
+                            error={errors.resting_hr}
+                            onChange={setRestingHr}
+                        />
+                    </div>
 
-                    <Card className="px-4 py-3">
-                        <SectionLabel size="micro">
-                            Max &amp; Resting HR
-                        </SectionLabel>
-                        <div className="grid grid-cols-2 gap-4">
-                            <NumberField
-                                label="Max HR"
-                                suffix="bpm"
-                                value={maxHr}
-                                error={errors.max_hr}
-                                onChange={setMaxHr}
-                            />
-                            <NumberField
-                                label="Resting HR"
-                                suffix="bpm"
-                                value={restingHr}
-                                error={errors.resting_hr}
-                                onChange={setRestingHr}
-                            />
-                        </div>
-                        <div className="mt-4">
-                            <PillButton
-                                tone="outline"
-                                size="sm"
-                                onClick={applyDerived}
-                            >
-                                <Icon
-                                    icon="mdi:calculator-variant-outline"
-                                    width={14}
-                                    height={14}
-                                    aria-hidden
-                                />
-                                Auto-calculate from Max &amp; Resting
-                            </PillButton>
-                        </div>
-                    </Card>
-
-                    <Card className="mt-3 px-4 py-3">
-                        <SectionLabel size="micro">Your zones</SectionLabel>
-                        <p className="mb-3 font-sans text-xs text-text-3">
-                            Each upper bound should match the next zone's lower
-                            bound, so there are no gaps.
-                        </p>
-                        <div className="grid gap-3">
-                            {ZONE_KEYS.map((key, index) => (
-                                <div
-                                    key={key}
-                                    className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3"
-                                >
-                                    <Eyebrow
-                                        as="span"
-                                        token="micro"
-                                        tone="ink-2"
-                                        className="truncate"
-                                    >
-                                        {ZONE_LABEL[key]}
-                                    </Eyebrow>
-                                    <BoundaryInput
-                                        label={`${key} lower bound`}
-                                        testId={`zone-${key}-lo`}
-                                        value={zones[key].lo}
-                                        invalid={zoneFieldInvalid(index, 'lo')}
-                                        describedBy={
-                                            hasZoneError
-                                                ? zonesErrorId
-                                                : undefined
-                                        }
-                                        onChange={(v) =>
-                                            editBoundary(key, 'lo', v)
-                                        }
-                                    />
-                                    {key === 'Z5' ? (
-                                        <span
-                                            data-testid="zone-Z5-hi"
-                                            aria-label="Z5 upper bound: unbounded"
-                                            title="The top zone has no upper bound"
-                                            className="flex h-[38px] w-20 items-center justify-center rounded-lg border border-cream-deep bg-muted font-mono text-sm text-text-3"
-                                        >
-                                            ∞
-                                        </span>
-                                    ) : (
-                                        <BoundaryInput
-                                            label={`${key} upper bound`}
-                                            testId={`zone-${key}-hi`}
-                                            value={zones[key].hi}
-                                            invalid={zoneFieldInvalid(
-                                                index,
-                                                'hi',
-                                            )}
-                                            describedBy={
-                                                hasZoneError
-                                                    ? zonesErrorId
-                                                    : undefined
-                                            }
-                                            onChange={(v) =>
-                                                editBoundary(key, 'hi', v)
-                                            }
-                                        />
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                        <AnimatePresence>
-                            {hasZoneError && (
-                                <motion.p
-                                    id={zonesErrorId}
-                                    role="alert"
-                                    variants={fadeInUp}
-                                    initial="hidden"
-                                    animate="visible"
-                                    exit="hidden"
-                                    className="mt-3 rounded-lg border border-ember/30 bg-ember/[0.08] px-3 py-2 font-sans text-xs text-ember-ink"
-                                >
-                                    Some zones don't line up. Double-check the
-                                    upper and lower bounds.
-                                </motion.p>
-                            )}
-                        </AnimatePresence>
-                    </Card>
-
-                    <div className="mt-4 flex items-center gap-3">
+                    <div className="mt-2.5">
                         <PillButton
-                            tone="sky"
+                            tone="ghost"
                             size="sm"
+                            onClick={applyDerived}
+                        >
+                            Auto-calculate
+                        </PillButton>
+                    </div>
+
+                    <div className="mt-3.5 mb-1">
+                        {ZONE_KEYS.map((key) => (
+                            <div
+                                key={key}
+                                className="flex items-center justify-between gap-2.5 py-1.5"
+                            >
+                                <Eyebrow
+                                    as="span"
+                                    token="micro"
+                                    tone="ink-2"
+                                    className="w-24 flex-none truncate"
+                                >
+                                    {ZONE_LABEL[key]}
+                                </Eyebrow>
+                                <BoundInput
+                                    label={`${ZONE_LABEL[key]} lower bound`}
+                                    testId={`zone-${key}-lo`}
+                                    value={bounds[key]}
+                                    invalid={invalidBounds.has(key)}
+                                    describedBy={
+                                        hasZoneError ? zonesErrorId : undefined
+                                    }
+                                    onChange={(v) => editBound(key, v)}
+                                />
+                            </div>
+                        ))}
+                    </div>
+
+                    <AnimatePresence>
+                        {hasZoneError && (
+                            <motion.p
+                                id={zonesErrorId}
+                                role="alert"
+                                variants={fadeInUp}
+                                initial="hidden"
+                                animate="visible"
+                                exit="hidden"
+                                className="mb-2.5 rounded-lg border border-ember/30 bg-ember/[0.08] px-3 py-2 font-sans text-xs text-ember-ink"
+                            >
+                                Each zone has to start above the one before it,
+                                and Z1 no lower than your resting HR.
+                            </motion.p>
+                        )}
+                    </AnimatePresence>
+
+                    <div className="mt-2.5 flex gap-2">
+                        <PillButton
+                            tone="horizon"
+                            size="sm"
+                            className="flex-1 justify-center"
                             onClick={submit}
                             disabled={processing || !isDirty}
                         >
-                            <Icon
-                                icon="mdi:content-save-outline"
-                                width={16}
-                                height={16}
-                                aria-hidden
-                            />
                             Save zones
                         </PillButton>
-                        <AnimatePresence>
-                            {justSaved && (
-                                <motion.span
-                                    variants={fadeInUp}
-                                    initial="hidden"
-                                    animate="visible"
-                                    exit="hidden"
-                                    role="status"
-                                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-leaf-ink"
+                        {canShowReset && (
+                            <PillButton
+                                tone="ghost"
+                                size="sm"
+                                className="flex-1 justify-center"
+                                onClick={resetToDefault}
+                            >
+                                Reset to default
+                            </PillButton>
+                        )}
+                    </div>
+
+                    {canShowResync && (
+                        <div className="mt-1">
+                            <StravaAction>
+                                <PillButton
+                                    tone="outline"
+                                    size="sm"
+                                    className="w-full justify-center"
+                                    onClick={resyncFromStrava}
+                                    disabled={resyncing}
                                 >
                                     <Icon
-                                        icon="mdi:check-circle-outline"
-                                        width={16}
-                                        height={16}
+                                        icon={
+                                            resyncing
+                                                ? 'mdi:loading'
+                                                : 'mdi:sync'
+                                        }
+                                        width={14}
+                                        height={14}
+                                        className={
+                                            resyncing
+                                                ? 'animate-spin'
+                                                : undefined
+                                        }
                                         aria-hidden
                                     />
-                                    Saved
-                                </motion.span>
-                            )}
-                        </AnimatePresence>
-                    </div>
+                                    {resyncing
+                                        ? 'Syncing…'
+                                        : 'Resync from Strava'}
+                                </PillButton>
+                            </StravaAction>
+                        </div>
+                    )}
+
+                    <AnimatePresence>
+                        {justSaved && (
+                            <motion.span
+                                variants={fadeInUp}
+                                initial="hidden"
+                                animate="visible"
+                                exit="hidden"
+                                role="status"
+                                className="mt-2.5 inline-flex items-center gap-1.5 text-sm font-semibold text-leaf-ink"
+                            >
+                                <Icon
+                                    icon="mdi:check-circle-outline"
+                                    width={16}
+                                    height={16}
+                                    aria-hidden
+                                />
+                                Saved
+                            </motion.span>
+                        )}
+                    </AnimatePresence>
                 </div>
             )}
         </div>
@@ -444,7 +410,6 @@ export default function HrZonesDisclosure({
 
 interface NumberFieldProps {
     label: string;
-    suffix?: string;
     value: number;
     error?: string;
     onChange: (value: number) => void;
@@ -452,7 +417,6 @@ interface NumberFieldProps {
 
 function NumberField({
     label,
-    suffix,
     value,
     error,
     onChange,
@@ -460,38 +424,22 @@ function NumberField({
     const errorId = useId();
     return (
         <label className="block">
-            <Eyebrow
-                as="span"
-                token="micro"
-                tone="ink-3"
-                className="mb-1.5 block"
-            >
+            <Eyebrow as="span" token="micro" tone="ink-3" className="block">
                 {label}
             </Eyebrow>
-            <span
+            <input
+                type="number"
+                inputMode="numeric"
+                aria-label={label}
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? errorId : undefined}
+                value={Number.isNaN(value) ? '' : value}
+                onChange={(e) => onChange(Number.parseInt(e.target.value, 10))}
                 className={cn(
-                    'flex items-center gap-2 rounded-xl border bg-cream px-4 py-2.5 motion-safe:transition-colors motion-safe:duration-150 focus-within:border-horizon',
-                    error ? 'border-ember-deep' : 'border-cream-deep',
+                    'focus-ring mt-1 block w-full rounded-lg border bg-muted px-2.5 py-2 font-mono text-sm font-bold tabular-nums text-foreground motion-safe:transition-colors motion-safe:duration-150 focus:border-horizon',
+                    error ? 'border-ember-deep' : 'border-border-strong',
                 )}
-            >
-                <input
-                    type="number"
-                    inputMode="numeric"
-                    aria-label={label}
-                    aria-invalid={error ? true : undefined}
-                    aria-describedby={error ? errorId : undefined}
-                    value={Number.isNaN(value) ? '' : value}
-                    onChange={(e) =>
-                        onChange(Number.parseInt(e.target.value, 10))
-                    }
-                    className="w-full bg-transparent font-mono text-base font-semibold tabular-nums text-foreground outline-none"
-                />
-                {suffix && (
-                    <span className="font-mono text-[11px] text-text-3">
-                        {suffix}
-                    </span>
-                )}
-            </span>
+            />
             {error && (
                 <span
                     id={errorId}
@@ -505,7 +453,7 @@ function NumberField({
     );
 }
 
-interface BoundaryInputProps {
+interface BoundInputProps {
     label: string;
     testId: string;
     value: number;
@@ -514,14 +462,14 @@ interface BoundaryInputProps {
     onChange: (value: number) => void;
 }
 
-function BoundaryInput({
+function BoundInput({
     label,
     testId,
     value,
     invalid,
     describedBy,
     onChange,
-}: Readonly<BoundaryInputProps>) {
+}: Readonly<BoundInputProps>) {
     return (
         <input
             type="number"
@@ -533,8 +481,8 @@ function BoundaryInput({
             value={Number.isNaN(value) ? '' : value}
             onChange={(e) => onChange(Number.parseInt(e.target.value, 10))}
             className={cn(
-                'focus-ring w-20 rounded-lg border bg-cream px-3 py-2 text-center font-mono text-sm font-semibold tabular-nums text-foreground motion-safe:transition-colors motion-safe:duration-150 focus:border-horizon',
-                invalid ? 'border-ember-deep' : 'border-cream-deep',
+                'focus-ring w-22 rounded-lg border bg-muted px-2.5 py-2 text-center font-mono text-sm font-bold tabular-nums text-foreground motion-safe:transition-colors motion-safe:duration-150 focus:border-horizon',
+                invalid ? 'border-ember-deep' : 'border-border-strong',
             )}
         />
     );
