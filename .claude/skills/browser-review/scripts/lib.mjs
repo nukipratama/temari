@@ -125,6 +125,7 @@ export async function discoverPageRoutes(page) {
   const raw = execSync('php artisan route:list --json --except-vendor', { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
   const routes = JSON.parse(raw);
   const pages = [];
+  const paramBases = [];
 
   for (const r of routes) {
     const methods = (r.method ?? '').split('|');
@@ -141,15 +142,21 @@ export async function discoverPageRoutes(page) {
       pages.push({ name: uri === '/' || uri === '' ? 'dashboard' : uri.replaceAll('/', '-'), path: `/${uri}` });
       continue;
     }
-    // Single-param page: resolve the id from the list page (e.g. activities/{activity}).
-    const base = uri.split('/{')[0];
-    await page.goto(`${BASE}/${base}`, { waitUntil: 'load' }).catch(() => {});
-    const href = await page.locator(`a[href^="/${base}/"]`).first().getAttribute('href').catch(() => null);
-    if (href && new RegExp(`^/${base}/[^/]+$`).test(href)) {
-      pages.push({ name: `${base}-detail`, path: href });
-    } else {
-      console.log(`  (no sample for /${base}/{id} — thin data? try: sail artisan demo:seed)`);
+    paramBases.push(uri.split('/{')[0]);
+  }
+
+  // Single-param pages: resolve a real id by scraping the first matching link. Try the
+  // route's own base path first (/activities), then every simple page — a detail screen
+  // is often only linked from a differently-named index (/history owns the run feed).
+  for (const base of paramBases) {
+    let found = null;
+    for (const candidate of [`/${base}`, ...pages.map((p) => p.path)]) {
+      await page.goto(`${BASE}${candidate}`, { waitUntil: 'load' }).catch(() => {});
+      const href = await page.locator(`a[href^="/${base}/"]`).first().getAttribute('href').catch(() => null);
+      if (href && new RegExp(`^/${base}/[^/]+$`).test(href)) { found = href; break; }
     }
+    if (found) pages.push({ name: `${base}-detail`, path: found });
+    else console.log(`  (no sample for /${base}/{id} — thin data? try: sail artisan demo:seed)`);
   }
   if (process.env.DEVTOOLS_PASSWORD) pages.push(...VENDOR_PAGES);
   else console.log('  (skipping /devtools, /devtools/design, /ai-usage, /pulse — set DEVTOOLS_PASSWORD to include them)');
