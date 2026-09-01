@@ -104,6 +104,9 @@ class HistoryController extends Controller
             'weekFilter' => $filters->week?->toDateString(),
             'rangeStart' => $filters->rangeStart?->toDateString(),
             'rangeAutoWidened' => $filters->rangeAutoWidened,
+            // The header's activity count is lifetime, not page-scoped: paging
+            // by week would otherwise shrink it on first paint.
+            'lifetime' => $this->lifetimeStats->forUser($user),
             'weeksShown' => $weeks,
             'hasOlderWeeks' => $hasOlderWeeks,
             'weeklySnapshots' => fn (): SupportCollection => $this->weeklySnapshotPayload(

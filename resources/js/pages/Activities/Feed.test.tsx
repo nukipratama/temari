@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
@@ -81,19 +81,20 @@ describe('Activities/Feed', () => {
         ).toBeInTheDocument();
     });
 
-    it('shows the truncation note when runs are capped', () => {
+    it('counts lifetime activities in the eyebrow, not the paged runs', () => {
         render(
             <RunsIndex
                 runs={[run(101, 'Morning', '2026-05-19T06:00:00')]}
-                rangeFilter="all"
-                runsTruncated
-                maxRuns={365}
+                rangeFilter="8w"
+                lifetime={{
+                    total_runs: 42,
+                    total_km: 310,
+                    first_run_at: '2025-01-01',
+                }}
                 weeklySnapshots={[]}
             />,
         );
-        expect(
-            screen.getByText(/Showing the 365 most recent runs/i),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/History · 42 activities/)).toBeInTheDocument();
     });
 
     it('groups runs into weekly buckets + renders weekly snapshot stats', () => {
@@ -150,65 +151,71 @@ describe('Activities/Feed', () => {
         expect(screen.getAllByText('No date').length).toBeGreaterThan(0);
     });
 
-    // The prototype's structure: only the most recent weeks show up front, an
-    // explicit tap reveals the rest (already-loaded, no extra fetch).
+    // P3: the button is a real page, not a client-side reveal — the server
+    // decides how many weeks came back and whether any remain behind them.
     describe('load older weeks', () => {
-        function weekRuns() {
-            return [
-                run(101, 'Week 1', '2026-05-19T06:00:00'),
-                run(102, 'Week 2', '2026-05-12T06:00:00'),
-                run(103, 'Week 3', '2026-05-05T06:00:00'),
-            ];
-        }
+        const runs = [run(101, 'Week 1', '2026-05-19T06:00:00')];
 
-        it('shows only the two most recent weeks and a reveal button', () => {
+        it('links one page further, keeping the rest of the query string', () => {
+            setMockPage(
+                {
+                    auth: {
+                        user: makeUser({ name: 'Ada', first_name: 'Ada' }),
+                    },
+                    flash: {},
+                    demoLoginEnabled: false,
+                    stravaSync: { state: 'ready', last_synced_at: null },
+                },
+                '/history?range=all&weeks=2',
+            );
+
             render(
                 <RunsIndex
-                    runs={weekRuns()}
+                    runs={runs}
+                    rangeFilter="all"
+                    weeksShown={2}
+                    hasOlderWeeks
+                    weeklySnapshots={[]}
+                />,
+            );
+
+            expect(
+                screen.getByRole('link', { name: /Load older weeks/ }),
+            ).toHaveAttribute('href', '/history?range=all&weeks=4');
+        });
+
+        it('hides the button once the oldest run is on the page', () => {
+            render(
+                <RunsIndex
+                    runs={runs}
+                    rangeFilter="8w"
+                    weeksShown={2}
+                    weeklySnapshots={[]}
+                />,
+            );
+
+            expect(
+                screen.queryByRole('link', { name: /Load older weeks/ }),
+            ).not.toBeInTheDocument();
+        });
+
+        it('renders every week the server sent, with no client-side gate', () => {
+            render(
+                <RunsIndex
+                    runs={[
+                        run(101, 'Week 1', '2026-05-19T06:00:00'),
+                        run(102, 'Week 2', '2026-05-12T06:00:00'),
+                        run(103, 'Week 3', '2026-05-05T06:00:00'),
+                    ]}
                     rangeFilter="1y"
+                    weeksShown={4}
                     weeklySnapshots={[]}
                 />,
             );
 
             expect(screen.getByText('Week 1')).toBeInTheDocument();
             expect(screen.getByText('Week 2')).toBeInTheDocument();
-            expect(screen.queryByText('Week 3')).not.toBeInTheDocument();
-            expect(
-                screen.getByRole('button', { name: 'Load older weeks' }),
-            ).toBeInTheDocument();
-        });
-
-        it('reveals every week once tapped', () => {
-            render(
-                <RunsIndex
-                    runs={weekRuns()}
-                    rangeFilter="1y"
-                    weeklySnapshots={[]}
-                />,
-            );
-
-            fireEvent.click(
-                screen.getByRole('button', { name: 'Load older weeks' }),
-            );
-
             expect(screen.getByText('Week 3')).toBeInTheDocument();
-            expect(
-                screen.queryByRole('button', { name: 'Load older weeks' }),
-            ).not.toBeInTheDocument();
-        });
-
-        it('shows no reveal button when there are two weeks or fewer', () => {
-            render(
-                <RunsIndex
-                    runs={[run(101, 'Only week', '2026-05-19T06:00:00')]}
-                    rangeFilter="8w"
-                    weeklySnapshots={[]}
-                />,
-            );
-
-            expect(
-                screen.queryByRole('button', { name: 'Load older weeks' }),
-            ).not.toBeInTheDocument();
         });
     });
 
