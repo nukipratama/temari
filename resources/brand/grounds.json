@@ -361,9 +361,6 @@
             },
             "text": ["text-2", "foreground"]
         },
-        "foreground/0.06": {
-            "text": []
-        },
         "destructive/0.1": {
             "over": {
                 "resources/js/components/ui/badge.tsx": ["paper"],
