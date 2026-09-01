@@ -59,7 +59,7 @@ export default function ProjectionGauge({
                     className="fill-card stroke-icon-accent"
                 />
             </svg>
-            <div className="relative mt-1.5 h-3.5 w-[140px] font-mono text-xs tabular-nums text-text-3">
+            <div className="relative mt-1.5 h-3.5 w-[140px] font-mono text-xs font-bold tabular-nums text-text-2">
                 <span className="absolute left-[8.6%] -translate-x-1/2">
                     {formatDurationHMS(lowSec)}
                 </span>
