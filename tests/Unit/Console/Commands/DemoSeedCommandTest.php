@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 use App\Services\Gamification\EquippedAccessories;
 use App\Enums\PlannedSessionStatus;
+use App\Enums\NotificationKind;
 use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
+use App\Models\AI\RunQuestion;
 use App\Models\ActivityDetail;
 use App\Models\InboxNotification;
 use App\Models\PersonalRecord;
@@ -14,10 +16,12 @@ use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\StravaConnection;
+use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
 use App\Notifications\Channels\InAppChannel;
+use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\RecapPeriod;
 use App\Services\Run\Plan\Periodizer;
@@ -194,6 +198,46 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
     // the empty state R5 flagged.
     $inboxCount = InboxNotification::query()->where('user_id', $user->id)->count();
     expect($inboxCount)->toBeGreaterThanOrEqual(1);
+
+    // PP4 / P30. Every one of these surfaces was invisible on the demo account
+    // until this slice, so each assertion stands for a screen a reviewer could
+    // not otherwise see.
+
+    // Settings' preferences card runs on TrainingBaseline fallbacks without a
+    // row, and its "which one's the long run?" block is gated on run days.
+    $preference = TrainingPreference::query()->where('user_id', $user->id)->firstOrFail();
+    expect($preference->run_days)->not->toBeEmpty()
+        ->and($preference->long_run_day)->not->toBeNull()
+        ->and($preference->sessions_per_week)->toBeGreaterThan(0);
+
+    // Inbox variety: P12's unlock rows are the surface PS9 built and could not
+    // see, and one kind alone leaves the page a single undifferentiated list.
+    $inbox = InboxNotification::query()->where('user_id', $user->id)->orderBy('id')->get();
+    expect($inbox->pluck('kind')->unique())->toHaveCount(4)
+        ->and($inbox->where('kind', NotificationKind::Unlock))->not->toBeEmpty();
+
+    // InboxController paginates on id while the page buckets on created_at, so
+    // rows written out of chronological order drop whole buckets off the first
+    // window. Backdating makes that reachable, so it is asserted rather than
+    // assumed.
+    expect($inbox->pluck('created_at')->map(fn ($at) => $at->timestamp)->all())
+        ->toBe($inbox->pluck('created_at')->map(fn ($at) => $at->timestamp)->sort()->values()->all());
+
+    // VitalsCard gates its steepest-grade and flat-pace tiles on a computed
+    // max_grade_pct >= 3, which needs a grade_smooth stream the synthesizer
+    // did not emit at all. The newest run carries it because that is the one
+    // any reviewer lands on first.
+    $newestDetail = ActivityDetail::query()
+        ->whereIn('activity_id', $activityIds)
+        ->orderByDesc('start_date_local')
+        ->firstOrFail();
+    expect((float) ($newestDetail->streamSummary()['max_grade_pct'] ?? 0))->toBeGreaterThanOrEqual(3.0);
+
+    // AskAboutRun's prior-question list is gated on there being any.
+    $runQuestions = RunQuestion::query()->where('activity_id', $newestDetail->activity_id)->get();
+    expect($runQuestions)->not->toBeEmpty()
+        ->and($runQuestions->pluck('status')->unique()->all())->toBe([AnalysisStatus::Done])
+        ->and($runQuestions->pluck('answer')->filter()->count())->toBe($runQuestions->count());
 
     // A second bare seed (no wipe) converges to the same row counts.
     $cardCount = RunCard::query()->whereIn('activity_id', $activityIds)->count();
