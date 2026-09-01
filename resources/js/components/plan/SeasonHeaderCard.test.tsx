@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { SeasonSummaryWeek } from '@/lib/plan';
 import type { AnalysisPayload } from '@/types/inertia';
 
-import SeasonHeaderCard, { phasesOf } from './SeasonHeaderCard';
+import SeasonHeaderCard from './SeasonHeaderCard';
 
 function week(overrides: Partial<SeasonSummaryWeek> = {}): SeasonSummaryWeek {
     return {
@@ -50,43 +50,6 @@ function renderCard(
         />,
     );
 }
-
-describe('phasesOf', () => {
-    it('averages each phase’s weekly volume', () => {
-        const phases = phasesOf([
-            week({ phase: 'base', planned_km: 30 }),
-            week({ week_start: '2026-06-22', phase: 'base', planned_km: 40 }),
-        ]);
-
-        expect(phases).toEqual([{ key: 'base', avgKm: 35, state: 'done' }]);
-    });
-
-    it('marks the phase holding the current week as current', () => {
-        expect(phasesOf(RACE_SEASON).map((p) => p.state)).toEqual([
-            'done',
-            'current',
-            'upcoming',
-        ]);
-    });
-
-    it('keeps a self-scaled season’s repeating build/deload cycle as two phases, not four', () => {
-        const phases = phasesOf([
-            week({ phase: 'build', type: 'history' }),
-            week({
-                week_start: '2026-06-22',
-                phase: 'deload',
-                type: 'current',
-            }),
-            week({
-                week_start: '2026-06-29',
-                phase: 'build',
-                type: 'lookahead',
-            }),
-        ]);
-
-        expect(phases.map((p) => p.key)).toEqual(['build', 'deload']);
-    });
-});
 
 describe('SeasonHeaderCard', () => {
     it('places the athlete in the season', () => {

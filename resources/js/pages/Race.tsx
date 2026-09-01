@@ -16,7 +16,7 @@ import { useCountUp } from '@/hooks/useCountUp';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
-import { formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
+import { daysUntilId, formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
 import {
     ambitiousGoalWarning,
     earliestRaceDate,
@@ -60,13 +60,6 @@ const CONFIDENCE_COPY: Record<ProjectionPayload['confidence'], string> = {
     high: 'narrow range, well-fitted',
 };
 
-function daysUntil(dateStr: string): number {
-    const target = new Date(`${dateStr}T00:00:00`);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return Math.round((target.getTime() - today.getTime()) / 86_400_000);
-}
-
 export default function Race({ race, projection }: Readonly<RaceProps>) {
     const [raceDate, setRaceDate] = useState(race?.race_date ?? '');
     const [distanceKm, setDistanceKm] = useState(
@@ -82,7 +75,7 @@ export default function Race({ race, projection }: Readonly<RaceProps>) {
     const [name, setName] = useState(race?.name ?? '');
     const [processing, setProcessing] = useState(false);
 
-    const daysUntilCount = useCountUp(race ? daysUntil(race.race_date) : 0);
+    const daysUntilCount = useCountUp(race ? daysUntilId(race.race_date) : 0);
     const predictedSecCount = useCountUp(projection?.predicted_sec ?? 0);
 
     const goalTimeSec = hours * 3_600 + minutes * 60 + seconds;
