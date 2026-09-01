@@ -95,11 +95,11 @@ export const HR_ZONE_COLORS: Record<HrZoneKey, string> = hrZone;
  * since they describe the same five bands.
  */
 export const HR_ZONE_LABELS: Record<HrZoneKey, string> = {
-    Z1: 'Z1 · Recovery',
-    Z2: 'Z2 · Easy',
-    Z3: 'Z3 · Aerobic',
-    Z4: 'Z4 · Threshold',
-    Z5: 'Z5 · Max',
+    Z1: 'Z1 · recovery',
+    Z2: 'Z2 · easy',
+    Z3: 'Z3 · aerobic',
+    Z4: 'Z4 · threshold',
+    Z5: 'Z5 · max',
 };
 
 /**

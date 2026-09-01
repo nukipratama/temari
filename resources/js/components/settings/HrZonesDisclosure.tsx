@@ -89,12 +89,12 @@ function collapsedCopy(hrZones: HrZonesPayload): string {
     if (hrZones.source === 'strava') {
         return hrZones.stravaSyncedLabel
             ? `Synced from Strava · last synced ${hrZones.stravaSyncedLabel}`
-            : 'Synced from Strava';
+            : 'synced from Strava';
     }
     if (hrZones.source === 'manual') {
-        return "You've set your own zones";
+        return "you've set your own zones";
     }
-    return 'Using default estimates';
+    return 'using default estimates';
 }
 
 /**
@@ -230,7 +230,7 @@ export default function HrZonesDisclosure({
                 />
                 <span className="min-w-0 flex-1">
                     <span className="block font-sans text-sm font-bold text-foreground">
-                        Heart-rate zones
+                        heart-rate zones
                     </span>
                     <span className="mt-0.5 block font-sans text-xs text-text-3">
                         {collapsedCopy(hrZones)}
@@ -369,7 +369,7 @@ export default function HrZonesDisclosure({
                                     />
                                     {resyncing
                                         ? 'Syncing…'
-                                        : 'Resync from Strava'}
+                                        : 'resync from Strava'}
                                 </PillButton>
                             </StravaAction>
                         </div>

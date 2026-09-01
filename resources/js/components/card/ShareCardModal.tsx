@@ -36,9 +36,9 @@ function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 
 const LAYOUTS: Layout[] = ['kartu', 'rute', 'stats'];
 const LAYOUT_LABELS: Record<Layout, string> = {
-    kartu: 'Card',
-    rute: 'Route',
-    stats: 'Stats',
+    kartu: 'card',
+    rute: 'route',
+    stats: 'stats',
 };
 /** Which templates need a drawable route — the single source of truth for
  *  both the layout picker's visibility and the draw-effect's stale-selection
@@ -55,9 +55,9 @@ function hasRoute(kartu: ShareKartuData): boolean {
 
 const COLORWAYS_LIST: ColorwayId[] = ['navy', 'dawn', 'ember'];
 const COLORWAY_LABELS: Record<ColorwayId, string> = {
-    navy: 'Navy',
-    dawn: 'Dawn',
-    ember: 'Ember',
+    navy: 'navy',
+    dawn: 'dawn',
+    ember: 'ember',
 };
 
 export default function ShareCardModal({
@@ -163,14 +163,14 @@ export default function ShareCardModal({
         } else if (navigator.clipboard?.writeText !== undefined) {
             try {
                 await navigator.clipboard.writeText(url);
-                setStatus({ tone: 'ok', text: 'Activity link copied.' });
+                setStatus({ tone: 'ok', text: 'activity link copied.' });
             } catch {
-                setStatus({ tone: 'err', text: 'Failed to copy link.' });
+                setStatus({ tone: 'err', text: 'failed to copy link.' });
             }
         } else {
             setStatus({
                 tone: 'err',
-                text: "This browser doesn't support sharing.",
+                text: "this browser doesn't support sharing.",
             });
         }
     };
@@ -182,7 +182,7 @@ export default function ShareCardModal({
         ) {
             setStatus({
                 tone: 'err',
-                text: "This browser doesn't support copying images. Use Share instead.",
+                text: "this browser doesn't support copying images. use share instead.",
             });
             return;
         }
@@ -191,11 +191,11 @@ export default function ShareCardModal({
             await navigator.clipboard.write([
                 new ClipboardItem({ 'image/png': blob }),
             ]);
-            setStatus({ tone: 'ok', text: 'Card image copied.' });
+            setStatus({ tone: 'ok', text: 'card image copied.' });
         } catch {
             setStatus({
                 tone: 'err',
-                text: 'Failed to copy image. Try Share instead.',
+                text: 'failed to copy image. try share instead.',
             });
         }
     };
@@ -286,8 +286,8 @@ export default function ShareCardModal({
                                         )}
                                     />
                                     {f === 'story'
-                                        ? 'Portrait · 9:16'
-                                        : 'Square · 1:1'}
+                                        ? 'portrait · 9:16'
+                                        : 'square · 1:1'}
                                 </button>
                             ))}
                         </div>

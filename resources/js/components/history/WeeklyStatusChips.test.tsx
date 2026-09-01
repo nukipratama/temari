@@ -47,7 +47,7 @@ describe('WeeklyStatusChips', () => {
         expect(screen.getByText(/Drift 3.2%/)).toBeInTheDocument();
         expect(screen.getByText(/Fitness 42.0/)).toBeInTheDocument();
         expect(screen.getByText(/Readiness -2.5/)).toBeInTheDocument();
-        expect(screen.getByText(/Right on Track/)).toBeInTheDocument();
+        expect(screen.getByText(/right on track/)).toBeInTheDocument();
     });
 
     it('omits a chip whose metric is unknown rather than showing a zero', () => {

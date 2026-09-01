@@ -88,7 +88,7 @@ describe('SeasonWeekRow', () => {
         renderRow();
 
         expect(screen.getByText('Wk 3')).toBeInTheDocument();
-        expect(screen.getByText('Jun 15–21')).toBeInTheDocument();
+        expect(screen.getByText('jun 15–21')).toBeInTheDocument();
         expect(screen.getByText(/30 km · 5 sessions/)).toBeInTheDocument();
     });
 
@@ -122,7 +122,7 @@ describe('SeasonWeekRow', () => {
         fireEvent.click(screen.getByRole('button', { name: /Wk 3/ }));
 
         expect(screen.getByText('Volume that week')).toBeInTheDocument();
-        expect(screen.getAllByText('Easy')).toHaveLength(2);
+        expect(screen.getAllByText('easy')).toHaveLength(2);
     });
 
     it('carries the week narration and the adaptation focus into the open week', () => {

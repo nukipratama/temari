@@ -46,7 +46,7 @@ export default function RaceCard({
                     aria-hidden
                 />
                 <b className="text-sm font-bold text-foreground">
-                    {name ?? 'Your race'}
+                    {name ?? 'your race'}
                 </b>
             </div>
             <p className="mt-1 font-mono text-xs tabular-nums text-text-2">

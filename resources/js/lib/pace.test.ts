@@ -259,7 +259,7 @@ describe('formatAbsoluteId', () => {
 
     it('formats a true instant as short month/day + local time', () => {
         expect(formatAbsoluteId('2026-08-25T07:12:00+07:00')).toMatch(
-            /^Aug 2[45] · \d{2}:\d{2}$/,
+            /^aug 2[45] · \d{2}:\d{2}$/,
         );
     });
 });
@@ -311,15 +311,15 @@ describe('date/time format variants', () => {
     const d = new Date(2026, 4, 11, 8, 30);
 
     it('formatShortWeekdayDateId: short weekday + day + short month', () => {
-        expect(formatShortWeekdayDateId(d)).toBe('Mon, May 11');
+        expect(formatShortWeekdayDateId(d)).toBe('mon, may 11');
     });
 
     it('formatMonthDayId: day + short month', () => {
-        expect(formatMonthDayId(d)).toBe('May 11');
+        expect(formatMonthDayId(d)).toBe('may 11');
     });
 
     it('formatWeekdayDayId: short weekday + day', () => {
-        expect(formatWeekdayDayId(d)).toBe('11 Mon');
+        expect(formatWeekdayDayId(d)).toBe('11 mon');
     });
 });
 
@@ -355,17 +355,17 @@ describe('formatShortDateTimeId', () => {
 
     it('combines short date and naive wall-clock time', () => {
         expect(formatShortDateTimeId('2026-06-09T06:52:00')).toBe(
-            '9 Jun 2026 · 06:52',
+            '9 jun 2026 · 06:52',
         );
     });
 
     it('drops the time half for a date-only string', () => {
-        expect(formatShortDateTimeId('2026-06-09')).toBe('9 Jun 2026');
+        expect(formatShortDateTimeId('2026-06-09')).toBe('9 jun 2026');
     });
 
     it('renders the as-recorded hour even with a trailing Z', () => {
         expect(formatShortDateTimeId('2026-06-09T06:52:54.000000Z')).toBe(
-            '9 Jun 2026 · 06:52',
+            '9 jun 2026 · 06:52',
         );
     });
 });

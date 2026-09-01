@@ -75,12 +75,12 @@ export default function RunHydratingNotice({
             <div className="flex-1">
                 <p className="font-sans text-sm font-bold text-foreground">
                     {stoppedPolling
-                        ? 'Still waiting on the rest of this run'
-                        : 'Still filling this run in'}
+                        ? 'still waiting on the rest of this run'
+                        : 'still filling this run in'}
                 </p>
                 <p className="mt-1 font-sans text-xs leading-relaxed text-text-2">
                     {stoppedPolling
-                        ? 'The deeper fetch still has not landed. I stopped reloading on your behalf rather than doing it forever, so this one is on you now.'
+                        ? 'the deeper fetch still has not landed. i stopped reloading on your behalf rather than doing it forever, so this one is on you now.'
                         : 'So far I have the distance, time and pace Strava lists for it. The splits, heart-rate zones, effort score and its card come from a second, deeper fetch that queues behind runs finishing right now, so it can take a few minutes. This page refreshes itself when the rest arrives.'}
                 </p>
                 {stoppedPolling && (

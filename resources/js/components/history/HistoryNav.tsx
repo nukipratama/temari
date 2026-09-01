@@ -10,11 +10,11 @@ interface HistoryNavProps {
 }
 
 const TABS: ReadonlyArray<{ id: HistoryTab; label: string; href: string }> = [
-    { id: 'feed', label: 'Feed', href: '/history' },
-    { id: 'calendar', label: 'Calendar', href: '/history?view=calendar' },
+    { id: 'feed', label: 'feed', href: '/history' },
+    { id: 'calendar', label: 'calendar', href: '/history?view=calendar' },
 ];
 
-/** The Feed ⇄ Calendar switcher: two real routes behind one pill toggle. */
+/** The feed ⇄ calendar switcher: two real routes behind one pill toggle. */
 export default function HistoryNav({
     active,
     className,

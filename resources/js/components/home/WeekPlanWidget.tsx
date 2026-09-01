@@ -11,28 +11,28 @@ import { cn } from '@/lib/cn';
 import { formatPace, parseNaiveLocalDate, todayLocalIso } from '@/lib/pace';
 
 const SESSION_TYPE_LABEL: Record<string, string> = {
-    easy: 'Easy',
-    long: 'Long run',
-    tempo: 'Tempo',
-    interval: 'Interval',
-    rest: 'Rest',
+    easy: 'easy',
+    long: 'long run',
+    tempo: 'tempo',
+    interval: 'interval',
+    rest: 'rest',
 };
 
 const PHASE_LABEL: Record<string, string> = {
-    base: 'Base',
-    build: 'Build',
-    peak: 'Peak',
-    taper: 'Taper',
-    deload: 'Deload',
+    base: 'base',
+    build: 'build',
+    peak: 'peak',
+    taper: 'taper',
+    deload: 'deload',
 };
 
 const STATUS_LABEL: Record<string, string> = {
-    planned: 'Upcoming',
-    done: 'Done',
-    partial: 'Partial',
-    missed: 'Missed',
-    overreached: 'Overreached',
-    skip: 'Skipped',
+    planned: 'upcoming',
+    done: 'done',
+    partial: 'partial',
+    missed: 'missed',
+    overreached: 'overreached',
+    skip: 'skipped',
 };
 
 /** Same shape-per-intensity vocabulary as the frozen prototype's TodayScreen:
@@ -75,7 +75,7 @@ function dayDetail(day: WeekPlanDay): string {
         parts.push(`${day.compliance_score}%`);
     }
     if (day.ran_anyway) {
-        parts.push('Ran anyway');
+        parts.push('ran anyway');
     }
     return parts.join(' · ');
 }
@@ -214,7 +214,7 @@ export default function WeekPlanWidget({
         <Card as="section">
             <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
                 <Eyebrow token="micro" className="text-foreground">
-                    This week&apos;s plan
+                    this week&apos;s plan
                 </Eyebrow>
                 <Chip className="bg-muted text-foreground">
                     {PHASE_LABEL[weekPlan.phase] ?? weekPlan.phase}
@@ -254,7 +254,7 @@ export default function WeekPlanWidget({
                     className="focus-ring flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2.5 text-[11.5px] text-foreground transition-colors hover:bg-accent"
                 >
                     <span>
-                        <b>Today</b> ·{' '}
+                        <b>today</b> ·{' '}
                         {SESSION_TYPE_LABEL[today.session_type] ??
                             today.session_type}
                         {today.session_type !== 'rest' &&

@@ -4,11 +4,11 @@ import { zoneColor } from '@/components/plan/MiniSessionBar';
 import { formatPace } from '@/lib/pace';
 
 const SEGMENT_LABEL: Record<PlanSessionSegment['key'], string> = {
-    warmup: 'Warmup',
-    main: 'Main set',
-    interval: 'Interval',
-    recovery: 'Recovery',
-    cooldown: 'Cooldown',
+    warmup: 'warmup',
+    main: 'main set',
+    interval: 'interval',
+    recovery: 'recovery',
+    cooldown: 'cooldown',
 };
 
 /** Bar height by zone — the ramp is the point, so it is not linear in zone number. */

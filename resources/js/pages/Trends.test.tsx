@@ -68,7 +68,7 @@ describe('Trends', () => {
         ).toBeInTheDocument();
         expect(screen.getByText("Temari's read")).toBeInTheDocument();
         expect(
-            screen.getByText(/Not enough training history yet/),
+            screen.getByText(/not enough training history yet/),
         ).toBeInTheDocument();
     });
 

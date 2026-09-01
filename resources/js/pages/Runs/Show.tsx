@@ -107,8 +107,8 @@ export default function RunsShow({
                     id="run-share"
                     anchorRef={shareRef}
                     placement="top"
-                    title="Share the card"
-                    body="I'll turn this run into an image you can send anywhere."
+                    title="share the card"
+                    body="i'll turn this run into an image you can send anywhere."
                 />
 
                 {detailed && <PastYouCard match={pastYou} />}

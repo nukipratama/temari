@@ -87,19 +87,19 @@ export function phasesOf(weeks: SeasonSummaryWeek[]): Phase[] {
 }
 
 export const PHASE_LABEL: Record<string, string> = {
-    base: 'Base',
-    build: 'Build',
-    peak: 'Peak',
-    taper: 'Taper',
-    deload: 'Deload',
+    base: 'base',
+    build: 'build',
+    peak: 'peak',
+    taper: 'taper',
+    deload: 'deload',
 };
 
 export const SESSION_TYPE_LABEL: Record<string, string> = {
-    easy: 'Easy',
-    long: 'Long run',
-    tempo: 'Tempo',
-    interval: 'Interval',
-    rest: 'Rest',
+    easy: 'easy',
+    long: 'long run',
+    tempo: 'tempo',
+    interval: 'interval',
+    rest: 'rest',
 };
 
 export const SESSION_TYPE_ICON: Record<string, string> = {
@@ -111,11 +111,11 @@ export const SESSION_TYPE_ICON: Record<string, string> = {
 };
 
 export const STATUS_LABEL: Record<string, string> = {
-    done: 'Done',
-    partial: 'Partial',
-    missed: 'Missed',
-    overreached: 'Overreached',
-    skip: 'Skipped',
+    done: 'done',
+    partial: 'partial',
+    missed: 'missed',
+    overreached: 'overreached',
+    skip: 'skipped',
 };
 
 /** Label colour per compliance verdict. `planned` reads as neutral and is unlabelled. */
@@ -153,12 +153,14 @@ export function computeAdherence(
     return Math.round(Math.min(100, total / scored.length));
 }
 
-/** "Jun 12–18" for a week start, collapsing the month when both ends share it. */
+/** "jun 12–18" for a week start, collapsing the month when both ends share it. */
 export function weekRangeLabel(weekStartIso: string): string {
     const monday = mondayOf(weekStartIso);
     const sunday = sundayOf(monday);
     if (monday.getMonth() === sunday.getMonth()) {
-        const month = monday.toLocaleDateString('en-US', { month: 'short' });
+        const month = monday
+            .toLocaleDateString('en-US', { month: 'short' })
+            .toLowerCase();
         return `${month} ${monday.getDate()}–${sunday.getDate()}`;
     }
     return `${formatMonthDayId(monday)}–${formatMonthDayId(sunday)}`;

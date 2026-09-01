@@ -3,9 +3,9 @@ import { cn } from '@/lib/cn';
 export type OnboardingStep = 'connected' | 'preferences' | 'goal';
 
 const STEPS: ReadonlyArray<{ key: OnboardingStep; label: string }> = [
-    { key: 'connected', label: 'Welcome' },
-    { key: 'preferences', label: 'Training' },
-    { key: 'goal', label: 'Race Goal' },
+    { key: 'connected', label: 'welcome' },
+    { key: 'preferences', label: 'training' },
+    { key: 'goal', label: 'race goal' },
 ];
 
 /** Number of preferences sub-questions (experience, sessions, goal, days). */

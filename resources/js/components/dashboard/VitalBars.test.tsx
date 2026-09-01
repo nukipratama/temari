@@ -45,7 +45,7 @@ describe('VitalBars', () => {
         expect(screen.getByText('Steady')).toBeInTheDocument();
         expect(screen.getByText('holding rhythm')).toBeInTheDocument();
         expect(screen.getByText('+8.0')).toBeInTheDocument();
-        expect(screen.getByText('Right on Track')).toBeInTheDocument();
+        expect(screen.getByText('right on track')).toBeInTheDocument();
         expect(screen.getByText('14h')).toBeInTheDocument();
     });
 

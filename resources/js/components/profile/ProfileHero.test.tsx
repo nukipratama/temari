@@ -39,7 +39,7 @@ describe('ProfileHero', () => {
         expect(
             screen.getByText('★ What Temari says about you'),
         ).toBeInTheDocument();
-        expect(screen.getByText('Est. 12 Jun 2026')).toBeInTheDocument();
+        expect(screen.getByText('Est. 12 jun 2026')).toBeInTheDocument();
         expect(screen.getByText('284.6')).toBeInTheDocument();
         expect(screen.getByText('Total runs')).toBeInTheDocument();
     });

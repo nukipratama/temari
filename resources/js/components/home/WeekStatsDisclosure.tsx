@@ -64,7 +64,7 @@ export default function WeekStatsDisclosure({
         <Collapsible>
             <CollapsibleTrigger className="group focus-ring flex w-full items-center justify-between gap-2 rounded-md border border-border bg-card px-3.5 py-3 text-xs text-foreground shadow-e1">
                 <span>
-                    <b className="font-bold">This week&apos;s stats</b> ·{' '}
+                    <b className="font-bold">this week&apos;s stats</b> ·{' '}
                     {runsDisplay} runs · {kmDisplay} km
                 </span>
                 <Icon

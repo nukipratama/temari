@@ -52,7 +52,7 @@ describe('Inbox', () => {
     it('shows a decent empty state rather than a bare list', () => {
         renderInbox([]);
 
-        expect(screen.getByText('Nothing here yet.')).toBeInTheDocument();
+        expect(screen.getByText('nothing here yet.')).toBeInTheDocument();
         expect(screen.getByText(/lands here on its own/)).toBeInTheDocument();
     });
 

@@ -17,31 +17,31 @@ const HERO: Record<
 > = {
     disconnected: {
         eyebrow: '★ Not connected',
-        headline: 'Connect Strava first',
-        copy: 'I read your runs straight from Strava. Connect it first to get your first card going.',
+        headline: 'connect Strava first',
+        copy: 'i read your runs straight from Strava. connect it first to get your first card going.',
     },
     revoked: {
         eyebrow: '★ Disconnected',
         headline: 'Strava connection lost',
-        copy: "Your Strava token isn't active anymore. Reconnect so new runs can be read.",
+        copy: "your Strava token isn't active anymore. reconnect so new runs can be read.",
     },
     syncing: {
         eyebrow: '★ Syncing',
-        headline: 'Your runs are being pulled from Strava',
-        copy: "Hang tight, the moment your first run comes in, I'll read it and the card will show up.",
+        headline: 'your runs are being pulled from Strava',
+        copy: "hang tight, the moment your first run comes in, i'll read it and the card will show up.",
     },
     ready: {
         eyebrow: '★ Nothing yet',
-        headline: 'No new runs found yet',
-        copy: 'If you just finished a run, try syncing again so it gets picked up.',
+        headline: 'no new runs found yet',
+        copy: 'if you just finished a run, try syncing again so it gets picked up.',
     },
 };
 
 const ACTIONS = [
     {
         icon: 'mdi:chart-line',
-        title: 'See your run recap',
-        desc: 'Once your first run comes in, the recap shows up here.',
+        title: 'see your run recap',
+        desc: 'once your first run comes in, the recap shows up here.',
         href: '/history',
     },
 ] as const;

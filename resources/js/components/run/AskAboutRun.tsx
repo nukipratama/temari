@@ -18,10 +18,10 @@ import { inputVariants, outlineChipVariants } from '@/lib/variants';
 
 const ERROR_COPY: Readonly<Record<AskError, string>> = {
     rate_limited:
-        "You're asking faster than I can think. Give it a minute, then try again.",
-    paused: "Generation is paused right now, so I didn't send that one. It would only sit there.",
-    invalid: "I couldn't read that one. Try rephrasing it.",
-    failed: 'That question never made it to me. Try again.',
+        "you're asking faster than i can think. give it a minute, then try again.",
+    paused: "generation is paused right now, so i didn't send that one. it would only sit there.",
+    invalid: "i couldn't read that one. try rephrasing it.",
+    failed: 'that question never made it to me. try again.',
 };
 
 function normalize(question: string): string {
@@ -165,7 +165,7 @@ export default function AskAboutRun({
                         maxLength={MAX_QUESTION_LENGTH}
                         disabled={asking}
                         onChange={(event) => setDraft(event.target.value)}
-                        placeholder="Ask anything about this run"
+                        placeholder="ask anything about this run"
                         className={cn(inputVariants(), 'min-w-0 flex-1')}
                     />
                     <Button
@@ -180,7 +180,7 @@ export default function AskAboutRun({
                             className={asking ? 'animate-spin' : undefined}
                             aria-hidden
                         />
-                        {asking ? 'Sending…' : 'Ask'}
+                        {asking ? 'sending…' : 'ask'}
                     </Button>
                 </form>
 
@@ -231,8 +231,8 @@ function QuestionRow({
                             aria-hidden
                         />
                         {stalled
-                            ? 'Still working on this one.'
-                            : 'Thinking about it.'}
+                            ? 'still working on this one.'
+                            : 'thinking about it.'}
                     </span>
                     {stalled && (
                         <PillButton
@@ -255,7 +255,7 @@ function QuestionRow({
                         size="sm"
                         onClick={() => onReuse(question.question)}
                     >
-                        Ask it again
+                        ask it again
                     </PillButton>
                 </div>
             )}

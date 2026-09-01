@@ -60,16 +60,16 @@ describe('SessionBarGraph', () => {
             />,
         );
 
-        expect(screen.getByText('Warmup')).toBeInTheDocument();
-        expect(screen.getByText('Main set')).toBeInTheDocument();
-        expect(screen.getByText('Cooldown')).toBeInTheDocument();
+        expect(screen.getByText('warmup')).toBeInTheDocument();
+        expect(screen.getByText('main set')).toBeInTheDocument();
+        expect(screen.getByText('cooldown')).toBeInTheDocument();
         expect(screen.getByText('30 min')).toBeInTheDocument();
     });
 
     it('collapses interval repeats into one legend block rather than listing every rep', () => {
         render(<SessionBarGraph segments={INTERVAL_SESSION} />);
 
-        expect(screen.getByText('3× Interval')).toBeInTheDocument();
+        expect(screen.getByText('3× interval')).toBeInTheDocument();
         expect(screen.getByText('3 min hard / 2 min easy')).toBeInTheDocument();
         expect(screen.queryByText('Recovery')).not.toBeInTheDocument();
     });

@@ -38,7 +38,7 @@ export default function StravaSyncButton({
                 )}
             >
                 <Icon icon="mdi:strava" width={16} height={16} aria-hidden />
-                {state === 'revoked' ? 'Reconnect' : 'Connect Strava'}
+                {state === 'revoked' ? 'reconnect' : 'Connect Strava'}
             </a>
         );
     }
@@ -72,7 +72,7 @@ export default function StravaSyncButton({
                         aria-hidden
                         className={cn('text-text-3', pending && 'animate-spin')}
                     />
-                    {pending ? 'Syncing…' : 'Sync now'}
+                    {pending ? 'syncing…' : 'sync now'}
                 </button>
             </StravaAction>
         );

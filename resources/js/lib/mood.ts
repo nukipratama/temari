@@ -3,12 +3,12 @@ import type { Mood } from '@/types/inertia';
 import { PALETTE } from '@/lib/chartTokens';
 
 export const MOOD_LABEL: Record<Mood, string> = {
-    blazing: 'Blazing',
-    easy: 'Easy',
-    gassed: 'Gassed',
-    wobbly: 'Wobbly',
-    overloaded: 'Overloaded',
-    chill: 'Chill',
+    blazing: 'blazing',
+    easy: 'easy',
+    gassed: 'gassed',
+    wobbly: 'wobbly',
+    overloaded: 'overloaded',
+    chill: 'chill',
 };
 
 // Solid mood fill (bg-mood-{key}); use for persona bar segments + sigil swatches.

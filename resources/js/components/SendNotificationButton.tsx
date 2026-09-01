@@ -53,7 +53,7 @@ export default function SendNotificationButton({
                     aria-label="Turn on notifications to send"
                 >
                     <Icon icon="mdi:send" width={15} height={15} aria-hidden />
-                    Send notification
+                    send notification
                 </PillButton>
                 <EnableNotificationsModal
                     open={enableOpen}
@@ -63,7 +63,7 @@ export default function SendNotificationButton({
         );
     }
 
-    let label = 'Send notification';
+    let label = 'send notification';
     if (cooling) {
         label = formatDurationHMS(cooldownRemaining);
     } else if (sending) {

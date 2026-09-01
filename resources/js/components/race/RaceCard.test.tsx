@@ -31,7 +31,7 @@ describe('RaceCard', () => {
             />,
         );
 
-        expect(screen.getByText('Your race')).toBeInTheDocument();
+        expect(screen.getByText('your race')).toBeInTheDocument();
     });
 
     it('counts the days left up to the real countdown', async () => {

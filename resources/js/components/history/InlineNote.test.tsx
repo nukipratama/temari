@@ -40,14 +40,14 @@ describe('RangeWidenedNote', () => {
         render(<RangeWidenedNote rangeFilter="1y" />);
 
         expect(
-            screen.getByText(/Range automatically widened to Full year/),
+            screen.getByText(/Range automatically widened to full year/),
         ).toBeInTheDocument();
     });
 
     it('names no range at all when widened to the full history', () => {
         render(<RangeWidenedNote rangeFilter="all" />);
 
-        expect(screen.getByText(/Showing all your runs/)).toBeInTheDocument();
+        expect(screen.getByText(/showing all your runs/)).toBeInTheDocument();
     });
 });
 
@@ -59,7 +59,7 @@ describe('WeekFocusNote', () => {
 
         expect(
             screen.getByText(
-                /Viewing the week of Monday, May 11 - Sunday, May 17/,
+                /Viewing the week of monday, may 11 - sunday, may 17/,
             ),
         ).toBeInTheDocument();
         expect(

@@ -9,9 +9,9 @@ const OPTIONS: ReadonlyArray<{
     label: string;
     icon: string;
 }> = [
-    { value: 'light', label: 'Light', icon: 'mdi:white-balance-sunny' },
-    { value: 'dark', label: 'Dark', icon: 'mdi:weather-night' },
-    { value: 'system', label: 'System', icon: 'mdi:monitor' },
+    { value: 'light', label: 'light', icon: 'mdi:white-balance-sunny' },
+    { value: 'dark', label: 'dark', icon: 'mdi:weather-night' },
+    { value: 'system', label: 'system', icon: 'mdi:monitor' },
 ];
 
 // The local ToggleGroup wrapper doesn't propagate base-ui's generic, so

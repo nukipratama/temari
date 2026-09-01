@@ -17,7 +17,7 @@ describe('StravaSyncButton', () => {
 
     it('renders a reconnect link when revoked', () => {
         render(<StravaSyncButton state="revoked" />);
-        expect(screen.getByText('Reconnect').closest('a')).toHaveAttribute(
+        expect(screen.getByText('reconnect').closest('a')).toHaveAttribute(
             'href',
             '/auth/strava/redirect',
         );
@@ -26,7 +26,7 @@ describe('StravaSyncButton', () => {
     it('posts to /strava/sync when ready and clicked', () => {
         vi.mocked(router.post).mockReset();
         render(<StravaSyncButton state="ready" />);
-        fireEvent.click(screen.getByText('Sync now'));
+        fireEvent.click(screen.getByText('sync now'));
         expect(router.post).toHaveBeenCalledWith(
             '/strava/sync',
             {},
@@ -39,9 +39,9 @@ describe('StravaSyncButton', () => {
             options?.onStart?.({} as never);
         });
         render(<StravaSyncButton state="ready" />);
-        fireEvent.click(screen.getByText('Sync now'));
+        fireEvent.click(screen.getByText('sync now'));
 
-        const button = screen.getByRole('button', { name: 'Syncing…' });
+        const button = screen.getByRole('button', { name: 'syncing…' });
         expect(button).toBeDisabled();
     });
 
@@ -51,10 +51,10 @@ describe('StravaSyncButton', () => {
             options?.onFinish?.({} as never);
         });
         render(<StravaSyncButton state="ready" />);
-        fireEvent.click(screen.getByText('Sync now'));
+        fireEvent.click(screen.getByText('sync now'));
 
         expect(
-            screen.getByRole('button', { name: 'Sync now' }),
+            screen.getByRole('button', { name: 'sync now' }),
         ).not.toBeDisabled();
     });
 

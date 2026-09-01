@@ -15,12 +15,12 @@ describe('MoodChip', () => {
         'chill',
     ] satisfies Mood[])('renders default label for mood %s', (mood) => {
         const expected = {
-            blazing: 'Blazing',
-            easy: 'Easy',
-            gassed: 'Gassed',
-            wobbly: 'Wobbly',
-            overloaded: 'Overloaded',
-            chill: 'Chill',
+            blazing: 'blazing',
+            easy: 'easy',
+            gassed: 'gassed',
+            wobbly: 'wobbly',
+            overloaded: 'overloaded',
+            chill: 'chill',
         }[mood];
         render(<MoodChip mood={mood} />);
         expect(screen.getByText(expected)).toBeInTheDocument();

@@ -52,9 +52,9 @@ describe('SeasonCard', () => {
     it('names the current phase, the date range and every phase in the arc', () => {
         render(<SeasonCard season={SEASON} weeks={WEEKS} />);
 
-        expect(screen.getByText(/^Base ·/)).toBeInTheDocument();
-        expect(screen.getByText(/Jun 12 – Sep 4/)).toBeInTheDocument();
-        expect(screen.getByText('Build')).toBeInTheDocument();
+        expect(screen.getByText(/^base ·/)).toBeInTheDocument();
+        expect(screen.getByText(/jun 12 – sep 4/)).toBeInTheDocument();
+        expect(screen.getByText('build')).toBeInTheDocument();
     });
 
     it('draws the first open goal as the progress line', () => {

@@ -83,8 +83,8 @@ export default function Race({ race, projection }: Readonly<RaceProps>) {
                 ) : (
                     <EmptyPanel
                         face
-                        title="No race on the calendar yet."
-                        body="Set one below and Temari will start projecting your finish time."
+                        title="no race on the calendar yet."
+                        body="set one below and temari will start projecting your finish time."
                         className="mt-4"
                     />
                 )}

@@ -140,15 +140,15 @@ describe('Plan', () => {
 
         expect(screen.getByText('Season · Week 1 of 12')).toBeInTheDocument();
         expect(screen.getByText('82%')).toBeInTheDocument();
-        expect(screen.getByText('Base phase')).toBeInTheDocument();
+        expect(screen.getByText('base phase')).toBeInTheDocument();
     });
 
     it('opens the current week onto its chart and day rows', () => {
         renderPlan();
 
         expect(screen.getByText('Volume this week')).toBeInTheDocument();
-        expect(screen.getByText('Tempo')).toBeInTheDocument();
-        expect(screen.getByText('Rest')).toBeInTheDocument();
+        expect(screen.getByText('tempo')).toBeInTheDocument();
+        expect(screen.getByText('rest')).toBeInTheDocument();
     });
 
     it('regenerates the plan', () => {
@@ -217,7 +217,7 @@ describe('Plan', () => {
     it('falls back to the empty state before a plan exists', () => {
         renderPlan({ weeks: [] });
 
-        expect(screen.getByText('No plan yet.')).toBeInTheDocument();
+        expect(screen.getByText('no plan yet.')).toBeInTheDocument();
         expect(screen.queryByText('Season · Week 1 of 12')).toBeNull();
     });
 

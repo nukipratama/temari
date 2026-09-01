@@ -155,10 +155,10 @@ describe('WeekSection', () => {
 
     it('renders the form-status chip label for every FormStatus value', () => {
         const labels: Record<string, string> = {
-            fresh: 'Feeling Fresh',
-            optimal: 'Right on Track',
-            fatigued: 'Getting Tired',
-            overreaching: 'Overreaching',
+            fresh: 'feeling fresh',
+            optimal: 'right on track',
+            fatigued: 'getting tired',
+            overreaching: 'overreaching',
         };
         for (const status of [
             'fresh',
@@ -230,7 +230,7 @@ describe('WeekSection', () => {
                 />,
             );
 
-            fireEvent.click(screen.getByText('Send notification'));
+            fireEvent.click(screen.getByText('send notification'));
             expect(router.post).not.toHaveBeenCalled();
         });
 
@@ -252,7 +252,7 @@ describe('WeekSection', () => {
                 />,
             );
 
-            fireEvent.click(screen.getByText('Send notification'));
+            fireEvent.click(screen.getByText('send notification'));
             expect(router.post).toHaveBeenCalledWith(
                 '/recaps/weekly/7/send',
                 {},
@@ -277,7 +277,7 @@ describe('WeekSection', () => {
             );
 
             expect(
-                screen.queryByText('Send notification'),
+                screen.queryByText('send notification'),
             ).not.toBeInTheDocument();
             expect(
                 screen.getByText(/You ran 4x this week for 35.5 km/),

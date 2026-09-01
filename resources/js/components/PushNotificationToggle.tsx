@@ -88,11 +88,11 @@ export default function PushNotificationToggle({
     const runSubscribe = () =>
         guard(async () => {
             setBusy(true);
-            setStatus('Turning on notifications…');
+            setStatus('turning on notifications…');
             try {
                 await subscribe(publicKey);
                 setState('subscribed');
-                setStatus('Push notifications are on.');
+                setStatus('push notifications are on.');
             } catch (error) {
                 if (
                     error instanceof Error &&
@@ -101,7 +101,7 @@ export default function PushNotificationToggle({
                     setState('denied');
                     setStatus('');
                 } else {
-                    setStatus('Failed to turn on notifications, try again.');
+                    setStatus('failed to turn on notifications, try again.');
                 }
             } finally {
                 setBusy(false);
@@ -114,7 +114,7 @@ export default function PushNotificationToggle({
             try {
                 await unsubscribe();
                 setState('ready');
-                setStatus('Push notifications turned off.');
+                setStatus('push notifications turned off.');
             } finally {
                 setBusy(false);
             }
@@ -136,19 +136,19 @@ export default function PushNotificationToggle({
 
     let description = PUSH_DESCRIPTION[state];
     if (subscribed && muted) {
-        description = 'Muted on this device.';
+        description = 'muted on this device.';
     }
 
     return (
         <>
             <SettingsRow
                 icon="mdi:cellphone-message"
-                label="Push Notifications"
+                label="push notifications"
                 description={description}
                 control={
                     subscribed && onMuteChange !== undefined ? (
                         <Toggle
-                            label="Send run notifications to this device"
+                            label="send run notifications to this device"
                             checked={!muted}
                             onChange={(on) => onMuteChange(!on)}
                         />
@@ -190,15 +190,15 @@ export default function PushNotificationToggle({
 const PUSH_DESCRIPTION: Record<PushState, string> = {
     loading: '',
     unsupported:
-        "This device or browser can't receive notifications from Temari.",
+        "this device or browser can't receive notifications from temari.",
     'needs-install-safari':
-        'Add Temari to your Home Screen first (Share → Add to Home Screen), then you can turn on notifications.',
+        'add temari to your Home Screen first (Share → Add to Home Screen), then you can turn on notifications.',
     'needs-install-other':
-        'Open Temari in Safari first, then Share → Add to Home Screen, push notifications only work from there.',
-    denied: 'Notifications are blocked. Turn them back on from Settings → Notifications → Temari on this device.',
-    stale: 'Needs to be re-registered on this device.',
-    subscribed: 'Active on this device.',
-    ready: 'Turn on so Temari can reach you on this device.',
+        'open temari in Safari first, then Share → Add to Home Screen, push notifications only work from there.',
+    denied: 'notifications are blocked. turn them back on from Settings → Notifications → Temari on this device.',
+    stale: 'needs to be re-registered on this device.',
+    subscribed: 'active on this device.',
+    ready: 'turn on so temari can reach you on this device.',
 };
 
 /**

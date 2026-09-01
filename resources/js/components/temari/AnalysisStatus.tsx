@@ -112,7 +112,7 @@ export default function AnalysisStatus({
     renderContent,
     allowReanalyze = true,
     awaitingSchedule = false,
-    awaitingScheduleLabel = "This week's recap isn't available yet.",
+    awaitingScheduleLabel = "this week's recap isn't available yet.",
     showTimestamp = true,
     onSky = false,
     chained = false,
@@ -165,7 +165,7 @@ export default function AnalysisStatus({
                     <span
                         className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-3'}`}
                     >
-                        Generated {formatRelativeId(analysis.generated_at)}
+                        generated {formatRelativeId(analysis.generated_at)}
                     </span>
                 )}
                 {canRegenerate && (
@@ -183,7 +183,7 @@ export default function AnalysisStatus({
                         <span>
                             {cooling
                                 ? formatDurationHMS(cooldownRemaining)
-                                : 'Reread'}
+                                : 'reread'}
                         </span>
                     </button>
                 )}
@@ -202,7 +202,7 @@ export default function AnalysisStatus({
                         className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-2'}`}
                     >
                         <Icon icon="mdi:clock-outline" aria-hidden />
-                        <span>Still processing, check back in a bit.</span>
+                        <span>still processing, check back in a bit.</span>
                     </span>
                 </div>
             );
@@ -214,7 +214,7 @@ export default function AnalysisStatus({
                 role="status"
                 aria-live="polite"
             >
-                <span className="sr-only">Temari&apos;s thinking it over…</span>
+                <span className="sr-only">temari&apos;s thinking it over…</span>
                 <div className="flex flex-col gap-1.5">
                     {SKELETON_WIDTHS.map((width) => (
                         <div
@@ -248,7 +248,7 @@ export default function AnalysisStatus({
                         className="focus-ring rounded inline-flex items-center self-start gap-1 text-xs text-leaf-ink hover:text-foreground transition-colors disabled:opacity-50"
                     >
                         <Icon icon="mdi:auto-awesome" aria-hidden />
-                        <span>Try again</span>
+                        <span>try again</span>
                     </button>
                 )}
             </div>

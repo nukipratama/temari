@@ -27,10 +27,10 @@ describe('HistoryHeader', () => {
     it('lights the tab it was given', () => {
         render(<HistoryHeader active="calendar" />);
 
-        expect(screen.getByText('Calendar').closest('a')).toHaveClass(
+        expect(screen.getByText('calendar').closest('a')).toHaveClass(
             'bg-card',
         );
-        expect(screen.getByText('Feed').closest('a')).not.toHaveClass(
+        expect(screen.getByText('feed').closest('a')).not.toHaveClass(
             'bg-card',
         );
     });

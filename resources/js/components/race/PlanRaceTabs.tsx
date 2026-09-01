@@ -10,11 +10,11 @@ interface PlanRaceTabsProps {
 }
 
 const TABS: ReadonlyArray<{ id: PlanRaceTab; label: string; href: string }> = [
-    { id: 'plan', label: 'Schedule', href: '/plan' },
-    { id: 'race', label: 'Race Goal', href: '/race' },
+    { id: 'plan', label: 'schedule', href: '/plan' },
+    { id: 'race', label: 'race goal', href: '/race' },
 ];
 
-/** The Schedule ⇄ Race Goal switcher: two real routes behind one pill toggle. */
+/** The schedule ⇄ race goal switcher: two real routes behind one pill toggle. */
 export default function PlanRaceTabs({
     active,
     className,

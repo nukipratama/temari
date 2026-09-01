@@ -96,8 +96,8 @@ describe('ShareCardModal', () => {
 
     it('renders format picker Portrait and Square buttons', () => {
         render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
-        expect(screen.getByText(/Portrait/)).toBeInTheDocument();
-        expect(screen.getByText(/Square/)).toBeInTheDocument();
+        expect(screen.getByText(/portrait/)).toBeInTheDocument();
+        expect(screen.getByText(/square/)).toBeInTheDocument();
     });
 
     it('calls onClose when the close button is clicked', () => {
@@ -158,9 +158,9 @@ describe('ShareCardModal', () => {
 
     it('offers the share templates as buttons and switches between them', () => {
         render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
-        const kartuBtn = screen.getByRole('button', { name: 'Card' });
-        const ruteBtn = screen.getByRole('button', { name: 'Route' });
-        const statsBtn = screen.getByRole('button', { name: 'Stats' });
+        const kartuBtn = screen.getByRole('button', { name: 'card' });
+        const ruteBtn = screen.getByRole('button', { name: 'route' });
+        const statsBtn = screen.getByRole('button', { name: 'stats' });
         expect(kartuBtn).toBeInTheDocument();
         expect(ruteBtn).toBeInTheDocument();
         expect(statsBtn).toBeInTheDocument();
@@ -172,20 +172,20 @@ describe('ShareCardModal', () => {
         expect(screen.getAllByText(/Counter Kick/).length).toBeGreaterThan(0);
     });
 
-    it('hides only the Route template for a no-GPS run, keeping Card and Stats', () => {
+    it('hides only the route template for a no-GPS run, keeping card and Stats', () => {
         render(
             <ShareCardModal
                 kartu={{ ...kartu, polyline: null }}
                 onClose={vi.fn()}
             />,
         );
-        // Route needs a polyline the run doesn't have; Card and Stats don't.
-        expect(screen.queryByRole('button', { name: 'Route' })).toBeNull();
+        // route needs a polyline the run doesn't have; card and Stats don't.
+        expect(screen.queryByRole('button', { name: 'route' })).toBeNull();
         expect(
-            screen.getByRole('button', { name: 'Card' }),
+            screen.getByRole('button', { name: 'card' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Stats' }),
+            screen.getByRole('button', { name: 'stats' }),
         ).toBeInTheDocument();
     });
 
@@ -193,18 +193,18 @@ describe('ShareCardModal', () => {
         const { rerender } = render(
             <ShareCardModal kartu={kartu} onClose={vi.fn()} />,
         );
-        fireEvent.click(screen.getByRole('button', { name: 'Route' }));
+        fireEvent.click(screen.getByRole('button', { name: 'route' }));
         rerender(
             <ShareCardModal
                 kartu={{ ...kartu, polyline: null }}
                 onClose={vi.fn()}
             />,
         );
-        // The Route button is gone, and Card is selectable again — the stale
+        // The route button is gone, and card is selectable again — the stale
         // selection didn't strand the picker on a hidden option.
-        expect(screen.queryByRole('button', { name: 'Route' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'route' })).toBeNull();
         expect(
-            screen.getByRole('button', { name: 'Card', pressed: true }),
+            screen.getByRole('button', { name: 'card', pressed: true }),
         ).toBeInTheDocument();
     });
 
@@ -216,7 +216,7 @@ describe('ShareCardModal', () => {
         );
         // Pick the route template on a GPS card, then reuse the same modal for a
         // no-GPS run: the carried-over 'rute' selection must not paint a blank map.
-        fireEvent.click(screen.getByRole('button', { name: 'Route' }));
+        fireEvent.click(screen.getByRole('button', { name: 'route' }));
         rerender(
             <ShareCardModal
                 kartu={{ ...kartu, polyline: null }}
@@ -232,19 +232,19 @@ describe('ShareCardModal', () => {
             render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
             expect(
                 screen.getByRole('button', {
-                    name: 'Colorway: Navy',
+                    name: 'Colorway: navy',
                     pressed: true,
                 }),
             ).toBeInTheDocument();
             expect(
                 screen.getByRole('button', {
-                    name: 'Colorway: Dawn',
+                    name: 'Colorway: dawn',
                     pressed: false,
                 }),
             ).toBeInTheDocument();
             expect(
                 screen.getByRole('button', {
-                    name: 'Colorway: Ember',
+                    name: 'Colorway: ember',
                     pressed: false,
                 }),
             ).toBeInTheDocument();
@@ -255,13 +255,13 @@ describe('ShareCardModal', () => {
             vi.mocked(drawShareCard).mockClear();
             render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
             fireEvent.click(
-                screen.getByRole('button', { name: 'Colorway: Ember' }),
+                screen.getByRole('button', { name: 'Colorway: ember' }),
             );
             const lastCall = vi.mocked(drawShareCard).mock.calls.at(-1);
             expect(lastCall?.[1].colorway).toBe('ember');
             expect(
                 screen.getByRole('button', {
-                    name: 'Colorway: Ember',
+                    name: 'Colorway: ember',
                     pressed: true,
                 }),
             ).toBeInTheDocument();
@@ -319,7 +319,7 @@ describe('ShareCardModal', () => {
         const canvas = screen.getByLabelText(/Preview of/) as HTMLCanvasElement;
         // Story (9:16) is the default — the canvas is 1080x1920.
         expect(canvas.height).toBe(1920);
-        fireEvent.click(screen.getByText(/Square/));
+        fireEvent.click(screen.getByText(/square/));
         // Switching to feed (1:1) repaints the canvas at 1080x1080.
         expect(canvas.height).toBe(1080);
     });
@@ -443,7 +443,7 @@ describe('ShareCardModal', () => {
                 clickShare();
             });
             expect(
-                await screen.findByText('Activity link copied.'),
+                await screen.findByText('activity link copied.'),
             ).toBeInTheDocument();
         });
 
@@ -462,7 +462,7 @@ describe('ShareCardModal', () => {
                 clickShare();
             });
             expect(
-                await screen.findByText('Failed to copy link.'),
+                await screen.findByText('failed to copy link.'),
             ).toBeInTheDocument();
         });
 
@@ -481,7 +481,7 @@ describe('ShareCardModal', () => {
             });
             expect(
                 await screen.findByText(
-                    "This browser doesn't support sharing.",
+                    "this browser doesn't support sharing.",
                 ),
             ).toBeInTheDocument();
         });
@@ -532,7 +532,7 @@ describe('ShareCardModal', () => {
                 fireEvent.click(screen.getByText(/Copy image/));
             });
             expect(
-                await screen.findByText(/Failed to copy image/),
+                await screen.findByText(/failed to copy image/),
             ).toBeInTheDocument();
         });
     });
@@ -555,12 +555,12 @@ describe('ShareCardModal', () => {
                 fireEvent.click(screen.getByText(/Copy image/));
             });
             expect(
-                await screen.findByText('Card image copied.'),
+                await screen.findByText('card image copied.'),
             ).toBeInTheDocument();
             // The status line is a transient toast; it removes itself after 2.6s.
             await waitFor(
                 () =>
-                    expect(screen.queryByText('Card image copied.')).toBeNull(),
+                    expect(screen.queryByText('card image copied.')).toBeNull(),
                 { timeout: 4000 },
             );
         });

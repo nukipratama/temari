@@ -58,14 +58,14 @@ export default function WeekVolumeChart({
                         className="size-2 rounded-xs border border-dashed border-border-strong"
                         aria-hidden
                     />
-                    Planned
+                    planned
                 </span>
                 <span className="flex items-center gap-1">
                     <span
                         className="size-2 rounded-xs bg-horizon"
                         aria-hidden
                     />
-                    Actual
+                    actual
                 </span>
             </div>
             <div className="flex h-16 items-end gap-1.5">

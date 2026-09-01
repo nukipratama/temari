@@ -106,7 +106,7 @@ describe('WeekStatsDisclosure', () => {
         expect(trigger).toHaveAttribute('aria-expanded', 'false');
         await waitFor(() => {
             expect(trigger).toHaveTextContent(
-                /This week's stats · 4 runs · 18\.2 km/,
+                /this week's stats · 4 runs · 18\.2 km/,
             );
         });
         expect(screen.queryByText('trimp')).not.toBeInTheDocument();
