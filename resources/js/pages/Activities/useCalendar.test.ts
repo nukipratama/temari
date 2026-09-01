@@ -5,6 +5,7 @@ import {
     chunkIntoWeeks,
     dominantMoodOf,
     monthTotalsOf,
+    rarestRarityOf,
     useCalendar,
     type CalendarCell,
 } from './useCalendar';
@@ -20,6 +21,7 @@ function cellsFor(
         avg_hr: null,
         trimp: null,
         mood: null,
+        rarity: null,
         activity_id: null,
         ...r,
     }));
@@ -99,7 +101,9 @@ describe('chunkIntoWeeks', () => {
         expect(weeks[1].days).toHaveLength(3);
     });
 
-    it('sums km and run count only for current-month days with a run', () => {
+    // The row sits beside that week's own ISO-week recap, so it counts the
+    // whole Mon-Sun week rather than the slice inside the viewed month.
+    it('sums km and run count across the whole week, padding days included', () => {
         const cells = cellsFor([
             {
                 date: '2026-05-01',
@@ -116,8 +120,24 @@ describe('chunkIntoWeeks', () => {
             { date: '2026-05-03', day: 3 },
         ]);
         const [week] = chunkIntoWeeks(cells);
-        expect(week.totalKm).toBe(5);
-        expect(week.runCount).toBe(1);
+        expect(week.totalKm).toBe(15);
+        expect(week.runCount).toBe(2);
+    });
+
+    it("carries the week's own mood, rarest kartu and sunday", () => {
+        const cells = cellsFor([
+            { date: '2026-05-04', day: 4, mood: 'chill', rarity: 'rare' },
+            { date: '2026-05-05', day: 5, mood: 'chill' },
+            { date: '2026-05-06', day: 6, mood: 'blazing', rarity: 'epic' },
+            { date: '2026-05-07', day: 7 },
+            { date: '2026-05-08', day: 8 },
+            { date: '2026-05-09', day: 9 },
+            { date: '2026-05-10', day: 10 },
+        ]);
+        const [week] = chunkIntoWeeks(cells);
+        expect(week.mood).toBe('chill');
+        expect(week.rarity).toBe('epic');
+        expect(week.weekEnding).toBe('2026-05-10');
     });
 
     it('returns an empty list for no cells', () => {
@@ -132,7 +152,7 @@ describe('chunkIntoWeeks', () => {
         expect(week.totalTrimp).toBeNull();
     });
 
-    it('sums TRIMP only for current-month days', () => {
+    it('sums TRIMP across the whole week too', () => {
         const cells = cellsFor([
             { date: '2026-05-01', day: 1, trimp: 40 },
             {
@@ -144,45 +164,48 @@ describe('chunkIntoWeeks', () => {
             { date: '2026-05-02', day: 2, trimp: 10 },
         ]);
         const [week] = chunkIntoWeeks(cells);
-        expect(week.totalTrimp).toBe(50);
+        expect(week.totalTrimp).toBe(150);
+    });
+});
+
+describe('rarestRarityOf', () => {
+    it('picks the best rarity in the set', () => {
+        const cells = cellsFor([
+            { date: '2026-05-01', day: 1, rarity: 'common' },
+            { date: '2026-05-02', day: 2, rarity: 'legendary' },
+            { date: '2026-05-03', day: 3, rarity: 'rare' },
+        ]);
+        expect(rarestRarityOf(cells)).toBe('legendary');
+    });
+
+    it('is null when nothing earned a card', () => {
+        expect(
+            rarestRarityOf(cellsFor([{ date: '2026-05-01', day: 1 }])),
+        ).toBeNull();
     });
 });
 
 describe('monthTotalsOf', () => {
-    it('sums runs, km and TRIMP across every week', () => {
-        const weeks = [
+    it("sums runs, km and TRIMP across the viewed month's own days", () => {
+        const cells = cellsFor([
+            { date: '2026-05-01', day: 1, distance_km: 5, trimp: 40 },
+            { date: '2026-05-08', day: 8, distance_km: 10, trimp: 60 },
             {
-                weekStart: '2026-05-01',
-                weekNumber: 1,
-                days: [],
-                totalKm: 5,
-                runCount: 1,
-                totalTrimp: 40,
+                date: '2026-04-30',
+                day: 30,
+                distance_km: 99,
+                trimp: 999,
+                is_current_month: false,
             },
-            {
-                weekStart: '2026-05-08',
-                weekNumber: 2,
-                days: [],
-                totalKm: 10,
-                runCount: 2,
-                totalTrimp: 60,
-            },
-        ];
-        expect(monthTotalsOf(weeks)).toEqual({ runs: 3, km: 15, trimp: 100 });
+        ]);
+        expect(monthTotalsOf(cells)).toEqual({ runs: 2, km: 15, trimp: 100 });
     });
 
     it('leaves TRIMP unknown (not zero) when nothing in the month scored', () => {
-        const weeks = [
-            {
-                weekStart: '2026-05-01',
-                weekNumber: 1,
-                days: [],
-                totalKm: 5,
-                runCount: 1,
-                totalTrimp: null,
-            },
-        ];
-        expect(monthTotalsOf(weeks).trimp).toBeNull();
+        const cells = cellsFor([
+            { date: '2026-05-01', day: 1, distance_km: 5 },
+        ]);
+        expect(monthTotalsOf(cells).trimp).toBeNull();
     });
 
     it('returns zeroes for an empty month', () => {

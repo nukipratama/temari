@@ -41,16 +41,6 @@ export const MOOD_ORDER: ReadonlyArray<Mood> = [
     'chill',
 ];
 
-// Short cause hint per mood; pairs with MOOD_LABEL in filter/legend rows.
-export const MOOD_HINT: Record<Mood, string> = {
-    blazing: 'PR or win',
-    easy: 'easy pace',
-    wobbly: 'HR drift',
-    gassed: 'pushed too hard',
-    overloaded: 'overdid it',
-    chill: 'rest day',
-};
-
 /**
  * The most frequent mood among a set of runs, ties broken by MOOD_ORDER
  * (best-day → rest-day) so the pick is deterministic. Null moods (a run with

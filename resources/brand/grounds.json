@@ -78,7 +78,7 @@
         "transparent",
         "white"
     ],
-    "__panel": "Every bg-<token>/<alpha> the components paint. A translucent panel is not the token it tints: it is that token composited over whatever it is mounted on, which is the one fact no scan can see. `over` records it per call site, because the same panel class is a hero-panel tile in one file and a page-ground tile in another and only the second is a bug — so a new file painting it is a new claim to check, not a silent reuse. `text` is every text token that lands on the panel; the same-class-string scan finds most, a child element's text is added by hand. Empty text means nothing prints on it, so nothing scores it.",
+    "__panel": "Every bg-<token>/<alpha> the components paint. A translucent panel is not the token it tints: it is that token composited over whatever it is mounted on, which is the one fact no scan can see. `over` records it per call site, because the same panel class is a hero-panel tile in one file and a page-ground tile in another and only the second is a bug \u2014 so a new file painting it is a new claim to check, not a silent reuse. `text` is every text token that lands on the panel; the same-class-string scan finds most, a child element's text is added by hand. Empty text means nothing prints on it, so nothing scores it.",
     "panel": {
         "citrus/0.15": {
             "over": {
@@ -92,14 +92,22 @@
         },
         "cream-deep/0.4": {
             "over": {
-                "resources/js/pages/Settings/Index.tsx": ["paper"],
                 "resources/js/components/settings/HrZonesDisclosure.tsx": [
                     "paper"
                 ],
-                "resources/js/components/ui/SettingsRow.tsx": ["paper"],
-                "resources/js/components/ui/SettingsRow.test.tsx": ["paper"]
+                "resources/js/components/ui/SettingsRow.test.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/ui/SettingsRow.tsx": [
+                    "paper"
+                ],
+                "resources/js/pages/Settings/Index.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["foreground"]
+            "text": [
+                "foreground"
+            ]
         },
         "cream-deep/0.7": {
             "over": {
@@ -171,10 +179,10 @@
                 "resources/js/components/FlashNotice.tsx": [
                     "paper"
                 ],
-                "resources/js/pages/Devtools/Design.tsx": [
+                "resources/js/components/settings/HrZonesDisclosure.tsx": [
                     "paper"
                 ],
-                "resources/js/components/settings/HrZonesDisclosure.tsx": [
+                "resources/js/pages/Devtools/Design.tsx": [
                     "paper"
                 ],
                 "resources/js/pages/Race.tsx": [
@@ -216,33 +224,33 @@
         },
         "horizon/0.1": {
             "over": {
-                "resources/js/lib/variants.ts": [
-                    "paper"
-                ],
-                "resources/js/pages/Onboarding/Index.tsx": [
-                    "paper"
-                ],
-                "resources/js/components/trends/NarrationHeadline.tsx": [
+                "resources/js/components/onboarding/DayPicker.tsx": [
                     "paper"
                 ],
                 "resources/js/components/onboarding/IconChoiceCard.tsx": [
                     "paper"
                 ],
-                "resources/js/components/onboarding/DayPicker.tsx": [
+                "resources/js/components/run/LapsCarousel.test.tsx": [
                     "paper"
                 ],
                 "resources/js/components/run/LapsCarousel.tsx": [
                     "paper"
                 ],
-                "resources/js/components/run/LapsCarousel.test.tsx": [
+                "resources/js/components/trends/NarrationHeadline.tsx": [
+                    "paper"
+                ],
+                "resources/js/lib/variants.ts": [
+                    "paper"
+                ],
+                "resources/js/pages/Onboarding/Index.tsx": [
                     "paper"
                 ]
             },
             "text": [
-                "horizon-ink",
                 "foreground",
-                "text-2",
-                "icon-accent"
+                "horizon-ink",
+                "icon-accent",
+                "text-2"
             ]
         },
         "horizon/0.12": {
@@ -260,7 +268,10 @@
         },
         "horizon/0.15": {
             "over": {
-                "resources/js/components/history/WeekSection.tsx": [
+                "resources/js/components/history/CalendarWeekRow.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/history/WeeklyStatusChips.tsx": [
                     "paper"
                 ],
                 "resources/js/components/temari/AnalysisStatus.tsx": [
@@ -271,6 +282,7 @@
                 ]
             },
             "text": [
+                "foreground",
                 "horizon-ink"
             ]
         },
@@ -299,10 +311,10 @@
         },
         "horizon/0.25": {
             "over": {
-                "resources/js/components/trends/panels/FitnessTrend.tsx": [
+                "resources/js/components/trends/StreakBadge.tsx": [
                     "paper"
                 ],
-                "resources/js/components/trends/StreakBadge.tsx": [
+                "resources/js/components/trends/panels/FitnessTrend.tsx": [
                     "paper"
                 ]
             },
@@ -378,7 +390,7 @@
         },
         "leaf/0.15": {
             "over": {
-                "resources/js/components/history/WeekSection.tsx": [
+                "resources/js/components/history/WeeklyStatusChips.tsx": [
                     "paper"
                 ],
                 "resources/js/lib/tones.ts": [
@@ -423,7 +435,7 @@
         },
         "mood-blazing/0.15": {
             "over": {
-                "resources/js/components/history/WeekSection.tsx": [
+                "resources/js/components/history/WeeklyStatusChips.tsx": [
                     "paper"
                 ]
             },
@@ -433,7 +445,7 @@
         },
         "mood-easy/0.15": {
             "over": {
-                "resources/js/components/history/WeekSection.tsx": [
+                "resources/js/components/history/WeeklyStatusChips.tsx": [
                     "paper"
                 ]
             },
@@ -443,10 +455,10 @@
         },
         "mood-gassed/0.15": {
             "over": {
-                "resources/js/components/history/WeekSection.test.tsx": [
+                "resources/js/components/history/WeeklyStatusChips.test.tsx": [
                     "paper"
                 ],
-                "resources/js/components/history/WeekSection.tsx": [
+                "resources/js/components/history/WeeklyStatusChips.tsx": [
                     "paper"
                 ]
             },
@@ -467,8 +479,8 @@
                 ]
             },
             "text": [
-                "text-2",
-                "sky"
+                "sky",
+                "text-2"
             ]
         },
         "sky/0.08": {
@@ -532,33 +544,30 @@
         },
         "muted/0.6": {
             "over": {
-                "resources/js/pages/Activities/Calendar.tsx": [
+                "resources/js/lib/splits.test.ts": [
                     "paper"
                 ],
                 "resources/js/lib/splits.ts": [
                     "paper"
-                ],
-                "resources/js/lib/splits.test.ts": [
-                    "paper"
                 ]
             },
             "text": [
-                "text-2",
-                "foreground"
+                "foreground",
+                "text-2"
             ]
         },
         "foreground/0.03": {
             "over": {
-                "resources/js/lib/splits.ts": [
+                "resources/js/lib/splits.test.ts": [
                     "paper"
                 ],
-                "resources/js/lib/splits.test.ts": [
+                "resources/js/lib/splits.ts": [
                     "paper"
                 ]
             },
             "text": [
-                "text-2",
-                "foreground"
+                "foreground",
+                "text-2"
             ]
         },
         "destructive/0.1": {
@@ -638,7 +647,7 @@
             "text": []
         }
     },
-    "__belowAa": "Panel/text pairs that are under 4.5:1 today, pinned at the ratio they measure. Most are text-ink-3 — the meta tier is derived to land exactly on 4.5:1 on paper, so any tint over that paper puts it under. The destructive/* entries are shadcn's vendored badge.tsx/button.tsx destructive variant (F3), whose bg-destructive/N tints don't clear AA against every paper this app scores against; recorded rather than waived pending a real redesign pass. Recorded rather than waived: the set has to match what the audit finds and each ratio has to match to 2dp, so a new failure, a worse one, or a fixed one still listed all go red.",
+    "__belowAa": "Panel/text pairs that are under 4.5:1 today, pinned at the ratio they measure. Most are text-ink-3 \u2014 the meta tier is derived to land exactly on 4.5:1 on paper, so any tint over that paper puts it under. The destructive/* entries are shadcn's vendored badge.tsx/button.tsx destructive variant (F3), whose bg-destructive/N tints don't clear AA against every paper this app scores against; recorded rather than waived pending a real redesign pass. Recorded rather than waived: the set has to match what the audit finds and each ratio has to match to 2dp, so a new failure, a worse one, or a fixed one still listed all go red.",
     "belowAa": {
         "destructive/0.1 + destructive": 4.11,
         "destructive/0.2 + destructive": 3.54,

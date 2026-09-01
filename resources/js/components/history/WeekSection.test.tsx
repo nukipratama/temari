@@ -201,8 +201,9 @@ describe('WeekSection', () => {
         expect(screen.queryByText(/Fatigue/)).not.toBeInTheDocument();
     });
 
-    // Monotony ≥ 1.5 and decoupling ≥ 8% are the runner-relevant alarm thresholds.
-    it('renders the metric chips in their alert tone past the alarm thresholds', () => {
+    // The alert-tone thresholds themselves belong to WeeklyStatusChips; this
+    // only pins that the section keeps handing it the week's numbers.
+    it('renders the metric chips past the alarm thresholds', () => {
         render(
             <WeekSection
                 bucket={bucket()}
@@ -212,10 +213,8 @@ describe('WeekSection', () => {
             />,
         );
 
-        expect(screen.getByText('Monotony 2.10')).toHaveClass(
-            'bg-mood-gassed/15',
-        );
-        expect(screen.getByText('Drift 9.4%')).toHaveClass('bg-mood-gassed/15');
+        expect(screen.getByText('Monotony 2.10')).toBeInTheDocument();
+        expect(screen.getByText('Drift 9.4%')).toBeInTheDocument();
     });
 
     describe('weekly recap notification', () => {
