@@ -91,12 +91,42 @@ None outstanding. Two things were checked and cleared before writing code:
 
 ## Coverage delta
 
-_(placeholder — filled after the gate run)_
+Frontend (`npm run test:coverage`), measured on this stack at both ends:
+
+| | statements | branches | functions | lines |
+|---|---|---|---|---|
+| `6740e1a3` (base) | 97.41 | 91.21 | 97.33 | 97.68 |
+| `slice/ps7-history` | **97.41** | **91.31** | **97.33** | **97.68** |
+
+Flat on three axes, **+0.10 on branches**. 215 → 218 test files, 1808 → 1822 tests. The base
+figure matches what `PS6` independently measured on the same commit.
 
 ## Verification notes
 
-_(placeholder — filled after the gate run)_
+- `./vendor/bin/sail composer check` green — the whole ladder, `pest --parallel` and
+  `test:coverage` included, plus `npm run build` and `check:chunks` which the script now ends with.
+- `check:chunks` within budget on every route; History is not one of the four budgeted entries, and
+  no budget was re-baselined. `Feed` 9.38 kB / 3.77 kB gz, `Calendar` 8.29 kB / 3.12 kB gz.
+- `DesignTokenContrastTest` drove the `grounds.json` edit and is green both ways: the weekly chips'
+  five alpha panels moved `WeekSection.tsx` → `WeeklyStatusChips.tsx`, `horizon/0.15` gained
+  `CalendarWeekRow.tsx` (the today cell) and `foreground` as a scored ink on it, and
+  `muted/0.6 @ Activities/Calendar.tsx` was dropped as stale with the old bordered header row.
+- `check-doc-citations.php` run directly after the `run-history.md` rewrite (the `composer check`
+  ladder runs it too, but line-shifting doc edits are worth the separate pass).
+- Checked, per `PS6`'s finding that `PP3` left P25 half-done: no surface `PP3` or `S7` cut still
+  renders anywhere under `pages/History.tsx`, `pages/Activities/` or `components/history/`.
+- No browser pass run.
 
 ## Open questions
 
-_(placeholder — filled during implementation)_
+1. **The prototype's month meta sums its week rows; ours does not.** `AUG_MONTH.meta` reads
+   "9 runs · 75.3 km" and 19.5 + 31.2 + 24.6 = 75.3 exactly, i.e. the mockup's month total includes
+   the July days padding its first row. Week rows here total the whole Mon-Sun week (they sit beside
+   an ISO-week-grained recap and would otherwise contradict it), but the **month** meta stays scoped
+   to the month's own days, because "August" totalling a July run is a data bug rather than a style.
+   The two can therefore differ by an edge week. Recorded rather than resolved.
+2. **History's empty state was left as `EmptyPanel`.** The prototype's `NoRunsCard`
+   ([:509-529](../../../resources/brand/prototype/src/components/pages/HistoryScreen.tsx)) is a
+   compact horizontal card with a 40px `FaceIcon`; the shipped one is a centred panel with a 48px
+   face and four Strava-connection states. `EmptyPanel` has eleven call sites across the app, so
+   reshaping it is a cross-screen call like P36, not a History-local one.
