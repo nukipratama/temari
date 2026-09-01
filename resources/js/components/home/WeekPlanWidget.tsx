@@ -140,7 +140,7 @@ function PlanFigure({
             <b className="block font-mono text-[15px] font-extrabold tabular-nums text-foreground">
                 {value}
             </b>
-            <span className="text-[9px] uppercase tracking-[0.05em] text-foreground">
+            <span className="font-mono text-[9px] uppercase tracking-[0.05em] text-foreground">
                 {label}
             </span>
         </div>
