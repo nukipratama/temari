@@ -95,7 +95,7 @@ class GrantEligibleUnlocksAction
      *
      * @return array{unlock_key: string, name: string, icon: string, is_major: bool}|null
      */
-    private function celebration(string $key): ?array
+    public function celebration(string $key): ?array
     {
         $catalog = config('temari_unlocks', []);
         $def = is_array($catalog) ? ($catalog[$key] ?? null) : null;

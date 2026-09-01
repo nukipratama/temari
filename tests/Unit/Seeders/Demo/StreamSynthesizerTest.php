@@ -134,3 +134,36 @@ it('falls back to a 1-second duration instead of dividing by zero when moving ti
     // duration forced to 1 means exactly 2 samples (t = 0 and t = 1).
     expect($streams['time']['data'])->toBe([0, 1]);
 });
+
+it('derives grade_smooth from its own altitude and distance series', function (): void {
+    $blueprint = new RunBlueprint(
+        startsAt: Carbon::parse('2026-05-01 06:00:00'),
+        distanceM: 5000,
+        targetPaceSecPerKm: 330,
+        hrProfile: HrProfile::Z2Steady,
+        elevationGainM: 80,
+    );
+
+    $streams = new StreamSynthesizer()->build($blueprint);
+
+    $grade = $streams['grade_smooth']['data'];
+    $altitude = $streams['altitude']['data'];
+    $distance = $streams['distance']['data'];
+
+    // Same length as every other series, or StreamAnalysis reads them off by one.
+    expect($grade)->toHaveCount(count($altitude))
+        ->and($grade[0])->toBe(0.0);
+
+    // Each sample is the real rise over the real run, not decoration: without
+    // this stream StreamAnalysis computes no max_grade_pct at all, and the
+    // vitals card's steepest-grade and flat-pace tiles never render.
+    foreach ([1, 100, 500] as $i) {
+        $rise = $altitude[$i] - $altitude[$i - 1];
+        $run = $distance[$i] - $distance[$i - 1];
+        expect($grade[$i])->toBe(round($rise / $run * 100, 2));
+    }
+
+    // A run with real elevation has to actually register as climbing.
+    expect(max($grade))->toBeGreaterThan(0.0)
+        ->and(min($grade))->toBeLessThan(0.0);
+});
