@@ -182,6 +182,12 @@ by unit assertions on `EmptyPanel` and `Race` instead.
 1. The prototype labels the same control "regenerate" on Trends and "reread" on Activity. The app
    says "reread" everywhere. Left as-is: one word per control beats one word per screen, and P37
    does not reach word choice.
-2. `AiReplanPill`'s family — Plan's header (shipped in `PS14`), Race's form and Settings'
+2. **The dashed border.** `Card`'s `empty` tone is `border-dashed border-border-strong bg-card/40`
+   (`variants.ts:27`), while **every** empty state the prototype draws is a solid
+   `border-border-strong bg-card shadow-e1` card. That is a fourth cross-screen divergence, it
+   spans all nine `EmptyPanel` call sites including the five faceless chart placeholders, and no
+   slice has raised it — so it is left standing here rather than folded in silently. It is a
+   one-line change to `cardVariants` if it should match.
+3. `AiReplanPill`'s family — Plan's header (shipped in `PS14`), Race's form and Settings'
    preferences — now share a treatment with no shared component, in the app as in the prototype.
    Worth extracting if a fourth appears; not worth it for three.
