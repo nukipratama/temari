@@ -20,7 +20,7 @@ inferred. A seventh (`goal_sec`) was investigated and **reassigned** — see bel
 
 | # | gap | evidence | fix |
 |---|---|---|---|
-| 1 | **No `unlock` inbox rows.** The demo inbox holds exactly 2 rows (`post_run`, `weekly_recap`), both written by `seedNarrationInboxEntries`. `user_unlocks` holds **21** rows, `jobs` holds 0. So `P12`'s unlock surface and `PS9`'s rarity badge — which `PS9` built and could not see — never render. | queried live: 2 notifications, 21 `user_unlocks`, 0 pending jobs | **Root cause is not what `PS9`'s note recorded.** PR-driven unlocks fire *incrementally inside* `seedOne`, which is **not** wrapped in `withSyncQueue`; only the final catch-up sweep at `DemoRunSeeder.php:161` is. So the incremental grants queue their `UnlockGrantedNotification` (a `ShouldQueue`) and die with no worker, and by the time the wrapped sweep runs, `GrantEligibleUnlocksAction` returns `[]` and notifies nothing. Wrap the run loop too. |
+| 1 | **No `unlock` inbox rows**, so `P12`'s unlock surface and `PS9`'s rarity badge — which `PS9` built and could not see — never render. | queried live: 2 notifications (`post_run`, `weekly_recap`), 21 `user_unlocks`, 0 pending jobs | **`demo:seed` does not converge, and neither `PS9`'s recorded cause nor the first hypothesis here was right.** Proved empirically: deleting the 21 `user_unlocks` and re-running `GrantEligibleUnlocksAction` under a sync queue grants 21 and writes **21 inbox rows**. The seeder is correct on a *fresh* database, and `seedOne` never invokes the unlock engine at all — the comment at `DemoRunSeeder.php:154` claiming incremental PR-driven grants is stale. The real defect is **non-convergence on an existing one**: once `user_unlocks` is fully populated, the engine short-circuits at `GrantEligibleUnlocksAction.php:51` (`array_diff(allKeys, already) === 0 → return []`) and notifies nothing, so a database seeded before the `withSyncQueue` fix landed can never gain its inbox rows. `demo:seed`'s documented "idempotent, re-run any time to converge" is **false for this surface**. Fix: a `seedUnlockInboxEntries` step that writes a row for any `user_unlocks` lacking one, following `seedNarrationInboxEntries`' existing direct-write pattern rather than the queued notify path. |
 | 2 | **No `training_preferences` row at all** for the demo user. Settings' whole preferences card runs on `TrainingBaseline` fallbacks, `run_days` is empty, and the "which one's the long run?" block (`TrainingPreferencesCard.tsx:271`) is gated on selected days, so it never renders. | `$user->trainingPreference` is `NULL`; live DOM shows 7 day cells, none selected, and no long-run block at either viewport | Seed a representative row: experience, sessions/week, goal type, `run_days`, `long_run_day`. `DemoRunSeeder.php:446` already *reads* the row (`$preference?->run_days`, `?->long_run_day`) for plan generation, so seeding one also makes the seeded plan honest rather than fallback-derived. |
 | 3 | **No run carries `max_grade_pct`.** `VitalsCard.tsx:102-120` gates its steepest-grade and flat-pace tiles on `max_grade_pct >= 3`, so the vitals card ships one tile in a row built for three. | 0 of 127 `activity_details` have `max_grade_pct` in `stream_summary`; max is `NULL` | The demo `StreamSynthesizer` emits no altitude series, so `StreamAnalysis.php:247` never computes a grade. Give at least one blueprint real elevation. |
 | 4 | **No run questions.** `AskAboutRun.tsx:109-121`'s prior-questions list is gated on `questions.length > 0`, so the Q&A panel only ever shows its empty state. | `run_questions` is empty (0 rows) | Seed a couple of answered questions on the sampled run. Note these are **not** `Analysis` rows — scoped run Q&A has its own table by decision (`docs/decisions/scoped-run-qa-not-an-analysis-row.md`), so the existing `withoutDispatching` guard does not cover them and they must be written directly rather than dispatched. |
@@ -79,9 +79,13 @@ fixture.
 
 - Run the fast-feedback ladder, not the full gate first.
 - Verify each acceptance criterion against the **running app**, not the seeder's own log line. The
-  seeder already printed `0 accessory unlocks granted (all already unlocked)` on a database with
-  zero unlock inbox rows — an honest log line about the wrong thing, which is exactly how this gap
-  survived `PS9`.
+  seeder printed `0 accessory unlocks granted (all already unlocked)` on a database with zero unlock
+  inbox rows — an honest log line about the wrong thing, which is exactly how this gap survived
+  `PS9`.
+- **Test convergence on a populated database, not a fresh one.** Every gap here reproduces only on a
+  database that has already been seeded; `migrate:fresh` then `demo:seed` hides all of them. Gap #1
+  was mis-diagnosed twice before an empirical test settled it, both times by reasoning about the
+  code path instead of running it.
 - The cheapest full check is a re-sweep once this lands: `npm run build`, `demo:seed`, then
   `shoot.mjs` + `audit.mjs`. Both sweep bugs found on 2026-09-01 are fixed (`28a15249`, `6bed9eb9`),
   so activity detail and a full-height Login are now actually captured.
