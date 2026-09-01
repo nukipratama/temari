@@ -16,7 +16,7 @@ places inside the expanded row.
 
 ## Files touched
 
-39 files, +2,888 / −2,049.
+44 files, +3,081 / −2,075.
 
 | area | what |
 |---|---|
@@ -31,6 +31,8 @@ places inside the expanded row.
 | `app/Http/Controllers/PlanController.php` | loads the rendered range's runs in one query |
 | `app/Services/Run/Plan/SeasonSummaryBuilder.php` | per-week session count, `adherencePct()` |
 | `app/Http/Requests/UpdatePlannedSessionRequest.php`, `routes/web.php` | P23's route and validation cuts |
+| `tests/Feature/Http/Controllers/PlanControllerTest.php`, `tests/Unit/Http/Requests/UpdatePlannedSessionRequestTest.php` | P23's cuts, plus a real test of move-as-swap |
+| `composer.json`, `plan/slices/31-C1-ci-guard-audit.md` | the `check`-gate process-timeout regression, fixed and recorded |
 | `docs/features/plan-periodizer.md`, `plan/ia.md` | kept true in the same commits |
 
 ## Blockers
@@ -52,12 +54,25 @@ aggregate `V0` fork 3 added.
 - [x] Every new component has a co-located test (1:1 convention).
 - [x] `Plan.test.tsx` restored, covering section order, the current week opening onto its chart and
       day rows, Skip and Move reaching the sessions endpoint, and the absence of the cut surfaces.
-- [ ] Coverage delta recorded.
-- [ ] `composer check` green on the final tree.
+- [x] Coverage delta recorded.
+- [x] `composer check` green on the final tree (`EXIT=0`, all 15 steps).
 
 ## Coverage delta
 
-_To be recorded from `npm run test:coverage`._
+Measured `origin/epic/mobile-ux-port` (8415d1f7) vs the slice, same run configuration:
+
+| | before | after |
+|---|---|---|
+| statements | 97.15% (3962/4078) | **97.30%** (4048/4160) |
+| branches | 90.49% (3229/3568) | **90.80%** (3318/3654) |
+| functions | 96.78% (1052/1087) | 96.77% (1082/1118) |
+| lines | 97.54% (3769/3864) | **97.61%** (3841/3935) |
+
+Up on statements, branches and lines; functions is flat to within a hundredth (−0.01pp, and +30
+covered functions against +31 total). The slice is net **+82 statements** in the denominator — nine
+new components and a new lib module against three deleted components and a much smaller `Plan.tsx` —
+and it still moves the average up, which is the honest reading: the new code is better covered than
+the code it replaces. Well clear of the 95% gate.
 
 ## Verification notes
 
@@ -68,11 +83,25 @@ PR rather than just this one. The guard caught two dead frontend refs here (`Sea
 the same commit as the deletions, per §8's own instruction.
 
 Gate is `./vendor/bin/sail composer check` — the single command since `C1`, which now runs exactly
-what CI runs.
+what CI runs. **It could not complete before this slice**: composer's 300s default `process-timeout`
+killed `phpstan analyse` mid-run, so the script exited 1 whatever the code did, and CI never saw it
+because CI runs those steps separately and never invokes `composer check`. Fixed here (see the C1
+slice doc's addendum), and the first end-to-end run promptly caught **seven** failures this slice
+had otherwise been on course to open a PR with:
 
-`grounds.json` was **not** regenerated: no panel background changed. The timeline's cards use the
-existing `cardVariants` `card` tone (`bg-card`), and the only new colour values are inline `style`
-fills for bars and dots, which are graphic marks rather than registered panel grounds.
+- five in `PlanControllerTest` — it still exercised `DELETE /plan/sessions/{id}` and the
+  `session_type` block, both cut by P23;
+- one in `UpdatePlannedSessionRequestTest`, same cause;
+- one in `DesignTokenContrastTest` — `bg-text-3` painted but unclassified.
+
+The last one also falsified this doc's own earlier claim that `grounds.json` needed no attention. It
+now does not, for a better reason: the fill is `bg-ink-3`, the same value, already registered, and
+the token `SectionLabel`'s dot already uses. That is a fair advertisement for running the gate rather
+than assuming it.
+
+`grounds.json` needs no regeneration: the timeline's cards use the existing `cardVariants` `card`
+tone (`bg-card`), and the other new colour values are inline `style` fills on bars and dots, which
+are graphic marks rather than registered panel grounds.
 
 Ran in the `ps4-plan` worktree on slot 1 (ports 7011/7012), alongside `PS8` and `PS1`.
 
