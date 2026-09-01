@@ -30,8 +30,12 @@ class TrendsController extends Controller
 
         return Inertia::render('Trends', [
             'ctlTrend' => $trainingLoad->ctlTrend($user, 365),
-            'badgeMilestones' => collect(RunCard::firstEarnedDatesForUser($user->id))
-                ->map(static fn (string $date, string $slug): array => ['key' => $slug, 'date' => $date])
+            'badgeMilestones' => collect(RunCard::firstEarnedBadgesForUser($user->id))
+                ->map(static fn (array $earned, string $slug): array => [
+                    'key' => $slug,
+                    'date' => $earned['date'],
+                    'rarity' => $earned['rarity'],
+                ])
                 ->values()
                 ->all(),
             'streak' => $seasonStreakBuilder->streakPayload($user, Carbon::today()),

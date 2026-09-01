@@ -42,12 +42,34 @@ const BASE_PROPS: ComponentProps<typeof Trends> = {
     narration: NARRATION,
 };
 
+/** A year of daily points, so every range window has data to slice. */
+function yearOfTrend() {
+    return Array.from({ length: 365 }, (_, i) => ({
+        date: `2026-01-${String((i % 28) + 1).padStart(2, '0')}`,
+        ctl: 40 + i * 0.05,
+        atl: 35,
+    }));
+}
+
 describe('Trends', () => {
     it('renders the page headline', () => {
         render(<Trends {...BASE_PROPS} />);
 
         expect(screen.getByText('how things')).toBeInTheDocument();
         expect(screen.getByText('are going.')).toBeInTheDocument();
+    });
+
+    it('renders exactly the four prototype blocks', () => {
+        render(<Trends {...BASE_PROPS} />);
+
+        expect(screen.getByText('Trends')).toBeInTheDocument();
+        expect(
+            screen.getByRole('group', { name: 'Time range' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText("Temari's read")).toBeInTheDocument();
+        expect(
+            screen.getByText(/Not enough training history yet/),
+        ).toBeInTheDocument();
     });
 
     it('defaults to the 12 month range narration', () => {
@@ -65,20 +87,25 @@ describe('Trends', () => {
         expect(screen.queryByText('The full year.')).not.toBeInTheDocument();
     });
 
-    it('shows the fitness trend empty state when there is no history yet', () => {
-        render(<Trends {...BASE_PROPS} />);
+    it('re-windows the fitness panel when the range toggle changes', () => {
+        render(<Trends {...BASE_PROPS} ctlTrend={yearOfTrend()} />);
 
         expect(
-            screen.getByText(
-                'Not enough training history yet to draw a trend.',
-            ),
+            screen.getByRole('img', { name: /over 365 days/ }),
+        ).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: '30 days' }));
+
+        expect(
+            screen.getByRole('img', { name: /over 30 days/ }),
         ).toBeInTheDocument();
     });
 
-    it('renders the streak badge board entry', () => {
+    it('shows the week streak as a chip inside the fitness panel', () => {
         render(
             <Trends
                 {...BASE_PROPS}
+                ctlTrend={yearOfTrend()}
                 streak={{
                     weeks: 6,
                     rest_weeks_held: 0,
@@ -89,6 +116,8 @@ describe('Trends', () => {
             />,
         );
 
-        expect(screen.getByText('6 weeks streak')).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /6-week streak/ }),
+        ).toBeInTheDocument();
     });
 });
