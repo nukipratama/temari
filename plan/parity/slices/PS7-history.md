@@ -101,6 +101,10 @@ Frontend (`npm run test:coverage`), measured on this stack at both ends:
 Flat on three axes, **+0.10 on branches**. 215 → 218 test files, 1808 → 1822 tests. The base
 figure matches what `PS6` independently measured on the same commit.
 
+After merging `epic/mobile-ux-port` (which had moved on to `PS6`), the branch measures
+**97.55 / 91.39 / 97.33 / 97.76** over 1823 tests — `PS6`'s own gain, layered on this one; the
+table above is still the honest reading of *this* slice's delta, both ends measured on `6740e1a3`.
+
 ## Verification notes
 
 - `./vendor/bin/sail composer check` green — the whole ladder, `pest --parallel` and
@@ -115,6 +119,9 @@ figure matches what `PS6` independently measured on the same commit.
   ladder runs it too, but line-shifting doc edits are worth the separate pass).
 - Checked, per `PS6`'s finding that `PP3` left P25 half-done: no surface `PP3` or `S7` cut still
   renders anywhere under `pages/History.tsx`, `pages/Activities/` or `components/history/`.
+- **The merge-time gate run failed and was not believed.** Three tests timed out at 5000ms in
+  `NoVerdictPanel` and `AppearanceCard` — files this slice never touches — which is the documented
+  parallel-stack contention signature. A clean re-run of `test:coverage` passed all 1823.
 - No browser pass run.
 
 ## Open questions
