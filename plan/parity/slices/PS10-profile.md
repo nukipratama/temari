@@ -143,7 +143,7 @@ see the coverage note above for why. What ran, and its result:
 | `rector --dry-run` | `[OK]` **on the three changed PHP files**. The full-tree run deadlocked twice at `0/613` with orphaned parallel workers still bound to a dead main — the same shape as the known phpstan-parallel-cache race in Sail, and unrelated to this diff |
 | `pest --group=structure` | 39/39 |
 | `pest` on `tests/Feature/Profile` + the new unit test | 14/14 |
-| `pest --parallel` (whole suite) | still running when this slice was handed over, under three-way host contention |
+| `pest --parallel` (whole suite) | **3640 passed**, 10786 assertions, 571s |
 | `vitest run` (whole suite) | 1816 passed / 212 files |
 | `npm run build` + `check:chunks` | PASS, `Profile` 570.6 kB raw / **186.3 kB gzipped** against a 230 kB budget |
 
