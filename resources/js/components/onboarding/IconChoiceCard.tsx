@@ -36,7 +36,7 @@ export default function IconChoiceCard({
             aria-label={label}
             aria-describedby={description ? descriptionId : undefined}
             className={cn(
-                'focus-ring flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition',
+                'focus-ring flex w-full items-center gap-3 rounded-md border px-3.5 py-3 text-left transition',
                 active
                     ? 'border-icon-accent bg-horizon/10'
                     : 'border-border-strong bg-card shadow-e1',

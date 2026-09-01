@@ -14,18 +14,19 @@ import StepProgress, {
     type OnboardingStep,
 } from '@/components/onboarding/StepProgress';
 import FaceIcon from '@/components/temari/FaceIcon';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import Chip from '@/components/ui/Chip';
 import { Icon } from '@/components/ui/Icon';
+import LegacyCard from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
 import { useCountUp } from '@/hooks/useCountUp';
 import { bareLayout } from '@/layouts/BareShell';
 import { cn } from '@/lib/cn';
-import { fadeInUp } from '@/lib/motion';
+import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatPace } from '@/lib/pace';
 import { earliestRaceDate, goalTimeError } from '@/lib/raceGoal';
+import { inputVariants, outlineChipVariants } from '@/lib/variants';
 
 const DISTANCE_PRESETS = [
     { label: '5K', km: 5 },
@@ -126,7 +127,39 @@ const FAST_PACE_SEC_PER_KM = 3.5 * 60;
 const RING_RADIUS = 32;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
+const FACE_GLOW =
+    'radial-gradient(circle, color-mix(in oklab, var(--color-horizon) 55%, transparent) 0%, color-mix(in oklab, var(--color-horizon) 24%, transparent) 42%, transparent 70%)';
+const PACE_GLOW =
+    'radial-gradient(circle, color-mix(in oklab, var(--color-horizon) 45%, transparent) 0%, color-mix(in oklab, var(--color-horizon) 18%, transparent) 45%, transparent 70%)';
+
+const FIELD_LABEL = 'text-label-micro text-text-2';
+
 type Step = OnboardingStep;
+
+/** The three answered preferences, joined the way the prototype's recap line
+ *  joins them. Empty when every question was skipped. */
+function preferencesSummary(
+    experienceLevel: ExperienceLevel | null,
+    sessionsPerWeek: number | null,
+    goalType: GoalType | null,
+): string {
+    const parts: string[] = [];
+    const experience = EXPERIENCE_OPTIONS.find(
+        (option) => option.value === experienceLevel,
+    );
+    if (experience) {
+        parts.push(experience.label);
+    }
+    if (sessionsPerWeek !== null) {
+        parts.push(`${sessionsPerWeek}x a week`);
+    }
+    const goal = GOAL_OPTIONS.find((option) => option.value === goalType);
+    if (goal) {
+        parts.push(goal.label);
+    }
+
+    return parts.join(' · ');
+}
 
 export default function OnboardingIndex() {
     const page = usePage<SharedProps>().props;
@@ -148,6 +181,11 @@ export default function OnboardingIndex() {
     const [runDays, setRunDays] = useState<number[]>([]);
     const [longRunDay, setLongRunDay] = useState<number | null>(null);
 
+    const prefsSummary = preferencesSummary(
+        experienceLevel,
+        sessionsPerWeek,
+        goalType,
+    );
     const goalTimeSec = hours * 3_600 + minutes * 60;
     const goalTimeIssue = goalTimeError(goalTimeSec);
     const canSubmitGoal = raceDate !== '' && goalTimeIssue === null;
@@ -262,7 +300,7 @@ export default function OnboardingIndex() {
     return (
         <>
             <Head title="Welcome" />
-            <PageContainer className="pt-16 min-[900px]:max-w-[520px]">
+            <PageContainer className="pt-16 pb-10 min-[900px]:max-w-[520px] min-[900px]:pb-16">
                 <StepProgress step={step} subIndex={subIndex} />
 
                 {step === 'connected' ? (
@@ -273,40 +311,50 @@ export default function OnboardingIndex() {
                         animate="visible"
                         className="flex flex-col items-center gap-5 py-2 text-center"
                     >
-                        <FaceIcon size={72} />
+                        <div className="relative flex items-center justify-center">
+                            <div
+                                aria-hidden
+                                className="pointer-events-none absolute size-60 rounded-full blur-[34px]"
+                                style={{ background: FACE_GLOW }}
+                            />
+                            <FaceIcon size={72} />
+                        </div>
                         <PageHero
                             size="quote-lg"
                             italic
                             className="text-center"
                         >
-                            you&rsquo;re connected, {firstName}.
+                            you&rsquo;re connected, <br />
+                            <em className="text-icon-accent">{firstName}.</em>
                         </PageHero>
 
-                        <Card className="w-full px-6 py-6 text-left">
-                            <ul className="flex flex-col gap-4">
-                                {WHAT_LANDS.map((item) => (
-                                    <li
-                                        key={item.icon}
-                                        className="flex items-start gap-3"
-                                    >
-                                        <Icon
-                                            icon={item.icon}
-                                            width={18}
-                                            height={18}
-                                            aria-hidden
-                                            className="mt-0.5 shrink-0 text-text-3"
-                                        />
-                                        <span className="font-sans text-sm leading-relaxed text-text-2">
-                                            {item.text}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </Card>
+                        <LegacyCard className="flex w-full flex-col gap-4 text-left">
+                            {WHAT_LANDS.map((item) => (
+                                <div
+                                    key={item.icon}
+                                    className="flex items-start gap-3"
+                                >
+                                    <Icon
+                                        icon={item.icon}
+                                        width={18}
+                                        height={18}
+                                        aria-hidden
+                                        className="mt-0.5 shrink-0 text-text-3"
+                                    />
+                                    <span className="font-sans text-xs leading-relaxed text-text-2">
+                                        {item.text}
+                                    </span>
+                                </div>
+                            ))}
+                        </LegacyCard>
 
-                        <Button onClick={() => setStep('preferences')}>
+                        <PillButton
+                            tone="horizon"
+                            className="w-full justify-center"
+                            onClick={() => setStep('preferences')}
+                        >
                             Continue
-                        </Button>
+                        </PillButton>
                     </motion.div>
                 ) : step === 'preferences' ? (
                     <motion.div
@@ -347,22 +395,29 @@ export default function OnboardingIndex() {
                                     </>
                                 }
                             >
-                                <div className="flex flex-col gap-2">
+                                <ChoiceList>
                                     {EXPERIENCE_OPTIONS.map((option) => (
-                                        <IconChoiceCard
+                                        <motion.div
                                             key={option.value}
-                                            icon={option.icon}
-                                            label={option.label}
-                                            description={option.description}
-                                            active={
-                                                experienceLevel === option.value
-                                            }
-                                            onClick={() =>
-                                                chooseExperience(option.value)
-                                            }
-                                        />
+                                            variants={fadeInUp}
+                                        >
+                                            <IconChoiceCard
+                                                icon={option.icon}
+                                                label={option.label}
+                                                description={option.description}
+                                                active={
+                                                    experienceLevel ===
+                                                    option.value
+                                                }
+                                                onClick={() =>
+                                                    chooseExperience(
+                                                        option.value,
+                                                    )
+                                                }
+                                            />
+                                        </motion.div>
                                     ))}
-                                </div>
+                                </ChoiceList>
                                 <SkipQuestionLink
                                     onClick={() => setSubIndex(1)}
                                 />
@@ -371,11 +426,17 @@ export default function OnboardingIndex() {
 
                         {subIndex === 1 && (
                             <PreferenceQuestion heading="How many days a week can you realistically show up?">
-                                <SessionsDial
-                                    options={SESSIONS_OPTIONS}
-                                    value={sessionsPerWeek}
-                                    onChange={chooseSessions}
-                                />
+                                <motion.div
+                                    variants={fadeInUp}
+                                    initial="hidden"
+                                    animate="visible"
+                                >
+                                    <SessionsDial
+                                        options={SESSIONS_OPTIONS}
+                                        value={sessionsPerWeek}
+                                        onChange={chooseSessions}
+                                    />
+                                </motion.div>
                                 <SkipQuestionLink
                                     onClick={() => setSubIndex(2)}
                                 />
@@ -384,20 +445,26 @@ export default function OnboardingIndex() {
 
                         {subIndex === 2 && (
                             <PreferenceQuestion heading="What are you chasing right now?">
-                                <div className="flex flex-col gap-2">
+                                <ChoiceList>
                                     {GOAL_OPTIONS.map((option) => (
-                                        <IconChoiceCard
+                                        <motion.div
                                             key={option.value}
-                                            icon={option.icon}
-                                            label={option.label}
-                                            description={option.description}
-                                            active={goalType === option.value}
-                                            onClick={() =>
-                                                chooseGoalType(option.value)
-                                            }
-                                        />
+                                            variants={fadeInUp}
+                                        >
+                                            <IconChoiceCard
+                                                icon={option.icon}
+                                                label={option.label}
+                                                description={option.description}
+                                                active={
+                                                    goalType === option.value
+                                                }
+                                                onClick={() =>
+                                                    chooseGoalType(option.value)
+                                                }
+                                            />
+                                        </motion.div>
                                     ))}
-                                </div>
+                                </ChoiceList>
                                 <SkipQuestionLink
                                     onClick={() =>
                                         advancePastGoalQuestion(sessionsPerWeek)
@@ -408,10 +475,10 @@ export default function OnboardingIndex() {
 
                         {subIndex === 3 && sessionsPerWeek !== null && (
                             <div>
-                                <h2 className="font-serif text-headline-xs text-foreground italic">
+                                <h2 className="font-serif text-quote-lg text-foreground italic">
                                     Which days do you usually run?
                                 </h2>
-                                <p className="mt-2 mb-5 text-sm leading-relaxed text-text-2">
+                                <p className="mt-2 mb-5 text-xs leading-relaxed text-text-2">
                                     Pick {sessionsPerWeek} &middot;{' '}
                                     {runDays.length} of {sessionsPerWeek}{' '}
                                     selected.
@@ -440,8 +507,8 @@ export default function OnboardingIndex() {
                                 />
 
                                 {runDays.length === sessionsPerWeek && (
-                                    <div className="mt-6 rounded-xl bg-muted p-2.5">
-                                        <p className="m-0 mb-3 font-serif text-sm text-foreground italic">
+                                    <div className="mt-6 rounded-md bg-muted p-2.5">
+                                        <p className="mb-3 font-serif text-quote-sm text-foreground italic">
                                             Which one&rsquo;s your long run?
                                         </p>
                                         <DayRow
@@ -475,16 +542,30 @@ export default function OnboardingIndex() {
                         initial="hidden"
                         animate="visible"
                     >
-                        <PageHero size="quote-lg" italic eyebrow="Optional">
-                            got a race in mind?
-                        </PageHero>
+                        {prefsSummary !== '' && (
+                            <p className="mb-3 font-serif text-sm leading-relaxed text-text-2 italic">
+                                Got it: {prefsSummary}.
+                            </p>
+                        )}
+                        <div className="flex items-center gap-2">
+                            <PageHero size="quote-lg" italic>
+                                got a race <br />
+                                <em className="text-icon-accent">in mind?</em>
+                            </PageHero>
+                            <Chip className="mt-1 self-start">Optional</Chip>
+                        </div>
                         <p className="mt-3 font-sans text-sm leading-relaxed text-text-2">
                             Give Temari something to build toward. Skip it if
                             you&rsquo;re not sure yet, you can always set one
                             later from Plan.
                         </p>
 
-                        <div className="relative mt-6 mb-4 flex items-center gap-4 overflow-hidden rounded-xl border border-border-strong bg-card p-4 shadow-e1">
+                        <div className="relative mt-6 mb-4 flex items-center gap-4 overflow-hidden rounded-md border border-border-strong bg-card p-4 shadow-e1">
+                            <div
+                                aria-hidden
+                                className="pointer-events-none absolute -top-8 -left-8 size-35 rounded-full blur-[28px]"
+                                style={{ background: PACE_GLOW }}
+                            />
                             <div className="relative flex-none">
                                 <svg
                                     width={76}
@@ -516,25 +597,22 @@ export default function OnboardingIndex() {
                                     <FaceIcon size={26} />
                                 </div>
                             </div>
-                            <div className="min-w-0 flex-1">
+                            <div className="relative min-w-0 flex-1">
                                 <span className="text-label-micro text-text-3">
                                     Required pace
                                 </span>
-                                <div className="mt-1 font-serif text-headline-xs font-bold text-icon-accent">
+                                <div className="mt-1 text-stat text-icon-accent">
                                     {pace}
                                 </div>
                             </div>
                         </div>
 
-                        <Card className="px-6 py-6">
-                            <form
-                                onSubmit={submitGoal}
-                                className="grid grid-cols-1 gap-5"
-                            >
+                        <form onSubmit={submitGoal}>
+                            <LegacyCard className="flex flex-col gap-4">
                                 <div>
                                     <label
                                         htmlFor="onboarding_race_name"
-                                        className="text-label-micro text-text-3"
+                                        className={FIELD_LABEL}
                                     >
                                         Name (optional)
                                     </label>
@@ -547,14 +625,17 @@ export default function OnboardingIndex() {
                                         }
                                         maxLength={120}
                                         placeholder="Jakarta Half 2026"
-                                        className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus-ring"
+                                        className={cn(
+                                            inputVariants(),
+                                            'mt-1.5',
+                                        )}
                                     />
                                     <FieldError message={errors.name} />
                                 </div>
                                 <div>
                                     <label
                                         htmlFor="onboarding_race_date"
-                                        className="text-label-micro text-text-3"
+                                        className={FIELD_LABEL}
                                     >
                                         Race day
                                     </label>
@@ -566,16 +647,19 @@ export default function OnboardingIndex() {
                                         onChange={(e) =>
                                             setRaceDate(e.target.value)
                                         }
-                                        className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus-ring"
+                                        className={cn(
+                                            inputVariants(),
+                                            'mt-1.5',
+                                        )}
                                     />
                                     <FieldError message={errors.race_date} />
                                 </div>
 
                                 <div>
-                                    <span className="text-label-micro text-text-3">
+                                    <span className={FIELD_LABEL}>
                                         Distance
                                     </span>
-                                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                                    <div className="mt-1.5 flex flex-wrap gap-1.5">
                                         {DISTANCE_PRESETS.map((preset) => (
                                             <button
                                                 key={preset.label}
@@ -583,12 +667,11 @@ export default function OnboardingIndex() {
                                                 onClick={() =>
                                                     setDistanceKm(preset.km)
                                                 }
-                                                className={cn(
-                                                    'focus-ring rounded-full border px-3 py-1.5 text-label-micro transition',
-                                                    distanceKm === preset.km
-                                                        ? 'border-horizon bg-horizon/10 text-horizon-ink'
-                                                        : 'border-border text-text-3 hover:border-horizon/60 hover:text-foreground',
-                                                )}
+                                                className={outlineChipVariants({
+                                                    selected:
+                                                        distanceKm ===
+                                                        preset.km,
+                                                })}
                                             >
                                                 {preset.label}
                                             </button>
@@ -598,7 +681,7 @@ export default function OnboardingIndex() {
                                 </div>
 
                                 <div>
-                                    <span className="text-label-micro text-text-3">
+                                    <span className={FIELD_LABEL}>
                                         Goal time
                                     </span>
                                     <div className="mt-1.5 flex items-center gap-1.5">
@@ -611,11 +694,12 @@ export default function OnboardingIndex() {
                                                 setHours(Number(e.target.value))
                                             }
                                             aria-label="Hours"
-                                            className="w-16 rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground focus-ring"
+                                            className={cn(
+                                                inputVariants({ size: 'sm' }),
+                                                'w-16 text-center',
+                                            )}
                                         />
-                                        <span className="text-sm text-text-3">
-                                            hr
-                                        </span>
+                                        <span className={FIELD_LABEL}>hr</span>
                                         <input
                                             type="number"
                                             min={0}
@@ -627,11 +711,12 @@ export default function OnboardingIndex() {
                                                 )
                                             }
                                             aria-label="Minutes"
-                                            className="w-16 rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground focus-ring"
+                                            className={cn(
+                                                inputVariants({ size: 'sm' }),
+                                                'w-16 text-center',
+                                            )}
                                         />
-                                        <span className="text-sm text-text-3">
-                                            min
-                                        </span>
+                                        <span className={FIELD_LABEL}>min</span>
                                     </div>
                                     <FieldError
                                         message={
@@ -640,27 +725,30 @@ export default function OnboardingIndex() {
                                         }
                                     />
                                 </div>
+                            </LegacyCard>
 
-                                <div className="flex flex-wrap items-center gap-3">
-                                    <Button
-                                        type="submit"
-                                        disabled={processing || !canSubmitGoal}
-                                    >
-                                        {processing
-                                            ? 'Saving…'
-                                            : 'Set my goal & finish'}
-                                    </Button>
-                                    <PillButton
-                                        type="button"
-                                        tone="ghost"
-                                        disabled={processing}
-                                        onClick={skip}
-                                    >
-                                        Skip for now
-                                    </PillButton>
-                                </div>
-                            </form>
-                        </Card>
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                <PillButton
+                                    type="submit"
+                                    tone="horizon"
+                                    disabled={processing || !canSubmitGoal}
+                                    className="flex-1 justify-center"
+                                >
+                                    {processing
+                                        ? 'Saving…'
+                                        : 'Set my goal & finish'}
+                                </PillButton>
+                                <PillButton
+                                    type="button"
+                                    tone="ghost"
+                                    disabled={processing}
+                                    onClick={skip}
+                                    className="flex-1 justify-center"
+                                >
+                                    Skip for now
+                                </PillButton>
+                            </div>
+                        </form>
                     </motion.div>
                 )}
             </PageContainer>
@@ -675,14 +763,28 @@ function PreferenceQuestion({
 }: Readonly<{ heading: ReactNode; children: ReactNode }>) {
     return (
         <div>
-            <h2 className="font-serif text-headline-xs text-foreground italic">
+            <h2 className="font-serif text-quote-lg text-foreground italic">
                 {heading}
             </h2>
-            <p className="mt-2 mb-5 text-sm leading-relaxed text-text-2">
+            <p className="mt-2 mb-5 text-xs leading-relaxed text-text-2">
                 You can change this anytime in settings.
             </p>
             {children}
         </div>
+    );
+}
+
+/** The prototype's motion-staggered option list: children land in sequence. */
+function ChoiceList({ children }: Readonly<{ children: ReactNode }>) {
+    return (
+        <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+            className="flex flex-col gap-2"
+        >
+            {children}
+        </motion.div>
     );
 }
 
