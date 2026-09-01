@@ -32,14 +32,6 @@ use Throwable;
  */
 class HistoryController extends Controller
 {
-    /**
-     * Hard cap on runs returned to the page so a wide/"all" range never ships an
-     * unbounded payload. The newest runs are kept (ordered by id desc), so the
-     * auto-widen guarantee of surfacing the latest run still holds; older runs
-     * beyond the cap are flagged via `runsTruncated`.
-     */
-    private const int MAX_RUNS = 365;
-
     /** Safety cap on weekly snapshots loaded into memory (10 years ≈ 520 weeks). */
     private const int MAX_WEEKS = 520;
 
@@ -70,20 +62,21 @@ class HistoryController extends Controller
     private function listProps(User $user, FeedQuery $feed, FeedFilterRequest $request): array
     {
         $filters = $feed->filtersFor($user, $request);
-        $runsQuery = $feed->for($user, $filters);
+        $weeks = $request->weeks();
+        // P3: "load older weeks" is a real page, not a client-side reveal — the
+        // server ships exactly the requested number of run-bearing week sections
+        // and says whether anything sits behind them.
+        ['since' => $since, 'hasOlder' => $hasOlderWeeks] = $feed->weekWindow($user, $filters, $weeks);
+        $runsQuery = $feed->for($user, $filters, $since);
 
         // Deferred behind a closure (Inertia's `useAnalysisTrigger` poll skips
-        // any prop the partial reload does not name) and memoized (four props
+        // any prop the partial reload does not name) and memoized (three props
         // below share this one query set).
         /** @var Collection<int, Activity>|null $loadedRuns */
         $loadedRuns = null;
-        $runsTruncated = false;
-        $loadRuns = function () use ($runsQuery, &$loadedRuns, &$runsTruncated): Collection {
+        $loadRuns = function () use ($runsQuery, &$loadedRuns): Collection {
             if ($loadedRuns === null) {
-                // Fetch one past the cap to detect truncation, then trim to it.
-                $rows = $runsQuery->limit(self::MAX_RUNS + 1)->get();
-                $runsTruncated = $rows->count() > self::MAX_RUNS;
-                $loadedRuns = $rows->take(self::MAX_RUNS)->values();
+                $loadedRuns = $runsQuery->get();
             }
 
             return $loadedRuns;
@@ -111,17 +104,11 @@ class HistoryController extends Controller
             'weekFilter' => $filters->week?->toDateString(),
             'rangeStart' => $filters->rangeStart?->toDateString(),
             'rangeAutoWidened' => $filters->rangeAutoWidened,
-            // Set as a side effect of $loadRuns, so it must resolve the runs
-            // first rather than reading a flag that is still false.
-            'runsTruncated' => function () use ($loadRuns, &$runsTruncated): bool {
-                $loadRuns();
-
-                return $runsTruncated;
-            },
-            'maxRuns' => self::MAX_RUNS,
+            'weeksShown' => $weeks,
+            'hasOlderWeeks' => $hasOlderWeeks,
             'weeklySnapshots' => fn (): SupportCollection => $this->weeklySnapshotPayload(
                 $user,
-                $filters->rangeStart,
+                $since ?? $filters->rangeStart,
                 $filters->week,
                 $currentWeekEnding,
             ),
@@ -138,10 +125,12 @@ class HistoryController extends Controller
         ?Carbon $rangeStart,
         ?Carbon $weekFilter,
         Carbon $currentWeekEnding,
+        ?Carbon $rangeEnd = null,
     ): SupportCollection {
         $weeklySnapshots = WeeklySnapshot::query()
             ->where('user_id', $user->id)
             ->when($rangeStart !== null, fn ($q) => $q->where('week_ending', '>=', $rangeStart))
+            ->when($rangeEnd !== null, fn ($q) => $q->where('week_ending', '<=', $rangeEnd))
             // A week deep link shows exactly that week's recap, not every recap
             // since it.
             ->when($weekFilter !== null, fn ($q) => $q->where('week_ending', '=', $weekFilter))
@@ -255,7 +244,15 @@ class HistoryController extends Controller
             'todayMonth' => Carbon::today()->format('Y-m'),
             'cells' => ($this->calendarBuilder)($user, $gridStart, $gridEnd, $monthStart, $monthEnd),
             'lifetime' => $this->lifetimeStats->forUser($user),
-            'todayQuote' => $this->noteReader->speechForToday($user->id),
+            // The grid's own weeks, so each week row can disclose Temari's
+            // weekly recap without leaving the calendar (prototype WeekRow).
+            'weeklySnapshots' => fn (): SupportCollection => $this->weeklySnapshotPayload(
+                $user,
+                $gridStart,
+                null,
+                Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay(),
+                $gridEnd,
+            ),
             'monthlyRecap' => [
                 ...$recapPayload,
                 'is_chain_head' => $discriminator === $this->latestNarratedMonthFor($user),

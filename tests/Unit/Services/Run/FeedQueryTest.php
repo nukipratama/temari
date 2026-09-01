@@ -121,3 +121,53 @@ it('never leaks another user\'s runs', function (): void {
 
     expect(feedRunNames($user))->toBe(['Mine']);
 });
+
+it('windows the feed to the newest run-bearing weeks and reports older ones', function (): void {
+    $user = User::factory()->create();
+    feedRun($user, 'this week', Carbon::now());
+    feedRun($user, 'a week back', Carbon::now()->subDays(7));
+    feedRun($user, 'two weeks back', Carbon::now()->subDays(14));
+
+    $window = app(FeedQuery::class)->weekWindow($user, feedFiltersFor($user), 2);
+
+    expect($window['hasOlder'])->toBeTrue()
+        ->and($window['since']?->toDateString())
+        ->toBe(Carbon::now()->subDays(7)->startOfWeek(Carbon::MONDAY)->toDateString());
+});
+
+it('counts a week once however many runs it holds', function (): void {
+    $user = User::factory()->create();
+    feedRun($user, 'mon', Carbon::now()->startOfWeek(Carbon::MONDAY));
+    feedRun($user, 'wed', Carbon::now()->startOfWeek(Carbon::MONDAY)->addDays(2));
+    feedRun($user, 'fri', Carbon::now()->startOfWeek(Carbon::MONDAY)->addDays(4));
+
+    $window = app(FeedQuery::class)->weekWindow($user, feedFiltersFor($user), 2);
+
+    expect($window['hasOlder'])->toBeFalse()
+        ->and($window['since']?->toDateString())
+        ->toBe(Carbon::now()->startOfWeek(Carbon::MONDAY)->toDateString());
+});
+
+it('windows to nothing when the user has no runs', function (): void {
+    $user = User::factory()->create();
+
+    expect(app(FeedQuery::class)->weekWindow($user, feedFiltersFor($user), 2))
+        ->toBe(['since' => null, 'hasOlder' => false]);
+});
+
+it('applies the page floor to the run query', function (): void {
+    $user = User::factory()->create();
+    feedRun($user, 'recent', Carbon::now());
+    feedRun($user, 'older', Carbon::now()->subDays(21));
+
+    $feed = app(FeedQuery::class);
+    $filters = feedFiltersFor($user);
+    $window = $feed->weekWindow($user, $filters, 1);
+
+    $names = $feed->for($user, $filters, $window['since'])
+        ->get()
+        ->map(fn (Activity $run): string => (string) $run->detail?->name)
+        ->all();
+
+    expect($names)->toBe(['recent']);
+});
