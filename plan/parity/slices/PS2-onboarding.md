@@ -142,19 +142,93 @@ baseline), `npm run test:coverage`, full suite both sides, each run uncontended:
 
 | | before | after |
 |---|---|---|
-| statements | _pending_ | _pending_ |
-| branches | _pending_ | _pending_ |
-| functions | _pending_ | _pending_ |
-| lines | _pending_ | _pending_ |
+| statements | 97.63% | **97.64%** |
+| branches | 91.48% | **91.49%** |
+| functions | 97.32% | **97.33%** |
+| lines | 97.84% | **97.85%** |
+
+Up a hair on all four, 1827 → 1829 tests. Both runs are on this worktree with the same
+configuration, the "before" from a detached checkout of `e69a84c7` itself rather than a sibling's
+recorded baseline, and both taken **before** the epic merge so the delta is this slice's alone.
+The screen is a like-for-like rewrite in one page component: `preferencesSummary` and `ChoiceList`
+are the only new functions, both covered.
 
 ## Verification notes
 
-_pending_
+**Gate**: `./vendor/bin/sail composer check` green **end to end in a single run, exit 0** — pint ·
+phpstan (0 errors) · rector (0 errors) · pest `--parallel --no-tia` 3659 tests / 10855 assertions ·
+tsc · eslint · prettier · vitest 1834/1834 across 219 files · `check:palette` (460 files, zero
+off-token) · `check:chunks` · the doc-citation and `{@see}` guards. Run uncontended, with both
+sibling stacks down. `npm run build` + `check:chunks` green separately: no route is over budget and
+**no entry-chunk budget was re-baselined** (Login 140.6 / Home 201.0 / Runs/Show 205.9 / Profile
+186.0 kB gz). Onboarding is not itself a budgeted route.
+
+**`grounds.json`** needed one surgical deletion, caught by `DesignTokenContrastTest`'s
+"registered panel call sites paint nothing any more" arm: moving the distance presets onto
+`outlineChipVariants` meant `Index.tsx` stopped painting `bg-horizon/10` itself, orphaning its
+`horizon/0.1` registration. One block removed, nothing re-sorted; the file is otherwise
+byte-identical. `IconChoiceCard.tsx` and `DayPicker.tsx` still paint it and keep their rows. Both
+grounds are covered the way this repo covers them — the test scores every registered pair against
+each ground and fails closed. Green, 39/39 in the `structure` group.
+
+**Not done: a real browser pass.** Like `PS11`, the 900px step and the two grounds are verified at
+the class-string and token-contrast level only. Worth one sweep before the epic merges — and the
+two glows this slice adds are the kind of thing only a render shows.
 
 ## Open questions
 
-_pending_
+1. **The skip affordances are an app addition the prototype has no equivalent for, and they
+   stay.** `PreferencesStep` in the prototype has exactly one control besides the answers: the back
+   chevron (`:432-443`). There is no way to decline a question. The app draws a "Skip for now" pill
+   in the step header and a "Skip this" link under each question, and `POST /onboarding` accepts a
+   partial (or empty) payload — `OnboardingController::store` guards both writes with `filled` /
+   `hasAny`. Removing them would make four answers mandatory to reach the goal step. The prototype
+   never persists an answer, so a wrong pick there costs nothing; here every answer drives plan
+   generation, and "no answer" is materially different from "a guess". Kept, in the same class as
+   `PS11`'s three deliberate non-copies: copying the prototype would remove something true.
+2. **The pace readout is mono, not serif.** The prototype draws it `font-serif text-[32px]
+   font-bold` (`:596`). It ships as the app's `text-stat` register — same 32px, but mono, bold and
+   tabular — because the design system reserves serif for headlines and Temari's voice and puts
+   numbers on JetBrains Mono. Size and accent colour match; the family does not, on purpose.
+3. **Per-screen bottom padding now *is* implemented here**, unlike `PS8`/`PS11`, where `AppShell`
+   supplies a `pb-7` that a page-level step would stack on top of rather than replace. Onboarding
+   is on `BareShell`, which supplies none, so `pb-10 min-[900px]:pb-16` on the page's own container
+   is the whole story. `PP1`'s open question 2 stays open for the nine chromed screens.
 
 ## Notes for the wrap-up slices
 
-_pending_
+- **`W2` (dead code): no new orphans.** Dropping shadcn `Card` and `Button` from this page leaves
+  both with other consumers (`Card`: `GoalCard`, `DataTable`, `DailyChart`, `Login`, `InlineNote`;
+  `Button`: `PushNotificationToggle`, `AskAboutRun`, `Login`). `PageHero`'s `eyebrow` prop likewise
+  survives on Inbox, Settings and `HistoryHeader`.
+- **`W1` (routes/IA): nothing to do.** `/onboarding` keeps both its routes and its gate;
+  `EnsureOnboarded` and `OnboardingController::show`'s redirect are untouched.
+- **`PP4` (demo seed): Onboarding is deliberately unreachable for the demo account** and P30 cannot
+  cover it. `DemoRunSeeder` heals the demo user to onboarded on every re-seed
+  (`DemoRunSeeder.php:645-650`), and `OnboardingController::show` redirects an onboarded user to
+  the dashboard. This is correct — a showcase account should not land in a wizard — but it does
+  mean the last screen of the eleven has **no demo-visible surface**, so a browser sweep must sign
+  in as a fresh non-onboarded user to see it at all. Worth stating in `PP4` rather than being
+  discovered as a missing screenshot.
+- **`PS12` (cross-screen treatment): one new entry**, the active tint on the shared preference
+  controls. Recorded in `README.md` §5 rather than settled here, since it spans Onboarding and
+  Settings.
+- **Every `@min-[900px]:` utility Onboarding carries is now implemented.** Its root wrapper is the
+  screen's only container query (`reference.md` §4, "At `@min-[900px]:`", verified: none in
+  `PreferenceControls.tsx`), and it takes no row in `reference.md` §1.2's reflow table. With this
+  slice, `PP1`'s eleven-row table is fully accounted for across the eleven screens.
+
+## Plan/prototype discrepancies found
+
+None in `reference.md` §4 — it is accurate throughout, including the two claims the amendments log
+had already corrected once (520px, and `pt-16` not shrinking), the two `FaceIcon` placements, and
+all three "dead" controls. Another §-level cross-check comes back clean, after `PS5`'s §7 and `PS7`'s §9.
+
+One **unimplemented** plan claim rather than a wrong one: `reference.md` §1.1 gives Onboarding
+`pb-10` → `pb-16`, and the shipped page carried `PageContainer`'s `py-6` at both widths. Fixed
+here. This is the same class of miss `PS1` found in reflow #5 — a row read at one half only.
+
+And one **stale P36 application**: Onboarding was the last screen still mounting shadcn `Card`
+(`rounded-4xl`, 26px), which P36 names explicitly as the thing card radius is *not*. `PP3` and
+`PP1` both passed over this page without touching its card surfaces, so the decision ratified by
+merging #688 had never reached it.
