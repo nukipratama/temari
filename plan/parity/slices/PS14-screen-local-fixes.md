@@ -131,7 +131,9 @@ None. `PS13` is merged.
 
 1. Each of items 2-9 matches the prototype or is recorded above as a deliberate divergence.
 2. `demo:seed` on a **fresh** database produces a user for whom Race and the goal chip both render.
-   Verified against `migrate:fresh`, not an already-populated database — `PP4`'s lesson.
+   Asserted in `DemoSeedCommandTest`, which runs the real command under `RefreshDatabase` and so is
+   a genuinely empty database rather than the already-populated dev one — `PP4`'s lesson, made a
+   test rather than a manual step.
 3. P38's entry in `README.md` §2 states the corrected premise.
 4. `./vendor/bin/sail composer check` green (`--no-tia` on pest, see below).
 5. A browser pass over Login, Today, Plan, History, Inbox, Settings and Profile confirms all eight
@@ -139,8 +141,31 @@ None. `PS13` is merged.
 
 ## Coverage delta
 
-Record before/after. Expected roughly flat: one new controller branch, one new seeder row, one new
-`KartuMini` mode, each with its own test.
+Frontend lines **97.86%** (3807/3890) after, against the 95% gate. Flat, as expected: the new
+`KartuMini` mode, the goal resolver and the reshaped send button each landed with their own test.
+
+## What the browser pass confirmed
+
+Measured on the demo account at 390px after `npm run build` and `demo:seed`, one page at a time,
+with the DOM queried rather than a screenshot read:
+
+| item | measured |
+|---|---|
+| Login teaser | tile **78x84**, reading `Legendary` |
+| Today phase badge | `text-transform: uppercase`, `JetBrains Mono` — was `none` / `Plus Jakarta Sans` before |
+| Plan replan pill | uppercase mono, `bg` = sky-2 (the dark ground's `muted`), border width 0 |
+| Inbox open link | text `open`, one `svg` child |
+| History send control | 24x24, its row `justify-content: space-between`, six chips of which **four** muted and **two** carrying the alert tint (the demo week is over both thresholds) |
+| Settings push row | `lucide-smartphone` |
+| Profile goal chip | `goal: sub-50:00` — byte-identical to the string the prototype draws |
+
+Zero console errors across all six pages, and `audit.mjs` reports zero horizontal overflow at 320px
+and 390px on every route.
+
+**The goal chip sits behind a tab.** `ProgressionCard` defaults to `tabs.at(-1)`, which is the
+marathon series, so the chip is only visible after selecting 10K. That is the component's existing
+behaviour and not something this slice changes, but it is why a first look at Profile shows no chip
+and why the first probe of it returned null.
 
 ## Verification notes
 
