@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
+use App\Models\RaceGoal;
 use App\Models\User;
 use App\Actions\Run\Metrics\EstimateThresholdAction;
 use App\Services\Gamification\SeasonStreakSummaryBuilder;
@@ -35,6 +36,8 @@ class ProfileController extends Controller
         PrCategory::HalfMarathon,
         PrCategory::Marathon,
     ];
+
+    private const float RACE_DISTANCE_TOLERANCE = 0.05;
 
     public function __invoke(
         Request $request,
@@ -137,6 +140,25 @@ class ProfileController extends Controller
             }
         }
 
-        return $builder->buildMany($user, $prs, fn (PersonalRecord $pr): ?int => null);
+        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
+
+        return $builder->buildMany($user, $prs, fn (PersonalRecord $pr): ?int => $this->raceGoalSecFor($race, $pr));
+    }
+
+    /**
+     * The goal line is the user's active race, and only on the one distance
+     * that race is run at. The band matches ProgressionSeriesBuilder's own
+     * tolerance, so a 21.1 km race lines up with the half-marathon series.
+     */
+    private function raceGoalSecFor(?RaceGoal $race, PersonalRecord $pr): ?int
+    {
+        $target = $pr->category->distanceMeters();
+        if ($race === null || $target === null) {
+            return null;
+        }
+
+        return abs($race->distance_m - $target) <= $target * self::RACE_DISTANCE_TOLERANCE
+            ? $race->goal_time_sec
+            : null;
     }
 }

@@ -93,7 +93,7 @@ export default function ProgressionCard({
             <div className="mt-2.5 flex flex-wrap gap-1.5">
                 <Chip>{`−${formatDurationHMS(Math.round(deltaCount))} total`}</Chip>
                 {series.goal_sec != null && (
-                    <Chip tone="horizon">{`Goal: Sub-${formatDurationHMS(series.goal_sec)}`}</Chip>
+                    <Chip tone="horizon">{`goal: sub-${formatDurationHMS(series.goal_sec)}`}</Chip>
                 )}
             </div>
 

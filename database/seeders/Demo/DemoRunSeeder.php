@@ -866,13 +866,27 @@ class DemoRunSeeder
             ],
         );
 
+        // The demo user trains for a race, so there has to be one: without it
+        // Race renders its empty state and Profile's goal chip renders for
+        // nobody. Sub-50 over 10k, the distance the seeded history is built
+        // around. updateOrCreate on the active row so a re-seed converges.
+        RaceGoal::query()->updateOrCreate(
+            ['user_id' => $user->id, 'completed_at' => null],
+            [
+                'race_date' => Carbon::today()->addWeeks(12),
+                'distance_m' => 10_000,
+                'goal_time_sec' => 3_000,
+                'name' => 'City 10K',
+            ],
+        );
+
         // Without a row the whole Settings preferences card runs on
         // TrainingBaseline fallbacks and its "which one's the long run?" block
         // never renders, since that is gated on having run days. The seeded
         // history runs on every weekday about equally, so there is no pattern
         // to derive these from: they are a deliberate fixture for an
         // experienced runner on a race block, matching the race goal seeded
-        // alongside. updateOrCreate so a re-seed converges, as above.
+        // above. updateOrCreate so a re-seed converges, as above.
         TrainingPreference::query()->updateOrCreate(
             ['user_id' => $user->id],
             [

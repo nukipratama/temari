@@ -16,6 +16,7 @@ use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\StravaConnection;
+use App\Models\RaceGoal;
 use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\UserUnlock;
@@ -205,6 +206,14 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
 
     // Settings' preferences card runs on TrainingBaseline fallbacks without a
     // row, and its "which one's the long run?" block is gated on run days.
+    // PS14. The preference says the demo user trains for a race, and nothing
+    // created one: Race rendered its empty state and Profile's goal chip
+    // rendered for nobody, on any fresh database.
+    $race = RaceGoal::query()->where('user_id', $user->id)->active()->firstOrFail();
+    expect($race->distance_m)->toBeGreaterThan(0)
+        ->and($race->goal_time_sec)->toBeGreaterThan(0)
+        ->and($race->race_date->isFuture())->toBeTrue();
+
     $preference = TrainingPreference::query()->where('user_id', $user->id)->firstOrFail();
     expect($preference->run_days)->not->toBeEmpty()
         ->and($preference->long_run_day)->not->toBeNull()
