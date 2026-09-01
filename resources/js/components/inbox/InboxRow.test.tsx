@@ -16,6 +16,8 @@ const item = (overrides: Partial<InboxItem> = {}): InboxItem => ({
     url: null,
     run_card_id: null,
     rarity: null,
+    distance_m: null,
+    moving_time_s: null,
     ...overrides,
 });
 
@@ -119,6 +121,32 @@ describe('InboxRow', () => {
         renderRow({ kind: 'unlock', rarity: null });
 
         expect(screen.getByText('Unlock')).toBeInTheDocument();
+    });
+
+    it('draws distance and pace chips on a post-run row', () => {
+        renderRow({ kind: 'post_run', distance_m: 6400, moving_time_s: 1868 });
+
+        expect(screen.getByText('6.4 km')).toBeInTheDocument();
+        expect(screen.getByText('Distance')).toBeInTheDocument();
+        expect(screen.getByText('4:52/km')).toBeInTheDocument();
+        expect(screen.getByText('Pace')).toBeInTheDocument();
+    });
+
+    it('drops the pace chip when the run carries no moving time', () => {
+        renderRow({ kind: 'post_run', distance_m: 6400, moving_time_s: null });
+
+        expect(screen.getByText('6.4 km')).toBeInTheDocument();
+        expect(screen.queryByText('Pace')).not.toBeInTheDocument();
+    });
+
+    it('draws no stat chips on a row that is not a run', () => {
+        renderRow({
+            kind: 'weekly_recap',
+            distance_m: 6400,
+            moving_time_s: 1868,
+        });
+
+        expect(screen.queryByText('Distance')).not.toBeInTheDocument();
     });
 
     it('toggles the timestamp between relative and absolute on tap', async () => {
