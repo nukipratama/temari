@@ -1,23 +1,25 @@
 import type { PastYouTrend, TrendVerdict } from '@/types/inertia';
 
-import FaceIcon from '@/components/temari/FaceIcon';
-import SectionLabel from '@/components/ui/SectionLabel';
+import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 import { verdictHeadline, verdictSupport } from '@/lib/verdict';
 
 /** The three outcomes the window can actually call. `not_enough_history` renders as an empty state instead. */
 export type JudgedVerdict = Exclude<TrendVerdict, 'not_enough_history'>;
 
+/** The prototype draws only the improving case, on `icon-accent`. The other
+ *  two are real states it never had to render; they keep a tone that does not
+ *  read as a celebration. */
 const TONE: Record<JudgedVerdict, string> = {
-    improving: 'text-leaf-ink',
+    improving: 'text-icon-accent',
     plateaued: 'text-foreground',
     slipped: 'text-ember-ink',
 };
 
 /**
- * The home screen's answer to "am I getting better?" — the call itself, the
- * aggregate that backs it, and Temari's byline so the sentence reads as hers.
- * The matched pairs it was computed from render beneath it as evidence.
+ * The prototype's "you vs past you" block: a mono eyebrow, the call itself as
+ * a serif accent headline, and the aggregate that backs it. The matched pairs
+ * it was computed from render beneath it as evidence.
  */
 export default function VerdictHero({
     trend,
@@ -25,29 +27,22 @@ export default function VerdictHero({
 }: Readonly<{ trend: PastYouTrend; verdict: JudgedVerdict }>) {
     return (
         <section>
-            <SectionLabel dot dotClass="bg-horizon">
+            <Eyebrow token="micro" className="text-foreground">
                 You vs Past You · Last {trend.window_days} Days
-            </SectionLabel>
+            </Eyebrow>
 
-            <p
+            <h2
                 className={cn(
-                    'font-serif italic text-quote-lg leading-tight',
+                    'mt-2 font-serif text-[25px] font-semibold italic leading-tight',
                     TONE[verdict],
                 )}
             >
                 {verdictHeadline(trend)}
-            </p>
+            </h2>
 
-            <p className="mt-3 font-sans text-sm leading-relaxed text-text-2">
+            <p className="mt-2 font-sans text-[13px] leading-relaxed text-foreground">
                 {verdictSupport(trend)}
             </p>
-
-            <div className="mt-4 flex items-center gap-2">
-                <FaceIcon size={34} />
-                <span className="font-mono text-[11px] font-semibold tracking-[0.06em] text-text-3">
-                    temari
-                </span>
-            </div>
         </section>
     );
 }

@@ -1,10 +1,11 @@
+import { Link } from '@inertiajs/react';
+
 import type { WeekPlan, WeekPlanDay } from '@/types/inertia';
 
-import Chip, { type ChipTone } from '@/components/ui/Chip';
+import Chip from '@/components/ui/Chip';
+import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
-import SectionLabel from '@/components/ui/SectionLabel';
-import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
 import { formatPace, parseNaiveLocalDate, todayLocalIso } from '@/lib/pace';
@@ -23,14 +24,6 @@ const PHASE_LABEL: Record<string, string> = {
     peak: 'Peak',
     taper: 'Taper',
     deload: 'Deload',
-};
-
-const PHASE_TONE: Record<string, ChipTone> = {
-    base: 'neutral',
-    build: 'sky',
-    peak: 'horizon',
-    taper: 'horizon',
-    deload: 'neutral',
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -64,8 +57,8 @@ const STATUS_TONE: Record<string, string> = {
     skip: 'text-text-3',
 };
 
-const RING_SIZE = 104;
-const RING_STROKE = 10;
+const RING_SIZE = 60;
+const RING_STROKE = 6;
 
 function weekdayAbbr(iso: string): string {
     const date = parseNaiveLocalDate(iso);
@@ -87,60 +80,125 @@ function dayDetail(day: WeekPlanDay): string {
     return parts.join(' · ');
 }
 
-function SessionsRing({ value }: Readonly<{ value: number }>) {
+/** The prototype's `ProgressRing`: an arc for credited/total with the same
+ *  figure reading out at its centre. */
+function ProgressRing({
+    credited,
+    total,
+}: Readonly<{ credited: number; total: number }>) {
     const radius = (RING_SIZE - RING_STROKE) / 2;
     const circumference = 2 * Math.PI * radius;
-    const clamped = Math.min(1, Math.max(0, value));
-    const tweenedPct = useCountUp(clamped * 100) / 100;
-    const offset = circumference * (1 - tweenedPct);
+    const ratio = total > 0 ? Math.min(1, Math.max(0, credited / total)) : 0;
+    const tweenedRatio = useCountUp(ratio);
+    const tweenedCredited = useCountUp(credited);
 
     return (
-        <svg
-            width={RING_SIZE}
-            height={RING_SIZE}
-            viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
-            className="-rotate-90"
-            aria-hidden
+        <div
+            className="relative flex-none"
+            style={{ width: RING_SIZE, height: RING_SIZE }}
         >
-            <circle
-                cx={RING_SIZE / 2}
-                cy={RING_SIZE / 2}
-                r={radius}
-                fill="none"
-                stroke="var(--color-surface-sunken)"
-                strokeWidth={RING_STROKE}
-            />
-            <circle
-                cx={RING_SIZE / 2}
-                cy={RING_SIZE / 2}
-                r={radius}
-                fill="none"
-                stroke="var(--color-horizon-ink)"
-                strokeWidth={RING_STROKE}
-                strokeLinecap="round"
-                strokeDasharray={circumference}
-                strokeDashoffset={offset}
-            />
-        </svg>
+            <svg
+                width={RING_SIZE}
+                height={RING_SIZE}
+                viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
+                className="-rotate-90"
+                aria-hidden
+            >
+                <circle
+                    cx={RING_SIZE / 2}
+                    cy={RING_SIZE / 2}
+                    r={radius}
+                    fill="none"
+                    strokeWidth={RING_STROKE}
+                    className="stroke-border"
+                />
+                <circle
+                    cx={RING_SIZE / 2}
+                    cy={RING_SIZE / 2}
+                    r={radius}
+                    fill="none"
+                    strokeWidth={RING_STROKE}
+                    strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={circumference * (1 - tweenedRatio)}
+                    className="stroke-icon-accent"
+                />
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center font-mono text-[11px] font-extrabold tabular-nums text-foreground">
+                {Math.round(tweenedCredited)}/{total}
+            </span>
+        </div>
     );
 }
 
-function DayGlyph({ day }: Readonly<{ day: WeekPlanDay }>) {
+function PlanFigure({
+    value,
+    label,
+}: Readonly<{ value: string; label: string }>) {
     return (
-        <Icon
-            icon={TYPE_ICON[day.session_type] ?? 'mdi:fire'}
-            width={16}
-            height={16}
-            className={STATUS_TONE[day.status] ?? 'text-text-3'}
-            aria-hidden
-        />
+        <div>
+            <b className="block font-mono text-[15px] font-extrabold tabular-nums text-foreground">
+                {value}
+            </b>
+            <span className="text-[9px] uppercase tracking-[0.05em] text-foreground">
+                {label}
+            </span>
+        </div>
+    );
+}
+
+/** A rest day someone ran anyway reads as the distance they actually ran, the
+ *  way the prototype's own wednesday cell does. */
+function distanceLabel(day: WeekPlanDay): string {
+    if (day.session_type !== 'rest') {
+        return `${day.distance_km}k`;
+    }
+    return day.ran_anyway && day.actual_km !== null
+        ? `${day.actual_km}k`
+        : 'rest';
+}
+
+function DayCell({
+    day,
+    isToday,
+}: Readonly<{ day: WeekPlanDay; isToday: boolean }>) {
+    const isRest = day.session_type === 'rest';
+    let tone = STATUS_TONE[day.status] ?? 'text-foreground';
+    if (isRest) {
+        tone = day.ran_anyway ? 'text-leaf-ink' : 'text-foreground';
+    }
+
+    return (
+        <li
+            title={dayDetail(day)}
+            className={cn(
+                'flex flex-col items-center gap-0.5 rounded-lg py-1.5',
+                isToday && 'ring-[1.5px] ring-inset ring-icon-accent',
+            )}
+        >
+            <span className="font-mono text-[9px] uppercase tracking-[0.05em] text-foreground">
+                {weekdayAbbr(day.date)}
+            </span>
+            <Icon
+                icon={TYPE_ICON[day.session_type] ?? 'mdi:fire'}
+                width={13}
+                height={13}
+                className={tone}
+                aria-hidden
+            />
+            <span className="font-mono text-[8px] text-foreground">
+                {distanceLabel(day)}
+            </span>
+        </li>
     );
 }
 
 /**
- * "This week's plan" — the widget Home leads with. Fields are exactly
- * `CurrentWeekPlanBuilder::forUser()`'s shape, the same computation Plan's
- * own week rows use, so nothing shown here can drift from Plan.
+ * "This week's plan" — the widget Today leads with, on the prototype's
+ * `PlanCard` shape: phase badge, a credited/total ring beside two figures, a
+ * seven-day grid, and a footer row for today's session. Fields are exactly
+ * `CurrentWeekPlanBuilder::forUser()`'s shape, the same computation Plan's own
+ * week rows use, so nothing shown here can drift from Plan.
  */
 export default function WeekPlanWidget({
     weekPlan,
@@ -150,97 +208,73 @@ export default function WeekPlanWidget({
     const todayCorePaceSecPerKm =
         today?.segments.find((s) => s.key === 'main' || s.key === 'interval')
             ?.pace_sec_per_km ?? null;
-    const creditedTweened = useCountUp(weekPlan.credited_this_week);
     const kmTweened = useCountUp(weekPlan.planned_km_this_week);
 
     return (
-        <Card as="section" padding="hero">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-                <SectionLabel dot dotClass="bg-leaf" className="mb-0">
+        <Card as="section">
+            <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
+                <Eyebrow token="micro" className="text-foreground">
                     This week&apos;s plan
-                </SectionLabel>
-                <Chip tone={PHASE_TONE[weekPlan.phase] ?? 'neutral'}>
+                </Eyebrow>
+                <Chip className="bg-muted text-foreground">
                     {PHASE_LABEL[weekPlan.phase] ?? weekPlan.phase}
                 </Chip>
             </div>
 
-            <div className="mt-4 flex flex-col items-center gap-4 min-[900px]:gap-6">
-                <SessionsRing
-                    value={
-                        weekPlan.sessions_per_week > 0
-                            ? weekPlan.credited_this_week /
-                              weekPlan.sessions_per_week
-                            : 0
-                    }
+            <div className="mb-3.5 flex items-center gap-4 min-[900px]:gap-6">
+                <ProgressRing
+                    credited={weekPlan.credited_this_week}
+                    total={weekPlan.sessions_per_week}
                 />
-                <div className="grid flex-1 grid-cols-2 gap-3">
-                    <StatTile
+                <div className="grid flex-1 grid-cols-2 gap-2">
+                    <PlanFigure
+                        value={`${weekPlan.credited_this_week}/${weekPlan.sessions_per_week}`}
                         label="Sessions"
-                        value={`${Math.round(creditedTweened)}/${weekPlan.sessions_per_week}`}
-                        tone="sunken"
-                        size="sm"
                     />
-                    <StatTile
-                        label="Distance"
+                    <PlanFigure
                         value={kmTweened.toFixed(1)}
-                        unit="km"
-                        tone="sunken"
-                        size="sm"
+                        label="Km this week"
                     />
                 </div>
             </div>
 
-            <ul className="mt-4 grid grid-cols-7 gap-1.5">
+            <ul className="mb-3.5 grid grid-cols-7 gap-1">
                 {weekPlan.days.map((day) => (
-                    <li
+                    <DayCell
                         key={day.date}
-                        title={dayDetail(day)}
-                        className={cn(
-                            'flex flex-col items-center gap-1 rounded-lg bg-muted p-2 text-center',
-                            day.date === todayIso && 'ring-2 ring-horizon-ink',
-                        )}
-                    >
-                        <span className="text-label-micro text-text-3">
-                            {weekdayAbbr(day.date)}
-                        </span>
-                        <DayGlyph day={day} />
-                        <span className="text-[11px] font-semibold text-foreground">
-                            {day.session_type === 'rest'
-                                ? day.ran_anyway
-                                    ? 'Ran Anyway'
-                                    : 'Rest'
-                                : `${day.distance_km}k`}
-                        </span>
-                        {day.pinned && (
-                            <Icon
-                                icon="mdi:pin"
-                                width={9}
-                                height={9}
-                                className="text-text-3"
-                                aria-label="Pinned"
-                            />
-                        )}
-                    </li>
+                        day={day}
+                        isToday={day.date === todayIso}
+                    />
                 ))}
             </ul>
 
             {today !== null && (
-                <div className="mt-4 rounded-lg bg-accent p-3">
-                    <span className="text-sm font-bold text-foreground">
-                        Today ·{' '}
+                <Link
+                    href="/plan"
+                    className="focus-ring flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2.5 text-[11.5px] text-foreground transition-colors hover:bg-accent"
+                >
+                    <span>
+                        <b>Today</b> ·{' '}
                         {SESSION_TYPE_LABEL[today.session_type] ??
                             today.session_type}
                         {today.session_type !== 'rest' &&
                             ` · ${today.distance_km} km`}
                         {todayCorePaceSecPerKm !== null &&
                             ` · ${formatPace(todayCorePaceSecPerKm)}/km`}
+                        {today.clamp_note !== null && (
+                            <span className="mt-1 block italic text-text-3">
+                                {today.clamp_note}
+                            </span>
+                        )}
                     </span>
-                    {today.clamp_note !== null && (
-                        <p className="mt-1 text-xs italic text-text-3">
-                            {today.clamp_note}
-                        </p>
-                    )}
-                </div>
+                    <Icon
+                        icon="mdi:chevron-right"
+                        width={16}
+                        height={16}
+                        className="flex-none text-foreground"
+                        aria-hidden
+                    />
+                </Link>
             )}
         </Card>
     );

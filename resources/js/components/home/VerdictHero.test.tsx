@@ -108,9 +108,22 @@ describe('VerdictHero', () => {
         ).toBeInTheDocument();
     });
 
-    it('signs the call so it reads as Temari speaking', () => {
+    // The prototype's "you vs past you" block carries no mascot and no byline;
+    // the face appears only on its plan and today cards.
+    it('draws no mascot byline, as the prototype does not', () => {
+        const { container } = render(
+            <VerdictHero trend={trend()} verdict="improving" />,
+        );
+
+        expect(container.querySelector('[data-face-icon]')).toBeNull();
+        expect(screen.queryByText('temari')).not.toBeInTheDocument();
+    });
+
+    it('paints the improving headline on the accent the prototype uses', () => {
         render(<VerdictHero trend={trend()} verdict="improving" />);
 
-        expect(screen.getByText('temari')).toBeInTheDocument();
+        expect(
+            screen.getByText("you're faster than you were in March."),
+        ).toHaveClass('text-icon-accent');
     });
 });

@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
-use App\Services\Run\PostRunNoteReader;
 use App\Services\Run\Story\BriefingComposer;
 use App\Services\Run\Story\BriefingResult;
 use App\Services\Run\Story\PastYouTrendBuilder;
@@ -30,7 +29,6 @@ class DashboardController extends Controller
         Temari $temari,
         TrainingLoad $trainingLoad,
         BriefingComposer $briefingComposer,
-        PostRunNoteReader $noteReader,
         PastYouTrendBuilder $pastYouTrend,
         CurrentWeekPlanBuilder $weekPlanBuilder,
     ): Response {
@@ -76,11 +74,6 @@ class DashboardController extends Controller
             'recentRuns' => fn (): Collection => $loadRecentRuns(),
             'pastYouTrend' => fn (): array => $pastYouTrend->build($user, $today)->toArray(),
             'weekPlan' => fn (): ?array => $weekPlanBuilder->forUser($user, $today),
-            'lastRunNote' => function () use ($loadRecentRuns, $noteReader): ?array {
-                $lastRunActivityId = $loadRecentRuns()->first()?->activity_id;
-
-                return $lastRunActivityId === null ? null : $noteReader->forActivity($lastRunActivityId);
-            },
         ]);
     }
 

@@ -166,8 +166,7 @@ it('does not fetch recent runs or weekly snapshots on a briefing-only partial re
 
     $response = $this->actingAs($user)->get('/', $headers)->assertSuccessful();
 
-    // `summary_polyline` is unique to the recent-run select, which `recentRuns`
-    // and `lastRunNote` share behind one memoized closure.
+    // `summary_polyline` is unique to the recent-run select.
     $recentRunFetches = array_filter($queries, fn (string $sql): bool => str_contains($sql, 'summary_polyline'));
     $snapshotReads = array_filter($queries, fn (string $sql): bool => str_contains($sql, '`weekly_snapshots`'));
 
@@ -177,7 +176,7 @@ it('does not fetch recent runs or weekly snapshots on a briefing-only partial re
     $response->assertJsonPath('component', 'Home');
     // The one prop the poll does name still has to resolve.
     $response->assertJsonPath('props.briefing.mood', fn (mixed $mood): bool => is_string($mood));
-    foreach (['load', 'snapshot', 'recentRuns', 'lastRunNote', 'weekPlan'] as $skipped) {
+    foreach (['load', 'snapshot', 'recentRuns', 'weekPlan'] as $skipped) {
         $response->assertJsonMissingPath("props.{$skipped}");
     }
 });
