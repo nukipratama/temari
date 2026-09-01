@@ -255,7 +255,7 @@ function QuestionRow({
                         size="sm"
                         onClick={() => onReuse(question.question)}
                     >
-                        Ask it again
+                        ask it again
                     </PillButton>
                 </div>
             )}

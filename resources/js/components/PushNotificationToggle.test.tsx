@@ -60,7 +60,7 @@ it('tells a non-Safari iOS browser to open in Safari', async () => {
     vi.mocked(webPush.isIosNonSafari).mockReturnValue(true);
     render(<PushNotificationToggle />);
     expect(
-        await screen.findByText(/Open Temari in Safari/),
+        await screen.findByText(/open temari in Safari/),
     ).toBeInTheDocument();
 });
 
@@ -115,7 +115,7 @@ it('renders a mute toggle instead of the action once subscribed, when onMuteChan
     );
 
     const toggle = await screen.findByRole('switch', {
-        name: 'Send run notifications to this device',
+        name: 'send run notifications to this device',
     });
     fireEvent.click(toggle);
 

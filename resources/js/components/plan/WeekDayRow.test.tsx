@@ -77,7 +77,7 @@ describe('WeekDayRow', () => {
         renderRow();
 
         expect(screen.getByText('Thu')).toBeInTheDocument();
-        expect(screen.getByText('Tempo')).toBeInTheDocument();
+        expect(screen.getByText('tempo')).toBeInTheDocument();
         expect(screen.getByText('8 km · 5:00/km')).toBeInTheDocument();
     });
 
@@ -98,13 +98,13 @@ describe('WeekDayRow', () => {
             }),
         });
 
-        expect(screen.getByText('Partial · 60%')).toBeInTheDocument();
+        expect(screen.getByText('partial · 60%')).toBeInTheDocument();
     });
 
     it('reads an excused upcoming day as skipped before the scorer has run', () => {
         renderRow({ day: day({ skipped: true }) });
 
-        expect(screen.getByText('Skipped')).toBeInTheDocument();
+        expect(screen.getByText('skipped')).toBeInTheDocument();
     });
 
     it('shows nothing but the plan on a day still ahead', () => {

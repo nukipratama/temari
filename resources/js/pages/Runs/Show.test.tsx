@@ -194,12 +194,12 @@ describe('Runs/Show', () => {
         expect(
             screen.getByRole('heading', { name: 'Morning Run' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('10 May 2026 · 07:00')).toBeInTheDocument();
+        expect(screen.getByText('10 may 2026 · 07:00')).toBeInTheDocument();
     });
 
     it('uses the backend moodFallback when there is no post-run story line', () => {
         renderShow({ storyLine: null, moodFallback: 'wobbly' });
-        expect(screen.getByText('Wobbly')).toBeInTheDocument();
+        expect(screen.getByText('wobbly')).toBeInTheDocument();
     });
 
     it('says nothing about hydration when the run is already detailed', () => {
@@ -268,7 +268,7 @@ describe('Runs/Show', () => {
     it('offers the per-run ask panel', () => {
         renderShow();
         expect(
-            screen.getByPlaceholderText('Ask anything about this run'),
+            screen.getByPlaceholderText('ask anything about this run'),
         ).toBeInTheDocument();
     });
 
@@ -410,14 +410,14 @@ describe('Runs/Show', () => {
         stubSyncAnimationFrame();
         renderShow();
         expect(
-            screen.getByRole('dialog', { name: 'Share the card' }),
+            screen.getByRole('dialog', { name: 'share the card' }),
         ).toBeInTheDocument();
     });
 
     it('closes with a Strava provenance footer carrying the run’s own id', () => {
         const { container } = renderShow();
         expect(container.querySelector('footer')).toHaveTextContent(
-            'Synced from Strava · May 10 · 00:00 · #4821',
+            'Synced from Strava · may 10 · 00:00 · #4821',
         );
     });
 

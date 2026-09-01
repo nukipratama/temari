@@ -81,13 +81,13 @@ export function fitnessVerdict(
     const climb = lastCtl - firstCtl;
     if (climb >= 2) {
         return lastCtl - lastAtl >= 0
-            ? 'Climbing, not spiking.'
-            : 'Climbing, and carrying the load.';
+            ? 'climbing, not spiking.'
+            : 'climbing, and carrying the load.';
     }
     if (climb <= -2) {
-        return 'Easing off.';
+        return 'easing off.';
     }
-    return 'Holding steady.';
+    return 'holding steady.';
 }
 
 function streakDetail(streak: StreakSummaryLike): string {
@@ -170,7 +170,7 @@ export default function FitnessPanel({
             labels,
             datasets: [
                 {
-                    label: 'Fitness',
+                    label: 'fitness',
                     data: windowed.map((p) => p.ctl),
                     borderColor: ground.line,
                     backgroundColor: 'transparent',
@@ -180,7 +180,7 @@ export default function FitnessPanel({
                     fill: false,
                 },
                 {
-                    label: 'Fatigue',
+                    label: 'fatigue',
                     data: windowed.map((p) => p.atl),
                     borderColor: ground.secondaryLine,
                     backgroundColor: 'transparent',
@@ -225,7 +225,7 @@ export default function FitnessPanel({
     if (windowed.length === 0) {
         return (
             <EmptyPanel
-                title="Not enough training history yet to draw a trend."
+                title="not enough training history yet to draw a trend."
                 className={className}
             />
         );
@@ -257,19 +257,19 @@ export default function FitnessPanel({
                 <motion.div variants={fadeInUp}>
                     <FitnessStat
                         value={Math.round(ctlCount).toString()}
-                        label="Fitness"
+                        label="fitness"
                     />
                 </motion.div>
                 <motion.div variants={fadeInUp}>
                     <FitnessStat
                         value={Math.round(atlCount).toString()}
-                        label="Fatigue"
+                        label="fatigue"
                     />
                 </motion.div>
                 <motion.div variants={fadeInUp}>
                     <FitnessStat
                         value={form >= 0 ? `+${form}` : form.toString()}
-                        label="Form"
+                        label="form"
                     />
                 </motion.div>
             </motion.div>

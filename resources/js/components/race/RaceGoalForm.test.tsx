@@ -27,18 +27,18 @@ describe('RaceGoalForm', () => {
     it('labels itself for creating a race when there is none', () => {
         render(<RaceGoalForm race={null} projection={null} />);
 
-        expect(screen.getByText('Set your race')).toBeInTheDocument();
+        expect(screen.getByText('set your race')).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Set race' }),
+            screen.getByRole('button', { name: 'set race' }),
         ).toBeInTheDocument();
     });
 
     it('labels itself for editing once a race is set', () => {
         render(<RaceGoalForm race={RACE} projection={null} />);
 
-        expect(screen.getByText('Edit your race')).toBeInTheDocument();
+        expect(screen.getByText('edit your race')).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Update race' }),
+            screen.getByRole('button', { name: 'update race' }),
         ).toBeInTheDocument();
     });
 
@@ -62,7 +62,7 @@ describe('RaceGoalForm', () => {
             target: { value: 'Christmas 5K' },
         });
 
-        fireEvent.click(screen.getByRole('button', { name: 'Set race' }));
+        fireEvent.click(screen.getByRole('button', { name: 'set race' }));
 
         const call = lastPostCall();
         expect(call?.[0]).toBe('/race');
@@ -86,7 +86,7 @@ describe('RaceGoalForm', () => {
             screen.getByLabelText('Custom distance in kilometers'),
             { target: { value: '15' } },
         );
-        fireEvent.click(screen.getByRole('button', { name: 'Set race' }));
+        fireEvent.click(screen.getByRole('button', { name: 'set race' }));
 
         expect(lastPostCall()?.[1]).toMatchObject({ distance_m: 15_000 });
     });
@@ -97,7 +97,7 @@ describe('RaceGoalForm', () => {
         fireEvent.change(screen.getByLabelText('Race day'), {
             target: { value: '2026-12-25' },
         });
-        fireEvent.click(screen.getByRole('button', { name: 'Set race' }));
+        fireEvent.click(screen.getByRole('button', { name: 'set race' }));
 
         expect(lastPostCall()?.[1]).toMatchObject({ name: null });
     });
@@ -108,7 +108,7 @@ describe('RaceGoalForm', () => {
         fireEvent.change(screen.getByLabelText('Race day'), {
             target: { value: '2026-12-25' },
         });
-        fireEvent.click(screen.getByRole('button', { name: 'Set race' }));
+        fireEvent.click(screen.getByRole('button', { name: 'set race' }));
 
         const options = lastPostCall()?.[2] as {
             onStart: () => void;
@@ -116,11 +116,11 @@ describe('RaceGoalForm', () => {
         };
 
         act(() => options.onStart());
-        expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'saving…' })).toBeDisabled();
 
         act(() => options.onFinish());
         expect(
-            screen.getByRole('button', { name: 'Set race' }),
+            screen.getByRole('button', { name: 'set race' }),
         ).not.toBeDisabled();
     });
 
@@ -131,7 +131,7 @@ describe('RaceGoalForm', () => {
             target: { value: '0' },
         });
 
-        expect(screen.getByRole('button', { name: 'Set race' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'set race' })).toBeDisabled();
         expect(
             screen.getByText('Goal time has to be at least 5 minutes.'),
         ).toBeInTheDocument();
@@ -163,7 +163,7 @@ describe('RaceGoalForm', () => {
             screen.getByText(/quicker than world-record pace/),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Update race' }),
+            screen.getByRole('button', { name: 'update race' }),
         ).not.toBeDisabled();
     });
 

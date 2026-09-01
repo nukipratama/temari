@@ -9,11 +9,11 @@ describe('PaceTargetsCard', () => {
     it('draws all four targets with their formatted pace', () => {
         render(<PaceTargetsCard paces={PACES} />);
 
-        expect(screen.getByText('Easy')).toBeInTheDocument();
+        expect(screen.getByText('easy')).toBeInTheDocument();
         expect(screen.getByText('6:10')).toBeInTheDocument();
-        expect(screen.getByText('Marathon')).toBeInTheDocument();
-        expect(screen.getByText('Tempo')).toBeInTheDocument();
-        expect(screen.getByText('Interval')).toBeInTheDocument();
+        expect(screen.getByText('marathon')).toBeInTheDocument();
+        expect(screen.getByText('tempo')).toBeInTheDocument();
+        expect(screen.getByText('interval')).toBeInTheDocument();
         expect(screen.getByText('4:28')).toBeInTheDocument();
     });
 

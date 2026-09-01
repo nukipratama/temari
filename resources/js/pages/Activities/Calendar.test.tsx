@@ -106,13 +106,13 @@ const BASE_PROPS = {
     todayMonth: '2026-05',
 };
 
-describe('Calendar', () => {
+describe('calendar', () => {
     it('coach-marks the month grid on a first visit', () => {
         window.localStorage.clear();
         stubSyncAnimationFrame();
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
-            screen.getByRole('dialog', { name: 'Tap any day' }),
+            screen.getByRole('dialog', { name: 'tap any day' }),
         ).toBeInTheDocument();
     });
 
@@ -200,7 +200,7 @@ describe('Calendar', () => {
 
     it('renders all six mood swatches in the legend', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        ['Blazing', 'Easy', 'Wobbly', 'Gassed', 'Overloaded', 'Chill'].forEach(
+        ['blazing', 'easy', 'wobbly', 'gassed', 'overloaded', 'chill'].forEach(
             (label) => {
                 expect(screen.getByText(label)).toBeInTheDocument();
             },
@@ -239,7 +239,7 @@ describe('Calendar', () => {
 
     it('renders the Feed ⇄ Calendar nav with calendar active', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        expect(screen.getByText('Calendar').closest('a')).toHaveClass(
+        expect(screen.getByText('calendar').closest('a')).toHaveClass(
             'bg-card',
         );
     });
@@ -301,7 +301,7 @@ describe('Calendar', () => {
         expect(
             screen.getByRole('heading', { name: 'May 2026' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('Blazing')).toBeInTheDocument();
+        expect(screen.getByText('blazing')).toBeInTheDocument();
     });
 
     describe('monthly recap card', () => {
@@ -340,7 +340,7 @@ describe('Calendar', () => {
                 screen.queryByText(/thinking it over/),
             ).not.toBeInTheDocument();
             expect(
-                screen.queryByRole('button', { name: /Try again/ }),
+                screen.queryByRole('button', { name: /try again/ }),
             ).not.toBeInTheDocument();
         });
 
@@ -358,14 +358,14 @@ describe('Calendar', () => {
                 />,
             );
             expect(
-                screen.getByText("This month's recap isn't ready yet."),
+                screen.getByText("this month's recap isn't ready yet."),
             ).toBeInTheDocument();
             expect(
-                screen.queryByRole('button', { name: /Try again/ }),
+                screen.queryByRole('button', { name: /try again/ }),
             ).not.toBeInTheDocument();
         });
 
-        it('shows a "Try again" resume action when a past month recap failed', () => {
+        it('shows a "try again" resume action when a past month recap failed', () => {
             render(
                 <Calendar
                     {...BASE_PROPS}
@@ -378,11 +378,11 @@ describe('Calendar', () => {
                 />,
             );
             expect(
-                screen.getByRole('button', { name: /Try again/ }),
+                screen.getByRole('button', { name: /try again/ }),
             ).toBeInTheDocument();
         });
 
-        it('shows the "Reread" regenerate action only on the chain-head month', () => {
+        it('shows the "reread" regenerate action only on the chain-head month', () => {
             render(
                 <Calendar
                     {...BASE_PROPS}
@@ -392,7 +392,7 @@ describe('Calendar', () => {
                 />,
             );
             expect(
-                screen.getByRole('button', { name: /Reread/ }),
+                screen.getByRole('button', { name: /reread/ }),
             ).toBeInTheDocument();
         });
 
@@ -406,7 +406,7 @@ describe('Calendar', () => {
                 />,
             );
             expect(
-                screen.queryByRole('button', { name: /Reread/ }),
+                screen.queryByRole('button', { name: /reread/ }),
             ).not.toBeInTheDocument();
         });
 

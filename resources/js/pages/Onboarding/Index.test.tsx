@@ -64,7 +64,7 @@ describe('Onboarding/Index', () => {
         advanceToGoal();
 
         expect(
-            screen.getByRole('button', { name: 'Set my goal & finish' }),
+            screen.getByRole('button', { name: 'set my goal & finish' }),
         ).toBeDisabled();
 
         fireEvent.change(screen.getByLabelText('Race day'), {
@@ -72,7 +72,7 @@ describe('Onboarding/Index', () => {
         });
 
         expect(
-            screen.getByRole('button', { name: 'Set my goal & finish' }),
+            screen.getByRole('button', { name: 'set my goal & finish' }),
         ).not.toBeDisabled();
     });
 
@@ -96,7 +96,7 @@ describe('Onboarding/Index', () => {
         });
 
         fireEvent.click(
-            screen.getByRole('button', { name: 'Set my goal & finish' }),
+            screen.getByRole('button', { name: 'set my goal & finish' }),
         );
 
         const call = lastPostCall();
@@ -118,7 +118,7 @@ describe('Onboarding/Index', () => {
             target: { value: '2026-12-25' },
         });
         fireEvent.click(
-            screen.getByRole('button', { name: 'Set my goal & finish' }),
+            screen.getByRole('button', { name: 'set my goal & finish' }),
         );
 
         const [, , options] = vi.mocked(router.post).mock.calls.at(-1) as [
@@ -133,7 +133,7 @@ describe('Onboarding/Index', () => {
 
         act(() => options.onFinish?.());
         expect(
-            screen.getByRole('button', { name: 'Set my goal & finish' }),
+            screen.getByRole('button', { name: 'set my goal & finish' }),
         ).toBeInTheDocument();
     });
 
@@ -143,7 +143,7 @@ describe('Onboarding/Index', () => {
         render(<OnboardingIndex />);
 
         expect(
-            screen.getByText(/Every run Strava already has for you is landing/),
+            screen.getByText(/every run Strava already has for you is landing/),
         ).toBeInTheDocument();
         expect(
             screen.getByText(/is fetched per run, the first time you open it/),
@@ -166,7 +166,7 @@ describe('Onboarding/Index', () => {
         });
 
         expect(
-            screen.getByRole('button', { name: 'Set my goal & finish' }),
+            screen.getByRole('button', { name: 'set my goal & finish' }),
         ).toBeDisabled();
         expect(
             screen.getByText('Goal time has to be at least 5 minutes.'),
@@ -219,7 +219,7 @@ describe('Onboarding/Index', () => {
         render(<OnboardingIndex />);
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
-        fireEvent.click(screen.getByRole('button', { name: 'New to running' }));
+        fireEvent.click(screen.getByRole('button', { name: 'new to running' }));
         fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
         fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
 
@@ -235,7 +235,7 @@ describe('Onboarding/Index', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
         fireEvent.click(screen.getByRole('button', { name: '3x' }));
         fireEvent.click(
-            screen.getByRole('button', { name: 'Stay consistent' }),
+            screen.getByRole('button', { name: 'stay consistent' }),
         );
         fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
         fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
@@ -266,16 +266,16 @@ describe('Onboarding/Index', () => {
         render(<OnboardingIndex />);
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
-        fireEvent.click(screen.getByRole('button', { name: 'New to running' }));
+        fireEvent.click(screen.getByRole('button', { name: 'new to running' }));
         expect(
             screen.getByText(
-                /How many days a week can you realistically show up\?/,
+                /how many days a week can you realistically show up\?/,
             ),
         ).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'Back' }));
         expect(
-            screen.getByRole('button', { name: 'New to running' }),
+            screen.getByRole('button', { name: 'new to running' }),
         ).toHaveAttribute('aria-pressed', 'true');
     });
 
@@ -325,16 +325,16 @@ describe('Onboarding/Index', () => {
         render(<OnboardingIndex />);
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
-        fireEvent.click(screen.getByRole('button', { name: 'New to running' }));
+        fireEvent.click(screen.getByRole('button', { name: 'new to running' }));
         fireEvent.click(screen.getByRole('button', { name: '3x' }));
         fireEvent.click(
-            screen.getByRole('button', { name: 'Stay consistent' }),
+            screen.getByRole('button', { name: 'stay consistent' }),
         );
         fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
 
         expect(
             screen.getByText(
-                'Got it: New to running · 3x a week · Stay consistent.',
+                'Got it: new to running · 3x a week · stay consistent.',
             ),
         ).toBeInTheDocument();
     });
@@ -352,10 +352,10 @@ describe('Onboarding/Index', () => {
         render(<OnboardingIndex />);
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
-        fireEvent.click(screen.getByRole('button', { name: 'New to running' }));
+        fireEvent.click(screen.getByRole('button', { name: 'new to running' }));
         fireEvent.click(screen.getByRole('button', { name: '2x' }));
         fireEvent.click(
-            screen.getByRole('button', { name: 'Stay consistent' }),
+            screen.getByRole('button', { name: 'stay consistent' }),
         );
         fireEvent.click(screen.getByRole('button', { name: 'Mon' }));
         fireEvent.click(screen.getByRole('button', { name: 'Wed' }));

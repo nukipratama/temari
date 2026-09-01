@@ -82,7 +82,7 @@ function resolveBadge(
                 ? `Strava synced · ${relative}`
                 : 'Strava synced';
             return {
-                label: isCompact ? (relative ?? 'Synced') : full,
+                label: isCompact ? (relative ?? 'synced') : full,
                 ariaLabel: relative
                     ? `Strava synced ${relative}`
                     : 'Strava synced',
@@ -92,7 +92,7 @@ function resolveBadge(
         }
         case 'syncing':
             return {
-                label: isCompact ? 'Sync' : 'Syncing',
+                label: isCompact ? 'sync' : 'syncing',
                 ariaLabel: 'Strava syncing',
                 icon: 'mdi:sync',
                 iconClass: 'text-horizon-ink animate-spin',
@@ -100,8 +100,8 @@ function resolveBadge(
         case 'revoked':
             return {
                 label: isCompact
-                    ? 'Reconnect'
-                    : 'Strava disconnected · Reconnect',
+                    ? 'reconnect'
+                    : 'Strava disconnected · reconnect',
                 ariaLabel: 'Strava connection lost, reconnect',
                 icon: 'mdi:cloud-alert-outline',
                 iconClass: 'text-ember-ink',

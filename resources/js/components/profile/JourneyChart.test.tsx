@@ -11,10 +11,10 @@ describe('JourneyChart', () => {
         render(<JourneyChart weeks={WEEKS} timesSec={TIMES} />);
 
         expect(
-            screen.getByRole('button', { name: /Jun 22.*personal record/ }),
+            screen.getByRole('button', { name: /jun 22.*personal record/ }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'May 25: 52:40' }),
+            screen.getByRole('button', { name: 'may 25: 52:40' }),
         ).toBeInTheDocument();
     });
 
@@ -23,7 +23,7 @@ describe('JourneyChart', () => {
 
         expect(
             screen.getByText(
-                'Best time journey. From 52:40 on May 25 to 48:15 on Jun 22.',
+                'Best time journey. From 52:40 on may 25 to 48:15 on jun 22.',
             ),
         ).toBeInTheDocument();
     });
@@ -31,35 +31,35 @@ describe('JourneyChart', () => {
     it('toggles a point tooltip on click and closes it on a second click', () => {
         render(<JourneyChart weeks={WEEKS} timesSec={TIMES} />);
         const point = screen.getByRole('button', {
-            name: 'Jun 8: 51:57',
+            name: 'jun 8: 51:57',
         });
 
         fireEvent.click(point);
-        expect(screen.getByText(/Jun 8 · 51:57/)).toBeInTheDocument();
+        expect(screen.getByText(/jun 8 · 51:57/)).toBeInTheDocument();
 
         fireEvent.click(point);
-        expect(screen.queryByText(/Jun 8 · 51:57/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/jun 8 · 51:57/)).not.toBeInTheDocument();
     });
 
     it('closes the tooltip on a click outside the chart', () => {
         render(<JourneyChart weeks={WEEKS} timesSec={TIMES} />);
 
-        fireEvent.click(screen.getByRole('button', { name: 'Jun 8: 51:57' }));
-        expect(screen.getByText(/Jun 8 · 51:57/)).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'jun 8: 51:57' }));
+        expect(screen.getByText(/jun 8 · 51:57/)).toBeInTheDocument();
 
         fireEvent.click(document.body);
-        expect(screen.queryByText(/Jun 8 · 51:57/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/jun 8 · 51:57/)).not.toBeInTheDocument();
     });
 
     it('opens the tooltip from the keyboard', () => {
         render(<JourneyChart weeks={WEEKS} timesSec={TIMES} />);
 
         fireEvent.keyDown(
-            screen.getByRole('button', { name: 'Jun 8: 51:57' }),
+            screen.getByRole('button', { name: 'jun 8: 51:57' }),
             { key: 'Enter' },
         );
 
-        expect(screen.getByText(/Jun 8 · 51:57/)).toBeInTheDocument();
+        expect(screen.getByText(/jun 8 · 51:57/)).toBeInTheDocument();
     });
 
     it('draws an empty state when no week carries a time', () => {

@@ -63,7 +63,7 @@ describe('SeasonTimeline', () => {
     it('names the phase the athlete is in', () => {
         renderTimeline();
 
-        expect(screen.getByText('Base phase')).toBeInTheDocument();
+        expect(screen.getByText('base phase')).toBeInTheDocument();
     });
 
     it('folds the weeks already behind in this phase into one cluster', () => {
@@ -77,7 +77,7 @@ describe('SeasonTimeline', () => {
         renderTimeline();
 
         expect(screen.getByText('2 weeks ahead')).toBeInTheDocument();
-        expect(screen.queryByText('Build phase')).not.toBeInTheDocument();
+        expect(screen.queryByText('build phase')).not.toBeInTheDocument();
     });
 
     it('singularises a one-week cluster', () => {
@@ -104,8 +104,8 @@ describe('SeasonTimeline', () => {
         renderTimeline();
         fireEvent.click(screen.getByRole('button', { name: /2 weeks ahead/ }));
 
-        expect(screen.getByText('Build phase')).toBeInTheDocument();
-        expect(screen.getByText('Peak phase')).toBeInTheDocument();
+        expect(screen.getByText('build phase')).toBeInTheDocument();
+        expect(screen.getByText('peak phase')).toBeInTheDocument();
     });
 
     it('numbers every week by its place in the whole season', () => {
@@ -139,8 +139,8 @@ describe('SeasonTimeline', () => {
         });
         fireEvent.click(screen.getByRole('button', { name: /2 weeks ahead/ }));
 
-        expect(screen.getAllByText('Build phase')).toHaveLength(2);
-        expect(screen.getByText('Deload phase')).toBeInTheDocument();
+        expect(screen.getAllByText('build phase')).toHaveLength(2);
+        expect(screen.getByText('deload phase')).toBeInTheDocument();
         // The second Build block is its own pass, not folded back into the first.
         expect(screen.getByText('Wk 3')).toBeInTheDocument();
     });

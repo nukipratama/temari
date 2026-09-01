@@ -105,10 +105,10 @@ describe('Settings', () => {
 
         expect(screen.getByText('The fine print')).toBeInTheDocument();
         for (const [label, href] of [
-            ['Terms of use', '/terms'],
-            ['Privacy policy', '/privacy'],
-            ['How Temari uses AI', '/ai-use'],
-            ['Training disclaimer', '/training-disclaimer'],
+            ['terms of use', '/terms'],
+            ['privacy policy', '/privacy'],
+            ['how temari uses AI', '/ai-use'],
+            ['training disclaimer', '/training-disclaimer'],
         ]) {
             expect(
                 screen.getByRole('link', { name: new RegExp(label) }),
@@ -214,7 +214,7 @@ describe('Settings', () => {
     it('shows the channel-neutral master switch from notificationPrefs', () => {
         render(<Settings notificationPrefs={prefs} />);
         expect(
-            screen.getByRole('switch', { name: 'Keep me posted' }),
+            screen.getByRole('switch', { name: 'keep me posted' }),
         ).toHaveAttribute('aria-checked', 'false');
     });
 
@@ -231,7 +231,7 @@ describe('Settings', () => {
         vi.mocked(router.patch).mockReset();
         render(<Settings notificationPrefs={prefs} />);
 
-        fireEvent.click(screen.getByRole('switch', { name: 'Keep me posted' }));
+        fireEvent.click(screen.getByRole('switch', { name: 'keep me posted' }));
 
         expect(router.patch).toHaveBeenCalledWith(
             '/profile/notifications',
@@ -244,11 +244,11 @@ describe('Settings', () => {
         );
     });
 
-    it('posts a test notification when "Send test notification" is clicked', () => {
+    it('posts a test notification when "send test notification" is clicked', () => {
         vi.mocked(router.post).mockReset();
         render(<Settings />);
 
-        fireEvent.click(screen.getByText('Send test notification'));
+        fireEvent.click(screen.getByText('send test notification'));
 
         // The button routes through usePendingPost now, which adds its own
         // onStart/onSuccess/onFinish alongside the caller's options.
@@ -278,7 +278,7 @@ describe('Settings', () => {
     it('leaves the test button live when nothing is cooling', () => {
         render(<Settings testCooldownSeconds={null} />);
         expect(
-            screen.getByText('Send test notification').closest('button'),
+            screen.getByText('send test notification').closest('button'),
         ).not.toBeDisabled();
     });
 
@@ -291,7 +291,7 @@ describe('Settings', () => {
         vi.mocked(router.patch).mockReset();
         render(<Settings notificationPrefs={prefs} />);
 
-        const toggle = screen.getByRole('switch', { name: 'Keep me posted' });
+        const toggle = screen.getByRole('switch', { name: 'keep me posted' });
         fireEvent.click(toggle);
 
         expect(router.patch).not.toHaveBeenCalled();
@@ -318,7 +318,7 @@ describe('Settings', () => {
 
         fireEvent.click(screen.getByText('Delete account'));
         expect(
-            screen.getByText('Sure you want to delete your account?'),
+            screen.getByText('sure you want to delete your account?'),
         ).toBeInTheDocument();
         // Nothing is deleted until the user confirms.
         expect(router.delete).not.toHaveBeenCalled();
@@ -330,7 +330,7 @@ describe('Settings', () => {
 
         fireEvent.click(screen.getByText('Delete account'));
         fireEvent.click(
-            screen.getByRole('button', { name: /Yes, delete my account/ }),
+            screen.getByRole('button', { name: /yes, delete my account/ }),
         );
 
         expect(router.delete).toHaveBeenCalledWith('/account');
@@ -342,13 +342,13 @@ describe('Settings', () => {
 
         fireEvent.click(screen.getByText('Delete account'));
         expect(
-            screen.getByText('Sure you want to delete your account?'),
+            screen.getByText('sure you want to delete your account?'),
         ).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
         await waitFor(() => {
             expect(
-                screen.queryByText('Sure you want to delete your account?'),
+                screen.queryByText('sure you want to delete your account?'),
             ).not.toBeInTheDocument();
         });
         expect(router.delete).not.toHaveBeenCalled();

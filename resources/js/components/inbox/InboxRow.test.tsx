@@ -158,7 +158,7 @@ describe('InboxRow', () => {
         await userEvent.click(toggle);
 
         expect(toggle.textContent).not.toBe(relativeText);
-        expect(toggle.textContent).toMatch(/Aug 1[23] · \d{2}:\d{2}/);
+        expect(toggle.textContent).toMatch(/aug 1[23] · \d{2}:\d{2}/);
 
         await userEvent.click(toggle);
 

@@ -105,10 +105,10 @@ describe('PRESETS', () => {
 
 describe('day labels', () => {
     it('formats a day key as day + short month', () => {
-        expect(formatDayLabel('2026-05-18')).toBe('May 18');
+        expect(formatDayLabel('2026-05-18')).toBe('may 18');
     });
 
     it('formats a day key as short weekday + day for the dense axis', () => {
-        expect(formatDayLabelShort('2026-05-18')).toBe('18 Mon');
+        expect(formatDayLabelShort('2026-05-18')).toBe('18 mon');
     });
 });

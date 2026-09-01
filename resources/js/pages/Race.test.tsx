@@ -29,10 +29,10 @@ describe('Race', () => {
         const headings = [
             'Race',
             'your race,',
-            'Race Goal',
+            'race goal',
             'Jakarta 10K',
             'Projected finish',
-            'Edit your race',
+            'edit your race',
         ];
         const text = container.textContent ?? '';
         const positions = headings.map((h) => text.indexOf(h));
@@ -46,26 +46,26 @@ describe('Race', () => {
 
         expect(screen.getByText(/give the plan/)).toBeInTheDocument();
         expect(
-            screen.getByText('No race on the calendar yet.'),
+            screen.getByText('no race on the calendar yet.'),
         ).toBeInTheDocument();
         expect(screen.queryByText('Projected finish')).not.toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Set race' }),
+            screen.getByRole('button', { name: 'set race' }),
         ).toBeInTheDocument();
     });
 
     it('keeps the goal form on the page whether or not a race is set', () => {
         const { rerender } = render(<Race race={null} projection={null} />);
-        expect(screen.getByText('Set your race')).toBeInTheDocument();
+        expect(screen.getByText('set your race')).toBeInTheDocument();
 
         rerender(<Race race={RACE} projection={PROJECTION} />);
-        expect(screen.getByText('Edit your race')).toBeInTheDocument();
+        expect(screen.getByText('edit your race')).toBeInTheDocument();
     });
 
     it('marks the race tab as current in the schedule switcher', () => {
         render(<Race race={null} projection={null} />);
 
-        expect(screen.getByText('Race Goal').closest('a')).toHaveAttribute(
+        expect(screen.getByText('race goal').closest('a')).toHaveAttribute(
             'aria-current',
             'page',
         );

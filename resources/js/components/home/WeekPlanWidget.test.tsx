@@ -73,7 +73,7 @@ describe('WeekPlanWidget', () => {
             expect(screen.getAllByText('2/5')).toHaveLength(2);
             expect(screen.getByText('32.0')).toBeInTheDocument();
         });
-        expect(screen.getByText('Build')).toBeInTheDocument();
+        expect(screen.getByText('build')).toBeInTheDocument();
     });
 
     it('renders a day glyph icon by session type, not by status', () => {
@@ -180,7 +180,7 @@ describe('WeekPlanWidget', () => {
 
         expect(
             screen.getByRole('link', {
-                name: /Today · Long run · 15 km · 5:30\/km/,
+                name: /today · long run · 15 km · 5:30\/km/,
             }),
         ).toHaveAttribute('href', '/plan');
         expect(
@@ -202,7 +202,7 @@ describe('WeekPlanWidget', () => {
         render(<WeekPlanWidget weekPlan={weekOf(days)} />);
 
         expect(
-            screen.getByRole('link', { name: 'Today · Rest' }),
+            screen.getByRole('link', { name: 'today · rest' }),
         ).toBeInTheDocument();
     });
 

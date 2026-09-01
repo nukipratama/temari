@@ -69,7 +69,7 @@ describe('Profile', () => {
         expect(
             screen.getByText('Time in zone · last 12 weeks'),
         ).toBeInTheDocument();
-        expect(screen.getByText(/Z2 · Easy 60%/)).toBeInTheDocument();
+        expect(screen.getByText(/Z2 · easy 60%/)).toBeInTheDocument();
     });
 
     it('omits the time-in-zone bar when no run recorded heart rate', () => {
@@ -203,8 +203,8 @@ describe('Profile', () => {
         expect(
             screen.getByText('Training · pace targets · per km'),
         ).toBeInTheDocument();
-        expect(screen.getByText('Easy')).toBeInTheDocument();
-        expect(screen.getByText('Interval')).toBeInTheDocument();
+        expect(screen.getByText('easy')).toBeInTheDocument();
+        expect(screen.getByText('interval')).toBeInTheDocument();
     });
 
     it('does not show a reconnect CTA when Strava is connected', () => {

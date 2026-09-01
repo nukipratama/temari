@@ -7,8 +7,8 @@ describe('TimeInZoneBar', () => {
     it('renders a legend entry per zone that carries time', () => {
         render(<TimeInZoneBar zones={{ Z1: 20, Z2: 60, Z3: 20 }} />);
 
-        expect(screen.getByText(/Z1 · Recovery 20%/)).toBeInTheDocument();
-        expect(screen.getByText(/Z2 · Easy 60%/)).toBeInTheDocument();
+        expect(screen.getByText(/Z1 · recovery 20%/)).toBeInTheDocument();
+        expect(screen.getByText(/Z2 · easy 60%/)).toBeInTheDocument();
         expect(screen.queryByText(/Z5/)).not.toBeInTheDocument();
     });
 
@@ -17,7 +17,7 @@ describe('TimeInZoneBar', () => {
 
         expect(
             screen.getByRole('img', {
-                name: 'Time in heart-rate zone: Z2 · Easy 100%',
+                name: 'Time in heart-rate zone: Z2 · easy 100%',
             }),
         ).toBeInTheDocument();
     });

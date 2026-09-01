@@ -56,7 +56,7 @@ describe('SeasonHeaderCard', () => {
         renderCard();
 
         expect(screen.getByText('Season · Week 2 of 12')).toBeInTheDocument();
-        expect(screen.getByText('Build · Jun 15 – Sep 4')).toBeInTheDocument();
+        expect(screen.getByText('build · jun 15 – sep 4')).toBeInTheDocument();
     });
 
     it('shows the season adherence figure', () => {
@@ -75,9 +75,9 @@ describe('SeasonHeaderCard', () => {
     it('draws one labelled bar per phase, tallest at the biggest volume', () => {
         const { container } = renderCard();
 
-        expect(screen.getByText('Base')).toBeInTheDocument();
-        expect(screen.getByText('Build')).toBeInTheDocument();
-        expect(screen.getByText('Peak')).toBeInTheDocument();
+        expect(screen.getByText('base')).toBeInTheDocument();
+        expect(screen.getByText('build')).toBeInTheDocument();
+        expect(screen.getByText('peak')).toBeInTheDocument();
 
         const bars = container.querySelectorAll('.rounded-t-xs');
         expect(bars).toHaveLength(3);
@@ -90,7 +90,7 @@ describe('SeasonHeaderCard', () => {
             narration: {
                 id: 1,
                 status: 'done',
-                content: 'Base held together.',
+                content: 'base held together.',
                 type: 'plan_season_voice',
                 is_zone_dependent: false,
                 subject_type: 'season',
@@ -100,6 +100,6 @@ describe('SeasonHeaderCard', () => {
         });
 
         expect(screen.getByText("Temari's take")).toBeInTheDocument();
-        expect(screen.getByText('Base held together.')).toBeInTheDocument();
+        expect(screen.getByText('base held together.')).toBeInTheDocument();
     });
 });

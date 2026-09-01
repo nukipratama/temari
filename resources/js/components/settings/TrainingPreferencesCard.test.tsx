@@ -30,11 +30,11 @@ describe('TrainingPreferencesCard', () => {
 
         expect(screen.getByText('Training preferences')).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Experienced' }),
+            screen.getByRole('button', { name: 'experienced' }),
         ).toBeInTheDocument();
         expect(screen.getByRole('button', { name: '5x' })).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Chase a race time' }),
+            screen.getByRole('button', { name: 'chase a race time' }),
         ).toBeInTheDocument();
     });
 
@@ -42,14 +42,14 @@ describe('TrainingPreferencesCard', () => {
         render(<TrainingPreferencesCard trainingPreferences={SET_PAYLOAD} />);
 
         expect(
-            screen.getByRole('button', { name: 'Experienced' }),
+            screen.getByRole('button', { name: 'experienced' }),
         ).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByRole('button', { name: '5x' })).toHaveAttribute(
             'aria-pressed',
             'true',
         );
         expect(
-            screen.getByRole('button', { name: 'Chase a race time' }),
+            screen.getByRole('button', { name: 'chase a race time' }),
         ).toHaveAttribute('aria-pressed', 'true');
     });
 
@@ -115,7 +115,7 @@ describe('TrainingPreferencesCard', () => {
         ).toBeDisabled();
 
         fireEvent.click(
-            screen.getByRole('button', { name: 'Stay consistent' }),
+            screen.getByRole('button', { name: 'stay consistent' }),
         );
         expect(
             screen.getByRole('button', { name: /Save changes/ }),
@@ -137,7 +137,7 @@ describe('TrainingPreferencesCard', () => {
         vi.mocked(router.patch).mockReset();
         render(<TrainingPreferencesCard trainingPreferences={SET_PAYLOAD} />);
 
-        fireEvent.click(screen.getByRole('button', { name: 'Build a base' }));
+        fireEvent.click(screen.getByRole('button', { name: 'build a base' }));
         fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
 
         expect(router.patch).toHaveBeenCalledWith(
@@ -157,7 +157,7 @@ describe('TrainingPreferencesCard', () => {
         vi.mocked(router.patch).mockReset();
         render(<TrainingPreferencesCard trainingPreferences={SET_PAYLOAD} />);
 
-        fireEvent.click(screen.getByRole('button', { name: 'Build a base' }));
+        fireEvent.click(screen.getByRole('button', { name: 'build a base' }));
         fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
 

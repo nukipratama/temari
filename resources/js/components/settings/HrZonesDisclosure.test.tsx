@@ -67,7 +67,7 @@ describe('HrZonesDisclosure', () => {
     it('stays collapsed until the trigger is clicked, naming the current source', () => {
         render(<HrZonesDisclosure hrZones={DEFAULT_PAYLOAD} />);
         expect(screen.getByText('Heart-rate zones')).toBeInTheDocument();
-        expect(screen.getByText('Using default estimates')).toBeInTheDocument();
+        expect(screen.getByText('using default estimates')).toBeInTheDocument();
         expect(screen.queryByLabelText('Max HR')).not.toBeInTheDocument();
 
         open();
@@ -246,7 +246,7 @@ describe('HrZonesDisclosure', () => {
         expect(screen.getByRole('status')).toHaveTextContent('Saved');
     });
 
-    it('only shows Resync from Strava when canSyncFromStrava is true and the source is manual', () => {
+    it('only shows resync from Strava when canSyncFromStrava is true and the source is manual', () => {
         render(
             <HrZonesDisclosure
                 hrZones={{
@@ -258,7 +258,7 @@ describe('HrZonesDisclosure', () => {
         );
         open();
         expect(
-            screen.getByRole('button', { name: /Resync from Strava/ }),
+            screen.getByRole('button', { name: /resync from Strava/ }),
         ).toBeInTheDocument();
     });
 
@@ -277,7 +277,7 @@ describe('HrZonesDisclosure', () => {
         );
         open();
         fireEvent.click(
-            screen.getByRole('button', { name: /Resync from Strava/ }),
+            screen.getByRole('button', { name: /resync from Strava/ }),
         );
 
         expect(router.post).toHaveBeenCalledWith(

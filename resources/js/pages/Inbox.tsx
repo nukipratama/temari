@@ -93,8 +93,8 @@ export default function Inbox({
                 {notifications.length === 0 ? (
                     <EmptyPanel
                         face
-                        title="Nothing here yet."
-                        body="Every run, recap, and unlock lands here on its own. Nothing for you to do."
+                        title="nothing here yet."
+                        body="every run, recap, and unlock lands here on its own. nothing for you to do."
                         className="mt-4"
                     />
                 ) : (

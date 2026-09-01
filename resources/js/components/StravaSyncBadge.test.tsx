@@ -7,9 +7,9 @@ import StravaSyncBadge from './StravaSyncBadge';
 
 function sync(
     state: StravaSync['state'],
-    lastSyncedAt: string | null = null,
+    lastsyncedAt: string | null = null,
 ): StravaSync {
-    return { state, last_synced_at: lastSyncedAt };
+    return { state, last_synced_at: lastsyncedAt };
 }
 
 describe('StravaSyncBadge', () => {
@@ -21,7 +21,7 @@ describe('StravaSyncBadge', () => {
 
     it('renders an inert badge while syncing', () => {
         render(<StravaSyncBadge sync={sync('syncing')} />);
-        expect(screen.getByText('Syncing')).toBeInTheDocument();
+        expect(screen.getByText('syncing')).toBeInTheDocument();
         expect(screen.queryByRole('link')).not.toBeInTheDocument();
     });
 
@@ -36,15 +36,15 @@ describe('StravaSyncBadge', () => {
 
     it('uses the compact label variant when density is compact', () => {
         render(<StravaSyncBadge sync={sync('syncing')} density="compact" />);
-        expect(screen.getByText('Sync')).toBeInTheDocument();
-        expect(screen.queryByText('Syncing')).not.toBeInTheDocument();
+        expect(screen.getByText('sync')).toBeInTheDocument();
+        expect(screen.queryByText('syncing')).not.toBeInTheDocument();
     });
 
     it('renders a reconnect link to the OAuth redirect when revoked', () => {
         render(<StravaSyncBadge sync={sync('revoked')} />);
         const link = screen.getByRole('link', { name: /reconnect/i });
         expect(link).toHaveAttribute('href', '/auth/strava/redirect');
-        expect(screen.getByText(/Reconnect/)).toBeInTheDocument();
+        expect(screen.getByText(/reconnect/)).toBeInTheDocument();
     });
 
     it('defaults a missing sync prop to disconnected', () => {

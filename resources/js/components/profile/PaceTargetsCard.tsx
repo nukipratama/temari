@@ -12,10 +12,10 @@ export interface TrainingPaces {
 
 /** Slowest first, so the rail reads easy → hard left to right. */
 const MARKERS = [
-    { key: 'easy', label: 'Easy', below: false },
-    { key: 'marathon', label: 'Marathon', below: true },
-    { key: 'threshold', label: 'Tempo', below: false },
-    { key: 'interval', label: 'Interval', below: true },
+    { key: 'easy', label: 'easy', below: false },
+    { key: 'marathon', label: 'marathon', below: true },
+    { key: 'threshold', label: 'tempo', below: false },
+    { key: 'interval', label: 'interval', below: true },
 ] as const;
 
 /**

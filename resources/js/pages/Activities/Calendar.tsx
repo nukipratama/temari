@@ -102,7 +102,7 @@ export default function Calendar({
                         mood={dominantMood}
                         analysis={monthlyRecap}
                         awaitingSchedule={isCurrentMonth}
-                        awaitingScheduleLabel="This month's recap isn't ready yet."
+                        awaitingScheduleLabel="this month's recap isn't ready yet."
                         isChainHead={monthlyRecap.is_chain_head}
                         size="month"
                         inertiaReloadProps={['monthlyRecap']}
@@ -155,8 +155,8 @@ export default function Calendar({
                     id="calendar-grid"
                     anchorRef={gridRef}
                     placement="top"
-                    title="Tap any day"
-                    body="Days you ran open straight into the run itself. Tap a week for Temari's recap."
+                    title="tap any day"
+                    body="days you ran open straight into the run itself. tap a week for temari's recap."
                 />
             </PageContainer>
         </>

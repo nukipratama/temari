@@ -48,11 +48,11 @@ function renderHero(
 describe('RunHero', () => {
     it('heads the panel with the as-recorded date, the title and the mood', () => {
         renderHero();
-        expect(screen.getByText('19 Feb 2026 · 06:52')).toBeInTheDocument();
+        expect(screen.getByText('19 feb 2026 · 06:52')).toBeInTheDocument();
         expect(
             screen.getByRole('heading', { name: 'Morning tempo' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('Blazing')).toBeInTheDocument();
+        expect(screen.getByText('blazing')).toBeInTheDocument();
     });
 
     it('falls back to "run" when the activity has no name', () => {

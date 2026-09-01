@@ -24,7 +24,7 @@ beforeEach(() => {
 describe('Activities/Feed', () => {
     it('renders the Feed ⇄ Calendar nav with feed active', () => {
         render(<RunsIndex runs={[]} rangeFilter="8w" weeklySnapshots={[]} />);
-        expect(screen.getByText('Feed').closest('a')).toHaveClass('bg-card');
+        expect(screen.getByText('feed').closest('a')).toHaveClass('bg-card');
     });
 
     it('renders the empty state when no runs exist', () => {
@@ -140,7 +140,7 @@ describe('Activities/Feed', () => {
         );
         expect(screen.getAllByTestId('run-row').length).toBe(2);
         expect(screen.getByText(/A consistent week/)).toBeInTheDocument();
-        expect(screen.getByText(/Right on Track/)).toBeInTheDocument();
+        expect(screen.getByText(/right on track/)).toBeInTheDocument();
     });
 
     it('renders an orphans bucket when a run has no start_date_local', () => {

@@ -40,7 +40,7 @@ describe('AnalysisStatus', () => {
         );
         expect(screen.getByText('Halo Temari')).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: /Reread/ }),
+            screen.getByRole('button', { name: /reread/ }),
         ).toBeInTheDocument();
     });
 
@@ -52,7 +52,7 @@ describe('AnalysisStatus', () => {
             />,
         );
         expect(
-            screen.queryByRole('button', { name: /Reread/ }),
+            screen.queryByRole('button', { name: /reread/ }),
         ).not.toBeInTheDocument();
     });
 
@@ -106,7 +106,7 @@ describe('AnalysisStatus', () => {
             });
 
             expect(
-                screen.getByText(/Still processing, check back in a bit/),
+                screen.getByText(/still processing, check back in a bit/),
             ).toBeInTheDocument();
             expect(screen.queryByRole('status')).toBeNull();
         } finally {
@@ -117,7 +117,7 @@ describe('AnalysisStatus', () => {
     it('renders the failed retry button', () => {
         render(<AnalysisStatus analysis={payload({ status: 'failed' })} />);
         expect(
-            screen.getByRole('button', { name: /Try again/ }),
+            screen.getByRole('button', { name: /try again/ }),
         ).toBeInTheDocument();
     });
 
@@ -136,7 +136,7 @@ describe('AnalysisStatus', () => {
             />,
         );
         expect(
-            screen.getByText(/This week's recap isn't available yet/),
+            screen.getByText(/this week's recap isn't available yet/),
         ).toBeInTheDocument();
         expect(
             screen.queryByRole('button', { name: /Ask Temari to read it/ }),
@@ -168,7 +168,7 @@ describe('AnalysisStatus', () => {
         );
         expect(screen.getByText('Halo')).toBeInTheDocument();
         expect(
-            screen.queryByRole('button', { name: /Reread/ }),
+            screen.queryByRole('button', { name: /reread/ }),
         ).not.toBeInTheDocument();
     });
 
@@ -190,7 +190,7 @@ describe('AnalysisStatus', () => {
         vi.useRealTimers();
     });
 
-    it('gives the done-state timestamp and "Reread" button the on-sky muted tone instead of text-text-3', () => {
+    it('gives the done-state timestamp and "reread" button the on-sky muted tone instead of text-text-3', () => {
         vi.useFakeTimers();
         const now = new Date('2026-07-07T12:00:00Z');
         vi.setSystemTime(now);
@@ -212,7 +212,7 @@ describe('AnalysisStatus', () => {
         expect(screen.getByText(/Generated 5 min ago/)).not.toHaveClass(
             'text-text-3',
         );
-        const button = screen.getByRole('button', { name: /Reread/ });
+        const button = screen.getByRole('button', { name: /reread/ });
         expect(button).toHaveClass('text-ink-on-sky');
         expect(button).not.toHaveClass('text-text-3');
         vi.useRealTimers();
@@ -227,7 +227,7 @@ describe('AnalysisStatus', () => {
         expect(screen.getByText(/Attempt 3/)).toBeInTheDocument();
     });
 
-    it('disables Reread and shows countdown when retry_after_seconds > 0', () => {
+    it('disables reread and shows countdown when retry_after_seconds > 0', () => {
         render(
             <AnalysisStatus
                 analysis={payload({
@@ -268,9 +268,9 @@ describe('AnalysisStatus', () => {
             await act(async () => {
                 vi.advanceTimersByTime(4000);
             });
-            // Countdown reaches 0 → button re-enables to "Reread".
+            // Countdown reaches 0 → button re-enables to "reread".
             expect(
-                screen.getByRole('button', { name: /^Reread$/ }),
+                screen.getByRole('button', { name: /^reread$/ }),
             ).not.toBeDisabled();
         } finally {
             vi.useRealTimers();
@@ -295,7 +295,7 @@ describe('AnalysisStatus', () => {
             );
 
             await act(async () => {
-                fireEvent.click(screen.getByRole('button', { name: /Reread/ }));
+                fireEvent.click(screen.getByRole('button', { name: /reread/ }));
             });
 
             await waitFor(() => {
@@ -321,7 +321,7 @@ describe('AnalysisStatus', () => {
     });
 
     describe('when AI is globally paused', () => {
-        it('hides the "Reread" button on done content but keeps the content', () => {
+        it('hides the "reread" button on done content but keeps the content', () => {
             setMockPage({ aiPaused: true });
             render(
                 <AnalysisStatus
@@ -330,15 +330,15 @@ describe('AnalysisStatus', () => {
             );
             expect(screen.getByText('Halo')).toBeInTheDocument();
             expect(
-                screen.queryByRole('button', { name: /Reread/ }),
+                screen.queryByRole('button', { name: /reread/ }),
             ).not.toBeInTheDocument();
         });
 
-        it('hides the "Try again" button on a failed block', () => {
+        it('hides the "try again" button on a failed block', () => {
             setMockPage({ aiPaused: true });
             render(<AnalysisStatus analysis={payload({ status: 'failed' })} />);
             expect(
-                screen.queryByRole('button', { name: /Try again/ }),
+                screen.queryByRole('button', { name: /try again/ }),
             ).not.toBeInTheDocument();
         });
 
@@ -354,7 +354,7 @@ describe('AnalysisStatus', () => {
     });
 
     describe('chained behavior', () => {
-        it('shows "Reread" on a done block when it is the chain head', () => {
+        it('shows "reread" on a done block when it is the chain head', () => {
             render(
                 <AnalysisStatus
                     analysis={payload({
@@ -367,11 +367,11 @@ describe('AnalysisStatus', () => {
                 />,
             );
             expect(
-                screen.getByRole('button', { name: /Reread/ }),
+                screen.getByRole('button', { name: /reread/ }),
             ).toBeInTheDocument();
         });
 
-        it('hides "Reread" on a done block that is not the chain head', () => {
+        it('hides "reread" on a done block that is not the chain head', () => {
             render(
                 <AnalysisStatus
                     analysis={payload({
@@ -385,11 +385,11 @@ describe('AnalysisStatus', () => {
             );
             expect(screen.getByText('recap')).toBeInTheDocument();
             expect(
-                screen.queryByRole('button', { name: /Reread/ }),
+                screen.queryByRole('button', { name: /reread/ }),
             ).not.toBeInTheDocument();
         });
 
-        it('still shows "Try again" on a failed chained block (resumes the chain) even when not head', () => {
+        it('still shows "try again" on a failed chained block (resumes the chain) even when not head', () => {
             render(
                 <AnalysisStatus
                     analysis={payload({
@@ -401,7 +401,7 @@ describe('AnalysisStatus', () => {
                 />,
             );
             expect(
-                screen.getByRole('button', { name: /Try again/ }),
+                screen.getByRole('button', { name: /try again/ }),
             ).toBeInTheDocument();
         });
 
@@ -419,7 +419,7 @@ describe('AnalysisStatus', () => {
             expect(container).toBeEmptyDOMElement();
         });
 
-        it('standalone (non-chained) done block keeps "Reread" regardless of isChainHead', () => {
+        it('standalone (non-chained) done block keeps "reread" regardless of isChainHead', () => {
             render(
                 <AnalysisStatus
                     analysis={payload({ status: 'done', content: 'x' })}
@@ -427,7 +427,7 @@ describe('AnalysisStatus', () => {
                 />,
             );
             expect(
-                screen.getByRole('button', { name: /Reread/ }),
+                screen.getByRole('button', { name: /reread/ }),
             ).toBeInTheDocument();
         });
     });

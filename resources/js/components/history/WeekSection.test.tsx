@@ -155,10 +155,10 @@ describe('WeekSection', () => {
 
     it('renders the form-status chip label for every FormStatus value', () => {
         const labels: Record<string, string> = {
-            fresh: 'Feeling Fresh',
-            optimal: 'Right on Track',
-            fatigued: 'Getting Tired',
-            overreaching: 'Overreaching',
+            fresh: 'feeling fresh',
+            optimal: 'right on track',
+            fatigued: 'getting tired',
+            overreaching: 'overreaching',
         };
         for (const status of [
             'fresh',

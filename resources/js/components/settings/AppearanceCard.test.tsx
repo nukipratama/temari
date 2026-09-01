@@ -24,17 +24,17 @@ describe('AppearanceCard', () => {
         render(<AppearanceCard />);
 
         expect(
-            screen.getByRole('button', { name: 'Light' }),
+            screen.getByRole('button', { name: 'light' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Dark' }),
+            screen.getByRole('button', { name: 'dark' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'System' }),
+            screen.getByRole('button', { name: 'system' }),
         ).toBeInTheDocument();
         expect(
             screen
-                .getByRole('button', { name: 'Light' })
+                .getByRole('button', { name: 'light' })
                 .querySelector('[data-icon="mdi:white-balance-sunny"]'),
         ).toBeInTheDocument();
     });
@@ -43,11 +43,11 @@ describe('AppearanceCard', () => {
         localStorage.setItem('temari-theme', 'light');
         render(<AppearanceCard />);
 
-        expect(screen.getByRole('button', { name: 'Light' })).toHaveAttribute(
+        expect(screen.getByRole('button', { name: 'light' })).toHaveAttribute(
             'aria-pressed',
             'true',
         );
-        expect(screen.getByRole('button', { name: 'Dark' })).toHaveAttribute(
+        expect(screen.getByRole('button', { name: 'dark' })).toHaveAttribute(
             'aria-pressed',
             'false',
         );
@@ -56,7 +56,7 @@ describe('AppearanceCard', () => {
     it('defaults to dark pressed when nothing is stored', () => {
         render(<AppearanceCard />);
 
-        expect(screen.getByRole('button', { name: 'Dark' })).toHaveAttribute(
+        expect(screen.getByRole('button', { name: 'dark' })).toHaveAttribute(
             'aria-pressed',
             'true',
         );
@@ -65,12 +65,12 @@ describe('AppearanceCard', () => {
     it('switches the ground live and persists the choice when a different option is tapped', () => {
         render(<AppearanceCard />);
 
-        fireEvent.click(screen.getByRole('button', { name: 'Light' }));
+        fireEvent.click(screen.getByRole('button', { name: 'light' }));
 
         expect(document.documentElement.dataset.theme).toBe('light');
         expect(document.documentElement.style.colorScheme).toBe('light');
         expect(localStorage.getItem('temari-theme')).toBe('light');
-        expect(screen.getByRole('button', { name: 'Light' })).toHaveAttribute(
+        expect(screen.getByRole('button', { name: 'light' })).toHaveAttribute(
             'aria-pressed',
             'true',
         );
@@ -80,7 +80,7 @@ describe('AppearanceCard', () => {
         mockMatchMedia(true);
         render(<AppearanceCard />);
 
-        fireEvent.click(screen.getByRole('button', { name: 'System' }));
+        fireEvent.click(screen.getByRole('button', { name: 'system' }));
 
         expect(localStorage.getItem('temari-theme')).toBe('system');
         expect(document.documentElement.dataset.theme).toBe('dark');

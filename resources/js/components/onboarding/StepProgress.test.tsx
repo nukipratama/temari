@@ -7,9 +7,9 @@ describe('StepProgress', () => {
     it('renders the three step labels', () => {
         render(<StepProgress step="connected" subIndex={0} />);
 
-        expect(screen.getByText('Welcome')).toBeInTheDocument();
-        expect(screen.getByText('Training')).toBeInTheDocument();
-        expect(screen.getByText('Race Goal')).toBeInTheDocument();
+        expect(screen.getByText('welcome')).toBeInTheDocument();
+        expect(screen.getByText('training')).toBeInTheDocument();
+        expect(screen.getByText('race goal')).toBeInTheDocument();
     });
 
     it('shows the preferences sub-dots only while on the preferences step', () => {

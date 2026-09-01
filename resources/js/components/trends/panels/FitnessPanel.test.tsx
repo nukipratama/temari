@@ -42,10 +42,10 @@ function pointsOverDays(days: number): FitnessTrendPoint[] {
 
 describe('fitnessVerdict', () => {
     it.each([
-        [40, 50, 45, 'Climbing, not spiking.'],
-        [40, 50, 60, 'Climbing, and carrying the load.'],
-        [50, 40, 35, 'Easing off.'],
-        [40, 40, 38, 'Holding steady.'],
+        [40, 50, 45, 'climbing, not spiking.'],
+        [40, 50, 60, 'climbing, and carrying the load.'],
+        [50, 40, 35, 'easing off.'],
+        [40, 40, 38, 'holding steady.'],
     ])('reads %s → %s (fatigue %s) as "%s"', (first, last, atl, expected) => {
         expect(fitnessVerdict(first, last, atl)).toBe(expected);
     });
@@ -63,7 +63,7 @@ describe('FitnessPanel', () => {
         );
 
         expect(
-            screen.getByText(/Not enough training history yet/),
+            screen.getByText(/not enough training history yet/),
         ).toBeInTheDocument();
         expect(screen.queryByTestId('line-chart')).not.toBeInTheDocument();
     });
@@ -105,7 +105,7 @@ describe('FitnessPanel', () => {
             borderDash?: number[];
             fill?: boolean;
         }>;
-        expect(datasets.map((d) => d.label)).toEqual(['Fitness', 'Fatigue']);
+        expect(datasets.map((d) => d.label)).toEqual(['fitness', 'fatigue']);
         expect(datasets[0].borderDash).toBeUndefined();
         expect(datasets[1].borderDash).toEqual([3, 3]);
         expect(datasets.every((d) => d.fill === false)).toBe(true);

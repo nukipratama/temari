@@ -114,7 +114,7 @@ describe('evidenceRows', () => {
         expect(row.then).toBe('7:12');
         expect(row.now).toBe('7:00');
         expect(row.delta).toBe('-12 s/km');
-        expect(row.label).toBe('8.2 km · pace vs Mar 14');
+        expect(row.label).toBe('8.2 km · pace vs mar 14');
     });
 
     it('marks a slower pair with a positive delta', () => {
@@ -141,7 +141,7 @@ describe('evidenceRows', () => {
         expect(row.then).toBe('158');
         expect(row.now).toBe('152');
         expect(row.delta).toBe('-7 bpm');
-        expect(row.label).toBe('8.2 km · avg HR vs Mar 14');
+        expect(row.label).toBe('8.2 km · avg HR vs mar 14');
     });
 
     it('reads a flat pair as holding rather than a noisy number', () => {

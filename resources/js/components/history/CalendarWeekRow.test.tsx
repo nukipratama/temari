@@ -119,7 +119,7 @@ describe('CalendarWeekRow', () => {
 
         expect(
             screen.getByLabelText(
-                '2026-05-04: 8 km, 5:30/km, 148 bpm, mood Blazing',
+                '2026-05-04: 8 km, 5:30/km, 148 bpm, mood blazing',
             ),
         ).toBeInTheDocument();
     });

@@ -223,7 +223,7 @@ describe('Home', () => {
     it('shows the evidence the verdict was computed from', () => {
         renderHome();
 
-        expect(screen.getAllByText('8.2 km · pace vs Mar 14')).toHaveLength(2);
+        expect(screen.getAllByText('8.2 km · pace vs mar 14')).toHaveLength(2);
         expect(screen.getAllByText('-12 s/km')).toHaveLength(2);
     });
 
