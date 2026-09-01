@@ -1,7 +1,7 @@
 # PS11 — Settings
 
 **Program** prototype parity · **Slot** 3 (worktree, concurrent with two sibling slices) ·
-**Blockers** `PP0`-`PP3`, `PP1` (shell), `C1` · **Status** in-progress
+**Blockers** `PP0`-`PP3`, `PP1` (shell), `C1` · **Status** in-review
 
 ## Goal
 
@@ -100,28 +100,66 @@ None outstanding. `PP1` shipped the shell (back chevron, no bottom nav, 900px/76
 
 ## Acceptance criteria
 
-- [ ] Section list and order match the prototype: eyebrow → h1 → appearance → notifications →
+- [x] Section list and order match the prototype: eyebrow → h1 → appearance → notifications →
       running (**training preferences first, then the zones disclosure**) → data use → the fine
       print → account.
-- [ ] No `FaceIcon` anywhere on the screen (P10).
-- [ ] Reflow #10 carried: `min-[900px]:grid-cols-4` on the max/resting HR grid.
-- [ ] Reflow #11 carried: both the container and the button halves.
-- [ ] Training preferences render as an always-open card (the prototype's `TrainingPreferencesCard`),
+- [x] No `FaceIcon` anywhere on the screen (P10).
+- [x] Reflow #10 carried: `min-[900px]:grid-cols-4` on the max/resting HR grid.
+- [x] Reflow #11 carried: both the container and the button halves.
+- [x] Training preferences render as an always-open card (the prototype's `TrainingPreferencesCard`),
       not a disclosure, using the three shared preference controls.
-- [ ] The zones disclosure is **closed by default**, as the prototype has it.
-- [ ] Five zone-bound inputs, not ten; saving still sends valid `{lo, hi}` pairs.
-- [ ] Both grounds check out; `grounds.json` regenerated and `DesignTokenContrastTest` green.
-- [ ] `composer check` green; vitest green on every touched page/component.
+- [x] The zones disclosure is **closed by default**, as the prototype has it.
+- [x] Five zone-bound inputs, not ten; saving still sends valid `{lo, hi}` pairs.
+- [x] Both grounds check out; `grounds.json` regenerated and `DesignTokenContrastTest` green.
+- [x] `composer check` green; vitest green on every touched page/component.
 
 ## Coverage delta
 
-_To be filled after the gate runs._
+Measured on this worktree against `epic/mobile-ux-port` @ `7a8d54c9`, same run configuration, each
+run uncontended (see the note below on why that matters):
+
+| | before | after |
+|---|---|---|
+| statements | 97.37% | **97.52%** |
+| branches | 90.71% | **90.73%** |
+| functions | 97.03% | **97.39%** |
+| lines | 97.67% | **97.81%** |
+
+Up on all four. 1803 → 1811 frontend tests, 206 files both sides. The two rewritten components
+land at 96.4% (`HrZonesDisclosure`) and 92% (`TrainingPreferencesCard`); collapsing ten bound
+inputs to five deleted more untested branching than the rewrite added.
 
 ## Verification notes
 
-_To be filled after the gate runs._
+**Gate**: `composer check` green **end to end in a single run**, exit 0 — pint · phpstan (0
+errors) · rector (0 errors) · pest `--parallel --no-tia` 3636 tests / 10782 assertions · tsc ·
+eslint · prettier · vitest 1811/1811 · `check:palette` (434 files, zero off-token) ·
+`check:chunks` · doc-citation and `{@see}` guards. `npm run build` + `check:chunks` green
+separately too; **no entry-chunk budget re-baselined** (Login 140.6 / Home 205.4 / Runs/Show 206.5
+/ Profile 191.2 kB gz, all comfortably under).
+
+**Both grounds** are covered the way this repo covers them: `grounds.json` is regenerated and
+`DesignTokenContrastTest` scores every registered panel/text pair against **both** grounds and
+fails closed. It is green (14/14).
+
+**A contention warning for the other wave-3 slices.** Three Sail stacks on one machine will make
+vitest fail spuriously. Two concurrent `test:coverage` runs produced **44 failures** across files
+this slice never touches (`UserAvatarLink`, `Devtools`, `SessionsDial`, `Race`, `Trends`…), all
+5000ms test timeouts, and one `composer check` run died on rector's 120s child-process timeout
+while listing files no branch had modified. Every one of them passed on a quiet re-run. Re-run
+before believing a red, and do not run two coverage passes at once.
+
+**Not done: a real browser pass.** `PP1` and `PS1` both drove Chromium; this slice did not. The
+900px reflows and the two grounds are verified at the class-string and token-contrast level only.
+Worth one sweep before the epic merges.
 
 ## Open questions
+
+0. **`epic/mobile-ux-port` was already red at `7a8d54c9`.** `DesignTokenContrastTest` failed on an
+   orphaned `foreground/0.06` registration in `grounds.json` that nothing in `resources/js` paints.
+   Confirmed against the base checkout, not just this worktree, so every concurrent wave-3 slice
+   would have hit it. Fixed here in its own commit; if a sibling slice fixes it too, the two
+   conflict trivially on one deleted block.
 
 1. **The prototype's AI-replan control has no app equivalent.** `TrainingPreferencesCard`'s save
    button becomes an inert `AiReplanPill` under `aiReplanState === 'cooldown'`, and
@@ -133,3 +171,16 @@ _To be filled after the gate runs._
    open question 2. `reference.md` §1.1 gives Settings `pb-7` → `min-[900px]:pb-22`; `AppShell`
    supplies the `pb-7` for every pushed screen and has no per-screen map for the wide step. Adding
    the step on the page's own container would stack on top of `AppShell`'s, not replace it.
+3. **Three prototype details were deliberately not copied**, each because copying would remove
+   something true. (a) The "where it goes" scope note ("Bot replies and system alerts still come
+   through") stays: the prototype has no maintainer-alert channel to be honest about, and dropping
+   the line would make the mute toggles overclaim. (b) "Reset to default" stays hidden while the
+   source *is* default, where the prototype shows it always — a control that provably does nothing
+   is a false affordance. (c) Zone names keep the app's vocabulary (`Z2 · Easy`, `Z3 · Aerobic`)
+   rather than the prototype's (`aerobic`, `tempo`); those names are domain data shared with
+   time-in-zone surfaces, not screen styling.
+4. **`SettingsRow`'s `description` prop and its `danger` tone now have one call site each**
+   (the notification rows, and nothing respectively) after the legal and account sections stopped
+   using them. `tone="danger"` now has **no call site and no test** — verified by grep across
+   `resources/js`. Left for `W2`'s dead-code sweep, which P4 exists for, rather than widening this
+   slice into a shared primitive two sibling slices may also be editing.
