@@ -33,6 +33,8 @@ function day(overrides: Partial<WeekPlanDay>): WeekPlanDay {
         compliance_score: null,
         ran_anyway: false,
         clamp_note: null,
+        actual_km: null,
+        activity: null,
         ...overrides,
     };
 }

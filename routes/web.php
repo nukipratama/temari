@@ -129,7 +129,6 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::get('/plan', [PlanController::class, 'index'])->name('plan');
     Route::post('/plan/regenerate', [PlanController::class, 'regenerate'])->name('plan.regenerate');
     Route::patch('/plan/sessions/{plannedSession}', [PlanController::class, 'update'])->name('plan.sessions.update');
-    Route::delete('/plan/sessions/{plannedSession}', [PlanController::class, 'destroy'])->name('plan.sessions.destroy');
     Route::get('/inbox', InboxController::class)->name('inbox');
 
     Route::get('/profile', ProfileController::class)->name('profile');

@@ -1,0 +1,68 @@
+import { describe, expect, it } from 'vitest';
+
+import { computeAdherence, weekdayLabel, weekRangeLabel } from './plan';
+
+describe('computeAdherence', () => {
+    it('returns null when nothing has been scored', () => {
+        expect(
+            computeAdherence([
+                { compliance_score: null },
+                { compliance_score: null },
+            ]),
+        ).toBeNull();
+    });
+
+    it('averages only the scored days, ignoring unscored ones', () => {
+        expect(
+            computeAdherence([
+                { compliance_score: 80 },
+                { compliance_score: 60 },
+                { compliance_score: null },
+            ]),
+        ).toBe(70);
+    });
+
+    it('caps at 100 so one big overreach cannot read as a 140% season', () => {
+        expect(
+            computeAdherence([
+                { compliance_score: 100 },
+                { compliance_score: 220 },
+            ]),
+        ).toBe(100);
+    });
+
+    it('rounds to a whole percentage', () => {
+        expect(
+            computeAdherence([
+                { compliance_score: 80 },
+                { compliance_score: 81 },
+                { compliance_score: 83 },
+            ]),
+        ).toBe(81);
+    });
+});
+
+describe('weekRangeLabel', () => {
+    it('names the month once when the week does not cross one', () => {
+        expect(weekRangeLabel('2026-06-15')).toBe('Jun 15–21');
+    });
+
+    it('names both months when the week crosses one', () => {
+        expect(weekRangeLabel('2026-06-29')).toBe('Jun 29–Jul 5');
+    });
+
+    it('snaps a mid-week date back to its Monday', () => {
+        expect(weekRangeLabel('2026-06-18')).toBe(weekRangeLabel('2026-06-15'));
+    });
+});
+
+describe('weekdayLabel', () => {
+    it('names the weekday a date falls on', () => {
+        expect(weekdayLabel('2026-06-15')).toBe('Mon');
+        expect(weekdayLabel('2026-06-21')).toBe('Sun');
+    });
+
+    it('returns an empty string for an unparseable date', () => {
+        expect(weekdayLabel('not-a-date')).toBe('');
+    });
+});

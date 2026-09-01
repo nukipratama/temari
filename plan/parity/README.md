@@ -159,7 +159,7 @@ Status vocabulary: `todo` · `in-progress` · `in-review` · `merged` · `blocke
 | PS1 | Login | merged | [#686](https://github.com/nukipratama/temari/pull/686) | 3 | [PS1-login](slices/PS1-login.md); prototype section list + both why-list states, no `FaceIcon`; `PP1`'s deferred reflow #2 resolved by measurement (flat `text-display-sm`, +5.2/+6px at 1280/1536 recorded); Login chunk 146.7 → **140.3 kB gz** of 160; coverage flat 97.15%; four plan/prototype discrepancies found — `PP1` read reflow #5 only at its wide half and left the hairline state unbuilt, and its `max-w-[760px]` hero cap is not the prototype's; squashed as 963ff5fe |
 | PS2 | Onboarding | todo | — | wt | |
 | PS3 | Today | todo | — | wt | |
-| PS4 | Plan | todo | — | wt | largest; nested timeline |
+| PS4 | Plan | in-review | [#688](https://github.com/nukipratama/temari/pull/688) | wt | [PS4-plan](slices/PS4-plan.md); largest slice — 44 files, 11 commits; P22's nested timeline, P23's Skip/Move-only day actions, P24's `SeasonHeaderCard`; **Move is now a swap** (the old re-date hit `planned_sessions`' `(user_id, date)` unique constraint on every in-horizon target); `WeekPlanDay` gained `actual_km`+`activity`, so Today's fixtures moved (`WeekPlanWidget` itself unchanged — `PS3` should know); card radius `rounded-md` vs the shadcn `Card`'s `rounded-4xl` is a **cross-screen call** left open; coverage 97.15% → 97.30%; caught and fixed a `C1` regression — `composer check` could not complete, composer's 300s process-timeout killed phpstan, and its first end-to-end run found 7 real failures |
 | PS5 | Race | todo | — | wt | |
 | PS6 | Trends | todo | — | wt | |
 | PS7 | History | todo | — | wt | |

@@ -37,6 +37,7 @@ use App\Support\TrainingDisclaimer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -89,6 +90,7 @@ class PlanController extends Controller
         }
         $seasonPayload = $seasonStreakBuilder->seasonPayload($user, $season, $today, $seasonCtx);
         $seasonSummary = $seasonSummaryBuilder->build($user, $season, $today);
+        $seasonAdherencePct = $seasonSummaryBuilder->adherencePct($user, $season);
 
         $adaptationPayload = $this->adaptationPayload($user, $currentWeekStart);
 
@@ -105,6 +107,7 @@ class PlanController extends Controller
                 'weeks' => [],
                 'season' => $seasonPayload,
                 'seasonSummary' => $seasonSummary,
+            'seasonAdherencePct' => $seasonAdherencePct,
                 'adaptation' => $adaptationPayload,
                 'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
                 'disclaimer' => TrainingDisclaimer::TEXT,
@@ -181,6 +184,8 @@ class PlanController extends Controller
             $clamp,
         );
 
+        $activityByDate = $this->activityByDate($user, $rangeStart, $today);
+
         $weeks = [];
         foreach ($sessionsByWeek as $weekStartKey => $weekSessions) {
             $weekPhase = $phaseByWeek->get($weekStartKey);
@@ -205,6 +210,7 @@ class PlanController extends Controller
                     $multiplierByWeek[$weekStartKey] ?? 1.0,
                     $paces,
                     $fallbackStatuses[$s->date->toDateString()] ?? $s->status,
+                    $activityByDate[$s->date->toDateString()] ?? null,
                 ))->all(),
             ];
         }
@@ -215,6 +221,7 @@ class PlanController extends Controller
             'weeks' => $weeks,
             'season' => $seasonPayload,
             'seasonSummary' => $seasonSummary,
+            'seasonAdherencePct' => $seasonAdherencePct,
             'adaptation' => $adaptationPayload,
             'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
             'disclaimer' => TrainingDisclaimer::TEXT,
@@ -244,6 +251,11 @@ class PlanController extends Controller
      * it passes), or pin/unpin. Any explicit edit fixes the day (pins it) so
      * the next regeneration doesn't silently overwrite it, unless the caller
      * passes `pinned: false` to hand control back to the periodizer.
+     *
+     * A move onto a date the athlete already has a row for is a **swap**, not
+     * a re-date: `planned_sessions` is unique on (user_id, date) and the
+     * periodizer materializes all seven days of every week, so every in-horizon
+     * target is occupied.
      */
     public function update(UpdatePlannedSessionRequest $request, PlannedSession $plannedSession, PlanNarrationRequester $narrationRequester): RedirectResponse
     {
@@ -254,27 +266,58 @@ class PlanController extends Controller
             $attributes['pinned'] = true;
         }
 
+        $today = Carbon::today();
+        $touchedDates = [$plannedSession->date];
+
+        $occupant = $this->occupantOfMoveTarget($plannedSession, $attributes['date'] ?? null);
+        if ($occupant !== null) {
+            $touchedDates[] = $occupant->date;
+            $this->swapSessions($plannedSession, $occupant);
+            unset($attributes['date']);
+        }
+
         $plannedSession->update($attributes);
 
         // Keep the day's narration in sync with the edit — otherwise it keeps
         // describing whatever was prescribed before the skip/block/move.
         // Only within the current week: that's the only window day narration
         // is ever requested for in the first place.
-        $today = Carbon::today();
-        if ($plannedSession->wasChanged(['session_type', 'skipped', 'date'])
-            && $narrationRequester->isWithinCurrentWeek($plannedSession->date, $today)) {
-            $narrationRequester->requestDayNarration($plannedSession->user_id, $plannedSession->date);
+        if ($occupant !== null || $plannedSession->wasChanged(['session_type', 'skipped', 'date'])) {
+            foreach ($touchedDates as $date) {
+                if ($narrationRequester->isWithinCurrentWeek($date, $today)) {
+                    $narrationRequester->requestDayNarration($plannedSession->user_id, $date);
+                }
+            }
         }
 
         return back();
     }
 
-    public function destroy(Request $request, PlannedSession $plannedSession): RedirectResponse
+    private function occupantOfMoveTarget(PlannedSession $plannedSession, ?string $toDate): ?PlannedSession
     {
-        $this->authorizeOwner($request, $plannedSession);
-        $plannedSession->delete();
+        if ($toDate === null || Carbon::parse($toDate)->isSameDay($plannedSession->date)) {
+            return null;
+        }
 
-        return back();
+        return PlannedSession::query()
+            ->where('user_id', $plannedSession->user_id)
+            ->whereDate('date', $toDate)
+            ->first();
+    }
+
+    /**
+     * Trades what the two days prescribe while each keeps its own calendar
+     * slot, and pins both so the next regeneration honours the choice.
+     */
+    private function swapSessions(PlannedSession $from, PlannedSession $to): void
+    {
+        DB::transaction(function () use ($from, $to): void {
+            [$fromType, $toType] = [$from->session_type, $to->session_type];
+            [$fromSkipped, $toSkipped] = [$from->skipped, $to->skipped];
+
+            $to->update(['session_type' => $fromType, 'skipped' => $fromSkipped, 'pinned' => true]);
+            $from->update(['session_type' => $toType, 'skipped' => $toSkipped, 'pinned' => true]);
+        });
     }
 
     private function authorizeOwner(Request $request, PlannedSession $plannedSession): void
@@ -360,6 +403,47 @@ class PlanController extends Controller
             'detail' => $adaptation->reason->detail($adaptation->adherence_pct),
             'deload' => $adaptation->deload,
         ];
+    }
+
+    /**
+     * The day's longest logged run, keyed by date — what the timeline's
+     * planned-vs-actual bar measures against and what its "view activity"
+     * link opens. `km` is the day's total (matching how
+     * {@see SessionMatcher} scores compliance), `id`/`seconds` describe the
+     * single longest run of that day.
+     *
+     * @return array<string, array{id: int, km: float, seconds: int|null}>
+     */
+    private function activityByDate(User $user, Carbon $from, Carbon $to): array
+    {
+        if ($to->lessThan($from)) {
+            return [];
+        }
+
+        $rows = ActivityDetail::query()
+            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+            ->where('activities.user_id', $user->id)
+            ->whereNotNull('activity_details.start_date_local')
+            ->whereBetween('activity_details.start_date_local', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->orderBy('activity_details.distance')
+            ->get(['activity_details.activity_id', 'activity_details.start_date_local', 'activity_details.distance', 'activity_details.moving_time']);
+
+        $byDate = [];
+        foreach ($rows as $row) {
+            $date = $row->start_date_local?->toDateString();
+            if ($date === null) {
+                continue;
+            }
+            // Ascending distance, so each later row of the same date overwrites
+            // id/seconds with the longer run while km keeps accumulating.
+            $byDate[$date] = [
+                'id' => (int) $row->activity_id,
+                'km' => round(($byDate[$date]['km'] ?? 0.0) + DistanceFormatter::km((float) $row->distance), 1),
+                'seconds' => $row->moving_time,
+            ];
+        }
+
+        return $byDate;
     }
 
     private function completedKmInRange(User $user, Carbon $from, Carbon $to): float

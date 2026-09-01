@@ -388,6 +388,10 @@ export interface WeekPlanDay {
     /** A rest day (`status: 'done'`) that had real activity logged anyway. */
     ran_anyway: boolean;
     clamp_note: string | null;
+    /** Total km actually run that day — null when nothing was logged. */
+    actual_km: number | null;
+    /** The day's longest logged run, for the link out to it. */
+    activity: { id: number; seconds: number | null } | null;
 }
 
 /** `CurrentWeekPlanBuilder::forUser()` — Home's compact pull of the current

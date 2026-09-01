@@ -68,6 +68,7 @@
             "@php artisan test"
         ],
         "check": [
+            "Composer\\Config::disableProcessTimeout",
             "@php artisan config:clear --ansi",
             "@php artisan typescript:enums --check",
             "@php scripts/check-doc-citations.php",

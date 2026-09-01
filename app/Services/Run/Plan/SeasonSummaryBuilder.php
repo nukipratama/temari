@@ -6,6 +6,7 @@ namespace App\Services\Run\Plan;
 
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
+use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -42,7 +43,24 @@ final readonly class SeasonSummaryBuilder
     }
 
     /**
-     * @return list<array{week_start: string, phase: string, type: string, planned_km: float, actual_km: float|null}>
+     * The season's adherence: the mean compliance score across every scored
+     * {@see \App\Models\PlannedSession} inside it. Read from the persisted
+     * scores `plan:score-compliance` writes, so it covers the whole season
+     * rather than only the weeks the Plan page happens to render.
+     */
+    public function adherencePct(User $user, Season $season): ?int
+    {
+        $average = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [$season->starts_at->toDateString(), $season->ends_at->toDateString()])
+            ->whereNotNull('compliance_score')
+            ->avg('compliance_score');
+
+        return $average === null ? null : (int) round(min(100.0, (float) $average));
+    }
+
+    /**
+     * @return list<array{week_start: string, phase: string, type: string, planned_km: float, actual_km: float|null, sessions: int}>
      */
     public function build(User $user, Season $season, Carbon $today): array
     {
@@ -87,6 +105,7 @@ final readonly class SeasonSummaryBuilder
             $primaryEasyDate = self::primaryEasyDate($dayRows);
 
             $plannedKm = 0.0;
+            $sessions = 0;
             foreach ($dayRows as $date => $row) {
                 $plannedKm += SegmentGenerator::coreKmFor(
                     $row['session_type'],
@@ -94,6 +113,9 @@ final readonly class SeasonSummaryBuilder
                     $baselineData['long_run_km'],
                     $multiplier,
                 );
+                if ($row['session_type'] !== SessionType::Rest) {
+                    $sessions++;
+                }
             }
 
             $result[] = [
@@ -102,6 +124,7 @@ final readonly class SeasonSummaryBuilder
                 'type' => $weekStartKey < $currentWeekKey ? 'history' : ($weekStartKey === $currentWeekKey ? 'current' : 'lookahead'),
                 'planned_km' => round($plannedKm, 1),
                 'actual_km' => $actualKmByWeekEnding[$weekEndingKey] ?? null,
+                'sessions' => $sessions,
             ];
         }
 
