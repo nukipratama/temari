@@ -13,6 +13,7 @@ import {
     cooldownAriaLabel,
     useCooldownCountdown,
 } from '@/hooks/useCooldownCountdown';
+import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { formatDurationHMS, formatRelativeId } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
@@ -91,6 +92,21 @@ const TEXT_SIZE: Record<AnalysisStatusSize, string> = {
     sm: 'text-sm leading-relaxed',
     md: 'text-base leading-relaxed',
 };
+
+/**
+ * The prototype's narration-card trigger: a filled pill in the bottom-right
+ * corner of the card, identical on Trends and Activity, the only two screens
+ * that draw it. `self-end` is `justify-end` by another name inside the flex
+ * column each state already renders into.
+ */
+const TRIGGER_CLASS =
+    'focus-ring pad-chip text-label-micro pressable inline-flex items-center self-end gap-1 rounded-full transition-colors disabled:pointer-events-none disabled:opacity-60';
+
+function triggerTone(onSky: boolean): string {
+    return onSky
+        ? 'bg-cream/10 text-cream hover:opacity-90'
+        : 'bg-muted text-foreground hover:bg-accent';
+}
 
 /** Widths of the stacked skeleton bars shown while a block is queued/processing. */
 const SKELETON_WIDTHS = ['w-full', 'w-[70%]', 'w-[85%]'];
@@ -177,12 +193,16 @@ export default function AnalysisStatus({
                             cooldownRemaining,
                             'reread',
                         )}
-                        className={`focus-ring rounded inline-flex items-center self-start gap-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${onSky ? 'text-ink-on-sky hover:text-cream disabled:hover:text-ink-on-sky' : 'text-text-3 hover:text-leaf-ink disabled:hover:text-text-3'}`}
+                        className={cn(TRIGGER_CLASS, triggerTone(onSky))}
                     >
-                        <Icon icon="mdi:auto-awesome" aria-hidden />
+                        <Icon
+                            icon={cooling ? 'mdi:clock-outline' : 'mdi:sync'}
+                            className="size-3"
+                            aria-hidden
+                        />
                         <span>
                             {cooling
-                                ? formatDurationHMS(cooldownRemaining)
+                                ? `next in ${formatDurationHMS(cooldownRemaining)}`
                                 : 'reread'}
                         </span>
                     </button>
@@ -245,9 +265,9 @@ export default function AnalysisStatus({
                         type="button"
                         onClick={trigger}
                         disabled={pending}
-                        className="focus-ring rounded inline-flex items-center self-start gap-1 text-xs text-leaf-ink hover:text-foreground transition-colors disabled:opacity-50"
+                        className={cn(TRIGGER_CLASS, triggerTone(onSky))}
                     >
-                        <Icon icon="mdi:auto-awesome" aria-hidden />
+                        <Icon icon="mdi:sync" className="size-3" aria-hidden />
                         <span>try again</span>
                     </button>
                 )}

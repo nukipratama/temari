@@ -125,6 +125,12 @@
         },
         "cream/0.1": {
             "over": {
+                "resources/js/components/temari/AnalysisStatus.test.tsx": [
+                    "sky"
+                ],
+                "resources/js/components/temari/AnalysisStatus.tsx": [
+                    "sky"
+                ],
                 "resources/js/components/run/EmptyRunsState.tsx": [
                     "sky"
                 ],
@@ -198,15 +204,6 @@
         },
         "horizon/0.1": {
             "over": {
-                "resources/js/lib/variants.ts": [
-                    "paper"
-                ],
-                "resources/js/components/onboarding/IconChoiceCard.tsx": [
-                    "paper"
-                ],
-                "resources/js/components/onboarding/DayPicker.tsx": [
-                    "paper"
-                ],
                 "resources/js/components/run/LapsCarousel.tsx": [
                     "paper"
                 ],
@@ -250,6 +247,12 @@
         },
         "horizon/0.18": {
             "over": {
+                "resources/js/components/onboarding/DayPicker.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/onboarding/IconChoiceCard.tsx": [
+                    "paper"
+                ],
                 "resources/js/components/home/EvidenceList.tsx": [
                     "paper"
                 ],

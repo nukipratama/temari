@@ -102,7 +102,9 @@ describe('Race', () => {
 
         const faces = container.querySelectorAll('[data-face-icon]');
         expect(faces).toHaveLength(1);
-        expect(faces[0]).toHaveAttribute('width', '48');
+        // 40, as RaceGoalScreen.tsx:226-243 draws it. Only Plan's whole-page
+        // empty state takes 48. See PS12.
+        expect(faces[0]).toHaveAttribute('width', '40');
     });
 
     it('shows the saved race summary figures', () => {

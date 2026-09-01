@@ -111,8 +111,20 @@ What moves to `/20`:
 `icon-accent` is a ground-reactive semantics question that has never been raised, and folding it in
 here would smuggle a second decision into a one-value change.
 
-`grounds.json` needs a new `horizon/0.2` registration and the moved call sites removed from
-`horizon/0.1` — surgical edits, never a re-sort.
+### `/20` does not pass AA, so it lands on `/[0.18]`
+
+Registering `horizon/0.2` made `DesignTokenContrastTest` fail on a real accessibility finding:
+`horizon-ink` on `horizon/0.2` over paper scores **4.48:1**, against AA's 4.5. `icon-accent` on the
+same ground fails with it. The prototype is dark-first and its light ground is not contrast-audited
+— it is a mockup, and this is one of the places that shows.
+
+Settled by **P2**, which already rules this case: snap to the nearest step the guards accept, never
+weaken the guard to fit a literal value. The nearest is `horizon/[0.18]`, which is registered,
+passes on both grounds, and is a 2% alpha difference nobody can see. The three controls take
+`/[0.18]`, and `grounds.json` gains their call sites in the existing `horizon/0.18` block rather
+than a new one — surgical edits, never a re-sort.
+
+Recorded here as a divergence from the prototype's literal value, not as parity.
 
 ## Files touched
 
@@ -139,7 +151,24 @@ header trigger (a different control) and History's send button (which shares the
 
 ## Coverage delta
 
-Record before/after. Expected flat: new props on `EmptyPanel`, no new logic.
+Frontend lines flat, as expected: new props on `EmptyPanel`, a shared class constant on
+`AnalysisStatus`, no new logic. 1839 frontend tests, 3662 PHP.
+
+## What the browser pass confirmed
+
+Measured at 320px and 390px on the demo account after a build, DOM queried rather than screenshots
+read:
+
+- **The trigger** on Trends reads `reread`, computes `text-transform: uppercase` in `JetBrains
+  Mono` on a sky-2 (the dark ground's `muted`) fill, and sits flush right — `rightGap: 0` against
+  its row, with 166px of empty space to its left at 320px. That is the prototype's `justify-end`.
+- Zero console errors at either width.
+
+**The empty states could not be seen in the browser**, and this is honest rather than a gap: the
+demo account has inbox rows, a plan, a race and runs, so none of the four empty states renders for
+it. `PP4` closed the reachability gaps it could; an empty state is reachable only from an *empty*
+account, which the demo deliberately is not. The face sizes and the horizontal layout are covered
+by unit assertions on `EmptyPanel` and `Race` instead.
 
 ## Verification notes
 

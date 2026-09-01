@@ -176,7 +176,7 @@ export const outlineChipVariants = cva(
     {
         variants: {
             selected: {
-                true: 'border-horizon bg-horizon/10 text-horizon-ink',
+                true: 'border-horizon bg-horizon/[0.18] text-horizon-ink',
                 false: 'border-border text-text-3 hover:border-horizon/60 hover:text-foreground',
             },
         },

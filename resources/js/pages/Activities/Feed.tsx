@@ -198,6 +198,7 @@ function EmptyState() {
     return (
         <EmptyPanel
             face
+            layout="horizontal"
             title={line}
             body={sub}
             action={
