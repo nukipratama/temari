@@ -73,6 +73,7 @@
         "current",
         "gradient-to-br",
         "gradient-to-l",
+        "gradient-to-r",
         "transparent",
         "white"
     ],
@@ -360,9 +361,6 @@
                 "resources/js/lib/splits.test.ts": ["paper"]
             },
             "text": ["text-2", "foreground"]
-        },
-        "foreground/0.06": {
-            "text": []
         },
         "destructive/0.1": {
             "over": {

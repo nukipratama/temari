@@ -256,6 +256,14 @@ export function formatShortDateTimeId(iso: string | null | undefined): string {
     return time === null ? date : `${date} · ${time}`;
 }
 
+/** Whole days from local midnight today to a naive `YYYY-MM-DD`; negative once past. */
+export function daysUntilId(iso: string): number {
+    const target = new Date(`${iso}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.round((target.getTime() - today.getTime()) / 86_400_000);
+}
+
 export function monthsSinceId(iso: string | null | undefined): number | null {
     if (!iso) return null;
     const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
