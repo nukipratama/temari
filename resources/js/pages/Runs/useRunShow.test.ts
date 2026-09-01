@@ -162,6 +162,5 @@ describe('useRunShow', () => {
             useRunShow(hookProps({ card: null })),
         );
         expect(withoutCard.current.shareData).toBeNull();
-        expect(withoutCard.current.rarityLabel).toBeNull();
     });
 });

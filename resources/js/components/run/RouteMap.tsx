@@ -41,7 +41,7 @@ export default function RouteMap({
     // `role="img"` element's subtree to just its accessible name, which would hide
     // the tap-to-activate button below from keyboard/AT users entirely.
     return (
-        <div className="relative isolate overflow-hidden rounded-lg border border-border">
+        <div className="relative isolate overflow-hidden">
             <div
                 role="img"
                 aria-label={mapLabel}

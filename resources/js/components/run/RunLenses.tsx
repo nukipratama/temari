@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import FaceIcon from '@/components/temari/FaceIcon';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
@@ -32,14 +33,14 @@ interface RunInsightClaim {
 }
 
 interface RunLensesProps {
-    /** The post-run story (PostRunSpeech) — unchanged from before this slice. */
+    /** The post-run story (PostRunSpeech). */
     story: AnalysisPayload;
     /** The adaptive claims block (RunInsight) — a variable-length list of anchored observations. */
     insight: AnalysisPayload;
     /**
      * This run is the head of the per-activity narration chain (the latest run).
      * Per-activity narration is connected + chained: only the head may
-     * regenerate, so the "Reread all" control shows on the head only.
+     * regenerate, so the "Reread" control shows on the head only.
      * Historical runs are resume-only via the per-block chain actions.
      */
     isChainHead?: boolean;
@@ -49,14 +50,14 @@ interface RunLensesProps {
 
 const DEFAULT_RELOAD_PROPS = ['speechAnalysis', 'runInsight'];
 
-function bulkButtonLabel(pending: boolean, cooldownRemaining: number): string {
+function rereadLabel(pending: boolean, cooldownRemaining: number): string {
     if (pending) {
         return 'Rereading…';
     }
     if (cooldownRemaining > 0) {
-        return formatDurationHMS(cooldownRemaining);
+        return `Next in ${formatDurationHMS(cooldownRemaining)}`;
     }
-    return 'Reread all';
+    return 'Reread';
 }
 
 /**
@@ -77,7 +78,7 @@ function parseClaims(content: string): RunInsightClaim[] {
  * Whether the insight block has something to show. A block that is Done but
  * whose claims all failed the server-side anchor check decodes to an empty
  * list — render nothing for it, the same way a Pending block renders nothing,
- * rather than an empty card. Any other status defers to {@link AnalysisStatus}.
+ * rather than an empty half-card. Any other status defers to {@link AnalysisStatus}.
  */
 function insightHasContent(insight: AnalysisPayload): boolean {
     if (insight.status !== 'done' || insight.content === null) {
@@ -89,19 +90,38 @@ function insightHasContent(insight: AnalysisPayload): boolean {
 function ClaimLine({ claim }: Readonly<{ claim: RunInsightClaim }>) {
     return (
         <div className="flex flex-col gap-1.5">
-            <p className="font-sans text-quote-sm leading-relaxed text-foreground">
+            <p className="font-serif text-quote-sm italic leading-relaxed text-foreground">
                 {renderBold(claim.text)}
             </p>
             {(claim.value ?? claim.delta) && (
                 <div className="flex flex-wrap items-center gap-1.5">
-                    {claim.value && <Chip tone="sky">{claim.value}</Chip>}
-                    {claim.delta && <Chip tone="neutral">{claim.delta}</Chip>}
+                    {claim.value && <Chip tone="neutral">{claim.value}</Chip>}
+                    {claim.delta && <Chip tone="horizon">{claim.delta}</Chip>}
                 </div>
             )}
         </div>
     );
 }
 
+function LensLabel({
+    icon,
+    children,
+}: Readonly<{ icon: string; children: string }>) {
+    return (
+        <div className="mb-2 flex items-center gap-1.5">
+            <Icon icon={icon} width={12} height={12} aria-hidden />
+            <Eyebrow token="micro" tone="icon-accent" as="span">
+                {children}
+            </Eyebrow>
+        </div>
+    );
+}
+
+/**
+ * "What Temari says" — the run's story and what stood out, in one voice card,
+ * as the prototype's `RunLenses` draws them. Two `Analysis` rows behind one
+ * surface, separated by a hairline rather than split into two cards.
+ */
 export default function RunLenses({
     story,
     insight,
@@ -114,14 +134,14 @@ export default function RunLenses({
 
     const lenses = useMemo(() => [story, insight], [story, insight]);
 
-    // The bulk control respects the same per-row cooldown the server enforces:
+    // The reread control respects the same per-row cooldown the server enforces:
     // it stays disabled until the longest-cooling lens unlocks. Lenses finish
     // within seconds of each other, so the max is a faithful shared countdown.
     const cooldownRemaining = useCooldownCountdown(
         Math.max(...lenses.map((a) => a.retry_after_seconds ?? 0)) || null,
     );
     const cooling = cooldownRemaining > 0;
-    const bulkLabel = bulkButtonLabel(bulkPending, cooldownRemaining);
+    const showInsight = insightHasContent(insight);
 
     const triggerAll = useCallback(async () => {
         if (bulkPending || cooling) return;
@@ -132,84 +152,46 @@ export default function RunLenses({
     }, [bulkPending, cooling, lenses, inertiaReloadProps]);
 
     return (
-        <div className={cn('flex flex-col gap-4', className)}>
-            {/* Single re-analyze control. Regenerate is head-only (chained kind);
-                historical runs resume per-block instead. */}
-            {isChainHead && !paused && (
-                <div className="flex justify-start">
-                    <button
-                        type="button"
-                        onClick={triggerAll}
-                        disabled={bulkPending || cooling}
-                        aria-label={cooldownAriaLabel(
-                            cooldownRemaining,
-                            'rereading all',
-                        )}
-                        className="focus-ring rounded inline-flex items-center gap-1.5 text-label-micro text-text-2 transition hover:text-leaf-ink disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        <Icon
-                            icon={
-                                bulkPending ? 'mdi:loading' : 'mdi:auto-awesome'
-                            }
-                            className={cn(bulkPending && 'animate-spin')}
-                            aria-hidden
-                        />
-                        {bulkLabel}
-                    </button>
+        <section className={className} data-coachmark="run-narration">
+            <header className="mb-3 flex items-center gap-3">
+                <FaceIcon size={40} />
+                <div className="min-w-0 flex-1">
+                    <h2 className="font-serif text-quote-md italic text-foreground">
+                        What Temari says
+                    </h2>
+                    <p className="mt-0.5 font-sans text-xs text-text-3">
+                        The story of this run, and what stood out.
+                    </p>
                 </div>
-            )}
+            </header>
 
-            <div className="flex flex-col gap-3.5">
-                <Card
-                    as="article"
-                    padding="hero"
-                    className="border-l-[3px] border-l-leaf"
-                >
-                    <div className="mb-2.5 flex items-center gap-2">
-                        <Icon
-                            icon="mdi:chat-outline"
-                            width={14}
-                            height={14}
+            <Card tone="narration" padding="hero">
+                <LensLabel icon="mdi:chat-outline">
+                    This run&apos;s story
+                </LensLabel>
+                <AnalysisStatus
+                    analysis={story}
+                    inertiaReloadProps={inertiaReloadProps}
+                    chained
+                    isChainHead={isChainHead}
+                    allowReanalyze={!isChainHead}
+                    showTimestamp={false}
+                    renderContent={(text) => (
+                        <p className="font-serif text-quote-sm italic leading-relaxed text-foreground">
+                            {renderBold(text)}
+                        </p>
+                    )}
+                />
+
+                {showInsight && (
+                    <>
+                        <div
                             aria-hidden
-                            className="text-leaf-ink"
+                            className="my-3.5 h-px bg-border-strong"
                         />
-                        <Eyebrow token="micro" tone="ink-2">
-                            This run&apos;s story
-                        </Eyebrow>
-                    </div>
-                    <AnalysisStatus
-                        analysis={story}
-                        inertiaReloadProps={inertiaReloadProps}
-                        chained
-                        isChainHead={isChainHead}
-                        allowReanalyze={!isChainHead}
-                        showTimestamp={false}
-                        renderContent={(text) => (
-                            <p className="font-sans text-quote-sm leading-relaxed text-foreground">
-                                {renderBold(text)}
-                            </p>
-                        )}
-                    />
-                </Card>
-
-                {insightHasContent(insight) && (
-                    <Card
-                        as="article"
-                        padding="hero"
-                        className="border-l-[3px] border-l-ember"
-                    >
-                        <div className="mb-2.5 flex items-center gap-2">
-                            <Icon
-                                icon="mdi:lightbulb-on-outline"
-                                width={14}
-                                height={14}
-                                aria-hidden
-                                className="text-ember-ink"
-                            />
-                            <Eyebrow token="micro" tone="ink-2">
-                                What stood out
-                            </Eyebrow>
-                        </div>
+                        <LensLabel icon="mdi:lightbulb-on-outline">
+                            What stood out
+                        </LensLabel>
                         <AnalysisStatus
                             analysis={insight}
                             inertiaReloadProps={inertiaReloadProps}
@@ -217,24 +199,50 @@ export default function RunLenses({
                             isChainHead={isChainHead}
                             allowReanalyze={!isChainHead}
                             showTimestamp={false}
-                            renderContent={(text) => {
-                                const claims = parseClaims(text);
-
-                                return (
-                                    <div className="flex flex-col gap-3">
-                                        {claims.map((claim) => (
-                                            <ClaimLine
-                                                key={claim.anchor}
-                                                claim={claim}
-                                            />
-                                        ))}
-                                    </div>
-                                );
-                            }}
+                            renderContent={(text) => (
+                                <div className="flex flex-col gap-2.5">
+                                    {parseClaims(text).map((claim) => (
+                                        <ClaimLine
+                                            key={claim.anchor}
+                                            claim={claim}
+                                        />
+                                    ))}
+                                </div>
+                            )}
                         />
-                    </Card>
+                    </>
                 )}
-            </div>
-        </div>
+
+                {/* Regenerate is head-only (chained kind); historical runs
+                    resume per-block instead. */}
+                {isChainHead && !paused && (
+                    <div className="mt-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={triggerAll}
+                            disabled={bulkPending || cooling}
+                            aria-label={cooldownAriaLabel(
+                                cooldownRemaining,
+                                'rereading all',
+                            )}
+                            className="focus-ring pressable inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1.5 text-label-micro text-text-2 transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                            <Icon
+                                icon={
+                                    cooling
+                                        ? 'mdi:clock-outline'
+                                        : 'mdi:refresh'
+                                }
+                                width={12}
+                                height={12}
+                                className={cn(bulkPending && 'animate-spin')}
+                                aria-hidden
+                            />
+                            {rereadLabel(bulkPending, cooldownRemaining)}
+                        </button>
+                    </div>
+                )}
+            </Card>
+        </section>
     );
 }

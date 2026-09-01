@@ -93,9 +93,6 @@
             },
             "text": ["text-2"]
         },
-        "cream/0.04": {
-            "text": []
-        },
         "cream/0.06": {
             "text": []
         },
@@ -107,8 +104,6 @@
         },
         "cream/0.1": {
             "over": {
-                "resources/js/components/card/Kartu.tsx": ["sky"],
-                "resources/js/components/card/ZoneBar.tsx": ["sky"],
                 "resources/js/components/run/EmptyRunsState.tsx": ["sky"],
                 "resources/js/components/ui/Chip.test.tsx": ["sky"],
                 "resources/js/components/ui/MoodChip.tsx": ["sky"],
@@ -176,7 +171,9 @@
                 "resources/js/components/onboarding/IconChoiceCard.tsx": [
                     "paper"
                 ],
-                "resources/js/components/onboarding/DayPicker.tsx": ["paper"]
+                "resources/js/components/onboarding/DayPicker.tsx": ["paper"],
+                "resources/js/components/run/LapsCarousel.tsx": ["paper"],
+                "resources/js/components/run/LapsCarousel.test.tsx": ["paper"]
             },
             "text": ["horizon-ink", "foreground", "text-2", "icon-accent"]
         },
