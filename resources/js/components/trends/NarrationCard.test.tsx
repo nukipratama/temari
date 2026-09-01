@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { AnalysisPayload } from '@/types/inertia';
 
-import NarrationHeadline, { splitContent } from './NarrationHeadline';
+import NarrationCard, { splitContent } from './NarrationCard';
 
 function payload(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
     return {
@@ -37,15 +37,15 @@ describe('splitContent', () => {
     });
 });
 
-describe('NarrationHeadline', () => {
+describe('NarrationCard', () => {
     it("labels the block Temari's read", () => {
-        render(<NarrationHeadline analysis={payload()} />);
+        render(<NarrationCard analysis={payload()} />);
         expect(screen.getByText("Temari's read")).toBeInTheDocument();
     });
 
     it('renders the title as a headline and the description below it', () => {
         render(
-            <NarrationHeadline
+            <NarrationCard
                 analysis={payload({
                     status: 'done',
                     content: 'Fitness is climbing.\n\nCTL moved from 40 to 55.',
@@ -61,7 +61,7 @@ describe('NarrationHeadline', () => {
 
     it('omits the description paragraph when there is none', () => {
         render(
-            <NarrationHeadline
+            <NarrationCard
                 analysis={payload({ status: 'done', content: 'Just a title.' })}
             />,
         );

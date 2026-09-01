@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Badge;
+use App\Enums\Rarity;
 use App\Models\AI\Analysis;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -114,19 +115,20 @@ it('renders empty badge milestones for a fresh user', function (): void {
         ->assertInertia(fn (Assert $page) => $page->where('badgeMilestones', []));
 });
 
-it('sets a badge milestone at its first-earned date only', function (): void {
+it('sets a badge milestone at its first-earned date only, with that card\'s rarity', function (): void {
     $user = User::factory()->create();
     $earlier = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($earlier)->create(['start_date_local' => now()->subDays(10)]);
-    RunCard::factory()->for($earlier)->create(['badges' => [Badge::EarlyBird->value]]);
+    RunCard::factory()->for($earlier)->create(['badges' => [Badge::EarlyBird->value], 'rarity' => Rarity::Rare]);
     $later = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($later)->create(['start_date_local' => now()->subDay()]);
-    RunCard::factory()->for($later)->create(['badges' => [Badge::EarlyBird->value]]);
+    RunCard::factory()->for($later)->create(['badges' => [Badge::EarlyBird->value], 'rarity' => Rarity::Legendary]);
 
     $this->actingAs($user)->get('/trends')
         ->assertInertia(fn (Assert $page) => $page
             ->where('badgeMilestones', fn (mixed $milestones): bool => count($milestones) === 1
-                && $milestones[0]['key'] === Badge::EarlyBird->value));
+                && $milestones[0]['key'] === Badge::EarlyBird->value
+                && $milestones[0]['rarity'] === Rarity::Rare->value));
 });
 
 it('never surfaces another user\'s badges', function (): void {

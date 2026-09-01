@@ -18,7 +18,7 @@ code_refs:
   - app/Services/Gamification/GoalResolver.php
   - app/Services/Gamification/SeasonGoalResolver.php
   - app/Services/Gamification/SeasonGamificationContext.php
-  - resources/js/components/trends/panels/FitnessTrend.tsx
+  - resources/js/components/trends/panels/FitnessPanel.tsx
   - app/Models/RunCard.php
   - app/Models/UserUnlock.php
   - app/Models/StreakRestToken.php
@@ -56,7 +56,7 @@ The rarity isn't a coin flip: [RarityScorer::score()](../../app/Services/Run/Sto
 
 Effort badges are read against the athlete's max HR, so a stale max quietly distorts them: `all_out` (hard) landed on 69% of runs while `easy_miles` (easy) fired on none at all, since its 70%-of-max bar describes a recovery jog rather than the easy run a Z2 session actually is. Both thresholds now sit where runners would recognise the effort, and max HR self-corrects during ingest (see [[stream-analysis]]).
 
-The result persists to the `run_cards` table via [RunCard](../../app/Models/RunCard.php): `rarity` is a string column cast to the `Rarity` enum, `badges` casts to an array, and `special_move` holds the name. The model exposes `forUser()`, `badgeCountsForUser()` (lifetime, `Badge::tracked()` only — feeds `GamificationContext`), `allBadgeCountsForUser()` (every `Badge` case, optionally date-ranged) and `firstEarnedDatesForUser()` (the earliest date each badge slug was ever earned — feeds the badge-milestone timeline below) for the collection views.
+The result persists to the `run_cards` table via [RunCard](../../app/Models/RunCard.php): `rarity` is a string column cast to the `Rarity` enum, `badges` casts to an array, and `special_move` holds the name. The model exposes `forUser()`, `badgeCountsForUser()` (lifetime, `Badge::tracked()` only — feeds `GamificationContext`), `allBadgeCountsForUser()` (every `Badge` case, optionally date-ranged) and `firstEarnedBadgesForUser()` (the earliest date each badge slug was ever earned, with that card's rarity — feeds the badge chips below) for the collection views.
 
 **Two badges retired (Slice 7): `Berturut`/`streak` (7-day) and `Rajin`/`habit_forming` (3-day).** Both keyed off `CardContext::$consecutiveDaysBefore`, a daily-consecutive counter — a completely different signal from `GamificationContext::$streakWeeks`/`$twoWeekStreak` (weekly), which still drives `StreakRemindCommand` and the `aura_warmup` accessory goal untouched. `Badge` now has 16 cases (was 18 after Slice 2g retired the holiday badge). The frontend's `BADGE_LABELS`/`BADGE_ABILITY` drop the two entries too (same "let it fall back to `prettyBadge()`" treatment Slice 2g used for `holiday_run`), so a pre-existing card that still carries one of these slugs in its `badges` JSON array renders without crashing.
 
@@ -111,11 +111,11 @@ The weekly streak (`WeeklySnapshot::consecutiveWeekStreak()`) hard-resets to 0 a
 
 Because `two_week_streak` is `min(streakWeeks, 2)`, a bridged streak can still reach the `aura_warmup` accessory goal. That is intended: the streak was preserved, so what the streak earns is preserved with it.
 
-The streak, the open week's stake, and the held rest weeks render on Profile's season & streak panel — with no control to play a rest week, since there is nothing to play. The mobile-UX port's `plan/README.md` §5 ("Streak feature redesign") moved this off the Plan tab, consolidating it onto Trends' badge board instead; see [[plan-periodizer]] and [[profile]].
+The streak, the open week's stake, and the held rest weeks render on Profile's season & streak panel — with no control to play a rest week, since there is nothing to play. The mobile-UX port's `plan/README.md` §5 ("Streak feature redesign") moved this off the Plan tab; the prototype-parity program's P25/P27 then cut Trends' badge board too, so the week streak survives on Trends as a single chip inside [FitnessPanel](../../resources/js/components/trends/panels/FitnessPanel.tsx). See [[plan-periodizer]] and [[profile]].
 
 ## Badge milestones
 
-The standalone badge board (`/badges`) retired once its content moved onto `/trends`. [FitnessTrend](../../resources/js/components/trends/panels/FitnessTrend.tsx) plots each badge as a marker on the Fitness/Fatigue timeline, keyed off `RunCard::firstEarnedDatesForUser()` — first occurrence only, not a lifetime/season count. Markers within 22px of each other cluster into one with a count; a chip list below the chart is the precise control for reaching an individual badge. Name/emblem/criterion text still comes from the frontend's `runcard.ts` `BADGE_LABELS`/`BADGE_ABILITY` catalog, matching the old badge board. The rest-day reward isn't part of this timeline — it has no `Badge` case and no earned-activity date to plot against.
+The standalone badge board (`/badges`) retired once its content moved onto `/trends`, and decision P14 of the prototype-parity program then narrowed badges to exactly two surfaces: Trends' fitness-panel chips and Inbox's unlock rows. [FitnessPanel](../../resources/js/components/trends/panels/FitnessPanel.tsx) draws one chip per badge earned inside the selected range window, keyed off `RunCard::firstEarnedBadgesForUser()` — first occurrence only, not a lifetime/season count, and carrying the rarity of the card that earned it so the chip's medal can be tinted. Every one of them renders, wrapping (P15); tapping a chip expands its criterion text. Name/criterion text still comes from the frontend's `runcard.ts` `BADGE_LABELS`/`BADGE_ABILITY` catalog, matching the old badge board. The rest-day reward isn't part of this list — it has no `Badge` case and no earned-activity date.
 
 ## See also
 
