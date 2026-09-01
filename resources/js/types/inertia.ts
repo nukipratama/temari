@@ -72,6 +72,9 @@ export interface InboxItem {
     url: string | null;
     run_card_id: number | null;
     rarity: Rarity | null;
+    /** Post-run rows only: the stat chips the prototype's row draws. */
+    distance_m: number | null;
+    moving_time_s: number | null;
 }
 
 /**
@@ -441,13 +444,4 @@ export interface PersonalRecord {
     category: string;
     value: number;
     activity?: Activity;
-}
-
-export interface PaginatedResponse<T> {
-    data: T[];
-    current_page: number;
-    last_page: number;
-    per_page: number;
-    total: number;
-    links: Array<{ url: string | null; label: string; active: boolean }>;
 }
