@@ -153,12 +153,14 @@ export function computeAdherence(
     return Math.round(Math.min(100, total / scored.length));
 }
 
-/** "Jun 12–18" for a week start, collapsing the month when both ends share it. */
+/** "jun 12–18" for a week start, collapsing the month when both ends share it. */
 export function weekRangeLabel(weekStartIso: string): string {
     const monday = mondayOf(weekStartIso);
     const sunday = sundayOf(monday);
     if (monday.getMonth() === sunday.getMonth()) {
-        const month = monday.toLocaleDateString('en-US', { month: 'short' });
+        const month = monday
+            .toLocaleDateString('en-US', { month: 'short' })
+            .toLowerCase();
         return `${month} ${monday.getDate()}–${sunday.getDate()}`;
     }
     return `${formatMonthDayId(monday)}–${formatMonthDayId(sunday)}`;

@@ -186,7 +186,7 @@ describe('verdictMetric', () => {
 describe('verdictHeadline', () => {
     it('names the month the improvement is measured from', () => {
         expect(verdictHeadline(trend())).toBe(
-            "you're faster than you were in March.",
+            "you're faster than you were in march.",
         );
     });
 
@@ -206,7 +206,7 @@ describe('verdictHeadline', () => {
             verdictHeadline(
                 trend({ verdict: 'slipped', mean_pace_delta_sec: -9 }),
             ),
-        ).toBe("you've slipped since March.");
+        ).toBe("you've slipped since march.");
     });
 
     it('calls a plateau without dressing it up', () => {
@@ -214,7 +214,7 @@ describe('verdictHeadline', () => {
             verdictHeadline(
                 trend({ verdict: 'plateaued', mean_pace_delta_sec: 0.4 }),
             ),
-        ).toBe("you're holding where you were in March.");
+        ).toBe("you're holding where you were in march.");
     });
 
     it('separates nothing comparable from one pair that is not yet a trend', () => {

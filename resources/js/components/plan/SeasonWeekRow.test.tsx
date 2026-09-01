@@ -88,7 +88,7 @@ describe('SeasonWeekRow', () => {
         renderRow();
 
         expect(screen.getByText('Wk 3')).toBeInTheDocument();
-        expect(screen.getByText('Jun 15–21')).toBeInTheDocument();
+        expect(screen.getByText('jun 15–21')).toBeInTheDocument();
         expect(screen.getByText(/30 km · 5 sessions/)).toBeInTheDocument();
     });
 

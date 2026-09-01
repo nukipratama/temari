@@ -421,7 +421,7 @@ describe('calendar', () => {
                     monthlyRecap={makeRecap()}
                 />,
             );
-            fireEvent.click(screen.getByText('Send notification'));
+            fireEvent.click(screen.getByText('send notification'));
             expect(router.post).not.toHaveBeenCalled();
         });
 
@@ -441,7 +441,7 @@ describe('calendar', () => {
                     monthlyRecap={makeRecap()}
                 />,
             );
-            fireEvent.click(screen.getByText('Send notification'));
+            fireEvent.click(screen.getByText('send notification'));
             expect(router.post).toHaveBeenCalledWith(
                 '/recaps/monthly/2026-04/send',
                 {},

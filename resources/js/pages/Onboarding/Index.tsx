@@ -479,7 +479,7 @@ export default function OnboardingIndex() {
                                     Which days do you usually run?
                                 </h2>
                                 <p className="mt-2 mb-5 text-xs leading-relaxed text-text-2">
-                                    Pick {sessionsPerWeek} &middot;{' '}
+                                    pick {sessionsPerWeek} &middot;{' '}
                                     {runDays.length} of {sessionsPerWeek}{' '}
                                     selected.
                                 </p>

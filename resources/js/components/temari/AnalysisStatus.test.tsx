@@ -186,7 +186,7 @@ describe('AnalysisStatus', () => {
                 })}
             />,
         );
-        expect(screen.getByText(/Generated 5 min ago/)).toBeInTheDocument();
+        expect(screen.getByText(/generated 5 min ago/)).toBeInTheDocument();
         vi.useRealTimers();
     });
 
@@ -206,10 +206,10 @@ describe('AnalysisStatus', () => {
             />,
         );
 
-        expect(screen.getByText(/Generated 5 min ago/)).toHaveClass(
+        expect(screen.getByText(/generated 5 min ago/)).toHaveClass(
             'text-ink-on-sky',
         );
-        expect(screen.getByText(/Generated 5 min ago/)).not.toHaveClass(
+        expect(screen.getByText(/generated 5 min ago/)).not.toHaveClass(
             'text-text-3',
         );
         const button = screen.getByRole('button', { name: /reread/ });

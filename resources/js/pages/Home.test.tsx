@@ -195,10 +195,10 @@ describe('Home', () => {
         const { container } = renderHome(trend(), weekPlan);
 
         const order = [
-            screen.getByText("This week's plan"),
-            screen.getByText("you're faster than you were in March."),
+            screen.getByText("this week's plan"),
+            screen.getByText("you're faster than you were in march."),
             screen.getByText('Easy 6k.'),
-            screen.getByText(/This week's stats/),
+            screen.getByText(/this week's stats/),
         ];
 
         order.forEach((node, i) => {
@@ -216,7 +216,7 @@ describe('Home', () => {
     it("draws the prototype's no-plan card when the backend shipped no plan", () => {
         renderHome(trend(), null);
 
-        expect(screen.queryByText("This week's plan")).not.toBeInTheDocument();
+        expect(screen.queryByText("this week's plan")).not.toBeInTheDocument();
         expect(screen.getByText('No plan yet.')).toBeInTheDocument();
     });
 
@@ -231,7 +231,7 @@ describe('Home', () => {
         renderHome(trend({ verdict: 'plateaued', mean_pace_delta_sec: 0.4 }));
 
         expect(
-            screen.getByText("you're holding where you were in March."),
+            screen.getByText("you're holding where you were in march."),
         ).toBeInTheDocument();
     });
 
@@ -248,7 +248,7 @@ describe('Home', () => {
         );
 
         expect(
-            screen.getByText("you've slipped since March."),
+            screen.getByText("you've slipped since march."),
         ).toBeInTheDocument();
         expect(screen.getByText('+10 s/km')).toBeInTheDocument();
     });
@@ -299,7 +299,7 @@ describe('Home', () => {
         renderHome(null);
 
         expect(screen.queryByText(/You vs Past You/)).not.toBeInTheDocument();
-        expect(screen.getByText(/This week's stats/)).toBeInTheDocument();
+        expect(screen.getByText(/this week's stats/)).toBeInTheDocument();
     });
 
     it('shows the no-runs empty state instead of a verdict on a brand new account', () => {
@@ -314,6 +314,6 @@ describe('Home', () => {
         );
 
         expect(screen.queryByText(/You vs Past You/)).not.toBeInTheDocument();
-        expect(screen.queryByText(/This week's stats/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/this week's stats/)).not.toBeInTheDocument();
     });
 });

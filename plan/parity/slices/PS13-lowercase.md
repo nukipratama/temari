@@ -34,6 +34,7 @@ the inclusions.
 |---|---|
 | **Operator pages** — Devtools, Devtools/Design, AI-usage and `components/aiusage/`, `lib/designTokens.ts` | **P20**: operator tooling sits outside the product surface the prototype specifies. 84 of the 376 scanned strings. |
 | **Legal pages** — terms, privacy, AI use, training disclaimer | Legal prose, not product copy. The prototype links to them but draws none of their content. |
+| **Legal and safety copy rendered *inline* on a screen** — `DataUseStatement.php`'s "your data" bullets on Settings, `TrainingDisclaimer.php`'s card on Plan and Login | The same reasoning, one step further than expected. These are PHP-authored, appear inside the phone frame, and the browser pass flagged them as the most visible remaining Title Case. They stay capitalised anyway: the prototype draws **no** equivalent (its Settings fine-print section is a `LegalCard` of links only), so there is nothing to port, and lowercasing a medical disclaimer weakens copy whose whole job is to be read as serious. **A deliberate, reversible call** — if it should match, it is two constants. |
 | **Share-card renderers** — `lib/shareCard.ts`, `lib/runcard.ts`, `RunCardImageRenderer.php` | An exported image, not a screen. The prototype draws no share card, and the client and server renderers must stay in step (see `PP2`'s correction to P11) — changing copy on one side alone widens a divergence this program has already had to untangle once. |
 | **Small mono uppercase labels** (`text-label-micro` / `text-label-small`, eyebrows, stat captions) | The prototype uppercases these itself, and they render through a CSS `uppercase`, so **source case is invisible**. Editing them is pure churn with zero rendered effect. The user's steer on the mobile redesign was explicit that all-lowercase small labels look wrong. |
 | **Proper nouns and domain terms** — Strava, HR, CTL, ATL, TRIMP, VDOT, GAP, PR, Z1-Z5, km, unit symbols | Running vocabulary, not chrome. `docs/voice-and-tone.md` already fixes these, and the prototype writes them the same way. |
@@ -77,6 +78,27 @@ Record before/after. Expected flat: this changes string values, not branches.
   and so does any string that is a data value rather than chrome.
 - Sentence-initial capitals inside *narrated* text are not this slice's business — that text comes
   from the narrator or the rule-based filler at runtime.
+
+## What the browser pass caught
+
+Run after the first two commits, over Login / Settings / Plan / History / Today. It confirmed the
+Login wordmark fix and that lowercase dates read fine, and found the pass **incomplete** in a way
+the scan structurally could not have caught:
+
+- **Multi-line JSX text** — the scanner is line-based, so any paragraph broken across lines was
+  invisible to it. That is what left `Save changes`, `Log out`, `Delete account`, `Heart-rate zones`,
+  `This week's stats`, `This week's plan`, `Planned` / `Actual` and `What the plan can and cannot see`
+  behind.
+- **A second date formatter.** `pace.ts` was treated as *the* choke point; `verdict.ts:133` and
+  `plan.ts:161` each call `toLocaleDateString` themselves. That produced the clearest tell: Today
+  read "you're faster than you were in **April**" directly above "pace vs **apr** 5", and Plan showed
+  "base · **sep** 1 – nov 30" above "WK 2 · **Sep** 7–13". Both now route through `.toLowerCase()`.
+- **Backend-authored copy.** The scan only walked `resources/js`, so PHP-authored strings shown on a
+  screen were never candidates. See the exclusion row above for the call taken there.
+
+Two findings were checked and left alone as correctly out of scope: History's activity titles are
+Strava-authored user data, and the recap card's sentence-cased text comes from the rule-based
+narration filler.
 
 ## Open questions
 

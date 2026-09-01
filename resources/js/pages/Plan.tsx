@@ -209,7 +209,7 @@ export default function Plan({
                         href="/training-disclaimer"
                         className="focus-ring mt-2 inline-block text-sm text-text-2 underline underline-offset-2 hover:text-foreground"
                     >
-                        What the plan can and cannot see
+                        what the plan can and cannot see
                     </Link>
                 </Card>
             </PageContainer>

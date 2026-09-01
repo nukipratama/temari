@@ -187,7 +187,7 @@ export default function TrainingPreferencesCard({
         <div className={cardVariants()}>
             <SectionLabel size="micro">Training preferences</SectionLabel>
             <p className="mb-4 font-sans text-xs leading-relaxed text-text-2">
-                Set at onboarding, change them any time.
+                set at onboarding, change them any time.
             </p>
 
             <FieldGroup label="Experience level">
@@ -244,7 +244,7 @@ export default function TrainingPreferencesCard({
                 <p className="mb-2 font-sans text-xs text-text-3">
                     {sessionsPerWeek === null
                         ? 'pick your sessions per week first.'
-                        : `Pick ${sessionsPerWeek} · ${runDays.length} of ${sessionsPerWeek} selected.`}
+                        : `pick ${sessionsPerWeek} · ${runDays.length} of ${sessionsPerWeek} selected.`}
                 </p>
                 <DayRow
                     items={DAY_OPTIONS.map((day) => {
@@ -299,7 +299,7 @@ export default function TrainingPreferencesCard({
                     onClick={submit}
                     disabled={processing || !isDirty || daysIncomplete}
                 >
-                    Save changes
+                    save changes
                 </PillButton>
                 <AnimatePresence>
                     {justSaved && (

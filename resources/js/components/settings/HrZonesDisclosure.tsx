@@ -230,7 +230,7 @@ export default function HrZonesDisclosure({
                 />
                 <span className="min-w-0 flex-1">
                     <span className="block font-sans text-sm font-bold text-foreground">
-                        Heart-rate zones
+                        heart-rate zones
                     </span>
                     <span className="mt-0.5 block font-sans text-xs text-text-3">
                         {collapsedCopy(hrZones)}

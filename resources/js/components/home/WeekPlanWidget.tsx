@@ -214,7 +214,7 @@ export default function WeekPlanWidget({
         <Card as="section">
             <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
                 <Eyebrow token="micro" className="text-foreground">
-                    This week&apos;s plan
+                    this week&apos;s plan
                 </Eyebrow>
                 <Chip className="bg-muted text-foreground">
                     {PHASE_LABEL[weekPlan.phase] ?? weekPlan.phase}

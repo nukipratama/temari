@@ -84,7 +84,7 @@ describe('TrainingPreferencesCard', () => {
         // Sun as the long run.
         fireEvent.click(screen.getAllByRole('button', { name: 'Mon' })[0]);
         fireEvent.click(screen.getAllByRole('button', { name: 'Wed' })[0]);
-        fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
+        fireEvent.click(screen.getByRole('button', { name: /save changes/ }));
 
         expect(router.patch).toHaveBeenCalledWith(
             '/settings/training-preferences',
@@ -111,14 +111,14 @@ describe('TrainingPreferencesCard', () => {
         render(<TrainingPreferencesCard trainingPreferences={SET_PAYLOAD} />);
 
         expect(
-            screen.getByRole('button', { name: /Save changes/ }),
+            screen.getByRole('button', { name: /save changes/ }),
         ).toBeDisabled();
 
         fireEvent.click(
             screen.getByRole('button', { name: 'stay consistent' }),
         );
         expect(
-            screen.getByRole('button', { name: /Save changes/ }),
+            screen.getByRole('button', { name: /save changes/ }),
         ).toBeEnabled();
     });
 
@@ -138,7 +138,7 @@ describe('TrainingPreferencesCard', () => {
         render(<TrainingPreferencesCard trainingPreferences={SET_PAYLOAD} />);
 
         fireEvent.click(screen.getByRole('button', { name: 'build a base' }));
-        fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
+        fireEvent.click(screen.getByRole('button', { name: /save changes/ }));
 
         expect(router.patch).toHaveBeenCalledWith(
             '/settings/training-preferences',
@@ -158,7 +158,7 @@ describe('TrainingPreferencesCard', () => {
         render(<TrainingPreferencesCard trainingPreferences={SET_PAYLOAD} />);
 
         fireEvent.click(screen.getByRole('button', { name: 'build a base' }));
-        fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
+        fireEvent.click(screen.getByRole('button', { name: /save changes/ }));
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
         const [, , options] = vi.mocked(router.patch).mock.calls[0] as [
@@ -192,7 +192,7 @@ describe('TrainingPreferencesCard', () => {
         );
 
         fireEvent.click(screen.getAllByRole('button', { name: 'Mon' })[0]);
-        fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
+        fireEvent.click(screen.getByRole('button', { name: /save changes/ }));
 
         expect(router.patch).toHaveBeenCalledWith(
             '/settings/training-preferences',

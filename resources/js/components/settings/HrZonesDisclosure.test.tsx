@@ -33,7 +33,7 @@ const DEFAULT_PAYLOAD: HrZonesPayload = {
 };
 
 function open() {
-    fireEvent.click(screen.getByRole('button', { name: /Heart-rate zones/ }));
+    fireEvent.click(screen.getByRole('button', { name: /heart-rate zones/ }));
 }
 
 describe('deriveBounds', () => {
@@ -66,7 +66,7 @@ describe('HrZonesDisclosure', () => {
 
     it('stays collapsed until the trigger is clicked, naming the current source', () => {
         render(<HrZonesDisclosure hrZones={DEFAULT_PAYLOAD} />);
-        expect(screen.getByText('Heart-rate zones')).toBeInTheDocument();
+        expect(screen.getByText('heart-rate zones')).toBeInTheDocument();
         expect(screen.getByText('using default estimates')).toBeInTheDocument();
         expect(screen.queryByLabelText('Max HR')).not.toBeInTheDocument();
 

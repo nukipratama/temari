@@ -31,8 +31,8 @@ describe('Settings', () => {
         render(<Settings />);
         expect(screen.getByText('Notifications')).toBeInTheDocument();
         expect(screen.getByText('Telegram')).toBeInTheDocument();
-        expect(screen.getByText('Heart-rate zones')).toBeInTheDocument();
-        expect(screen.getByText('Delete account')).toBeInTheDocument();
+        expect(screen.getByText('heart-rate zones')).toBeInTheDocument();
+        expect(screen.getByText('delete account')).toBeInTheDocument();
     });
 
     it('expands the HR zones disclosure inline, without navigating', () => {
@@ -40,7 +40,7 @@ describe('Settings', () => {
         expect(screen.queryByLabelText('Max HR')).not.toBeInTheDocument();
 
         fireEvent.click(
-            screen.getByRole('button', { name: /Heart-rate zones/ }),
+            screen.getByRole('button', { name: /heart-rate zones/ }),
         );
 
         expect(screen.getByLabelText('Max HR')).toBeInTheDocument();
@@ -70,7 +70,7 @@ describe('Settings', () => {
         );
 
         fireEvent.click(
-            screen.getByRole('button', { name: /Heart-rate zones/ }),
+            screen.getByRole('button', { name: /heart-rate zones/ }),
         );
         expect(screen.getByLabelText('Max HR')).toHaveValue(200);
     });
@@ -81,7 +81,7 @@ describe('Settings', () => {
         render(<Settings />);
 
         const preferences = screen.getByText('Training preferences');
-        const zones = screen.getByText('Heart-rate zones');
+        const zones = screen.getByText('heart-rate zones');
 
         expect(
             preferences.compareDocumentPosition(zones) &
@@ -94,7 +94,7 @@ describe('Settings', () => {
     it('draws the account actions as the prototype button pair', () => {
         render(<Settings />);
 
-        const logOut = screen.getByRole('button', { name: /Log out/ });
+        const logOut = screen.getByRole('button', { name: /log out/ });
         expect(logOut).toHaveClass('w-full');
         expect(logOut).toHaveClass('min-[900px]:w-auto');
         expect(logOut.parentElement).toHaveClass('min-[900px]:flex-row');
@@ -175,7 +175,7 @@ describe('Settings', () => {
     it('scopes the channel mutes to run notifications', () => {
         render(<Settings />);
         expect(
-            screen.getByText(/Controls your run notifications/),
+            screen.getByText(/controls your run notifications/),
         ).toBeInTheDocument();
         expect(
             screen.getByText(/system alerts still come through/),
@@ -186,14 +186,14 @@ describe('Settings', () => {
         vi.mocked(router.post).mockReset();
         render(<Settings />);
 
-        fireEvent.click(screen.getByText('Log out'));
+        fireEvent.click(screen.getByText('log out'));
 
         expect(router.post).toHaveBeenCalledWith('/logout');
     });
 
     it('tints the destructive row so it stops reading as routine', () => {
         render(<Settings />);
-        expect(screen.getByText('Delete account')).toHaveClass(
+        expect(screen.getByText('delete account')).toHaveClass(
             'text-ember-ink',
         );
     });
@@ -316,7 +316,7 @@ describe('Settings', () => {
         vi.mocked(router.delete).mockReset();
         render(<Settings />);
 
-        fireEvent.click(screen.getByText('Delete account'));
+        fireEvent.click(screen.getByText('delete account'));
         expect(
             screen.getByText('sure you want to delete your account?'),
         ).toBeInTheDocument();
@@ -328,7 +328,7 @@ describe('Settings', () => {
         vi.mocked(router.delete).mockReset();
         render(<Settings />);
 
-        fireEvent.click(screen.getByText('Delete account'));
+        fireEvent.click(screen.getByText('delete account'));
         fireEvent.click(
             screen.getByRole('button', { name: /yes, delete my account/ }),
         );
@@ -340,7 +340,7 @@ describe('Settings', () => {
         vi.mocked(router.delete).mockReset();
         render(<Settings />);
 
-        fireEvent.click(screen.getByText('Delete account'));
+        fireEvent.click(screen.getByText('delete account'));
         expect(
             screen.getByText('sure you want to delete your account?'),
         ).toBeInTheDocument();

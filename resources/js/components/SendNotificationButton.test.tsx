@@ -10,7 +10,7 @@ describe('SendNotificationButton', () => {
     it('posts to the given url when clicked', () => {
         vi.mocked(router.post).mockReset();
         render(<SendNotificationButton url="/activities/99/send" />);
-        fireEvent.click(screen.getByText('Send notification'));
+        fireEvent.click(screen.getByText('send notification'));
         expect(router.post).toHaveBeenCalledWith(
             '/activities/99/send',
             {},
@@ -22,7 +22,7 @@ describe('SendNotificationButton', () => {
         setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
         vi.mocked(router.post).mockReset();
         render(<SendNotificationButton url="/activities/99/send" />);
-        fireEvent.click(screen.getByText('Send notification'));
+        fireEvent.click(screen.getByText('send notification'));
         expect(router.post).not.toHaveBeenCalledWith(
             '/activities/99/send',
             expect.anything(),
@@ -36,7 +36,7 @@ describe('SendNotificationButton', () => {
     it('closes the demo-blocked modal when its Close button is pressed', async () => {
         setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
         render(<SendNotificationButton url="/activities/99/send" />);
-        fireEvent.click(screen.getByText('Send notification'));
+        fireEvent.click(screen.getByText('send notification'));
         fireEvent.click(screen.getByLabelText('Close'));
         await waitFor(() =>
             expect(
@@ -54,7 +54,7 @@ describe('SendNotificationButton', () => {
                 reachable={false}
             />,
         );
-        fireEvent.click(screen.getByText('Send notification'));
+        fireEvent.click(screen.getByText('send notification'));
         expect(router.post).not.toHaveBeenCalled();
         expect(
             screen.getByText('Turn on notifications first'),
@@ -69,7 +69,7 @@ describe('SendNotificationButton', () => {
                 reachable={false}
             />,
         );
-        fireEvent.click(screen.getByText('Send notification'));
+        fireEvent.click(screen.getByText('send notification'));
         fireEvent.click(screen.getByLabelText('Close'));
         await waitFor(() =>
             expect(
@@ -86,7 +86,7 @@ describe('SendNotificationButton', () => {
                 reachable={false}
             />,
         );
-        fireEvent.click(screen.getByText('Send notification'));
+        fireEvent.click(screen.getByText('send notification'));
         expect(
             screen.getByText('Turn on notifications first'),
         ).toBeInTheDocument();
@@ -100,7 +100,7 @@ describe('SendNotificationButton', () => {
             options?.onStart?.({} as never);
         });
         render(<SendNotificationButton url="/activities/99/send" />);
-        const button = screen.getByText('Send notification').closest('button')!;
+        const button = screen.getByText('send notification').closest('button')!;
         fireEvent.click(button);
         expect(button).toBeDisabled();
         expect(button).toHaveTextContent('Sending…');
@@ -119,7 +119,7 @@ describe('SendNotificationButton', () => {
         );
         expect(button).toBeDisabled();
         expect(button).toHaveTextContent('2:05');
-        expect(button).not.toHaveTextContent('Send notification');
+        expect(button).not.toHaveTextContent('send notification');
     });
 
     it('stays clickable when no cooldown is active', () => {
@@ -131,7 +131,7 @@ describe('SendNotificationButton', () => {
             />,
         );
         expect(
-            screen.getByRole('button', { name: 'Send notification' }),
+            screen.getByRole('button', { name: 'send notification' }),
         ).not.toBeDisabled();
     });
 });

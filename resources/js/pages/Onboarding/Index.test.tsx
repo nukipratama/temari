@@ -299,7 +299,7 @@ describe('Onboarding/Index', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Mon' }));
 
         expect(
-            screen.getByText('Pick 2 · 0 of 2 selected.'),
+            screen.getByText('pick 2 · 0 of 2 selected.'),
         ).toBeInTheDocument();
     });
 

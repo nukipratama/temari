@@ -79,7 +79,7 @@ describe('computeAdherence', () => {
 
 describe('weekRangeLabel', () => {
     it('names the month once when the week does not cross one', () => {
-        expect(weekRangeLabel('2026-06-15')).toBe('Jun 15–21');
+        expect(weekRangeLabel('2026-06-15')).toBe('jun 15–21');
     });
 
     it('names both months when the week crosses one', () => {

@@ -165,7 +165,7 @@ export default function AnalysisStatus({
                     <span
                         className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-3'}`}
                     >
-                        Generated {formatRelativeId(analysis.generated_at)}
+                        generated {formatRelativeId(analysis.generated_at)}
                     </span>
                 )}
                 {canRegenerate && (

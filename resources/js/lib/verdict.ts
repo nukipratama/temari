@@ -130,7 +130,7 @@ function matchedSinceMonth(trend: PastYouTrend): string | null {
     const oldest = parseNaiveLocalDate(dates.reduce((a, b) => (a < b ? a : b)));
     return oldest === null
         ? null
-        : oldest.toLocaleDateString('en-US', { month: 'long' });
+        : oldest.toLocaleDateString('en-US', { month: 'long' }).toLowerCase();
 }
 
 export function verdictHeadline(trend: PastYouTrend): string {

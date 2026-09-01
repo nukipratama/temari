@@ -237,14 +237,14 @@ function AccountActions() {
                 className="pressable focus-ring flex w-full items-center justify-center gap-2 rounded-lg border border-border-strong bg-card py-3 font-sans text-[13px] font-bold text-foreground transition hover:bg-cream-deep/40 min-[900px]:w-auto min-[900px]:px-6"
             >
                 <Icon icon="mdi:logout" width={16} height={16} aria-hidden />
-                Log out
+                log out
             </button>
             <button
                 type="button"
                 onClick={() => setConfirmOpen(true)}
                 className="focus-ring rounded p-1 font-sans text-xs font-bold text-ember-ink transition hover:opacity-80"
             >
-                Delete account
+                delete account
             </button>
             <TemariNudgeModal
                 open={confirmOpen}
@@ -320,7 +320,7 @@ function NotificationPrefsPanel({
                     admin Telegram chats without touching preferences, and the bot
                     still replies to /start and /stop. See MaintainerAlerter. */}
                 <p className="mb-2 px-2 font-sans text-[12px] text-text-3">
-                    Controls your run notifications. Bot replies and system
+                    controls your run notifications. bot replies and system
                     alerts still come through.
                 </p>
                 <div className="flex flex-col">

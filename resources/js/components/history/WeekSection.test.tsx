@@ -230,7 +230,7 @@ describe('WeekSection', () => {
                 />,
             );
 
-            fireEvent.click(screen.getByText('Send notification'));
+            fireEvent.click(screen.getByText('send notification'));
             expect(router.post).not.toHaveBeenCalled();
         });
 
@@ -252,7 +252,7 @@ describe('WeekSection', () => {
                 />,
             );
 
-            fireEvent.click(screen.getByText('Send notification'));
+            fireEvent.click(screen.getByText('send notification'));
             expect(router.post).toHaveBeenCalledWith(
                 '/recaps/weekly/7/send',
                 {},
@@ -277,7 +277,7 @@ describe('WeekSection', () => {
             );
 
             expect(
-                screen.queryByText('Send notification'),
+                screen.queryByText('send notification'),
             ).not.toBeInTheDocument();
             expect(
                 screen.getByText(/You ran 4x this week for 35.5 km/),

@@ -65,7 +65,7 @@ describe('VerdictHero', () => {
         render(<VerdictHero trend={trend()} verdict="improving" />);
 
         expect(
-            screen.getByText("you're faster than you were in March."),
+            screen.getByText("you're faster than you were in march."),
         ).toBeInTheDocument();
         expect(
             screen.getByText(
@@ -91,7 +91,7 @@ describe('VerdictHero', () => {
         );
 
         expect(
-            screen.getByText("you've slipped since March."),
+            screen.getByText("you've slipped since march."),
         ).toBeInTheDocument();
     });
 
@@ -104,7 +104,7 @@ describe('VerdictHero', () => {
         );
 
         expect(
-            screen.getByText("you're holding where you were in March."),
+            screen.getByText("you're holding where you were in march."),
         ).toBeInTheDocument();
     });
 
@@ -123,7 +123,7 @@ describe('VerdictHero', () => {
         render(<VerdictHero trend={trend()} verdict="improving" />);
 
         expect(
-            screen.getByText("you're faster than you were in March."),
+            screen.getByText("you're faster than you were in march."),
         ).toHaveClass('text-icon-accent');
     });
 });
