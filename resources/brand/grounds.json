@@ -136,9 +136,6 @@
                 "resources/js/components/ui/MoodChip.tsx": [
                     "sky"
                 ],
-                "resources/js/components/ui/SectionTabs.tsx": [
-                    "sky"
-                ],
                 "resources/js/lib/variants.ts": [
                     "sky"
                 ]
@@ -148,19 +145,6 @@
                 "cream/0.8",
                 "cream/0.85",
                 "horizon"
-            ]
-        },
-        "cream/0.2": {
-            "over": {
-                "resources/js/components/ui/SectionTabs.test.tsx": [
-                    "sky"
-                ],
-                "resources/js/components/ui/SectionTabs.tsx": [
-                    "sky"
-                ]
-            },
-            "text": [
-                "cream"
             ]
         },
         "ember/0.08": {
@@ -177,7 +161,7 @@
                 "resources/js/components/settings/HrZonesDisclosure.tsx": [
                     "paper"
                 ],
-                "resources/js/pages/Race.tsx": [
+                "resources/js/components/race/RaceGoalForm.tsx": [
                     "paper"
                 ]
             },
@@ -456,9 +440,6 @@
                 ],
                 "resources/js/components/ui/ProgressBar.tsx": [
                     "paper"
-                ],
-                "resources/js/components/ui/SectionTabs.tsx": [
-                    "paper"
                 ]
             },
             "text": [
@@ -494,19 +475,6 @@
         },
         "sky/0.12": {
             "text": []
-        },
-        "sky/0.15": {
-            "over": {
-                "resources/js/components/ui/SectionTabs.test.tsx": [
-                    "paper"
-                ],
-                "resources/js/components/ui/SectionTabs.tsx": [
-                    "paper"
-                ]
-            },
-            "text": [
-                "sky"
-            ]
         },
         "sky/0.25": {
             "text": []
