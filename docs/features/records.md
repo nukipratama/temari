@@ -8,7 +8,8 @@ code_refs:
   - app/Http/Controllers/ProfileController.php
   - app/Models/PersonalRecord.php
   - app/Enums/PrCategory.php
-  - resources/js/components/collection/ProgressionChart.tsx
+  - resources/js/components/profile/ProgressionCard.tsx
+  - resources/js/components/profile/JourneyChart.tsx
 ---
 
 # Personal records
@@ -30,7 +31,8 @@ every other legacy redirect.
 
 [ProfileController](../../app/Http/Controllers/ProfileController.php) builds
 `progressionByCategory` from `PersonalRecord` rows across 5K / 10K / Half / Marathon and renders it
-through [ProgressionChart](../../resources/js/components/collection/ProgressionChart.tsx) — a
+through [ProgressionCard](../../resources/js/components/profile/ProgressionCard.tsx)'s
+[JourneyChart](../../resources/js/components/profile/JourneyChart.tsx) — a
 per-distance journey line rather than a scoreboard. The prototype draws exactly that
 (`ProfileScreen.tsx`'s `ProgressionCard`), which is why this is the reading that survived the cut.
 

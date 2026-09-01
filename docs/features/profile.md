@@ -3,14 +3,20 @@ title: Profile
 description: The runner's identity page — Temari's profile voice, lifetime stats, PR progression charts, Strava status
 tags: [feature, profile]
 status: living
-reviewed: 2026-08-19
+reviewed: 2026-09-01
 code_refs:
   - resources/js/pages/Profile.tsx
   - app/Http/Controllers/ProfileController.php
   - resources/js/components/temari/AnalysisStatus.tsx
-  - resources/js/components/collection/ProgressionChart.tsx
+  - resources/js/components/profile/ProfileHero.tsx
+  - resources/js/components/profile/TimeInZoneBar.tsx
+  - resources/js/components/profile/SeasonCard.tsx
+  - resources/js/components/profile/PaceTargetsCard.tsx
+  - resources/js/components/profile/ProgressionCard.tsx
+  - resources/js/components/profile/JourneyChart.tsx
   - resources/js/components/temari/FaceIcon.tsx
   - resources/js/components/UserAvatarLink.tsx
+  - app/Services/Run/Metrics/TimeInZoneSummary.php
   - app/Services/Run/Metrics/VdotEstimator.php
   - app/Actions/Run/Metrics/EstimateThresholdAction.php
   - app/Services/Run/Metrics/TrainingPaceCalculator.php
@@ -32,44 +38,56 @@ The Profile page (`/profile`) is the runner's about-me: who they are, how Temari
 
 ## Identity + What Temari says about you
 
-The header eyebrow is built from first-run date and months-since-first-run, over an "{firstName} Runner, / *your story.*" headline. Below it a `HeroPanel` pairs a 64px leaf-ringed [FaceIcon](resources/js/components/temari/FaceIcon.tsx) with **"★ What Temari says about you"** — the AI profile voice (`profileVoice`), rendered through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx) `onSky` as an italic quote. Strava status (`identity.strava_connected`) shows as a "Reconnect" action when revoked, and a "With Temari since" date anchors the panel's right edge on desktop.
+A "Profile" eyebrow sits over a "{firstName}, / *your story.*" headline with the athlete's avatar circle beside it. Below, [ProfileHero](resources/js/components/profile/ProfileHero.tsx) pairs a 64px leaf-ringed [FaceIcon](resources/js/components/temari/FaceIcon.tsx) with **"★ What Temari says about you"** — the AI profile voice (`profileVoice`), rendered through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx) as an italic serif quote. An "Est. {date}" line carries the first-run date at every width; a "With Temari since" block is revealed to its right only above 900px (the prototype's one visibility-toggled element). Strava status (`identity.strava_connected`) shows as a "Reconnect" action when revoked.
+
+The panel is **card-toned with a horizon halo**, not one of the app's sky-gradient `HeroPanel`s — `PS10` matched the prototype's own `bg-card` hero, as `PS8` did on activity detail.
 
 This is the merged Aku voice: it reads who the runner is from their 12-week mood mix and backs that reading with their lifetime numbers, in one billed call ([AkuProfileVoiceNarrator](app/Services/AI/Narrators/AkuProfileVoiceNarrator.php) carries `get_persona_mix` alongside `get_lifetime_stats`, `get_training_paces` and `get_progression_signal`). Server side, `ProfileController::resolveProfileVoice` looks up the `AkuProfileVoice` analysis keyed by **ISO week** (`isoFormat('GGGG-[W]WW')`) and returns `Analysis::toPayload`. The numbers on the page are live; the prose is refreshed once a week by `ai:weekly-profile` (`invalidate: false`, so the week key is the refresh) or on demand via "Reread". See [[recaps]] and [[ai-pipeline]].
 
-## Stats trio
+## Stat row
 
-Three `StatCard`s: **Total km**, **Total runs**, **Longest run**. The controller delegates to [LifetimeStats](app/Services/Run/LifetimeStats.php), the same service `/calendar` uses: one aggregate query over `ActivityDetail` (`SUM(distance)`, `MAX(distance)`, `MIN(start_date_local)`) plus `user->activities()->count()` for the run count, converted to km and cached per user for 5 minutes. `/profile` maps its `longest_km` onto the `longest_run_km` prop; the page renders **Total km** at 1dp and **Longest run** at 2dp, matching the precision the service rounds to.
+A horizontally scrolling row inside the hero: **Total km**, **Total runs**, **Longest run**, plus **VDOT** and **Threshold** when the athlete has a VDOT-eligible PR. The controller delegates to [LifetimeStats](app/Services/Run/LifetimeStats.php), the same service `/calendar` uses: one aggregate query over `ActivityDetail` (`SUM(distance)`, `MAX(distance)`, `MIN(start_date_local)`) plus `user->activities()->count()` for the run count, converted to km and cached per user for 5 minutes. `/profile` maps its `longest_km` onto the `longest_run_km` prop; the page renders **Total km** at 1dp and **Longest run** at 2dp, matching the precision the service rounds to.
 
 Sharing `/calendar`'s cache means the totals can trail a just-ingested run by up to the TTL, the same window `/calendar` has always had.
 
 ## Fitness — VDOT, threshold pace & training paces
 
-When the runner has a VDOT-eligible PR, the hero stat grid grows two more tiles (**VDOT**, **Threshold pace**, `explainerKey`s `vdot`/`threshold_pace`) and a "Training · pace targets" card renders below the hero panel with four tiles — **Easy**, **Marathon**, **Tempo**, **Interval** — each a pace-per-km via `formatPace`. `ProfileController::fitness` builds the `fitness` prop from [VdotEstimator](app/Services/Run/Metrics/VdotEstimator.php)`::estimate`, [EstimateThresholdAction](app/Actions/Run/Metrics/EstimateThresholdAction.php)`::__invoke` and [TrainingPaceCalculator](app/Services/Run/Metrics/TrainingPaceCalculator.php)`::fromVdotResult`; `fitness` is `null` (and the extra tiles don't render) when the user has no VDOT-eligible PR yet.
+When the runner has a VDOT-eligible PR, the hero stat row grows two more tiles (**VDOT**, **Threshold**) and [PaceTargetsCard](resources/js/components/profile/PaceTargetsCard.tsx) renders below the season card: a leaf→horizon rail with four markers — **Easy**, **Marathon**, **Tempo**, **Interval** — each a pace-per-km via `formatPace`. Unlike the prototype's hardcoded marker offsets, each marker's position is its own pace linearly placed between the slowest and the fastest of the four, so two targets that sit close together read as close together. `ProfileController::fitness` builds the `fitness` prop from [VdotEstimator](app/Services/Run/Metrics/VdotEstimator.php)`::estimate`, [EstimateThresholdAction](app/Actions/Run/Metrics/EstimateThresholdAction.php)`::__invoke` and [TrainingPaceCalculator](app/Services/Run/Metrics/TrainingPaceCalculator.php)`::fromVdotResult`; `fitness` is `null` (and the extra tiles don't render) when the user has no VDOT-eligible PR yet.
 
 These are the same estimators [AkuProfileVoiceNarrator](app/Services/AI/Narrators/AkuProfileVoiceNarrator.php) calls via [TrainingPacesTool](app/Services/AI/Agent/Tools/TrainingPacesTool.php) to narrate pace targets in prose — the numbers reach the user both ways, tabulated here and spoken in the hero voice above.
 
-## Persona · last 12 weeks
+## Time in zone · last 12 weeks
 
-**Cut in `PP3` (P13).** The prototype's Profile hero draws a Z1-Z5 heart-rate-zone bar in the slot the app drew its behavioural persona mix, so `PersonaBar` and the `personaMix` Inertia prop are gone; `PS10` builds the zone bar in that slot. `AkuProfileVoiceNarrator::personaMix()` and `PersonaMixTool` survive — the hero voice still reads the mix as narration context — and `W2` decides whether the method itself stays.
+**P13.** [TimeInZoneBar](resources/js/components/profile/TimeInZoneBar.tsx) draws a segmented Z1-Z5 bar and a dot legend in the hero slot the behavioural persona mix used to occupy (`PersonaBar` and the `personaMix` prop were cut in `PP3`). The percentages come from [TimeInZoneSummary](app/Services/Run/Metrics/TimeInZoneSummary.php), which sums the per-run `time_in_zone_min` that [StreamAnalysis](app/Services/Run/Ingest/StreamAnalysis.php) already writes onto `activity_details.stream_summary` across the trailing 12 weeks and normalises them. Zone colours and labels are the shared `HR_ZONE_COLORS`/`HR_ZONE_LABELS` in [chartTokens](resources/js/lib/chartTokens.ts), the same pair the [[settings-hr-zones]] editor names its bands with.
+
+The whole block is absent — bar, legend and label — when no run in the window recorded heart rate, rather than drawing an empty rail. `AkuProfileVoiceNarrator::personaMix()` and `PersonaMixTool` survive as narration context for the hero voice; `W2` decides whether the method itself stays.
 
 ## Journey (progression)
 
-When `progressionByCategory` is non-empty, a tabbed section (5K / 10K / HM / FM) renders [ProgressionChart](resources/js/components/collection/ProgressionChart.tsx) alongside a "Then …, now …" best/worst readout and a goal chip. The series are built server-side by `ProfileController::buildProgressionByCategory` via `ProgressionSeriesBuilder`, over the four `PROGRESSION_CATEGORIES`.
+When `progressionByCategory` is non-empty, [ProgressionCard](resources/js/components/profile/ProgressionCard.tsx) renders distance pills (5K / 10K / HM / FM), a "Then …, now …" best/worst readout, the gap as a quote, two stat chips, and [JourneyChart](resources/js/components/profile/JourneyChart.tsx) — an inline-SVG polyline with a fatter marker on the PR and a tappable tooltip per point. The series are built server-side by `ProfileController::buildProgressionByCategory` via `ProgressionSeriesBuilder`, over the four `PROGRESSION_CATEGORIES`.
 
-## Season & streak
+The pills only offer distances the athlete actually has times at. The prototype draws all four because it has no data to be missing; offering a distance with nothing behind it would be a control that cannot work. `PS10` replaced the Chart.js `ProgressionChart` here — the prototype draws a compact journey line, not an axis-and-grid chart — which orphaned that component; `LineChart` itself survives, still lazy-loaded by Trends and Race.
 
-**Cut in `PP3` (P24).** `SeasonStreakPanel`'s five-row layout — a streak tile (weeks running, a
-"Live" pill, rest-week dots) and a season tile (date range, per-goal progress bars) — is replaced by
-the prototype's small `SeasonCard`: a phase bar and one progress line. `PS10` builds it, and re-adds
-the `seasonStreak` Inertia prop it needs; the prop was removed with the panel rather than left
-dangling with nothing rendering it.
+## Race and season
 
-[SeasonStreakSummaryBuilder](app/Services/Gamification/SeasonStreakSummaryBuilder.php) survives
-unchanged and is still called by `PlanController` (`seasonPayload`) and `TrendsController`
-(`streakPayload`). When `PS10` wires the card back up it should call `SeasonService::peekCurrent()`
-as this controller did — a read-only counterpart to `ensureCurrent()` that returns the current
-season **if one already exists**, never creating one, because visiting Profile must not trigger the
-season-creation side effects a Plan page load does.
+The race row reads the app-wide `activeRace` shared prop
+([GamificationProps](app/Services/Inertia/GamificationProps.php)) rather than a page prop of its
+own: with a race set it shows name, distance, date and a days countdown; without one, the "Got a
+race coming up?" prompt. Both link to `/race`.
+
+**P24.** [SeasonCard](resources/js/components/profile/SeasonCard.tsx) replaces `SeasonStreakPanel`'s
+five-row layout (cut in `PP3`) with the prototype's small card: the current phase and date range,
+a segmented phase bar, and **one** goal progress line — the first goal still open, so the line
+tracks what is actually being worked toward. Phases are derived by `phasesOf` in
+[lib/plan](resources/js/lib/plan.ts), shared with Plan's own season header, over the week list
+[SeasonSummaryBuilder](app/Services/Run/Plan/SeasonSummaryBuilder.php) builds; the goals come from
+[SeasonStreakSummaryBuilder](app/Services/Gamification/SeasonStreakSummaryBuilder.php)`::seasonPayload`.
+
+The controller resolves the season with `SeasonService::peekCurrent()` — a read-only counterpart to
+`ensureCurrent()` that returns the current season **if one already exists**, never creating one,
+because visiting Profile must not trigger the season-creation side effects a Plan page load does.
+With no season, the card shows a "start one on Plan" CTA. The streak half of the old panel does not
+come back: P27 cut the day-grained streak readout, and the week streak surfaces on Trends.
 
 ## Not on this page
 
