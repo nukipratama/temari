@@ -46,7 +46,7 @@ export default function RangeToggle({
                         aria-pressed={selected}
                         onClick={() => onChange(range.key)}
                         className={cn(
-                            'flex-1 rounded-full py-1.5 text-center text-xs font-bold whitespace-nowrap transition-colors',
+                            'flex-1 rounded-full py-2 text-center text-xs font-bold whitespace-nowrap transition-colors',
                             selected
                                 ? 'bg-card text-foreground shadow-e1'
                                 : 'text-foreground hover:text-text-2',

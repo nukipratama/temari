@@ -222,9 +222,6 @@
                 "resources/js/pages/Onboarding/Index.tsx": [
                     "paper"
                 ],
-                "resources/js/components/trends/NarrationHeadline.tsx": [
-                    "paper"
-                ],
                 "resources/js/components/onboarding/IconChoiceCard.tsx": [
                     "paper"
                 ],
@@ -244,9 +241,6 @@
                 "text-2",
                 "icon-accent"
             ]
-        },
-        "horizon/0.12": {
-            "text": []
         },
         "horizon/0.14": {
             "over": {
@@ -299,10 +293,7 @@
         },
         "horizon/0.25": {
             "over": {
-                "resources/js/components/trends/panels/FitnessTrend.tsx": [
-                    "paper"
-                ],
-                "resources/js/components/trends/StreakBadge.tsx": [
+                "resources/js/components/trends/panels/FitnessPanel.tsx": [
                     "paper"
                 ]
             },
