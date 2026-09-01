@@ -31,7 +31,7 @@ describe('Settings', () => {
         render(<Settings />);
         expect(screen.getByText('Notifications')).toBeInTheDocument();
         expect(screen.getByText('Telegram')).toBeInTheDocument();
-        expect(screen.getByText('HR zones')).toBeInTheDocument();
+        expect(screen.getByText('Heart-rate zones')).toBeInTheDocument();
         expect(screen.getByText('Delete account')).toBeInTheDocument();
     });
 
@@ -39,7 +39,9 @@ describe('Settings', () => {
         render(<Settings />);
         expect(screen.queryByLabelText('Max HR')).not.toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', { name: /HR zones/ }));
+        fireEvent.click(
+            screen.getByRole('button', { name: /Heart-rate zones/ }),
+        );
 
         expect(screen.getByLabelText('Max HR')).toBeInTheDocument();
     });
@@ -67,8 +69,35 @@ describe('Settings', () => {
             />,
         );
 
-        fireEvent.click(screen.getByRole('button', { name: /HR zones/ }));
+        fireEvent.click(
+            screen.getByRole('button', { name: /Heart-rate zones/ }),
+        );
         expect(screen.getByLabelText('Max HR')).toHaveValue(200);
+    });
+
+    // The prototype's order: the open preferences card first, the collapsed
+    // zones disclosure under it.
+    it('puts training preferences above the zones disclosure', () => {
+        render(<Settings />);
+
+        const preferences = screen.getByText('Training preferences');
+        const zones = screen.getByText('Heart-rate zones');
+
+        expect(
+            preferences.compareDocumentPosition(zones) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+    });
+
+    // Reflow #11: a button pair that turns sideways above 900px, not a
+    // SettingsRow list.
+    it('draws the account actions as the prototype button pair', () => {
+        render(<Settings />);
+
+        const logOut = screen.getByRole('button', { name: /Log out/ });
+        expect(logOut).toHaveClass('w-full');
+        expect(logOut).toHaveClass('min-[900px]:w-auto');
+        expect(logOut.parentElement).toHaveClass('min-[900px]:flex-row');
     });
 
     it('links out to the four legal pages', () => {
@@ -108,7 +137,7 @@ describe('Settings', () => {
         render(<Settings />);
         expect(screen.getAllByText('Settings').length).toBeGreaterThan(0);
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-            'set up temari, your way.',
+            'tune it your way.',
         );
     });
 

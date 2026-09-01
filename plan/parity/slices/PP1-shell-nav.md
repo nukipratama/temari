@@ -57,8 +57,8 @@ Three are recorded rather than implemented, each for a stated reason:
 | # | reflow | why not carried |
 |---|---|---|
 | 2 | Login headline `text-[34px]` → `text-[46px]` | The app replaced literal type sizes with the `text-display-*` token ladder in `F2`/`F3`, and `PageHero` has no responsive size step. Adding one is a type-system change, not a layout change. `PS1` owns it. **Resolved in `PS1`** — no type-system change was needed: `PS1`'s hero composes its own `h1`, and every step on the ladder was measured against the prototype's two values. Flat `text-display-sm` ships, exact at the three capture viewports below the breakpoint; every discrete `min-[900px]:` step measured worse above it, and the nearest one inverts the reflow's direction. Table and residual in [PS1-login](PS1-login.md). |
-| 10 | Settings HR-zone bounds grid `grid-cols-2` → `grid-cols-4` | The prototype mocks three inputs in that grid; the shipped `HrZonesDisclosure` has **two** (Max HR, Resting HR). Four columns for two fields leaves half the row empty and each input a quarter-width. The base `grid-cols-2` **is** now carried (it was `grid gap-4`, single-column until `sm:`), which is the part that reads correctly with the real field count. |
-| 11 | Settings `AccountActions` row `flex-col` → `flex-row` | The prototype draws a button pair; the app draws a `SettingsRow` list with `mdi:logout`. There is no row to turn sideways until `PS11` restructures the section. |
+| 10 | Settings HR-zone bounds grid `grid-cols-2` → `grid-cols-4` | The base `grid-cols-2` **is** carried here (it was `grid gap-4`, single-column until `sm:`); the wide step was deferred on the grounds that "the prototype mocks three inputs in that grid". **That was wrong, and `PS11` carried the step verbatim.** [SettingsScreen.tsx:473-490](../../../resources/brand/prototype/src/components/pages/SettingsScreen.tsx) holds exactly **two** `<label>`s — max hr and resting hr — the same count the app has; the five `ZONE_BOUNDS` rows are a separate block below the grid, not cells in it. `reference.md` §13 and §1.2 both had it right. No data change was needed. Details in [PS11-settings](PS11-settings.md). |
+| 11 | Settings `AccountActions` row `flex-col` → `flex-row` | The prototype draws a button pair; the app drew a `SettingsRow` list with `mdi:logout`. There was no row to turn sideways until `PS11` restructured the section. **Resolved in `PS11`** — the section is now the prototype's button pair, and both halves of the reflow (the container's `flex-row justify-center`, the log-out button's `w-auto px-6`) ship. |
 
 Per-screen **bottom** padding (`pb` 10/14/22/24 depending on screen, §1.1) is likewise left to the
 `PS` slices: `AppShell` sets one clearance value for all nav screens and one for all pushed
@@ -220,8 +220,10 @@ frosted pill mid-scroll, which is the prototype's `backdrop-blur-xl` design, not
    own it. If it turns out to matter uniformly, `AppShell` needs a second component-keyed map.
    `PS1` confirmed Login needs nothing here: it has no root wrapper, so its bottom pad is the
    footer's own `pb-7`, and `BareShell` adds no nav clearance to subtract.
-3. **Reflow #10** (Settings' HR-zone grid) becomes portable verbatim if `PS11` adds the third and
-   fourth zone-bounds inputs the prototype draws.
+3. ~~**Reflow #10** (Settings' HR-zone grid) becomes portable verbatim if `PS11` adds the third and
+   fourth zone-bounds inputs the prototype draws.~~ **Closed, on a false premise.** There is no
+   third or fourth input: that grid holds two in the prototype, exactly as in the app. `PS11`
+   carried the step as-is. See the row 10 note above.
 4. `CLAUDE.md` still says the app is "light-mode only: `.dark` is never applied". Two grounds
    shipped in `F2` and the appearance toggle in `S11`; the instruction is stale. Out of this
    slice's scope, but it primes every agent that reads it.

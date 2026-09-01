@@ -1,10 +1,22 @@
 import { cn } from '@/lib/cn';
 
+const SIZE_CLASS = {
+    sm: 'h-8 w-8',
+    md: 'h-9 w-9',
+    lg: 'h-11 w-11',
+} as const;
+
+const FONT_CLASS = {
+    sm: 'text-[15px]',
+    md: 'text-[17px]',
+    lg: 'text-xl',
+} as const;
+
 interface UserAvatarProps {
     name: string;
     avatarUrl: string | null;
-    /** `sm` is the mobile top bar (h-8); `md` is the desktop TopNav (h-9). */
-    size?: 'sm' | 'md';
+    /** `sm` is the mobile top bar (h-8), `md` the default (h-9), `lg` Profile's own header circle (h-11). */
+    size?: 'sm' | 'md' | 'lg';
     className?: string;
 }
 
@@ -14,8 +26,8 @@ export default function UserAvatar({
     size = 'md',
     className,
 }: Readonly<UserAvatarProps>) {
-    const sizeClass = size === 'sm' ? 'h-8 w-8' : 'h-9 w-9';
-    const fontClass = size === 'sm' ? 'text-[15px]' : 'text-[17px]';
+    const sizeClass = SIZE_CLASS[size];
+    const fontClass = FONT_CLASS[size];
 
     if (avatarUrl) {
         return (

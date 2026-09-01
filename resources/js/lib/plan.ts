@@ -33,6 +33,59 @@ export interface PlanNarration {
     season: AnalysisPayload | null;
 }
 
+export type PhaseState = 'done' | 'current' | 'upcoming';
+
+export interface Phase {
+    key: string;
+    avgKm: number;
+    state: PhaseState;
+}
+
+/**
+ * One entry per distinct phase of the season, in season order, each with its
+ * mean weekly volume and where the athlete stands in it. Built from the real
+ * phase sequence rather than a fixed base/build/peak/taper four, so a
+ * self-scaled season's repeating build/deload cycle renders honestly. Read by
+ * Plan's season header and Profile's season card, which draw the same sequence
+ * differently.
+ */
+export function phasesOf(weeks: SeasonSummaryWeek[]): Phase[] {
+    const order: string[] = [];
+    const totals = new Map<string, { km: number; count: number }>();
+    const states = new Map<string, PhaseState>();
+
+    for (const week of weeks) {
+        if (!totals.has(week.phase)) {
+            order.push(week.phase);
+            totals.set(week.phase, { km: 0, count: 0 });
+        }
+        const total = totals.get(week.phase)!;
+        total.km += week.planned_km;
+        total.count += 1;
+
+        const seen = states.get(week.phase);
+        if (week.type === 'current') {
+            states.set(week.phase, 'current');
+        } else if (seen === undefined) {
+            states.set(
+                week.phase,
+                week.type === 'history' ? 'done' : 'upcoming',
+            );
+        } else if (seen === 'done' && week.type === 'lookahead') {
+            states.set(week.phase, 'upcoming');
+        }
+    }
+
+    return order.map((key) => {
+        const total = totals.get(key)!;
+        return {
+            key,
+            avgKm: total.km / total.count,
+            state: states.get(key) ?? 'upcoming',
+        };
+    });
+}
+
 export const PHASE_LABEL: Record<string, string> = {
     base: 'Base',
     build: 'Build',

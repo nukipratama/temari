@@ -74,6 +74,7 @@
         "current",
         "gradient-to-br",
         "gradient-to-l",
+        "gradient-to-r",
         "transparent",
         "white"
     ],
@@ -90,7 +91,15 @@
             ]
         },
         "cream-deep/0.4": {
-            "text": []
+            "over": {
+                "resources/js/pages/Settings/Index.tsx": ["paper"],
+                "resources/js/components/settings/HrZonesDisclosure.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/ui/SettingsRow.tsx": ["paper"],
+                "resources/js/components/ui/SettingsRow.test.tsx": ["paper"]
+            },
+            "text": ["foreground"]
         },
         "cream-deep/0.7": {
             "over": {
@@ -214,9 +223,6 @@
                     "paper"
                 ],
                 "resources/js/components/trends/NarrationHeadline.tsx": [
-                    "paper"
-                ],
-                "resources/js/components/settings/TrainingPreferencesDisclosure.tsx": [
                     "paper"
                 ],
                 "resources/js/components/onboarding/IconChoiceCard.tsx": [
