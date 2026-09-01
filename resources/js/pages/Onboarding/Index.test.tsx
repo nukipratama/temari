@@ -32,7 +32,9 @@ describe('Onboarding/Index', () => {
 
         render(<OnboardingIndex />);
 
-        expect(screen.getByText(/you.re connected, Budi/)).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', { name: /you.re connected, Budi./ }),
+        ).toBeInTheDocument();
     });
 
     it('advances to the preferences step on continue', () => {
@@ -51,7 +53,9 @@ describe('Onboarding/Index', () => {
         render(<OnboardingIndex />);
         advanceToGoal();
 
-        expect(screen.getByText('got a race in mind?')).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', { name: /got a race in mind\?/ }),
+        ).toBeInTheDocument();
     });
 
     it('disables the finish button until a race day is entered', () => {
@@ -252,7 +256,9 @@ describe('Onboarding/Index', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
         fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
 
-        expect(screen.getByText('got a race in mind?')).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', { name: /got a race in mind\?/ }),
+        ).toBeInTheDocument();
     });
 
     it('steps back to a previous question without losing the current answer', () => {
@@ -314,6 +320,33 @@ describe('Onboarding/Index', () => {
         ).toBeInTheDocument();
     });
 
+    it('recaps the answered preferences on the goal step', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        fireEvent.click(screen.getByRole('button', { name: 'New to running' }));
+        fireEvent.click(screen.getByRole('button', { name: '3x' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Stay consistent' }),
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+
+        expect(
+            screen.getByText(
+                'Got it: New to running · 3x a week · Stay consistent.',
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('leaves the recap out when every preference was skipped', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        advanceToGoal();
+
+        expect(screen.queryByText(/^Got it:/)).not.toBeInTheDocument();
+    });
+
     it('submits the chosen training preferences alongside the race goal', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
@@ -328,7 +361,9 @@ describe('Onboarding/Index', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Wed' }));
         fireEvent.click(screen.getAllByRole('button', { name: 'Wed' }).at(-1)!);
 
-        expect(screen.getByText('got a race in mind?')).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', { name: /got a race in mind\?/ }),
+        ).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
 
         const call = lastPostCall();
