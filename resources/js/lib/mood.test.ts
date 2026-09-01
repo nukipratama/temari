@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Mood } from '@/types/inertia';
 
-import { dominantMood, MOOD_HINT, MOOD_ORDER, moodSigilColor } from './mood';
+import { dominantMood, MOOD_ORDER, moodSigilColor } from './mood';
 
 const ALL_MOODS: Mood[] = [
     'blazing',
@@ -20,14 +20,6 @@ describe('mood', () => {
             expect([...MOOD_ORDER].sort(byName)).toEqual(
                 [...ALL_MOODS].sort(byName),
             );
-        });
-    });
-
-    describe('MOOD_HINT', () => {
-        it('exposes a non-empty hint for every mood', () => {
-            ALL_MOODS.forEach((m) => {
-                expect(MOOD_HINT[m]).toBeTruthy();
-            });
         });
     });
 

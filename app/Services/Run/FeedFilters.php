@@ -30,6 +30,15 @@ final readonly class FeedFilters
     /** Unbounded range: no lower bound, every analyzed run regardless of age. */
     public const string RANGE_ALL = 'all';
 
+    /**
+     * Week sections shown per page, and how many each "load older weeks" press
+     * adds. Two matches the prototype's own first paint.
+     */
+    public const int WEEKS_PER_PAGE = 2;
+
+    /** Ceiling on the page cursor, so a hand-edited `?weeks=` can't ask for everything. */
+    public const int MAX_WEEKS = 52;
+
     public function __construct(
         public string $range,
         public bool $rangeAutoWidened,

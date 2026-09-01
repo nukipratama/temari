@@ -30,3 +30,15 @@ it('normalises a week deep link to that week\'s sunday', function (): void {
 it('drops a malformed week', function (string $query): void {
     expect(feedRequest($query)->week())->toBeNull();
 })->with(['', 'week=', 'week=2026-6-1', 'week=yesterday', 'week=2026-13-45']);
+
+it('defaults the week page cursor to two', function (mixed $query): void {
+    expect(feedRequest($query)->weeks())->toBe(2);
+})->with(['', 'weeks=', 'weeks=nope', 'weeks=1', 'weeks=0', 'weeks=-5', 'weeks[]=8']);
+
+it('keeps a raised week page cursor', function (): void {
+    expect(feedRequest('weeks=6')->weeks())->toBe(6);
+});
+
+it('clamps the week page cursor to the ceiling', function (): void {
+    expect(feedRequest('weeks=9000')->weeks())->toBe(52);
+});

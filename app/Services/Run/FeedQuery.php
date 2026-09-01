@@ -47,15 +47,72 @@ class FeedQuery
     }
 
     /**
+     * The feed's page window: the Monday that the `$weeks`-th most recent
+     * run-bearing week starts on, plus whether any run sits behind it.
+     *
+     * Paging by *week* rather than by run keeps the unit the same as the one
+     * the screen renders — a "load older weeks" press must add whole week
+     * sections, and a heavy week must not consume someone else's page.
+     * `since` is null only when the window holds no runs at all.
+     *
+     * @return array{since: ?Carbon, hasOlder: bool}
+     */
+    public function weekWindow(User $user, FeedFilters $filters, int $weeks): array
+    {
+        // Upper bound for a single-week deep link: `<` the next day so the whole
+        // Sunday counts whatever time the run started.
+        $weekEnd = $filters->week?->copy()->addDay();
+
+        $dates = ActivityDetail::query()
+            ->forUser($user->id)
+            ->whereNotNull('start_date_local')
+            ->when(
+                $filters->rangeStart !== null,
+                fn (Builder $q): Builder => $q->where('start_date_local', '>=', $filters->rangeStart),
+            )
+            ->when(
+                $weekEnd !== null,
+                fn (Builder $q): Builder => $q->where('start_date_local', '<', $weekEnd),
+            )
+            ->orderByDesc('start_date_local')
+            ->pluck('start_date_local');
+
+        $seen = [];
+        $oldest = null;
+
+        foreach ($dates as $date) {
+            $monday = Carbon::parse($date)->startOfWeek(Carbon::MONDAY)->startOfDay();
+            $key = $monday->toDateString();
+
+            if (isset($seen[$key])) {
+                continue;
+            }
+
+            if (count($seen) === $weeks) {
+                return ['since' => $oldest, 'hasOlder' => true];
+            }
+
+            $seen[$key] = true;
+            $oldest = $monday;
+        }
+
+        return ['since' => $oldest, 'hasOlder' => false];
+    }
+
+    /**
+     * @param  Carbon|null  $since  Page floor from {@see weekWindow}, tightening
+     *                              the filters' own range start.
      * @return Builder<Activity>
      */
-    public function for(User $user, FeedFilters $filters): Builder
+    public function for(User $user, FeedFilters $filters, ?Carbon $since = null): Builder
     {
+        $lowerBound = $since ?? $filters->rangeStart;
+
         return Activity::query()
             ->where('user_id', $user->id)
-            ->whereHas('detail', function ($q) use ($filters) {
-                if ($filters->rangeStart !== null) {
-                    $q->where('start_date_local', '>=', $filters->rangeStart);
+            ->whereHas('detail', function ($q) use ($filters, $lowerBound) {
+                if ($lowerBound !== null) {
+                    $q->where('start_date_local', '>=', $lowerBound);
                 }
 
                 // Upper bound for a single-week deep link (the lower bound comes

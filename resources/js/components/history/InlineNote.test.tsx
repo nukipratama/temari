@@ -1,11 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import InlineNote, {
-    RangeWidenedNote,
-    RunsTruncatedNote,
-    WeekFocusNote,
-} from './InlineNote';
+import InlineNote, { RangeWidenedNote, WeekFocusNote } from './InlineNote';
 
 describe('InlineNote', () => {
     it('renders the icon and the sentence', () => {
@@ -36,16 +32,6 @@ describe('InlineNote', () => {
         );
 
         expect(screen.getByRole('link', { name: 'Exit' })).toBeInTheDocument();
-    });
-});
-
-describe('RunsTruncatedNote', () => {
-    it('names the per-page cap that dropped the older runs', () => {
-        render(<RunsTruncatedNote maxRuns={365} />);
-
-        expect(
-            screen.getByText(/Showing the 365 most recent runs/),
-        ).toBeInTheDocument();
     });
 });
 

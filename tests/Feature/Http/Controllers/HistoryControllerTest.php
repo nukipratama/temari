@@ -220,22 +220,44 @@ it('escalates to the all range so a run older than every preset still shows', fu
             ->where('rangeFilter', 'all')
             ->where('rangeAutoWidened', true)
             ->where('rangeStart', null)
-            ->where('runsTruncated', false)
+            ->where('hasOlderWeeks', false)
             ->has('runs', 1)
             ->where('runs.0.detail.name', 'Ancient'));
 });
 
-it('caps the runs list and flags truncation when a range holds more than the cap', function (): void {
+it('ships only the two most recent run-bearing weeks and flags that older ones exist', function (): void {
     $user = User::factory()->create();
-    // One past the 365 cap so truncation triggers; range=all has no lower bound.
-    Activity::factory()->for($user)->analyzed()->has(ActivityDetail::factory(), 'detail')->count(366)->create();
+    foreach ([0, 7, 14, 21] as $weeksAgo) {
+        $run = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($run)->create([
+            'name' => "Week {$weeksAgo}",
+            'start_date_local' => Carbon::now()->subDays($weeksAgo),
+        ]);
+    }
 
-    $this->actingAs($user)->get('/history?range=all')
+    $this->actingAs($user)->get('/history')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('runsTruncated', true)
-            ->where('maxRuns', 365)
-            ->has('runs', 365));
+            ->where('weeksShown', 2)
+            ->where('hasOlderWeeks', true)
+            ->has('runs', 2));
+});
+
+it('pages one press further when weeks is raised, and clears the flag at the oldest run', function (): void {
+    $user = User::factory()->create();
+    foreach ([0, 7, 14] as $daysAgo) {
+        $run = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($run)->create([
+            'start_date_local' => Carbon::now()->subDays($daysAgo),
+        ]);
+    }
+
+    $this->actingAs($user)->get('/history?weeks=4')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('weeksShown', 4)
+            ->where('hasOlderWeeks', false)
+            ->has('runs', 3));
 });
 
 it('accepts an explicit all range with no lower bound', function (): void {
@@ -376,6 +398,20 @@ it('shares a push-only user as webPushSubscribed without a Telegram connection',
         ->assertInertia(fn (Assert $page) => $page
             ->where('telegramConnected', false)
             ->where('webPushSubscribed', true));
+});
+
+it('ships the calendar grid its own weeks, and none outside it', function (): void {
+    $user = User::factory()->create();
+    // The Jan 2026 grid runs 2025-12-29 .. 2026-02-01, so the 2026-01-04 week
+    // is inside it and the 2026-03-01 week is not.
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-01-04']);
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-03-01']);
+
+    $this->actingAs($user)->get('/history?view=calendar&month=2026-01')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('weeklySnapshots', 1)
+            ->where('weeklySnapshots.0.week_ending', '2026-01-04'));
 });
 
 it('honors ?month=YYYY-MM when valid', function (): void {
@@ -597,7 +633,7 @@ it('does not resolve the run payload on a partial reload that only wants snapsho
 
     $response->assertJsonPath('component', 'History');
     $response->assertJsonCount(1, 'props.weeklySnapshots');
-    foreach (['runs', 'notes', 'moods', 'runsTruncated'] as $skipped) {
+    foreach (['runs', 'notes', 'moods'] as $skipped) {
         $response->assertJsonMissingPath("props.{$skipped}");
     }
 });
@@ -616,18 +652,18 @@ it('runs no activity queries when only snapshots are requested', function (): vo
 
     $this->actingAs($user)->get('/history', $headers)->assertSuccessful();
 
-    // `latestRunDaysAgo` still runs — it is a single MAX() that drives the
-    // eager range scalars — so the assertion targets the payload queries the
-    // poll used to drag along: the capped run fetch (MAX_RUNS + 1 = 366) and
-    // the story-line reads behind `notes` and `moods`.
-    $runFetches = array_filter($queries, fn (string $sql): bool => str_contains($sql, 'limit 366'));
+    // `latestRunDaysAgo` and the week window still run — both are eager scalars
+    // driving `rangeFilter` / `hasOlderWeeks` — so the assertion targets the
+    // payload queries the poll used to drag along: the run fetch and the
+    // story-line reads behind `notes` and `moods`.
+    $runFetches = array_filter($queries, isRunFetch(...));
     $storyLineReads = array_filter($queries, fn (string $sql): bool => str_contains($sql, '`story_lines`'));
 
     expect($runFetches)->toBeEmpty()
         ->and($storyLineReads)->toBeEmpty();
 });
 
-it('fetches the capped run list exactly once on a full load', function (): void {
+it('fetches the paged run list exactly once on a full load', function (): void {
     $user = User::factory()->create();
     $run = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($run)->create(['start_date_local' => Carbon::now()]);
@@ -639,10 +675,10 @@ it('fetches the capped run list exactly once on a full load', function (): void 
 
     $this->actingAs($user)->get('/history')->assertSuccessful();
 
-    // `runs`, `notes`, `moods` and `runsTruncated` are four separate closures
-    // over one memoized loader; more than one capped fetch means the
-    // memoization broke and every prop re-ran the query.
-    $runFetches = array_filter($queries, fn (string $sql): bool => str_contains($sql, 'limit 366'));
+    // `runs`, `notes` and `moods` are three separate closures over one memoized
+    // loader; more than one fetch means the memoization broke and every prop
+    // re-ran the query.
+    $runFetches = array_filter($queries, isRunFetch(...));
 
     expect($runFetches)->toHaveCount(1);
 });
@@ -660,9 +696,15 @@ it('still returns every prop on a full page load', function (): void {
             ->has('notes')
             ->has('moods')
             ->has('weeklySnapshots')
-            ->where('runsTruncated', false)
+            ->where('hasOlderWeeks', false)
         );
 });
+
+/** The feed's paged run fetch, the only `activities` read ordered by id desc. */
+function isRunFetch(string $sql): bool
+{
+    return str_contains($sql, 'from `activities`') && str_contains($sql, 'order by `id` desc');
+}
 
 /**
  * Partial-reload headers mimicking the analysis poller's

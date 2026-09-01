@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage, stubSyncAnimationFrame } from '@/test/setup';
@@ -44,6 +44,7 @@ function cellsFor(
         avg_hr: null,
         trimp: null,
         mood: null,
+        rarity: null,
         activity_id: null,
         ...r,
     }));
@@ -115,27 +116,17 @@ describe('Calendar', () => {
         ).toBeInTheDocument();
     });
 
-    it('renders the month label and short weekday headers', () => {
+    it("renders the month label and the prototype's two-letter weekday header", () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
             screen.getByRole('heading', { name: 'May 2026' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('Mon')).toBeInTheDocument();
-        expect(screen.getByText('Sun')).toBeInTheDocument();
-    });
-
-    it('renders all 7 weekday columns without a horizontal-scroll hint', () => {
-        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        // The compact 7-col grid fits every viewport, so the old "geser" scroll hint is gone.
-        expect(
-            screen.queryByText(/Geser buat lihat seminggu penuh/),
-        ).not.toBeInTheDocument();
-        for (const day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) {
+        for (const day of ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']) {
             expect(screen.getByText(day)).toBeInTheDocument();
         }
     });
 
-    it('renders the lifetime stats eyebrow when lifetime data is provided', async () => {
+    it('counts lifetime activities in the shared eyebrow', () => {
         render(
             <Calendar
                 {...BASE_PROPS}
@@ -147,41 +138,15 @@ describe('Calendar', () => {
                 }}
             />,
         );
-        // Runs/km tally up from 0 (tier-2 count-up), so wait for them to settle.
-        await waitFor(() =>
-            expect(screen.getByText(/63 runs/i)).toBeInTheDocument(),
-        );
-        expect(screen.getByText(/544 km/i)).toBeInTheDocument();
-        expect(screen.getByText(/since 19 feb 2026/i)).toBeInTheDocument();
+        expect(screen.getByText('History · 63 activities')).toBeInTheDocument();
     });
 
     it('renders per-week km totals in the week summary column', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        // Week 2: 7.2 + 3.5 = 10.7 — distinct from any day-cell distance so the
-        // regex won't collide with the per-day "X.XX km" rendering.
-        expect(screen.getByText(/10\.7/)).toBeInTheDocument();
+        // Week 2: 7.2 + 3.5 = 10.7k.
+        expect(screen.getByText('10.7k')).toBeInTheDocument();
         expect(screen.getByText('WK 1')).toBeInTheDocument();
         expect(screen.getByText('WK 2')).toBeInTheDocument();
-    });
-
-    // The suffix used to be inline on every row, in a 40px column that could not
-    // hold "25.0km" — it spilled past the column's left edge. Stating the unit
-    // once in the header lets each row carry only the number, and leaves room
-    // for a 100+ km week.
-    it('names the unit once in the column header, not on every row', () => {
-        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-
-        expect(screen.getByText('KM')).toBeInTheDocument();
-        expect(screen.getByText(/10\.7/).textContent).toBe('10.7');
-    });
-
-    // The header cell is the week column's label, so it has to stay announced
-    // even though the visible text is just the unit.
-    it('keeps the week column labelled for screen readers', () => {
-        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        expect(screen.getByText('Week, distance in kilometers')).toHaveClass(
-            'sr-only',
-        );
     });
 
     it('links the day cell with a single activity to its detail page', () => {
@@ -195,31 +160,10 @@ describe('Calendar', () => {
         expect(activityLinks).toContain('/activities/102');
     });
 
-    it('renders the navy "Today" badge on today\'s cell', () => {
+    it("names today in the cell's accessible label, not by fill alone", () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
-            screen.getByText('Today', { selector: 'span' }),
-        ).toBeInTheDocument();
-    });
-
-    it('marks today with a persistent dot next to the day number, not color alone', () => {
-        // The "Today" text is lg-only; below that breakpoint the navy fill
-        // would otherwise be the sole signal that a cell is today.
-        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        const dayNumber = screen.getByText('7');
-        expect(dayNumber.querySelector('[aria-hidden]')).not.toBeNull();
-    });
-
-    it("renders today's storyline quote in the today cell when provided", () => {
-        render(
-            <Calendar
-                {...BASE_PROPS}
-                cells={TWO_WEEK_CELLS}
-                todayQuote="Good form — tempo session fits."
-            />,
-        );
-        expect(
-            screen.getByText(/Good form — tempo session fits\./),
+            screen.getByLabelText(/2026-05-07 \(today\)/),
         ).toBeInTheDocument();
     });
 
@@ -263,7 +207,9 @@ describe('Calendar', () => {
         );
     });
 
-    it('mutes prev-month cells and excludes them from week totals', () => {
+    // The row sits beside that week's own ISO-week recap, so it counts the
+    // whole Mon-Sun week rather than only the part inside the viewed month.
+    it('counts prev-month padding days in the week total, muted but included', () => {
         const cells = cellsFor([
             {
                 date: '2026-04-27',
@@ -287,9 +233,7 @@ describe('Calendar', () => {
             { date: '2026-05-03', day: 3, is_current_month: true },
         ]);
         render(<Calendar {...BASE_PROPS} cells={cells} />);
-        // The 10 prev-month value would yield a 15.0 sum if included — assert
-        // the combined total never appears, proving the prev-month cell was skipped.
-        expect(screen.queryByText(/15\.0/)).not.toBeInTheDocument();
+        expect(screen.getByText('15.0k')).toBeInTheDocument();
         expect(screen.getByText('WK 1')).toBeInTheDocument();
     });
 
@@ -308,23 +252,20 @@ describe('Calendar', () => {
         ).toBeInTheDocument();
     });
 
-    it('renders an empty placeholder for cells with no run', () => {
+    it('draws a run-less day as a plain numbered box', () => {
         const cells = cellsFor([
-            { date: '2026-05-01', day: 1, is_current_month: true },
-            { date: '2026-05-02', day: 2, is_current_month: true },
-            { date: '2026-05-03', day: 3, is_current_month: true },
-            { date: '2026-05-04', day: 4, is_current_month: true },
-            { date: '2026-05-05', day: 5, is_current_month: true },
-            { date: '2026-05-06', day: 6, is_current_month: true },
-            { date: '2026-05-07', day: 7, is_current_month: true },
+            { date: '2026-05-01', day: 1 },
+            { date: '2026-05-02', day: 2 },
+            { date: '2026-05-03', day: 3 },
+            { date: '2026-05-04', day: 4 },
+            { date: '2026-05-05', day: 5 },
+            { date: '2026-05-06', day: 6 },
+            { date: '2026-05-07', day: 7 },
         ]);
-        const { container } = render(
-            <Calendar {...BASE_PROPS} cells={cells} />,
+        render(<Calendar {...BASE_PROPS} cells={cells} />);
+        expect(screen.getByLabelText('2026-05-01: no run')).toHaveTextContent(
+            '1',
         );
-        const dayNumbers = Array.from(
-            container.querySelectorAll('.tabular-nums'),
-        );
-        expect(dayNumbers.length).toBeGreaterThan(0);
     });
 
     it('rolls multi-activity days into a non-linked cell', () => {

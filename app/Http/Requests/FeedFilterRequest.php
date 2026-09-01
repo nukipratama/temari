@@ -43,6 +43,18 @@ class FeedFilterRequest extends FormRequest
     }
 
     /**
+     * The `?weeks=N` page cursor: how many run-bearing weeks the feed shows.
+     * Clamped rather than rejected, like every other accessor here.
+     */
+    public function weeks(): int
+    {
+        $raw = $this->query('weeks');
+        $candidate = is_numeric($raw) ? (int) $raw : FeedFilters::WEEKS_PER_PAGE;
+
+        return max(FeedFilters::WEEKS_PER_PAGE, min(FeedFilters::MAX_WEEKS, $candidate));
+    }
+
+    /**
      * The `?week=YYYY-MM-DD` deep-link target, normalised to that week's Sunday
      * (WeeklySnapshot.week_ending), or null when absent/malformed. Any date in
      * the week resolves to the same Sunday, so a link built from a run date

@@ -45,15 +45,6 @@ export default function InlineNote({
     );
 }
 
-export function RunsTruncatedNote({ maxRuns }: Readonly<{ maxRuns: number }>) {
-    return (
-        <InlineNote icon="mdi:history">
-            Showing the {maxRuns} most recent runs. Older runs haven&apos;t
-            loaded yet.
-        </InlineNote>
-    );
-}
-
 export function RangeWidenedNote({
     rangeFilter,
 }: Readonly<{ rangeFilter: RangeFilterValue }>) {

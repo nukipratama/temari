@@ -1,6 +1,6 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import type {
     Mood,
@@ -9,10 +9,9 @@ import type {
     WeeklySnapshotWithRecap,
 } from '@/types/inertia';
 
-import HistoryNav from '@/components/history/HistoryNav';
+import HistoryHeader from '@/components/history/HistoryHeader';
 import {
     RangeWidenedNote,
-    RunsTruncatedNote,
     WeekFocusNote,
     type RangeFilterValue,
 } from '@/components/history/InlineNote';
@@ -21,12 +20,18 @@ import { type RunNote } from '@/components/run/RunListRow';
 import StravaSyncButton from '@/components/StravaSyncButton';
 import BackLink from '@/components/ui/BackLink';
 import EmptyPanel from '@/components/ui/EmptyPanel';
+import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
-import PageHero from '@/components/ui/PageHero';
 import { appLayout } from '@/layouts/appLayout';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 
 import { groupByWeek, type RunWithDetail } from './weekBuckets';
+
+interface LifetimeStats {
+    total_runs: number;
+    total_km: number;
+    first_run_at: string | null;
+}
 
 interface RunsIndexProps {
     runs: ReadonlyArray<RunWithDetail>;
@@ -37,15 +42,16 @@ interface RunsIndexProps {
     weekFilter?: string | null;
     /** Server widened the requested range to reach an older run. */
     rangeAutoWidened?: boolean;
-    /** Older runs beyond the per-page cap were dropped from this list. */
-    runsTruncated?: boolean;
-    /** The per-page cap, shown in the truncation note. */
-    maxRuns?: number;
+    lifetime?: LifetimeStats;
+    /** Week sections this page asked the server for. */
+    weeksShown?: number;
+    /** A run exists behind the oldest week on the page. */
+    hasOlderWeeks?: boolean;
     weeklySnapshots: ReadonlyArray<WeeklySnapshotWithRecap>;
 }
 
-/** How many of the most-recent weeks show without tapping "load older weeks". */
-const VISIBLE_WEEKS = 2;
+/** Week sections each "load older weeks" press adds — mirrors FeedFilters::WEEKS_PER_PAGE. */
+const WEEKS_PER_PAGE = 2;
 
 export default function RunsIndex({
     runs,
@@ -54,12 +60,11 @@ export default function RunsIndex({
     rangeFilter,
     weekFilter = null,
     rangeAutoWidened = false,
-    runsTruncated = false,
-    maxRuns = 0,
+    lifetime,
+    weeksShown = WEEKS_PER_PAGE,
+    hasOlderWeeks = false,
     weeklySnapshots,
 }: Readonly<RunsIndexProps>) {
-    const [olderRevealed, setOlderRevealed] = useState(false);
-
     const buckets = useMemo(() => groupByWeek(runs), [runs]);
     const snapshotsByWeek = useMemo(() => {
         const map = new Map<string, WeeklySnapshotWithRecap>();
@@ -69,26 +74,15 @@ export default function RunsIndex({
     }, [weeklySnapshots]);
 
     const hasRuns = runs.length > 0;
-    const visibleBuckets = olderRevealed
-        ? buckets
-        : buckets.slice(0, VISIBLE_WEEKS);
-    const hasOlderWeeks = buckets.length > VISIBLE_WEEKS;
 
     return (
         <>
             <Head title="History · Log" />
             <PageContainer>
-                <header className="flex flex-col gap-5">
-                    <PageHero
-                        eyebrow={`History · ${runs.length} activities`}
-                        size="quote-lg"
-                        italic
-                    >
-                        every run{' '}
-                        <em className="text-horizon-ink">has a story.</em>
-                    </PageHero>
-                    <HistoryNav active="feed" />
-                </header>
+                <HistoryHeader
+                    active="feed"
+                    activityCount={lifetime?.total_runs}
+                />
 
                 {weekFilter !== null && (
                     <div className="mt-8">
@@ -107,10 +101,7 @@ export default function RunsIndex({
                         {rangeAutoWidened && (
                             <RangeWidenedNote rangeFilter={rangeFilter} />
                         )}
-                        {runsTruncated && (
-                            <RunsTruncatedNote maxRuns={maxRuns} />
-                        )}
-                        {visibleBuckets.map((bucket) => (
+                        {buckets.map((bucket) => (
                             <motion.div
                                 key={bucket.weekStart}
                                 variants={fadeInUp}
@@ -127,22 +118,52 @@ export default function RunsIndex({
                                 />
                             </motion.div>
                         ))}
-                        {!olderRevealed && hasOlderWeeks && (
-                            <div className="flex justify-center">
-                                <button
-                                    type="button"
-                                    onClick={() => setOlderRevealed(true)}
-                                    className="pressable focus-ring inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-card px-4.5 py-2.25 font-mono text-[9.5px] leading-[1.2] font-extrabold tracking-[.05em] text-foreground uppercase shadow-e1"
-                                >
-                                    Load older weeks
-                                </button>
-                            </div>
+                        {hasOlderWeeks && (
+                            <LoadOlderWeeks weeksShown={weeksShown} />
                         )}
                     </motion.div>
                 )}
                 {!hasRuns && <EmptyState />}
             </PageContainer>
         </>
+    );
+}
+
+/**
+ * P3: a real page, not a reveal. Each press asks the server for two more week
+ * sections; `preserveScroll` keeps the weeks already read where they were, and
+ * only the list props are refetched.
+ */
+function LoadOlderWeeks({ weeksShown }: Readonly<{ weeksShown: number }>) {
+    const { url } = usePage();
+    const next = new URL(url, 'http://history.local');
+    next.searchParams.set('weeks', String(weeksShown + WEEKS_PER_PAGE));
+
+    return (
+        <div className="flex justify-center">
+            <Link
+                href={`${next.pathname}${next.search}`}
+                preserveScroll
+                preserveState
+                only={[
+                    'runs',
+                    'notes',
+                    'moods',
+                    'weeklySnapshots',
+                    'weeksShown',
+                    'hasOlderWeeks',
+                ]}
+                className="pressable focus-ring inline-flex items-center gap-1.25 rounded-full border border-border-strong bg-card px-4.5 py-2.25 font-mono text-[9.5px] leading-[1.2] font-extrabold tracking-[.05em] text-foreground uppercase shadow-e1"
+            >
+                Load older weeks
+                <Icon
+                    icon="mdi:chevron-down"
+                    width={12}
+                    height={12}
+                    aria-hidden
+                />
+            </Link>
+        </div>
     );
 }
 
