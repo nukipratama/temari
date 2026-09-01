@@ -1,196 +1,56 @@
-import type { ActivityDetail, Mood } from '@/types/inertia';
+import { Link } from '@inertiajs/react';
 
-import Eyebrow from '@/components/ui/Eyebrow';
+import type { ActivityDetail } from '@/types/inertia';
+
 import { Icon } from '@/components/ui/Icon';
-import LinkCard from '@/components/ui/LinkCard';
-import MoodChip from '@/components/ui/MoodChip';
-import SectionLabel from '@/components/ui/SectionLabel';
-import StatTile from '@/components/ui/StatTile';
-import { cn } from '@/lib/cn';
+import Card from '@/components/ui/LegacyCard';
+import MiniRow from '@/components/ui/MiniRow';
 import {
     formatKm,
-    formatPace,
     formatNaiveRelativeId,
-    formatNaiveTimeId,
+    formatPace,
     paceSecPerKm,
 } from '@/lib/pace';
-import { renderBold } from '@/lib/richText';
 import { activityUrl } from '@/lib/routes';
-import {
-    formatIdDateUpper,
-    formatWeather,
-    shortenLocation,
-} from '@/pages/Home/helpers';
 
-export interface LastRunNote {
-    oneline: string;
-    mood: Mood;
-}
-
+/**
+ * The prototype's "last run · yesterday" mini card, one half of the pair at
+ * the foot of Today's stats disclosure: three rows of the run's headline
+ * numbers and a link out to its detail page.
+ */
 export default function LastRunCard({
     run,
-    note,
-    onSky = false,
-}: Readonly<{
-    run: ActivityDetail;
-    note?: LastRunNote | null;
-    /** Cream-on-dark treatment for use on a HeroPanel/sky background. */
-    onSky?: boolean;
-}>) {
-    const km = formatKm(run.distance);
+}: Readonly<{ run: ActivityDetail }>) {
     const paceSec = paceSecPerKm(run.elapsed_time, run.distance);
     const trimp =
         run.trimp_edwards != null ? Math.round(run.trimp_edwards) : null;
-    const dateLabel = formatNaiveRelativeId(run.start_date_local);
-    const locationShort = shortenLocation(run.location_name ?? null);
-    const weatherLabel = formatWeather(
-        run.weather_temp_c ?? null,
-        run.weather_humidity_pct ?? null,
-        run.weather_rain_detected ?? null,
-    );
-
-    const dateUpper = formatIdDateUpper(run.start_date_local);
-    const timeLabel = formatNaiveTimeId(run.start_date_local);
 
     return (
-        <LinkCard
-            href={activityUrl(run)}
-            tone={onSky ? 'onSky' : 'card'}
-            padding="panel"
-            className="flex h-full flex-col gap-3"
-        >
-            <SectionLabel dot onSky={onSky} className="mb-0">
-                Last run · {dateLabel}
-            </SectionLabel>
-            <div className="flex items-start gap-3">
-                <div className="min-w-0 flex-1">
-                    <div
-                        className={cn(
-                            'font-serif text-2xl leading-tight tracking-[-0.01em]',
-                            onSky ? 'text-cream' : 'text-foreground',
-                        )}
-                    >
-                        {run.name ?? 'Run'}
-                    </div>
-                    {dateUpper && (
-                        <Eyebrow
-                            token="micro"
-                            tone={onSky ? 'ink-on-sky' : 'ink-2'}
-                            className="mt-1 flex flex-wrap items-center gap-x-2"
-                        >
-                            <span>{dateUpper}</span>
-                            {timeLabel && (
-                                <>
-                                    <span aria-hidden>·</span>
-                                    <span>{timeLabel}</span>
-                                </>
-                            )}
-                            {note && (
-                                <>
-                                    <span aria-hidden>·</span>
-                                    <MoodChip mood={note.mood} size="sm" />
-                                </>
-                            )}
-                        </Eyebrow>
-                    )}
-                    {(locationShort || weatherLabel) && (
-                        <Eyebrow
-                            token="micro"
-                            tone={onSky ? 'ink-on-sky' : 'ink-2'}
-                            className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5"
-                        >
-                            {locationShort && (
-                                <span className="inline-flex items-center gap-1">
-                                    <Icon
-                                        icon="mdi:map-marker-outline"
-                                        width={11}
-                                        height={11}
-                                        aria-hidden
-                                    />
-                                    {locationShort}
-                                </span>
-                            )}
-                            {locationShort && weatherLabel && (
-                                <span aria-hidden>·</span>
-                            )}
-                            {weatherLabel && <span>{weatherLabel}</span>}
-                        </Eyebrow>
-                    )}
-                </div>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-                <StatTile
-                    tone={onSky ? 'plainSky' : 'plain'}
-                    size="lg"
-                    align="center"
-                    label="KM"
-                    value={km}
-                    valueClassName={cn(
-                        // `lg`'s fixed 32px (StatTile's default for this size)
-                        // overlaps adjacent values in this 3-up row below
-                        // ~375px -- swap in the fluid variant tuned for it.
-                        'font-black tracking-tight text-stat-fluid-lg',
-                        onSky ? 'text-cream' : 'text-foreground',
-                    )}
-                />
-                <StatTile
-                    tone={onSky ? 'plainSky' : 'plain'}
-                    size="lg"
-                    align="center"
-                    label="PACE"
-                    value={paceSec != null ? `${formatPace(paceSec)}/km` : '—'}
-                    valueClassName={cn(
-                        // `lg`'s fixed 32px (StatTile's default for this size)
-                        // overlaps adjacent values in this 3-up row below
-                        // ~375px -- swap in the fluid variant tuned for it.
-                        'font-black tracking-tight text-stat-fluid-lg',
-                        onSky ? 'text-cream' : 'text-foreground',
-                    )}
-                />
-                <StatTile
-                    tone={onSky ? 'plainSky' : 'plain'}
-                    size="lg"
-                    align="center"
-                    label="TRIMP"
-                    value={trimp != null ? String(trimp) : '—'}
-                    explainerKey="trimp"
-                    valueClassName={cn(
-                        // `lg`'s fixed 32px (StatTile's default for this size)
-                        // overlaps adjacent values in this 3-up row below
-                        // ~375px -- swap in the fluid variant tuned for it.
-                        'font-black tracking-tight text-stat-fluid-lg',
-                        onSky ? 'text-cream' : 'text-foreground',
-                    )}
-                />
-            </div>
-            {note && (
-                <div
-                    className={cn(
-                        'flex items-start gap-2 px-3 text-sm leading-relaxed',
-                        onSky ? 'text-ink-on-sky' : 'text-text-2',
-                    )}
-                >
-                    <Icon
-                        icon="mdi:comment-quote-outline"
-                        width={14}
-                        height={14}
-                        aria-hidden
-                        className={cn(
-                            'mt-0.5 shrink-0',
-                            onSky ? 'text-leaf' : 'text-leaf-ink',
-                        )}
-                    />
-                    <p className="min-w-0">{renderBold(note.oneline)}</p>
-                </div>
-            )}
-            <Eyebrow
-                as="span"
-                token="micro"
-                tone={onSky ? 'horizon' : 'horizon-ink'}
-                className="mt-auto"
+        <Card padding="panel">
+            <h4 className="mb-2 font-mono text-[10px] font-extrabold uppercase tracking-[0.05em] text-foreground">
+                Last run · {formatNaiveRelativeId(run.start_date_local)}
+            </h4>
+            <MiniRow label="km" value={formatKm(run.distance)} />
+            <MiniRow
+                label="pace"
+                value={paceSec != null ? `${formatPace(paceSec)}/km` : '—'}
+            />
+            <MiniRow
+                label="trimp"
+                value={trimp != null ? String(trimp) : '—'}
+            />
+            <Link
+                href={activityUrl(run)}
+                className="focus-ring mt-2 inline-flex items-center gap-0.5 rounded text-[10.5px] text-foreground underline"
             >
-                View run detail →
-            </Eyebrow>
-        </LinkCard>
+                View run detail
+                <Icon
+                    icon="mdi:arrow-right"
+                    width={12}
+                    height={12}
+                    aria-hidden
+                />
+            </Link>
+        </Card>
     );
 }

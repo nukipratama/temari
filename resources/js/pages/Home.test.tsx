@@ -1,4 +1,5 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type {
@@ -190,43 +191,33 @@ beforeEach(() => {
 });
 
 describe('Home', () => {
-    it('answers "am I getting better?" before anything else on the page', () => {
-        const { container } = renderHome();
+    it("follows the prototype's section order: plan, past you, today, week stats", () => {
+        const { container } = renderHome(trend(), weekPlan);
 
-        const verdict = screen.getByText(
-            "you're faster than you were in March.",
-        );
-        const thisWeek = screen.getByText(/This week ·/);
+        const order = [
+            screen.getByText("This week's plan"),
+            screen.getByText("you're faster than you were in March."),
+            screen.getByText('Easy 6k.'),
+            screen.getByText(/This week's stats/),
+        ];
 
-        expect(verdict).toBeInTheDocument();
-        expect(
-            container.compareDocumentPosition(thisWeek) &
-                Node.DOCUMENT_POSITION_FOLLOWING,
-        ).toBeTruthy();
-        expect(
-            verdict.compareDocumentPosition(thisWeek) &
-                Node.DOCUMENT_POSITION_FOLLOWING,
-        ).toBeTruthy();
+        order.forEach((node, i) => {
+            expect(container).toContainElement(node);
+            const next = order[i + 1];
+            if (next) {
+                expect(
+                    node.compareDocumentPosition(next) &
+                        Node.DOCUMENT_POSITION_FOLLOWING,
+                ).toBeTruthy();
+            }
+        });
     });
 
-    it('leads with the week plan widget when the backend shipped one, verdict follows', () => {
-        renderHome(trend(), weekPlan);
-
-        const weekPlanHeading = screen.getByText("This week's plan");
-        const verdict = screen.getByText(
-            "you're faster than you were in March.",
-        );
-
-        expect(
-            weekPlanHeading.compareDocumentPosition(verdict) &
-                Node.DOCUMENT_POSITION_FOLLOWING,
-        ).toBeTruthy();
-    });
-
-    it('omits the week plan widget when the backend shipped none', () => {
+    it("draws the prototype's no-plan card when the backend shipped no plan", () => {
         renderHome(trend(), null);
 
         expect(screen.queryByText("This week's plan")).not.toBeInTheDocument();
+        expect(screen.getByText('No plan yet.')).toBeInTheDocument();
     });
 
     it('shows the evidence the verdict was computed from', () => {
@@ -281,7 +272,7 @@ describe('Home', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('renders today after the verdict', () => {
+    it("renders Temari's read on today", () => {
         renderHome();
 
         expect(screen.getByText('Easy 6k.')).toBeInTheDocument();
@@ -290,27 +281,25 @@ describe('Home', () => {
         ).toBeInTheDocument();
     });
 
-    it('demotes the week, vitals and last run below the verdict', () => {
+    // Amendment (d) of 2026-08-31 supersedes V0 fork 4: the prototype passes no
+    // `defaultOpen`, so the disclosure ships closed.
+    it('renders the week-stats disclosure closed, and opens it on click', async () => {
         renderHome();
 
-        expect(screen.getByText(/This week ·/)).toBeInTheDocument();
-        expect(screen.getByText('Vibe')).toBeInTheDocument();
-        expect(screen.getByText('Morning negative-split')).toBeInTheDocument();
-    });
+        const trigger = screen.getByRole('button', { expanded: false });
+        expect(screen.queryByText('Pumped')).not.toBeInTheDocument();
 
-    it('opens the "this week" disclosure by default, so nothing is hidden on first paint', () => {
-        renderHome();
+        await userEvent.click(trigger);
 
-        expect(
-            screen.getByRole('button', { expanded: true }),
-        ).toBeInTheDocument();
+        expect(screen.getByText('Pumped')).toBeInTheDocument();
+        expect(screen.getByText(/^Last run · /)).toBeInTheDocument();
     });
 
     it('omits the verdict block entirely when the backend shipped no trend', () => {
         renderHome(null);
 
         expect(screen.queryByText(/You vs Past You/)).not.toBeInTheDocument();
-        expect(screen.getByText(/This week ·/)).toBeInTheDocument();
+        expect(screen.getByText(/This week's stats/)).toBeInTheDocument();
     });
 
     it('shows the no-runs empty state instead of a verdict on a brand new account', () => {
@@ -325,33 +314,6 @@ describe('Home', () => {
         );
 
         expect(screen.queryByText(/You vs Past You/)).not.toBeInTheDocument();
-        expect(screen.queryByText(/This week ·/)).not.toBeInTheDocument();
-    });
-
-    it('leaves the weekly TRIMP tile unknown when nothing that week scored', () => {
-        render(
-            <Home
-                briefing={briefing}
-                load={{
-                    ...load,
-                    weekly_trimp: null,
-                    monotony: null,
-                    strain: null,
-                }}
-                snapshot={{ ...snapshot, weekly_trimp: null }}
-                recentRuns={[lastRun]}
-                pastYouTrend={trend()}
-            />,
-        );
-
-        const weekSection = screen.getByText(/This week ·/).closest('section');
-        expect(weekSection).not.toBeNull();
-        // The KPI tile is the first "TRIMP" label in document order; the second
-        // is LastRunCard's own TRIMP stat, now sharing the same disclosure section.
-        const trimpTile = within(weekSection!).getAllByText('TRIMP')[0]
-            .parentElement?.parentElement;
-        // The whole tile carries no digit at all: unknown, never a zero.
-        expect(trimpTile?.textContent).toMatch(/—$/);
-        expect(trimpTile?.textContent).not.toMatch(/\d/);
+        expect(screen.queryByText(/This week's stats/)).not.toBeInTheDocument();
     });
 });

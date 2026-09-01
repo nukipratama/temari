@@ -24,18 +24,19 @@
         "mood-wobbly-bg"
     ],
     "fill": [
+        "border",
         "border-strong",
         "citrus",
         "destructive",
         "ember",
         "ember-deep",
+        "foreground",
         "horizon",
         "horizon-deep",
         "icon-accent",
         "ink",
         "ink-3",
         "input",
-        "foreground",
         "leaf",
         "leaf-deep",
         "line",
@@ -81,9 +82,13 @@
     "panel": {
         "citrus/0.15": {
             "over": {
-                "resources/js/lib/tones.ts": ["paper"]
+                "resources/js/lib/tones.ts": [
+                    "paper"
+                ]
             },
-            "text": ["citrus-ink"]
+            "text": [
+                "citrus-ink"
+            ]
         },
         "cream-deep/0.4": {
             "over": {
@@ -98,65 +103,107 @@
         },
         "cream-deep/0.7": {
             "over": {
-                "resources/js/lib/variants.ts": ["paper"]
+                "resources/js/lib/variants.ts": [
+                    "paper"
+                ]
             },
-            "text": ["text-2"]
+            "text": [
+                "text-2"
+            ]
         },
         "cream/0.06": {
             "text": []
         },
         "cream/0.08": {
             "over": {
-                "resources/js/components/run/EmptyRunsState.tsx": ["sky"]
+                "resources/js/components/run/EmptyRunsState.tsx": [
+                    "sky"
+                ]
             },
-            "text": ["cream", "ink-on-sky"]
+            "text": [
+                "cream",
+                "ink-on-sky"
+            ]
         },
         "cream/0.1": {
             "over": {
-                "resources/js/components/run/EmptyRunsState.tsx": ["sky"],
-                "resources/js/components/ui/Chip.test.tsx": ["sky"],
-                "resources/js/components/ui/MoodChip.tsx": ["sky"],
-                "resources/js/components/ui/SectionTabs.tsx": ["sky"],
-                "resources/js/lib/variants.ts": ["sky"]
+                "resources/js/components/run/EmptyRunsState.tsx": [
+                    "sky"
+                ],
+                "resources/js/components/ui/Chip.test.tsx": [
+                    "sky"
+                ],
+                "resources/js/components/ui/MoodChip.tsx": [
+                    "sky"
+                ],
+                "resources/js/components/ui/SectionTabs.tsx": [
+                    "sky"
+                ],
+                "resources/js/lib/variants.ts": [
+                    "sky"
+                ]
             },
-            "text": ["cream", "cream/0.8", "cream/0.85", "horizon"]
-        },
-        "cream/0.12": {
-            "text": []
+            "text": [
+                "cream",
+                "cream/0.8",
+                "cream/0.85",
+                "horizon"
+            ]
         },
         "cream/0.2": {
             "over": {
-                "resources/js/components/ui/SectionTabs.test.tsx": ["sky"],
-                "resources/js/components/ui/SectionTabs.tsx": ["sky"]
+                "resources/js/components/ui/SectionTabs.test.tsx": [
+                    "sky"
+                ],
+                "resources/js/components/ui/SectionTabs.tsx": [
+                    "sky"
+                ]
             },
-            "text": ["cream"]
-        },
-        "cream/0.4": {
-            "text": []
+            "text": [
+                "cream"
+            ]
         },
         "ember/0.08": {
             "over": {
-                "resources/js/components/ErrorBanner.tsx": ["paper"],
-                "resources/js/components/FlashNotice.tsx": ["paper"],
-                "resources/js/pages/Devtools/Design.tsx": ["paper"],
+                "resources/js/components/ErrorBanner.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/FlashNotice.tsx": [
+                    "paper"
+                ],
+                "resources/js/pages/Devtools/Design.tsx": [
+                    "paper"
+                ],
                 "resources/js/components/settings/HrZonesDisclosure.tsx": [
                     "paper"
                 ],
-                "resources/js/pages/Race.tsx": ["paper"]
+                "resources/js/pages/Race.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["ember-ink"]
+            "text": [
+                "ember-ink"
+            ]
         },
         "ember/0.15": {
             "over": {
-                "resources/js/components/home/EvidenceList.tsx": ["paper"]
+                "resources/js/components/home/EvidenceList.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["ember-ink"]
+            "text": [
+                "ember-ink"
+            ]
         },
         "ember/0.18": {
             "over": {
-                "resources/js/pages/Devtools/Design.tsx": ["paper"]
+                "resources/js/pages/Devtools/Design.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["ember-ink"]
+            "text": [
+                "ember-ink"
+            ]
         },
         "horizon/0.06": {
             "text": []
@@ -169,176 +216,302 @@
         },
         "horizon/0.1": {
             "over": {
-                "resources/js/lib/variants.ts": ["paper"],
-                "resources/js/pages/Onboarding/Index.tsx": ["paper"],
+                "resources/js/lib/variants.ts": [
+                    "paper"
+                ],
+                "resources/js/pages/Onboarding/Index.tsx": [
+                    "paper"
+                ],
                 "resources/js/components/trends/NarrationHeadline.tsx": [
                     "paper"
                 ],
                 "resources/js/components/onboarding/IconChoiceCard.tsx": [
                     "paper"
                 ],
-                "resources/js/components/onboarding/DayPicker.tsx": ["paper"],
-                "resources/js/components/run/LapsCarousel.tsx": ["paper"],
-                "resources/js/components/run/LapsCarousel.test.tsx": ["paper"]
+                "resources/js/components/onboarding/DayPicker.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/run/LapsCarousel.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/run/LapsCarousel.test.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["horizon-ink", "foreground", "text-2", "icon-accent"]
+            "text": [
+                "horizon-ink",
+                "foreground",
+                "text-2",
+                "icon-accent"
+            ]
         },
         "horizon/0.12": {
             "text": []
         },
         "horizon/0.14": {
             "over": {
-                "resources/js/components/run/EmptyRunsState.tsx": ["paper"]
+                "resources/js/components/run/EmptyRunsState.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["horizon-ink"]
+            "text": [
+                "horizon-ink"
+            ]
         },
         "horizon/0.15": {
             "over": {
-                "resources/js/components/history/WeekSection.tsx": ["paper"],
-                "resources/js/components/temari/AnalysisStatus.tsx": ["paper"],
-                "resources/js/lib/tones.ts": ["paper"]
+                "resources/js/components/history/WeekSection.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/temari/AnalysisStatus.tsx": [
+                    "paper"
+                ],
+                "resources/js/lib/tones.ts": [
+                    "paper"
+                ]
             },
-            "text": ["horizon-ink"]
+            "text": [
+                "horizon-ink"
+            ]
         },
         "horizon/0.18": {
             "over": {
-                "resources/js/components/ui/Chip.test.tsx": ["paper"],
-                "resources/js/lib/variants.ts": ["paper"],
-                "resources/js/pages/Auth/Login.tsx": ["paper"],
-                "resources/js/pages/Devtools.tsx": ["paper"]
+                "resources/js/components/home/EvidenceList.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/ui/Chip.test.tsx": [
+                    "paper"
+                ],
+                "resources/js/lib/variants.ts": [
+                    "paper"
+                ],
+                "resources/js/pages/Auth/Login.tsx": [
+                    "paper"
+                ],
+                "resources/js/pages/Devtools.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["horizon-ink", "icon-accent"]
+            "text": [
+                "horizon-ink",
+                "icon-accent"
+            ]
         },
         "horizon/0.25": {
             "over": {
                 "resources/js/components/trends/panels/FitnessTrend.tsx": [
                     "paper"
                 ],
-                "resources/js/components/trends/StreakBadge.tsx": ["paper"]
+                "resources/js/components/trends/StreakBadge.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["foreground"]
+            "text": [
+                "foreground"
+            ]
         },
         "horizon/0.35": {
             "text": []
         },
-        "ink-3/0.4": {
-            "text": []
-        },
         "ink/0.04": {
             "over": {
-                "resources/js/components/NotificationBell.tsx": ["paper"]
+                "resources/js/components/NotificationBell.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["text-2"]
+            "text": [
+                "text-2"
+            ]
         },
         "ink/0.05": {
             "over": {
-                "resources/js/components/aiusage/UserTable.tsx": ["paper"]
+                "resources/js/components/aiusage/UserTable.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["text-2"]
+            "text": [
+                "text-2"
+            ]
         },
         "ink/0.06": {
             "over": {
-                "resources/js/components/NotificationBell.tsx": ["paper"],
-                "resources/js/components/ui/Chip.test.tsx": ["paper"],
-                "resources/js/lib/variants.ts": ["paper"],
-                "resources/js/pages/Devtools/Design.tsx": ["paper"]
+                "resources/js/components/NotificationBell.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/ui/Chip.test.tsx": [
+                    "paper"
+                ],
+                "resources/js/lib/variants.ts": [
+                    "paper"
+                ],
+                "resources/js/pages/Devtools/Design.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["foreground", "text-2"]
+            "text": [
+                "foreground",
+                "text-2"
+            ]
         },
         "ink/0.7": {
             "over": {
-                "resources/js/components/run/RouteMap.tsx": ["paper"]
+                "resources/js/components/run/RouteMap.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["cream"]
+            "text": [
+                "cream"
+            ]
         },
         "leaf/0.08": {
             "text": []
         },
         "leaf/0.1": {
             "over": {
-                "resources/js/pages/Activities/Calendar.tsx": ["paper"]
+                "resources/js/pages/Activities/Calendar.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["leaf-ink"]
+            "text": [
+                "leaf-ink"
+            ]
         },
         "leaf/0.15": {
             "over": {
-                "resources/js/components/home/EvidenceList.tsx": ["paper"],
-                "resources/js/components/history/WeekSection.tsx": ["paper"],
-                "resources/js/lib/tones.ts": ["paper"],
-                "resources/js/pages/Activities/Calendar.tsx": ["paper"]
+                "resources/js/components/history/WeekSection.tsx": [
+                    "paper"
+                ],
+                "resources/js/lib/tones.ts": [
+                    "paper"
+                ],
+                "resources/js/pages/Activities/Calendar.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["leaf-ink"]
+            "text": [
+                "leaf-ink"
+            ]
         },
         "leaf/0.18": {
             "over": {
-                "resources/js/components/ui/Chip.test.tsx": ["paper"],
-                "resources/js/lib/variants.ts": ["paper"],
-                "resources/js/pages/Devtools/Design.tsx": ["paper"]
+                "resources/js/components/ui/Chip.test.tsx": [
+                    "paper"
+                ],
+                "resources/js/lib/variants.ts": [
+                    "paper"
+                ],
+                "resources/js/pages/Devtools/Design.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["leaf-ink"]
+            "text": [
+                "leaf-ink"
+            ]
         },
         "line/0.2": {
             "text": []
         },
         "line/0.6": {
             "over": {
-                "resources/js/components/MetricExplainer.tsx": ["paper"]
+                "resources/js/components/MetricExplainer.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["foreground"]
+            "text": [
+                "foreground"
+            ]
         },
         "mood-blazing/0.15": {
             "over": {
-                "resources/js/components/history/WeekSection.tsx": ["paper"]
+                "resources/js/components/history/WeekSection.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["mood-blazing-ink"]
+            "text": [
+                "mood-blazing-ink"
+            ]
         },
         "mood-easy/0.15": {
             "over": {
-                "resources/js/components/history/WeekSection.tsx": ["paper"]
+                "resources/js/components/history/WeekSection.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["mood-easy-ink"]
+            "text": [
+                "mood-easy-ink"
+            ]
         },
         "mood-gassed/0.15": {
             "over": {
                 "resources/js/components/history/WeekSection.test.tsx": [
                     "paper"
                 ],
-                "resources/js/components/history/WeekSection.tsx": ["paper"]
+                "resources/js/components/history/WeekSection.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["mood-gassed-ink"]
+            "text": [
+                "mood-gassed-ink"
+            ]
         },
         "sky/0.06": {
             "over": {
-                "resources/js/components/StravaSyncBadge.tsx": ["paper"],
-                "resources/js/components/ui/ProgressBar.tsx": ["paper"],
-                "resources/js/components/ui/SectionTabs.tsx": ["paper"]
+                "resources/js/components/StravaSyncBadge.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/ui/ProgressBar.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/ui/SectionTabs.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["text-2", "sky"]
+            "text": [
+                "text-2",
+                "sky"
+            ]
         },
         "sky/0.08": {
             "over": {
-                "resources/js/components/dashboard/VitalChips.tsx": ["paper"],
-                "resources/js/components/ui/Chip.test.tsx": ["paper"],
-                "resources/js/lib/variants.ts": ["paper"]
+                "resources/js/components/ui/Chip.test.tsx": [
+                    "paper"
+                ],
+                "resources/js/lib/variants.ts": [
+                    "paper"
+                ]
             },
-            "text": ["sky"]
+            "text": [
+                "sky"
+            ]
         },
         "sky/0.1": {
             "over": {
-                "resources/js/components/ui/ProgressBar.test.tsx": ["paper"],
-                "resources/js/components/ui/ProgressBar.tsx": ["paper"]
+                "resources/js/components/ui/ProgressBar.test.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/ui/ProgressBar.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["sky"]
+            "text": [
+                "sky"
+            ]
         },
         "sky/0.12": {
             "text": []
         },
         "sky/0.15": {
             "over": {
-                "resources/js/components/ui/SectionTabs.test.tsx": ["paper"],
-                "resources/js/components/ui/SectionTabs.tsx": ["paper"]
+                "resources/js/components/ui/SectionTabs.test.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/ui/SectionTabs.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["sky"]
+            "text": [
+                "sky"
+            ]
         },
         "sky/0.25": {
             "text": []
@@ -348,68 +521,119 @@
         },
         "card/0.6": {
             "over": {
-                "resources/js/components/MobileBottomNav.tsx": ["paper"]
+                "resources/js/components/MobileBottomNav.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["icon-accent", "text-3"]
+            "text": [
+                "icon-accent",
+                "text-3"
+            ]
         },
         "muted/0.6": {
             "over": {
-                "resources/js/pages/Activities/Calendar.tsx": ["paper"],
-                "resources/js/lib/splits.ts": ["paper"],
-                "resources/js/lib/splits.test.ts": ["paper"]
+                "resources/js/pages/Activities/Calendar.tsx": [
+                    "paper"
+                ],
+                "resources/js/lib/splits.ts": [
+                    "paper"
+                ],
+                "resources/js/lib/splits.test.ts": [
+                    "paper"
+                ]
             },
-            "text": ["text-2", "foreground"]
+            "text": [
+                "text-2",
+                "foreground"
+            ]
         },
         "foreground/0.03": {
             "over": {
-                "resources/js/lib/splits.ts": ["paper"],
-                "resources/js/lib/splits.test.ts": ["paper"]
+                "resources/js/lib/splits.ts": [
+                    "paper"
+                ],
+                "resources/js/lib/splits.test.ts": [
+                    "paper"
+                ]
             },
-            "text": ["text-2", "foreground"]
+            "text": [
+                "text-2",
+                "foreground"
+            ]
         },
         "destructive/0.1": {
             "over": {
-                "resources/js/components/ui/badge.tsx": ["paper"],
-                "resources/js/components/ui/button.tsx": ["paper"]
+                "resources/js/components/ui/badge.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/ui/button.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["destructive"]
+            "text": [
+                "destructive"
+            ]
         },
         "destructive/0.2": {
             "over": {
-                "resources/js/components/ui/badge.tsx": ["paper"],
-                "resources/js/components/ui/button.tsx": ["paper"]
+                "resources/js/components/ui/badge.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/ui/button.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["destructive"]
+            "text": [
+                "destructive"
+            ]
         },
         "destructive/0.3": {
             "over": {
-                "resources/js/components/ui/button.tsx": ["paper"]
+                "resources/js/components/ui/button.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["destructive"]
+            "text": [
+                "destructive"
+            ]
         },
         "input/0.3": {
             "over": {
-                "resources/js/components/ui/button.tsx": ["paper"]
+                "resources/js/components/ui/button.tsx": [
+                    "paper"
+                ]
             },
             "text": []
         },
         "muted/0.5": {
             "over": {
-                "resources/js/components/ui/badge.tsx": ["paper"],
-                "resources/js/components/ui/button.tsx": ["paper"]
+                "resources/js/components/ui/badge.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/ui/button.tsx": [
+                    "paper"
+                ]
             },
             "text": []
         },
         "primary/0.8": {
             "over": {
-                "resources/js/components/ui/badge.tsx": ["paper"],
-                "resources/js/components/ui/button.tsx": ["paper"]
+                "resources/js/components/ui/badge.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/ui/button.tsx": [
+                    "paper"
+                ]
             },
-            "text": ["primary-foreground"]
+            "text": [
+                "primary-foreground"
+            ]
         },
         "secondary/0.8": {
             "over": {
-                "resources/js/components/ui/badge.tsx": ["paper"]
+                "resources/js/components/ui/badge.tsx": [
+                    "paper"
+                ]
             },
             "text": []
         }

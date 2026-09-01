@@ -32,19 +32,29 @@ const snapshot: WeeklySnapshot = {
 };
 
 describe('TrainingLoadCard', () => {
-    it('renders all four metric rows with formatted values', () => {
+    it("renders the prototype's three condition rows with formatted values", () => {
         render(<TrainingLoadCard load={load} snapshot={snapshot} />);
-        ['Fitness', 'Fatigue', 'Strain', 'Monotony'].forEach((label) => {
+
+        ['fitness', 'fatigue', 'strain'].forEach((label) => {
             expect(screen.getByText(label)).toBeInTheDocument();
         });
         expect(screen.getByText('42.0')).toBeInTheDocument(); // ctl toFixed(1)
         expect(screen.getByText('44.5')).toBeInTheDocument(); // atl toFixed(1)
         expect(screen.getByText('384')).toBeInTheDocument(); // strain rounded
-        expect(screen.getByText('1.20')).toBeInTheDocument(); // monotony toFixed(2)
     });
 
-    it('shows the "7 days" subtitle and a technical-detail link', () => {
+    // The prototype's condition card draws fitness/fatigue/strain only.
+    // Monotony survives as History's per-week alert.
+    it('does not draw a monotony row', () => {
         render(<TrainingLoadCard load={load} snapshot={snapshot} />);
+
+        expect(screen.queryByText('monotony')).not.toBeInTheDocument();
+        expect(screen.queryByText('1.20')).not.toBeInTheDocument();
+    });
+
+    it('shows the "7 days" scope and a technical-detail link', () => {
+        render(<TrainingLoadCard load={load} snapshot={snapshot} />);
+
         expect(screen.getByText(/7 days/)).toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: /Technical detail/ }),
@@ -53,51 +63,31 @@ describe('TrainingLoadCard', () => {
 
     it('falls back to em-dash values and "not enough data yet" when load and snapshot are null', () => {
         render(<TrainingLoadCard load={null} snapshot={null} />);
+
         expect(screen.getByText(/not enough data yet/)).toBeInTheDocument();
-        expect(screen.getAllByText('—').length).toBe(4);
+        expect(screen.getAllByText('—')).toHaveLength(3);
     });
 
-    it('says the runs carried no HR instead of showing a zero strain', () => {
+    it('shows an unscored strain as unknown, never a zero', () => {
         render(
             <TrainingLoadCard
-                load={{
-                    ...load,
-                    weekly_trimp: null,
-                    monotony: null,
-                    strain: null,
-                }}
+                load={{ ...load, weekly_trimp: null, strain: null }}
                 snapshot={snapshot}
             />,
         );
-        // Fitness/Fatigue survive an unscored week; strain/monotony cannot.
+
+        // Fitness/Fatigue survive an unscored week; strain cannot.
         expect(screen.getByText('42.0')).toBeInTheDocument();
-        expect(screen.getAllByText('—').length).toBe(2);
-        expect(screen.getAllByText('no HR on these runs').length).toBe(2);
+        expect(screen.getAllByText('—')).toHaveLength(1);
         expect(screen.queryByText('0')).not.toBeInTheDocument();
-        expect(screen.queryByText('0.00')).not.toBeInTheDocument();
     });
 
     it('names the missing HR when a week of runs scored nothing at all', () => {
         render(<TrainingLoadCard load={null} snapshot={snapshot} />);
+
         expect(screen.getByText(/no HR data yet/)).toBeInTheDocument();
         expect(
             screen.queryByText(/not enough data yet/),
         ).not.toBeInTheDocument();
-        expect(screen.getAllByText('—').length).toBe(4);
-    });
-
-    // Regression: monotony 3.15 (the demo account's actual reading) used to
-    // render Monotony in the same calm leaf/green as a safe 1.2 reading — the
-    // riskiest state on the card looked the calmest. Strain tracks the same axis.
-    it('colors Monotony and Strain as alert when monotony and strain are both high', () => {
-        const riskyLoad: TrainingLoad = {
-            ...load,
-            monotony: 3.15,
-            strain: 6380.3,
-        };
-        render(<TrainingLoadCard load={riskyLoad} snapshot={snapshot} />);
-
-        expect(screen.getByText('3.15')).toHaveClass('text-ember-ink');
-        expect(screen.getByText('6380')).toHaveClass('text-ember-ink');
     });
 });

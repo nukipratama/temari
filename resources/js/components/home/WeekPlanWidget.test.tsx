@@ -69,7 +69,8 @@ describe('WeekPlanWidget', () => {
         render(<WeekPlanWidget weekPlan={weekOf(days)} />);
 
         await waitFor(() => {
-            expect(screen.getByText('2/5')).toBeInTheDocument();
+            // Once in the ring's centre label, once as the sessions figure.
+            expect(screen.getAllByText('2/5')).toHaveLength(2);
             expect(screen.getByText('32.0')).toBeInTheDocument();
         });
         expect(screen.getByText('Build')).toBeInTheDocument();
@@ -118,7 +119,7 @@ describe('WeekPlanWidget', () => {
         expect(doneIcon).toHaveClass('text-leaf-ink');
     });
 
-    it("surfaces a rest day's ran-anyway credit instead of the plain rest label", () => {
+    it("shows a run-anyway rest day's actual distance, the way the prototype's wednesday cell does", () => {
         const days = MON_TO_SUN.map((date) =>
             date === '2026-01-06'
                 ? day({
@@ -126,12 +127,18 @@ describe('WeekPlanWidget', () => {
                       session_type: 'rest',
                       status: 'done',
                       ran_anyway: true,
+                      actual_km: 4.2,
                   })
                 : day({ date }),
         );
-        render(<WeekPlanWidget weekPlan={weekOf(days)} />);
+        const { container } = render(
+            <WeekPlanWidget weekPlan={weekOf(days)} />,
+        );
 
-        expect(screen.getByText('Ran Anyway')).toBeInTheDocument();
+        expect(screen.getByText('4.2k')).toBeInTheDocument();
+        expect(
+            container.querySelector('[title^="Done"] [data-icon]'),
+        ).toHaveClass('text-leaf-ink');
     });
 
     it("exposes each day's status and compliance score as an accessible title", () => {
@@ -149,7 +156,7 @@ describe('WeekPlanWidget', () => {
         ).toBeInTheDocument();
     });
 
-    it("surfaces today's session in the today panel, including pace and clamp note", () => {
+    it("links today's session row out to Plan, with pace and clamp note", () => {
         const days = MON_TO_SUN.map((date) =>
             date === '2026-01-07'
                 ? day({
@@ -172,8 +179,10 @@ describe('WeekPlanWidget', () => {
         render(<WeekPlanWidget weekPlan={weekOf(days)} />);
 
         expect(
-            screen.getByText(/Today · Long run · 15 km · 5:30\/km/),
-        ).toBeInTheDocument();
+            screen.getByRole('link', {
+                name: /Today · Long run · 15 km · 5:30\/km/,
+            }),
+        ).toHaveAttribute('href', '/plan');
         expect(
             screen.getByText('Clamped for low readiness.'),
         ).toBeInTheDocument();
@@ -192,18 +201,20 @@ describe('WeekPlanWidget', () => {
         );
         render(<WeekPlanWidget weekPlan={weekOf(days)} />);
 
-        expect(screen.getByText('Today · Rest')).toBeInTheDocument();
+        expect(
+            screen.getByRole('link', { name: 'Today · Rest' }),
+        ).toBeInTheDocument();
     });
 
-    it('renders one tile per day and marks pinned days', () => {
-        const days = MON_TO_SUN.map((date) =>
-            date === '2026-01-09' ? day({ date, pinned: true }) : day({ date }),
+    it('renders one cell per day and rings today', () => {
+        const days = MON_TO_SUN.map((date) => day({ date }));
+        const { container } = render(
+            <WeekPlanWidget weekPlan={weekOf(days)} />,
         );
-        render(<WeekPlanWidget weekPlan={weekOf(days)} />);
 
         expect(
             screen.getAllByText(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/),
         ).toHaveLength(7);
-        expect(screen.getByLabelText('Pinned')).toBeInTheDocument();
+        expect(container.querySelectorAll('li.ring-inset')).toHaveLength(1);
     });
 });

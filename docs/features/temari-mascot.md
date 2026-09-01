@@ -64,7 +64,7 @@ Trends and Settings**, which must not gain one.
 | screen | placement | size |
 |---|---|---|
 | Today | `TodaySession`'s header (leaf ring) | 42 |
-| Today | `VerdictHero`'s byline | 34 |
+| Today | `NoPlanCard`, when the account has no plan yet | 40 |
 | Plan · Race · Inbox · Today · History | the shared `EmptyPanel` empty state | 48 |
 | History | `RecapCard`, ringed by the week's mood | 36 |
 | History | `EmptyRunsState`'s hero | 72 |

@@ -57,7 +57,7 @@ The bridge between the two systems is `moodForVibe` ([Temari.php:148](../../app/
 ## How the vibe is consumed
 
 - **Face ring colour.** The vibe does *not* drive it, and nor does it drive a pose any more — `PP2` cut the pose vocabulary with the mascot rig. A run `Mood` now picks only the ring colour on the surfaces that carry one, chiefly [RecapCard](../../resources/js/components/history/RecapCard.tsx) — see [[temari-mascot]].
-- **Vibe chip.** The label surfaces as text, in the "Vibe" tile of [VitalChips](../../resources/js/components/dashboard/VitalChips.tsx#L55), with `VIBE_SUB` glossing what the vibe means underneath — see [[dashboard]] for the page wiring.
+- **Vibe bar.** The label surfaces as text, in the "Vibe" row of [VitalBars](../../resources/js/components/dashboard/VitalBars.tsx#L21), with `VIBE_SUB` glossing what the vibe means underneath — see [[dashboard]] for the page wiring.
 - **LLM tone.** [BriefingComposer::compose](../../app/Services/Run/Story/BriefingComposer.php) resolves the vibe once and hangs the briefing off it. The vibe *key* is then a context field the narrators key their tone to: the mascot voice keys its register to the vibe band ([BriefingMascotVoiceNarrator.php](../../app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php)) — energetic for `pumped`/`fresh`/`bouncy`, gentle for `worn_down`/`cooked`, coaxing for `hibernating`. The pipeline itself is documented in [[ai-pipeline]].
 
 ## Featured kartu

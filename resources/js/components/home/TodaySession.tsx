@@ -1,9 +1,9 @@
 import type { BriefingResult } from '@/types/inertia';
 
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import FaceIcon, { DARK_FACE } from '@/components/temari/FaceIcon';
+import FaceIcon from '@/components/temari/FaceIcon';
+import Eyebrow from '@/components/ui/Eyebrow';
 import Card from '@/components/ui/LegacyCard';
-import SectionLabel from '@/components/ui/SectionLabel';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 
 /**
@@ -25,45 +25,43 @@ function SessionVoice({ text }: Readonly<{ text: string }>) {
     const body = rest.join(' ');
 
     return (
-        <div className="space-y-1.5">
-            <p className="font-sans text-xl font-bold leading-tight tracking-[-0.02em] text-cream">
+        <>
+            <p className="font-serif text-[13.5px] font-bold italic leading-relaxed text-foreground">
                 {renderBold(stripEdgeQuotes(lead))}
             </p>
             {body !== '' && (
-                <p className="font-sans text-sm leading-relaxed text-ink-on-sky">
+                <p className="mt-2.5 font-serif text-[12.5px] italic leading-relaxed text-foreground">
                     {renderBold(body)}
                 </p>
             )}
-        </div>
+        </>
     );
 }
 
 /**
- * Today's session: the one forward-looking block on a page that is otherwise
- * a backward-looking verdict. Sits directly under the evidence so the answer
- * to "am I getting better?" is read before anything asks for a run.
+ * The prototype's today message card: a leaf-ringed `FaceIcon` beside the
+ * "today" eyebrow and the line that leads, on a `today-accent` edge rather
+ * than the app's dark sky panel.
  */
 export default function TodaySession({
     briefing,
 }: Readonly<{ briefing: BriefingResult }>) {
     return (
-        <Card as="section" tone="sky" padding="card">
-            <div className="flex items-center gap-3">
-                <FaceIcon size={42} ring="var(--color-leaf)" {...DARK_FACE} />
-                <SectionLabel dot dotClass="bg-horizon" onSky className="mb-0">
-                    Today
-                </SectionLabel>
-            </div>
-
-            <div className="mt-3">
-                <AnalysisStatus
-                    analysis={briefing.mascotVoice}
-                    inertiaReloadProps={['briefing']}
-                    allowReanalyze={false}
-                    showTimestamp={false}
-                    onSky
-                    renderContent={(text) => <SessionVoice text={text} />}
-                />
+        <Card as="section" className="border-today-accent">
+            <div className="flex items-start gap-3">
+                <FaceIcon size={42} ring="var(--color-leaf)" />
+                <div className="min-w-0 flex-1">
+                    <Eyebrow token="micro" className="mb-1 text-icon-accent">
+                        Today
+                    </Eyebrow>
+                    <AnalysisStatus
+                        analysis={briefing.mascotVoice}
+                        inertiaReloadProps={['briefing']}
+                        allowReanalyze={false}
+                        showTimestamp={false}
+                        renderContent={(text) => <SessionVoice text={text} />}
+                    />
+                </div>
             </div>
         </Card>
     );

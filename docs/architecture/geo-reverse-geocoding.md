@@ -53,5 +53,4 @@ The three columns hang off [`ActivityDetail`](app/Models/ActivityDetail.php#L42)
 
 Consumers select `location_name` (the display string) — never re-deriving place:
 
-- [`DashboardController`](app/Http/Controllers/DashboardController.php#L56) → the last-run card ([`LastRunCard`](resources/js/components/dashboard/LastRunCard.tsx#L23), shortened for the chip).
-- [`RunController`](app/Http/Controllers/RunController.php#L85) → run detail's route + conditions slab ([`MapWeatherPanel`](resources/js/components/run/MapWeatherPanel.tsx#L23)).
+- [`RunController`](app/Http/Controllers/RunController.php#L85) → run detail's route + conditions slab ([`MapWeatherPanel`](resources/js/components/run/MapWeatherPanel.tsx#L23)). It is the only screen consumer since `PS3`: the dashboard's last-run location chip went with the port to the prototype's mini card, and `DashboardController` no longer selects `location_name` at all.

@@ -14,10 +14,6 @@ const richRun: ActivityDetail = {
     elapsed_time: 2400,
     average_heartrate: 145,
     trimp_edwards: 87,
-    location_name: 'Gelora Bung Karno, Jakarta Pusat',
-    weather_temp_c: 28,
-    weather_humidity_pct: 70,
-    weather_rain_detected: false,
 };
 
 const bareRun: ActivityDetail = {
@@ -29,49 +25,36 @@ const bareRun: ActivityDetail = {
     elapsed_time: 0,
     average_heartrate: null,
     trimp_edwards: null,
-    location_name: null,
-    weather_temp_c: null,
-    weather_humidity_pct: null,
-    weather_rain_detected: null,
 };
 
 describe('LastRunCard', () => {
-    it('renders name, location, pace, and an optional note', () => {
-        render(
-            <LastRunCard
-                run={richRun}
-                note={{ oneline: 'A solid session.', mood: 'blazing' }}
-            />,
-        );
-        expect(screen.getByText('Negative-split morning')).toBeInTheDocument();
-        expect(screen.getByText(/Gelora Bung Karno/)).toBeInTheDocument();
-        expect(screen.getByText('A solid session.')).toBeInTheDocument();
-        // pace renders as a value (not the "—" fallback).
+    it("renders the prototype's three mini rows", () => {
+        render(<LastRunCard run={richRun} />);
+
+        ['km', 'pace', 'trimp'].forEach((label) => {
+            expect(screen.getByText(label)).toBeInTheDocument();
+        });
+        expect(screen.getByText('87')).toBeInTheDocument();
         expect(screen.getAllByText(/\/km$/).length).toBeGreaterThan(0);
-        expect(screen.getByText('View run detail →')).toBeInTheDocument();
     });
 
-    it('uses the "Run" name fallback and em-dash placeholders for a bare run', () => {
-        render(<LastRunCard run={bareRun} note={null} />);
-        expect(screen.getByText('Run')).toBeInTheDocument();
-        expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
-        expect(screen.queryByText(/Gelora/)).not.toBeInTheDocument();
+    it('uses em-dash placeholders for a run with no pace or TRIMP', () => {
+        render(<LastRunCard run={bareRun} />);
+
+        expect(screen.getAllByText('—')).toHaveLength(2);
     });
 
-    it('links to the activity detail page', () => {
-        render(<LastRunCard run={richRun} note={null} />);
-        const link = screen.getByRole('link');
-        expect(link).toHaveAttribute('href', '/activities/99');
+    it('links out to the activity detail page', () => {
+        render(<LastRunCard run={richRun} />);
+
+        expect(
+            screen.getByRole('link', { name: /View run detail/ }),
+        ).toHaveAttribute('href', '/activities/99');
     });
 
-    it('shows the run start time in the subline', () => {
-        // start_date_local 07:00 renders as the as-recorded naive wall clock.
-        render(
-            <LastRunCard
-                run={richRun}
-                note={{ oneline: 'x', mood: 'overloaded' }}
-            />,
-        );
-        expect(screen.getByText('07:00')).toBeInTheDocument();
+    it('dates the heading relative to now', () => {
+        render(<LastRunCard run={richRun} />);
+
+        expect(screen.getByText(/^Last run · /)).toBeInTheDocument();
     });
 });

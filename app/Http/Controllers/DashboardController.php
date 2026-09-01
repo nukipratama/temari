@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
-use App\Services\Run\PostRunNoteReader;
 use App\Services\Run\Story\BriefingComposer;
 use App\Services\Run\Story\BriefingResult;
 use App\Services\Run\Story\PastYouTrendBuilder;
@@ -30,7 +29,6 @@ class DashboardController extends Controller
         Temari $temari,
         TrainingLoad $trainingLoad,
         BriefingComposer $briefingComposer,
-        PostRunNoteReader $noteReader,
         PastYouTrendBuilder $pastYouTrend,
         CurrentWeekPlanBuilder $weekPlanBuilder,
     ): Response {
@@ -44,23 +42,17 @@ class DashboardController extends Controller
         $this->resolveGreeting($user, $temari, $vibe->current($user, $today), $today);
 
         // Deferred behind a closure (Inertia's `useAnalysisTrigger` poll skips
-        // any prop the partial reload does not name) and memoized (three props
-        // below share this one query set).
+        // any prop the partial reload does not name) and memoized.
         /** @var Collection<int, ActivityDetail>|null $loadedRecentRuns */
         $loadedRecentRuns = null;
         $loadRecentRuns = function () use ($user, &$loadedRecentRuns): Collection {
             /** @var Collection<int, ActivityDetail> */
             return $loadedRecentRuns ??= ActivityDetail::query()
                 ->select([
-                    'id', 'activity_id', 'name', 'start_date_local', 'distance', 'elapsed_time',
-                    'average_heartrate', 'trimp_edwards', 'workout_type',
-                    'location_name', 'weather_temp_c', 'weather_humidity_pct', 'weather_rain_detected',
-                    // Needed so the featured + strip cards draw the route hero and the
-                    // featured card's zone bar / pace-shape / cadence / best-km.
-                    'summary_polyline', 'stream_summary',
+                    'id', 'activity_id', 'name', 'start_date_local',
+                    'distance', 'elapsed_time', 'average_heartrate', 'trimp_edwards',
                 ])
                 ->forUser($user->id)
-                ->with(['activity.runCard:id,activity_id,rarity,special_move,badges'])
                 ->orderByDesc('start_date_local')
                 ->limit(8)
                 ->get();
@@ -76,11 +68,6 @@ class DashboardController extends Controller
             'recentRuns' => fn (): Collection => $loadRecentRuns(),
             'pastYouTrend' => fn (): array => $pastYouTrend->build($user, $today)->toArray(),
             'weekPlan' => fn (): ?array => $weekPlanBuilder->forUser($user, $today),
-            'lastRunNote' => function () use ($loadRecentRuns, $noteReader): ?array {
-                $lastRunActivityId = $loadRecentRuns()->first()?->activity_id;
-
-                return $lastRunActivityId === null ? null : $noteReader->forActivity($lastRunActivityId);
-            },
         ]);
     }
 
