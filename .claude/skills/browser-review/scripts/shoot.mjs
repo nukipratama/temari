@@ -46,6 +46,8 @@ for (const vp of selected) {
   console.log(`\n=== ${vp} (${def.viewport.width}x${def.viewport.height}) ===`);
   // Guest login page first, then authenticate and discover the rest.
   await bootPage.goto(`${BASE}/login`, { waitUntil: 'load' });
+  await bootPage.waitForLoadState('networkidle').catch(() => {});
+  await bootPage.waitForTimeout(400);
   await fullPageScreenshot(bootPage, `${dir}/00-login-full.${EXT}`, SHOT);
   if (!authCookies) {
     await login(bootPage);
