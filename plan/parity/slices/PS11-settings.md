@@ -83,13 +83,15 @@ form-level message.
 
 **Rewritten**: `resources/js/pages/Settings/Index.tsx`,
 `resources/js/components/settings/HrZonesDisclosure.tsx`,
-`resources/js/components/settings/TrainingPreferencesDisclosure.tsx` (+ their tests).
+`resources/js/components/settings/TrainingPreferencesDisclosure.tsx` → `TrainingPreferencesCard.tsx`
+(+ their tests).
 **Touched**: `resources/js/components/settings/AppearanceCard.tsx`.
 **Reused, not rebuilt**: `components/onboarding/{IconChoiceCard,SessionsDial,DayPicker}.tsx` —
 already 1:1 ports of the prototype's `PreferenceControls.tsx`, which Settings and Onboarding share
 in the prototype too.
 **Generated**: `resources/brand/grounds.json`.
-**Docs**: `docs/features/settings.md`.
+**Docs**: `docs/features/settings.md`, `docs/features/settings-hr-zones.md`,
+`plan/parity/slices/PP1-shell-nav.md` (reflow accounting).
 
 ## Blockers
 
