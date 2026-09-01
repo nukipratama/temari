@@ -173,8 +173,9 @@ and one other); a clean re-run passed 1823/1823, which is the figure recorded ab
    `PlannedSession`, `Season` and `GrantSeasonUnlocksAction` docblocks still describe "the badge
    board" P14 cut.
 
-4. **The prototype *is* consistent about the empty-state shape** — recorded on `PS12`'s row rather
-   than settled here. `EmptyInboxCard` (`InboxScreen.tsx:261-281`) is the same compact horizontal
-   card with a 40px `FaceIcon` that `PS7` found on History (`HistoryScreen.tsx:509-529`), against the
-   app's centred `EmptyPanel` at 48. Two screens now agree, which is what that row was deferred to
-   find out.
+4. **Empty-state shape: Inbox sides with History, not Race** — recorded on `PS12`'s row rather than
+   settled here. `EmptyInboxCard` (`InboxScreen.tsx:261-281`) is the same compact *horizontal* card
+   with a 40px `FaceIcon` that `PS7` found on History (`HistoryScreen.tsx:509-529`); `PS5` found
+   Race's is *centred*, i.e. `EmptyPanel`'s own shape. Two-to-one, so the shape is genuinely
+   per-screen and the 40px face is the only constant — which is the part still worth deciding
+   centrally, against `EmptyPanel`'s 48. This slice keeps `EmptyPanel` untouched.

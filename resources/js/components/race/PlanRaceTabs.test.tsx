@@ -26,4 +26,14 @@ describe('PlanRaceTabs', () => {
             'aria-current',
         );
     });
+
+    it('raises only the active tab off the shared track', () => {
+        render(<PlanRaceTabs active="race" />);
+        expect(screen.getByText('Race Goal').closest('a')).toHaveClass(
+            'bg-card',
+        );
+        expect(screen.getByText('Schedule').closest('a')).not.toHaveClass(
+            'bg-card',
+        );
+    });
 });
