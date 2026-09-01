@@ -112,7 +112,8 @@ and `bg-icon-accent` (registered fill); `DesignTokenContrastTest` is green uncha
 
 **Gate**: `./vendor/bin/sail composer check` green in one run — pint, eslint, the palette guard,
 phpstan (0 errors), rector (0 changed files), the full `pest --parallel` suite, `tsc`, `vitest`,
-build and `check:chunks`. The first baseline coverage run hit
+build and `check:chunks` — and green again after `PS5` ([#694](https://github.com/nukipratama/temari/pull/694))
+landed on the epic mid-review and was merged in (one conflict, `PS12`'s row). The first baseline coverage run hit
 the known contention flake (2 timeouts in files this slice never touches, `PushNotificationToggle`
 and one other); a clean re-run passed 1823/1823, which is the figure recorded above.
 
