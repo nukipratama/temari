@@ -244,25 +244,26 @@ find that out.
 
 ## Open questions
 
-1. **`resources/brand/prototypes/trends/dist/` still exists on disk**, 12 gitignored build
-   artifacts belonging to the prototype whose source this slice deleted. They are untracked, so
-   they do not affect the repository, and they were left rather than removed under the standing
-   rule against discarding working-tree files this session did not author. One `rm -rf` closes it.
+1. ~~**`resources/brand/prototypes/trends/dist/` still exists on disk.**~~ **Settled by the user:
+   removed.** `resources/brand/` is now eight entries — `build-icons.mjs`, `build-og.mjs`,
+   `build-tokens.mjs`, `grounds.mjs`, `grounds.json`, `fonts/`, `logo/` and the frozen `prototype/`
+   that `W5` deletes.
 
-2. **`build-tokens.mjs` still exports `RADIUS`, `SHADOW`, `FONT`, `SPACE` and `PAD` with no
-   consumer.** They were only ever read by the emit half this slice deleted. They are kept because
-   `docs/design-tokens.md:6` names this script as the owner of the token set, and stripping the
-   scale maps would make that claim false — but they are now literals duplicated in `app.css` with
-   no derivation, no consumer and no test pinning them against it, which is exactly the drift
-   `DesignTokenMirrorsTest` exists to prevent elsewhere. **`W4` should decide** whether the doc
-   claim or the maps are what changes.
+2. ~~**`build-tokens.mjs` still exports five scale maps with no consumer.**~~ **Settled by the
+   user, same day**: strip them and fix the doc. `RADIUS`, `SPACE`, `PAD`, `SHADOW` and `FONT` were
+   read only by the emit half this slice deleted, and were kept on the argument that
+   `docs/design-tokens.md` names the script as the token set's owner — which made the *doc claim*
+   the thing to fix. Both it and the temari skill said `app.css`'s `@theme` block is "generated" by
+   that script; it is not, and never quite was (the script emitted a `tokens.css` preview to be
+   dropped in by hand). `app.css` owns every emitted value; `build-tokens.mjs` owns the colour
+   derivation. Both docs now say so.
 
-   The same reasoning was tried on `AnalysisSubjectAuthorizer::authorizeDiscriminator()` and
-   **PHPStan rejected it**: always-true match, unreachable throw, no side effects. The argument for
-   keeping it — that its exhaustive `match` forces a future resource-keyed type to answer the
-   ownership question — did not survive the observation that `AnalysisTypeTest` already enforces
-   exactly that, and better. It was deleted. Worth noting that the type checker, not review,
-   is what caught the rationalisation.
+   The identical "it is really a guard" reasoning was tried on
+   `AnalysisSubjectAuthorizer::authorizeDiscriminator()` and **PHPStan rejected it**: always-true
+   match, unreachable throw, no side effects. The argument did not survive the observation that
+   `AnalysisTypeTest` already enforces exactly that rule, and better. Worth recording that the type
+   checker, not review, is what caught the rationalisation — and that the same instinct produced
+   two dead-code keeps in one slice.
 
 3. **`AZURE_OPENAI_BRIEFING_FEATURED_KARTU_VOICE_DEPLOYMENT` can be dropped from the prod host.**
    Nothing reads it; leaving it set is harmless. In the PR body for the user to apply at deploy.
