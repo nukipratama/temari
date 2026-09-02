@@ -19,12 +19,75 @@ permissions:
   contents: read
 
 jobs:
-  # Every job below runs on every event. There used to be a `changes` job
-  # path-filtering the five heavy ones; C1 removed it. It diffed against the
-  # merge-base with `main`, so on a PR into a long-lived `epic/*` branch it saw
-  # the whole epic diff — measured at 1147 files against 1 actually changed —
-  # and every output was permanently true. It had never skipped a job on this
-  # epic, including `docker`: build-prod-image ran on all four of PP0-PP3.
+  # Path filtering, restored. C1 removed the previous `changes` job because it
+  # was inert, not because filtering was wrong: it diffed against the merge-base
+  # with a hardcoded `origin/main`, so on a PR into a long-lived `epic/*` branch
+  # it saw the whole epic diff — measured at 1147 files against 1 actually
+  # changed — and every output was permanently true. The fix is the base: on a
+  # pull_request we diff against *that PR's own* base branch, so the answer is
+  # correct whatever the target. On a push we run everything, since pushes only
+  # reach `main` and `epic/*`.
+  #
+  # Skipping is safe for the required check: ci-gate accepts `skipped` for the
+  # five conditional jobs and demands `success` from the unconditional ones.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      docker: ${{ steps.filter.outputs.docker }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Classify the diff
+        id: filter
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "push event - running everything"
+            { echo "backend=true"; echo "frontend=true"; echo "docker=true"; } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Explicit refspec: `git fetch origin <branch>` updates FETCH_HEAD but
+          # does not reliably create refs/remotes/origin/<branch>, which is what
+          # merge-base is asked for below.
+          base_ref='${{ github.base_ref }}'
+          git fetch --no-tags --quiet origin "+refs/heads/${base_ref}:refs/remotes/origin/${base_ref}"
+          base="$(git merge-base "origin/${base_ref}" HEAD)"
+          changed="$(git diff --name-only "$base" HEAD)"
+          echo "diffing against ${base_ref} @ ${base:0:8}"
+          printf '%s\n' "$changed" | sed 's/^/  /'
+
+          match() { printf '%s\n' "$changed" | grep -qE "$1"; }
+
+          # Anything infrastructural runs the lot (deploy stays main-push-only).
+          ARCH='^(Dockerfile|compose[^/]*\.yaml|\.env\.example)$|^(docker|\.github)/'
+
+          # Backend also owns the token-mirror structure tests, which read files
+          # that look like frontend or documentation. See MIRROR_FILES in
+          # tests/Unit/Architecture/DesignTokenMirrorsTest.php and the doc list
+          # in DesignTokenDocsTest.php - if either grows, this pattern must too.
+          MIRRORS='^resources/(css|views|brand)/|^resources/js/lib/(shareCard|runcard|chartTokens)\.ts$'
+          DOCS_READ_BY_TESTS='^(CLAUDE|README)\.md$|^docs/design-tokens\.md$|^\.claude/skills/temari/SKILL\.md$'
+          BACKEND='^(app|bootstrap|config|database|routes|tests)/|^scripts/.*\.php$|^composer\.(json|lock)$|^(phpunit\.xml|artisan|rector\.php|pint\.json)$|^phpstan.*\.neon$'
+          FRONTEND='^resources/(js|css|views)/|^scripts/.*\.mjs$|^(package\.json|package-lock\.json|vite\.config\.ts|eslint\.config\.js)$|^tsconfig.*\.json$|^\.prettierrc'
+
+          if match "$ARCH"; then
+            b=true; f=true; d=true
+          else
+            b=false; f=false; d=false
+            match "$BACKEND" && b=true
+            match "$MIRRORS" && b=true
+            match "$DOCS_READ_BY_TESTS" && b=true
+            match "$FRONTEND" && f=true
+          fi
+
+          echo "backend=$b frontend=$f docker=$d"
+          { echo "backend=$b"; echo "frontend=$f"; echo "docker=$d"; } >> "$GITHUB_OUTPUT"
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:
@@ -54,8 +117,8 @@ jobs:
         run: php scripts/check-doc-citations.php
 
   backend-tests:
-    needs: [secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' }}
+    needs: [changes, secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.backend == 'true') }}
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -142,8 +205,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   frontend-tests:
-    needs: [secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' }}
+    needs: [changes, secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.frontend == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -199,8 +262,8 @@ jobs:
   # reliably catches new phpstan/rector/pint regressions. Pre-existing findings
   # are captured in phpstan-baseline.neon; this gate blocks anything NEW.
   backend-static-analysis:
-    needs: [secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' }}
+    needs: [changes, secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.backend == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -222,8 +285,8 @@ jobs:
         run: vendor/bin/rector --dry-run --no-progress-bar
 
   frontend-static-analysis:
-    needs: [secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' }}
+    needs: [changes, secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.frontend == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -241,7 +304,7 @@ jobs:
 
   # Single required check for branch protection.
   ci-gate:
-    needs: [backend-tests, frontend-tests, backend-static-analysis, frontend-static-analysis, build, secret-scan, repo-guards]
+    needs: [changes, backend-tests, frontend-tests, backend-static-analysis, frontend-static-analysis, build, secret-scan, repo-guards]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -250,7 +313,7 @@ jobs:
           for r in "${{ needs.backend-tests.result }}" "${{ needs.frontend-tests.result }}" "${{ needs.backend-static-analysis.result }}" "${{ needs.frontend-static-analysis.result }}" "${{ needs.build.result }}"; do
             [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a required job did not pass ($r)"; exit 1; }
           done
-          for r in "${{ needs.secret-scan.result }}" "${{ needs.repo-guards.result }}"; do
+          for r in "${{ needs.secret-scan.result }}" "${{ needs.repo-guards.result }}" "${{ needs.changes.result }}"; do
             [ "$r" = "success" ] || { echo "::error::a required unconditional job did not pass ($r)"; exit 1; }
           done
 
@@ -263,8 +326,8 @@ jobs:
   # shared cache but never pushes a tag or writes the cache back (see below).
   build:
     name: build-prod-image
-    needs: [secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' }}
+    needs: [changes, secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.docker == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
