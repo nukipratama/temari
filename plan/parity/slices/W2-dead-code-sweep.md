@@ -214,8 +214,65 @@ that it did not unlock what it was made to unlock.
 
 ## Verification notes
 
-_To be filled as the slice lands._
+- **`readDawnShiftSurfaces()`'s removal was proven, not argued.** Called directly it returns `{}`,
+  and `paperGrounds()` yields the same 13 grounds, named identically, before and after.
+- **`build-tokens.mjs` was exercised after the cut**, not just parsed: `COLOR.horizon` is still
+  `#ade047`, `horizon-ink` still derives to `#546d23`, `DARK_INK.horizon` is still `#ade047`
+  (`PP5`'s fix intact) and `RARITY_INK.legendary` is unchanged.
+- **The chunk budgets did not move by a single byte** — every one of the eleven routes reports the
+  same gzipped size as before the sweep. That is the strongest available evidence that the seven
+  deleted modules were genuinely unreachable: Rolldown was already tree-shaking them out, so
+  deleting them changed the source tree and not the bundle.
+- **Two guards fired and both were right.** `check-doc-citations.php` caught nine dead citations
+  across seven documents, in three separate rounds. `DesignTokenContrastTest` caught `horizon/0.06`
+  — painted only by `GoalCard.tsx:29` — and correctly left the neighbouring `horizon/0.07` and
+  `/0.08` alone, which still have painters.
+- **PHPStan overruled a judgement call, correctly.** See open question 2.
+- **`demo:seed` still converges** after losing three blocks (the re-equip sweep, the reveal queue
+  and the featured-kartu dispatch): 127 runs, 27 snapshots, 25 inbox rows, no errors.
+- Full PHP suite 3605 green, frontend 1825 green across 214 files, `check:palette`,
+  `check:chunks`, `check-doc-citations.php` and `check-see-references.php` all green, run directly
+  rather than through `composer check`, which cannot complete locally.
+
+## A citation that broke three times
+
+`docs/architecture/ai-narration-internals.md:94` cites `DemoRunSeeder.php` **by line number**, and
+this slice removed three separate blocks from that file. The citation broke on each one, and the
+guard named the symbol's new location every time. Worth recording because a `#Lnn` citation into a
+file a slice is actively editing will drift once per edit, and `composer check` is not where you
+find that out.
 
 ## Open questions
 
-_To be filled as the slice lands._
+1. **`resources/brand/prototypes/trends/dist/` still exists on disk**, 12 gitignored build
+   artifacts belonging to the prototype whose source this slice deleted. They are untracked, so
+   they do not affect the repository, and they were left rather than removed under the standing
+   rule against discarding working-tree files this session did not author. One `rm -rf` closes it.
+
+2. **`build-tokens.mjs` still exports `RADIUS`, `SHADOW`, `FONT`, `SPACE` and `PAD` with no
+   consumer.** They were only ever read by the emit half this slice deleted. They are kept because
+   `docs/design-tokens.md:6` names this script as the owner of the token set, and stripping the
+   scale maps would make that claim false — but they are now literals duplicated in `app.css` with
+   no derivation, no consumer and no test pinning them against it, which is exactly the drift
+   `DesignTokenMirrorsTest` exists to prevent elsewhere. **`W4` should decide** whether the doc
+   claim or the maps are what changes.
+
+   The same reasoning was tried on `AnalysisSubjectAuthorizer::authorizeDiscriminator()` and
+   **PHPStan rejected it**: always-true match, unreachable throw, no side effects. The argument for
+   keeping it — that its exhaustive `match` forces a future resource-keyed type to answer the
+   ownership question — did not survive the observation that `AnalysisTypeTest` already enforces
+   exactly that, and better. It was deleted. Worth noting that the type checker, not review,
+   is what caught the rationalisation.
+
+3. **`AZURE_OPENAI_BRIEFING_FEATURED_KARTU_VOICE_DEPLOYMENT` can be dropped from the prod host.**
+   Nothing reads it; leaving it set is harmless. In the PR body for the user to apply at deploy.
+
+4. **`W6` shrinks again.** It was to rename that env var; it can now delete it. Of the three
+   persisted Indonesian values, `briefing_featured_kartu_voice` is gone outright, leaving
+   `aku_profile_voice` and the `rute` share-card token — both ordinary renames after the
+   `migrate:fresh`.
+
+5. **A `W6` lead found in passing, not touched**: three comments still describe banners as
+   `"Temari lagi istirahat"` / `"lagi dijeda"` (`inertia.ts:116`, `inertia.ts:120`,
+   `AiProps.php:43`), and `BriefingComposerTest` seeds `'Pagi yang oke'`. The banners themselves
+   are English; these are drift from before the 2026-08-09 swap.
