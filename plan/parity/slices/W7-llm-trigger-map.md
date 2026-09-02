@@ -112,7 +112,29 @@ Also carries `W5`'s tracker row.
 
 ## Verification notes
 
-_To be filled as the slice runs._
+- **The headline finding was verified by hand, not taken from the audit.** `routes/console.php:63`
+  reads "No LLM involved (deterministic periodizer)"; `RegeneratePlanCommand.php:41` calls
+  `requestForCurrentWeek()`; that method dispatches seven `PlanDayVoice` plus `PlanWeekVoice` with
+  `invalidate: true` and an idempotent `PlanSeasonVoice`. Read in the source, all three.
+- **The audit's own open question was closed.** It could not clear `plan:score-compliance`'s "no
+  LLM" comment and said so. Checked: `ScoreComplianceCommand` imports no AI class. The comment is
+  accurate — which is worth recording, because the neighbouring one was not.
+- **Four suppression claims were spot-checked** rather than trusted: `degradeToRuleBased()` really
+  does early-return on `Done` **or `Failed`**; the controller's gate order really is cooldown →
+  demo → age gate; `generationPaused()` really does ask `blockingReason(withBudget: true)`, which
+  is what makes a manual trigger past the ceiling a 409 while auto-dispatch degrades.
+- **The spend query was executed before being written down.** It runs clean and returns zero rows
+  locally, because the demo seed spends no tokens — the table is genuinely empty (0 rows, 0 distinct
+  kinds), not filtered to nothing. The schema was read off the live `analytics` connection: 15
+  columns and the `(created_at, kind)` compound index the query depends on.
+- **The doc's own citations were proven checked, not assumed.** Pointing one at a line past
+  end-of-file turned the guard red, then restoring it turned it green. Worth noting *why* that
+  works: this note cites with `../../` relative paths, which `check-doc-citations.php` skipped
+  entirely until `W4` fixed that blind spot. Written a week earlier, none of its ~40 citations
+  would have been verifiable.
+- **Nothing was fixed inline beyond the two comments.** The brief's rule holds — a trigger firing
+  for a dead surface is a finding for its own slice. There were none: every one of the twelve
+  `AnalysisType` cases is dispatched by a live path.
 
 ## Open questions
 
