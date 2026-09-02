@@ -189,7 +189,13 @@ function checkLineDrift(string $root, string $doc, int $lineNo, string $target, 
     [, $path, $citedLine] = $m;
     $citedLine = (int) $citedLine;
 
+    // Same dual resolution checkCitation() uses: docs cite either root-relative
+    // or doc-relative. Resolving only against the root silently skipped every
+    // `../../app/...` citation here while the existence check passed them.
     $file = $root.'/'.ltrim($path, '/');
+    if (! is_file($file)) {
+        $file = dirname($doc).'/'.$path;
+    }
     if (! is_file($file)) {
         return;
     }
@@ -253,6 +259,25 @@ function checkLineDrift(string $root, string $doc, int $lineNo, string $target, 
  *
  * @return list<string>
  */
+/** Does this word look like an identifier rather than a word of English prose? */
+function isSymbolShaped(string $word): bool
+{
+    $shapes = [
+        '/^[a-z][A-Za-z0-9]*[A-Z]/',        // camelCase
+        '/^[a-z0-9]+_[a-z0-9_]+$/',         // snake_case
+        '/^[A-Z0-9]+_[A-Z0-9_]+$/',         // SCREAMING_SNAKE
+        '/^[A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*$/', // multi-hump PascalCase
+    ];
+
+    foreach ($shapes as $shape) {
+        if (preg_match($shape, $word) === 1) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function symbolCandidates(string $linkText, string $basename): array
 {
     $stem = preg_replace('/\.[^.]+$/', '', $basename);
@@ -276,10 +301,14 @@ function symbolCandidates(string $linkText, string $basename): array
             continue;
         }
 
-        // camelCase, snake_case or a SCREAMING_SNAKE constant. A bare lowercase
-        // English word in prose is not a symbol, and a PascalCase one is usually
-        // the class itself, which sits near line 1 of its own file.
-        if (preg_match('/^[a-z][A-Za-z0-9]*[A-Z]|^[a-z0-9]+_[a-z0-9_]+$|^[A-Z0-9]+_[A-Z0-9_]+$/', $word) !== 1) {
+        // camelCase, snake_case, a SCREAMING_SNAKE constant, or multi-hump
+        // PascalCase. A bare lowercase English word in prose is not a symbol.
+        // PascalCase is only a candidate because the `$word === $stem` skip
+        // above has already dropped the class-in-its-own-file case, whose line
+        // number is meaningless; what is left is a usage site in another file,
+        // which can sit anywhere. The second hump keeps capitalised prose
+        // ("Inertia", "Every") out.
+        if (! isSymbolShaped($word)) {
             continue;
         }
 
