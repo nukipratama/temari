@@ -81,13 +81,15 @@ pair it did find so the empty state can say how close the runner is.
 
 ## Supporting readings degrade, they do not gate
 
-`fitness_delta_ctl`, `pace_consistency_now` / `_then` and `relative_effort_band`
-come from [TrainingLoad](app/Services/Run/Metrics/TrainingLoad.php),
+`fitness_delta_ctl` and `pace_consistency_now` / `_then` come from
+[TrainingLoad](app/Services/Run/Metrics/TrainingLoad.php) and
 [StreamSummary](app/Services/Run/Metrics/StreamSummary.php) +
-[PaceConsistency](app/Services/Run/Metrics/PaceConsistency.php) and
-[RelativeEffort](app/Services/Run/Metrics/RelativeEffort.php). All three need the
-detail pipeline, so all three are null on a purely summary-state window. They sit
-beside the verdict; they never change it.
+[PaceConsistency](app/Services/Run/Metrics/PaceConsistency.php). Both need the
+detail pipeline, so both are null on a purely summary-state window. They sit
+beside the verdict; they never change it. `relative_effort_band` sat here too
+until `W2`: P18 cut relative effort's UI and the payload field outlived its
+reader by a wave. [RelativeEffort](app/Services/Run/Metrics/RelativeEffort.php)
+itself is untouched, still feeding three narrators via `EffortContextTool`.
 
 ## Open product questions
 

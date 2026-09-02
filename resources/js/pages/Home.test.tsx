@@ -128,7 +128,6 @@ function trend(overrides: Partial<PastYouTrend> = {}): PastYouTrend {
         fitness_delta_ctl: 2.4,
         pace_consistency_now: null,
         pace_consistency_then: null,
-        relative_effort_band: null,
         ...overrides,
     };
 }

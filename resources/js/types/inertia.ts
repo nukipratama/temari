@@ -340,7 +340,6 @@ export interface PastYouTrend {
     fitness_delta_ctl: number | null;
     pace_consistency_now: string | null;
     pace_consistency_then: string | null;
-    relative_effort_band: string | null;
 }
 
 /** One day within `WeekPlan['days']`, as `PlanRenderer::dayPayload()` ships
