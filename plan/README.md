@@ -67,7 +67,8 @@ wave 2a ──  B3 → B2 → B1 → B4          (ONE worktree slot, strictly se
 wave 2b ──  S1 S2 S3 S4 S5 S6 S7 S8 S9 S10 S11 S12
                                         (3 parallel worktree slots; per-slice blockers below)
 
-wave 3  ──  V0 → W1 → W2 → W3 → W4 → W5   (main checkout)
+wave 3  ──  V0 → C1 → W1 → W2 → W6 → W4 → W5 → W7   (main checkout)
+            W3 cut by the 2026-08-31 re-scope; W6 and W7 added after it
 ```
 
 `V0` (added 2026-08-31, see §5) audits every wave-2b screen against the prototype's own Rack

@@ -128,7 +128,49 @@ slice's "merged" row rides in the next slice's PR.
 
 ## Verification notes
 
-_To be filled as the slice runs._
+- **The guard had a third blind spot the brief did not predict, and it was the biggest.**
+  `checkLineDrift()` resolved a cited path against the repo root only, while `checkCitation()`
+  resolves against the root *and* the doc's directory. Every `../../` citation therefore passed the
+  existence check and skipped the drift check — **41 of them**. One line fixed it.
+- **Widening the guard found six real defects, not the one predicted.** My "exactly one PascalCase
+  citation falls in the hole" was a measurement error: the regex matched `[Name](…)` but not the
+  backticked `` [`Name`](…) `` form the docs also use. Under coverage: **~130** PascalCase citations,
+  two of them drifted (`ErrorBoundary`, `StravaRateLimitedException`), plus four more from the
+  relative-path fix — **three of which pointed past the end of their file**.
+- **That corrects the features-tree audit.** It passed `onboarding.md` as OK because it verified the
+  cited *paths* existed. `Home.tsx#L154` in a 94-line file was invisible to that check. The doc
+  claimed four mounted coach marks; two are mounted, and the missing pair traces to real slices —
+  Today's went with the featured-card panel in `PP3` (`e9309b6b`), Plan's with the day actions in
+  `PS4` (`c0672c02`).
+- **The citation sweep was worth more than its style.** Six of the 65 were substantively wrong, and
+  the filename link text is exactly what hid them: `weather-integration` cited `L179` for the rain
+  threshold, which is derived at `OpenMeteoClient.php:227`, ~48 lines away.
+- **Three citations were left without a symbol on purpose.** `TemariPersona`'s heredoc has no
+  identifier on the cited lines, so they name their prose section instead. Inventing a symbol would
+  have faked coverage rather than added it.
+- **The phase-token guard was proven non-vacuous by tripping on this slice's own first draft.**
+  Adding `--color-phase-` to `DesignTokenDocsTest`'s forbidden list failed immediately, because the
+  paragraph explaining the deletion had written the token name out. Reworded, not exempted.
+- **The px-font-size measurement was under-scoped.** Zero `text-[Npx]` in `resources/js` was correct,
+  but `check-raw-palette` also scans `resources/views`, where a Pulse scheduler card carried
+  `text-[11px]`. Both new rules therefore started red, not green — better proof than the clean tree
+  I had planned for.
+- **Two `W6` leftovers folded in**, both found while reading citation context rather than by
+  sweeping for them: two ADRs quote per-block button labels retired by the English swap
+  (`"Coba lagi semua"` is `"Recover all"`; `"Baca ulang"` / `"Coba lagi"` are `"Reread"` /
+  `"Try again"`). The historical quotes stay with the current label alongside, matching the idiom
+  `cards-collection.md` already uses for renamed vocabulary.
+- **Zero filename-as-link-text citations remain in `docs/`**, asserted by grep rather than eyeballed.
+- Full PHP suite **3604 green**, frontend **1829 green** across 214 files (up 4, the new guard
+  tests). `check-doc-citations.php`, `check-see-references.php`, `check:palette` and `check:chunks`
+  green, each run directly. All eleven route budgets pass unchanged.
+
+## Recorded, not taken
+
+`--shadow-panel` (`app.css:331`) is declared and referenced by nothing — `rounded-panel` is used by
+two heroes, its shadow sibling by none. It is not deleted here: the phase tokens were cut because a
+second, disagreeing set was live and would eventually be picked up by mistake, and that reasoning
+does not apply to a token with no rival. Left for `W5` to rule on with the rest of the merge sweep.
 
 ## Open questions
 

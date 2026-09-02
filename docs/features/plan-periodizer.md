@@ -31,6 +31,7 @@ code_refs:
   - app/Models/SeasonGoal.php
   - app/Http/Controllers/PlanController.php
   - app/Services/Gamification/SeasonStreakSummaryBuilder.php
+  - app/Services/Run/Plan/SeasonSummaryBuilder.php
   - app/Console/Commands/Run/RegeneratePlanCommand.php
   - app/Services/AI/PlanNarrationRequester.php
   - app/Services/AI/Narrators/PlanDayVoiceNarrator.php
