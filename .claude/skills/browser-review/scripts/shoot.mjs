@@ -15,6 +15,9 @@ const now = new Date();
 const p2 = (n) => String(n).padStart(2, '0');
 const BATCH = process.env.BATCH
   ?? `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}/${p2(now.getHours())}${p2(now.getMinutes())}${p2(now.getSeconds())}`;
+// Optional ground override: THEME=light|dark|system. Unset uses the app default.
+const THEME = process.env.THEME ?? '';
+
 const OUT = `${BASE_OUT}/${BATCH}`;
 rmSync(BASE_OUT, { recursive: true, force: true });
 const selected = parseViewports();
@@ -40,6 +43,19 @@ for (const vp of selected) {
   const dir = `${OUT}/${vp}`;
   const errors = [];
   const context = await browser.newContext({ ...def, ...DEVTOOLS_AUTH, reducedMotion: 'reduce' });
+  // The app resolves its ground from a `temari-theme` localStorage key set by a
+  // blocking script in <head>, so seeding that key before any document runs is
+  // what switches grounds. Without it the sweep only ever sees the default
+  // (dark), and "check both grounds" is not actually reachable.
+  if (THEME) {
+    await context.addInitScript((value) => {
+      try {
+        localStorage.setItem('temari-theme', value);
+      } catch {
+        /* blocked storage — the page falls back to the default ground */
+      }
+    }, THEME);
+  }
   const bootPage = await context.newPage();
   capture(bootPage, errors);
 
