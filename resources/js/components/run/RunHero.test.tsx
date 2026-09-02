@@ -80,7 +80,7 @@ describe('RunHero', () => {
         renderHero();
         expect(screen.getByText('HR')).toBeInTheDocument();
         expect(screen.getByText('TRIMP')).toBeInTheDocument();
-        expect(screen.getByText('ELEVATION')).toBeInTheDocument();
+        expect(screen.getByText('ELEV')).toBeInTheDocument();
         await waitFor(() =>
             expect(screen.getByText('152')).toBeInTheDocument(),
         );

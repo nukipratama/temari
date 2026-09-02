@@ -40,6 +40,10 @@ RUN install-php-extensions \
 # git is TIA's changed-file source; Pest hard-fails "requires git" without it.
 RUN apk add --no-cache librsvg font-dejavu font-jetbrains-mono fontconfig git
 
+# Installing git is only half of it — the bind-mounted repo is owned by the host
+# user, so git refuses it as "dubious ownership". That half is fixed by
+# GIT_CONFIG_* on the app service in compose.yaml, which needs no rebuild.
+
 # Fraunces + Plus Jakarta Sans are not packaged for Alpine, so they ship in the
 # repo. Without them the card's name and prose fall back to DejaVu and stop
 # matching the client-rendered share image. See resources/brand/fonts/README.md.
