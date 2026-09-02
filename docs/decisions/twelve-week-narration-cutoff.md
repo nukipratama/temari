@@ -11,13 +11,20 @@ code_refs:
   - app/Http/Controllers/Api/AnalysisController.php
   - app/Services/AI/AnalysisSubjectAuthorizer.php
   - app/Services/AI/AnalysisType.php
-  - app/Jobs/AI/AnalyzeBriefingFeaturedKartuVoiceJob.php
   - app/Services/AI/RuleBased/RuleBasedNarrationFiller.php
 ---
 
 # Twelve-week narration cutoff
 
 **Status:** Accepted (documented 2026-08-14)
+
+> **Fact update, 2026-09-02 (`W2`).** The decision and its reasoning stand unchanged. One subject
+> named below no longer exists: `briefing_featured_kartu_voice` narrated Today's featured-kartu
+> panel, which `PP3` cut, so `W2` swept the enum case, its narrator, its job and its agent tool.
+> Its two mentions here — the age-gate exemption and the discriminator-ownership check — are
+> historical. No type keys off a resource id today, so the ownership check has no subject and was
+> removed with it; `AnalysisTypeTest` still fails any future type that permits a discriminator
+> without bounding it by range or ownership.
 
 ## Context
 
@@ -47,7 +54,7 @@ The rest do not block, each for a stated reason: the four chained kinds are alre
 
 Gating the *age* of the material was not enough, because the discriminator was itself unbounded in two different ways, and each needed a different answer.
 
-**A discriminator that names a resource needs ownership.** `briefing_featured_kartu_voice` keys off a RunCard id carried under the *caller's own* subject id, and the controller authorized only the subject. A user could trigger a briefing keyed to another athlete's card and have that card described in their own row, which Strava's API terms have barred since Nov 2024. Ownership now lives with the subject check in [AnalysisSubjectAuthorizer](app/Services/AI/AnalysisSubjectAuthorizer.php) (a 403, matching the sibling check on the same request), and [AnalyzeBriefingFeaturedKartuVoiceJob](app/Jobs/AI/AnalyzeBriefingFeaturedKartuVoiceJob.php) scopes its own lookup to the row's owner so a row that somehow reaches the queue still cannot read across users. The existing generative cross-user sweep walks the *route table*, so a query-string discriminator was invisible to it.
+**A discriminator that names a resource needs ownership.** `briefing_featured_kartu_voice` keys off a RunCard id carried under the *caller's own* subject id, and the controller authorized only the subject. A user could trigger a briefing keyed to another athlete's card and have that card described in their own row, which Strava's API terms have barred since Nov 2024. Ownership now lives with the subject check in [AnalysisSubjectAuthorizer](app/Services/AI/AnalysisSubjectAuthorizer.php) (a 403, matching the sibling check on the same request), and `AnalyzeBriefingFeaturedKartuVoiceJob` scoped its own lookup to the row's owner so a row that somehow reaches the queue still cannot read across users. The existing generative cross-user sweep walks the *route table*, so a query-string discriminator was invisible to it.
 
 **A discriminator that names a period needs a range.** A shape rule is not a closed set: `date_format:Y-m-d` admits some 3.6M days, each of which `firstOrCreate`s a permanent `ai_analyses` row, at 8 requests a minute. The period-keyed types now carry a range as well as a shape ([AnalysisType::discriminatorRules()](app/Services/AI/AnalysisType.php)), bounded by `MAX_DISCRIMINATOR_AGE_DAYS`, so an out-of-range value is a 422 at the request boundary rather than a row.
 

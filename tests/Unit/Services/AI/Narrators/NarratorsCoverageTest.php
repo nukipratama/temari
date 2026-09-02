@@ -1393,7 +1393,6 @@ it('per-narrator step budgets cover two full read passes and only exist where th
     ksort($declared);
 
     expect($declared)->toBe([
-        'BriefingFeaturedKartuVoiceNarrator' => 6,
         'MonthlyRecapNarrator' => 4,
         'PrContextNarrator' => 6,
         'TrendReadNarrator' => 4,

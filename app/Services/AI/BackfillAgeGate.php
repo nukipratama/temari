@@ -63,14 +63,11 @@ class BackfillAgeGate
             AnalysisType::WeeklyRecap,
             AnalysisType::MonthlyRecap => false,
             // Narrate material that is current whatever its date: the profile
-            // voice reads a rolling window as of now and ignores its week key,
-            // and the featured kartu is whichever card the dashboard shows today
-            // (picked from the last 8 runs, which for a low-mileage runner can
-            // reach well past the cutoff). TrendRead is the same shape — its
-            // discriminator names a range (30d/90d/12mo), not a date, and it is
-            // always read as of now regardless of how old the user's history is.
+            // voice reads a rolling window as of now and ignores its week key.
+            // TrendRead is the same shape — its discriminator names a range
+            // (30d/90d/12mo), not a date, and it is always read as of now
+            // regardless of how old the user's history is.
             AnalysisType::AkuProfileVoice,
-            AnalysisType::BriefingFeaturedKartuVoice,
             AnalysisType::TrendRead,
             // Same shape: plan narration is always about the current week or
             // season as of now, never a fixed past date to age out.

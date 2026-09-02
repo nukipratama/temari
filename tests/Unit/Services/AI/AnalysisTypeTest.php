@@ -20,7 +20,6 @@ use Illuminate\Validation\Rules\In;
 it('pins the exact case list, so adding or retiring a type is a deliberate edit', function (): void {
     expect(array_column(AnalysisType::cases(), 'value'))->toBe([
         'briefing_mascot_voice',
-        'briefing_featured_kartu_voice',
         'post_run_speech',
         'run_insight',
         'weekly_recap',
@@ -131,7 +130,6 @@ it('returns null group job for non-grouped types', function (AnalysisType $type)
     expect($type->groupJobClass())->toBeNull();
 })->with([
     'briefing mascot voice' => [AnalysisType::BriefingMascotVoice],
-    'briefing featured kartu voice' => [AnalysisType::BriefingFeaturedKartuVoice],
     'weekly recap' => [AnalysisType::WeeklyRecap],
     'monthly recap' => [AnalysisType::MonthlyRecap],
 ]);
@@ -160,7 +158,6 @@ it('requires the date shape each keyed type dispatches with', function (Analysis
     'briefing mascot voice is a day' => [AnalysisType::BriefingMascotVoice, 'date_format:Y-m-d'],
     'monthly recap is a month' => [AnalysisType::MonthlyRecap, 'date_format:Y-m'],
     'aku profile voice is an ISO week' => [AnalysisType::AkuProfileVoice, 'regex:/^\d{4}-W\d{2}$/'],
-    'featured kartu is a card id' => [AnalysisType::BriefingFeaturedKartuVoice, 'regex:/^[1-9][0-9]*$/'],
     'plan day voice is a day' => [AnalysisType::PlanDayVoice, 'date_format:Y-m-d'],
 ]);
 
@@ -180,10 +177,12 @@ it('formats currentIsoWeek to the discriminator shape AkuProfileVoice requires',
  * naming a period, and an ownership check, for one naming a resource.
  */
 it('bounds every discriminator it permits, by range or by ownership', function (): void {
-    // The one resource-keyed discriminator. Its bound is ownership, enforced in
-    // AnalysisSubjectAuthorizer and proved in that class's own suite, so a range
-    // here would be meaningless.
-    $boundedByOwnership = [AnalysisType::BriefingFeaturedKartuVoice];
+    // Types whose bound is ownership rather than a range, which would be checked
+    // in AnalysisSubjectAuthorizer::authorize(). Empty since W2 swept
+    // BriefingFeaturedKartuVoice, the only resource-keyed discriminator there has
+    // ever been; the escape hatch stays because the rule above still names
+    // ownership as a legitimate bound.
+    $boundedByOwnership = [];
 
     foreach (AnalysisType::cases() as $type) {
         $rules = $type->discriminatorRules();

@@ -32,7 +32,6 @@ The app's home (`/`), ported to the frozen prototype's `TodayScreen` in `PS3`. F
 - **Past You** — `pastYouTrend` comes from `PastYouTrendBuilder::build`. See [[past-you-engine]].
 - **AI narration** — today's voice block is an `Analysis` row from the [[ai-pipeline]].
 - **Training metrics** — `load` comes from `TrainingLoad::summary`. See [[training-load-metrics]].
-- **Gamification** — the featured kartu is picked by rarity rank. See [[gamification]].
 - **Plan** — `weekPlan` comes from `CurrentWeekPlanBuilder::forUser`, the same phase/volume computation [[plan-periodizer]] uses for the full multi-week arc. See below.
 
 ## This week's plan
@@ -70,7 +69,7 @@ The fourth outcome, `not_enough_history`, renders [NoVerdictPanel](resources/js/
 
 [TodaySession](resources/js/components/home/TodaySession.tsx) is the one forward-looking block on an otherwise backward-looking page: a leaf-ringed `FaceIcon` beside a "Today" eyebrow and the line that leads, on a `today-accent` edged card (`PS3` moved it off the `sky` panel it used to sit on, see [[design-tokens]]). It renders `briefing.mascotVoice` through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx), so it carries the skeleton / retry states from the [[ai-pipeline]]. The text is parsed on `\n\n`: the first paragraph leads, the rest follows as body.
 
-The whole briefing object is assembled server-side by [BriefingComposer::compose](app/Services/Run/Story/BriefingComposer.php#L24) — **two** Analysis rows: the daily voice and the featured-kartu voice (the latter keyed on a separate discriminator so re-picking the featured card doesn't rebill the other). Each is its own [[ai-pipeline]] block with independent retry. The signals their prompts read come from the context builders in [[ai-narration-internals]]; the vibe that colours Temari's tone is [[vibe-and-mood]].
+The whole briefing object is assembled server-side by [BriefingComposer::compose](app/Services/Run/Story/BriefingComposer.php#L24) — a single Analysis row, the daily voice (the featured-kartu voice that used to sit beside it was swept by `W2`). It is its own [[ai-pipeline]] block with independent retry. The signals their prompts read come from the context builders in [[ai-narration-internals]]; the vibe that colours Temari's tone is [[vibe-and-mood]].
 
 ## This week's stats
 
@@ -83,8 +82,9 @@ The whole briefing object is assembled server-side by [BriefingComposer::compose
 Three things the shipped cards carried are not on the prototype's and went with the port: the last run's name, location, weather chip and post-run note one-liner (the note survives on [[run-history]]'s run rows, the weather on the activity detail's `MapWeatherPanel`), the training-load card's plain-language hints and risk tones, and **Monotony**, which survives as [[run-history]]'s per-week alert. `lastRunNote` had no consumer left, so the prop and its controller query went too.
 
 `PP3` cut the featured-kartu panel (P29) — the prototype's Today screen draws no Kartu surface — and
-with it `briefing.featuredCardId` / `briefing.featuredKartuVoice`. The `briefing_featured_kartu_voice`
-narrator, its job and its enum case are still generated; `W2` sweeps them.
+with it `briefing.featuredCardId` / `briefing.featuredKartuVoice`. `W2` then swept the
+`briefing_featured_kartu_voice` narrator, its job, its agent tool and its enum case, which had kept
+generating and billing for the deleted panel.
 
 ## Empty state
 

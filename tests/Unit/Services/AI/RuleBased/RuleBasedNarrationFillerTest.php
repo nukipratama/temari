@@ -342,7 +342,6 @@ it('keeps all copy free of em-dashes', function (): void {
     $samples = [
         $filler->fillFor(fillerRow(AnalysisType::CardFlavor, $card->id)),
         $filler->fillFor(fillerRow(AnalysisType::BriefingMascotVoice, $card->id)),
-        $filler->fillFor(fillerRow(AnalysisType::BriefingFeaturedKartuVoice, $card->id)),
         $filler->fillFor(fillerRow(AnalysisType::PlanDayVoice, $session->user_id, '2026-05-18')),
         $filler->fillFor(fillerRow(AnalysisType::PlanWeekVoice, $adaptation->id)),
         $filler->fillFor(fillerRow(AnalysisType::PlanSeasonVoice, $season->id)),

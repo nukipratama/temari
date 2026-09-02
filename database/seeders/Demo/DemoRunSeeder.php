@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Database\Seeders\Demo;
 
 use App\Actions\Gamification\GrantEligibleUnlocksAction;
-use App\Actions\Run\Story\ResolveFeaturedKartuAction;
 use App\Enums\ExperienceLevel;
 use App\Enums\GoalType;
 use App\Enums\IngestState;
@@ -78,7 +77,6 @@ class DemoRunSeeder
         private readonly AnalysisService $analysisService,
         private readonly RuleBasedNarrationFiller $filler,
         private readonly GrantEligibleUnlocksAction $unlockEngine,
-        private readonly ResolveFeaturedKartuAction $featuredKartu,
         private readonly Periodizer $periodizer,
         private readonly WeekPlanBuilder $weekPlanBuilder,
         private readonly TrainingBaseline $trainingBaseline,
@@ -365,21 +363,6 @@ class DemoRunSeeder
         // Mirrors DailyBriefingCommand so the dashboard's Temari voice card is
         // filled and never renders as empty.
         $this->analysisService->requestBriefing($user, $today);
-        // The weekly-featured-card voice (the featured-card quote on the
-        // dashboard hero) has its own job and is never auto-requested by ingest,
-        // so the demo must stage it here or the hero falls back to empty.
-        // Keyed by the featured card id (matching BriefingComposer) so the staged
-        // quote lines up with the card the hero actually shows.
-        $featuredCard = ($this->featuredKartu)($user);
-        if ($featuredCard !== null) {
-            $this->analysisService->request(
-                subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
-                subjectId: $user->id,
-                type: AnalysisType::BriefingFeaturedKartuVoice,
-                discriminator: (string) $featuredCard->id,
-            );
-        }
-
         // The Aku voice is cached per ISO week — discriminator must match
         // ProfileController::resolveProfileVoice() or the Aku hero misses it.
         $this->analysisService->request(

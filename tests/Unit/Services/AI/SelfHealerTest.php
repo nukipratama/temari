@@ -580,7 +580,6 @@ it('re-kicks the earliest stalled single-row block per user with invalidate:fals
         ->and($captured[0]['invalidate'])->toBeFalse();
 })->with([
     'BriefingMascotVoice' => [AnalysisType::BriefingMascotVoice, AnalysisType::BRIEFING_SUBJECT_TYPE, '2026-05-18'],
-    'BriefingFeaturedKartuVoice' => [AnalysisType::BriefingFeaturedKartuVoice, AnalysisType::BRIEFING_SUBJECT_TYPE, '42'],
     'AkuProfileVoice' => [AnalysisType::AkuProfileVoice, AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE, '2026-W21'],
 ]);
 

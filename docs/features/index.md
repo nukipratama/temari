@@ -34,7 +34,7 @@ _Collection_
 _Systems_
 - [[recaps]] — weekly/monthly/persona narratives across the app
 - [[gamification]] — milestones, unlocks, rarities, special moves engine
-- [[vibe-and-mood]] — the daily vibe matrix + run mood that drive Temari's tone and the featured kartu
+- [[vibe-and-mood]] — the daily vibe matrix + run mood that drive Temari's tone
 - [[strava-connect]] — OAuth, sync, webhook
 - [[onboarding]] — first-connect wizard, the DB-backed gate, and the coach-mark mechanism
 - [[telegram-notifications]] — link a Telegram account, the master switch and channel mutes, post-run + weekly-recap push
