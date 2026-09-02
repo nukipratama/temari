@@ -155,7 +155,9 @@ completed `SeasonGoal`, and `season.tiers_kept_from_past_seasons`
 counts the tiers owned under an earlier season's key namespace. Nothing renders that count now;
 `PS4` decides whether the prototype's single line carries it.
 
-The per-goal `GoalCard` grid under the season summary survives. The week-grained lifetime streak
+The per-goal `GoalCard` grid under the season summary is gone: P24 replaced the tier module with
+the prototype's single progress line, and `W2` swept the orphaned component. The week-grained
+lifetime streak
 (`WeeklySnapshot::consecutiveWeekStreak()`, wrapped by `SeasonStreakSummaryBuilder::streakPayload()`)
 does not render here either — it lives on Trends as a badge chip. `PlanController` still calls
 `seasonPayload()`, never `streakPayload()`.

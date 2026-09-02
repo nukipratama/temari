@@ -291,7 +291,9 @@ the confetti burst — reads the same preference itself through
 
 ## Gradients & atmospherics
 
-- `<GradientText preset="horizon|cream-sun" fontSize=… />` ([component](../resources/js/components/ui/GradientText.tsx)) clips a `linear-gradient` to text. Numbers only, large sizes only, one per viewport.
+There is no gradient-text primitive any more. `GradientText` clipped a `linear-gradient` to a
+number at display sizes; no screen the prototype draws uses one, so `W2` swept it. Git history
+holds it if the treatment is ever wanted back.
 
 The sky→horizon backdrop atmospherics (Login's inline `linear-gradient` / `radial-gradient`
 layers) are not yet re-tuned for the dark ground — that lands with the screen slice that ports
@@ -365,4 +367,4 @@ plain `Record` lookups; do **not** fold those into cva.
 - **`text-text-3` on body prose.** The `ink-3` tier is for labels/timestamps/metadata only, never wrapping a `<p>` of running text. Sweep `grep text-text-3` before merging.
 - **Missing `tabular-nums` on stat displays.** Any big-number display must carry it so digits don't jitter as they change. The `.text-stat` / `.text-stat-sm` utilities include it; raw `font-mono` alone does not.
 - **`font-mono` omitted from uppercase labels.** Because `font-sans` is Tailwind's default, every `.text-label-micro` / `.text-label-small` utility needs an explicit `font-mono` — without it the label renders in the body font.
-- **Gradient text on non-numeric content.** `<GradientText>` is for numbers only (display-sized stats, KPI values), never for headlines or body prose.
+- **Reaching for gradient text.** There is no `GradientText` primitive; `W2` swept it once no screen used one. A display-sized number carries its own weight.

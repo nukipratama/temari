@@ -193,9 +193,6 @@
                 "ember-ink"
             ]
         },
-        "horizon/0.06": {
-            "text": []
-        },
         "horizon/0.07": {
             "text": []
         },
@@ -473,9 +470,6 @@
         },
         "destructive/0.1": {
             "over": {
-                "resources/js/components/ui/badge.tsx": [
-                    "paper"
-                ],
                 "resources/js/components/ui/button.tsx": [
                     "paper"
                 ]
@@ -486,9 +480,6 @@
         },
         "destructive/0.2": {
             "over": {
-                "resources/js/components/ui/badge.tsx": [
-                    "paper"
-                ],
                 "resources/js/components/ui/button.tsx": [
                     "paper"
                 ]
@@ -517,9 +508,6 @@
         },
         "muted/0.5": {
             "over": {
-                "resources/js/components/ui/badge.tsx": [
-                    "paper"
-                ],
                 "resources/js/components/ui/button.tsx": [
                     "paper"
                 ]
@@ -528,9 +516,6 @@
         },
         "primary/0.8": {
             "over": {
-                "resources/js/components/ui/badge.tsx": [
-                    "paper"
-                ],
                 "resources/js/components/ui/button.tsx": [
                     "paper"
                 ]
@@ -538,17 +523,9 @@
             "text": [
                 "primary-foreground"
             ]
-        },
-        "secondary/0.8": {
-            "over": {
-                "resources/js/components/ui/badge.tsx": [
-                    "paper"
-                ]
-            },
-            "text": []
         }
     },
-    "__belowAa": "Panel/text pairs that are under 4.5:1 today, pinned at the ratio they measure. Most are text-ink-3 — the meta tier is derived to land exactly on 4.5:1 on paper, so any tint over that paper puts it under. The destructive/* entries are shadcn's vendored badge.tsx/button.tsx destructive variant (F3), whose bg-destructive/N tints don't clear AA against every paper this app scores against; recorded rather than waived pending a real redesign pass. Recorded rather than waived: the set has to match what the audit finds and each ratio has to match to 2dp, so a new failure, a worse one, or a fixed one still listed all go red.",
+    "__belowAa": "Panel/text pairs that are under 4.5:1 today, pinned at the ratio they measure. Most are text-ink-3 — the meta tier is derived to land exactly on 4.5:1 on paper, so any tint over that paper puts it under. The destructive/* entries are shadcn's vendored button.tsx destructive variant (F3), whose bg-destructive/N tints don't clear AA against every paper this app scores against; recorded rather than waived pending a real redesign pass. Recorded rather than waived: the set has to match what the audit finds and each ratio has to match to 2dp, so a new failure, a worse one, or a fixed one still listed all go red.",
     "belowAa": {
         "destructive/0.1 + destructive": 4.11,
         "destructive/0.2 + destructive": 3.54,

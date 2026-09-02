@@ -53,8 +53,8 @@ Three colours are separate props so a surface can tint one without touching the 
 
 The defaults are the ground-reactive semantic tokens, so the face inverts with the app's ground for
 free. `DARK_FACE` (exported alongside) is the prototype's own inverted read — `--color-sky-2` disc,
-`--color-cream` features — used where the surface is fixed-dark regardless of ground: the recap
-cards, and the app's sky-gradient `HeroPanel`.
+`--color-cream` features — used where the surface is fixed-dark regardless of ground, such as the
+recap cards.
 
 ### Where it is drawn
 

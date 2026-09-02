@@ -86,11 +86,10 @@ to neutral (`surface-sunken` + `ink`) so the brand mark gets breathing room. Str
 
 ### Gradient primitives
 
-Gradient **text** is applied via
-[`<GradientText preset="horizon|cream-sun" fontSize=… />`](../../../resources/js/components/ui/GradientText.tsx),
-which clips a `linear-gradient` to the text via inline `background-clip`. Rule: **gradient text
-on numbers only**, only at large display sizes, and only one per visible viewport. Scarcity makes
-it feel premium, not Las-Vegas. Backdrop atmospherics (e.g. the login page) are inline CSS
+**There is no gradient-text primitive.** `GradientText` clipped a `linear-gradient` to a number at
+display sizes; the prototype draws no gradient text on any screen, so `W2` swept it. Don't
+reintroduce one for a stat: a display-tier number already carries the emphasis.
+Backdrop atmospherics (e.g. the login page) are inline CSS
 `linear-gradient` + `radial-gradient` layers on the sky→horizon ramp, not a shared component;
 in-app pages stay clean.
 
