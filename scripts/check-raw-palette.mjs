@@ -5,7 +5,7 @@
  * templates under resources/views (error pages + the first-party Pulse cards),
  * minus the published vendor templates listed in EXCLUDED.
  *
- * Two rules, both enforcing the same thing — a value a designer can move must
+ * Four rules, all enforcing the same thing — a value a designer can move must
  * live in the `@theme` block of resources/css/app.css, not at a call site:
  *
  *   1. Colour must resolve through a semantic `--color-*` token (`bg-horizon`,
@@ -13,6 +13,12 @@
  *      (`bg-blue-500`, `text-lime-600`).
  *   2. Elevation must use the warm-tinted `--shadow-e*` scale. Tailwind's
  *      defaults are neutral black, which reads dirty on a cream ground.
+ *   3. Font size must resolve through a `--text-*` token, never a px literal in
+ *      an arbitrary class. T2 stepped the root 20% at >=1280px; a px value opts
+ *      out of that step while the type around it scales. A rem literal is fine.
+ *   4. The same, for an inline `fontSize` style prop. Canvas `ctx.font` strings
+ *      are deliberately not matched — a canvas is a fixed raster, so px is
+ *      correct there.
  *
  * A third rule (off-scale radius: `rounded-2xl`/`3xl`/`4xl` sitting outside
  * the `--radius-*` scale) existed from the v2 token set until F2, which
@@ -125,6 +131,16 @@ const RULES = [
         name: 'off-token shadow utility',
         fix: 'Use the elevation scale: `shadow-e1` resting card · `shadow-e2` floating UI · `shadow-e3` sheet · `shadow-e4` modal.',
         re: /\bshadow-(?:xs|sm|md|lg|xl|2xl|inner)\b/g,
+    },
+    {
+        name: 'px font-size utility',
+        fix: 'Use a `--text-*` token (`text-sm`, `text-headline-sm`, `text-display-lg`). A px literal opts out of the root step at >=1280px while everything around it scales.',
+        re: /\btext-\[[0-9.]+px\]/g,
+    },
+    {
+        name: 'inline px font-size',
+        fix: 'Use a `--text-*` token class instead of a `fontSize` style prop, so the value scales with the root at >=1280px. Canvas `ctx.font` strings are not matched — a canvas is a fixed raster.',
+        re: /\bfontSize\s*[:=][\s{]*(?:['"`][0-9.]+px['"`]|[0-9.]+)/g,
     },
     /* Rule 3 (off-scale radius utility) removed in F2: `--radius-2xl/3xl/4xl`
        joined app.css's @theme static block alongside the pre-existing

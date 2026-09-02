@@ -27,11 +27,10 @@ export default function BrandMark({
             />
             <span
                 className={cn(
-                    'font-mono font-bold leading-none tracking-[-0.02em]',
+                    'font-mono text-xl font-bold leading-none tracking-[-0.02em]',
                     isCream ? 'text-cream' : 'text-foreground',
                     wordmarkClassName,
                 )}
-                style={{ fontSize: 20 }}
             >
                 temari
             </span>

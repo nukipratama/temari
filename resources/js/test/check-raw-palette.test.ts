@@ -11,6 +11,10 @@ import { RULES } from '@scripts/check-raw-palette.mjs';
 const rawShade = ['bg', 'blue', '500'].join('-');
 const legitToken = ['bg', 'sky', '2'].join('-');
 const offTokenShadow = ['shadow', 'lg'].join('-');
+const pxFontSize = ['text', '[13px]'].join('-');
+const remFontSize = ['text', '[0.8125rem]'].join('-');
+const inlinePxFont = ['fontSize', ' 20'].join(':');
+const canvasFont = ['700 30px "JetBrains', 'Mono"'].join(' ');
 
 describe('check-raw-palette rules', () => {
     it('still flags a raw Tailwind palette shade', () => {
@@ -26,6 +30,37 @@ describe('check-raw-palette rules', () => {
     });
 
     /**
+     * T2 stepped the root font-size 20% at >=1280px and left open that nothing
+     * stopped a new px literal from silently opting out of it. These two rules
+     * close that, and W4 added them while the tree held zero violations — so
+     * without a deliberate fixture they would pass forever whether or not they
+     * matched anything.
+     */
+    it('flags a px font-size utility', () => {
+        expect(pxFontSize.match(RULES[2].re)).toEqual([pxFontSize]);
+    });
+
+    it('flags an inline px font-size style prop', () => {
+        expect(inlinePxFont.match(RULES[3].re)).toEqual([inlinePxFont]);
+    });
+
+    it('leaves rem font-sizes alone, since those scale with the root', () => {
+        expect(RULES.some((rule) => remFontSize.match(rule.re) !== null)).toBe(
+            false,
+        );
+    });
+
+    /**
+     * shareCard.ts draws onto a fixed-size raster, where a px font is correct.
+     * The inline rule matches a `fontSize` property, never a canvas font string.
+     */
+    it('leaves canvas ctx.font px strings alone', () => {
+        expect(RULES.some((rule) => canvasFont.match(rule.re) !== null)).toBe(
+            false,
+        );
+    });
+
+    /**
      * F2 removed the off-scale-radius rule after tokening the rest of
      * Tailwind's radius keywords (--radius-2xl/3xl/4xl joined app.css's
      * @theme static). This is the regression test for that removal: exactly
@@ -33,10 +68,12 @@ describe('check-raw-palette rules', () => {
      * anything — proving the rule went away because it ran out of a
      * violation to find, not because RULES was silently trimmed further.
      */
-    it('has exactly the two rules the docstring documents', () => {
+    it('has exactly the four rules the docstring documents', () => {
         expect(RULES.map((rule) => rule.name)).toEqual([
             'raw Tailwind palette utility',
             'off-token shadow utility',
+            'px font-size utility',
+            'inline px font-size',
         ]);
     });
 
