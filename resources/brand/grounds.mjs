@@ -40,17 +40,6 @@ export function readColorTokens(css = readFileSync(APP_CSS, 'utf8')) {
   return tokens;
 }
 
-/** Each `--color-surface` override dawn-shift declares, keyed by its bucket. */
-export function readDawnShiftSurfaces(css = readFileSync(APP_CSS, 'utf8')) {
-  const shifts = {};
-  for (const [, name, value] of css.matchAll(
-    /body\[data-time-of-day='([a-z]+)'\]\s*\{\s*--color-surface:\s*(#[0-9a-f]{6});/g,
-  )) {
-    shifts[name] = value;
-  }
-  return shifts;
-}
-
 const SOURCE_SUFFIXES = ['.ts', '.tsx'];
 
 function sourceFiles(dir) {
@@ -159,9 +148,6 @@ export function paperGrounds(tokens = readColorTokens(), dir = COMPONENT_DIR) {
       throw new Error(`grounds.json classifies "${name}" as paper, but --color-${name} is not declared.`);
     }
     grounds[name] = tokens[name];
-  }
-  for (const [bucket, value] of Object.entries(readDawnShiftSurfaces())) {
-    grounds[`surface · ${bucket}`] = value;
   }
   return grounds;
 }

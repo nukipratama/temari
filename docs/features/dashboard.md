@@ -59,7 +59,7 @@ A row shows **the metric that actually decided it**, not always pace: `decidingM
 
 ## No verdict yet
 
-The fourth outcome, `not_enough_history`, renders [NoVerdictPanel](resources/js/components/home/NoVerdictPanel.tsx) instead of a headline, so the USP never claims a reading it does not have. It is the `no-past-match` empty state from the brand set ([build-empty.mjs](resources/brand/build-empty.mjs)), not an error.
+The fourth outcome, `not_enough_history`, renders [NoVerdictPanel](resources/js/components/home/NoVerdictPanel.tsx) instead of a headline, so the USP never claims a reading it does not have. It is the `no-past-match` empty state from the brand set, not an error.
 
 `comparison_count` splits it in two, because one comparable pair is a materially different situation from none:
 
