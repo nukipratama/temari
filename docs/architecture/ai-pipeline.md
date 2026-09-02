@@ -111,6 +111,7 @@ Two distinct things still produce content without the LLM:
 
 ## See also
 
+- [[llm-triggers]] — the other half of this note: who *starts* a dispatch, and everything that stops one.
 - [[run-ingest-pipeline]] — what triggers the post-ingest cascade that calls `request()`.
 - [[analytics-db]] — `ai_token_usages` metering that backs the daily cost ceiling.
 - [[data-model]] — the `ai_analyses` table.
