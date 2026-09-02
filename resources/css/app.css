@@ -257,18 +257,6 @@
     --color-btn-primary-bg: #546d23; /* horizon-ink */
     --color-btn-primary-fg: #ffffff;
 
-    /* Season-phase identity colours (F2, promoted from the prototype's
-       PlanScreen/TodayScreen PHASE_COLOR literals). Fixed identity, constant
-       across grounds — categorical like mood/rarity, not ground-dependent.
-       Validated via the dataviz skill's palette checker: all four pass: L
-       band, chroma floor, CVD separation (epic↔build sits at the 8.0 floor —
-       legal only with a direct label or texture alongside colour, never hue
-       alone) and contrast vs surface. */
-    --color-phase-base: #0d9488;
-    --color-phase-build: #1e6fe0;
-    --color-phase-peak: #a21caf;
-    --color-phase-taper: #db2777;
-
     /* ─── Spacing ──────────────────────────────────────────────────────
        4px base, expressed in rem. These ten steps are the only ones this
        theme names; every other step falls through to Tailwind's own
