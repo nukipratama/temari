@@ -21,12 +21,12 @@ code_refs:
 
 ## Context
 
-Strava's read budget is **per API client, not per athlete** — 200 reads per 15 minutes and 2000 per day for the whole app ([StravaClient.php:39](app/Services/Strava/StravaClient.php#L39)). Every user shares one pool.
+Strava's read budget is **per API client, not per athlete** — 200 reads per 15 minutes and 2000 per day for the whole app ([`RATE_LIMIT_15MIN_MAX`](app/Services/Strava/StravaClient.php#L36)). Every user shares one pool.
 
 The two ways to fill an athlete's history price out very differently against that pool:
 
 - **Detail-first.** `/activities/{id}` plus its streams is **2 reads per run**. A 500-run history is 1000 reads, half the app's entire daily budget, spent on one connect while every other user's sync starves behind it.
-- **Summary-first.** `/athlete/activities` returns **200 summaries per read** ([ActivityFetcher.php:13](app/Services/Strava/ActivityFetcher.php#L13)). The same 500-run history costs **3 reads**.
+- **Summary-first.** `/athlete/activities` returns **200 summaries per read** ([`PER_PAGE`](app/Services/Strava/ActivityFetcher.php#L13)). The same 500-run history costs **3 reads**.
 
 That is a ~300x difference on the one resource the app cannot buy more of. Detail-first does not scale past a handful of users; at public-signup volume it fails on the first busy afternoon.
 

@@ -28,15 +28,15 @@ Refusal turned out to mean two different things, both wrong:
 
 ## Decision
 
-**1. The ceiling answers rather than refuses.** `store()` serves the deterministic answer when the ceiling is the only stop ([RunQuestionController.php:69](app/Http/Controllers/Api/RunQuestionController.php#L69)), immediately after the demo branch and before the pause check. 409 is now reserved for the stops that are real: kill switch, unconfigured Azure, tripped config breaker.
+**1. The ceiling answers rather than refuses.** `store()` serves the deterministic answer when the ceiling is the only stop ([`costCeilingDegraded`](app/Http/Controllers/Api/RunQuestionController.php#L69)), immediately after the demo branch and before the pause check. 409 is now reserved for the stops that are real: kill switch, unconfigured Azure, tripped config breaker.
 
 This is not a bypass. Nothing is billed — the answer is assembled from the run's own stored numbers, the same content the demo has always received, and no agent run is dispatched.
 
-**2. The job degrades too** ([AnswerRunQuestionJob.php:60](app/Jobs/AI/AnswerRunQuestionJob.php#L60)), for the question dispatched moments before the ceiling tripped. `Failed` is kept for genuine faults: a missing detail, a terminal upstream error, an exhausted retry budget. The activity and its detail are resolved before the pause checks, because the deterministic answer reads the same detail the narrator would have.
+**2. The job degrades too** ([`costCeilingDegraded`](app/Jobs/AI/AnswerRunQuestionJob.php#L60)), for the question dispatched moments before the ceiling tripped. `Failed` is kept for genuine faults: a missing detail, a terminal upstream error, an exhausted retry budget. The activity and its detail are resolved before the pause checks, because the deterministic answer reads the same detail the narrator would have.
 
 **3. The response shape does not change.** Both degrade paths return what the demo path has always returned: `201` with a `Done` question carrying its answer. No client contract appears, and the existing 409 handling stays correct for the stops that still produce it.
 
-**4. Degraded fills count questions as well as blocks.** `CostCeilingLedger::recordDegradedFill()` ([CostCeilingLedger.php:27](app/Services/AI/CostCeilingLedger.php#L27)) is called from both new paths. The ledger answers "how much did the ceiling change today", and an answer served deterministically is exactly that. Counting only narration blocks would undercount hardest on the busiest days, which are the days the number is read.
+**4. Degraded fills count questions as well as blocks.** `CostCeilingLedger::recordDegradedFill()` ([`recordDegradedFill()`](app/Services/AI/CostCeilingLedger.php#L27)) is called from both new paths. The ledger answers "how much did the ceiling change today", and an answer served deterministically is exactly that. Counting only narration blocks would undercount hardest on the busiest days, which are the days the number is read.
 
 ## Consequences
 
