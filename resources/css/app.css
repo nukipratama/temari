@@ -617,9 +617,10 @@ body {
    every Sky surface (citrus, and rarity uncommon/legendary), lightened
    toward white where it does not (leaf, ember, rarity common/rare/epic) —
    derived via inkOnDark() in resources/brand/build-tokens.mjs, worst-cased
-   across sky-deep/sky/sky-2. horizon-ink itself needs no dark counterpart:
-   the app already swaps to the vivid --color-horizon fill for icon-accent/
-   btn-primary-bg on dark, and that fill alone clears 8.6:1+ everywhere. */
+   across sky-deep/sky/sky-2. horizon-ink is derived the same way and resolves
+   to the vivid fill unchanged; it was originally left out on the reasoning
+   that the app reaches for icon-accent on dark instead, which 33
+   text-horizon-ink call sites disproved. */
 @layer base {
     [data-theme='dark'] {
         --color-background: #0b1017; /* sky-deep */
@@ -645,6 +646,7 @@ body {
         --color-btn-primary-bg: #ade047; /* horizon */
         --color-btn-primary-fg: #16181b; /* ink — same pairing as --color-primary-foreground */
 
+        --color-horizon-ink: #ade047; /* = --color-horizon, already clears 8.6:1+ */
         --color-leaf-ink: #57a581;
         --color-ember-ink: #ce808e;
         --color-citrus-ink: #c9971f; /* = --color-citrus, already clears 5:1+ */

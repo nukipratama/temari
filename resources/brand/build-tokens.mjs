@@ -168,12 +168,13 @@ for (const family of INK_FAMILIES) {
 }
 COLOR.line = inkOn(COLOR.line, GROUNDS, 1.4);
 
-/* The three families whose light -ink value inverts on the dark ground
-   (F2's "problem 1" — see plan/README.md's token model). horizon is
-   deliberately excluded: the app already swaps to the vivid --color-horizon
-   fill itself for icon-accent/btn-primary-bg on dark (it clears every dark
-   surface at 8.6:1+), so it needs no separate derived dark-ink value. */
-const DARK_INK_FAMILIES = ['leaf', 'ember', 'citrus'];
+/* Every accent family whose light -ink value inverts on the dark ground
+   (F2's "problem 1" — see plan/README.md's token model). horizon was excluded
+   on the reasoning that the app reaches for icon-accent instead on dark; 33
+   text-horizon-ink call sites say otherwise, and they were rendering #546d23
+   on #0b1017 at 2.9:1. inkOnDark returns the vivid fill unchanged here, so the
+   dark value is the #ade047 that reasoning assumed was already in use. */
+const DARK_INK_FAMILIES = ['horizon', 'leaf', 'ember', 'citrus'];
 export const DARK_INK = Object.fromEntries(
   DARK_INK_FAMILIES.map((family) => [family, inkOnDark(COLOR[family], GROUNDS_DARK)]),
 );

@@ -174,7 +174,7 @@ describe('calendar', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('shows the "Today" jump-back when viewing a different month', () => {
+    it('offers no "jump to today" shortcut, which the prototype does not draw', () => {
         render(
             <Calendar
                 {...BASE_PROPS}
@@ -184,8 +184,8 @@ describe('calendar', () => {
             />,
         );
         expect(
-            screen.getByRole('link', { name: 'Jump to current month' }),
-        ).toHaveAttribute('href', '/history?view=calendar');
+            screen.queryByRole('link', { name: 'Jump to current month' }),
+        ).not.toBeInTheDocument();
     });
 
     it('renders prev / next nav buttons with correct hrefs', () => {
