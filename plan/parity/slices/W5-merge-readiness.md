@@ -113,7 +113,45 @@ slice's "merged" row rides in the next slice's PR.
 
 ## Verification notes
 
-_To be filled as the slice runs._
+- **`composer check` completes, for the first time.** All 16 steps, exit 0, through
+  `test:coverage`, `build` and `check:chunks` — the three that had never run inside the gate.
+  Frontend coverage **97.86% lines / 97.24% functions**, against a 95% threshold.
+- **The cause was found by instrumenting Pest, not by reading.** Five `MissingDependency` throw
+  sites were temporarily patched to report their command and stderr; the first run named
+  `git rev-parse HEAD` → `detected dubious ownership`. The vendor patch was reverted immediately.
+  Three of the four candidate commands I had guessed at beforehand were fine.
+- **The first fix was written in the wrong place and could not be verified.** A
+  `RUN git config --system` line in the Dockerfile is the obvious home, but `docker compose build`
+  fails here with `DeadlineExceeded` resolving `docker/dockerfile:1.7` from Docker Hub —
+  **reproducibly, twice** — so no new image can be produced. Worse, the first build reported
+  **exit 0** because the command was piped through `tail`, and the image was still dated
+  2026-08-13. Re-run without the pipe, the real exit code was 1. The fix moved to `compose.yaml`,
+  where it needs no rebuild, and was then verified against a **force-recreated** container rather
+  than the one it had been applied to by hand.
+- **The sweep could not do what the skill told it to do.** §9 says "check both grounds", and
+  `shoot.mjs` had no way to switch. Added `THEME=light|dark|system`, seeding the `temari-theme`
+  key via `addInitScript` so the app's blocking pre-paint script resolves the ground before first
+  paint. Proven by measurement, not by looking: `light` → `rgb(241,245,248)`, `dark` →
+  `rgb(11,16,23)`, the cream and sky-deep token values.
+- **`shoot.mjs` clears prior batches**, so the first dark sweep was destroyed by the light one.
+  Both grounds were re-shot and copied aside before inspection. Worth knowing before running two
+  sweeps back to back.
+- **Zero horizontal overflow across all 26 page/viewport combinations.**
+- **Dark ground: no findings.** Light ground: two, both correctly flagged as low or
+  needs-confirmation rather than asserted.
+  - *Inbox has no top-bar brand mark on desktop* — **by design.** `backTargetFor()` gives pushed
+    screens a back chevron instead, and Inbox is not one of the four nav tabs. There is no
+    `TopNav` component at all; `MobileTopBar` renders at every width.
+  - *The elevation stat label truncates at 390px* — **real, and fixed.** Measured
+    `scrollWidth 71 / clientWidth 58`. Its two siblings are already abbreviations (`HR`, `TRIMP`),
+    so it became `ELEV`; re-measured at 51/51, 40/40, 32/32, none clipped. `shareCard.ts` keeps
+    the full word, drawing to a fixed raster with room for it.
+- **One console 404 on `/activities` is a tooling artifact, not an app defect.** That route does
+  not exist by design (only `activities/{activity}` and `/history`); `lib.mjs` probes a route's
+  base path first to find a detail link, gets a 404, and falls back.
+- **A commit had to be split.** `git rm` had already staged the prototype deletion, so the
+  slice-doc commit swept 51 deletions in with it. Unwound with a soft reset and re-committed in
+  order, since nothing had been pushed.
 
 ## Open questions
 
