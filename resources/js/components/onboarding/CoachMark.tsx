@@ -30,6 +30,11 @@ const MARGIN = 12;
 // MobileBottomNav actually renders at (pt-2.5 + content + pb-7); anything less
 // parks the mark underneath it.
 const BOTTOM_INSET = 96;
+/* The positioning maths below clamps against this, and the box has to render
+   at exactly it or the mark lands off-screen by the difference. It used to be
+   mirrored by a `w-64` class, which stopped agreeing the moment the root font
+   size steps at 1280px (16rem became 281.6px) — so the width is now applied
+   from this constant and the two cannot drift apart again. */
 const WIDTH = 256;
 const FALLBACK_HEIGHT = 150;
 
@@ -279,9 +284,9 @@ export default function CoachMark({
             ref={containerRef}
             role="dialog"
             aria-label={title}
-            style={style}
+            style={{ ...style, width: WIDTH }}
             className={cn(
-                'z-50 w-64 rounded-lg border border-border bg-popover p-4 shadow-e2',
+                'z-50 rounded-lg border border-border bg-popover p-4 shadow-e2',
                 className,
             )}
         >

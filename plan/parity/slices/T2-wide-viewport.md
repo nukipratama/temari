@@ -99,6 +99,22 @@ literal conversion and three co-located tests.
   rewrite: the conversion regex matched `text-[Npx]` only, so it could not touch a spacing literal,
   a colour, or an identifier.
 
+## What the audit caught
+
+**Activity detail overflowed at 1536px**, and it was this change that caused it.
+`CoachMark` positions itself in JS against a hardcoded `WIDTH = 256` while rendering at `w-64`.
+Those two agreed exactly until the root font size stepped, at which point `16rem` became 281.6px
+and the clamp was short by the difference — so the mark landed 5px past the viewport edge.
+
+A pre-existing latent coupling, not a new bug: a JS constant mirroring a CSS class, with nothing
+holding them together. The width is now applied *from* the constant and the `w-64` is gone, so the
+two cannot drift again. Re-measured: no overflowing element, and `audit.mjs` reports zero overflow
+across all 13 routes at both 1280 and 1536.
+
+Worth stating plainly: **the automated audit found this and a screenshot read would not have.**
+`document.scrollWidth` was 1536 — the page did not scroll — and the mark is a transient popover
+that a sweep would not have had open. Only the per-element bounds check saw it.
+
 ## Open questions
 
 1. **The step is a single 10% knob.** It buys coherence at the cost of per-tier control: a future
