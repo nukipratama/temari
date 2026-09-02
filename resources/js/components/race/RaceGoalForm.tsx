@@ -3,6 +3,7 @@ import { type FormEvent, useState } from 'react';
 
 import type { RaceProjection } from '@/components/race/ProjectionBlock';
 
+import DateField from '@/components/ui/DateField';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
@@ -119,14 +120,13 @@ export default function RaceGoalForm({
                     <label htmlFor="race_date" className={FIELD_LABEL}>
                         Race day
                     </label>
-                    <input
+                    <DateField
                         id="race_date"
-                        type="date"
                         required
                         min={earliestRaceDate()}
                         value={raceDate}
-                        onChange={(e) => setRaceDate(e.target.value)}
-                        className={cn(inputVariants(), 'mt-1.5')}
+                        onChange={setRaceDate}
+                        className="mt-1.5"
                     />
                 </div>
 
@@ -225,7 +225,7 @@ export default function RaceGoalForm({
                             className="mt-2 flex items-start gap-1.5 rounded-sm bg-ember/8 px-2.5 py-2 font-sans text-xs leading-relaxed text-ember-ink"
                         >
                             <Icon
-                                icon="mdi:alert-outline"
+                                icon="mdi:alert-circle-outline"
                                 width={14}
                                 height={14}
                                 className="mt-0.5 shrink-0"

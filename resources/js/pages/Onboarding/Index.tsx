@@ -15,6 +15,7 @@ import StepProgress, {
 } from '@/components/onboarding/StepProgress';
 import FaceIcon from '@/components/temari/FaceIcon';
 import Chip from '@/components/ui/Chip';
+import DateField from '@/components/ui/DateField';
 import { Icon } from '@/components/ui/Icon';
 import LegacyCard from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
@@ -639,18 +640,12 @@ export default function OnboardingIndex() {
                                     >
                                         Race day
                                     </label>
-                                    <input
+                                    <DateField
                                         id="onboarding_race_date"
-                                        type="date"
                                         value={raceDate}
                                         min={earliestRaceDate()}
-                                        onChange={(e) =>
-                                            setRaceDate(e.target.value)
-                                        }
-                                        className={cn(
-                                            inputVariants(),
-                                            'mt-1.5',
-                                        )}
+                                        onChange={setRaceDate}
+                                        className="mt-1.5"
                                     />
                                     <FieldError message={errors.race_date} />
                                 </div>
