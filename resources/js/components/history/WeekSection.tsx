@@ -52,7 +52,7 @@ const WeekSection = memo(function WeekSection({
                 <div className="font-serif text-base font-semibold text-foreground">
                     {bucket.label}
                 </div>
-                <div className="font-mono text-[9.5px] leading-[1.2] text-text-3">
+                <div className="font-mono text-[0.59375rem] leading-[1.2] text-text-3">
                     {Math.round(countedRunCount)} run
                     {Math.round(countedRunCount) === 1 ? '' : 's'} ·{' '}
                     {countedTotalKm.toFixed(1)} km ·{' '}

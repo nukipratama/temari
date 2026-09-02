@@ -33,7 +33,7 @@ export default function GoalCard({ goal }: Readonly<{ goal: Goal }>) {
                 {goal.title}
             </p>
             <div className="mt-auto">
-                <div className="mb-1 flex items-baseline justify-between font-mono text-[11px] tabular-nums text-text-3">
+                <div className="mb-1 flex items-baseline justify-between font-mono text-[0.6875rem] tabular-nums text-text-3">
                     <span>
                         {formatGoalNumber(current)}
                         <span className="text-text-3">/</span>

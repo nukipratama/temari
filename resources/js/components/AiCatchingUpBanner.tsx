@@ -23,7 +23,7 @@ export default function AiCatchingUpBanner() {
 
     return (
         <div className="px-4 pt-4 min-[900px]:px-6">
-            <div className="mx-auto flex max-w-[760px] items-start gap-3 rounded-lg border border-border bg-muted px-4 py-3">
+            <div className="mx-auto flex max-w-column min-[1280px]:max-w-column-wide items-start gap-3 rounded-lg border border-border bg-muted px-4 py-3">
                 <Icon
                     icon="mdi:progress-clock"
                     width={20}

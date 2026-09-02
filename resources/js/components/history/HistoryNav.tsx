@@ -27,7 +27,7 @@ export default function HistoryNav({
                     href={tab.href}
                     preserveScroll
                     className={cn(
-                        'flex-1 rounded-full py-2 text-center text-[11.5px] font-bold text-foreground transition',
+                        'flex-1 rounded-full py-2 text-center text-[0.71875rem] font-bold text-foreground transition',
                         tab.id === active && 'bg-card shadow-e1',
                     )}
                 >

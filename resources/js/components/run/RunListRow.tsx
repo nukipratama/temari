@@ -62,10 +62,10 @@ function RunListRow({
                             MOOD_FILL[safeMood],
                         )}
                     />
-                    <span className="truncate text-[13px] leading-[1.2] font-bold text-foreground">
+                    <span className="truncate text-[0.8125rem] leading-[1.2] font-bold text-foreground">
                         {detail.name ?? 'Run'}
                     </span>
-                    <span className="flex-none font-mono text-[13px] leading-[1.2] font-bold text-foreground">
+                    <span className="flex-none font-mono text-[0.8125rem] leading-[1.2] font-bold text-foreground">
                         · {km} km
                     </span>
                     {runCard && (
@@ -81,26 +81,26 @@ function RunListRow({
                         />
                     )}
                 </div>
-                <span className="flex-none font-mono text-[9.5px] leading-[1.2] text-text-3">
+                <span className="flex-none font-mono text-[0.59375rem] leading-[1.2] text-text-3">
                     {formatNaiveMonthDayId(detail.start_date_local)}
                     {startTime && ` · ${startTime}`}
                 </span>
             </div>
             <div className="mt-1.25 flex items-baseline gap-1.75 font-mono">
-                <b className="text-[13px] leading-[1.2] font-extrabold text-foreground">
+                <b className="text-[0.8125rem] leading-[1.2] font-extrabold text-foreground">
                     {formatDurationHMS(detail.elapsed_time)}
                 </b>
-                <span className="text-[11px] text-border-strong">·</span>
-                <b className="text-[13px] leading-[1.2] font-extrabold text-foreground">
+                <span className="text-[0.6875rem] text-border-strong">·</span>
+                <b className="text-[0.8125rem] leading-[1.2] font-extrabold text-foreground">
                     {paceLabel}
                 </b>
-                <span className="text-[11px] text-border-strong">·</span>
-                <span className="text-[13px] leading-[1.2] font-extrabold text-foreground">
+                <span className="text-[0.6875rem] text-border-strong">·</span>
+                <span className="text-[0.8125rem] leading-[1.2] font-extrabold text-foreground">
                     {hr ?? '—'} bpm
                 </span>
             </div>
             {note && (
-                <p className="mt-1.25 truncate font-serif text-[10.5px] leading-[1.2] text-text-2 italic">
+                <p className="mt-1.25 truncate font-serif text-[0.65625rem] leading-[1.2] text-text-2 italic">
                     &quot;{renderBold(note.oneline)}&quot;
                 </p>
             )}

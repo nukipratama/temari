@@ -4,7 +4,6 @@ import type { SharedProps } from '@/types/inertia';
 
 import HeaderBrandMark from '@/components/HeaderBrandMark';
 import NotificationBell from '@/components/NotificationBell';
-import StravaSyncBadge from '@/components/StravaSyncBadge';
 import { Icon } from '@/components/ui/Icon';
 import UserAvatarLink from '@/components/UserAvatarLink';
 import { cn } from '@/lib/cn';
@@ -38,7 +37,6 @@ const PUSHED_WITH_BELL: ReadonlySet<string> = new Set([
 export default function MobileTopBar() {
     const page = usePage<SharedProps>();
     const user = page.props.auth.user;
-    const stravaSync = page.props.stravaSync ?? null;
     const back = backTargetFor(page.component);
 
     return (
@@ -74,9 +72,6 @@ export default function MobileTopBar() {
             )}
 
             <div className="flex items-center gap-2">
-                {back === null && (
-                    <StravaSyncBadge sync={stravaSync} density="compact" />
-                )}
                 {page.component === 'Profile' && (
                     <Link
                         href="/settings"

@@ -70,7 +70,7 @@ describe('pillButtonVariants', () => {
 
     it('uses sm sizing when size="sm"', () => {
         expect(tokens(pillButtonVariants({ size: 'sm' }))).toContain(
-            'text-[13px]',
+            'text-[0.8125rem]',
         );
     });
 
@@ -109,11 +109,13 @@ describe('chipVariants', () => {
         // had it dropped at every call site. A caller passes it via className,
         // which is merged last and therefore wins.
         expect(tokens(chipVariants())).not.toContain('text-label-micro');
-        expect(tokens(chipVariants())).toContain('text-[11px]');
+        expect(tokens(chipVariants())).toContain('text-[0.6875rem]');
     });
 
     it('uses md sizing when size="md"', () => {
-        expect(tokens(chipVariants({ size: 'md' }))).toContain('text-[12px]');
+        expect(tokens(chipVariants({ size: 'md' }))).toContain(
+            'text-[0.75rem]',
+        );
     });
 });
 

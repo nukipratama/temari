@@ -59,7 +59,7 @@ function Swatch({ name, value }: Readonly<{ name: string; value: string }>) {
                 className="h-12 rounded-sm border border-border"
                 style={{ background: value }}
             />
-            <div className="mt-1 font-sans text-[11px] font-semibold text-foreground">
+            <div className="mt-1 font-sans text-[0.6875rem] font-semibold text-foreground">
                 {name.replace('--color-', '')}
             </div>
             <div className="text-meta">{value}</div>
@@ -359,7 +359,7 @@ export default function Design() {
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="border-b border-border py-2 pr-3 font-mono text-[11px] text-text-2">
+                                            <td className="border-b border-border py-2 pr-3 font-mono text-[0.6875rem] text-text-2">
                                                 {r.fg.replace('--color-', '')}{' '}
                                                 on{' '}
                                                 {r.bg.replace('--color-', '')}
@@ -428,13 +428,13 @@ export default function Design() {
                                         <td className="border-b border-border py-2 pr-3 text-foreground">
                                             {r.name}
                                         </td>
-                                        <td className="border-b border-border py-2 pr-3 font-mono text-[11px] text-text-2">
+                                        <td className="border-b border-border py-2 pr-3 font-mono text-[0.6875rem] text-text-2">
                                             {r.radius}
                                         </td>
                                         <td className="border-b border-border py-2 pr-3">
                                             <Verdict pass={r.radiusOnScale} />
                                         </td>
-                                        <td className="border-b border-border py-2 pr-3 font-mono text-[11px] text-text-2">
+                                        <td className="border-b border-border py-2 pr-3 font-mono text-[0.6875rem] text-text-2">
                                             {r.shadow === 'none'
                                                 ? 'no elevation'
                                                 : 'on the elevation scale'}

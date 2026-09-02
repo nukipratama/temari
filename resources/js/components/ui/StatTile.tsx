@@ -108,7 +108,7 @@ const VALUE_SIZE: Record<StatTileSize, string> = {
     sm: 'text-2xl',
     md: 'text-3xl sm:text-4xl',
     lg: 'text-stat',
-    xl: 'text-[40px]',
+    xl: 'text-[2.5rem]',
 };
 
 export default function StatTile({

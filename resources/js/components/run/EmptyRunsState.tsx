@@ -135,7 +135,7 @@ export default function EmptyRunsState({
                             <div className="min-w-0 flex-1">
                                 <div
                                     className={cn(
-                                        'text-[13px] font-semibold',
+                                        'text-[0.8125rem] font-semibold',
                                         onSky
                                             ? 'text-cream'
                                             : 'text-foreground',
@@ -145,7 +145,7 @@ export default function EmptyRunsState({
                                 </div>
                                 <div
                                     className={cn(
-                                        'mt-0.5 font-mono text-[11px]',
+                                        'mt-0.5 font-mono text-[0.6875rem]',
                                         onSky
                                             ? 'text-ink-on-sky'
                                             : 'text-text-3',
@@ -157,7 +157,7 @@ export default function EmptyRunsState({
                             <span
                                 aria-hidden
                                 className={cn(
-                                    'font-mono text-[14px]',
+                                    'font-mono text-[0.875rem]',
                                     onSky ? 'text-ink-on-sky' : 'text-text-3',
                                 )}
                             >

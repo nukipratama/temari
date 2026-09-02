@@ -300,7 +300,7 @@ export default function OnboardingIndex() {
     return (
         <>
             <Head title="Welcome" />
-            <PageContainer className="pt-16 pb-10 min-[900px]:max-w-[520px] min-[900px]:pb-16">
+            <PageContainer className="pt-16 pb-10 min-[900px]:max-w-[520px] min-[900px]:pb-16 min-[1280px]:max-w-[520px]">
                 <StepProgress step={step} subIndex={subIndex} />
 
                 {step === 'connected' ? (

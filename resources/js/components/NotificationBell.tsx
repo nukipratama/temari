@@ -42,7 +42,7 @@ export default function NotificationBell({
                     aria-hidden
                     className={cn(
                         'absolute right-0.5 top-0.5 inline-flex min-w-4 items-center justify-center rounded-full',
-                        'bg-ember-deep px-1 font-mono text-[10px] font-bold leading-4 tabular-nums text-cream',
+                        'bg-ember-deep px-1 font-mono text-[0.625rem] font-bold leading-4 tabular-nums text-cream',
                     )}
                 >
                     {unread > 9 ? '9+' : unread}

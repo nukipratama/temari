@@ -70,7 +70,7 @@ function AgentSummary({ row }: Readonly<{ row: UsageRow }>) {
     }
 
     return (
-        <div className="mt-0.5 font-mono text-[11px] text-text-2">
+        <div className="mt-0.5 font-mono text-[0.6875rem] text-text-2">
             {parts.join(' · ')}
         </div>
     );

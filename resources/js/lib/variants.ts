@@ -60,7 +60,7 @@ export const pillButtonVariants = cva(
                     'bg-card border-[1.5px] border-border text-text-2 hover:border-ink-3 hover:text-foreground',
             },
             size: {
-                sm: 'px-3.5 py-2 text-[13px]',
+                sm: 'px-3.5 py-2 text-[0.8125rem]',
                 md: 'px-[22px] py-3 text-sm',
             },
             onSky: {
@@ -103,8 +103,8 @@ export const chipVariants = cva(
                 onSky: 'bg-cream/10 text-cream/80',
             },
             size: {
-                sm: 'text-[11px]',
-                md: 'text-[12px]',
+                sm: 'text-[0.6875rem]',
+                md: 'text-[0.75rem]',
             },
         },
         defaultVariants: {
@@ -125,7 +125,7 @@ export const toggleButtonVariants = cva(
     {
         variants: {
             size: {
-                sm: 'px-3 py-1.5 text-[12px]',
+                sm: 'px-3 py-1.5 text-[0.75rem]',
                 md: 'px-4 py-2 text-sm',
             },
             selected: {

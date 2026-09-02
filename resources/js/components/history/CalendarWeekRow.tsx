@@ -19,7 +19,7 @@ import {
 import WeeklyStatusChips from './WeeklyStatusChips';
 
 const CELL_BASE =
-    'flex min-h-8 flex-col items-center justify-center gap-0.5 rounded-xs border border-border-strong bg-card py-1.5 font-mono text-[9.5px] leading-[1.2] font-bold text-foreground';
+    'flex min-h-8 flex-col items-center justify-center gap-0.5 rounded-xs border border-border-strong bg-card py-1.5 font-mono text-[0.59375rem] leading-[1.2] font-bold text-foreground';
 
 /**
  * One Mon-Sun row of the calendar: a week-summary button on the left, seven day
@@ -60,7 +60,7 @@ export default function CalendarWeekRow({
                         isChainHead={snapshot.is_chain_head}
                         size="sm"
                         renderContent={(content) => (
-                            <p className="m-0 font-serif text-[11.5px] leading-[1.45] text-foreground italic">
+                            <p className="m-0 font-serif text-[0.71875rem] leading-[1.45] text-foreground italic">
                                 &quot;{renderBold(stripEdgeQuotes(content))}
                                 &quot;
                             </p>
@@ -71,7 +71,7 @@ export default function CalendarWeekRow({
                         {week.rarity && (
                             <span
                                 className={cn(
-                                    'inline-flex items-center gap-0.5 rounded-full bg-card px-1.75 py-0.5 font-mono text-[8px] leading-[1.2] font-extrabold tracking-[.03em] uppercase',
+                                    'inline-flex items-center gap-0.5 rounded-full bg-card px-1.75 py-0.5 font-mono text-[0.5rem] leading-[1.2] font-extrabold tracking-[.03em] uppercase',
                                     RARITY_INK[week.rarity],
                                 )}
                             >
@@ -116,12 +116,12 @@ function WeekSummaryButton({
                 disabled && 'text-border-strong',
             )}
         >
-            <span className="text-[7px] leading-[1.2] font-extrabold uppercase">
+            <span className="text-[0.4375rem] leading-[1.2] font-extrabold uppercase">
                 WK {week.weekNumber}
             </span>
             {week.runCount > 0 && (
                 <>
-                    <span className="text-[8px] leading-[1.2] font-bold tabular-nums">
+                    <span className="text-[0.5rem] leading-[1.2] font-bold tabular-nums">
                         {week.totalKm.toFixed(1)}k
                     </span>
                     <span className="mt-0.25 flex items-center gap-0.5">

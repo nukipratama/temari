@@ -124,7 +124,7 @@ function ProgressRing({
                     className="stroke-icon-accent"
                 />
             </svg>
-            <span className="absolute inset-0 flex items-center justify-center font-mono text-[11px] font-extrabold tabular-nums text-foreground">
+            <span className="absolute inset-0 flex items-center justify-center font-mono text-[0.6875rem] font-extrabold tabular-nums text-foreground">
                 {Math.round(tweenedCredited)}/{total}
             </span>
         </div>
@@ -137,10 +137,10 @@ function PlanFigure({
 }: Readonly<{ value: string; label: string }>) {
     return (
         <div>
-            <b className="block font-mono text-[15px] font-extrabold tabular-nums text-foreground">
+            <b className="block font-mono text-[0.9375rem] font-extrabold tabular-nums text-foreground">
                 {value}
             </b>
-            <span className="font-mono text-[9px] uppercase tracking-[0.05em] text-foreground">
+            <span className="font-mono text-[0.5625rem] uppercase tracking-[0.05em] text-foreground">
                 {label}
             </span>
         </div>
@@ -176,7 +176,7 @@ function DayCell({
                 isToday && 'ring-[1.5px] ring-inset ring-icon-accent',
             )}
         >
-            <span className="font-mono text-[9px] uppercase tracking-[0.05em] text-foreground">
+            <span className="font-mono text-[0.5625rem] uppercase tracking-[0.05em] text-foreground">
                 {weekdayAbbr(day.date)}
             </span>
             <Icon
@@ -186,7 +186,7 @@ function DayCell({
                 className={tone}
                 aria-hidden
             />
-            <span className="font-mono text-[8px] text-foreground">
+            <span className="font-mono text-[0.5rem] text-foreground">
                 {distanceLabel(day)}
             </span>
         </li>
@@ -251,7 +251,7 @@ export default function WeekPlanWidget({
             {today !== null && (
                 <Link
                     href="/plan"
-                    className="focus-ring flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2.5 text-[11.5px] text-foreground transition-colors hover:bg-accent"
+                    className="focus-ring flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2.5 text-[0.71875rem] text-foreground transition-colors hover:bg-accent"
                 >
                     <span>
                         <b>today</b> ·{' '}

@@ -105,12 +105,10 @@ describe('MobileTopBar', () => {
         expect(screen.queryByLabelText(/'s profile/)).not.toBeInTheDocument();
     });
 
-    it('renders the Strava sync badge in its disconnected state by default', () => {
+    it('carries no Strava sync readout, which the prototype does not draw', () => {
         setMockPage({ auth: { user: null }, stravaSync: null });
         render(<MobileTopBar />);
-        expect(
-            screen.getByLabelText('Strava not connected'),
-        ).toBeInTheDocument();
+        expect(screen.queryByLabelText(/^Strava/)).not.toBeInTheDocument();
     });
 
     it('pads the top by the safe-area inset so content clears the notch', () => {

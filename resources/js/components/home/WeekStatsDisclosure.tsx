@@ -23,10 +23,10 @@ function StatFigure({
 }: Readonly<{ value: string; label: string }>) {
     return (
         <span className="inline-flex items-baseline gap-1">
-            <b className="font-mono text-[15px] font-extrabold tabular-nums text-foreground">
+            <b className="font-mono text-[0.9375rem] font-extrabold tabular-nums text-foreground">
                 {value}
             </b>
-            <span className="font-mono text-[10px] uppercase tracking-[0.05em] text-foreground">
+            <span className="font-mono text-[0.625rem] uppercase tracking-[0.05em] text-foreground">
                 {label}
             </span>
         </span>

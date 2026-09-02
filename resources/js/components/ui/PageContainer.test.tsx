@@ -13,11 +13,15 @@ describe('PageContainer', () => {
         expect(root.className).not.toMatch(/max-w-page/);
     });
 
-    it("caps at the prototype's 760px column above it, with no other step", () => {
+    it("takes the prototype's column at 900px and the wide step at 1280px", () => {
         const { container } = render(<PageContainer>x</PageContainer>);
         const root = container.firstChild as HTMLElement;
-        expect(root).toHaveClass('min-[900px]:max-w-[760px]');
+        expect(root).toHaveClass('min-[900px]:max-w-column');
+        expect(root).toHaveClass('min-[1280px]:max-w-column-wide');
         expect(root).toHaveClass('min-[900px]:px-6');
+        // Both steps are explicit pixel queries; none of Tailwind's own
+        // rem-based breakpoints are used, so the root type step at 1280 cannot
+        // shift where the column changes.
         expect(root.className).not.toMatch(/\b(sm|md|lg|xl|2xl):/);
     });
 

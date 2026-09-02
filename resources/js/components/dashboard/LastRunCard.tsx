@@ -27,7 +27,7 @@ export default function LastRunCard({
 
     return (
         <Card padding="panel">
-            <h4 className="mb-2 font-mono text-[10px] font-extrabold uppercase tracking-[0.05em] text-foreground">
+            <h4 className="mb-2 font-mono text-[0.625rem] font-extrabold uppercase tracking-[0.05em] text-foreground">
                 Last run · {formatNaiveRelativeId(run.start_date_local)}
             </h4>
             <MiniRow label="km" value={formatKm(run.distance)} />
@@ -41,7 +41,7 @@ export default function LastRunCard({
             />
             <Link
                 href={activityUrl(run)}
-                className="focus-ring mt-2 inline-flex items-center gap-0.5 rounded text-[10.5px] text-foreground underline"
+                className="focus-ring mt-2 inline-flex items-center gap-0.5 rounded text-[0.65625rem] text-foreground underline"
             >
                 View run detail
                 <Icon

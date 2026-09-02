@@ -113,7 +113,7 @@ export default function KartuMini({
                     <span
                         aria-hidden
                         className={cn(
-                            'text-[8px] leading-none',
+                            'text-[0.5rem] leading-none',
                             RARITY_TEXT[rarity],
                         )}
                     >
@@ -123,7 +123,7 @@ export default function KartuMini({
                         as="span"
                         token="micro"
                         className={cn(
-                            'text-[8px] tracking-[0.12em]',
+                            'text-[0.5rem] tracking-[0.12em]',
                             RARITY_TEXT[rarity],
                         )}
                     >
@@ -131,13 +131,13 @@ export default function KartuMini({
                     </Eyebrow>
                 </div>
                 {!compact && (
-                    <div className="mt-0.5 line-clamp-2 font-sans text-[12px] font-extrabold uppercase leading-[1.06] tracking-[0.01em] text-cream">
+                    <div className="mt-0.5 line-clamp-2 font-sans text-[0.75rem] font-extrabold uppercase leading-[1.06] tracking-[0.01em] text-cream">
                         {name}
                     </div>
                 )}
                 {!compact &&
                     (edition != null || (date != null && date !== '')) && (
-                        <div className="mt-0.5 font-mono text-[9px] tabular-nums leading-tight text-ink-on-sky">
+                        <div className="mt-0.5 font-mono text-[0.5625rem] tabular-nums leading-tight text-ink-on-sky">
                             {edition != null && (
                                 <span>
                                     #{edition.index}/{edition.total}
