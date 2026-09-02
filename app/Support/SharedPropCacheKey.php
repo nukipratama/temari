@@ -17,7 +17,6 @@ enum SharedPropCacheKey: string
     case ActiveRace = 'active-race';
     case AiCatchingUp = 'ai-catching-up';
     case AiPaused = 'ai-paused';
-    case EquippedAccessories = 'equipped-accessories';
     case HrZonesChangedAt = 'hr-zones-changed-at';
     case StravaPaused = 'strava-paused';
     case StravaSync = 'strava-sync';
@@ -74,10 +73,10 @@ enum SharedPropCacheKey: string
     private const int STRAVA_PAUSED_SECONDS = 60;
 
     /**
-     * TTL shared by the five settings-shaped signals: equipped accessories,
+     * TTL shared by the settings-shaped signals:
      * Telegram reachability, web-push reachability, the missing Strava zone
      * scope and the unread inbox count. Each moves only on an explicit write —
-     * an equip, a connect or revoke, a push subscribe or unsubscribe, a
+     * a connect or revoke, a push subscribe or unsubscribe, a
      * notification-preference save, an inbox write or read — and every one of
      * those paths busts the key, so like the HR-zone marker the
      * TTL is a safety net rather than the mechanism. The win is dropping their
@@ -107,7 +106,6 @@ enum SharedPropCacheKey: string
             self::StravaPaused => self::STRAVA_PAUSED_SECONDS,
             self::HrZonesChangedAt => self::HR_ZONES_CHANGED_SECONDS,
             self::StravaSync => self::STRAVA_SYNC_SECONDS,
-            self::EquippedAccessories,
             self::StravaZoneScopeMissing,
             self::TelegramConnected,
             self::UnreadNotifications,

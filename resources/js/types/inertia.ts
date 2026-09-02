@@ -45,18 +45,6 @@ export interface StravaSync {
 }
 
 /** Resolved server-side from the user's equipped UserUnlock rows. */
-export type EquippedSlot =
-    'medal' | 'headband' | 'shirt' | 'shorts' | 'shoes' | 'aura';
-
-export interface EquippedAccessories {
-    medal: string | null;
-    headband: string | null;
-    shirt: string | null;
-    shorts: string | null;
-    shoes: string | null;
-    aura: string | null;
-}
-
 /**
  * One row of the notification centre, flattened by `InboxController` so the
  * page never reads the raw `payload` blob.
@@ -98,7 +86,6 @@ export interface SharedProps {
         info: string | null;
     };
     demoLoginEnabled: boolean;
-    equippedAccessories?: EquippedAccessories | null;
     stravaSync?: StravaSync | null;
     activeRace?: ActiveRace | null;
     /** ISO-8601 timestamp of the auth user's last heart-rate-zone change, or null. */

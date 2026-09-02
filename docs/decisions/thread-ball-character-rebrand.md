@@ -11,7 +11,6 @@ code_refs:
   - resources/js/lib/shareCard.ts
   - app/Enums/Rarity.php
   - resources/css/app.css
-  - app/Services/Gamification/EquippedAccessories.php
 ---
 
 # Rebrand Temari from bunny/Daybreak to a thread-ball character
@@ -28,6 +27,13 @@ code_refs:
 
 **Status:** Accepted (documented 2026-08-11, resolved in a full `/grilling` session 2026-08-10/11).
 
+> **Fact update, 2026-09-02 (`W2`).** The decision and its reasoning stand unchanged, but the
+> character it describes is gone: `PP2` replaced the ball-bodied mascot with the prototype's
+> `FaceIcon` under P10, and `W2` swept what was left behind it — the `EquippedAccessories` service,
+> the `equippedAccessories` shared prop, the `user_unlocks.equipped` column, and the brand
+> generators that drew the poses and the 25 accessory SVGs. The accessory *catalog* and its unlock
+> rows survive; only the wardrobe that wore them is gone. See [[targets-accessories]].
+
 ## Context
 
 Temari shipped its whole life as a bunny character on a "Daybreak" palette (`app.css`'s literal framing: pre-dawn Jakarta at 05:30). Neither had any connection to the app's own domain model. By the time of this decision the app had grown a real training arc — a periodized season with `base`/`build`/`peak`/`taper` phases (Slice 6/7) and a badge/rarity ladder (Slice 4/7) — and the bunny form had no way to express either. The identity was arbitrary where the app now has structure worth showing.
@@ -38,7 +44,7 @@ Nothing in the prior codebase or docs referenced the temari (手鞠) etymology �
 
 - **Full character replacement, not a reskin.** The bunny form (`TemariProto.tsx`, `BrandMark.tsx`'s `BunnyGlyph`, `shareCard.ts`'s `bunnySvg()`/`loadBunny()`) retired in favor of a ball-bodied character with a face (eyes/mouth on the ball's surface) — chosen over a limbed thread-wrapped hybrid or a faceless abstract icon so the "friend who runs alongside you" persona keeps an expression/warmth carrier in narration UI. It moves by bouncing/rolling, not walking. The same 8 pose names carry over unchanged (`proud`/`pumped`/`excited`/`holding`/`reading`/`wobble`/`observational`/`glow`) since narrators and components across the app reference them by name; renaming would have been unrelated churn. `BunnyGlyph`/`bunnySvg`/`loadBunny` ported to `TemariGlyph`/`temariSvg`/`loadTemari`.
 - **The training arc gets a real rendering tie-in, scoped to one site.** Thread coverage over the ball's core builds through discrete season-phase states (`base`/`build`/`peak`/`taper`), rendered only in the Plan tab's season summary — not globally, since a phase-aware mascot everywhere would require every call site to track the current phase. Self-scaled deload weeks pause accretion rather than reset it, matching the season's own self-scaling design.
-- **Accessory rendering changed, the data model didn't.** The 6-slot enum, 25-item unlock catalog, and `EquippedAccessories`'s schema stay exactly as Slice 2f/4 left them ([EquippedAccessories.php:26](../../app/Services/Gamification/EquippedAccessories.php#L26)) — no new migration. Only `TemariProto.tsx`'s per-slot SVG rendering changed to fit a limbless ball: `medal` hangs from a loop at the crown, `aura` is an ambient glow ring, `headband` is a ribbon bow at the crown, `shirt`/`shorts` are thread-band wraps around the ball's upper/lower hemisphere, and `shoes` is a trailing ribbon suggesting motion.
+- **Accessory rendering changed, the data model didn't.** The 6-slot enum, 25-item unlock catalog, and `EquippedAccessories`'s schema stayed exactly as Slice 2f/4 left them — no new migration. Only `TemariProto.tsx`'s per-slot SVG rendering changed to fit a limbless ball: `medal` hangs from a loop at the crown, `aura` is an ambient glow ring, `headband` is a ribbon bow at the crown, `shirt`/`shorts` are thread-band wraps around the ball's upper/lower hemisphere, and `shoes` is a trailing ribbon suggesting motion.
 - **Rarity's hex ladder stays exactly as-is.** `Rarity::hexColor()` (gray→green→blue→purple→gold, [Rarity.php:46](../../app/Enums/Rarity.php#L46)) was never re-hued — re-hueing a proven, widely-used loot-ladder signal (filter chips, dots, section headers) is separate blast radius this decision didn't ask for. Card chrome instead gained an additive thread-band accent whose density scales with tier, layered on the unchanged rarity colors.
 - **The palette renamed Daybreak → Threadwork** (jewel-tone thread family — crimson/gold/indigo/emerald/violet — on a warm linen canvas, replacing the sky/horizon/cream "pre-dawn Jakarta" framing). Token *identifiers* stayed stable; only hex values and naming/comments changed, so existing Tailwind call sites repainted for free. See [design-tokens.md](../design-tokens.md).
 - **The marketing intro video was removed outright**, not just left unreferenced — `docs/marketing/`, `public/videos/intro.mp4`, and its poster image are gone, since they depicted the retired bunny identity and re-shooting was out of scope. The Login page's video hero was replaced with a static render of the new mascot rather than left blank.

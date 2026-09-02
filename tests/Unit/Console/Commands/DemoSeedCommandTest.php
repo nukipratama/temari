@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Services\Gamification\EquippedAccessories;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\NotificationKind;
 use App\Enums\Rarity;
@@ -26,12 +25,10 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\RecapPeriod;
 use App\Services\Run\Plan\Periodizer;
-use App\Support\SharedPropCacheKey;
 use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Testing\Fakes\NotificationFake;
 
@@ -105,7 +102,8 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
     expect((clone $cardQuery)->where('rarity', Rarity::Legendary)->count())->toBeGreaterThanOrEqual(1)
         ->and((clone $cardQuery)->where('rarity', Rarity::Epic)->count())->toBeGreaterThanOrEqual(3);
 
-    // Every defined accessory unlocks; best-in-slot ones are equipped for the mascot.
+    // Every defined accessory unlocks. Nothing is equipped any more: W2 swept
+    // the wardrobe with the surface that wore it.
     $unlocked = UserUnlock::query()->where('user_id', $user->id)->pluck('unlock_key')->all();
     expect($unlocked)->toContain(
         'accessory.medal_first',
@@ -113,13 +111,6 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
         'accessory.headband_legendary',
         'accessory.headband_epic',
     );
-    $equipped = UserUnlock::query()->where('user_id', $user->id)->where('equipped', true)->pluck('unlock_key')->all();
-    expect($equipped)->toContain('accessory.headband_legendary', 'accessory.medal_gold');
-
-    // At most one unlock equipped per slot: no double-equipped Medali (#53).
-    $slots = new EquippedAccessories();
-    $equippedSlots = array_map($slots->slotFor(...), $equipped);
-    expect($equippedSlots)->toBe(array_unique($equippedSlots));
 
     // The week-keyed Aku voice is backfilled to a done analysis row.
     $profileVoice = Analysis::query()
@@ -139,12 +130,6 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
         ->distinct()
         ->count('activity_details.location_name');
     expect($distinctLocations)->toBeGreaterThan(1);
-
-    // The reveal modal is queued on one of the rarest seeded cards (legendary, here).
-    expect($user->pending_reveal_card_id)->not->toBeNull();
-    $queued = RunCard::query()->findOrFail($user->pending_reveal_card_id);
-    $maxRank = (clone $cardQuery)->get()->max(fn (RunCard $card): int => $card->rarity->rank());
-    expect($queued->rarity->rank())->toBe($maxRank);
 
     // Recaps respect the closed-period cap (RecapPeriod): the demo never stages a
     // recap for the still-running current week/month, matching real narration.
@@ -259,14 +244,7 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
         'revoked_at' => Carbon::now(),
     ]);
 
-    // The re-equip sweep is a mass update, so no model event fires for it; the
-    // seeder has to bust the shared prop by hand or the demo mascot keeps
-    // wearing the previous seed's accessories.
-    Cache::forever(SharedPropCacheKey::EquippedAccessories->key($user->id), ['medal' => 'stale']);
-
     $this->artisan('demo:seed')->assertSuccessful();
-
-    expect(Cache::has(SharedPropCacheKey::EquippedAccessories->key($user->id)))->toBeFalse();
 
     $connection = StravaConnection::query()->where('user_id', $user->id)->firstOrFail();
     expect(StravaConnection::query()->where('user_id', $user->id)->count())->toBe(1)

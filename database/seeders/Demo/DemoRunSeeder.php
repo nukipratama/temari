@@ -48,7 +48,6 @@ use App\Services\Run\Plan\WeekPlanBuilder;
 use App\Services\Run\Story\RunCardFactory;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
-use App\Support\SharedPropCacheKey;
 use Closure;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
@@ -168,24 +167,6 @@ class DemoRunSeeder
             $granted = $this->withSyncQueue(fn (): array => ($this->unlockEngine)($user));
             $log(sprintf('  %d accessory unlocks granted (%s)', count($granted), $granted === [] ? 'all already unlocked' : implode(', ', $granted)));
 
-            // Equip the best-in-slot accessories (one per slot) so the demo
-            // Temari actually shows off its hardware everywhere it appears.
-            // Clear every equipped flag first so a re-seed can't leave a stale
-            // sibling equipped in the same slot (two medals at once).
-            UserUnlock::query()
-                ->where('user_id', $user->id)
-                ->update(['equipped' => false]);
-
-            UserUnlock::query()
-                ->where('user_id', $user->id)
-                ->whereIn('unlock_key', [
-                    'accessory.headband_legendary',
-                    'accessory.medal_gold',
-                ])
-                ->update(['equipped' => true]);
-
-            SharedPropCacheKey::EquippedAccessories->forget($user->id);
-
             $log("Generating today's Temari greeting...");
             $vibeState = $this->vibe->current($user);
             $this->temari->dailyGreeting($user, $vibeState);
@@ -196,8 +177,6 @@ class DemoRunSeeder
             // withoutDispatching; the rows are flat-filled below with
             // deterministic rule-based content so demo doesn't burn tokens.
             $this->stagePendingAnalyses($user);
-
-            $this->queueBestRevealFor($user);
 
             // Backfill inside withoutDispatching so markDone's Telegram fan-out
             // stays suppressed: the demo never has a real connection, so an
@@ -295,26 +274,6 @@ class DemoRunSeeder
             tags: ['daily'],
             location: $locations[$rng->getInt(0, count($locations) - 1)],
         );
-    }
-
-    /**
-     * Point the one-shot reveal modal at the demo user's rarest card instead of
-     * whatever run happened to seed first. RunCardFactory::build() queues the
-     * first card it creates (the oldest activity, a plain Common easy run), so
-     * without this the demo's first login pops an underwhelming reveal. Here we
-     * override it to showcase the gimmick on a legendary/epic card. Ties break
-     * to the highest card id (most recently seeded).
-     */
-    private function queueBestRevealFor(User $user): void
-    {
-        $best = RunCard::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
-            ->whereNotNull('special_move')
-            ->get()
-            ->sortByDesc(fn (RunCard $card): array => [$card->rarity->rank(), $card->id])
-            ->first();
-
-        $user->forceFill(['pending_reveal_card_id' => $best?->id])->save();
     }
 
     private function stagePendingAnalyses(User $user): void
