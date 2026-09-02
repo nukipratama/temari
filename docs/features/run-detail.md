@@ -1,21 +1,22 @@
 ---
 title: Run detail (single activity)
-description: One run, fully unpacked — hero stats, route+weather, the story + adaptive claims lenses, splits, and a "Past You" match
+description: One run, fully unpacked — a headline hero, a "Past You" match, the story + adaptive claims voice card, the Q&A panel, and the breakdown (vitals, splits, laps)
 tags: [feature, runs]
 status: living
-reviewed: 2026-08-10
+reviewed: 2026-09-01
 code_refs:
   - resources/js/pages/Runs/Show.tsx
   - app/Http/Controllers/RunController.php
-  - resources/js/components/run/PastYouHero.tsx
+  - resources/js/components/run/RunHero.tsx
+  - resources/js/components/run/PastYouCard.tsx
   - resources/js/components/run/AskAboutRun.tsx
   - resources/js/hooks/useRunQuestions.ts
   - resources/js/components/run/RunLenses.tsx
   - resources/js/components/run/MapWeatherPanel.tsx
-  - resources/js/components/run/DetailTiles.tsx
-  - resources/js/components/run/SplitsTable.tsx
+  - resources/js/components/run/VitalsCard.tsx
+  - resources/js/components/run/SplitsChart.tsx
+  - resources/js/components/run/LapsCarousel.tsx
   - resources/js/components/run/RouteMap.tsx
-  - resources/js/components/card/Kartu.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
 ---
 
@@ -27,51 +28,90 @@ code_refs:
 which 404s on a foreign or not-yet-analyzed activity and lazily kicks a
 location-resolve job when the run has GPS but no resolved place name.
 
-**Navigation:** `route('activities.show', activity)` → `/activities/{activity}`. Named route: `activities.show`.
+**Navigation:** `route('activities.show', activity)` → `/activities/{activity}`. Named route: `activities.show`. It is a **pushed** screen (P6): back chevron, no bottom nav, and back goes to History.
+
+## Section order
+
+`PS8` rebuilt the page to the prototype's section list (P28), and that order is
+the spec — a slice that adds a section adds it here too:
+
+1. the `ACTIVITY` eyebrow
+2. [RunHydratingNotice](../../resources/js/components/run/RunHydratingNotice.tsx), when the deeper fetch is still in flight
+3. [RunHero](../../resources/js/components/run/RunHero.tsx) — identity, the headline stat block, and the route + conditions slab
+4. [PastYouCard](../../resources/js/components/run/PastYouCard.tsx), when there is a match
+5. [RunLenses](../../resources/js/components/run/RunLenses.tsx) — "what Temari says"
+6. [AskAboutRun](../../resources/js/components/run/AskAboutRun.tsx)
+7. the `THE BREAKDOWN` eyebrow
+8. [VitalsCard](../../resources/js/components/run/VitalsCard.tsx)
+9. [SplitsChart](../../resources/js/components/run/SplitsChart.tsx)
+10. [LapsCarousel](../../resources/js/components/run/LapsCarousel.tsx)
+11. the Strava provenance footer
+
+**Sections 4-10 are gated on the run being detailed.** While `awaitingDetail` is
+true the page renders the notice, the hero and the footer only — everything
+below the hero reads from splits, zones and effort that have not landed, so it
+would be a column of empty panels rather than a thin page.
 
 ## System dependencies
 
-- **AI narration** — the story + adaptive-claims lenses and card flavor are all `Analysis` rows from the [[ai-pipeline]]; the narrators read Past You through a tool, but the match itself is computed, not narrated. See [[past-you-engine]].
+- **AI narration** — the story + adaptive-claims halves and the share image's caption are all `Analysis` rows from the [[ai-pipeline]]; the narrators read Past You through a tool, but the match itself is computed, not narrated. See [[past-you-engine]].
 - **Ingestion** — `detail` / `stream_summary` are populated by the [[run-ingest-pipeline]].
 - **Geo** — location name is resolved by [[geo-reverse-geocoding]].
 - **Weather** — conditions come from [[weather-integration]].
-- **Gamification** — the kartu rarity/badges are assigned by [[gamification]] during ingest.
+- **Gamification** — the card rarity/badges are assigned by [[gamification]] during ingest.
 
-## Hero — stats + route + weather
+## Hero — identity, one headline stat, route + weather
 
-The top section is a sky-toned `HeroPanel`: the mascot in a mood-derived pose
-(`MOOD_TO_POSE[mood]`), the run name, date, and six `StatTile`s
-(distance / duration / pace / HR / TRIMP / elevation).
+[RunHero](../../resources/js/components/run/RunHero.tsx) is a card-toned panel,
+not a fixed-dark sky panel: the prototype draws this screen's hero on the
+card surface, so it reacts to the ground like every other panel on the page.
+It opens with `FaceIcon`, the as-recorded date and time, the run name in serif
+italic and the mood pill under it.
 
-Below that stat grid, spanning the **full hero width** rather than sitting
-beside it, is
-[PastYouHero](../../resources/js/components/run/PastYouHero.tsx) — the
-"you vs past you" claim the product is built on, so on this page it is the
-headline, not a footnote. It leads with the pace delta as the page's single
-gradient number, then the HR delta and what that pace gap was worth over the
-whole distance, and links to the matched run. `RunController::show` calls a
-`PastYouMatcher` and passes the `pastYou` match; `findMatch` deliberately picks
-the **oldest** qualifying run so the contrast reads as progress, while the home
-screen's trend verdict runs off the same matcher but picks the most
-*comparable* run instead. Both selections, and the verdict's outcomes, are
-[[past-you-engine]]. No match means the band is absent entirely, not an empty
-state.
+The stat block is a **hierarchy, not a grid of six equals**. Distance is the one
+big mono figure; duration and pace sit beside it at supporting size; HR, TRIMP
+and elevation are three small tiles below. Every figure count-ups from zero via
+`useCountUp` and renders `—` where the run recorded nothing.
 
-To the right (below the stats on mobile, since the hero grid stacks under the
-`lg` breakpoint), [MapWeatherPanel](../../resources/js/components/run/MapWeatherPanel.tsx) shows
-temperature / humidity / location and the **route map**. The map is the only
-heavyweight child: [RouteMap](../../resources/js/components/run/RouteMap.tsx) is
+The hero also carries the page's one **Share** button, rendered only when the
+run has a card — the prototype draws no share button anywhere, and keeping one
+is the deliberate divergence recorded in `cut-list.md` §4; see
+[[cards-collection]]. It anchors the page's `run-share` coach mark.
+
+At the foot of the panel,
+[MapWeatherPanel](../../resources/js/components/run/MapWeatherPanel.tsx) is one
+sunken slab: the **route map** first, the run's conditions (temperature /
+humidity / wind / location) read underneath it. The map is the only heavyweight
+child: [RouteMap](../../resources/js/components/run/RouteMap.tsx) is
 `lazy()`-loaded and decodes `detail.summary_polyline`, so a treadmill run with
-no polyline simply omits it. The map starts behind a tap-to-activate overlay
-button — Leaflet's drag handler otherwise captures a touch-scroll swipe as a
-pan gesture, trapping the page mid-scroll on mobile; one tap dismisses the
-overlay and enables full drag/zoom, the same pattern Google Maps embeds use.
+no polyline simply omits it and the slab collapses to the conditions row (and
+renders nothing at all when the run has neither). The map starts behind a
+tap-to-activate overlay button — Leaflet's drag handler otherwise captures a
+touch-scroll swipe as a pan gesture, trapping the page mid-scroll on mobile;
+one tap dismisses the overlay and enables full drag/zoom, the same pattern
+Google Maps embeds use. The prototype fills this slot with a decorative
+"activate map" placeholder; P16 keeps the real map there, which already carries
+an activate pill of its own.
+
+## You vs past you
+
+[PastYouCard](../../resources/js/components/run/PastYouCard.tsx) is its own card
+directly under the hero — the prototype places the comparison in the page
+column, not inside the hero. It leads with the pace delta, then the HR delta and
+what that pace gap was worth over the whole distance, and links to the matched
+run. `RunController::show` calls a `PastYouMatcher` and passes the `pastYou`
+match; `findMatch` deliberately picks the **oldest** qualifying run so the
+contrast reads as progress, while the home screen's trend verdict runs off the
+same matcher but picks the most *comparable* run instead. Both selections, and
+the verdict's outcomes, are [[past-you-engine]]. No match means no card at all,
+not an empty state.
 
 ## What Temari says — story + adaptive claims
 
-The heart of the page is [RunLenses](../../resources/js/components/run/RunLenses.tsx),
-fed two `Analysis` payloads the controller resolves from
-`RunController::RUN_INSIGHT_TYPES`:
+The heart of the page is [RunLenses](../../resources/js/components/run/RunLenses.tsx):
+a `FaceIcon` heading over **one** narration card, whose two halves are separated
+by a hairline rather than split into two panels. It is fed two `Analysis`
+payloads the controller resolves from `RunController::RUN_INSIGHT_TYPES`:
 
 - **This run's story** — the post-run speech (`AnalysisType::PostRunSpeech`, [PostRunSpeechNarrator](../../app/Services/AI/Narrators/PostRunSpeechNarrator.php)). Unchanged by this consolidation: deliberately not a summary of the numbers, it carries the run's context and its place in the athlete's history, leaving pacing, cadence and zones to the block beside it.
 - **What stood out** — the adaptive claims block (`AnalysisType::RunInsight`, [RunInsightNarrator](../../app/Services/AI/Narrators/RunInsightNarrator.php)). Replaces the previous fixed three-slot layout (technical translation / best split / HR zones) with a single row whose `content` is a JSON-encoded list of 1-3 claims, shaped by what was actually notable about the run rather than by three always-present sections. Each claim is `{anchor, text, value?, delta?}`.
@@ -91,20 +131,21 @@ The demo-seed/no-Azure fallback ([RuleBasedRunInsights](../../app/Services/AI/Ru
 emits the same claims shape from deterministic thresholds, so it never needs
 the falsifiability check to begin with.
 
-Each lens renders through [AnalysisStatus](../../resources/js/components/temari/AnalysisStatus.tsx),
+Each half renders through [AnalysisStatus](../../resources/js/components/temari/AnalysisStatus.tsx),
 which owns the pending / processing / failed / done states and the per-block
 "Try again" retry. These are **chained** analyses: only the chain head (the
 user's latest run, `isChainHead` from `Activity::latestIdForUser`) shows the
-single "Reread all" regenerate button; historical runs are resume-only.
-See [[ai-pipeline]] for the narrator/job model behind these rows.
+single **Reread** control, a pill at the foot of the card that counts down the
+shared cooldown; historical runs are resume-only. See [[ai-pipeline]] for the
+narrator/job model behind these rows.
 
 ## Ask about this run
 
-Directly under the hero sits
-[AskAboutRun](../../resources/js/components/run/AskAboutRun.tsx): the hero
-states the numbers, this panel lets the reader interrogate them, so the two are
-one composition rather than two stacked features. It renders the run's own
-suggested questions, an ask box, and the persisted thread.
+[AskAboutRun](../../resources/js/components/run/AskAboutRun.tsx) sits directly
+under the narration card on the same voice surface: Temari says her piece, then
+the reader gets to interrogate it. It renders the persisted thread **first**,
+then the run's own unasked suggestions, then the ask box — the prototype's
+order, so what was already answered reads before the invitation to ask again.
 
 The panel talks to the JSON API directly, not to Inertia props — see
 [[run-qa]] for the endpoints and [[scoped-run-qa-not-an-analysis-row]] for why
@@ -121,40 +162,45 @@ A run still in `summary` ingest state says so in the panel: the toolbox behind
 the answer drops splits, zones and terrain on that run, so the panel names the
 limit up front instead of quietly answering thinner.
 
-## Kartu — the card's full view
+## The breakdown — vitals, splits, laps
 
-When the run has a collectible [Kartu](../../resources/js/components/card/Kartu.tsx),
-its own section sits right below the hero: the full-size card on a sky panel with
-**Bagikan** (opens [ShareCardModal](../../resources/js/components/card/ShareCardModal.tsx))
-and **Replay card reveal** (re-arms the pack-tear reveal), plus the lore column — the
-streamed `CardFlavor` quote and a "Kenapa [rarity]" block explaining each badge.
-`RunController::show` enriches the run's `RunCard` with that flavor analysis, its
-edition (`index`/`total` within its rarity), and a signed `public_share_url`; there
-is no separate card detail page, this section *is* it. See [[cards-collection]] for
-the grid this card also appears in.
+[VitalsCard](../../resources/js/components/run/VitalsCard.tsx) opens it: average
+heart rate as a headline figure with the max marked on a 100-190 scale bar, then
+cadence / steepest grade / flat pace as three tiles, then decoupling as a marker
+on a leaf→citrus→ember gradient with a plain-language line under it. Grade and
+flat pace appear only on a run that actually climbed (≥3%), so a flat GPS run
+does not show a noisy 0%; a corrupt JSON reading never renders as `NaN`. High
+drift is toned as a warning **unless** the run was ≥31°C, which mirrors the
+backend's own rule — heat explains an upward drift, and cannot explain a
+negative one. Relative effort is **not** here: P18 cut it, and the prototype's
+vitals card draws these five readings instead.
 
-## Technical tiles & splits
+[SplitsChart](../../resources/js/components/run/SplitsChart.tsx) reads
+`stream_summary.per_km` as a bar chart — taller bar, faster km — with heart rate
+traced over it as a dashed polyline (drawn only when at least two kms recorded
+one) and a tap-to-read tooltip that dims the other bars. The trailing sub-km
+remainder is appended as a dashed, unranked bar. Bar heights reuse
+`computeBarWidth` from [lib/splits.ts](../../resources/js/lib/splits.ts) rather
+than a raw min→max stretch, so a run whose kms are seconds apart still reads as
+consistent instead of as a dramatic swing.
 
-Below the lenses, [DetailTiles](../../resources/js/components/run/DetailTiles.tsx)
-surfaces AVG/MAX HR, cadence, ascent, and decoupling (warned past 8%) — only the
-fields actually present render.
-[SplitsTable](../../resources/js/components/run/SplitsTable.tsx) reads
-`stream_summary.per_km` and draws a per-km pace bar (fastest km highlighted),
-responsive between a mobile card stack and a desktop grid; its pace-parsing and
-bar-width maths live in [lib/splits.ts](../../resources/js/lib/splits.ts).
+[LapsCarousel](../../resources/js/components/run/LapsCarousel.tsx) closes it:
+the watch's own laps as side-scrolling cards, the fastest picked out. Native
+overflow scroll, no paging buttons.
+
+The page then closes with a static provenance footer — "Synced from Strava",
+the sync instant, and the run's own `strava_external_id`.
 
 ## Related components, not wired here
 
-The run-detail concerns of weather, HR zones, splits, and Past You each have a
-standalone sibling component — `WeatherHero`, `HrZoneCard`, `PastYouStrip`,
-`SplitsSparkline`. **This page does not use them**: the page composes its own
-`MapWeatherPanel` / `DetailTiles` / `SplitsTable` (plus the hero Past You
-block). `HrZoneCard`/`SplitsSparkline` live on the collectible card and records
-views instead; treat the siblings as separate widgets, not parts of this page.
+Weather and Past You each have a standalone sibling component — `WeatherHero`
+and `PastYouStrip` — used by other screens. **This page does not use them**: it
+composes its own `MapWeatherPanel` and `PastYouCard`; treat the siblings as
+separate widgets, not parts of this page.
 
 ## See also
 
 - [[run-ingest-pipeline]] — how `detail` / `stream_summary` get populated
 - [[data-model]] — `Activity`, `ActivityDetail`, `Analysis`, `StoryLine`
 - [[ai-pipeline]] — the run-detail narration pipeline
-- [[cards-collection]] — the Kartu in the sidebar
+- [[cards-collection]] — how the run's card is earned, and the share button that is now the only way to see it

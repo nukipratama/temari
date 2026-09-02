@@ -1,10 +1,10 @@
-import { Icon } from '@iconify/react';
 import { usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { type ReactNode } from 'react';
 
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
+import { Icon } from '@/components/ui/Icon';
 import {
     RATE_LIMITED_ERROR,
     useAnalysisTrigger,
@@ -13,6 +13,7 @@ import {
     cooldownAriaLabel,
     useCooldownCountdown,
 } from '@/hooks/useCooldownCountdown';
+import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { formatDurationHMS, formatRelativeId } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
@@ -92,6 +93,21 @@ const TEXT_SIZE: Record<AnalysisStatusSize, string> = {
     md: 'text-base leading-relaxed',
 };
 
+/**
+ * The prototype's narration-card trigger: a filled pill in the bottom-right
+ * corner of the card, identical on Trends and Activity, the only two screens
+ * that draw it. `self-end` is `justify-end` by another name inside the flex
+ * column each state already renders into.
+ */
+const TRIGGER_CLASS =
+    'focus-ring pad-chip text-label-micro pressable inline-flex items-center self-end gap-1 rounded-full transition-colors disabled:pointer-events-none disabled:opacity-60';
+
+function triggerTone(onSky: boolean): string {
+    return onSky
+        ? 'bg-cream/10 text-cream hover:opacity-90'
+        : 'bg-muted text-foreground hover:bg-accent';
+}
+
 /** Widths of the stacked skeleton bars shown while a block is queued/processing. */
 const SKELETON_WIDTHS = ['w-full', 'w-[70%]', 'w-[85%]'];
 
@@ -112,7 +128,7 @@ export default function AnalysisStatus({
     renderContent,
     allowReanalyze = true,
     awaitingSchedule = false,
-    awaitingScheduleLabel = "This week's recap isn't available yet.",
+    awaitingScheduleLabel = "this week's recap isn't available yet.",
     showTimestamp = true,
     onSky = false,
     chained = false,
@@ -154,7 +170,7 @@ export default function AnalysisStatus({
                 className="flex flex-col gap-1"
             >
                 <div
-                    className={`${TEXT_SIZE[size]} whitespace-pre-line text-ink`}
+                    className={`${TEXT_SIZE[size]} whitespace-pre-line text-foreground`}
                 >
                     {renderContent
                         ? renderContent(content)
@@ -163,9 +179,9 @@ export default function AnalysisStatus({
                 {staleZones && <StaleZonesBadge />}
                 {showTimestamp && analysis.generated_at && (
                     <span
-                        className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-3'}`}
+                        className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-3'}`}
                     >
-                        Generated {formatRelativeId(analysis.generated_at)}
+                        generated {formatRelativeId(analysis.generated_at)}
                     </span>
                 )}
                 {canRegenerate && (
@@ -177,13 +193,17 @@ export default function AnalysisStatus({
                             cooldownRemaining,
                             'reread',
                         )}
-                        className={`focus-ring rounded inline-flex items-center self-start gap-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${onSky ? 'text-ink-on-sky hover:text-cream disabled:hover:text-ink-on-sky' : 'text-ink-3 hover:text-leaf-ink disabled:hover:text-ink-3'}`}
+                        className={cn(TRIGGER_CLASS, triggerTone(onSky))}
                     >
-                        <Icon icon="mdi:auto-awesome" aria-hidden />
+                        <Icon
+                            icon={cooling ? 'mdi:clock-outline' : 'mdi:sync'}
+                            className="size-3"
+                            aria-hidden
+                        />
                         <span>
                             {cooling
-                                ? formatDurationHMS(cooldownRemaining)
-                                : 'Reread'}
+                                ? `next in ${formatDurationHMS(cooldownRemaining)}`
+                                : 'reread'}
                         </span>
                     </button>
                 )}
@@ -199,10 +219,10 @@ export default function AnalysisStatus({
             return (
                 <div className="flex flex-col gap-1.5">
                     <span
-                        className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-2'}`}
+                        className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-2'}`}
                     >
                         <Icon icon="mdi:clock-outline" aria-hidden />
-                        <span>Still processing, check back in a bit.</span>
+                        <span>still processing, check back in a bit.</span>
                     </span>
                 </div>
             );
@@ -214,7 +234,7 @@ export default function AnalysisStatus({
                 role="status"
                 aria-live="polite"
             >
-                <span className="sr-only">Temari&apos;s thinking it over…</span>
+                <span className="sr-only">temari&apos;s thinking it over…</span>
                 <div className="flex flex-col gap-1.5">
                     {SKELETON_WIDTHS.map((width) => (
                         <div
@@ -226,7 +246,7 @@ export default function AnalysisStatus({
                 </div>
                 {attempts > 1 && (
                     <span
-                        className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-3'}`}
+                        className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-3'}`}
                     >
                         Attempt {attempts}
                     </span>
@@ -245,10 +265,10 @@ export default function AnalysisStatus({
                         type="button"
                         onClick={trigger}
                         disabled={pending}
-                        className="focus-ring rounded inline-flex items-center self-start gap-1 text-xs text-leaf-ink hover:text-ink transition-colors disabled:opacity-50"
+                        className={cn(TRIGGER_CLASS, triggerTone(onSky))}
                     >
-                        <Icon icon="mdi:auto-awesome" aria-hidden />
-                        <span>Try again</span>
+                        <Icon icon="mdi:sync" className="size-3" aria-hidden />
+                        <span>try again</span>
                     </button>
                 )}
             </div>
@@ -267,7 +287,7 @@ export default function AnalysisStatus({
     return (
         <div className="flex flex-col gap-1.5">
             <span
-                className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-2'}`}
+                className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-2'}`}
             >
                 <Icon icon="mdi:clock-outline" aria-hidden />
                 <span>{awaitingScheduleLabel}</span>

@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
-use App\Enums\DistanceBand;
-use App\Enums\PaceBand;
+use App\Enums\SessionType;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
-use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -57,31 +55,102 @@ final class PlanRenderer
     }
 
     /**
-     * @param  array{session_type: SessionType, distance_band: DistanceBand, pace_band: ?PaceBand, note: string}|null  $clamp
-     * @param  array<string, DistanceBand>  $redistributed
+     * The week's first Easy day gets the bigger (Medium) core-km fraction —
+     * see {@see SegmentGenerator::coreKmFor()}'s `$isPrimaryEasy`. Shared by
+     * every caller that needs a week's per-day km (`PlanController`,
+     * `CurrentWeekPlanBuilder`, `plan:score-compliance`) so none of them
+     * silently drift on which day is "primary".
+     *
+     * @param  Collection<int, PlannedSession>  $weekSessions
+     */
+    public static function primaryEasyDate(Collection $weekSessions): ?string
+    {
+        return $weekSessions
+            ->sortBy(fn (PlannedSession $s): string => $s->date->toDateString())
+            ->first(fn (PlannedSession $s): bool => $s->session_type === SessionType::Easy)
+            ?->date?->toDateString();
+    }
+
+    /**
+     * Every session's core km, keyed by date — the shared computation behind
+     * `distance_km`/`SessionMatcher`'s planned-km input. `$sessions` should
+     * include enough trailing history for {@see self::weekPhasesAndMultipliers()}'s
+     * ramp to be correct for the *earliest* week being scored, not just the
+     * dates the caller actually wants km for.
+     *
+     * @param  Collection<int, PlannedSession>  $sessions
+     * @return array<string, float>  Y-m-d => core km
+     */
+    public static function plannedKmByDate(Collection $sessions, float $longRunBaselineKm): array
+    {
+        $sessionsByWeek = $sessions->groupBy(
+            fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
+        );
+        [, $multiplierByWeek] = self::weekPhasesAndMultipliers($sessionsByWeek);
+        $primaryEasyDateByWeek = $sessionsByWeek->map(
+            fn (Collection $weekSessions): ?string => self::primaryEasyDate($weekSessions),
+        );
+
+        $plannedKmByDate = [];
+        foreach ($sessions as $s) {
+            $weekKey = $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
+            $plannedKmByDate[$s->date->toDateString()] = SegmentGenerator::coreKmFor(
+                $s->session_type,
+                $s->date->toDateString() === $primaryEasyDateByWeek->get($weekKey),
+                $longRunBaselineKm,
+                $multiplierByWeek[$weekKey] ?? 1.0,
+            );
+        }
+
+        return $plannedKmByDate;
+    }
+
+    /**
+     * @param array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string}|null $clamp
+     * @param  array<string, float>  $volumeScaleByDate  date => scale, from {@see VolumeRedistributor::redistribute()}
+     * @param  bool  $isPrimaryEasy  whether this is the week's first (bigger) Easy day — see {@see SegmentGenerator::coreKmFor()}
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
+     * @param  array{id: int, km: float, seconds: int|null}|null  $activity  what was actually run that day, for the planned-vs-actual bar and the "view activity" link
      * @return array<string, mixed>
      */
     public static function dayPayload(
         PlannedSession $s,
         Carbon $today,
         ?array $clamp,
-        array $redistributed,
+        array $volumeScaleByDate,
+        bool $isMarathonDistance,
+        bool $isPrimaryEasy,
         float $longRunKm,
         float $multiplier,
         ?array $paces,
         PlannedSessionStatus $status,
+        ?array $activity = null,
     ): array {
         $isToday = $s->date->isSameDay($today);
+        $volumeScale = $volumeScaleByDate[$s->date->toDateString()] ?? 1.0;
 
-        $sessionType = ($isToday && $clamp !== null) ? $clamp['session_type'] : $s->session_type;
-        $paceBand = ($isToday && $clamp !== null) ? $clamp['pace_band'] : $s->pace_band;
-
-        $band = $s->distance_band;
         if ($isToday && $clamp !== null) {
-            $band = $clamp['distance_band'];
-        } elseif (isset($redistributed[$s->date->toDateString()])) {
-            $band = $redistributed[$s->date->toDateString()];
+            $sessionType = $clamp['session_type'];
+            $segments = $clamp['segments'];
+            // The clamp already scaled itself down for readiness; volume
+            // redistribution never also applies on top of a clamped today.
+            $distanceKm = $clamp['core_km'];
+        } else {
+            $sessionType = $s->session_type;
+            $segments = SegmentGenerator::generate(
+                $sessionType,
+                $s->phase,
+                $isMarathonDistance,
+                $isPrimaryEasy,
+                $longRunKm,
+                $multiplier,
+                $paces,
+                $volumeScale,
+            );
+            // The headline figure is the CORE work only (never null, doesn't
+            // need a VDOT estimate) — warmup/cooldown are additional minutes
+            // on top, not part of what this number has ever meant.
+            $distanceKm = round(SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier) * $volumeScale, 1);
         }
 
         return [
@@ -89,13 +158,16 @@ final class PlanRenderer
             'date' => $s->date->toDateString(),
             'phase' => $s->phase->value,
             'session_type' => $sessionType->value,
-            'distance_band' => $band->value,
-            'pace_band' => $paceBand?->value,
-            'pace_sec_per_km' => ($paceBand !== null && $paces !== null) ? $paces[$paceBand->value] : null,
-            'distance_km' => DistanceBandKm::kmFor($band, $longRunKm, $multiplier),
+            'segments' => array_map(static fn (SessionSegment $segment): array => $segment->toArray(), $segments),
+            'distance_km' => $distanceKm,
             'pinned' => $s->pinned,
+            'skipped' => $s->skipped,
             'status' => $status->value,
+            'compliance_score' => $s->compliance_score,
+            'ran_anyway' => $s->ran_anyway,
             'clamp_note' => $isToday ? ($clamp['note'] ?? null) : null,
+            'actual_km' => $activity['km'] ?? null,
+            'activity' => $activity === null ? null : ['id' => $activity['id'], 'seconds' => $activity['seconds']],
         ];
     }
 }

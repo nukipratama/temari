@@ -9,8 +9,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title inertia>{{ config('app.name', 'Temari') }}</title>
 
-    {{-- Default social preview for the app (e.g. a shared /login link). The
-         public card page (public/kartu.blade.php) ships its own per-card tags. --}}
+    {{-- Default social preview for the app (e.g. a shared /login link). There is
+         no public per-card page, so these tags are the only ones the app ships. --}}
     <meta name="description" content="Temari, running alongside you every step. Turns your Strava runs into collectible cards and easygoing stories.">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Temari">
@@ -25,11 +25,48 @@
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="alternate icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
-    {{-- The app is light-mode only, so tell the UA and stop it rendering the
-         surfaces it owns (form controls, scrollbars) in dark appearance on a
-         device set to Dark Mode. This does NOT govern the iOS standalone
-         status bar — that was tried in #396 and did not move it. --}}
-    <meta name="color-scheme" content="light">
+
+    {{-- Two-ground theme persistence (F2). Blocking and inline, ahead of every
+         other resource in <head>, so `data-theme` is on <html> before the
+         stylesheet applies — a deferred/external script here would let the
+         light default paint for one frame before flipping to the resolved
+         ground, which is the flash decision 6's toggle explicitly must not
+         have. Resolution order: an explicit stored 'light'/'dark' wins; a
+         stored 'system' follows the OS; anything else (first visit, storage
+         unavailable, a stale value) falls back to 'dark' — decision 6's
+         default ground, not the OS preference. F4 wires the live
+         prefers-color-scheme listener for an open tab in 'system' mode and
+         S11 builds the Settings control; both read/write the same
+         'temari-theme' localStorage key this script reads.
+
+         Sets `style.colorScheme` directly rather than a <meta
+         name="color-scheme">: the meta tag can only ever hold one static
+         value, where this needs to vary per resolved theme. The bare
+         `html { color-scheme: dark }` rule in app.css is the fallback for
+         the (here, purely theoretical — this is an Inertia/React app with no
+         no-JS render path) case where this script cannot run at all. --}}
+    <script>
+        (function () {
+            var STORAGE_KEY = 'temari-theme';
+            var stored = null;
+            try {
+                stored = localStorage.getItem(STORAGE_KEY);
+            } catch (e) {
+                // Storage can throw in a locked-down/private context; fall
+                // through to the hardcoded default below.
+            }
+            var resolved;
+            if (stored === 'light' || stored === 'dark') {
+                resolved = stored;
+            } else if (stored === 'system') {
+                resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            } else {
+                resolved = 'dark';
+            }
+            document.documentElement.dataset.theme = resolved;
+            document.documentElement.style.colorScheme = resolved;
+        })();
+    </script>
 
     {{-- Android/Chrome uses this to tint its toolbar. iOS does not use it for
          the standalone status bar at all, which is why two rounds of retinting
@@ -89,7 +126,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.tsx'])
     @inertiaHead
 </head>
-<body class="bg-surface text-ink antialiased">
+<body class="bg-background text-foreground antialiased">
     @inertia
 </body>
 </html>

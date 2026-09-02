@@ -29,7 +29,7 @@ function renderTable(
             emptyState={<p>Kosong</p>}
             renderRow={(row) => (
                 <>
-                    <Td className="font-medium text-ink">{row.name}</Td>
+                    <Td className="font-medium text-foreground">{row.name}</Td>
                     <Td>{row.id}</Td>
                 </>
             )}

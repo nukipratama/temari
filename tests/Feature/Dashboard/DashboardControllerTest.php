@@ -34,7 +34,11 @@ it('renders for a user with no synced activities', function (): void {
             ->where('recentRuns', []));
 });
 
-it('includes the route polyline + stream summary on recent runs so the cards draw routes', function (): void {
+// The route hero, zone bar and weather/location chips all went with PP3's
+// featured-card cut and PS3's port to the prototype's mini last-run card, so
+// the select carries only what Today still draws. A regression here is a
+// per-request cost for nothing.
+it('selects only the recent-run columns Today still draws', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
@@ -45,20 +49,12 @@ it('includes the route polyline + stream summary on recent runs so the cards dra
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('recentRuns.0.summary_polyline', '_p~iF~ps|U_ulLnnqC_mqNvxq`@')
-            ->has('recentRuns.0.stream_summary'));
-});
-
-it('ships the persisted post-run mood per recent run for the featured card + last-run mascot', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create();
-    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'easy']);
-
-    $this->actingAs($user)->get('/')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where("recentMoods.{$activity->id}", 'easy'));
+            ->has('recentRuns.0.distance')
+            ->has('recentRuns.0.trimp_edwards')
+            ->missing('recentRuns.0.summary_polyline')
+            ->missing('recentRuns.0.stream_summary')
+            ->missing('recentRuns.0.location_name')
+            ->missing('recentRuns.0.weather_temp_c'));
 });
 
 it('renders KPIs + recent runs when the user has training-load history', function (): void {
@@ -156,8 +152,8 @@ it('reuses the same daily greeting on a second open within the day', function ()
 });
 
 /**
- * Every briefing trigger on this page (`SuggestionCard`, `KataTemariCompact`,
- * `FeaturedKartuPanel`) polls `router.reload({ only: ['briefing'] })` every
+ * Every briefing trigger on this page (`SuggestionCard`, `KataTemariCompact`)
+ * polls `router.reload({ only: ['briefing'] })` every
  * 3-15s while the analysis generates. Every prop used to be computed in the
  * method body, so each tick re-ran the eight-row recent-run fetch — polylines
  * and stream summaries included — plus the weekly-snapshot read, for props the
@@ -178,9 +174,8 @@ it('does not fetch recent runs or weekly snapshots on a briefing-only partial re
 
     $response = $this->actingAs($user)->get('/', $headers)->assertSuccessful();
 
-    // `summary_polyline` is unique to the recent-run select, which `recentRuns`,
-    // `lastRunNote` and `recentMoods` all share behind one memoized closure.
-    $recentRunFetches = array_filter($queries, fn (string $sql): bool => str_contains($sql, 'summary_polyline'));
+    // `trimp_edwards` is unique to the recent-run select.
+    $recentRunFetches = array_filter($queries, fn (string $sql): bool => str_contains($sql, 'trimp_edwards'));
     $snapshotReads = array_filter($queries, fn (string $sql): bool => str_contains($sql, '`weekly_snapshots`'));
 
     expect($recentRunFetches)->toBeEmpty()
@@ -189,7 +184,7 @@ it('does not fetch recent runs or weekly snapshots on a briefing-only partial re
     $response->assertJsonPath('component', 'Home');
     // The one prop the poll does name still has to resolve.
     $response->assertJsonPath('props.briefing.mood', fn (mixed $mood): bool => is_string($mood));
-    foreach (['load', 'snapshot', 'recentRuns', 'lastRunNote', 'recentMoods', 'weekPlan'] as $skipped) {
+    foreach (['load', 'snapshot', 'recentRuns', 'weekPlan'] as $skipped) {
         $response->assertJsonMissingPath("props.{$skipped}");
     }
 });
@@ -207,7 +202,6 @@ it('still returns every dashboard prop on a full page load', function (): void {
             ->has('briefing')
             ->has('snapshot')
             ->has('recentRuns', 1)
-            ->has('recentMoods')
             ->has('pastYouTrend')
             ->has('weekPlan'));
 });
@@ -236,8 +230,7 @@ it('ships a real weekPlan when the user has a plan for the current week', functi
             ->component('Home')
             ->where('weekPlan.days', fn (mixed $days): bool => count($days) === 7)
             ->has('weekPlan.sessions_per_week')
-            ->has('weekPlan.phase')
-            ->has('weekPlan.streak_days'));
+            ->has('weekPlan.phase'));
 
     Carbon::setTestNow();
 });

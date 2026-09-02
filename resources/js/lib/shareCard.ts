@@ -27,7 +27,7 @@ const HR_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const;
  * here (next to the canvas engine that consumes it) rather than in the modal
  * component, so the lib has no component dependency.
  */
-export interface ShareKartuData {
+export interface ShareCardData {
     id: number;
     name: string;
     /** Activity detail page URL used as the share fallback (copied/shared when native file sharing isn't available). */
@@ -67,11 +67,11 @@ export interface ShareKartuData {
 }
 
 export type Format = 'story' | 'feed';
-export type Layout = 'kartu' | 'rute' | 'stats';
+export type Layout = 'card' | 'route' | 'stats';
 export type ColorwayId = 'navy' | 'dawn' | 'ember';
 
 export interface ShareCardConfig {
-    kartu: ShareKartuData;
+    card: ShareCardData;
     layout: Layout;
     format: Format;
     /** Defaults to 'navy' — the original single look, so every existing
@@ -111,7 +111,7 @@ const C = {
 };
 
 // Every card gets the SAME bright border bloom regardless of rarity — unlike
-// the in-app Kartu's `.kartu-glow`, which only lights up rare+. The share
+// the in-app Card's `.card-glow`, which only lights up rare+. The share
 // image is a standalone poster with no surrounding hero glow to lean on, so
 // it needs its own consistent glow rather than a rarity-gated one.
 const BORDER_GLOW_BLUR = 60;
@@ -120,8 +120,7 @@ const BORDER_GLOW_BLUR = 60;
  * The mat the card sits on. `--color-cream-deep` is the app's own ground
  * (`AppShell`) and the fill of the share modal's own preview column, so the
  * exported image reads continuous with the app around it. Deliberately NOT
- * `--color-surface`: `useDawnShift` drifts that across five values by time of
- * day, and an exported image has no time of day.
+ * `--color-surface`, which is the page ground rather than the shell's own.
  */
 export const CARD_GROUND = C.creamDeep;
 
@@ -139,7 +138,7 @@ const CARD_SCALE = 0.9;
 const CARD_RADIUS = 44;
 
 /**
- * `--shadow-e4` out of app.css, the elevation the in-app Kartu mount carries,
+ * `--shadow-e4` out of app.css, the elevation the in-app Card mount carries,
  * as canvas draw calls. A CSS blur radius and a canvas `shadowBlur` both mean
  * a Gaussian of σ = radius/2, so the token's px carry over 1:1 and no radius
  * is eyeballed. Canvas draws one shadow per fill, so the two layers become two
@@ -318,7 +317,7 @@ function roundRectPathCorners(
 /**
  * The rounded card frame shared by every share template: a dark navy body
  * with a vivid rarity border and the same bright inward bloom on every rarity
- * (matches the in-app Kartu's `.kartu-glow`). Drawn edge-to-edge in
+ * (matches the in-app Card's `.card-glow`). Drawn edge-to-edge in
  * card-local coordinates — `drawShareCard` is what insets and shrinks the
  * card onto its mat. Also draws the thread-band accent (Slice 9c) hugging the
  * border's bottom-center, additive to the border above rather than a re-hue.
@@ -502,13 +501,15 @@ function ensureFonts(): Promise<void> {
     return fontsReady;
 }
 
-// Flat, canvas-safe port of TemariGlyph in components/BrandMark.tsx (no
-// gradients/highlights). Keep the core geometry in sync with that source.
-function temariSvg(tone: 'ink' | 'cream', bandHex: string = C.horizon): string {
-    const isInk = tone === 'ink';
-    const face = isInk ? C.ink : C.cream;
-    const features = isInk ? C.cream : C.ink;
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><defs><clipPath id="b"><circle cx="50" cy="52" r="42"/></clipPath></defs><path d="M 42 10 Q 50 4 58 10 Q 52 12 50 16 Q 48 12 42 10 Z" fill="${face}"/><circle cx="50" cy="52" r="42" fill="${face}"/><g clip-path="url(#b)"><rect x="8" y="34" width="84" height="13" fill="${bandHex}"/></g><circle cx="38" cy="62" r="4.5" fill="${features}"/><circle cx="62" cy="62" r="4.5" fill="${features}"/><path d="M 44 74 Q 50 79 56 74" fill="none" stroke="${features}" stroke-width="2.4" stroke-linecap="round"/></svg>`;
+// Canvas-safe port of TemariMark in components/TemariMark.tsx: two nested open
+// arcs, the outer one on the brand hue (or the card's mood, for the art-window
+// corner mark). Keep the geometry in sync with that source.
+export function brandMarkSvg(
+    tone: 'ink' | 'cream',
+    bandHex: string = C.horizon,
+): string {
+    const inner = tone === 'ink' ? C.ink : C.cream;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><g fill="none" stroke-width="11" stroke-linecap="round"><path stroke="${bandHex}" d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"/><path stroke="${inner}" d="M50 27 A23 23 0 1 1 30.09 61.5"/></g></svg>`;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -520,8 +521,8 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     });
 }
 
-// Few tone/band combinations exist and each glyph never changes; cache every
-// decoded image (keyed by tone + headband hex) so repeated repaints reuse it
+// Few tone/band combinations exist and each mark never changes; cache every
+// decoded image (keyed by tone + arc hex) so repeated repaints reuse it
 // instead of re-encoding and re-decoding the SVG.
 const temariCache: Record<string, HTMLImageElement> = {};
 
@@ -535,7 +536,7 @@ async function loadTemari(
     }
     try {
         const img = await loadImage(
-            `data:image/svg+xml;utf8,${encodeURIComponent(temariSvg(tone, bandHex))}`,
+            `data:image/svg+xml;utf8,${encodeURIComponent(brandMarkSvg(tone, bandHex))}`,
         );
         temariCache[key] = img;
         return img;
@@ -569,7 +570,7 @@ function drawRarityFlag(
     return h;
 }
 
-/** Brand lockup (Temari glyph + wordmark) right-aligned to `rightX`. */
+/** Brand lockup (Temari mark + wordmark) right-aligned to `rightX`. */
 function drawBrand(
     ctx: CanvasRenderingContext2D,
     rightX: number,
@@ -600,7 +601,7 @@ interface DrawCtx {
     cfg: ShareCardConfig;
     pal: Palette;
     temari: HTMLImageElement | null;
-    /** Temari glyph with its headband tinted to the card's mood. */
+    /** Temari mark with its outer arc tinted to the card's mood. */
     moodTemari: HTMLImageElement | null;
 }
 
@@ -608,8 +609,8 @@ interface DrawCtx {
 function drawDateFooter(d: DrawCtx): void {
     const { ctx, h, cfg, pal } = d;
     const parts = [
-        cfg.kartu.date?.replace('\n', ' · '),
-        cfg.kartu.weather,
+        cfg.card.date?.replace('\n', ' · '),
+        cfg.card.weather,
     ].filter((part): part is string => part != null && part !== '');
     if (parts.length === 0) {
         return;
@@ -623,8 +624,8 @@ function drawDateFooter(d: DrawCtx): void {
     ctx.letterSpacing = '0px';
 }
 
-/** Sections in the rute text block that share the even `gapBonus` distribution. */
-function ruteBlockSectionCount(k: ShareKartuData, story: boolean): number {
+/** Sections in the route text block that share the even `gapBonus` distribution. */
+function routeBlockSectionCount(k: ShareCardData, story: boolean): number {
     const cells = story ? heroStatCells(k) : heroStatCells(k).slice(0, 3);
     return (
         2 + // name + KM always render
@@ -634,9 +635,9 @@ function ruteBlockSectionCount(k: ShareKartuData, story: boolean): number {
 }
 
 /** Name in italic Fraunces, up to 2 lines. Returns the block's new bottom edge. */
-function ruteNameRow(
+function routeNameRow(
     ctx: CanvasRenderingContext2D,
-    k: ShareKartuData,
+    k: ShareCardData,
     pal: Palette,
     w: number,
     story: boolean,
@@ -660,9 +661,9 @@ function ruteNameRow(
 }
 
 /** KM hero + "KM" suffix + edition, left-aligned. Returns the row's bottom edge. */
-function ruteKmRow(
+function routeKmRow(
     ctx: CanvasRenderingContext2D,
-    k: ShareKartuData,
+    k: ShareCardData,
     pal: Palette,
     w: number,
     rarityCol: string,
@@ -699,9 +700,9 @@ function ruteKmRow(
 }
 
 /** Stat row (single row for feed, up to 2 for story). Returns the row's bottom edge. */
-function ruteStatGridRow(
+function routeStatGridRow(
     ctx: CanvasRenderingContext2D,
-    k: ShareKartuData,
+    k: ShareCardData,
     pal: Palette,
     w: number,
     story: boolean,
@@ -725,9 +726,9 @@ function ruteStatGridRow(
 }
 
 /** Badges row — story only, so the tall 9:16's lower third carries the run's tags. */
-function ruteBadgesRow(
+function routeBadgesRow(
     ctx: CanvasRenderingContext2D,
-    k: ShareKartuData,
+    k: ShareCardData,
     pal: Palette,
     w: number,
     story: boolean,
@@ -755,10 +756,10 @@ function ruteBadgesRow(
     return y + rows.length * pillH + (rows.length - 1) * gap;
 }
 
-/** Measures or draws the whole rute text block (name → KM → stats → badges). */
-function drawRuteBlock(
+/** Measures or draws the whole route text block (name → KM → stats → badges). */
+function drawRouteBlock(
     ctx: CanvasRenderingContext2D,
-    k: ShareKartuData,
+    k: ShareCardData,
     pal: Palette,
     w: number,
     rarityCol: string,
@@ -767,10 +768,10 @@ function drawRuteBlock(
     y: number,
     gapBonus: number,
 ): number {
-    y = ruteNameRow(ctx, k, pal, w, story, draw, y);
-    y = ruteKmRow(ctx, k, pal, w, rarityCol, story, draw, y, gapBonus);
-    y = ruteStatGridRow(ctx, k, pal, w, story, draw, y, gapBonus);
-    y = ruteBadgesRow(ctx, k, pal, w, story, draw, y, gapBonus);
+    y = routeNameRow(ctx, k, pal, w, story, draw, y);
+    y = routeKmRow(ctx, k, pal, w, rarityCol, story, draw, y, gapBonus);
+    y = routeStatGridRow(ctx, k, pal, w, story, draw, y, gapBonus);
+    y = routeBadgesRow(ctx, k, pal, w, story, draw, y, gapBonus);
     return y;
 }
 
@@ -780,9 +781,9 @@ function drawRuteBlock(
  *  block's sections — mirrors `drawHero`'s art-window/stat-block split so a
  *  sparse card (no badges, no edition) fills the canvas instead of leaving a
  *  dead gap at the bottom. */
-function drawRute(d: DrawCtx): void {
+function drawRouteHero(d: DrawCtx): void {
     const { ctx, w, h, cfg, pal, temari } = d;
-    const k = cfg.kartu;
+    const k = cfg.card;
     const story = cfg.format === 'story';
     const rarityCol = C.rarity[k.rarity] ?? C.line;
     paintGlow(ctx, w / 2, h * 0.38, w * 0.5);
@@ -795,7 +796,7 @@ function drawRute(d: DrawCtx): void {
     const availableH = h - topOffset - bottomReserve;
     const routeGap = story ? 84 : 56; // fixed gap between the map and the text block
 
-    const measuredBlockH = drawRuteBlock(
+    const measuredBlockH = drawRouteBlock(
         ctx,
         k,
         pal,
@@ -812,7 +813,7 @@ function drawRute(d: DrawCtx): void {
         availableH - routeGap - measuredBlockH,
     );
     const slack = Math.max(0, availableH - routeH - routeGap - measuredBlockH);
-    const gapBonus = slack / ruteBlockSectionCount(k, story);
+    const gapBonus = slack / routeBlockSectionCount(k, story);
 
     // The route is the hero: bolder and rarity-glowing so it lifts off the navy.
     const box = { x: PAD, y: topOffset, w: w - PAD * 2, h: routeH };
@@ -826,7 +827,7 @@ function drawRute(d: DrawCtx): void {
         k.distanceKm,
     );
 
-    drawRuteBlock(
+    drawRouteBlock(
         ctx,
         k,
         pal,
@@ -882,11 +883,11 @@ function drawHeroShimmer(
 /**
  * Floating pills over the bright art window, one per corner: rarity chip (top-L,
  * "★ ISTIMEWA" in the rarity hue) so the tier reads over the map, TRIMP power
- * (top-R), and the edition number (bottom-L). The mascot owns the bottom-R.
+ * (top-R), and the edition number (bottom-L). The brand mark owns the bottom-R.
  */
 function drawHeroArtBadges(
     ctx: CanvasRenderingContext2D,
-    k: ShareKartuData,
+    k: ShareCardData,
     box: { x: number; y: number; w: number; h: number },
     moodCol: string,
     rarityCol: string,
@@ -962,7 +963,7 @@ function drawHeroArtBadges(
 /** The bright art window: cream wash, route hero, corner brand mark, floating badges. */
 function drawHeroArtWindow(
     ctx: CanvasRenderingContext2D,
-    k: ShareKartuData,
+    k: ShareCardData,
     temari: HTMLImageElement | null,
     box: { x: number; y: number; w: number; h: number },
     rarityCol: string,
@@ -1035,9 +1036,8 @@ function drawHeroArtWindow(
     );
     drawHeroShimmer(ctx, box.x, box.y, box.w, box.h, k.rarity, rarityCol);
 
-    // Brand mark (Temari glyph + wordmark), tucked into the map's bottom-right
-    // corner instead of a big Temari mascot watermark — a quiet signature
-    // rather than a character floating over the route.
+    // Brand mark (Temari mark + wordmark), tucked into the map's bottom-right
+    // corner — a quiet signature rather than art floating over the route.
     const brandPad = 20;
     drawBrand(
         ctx,
@@ -1054,7 +1054,7 @@ function drawHeroArtWindow(
 }
 
 /**
- * The dark stat block, mirroring the live Kartu full tier: rarity ribbon, name,
+ * The dark stat block, mirroring the live Card full tier: rarity ribbon, name,
  * subtitle, KM hero, a labeled PACE · HR · CADENCE · DURATION · BEST grid, a Z1..Z5
  * HR-zone effort bar, badges, and (story) a flavor quote.
  *
@@ -1064,7 +1064,7 @@ function drawHeroArtWindow(
  */
 interface HeroBlock {
     ctx: CanvasRenderingContext2D;
-    k: ShareKartuData;
+    k: ShareCardData;
     box: { x: number; y: number; w: number; h: number };
     rarityCol: string;
     pal: Palette;
@@ -1087,7 +1087,7 @@ interface HeroBlock {
  * conditional on their own data). Getting this wrong under-counts and leaves
  * unfilled slack at the bottom for sparser cards instead of an even rhythm.
  */
-function heroBlockSectionCount(k: ShareKartuData, story: boolean): number {
+function heroBlockSectionCount(k: ShareCardData, story: boolean): number {
     const statCells = story ? heroStatCells(k) : heroStatCells(k).slice(0, 3);
     const hasContext =
         (k.location != null && k.location !== '') ||
@@ -1249,7 +1249,7 @@ function heroBadgeClusterRow(s: HeroBlock, y: number): number {
 function heroStatGridRow(s: HeroBlock, y: number): number {
     const { ctx, k, box, story, draw } = s;
     // Feed (1:1) keeps only one row (3 cells, same PACE/HR/CADENCE trio as
-    // drawRute) instead of the full 2-row grid: the square canvas has far
+    // drawRoute) instead of the full 2-row grid: the square canvas has far
     // less total height than story for the same width, so a second stat row
     // was squeezing the art window into a flattened ("gepeng") banner.
     const cells = story ? heroStatCells(k) : heroStatCells(k).slice(0, 3);
@@ -1306,7 +1306,7 @@ function drawBadgePill(
  */
 function drawBadgesRow(
     ctx: CanvasRenderingContext2D,
-    k: ShareKartuData,
+    k: ShareCardData,
     left: number,
     y: number,
     w: number,
@@ -1398,7 +1398,7 @@ function truncateToWidth(
  * bottom context strip.
  */
 function heroStatCells(
-    k: ShareKartuData,
+    k: ShareCardData,
 ): Array<{ label: string; value: string }> {
     const raw: Array<{ label: string; value: string | null }> = [
         { label: 'PACE', value: k.pace ? k.pace + '/km' : null },
@@ -1461,7 +1461,7 @@ function drawHeroStatGrid(
 /** Stacked Z1..Z5 effort bar with tiny labels, using the shared HR-zone hexes. */
 function drawZoneBar(
     ctx: CanvasRenderingContext2D,
-    zonePct: NonNullable<ShareKartuData['zonePct']>,
+    zonePct: NonNullable<ShareCardData['zonePct']>,
     left: number,
     y: number,
     w: number,
@@ -1492,14 +1492,14 @@ function drawZoneBar(
 
 /**
  * Dark-frame TCG hero: a dark navy card with a single vivid rarity border, a
- * bright art window up top (big mascot watermark + route hero + floating
+ * bright art window up top (route hero + corner brand mark + floating
  * rarity/TRIMP/edition pills), and a dark stat block below (centred name, KM
  * hero, badges, stat grid, zone bar, location/wind/date context strip).
- * Mirrors the React Kartu component.
+ * Mirrors the React Card component.
  */
 function drawHero(d: DrawCtx): void {
     const { ctx, w, h, cfg, pal, moodTemari } = d;
-    const k = cfg.kartu;
+    const k = cfg.card;
     const story = cfg.format === 'story';
     const rarityCol = C.rarity[k.rarity] ?? C.line;
     const moodCol = moodSigilColor(k.mood);
@@ -1511,7 +1511,7 @@ function drawHero(d: DrawCtx): void {
     const cy = 0;
     const framePad = 12 + 24;
 
-    // Single clean rarity border only — the live Kartu has no inner hairline or
+    // Single clean rarity border only — the live Card has no inner hairline or
     // corner pips, so neither does the share card.
 
     // Inner content frame.
@@ -1532,7 +1532,7 @@ function drawHero(d: DrawCtx): void {
         gapBonus,
     });
 
-    // Both formats: art window on top (route hero + mascot), stat block below.
+    // Both formats: art window on top (route hero + brand mark), stat block below.
     // Measure the block's natural height, cap the map height (maxArtFrac) so it
     // doesn't dominate, then spread any leftover space EVENLY across every section
     // (gapBonus) so the block fills the card with a consistent rhythm instead of
@@ -1569,7 +1569,7 @@ function drawHero(d: DrawCtx): void {
  */
 function drawStats(d: DrawCtx): void {
     const { ctx, w, h, cfg, pal, temari } = d;
-    const k = cfg.kartu;
+    const k = cfg.card;
     const story = cfg.format === 'story';
     const rarityCol = C.rarity[k.rarity] ?? C.line;
 
@@ -1643,8 +1643,8 @@ function drawStats(d: DrawCtx): void {
 }
 
 const TEMPLATES: Record<Layout, (d: DrawCtx) => void> = {
-    kartu: drawHero,
-    rute: drawRute,
+    card: drawHero,
+    route: drawRouteHero,
     stats: drawStats,
 };
 
@@ -1667,7 +1667,7 @@ export async function drawShareCard(
     await ensureFonts();
     const pal = COLORWAYS[cfg.colorway ?? 'navy'];
     const temari = await loadTemari(pal.isDark ? 'cream' : 'ink');
-    const moodTemari = await loadTemari('ink', moodSigilColor(cfg.kartu.mood));
+    const moodTemari = await loadTemari('ink', moodSigilColor(cfg.card.mood));
 
     ctx.clearRect(0, 0, w, h);
     paintBackground(ctx, w, h);

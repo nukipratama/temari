@@ -5,10 +5,10 @@ import SectionHeading from './SectionHeading';
 
 describe('SectionHeading', () => {
     it('renders the title in an h2', () => {
-        render(<SectionHeading title="Kata Temari" />);
+        render(<SectionHeading title="Temari note" />);
         const h2 = screen.getByRole('heading', {
             level: 2,
-            name: 'Kata Temari',
+            name: 'Temari note',
         });
         expect(h2).toBeInTheDocument();
     });

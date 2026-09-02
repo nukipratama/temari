@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace App\Services\AI\RuleBased;
 
 use App\Enums\Badge;
+use App\Enums\SessionType;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\PlanAdaptation;
+use App\Models\PlannedSession;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\DecimalFormatter;
@@ -38,15 +42,17 @@ final readonly class RuleBasedNarrationFiller
 
         return match ($row->analysis_type) {
             AnalysisType::BriefingMascotVoice => $this->briefingMascotVoice($seed),
-            AnalysisType::BriefingFeaturedKartuVoice => $this->briefingFeaturedKartuVoice($seed),
             AnalysisType::PostRunSpeech => $this->postRunSpeech($seed),
             AnalysisType::RunInsight => $this->runInsight($seed),
             AnalysisType::WeeklyRecap => $this->weeklyRecap($seed),
             AnalysisType::PrContext => $this->prContext($seed),
             AnalysisType::CardFlavor => $this->cardFlavor($seed),
-            AnalysisType::AkuProfileVoice => $this->akuProfileVoice($seed),
+            AnalysisType::ProfileVoice => $this->profileVoice($seed),
             AnalysisType::MonthlyRecap => $this->monthlyRecap($seed),
             AnalysisType::TrendRead => $this->trendRead($seed),
+            AnalysisType::PlanDayVoice => $this->planDayVoice($row),
+            AnalysisType::PlanWeekVoice => $this->planWeekVoice($row),
+            AnalysisType::PlanSeasonVoice => $this->planSeasonVoice($row),
         };
     }
 
@@ -76,18 +82,6 @@ final readonly class RuleBasedNarrationFiller
             "Rest today.\n\nyou've run every day of this stretch and the load is stacked higher than anything you've been carrying. no run from me today. light mobility, or a 20-minute walk if you want the legs moving.\n\nWhat to watch: still heavy tomorrow, take another one. A zero today is what keeps the rest of the week.",
             "Easy run, 25-30 minutes.\n\nfirst one back after a few days off, so this one is short on purpose. slow, effort by feel, don't look at the pace at all.\n\nWhat to watch: the classic move after time off is picking up exactly where you left off. If the breathing gets heavy before minute 15, ease off or walk a bit.",
             "Base run, 5-7 km.\n\nYou've hit every session you meant to this week and nothing in the numbers says back off, so today just holds the rhythm that's already working. your average pace, one steady block, no gear changes.\n\nWhat to watch: a run like this turns into a tempo halfway through if you let it. Save the push for a day it's actually on the plan.",
-        ], $seed);
-    }
-
-    private function briefingFeaturedKartuVoice(int $seed): string
-    {
-        return $this->select([
-            'One card out of this week reads different from the rest. It earned the slot.',
-            "This one came out of a session you actually went after. It's in the collection now.",
-            "Everything else this week was routine. This card wasn't.",
-            'Of every run you logged this week, this is the one worth a second look.',
-            "This card holds a session you'd have forgotten by Friday. Now you won't.",
-            'One run stood out this week, and the card is the receipt.',
         ], $seed);
     }
 
@@ -340,7 +334,7 @@ final readonly class RuleBasedNarrationFiller
         return $pool[abs($seed) % count($pool)];
     }
 
-    private function akuProfileVoice(int $seed): string
+    private function profileVoice(int $seed): string
     {
         return $this->select([
             "You lean **chill** far more than pushed, and the log backs it up: regular, unhurried, never a big jump. That's a base built the slow way. The open question is when you decide to spend it.",
@@ -358,6 +352,79 @@ final readonly class RuleBasedNarrationFiller
      * a blank line) so the frontend never has to special-case which pipeline
      * produced a given block before splitting it.
      */
+    private function planDayVoice(Analysis $row): string
+    {
+        $session = PlannedSession::query()
+            ->where('user_id', $row->subject_id)
+            ->where('date', $row->discriminator)
+            ->first();
+
+        if ($session === null) {
+            return "today's plan.";
+        }
+
+        if ($session->skipped) {
+            return $this->select([
+                'skipped. next one is still on the schedule.',
+                'excused for today. picks back up next session.',
+            ], $this->seedFor($row));
+        }
+
+        return match ($session->session_type) {
+            SessionType::Rest => $this->select(['rest. 🛌', 'a day off. nothing to log.'], $this->seedFor($row)),
+            SessionType::Long => $this->select([
+                "long run today. this is the one the week's built around.",
+                'the long one. settle in.',
+            ], $this->seedFor($row)),
+            SessionType::Tempo => $this->select(['tempo work today.', 'a tempo day on the calendar.'], $this->seedFor($row)),
+            SessionType::Interval => $this->select(['interval work today.', 'reps on the schedule.'], $this->seedFor($row)),
+            SessionType::Easy => $this->select(['easy day. nothing to prove, just log the miles.', 'an easy one today.'], $this->seedFor($row)),
+        };
+    }
+
+    private function planWeekVoice(Analysis $row): string
+    {
+        $adaptation = PlanAdaptation::query()->find($row->subject_id);
+        if ($adaptation === null) {
+            return 'a fresh week on the plan.';
+        }
+
+        if ($adaptation->deload) {
+            return $this->select([
+                'lighter week. the last stretch ran hot, this one lets it cool.',
+                'a deload week. the legs get a break before the next push.',
+            ], $this->seedFor($row));
+        }
+
+        return $this->select([
+            'steady week ahead, same shape as last.',
+            'business as usual this week.',
+        ], $this->seedFor($row));
+    }
+
+    private function planSeasonVoice(Analysis $row): string
+    {
+        $season = Season::query()->find($row->subject_id);
+        if ($season === null) {
+            return 'a new training arc, just getting started.';
+        }
+
+        $race = $season->raceGoal;
+        if ($race !== null) {
+            $raceName = $race->name ?? 'the race';
+
+            return $this->select([
+                "building toward {$raceName}.",
+                "the arc that gets you to {$raceName}.",
+            ], $this->seedFor($row));
+        }
+
+        return $this->select([
+            "no race on the books right now, so this one's about building a base.",
+            'a self-scaled block, building fitness with no countdown attached.',
+        ], $this->seedFor($row));
+    }
+
     private function trendRead(int $seed): string
     {
         return $this->select([

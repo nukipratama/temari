@@ -1,6 +1,6 @@
-import { Icon } from '@iconify/react';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
+import { Icon } from '@/components/ui/Icon';
 import { reportClientError } from '@/lib/clientErrorReporter';
 
 interface Props {
@@ -38,17 +38,17 @@ export default class ErrorBoundary extends Component<Props, State> {
         }
 
         return (
-            <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-surface px-6 text-center">
+            <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
                 <Icon
                     icon="mdi:emoticon-sad-outline"
                     className="text-5xl text-horizon-ink"
                     aria-hidden
                 />
                 <div className="flex flex-col gap-1">
-                    <h1 className="text-lg font-semibold text-ink">
+                    <h1 className="text-lg font-semibold text-foreground">
                         Oops, something broke.
                     </h1>
-                    <p className="text-sm text-ink-2">
+                    <p className="text-sm text-text-2">
                         This page is being cranky. Try reloading it.
                     </p>
                 </div>

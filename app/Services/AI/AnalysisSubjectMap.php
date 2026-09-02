@@ -7,7 +7,9 @@ namespace App\Services\AI;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
+use App\Models\PlanAdaptation;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\WeeklySnapshot;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -38,6 +40,8 @@ final class AnalysisSubjectMap
                 'run_cards.id',
                 'activities.user_id',
             ],
+            PlanAdaptation::class => [PlanAdaptation::query(), 'id', 'user_id'],
+            Season::class => [Season::query(), 'id', 'user_id'],
         ];
     }
 

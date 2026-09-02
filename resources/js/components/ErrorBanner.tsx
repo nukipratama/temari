@@ -1,8 +1,9 @@
-import { Icon } from '@iconify/react';
 import { usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
+
+import { Icon } from '@/components/ui/Icon';
 
 /**
  * Surfaces Inertia's shared error bag (Strava-connect denial, demo misconfig,
@@ -29,10 +30,10 @@ export default function ErrorBanner() {
     }
 
     return (
-        <div className="px-4 pt-4 lg:px-8">
+        <div className="px-4 pt-4 min-[900px]:px-6">
             <div
                 role="alert"
-                className="mx-auto flex max-w-page-2xl items-start gap-3 rounded-lg border border-ember/30 bg-ember/[0.08] px-4 py-3"
+                className="mx-auto flex max-w-column min-[1280px]:max-w-column-wide items-start gap-3 rounded-lg border border-ember/30 bg-ember/[0.08] px-4 py-3"
             >
                 <Icon
                     icon="mdi:alert-circle-outline"
@@ -41,14 +42,14 @@ export default function ErrorBanner() {
                     className="mt-0.5 shrink-0 text-ember-ink"
                     aria-hidden
                 />
-                <p className="flex-1 font-sans text-sm leading-relaxed text-ink">
+                <p className="flex-1 font-sans text-sm leading-relaxed text-foreground">
                     {message}
                 </p>
                 <button
                     type="button"
                     onClick={() => setDismissed(true)}
                     aria-label="Close"
-                    className="focus-ring -m-1 rounded p-1 text-ink-3 transition hover:text-ink"
+                    className="focus-ring -m-1 rounded p-1 text-text-3 transition hover:text-foreground"
                 >
                     <Icon icon="mdi:close" width={16} height={16} />
                 </button>

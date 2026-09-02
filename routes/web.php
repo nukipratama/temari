@@ -3,11 +3,8 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\AccountController;
-use App\Http\Controllers\AccessoryController;
 use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Controllers\Api\RunQuestionController;
-use App\Http\Controllers\Api\CardReplayController;
-use App\Http\Controllers\Api\CardSeenController;
 use App\Http\Controllers\Api\NotificationReadController;
 use App\Http\Controllers\Auth\DemoAuthController;
 use App\Http\Controllers\Auth\LoginController;
@@ -28,16 +25,15 @@ use App\Http\Controllers\RootController;
 use App\Http\Controllers\RunController;
 use App\Http\Controllers\RunnerZonesController;
 use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\Strava\ResyncActivityController;
 use App\Http\Controllers\Strava\StravaWebhookController;
 use App\Http\Controllers\Strava\SyncController;
-use App\Http\Controllers\Notifications\SendActivityNotificationController;
 use App\Http\Controllers\Notifications\SendMonthlyRecapNotificationController;
 use App\Http\Controllers\Notifications\SendWeeklyRecapNotificationController;
 use App\Http\Controllers\Telegram\TelegramConnectionController;
 use App\Http\Controllers\Telegram\TelegramWebhookController;
 use App\Http\Controllers\WebPush\PushSubscriptionController;
 use App\Http\Controllers\TokenUsageController;
+use App\Http\Controllers\TrainingPreferencesController;
 use App\Http\Controllers\TrendsController;
 use Illuminate\Support\Facades\Route;
 
@@ -118,22 +114,12 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::get('/activities/{activity}', [RunController::class, 'show'])
         ->middleware('inertia-etag')
         ->name('activities.show');
-    Route::post('/activities/{activity}/resync', ResyncActivityController::class)
-        ->middleware('throttle:strava-sync')
-        ->name('activities.resync');
-    Route::post('/activities/{activity}/send', SendActivityNotificationController::class)
-        ->middleware('block-demo-telegram')
-        ->name('activities.send');
-
     Route::post('/recaps/weekly/{snapshot}/send', SendWeeklyRecapNotificationController::class)
         ->middleware('block-demo-telegram')
         ->name('recaps.weekly.send');
     Route::post('/recaps/monthly/{month}/send', SendMonthlyRecapNotificationController::class)
         ->middleware('block-demo-telegram')
         ->name('recaps.monthly.send');
-
-    // Catatan merged into Activities — keep deep links working.
-    Route::permanentRedirect('/catatan', '/activities');
 
     Route::get('/trends', TrendsController::class)->name('trends');
 
@@ -143,11 +129,6 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::get('/plan', [PlanController::class, 'index'])->name('plan');
     Route::post('/plan/regenerate', [PlanController::class, 'regenerate'])->name('plan.regenerate');
     Route::patch('/plan/sessions/{plannedSession}', [PlanController::class, 'update'])->name('plan.sessions.update');
-    Route::delete('/plan/sessions/{plannedSession}', [PlanController::class, 'destroy'])->name('plan.sessions.destroy');
-    Route::get('/accessories', [AccessoryController::class, 'index'])->name('accessories');
-    Route::post('/api/accessories/equip', [AccessoryController::class, 'equip'])
-        ->name('api.accessories.equip');
-
     Route::get('/inbox', InboxController::class)->name('inbox');
 
     Route::get('/profile', ProfileController::class)->name('profile');
@@ -174,31 +155,11 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::patch('/settings/zones', [RunnerZonesController::class, 'update'])->name('settings.zones.update');
     Route::delete('/settings/zones', [RunnerZonesController::class, 'resetToDefault'])->name('settings.zones.reset');
     Route::post('/settings/zones/resync-strava', [RunnerZonesController::class, 'resyncFromStrava'])->name('settings.zones.resync');
+    Route::patch('/settings/training-preferences', [TrainingPreferencesController::class, 'update'])->name('settings.training-preferences.update');
 
     Route::post('/strava/sync', SyncController::class)
         ->middleware('throttle:strava-sync')
         ->name('strava.sync');
-
-    // Legacy 301 redirects — keep deep links working from external bookmarks.
-    Route::permanentRedirect('/runs', '/activities');
-    Route::redirect('/runs/{activity}', '/activities/{activity}', 301);
-    Route::permanentRedirect('/progress', '/activities');
-    Route::permanentRedirect('/pengaturan', '/settings');
-    Route::permanentRedirect('/profil', '/profile');
-    Route::permanentRedirect('/kalender', '/calendar');
-    Route::permanentRedirect('/rekor', '/trends');
-    Route::permanentRedirect('/aksesori', '/accessories');
-    Route::permanentRedirect('/akun', '/account');
-    // /goals (the old accessory-progress catalog page) retired in favor of
-    // live progress on /accessories — collapse the old /target -> /goals hop
-    // to go straight there, and keep /goals itself resolving for bookmarks.
-    Route::permanentRedirect('/target', '/accessories');
-    Route::permanentRedirect('/goals', '/accessories');
-
-    Route::post('/api/cards/{card}/seen', CardSeenController::class)
-        ->name('api.cards.seen');
-    Route::post('/api/cards/{card}/replay', CardReplayController::class)
-        ->name('api.cards.replay');
 
     Route::post('/api/notifications/{notification}/read', NotificationReadController::class)
         ->whereNumber('notification')
@@ -224,7 +185,7 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 
 // Gated by HTTP Basic Auth against a shared devtools password, independent of
 // any Strava session — see EnsureDevtoolsAccess. Throttled like the other
-// public POSTs (60/min/IP) so a wrong password can't be brute-forced at
+// public POSTs (60/min/IP) so a wrong password can't be broute-forced at
 // line speed; generous enough to not trip Pulse's live-polling requests.
 Route::middleware(['throttle:60,1', 'devtools'])->group(function (): void {
     Route::get('/devtools', DevtoolsIndexController::class)->name('devtools.index');

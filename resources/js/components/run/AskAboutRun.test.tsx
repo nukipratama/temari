@@ -84,10 +84,10 @@ describe('AskAboutRun', () => {
         await waitFor(() => expect(fetchMock).toHaveBeenCalled());
 
         const input = screen.getByPlaceholderText(
-            'Ask anything about this run',
+            'ask anything about this run',
         );
         fireEvent.change(input, { target: { value: 'was it the heat?' } });
-        fireEvent.click(screen.getByRole('button', { name: /Ask/ }));
+        fireEvent.click(screen.getByRole('button', { name: /ask/ }));
 
         await waitFor(() => expect(input).toHaveValue(''));
         const post = fetchMock.mock.calls.find(
@@ -120,16 +120,16 @@ describe('AskAboutRun', () => {
         stubApi({ questions: [], suggestions: [] });
 
         render(<AskAboutRun activityId={9} />);
-        const button = await screen.findByRole('button', { name: /Ask/ });
+        const button = await screen.findByRole('button', { name: /ask/ });
 
         expect(button).toBeDisabled();
         fireEvent.change(
-            screen.getByPlaceholderText('Ask anything about this run'),
+            screen.getByPlaceholderText('ask anything about this run'),
             { target: { value: 'hi' } },
         );
         expect(button).toBeDisabled();
         fireEvent.change(
-            screen.getByPlaceholderText('Ask anything about this run'),
+            screen.getByPlaceholderText('ask anything about this run'),
             { target: { value: 'was it the heat?' } },
         );
         expect(button).toBeEnabled();
@@ -143,13 +143,13 @@ describe('AskAboutRun', () => {
 
         render(<AskAboutRun activityId={9} />);
         fireEvent.change(
-            await screen.findByPlaceholderText('Ask anything about this run'),
+            await screen.findByPlaceholderText('ask anything about this run'),
             { target: { value: 'was it the heat?' } },
         );
-        fireEvent.click(screen.getByRole('button', { name: /Ask/ }));
+        fireEvent.click(screen.getByRole('button', { name: /ask/ }));
 
         expect(
-            await screen.findByText(/asking faster than I can think/),
+            await screen.findByText(/asking faster than i can think/),
         ).toBeInTheDocument();
     });
 
@@ -161,13 +161,13 @@ describe('AskAboutRun', () => {
 
         render(<AskAboutRun activityId={9} />);
         fireEvent.change(
-            await screen.findByPlaceholderText('Ask anything about this run'),
+            await screen.findByPlaceholderText('ask anything about this run'),
             { target: { value: 'was it the heat?' } },
         );
-        fireEvent.click(screen.getByRole('button', { name: /Ask/ }));
+        fireEvent.click(screen.getByRole('button', { name: /ask/ }));
 
         expect(
-            await screen.findByText(/Generation is paused/),
+            await screen.findByText(/generation is paused/),
         ).toBeInTheDocument();
     });
 
@@ -180,7 +180,7 @@ describe('AskAboutRun', () => {
         render(<AskAboutRun activityId={9} />);
 
         expect(
-            await screen.findByText('Thinking about it.'),
+            await screen.findByText('thinking about it.'),
         ).toBeInTheDocument();
     });
 
@@ -209,11 +209,11 @@ describe('AskAboutRun', () => {
 
         render(<AskAboutRun activityId={9} />);
         fireEvent.click(
-            await screen.findByRole('button', { name: 'Ask it again' }),
+            await screen.findByRole('button', { name: 'ask it again' }),
         );
 
         expect(
-            screen.getByPlaceholderText('Ask anything about this run'),
+            screen.getByPlaceholderText('ask anything about this run'),
         ).toHaveValue('why did my heart rate drift up?');
     });
 
@@ -231,7 +231,7 @@ describe('AskAboutRun', () => {
         stubApi({ questions: [], suggestions: [] });
 
         render(<AskAboutRun activityId={9} />);
-        await screen.findByPlaceholderText('Ask anything about this run');
+        await screen.findByPlaceholderText('ask anything about this run');
 
         expect(
             screen.queryByText(/zones or terrain yet/),
@@ -247,7 +247,7 @@ describe('AskAboutRun', () => {
         render(<AskAboutRun activityId={9} />);
 
         expect(
-            await screen.findByPlaceholderText('Ask anything about this run'),
+            await screen.findByPlaceholderText('ask anything about this run'),
         ).toBeInTheDocument();
     });
 });

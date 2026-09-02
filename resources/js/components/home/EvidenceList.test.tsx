@@ -49,7 +49,6 @@ function trend(comparisons: PastYouComparison[]): PastYouTrend {
         fitness_delta_ctl: null,
         pace_consistency_now: null,
         pace_consistency_then: null,
-        relative_effort_band: null,
     };
 }
 
@@ -65,7 +64,7 @@ describe('EvidenceList', () => {
     it('names what made the pair comparable', () => {
         render(<EvidenceList trend={trend([pair(2, 12, -6, 'better')])} />);
 
-        expect(screen.getByText('8.2 km · pace vs Mar 14')).toBeInTheDocument();
+        expect(screen.getByText('8.2 km · pace vs mar 14')).toBeInTheDocument();
     });
 
     it('links each row to the run it was measured on', () => {
@@ -109,7 +108,7 @@ describe('EvidenceList', () => {
 
         expect(
             screen.getByRole('link', {
-                name: '8.2 km · pace vs Mar 14, 7:12 to 7:00, -12 s/km',
+                name: '8.2 km · pace vs mar 14, 7:12 to 7:00, -12 s/km',
             }),
         ).toBeInTheDocument();
     });

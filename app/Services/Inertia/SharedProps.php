@@ -53,7 +53,6 @@ final readonly class SharedProps
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
                 'info' => fn () => $request->session()->get('info'),
-                'unlock' => fn () => $request->session()->get('unlock'),
             ],
             'demoLoginEnabled' => (bool) config('demo.login_enabled'),
             // Public VAPID key only — the client needs it to subscribe; the private

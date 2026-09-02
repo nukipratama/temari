@@ -1,11 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import InlineNote, {
-    RangeWidenedNote,
-    RunsTruncatedNote,
-    WeekFocusNote,
-} from './InlineNote';
+import InlineNote, { RangeWidenedNote, WeekFocusNote } from './InlineNote';
 
 describe('InlineNote', () => {
     it('renders the icon and the sentence', () => {
@@ -39,29 +35,19 @@ describe('InlineNote', () => {
     });
 });
 
-describe('RunsTruncatedNote', () => {
-    it('names the per-page cap that dropped the older runs', () => {
-        render(<RunsTruncatedNote maxRuns={365} />);
-
-        expect(
-            screen.getByText(/Showing the 365 most recent runs/),
-        ).toBeInTheDocument();
-    });
-});
-
 describe('RangeWidenedNote', () => {
     it('names the range the server widened to', () => {
         render(<RangeWidenedNote rangeFilter="1y" />);
 
         expect(
-            screen.getByText(/Range automatically widened to Full year/),
+            screen.getByText(/Range automatically widened to full year/),
         ).toBeInTheDocument();
     });
 
     it('names no range at all when widened to the full history', () => {
         render(<RangeWidenedNote rangeFilter="all" />);
 
-        expect(screen.getByText(/Showing all your runs/)).toBeInTheDocument();
+        expect(screen.getByText(/showing all your runs/)).toBeInTheDocument();
     });
 });
 
@@ -73,7 +59,7 @@ describe('WeekFocusNote', () => {
 
         expect(
             screen.getByText(
-                /Viewing the week of Monday, May 11 - Sunday, May 17/,
+                /Viewing the week of monday, may 11 - sunday, may 17/,
             ),
         ).toBeInTheDocument();
         expect(

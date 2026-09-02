@@ -15,7 +15,6 @@ use App\Models\UserUnlock;
 use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Session;
 
 uses(RefreshDatabase::class);
 
@@ -121,34 +120,10 @@ it('grants aura_windrunner after three headwind badge cards', function (): void 
         ->toContain('accessory.aura_windrunner');
 });
 
-it('flashes a toast payload to the session when a session is active', function (): void {
-    Session::start();
-    config()->set('temari_unlocks', [
-        'accessory.medal_first' => ['name' => 'Medali Custom', 'icon' => 'mdi:trophy', 'slot' => 'medal', 'rarity' => 'common'],
-    ]);
-
-    $user = User::factory()->create();
-    PersonalRecord::factory()->for($user)->create();
-
-    ($this->engine)($user);
-
-    $flashed = Session::get('unlock');
-    expect($flashed)->toBeArray()
-        ->and($flashed['unlock_key'])->toBe('accessory.medal_first')
-        ->and($flashed['name'])->toBe('Medali Custom')
-        ->and($flashed['icon'])->toBe('mdi:trophy');
-});
-
-it('skips the flash when the unlock has no config entry', function (): void {
-    Session::start();
+it('returns no celebration for a key with no config entry', function (): void {
     config()->set('temari_unlocks', []);
 
-    $user = User::factory()->create();
-    PersonalRecord::factory()->for($user)->create();
-
-    ($this->engine)($user);
-
-    expect(Session::get('unlock'))->toBeNull();
+    expect($this->engine->celebration('accessory.medal_first'))->toBeNull();
 });
 
 it('grants a key added purely via config, with no hardcoded PHP for it', function (): void {
@@ -194,17 +169,11 @@ it('does not grant a config-only key below its target', function (): void {
 });
 
 it('falls back to the key + default icon when the config entry omits name and icon', function (): void {
-    Session::start();
     config()->set('temari_unlocks', [
         'accessory.medal_first' => ['description' => 'x', 'slot' => 'medal', 'rarity' => 'common'],
     ]);
 
-    $user = User::factory()->create();
-    PersonalRecord::factory()->for($user)->create();
-
-    ($this->engine)($user);
-
-    expect(Session::get('unlock'))->toBe([
+    expect($this->engine->celebration('accessory.medal_first'))->toBe([
         'unlock_key' => 'accessory.medal_first',
         'name' => 'accessory.medal_first',
         'icon' => 'mdi:medal',

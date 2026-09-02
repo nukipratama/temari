@@ -10,7 +10,9 @@ describe('SendNotificationButton', () => {
     it('posts to the given url when clicked', () => {
         vi.mocked(router.post).mockReset();
         render(<SendNotificationButton url="/activities/99/send" />);
-        fireEvent.click(screen.getByText('Send notification'));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'send notification' }),
+        );
         expect(router.post).toHaveBeenCalledWith(
             '/activities/99/send',
             {},
@@ -22,7 +24,9 @@ describe('SendNotificationButton', () => {
         setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
         vi.mocked(router.post).mockReset();
         render(<SendNotificationButton url="/activities/99/send" />);
-        fireEvent.click(screen.getByText('Send notification'));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'send notification' }),
+        );
         expect(router.post).not.toHaveBeenCalledWith(
             '/activities/99/send',
             expect.anything(),
@@ -36,7 +40,9 @@ describe('SendNotificationButton', () => {
     it('closes the demo-blocked modal when its Close button is pressed', async () => {
         setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
         render(<SendNotificationButton url="/activities/99/send" />);
-        fireEvent.click(screen.getByText('Send notification'));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'send notification' }),
+        );
         fireEvent.click(screen.getByLabelText('Close'));
         await waitFor(() =>
             expect(
@@ -54,7 +60,11 @@ describe('SendNotificationButton', () => {
                 reachable={false}
             />,
         );
-        fireEvent.click(screen.getByText('Send notification'));
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'turn on notifications to send',
+            }),
+        );
         expect(router.post).not.toHaveBeenCalled();
         expect(
             screen.getByText('Turn on notifications first'),
@@ -69,7 +79,11 @@ describe('SendNotificationButton', () => {
                 reachable={false}
             />,
         );
-        fireEvent.click(screen.getByText('Send notification'));
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'turn on notifications to send',
+            }),
+        );
         fireEvent.click(screen.getByLabelText('Close'));
         await waitFor(() =>
             expect(
@@ -86,7 +100,11 @@ describe('SendNotificationButton', () => {
                 reachable={false}
             />,
         );
-        fireEvent.click(screen.getByText('Send notification'));
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'turn on notifications to send',
+            }),
+        );
         expect(
             screen.getByText('Turn on notifications first'),
         ).toBeInTheDocument();
@@ -95,15 +113,17 @@ describe('SendNotificationButton', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('disables the button and shows a spinner label while sending', () => {
+    it('disables the button and marks it sending while in flight', () => {
         vi.mocked(router.post).mockImplementation((_url, _data, options) => {
             options?.onStart?.({} as never);
         });
         render(<SendNotificationButton url="/activities/99/send" />);
-        const button = screen.getByText('Send notification').closest('button')!;
+        const button = screen.getByRole('button', {
+            name: 'send notification',
+        });
         fireEvent.click(button);
         expect(button).toBeDisabled();
-        expect(button).toHaveTextContent('Sending…');
+        expect(button).toHaveAttribute('title', 'sending…');
     });
 
     it('disables the button and shows a countdown while on cooldown', () => {
@@ -118,8 +138,7 @@ describe('SendNotificationButton', () => {
             /wait.*before sending a notification/i,
         );
         expect(button).toBeDisabled();
-        expect(button).toHaveTextContent('2:05');
-        expect(button).not.toHaveTextContent('Send notification');
+        expect(button).toHaveAttribute('title', 'next in 2:05');
     });
 
     it('stays clickable when no cooldown is active', () => {
@@ -131,7 +150,7 @@ describe('SendNotificationButton', () => {
             />,
         );
         expect(
-            screen.getByRole('button', { name: 'Send notification' }),
+            screen.getByRole('button', { name: 'send notification' }),
         ).not.toBeDisabled();
     });
 });

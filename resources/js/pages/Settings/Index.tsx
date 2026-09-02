@@ -1,21 +1,23 @@
-import { Icon } from '@iconify/react';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
-import MeTabs from '@/components/me/MeTabs';
 import PushNotificationToggle from '@/components/PushNotificationToggle';
+import AppearanceCard from '@/components/settings/AppearanceCard';
 import HrZonesDisclosure, {
     type HrZonesPayload,
 } from '@/components/settings/HrZonesDisclosure';
+import TrainingPreferencesCard, {
+    type TrainingPreferencesPayload,
+} from '@/components/settings/TrainingPreferencesCard';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
-import Card from '@/components/ui/Card';
+import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import SettingsRow from '@/components/ui/SettingsRow';
-import Toggle from '@/components/ui/Toggle';
+import Toggle from '@/components/ui/Switch';
 import {
     cooldownAriaLabel,
     useCooldownCountdown,
@@ -23,7 +25,9 @@ import {
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { usePendingPost } from '@/hooks/usePendingPost';
 import { appLayout } from '@/layouts/appLayout';
+import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
+import { cardVariants } from '@/lib/variants';
 
 import {
     useNotificationPrefs,
@@ -51,38 +55,14 @@ interface SettingsProps {
     /** Seconds left on the test-send cooldown, or null when it is not cooling. */
     testCooldownSeconds?: number | null;
     hrZones?: HrZonesPayload;
+    trainingPreferences?: TrainingPreferencesPayload;
 }
 
-const LEGAL_ROWS: ReadonlyArray<{
-    href: string;
-    icon: string;
-    label: string;
-    description: string;
-}> = [
-    {
-        href: '/terms',
-        icon: 'mdi:file-document-outline',
-        label: 'Terms of use',
-        description: 'What Temari is, what it costs, and what it promises.',
-    },
-    {
-        href: '/privacy',
-        icon: 'mdi:lock-outline',
-        label: 'Privacy policy',
-        description: 'What is stored, who else sees it, what deletion removes.',
-    },
-    {
-        href: '/ai-use',
-        icon: 'mdi:robot-outline',
-        label: 'How Temari uses AI',
-        description: 'What is sent to the model, and what it never does.',
-    },
-    {
-        href: '/training-disclaimer',
-        icon: 'mdi:heart-pulse',
-        label: 'Training disclaimer',
-        description: 'Why the plan is specific, and when to ignore it.',
-    },
+const LEGAL_ROWS: ReadonlyArray<{ href: string; label: string }> = [
+    { href: '/terms', label: 'terms of use' },
+    { href: '/privacy', label: 'privacy policy' },
+    { href: '/ai-use', label: 'how temari uses AI' },
+    { href: '/training-disclaimer', label: 'training disclaimer' },
 ];
 
 const TELEGRAM_DEFAULT: TelegramPayload = {
@@ -117,48 +97,67 @@ const HR_ZONES_DEFAULT: HrZonesPayload = {
     canSyncFromStrava: false,
 };
 
+const TRAINING_PREFERENCES_DEFAULT: TrainingPreferencesPayload = {
+    experience_level: null,
+    sessions_per_week: null,
+    goal_type: null,
+    run_days: null,
+    long_run_day: null,
+};
+
 export default function Settings({
     dataUse,
     telegram = TELEGRAM_DEFAULT,
     notificationPrefs = PREFS_DEFAULT,
     testCooldownSeconds = null,
     hrZones = HR_ZONES_DEFAULT,
+    trainingPreferences = TRAINING_PREFERENCES_DEFAULT,
 }: Readonly<SettingsProps>) {
     return (
         <>
             <Head title="Settings" />
             <PageContainer>
-                {/* No back affordance: Settings is reachable via MeTabs from
-                    Profile (itself one tap away via the avatar), so a
-                    breadcrumb here would be chrome without a job. */}
                 <header className="mb-8 flex flex-col gap-5">
-                    <PageHero eyebrow="Settings">
-                        Set up Temari,{' '}
+                    <PageHero eyebrow="Settings" size="quote-lg" italic>
+                        tune it <br />
                         <em className="italic text-horizon-ink">your way.</em>
                     </PageHero>
-                    <MeTabs active="settings" />
                 </header>
+
+                <section>
+                    <SectionLabel>Appearance</SectionLabel>
+                    <div className="mt-3">
+                        <AppearanceCard />
+                    </div>
+                </section>
 
                 {/* One notification section, not three. The user holds a single
                     model with two questions — what gets sent, and where it goes —
                     and splitting those across "Notifications", "Push" and
                     "Telegram" made them look unrelated. */}
-                <section data-coachmark="settings-notifications">
+                <section
+                    className="mt-10"
+                    data-coachmark="settings-notifications"
+                >
                     <SectionLabel>Notifications</SectionLabel>
-                    <div className="mt-3">
-                        <Card padding="hero">
-                            <NotificationPrefsPanel
-                                prefs={notificationPrefs}
-                                telegram={telegram}
-                                testCooldownSeconds={testCooldownSeconds}
-                            />
-                        </Card>
+                    <div className={cn('mt-3', cardVariants())}>
+                        <NotificationPrefsPanel
+                            prefs={notificationPrefs}
+                            telegram={telegram}
+                            testCooldownSeconds={testCooldownSeconds}
+                        />
                     </div>
                 </section>
 
                 <section className="mt-10" data-coachmark="settings-hr-zones">
                     <SectionLabel>Running</SectionLabel>
-                    <div className="mt-3">
+                    {/* Preferences before the zones disclosure, as the
+                        prototype orders them: the open card first, the
+                        collapsed one under it. */}
+                    <div className="mt-3 flex flex-col gap-3">
+                        <TrainingPreferencesCard
+                            trainingPreferences={trainingPreferences}
+                        />
                         <HrZonesDisclosure hrZones={hrZones} />
                     </div>
                 </section>
@@ -166,75 +165,91 @@ export default function Settings({
                 {dataUse ? (
                     <section className="mt-10">
                         <SectionLabel>{dataUse.headline}</SectionLabel>
-                        <div className="mt-3">
-                            <Card padding="hero">
-                                <ul className="flex flex-col gap-4">
-                                    {dataUse.points.map((point) => (
-                                        <li
-                                            key={point}
-                                            className="text-sm leading-relaxed text-ink-2"
-                                        >
-                                            {point}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </Card>
+                        <div className={cn('mt-3', cardVariants())}>
+                            <ul className="flex list-disc flex-col gap-1.5 pl-4.5">
+                                {dataUse.points.map((point) => (
+                                    <li
+                                        key={point}
+                                        className="text-xs leading-relaxed text-text-2"
+                                    >
+                                        {point}
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     </section>
                 ) : null}
 
                 <section className="mt-10">
                     <SectionLabel>The fine print</SectionLabel>
-                    <div className="mt-3">
-                        <Card padding="hero">
-                            {LEGAL_ROWS.map((row) => (
-                                <SettingsRow
-                                    key={row.href}
-                                    icon={row.icon}
-                                    label={row.label}
-                                    description={row.description}
-                                    href={row.href}
+                    <div
+                        className={cn(
+                            'mt-3',
+                            cardVariants({ padding: 'none' }),
+                            'px-4',
+                        )}
+                    >
+                        {LEGAL_ROWS.map((row, index) => (
+                            <Link
+                                key={row.href}
+                                href={row.href}
+                                className={cn(
+                                    'focus-ring flex items-center justify-between gap-2 py-3.5 font-sans text-[0.8125rem] font-semibold text-foreground transition hover:text-horizon-ink',
+                                    index !== LEGAL_ROWS.length - 1 &&
+                                        'border-b border-border-strong',
+                                )}
+                            >
+                                {row.label}
+                                <Icon
+                                    icon="mdi:chevron-right"
+                                    width={16}
+                                    height={16}
+                                    className="shrink-0 text-text-3"
+                                    aria-hidden
                                 />
-                            ))}
-                        </Card>
+                            </Link>
+                        ))}
                     </div>
                 </section>
 
                 <section className="mt-10">
                     <SectionLabel>Account</SectionLabel>
-                    <div className="mt-3">
-                        <Card padding="hero">
-                            <SettingsRow
-                                icon="mdi:logout"
-                                label="Log out"
-                                description="You can sign back in any time."
-                                onClick={() => router.post('/logout')}
-                            />
-                            <DeleteAccountPanel />
-                        </Card>
-                    </div>
+                    <AccountActions />
                 </section>
             </PageContainer>
         </>
     );
 }
 
-function DeleteAccountPanel() {
+/**
+ * The prototype's `AccountActions`: a button pair, not a settings list — a
+ * bordered full-width "Log out" that becomes an auto-width row item above
+ * 900px, and a bare destructive "Delete account" beneath it.
+ */
+function AccountActions() {
     const [confirmOpen, setConfirmOpen] = useState(false);
 
     return (
-        <>
-            <SettingsRow
-                icon="mdi:account-remove-outline"
-                label="Delete account"
-                description="Deletes your account and disconnects Strava. Can't be undone."
-                tone="danger"
+        <div className="mt-3 mb-2 flex flex-col items-center gap-3 min-[900px]:flex-row min-[900px]:justify-center">
+            <button
+                type="button"
+                onClick={() => router.post('/logout')}
+                className="pressable focus-ring flex w-full items-center justify-center gap-2 rounded-lg border border-border-strong bg-card py-3 font-sans text-[0.8125rem] font-bold text-foreground transition hover:bg-cream-deep/40 min-[900px]:w-auto min-[900px]:px-6"
+            >
+                <Icon icon="mdi:logout" width={16} height={16} aria-hidden />
+                log out
+            </button>
+            <button
+                type="button"
                 onClick={() => setConfirmOpen(true)}
-            />
+                className="focus-ring rounded p-1 font-sans text-xs font-bold text-ember-ink transition hover:opacity-80"
+            >
+                delete account
+            </button>
             <TemariNudgeModal
                 open={confirmOpen}
                 onClose={() => setConfirmOpen(false)}
-                title="Sure you want to delete your account?"
+                title="sure you want to delete your account?"
                 body={
                     <>
                         All your runs, cards, and Strava connection will be
@@ -242,12 +257,12 @@ function DeleteAccountPanel() {
                         Strava accounts, this is also how.
                     </>
                 }
-                primaryLabel="Yes, delete my account"
+                primaryLabel="yes, delete my account"
                 primaryIcon="mdi:account-remove-outline"
                 primaryClassName="bg-ember-deep text-cream hover:opacity-90"
                 onPrimary={() => router.delete('/account')}
             />
-        </>
+        </div>
     );
 }
 
@@ -284,11 +299,11 @@ function NotificationPrefsPanel({
                 <div className="flex flex-col">
                     <SettingsRow
                         icon="mdi:bell-outline"
-                        label="Keep me posted"
-                        description="Post-run recaps, weekly and monthly summaries, plus a nudge when your streak's about to end."
+                        label="keep me posted"
+                        description="post-run recaps, weekly and monthly summaries, plus a nudge when your streak's about to end."
                         control={
                             <Toggle
-                                label="Keep me posted"
+                                label="keep me posted"
                                 checked={notificationsEnabled}
                                 onChange={setNotificationsEnabled}
                             />
@@ -297,15 +312,15 @@ function NotificationPrefsPanel({
                 </div>
             </div>
 
-            <div className="border-t border-line/60 pt-5">
+            <div className="border-t border-border/60 pt-5">
                 <GroupLabel>Where it goes</GroupLabel>
                 {/* Scoped on purpose: these switches govern the run notifications
                     above them, not everything the app can send. Maintainer alerts
                     (dead-lettered AI blocks, generation pauses) go straight to
                     admin Telegram chats without touching preferences, and the bot
                     still replies to /start and /stop. See MaintainerAlerter. */}
-                <p className="mb-2 px-2 font-sans text-[12px] text-ink-3">
-                    Controls your run notifications. Bot replies and system
+                <p className="mb-2 px-2 font-sans text-[0.75rem] text-text-3">
+                    controls your run notifications. bot replies and system
                     alerts still come through.
                 </p>
                 <div className="flex flex-col">
@@ -355,7 +370,7 @@ function TestSendButton({
     const remaining = useCooldownCountdown(cooldownSeconds);
     const cooling = remaining > 0;
 
-    let label = 'Send test notification';
+    let label = 'send test notification';
     if (cooling) {
         label = formatDurationHMS(remaining);
     } else if (sending) {
@@ -366,7 +381,7 @@ function TestSendButton({
         <PillButton
             tone="outline"
             disabled={sending || cooling}
-            className="disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full justify-center disabled:cursor-not-allowed disabled:opacity-60"
             onClick={() => guard(send)}
             aria-label={cooldownAriaLabel(
                 remaining,
@@ -388,7 +403,7 @@ function TestSendButton({
 /** Sub-heading inside a settings card, one tier below SectionLabel. */
 function GroupLabel({ children }: Readonly<{ children: ReactNode }>) {
     return (
-        <div className="mb-2 px-2 text-label-micro font-semibold text-ink-3">
+        <div className="mb-2 px-2 text-label-micro font-semibold text-text-3">
             {children}
         </div>
     );
@@ -411,7 +426,7 @@ function TelegramPanel({
                 <SettingsRow
                     icon="mdi:telegram"
                     label="Telegram"
-                    description="The Telegram bot isn't configured yet."
+                    description="the Telegram bot isn't configured yet."
                     control={<span aria-hidden />}
                 />
             );
@@ -424,7 +439,7 @@ function TelegramPanel({
                 <SettingsRow
                     icon="mdi:telegram"
                     label="Telegram"
-                    description="Connect it so Temari can keep you posted."
+                    description="connect it so temari can keep you posted."
                     onClick={() => setOpen(true)}
                 >
                     <DemoBlockedModal
@@ -439,7 +454,7 @@ function TelegramPanel({
             <SettingsRow
                 icon="mdi:telegram"
                 label="Telegram"
-                description="Connect it so Temari can keep you posted."
+                description="connect it so temari can keep you posted."
                 externalHref={telegram.connect_url}
             />
         );
@@ -449,11 +464,11 @@ function TelegramPanel({
     // a connection — a mute on an unwired channel would mean nothing.
     let description = telegram.username
         ? `Active · @${telegram.username}`
-        : 'Active';
+        : 'active';
     if (muted) {
         description = telegram.username
             ? `Muted · @${telegram.username}`
-            : 'Muted';
+            : 'muted';
     }
 
     return (
@@ -464,7 +479,7 @@ function TelegramPanel({
                 description={description}
                 control={
                     <Toggle
-                        label="Send run notifications to Telegram"
+                        label="send run notifications to Telegram"
                         checked={!muted}
                         onChange={(on) => onMuteChange(!on)}
                     />
@@ -480,7 +495,7 @@ function TelegramPanel({
                             }),
                         )
                     }
-                    className="focus-ring inline-flex shrink-0 items-center gap-1 rounded text-label-small text-ink-3 transition hover:text-ember-ink"
+                    className="focus-ring inline-flex shrink-0 items-center gap-1 rounded text-label-small text-text-3 transition hover:text-ember-ink"
                 >
                     <Icon
                         icon="mdi:link-off"

@@ -3,9 +3,8 @@
 declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
-use App\Enums\DistanceBand;
-use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
+use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
@@ -14,7 +13,6 @@ use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\RiegelProjector;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Plan\PlanAdapter;
-use App\Services\Run\Plan\SessionMatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -25,10 +23,10 @@ function decide(
     ?float $monotony = 1.2,
     ?float $strain = 400.0,
     ?float $ctl = 40.0,
-    float $adherence = 1.0,
+    int $adherencePct = 100,
     ?float $raceGapRatio = null,
 ): array {
-    return PlanAdapter::decide($ceiling, $monotony, $strain, $ctl, $adherence, $raceGapRatio);
+    return PlanAdapter::decide($ceiling, $monotony, $strain, $ctl, $adherencePct, $raceGapRatio);
 }
 
 it('leaves a healthy, fully adhered week alone', function (): void {
@@ -66,7 +64,7 @@ it('ignores the strain ratio below the CTL floor, where it is noise', function (
 });
 
 it('treats a mostly missed week as a re-entry deload, not a catch-up', function (): void {
-    $decision = decide(adherence: 0.2);
+    $decision = decide(adherencePct: 20);
 
     expect($decision['reason'])->toBe(AdaptationReason::MissedWeek)
         ->and($decision['deload'])->toBeTrue()
@@ -106,22 +104,24 @@ it('tolerates unknown load numbers', function (): void {
 });
 
 it('clamps the reported adherence into 0-100 percent', function (): void {
-    expect(decide(adherence: 1.4)['adherence_pct'])->toBe(100)
-        ->and(decide(adherence: -0.2)['adherence_pct'])->toBe(0);
+    expect(decide(adherencePct: 140)['adherence_pct'])->toBe(100)
+        ->and(decide(adherencePct: -20)['adherence_pct'])->toBe(0);
 });
 
-it('reads last week\'s stored plan and the live signals to reach a verdict', function (): void {
+it('reads last week\'s persisted compliance scores and the live signals to reach a verdict', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
     $weekStart = Carbon::parse('2026-08-10');
 
+    // Every day already scored Missed (score 0) — the daily plan:score-compliance
+    // pass would have written this before Monday's regeneration reads it.
     foreach (range(0, 4) as $offset) {
         PlannedSession::factory()->for($user)->create([
             'date' => $weekStart->copy()->subWeek()->addDays($offset)->toDateString(),
             'phase' => PlanPhase::Build,
             'session_type' => SessionType::Easy,
-            'distance_band' => DistanceBand::Medium,
-            'pace_band' => PaceBand::Easy,
+            'status' => PlannedSessionStatus::Missed,
+            'compliance_score' => 0,
         ]);
     }
 
@@ -130,11 +130,78 @@ it('reads last week\'s stored plan and the live signals to reach a verdict', fun
         'monotony' => 1.1, 'strain' => 300.0, 'ctl_42d' => 30.0, 'form' => 5.0, 'form_status' => 'optimal',
     ]);
 
-    $adapter = new PlanAdapter(app(SessionMatcher::class), $trainingLoad, app(RiegelProjector::class));
-    $decision = $adapter->forWeek($user, $weekStart, Carbon::parse('2026-08-10'), 20.0, null);
+    $adapter = new PlanAdapter($trainingLoad, app(RiegelProjector::class));
+    $decision = $adapter->forWeek($user, $weekStart, Carbon::parse('2026-08-10'), null);
 
     expect($decision['reason'])->toBe(AdaptationReason::MissedWeek)
         ->and($decision['adherence_pct'])->toBe(0);
+
+    Carbon::setTestNow();
+});
+
+it('averages last week\'s scores, capping an overreached day at 100 rather than letting it mask a miss', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+    $weekStart = Carbon::parse('2026-08-10');
+
+    PlannedSession::factory()->for($user)->create([
+        'date' => $weekStart->copy()->subWeek()->toDateString(),
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Overreached,
+        'compliance_score' => 180,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => $weekStart->copy()->subWeek()->addDay()->toDateString(),
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Missed,
+        'compliance_score' => 0,
+    ]);
+    // Excluded: still unscored (safety net, not proof of anything) and skipped (excused).
+    PlannedSession::factory()->for($user)->create([
+        'date' => $weekStart->copy()->subWeek()->addDays(2)->toDateString(),
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Planned,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => $weekStart->copy()->subWeek()->addDays(3)->toDateString(),
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Skip,
+        'skipped' => true,
+    ]);
+
+    $trainingLoad = Mockery::mock(TrainingLoad::class);
+    $trainingLoad->shouldReceive('summary')->andReturn([
+        'monotony' => 1.1, 'strain' => 300.0, 'ctl_42d' => 30.0, 'form' => 5.0, 'form_status' => 'optimal',
+    ]);
+
+    $adapter = new PlanAdapter($trainingLoad, app(RiegelProjector::class));
+    $decision = $adapter->forWeek($user, $weekStart, Carbon::parse('2026-08-10'), null);
+
+    // (min(100,180) + 0) / 2 = 50, not (180+0)/2 = 90 — the overreached day is
+    // capped before averaging, so it can't paper over the missed one.
+    expect($decision['adherence_pct'])->toBe(50);
+
+    Carbon::setTestNow();
+});
+
+it('reads perfect adherence when nothing from last week was scoreable yet', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+
+    $trainingLoad = Mockery::mock(TrainingLoad::class);
+    $trainingLoad->shouldReceive('summary')->andReturn([
+        'monotony' => 1.1, 'strain' => 100.0, 'ctl_42d' => 30.0, 'form' => 5.0, 'form_status' => 'optimal',
+    ]);
+
+    $adapter = new PlanAdapter($trainingLoad, app(RiegelProjector::class));
+    $decision = $adapter->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
+
+    expect($decision['adherence_pct'])->toBe(100)
+        ->and($decision['reason'])->toBe(AdaptationReason::Steady);
 
     Carbon::setTestNow();
 });
@@ -158,8 +225,8 @@ it('turns a race projection slower than the goal time into a behind-pace verdict
         'exponent' => 1.06, 'sample_size' => 3, 'confidence' => 'medium',
     ]);
 
-    $adapter = new PlanAdapter(app(SessionMatcher::class), $trainingLoad, $riegel);
-    $decision = $adapter->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), 20.0, $race);
+    $adapter = new PlanAdapter($trainingLoad, $riegel);
+    $decision = $adapter->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), $race);
 
     expect($decision['reason'])->toBe(AdaptationReason::BehindRacePace)
         ->and($decision['quality_delta'])->toBe(1);
@@ -179,9 +246,9 @@ it('ignores the race projection when the athlete has no usable PR to anchor it',
     $riegel = Mockery::mock(RiegelProjector::class);
     $riegel->shouldReceive('project')->andReturnNull();
 
-    $adapter = new PlanAdapter(app(SessionMatcher::class), $trainingLoad, $riegel);
+    $adapter = new PlanAdapter($trainingLoad, $riegel);
 
-    expect($adapter->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), 20.0, $race)['reason'])
+    expect($adapter->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), $race)['reason'])
         ->toBe(AdaptationReason::Steady);
 
     Carbon::setTestNow();

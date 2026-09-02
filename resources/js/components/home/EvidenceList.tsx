@@ -7,8 +7,8 @@ import { activityUrl } from '@/lib/routes';
 import { evidenceRows } from '@/lib/verdict';
 
 const DELTA_TONE: Record<TrendDirection, string> = {
-    better: 'bg-leaf/[0.15] text-leaf-ink',
-    flat: 'bg-surface-sunken text-ink-3',
+    better: 'bg-horizon/[0.18] text-icon-accent',
+    flat: 'bg-muted text-text-3',
     worse: 'bg-ember/[0.15] text-ember-ink',
 };
 
@@ -28,30 +28,33 @@ export default function EvidenceList({
     }
 
     return (
-        <ul className="flex flex-col gap-px overflow-hidden rounded-md bg-line shadow-e1">
+        <ul className="mt-3 flex flex-col gap-px overflow-hidden rounded-md border border-border bg-border shadow-e1">
             {rows.map((row) => (
                 <li key={row.activityId}>
                     <Link
                         href={activityUrl({ activity_id: row.activityId })}
                         aria-label={`${row.label}, ${row.then} to ${row.now}, ${row.delta}`}
-                        className="focus-ring block bg-surface-card pad-panel transition-colors hover:bg-surface-warm"
+                        className="focus-ring block bg-card px-3.5 py-2.5 transition-colors hover:bg-accent"
                     >
-                        <span className="font-sans text-xs text-ink-3">
+                        <span className="font-sans text-[0.65625rem] text-foreground">
                             {row.label}
                         </span>
-                        <div className="mt-1.5 flex items-baseline gap-2 font-mono tabular-nums">
-                            <span className="text-[15px] text-ink-3">
+                        <div className="mt-1 flex items-baseline gap-2 font-mono tabular-nums">
+                            <span className="text-[0.78125rem] text-foreground">
                                 {row.then}
                             </span>
-                            <span aria-hidden className="text-xs text-ink-3">
+                            <span
+                                aria-hidden
+                                className="text-xs text-foreground"
+                            >
                                 →
                             </span>
-                            <span className="text-lg font-bold text-ink">
+                            <span className="text-[0.90625rem] font-extrabold text-foreground">
                                 {row.now}
                             </span>
                             <span
                                 className={cn(
-                                    'pad-chip ml-auto rounded-full font-mono text-[11px] font-bold',
+                                    'ml-auto rounded-full px-2 py-0.5 font-mono text-[0.625rem] font-extrabold',
                                     DELTA_TONE[row.direction],
                                 )}
                             >

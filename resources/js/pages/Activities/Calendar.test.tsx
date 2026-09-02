@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage, stubSyncAnimationFrame } from '@/test/setup';
@@ -44,6 +44,7 @@ function cellsFor(
         avg_hr: null,
         trimp: null,
         mood: null,
+        rarity: null,
         activity_id: null,
         ...r,
     }));
@@ -105,37 +106,27 @@ const BASE_PROPS = {
     todayMonth: '2026-05',
 };
 
-describe('Calendar', () => {
+describe('calendar', () => {
     it('coach-marks the month grid on a first visit', () => {
         window.localStorage.clear();
         stubSyncAnimationFrame();
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
-            screen.getByRole('dialog', { name: 'Tap any day' }),
+            screen.getByRole('dialog', { name: 'tap any day' }),
         ).toBeInTheDocument();
     });
 
-    it('renders the month label and short weekday headers', () => {
+    it("renders the month label and the prototype's two-letter weekday header", () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
             screen.getByRole('heading', { name: 'May 2026' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('Mon')).toBeInTheDocument();
-        expect(screen.getByText('Sun')).toBeInTheDocument();
-    });
-
-    it('renders all 7 weekday columns without a horizontal-scroll hint', () => {
-        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        // The compact 7-col grid fits every viewport, so the old "geser" scroll hint is gone.
-        expect(
-            screen.queryByText(/Geser buat lihat seminggu penuh/),
-        ).not.toBeInTheDocument();
-        for (const day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) {
+        for (const day of ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']) {
             expect(screen.getByText(day)).toBeInTheDocument();
         }
     });
 
-    it('renders the lifetime stats eyebrow when lifetime data is provided', async () => {
+    it('counts lifetime activities in the shared eyebrow', () => {
         render(
             <Calendar
                 {...BASE_PROPS}
@@ -147,41 +138,15 @@ describe('Calendar', () => {
                 }}
             />,
         );
-        // Runs/km tally up from 0 (tier-2 count-up), so wait for them to settle.
-        await waitFor(() =>
-            expect(screen.getByText(/63 runs/i)).toBeInTheDocument(),
-        );
-        expect(screen.getByText(/544 km/i)).toBeInTheDocument();
-        expect(screen.getByText(/since 19 feb 2026/i)).toBeInTheDocument();
+        expect(screen.getByText('History · 63 activities')).toBeInTheDocument();
     });
 
     it('renders per-week km totals in the week summary column', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        // Week 2: 7.2 + 3.5 = 10.7 — distinct from any day-cell distance so the
-        // regex won't collide with the per-day "X.XX km" rendering.
-        expect(screen.getByText(/10\.7/)).toBeInTheDocument();
+        // Week 2: 7.2 + 3.5 = 10.7k.
+        expect(screen.getByText('10.7k')).toBeInTheDocument();
         expect(screen.getByText('WK 1')).toBeInTheDocument();
         expect(screen.getByText('WK 2')).toBeInTheDocument();
-    });
-
-    // The suffix used to be inline on every row, in a 40px column that could not
-    // hold "25.0km" — it spilled past the column's left edge. Stating the unit
-    // once in the header lets each row carry only the number, and leaves room
-    // for a 100+ km week.
-    it('names the unit once in the column header, not on every row', () => {
-        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-
-        expect(screen.getByText('KM')).toBeInTheDocument();
-        expect(screen.getByText(/10\.7/).textContent).toBe('10.7');
-    });
-
-    // The header cell is the week column's label, so it has to stay announced
-    // even though the visible text is just the unit.
-    it('keeps the week column labelled for screen readers', () => {
-        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        expect(screen.getByText('Week, distance in kilometers')).toHaveClass(
-            'sr-only',
-        );
     });
 
     it('links the day cell with a single activity to its detail page', () => {
@@ -195,31 +160,10 @@ describe('Calendar', () => {
         expect(activityLinks).toContain('/activities/102');
     });
 
-    it('renders the navy "Today" badge on today\'s cell', () => {
+    it("names today in the cell's accessible label, not by fill alone", () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
-            screen.getByText('Today', { selector: 'span' }),
-        ).toBeInTheDocument();
-    });
-
-    it('marks today with a persistent dot next to the day number, not color alone', () => {
-        // The "Today" text is lg-only; below that breakpoint the navy fill
-        // would otherwise be the sole signal that a cell is today.
-        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        const dayNumber = screen.getByText('7');
-        expect(dayNumber.querySelector('[aria-hidden]')).not.toBeNull();
-    });
-
-    it("renders today's storyline quote in the today cell when provided", () => {
-        render(
-            <Calendar
-                {...BASE_PROPS}
-                cells={TWO_WEEK_CELLS}
-                todayQuote="Good form — tempo session fits."
-            />,
-        );
-        expect(
-            screen.getByText(/Good form — tempo session fits\./),
+            screen.getByLabelText(/2026-05-07 \(today\)/),
         ).toBeInTheDocument();
     });
 
@@ -230,7 +174,7 @@ describe('Calendar', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('shows the "Today" jump-back when viewing a different month', () => {
+    it('offers no "jump to today" shortcut, which the prototype does not draw', () => {
         render(
             <Calendar
                 {...BASE_PROPS}
@@ -240,8 +184,8 @@ describe('Calendar', () => {
             />,
         );
         expect(
-            screen.getByRole('link', { name: 'Jump to current month' }),
-        ).toHaveAttribute('href', '/history?view=calendar');
+            screen.queryByRole('link', { name: 'Jump to current month' }),
+        ).not.toBeInTheDocument();
     });
 
     it('renders prev / next nav buttons with correct hrefs', () => {
@@ -256,14 +200,16 @@ describe('Calendar', () => {
 
     it('renders all six mood swatches in the legend', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        ['Blazing', 'Easy', 'Wobbly', 'Gassed', 'Overloaded', 'Chill'].forEach(
+        ['blazing', 'easy', 'wobbly', 'gassed', 'overloaded', 'chill'].forEach(
             (label) => {
                 expect(screen.getByText(label)).toBeInTheDocument();
             },
         );
     });
 
-    it('mutes prev-month cells and excludes them from week totals', () => {
+    // The row sits beside that week's own ISO-week recap, so it counts the
+    // whole Mon-Sun week rather than only the part inside the viewed month.
+    it('counts prev-month padding days in the week total, muted but included', () => {
         const cells = cellsFor([
             {
                 date: '2026-04-27',
@@ -287,52 +233,39 @@ describe('Calendar', () => {
             { date: '2026-05-03', day: 3, is_current_month: true },
         ]);
         render(<Calendar {...BASE_PROPS} cells={cells} />);
-        // The 10 prev-month value would yield a 15.0 sum if included — assert
-        // the combined total never appears, proving the prev-month cell was skipped.
-        expect(screen.queryByText(/15\.0/)).not.toBeInTheDocument();
+        expect(screen.getByText('15.0k')).toBeInTheDocument();
         expect(screen.getByText('WK 1')).toBeInTheDocument();
     });
 
-    it('renders a Filter button that opens a mood filter menu', () => {
+    it('renders the Feed ⇄ Calendar nav with calendar active', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        const filterButton = screen.getByRole('button', { name: /filter/i });
-        expect(filterButton).toHaveAttribute('aria-expanded', 'false');
-        fireEvent.click(filterButton);
-        expect(filterButton).toHaveAttribute('aria-expanded', 'true');
-        expect(screen.getByRole('button', { name: /Blazing/ })).toHaveAttribute(
-            'aria-pressed',
+        expect(screen.getByText('calendar').closest('a')).toHaveClass(
+            'bg-card',
         );
     });
 
-    it('dims cells whose mood is not in the active filter set', () => {
-        const { container } = render(
-            <Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />,
-        );
-        fireEvent.click(screen.getByRole('button', { name: /filter/i }));
-        // Toggle only "Nyala" — cells with mood easy/overloaded should now be dimmed.
-        fireEvent.click(screen.getByRole('button', { name: /Blazing/ }));
-        // Find the May 1 cell (mood: easy, activity_id: 100) — it should pick up the dim opacity class.
-        const link = container.querySelector('a[href="/activities/100"]');
-        expect(link?.className).toContain('opacity-30');
+    it('renders the viewed month totals (not lifetime) as a meta line', () => {
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        // Two current-month runs: 5 + 7.2 + 3.5 km = 15.7, 3 runs, 50+80+25 TRIMP = 155.
+        expect(
+            screen.getByText(/3 runs · 15\.7 km · 155 TRIMP/),
+        ).toBeInTheDocument();
     });
 
-    it('renders an empty placeholder for cells with no run', () => {
+    it('draws a run-less day as a plain numbered box', () => {
         const cells = cellsFor([
-            { date: '2026-05-01', day: 1, is_current_month: true },
-            { date: '2026-05-02', day: 2, is_current_month: true },
-            { date: '2026-05-03', day: 3, is_current_month: true },
-            { date: '2026-05-04', day: 4, is_current_month: true },
-            { date: '2026-05-05', day: 5, is_current_month: true },
-            { date: '2026-05-06', day: 6, is_current_month: true },
-            { date: '2026-05-07', day: 7, is_current_month: true },
+            { date: '2026-05-01', day: 1 },
+            { date: '2026-05-02', day: 2 },
+            { date: '2026-05-03', day: 3 },
+            { date: '2026-05-04', day: 4 },
+            { date: '2026-05-05', day: 5 },
+            { date: '2026-05-06', day: 6 },
+            { date: '2026-05-07', day: 7 },
         ]);
-        const { container } = render(
-            <Calendar {...BASE_PROPS} cells={cells} />,
+        render(<Calendar {...BASE_PROPS} cells={cells} />);
+        expect(screen.getByLabelText('2026-05-01: no run')).toHaveTextContent(
+            '1',
         );
-        const dayNumbers = Array.from(
-            container.querySelectorAll('.tabular-nums'),
-        );
-        expect(dayNumbers.length).toBeGreaterThan(0);
     });
 
     it('rolls multi-activity days into a non-linked cell', () => {
@@ -368,7 +301,7 @@ describe('Calendar', () => {
         expect(
             screen.getByRole('heading', { name: 'May 2026' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('Mood')).toBeInTheDocument();
+        expect(screen.getByText('blazing')).toBeInTheDocument();
     });
 
     describe('monthly recap card', () => {
@@ -383,19 +316,14 @@ describe('Calendar', () => {
             expect(
                 screen.getByText(/May was full and the rhythm held steady\./),
             ).toBeInTheDocument();
-            expect(
-                screen.getByText(/Temari's notes · May 2026/),
-            ).toBeInTheDocument();
         });
 
         it('is omitted entirely when no recap prop is passed', () => {
             render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-            expect(
-                screen.queryByText(/Temari's notes/),
-            ).not.toBeInTheDocument();
+            expect(screen.queryByText(/May was full/)).not.toBeInTheDocument();
         });
 
-        it('keeps the card heading but renders no narration/trigger when a past month is not yet narrated', () => {
+        it('renders no narration/trigger when a past month is not yet narrated', () => {
             render(
                 <Calendar
                     {...BASE_PROPS}
@@ -408,16 +336,15 @@ describe('Calendar', () => {
                     })}
                 />,
             );
-            expect(screen.getByText(/Temari's notes/)).toBeInTheDocument();
             expect(
                 screen.queryByText(/thinking it over/),
             ).not.toBeInTheDocument();
             expect(
-                screen.queryByRole('button', { name: /Try again/ }),
+                screen.queryByRole('button', { name: /try again/ }),
             ).not.toBeInTheDocument();
         });
 
-        it('suppresses every trigger on the still-open current month and reads "belum tersedia"', () => {
+        it('suppresses every trigger on the still-open current month and reads as unavailable', () => {
             render(
                 <Calendar
                     {...BASE_PROPS}
@@ -431,14 +358,14 @@ describe('Calendar', () => {
                 />,
             );
             expect(
-                screen.getByText("This month's recap isn't ready yet."),
+                screen.getByText("this month's recap isn't ready yet."),
             ).toBeInTheDocument();
             expect(
-                screen.queryByRole('button', { name: /Try again/ }),
+                screen.queryByRole('button', { name: /try again/ }),
             ).not.toBeInTheDocument();
         });
 
-        it('shows a "Try again" resume action when a past month recap failed', () => {
+        it('shows a "try again" resume action when a past month recap failed', () => {
             render(
                 <Calendar
                     {...BASE_PROPS}
@@ -451,11 +378,11 @@ describe('Calendar', () => {
                 />,
             );
             expect(
-                screen.getByRole('button', { name: /Try again/ }),
+                screen.getByRole('button', { name: /try again/ }),
             ).toBeInTheDocument();
         });
 
-        it('shows the "Reread" regenerate action only on the chain-head month', () => {
+        it('shows the "reread" regenerate action only on the chain-head month', () => {
             render(
                 <Calendar
                     {...BASE_PROPS}
@@ -465,7 +392,7 @@ describe('Calendar', () => {
                 />,
             );
             expect(
-                screen.getByRole('button', { name: /Reread/ }),
+                screen.getByRole('button', { name: /reread/ }),
             ).toBeInTheDocument();
         });
 
@@ -479,7 +406,7 @@ describe('Calendar', () => {
                 />,
             );
             expect(
-                screen.queryByRole('button', { name: /Reread/ }),
+                screen.queryByRole('button', { name: /reread/ }),
             ).not.toBeInTheDocument();
         });
 
@@ -494,7 +421,11 @@ describe('Calendar', () => {
                     monthlyRecap={makeRecap()}
                 />,
             );
-            fireEvent.click(screen.getByText('Send notification'));
+            fireEvent.click(
+                screen.getByRole('button', {
+                    name: 'turn on notifications to send',
+                }),
+            );
             expect(router.post).not.toHaveBeenCalled();
         });
 
@@ -514,7 +445,9 @@ describe('Calendar', () => {
                     monthlyRecap={makeRecap()}
                 />,
             );
-            fireEvent.click(screen.getByText('Send notification'));
+            fireEvent.click(
+                screen.getByRole('button', { name: 'send notification' }),
+            );
             expect(router.post).toHaveBeenCalledWith(
                 '/recaps/monthly/2026-04/send',
                 {},

@@ -2,13 +2,13 @@ import { router } from '@inertiajs/react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type {
-    WeekBucket,
-    RunWithDetail,
-} from '@/pages/Activities/useFeedFilters';
 import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
 
 import { run } from '@/pages/Activities/runFixture';
+import {
+    type RunWithDetail,
+    type WeekBucket,
+} from '@/pages/Activities/weekBuckets';
 import { makeUser, setMockPage } from '@/test/setup';
 
 import WeekSection from './WeekSection';
@@ -34,7 +34,7 @@ function recapAnalysis(
     };
 }
 
-function bucket(runs: RunWithDetail[] = [run(101, 'Pagi')]): WeekBucket {
+function bucket(runs: RunWithDetail[] = [run(101, 'Morning')]): WeekBucket {
     return {
         weekStart: '2026-05-18',
         weekEnding: '2026-05-24',
@@ -83,51 +83,43 @@ describe('WeekSection', () => {
     it('falls back to the bucket totals when the week has no snapshot', async () => {
         render(
             <WeekSection
-                bucket={bucket([run(101, 'Pagi'), run(102, 'Sore')])}
+                bucket={bucket([run(101, 'Morning'), run(102, 'Evening')])}
                 snapshot={null}
                 notes={{}}
                 moods={{}}
-                filtered={false}
             />,
         );
 
         // Header stats count up from 0, so wait for them to settle.
         await waitFor(() =>
-            expect(screen.getByText('2 run')).toBeInTheDocument(),
+            expect(screen.getByText(/2 runs/)).toBeInTheDocument(),
         );
-        expect(screen.getByText('10.0 km')).toBeInTheDocument();
-        expect(screen.getByText('100 TRIMP')).toBeInTheDocument();
+        expect(screen.getByText(/10\.0 km/)).toBeInTheDocument();
+        expect(screen.getByText(/100 TRIMP/)).toBeInTheDocument();
         expect(screen.getAllByTestId('run-row').length).toBe(2);
     });
 
     it('shows the snapshot totals (not the range-truncated bucket count) when a snapshot exists', async () => {
-        // Only 1 of the week's runs falls inside rangeStart, but the WeeklySnapshot
-        // (computed independently of the range filter) says the week had 4 runs /
-        // 35.5 km — the header must agree with that, not the truncated bucket.
         render(
             <WeekSection
                 bucket={bucket()}
                 snapshot={snapshot()}
                 notes={{}}
                 moods={{}}
-                filtered={false}
             />,
         );
 
         await waitFor(() =>
-            expect(screen.getByText('4 run')).toBeInTheDocument(),
+            expect(screen.getByText(/4 runs/)).toBeInTheDocument(),
         );
-        expect(screen.getByText('35.5 km')).toBeInTheDocument();
+        expect(screen.getByText(/35\.5 km/)).toBeInTheDocument();
         expect(screen.getByText(/Consistent week/)).toBeInTheDocument();
     });
 
     it('shows the live bucket totals (not a stale snapshot) for the in-progress week', async () => {
-        // The snapshot for the current week is recomputed by a queued listener,
-        // so right after a fresh sync it can lag behind the runs this request
-        // just fetched live. The header must reflect what's actually rendered.
         render(
             <WeekSection
-                bucket={bucket([run(101, 'Pagi'), run(102, 'Sore')])}
+                bucket={bucket([run(101, 'Morning'), run(102, 'Evening')])}
                 snapshot={snapshot({
                     distance_km: 5,
                     runs: 1,
@@ -136,22 +128,37 @@ describe('WeekSection', () => {
                 })}
                 notes={{}}
                 moods={{}}
-                filtered={false}
             />,
         );
 
         await waitFor(() =>
-            expect(screen.getByText('2 run')).toBeInTheDocument(),
+            expect(screen.getByText(/2 runs/)).toBeInTheDocument(),
         );
-        expect(screen.getByText('10.0 km')).toBeInTheDocument();
+        expect(screen.getByText(/10\.0 km/)).toBeInTheDocument();
+    });
+
+    it('renders "1 run" without an s for a single run', async () => {
+        render(
+            <WeekSection
+                bucket={bucket([run(101, 'Morning')])}
+                snapshot={null}
+                notes={{}}
+                moods={{}}
+            />,
+        );
+
+        await waitFor(() =>
+            expect(screen.getByText(/1 run\b/)).toBeInTheDocument(),
+        );
+        expect(screen.queryByText(/1 runs/)).not.toBeInTheDocument();
     });
 
     it('renders the form-status chip label for every FormStatus value', () => {
         const labels: Record<string, string> = {
-            fresh: 'Feeling Fresh',
-            optimal: 'Right on Track',
-            fatigued: 'Getting Tired',
-            overreaching: 'Overreaching',
+            fresh: 'feeling fresh',
+            optimal: 'right on track',
+            fatigued: 'getting tired',
+            overreaching: 'overreaching',
         };
         for (const status of [
             'fresh',
@@ -165,7 +172,6 @@ describe('WeekSection', () => {
                     snapshot={snapshot({ form_status: status })}
                     notes={{}}
                     moods={{}}
-                    filtered={false}
                 />,
             );
             expect(screen.getByText(labels[status])).toBeInTheDocument();
@@ -187,120 +193,28 @@ describe('WeekSection', () => {
                 })}
                 notes={{}}
                 moods={{}}
-                filtered={false}
             />,
         );
 
-        expect(screen.queryByText('Monotony')).not.toBeInTheDocument();
-        expect(screen.queryByText('Drift')).not.toBeInTheDocument();
-        expect(screen.queryByText('Fatigue')).not.toBeInTheDocument();
+        expect(screen.queryByText(/Monotony/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Drift/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Fatigue/)).not.toBeInTheDocument();
     });
 
-    // Monotony ≥ 1.5 and decoupling ≥ 8% are the runner-relevant alarm thresholds.
-    it('renders the metric chips in their alert tone past the alarm thresholds', () => {
+    // The alert-tone thresholds themselves belong to WeeklyStatusChips; this
+    // only pins that the section keeps handing it the week's numbers.
+    it('renders the metric chips past the alarm thresholds', () => {
         render(
             <WeekSection
                 bucket={bucket()}
                 snapshot={snapshot({ monotony: 2.1, avg_decoupling: 9.4 })}
                 notes={{}}
                 moods={{}}
-                filtered={false}
             />,
         );
 
-        expect(screen.getByText('2.10').parentElement).toHaveClass(
-            'bg-mood-gassed/15',
-        );
-        expect(screen.getByText('9.4%').parentElement).toHaveClass(
-            'bg-mood-gassed/15',
-        );
-    });
-
-    // Real filtering removes non-matching runs, so a week loses the context the
-    // old dimmed rows conveyed. The snapshot's own total names the gap.
-    describe('hidden-run count', () => {
-        it('names how many runs the filter hid in that week', () => {
-            render(
-                <WeekSection
-                    bucket={bucket()}
-                    snapshot={snapshot({ runs: 4 })}
-                    notes={{}}
-                    moods={{}}
-                    filtered
-                />,
-            );
-
-            expect(
-                screen.getByText(/3 other runs this week don't match/),
-            ).toBeInTheDocument();
-            expect(screen.getByText('1 of 4 run')).toBeInTheDocument();
-        });
-
-        it('says nothing when the filter hid nothing', () => {
-            render(
-                <WeekSection
-                    bucket={bucket([run(101, 'A'), run(102, 'B')])}
-                    snapshot={snapshot({ runs: 2 })}
-                    notes={{}}
-                    moods={{}}
-                    filtered
-                />,
-            );
-
-            expect(
-                screen.queryByText(/don't match the filter/),
-            ).not.toBeInTheDocument();
-        });
-
-        it('says nothing when no filter is active', () => {
-            render(
-                <WeekSection
-                    bucket={bucket()}
-                    snapshot={snapshot({ runs: 4 })}
-                    notes={{}}
-                    moods={{}}
-                    filtered={false}
-                />,
-            );
-
-            expect(
-                screen.queryByText(/don't match the filter/),
-            ).not.toBeInTheDocument();
-        });
-
-        // The in-progress week's snapshot is recomputed by a queued worker, so it
-        // can lag the live bucket and would report a bogus gap.
-        it('stays quiet for the in-progress week', () => {
-            render(
-                <WeekSection
-                    bucket={bucket()}
-                    snapshot={snapshot({ runs: 4, is_current_week: true })}
-                    notes={{}}
-                    moods={{}}
-                    filtered
-                />,
-            );
-
-            expect(
-                screen.queryByText(/don't match the filter/),
-            ).not.toBeInTheDocument();
-        });
-
-        it('stays quiet when the snapshot has no run count', () => {
-            render(
-                <WeekSection
-                    bucket={bucket()}
-                    snapshot={snapshot({ runs: null })}
-                    notes={{}}
-                    moods={{}}
-                    filtered
-                />,
-            );
-
-            expect(
-                screen.queryByText(/don't match the filter/),
-            ).not.toBeInTheDocument();
-        });
+        expect(screen.getByText('Monotony 2.10')).toBeInTheDocument();
+        expect(screen.getByText('Drift 9.4%')).toBeInTheDocument();
     });
 
     describe('weekly recap notification', () => {
@@ -313,11 +227,14 @@ describe('WeekSection', () => {
                     snapshot={snapshot()}
                     notes={{}}
                     moods={{}}
-                    filtered={false}
                 />,
             );
 
-            fireEvent.click(screen.getByText('Send notification'));
+            fireEvent.click(
+                screen.getByRole('button', {
+                    name: 'turn on notifications to send',
+                }),
+            );
             expect(router.post).not.toHaveBeenCalled();
         });
 
@@ -336,11 +253,12 @@ describe('WeekSection', () => {
                     snapshot={snapshot()}
                     notes={{}}
                     moods={{}}
-                    filtered={false}
                 />,
             );
 
-            fireEvent.click(screen.getByText('Send notification'));
+            fireEvent.click(
+                screen.getByRole('button', { name: 'send notification' }),
+            );
             expect(router.post).toHaveBeenCalledWith(
                 '/recaps/weekly/7/send',
                 {},
@@ -361,12 +279,13 @@ describe('WeekSection', () => {
                     })}
                     notes={{}}
                     moods={{}}
-                    filtered={false}
                 />,
             );
 
             expect(
-                screen.queryByText('Send notification'),
+                screen.queryByRole('button', {
+                    name: /send notification|turn on notifications/i,
+                }),
             ).not.toBeInTheDocument();
             expect(
                 screen.getByText(/You ran 4x this week for 35.5 km/),
@@ -390,7 +309,6 @@ describe('WeekSection', () => {
                     })}
                     notes={{}}
                     moods={{}}
-                    filtered={false}
                 />,
             );
 
@@ -412,10 +330,9 @@ describe('WeekSection', () => {
                 })}
                 notes={{}}
                 moods={{}}
-                filtered={false}
             />,
         );
-        expect(screen.getByText('— TRIMP')).toBeInTheDocument();
-        expect(screen.queryByText('0 TRIMP')).not.toBeInTheDocument();
+        expect(screen.getByText(/— TRIMP/)).toBeInTheDocument();
+        expect(screen.queryByText(/\b0 TRIMP\b/)).not.toBeInTheDocument();
     });
 });

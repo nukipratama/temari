@@ -47,7 +47,6 @@ function trend(overrides: Partial<PastYouTrend> = {}): PastYouTrend {
         fitness_delta_ctl: 2.4,
         pace_consistency_now: null,
         pace_consistency_then: null,
-        relative_effort_band: null,
         ...overrides,
     };
 }
@@ -65,7 +64,7 @@ describe('VerdictHero', () => {
         render(<VerdictHero trend={trend()} verdict="improving" />);
 
         expect(
-            screen.getByText("you're faster than you were in March."),
+            screen.getByText("you're faster than you were in march."),
         ).toBeInTheDocument();
         expect(
             screen.getByText(
@@ -91,7 +90,7 @@ describe('VerdictHero', () => {
         );
 
         expect(
-            screen.getByText("you've slipped since March."),
+            screen.getByText("you've slipped since march."),
         ).toBeInTheDocument();
     });
 
@@ -104,13 +103,26 @@ describe('VerdictHero', () => {
         );
 
         expect(
-            screen.getByText("you're holding where you were in March."),
+            screen.getByText("you're holding where you were in march."),
         ).toBeInTheDocument();
     });
 
-    it('signs the call so it reads as Temari speaking', () => {
+    // The prototype's "you vs past you" block carries no mascot and no byline;
+    // the face appears only on its plan and today cards.
+    it('draws no mascot byline, as the prototype does not', () => {
+        const { container } = render(
+            <VerdictHero trend={trend()} verdict="improving" />,
+        );
+
+        expect(container.querySelector('[data-face-icon]')).toBeNull();
+        expect(screen.queryByText('temari')).not.toBeInTheDocument();
+    });
+
+    it('paints the improving headline on the accent the prototype uses', () => {
         render(<VerdictHero trend={trend()} verdict="improving" />);
 
-        expect(screen.getByText('temari')).toBeInTheDocument();
+        expect(
+            screen.getByText("you're faster than you were in march."),
+        ).toHaveClass('text-icon-accent');
     });
 });

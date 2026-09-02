@@ -3,7 +3,7 @@ title: temari — System Design
 description: Apex overview of what temari is, its design principles, subsystems, and data lifecycle
 tags: [architecture, moc]
 status: living
-reviewed: 2026-08-11
+reviewed: 2026-09-02
 code_refs:
   - app/Services/Run/Ingest/ActivityPipeline.php
   - app/Services/AI/AnalysisService.php
@@ -19,13 +19,13 @@ The home/hub for the knowledge base. README explains how to *operate* the app; t
 
 ## What it is
 
-A personal running companion: it connects to Strava, ingests each run, computes proper running metrics, turns runs into collectible gamified cards, and narrates them with a mascot — temari, a limbless ball-bodied character whose face and mood halo carry the read — as a training partner who keeps score against the runner's own past. The gimmick (cards, vibes, mascot narration) is the point, layered on a correct run-tracker core — but user-facing surfaces and narration inputs aren't mutually exclusive: any running metric shown directly to the runner (VDOT, threshold pace, training paces, …) can still be something Temari reads and speaks to.
+A personal running companion: it connects to Strava, ingests each run, computes proper running metrics, turns runs into collectible gamified cards, and narrates them as temari — a running companion drawn as one line-art face, a training partner who keeps score against the runner's own past. The gimmick (cards, vibes, temari's narration) is the point, layered on a correct run-tracker core — but user-facing surfaces and narration inputs aren't mutually exclusive: any running metric shown directly to the runner (VDOT, threshold pace, training paces, …) can still be something Temari reads and speaks to.
 
 ## Core design principles
 
 - **Cost-predictable LLM.** AI narration never auto-retries; failed blocks wait for a manual re-trigger. Dispatch is idempotent and windowed so the same recap is never re-billed. See [[decisions/index|the ADRs]] and [app/Services/AI/AnalysisService.php](app/Services/AI/AnalysisService.php).
 - **One casual English voice.** All UI/vibes/copy speak plain, warm English; domain words (pace, splits, HR) stay as-is, running-speak. Rules in [[voice-and-tone]].
-- **Light-mode only.** No `.dark`, no `*-dark` tokens. Tokens in [[design-tokens]].
+- **Two grounds, dark by default.** A `data-theme` attribute on `<html>` (never a `.dark` class) switches a ground-reactive semantic layer over a fixed named palette; light and system are reachable from Settings. Tokens in [[design-tokens]].
 - **Metering survives app resets.** A separate `analytics` DB connection holds token-usage/metering so it outlives `migrate:fresh`. See [config/database.php](config/database.php).
 - **Homelab runtime.** FrankenPHP + Octane behind a Cloudflare tunnel; deploys via GitHub Actions. Dev mirrors prod via Sail.
 

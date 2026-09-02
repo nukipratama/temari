@@ -155,7 +155,7 @@ it('fails the whole group rather than templating run-insight when the LLM is una
     }
 });
 
-it('reuses the Done insight row instead of re-billing RunInsightNarrator on a cerita-only re-dispatch', function (): void {
+it('reuses the Done insight row instead of re-billing RunInsightNarrator on a story-only re-dispatch', function (): void {
     $activity = seedActivityForJob();
 
     // The insight row is already Done with known content; only PostRunSpeech is Pending.
@@ -167,7 +167,7 @@ it('reuses the Done insight row instead of re-billing RunInsightNarrator on a ce
     ]);
 
     $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
-    $speechMock->shouldReceive('generate')->andReturn('cerita baru');
+    $speechMock->shouldReceive('generate')->andReturn('new story');
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
 
     // The insight LLM must NOT be called: the Done row is reused verbatim.
@@ -182,7 +182,7 @@ it('reuses the Done insight row instead of re-billing RunInsightNarrator on a ce
         ->get()
         ->keyBy(fn (Analysis $r): string => $r->analysis_type->value);
 
-    expect($rows[AnalysisType::PostRunSpeech->value]->content)->toBe('cerita baru')
+    expect($rows[AnalysisType::PostRunSpeech->value]->content)->toBe('new story')
         ->and(json_decode((string) $rows[AnalysisType::RunInsight->value]->content, true))
         ->toBe([sampleClaim('stored claim')]);
 });

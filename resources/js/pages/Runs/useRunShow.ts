@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 
-import type { TemariPose } from '@/components/temari/TemariProto';
-import type { ShareKartuData } from '@/lib/shareCard';
+import type { ShareCardData } from '@/lib/shareCard';
 import type {
     ActivityDetail,
     AnalysisPayload,
@@ -20,14 +19,12 @@ import {
     paceSecPerKm,
 } from '@/lib/pace';
 import {
-    RARITY_LABELS,
     avgCadenceFromDetail,
     badgeEmblem,
     badgeName,
     fastestKmFromDetail,
-    kartuPropsFromDetail,
+    cardPropsFromDetail,
 } from '@/lib/runcard';
-import { MOOD_TO_POSE } from '@/lib/temariPose';
 import { districtFromLocation } from '@/pages/Home/helpers';
 
 /** The run's RunCard, enriched with the flavor/edition/share fields this page's
@@ -38,28 +35,11 @@ export type RunCardDetail = Omit<RunCard, 'activity' | 'edition'> & {
     public_share_url: string;
 };
 
-/** Effort of this run vs the runner's own 28-day TRIMP baseline (see RelativeEffort). */
-export interface RelativeEffortPayload {
-    trimp: number;
-    baseline: number | null;
-    ratio: number | null;
-    band: 'well_above' | 'above' | 'typical' | 'below' | null;
-}
-
-/** Human "vs usual" line per band. Null band (thin baseline) shows nothing. */
-const EFFORT_SUB: Record<NonNullable<RelativeEffortPayload['band']>, string> = {
-    well_above: 'harder than usual',
-    above: 'a bit harder than usual',
-    typical: 'about usual',
-    below: 'easier than usual',
-};
-
 interface UseRunShowArgs {
     detail: ActivityDetail;
     card: RunCardDetail | null;
     storyLine: StoryLine | null;
     moodFallback: Mood;
-    relativeEffort: RelativeEffortPayload | null;
 }
 
 export function useRunShow({
@@ -67,7 +47,6 @@ export function useRunShow({
     card,
     storyLine,
     moodFallback,
-    relativeEffort,
 }: UseRunShowArgs) {
     const summary: StreamSummary = detail.stream_summary ?? {};
     const perKm = summary.per_km ?? [];
@@ -75,7 +54,6 @@ export function useRunShow({
     const partialSplit = summary.partial_split ?? null;
 
     const mood: Mood = storyLine?.mood ?? moodFallback;
-    const pose: TemariPose = MOOD_TO_POSE[mood];
 
     const km = formatKm(detail.distance);
     const paceSec = paceSecPerKm(detail.elapsed_time, detail.distance);
@@ -86,16 +64,10 @@ export function useRunShow({
             : null;
     const trimp =
         detail.trimp_edwards != null ? Math.round(detail.trimp_edwards) : null;
-    const effortSub =
-        relativeEffort?.band != null
-            ? EFFORT_SUB[relativeEffort.band]
-            : undefined;
-
-    const kartuProps = useMemo(() => kartuPropsFromDetail(detail), [detail]);
+    const cardProps = useMemo(() => cardPropsFromDetail(detail), [detail]);
     const cardBadges = useMemo(() => (card?.badges ?? []).slice(0, 3), [card]);
     const cadence = avgCadenceFromDetail(detail);
     const fastestKm = fastestKmFromDetail(detail);
-    const rarityLabel = card ? RARITY_LABELS[card.rarity] : null;
 
     const shareDate = detail.start_date_local
         ? (() => {
@@ -117,7 +89,7 @@ export function useRunShow({
         return `${temp}${wind}`;
     })();
 
-    const shareData: ShareKartuData | null = useMemo(
+    const shareData: ShareCardData | null = useMemo(
         () =>
             card === null
                 ? null
@@ -127,12 +99,12 @@ export function useRunShow({
                       shareUrl: card.public_share_url,
                       rarity: card.rarity,
                       mood,
-                      subtitle: kartuProps.subtitle,
+                      subtitle: cardProps.subtitle,
                       date: shareDate,
                       km,
-                      duration: kartuProps.duration,
+                      duration: cardProps.duration,
                       pace: paceSec != null ? formatPace(paceSec) : null,
-                      trimp: kartuProps.trimp,
+                      trimp: cardProps.trimp,
                       hr: hr != null ? `${hr} bpm` : null,
                       cadence: cadence != null ? `${cadence} spm` : null,
                       fastestKm: fastestKm != null ? `${fastestKm}/km` : null,
@@ -140,7 +112,7 @@ export function useRunShow({
                           detail.total_elevation_gain != null
                               ? `${Math.round(detail.total_elevation_gain)} m`
                               : null,
-                      zonePct: kartuProps.zonePct,
+                      zonePct: cardProps.zonePct,
                       location: districtFromLocation(
                           detail.location_name ?? null,
                       ),
@@ -162,7 +134,7 @@ export function useRunShow({
         [
             card,
             mood,
-            kartuProps,
+            cardProps,
             shareDate,
             km,
             paceSec,
@@ -181,18 +153,15 @@ export function useRunShow({
         laps,
         partialSplit,
         mood,
-        pose,
         km,
         pace,
         paceSec,
         hr,
         trimp,
-        effortSub,
-        kartuProps,
+        cardProps,
         cardBadges,
         cadence,
         fastestKm,
-        rarityLabel,
         shareData,
     };
 }

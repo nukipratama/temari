@@ -20,7 +20,7 @@ final class TemariPersona
 {
     /**
      * Canonical Threadwork mood gloss, shared across narrators that need to
-     * spell it out (e.g. {@see \App\Services\AI\Narrators\AkuProfileVoiceNarrator}).
+     * spell it out (e.g. {@see \App\Services\AI\Narrators\ProfileVoiceNarrator}).
      * Keep this the single source of truth so mood meanings never diverge
      * between prompts.
      */

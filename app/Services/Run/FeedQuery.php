@@ -7,7 +7,6 @@ namespace App\Services\Run;
 use App\Http\Requests\FeedFilterRequest;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\StoryLine;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -43,24 +42,77 @@ class FeedQuery
             range: $effectiveRange,
             rangeAutoWidened: $rangeAutoWidened,
             rangeStart: $rangeStart,
-            moods: $request->moods(),
-            distanceBand: $request->distanceBand(),
-            sort: $request->sort(),
             week: $week,
-            rarity: $request->rarity(),
         );
     }
 
     /**
+     * The feed's page window: the Monday that the `$weeks`-th most recent
+     * run-bearing week starts on, plus whether any run sits behind it.
+     *
+     * Paging by *week* rather than by run keeps the unit the same as the one
+     * the screen renders — a "load older weeks" press must add whole week
+     * sections, and a heavy week must not consume someone else's page.
+     * `since` is null only when the window holds no runs at all.
+     *
+     * @return array{since: ?Carbon, hasOlder: bool}
+     */
+    public function weekWindow(User $user, FeedFilters $filters, int $weeks): array
+    {
+        // Upper bound for a single-week deep link: `<` the next day so the whole
+        // Sunday counts whatever time the run started.
+        $weekEnd = $filters->week?->copy()->addDay();
+
+        $dates = ActivityDetail::query()
+            ->forUser($user->id)
+            ->whereNotNull('start_date_local')
+            ->when(
+                $filters->rangeStart !== null,
+                fn (Builder $q): Builder => $q->where('start_date_local', '>=', $filters->rangeStart),
+            )
+            ->when(
+                $weekEnd !== null,
+                fn (Builder $q): Builder => $q->where('start_date_local', '<', $weekEnd),
+            )
+            ->orderByDesc('start_date_local')
+            ->pluck('start_date_local');
+
+        $seen = [];
+        $oldest = null;
+
+        foreach ($dates as $date) {
+            $monday = Carbon::parse($date)->startOfWeek(Carbon::MONDAY)->startOfDay();
+            $key = $monday->toDateString();
+
+            if (isset($seen[$key])) {
+                continue;
+            }
+
+            if (count($seen) === $weeks) {
+                return ['since' => $oldest, 'hasOlder' => true];
+            }
+
+            $seen[$key] = true;
+            $oldest = $monday;
+        }
+
+        return ['since' => $oldest, 'hasOlder' => false];
+    }
+
+    /**
+     * @param  Carbon|null  $since  Page floor from {@see weekWindow}, tightening
+     *                              the filters' own range start.
      * @return Builder<Activity>
      */
-    public function for(User $user, FeedFilters $filters): Builder
+    public function for(User $user, FeedFilters $filters, ?Carbon $since = null): Builder
     {
-        $query = Activity::query()
+        $lowerBound = $since ?? $filters->rangeStart;
+
+        return Activity::query()
             ->where('user_id', $user->id)
-            ->whereHas('detail', function ($q) use ($filters) {
-                if ($filters->rangeStart !== null) {
-                    $q->where('start_date_local', '>=', $filters->rangeStart);
+            ->whereHas('detail', function ($q) use ($filters, $lowerBound) {
+                if ($lowerBound !== null) {
+                    $q->where('start_date_local', '>=', $lowerBound);
                 }
 
                 // Upper bound for a single-week deep link (the lower bound comes
@@ -69,42 +121,12 @@ class FeedQuery
                 if ($filters->week !== null) {
                     $q->where('start_date_local', '<', $filters->week->copy()->addDay());
                 }
-
-                if ($filters->distanceBand !== null) {
-                    [$min, $max] = FeedFilters::DISTANCE_BANDS[$filters->distanceBand];
-                    $q->where('distance', '>=', $min);
-                    if ($max !== null) {
-                        $q->where('distance', '<', $max);
-                    }
-                }
             })
             ->with([
                 'detail' => fn ($q) => $q->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'elapsed_time', 'average_heartrate', 'trimp_edwards', 'workout_type', 'summary_polyline']),
                 'runCard' => fn ($q) => $q->select(['id', 'activity_id', 'rarity', 'special_move', 'badges']),
-            ]);
-
-        // Mood lives on the post-run StoryLine, which is also what the list
-        // renders, so filtering there keeps the filter and the displayed mood in
-        // agreement. A run whose story line hasn't been written yet carries no
-        // mood and is therefore not a match for any mood.
-        if ($filters->moods !== []) {
-            $query->whereIn('id', StoryLine::query()
-                ->select('activity_id')
-                ->where('user_id', $user->id)
-                ->where('kind', StoryLine::KIND_POST_RUN)
-                ->whereIn('mood', $filters->moods));
-        }
-
-        // Rarity lives on the earned RunCard, generated once a run's detail is
-        // hydrated. A run still in the summary-only ingest state has no card yet
-        // and is therefore not a match for any rarity, same as mood above.
-        if ($filters->rarity !== null) {
-            $query->whereHas('runCard', fn ($q) => $q->where('rarity', $filters->rarity));
-        }
-
-        $this->applySort($query, $filters->sort);
-
-        return $query;
+            ])
+            ->orderByDesc('id');
     }
 
     /**
@@ -159,38 +181,5 @@ class FeedQuery
         }
 
         return Carbon::today()->subDays(FeedFilters::RANGE_DAYS[$range] - 1);
-    }
-
-    /**
-     * Ordering for the runs list. `newest` uses the activity id, which tracks
-     * insertion order and needs no join. The ranked modes order by a detail
-     * column, so they join it under an alias (the filter above uses a separate
-     * `whereHas` subquery, so the alias avoids colliding with it).
-     *
-     * @param  Builder<Activity>  $query
-     */
-    private function applySort(Builder $query, string $sort): void
-    {
-        if ($sort === FeedFilters::SORT_NEWEST) {
-            $query->orderByDesc('id');
-
-            return;
-        }
-
-        $query->join('activity_details as sort_detail', 'sort_detail.activity_id', '=', 'activities.id')
-            ->select('activities.*');
-
-        if ($sort === FeedFilters::SORT_LONGEST) {
-            $query->orderByDesc('sort_detail.distance');
-
-            return;
-        }
-
-        // Fastest = lowest seconds per metre. Runs missing distance or time have
-        // no pace to rank, so they drop out rather than sorting as infinitely
-        // fast (and the division stays safe).
-        $query->where('sort_detail.distance', '>', 0)
-            ->where('sort_detail.elapsed_time', '>', 0)
-            ->orderByRaw('sort_detail.elapsed_time / sort_detail.distance asc');
     }
 }

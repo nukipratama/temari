@@ -52,6 +52,6 @@ export function computeBarWidth(
 // fill differs — horizon tint for the fastest row, a faint zebra stripe otherwise.
 export function barRowFill(isFast: boolean, idx: number): string {
     if (isFast) return 'bg-horizon/[0.08]';
-    if (idx % 2 === 1) return 'bg-cream-deep/30';
-    return 'bg-sky/[0.03]';
+    if (idx % 2 === 1) return 'bg-muted/60';
+    return 'bg-foreground/[0.03]';
 }

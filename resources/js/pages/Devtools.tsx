@@ -1,5 +1,8 @@
-import { Icon } from '@iconify/react';
 import { Head } from '@inertiajs/react';
+
+import { Icon } from '@/components/ui/Icon';
+import { cn } from '@/lib/cn';
+import { cardVariants } from '@/lib/variants';
 
 interface DevtoolsLink {
     icon: string;
@@ -39,16 +42,27 @@ export default function Devtools() {
     return (
         <>
             <Head title="Devtools · Temari" />
-            <div className="flex min-h-screen flex-col items-center gap-8 bg-cream-deep px-8 py-16 text-ink">
-                <h1 className="font-display italic text-display-xs text-ink">
-                    Devtools
-                </h1>
+            <div className="flex min-h-screen flex-col items-center gap-8 bg-background px-8 py-16 text-foreground">
+                <div className="text-center">
+                    <h1 className="font-serif italic text-headline-xs text-foreground">
+                        Devtools
+                    </h1>
+                    <p className="mt-2 text-sm text-text-2">
+                        Internal tools, gated behind HTTP Basic.
+                    </p>
+                </div>
                 <ul className="grid w-full max-w-[560px] gap-3.5">
                     {LINKS.map((link) => (
                         <li key={link.href}>
                             <a
                                 href={link.href}
-                                className="flex items-center gap-4 rounded-lg border border-cream-deep bg-cream px-5 py-4 transition hover:border-horizon/40"
+                                className={cn(
+                                    cardVariants({
+                                        tone: 'card',
+                                        padding: 'card',
+                                    }),
+                                    'focus-ring flex items-center gap-4 transition hover:border-horizon/40',
+                                )}
                             >
                                 <span
                                     aria-hidden
@@ -62,10 +76,10 @@ export default function Devtools() {
                                     />
                                 </span>
                                 <div>
-                                    <div className="font-sans text-sm font-semibold text-ink">
+                                    <div className="font-sans text-sm font-semibold text-foreground">
                                         {link.label}
                                     </div>
-                                    <div className="mt-1 font-sans text-xs leading-snug text-ink-3">
+                                    <div className="mt-1 font-sans text-xs leading-snug text-text-3">
                                         {link.desc}
                                     </div>
                                 </div>

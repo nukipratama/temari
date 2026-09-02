@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
     cardVariants,
     chipVariants,
-    filterOptionVariants,
     iconButtonVariants,
     inputVariants,
     outlineChipVariants,
@@ -18,18 +17,18 @@ const tokens = (cls: string) => cls.split(' ');
 describe('cardVariants', () => {
     it('applies the one card surface, radius, elevation and pad role by default', () => {
         const cls = tokens(cardVariants());
-        expect(cls).toContain('bg-surface-card');
-        expect(cls).toContain('border-line');
+        expect(cls).toContain('bg-card');
+        expect(cls).toContain('border-border');
         expect(cls).toContain('rounded-md');
         expect(cls).toContain('shadow-e1');
         expect(cls).toContain('pad-card');
     });
 
     it.each([
-        ['card', 'bg-surface-card'],
+        ['card', 'bg-card'],
         ['sky', 'bg-sky'],
         ['onSky', 'backdrop-blur'],
-        ['empty', 'border-dashed'],
+        ['empty', 'border-border-strong'],
     ] as const)('renders tone %s', (tone, expected) => {
         expect(tokens(cardVariants({ tone }))).toContain(expected);
     });
@@ -57,21 +56,21 @@ describe('pillButtonVariants', () => {
         ['horizon', 'bg-horizon'],
         ['sky', 'bg-sky'],
         ['ghost', 'border-ink/[0.18]'],
-        ['outline', 'border-cream-deep'],
+        ['outline', 'border-border'],
     ] as const)('renders tone %s', (tone, expected) => {
         expect(tokens(pillButtonVariants({ tone }))).toContain(expected);
     });
 
-    it('gives the outline tone a cream fill with an ink-2 label', () => {
+    it('gives the outline tone a card fill with an ink-2 label', () => {
         const cls = tokens(pillButtonVariants({ tone: 'outline' }));
-        expect(cls).toContain('bg-cream');
-        expect(cls).toContain('text-ink-2');
+        expect(cls).toContain('bg-card');
+        expect(cls).toContain('text-text-2');
         expect(cls).toContain('hover:border-ink-3');
     });
 
     it('uses sm sizing when size="sm"', () => {
         expect(tokens(pillButtonVariants({ size: 'sm' }))).toContain(
-            'text-[13px]',
+            'text-[0.8125rem]',
         );
     });
 
@@ -95,7 +94,7 @@ describe('pillButtonVariants', () => {
 
 describe('chipVariants', () => {
     it.each([
-        ['neutral', 'text-ink-2'],
+        ['neutral', 'text-text-2'],
         ['horizon', 'text-horizon-ink'],
         ['leaf', 'text-leaf-ink'],
         ['sky', 'text-sky'],
@@ -104,12 +103,19 @@ describe('chipVariants', () => {
         expect(tokens(chipVariants({ tone }))).toContain(expected);
     });
 
-    it('adopts the text-label-micro utility in its base', () => {
-        expect(tokens(chipVariants())).toContain('text-label-micro');
+    it('leaves the label tier to the caller, since a size variant would strip it', () => {
+        // Both text-label-micro and the size variants live in tailwind-merge's
+        // font-size group (see lib/cn.ts), so a base that declared the utility
+        // had it dropped at every call site. A caller passes it via className,
+        // which is merged last and therefore wins.
+        expect(tokens(chipVariants())).not.toContain('text-label-micro');
+        expect(tokens(chipVariants())).toContain('text-[0.6875rem]');
     });
 
     it('uses md sizing when size="md"', () => {
-        expect(tokens(chipVariants({ size: 'md' }))).toContain('text-[12px]');
+        expect(tokens(chipVariants({ size: 'md' }))).toContain(
+            'text-[0.75rem]',
+        );
     });
 });
 
@@ -123,7 +129,7 @@ describe('toggleButtonVariants', () => {
     it('renders the unselected state on cream-deep', () => {
         const cls = tokens(toggleButtonVariants({ selected: false }));
         expect(cls).toContain('bg-cream-deep');
-        expect(cls).toContain('text-ink-2');
+        expect(cls).toContain('text-text-2');
     });
 
     it('carries the shared focus-ring in its base', () => {
@@ -157,48 +163,6 @@ describe('iconButtonVariants', () => {
         const cls = tokens(iconButtonVariants({ onSky: true }));
         expect(cls).toContain('text-cream/80');
         expect(cls).toContain('hover:text-cream');
-    });
-});
-
-describe('filterOptionVariants', () => {
-    it('gives an active row a bold sky tint, on top of the shared active tint', () => {
-        const cls = tokens(
-            filterOptionVariants({ layout: 'row', active: true }),
-        );
-        expect(cls).toContain('bg-sky/10');
-        expect(cls).toContain('text-sky');
-        expect(cls).toContain('font-semibold');
-    });
-
-    it('leaves an inactive row plain', () => {
-        const cls = tokens(
-            filterOptionVariants({ layout: 'row', active: false }),
-        );
-        expect(cls).toContain('text-ink');
-        expect(cls).toContain('hover:bg-surface-warm');
-        expect(cls).not.toContain('font-semibold');
-    });
-
-    it('does not bold an active mood tile, unlike an active row', () => {
-        const cls = tokens(
-            filterOptionVariants({ layout: 'mood', active: true }),
-        );
-        expect(cls).toContain('bg-sky/10');
-        expect(cls).toContain('text-sky');
-        expect(cls).not.toContain('font-semibold');
-    });
-
-    it('stretches a row full width but not a mood tile', () => {
-        expect(tokens(filterOptionVariants({ layout: 'row' }))).toContain(
-            'w-full',
-        );
-        expect(tokens(filterOptionVariants({ layout: 'mood' }))).not.toContain(
-            'w-full',
-        );
-    });
-
-    it('carries the shared focus-ring in its base', () => {
-        expect(tokens(filterOptionVariants())).toContain('focus-ring');
     });
 });
 
@@ -246,8 +210,8 @@ describe('rarityVariants', () => {
 describe('outlineChipVariants', () => {
     it('draws the unselected state as a hairline outline on the meta tier', () => {
         const cls = tokens(outlineChipVariants());
-        expect(cls).toContain('border-line');
-        expect(cls).toContain('text-ink-3');
+        expect(cls).toContain('border-border');
+        expect(cls).toContain('text-text-3');
         expect(cls).toContain('rounded-full');
         expect(cls).toContain('focus-ring');
     });
@@ -277,8 +241,8 @@ describe('inputVariants', () => {
 
     it('carries the shared field surface and focus-ring', () => {
         const cls = tokens(inputVariants());
-        expect(cls).toContain('bg-surface');
-        expect(cls).toContain('border-line');
+        expect(cls).toContain('bg-background');
+        expect(cls).toContain('border-border');
         expect(cls).toContain('focus-ring');
     });
 

@@ -3,12 +3,12 @@ import type { Mood } from '@/types/inertia';
 import { PALETTE } from '@/lib/chartTokens';
 
 export const MOOD_LABEL: Record<Mood, string> = {
-    blazing: 'Blazing',
-    easy: 'Easy',
-    gassed: 'Gassed',
-    wobbly: 'Wobbly',
-    overloaded: 'Overloaded',
-    chill: 'Chill',
+    blazing: 'blazing',
+    easy: 'easy',
+    gassed: 'gassed',
+    wobbly: 'wobbly',
+    overloaded: 'overloaded',
+    chill: 'chill',
 };
 
 // Solid mood fill (bg-mood-{key}); use for persona bar segments + sigil swatches.
@@ -41,32 +41,30 @@ export const MOOD_ORDER: ReadonlyArray<Mood> = [
     'chill',
 ];
 
-// Short cause hint per mood; pairs with MOOD_LABEL in filter/legend rows.
-export const MOOD_HINT: Record<Mood, string> = {
-    blazing: 'PR or win',
-    easy: 'easy pace',
-    wobbly: 'HR drift',
-    gassed: 'pushed too hard',
-    overloaded: 'overdid it',
-    chill: 'rest day',
-};
+/**
+ * The most frequent mood among a set of runs, ties broken by MOOD_ORDER
+ * (best-day → rest-day) so the pick is deterministic. Null moods (a run with
+ * no post-run story line yet) don't count. Null when nothing scores.
+ */
+export function dominantMood(moods: ReadonlyArray<Mood | null>): Mood | null {
+    const counts = new Map<Mood, number>();
+    for (const mood of moods) {
+        if (mood === null) continue;
+        counts.set(mood, (counts.get(mood) ?? 0) + 1);
+    }
 
-export interface MoodOption {
-    mood: Mood;
-    label: string;
-    hint: string;
-    /** Tailwind class for the chip swatch. */
-    swatchClass: string;
+    let dominant: Mood | null = null;
+    let topCount = 0;
+    for (const mood of MOOD_ORDER) {
+        const count = counts.get(mood) ?? 0;
+        if (count > topCount) {
+            topCount = count;
+            dominant = mood;
+        }
+    }
+
+    return dominant;
 }
-
-export const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = MOOD_ORDER.map(
-    (mood) => ({
-        mood,
-        label: MOOD_LABEL[mood],
-        hint: MOOD_HINT[mood],
-        swatchClass: MOOD_FILL[mood],
-    }),
-);
 
 export function moodSigilColor(mood: Mood): string {
     switch (mood) {

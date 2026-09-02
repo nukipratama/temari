@@ -16,7 +16,7 @@ use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushMessage;
 
 /**
- * The one-off "test notification" from the Aku page, so a user can confirm their
+ * The one-off "test notification" from the Profile page, so a user can confirm their
  * notification channels work without waiting for a run. Channel-agnostic by
  * design: `via()` fans out to every wired channel (Telegram if connected, web
  * push if subscribed), so the single "Send test notification" action reaches

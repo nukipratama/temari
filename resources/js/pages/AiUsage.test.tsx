@@ -203,18 +203,18 @@ describe('AiUsage page', () => {
     });
 
     it('renders the flash info banner when present', () => {
-        setMockPage({ flash: { info: 'Mencoba ulang 2 blok untuk Charlie.' } });
+        setMockPage({ flash: { info: 'Retrying 2 blocks for Charlie.' } });
         render(<AiUsage {...baseProps} />);
 
         expect(
-            screen.getByText('Mencoba ulang 2 blok untuk Charlie.'),
+            screen.getByText('Retrying 2 blocks for Charlie.'),
         ).toBeInTheDocument();
     });
 
     it('renders no flash banner when there is nothing to confirm', () => {
         render(<AiUsage {...baseProps} />);
 
-        expect(screen.queryByLabelText('Tutup')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Close')).not.toBeInTheDocument();
     });
 
     it('hides the attention area when nothing is stuck', () => {
@@ -222,7 +222,7 @@ describe('AiUsage page', () => {
 
         expect(screen.queryByText('Needs attention')).not.toBeInTheDocument();
         expect(
-            screen.queryByRole('button', { name: /Pulihkan semua/ }),
+            screen.queryByRole('button', { name: /Recover all/ }),
         ).not.toBeInTheDocument();
     });
 

@@ -1,13 +1,13 @@
-import { Icon } from '@iconify/react';
 import { Link, usePage, usePoll } from '@inertiajs/react';
 import { useEffect } from 'react';
 
 import type { SharedProps, StravaSyncState } from '@/types/inertia';
 
 import StravaSyncButton from '@/components/StravaSyncButton';
-import Temari from '@/components/temari/Temari';
-import Card from '@/components/ui/Card';
+import FaceIcon from '@/components/temari/FaceIcon';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
 
@@ -17,37 +17,31 @@ const HERO: Record<
 > = {
     disconnected: {
         eyebrow: '★ Not connected',
-        headline: 'Connect Strava first',
-        copy: 'I read your runs straight from Strava. Connect it first to get your first card going.',
+        headline: 'connect Strava first',
+        copy: 'i read your runs straight from Strava. connect it first to get your first card going.',
     },
     revoked: {
         eyebrow: '★ Disconnected',
         headline: 'Strava connection lost',
-        copy: "Your Strava token isn't active anymore. Reconnect so new runs can be read.",
+        copy: "your Strava token isn't active anymore. reconnect so new runs can be read.",
     },
     syncing: {
         eyebrow: '★ Syncing',
-        headline: 'Your runs are being pulled from Strava',
-        copy: "Hang tight, the moment your first run comes in, I'll read it and the card will show up.",
+        headline: 'your runs are being pulled from Strava',
+        copy: "hang tight, the moment your first run comes in, i'll read it and the card will show up.",
     },
     ready: {
         eyebrow: '★ Nothing yet',
-        headline: 'No new runs found yet',
-        copy: 'If you just finished a run, try syncing again so it gets picked up.',
+        headline: 'no new runs found yet',
+        copy: 'if you just finished a run, try syncing again so it gets picked up.',
     },
 };
 
 const ACTIONS = [
     {
-        icon: 'mdi:tshirt-crew-outline',
-        title: 'Dress up Temari',
-        desc: 'Pick an accessory combo for your profile.',
-        href: '/accessories',
-    },
-    {
         icon: 'mdi:chart-line',
-        title: 'See your run recap',
-        desc: 'Once your first run comes in, the recap shows up here.',
+        title: 'see your run recap',
+        desc: 'once your first run comes in, the recap shows up here.',
         href: '/history',
     },
 ] as const;
@@ -81,26 +75,26 @@ export default function EmptyRunsState({
     }, [isSyncing, start, stop]);
 
     return (
-        <div className="flex flex-col items-center gap-8 px-5 py-10 sm:px-8 lg:px-14">
+        <div className="flex flex-col items-center gap-8 px-4 py-10">
             {/* Temari + headline */}
             <div className="flex flex-col items-center gap-5 text-center">
-                <Temari pose="reading" size={140} />
+                <FaceIcon size={72} />
                 <div>
                     <Eyebrow token="hero" tone="horizon-ink" className="mb-3">
                         {hero.eyebrow}
                     </Eyebrow>
                     <h2
                         className={cn(
-                            'font-display text-display-sm',
-                            onSky ? 'text-cream' : 'text-ink',
+                            'font-serif text-display-sm',
+                            onSky ? 'text-cream' : 'text-foreground',
                         )}
                     >
                         {hero.headline}
                     </h2>
                     <p
                         className={cn(
-                            'mx-auto mt-3 max-w-sm font-display text-quote-sm italic leading-relaxed',
-                            onSky ? 'text-ink-on-sky' : 'text-ink-2',
+                            'mx-auto mt-3 max-w-sm font-serif text-quote-sm italic leading-relaxed',
+                            onSky ? 'text-ink-on-sky' : 'text-text-2',
                         )}
                     >
                         &ldquo;{hero.copy}&rdquo;
@@ -124,7 +118,7 @@ export default function EmptyRunsState({
                             href={href}
                             className={cn(
                                 'focus-ring flex items-center gap-3 rounded-xl px-4 py-3',
-                                onSky ? 'bg-cream/[0.08]' : 'bg-surface-card',
+                                onSky ? 'bg-cream/[0.08]' : 'bg-card',
                             )}
                         >
                             <span
@@ -141,18 +135,20 @@ export default function EmptyRunsState({
                             <div className="min-w-0 flex-1">
                                 <div
                                     className={cn(
-                                        'text-[13px] font-semibold',
-                                        onSky ? 'text-cream' : 'text-ink',
+                                        'text-[0.8125rem] font-semibold',
+                                        onSky
+                                            ? 'text-cream'
+                                            : 'text-foreground',
                                     )}
                                 >
                                     {title}
                                 </div>
                                 <div
                                     className={cn(
-                                        'mt-0.5 font-mono text-[11px]',
+                                        'mt-0.5 font-mono text-[0.6875rem]',
                                         onSky
                                             ? 'text-ink-on-sky'
-                                            : 'text-ink-3',
+                                            : 'text-text-3',
                                     )}
                                 >
                                     {desc}
@@ -161,8 +157,8 @@ export default function EmptyRunsState({
                             <span
                                 aria-hidden
                                 className={cn(
-                                    'font-mono text-[14px]',
-                                    onSky ? 'text-ink-on-sky' : 'text-ink-3',
+                                    'font-mono text-[0.875rem]',
+                                    onSky ? 'text-ink-on-sky' : 'text-text-3',
                                 )}
                             >
                                 ›

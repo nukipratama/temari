@@ -6,6 +6,12 @@ const allTsx = import.meta.glob('../**/*.tsx');
 // are allowlisted in TS_EXEMPT below.
 const allHookTs = import.meta.glob('../hooks/**/*.ts');
 const allLibTs = import.meta.glob('../lib/**/*.ts');
+// Eager here: this one needs the file *contents*, not just the paths.
+const allSource = import.meta.glob('../**/*.{ts,tsx}', {
+    eager: true,
+    query: '?raw',
+    import: 'default',
+}) as Record<string, string>;
 
 /**
  * Components / pages intentionally without a co-located `{name}.test.tsx`.
@@ -81,5 +87,46 @@ describe('component/page test coverage (1:1)', () => {
             missing,
             `These hooks/lib .ts modules have no co-located *.test.ts (add one, or allowlist a pure-data module in TS_EXEMPT in resources/js/test/structure.test.ts):\n  ${missing.join('\n  ')}`,
         ).toEqual([]);
+    });
+});
+
+describe('icon keys', () => {
+    /**
+     * `Icon` renders nothing for a key its map does not carry — deliberate, so
+     * a bad key can never throw in front of a user. The cost is that a typo is
+     * invisible: it leaves a correctly-sized, correctly-coloured, empty button.
+     * That happened once (`mdi:calendar`, which is `mdi:calendar-blank-outline`)
+     * and was only caught by measuring the rendered SVG. This is the guard.
+     */
+    it('every mdi: key referenced in source exists in the Icon map', () => {
+        const iconSource = Object.entries(allSource).find(([path]) =>
+            path.endsWith('components/ui/Icon.tsx'),
+        )?.[1];
+        expect(iconSource).toBeDefined();
+        const mapped = new Set(
+            [...iconSource!.matchAll(/'(mdi:[a-z0-9-]+)':/g)].map((m) => m[1]),
+        );
+        expect(mapped.size).toBeGreaterThan(50);
+
+        const unmapped: string[] = [];
+        for (const [path, source] of Object.entries(allSource)) {
+            // Test files may reference a deliberately unmapped key to assert
+            // the empty-render behaviour itself.
+            if (path.endsWith('Icon.tsx') || /\.test\.tsx?$/.test(path)) {
+                continue;
+            }
+            // Both quote styles: a JSX attribute writes "mdi:x", a map or a
+            // variable writes 'mdi:x'. Matching only one made this guard pass
+            // against a key proven bad by hand.
+            for (const match of source.matchAll(/['"](mdi:[a-z0-9-]+)['"]/g)) {
+                if (!mapped.has(match[1])) {
+                    unmapped.push(
+                        `${match[1]} @ ${path.replace(/^\.\.\//, '')}`,
+                    );
+                }
+            }
+        }
+
+        expect(unmapped).toEqual([]);
     });
 });

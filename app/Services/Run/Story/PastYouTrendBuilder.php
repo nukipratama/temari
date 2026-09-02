@@ -6,11 +6,9 @@ namespace App\Services\Run\Story;
 
 use App\Enums\TrendDirection;
 use App\Enums\TrendVerdict;
-use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Services\Run\Metrics\PaceConsistency;
-use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Database\Eloquent\Collection;
@@ -45,7 +43,6 @@ class PastYouTrendBuilder
     public function __construct(
         private readonly PastYouMatcher $matcher,
         private readonly TrainingLoad $trainingLoad,
-        private readonly RelativeEffort $relativeEffort,
     ) {
     }
 
@@ -81,7 +78,6 @@ class PastYouTrendBuilder
             fitnessDeltaCtl: $this->fitnessDelta($user, $anchor),
             paceConsistencyNow: $consistencyNow,
             paceConsistencyThen: $consistencyThen,
-            relativeEffortBand: $this->relativeEffortBand($comparisons[0]),
         );
     }
 
@@ -237,20 +233,6 @@ class PastYouTrendBuilder
         }
 
         return PaceConsistency::label(StreamSummary::fromArray($detail->stream_summary)->paceVariabilitySec());
-    }
-
-    private function relativeEffortBand(PastYouComparison $comparison): ?string
-    {
-        $activity = Activity::query()->with('detail')->find($comparison->current->activityId);
-        $detail = $activity?->detail;
-
-        if ($activity === null || $detail === null) {
-            return null;
-        }
-
-        $effort = $this->relativeEffort->forRun($activity, $detail);
-
-        return $effort === null ? null : $effort['band'];
     }
 
     /**

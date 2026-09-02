@@ -60,7 +60,7 @@ it('tells a non-Safari iOS browser to open in Safari', async () => {
     vi.mocked(webPush.isIosNonSafari).mockReturnValue(true);
     render(<PushNotificationToggle />);
     expect(
-        await screen.findByText(/Open Temari in Safari/),
+        await screen.findByText(/open temari in Safari/),
     ).toBeInTheDocument();
 });
 
@@ -89,4 +89,62 @@ it('offers only the off switch when already subscribed', async () => {
     expect(
         screen.queryByRole('button', { name: /Send test notification/ }),
     ).not.toBeInTheDocument();
+});
+
+it('unsubscribes and returns to the ready state when Turn off is clicked', async () => {
+    vi.mocked(webPush.currentSubscription).mockResolvedValue(
+        {} as PushSubscription,
+    );
+    render(<PushNotificationToggle />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Turn off/ }));
+
+    await waitFor(() => expect(webPush.unsubscribe).toHaveBeenCalled());
+    expect(
+        await screen.findByRole('button', { name: /Turn on/ }),
+    ).toBeInTheDocument();
+});
+
+it('renders a mute toggle instead of the action once subscribed, when onMuteChange is passed', async () => {
+    vi.mocked(webPush.currentSubscription).mockResolvedValue(
+        {} as PushSubscription,
+    );
+    const onMuteChange = vi.fn();
+    render(
+        <PushNotificationToggle muted={false} onMuteChange={onMuteChange} />,
+    );
+
+    const toggle = await screen.findByRole('switch', {
+        name: 'send run notifications to this device',
+    });
+    fireEvent.click(toggle);
+
+    expect(onMuteChange).toHaveBeenCalledWith(true);
+});
+
+it('opens and closes the demo-blocked modal for a demo user', async () => {
+    mockPage();
+    setMockPage({
+        auth: {
+            user: {
+                id: 1,
+                name: 'A',
+                first_name: 'A',
+                avatar_url: null,
+                is_demo: true,
+            },
+        },
+        flash: {},
+        demoLoginEnabled: false,
+        webPushPublicKey: 'test-key',
+    });
+    render(<PushNotificationToggle />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Turn on/ }));
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+    await waitFor(() =>
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
 });

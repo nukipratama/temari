@@ -25,16 +25,6 @@ function styleRule(selectorText: string, properties: string[]) {
     };
 }
 
-function groundRule(selectorText: string, surface: string) {
-    return {
-        selectorText,
-        style: {
-            getPropertyValue: (name: string) =>
-                name === '--color-surface' ? surface : '',
-        } as unknown as CSSStyleDeclaration,
-    };
-}
-
 describe('collectTokenNames', () => {
     it('reads custom properties off :root rules', () => {
         const names = collectTokenNames([
@@ -150,77 +140,25 @@ describe('collectPaperGrounds', () => {
         ]),
     );
 
-    it('carries every classified paper ground alongside the dawn-shift ones', () => {
-        const grounds = collectPaperGrounds(
-            [
-                {
-                    cssRules: [
-                        {
-                            cssRules: [
-                                groundRule(
-                                    "body[data-time-of-day='dawn']",
-                                    '#f0ebdb',
-                                ),
-                                groundRule(
-                                    "body[data-time-of-day='night']",
-                                    '#eee8d9',
-                                ),
-                            ],
-                        },
-                    ],
-                },
-            ],
-            paperValues,
-        );
+    it('carries every classified paper ground', () => {
+        const grounds = collectPaperGrounds(paperValues);
 
-        expect(grounds.map((g) => g.name)).toEqual([
-            ...GROUND_KINDS.paper,
-            'surface · dawn',
-            'surface · night',
-        ]);
+        expect(grounds.map((g) => g.name)).toEqual(GROUND_KINDS.paper);
     });
 
-    it('reaches past --color-surface and its dawn-shift drifts', () => {
+    it('reaches past --color-surface', () => {
         // The S2.9 blind spot in one assertion: cream-deep is the ground
         // AppShell paints and the one the old scrape could never see.
-        const grounds = collectPaperGrounds([], paperValues);
+        const grounds = collectPaperGrounds(paperValues);
 
         expect(grounds.map((g) => g.name)).toContain('cream-deep');
     });
 
     it('keeps a classified ground the stylesheet no longer resolves, so it scores as a failure', () => {
-        const grounds = collectPaperGrounds([], {});
+        const grounds = collectPaperGrounds({});
 
         expect(grounds.every((g) => g.value === '')).toBe(true);
         expect(grounds).not.toHaveLength(0);
-    });
-
-    it('ignores a time-of-day rule that does not redeclare the surface', () => {
-        const grounds = collectPaperGrounds(
-            [
-                {
-                    cssRules: [groundRule("body[data-time-of-day='dusk']", '')],
-                },
-            ],
-            paperValues,
-        );
-
-        expect(grounds.map((g) => g.name)).toEqual(GROUND_KINDS.paper);
-    });
-
-    it('skips a cross-origin sheet instead of throwing', () => {
-        const grounds = collectPaperGrounds(
-            [
-                {
-                    get cssRules(): never {
-                        throw new Error('SecurityError');
-                    },
-                },
-            ],
-            paperValues,
-        );
-
-        expect(grounds.map((g) => g.name)).toEqual(GROUND_KINDS.paper);
     });
 });
 
@@ -419,18 +357,20 @@ describe('auditPanels', () => {
         '--color-sky': '#241c54',
         '--color-cream': '#f5f0e4',
         '--color-ink': '#1a1812',
+        '--color-foreground': '#1a1812',
         '--color-ink-on-sky': '#b0a3c9',
+        '--color-text-2': '#34373c',
     };
     const PAPER = [{ name: 'cream-deep', value: '#ece2ce' }];
 
     it('scores a panel on what it composites to, not on the fill it tints', () => {
-        // cream-deep at 60% over cream-deep (registered as "paper" here) is
+        // cream-deep at 70% over cream-deep (registered as "paper" here) is
         // still cream-deep, so the panel keeps the contrast its own family
         // was designed for — the fill tint alone wouldn't tell you that.
         const overPaper = auditPanels(
             { ...VALUES, '--color-cream-deep': '#ece2ce' },
             PAPER,
-        ).find((row) => row.bg.startsWith('cream-deep/0.6'));
+        ).find((row) => row.bg.startsWith('cream-deep/0.7'));
         expect(overPaper?.bg).toContain('on cream-deep');
         expect(overPaper?.pass).toBe(true);
     });

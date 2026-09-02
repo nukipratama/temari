@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace App\Services\Run;
 
-use App\Enums\Rarity;
-use App\Services\Run\Story\Temari;
 use Illuminate\Support\Carbon;
 
+/**
+ * Windowing for the History feed. Mood/distance/rarity/sort selection was cut
+ * from the Feed screen (S7 — the mobile-UX port has no filter UI); this DTO
+ * keeps only the range/week-deep-link windowing that still governs how much
+ * history the server loads, which isn't itself a user-facing filter control.
+ */
 final readonly class FeedFilters
 {
     /**
      * Range chip → days back from today. Default `8w` keeps the page snappy
-     * for typical browsing while letting users pull up to a year on demand.
-     * {@see self::RANGE_ALL} is the unbounded escalation (every run, any age).
+     * for typical browsing while letting the auto-widen below pull up to a
+     * year on demand. {@see self::RANGE_ALL} is the unbounded escalation
+     * (every run, any age).
      */
     public const array RANGE_DAYS = [
         '8w' => 56,
@@ -26,71 +31,19 @@ final readonly class FeedFilters
     public const string RANGE_ALL = 'all';
 
     /**
-     * Selectable moods for the Feed filter. Mirrors the `Mood` union in
-     * resources/js/types/inertia.ts; anything else in `?mood=` is dropped rather
-     * than 404ing, so a stale or hand-edited URL degrades to a wider view.
+     * Week sections shown per page, and how many each "load older weeks" press
+     * adds. Two matches the prototype's own first paint.
      */
-    public const array MOODS = [
-        Temari::MOOD_NYALA,
-        Temari::MOOD_ENTENG,
-        Temari::MOOD_OLENG,
-        Temari::MOOD_LEMES,
-        Temari::MOOD_MUMET,
-        Temari::MOOD_ADEM,
-    ];
+    public const int WEEKS_PER_PAGE = 2;
 
-    /**
-     * Distance bands in metres as `[min inclusive, max exclusive|null]`. Cut at
-     * the distances runners actually think in (5K, 10K, half marathon) rather
-     * than at even numbers. `21up` is open-ended so an ultra still lands
-     * somewhere.
-     */
-    public const array DISTANCE_BANDS = [
-        '0-5' => [0, 5000],
-        '5-10' => [5000, 10000],
-        '10-21' => [10000, 21097],
-        '21up' => [21097, null],
-    ];
+    /** Ceiling on the page cursor, so a hand-edited `?weeks=` can't ask for everything. */
+    public const int MAX_WEEKS = 52;
 
-    /**
-     * Sort modes. `newest` is the default chronological view the week grouping
-     * depends on; the other two rank runs globally, which the page renders as a
-     * flat list instead (weekly recap cards only make sense in date order).
-     */
-    public const string SORT_NEWEST = 'newest';
-
-    public const string SORT_LONGEST = 'longest';
-
-    public const string SORT_FASTEST = 'fastest';
-
-    public const array SORTS = [self::SORT_NEWEST, self::SORT_LONGEST, self::SORT_FASTEST];
-
-    /**
-     * Selectable rarities for the List filter, matching the earned Kartu's
-     * {@see \App\Enums\Rarity} — a run whose card hasn't been generated yet
-     * carries no rarity and matches no filter, same as an un-storylined run
-     * and the mood filter.
-     */
-    public const array RARITIES = [
-        Rarity::Common->value,
-        Rarity::Uncommon->value,
-        Rarity::Rare->value,
-        Rarity::Epic->value,
-        Rarity::Legendary->value,
-    ];
-
-    /**
-     * @param  array<int, string>  $moods
-     */
     public function __construct(
         public string $range,
         public bool $rangeAutoWidened,
         public ?Carbon $rangeStart,
-        public array $moods,
-        public ?string $distanceBand,
-        public string $sort,
         public ?Carbon $week,
-        public ?string $rarity,
     ) {
     }
 }

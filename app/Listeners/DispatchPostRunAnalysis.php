@@ -65,9 +65,9 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $this->analysisService->requestBriefing($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
 
         $this->analysisService->request(
-            subjectOrType: AnalysisType::AkuProfileVoice->subjectType(),
+            subjectOrType: AnalysisType::ProfileVoice->subjectType(),
             subjectId: $user->id,
-            type: AnalysisType::AkuProfileVoice,
+            type: AnalysisType::ProfileVoice,
             discriminator: AnalysisType::currentIsoWeek(),
             delaySeconds: $delaySec,
             invalidate: false,

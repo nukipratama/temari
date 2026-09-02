@@ -1,6 +1,6 @@
 ---
 title: Race — goal race and Riegel projection
-description: The first user-authored object in the app — a race the user is training for, a fitted-Riegel finish-time projection, and the 90-day fitness trend
+description: The first user-authored object in the app — a race the user is training for and a fitted-Riegel finish-time projection
 tags: [feature, run]
 status: living
 reviewed: 2026-08-10
@@ -12,7 +12,6 @@ code_refs:
   - app/Services/Run/Metrics/TrainingLoad.php
   - app/Services/Inertia/GamificationProps.php
   - resources/js/pages/Race.tsx
-  - resources/js/components/race/CtlTrendChart.tsx
 ---
 
 # Race — goal race and Riegel projection
@@ -21,7 +20,7 @@ The first genuinely user-authored object in the app: a race the user is training
 
 ## Naming: "Race", not "Goal"
 
-[GoalResolver](app/Services/Gamification/GoalResolver.php) already means something else entirely: a config-driven, static accessory-unlock progress catalog with no DB table (surfaced on `/accessories` — the standalone `/goals` page that once fronted it retired in Slice 7). Introducing a second "goal" concept here would collide in the UI. **The user-facing name for this feature is "Race"** — route, controller, page, nav copy. The DB/model layer still says "goal" ([RaceGoal](app/Models/RaceGoal.php), `race_goals` table) since that's an implementation detail invisible to users. The two features stay completely separate; [[gamification]]'s catalog is untouched by this note.
+[GoalResolver](app/Services/Gamification/GoalResolver.php) already means something else entirely: a config-driven, static accessory-unlock progress catalog with no DB table (both pages that once fronted it are retired — `/goals` in Slice 7, `/accessories` in `PP2`). Introducing a second "goal" concept here would collide in the UI. **The user-facing name for this feature is "Race"** — route, controller, page, nav copy. The DB/model layer still says "goal" ([RaceGoal](app/Models/RaceGoal.php), `race_goals` table) since that's an implementation detail invisible to users. The two features stay completely separate; [[gamification]]'s catalog is untouched by this note.
 
 ## Schema: one active race, history retained
 
@@ -43,9 +42,9 @@ Effort-window PRs (`Best5Min` etc.) store a **pace** (sec/km), not elapsed time 
 
 This is deliberately **not** reconciled with [VdotEstimator](app/Services/Run/Metrics/VdotEstimator.php), which solves training-pace prescription (a `min()` reduction across PRs), not race-time projection — different questions, no shared math.
 
-## 90-day fitness trend
+## No fitness trend here any more
 
-[TrainingLoad::ctlTrend()](app/Services/Run/Metrics/TrainingLoad.php) needed no new storage: `rollDailySeries` (the EWMA roll every CTL/ATL computation already runs) now returns every day's pair instead of only the last one, and `ctlTrend` slices the tail. See [[training-load-metrics]] for the full CTL/ATL engine.
+`PP3` cut `/race`'s 90-day CTL chart (P26): the prototype draws that chart once, on Trends, and gives Race three blocks — race card, projection gauge, goal form. `PS6` built Trends' panel on `LineChart` directly rather than reusing `CtlTrendChart`, which left that component with no consumer at all; `W2` swept it. [TrainingLoad::ctlTrend()](app/Services/Run/Metrics/TrainingLoad.php) still feeds Trends' fitness panel. See [[training-load-metrics]] for the full CTL/ATL engine.
 
 ## Sharing and cache busting
 

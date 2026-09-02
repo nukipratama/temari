@@ -20,7 +20,7 @@
        (numbers, stats, uppercase metadata labels). Loaded via Google Fonts
        <link> in app.blade.php. */
     --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
-    --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --font-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
     --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
 
     /* ─── Display-type scale ───────────────────────────────────────────
@@ -30,8 +30,13 @@
 
        Display tier — fluid; editorial / hero headlines.
        Headline tier — fluid, narrower range; section-level.
-       Quote tier — fixed px; body reading should NOT scale with
-         viewport because the focal distance is constant.              */
+       Quote tier — a fixed rem; it deliberately does NOT scale with
+         viewport, because a vw-fluid body size means a phone and a
+         monitor at the same fraction render at wildly different
+         physical sizes. It does follow the root, which steps once at
+         1280px: a desktop is read at a longer focal distance than a
+         phone, so a discrete step there is the same argument, not its
+         opposite. See the root rule below.                            */
     --text-display-2xl: clamp(40px, 7.5vw, 92px);
     --text-display-2xl--line-height: 0.96;
     --text-display-2xl--letter-spacing: -0.01em;
@@ -64,16 +69,16 @@
     --text-headline-xs--line-height: 1.1;
     --text-headline-xs--letter-spacing: 0;
 
-    --text-quote-lg: 22px;
+    --text-quote-lg: 1.375rem;
     --text-quote-lg--line-height: 1.3;
-    --text-quote-md: 18px;
+    --text-quote-md: 1.125rem;
     --text-quote-md--line-height: 1.4;
-    --text-quote-sm: 15px;
+    --text-quote-sm: 0.9375rem;
     --text-quote-sm--line-height: 1.5;
 
     /* Stat value — the big tabular number on KPI tiles / PR cards. Fixed px
        (not fluid): these sit in fixed-height card layouts. */
-    --text-stat: 32px;
+    --text-stat: 2rem;
     --text-stat--line-height: 1;
 
     /* Fluid variant for stat numbers in narrow grid columns (e.g. the 3-up
@@ -148,9 +153,8 @@
     --color-citrus-ink: #7b5c13;
     --color-stone: #64686c;
 
-    /* Surface tier — Pewter: cold near-white. dawn-shift drifts the base
-       across the day (see body[data-time-of-day=…] below). `surface-card` is
-       the single ground every card shares; `surface-elev` is floating UI only. */
+    /* Surface tier — Pewter: cold near-white. `surface-card` is the single
+       ground every card shares; `surface-elev` is floating UI only. */
     --color-surface: #f1f5f8;
     --color-surface-card: #f1f5f8;
     --color-surface-elev: #f8fbfe;
@@ -198,25 +202,85 @@
     --color-strava-orange: #fc4c02;
     --color-strava-orange-hover: #e34402;
 
-    /* ─── Spacing ──────────────────────────────────────────────────────
-       4px base. Named PAD roles let a component ask for its *kind* of
-       padding instead of picking a number (see the .pad-* utilities). */
-    --spacing-1: 4px;
-    --spacing-2: 8px;
-    --spacing-3: 12px;
-    --spacing-4: 16px;
-    --spacing-5: 20px;
-    --spacing-6: 24px;
-    --spacing-8: 32px;
-    --spacing-10: 40px;
-    --spacing-12: 48px;
-    --spacing-16: 64px;
+    /* ─── Ground-reactive semantic layer ──────────────────────────────
+       Two-ground token model (F2). Every token below is redeclared, literal
+       hex, under `[data-theme="dark"]` further down this file — this block
+       carries the light/default value only. `static` still gives each one a
+       real `var(--color-x)`-indirected utility (Tailwind v4 always defers
+       theme colours to a custom property; `static` only forces emission
+       regardless of usage), so the `[data-theme="dark"]` override below
+       repaints every `bg-card` / `text-foreground` / `text-leaf-ink` call site
+       without Tailwind regenerating anything. See DesignTokenContrastTest.php
+       for why every value here — light AND dark — stays literal hex: the
+       guard that scores these parses `#rrggbb` by regex, and a `color-mix()`
+       or `var()` value would silently score nothing.
 
-    --pad-chip: 4px 12px;
-    --pad-panel: 12px 16px;
-    --pad-card: 16px;
-    --pad-hero: 24px;
-    --pad-page: 48px 40px 80px;
+       Semantic slots (shadcn `base-luma` vocabulary) mapped onto Pewter:
+       primary/ring follow the app's own established identity (horizon is the
+       CTA colour, leaf is the focus-ring colour per .focus-ring below) rather
+       than the prototype's Luma-default choice of sky/indigo. */
+    --color-background: #f1f5f8; /* cream */
+    --color-foreground: #16181b; /* ink */
+    --color-card: #f1f5f8; /* surface-card */
+    --color-card-foreground: #16181b;
+    --color-popover: #f8fbfe; /* surface-elev */
+    --color-popover-foreground: #16181b;
+    --color-primary: #ade047; /* horizon */
+    --color-primary-foreground: #16181b; /* ink — already validated: text on gold CTA */
+    --color-secondary: #e2e8ee; /* surface-sunken */
+    --color-secondary-foreground: #16181b;
+    --color-muted: #e2e8ee;
+    --color-muted-foreground: #60666d; /* ink-3 */
+    --color-accent: #e2e8ee;
+    --color-accent-foreground: #16181b;
+    --color-destructive: #b23a4f; /* ember, constant across grounds */
+    --color-border: #bfc5cc; /* line */
+    --color-input: #bfc5cc;
+    --color-ring: #2f8f63; /* leaf — matches .focus-ring below, both grounds */
+    --color-chart-1: #546d23; /* horizon-ink */
+    --color-chart-2: #26303d; /* sky-2 */
+    --color-chart-3: #2f8f63; /* leaf */
+    --color-chart-4: #b23a4f; /* ember */
+    --color-chart-5: #7b5c13; /* citrus-ink */
+
+    /* Six hand-built theme-reactive tokens, ported from the prototype's own
+       set (resources/brand/prototype/src/index.css) — icon accents, a
+       secondary/tertiary text tier distinct from ink-2/ink-3 (light stays
+       equal to them; dark needs its own derived tones), a strong border for
+       login-style separators, the Today card's accent edge, and the
+       Settings solid-pill button pairing. */
+    --color-icon-accent: #546d23; /* horizon-ink */
+    --color-text-2: #34373c; /* = ink-2 on light */
+    --color-text-3: #60666d; /* = ink-3 on light */
+    --color-border-strong: #bfc5cc; /* = line on light */
+    --color-today-accent: #c2ccb8; /* horizon-ink at 30% over card (literal, not color-mix) */
+    --color-btn-primary-bg: #546d23; /* horizon-ink */
+    --color-btn-primary-fg: #ffffff;
+
+    /* ─── Spacing ──────────────────────────────────────────────────────
+       4px base, expressed in rem. These ten steps are the only ones this
+       theme names; every other step falls through to Tailwind's own
+       rem-based scale, so declaring these in px left the scale half px and
+       half rem — which agreed at a 16px root and stopped agreeing the
+       moment the root steps at 1280px. Named PAD roles let a component ask
+       for its *kind* of padding instead of picking a number (see the
+       .pad-* utilities). */
+    --spacing-1: 0.25rem;
+    --spacing-2: 0.5rem;
+    --spacing-3: 0.75rem;
+    --spacing-4: 1rem;
+    --spacing-5: 1.25rem;
+    --spacing-6: 1.5rem;
+    --spacing-8: 2rem;
+    --spacing-10: 2.5rem;
+    --spacing-12: 3rem;
+    --spacing-16: 4rem;
+
+    --pad-chip: 0.25rem 0.75rem;
+    --pad-panel: 0.75rem 1rem;
+    --pad-card: 1rem;
+    --pad-hero: 1.5rem;
+    --pad-page: 3rem 2.5rem 5rem;
 
     /* ─── Radius ───────────────────────────────────────────────────────
        md is the card/panel corner. Overrides Tailwind's defaults for the
@@ -227,6 +291,23 @@
     --radius-lg: 18px;
     --radius-xl: 24px;
     --radius-full: 9999px;
+
+    /* shadcn/prototype primitives (F3+) reach for `rounded-2xl/3xl/4xl` —
+       Tailwind's own built-in keywords, previously untokened here and banned
+       by check-raw-palette.mjs rule 3 for exactly that reason. These are
+       shadcn's own separate keyword vocabulary, not a continuation of this
+       ladder's xs-xl steps above (the two namespaces already coexist without
+       being one monotonic sequence — see --radius-panel below, which sits
+       above xl under its own name rather than being called "2xl"). Values
+       are the literal output of shadcn's own `calc(var(--radius) * N)` scheme
+       at `--radius: 0.625rem` (the prototype's base), hardcoded rather than
+       introducing that extra base var. `--radius-4xl` landing on the same
+       26px as `--radius-panel` below is the prototype's own math arriving,
+       independently, at Pewter's actual card corner — real corroboration,
+       not a new invention. */
+    --radius-2xl: 18px;
+    --radius-3xl: 22px;
+    --radius-4xl: 26px;
 
     /* Luma/Pewter's own card radius and cast shadow (resources/brand/directions.html
        [data-dir="pewter"]), landed additively under its own role name rather than
@@ -250,6 +331,31 @@
        (`max-w-page-2xl`) so a 2K panel isn't marooned in empty gutters. */
     --container-page: 1440px;
     --container-page-2xl: 1680px;
+
+    /* The product column, as opposed to `page` above, which only the operator
+       pages still use. 760px is the prototype's own container-query value and
+       holds from 900px; `-wide` is ours, since the prototype's PhoneFrame
+       never renders past the frame and so draws no reference above it. Nine
+       call sites shared this as a literal before it was a token — the nav
+       pill and six banners have to track the column or they visibly drift
+       out of alignment with it. */
+    --container-column: 760px;
+    --container-column-wide: 1040px;
+}
+
+/* One type step, at the same 1280px the content column widens at. Everything
+   sized in rem follows it — the type tiers, the label roles, and Tailwind's
+   spacing scale, so proportions hold rather than text growing inside padding
+   that did not. This is why the ~90 px font-size literals ported from the
+   prototype were converted to rem: a px literal silently opts out of this rule
+   and would leave the UI mismatched at exactly one breakpoint.
+
+   Media queries resolve `rem` against the initial 16px, not this value, so the
+   breakpoints themselves do not move. */
+@media (min-width: 1280px) {
+    html {
+        font-size: 19.2px;
+    }
 }
 
 /* `-webkit-tap-highlight-color: transparent` drops the grey flash Safari
@@ -258,19 +364,33 @@
    `pressShrink` scale, see lib/motion.ts); do not remove that without
    restoring a highlight here. */
 html {
-    /* The app is light-mode only (no `.dark` on <html>, no *-dark tokens), but
-       until this was declared it never told the user agent so. On a device set
-       to Dark Mode the UA then renders everything IT owns in dark appearance —
-       form controls, scrollbars, and, in an installed iOS PWA, the status-bar
-       strip around the notch. That is what painted a dark slab above the cream
-       header, and why pinning `theme-color` to cream could not fix it: the
-       strip was never being painted from theme-color. Mirrored as a <meta> in
-       app.blade.php so it applies before this stylesheet loads. */
-    color-scheme: light;
+    /* Tells the UA how to render what it owns — form controls, scrollbars,
+       and, in an installed iOS PWA, the status-bar strip around the notch —
+       so it matches the active ground instead of just following the device's
+       own Dark Mode setting (which is how a dark slab once painted above the
+       cream header on a light-only app; pinning `theme-color` alone could not
+       fix it, since that strip was never painted from theme-color).
+
+       F2 makes the app two-ground: `dark` here is the bare fallback for a
+       pre-hydration/no-JS paint, matching decision 6's default ground; the
+       `[data-theme]` rules below are what actually apply once the blocking
+       inline script in app.blade.php runs, before first paint in the normal
+       case. Mirrored as a <meta name="color-scheme"> there for the same
+       reason the original single-value meta existed: it has to apply before
+       this stylesheet loads. */
+    color-scheme: dark;
     -webkit-tap-highlight-color: transparent;
     /* Stop iOS inflating text when a page ends up in landscape. The fluid
        clamp() type scale already handles sizing; Safari's own bump fights it. */
     -webkit-text-size-adjust: 100%;
+}
+
+html[data-theme='light'] {
+    color-scheme: light;
+}
+
+html[data-theme='dark'] {
+    color-scheme: dark;
 }
 
 /* Long-pressing app chrome on iOS pops the copy / share callout and starts a
@@ -376,71 +496,6 @@ body {
     }
 }
 
-/* Login hero: route trace draw-in + a slow breathing glow, plus a shared
-   fade-in-up for both panes' content. Plain CSS, not framer-motion --
-   bareLayout/Login is a deliberately motion-library-free route (see
-   scripts/check-entry-chunks.mjs), so this can't reuse lib/motion.ts. */
-@keyframes route-draw {
-    to {
-        stroke-dashoffset: 0;
-    }
-}
-
-.route-echo-path {
-    /* pathLength="1" on the element normalizes total length to 1, so the
-       dash math is exact regardless of the curve's actual geometry. */
-    stroke-dasharray: 1;
-    stroke-dashoffset: 1;
-    animation: route-draw 2.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.route-echo-path:nth-child(2) {
-    animation-delay: 0.45s;
-}
-
-.route-echo-path:nth-child(3) {
-    animation-delay: 0.9s;
-}
-
-@keyframes hero-glow-breathe {
-    0%,
-    100% {
-        opacity: 0.85;
-        transform: translate(-50%, -50%) scale(1);
-    }
-    50% {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1.04);
-    }
-}
-
-.hero-glow {
-    animation: hero-glow-breathe 7s ease-in-out infinite;
-}
-
-@keyframes login-fade-in-up {
-    from {
-        opacity: 0;
-        transform: translateY(8px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.login-fade-in-up {
-    animation: login-fade-in-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .route-echo-path,
-    .hero-glow,
-    .login-fade-in-up {
-        animation: none;
-    }
-}
-
 /* Hide native scrollbar — used on horizontal strips where explicit
    arrow buttons or swipe are the scroll affordance, so the native bar
    would just be visual noise. */
@@ -527,35 +582,35 @@ body {
 
     /* Small uppercase metadata label — micro tier (11px). */
     .text-label-micro {
-        @apply font-mono text-[11px] font-bold uppercase tracking-[0.12em];
+        @apply font-mono text-[0.6875rem] font-bold uppercase tracking-[0.12em];
     }
     /* Small uppercase metadata label — small tier (12px). */
     .text-label-small {
-        @apply font-mono text-[12px] font-bold uppercase tracking-[0.14em];
+        @apply font-mono text-[0.75rem] font-bold uppercase tracking-[0.14em];
     }
     /* Small uppercase metadata label — hero tier (11px, wide tracking). */
     .text-label-hero {
-        @apply font-mono text-[11px] font-bold uppercase tracking-[0.18em];
+        @apply font-mono text-[0.6875rem] font-bold uppercase tracking-[0.18em];
     }
     /* Narrator / body sentences. */
     .text-prose {
-        @apply font-sans text-quote-md text-ink-2;
+        @apply font-sans text-quote-md text-text-2;
     }
     /* KPI / PR number — the big tabular figure. */
     .text-stat {
-        @apply font-mono text-stat font-bold tabular-nums tracking-[-0.02em] text-ink;
+        @apply font-mono text-stat font-bold tabular-nums tracking-[-0.02em] text-foreground;
     }
     /* Smaller stat figure (compact tiles). */
     .text-stat-sm {
-        @apply font-mono text-2xl font-bold tabular-nums tracking-[-0.02em] text-ink;
+        @apply font-mono text-2xl font-bold tabular-nums tracking-[-0.02em] text-foreground;
     }
     /* Date / timestamp / footnote — metadata, non-uppercase. */
     .text-meta {
-        @apply font-mono text-[11px] tracking-[0.04em] text-ink-3;
+        @apply font-mono text-[0.6875rem] tracking-[0.04em] text-text-3;
     }
     /* Temari voice — display serif italic. */
     .voice {
-        @apply font-display text-quote-lg italic text-ink;
+        @apply font-serif text-quote-lg italic text-foreground;
     }
 
     /* Rarity halo — every card gets a calm, static glow ring in its own
@@ -565,56 +620,64 @@ body {
        whatever it's mounted on. This is the ONLY foil treatment: no holo
        sweep, sparkle, or rainbow flooding the bright art window — so the
        route stays the hero. */
-    .kartu-glow {
+    .card-glow {
         box-shadow:
             0 0 0 1px color-mix(in oklab, var(--rarity, white) 55%, transparent),
             inset 0 0 calc(16px * var(--glow-strength, 1)) color-mix(in oklab, var(--rarity, white) 65%, transparent);
     }
 }
 
-/* Dawn-shift theme — subtle page-bg tint based on user's local
-   time-of-day. Drifts the cream surface across the day: cool pre-dawn,
-   warmer in morning + dusk, calm at night. Light-mode only. */
+/* Dark ground (F2) — Sky family becomes ground, Cream becomes text, the
+   exact inverse of the app's light-only default above. Every value is
+   literal hex, matching @theme static's own convention and
+   DesignTokenContrastTest.php's regex-based guard (see the comment on the
+   light block these override, further up this file).
+
+   The `-ink` tier inverts here rather than reusing its light value: leaf/
+   ember/citrus-ink were darkened until they cleared 4.5:1 on paper, which is
+   why they read as ~2-3:1 against Sky. Each dark value below is the
+   opposite move — the vivid fill itself where it already clears 4.5:1 on
+   every Sky surface (citrus, and rarity uncommon/legendary), lightened
+   toward white where it does not (leaf, ember, rarity common/rare/epic) —
+   derived via inkOnDark() in resources/brand/build-tokens.mjs, worst-cased
+   across sky-deep/sky/sky-2. horizon-ink is derived the same way and resolves
+   to the vivid fill unchanged; it was originally left out on the reasoning
+   that the app reaches for icon-accent on dark instead, which 33
+   text-horizon-ink call sites disproved. */
 @layer base {
-    body[data-time-of-day='dawn'] {
-        --color-surface: #eceff4;
-    }
-    body[data-time-of-day='morning'] {
-        --color-surface: #f2f7fc;
-    }
-    body[data-time-of-day='dusk'] {
-        --color-surface: #eaf0f6;
-    }
-    body[data-time-of-day='night'] {
-        --color-surface: #e9edf1;
+    [data-theme='dark'] {
+        --color-background: #0b1017; /* sky-deep */
+        --color-foreground: #f1f5f8; /* cream */
+        --color-card: #171f28; /* sky */
+        --color-card-foreground: #f1f5f8;
+        --color-popover: #26303d; /* sky-2 */
+        --color-popover-foreground: #f1f5f8;
+        --color-secondary: #26303d;
+        --color-secondary-foreground: #f1f5f8;
+        --color-muted: #26303d;
+        --color-muted-foreground: #9c9ea7; /* = ink-on-sky, already 5:1+ on every dark surface */
+        --color-accent: #26303d;
+        --color-accent-foreground: #f1f5f8;
+        --color-border: #4d5560;
+        --color-input: #4d5560;
+
+        --color-icon-accent: #ade047; /* horizon */
+        --color-text-2: #c1c2c8;
+        --color-text-3: #9c9ea7; /* = ink-on-sky */
+        --color-border-strong: #4d5560;
+        --color-today-accent: transparent; /* dark Today card needs no added edge */
+        --color-btn-primary-bg: #ade047; /* horizon */
+        --color-btn-primary-fg: #16181b; /* ink — same pairing as --color-primary-foreground */
+
+        --color-horizon-ink: #ade047; /* = --color-horizon, already clears 8.6:1+ */
+        --color-leaf-ink: #57a581;
+        --color-ember-ink: #ce808e;
+        --color-citrus-ink: #c9971f; /* = --color-citrus, already clears 5:1+ */
+        --color-rarity-common-ink: #8f97a3;
+        --color-rarity-uncommon-ink: #2fb350; /* = --color-rarity-uncommon */
+        --color-rarity-rare-ink: #5296f8;
+        --color-rarity-epic-ink: #ba77f9;
+        --color-rarity-legendary-ink: #f5a623; /* = --color-rarity-legendary */
     }
 }
 
-/* Temari mascot animations — pose-driven keyframes used by
-   <TemariProto>. Mounted globally so the SVG layers can run them via
-   the `animation` style prop or the `animation` Tailwind shortcut. */
-@layer base {
-    @keyframes temari-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.015); } }
-    @keyframes temari-bob     { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-    @keyframes temari-bounce {
-        0%, 100% { transform: translateY(0); }
-        30%      { transform: translateY(-10px) scaleY(1.04); }
-        60%      { transform: translateY(2px)  scaleY(0.96); }
-    }
-    @keyframes temari-sway   { 0%, 100% { transform: rotate(-4deg) translateX(-2px); } 50% { transform: rotate(4deg) translateX(2px); } }
-    @keyframes temari-nod    { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
-    @keyframes temari-tilt   { 0%, 100% { transform: rotate(-3deg) translateY(0); } 50% { transform: rotate(2deg) translateY(-2px); } }
-    @keyframes temari-spin-sparkle { 0% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
-    @keyframes temari-aura-pulse {
-        0%, 100% { opacity: 0.55; transform: scale(1); }
-        50%      { opacity: 0.90; transform: scale(1.08); }
-    }
-    @keyframes temari-blink { 0%, 92%, 100% { transform: scaleY(1); } 94%, 98% { transform: scaleY(0.1); } }
-
-    .temari-root { display: inline-block; transform-origin: 50% 80%; }
-
-    @media (prefers-reduced-motion: reduce) {
-        .temari-root,
-        .temari-root * { animation: none !important; }
-    }
-}

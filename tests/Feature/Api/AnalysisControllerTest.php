@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Requests\TriggerAnalysisRequest;
-use App\Jobs\AI\AnalyzeBriefingFeaturedKartuVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
@@ -638,7 +637,7 @@ it('chained post_run_speech resume does not re-bill an already-Done sibling row 
     // is already Done (a partially-filled group). Resuming must forward-fill the
     // Pending row only, never flip the Done sibling back to Pending (re-bill).
     $earliest = activityWithSpeech($user, '2026-05-01 06:00:00', AnalysisStatus::Pending);
-    $doneSibling = Analysis::factory()->done('zona sudah dibaca')->create([
+    $doneSibling = Analysis::factory()->done('zones read')->create([
         'subject_type' => Activity::class,
         'subject_id' => $earliest->id,
         'analysis_type' => AnalysisType::RunInsight,
@@ -652,7 +651,7 @@ it('chained post_run_speech resume does not re-bill an already-Done sibling row 
         ->assertOk();
 
     expect($doneSibling->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($doneSibling->fresh()->content)->toBe('zona sudah dibaca');
+        ->and($doneSibling->fresh()->content)->toBe('zones read');
 
     Carbon::setTestNow();
 });
@@ -676,8 +675,7 @@ it('does not dispatch a billed job for a novel discriminator', function (string 
     'random key on a daily type' => ['/api/analyses/briefing_mascot_voice/{id}/trigger?discriminator=kEy9fQ2z'],
     'wrong shape on a daily type' => ['/api/analyses/briefing_mascot_voice/{id}/trigger?discriminator=2026-05'],
     'wrong shape on the monthly recap' => ['/api/analyses/monthly_recap/{id}/trigger?discriminator=2026-05-18'],
-    'wrong shape on the Aku profile voice' => ['/api/analyses/aku_profile_voice/{id}/trigger?discriminator=2026-05-18'],
-    'missing card id on the featured kartu voice' => ['/api/analyses/briefing_featured_kartu_voice/{id}/trigger'],
+    'wrong shape on the profile voice' => ['/api/analyses/profile_voice/{id}/trigger?discriminator=2026-05-18'],
 ]);
 
 it('does not dispatch a billed job when a discriminator is sent to a type whose job ignores it', function (): void {
@@ -783,52 +781,6 @@ it('still dispatches a real billed job for a non-demo user on the same block', f
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
-// ── trigger → discriminator ownership ───────────────────────────────────────
-//
-// briefing_featured_kartu_voice keys off a RunCard id under the *caller's own*
-// subject id, so authorizing the subject alone let a forged trigger have another
-// user's card described in the caller's row.
-
-it('refuses a trigger carrying another user\'s card id, and mints no row for it', function (): void {
-    $attacker = User::factory()->create();
-    $victim = User::factory()->create();
-    $victimActivity = Activity::factory()->for($victim)->analyzed()->create();
-    ActivityDetail::factory()->for($victimActivity)->create(['start_date_local' => Carbon::today()]);
-    $victimCard = RunCard::factory()->for($victimActivity)->create();
-
-    $this->actingAs($attacker)
-        ->postJson("/api/analyses/briefing_featured_kartu_voice/{$attacker->id}/trigger?discriminator={$victimCard->id}")
-        ->assertForbidden();
-
-    Bus::assertNothingDispatched();
-    expect(Analysis::query()->count())->toBe(0);
-});
-
-it('refuses to read back another user\'s card-keyed row', function (): void {
-    $attacker = User::factory()->create();
-    $victim = User::factory()->create();
-    $victimActivity = Activity::factory()->for($victim)->analyzed()->create();
-    ActivityDetail::factory()->for($victimActivity)->create(['start_date_local' => Carbon::today()]);
-    $victimCard = RunCard::factory()->for($victimActivity)->create();
-
-    $this->actingAs($attacker)
-        ->getJson("/api/analyses/briefing_featured_kartu_voice/{$attacker->id}?discriminator={$victimCard->id}")
-        ->assertForbidden();
-});
-
-it('still lets a user trigger the voice for their own featured card', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()]);
-    $card = RunCard::factory()->for($activity)->create();
-
-    $this->actingAs($user)
-        ->postJson("/api/analyses/briefing_featured_kartu_voice/{$user->id}/trigger?discriminator={$card->id}")
-        ->assertSuccessful();
-
-    Bus::assertDispatched(AnalyzeBriefingFeaturedKartuVoiceJob::class);
-});
-
 // ── trigger → narration age cutoff ──────────────────────────────────────────
 //
 // card_flavor and pr_context are not chained, so nothing else stops a manual
@@ -882,7 +834,7 @@ it('never overwrites narration a too-old run was already billed for', function (
     config()->set('ai.backfill_max_age_days', 84);
     $user = User::factory()->create();
     [$card] = subjectsForRunAged($user, 200);
-    Analysis::factory()->done('narasi asli yang sudah dibayar')->create([
+    Analysis::factory()->done('original narration, already billed')->create([
         'subject_type' => RunCard::class,
         'subject_id' => $card->id,
         'analysis_type' => AnalysisType::CardFlavor,
@@ -892,7 +844,7 @@ it('never overwrites narration a too-old run was already billed for', function (
     $this->actingAs($user)
         ->postJson("/api/analyses/card_flavor/{$card->id}/trigger")
         ->assertSuccessful()
-        ->assertJson(['content' => 'narasi asli yang sudah dibayar']);
+        ->assertJson(['content' => 'original narration, already billed']);
 
     Bus::assertNothingDispatched();
 });

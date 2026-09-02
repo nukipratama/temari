@@ -6,8 +6,13 @@ into the shipped app.
 This file is the **living tracker**. It is the only place a decision may be amended and the only
 place slice status is recorded. Everything else in `plan/` hangs off it.
 
-- **Epic branch**: `epic/rebrand-temari`. Every slice PR targets it. It does **not** merge to `main`
-  (which auto-deploys to prod) until the whole program is done.
+- **Epic branch**: `epic/mobile-ux-port`, a **nested epic branched off `epic/rebrand-temari`**
+  (amended from decision 15 — see §5). Mirrors the precedent already set by `epic/experience-rebuild`
+  (#633): every slice PR from `F1` onward targets `epic/mobile-ux-port`; when the whole program is
+  done, one PR merges it into `epic/rebrand-temari`, which stays the record for #593 to merge into
+  `main` (which auto-deploys to prod) on its own separate, deliberate timeline. `P0`/`L0` were
+  committed directly to `epic/rebrand-temari` before this was reconsidered — grandfathered in, not
+  moved; `epic/mobile-ux-port` was branched from that point forward.
 - **Prototype**: frozen, read-only spec. SHA below.
 - **Scale**: 415 files in `resources/js` (148 `.tsx`, 63 `.ts`, 204 co-located tests).
   30 slices, ~45-50 PRs. Committed scope is wave 0 + wave 1, then re-assess.
@@ -23,9 +28,9 @@ one, add a row to the amendments log (§5) and edit the entry here in the same c
 |---|---|
 | 1 | **Scope**: a wave-0 reconciliation ledger rules keep / restyle / cut / defer on every omitted shipped feature. Cutting is permitted. |
 | 2 | **Backend**: all four new capabilities in scope — training preferences, Compliance v2, structured session segments, plan narration. |
-| 3 | **Dependencies**: adopt `@base-ui/react`, `shadcn`, `lucide-react`, `clsx`. |
+| 3 | **Dependencies**: adopt `@base-ui/react`, `shadcn`, `lucide-react`, `clsx`, plus `tw-animate-css` (added in `F1` — see §5). |
 | 4 | **Tokens**: the prototype's semantic layer becomes canonical and is the preferred vocabulary in components. The app's named palette survives beneath it. |
-| 5 | **Transition**: one codemod-driven mechanical sweep first, then real redesign per screen. Visual parity is explicitly *not* promised. |
+| 5 | ~~**Transition**: one codemod-driven mechanical sweep first, then real redesign per screen. Visual parity is explicitly *not* promised.~~ **Amended, see §5**: visual/UX parity with the frozen prototype is now required, reconciled by `V0`. |
 | 6 | **Theming**: both grounds authored, both shipped. Dark is the default; light and system reachable via a Settings toggle. |
 | 7 | **Tests**: test-as-you-port. The 1:1 gate and the 95% coverage threshold stay untouched. |
 | 8 | **Planning docs**: a tracked `plan/` directory at repo root, outside `docs/`. |
@@ -35,9 +40,9 @@ one, add a row to the amendments log (§5) and edit the entry here in the same c
 | 12 | **Token pipeline**: extend `build-tokens.mjs`; add `darkGrounds()` beside `paperGrounds()`. |
 | 13 | **Art**: a dedicated wave-1 slice re-cuts mascot, accessories, Kartu chrome, share cards and the Strava mark for two grounds. |
 | 14 | **Nav / IA**: deferred to the ledger slice (`L0`), resolved in [ia.md](ia.md). |
-| 15 | **Branching**: all slice PRs target `epic/rebrand-temari`. No merge to `main` until the program is done. |
+| 15 | ~~**Branching**: all slice PRs target `epic/rebrand-temari`.~~ **Amended, see §5**: `F1` onward targets the nested `epic/mobile-ux-port`. No merge to `main` until the whole chain (this program → `epic/rebrand-temari` → `main`) is done. |
 | 16 | **Icons**: full swap to `lucide-react`; delete `iconBundle.ts` and `build-icon-bundle.mjs`. |
-| 17 | **Coverage CI**: add `epic/rebrand-temari` to the workflow's `push.branches`. |
+| 17 | **Coverage CI**: match any `epic/*` branch in the workflow's `push.branches` (widened from a literal `epic/rebrand-temari` — see §5). |
 | 18 | **Commitment**: wave 0 + wave 1 firm; re-assess before the wave-2 fan-out. |
 | 19 | **Prototype**: frozen at a tagged SHA after wave 0, read-only thereafter, deleted in wave 3. |
 
@@ -62,8 +67,12 @@ wave 2a ──  B3 → B2 → B1 → B4          (ONE worktree slot, strictly se
 wave 2b ──  S1 S2 S3 S4 S5 S6 S7 S8 S9 S10 S11 S12
                                         (3 parallel worktree slots; per-slice blockers below)
 
-wave 3  ──  W1 → W2 → W3 → W4 → W5     (main checkout)
+wave 3  ──  V0 → C1 → W1 → W2 → W6 → W4 → W5 → W7   (main checkout)
+            W3 cut by the 2026-08-31 re-scope; W6 and W7 added after it
 ```
+
+`V0` (added 2026-08-31, see §5) audits every wave-2b screen against the prototype's own Rack
+review harness and reconciles drift before any further cleanup work — see decision 5's amendment.
 
 `F2` is the single serialization point of the whole program. Nothing else in wave 1 runs
 concurrently with it — see [R1](#r1).
@@ -80,34 +89,38 @@ the slice itself (see [R3](#r3)); `n/a` for backend-only or docs-only slices.
 |---|---|---|---|---|---|---|---|---|
 | P0 | Program scaffold | 0 | [00](slices/00-P0-program-scaffold.md) | merged | — | main | n/a | committed directly (7c056d61) |
 | L0 | Reconciliation ledger + IA | 0 | [01](slices/01-L0-reconciliation-ledger.md) | merged | — | main | n/a | committed directly (fe927c1e) |
-| F1 | Dependency adoption | 1 | [02](slices/02-F1-dependency-adoption.md) | todo | — | main | n/a | |
-| F2 | Two-ground tokens | 1 | [03](slices/03-F2-two-ground-tokens.md) | todo | — | main | | serialization point |
-| F3 | Mechanical sweep | 1 | [04](slices/04-F3-mechanical-sweep.md) | todo | — | main | | |
-| F4 | Shell + nav | 1 | [05](slices/05-F4-shell-and-nav.md) | todo | — | main | | |
-| F5 | Two-ground art | 1 | [06](slices/06-F5-two-ground-art.md) | todo | — | wt | | |
-| F6 | Charts, two grounds | 1 | [07](slices/07-F6-charts.md) | todo | — | wt | | |
-| F7 | Demo data + fixtures | 1 | [08](slices/08-F7-demo-data-and-fixtures.md) | todo | — | wt | | after B2/B3 |
-| B3 | Structured session segments | 2a | [09](slices/09-B3-session-segments.md) | todo | — | wt-be | n/a | freezes `WeekPlanDay` |
-| B2 | Compliance v2 | 2a | [10](slices/10-B2-compliance-v2.md) | todo | — | wt-be | n/a | |
-| B1 | Training preferences | 2a | [11](slices/11-B1-training-preferences.md) | todo | — | wt-be | n/a | |
-| B4 | Plan narration | 2a | [12](slices/12-B4-plan-narration.md) | todo | — | wt-be | n/a | voice-only |
-| S1 | Login | 2b | [13](slices/13-S1-login.md) | todo | — | | | 160 kB gz budget |
-| S2 | Onboarding | 2b | [14](slices/14-S2-onboarding.md) | todo | — | | | |
-| S3 | Today | 2b | [15](slices/15-S3-today.md) | todo | — | | | |
-| S4 | Plan | 2b | [16](slices/16-S4-plan.md) | todo | — | | | |
-| S5 | RaceGoal | 2b | [17](slices/17-S5-race-goal.md) | todo | — | | | |
-| S6 | Trends | 2b | [18](slices/18-S6-trends.md) | todo | — | | | |
-| S7 | History | 2b | [19](slices/19-S7-history.md) | todo | — | | | |
-| S8 | ActivityDetail | 2b | [20](slices/20-S8-activity-detail.md) | todo | — | | | |
-| S9 | Inbox | 2b | [21](slices/21-S9-inbox.md) | todo | — | | | |
-| S10 | Profile | 2b | [22](slices/22-S10-profile.md) | todo | — | | | |
-| S11 | Settings | 2b | [23](slices/23-S11-settings.md) | todo | — | | | appearance toggle UI |
-| S12 | Undrawn survivors | 2b | [24](slices/24-S12-undrawn-survivors.md) | todo | — | | | the forgettable one |
-| W1 | IA cutover | 3 | [25](slices/25-W1-ia-cutover.md) | todo | — | main | | |
-| W2 | Dead-code sweep | 3 | [26](slices/26-W2-dead-code-sweep.md) | todo | — | main | | |
-| W3 | Coverage reconciliation | 3 | [27](slices/27-W3-coverage.md) | todo | — | main | | do not cut |
-| W4 | Docs | 3 | [28](slices/28-W4-docs.md) | todo | — | main | n/a | |
-| W5 | Merge readiness | 3 | [29](slices/29-W5-merge-readiness.md) | todo | — | main | n/a | deletes the prototype |
+| F1 | Dependency adoption | 1 | [02](slices/02-F1-dependency-adoption.md) | merged | [#654](https://github.com/nukipratama/temari/pull/654) | main | n/a | squashed as 997b6ba8 |
+| F2 | Two-ground tokens | 1 | [03](slices/03-F2-two-ground-tokens.md) | merged | [#655](https://github.com/nukipratama/temari/pull/655) | main | 94.17→95.06% fn | squashed as 5e5a3d6f |
+| F3 | Mechanical sweep | 1 | [04](slices/04-F3-mechanical-sweep.md) | merged | [#656](https://github.com/nukipratama/temari/pull/656) | main | 95.06→95.04% fn | squashed as 14816771 |
+| F4 | Shell + nav | 1 | [05](slices/05-F4-shell-and-nav.md) | merged | [#657](https://github.com/nukipratama/temari/pull/657) | main | 95.04→95.11% fn | squashed as ae8a92d7 |
+| F5 | Two-ground art | 1 | [06](slices/06-F5-two-ground-art.md) | merged | [#659](https://github.com/nukipratama/temari/pull/659) | wt | 95.05% fn (no change) | squashed as 6aa3f9fc |
+| F6 | Charts, two grounds | 1 | [07](slices/07-F6-charts.md) | merged | [#658](https://github.com/nukipratama/temari/pull/658) | wt | 95.11→95.05% fn | squashed as ee4f7881 |
+| F7 | Demo data + fixtures | 1 | [08](slices/08-F7-demo-data-and-fixtures.md) | in-review | [#677](https://github.com/nukipratama/temari/pull/677) | wt | n/a | PlannedSession/InboxNotification/trend_read gaps closed; shared fixtures module deferred |
+| B3 | Structured session segments | 2a | [09](slices/09-B3-session-segments.md) | merged | [#660](https://github.com/nukipratama/temari/pull/660) | wt-be | n/a | freezes `WeekPlanDay`; squashed as ab8f33aa |
+| B2 | Compliance v2 | 2a | [10](slices/10-B2-compliance-v2.md) | merged | [#661](https://github.com/nukipratama/temari/pull/661) | wt-be | n/a | persisted score, daily scoring pass; squashed as 5ec8d3e6 |
+| B1 | Training preferences | 2a | [11](slices/11-B1-training-preferences.md) | merged | [#662](https://github.com/nukipratama/temari/pull/662) | wt-be | n/a | preference-over-behavior override, 2-day template; squashed as c9338293 |
+| B4 | Plan narration | 2a | [12](slices/12-B4-plan-narration.md) | merged | [#663](https://github.com/nukipratama/temari/pull/663) | wt-be | n/a | voice-only; regenerate rate-limit; squashed as afa210ab |
+| S1 | Login | 2b | [13](slices/13-S1-login.md) | merged | [#664](https://github.com/nukipratama/temari/pull/664) | wt | 95.37% fn (no change) | 160 kB gz budget; Login at 138.8 kB gz; squashed as 8bdfd11e |
+| S2 | Onboarding | 2b | [14](slices/14-S2-onboarding.md) | merged | [#672](https://github.com/nukipratama/temari/pull/672) | wt | 95.62→95.68% stmts | preferences restructured into a per-question sub-stepper (StepProgress/IconChoiceCard/SessionsDial/DayPicker), no backend fork; squashed as 8c8c804f |
+| S3 | Today | 2b | [15](slices/15-S3-today.md) | merged | [#669](https://github.com/nukipratama/temari/pull/669) | wt | 95.56→95.63% stmts, 95.40→95.44% fn | streak reframed off-badge, compliance-v2 colors surfaced; squashed as 1d7a95b9 |
+| S4 | Plan | 2b | [16](slices/16-S4-plan.md) | merged | [#668](https://github.com/nukipratama/temari/pull/668) | wt | 95.56→95.58% stmt | streak panel removed (redesign decision), segment breakdown added; squashed as f812dabc |
+| S5 | RaceGoal | 2b | [17](slices/17-S5-race-goal.md) | merged | [#670](https://github.com/nukipratama/temari/pull/670) | wt | 95.65% stmts, 89.39% branches, 95.48% fn, 96% lines | gauge + client-side goal-time warnings, ember tokens; squashed as ce2d97c2 |
+| S6 | Trends | 2b | [18](slices/18-S6-trends.md) | merged | [#667](https://github.com/nukipratama/temari/pull/667) | wt | 95.6→95.61% stmts | page shell + RangeToggle + NarrationHeadline restyle, charts kept from F6; streak badge-board entry per §5 amendment; squashed as adea9b6d |
+| S7 | History | 2b | [19](slices/19-S7-history.md) | merged | [#675](https://github.com/nukipratama/temari/pull/675) | wt | 95.56% stmts, 89.39% branches, 95.46% fn, 95.97% lines | feed filters + journey strip cut per ledger (also orphaned ActiveFilterChips/ResumeFilterChip/useLastFilter/Calendar mood filter); RecapCard unifies weekly+monthly recap chrome, compact RunListRow, load-older-weeks reveal; squashed as 74a9cb9b |
+| S8 | ActivityDetail | 2b | [20](slices/20-S8-activity-detail.md) | merged | [#673](https://github.com/nukipratama/temari/pull/673) | wt | 95.7% stmts (no change) | hero headline/supporting/secondary tier, Vitals card wrap; Leaflet/lenses/effort kept mechanical per L0; charts kept from F6; squashed as 0d0c5576 |
+| S9 | Inbox | 2b | [21](slices/21-S9-inbox.md) | merged | [#665](https://github.com/nukipratama/temari/pull/665) | wt | 95.92→95.95% lines | bucketed sections + time toggle, new scope; squashed as cd0ecd08 |
+| S10 | Profile | 2b | [22](slices/22-S10-profile.md) | merged | [#671](https://github.com/nukipratama/temari/pull/671) | wt | 95.61→95.62% stmts | persona mix restyle, milestone-display ledger ruling satisfied via SeasonStreakPanel, Accessories tab cut; squashed as 396b9d13 |
+| S11 | Settings | 2b | [23](slices/23-S11-settings.md) | merged | [#666](https://github.com/nukipratama/temari/pull/666) | wt | 95.37→95.40% fn | appearance toggle UI; squashed as cc3f5f5a |
+| S12 | Undrawn survivors | 2b | [24](slices/24-S12-undrawn-survivors.md) | merged | [#674](https://github.com/nukipratama/temari/pull/674) | wt (slot 3) | 95.7% stmts, 89.5% branches, 95.55% fn, 96.05% lines | Devtools/Design.tsx investigated + confirmed sound against post-F2 tokens (real-browser verified both grounds), not actually broken; Devtools.tsx had a real ground-reactivity bug (raw cream tokens) fixed; squashed as 0c360f14 |
+| V0 | Visual parity audit | 3 | [30](slices/30-V0-visual-parity-audit.md) | merged | [#676](https://github.com/nukipratama/temari/pull/676) [#677](https://github.com/nukipratama/temari/pull/677) [#678](https://github.com/nukipratama/temari/pull/678) [#679](https://github.com/nukipratama/temari/pull/679) [#680](https://github.com/nukipratama/temari/pull/680) | main | n/a | dark-mode contrast + History truncation fixed; F7 demo-data gaps closed; all 5 forks resolved (headline voice, brand mark, Plan phase-bar, Today disclosure, desktop nav); squashed as 7dd79c5f/52a7e2a6/0a1e785b/aa109db6/ff942e7a |
+| C1 | CI + guard audit | 3 | [31](slices/31-C1-ci-guard-audit.md) | merged | [#685](https://github.com/nukipratama/temari/pull/685) | wt (slot 1) | 97.15% (no change) | outside the original 30 — see §5. One definition of done; guard verdict table (22 guards, 20 KEEP); `NoEmDashInPromptsTest` + `check-indonesian.php` cut, both de-escalated to guidance in the same commit; pre-commit 8.1s→3.5s; `changes` filter job removed; nine legacy redirects deleted (pulled forward from `W1`); squashed as 90fbf793 |
+| W1 | IA cutover | 3 | [25](slices/25-W1-ia-cutover.md) | merged | [#707](https://github.com/nukipratama/temari/pull/707) | main | n/a | three of four items needed no work; the real gap was `ROUTE_BUDGETS_KB` guarding 4 routes while 3 heavier ones were unguarded. Now one entry per screen. Squashed as fe5bebfe |
+| W2 | Dead-code sweep | 3 | [26](slices/26-W2-dead-code-sweep.md) | merged | [#708](https://github.com/nukipratama/temari/pull/708) | main | n/a | −20,545 lines. Cut the featured-kartu pipeline (still billing daily for a panel `PP3` deleted), two write-only state remnants + their columns, 7 unimported modules and the unread `resources/brand/` preview layer. **No dead tables existed** — only 2 dead columns. Squashed as c3f58da0 |
+| W3 | Coverage reconciliation | 3 | [27](slices/27-W3-coverage.md) | cut | — | main | n/a | dropped by the 2026-08-31 re-scope — the screens it would reconcile are rewritten by the parity slices, each carrying its own coverage |
+| W4 | Docs | 3 | [28](slices/28-W4-docs.md) → [parity/W4](parity/slices/W4-docs.md) | merged | [#711](https://github.com/nukipratama/temari/pull/711) | main | n/a | **Two of six stub targets needed no work** — `plan-periodizer.md` verified clean across 15 source files, `CLAUDE.md` already fixed by `W6`; `docs/features/` audited in full (25 notes) and clean too. The real find was the **citation guard's three blind spots**: filename link text (65 citations), PascalCase link text, and `checkLineDrift()` resolving paths against the repo root only while `checkCitation()` resolves against both — so **41 `../../` citations skipped drift checking entirely**. Closing them put ~130 citations under coverage and failed on **six real defects, three pointing past the end of their file**. Also: `DESIGN.md` and `frontend-architecture.md` both still declared the app **light-mode only**; four dead `--color-phase-*` tokens deleted and pinned; `T2`'s px-font-size guard closed, both rules starting **red** because the measurement had been scoped to `resources/js` and missed `resources/views`. Squashed as `10e98ba6`. |
+| W5 | Merge readiness | 3 | [29](slices/29-W5-merge-readiness.md) → [parity/W5](parity/slices/W5-merge-readiness.md) | merged | [#712](https://github.com/nukipratama/temari/pull/712) | main | n/a | Deletes the prototype (51 tracked files; the 276M was untracked `node_modules`), and repairs the gate `W5` exists to run — `composer check` had been dying at step 13 of 16 with **all 3604 tests passing**, because git refuses the bind-mounted repo as dubious-ownership and Pest reports that as `Tia mode requires git`. **Stops at the epic** by the user's ruling; the merge to `main` stays a separate step. |
+| W6 | Persisted Indonesian pockets | 3 | [32](slices/32-W6-indonesian-pockets.md) → [parity/W6](parity/slices/W6-indonesian-pockets.md) | merged | [#709](https://github.com/nukipratama/temari/pull/709) | main | n/a | **the stub was wrong in four ways**; no data migration needed (the post-merge `migrate:fresh` ruling), but a **second** deployed env var it never named, `AZURE_OPENAI_AKU_PROFILE_VOICE_DEPLOYMENT`, which fails *silently* by falling back to the primary deployment. `angin` turned out not to be the only regression assertion — there are three. Squashed as ab77b59f |
+| W7 | LLM trigger map | 3 | [33](slices/33-W7-llm-trigger-map.md) → [parity/W7](parity/slices/W7-llm-trigger-map.md) | in-review | — | main | n/a | **added 2026-09-02 at the user's request** — one document answering "what makes this app call an LLM, and when". Docs-only; a wrong or over-firing trigger found is a finding, not an inline fix. See §5 |
 
 ---
 
@@ -136,7 +149,19 @@ Every deviation from §1 lands here, dated, with the reason. Empty is the health
 
 | date | decision | change | why |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-08-28 | 15 | Slice PRs (`F1` onward) target a new nested branch `epic/mobile-ux-port`, branched off `epic/rebrand-temari`, instead of `epic/rebrand-temari` directly. | `epic/rebrand-temari` already carries open PR #593 ("Temari v1"), which explicitly states further work should land on a nested epic branch rather than reopening that diff — a pattern already proven once by `epic/experience-rebuild` (#633). This was discovered only after `P0`/`L0` had already landed directly on `epic/rebrand-temari`; those two are grandfathered rather than rewritten, since `epic/rebrand-temari` was already pushed and rewriting a branch backing an open PR is avoidable risk for no benefit. |
+| 2026-08-28 | 3 | `tw-animate-css` added to `dependencies` alongside the four originally named packages. | `F1` confirmed by reading the frozen prototype: `src/index.css` imports it directly and `toggle-group.tsx` (one of the six primitives `F3` adopts) uses the `data-[state=...]` animate utilities it provides. Not speculative — demonstrably required by code this program ports; omitting it would break `F3`'s `toggle-group` swap. |
+| 2026-08-28 | 17 | `push.branches` widened from the literal `epic/rebrand-temari` to the glob `epic/*`. | The literal name missed `epic/mobile-ux-port` — the nested branch this program actually pushes to, created by the same amendment that added decision 15's row above. A glob covers every current and future single-segment `epic/*` branch without needing to hand-maintain a list. |
+| 2026-08-30 | new | **Streak feature redesign**, decided across `S3`/`S4`/`S6`, all three running as parallel wave-2b worktrees when this was settled. The week-grained lifetime streak (`WeeklySnapshot::consecutiveWeekStreak()`, wrapped by `SeasonStreakSummaryBuilder::streakPayload()`) becomes the only thing called "streak" — it moves to a Trends badge-board entry (`S6`), using a non-flame icon. The day-grained current-week count (`CurrentWeekPlanBuilder::streakDays()`) stays on Today (`S3`), reframed as a plain progress readout — not a streak, no flame badge. Plan's `StreakPanel` (`S4`) is removed entirely, no replacement on that page. | The frozen prototype doesn't draw a streak concept on its Today or Plan mockups at all (only a badge-board entry on Trends and a notification kind on Inbox) — porting the shipped app's two independently-computed streak metrics onto the new design as-is would keep an inconsistency (different units both called "streak") the redesign was a chance to fix, and would create a real icon collision once the prototype's own flame-for-tempo-session day-glyph convention lands on the same pages. Grilled directly with the user mid-wave; not part of the original 19 because it surfaced only once S3/S4/S6 were about to start, not during initial planning. |
+| 2026-08-31 | 5 | **Decision 5 reversed: visual/UX parity with the frozen prototype now *is* required**, not merely un-promised. A new blocking slice `V0` (visual parity audit, inserted before wave 3) screenshots every wave-2b screen against the prototype's own built-in Rack review harness (both grounds, matching viewports) and reconciles every divergence — either it traces to an already-logged decision/ledger verdict (kept as-is) or it's unintentional drift that gets fixed to match the prototype. Any newly-found case that isn't a routine implementation call goes back to the user before it's resolved, same as every other program-level fork. | User review of the shipped wave-2b screens found the actual layout diverging substantially from the prototype's handcrafted mockups. Decision 5 was written to license a mechanical-sweep-then-redesign transition without promising pixel parity along the way — it was never meant to license silent, uncontrolled drift once each screen slice's "real redesign" pass landed. The user's instruction: pause further wave-3 work, audit against the prototype as source of truth, ask before resolving genuine conflicts with prior grilling decisions. |
+| 2026-08-31 | new | **`V0` fork 1 — headline voice. Implemented in `slice/v0-headline-voice`.** Every screen's hero "Temari voice" headline (the italic quote-style line the prototype renders lowercase+italic, e.g. "the weeks ahead.") gets restyled app-wide to the existing `font-serif italic text-quote-lg` quote treatment (renamed from `font-display` in `F3`; color is `text-foreground`/`text-cream` on-sky, already `PageHero`'s default), matching the prototype. Page titles, section labels and UI chrome stay Title Case, unchanged — only this one headline slot moves. Implementation extended `PageHero.tsx` with a `quote-lg` size step rather than composing per-page (10 call sites share it); see [30-V0-visual-parity-audit.md](slices/30-V0-visual-parity-audit.md)'s "Fork 1" subsection for the full breakdown. | The copywriter ruling (`S1`) scoped all-lowercase *copy* to Login only, but the italic/lowercase treatment on every other screen's hero line is a distinct, pre-existing "Temari voice" token role the port had stopped applying outside Login. `V0`'s comparison sweep found every one of the 11 screens diverging on this one axis; put to the user, resolved app-wide rather than re-litigated per screen. |
+| 2026-08-31 | new | **`V0` fork 2 — header brand mark.** The shell header's persistent brand mark switches from the mascot-face icon + Title-Case "Temari" wordmark (as shipped) to the prototype's abstract ring/arc mark + lowercase "temari" wordmark. The mascot face is unaffected everywhere else (hero avatars, empty states, Kartu, etc.) — this is the persistent shell chrome only. | `V0`'s sweep found the shipped header consistently using the mascot mark where the frozen prototype always uses a distinct abstract mark. Put to the user; chose prototype fidelity over the mascot-forward header that had shipped without an explicit ruling either way. |
+| 2026-08-31 | new | **`V0` fork 3 — Plan's phase bar and week timeline.** `S4` explicitly deferred the prototype's season-wide phase-progress bar (Base/Build/Peak/Taper) and week-by-week expandable timeline as "a real fork, not a routine call," since `PlanController::index()` only serves a 3-history/4-lookahead window, not the full season. A new backend aggregate plus the frontend `SeasonHeaderCard`/`SeasonTimeline`/`WeekVolumeChart` port is now in scope, as a follow-up slice. | `S4`'s own slice doc left this as an open question pending a human call on backend cost. `V0` surfaced it again during the parity audit; put to the user, who chose to build it now rather than leave Plan without it. |
+| 2026-08-31 | new | **`V0` fork 4 — Today's supporting-detail disclosure stays open by default.** No change from what `S3` shipped: the "this week" stats block (weekly tiles, Vibe/Readiness/Break, last-run detail, training-load card) stays wrapped in a `Collapsible` set `defaultOpen`, not collapsed to match the prototype's denser default. | `S3`'s own reasoning (a full pixel rebuild of six components into the prototype's condensed shape was out of proportion to the value, and defaulting open loses no existing visibility) reconfirmed by the user during `V0`'s audit — recorded so this isn't re-litigated by a future slice. |
+| 2026-08-31 | 5, 19 | **Program re-scoped: the prototype becomes a hard source of truth, and the remaining work moves to [parity/](parity/).** Decision 5's amendment above (parity required) is hardened further: anything the prototype does not draw is now **cut**, not merely reconciled. Thirty new decisions (P1-P30), a full per-feature cut list, and a fresh slice map live in [parity/README.md](parity/README.md) and [parity/cut-list.md](parity/cut-list.md). Several verdicts in [ledger.md](ledger.md) are reversed there (persona mix, dawn-shift, relative effort, the `TemariProto` mascot, parts of Kartu and the badge system); **`ledger.md` itself is left unedited** as the accurate record of what was decided on 2026-08-28. `V0` fork 5 (the desktop `TopNav`, one row below) is reverted by P9. Wave 3's `W1`/`W2`/`W5` still run, after the parity slices; `W3` is dropped, since the screens it would reconcile coverage for are being rewritten. | The user reviewed the fully-ported app and found it still materially unlike the prototype ("i think its getting near similar to prototype but several detail still nah"), then set a hard constraint: "prototype is source of truth", cut features to what the prototype has. Grilled across eight rounds on 2026-08-31. The grill also found that `V0`'s own audit had been misled by screenshots captured at the prototype's fixed 844px frame height with its disclosures collapsed — several things it reported "absent from the prototype" are in fact drawn, which is why the re-scope needed its own full-scroll reference pass rather than reusing `V0`'s findings. |
+| 2026-08-31 | new | **`C1` added — a 31st slice, outside the original 30, auditing CI and the guard set.** Three competing definitions of "am I done" existed — `composer check`, `.github/workflows/ci.yml`, and §9 of this file — and they disagreed on nine checks. `C1` collapses them: `composer check` now runs exactly what CI runs and §9 says to run only that. It also produces an evidence-backed keep/cut/fix verdict on all eleven repo guards (in [31-C1-ci-guard-audit.md](slices/31-C1-ci-guard-audit.md)); the cuts themselves are the user's call, taken off that table, not this slice's to make. Two user rulings landed during it: `NoEmDashInPromptsTest` is cut (de-escalated from a hard test to a preference in the skill file), and all nine legacy 301 redirects are deleted — the latter pulled forward out of `W1`. `V0`'s row is the precedent for a slice existing outside the committed 30. | Two consecutive red-CI round-trips in one day on a slice whose author believed the local gate was green, both on guards `composer check` does not run (`check-doc-citations.php` and `check-see-references.php`). The root cause was structural, not a mistake: no single command existed that could tell an author they were done, so everyone ran a personal subset. `PS1`-`PS11` and `PP4` — twelve slices, all in worktrees — were about to inherit the same trap. Scoped by the user directly: "maybe we should add new slice that grills our ci so it can be much more efficient, removes clutter". |
+| 2026-09-02 | new | **`W7` added — a 33rd slice, outside the original 30: a map of every LLM trigger.** Docs-only, producing `docs/architecture/llm-triggers.md`: every path that can reach `StructuredChatCaller`, grouped by its four origins (scheduled command, ingest cascade, user-initiated, recovery sweep), with the key each writes, what re-bills it, and the five different things that can suppress a call. Runs last so it documents the final shape. A trigger found firing for a surface that no longer exists is recorded as a finding, not fixed inline. `V0` and `C1` are the precedent for a slice outside the committed 30. | Asked for directly by the user: *"so we can assess llm on what part and i can actually have understanding on all llm triggers."* The information exists but is scattered across four places that each answer a different question — `routes/console.php` has the scheduled half, a queued listener the reactive half, two controllers the user half, `SelfHealer` the recovery half — and `AnalysisType::cadence()` names a cadence, which is not the same as a trigger. **`W2` is the argument for doing it**: it found `briefing_featured_kartu_voice` billing every morning for a panel deleted three waves earlier, and nothing in the repo would have surfaced that. This is the artifact that would have. |
+| 2026-08-31 | new | **`V0` fork 5 — desktop `TopNav` gets a real redesign, despite no prototype spec.** `TopNav` (`≥1024px`, the `lg` breakpoint) is redesigned onto the same frosted-glass/floating-pill/ground-reactive language `F4` already gave `MobileBottomNav`/`MobileTopBar`, even though the prototype itself never specs desktop nav — its own `Rack`/`PhoneFrame`/`AppBottomNav` review harness has no responsive branch at all; "desktop"/"wide" viewport previews just resize the same floating mobile pill nav into a wider browser-chrome frame. `TopNav` is otherwise functionally correct (4 tabs, right routes, lucide icons, per `F4`) — this is a pure visual-coherence follow-up, owned by whichever slice picks it up. | User noticed desktop doesn't carry a prototype-matched nav design. Confirmed via `F4`'s own slice doc ("`TopNav` needed zero code changes") and the prototype's `AppBottomNav.tsx` source (no breakpoint logic) that this isn't a missed port step, just genuinely unspecified scope — F4 had nothing to port TopNav onto. Put to the user anyway since leaving it stuck in its pre-port visual language now reads as inconsistent against every other post-port surface; chose to extrapolate the new mobile language upward rather than leave it untouched. |
 
 ---
 
@@ -244,18 +269,35 @@ colliding PR.
 ## 9. Verification ladder
 
 Per slice, before the PR opens — run the three subagent rubrics against the diff and resolve every
-finding, then this ladder, stopping at the first failure:
+finding, then:
 
 ```bash
-./vendor/bin/sail pest --group=structure          # DB-free 1:1 gate, run first
-./vendor/bin/sail bin pest --filter=<Name>        # the narrowest thing that can fail
-./vendor/bin/sail npm run test:coverage           # frontend DoD — record the delta in §3
-./vendor/bin/sail npm run build && npm run check:chunks
-./vendor/bin/sail composer check                  # full gate, pre-push
+./vendor/bin/sail composer check
 ```
 
-Any slice touching tokens, grounds or artwork additionally regenerates `grounds.json` and runs
-`php scripts/check-doc-citations.php` directly — a green `composer check` does **not** cover it.
+**That is the whole gate.** Since `C1` (see §5) `composer check` runs exactly what CI runs, in
+fail-fast order, so a green `composer check` means a green CI. Do not assemble your own subset of
+it — that habit is what put two guard failures into CI in one day.
+
+While *iterating*, run the narrowest thing that can fail instead, and save `composer check` for
+before the push:
+
+```bash
+./vendor/bin/sail pest --group=structure          # DB-free structural gate, ~1.5s
+./vendor/bin/sail bin pest --filter=<Name>        # a single test / file
+./vendor/bin/sail npm run test -- <path>          # a single Vitest file
+```
+
+Two things `composer check` still cannot do for you:
+
+- **Record the frontend coverage delta in §3.** `composer check` runs `npm run test:coverage`, so
+  the numbers are on screen; reading them into the table is yours.
+- **PHP coverage.** CI gates PHP at `--min=95` on every PR; there is no coverage driver in the Sail
+  image (pcov/xdebug are CI-only), so this one gate is genuinely unreproducible locally. It is the
+  single way a green `composer check` can still meet a red CI.
+
+Any slice touching tokens, grounds or artwork additionally regenerates `grounds.json` first —
+`composer check` verifies it but does not rebuild it.
 
 Per wave — work [verification/product-manager.md](verification/product-manager.md) and
 [verification/designer.md](verification/designer.md), and run a `browser-review` sweep **after**

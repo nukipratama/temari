@@ -26,7 +26,6 @@ pre-commit: gitleaks flagged a possible secret in your staged changes (see above
 
   → Real credential?  Remove it from the diff AND rotate it (assume it's burned).
   → False positive?   Add an allowlist entry to .gitleaks.toml.
-  → Bypass once:       SKIP_GITLEAKS=1 git commit ...   (not recommended)
 EOF
       exit 1
     fi
@@ -35,7 +34,6 @@ EOF
 pre-commit: gitleaks is not installed — the secret scan cannot run.
 
   → Install:  brew install gitleaks   (https://github.com/gitleaks/gitleaks)
-  → Bypass once (not recommended):  SKIP_GITLEAKS=1 git commit ...
 EOF
     exit 1
   fi
@@ -51,25 +49,40 @@ if ! docker compose ps --status running --services 2>/dev/null | grep -qx 'app';
   exit 1
 fi
 
+# Formatting + the static analysis that is cheap enough to pay for on every
+# commit. `composer check` is the full gate and runs before a push; rector and
+# tsc moved there, being the two slowest steps here and fully covered by it.
+#
+# Each language branch is ONE `sail exec`. The container round-trip costs ~1.1s,
+# which was the largest single line item in the old hook's three-call shape.
+#
+# phpstan stays FULL rather than staged-scoped, which is faster, not slower:
+# measured 1.5s warm across the tree against 5.0s for a single file, because a
+# scoped run cannot reuse the whole-project result cache. eslint stays full too
+# — scoping it once let two lint errors reach main, and it costs 3.4s.
+#
+# pint and prettier rewrite staged files in place; that is the point of them,
+# and they only ever touch files the commit already contains.
+run_checks() {
+  local status=0
+  ./vendor/bin/sail exec -T app sh -c "$1" || status=$?
+  # Re-stage whatever the formatter rewrote, pass or fail, so a later failure
+  # never throws away the formatting this run already did.
+  # shellcheck disable=SC2086
+  git add $2
+  return $status
+}
+
 if [ -n "$STAGED_PHP" ]; then
-  # shellcheck disable=SC2086
-  ./vendor/bin/sail exec -T app ./vendor/bin/pint $STAGED_PHP
-  # shellcheck disable=SC2086
-  git add $STAGED_PHP
-  # phpstan + tsc run full — partial checks miss cross-file errors.
-  ./vendor/bin/sail exec -T app ./vendor/bin/phpstan analyse --no-progress
-  # shellcheck disable=SC2086
-  ./vendor/bin/sail exec -T app ./vendor/bin/rector --dry-run --no-progress-bar $STAGED_PHP
+  if ! run_checks "./vendor/bin/pint $(echo $STAGED_PHP | tr '\n' ' ') && ./vendor/bin/phpstan analyse --no-progress" "$STAGED_PHP"; then
+    echo "pre-commit: pint/phpstan failed above. Fix it, then re-commit." >&2
+    exit 1
+  fi
 fi
 
 if [ -n "$STAGED_TS" ]; then
-  # shellcheck disable=SC2086
-  ./vendor/bin/sail exec -T app npx prettier --write $STAGED_TS
-  # shellcheck disable=SC2086
-  git add $STAGED_TS
-
-  # tsc + eslint both run full (not staged-only): partial eslint missed
-  # cross-file/pre-existing errors and let 2 lint errors reach main.
-  ./vendor/bin/sail exec -T app npm run typecheck
-  ./vendor/bin/sail exec -T app npm run lint
+  if ! run_checks "npx prettier --write $(echo $STAGED_TS | tr '\n' ' ') && npm run lint" "$STAGED_TS"; then
+    echo "pre-commit: prettier/eslint failed above. Fix it, then re-commit." >&2
+    exit 1
+  fi
 fi

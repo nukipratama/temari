@@ -7,7 +7,11 @@ use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\PlanAdaptation;
+use App\Models\PlannedSession;
+use App\Models\RaceGoal;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\RuleBased\RuleBasedRunInsights;
@@ -146,7 +150,7 @@ it('returns deterministic copy for every subject-free analysis arm', function (A
     'run insight (no detail)' => [AnalysisType::RunInsight, '[]'],
     'weekly recap' => [AnalysisType::WeeklyRecap, "Nothing in the log this week. A gap is a gap, I'm not going to call it anything else."],
     'pr context' => [AnalysisType::PrContext, "That's a new PR. The old number held until today, and now it doesn't."],
-    'aku profile voice' => [AnalysisType::AkuProfileVoice, "You lean **chill** far more than pushed, and the log backs it up: regular, unhurried, never a big jump. That's a base built the slow way. The open question is when you decide to spend it."],
+    'profile voice' => [AnalysisType::ProfileVoice, "You lean **chill** far more than pushed, and the log backs it up: regular, unhurried, never a big jump. That's a base built the slow way. The open question is when you decide to spend it."],
     'monthly recap' => [AnalysisType::MonthlyRecap, "The rhythm held all month. You didn't force it and you didn't disappear either."],
     'trend read' => [AnalysisType::TrendRead, "Steady is the read.\n\nNothing in this window moved sharply enough to call out on its own. The rhythm held, which is its own kind of answer."],
 ]);
@@ -162,7 +166,7 @@ it('weaves the run distance into the post-run speech', function (): void {
 
 it('does not cycle the post-run speech in lockstep with consecutive activity ids', function (): void {
     // Regression for the demo feed's most visible defect: with the raw
-    // sequential activity id as the pool seed, every 6th run in the Riwayat
+    // sequential activity id as the pool seed, every 6th run in the History
     // feed rendered the byte-identical line. Consecutive real ids must land
     // on a scattered, not rhythmic, set of phrases.
     $lines = [];
@@ -218,6 +222,68 @@ it('weaves the snapshot real numbers into the weekly recap', function (): void {
         ->and($recap)->toContain('recovery next week');
 });
 
+it('narrates the day\'s prescribed session type', function (): void {
+    $session = PlannedSession::factory()->create(['session_type' => 'long', 'date' => '2026-05-18']);
+
+    $voice = app(RuleBasedNarrationFiller::class)->fillFor(
+        fillerRow(AnalysisType::PlanDayVoice, $session->user_id, '2026-05-18'),
+    );
+
+    expect($voice)->toMatch('/long run|the long one/');
+});
+
+it('narrates a skipped day as excused, not as its original session', function (): void {
+    $session = PlannedSession::factory()->create(['session_type' => 'tempo', 'date' => '2026-05-18', 'skipped' => true]);
+
+    $voice = app(RuleBasedNarrationFiller::class)->fillFor(
+        fillerRow(AnalysisType::PlanDayVoice, $session->user_id, '2026-05-18'),
+    );
+
+    expect($voice)->toMatch('/skipped|excused/')
+        ->and($voice)->not->toContain('tempo');
+});
+
+it('falls back to a generic line when no PlannedSession exists for the day', function (): void {
+    $voice = app(RuleBasedNarrationFiller::class)->fillFor(
+        fillerRow(AnalysisType::PlanDayVoice, 999_999, '2026-05-18'),
+    );
+
+    expect($voice)->toBe("today's plan.");
+});
+
+it('names the week as lighter when the adaptation is a deload', function (): void {
+    $adaptation = PlanAdaptation::factory()->create(['deload' => true]);
+
+    $voice = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PlanWeekVoice, $adaptation->id));
+
+    expect($voice)->toMatch('/lighter|deload/');
+});
+
+it('names a steady week when the adaptation is not a deload', function (): void {
+    $adaptation = PlanAdaptation::factory()->create(['deload' => false]);
+
+    $voice = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PlanWeekVoice, $adaptation->id));
+
+    expect($voice)->not->toMatch('/lighter|deload/');
+});
+
+it('names the race for a race-oriented season', function (): void {
+    $race = RaceGoal::factory()->create(['name' => 'Jakarta Half']);
+    $season = Season::factory()->create(['race_goal_id' => $race->id]);
+
+    $voice = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PlanSeasonVoice, $season->id));
+
+    expect($voice)->toContain('Jakarta Half');
+});
+
+it('frames a self-scaled season as base-building, not a countdown', function (): void {
+    $season = Season::factory()->create(['race_goal_id' => null]);
+
+    $voice = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PlanSeasonVoice, $season->id));
+
+    expect($voice)->toMatch('/no race on the books|self-scaled block/');
+});
+
 it('adds a real-signal coda to the post-run speech (negative split)', function (): void {
     $activity = Activity::factory()->create();
     ActivityDetail::factory()->create([
@@ -252,8 +318,8 @@ it('uses km-less flavor templates when the card has no distance', function (): v
 });
 
 it('omits the badge coda when the card carries only unknown badges', function (): void {
-    $known = seededCard(Rarity::Rare, 'Sesi Dikenal', [Badge::Speedster->value]);
-    $unknown = seededCard(Rarity::Rare, 'Sesi Misteri', ['not_a_real_badge']);
+    $known = seededCard(Rarity::Rare, 'Known session', [Badge::Speedster->value]);
+    $unknown = seededCard(Rarity::Rare, 'Mystery session', ['not_a_real_badge']);
     $filler = app(RuleBasedNarrationFiller::class);
 
     $withCoda = $filler->fillFor(fillerRow(AnalysisType::CardFlavor, $known->id));
@@ -266,13 +332,19 @@ it('omits the badge coda when the card carries only unknown badges', function ()
 });
 
 it('keeps all copy free of em-dashes', function (): void {
-    $card = seededCard(Rarity::Legendary, 'Marathon Perdana', [Badge::LongSlowDistance->value], 42_195.0);
+    $card = seededCard(Rarity::Legendary, 'Personal Best', [Badge::LongSlowDistance->value], 42_195.0);
     $filler = app(RuleBasedNarrationFiller::class);
+
+    $session = PlannedSession::factory()->create(['session_type' => 'long', 'date' => '2026-05-18']);
+    $adaptation = PlanAdaptation::factory()->create(['deload' => true]);
+    $season = Season::factory()->create();
 
     $samples = [
         $filler->fillFor(fillerRow(AnalysisType::CardFlavor, $card->id)),
         $filler->fillFor(fillerRow(AnalysisType::BriefingMascotVoice, $card->id)),
-        $filler->fillFor(fillerRow(AnalysisType::BriefingFeaturedKartuVoice, $card->id)),
+        $filler->fillFor(fillerRow(AnalysisType::PlanDayVoice, $session->user_id, '2026-05-18')),
+        $filler->fillFor(fillerRow(AnalysisType::PlanWeekVoice, $adaptation->id)),
+        $filler->fillFor(fillerRow(AnalysisType::PlanSeasonVoice, $season->id)),
     ];
 
     foreach ($samples as $sample) {

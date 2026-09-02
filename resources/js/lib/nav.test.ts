@@ -1,49 +1,76 @@
 import { describe, expect, it } from 'vitest';
 
-import { activeTabFromUrl, ITEMS } from './nav';
+import { backTargetFor, ITEMS, navTabFor } from './nav';
 
 describe('nav', () => {
-    it('has 3 top-level items', () => {
+    it('has 4 top-level items', () => {
         expect(ITEMS.map((item) => item.id)).toEqual([
             'today',
+            'plan',
             'trends',
             'history',
         ]);
     });
 
-    it('resolves /trends to the Trends tab', () => {
-        expect(activeTabFromUrl('/trends')).toBe('trends');
+    it('carries a lucide component name, not an iconify string, per decision 16', () => {
+        expect(ITEMS.map((item) => item.icon)).toEqual([
+            'Sunrise',
+            'CalendarCheck',
+            'LineChart',
+            'History',
+        ]);
     });
 
-    it('resolves the root path to Today', () => {
-        expect(activeTabFromUrl('/')).toBe('today');
+    describe('navTabFor', () => {
+        it('lights a tab for each of the five bottom-nav screens', () => {
+            expect(navTabFor('Home')).toBe('today');
+            expect(navTabFor('Plan')).toBe('plan');
+            expect(navTabFor('Trends')).toBe('trends');
+            expect(navTabFor('History')).toBe('history');
+        });
+
+        it('lights the plan tab on Race, which is a sub-page of Plan', () => {
+            expect(navTabFor('Race')).toBe('plan');
+        });
+
+        it('lights no tab on a pushed screen', () => {
+            expect(navTabFor('Runs/Show')).toBeNull();
+            expect(navTabFor('Inbox')).toBeNull();
+            expect(navTabFor('Profile')).toBeNull();
+            expect(navTabFor('Settings/Index')).toBeNull();
+        });
     });
 
-    it('resolves History to its own tab', () => {
-        expect(activeTabFromUrl('/history')).toBe('history');
-        expect(activeTabFromUrl('/activities/123')).toBe('history');
-    });
+    describe('backTargetFor', () => {
+        it('gives no back target to a bottom-nav screen', () => {
+            expect(backTargetFor('Home')).toBeNull();
+            expect(backTargetFor('Race')).toBeNull();
+        });
 
-    it('folds Plan and Race under Today, as drill-ins', () => {
-        expect(activeTabFromUrl('/plan')).toBe('today');
-        expect(activeTabFromUrl('/race')).toBe('today');
-    });
+        it('sends each pushed screen to its fixed parent', () => {
+            expect(backTargetFor('Runs/Show')).toEqual({
+                href: '/history',
+                label: 'History',
+            });
+            expect(backTargetFor('Inbox')).toEqual({
+                href: '/',
+                label: 'Today',
+            });
+            expect(backTargetFor('Profile')).toEqual({
+                href: '/',
+                label: 'Today',
+            });
+            expect(backTargetFor('Settings/Index')).toEqual({
+                href: '/profile',
+                label: 'Profile',
+            });
+        });
 
-    it('resolves no bottom-nav tab for Profile, Settings, or Accessories — reached via the avatar, not a tab', () => {
-        expect(activeTabFromUrl('/profile')).toBeNull();
-        expect(activeTabFromUrl('/settings')).toBeNull();
-        expect(activeTabFromUrl('/accessories')).toBeNull();
-    });
-
-    it('ignores a query string when matching', () => {
-        expect(activeTabFromUrl('/plan?tab=race')).toBe('today');
-    });
-
-    it('returns null for a path that matches no prefix', () => {
-        expect(activeTabFromUrl('/xyz')).toBeNull();
-    });
-
-    it('does not treat every path as Today just because "/" is a prefix', () => {
-        expect(activeTabFromUrl('/accessories')).not.toBe('today');
+        it('defaults an unlisted routed screen to pushed chrome back to Today', () => {
+            expect(backTargetFor('Collection/Accessories')).toEqual({
+                href: '/',
+                label: 'Today',
+            });
+        });
     });
 });

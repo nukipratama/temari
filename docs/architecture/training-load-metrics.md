@@ -55,8 +55,8 @@ CTL is **cumulative**: a run inserted into a past week changes the fitness basel
 ## Where the numbers surface
 
 - The dashboard's live read-out comes from [summary](app/Services/Run/Metrics/TrainingLoad.php#L53) (computed as-of today, not from a snapshot) — see [[dashboard]].
-- [ctlTrend](app/Services/Run/Metrics/TrainingLoad.php#L156) slices the tail of the same `rollDailySeries` roll into a 90-day `[date, atl, ctl]` list, for the fitness trend chart on [[race-projection]]. No new storage — every day the loop already computes.
-- [strainMonotonyTrend](app/Services/Run/Metrics/TrainingLoad.php#L188) does the same for `weekStats` — one call per day across the range instead of once for "this week" — for the Trends tab's strain/monotony chart. Same "expose what the loop already computes" shape as `ctlTrend`, no new metric math.
+- [ctlTrend](app/Services/Run/Metrics/TrainingLoad.php#L156) slices the tail of the same `rollDailySeries` roll into a 90-day `[date, atl, ctl]` list, for the fitness trend chart on `/trends`. No new storage — every day the loop already computes.
+- [strainMonotonyTrend](app/Services/Run/Metrics/TrainingLoad.php#L188) does the same for `weekStats` — one call per day across the range instead of once for "this week". It fed the Trends tab's strain/monotony chart, which `PP3` cut (P25); nothing reads it now and `W2` decides whether it stays.
 - The weekly trend, streaks ([consecutiveWeekStreak](app/Models/WeeklySnapshot.php#L82)) and recap narration read [WeeklySnapshot](app/Models/WeeklySnapshot.php) rows — see [[run-history]], [[recaps]], and the records that hang off weekly bests in [[records]].
 - The **progression chart** (per-distance weekly-best time series on `/records`) is built by [ProgressionSeriesBuilder](app/Services/Run/ProgressionSeriesBuilder.php), which queries `ActivityDetail` for weekly-best km-scaled times across 5K/10K/HM/FM.
 - **Lifetime stats** (total km, runs, longest run on `/aku`) come from [LifetimeStats](app/Services/Run/LifetimeStats.php), which runs a single aggregate query over `ActivityDetail`.

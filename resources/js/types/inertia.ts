@@ -4,6 +4,7 @@ import type {
     AnalysisStatus,
     AnalysisType,
     NotificationKind,
+    PlannedSessionStatus,
     Rarity,
 } from './generated';
 
@@ -11,6 +12,7 @@ export type {
     AnalysisStatus,
     AnalysisType,
     NotificationKind,
+    PlannedSessionStatus,
     Rarity,
 } from './generated';
 
@@ -30,24 +32,6 @@ export interface AuthUser {
     is_demo: boolean;
 }
 
-export interface PendingReveal {
-    card_id: number;
-    activity_id: number;
-    rarity: Rarity;
-    special_move: string;
-    mood: Mood;
-    badges: string[] | null;
-    detail_name: string | null;
-    distance_m: number | null;
-    elapsed_time_sec: number | null;
-    trimp_edwards: number | null;
-    average_heartrate?: number | null;
-    stream_summary?: StreamSummary | null;
-    summary_polyline?: string | null;
-    public_share_url: string;
-    edition: CardEdition;
-}
-
 export type StravaSyncState = 'disconnected' | 'revoked' | 'syncing' | 'ready';
 
 export interface StravaSync {
@@ -61,31 +45,9 @@ export interface StravaSync {
 }
 
 /** Resolved server-side from the user's equipped UserUnlock rows. */
-export type EquippedSlot =
-    'medal' | 'headband' | 'shirt' | 'shorts' | 'shoes' | 'aura';
-
-export interface EquippedAccessories {
-    medal: string | null;
-    headband: string | null;
-    shirt: string | null;
-    shorts: string | null;
-    shoes: string | null;
-    aura: string | null;
-}
-
-/** Flashed by GrantEligibleUnlocksAction when a user earns their first new accessory in a request. */
-export interface UnlockFlash {
-    unlock_key: string;
-    name: string;
-    icon: string;
-    is_major: boolean;
-}
-
 /**
  * One row of the notification centre, flattened by `InboxController` so the
- * page never reads the raw `payload` blob. `run_card_id` and `unlock` are the
- * replay handles: either one re-runs the celebration this row is a record of,
- * rather than describing it.
+ * page never reads the raw `payload` blob.
  */
 export interface InboxItem {
     id: number;
@@ -98,13 +60,15 @@ export interface InboxItem {
     url: string | null;
     run_card_id: number | null;
     rarity: Rarity | null;
-    unlock: UnlockFlash | null;
+    /** Post-run rows only: the stat chips the prototype's row draws. */
+    distance_m: number | null;
+    moving_time_s: number | null;
 }
 
 /**
  * The race the user is currently training for, shared app-wide. "Race" is the
- * user-facing name; live accessory-unlock progress lives on `/accessories`,
- * see AccessoriesItem.
+ * user-facing name, kept distinct from the unrelated accessory-unlock catalog
+ * the backend still tracks.
  */
 export interface ActiveRace {
     id: number;
@@ -120,11 +84,8 @@ export interface SharedProps {
         success: string | null;
         error: string | null;
         info: string | null;
-        unlock?: UnlockFlash | null;
     };
     demoLoginEnabled: boolean;
-    pendingReveal?: PendingReveal | null;
-    equippedAccessories?: EquippedAccessories | null;
     stravaSync?: StravaSync | null;
     activeRace?: ActiveRace | null;
     /** ISO-8601 timestamp of the auth user's last heart-rate-zone change, or null. */
@@ -169,8 +130,6 @@ export interface BriefingResult {
     vibeLabel: string;
     vibeEmoji: string;
     mascotVoice: AnalysisPayload;
-    featuredKartuVoice: AnalysisPayload;
-    featuredCardId: number | null;
     recoveryLabel: string;
     recoveryTone: RecoveryTone;
     recoveryHoursLabel: string | null;
@@ -290,6 +249,8 @@ export interface ActivityDetail {
 export interface Activity {
     id: number;
     user_id: number;
+    /** Strava's own id for the run — the provenance number in the page footer. */
+    strava_external_id?: number;
     name?: string;
     analyzed_at: string | null;
     ingest_state?: 'summary' | 'detailed';
@@ -379,23 +340,47 @@ export interface PastYouTrend {
     fitness_delta_ctl: number | null;
     pace_consistency_now: string | null;
     pace_consistency_then: string | null;
-    relative_effort_band: string | null;
 }
 
 /** One day within `WeekPlan['days']`, as `PlanRenderer::dayPayload()` ships
  *  it — the same shape Plan's own day rows use. */
+/** One ordered slice of a planned session — see `App\Services\Run\Plan\SessionSegment`.
+ *  `minutes`/`pace_sec_per_km` are null exactly when the athlete has no VDOT
+ *  estimate yet; the segment's shape (key, pace target) still renders. */
+export interface PlanSessionSegment {
+    key: 'warmup' | 'main' | 'interval' | 'recovery' | 'cooldown';
+    minutes: number | null;
+    zone: string;
+    pace_label: 'easy' | 'marathon' | 'threshold' | 'interval';
+    pace_sec_per_km: number | null;
+}
+
 export interface WeekPlanDay {
     id: number;
     date: string;
     phase: string;
     session_type: string;
-    distance_band: string;
-    pace_band: string | null;
-    pace_sec_per_km: number | null;
+    /** Ordered warmup/main/cooldown (or interval reps) breakdown — see
+     *  `App\Services\Run\Plan\SegmentGenerator`. Empty on a rest day. */
+    segments: PlanSessionSegment[];
+    /** The CORE work only (e.g. a Tempo day's threshold portion) — warmup/
+     *  cooldown are additional minutes on top, not counted here. */
     distance_km: number;
     pinned: boolean;
-    status: 'planned' | 'done' | 'partial' | 'missed';
+    /** Explicitly excused before the day passed — never scored, doesn't
+     *  penalize the week's adherence. Toggle with `PATCH .../sessions/{id}`. */
+    skipped: boolean;
+    status: PlannedSessionStatus;
+    /** Continuous km-ratio score (0+, uncapped upward) — null on a rest day,
+     *  a not-yet-past day, or a day with no VDOT estimate to size against. */
+    compliance_score: number | null;
+    /** A rest day (`status: 'done'`) that had real activity logged anyway. */
+    ran_anyway: boolean;
     clamp_note: string | null;
+    /** Total km actually run that day — null when nothing was logged. */
+    actual_km: number | null;
+    /** The day's longest logged run, for the link out to it. */
+    activity: { id: number; seconds: number | null } | null;
 }
 
 /** `CurrentWeekPlanBuilder::forUser()` — Home's compact pull of the current
@@ -405,7 +390,6 @@ export interface WeekPlan {
     phase: string;
     planned_km_this_week: number;
     credited_this_week: number;
-    streak_days: number;
     days: WeekPlanDay[];
 }
 
@@ -446,13 +430,4 @@ export interface PersonalRecord {
     category: string;
     value: number;
     activity?: Activity;
-}
-
-export interface PaginatedResponse<T> {
-    data: T[];
-    current_page: number;
-    last_page: number;
-    per_page: number;
-    total: number;
-    links: Array<{ url: string | null; label: string; active: boolean }>;
 }

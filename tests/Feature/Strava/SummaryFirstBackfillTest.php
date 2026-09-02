@@ -31,7 +31,7 @@ function stravaHistoryPage(int $firstId, int $count, string $firstDate): array
     return array_map(fn (int $offset): array => [
         'id' => $firstId - $offset,
         'sport_type' => 'Run',
-        'name' => 'Lari',
+        'name' => 'Run',
         'start_date' => CarbonImmutable::parse($firstDate)->subDays($offset)->toIso8601String(),
         'start_date_local' => CarbonImmutable::parse($firstDate)->subDays($offset)->toIso8601String(),
         'distance' => 8_000.0,
@@ -124,8 +124,7 @@ it('renders the run-detail page for a summary-only run and queues its hydration'
             ->component('Runs/Show')
             ->where('activity.ingest_state', IngestState::Summary->value)
             ->where('awaitingDetail', true)
-            ->where('card', null)
-            ->where('relativeEffort', null));
+            ->where('card', null));
 
     Bus::assertDispatched(IngestActivityJob::class, fn (IngestActivityJob $job): bool => $job->activityId === $activity->id);
 });

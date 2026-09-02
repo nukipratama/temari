@@ -30,8 +30,10 @@ $alertOnFailure = static fn (Event $event, string $command): Event => $event->on
 // cooldown is Redis-backed.
 Schedule::command('schedule:heartbeat')->everyMinute();
 
-// 00:01: daily kickoff for active users (last 7 days) — briefing set (headline,
-// suggestion, mascot voice, featured kartu voice, greeting) + trend caption.
+// 00:01: daily kickoff for active users (last 7 days) — one briefing_mascot_voice
+// row each. The headline/suggestion/greeting/trend-caption types this once also
+// dispatched are retired (see UserEraser's retired-type list), and the featured
+// card voice went with W2's sweep.
 // Idempotent: a same-day re-run dispatches only still-missing types, never re-bills.
 $alertOnFailure(Schedule::command('ai:daily-briefing')->dailyAt('00:01'), 'ai:daily-briefing');
 
@@ -46,16 +48,30 @@ Schedule::command('demo:daily-refresh')->dailyAt('00:05');
 // the single scheduled LLM call that fills it.
 $alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:01'), 'ai:weekly-recap');
 
-// Monday 00:05: refresh the Aku-page persona summary + Temari voice once a
+// Monday 00:05: refresh the Profile-page persona summary + Temari voice once a
 // week, just after the recap. These two have no per-run cadence, so this is
 // their only auto-refresh; persona self-throttles per ISO week and the voice is
 // invalidated weekly. Demo excluded. Mid-week freshness stays on "Reread".
 Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:05');
 
+// 00:03 daily: judge every user's Planned rows that just became past —
+// status/compliance_score/ran_anyway written once, never re-touched.
+// Idempotent by construction (only ever selects still-Planned rows), so it's
+// also the one-time backfill mechanism for existing historical rows after
+// this feature ships — no separate backfill command needed. Must run before
+// plan:regenerate (00:07), which reads last week's average score on Mondays.
+$alertOnFailure(Schedule::command('plan:score-compliance')->dailyAt('00:03'), 'plan:score-compliance');
+
 // Monday 00:07: regenerate every user's plan today-forward against their
-// current fitness/race state. No LLM involved (deterministic periodizer);
-// past weeks and pinned rows are never touched. On-demand regeneration is
-// also available from the Plan page.
+// current fitness/race state. Past weeks and pinned rows are never touched.
+// On-demand regeneration is also available from the Plan page.
+//
+// The periodizer is deterministic and free, but this command is NOT LLM-free:
+// it then calls PlanNarrationRequester::requestForCurrentWeek() per non-demo
+// user, dispatching plan_day_voice x7 and plan_week_voice with invalidate:true
+// (deliberately re-billed weekly — the periodizer just rewrote what they
+// describe) plus an idempotent plan_season_voice. Up to 9 rows per user per
+// week. See docs/architecture/llm-triggers.md.
 $alertOnFailure(Schedule::command('plan:regenerate')->weeklyOn(1, '00:07'), 'plan:regenerate');
 
 // 1st of the month 00:10: HR zones change rarely, so a monthly sweep is enough

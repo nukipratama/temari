@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Models\User;
 use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
-use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
+use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzePrContextJob;
@@ -83,7 +83,7 @@ it('re-narrates card flavor on a re-ingest (invalidate:true) without minting a s
 
     fire($activity);
     $row = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'kartu pertama');
+    app(AnalysisService::class)->markDone($row, 'card pertama');
 
     fire($activity);
 
@@ -102,7 +102,7 @@ it('requests pr_context for the records this run holds, invalidate:false so a ba
 
     fire($activity);
     $row = Analysis::query()->forSubject(PersonalRecord::class, $held->id, AnalysisType::PrContext)->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'rekor pertama');
+    app(AnalysisService::class)->markDone($row, 'first record');
 
     fire($activity);
 
@@ -112,36 +112,36 @@ it('requests pr_context for the records this run holds, invalidate:false so a ba
         ->and(Analysis::query()->forSubject(PersonalRecord::class, $other->id, AnalysisType::PrContext)->exists())->toBeFalse();
 });
 
-it('dispatches AkuProfileVoice on first ingest, keyed by the current ISO week', function (): void {
+it('dispatches ProfileVoice on first ingest, keyed by the current ISO week', function (): void {
     Carbon::setTestNow('2026-05-19 12:00:00');
     $activity = analyzedActivity();
 
     fire($activity);
 
     Bus::assertDispatched(
-        AnalyzeAkuProfileVoiceJob::class,
-        fn (AnalyzeAkuProfileVoiceJob $job): bool => Analysis::query()->whereKey($job->analysisId)->value('discriminator') === AnalysisType::currentIsoWeek(),
+        AnalyzeProfileVoiceJob::class,
+        fn (AnalyzeProfileVoiceJob $job): bool => Analysis::query()->whereKey($job->analysisId)->value('discriminator') === AnalysisType::currentIsoWeek(),
     );
     Carbon::setTestNow();
 });
 
-it('does not re-bill a Done AkuProfileVoice row on re-ingest (invalidate:false)', function (): void {
+it('does not re-bill a Done ProfileVoice row on re-ingest (invalidate:false)', function (): void {
     $activity = analyzedActivity();
     fire($activity);
 
     $row = Analysis::query()
-        ->where('subject_type', AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE)
+        ->where('subject_type', AnalysisType::PROFILE_VOICE_SUBJECT_TYPE)
         ->where('subject_id', $activity->user_id)
-        ->where('analysis_type', AnalysisType::AkuProfileVoice)
+        ->where('analysis_type', AnalysisType::ProfileVoice)
         ->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'kata Temari pertama');
+    app(AnalysisService::class)->markDone($row, 'first Temari note');
 
     fire($activity);
 
     expect(Analysis::query()
-        ->where('subject_type', AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE)
+        ->where('subject_type', AnalysisType::PROFILE_VOICE_SUBJECT_TYPE)
         ->where('subject_id', $activity->user_id)
-        ->where('analysis_type', AnalysisType::AkuProfileVoice)
+        ->where('analysis_type', AnalysisType::ProfileVoice)
         ->count())->toBe(1)
         ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
 });
@@ -251,7 +251,7 @@ it('refreshes the daily briefing set on the second run of the day', function ():
             AnalysisType::BriefingMascotVoice->value,
         ])
         ->get()
-        ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'sudah jadi'));
+        ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'done'));
 
     Bus::fake();
     Carbon::setTestNow('2026-05-19 17:45:00');
@@ -278,7 +278,7 @@ it('does not re-bill the daily set when backfilling a previous-day run', functio
             AnalysisType::BriefingMascotVoice->value,
         ])
         ->get()
-        ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'sudah jadi'));
+        ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'done'));
 
     Bus::fake();
     // Backfilling a run from two days ago must not re-bill today's daily set.
@@ -351,18 +351,18 @@ it('staggers card_flavor and pr_context by the same backfill delay as the activi
     Carbon::setTestNow();
 });
 
-it('staggers AkuProfileVoice by the backfill delay on the ingest that first originates its row', function (): void {
+it('staggers ProfileVoice by the backfill delay on the ingest that first originates its row', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     config()->set('ai.backfill_stagger_seconds', 100);
     $activity = analyzedActivity('2026-05-01 06:00:00');
 
     // Reserve the immediate (0-delay) slot ahead of this ingest, so its own
-    // dispatch — including the AkuProfileVoice row it originates — is staggered.
+    // dispatch — including the ProfileVoice row it originates — is staggered.
     app(StaggerBackfillAction::class)($activity->user_id);
 
     fire($activity);
 
-    Bus::assertDispatched(AnalyzeAkuProfileVoiceJob::class, fn (AnalyzeAkuProfileVoiceJob $job): bool => $job->delay === 100);
+    Bus::assertDispatched(AnalyzeProfileVoiceJob::class, fn (AnalyzeProfileVoiceJob $job): bool => $job->delay === 100);
     Carbon::setTestNow();
 });
 

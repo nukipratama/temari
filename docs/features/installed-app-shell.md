@@ -3,12 +3,11 @@ title: Installed app shell
 description: What makes Temari feel native once it is on the iOS Home Screen — edge-to-edge status bar, launch image, top bar with back button, touch feel, edge-swipe back
 tags: [feature, pwa]
 status: living
-reviewed: 2026-07-21
+reviewed: 2026-08-29
 code_refs:
   - resources/views/app.blade.php
   - public/manifest.webmanifest
   - resources/js/hooks/useSwipeBack.ts
-  - resources/js/hooks/useScrolled.ts
   - resources/js/components/MobileTopBar.tsx
   - resources/js/hooks/useBodyScrollLock.ts
   - resources/css/app.css
@@ -58,7 +57,7 @@ makes the glyphs turn white (a different iOS version, a dark app surface at the
 top), the fix is a backing behind the glyphs — but confirm that on a device
 first rather than assuming it from the spec.
 
-`pt-[max(0.75rem,env(safe-area-inset-top))]` on the Me top bar, and
+`pt-[max(1rem,env(safe-area-inset-top))]` on the mobile top bar, and
 `pt-[env(safe-area-inset-top)]` on the shell everywhere else, are what keep
 content clear of the notch now that the web view runs edge to edge.
 
@@ -75,18 +74,13 @@ Settings and Log out into the avatar menu precisely so account actions were
 reachable everywhere.
 
 On a **pushed** screen the brand mark gives way to a back button — roots show
-identity, pushes show a way out. Which screens count is an explicit map in
-`MobileTopBar`, not something derived from `activeTabFromUrl`, for two reasons:
-
-- `/calendar`, `/records`, `/accessories`, `/badges` and `/race` resolve to a tab
-  too, but are reached through in-page tab strips, so they are siblings of their
-  root rather than a stack, and keep the brand mark.
-- `/settings` is deliberately absent from the map even though it is nested by
-  URL. It's a lateral MeTabs tab reached from Profile (itself one tap away via
-  the avatar link), not a pushed screen, so it behaves as a root. HR zones,
-  once a standalone `/settings/zones` page and the one exception that kept a
-  back button, is now an inline disclosure on Settings itself — see
-  [[settings-hr-zones]].
+identity, pushes show a way out. Which screens count is decided in
+[nav.ts](resources/js/lib/nav.ts), by Inertia page component rather than by URL
+prefix: exactly five components carry the bottom nav (Today, Plan, Race, Trends,
+History — Race lights the `plan` tab, being a sub-page of Plan), and **everything
+else routed through `AppShell` is pushed**. That inversion is the parity
+program's P6/P35, and it is what moved Profile, Settings, Inbox and activity
+detail onto the back-chevron treatment.
 
 Two details worth keeping:
 
@@ -94,14 +88,12 @@ Two details worth keeping:
   link opens `/activities/{id}` cold with nothing behind it, and `history.back()`
   would strand the user or exit the app. [useSwipeBack](resources/js/hooks/useSwipeBack.ts)
   remains the gesture equivalent.
-- **Desktop keeps the in-page breadcrumb** where one exists. The bar is
-  `lg:hidden`, so the [BackLink](resources/js/components/ui/BackLink.tsx) on
-  pushed pages is hidden below `lg` rather than deleted — each viewport gets
-  exactly one back affordance. Settings itself has no breadcrumb on either
-  viewport.
+- **One back affordance, at every width.** The bar is no longer `lg:hidden`, so
+  the in-page `BackLink` that used to cover desktop on pushed pages is gone —
+  the topbar chevron is the only way out, on every viewport.
 
-`TopNav` is a separate component and also a `<header>`, which is why tests
-select the mobile bar by `data-testid` rather than by tag.
+`MobileTopBar` is selected by `data-testid` in tests rather than by tag, a habit
+from when a second `<header>` (the deleted desktop `TopNav`) existed.
 
 ## Launch image
 
@@ -128,13 +120,18 @@ resolves every `asset()` call in the layout and asserts the file is on disk. It
 also counts the calls it resolved against the calls present, so a reference it
 cannot parse fails the suite instead of dropping out of the sweep.
 
-## Sticky header
+## Floating top bar (F4)
 
-`MobileTopBar` is `sticky` + translucent, with the hairline appearing only once
-content is actually underneath it — driven by
-[useScrolled.ts#L21](resources/js/hooks/useScrolled.ts#L21), which reads scroll
-offset through `useSyncExternalStore` so a restored scroll position is already
-correct on first paint.
+`MobileTopBar` is `absolute`, not `sticky`, and paints no background of its
+own — content scrolls underneath it. What used to be a single translucent bar
+is now a row of separate pill chips (the wordmark or back button on the left,
+Strava/bell/avatar on the right), each carrying its own `bg-muted` backing so
+it stays legible over whatever content happens to be behind it. `AppShell`
+reserves the clearance with top padding on the content region instead of the
+bar reserving flow space itself, mirroring how `BareShell` already pads for
+the notch on standalone screens. `MobileBottomNav` followed the same move: a
+floating `rounded-full` pill inset from the screen edges rather than a
+full-width bar flush to them.
 
 ## Edge-swipe back
 

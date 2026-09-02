@@ -1,25 +1,27 @@
-import { Head, router } from '@inertiajs/react';
-import { motion } from 'framer-motion';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
-import type {
-    InboxItem,
-    PaginatedResponse,
-    UnlockFlash,
-} from '@/types/inertia';
+import type { InboxItem, SharedProps } from '@/types/inertia';
 
-import AccessoryUnlockModal from '@/components/celebrations/AccessoryUnlockModal';
+import { BUCKET_LABEL, groupByBucket } from '@/components/inbox/inboxBuckets';
 import InboxRow from '@/components/inbox/InboxRow';
 import EmptyPanel from '@/components/ui/EmptyPanel';
+import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
-import PillLink from '@/components/ui/PillLink';
 import { appLayout } from '@/layouts/appLayout';
 import { postJson } from '@/lib/http';
-import { fadeInUp, staggerContainer } from '@/lib/motion';
+
+/** Rows each "load older" press adds — mirrors InboxController::PER_PAGE. */
+const PER_PAGE = 20;
 
 interface InboxProps {
-    notifications: PaginatedResponse<InboxItem>;
+    notifications: InboxItem[];
+    /** Size of the window the server shipped. */
+    shown: number;
+    /** Whether anything sits behind that window. */
+    hasOlder: boolean;
     /** Deep-link target from a push tap (`/inbox?item=123`). */
     focusId: number | null;
 }
@@ -32,10 +34,15 @@ function sendRead(id: number): Promise<void> {
 
 export default function Inbox({
     notifications,
+    shown,
+    hasOlder,
     focusId,
 }: Readonly<InboxProps>) {
-    const items = notifications.data;
-    const focusTarget = items.find((item) => item.id === focusId) ?? null;
+    const { props } = usePage<SharedProps>();
+    const unread = props.unreadNotifications ?? 0;
+
+    const focusTarget =
+        notifications.find((item) => item.id === focusId) ?? null;
     // A deep link is the user arriving at that one row, so it counts as read.
     const focusUnreadId =
         focusTarget !== null && focusTarget.read_at === null
@@ -45,8 +52,6 @@ export default function Inbox({
     const [readIds, setReadIds] = useState<ReadonlySet<number>>(() =>
         focusUnreadId === null ? new Set() : new Set([focusUnreadId]),
     );
-    const [replayingId, setReplayingId] = useState<number | null>(null);
-    const [unlockReplay, setUnlockReplay] = useState<UnlockFlash | null>(null);
 
     const isRead = (item: InboxItem) =>
         item.read_at !== null || readIds.has(item.id);
@@ -71,124 +76,91 @@ export default function Inbox({
         }
     }, [focusId, focusUnreadId]);
 
-    // Both replays re-run the original celebration rather than describing it:
-    // an unlock re-opens the takeover it was granted with, a post-run re-arms
-    // the reveal through the same endpoint the run page uses, then reloads
-    // `pendingReveal` so AppShell plays it.
-    const replay = (item: InboxItem) => {
-        markRead(item);
-
-        if (item.unlock !== null) {
-            setUnlockReplay(item.unlock);
-            return;
-        }
-        if (item.run_card_id === null || replayingId !== null) {
-            return;
-        }
-
-        setReplayingId(item.id);
-        void postJson(`/api/cards/${item.run_card_id}/replay`)
-            .then((response) => {
-                if (response.ok) {
-                    router.reload({ only: ['pendingReveal'] });
-                }
-            })
-            .catch(() => undefined)
-            .finally(() => setReplayingId(null));
-    };
-
-    const unread = items.filter((item) => !isRead(item)).length;
-
     return (
         <>
             <Head title="Inbox" />
             <PageContainer>
                 <PageHero
-                    eyebrow={
-                        unread > 0
-                            ? `Inbox · ${unread} unread on this page`
-                            : 'Inbox'
-                    }
+                    eyebrow={unread > 0 ? `Inbox · ${unread} unread` : 'Inbox'}
+                    size="quote-lg"
+                    italic
                 >
-                    Everything I told you,
+                    everything i told you,
                     <br />
-                    <em className="italic text-ink-2">still here.</em>
+                    <em className="italic text-icon-accent">still here.</em>
                 </PageHero>
 
-                {items.length === 0 ? (
+                {notifications.length === 0 ? (
                     <EmptyPanel
-                        pose="reading"
-                        title="Nothing here yet."
-                        body="Every run, recap, and unlock lands here on its own. Nothing for you to do."
-                        className="mt-8"
+                        face
+                        layout="horizontal"
+                        title="nothing here yet."
+                        body="every run, recap, and unlock lands here on its own. nothing for you to do."
+                        className="mt-4"
                     />
                 ) : (
-                    <motion.div
-                        variants={staggerContainer}
-                        initial="hidden"
-                        animate="visible"
-                        className="mt-8 flex flex-col gap-2.5"
-                    >
-                        {items.map((item) => (
-                            <motion.div
-                                key={item.id}
-                                id={`inbox-item-${item.id}`}
-                                variants={fadeInUp}
-                            >
-                                <InboxRow
-                                    item={item}
-                                    read={isRead(item)}
-                                    focused={item.id === focusId}
-                                    replaying={replayingId === item.id}
-                                    onReplay={replay}
-                                    onOpen={markRead}
-                                />
-                            </motion.div>
-                        ))}
-                    </motion.div>
-                )}
+                    <>
+                        <div className="mt-4 flex flex-col gap-3.5">
+                            {groupByBucket(notifications).map(
+                                ({ bucket, items }) => (
+                                    <div key={bucket}>
+                                        <Eyebrow token="small" className="mb-2">
+                                            {BUCKET_LABEL[bucket]}
+                                        </Eyebrow>
+                                        <div className="flex flex-col gap-2.5">
+                                            {items.map((item) => (
+                                                <div
+                                                    key={item.id}
+                                                    id={`inbox-item-${item.id}`}
+                                                >
+                                                    <InboxRow
+                                                        item={item}
+                                                        read={isRead(item)}
+                                                        focused={
+                                                            item.id === focusId
+                                                        }
+                                                        onOpen={markRead}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ),
+                            )}
+                        </div>
 
-                {notifications.last_page > 1 && (
-                    <nav
-                        aria-label="Inbox pages"
-                        className="mt-6 flex items-center justify-between gap-3"
-                    >
-                        {notifications.current_page > 1 ? (
-                            <PillLink
-                                href={`/inbox?page=${notifications.current_page - 1}`}
-                                tone="outline"
-                                size="sm"
-                            >
-                                Newer
-                            </PillLink>
-                        ) : (
-                            <span />
-                        )}
-                        <span className="font-mono text-xs tabular-nums text-ink-3">
-                            Page {notifications.current_page} of{' '}
-                            {notifications.last_page}
-                        </span>
-                        {notifications.current_page <
-                        notifications.last_page ? (
-                            <PillLink
-                                href={`/inbox?page=${notifications.current_page + 1}`}
-                                tone="outline"
-                                size="sm"
-                            >
-                                Older
-                            </PillLink>
-                        ) : (
-                            <span />
-                        )}
-                    </nav>
+                        {hasOlder && <LoadOlder shown={shown} />}
+                    </>
                 )}
             </PageContainer>
-
-            <AccessoryUnlockModal
-                unlock={unlockReplay}
-                onClose={() => setUnlockReplay(null)}
-            />
         </>
+    );
+}
+
+/**
+ * P3: a real page, not a reveal. Each press asks the server for twenty more
+ * rows; `preserveScroll` keeps what has already been read where it was, and
+ * only the list props are refetched.
+ */
+function LoadOlder({ shown }: Readonly<{ shown: number }>) {
+    return (
+        <div className="mt-1 flex justify-center">
+            <Link
+                href={`/inbox?shown=${shown + PER_PAGE}`}
+                preserveScroll
+                preserveState
+                only={['notifications', 'shown', 'hasOlder']}
+                className="pressable focus-ring inline-flex items-center gap-1.25 rounded-full border border-border-strong bg-card px-4.5 py-2.25 font-mono text-[0.59375rem] leading-[1.2] font-extrabold tracking-[.05em] text-foreground uppercase shadow-e1"
+            >
+                Load older
+                <Icon
+                    icon="mdi:chevron-down"
+                    width={12}
+                    height={12}
+                    aria-hidden
+                />
+            </Link>
+        </div>
     );
 }
 

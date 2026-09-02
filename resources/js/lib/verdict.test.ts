@@ -72,7 +72,6 @@ function trend(overrides: Partial<PastYouTrend> = {}): PastYouTrend {
         fitness_delta_ctl: 2.4,
         pace_consistency_now: null,
         pace_consistency_then: null,
-        relative_effort_band: null,
         ...overrides,
     };
 }
@@ -114,7 +113,7 @@ describe('evidenceRows', () => {
         expect(row.then).toBe('7:12');
         expect(row.now).toBe('7:00');
         expect(row.delta).toBe('-12 s/km');
-        expect(row.label).toBe('8.2 km · pace vs Mar 14');
+        expect(row.label).toBe('8.2 km · pace vs mar 14');
     });
 
     it('marks a slower pair with a positive delta', () => {
@@ -141,7 +140,7 @@ describe('evidenceRows', () => {
         expect(row.then).toBe('158');
         expect(row.now).toBe('152');
         expect(row.delta).toBe('-7 bpm');
-        expect(row.label).toBe('8.2 km · avg HR vs Mar 14');
+        expect(row.label).toBe('8.2 km · avg HR vs mar 14');
     });
 
     it('reads a flat pair as holding rather than a noisy number', () => {
@@ -186,7 +185,7 @@ describe('verdictMetric', () => {
 describe('verdictHeadline', () => {
     it('names the month the improvement is measured from', () => {
         expect(verdictHeadline(trend())).toBe(
-            "you're faster than you were in March.",
+            "you're faster than you were in march.",
         );
     });
 
@@ -206,7 +205,7 @@ describe('verdictHeadline', () => {
             verdictHeadline(
                 trend({ verdict: 'slipped', mean_pace_delta_sec: -9 }),
             ),
-        ).toBe("you've slipped since March.");
+        ).toBe("you've slipped since march.");
     });
 
     it('calls a plateau without dressing it up', () => {
@@ -214,7 +213,7 @@ describe('verdictHeadline', () => {
             verdictHeadline(
                 trend({ verdict: 'plateaued', mean_pace_delta_sec: 0.4 }),
             ),
-        ).toBe("you're holding where you were in March.");
+        ).toBe("you're holding where you were in march.");
     });
 
     it('separates nothing comparable from one pair that is not yet a trend', () => {

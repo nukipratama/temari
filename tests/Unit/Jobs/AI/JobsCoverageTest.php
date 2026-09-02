@@ -7,24 +7,33 @@ use App\Exceptions\AI\ContentFilterException;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBaseJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
-use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
+use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
+use App\Jobs\AI\AnalyzePlanDayVoiceJob;
+use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
+use App\Jobs\AI\AnalyzePlanWeekVoiceJob;
 use App\Jobs\AI\AnalyzePrContextJob;
 use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
+use App\Models\PlanAdaptation;
+use App\Models\PlannedSession;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
+use App\Services\AI\Narrators\ProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
+use App\Services\AI\Narrators\PlanDayVoiceNarrator;
+use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
+use App\Services\AI\Narrators\PlanWeekVoiceNarrator;
 use App\Services\AI\Narrators\PrContextNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
@@ -55,12 +64,12 @@ function rowOf(string $subjectType, int $subjectId, AnalysisType $type, ?string 
 
 it('AnalyzeBriefingMascotVoiceJob returns the mascot voice line', function (): void {
     $user = User::factory()->create();
-    mockNarrator(BriefingMascotVoiceNarrator::class, 'Kata Temari hari ini');
+    mockNarrator(BriefingMascotVoiceNarrator::class, 'Temari note today');
 
     $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, '2026-05-18');
     new AnalyzeBriefingMascotVoiceJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->content)->toBe('Kata Temari hari ini')
+    expect($row->fresh()->content)->toBe('Temari note today')
         ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
 });
 
@@ -264,6 +273,67 @@ it('AnalyzePrContextJob throws when PR missing', function (): void {
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
 });
 
+// ── AnalyzePlanDayVoiceJob (row) ───────────────────────────────────────
+
+it('AnalyzePlanDayVoiceJob returns voice for the discriminator date', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => '2026-05-18']);
+    mockNarrator(PlanDayVoiceNarrator::class, 'tempo work today.');
+
+    $row = rowOf(AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanDayVoice, '2026-05-18');
+    new AnalyzePlanDayVoiceJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->content)->toBe('tempo work today.');
+});
+
+it('AnalyzePlanDayVoiceJob throws when no PlannedSession exists for that date', function (): void {
+    $user = User::factory()->create();
+    $row = rowOf(AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanDayVoice, '2026-05-18');
+    new AnalyzePlanDayVoiceJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+});
+
+// ── AnalyzePlanWeekVoiceJob (row) ──────────────────────────────────────
+
+it('AnalyzePlanWeekVoiceJob returns voice', function (): void {
+    $user = User::factory()->create();
+    $adaptation = PlanAdaptation::factory()->for($user)->create();
+    mockNarrator(PlanWeekVoiceNarrator::class, 'steady week ahead.');
+
+    $row = rowOf(PlanAdaptation::class, $adaptation->id, AnalysisType::PlanWeekVoice);
+    new AnalyzePlanWeekVoiceJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->content)->toBe('steady week ahead.');
+});
+
+it('AnalyzePlanWeekVoiceJob throws when adaptation missing', function (): void {
+    $row = rowOf(PlanAdaptation::class, 99999, AnalysisType::PlanWeekVoice);
+    new AnalyzePlanWeekVoiceJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+});
+
+// ── AnalyzePlanSeasonVoiceJob (row) ─────────────────────────────────────
+
+it('AnalyzePlanSeasonVoiceJob returns voice', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create();
+    mockNarrator(PlanSeasonVoiceNarrator::class, 'a self-scaled block.');
+
+    $row = rowOf(Season::class, $season->id, AnalysisType::PlanSeasonVoice);
+    new AnalyzePlanSeasonVoiceJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->content)->toBe('a self-scaled block.');
+});
+
+it('AnalyzePlanSeasonVoiceJob throws when season missing', function (): void {
+    $row = rowOf(Season::class, 99999, AnalysisType::PlanSeasonVoice);
+    new AnalyzePlanSeasonVoiceJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+});
+
 // ── AnalyzeWeeklyRecapJob (row) ──────────────────────────────────────
 
 it('AnalyzeWeeklyRecapJob returns narrative', function (): void {
@@ -381,21 +451,21 @@ it('AnalyzeMonthlyRecapJob does not advance into the still-open current month', 
     Carbon::setTestNow();
 });
 
-// ── AnalyzeAkuProfileVoiceJob (row) ───────────────────────────────────
+// ── AnalyzeProfileVoiceJob (row) ───────────────────────────────────
 
-it('AnalyzeAkuProfileVoiceJob returns profile voice', function (): void {
+it('AnalyzeProfileVoiceJob returns profile voice', function (): void {
     $user = User::factory()->create();
-    mockNarrator(AkuProfileVoiceNarrator::class, 'profile voice narrative');
+    mockNarrator(ProfileVoiceNarrator::class, 'profile voice narrative');
 
-    $row = rowOf(AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::AkuProfileVoice);
-    new AnalyzeAkuProfileVoiceJob($row->id)->handle(app(AnalysisService::class));
+    $row = rowOf(AnalysisType::PROFILE_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::ProfileVoice);
+    new AnalyzeProfileVoiceJob($row->id)->handle(app(AnalysisService::class));
 
     expect($row->fresh()->content)->toBe('profile voice narrative');
 });
 
-it('AnalyzeAkuProfileVoiceJob fails when user missing', function (): void {
-    $row = rowOf(AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE, 99999, AnalysisType::AkuProfileVoice);
-    new AnalyzeAkuProfileVoiceJob($row->id)->handle(app(AnalysisService::class));
+it('AnalyzeProfileVoiceJob fails when user missing', function (): void {
+    $row = rowOf(AnalysisType::PROFILE_VOICE_SUBJECT_TYPE, 99999, AnalysisType::ProfileVoice);
+    new AnalyzeProfileVoiceJob($row->id)->handle(app(AnalysisService::class));
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
 });

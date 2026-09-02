@@ -49,8 +49,6 @@ class RunCardFactory
             'seed' => $activity->id,
         ]);
 
-        $previousRarityRank = $existing?->rarity->rank() ?? -1;
-
         $card = RunCard::query()->updateOrCreate(
             ['activity_id' => $activity->id],
             [
@@ -65,24 +63,7 @@ class RunCardFactory
             ($this->unlockEngine)($activity->user);
         }
 
-        if ($card->rarity->rank() > $previousRarityRank) {
-            $this->queueRevealFor($activity, $card);
-        }
-
         return $card;
-    }
-
-    /**
-     * Stash the card id on the user so the next page load can pop the reveal
-     * modal. Only one reveal can be pending at a time.
-     */
-    private function queueRevealFor(Activity $activity, RunCard $card): void
-    {
-        $user = $activity->user;
-        if ($user->pending_reveal_card_id !== null) {
-            return;
-        }
-        $user->forceFill(['pending_reveal_card_id' => $card->id])->save();
     }
 
     private function hasPrFromThisActivity(Activity $activity): bool

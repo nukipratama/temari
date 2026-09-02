@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Enums\ExperienceLevel;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\TrainingBaseline;
@@ -79,4 +81,54 @@ it('ignores runs older than 28 days for the long-run baseline', function (): voi
     ]);
 
     expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBeLessThan(30.0);
+});
+
+it('an explicit sessions_per_week preference overrides the behavioral average', function (): void {
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->toDateString(),
+        'runs' => 6,
+        'distance_km' => 40.0,
+    ]);
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 2]);
+
+    expect($this->baseline->forUser($user, Carbon::today())['sessions_per_week'])->toBe(2);
+});
+
+it('an explicit sessions_per_week preference bypasses the behavioral floor of 3 with zero history', function (): void {
+    $user = User::factory()->create();
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 2]);
+
+    expect($this->baseline->forUser($user, Carbon::today())['sessions_per_week'])->toBe(2);
+});
+
+it('seeds cold-start defaults from experience_level with zero history and no explicit sessions preference', function (): void {
+    $user = User::factory()->create();
+    TrainingPreference::factory()->for($user)->create([
+        'experience_level' => ExperienceLevel::NewToRunning,
+        'sessions_per_week' => null,
+    ]);
+
+    $result = $this->baseline->forUser($user, Carbon::today());
+
+    expect($result['sessions_per_week'])->toBe(3)
+        ->and($result['weekly_volume_km'])->toBe(12.0);
+});
+
+it('real logged behavior wins over an experience_level seed once any history exists', function (): void {
+    $user = User::factory()->create();
+    TrainingPreference::factory()->for($user)->create([
+        'experience_level' => ExperienceLevel::Experienced,
+        'sessions_per_week' => null,
+    ]);
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->toDateString(),
+        'runs' => 4,
+        'distance_km' => 22.0,
+    ]);
+
+    $result = $this->baseline->forUser($user, Carbon::today());
+
+    expect($result['sessions_per_week'])->toBe(4)
+        ->and($result['weekly_volume_km'])->toBe(22.0);
 });

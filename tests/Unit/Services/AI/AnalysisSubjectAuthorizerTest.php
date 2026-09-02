@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\PersonalRecord;
+use App\Models\PlanAdaptation;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisSubjectAuthorizer;
@@ -20,10 +22,10 @@ it('lets the owner through and rejects a stranger for every AnalysisType', funct
 
     $subjectId = match ($type) {
         AnalysisType::BriefingMascotVoice,
-        AnalysisType::BriefingFeaturedKartuVoice,
-        AnalysisType::AkuProfileVoice,
+        AnalysisType::ProfileVoice,
         AnalysisType::MonthlyRecap,
-        AnalysisType::TrendRead => $owner->id,
+        AnalysisType::TrendRead,
+        AnalysisType::PlanDayVoice => $owner->id,
         AnalysisType::PostRunSpeech,
         AnalysisType::RunInsight => Activity::factory()->for($owner)->create()->id,
         AnalysisType::WeeklyRecap => WeeklySnapshot::factory()->for($owner)->create()->id,
@@ -31,6 +33,8 @@ it('lets the owner through and rejects a stranger for every AnalysisType', funct
         AnalysisType::CardFlavor => RunCard::factory()
             ->for(Activity::factory()->for($owner))
             ->create()->id,
+        AnalysisType::PlanWeekVoice => PlanAdaptation::factory()->for($owner)->create()->id,
+        AnalysisType::PlanSeasonVoice => Season::factory()->for($owner)->create()->id,
     };
 
     expect(fn () => AnalysisSubjectAuthorizer::authorize($owner, $type, $subjectId))
@@ -54,38 +58,13 @@ it('handles every AnalysisType (no UnhandledMatchError) so a new type can never 
     }
 });
 
-it('rejects a discriminator naming another user\'s card, and accepts the owner\'s own', function (): void {
-    $owner = User::factory()->create();
-    $stranger = User::factory()->create();
-    $ownCard = RunCard::factory()->for(Activity::factory()->for($owner))->create();
-    $strangerCard = RunCard::factory()->for(Activity::factory()->for($stranger))->create();
-
-    expect(fn () => AnalysisSubjectAuthorizer::authorize(
-        $owner,
-        AnalysisType::BriefingFeaturedKartuVoice,
-        $owner->id,
-        (string) $ownCard->id,
-    ))->not->toThrow(AuthorizationException::class);
-
-    expect(fn () => AnalysisSubjectAuthorizer::authorize(
-        $owner,
-        AnalysisType::BriefingFeaturedKartuVoice,
-        $owner->id,
-        (string) $strangerCard->id,
-    ))->toThrow(AuthorizationException::class, 'Discriminator does not belong to user');
-});
-
 it('handles a discriminator on every AnalysisType (no UnhandledMatchError)', function (): void {
-    // Only the card-keyed type names a resource; the rest must pass a
-    // discriminator through untouched rather than blow up on a missing arm. A
-    // new type without an arm throws \UnhandledMatchError and fails here.
+    // No type names a resource any more, so a discriminator passes through
+    // untouched on every type rather than being ownership-checked.
     $user = User::factory()->create();
 
     foreach (AnalysisType::cases() as $type) {
-        $expectation = expect(fn () => AnalysisSubjectAuthorizer::authorize($user, $type, $user->id, '1'));
-
-        $type === AnalysisType::BriefingFeaturedKartuVoice
-            ? $expectation->toThrow(AuthorizationException::class, 'Discriminator does not belong to user')
-            : $expectation->not->toThrow(UnhandledMatchError::class);
+        expect(fn () => AnalysisSubjectAuthorizer::authorize($user, $type, $user->id, '1'))
+            ->not->toThrow(UnhandledMatchError::class);
     }
 });

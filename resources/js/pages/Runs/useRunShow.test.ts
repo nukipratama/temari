@@ -37,7 +37,7 @@ const runCard: RunCardDetail = {
     flavor_analysis: {
         id: 2,
         status: 'done',
-        content: 'Napas kuat sampai akhir.',
+        content: 'Breathing strong to the end.',
         type: 'card_flavor',
         subject_type: String.raw`App\Models\RunCard`,
         subject_id: 1,
@@ -63,7 +63,6 @@ function hookProps(overrides: Partial<Parameters<typeof useRunShow>[0]> = {}) {
         card: runCard,
         storyLine,
         moodFallback: 'chill' as const,
-        relativeEffort: null,
         ...overrides,
     };
 }
@@ -87,38 +86,6 @@ describe('useRunShow', () => {
         expect(result.current.pace).not.toBe('—');
         expect(result.current.hr).toBe(150);
         expect(result.current.trimp).toBe(70);
-    });
-
-    it('maps a relative-effort band to its "vs usual" sub-line', () => {
-        const { result } = renderHook(() =>
-            useRunShow(
-                hookProps({
-                    relativeEffort: {
-                        trimp: 98,
-                        baseline: 70,
-                        ratio: 1.4,
-                        band: 'well_above',
-                    },
-                }),
-            ),
-        );
-        expect(result.current.effortSub).toBe('harder than usual');
-    });
-
-    it('omits the effort sub-line when the band is null', () => {
-        const { result } = renderHook(() =>
-            useRunShow(
-                hookProps({
-                    relativeEffort: {
-                        trimp: 98,
-                        baseline: null,
-                        ratio: null,
-                        band: null,
-                    },
-                }),
-            ),
-        );
-        expect(result.current.effortSub).toBeUndefined();
     });
 
     it('derives split data from the stream summary', () => {
@@ -195,6 +162,5 @@ describe('useRunShow', () => {
             useRunShow(hookProps({ card: null })),
         );
         expect(withoutCard.current.shareData).toBeNull();
-        expect(withoutCard.current.rarityLabel).toBeNull();
     });
 });

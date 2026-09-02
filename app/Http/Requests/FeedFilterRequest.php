@@ -43,23 +43,15 @@ class FeedFilterRequest extends FormRequest
     }
 
     /**
-     * Selected moods from `?mood=blazing,gassed`, keeping only known values and
-     * dropping duplicates. An empty result means "no mood filter".
-     *
-     * @return array<int, string>
+     * The `?weeks=N` page cursor: how many run-bearing weeks the feed shows.
+     * Clamped rather than rejected, like every other accessor here.
      */
-    public function moods(): array
+    public function weeks(): int
     {
-        $raw = $this->query('mood');
+        $raw = $this->query('weeks');
+        $candidate = is_numeric($raw) ? (int) $raw : FeedFilters::WEEKS_PER_PAGE;
 
-        if (! is_string($raw) || $raw === '') {
-            return [];
-        }
-
-        return array_values(array_intersect(
-            array_unique(explode(',', $raw)),
-            FeedFilters::MOODS,
-        ));
+        return max(FeedFilters::WEEKS_PER_PAGE, min(FeedFilters::MAX_WEEKS, $candidate));
     }
 
     /**
@@ -81,29 +73,5 @@ class FeedFilterRequest extends FormRequest
         } catch (InvalidFormatException) {
             return null;
         }
-    }
-
-    /** The requested sort mode, falling back to newest for anything unknown. */
-    public function sort(): string
-    {
-        $raw = $this->query('sort');
-
-        return is_string($raw) && in_array($raw, FeedFilters::SORTS, true) ? $raw : FeedFilters::SORT_NEWEST;
-    }
-
-    /** The selected distance band key, or null for "any distance". */
-    public function distanceBand(): ?string
-    {
-        $raw = $this->query('dist');
-
-        return is_string($raw) && array_key_exists($raw, FeedFilters::DISTANCE_BANDS) ? $raw : null;
-    }
-
-    /** The selected rarity, or null for "any rarity". */
-    public function rarity(): ?string
-    {
-        $raw = $this->query('rarity');
-
-        return is_string($raw) && in_array($raw, FeedFilters::RARITIES, true) ? $raw : null;
     }
 }

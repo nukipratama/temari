@@ -10,7 +10,6 @@ use App\Notifications\UnlockGrantedNotification;
 use App\Services\Gamification\GamificationContext;
 use App\Services\Gamification\GoalResolver;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Session;
 
 /**
  * Recomputes eligible unlocks for a user and persists new ones. Idempotent:
@@ -79,13 +78,6 @@ class GrantEligibleUnlocksAction
             $user->notify(new UnlockGrantedNotification($celebration));
         }
 
-        // Flash the first new unlock for the toast on the next request.
-        // Session::isStarted() guards background jobs / CLI ingests, which
-        // have no session and would crash here.
-        if (Session::isStarted() && $celebrations !== []) {
-            Session::flash('unlock', $celebrations[0]);
-        }
-
         return $new;
     }
 
@@ -95,7 +87,7 @@ class GrantEligibleUnlocksAction
      *
      * @return array{unlock_key: string, name: string, icon: string, is_major: bool}|null
      */
-    private function celebration(string $key): ?array
+    public function celebration(string $key): ?array
     {
         $catalog = config('temari_unlocks', []);
         $def = is_array($catalog) ? ($catalog[$key] ?? null) : null;

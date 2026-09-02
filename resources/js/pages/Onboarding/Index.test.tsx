@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
@@ -10,31 +10,61 @@ function lastPostCall() {
     return vi.mocked(router.post).mock.calls.at(-1);
 }
 
+/** Connected -> preferences, then straight past preferences to the goal step. */
+function advanceToGoal() {
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+}
+
+/** Connected -> preferences, past the experience and sessions questions,
+ *  choosing `sessions` (so the days sub-step is reachable) and skipping the
+ *  goal-type question. Lands on the days sub-step. */
+function advanceToDays(sessions: number) {
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+    fireEvent.click(screen.getByRole('button', { name: `${sessions}x` }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+}
+
 describe('Onboarding/Index', () => {
     it('shows the connected step with the user first name', () => {
         setMockPage({ auth: { user: makeUser({ first_name: 'Budi' }) } });
 
         render(<OnboardingIndex />);
 
-        expect(screen.getByText(/You.re connected, Budi/)).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', { name: /you.re connected, Budi./ }),
+        ).toBeInTheDocument();
     });
 
-    it('advances to the goal step on continue', () => {
+    it('advances to the preferences step on continue', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
 
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
-        expect(screen.getByText('Got a race in mind?')).toBeInTheDocument();
+        expect(
+            screen.getByText(/How would you describe where you.re at\?/),
+        ).toBeInTheDocument();
+    });
+
+    it('advances to the goal step from preferences', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        advanceToGoal();
+
+        expect(
+            screen.getByRole('heading', { name: /got a race in mind\?/ }),
+        ).toBeInTheDocument();
     });
 
     it('disables the finish button until a race day is entered', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        advanceToGoal();
 
         expect(
-            screen.getByRole('button', { name: 'Set my goal & finish' }),
+            screen.getByRole('button', { name: 'set my goal & finish' }),
         ).toBeDisabled();
 
         fireEvent.change(screen.getByLabelText('Race day'), {
@@ -42,21 +72,21 @@ describe('Onboarding/Index', () => {
         });
 
         expect(
-            screen.getByRole('button', { name: 'Set my goal & finish' }),
+            screen.getByRole('button', { name: 'set my goal & finish' }),
         ).not.toBeDisabled();
     });
 
     it('submits the goal with distance in meters and goal time in seconds', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        advanceToGoal();
 
         fireEvent.change(screen.getByLabelText('Race day'), {
             target: { value: '2026-12-25' },
         });
         fireEvent.click(screen.getByRole('button', { name: '5K' }));
         fireEvent.change(screen.getByLabelText('Hours'), {
-            target: { value: '0' },
+            target: { value: '2' },
         });
         fireEvent.change(screen.getByLabelText('Minutes'), {
             target: { value: '25' },
@@ -66,7 +96,7 @@ describe('Onboarding/Index', () => {
         });
 
         fireEvent.click(
-            screen.getByRole('button', { name: 'Set my goal & finish' }),
+            screen.getByRole('button', { name: 'set my goal & finish' }),
         );
 
         const call = lastPostCall();
@@ -74,9 +104,37 @@ describe('Onboarding/Index', () => {
         expect(call?.[1]).toEqual({
             race_date: '2026-12-25',
             distance_m: 5_000,
-            goal_time_sec: 1_500,
+            goal_time_sec: 8_700,
             name: 'Christmas 5K',
         });
+    });
+
+    it('shows a saving state while the submission is in flight', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        advanceToGoal();
+
+        fireEvent.change(screen.getByLabelText('Race day'), {
+            target: { value: '2026-12-25' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', { name: 'set my goal & finish' }),
+        );
+
+        const [, , options] = vi.mocked(router.post).mock.calls.at(-1) as [
+            string,
+            Record<string, unknown>,
+            { onStart?: () => void; onFinish?: () => void },
+        ];
+        act(() => options.onStart?.());
+        expect(
+            screen.getByRole('button', { name: 'Saving…' }),
+        ).toBeInTheDocument();
+
+        act(() => options.onFinish?.());
+        expect(
+            screen.getByRole('button', { name: 'set my goal & finish' }),
+        ).toBeInTheDocument();
     });
 
     it('sets the promise before the ask: what landed, and what is still coming', () => {
@@ -85,7 +143,7 @@ describe('Onboarding/Index', () => {
         render(<OnboardingIndex />);
 
         expect(
-            screen.getByText(/Every run Strava already has for you is landing/),
+            screen.getByText(/every run Strava already has for you is landing/),
         ).toBeInTheDocument();
         expect(
             screen.getByText(/is fetched per run, the first time you open it/),
@@ -98,7 +156,7 @@ describe('Onboarding/Index', () => {
     it('refuses to submit a goal time the server would reject outright', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        advanceToGoal();
 
         fireEvent.change(screen.getByLabelText('Race day'), {
             target: { value: '2026-12-25' },
@@ -108,7 +166,7 @@ describe('Onboarding/Index', () => {
         });
 
         expect(
-            screen.getByRole('button', { name: 'Set my goal & finish' }),
+            screen.getByRole('button', { name: 'set my goal & finish' }),
         ).toBeDisabled();
         expect(
             screen.getByText('Goal time has to be at least 5 minutes.'),
@@ -118,7 +176,7 @@ describe('Onboarding/Index', () => {
     it('stops the date picker short of a race day the server would reject', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        advanceToGoal();
 
         const min = screen.getByLabelText('Race day').getAttribute('min') ?? '';
 
@@ -134,17 +192,17 @@ describe('Onboarding/Index', () => {
             errors: { race_date: 'Race day has to be in the future.' },
         });
         render(<OnboardingIndex />);
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        advanceToGoal();
 
         expect(
             screen.getByText('Race day has to be in the future.'),
         ).toBeInTheDocument();
     });
 
-    it('skips with an empty payload regardless of unsaved form input', () => {
+    it('skips with an empty payload when nothing was ever entered', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        advanceToGoal();
 
         fireEvent.change(screen.getByLabelText('Name (optional)'), {
             target: { value: 'Half-typed idea' },
@@ -154,5 +212,167 @@ describe('Onboarding/Index', () => {
         const call = lastPostCall();
         expect(call?.[0]).toBe('/onboarding');
         expect(call?.[1]).toEqual({});
+    });
+
+    it('lets the preferences step be skipped entirely, discarding any partial picks', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        fireEvent.click(screen.getByRole('button', { name: 'new to running' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+
+        const call = lastPostCall();
+        expect(call?.[1]).toEqual({});
+    });
+
+    it('lets a single question be skipped without discarding the others', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+        fireEvent.click(screen.getByRole('button', { name: '3x' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'stay consistent' }),
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+
+        const call = lastPostCall();
+        expect(call?.[1]).toEqual({
+            sessions_per_week: 3,
+            goal_type: 'consistent',
+        });
+    });
+
+    it('skips the days question entirely once sessions per week is left blank', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+
+        expect(
+            screen.getByRole('heading', { name: /got a race in mind\?/ }),
+        ).toBeInTheDocument();
+    });
+
+    it('steps back to a previous question without losing the current answer', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        fireEvent.click(screen.getByRole('button', { name: 'new to running' }));
+        expect(
+            screen.getByText(
+                /how many days a week can you realistically show up\?/,
+            ),
+        ).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+        expect(
+            screen.getByRole('button', { name: 'new to running' }),
+        ).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('caps run-day selection at the chosen sessions-per-week count', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        advanceToDays(2);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Mon' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Wed' }));
+
+        expect(screen.getByRole('button', { name: 'Fri' })).toBeDisabled();
+    });
+
+    it('deselects an already-picked day on a second click', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        advanceToDays(2);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Mon' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Mon' }));
+
+        expect(
+            screen.getByText('pick 2 · 0 of 2 selected.'),
+        ).toBeInTheDocument();
+    });
+
+    it('reveals the long-run picker only once the day count matches the target', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        advanceToDays(2);
+
+        expect(
+            screen.queryByText(/Which one.s your long run\?/),
+        ).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Mon' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Wed' }));
+
+        expect(
+            screen.getByText(/Which one.s your long run\?/),
+        ).toBeInTheDocument();
+    });
+
+    it('recaps the answered preferences on the goal step', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        fireEvent.click(screen.getByRole('button', { name: 'new to running' }));
+        fireEvent.click(screen.getByRole('button', { name: '3x' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'stay consistent' }),
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+
+        expect(
+            screen.getByText(
+                'Got it: new to running · 3x a week · stay consistent.',
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('leaves the recap out when every preference was skipped', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        advanceToGoal();
+
+        expect(screen.queryByText(/^Got it:/)).not.toBeInTheDocument();
+    });
+
+    it('submits the chosen training preferences alongside the race goal', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        fireEvent.click(screen.getByRole('button', { name: 'new to running' }));
+        fireEvent.click(screen.getByRole('button', { name: '2x' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'stay consistent' }),
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Mon' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Wed' }));
+        fireEvent.click(screen.getAllByRole('button', { name: 'Wed' }).at(-1)!);
+
+        expect(
+            screen.getByRole('heading', { name: /got a race in mind\?/ }),
+        ).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+
+        const call = lastPostCall();
+        expect(call?.[1]).toEqual({
+            experience_level: 'new_to_running',
+            sessions_per_week: 2,
+            goal_type: 'consistent',
+            run_days: [0, 2],
+            long_run_day: 2,
+        });
     });
 });

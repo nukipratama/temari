@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\DistanceBand;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -59,7 +58,7 @@ it('counts only tempo/interval sessions as quality completed', function (): void
     $season = seasonFor($user);
     $tempoDate = Carbon::today()->subDays(2);
     $easyDate = Carbon::today()->subDays(3);
-    PlannedSession::factory()->for($user)->create(['date' => $tempoDate->toDateString(), 'session_type' => SessionType::Tempo, 'distance_band' => DistanceBand::Medium]);
+    PlannedSession::factory()->for($user)->create(['date' => $tempoDate->toDateString(), 'session_type' => SessionType::Tempo]);
     PlannedSession::factory()->for($user)->create(['date' => $easyDate->toDateString(), 'session_type' => SessionType::Easy]);
     foreach ([$tempoDate, $easyDate] as $date) {
         ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create(['start_date_local' => $date]);
@@ -74,8 +73,8 @@ it('reports the longest completed long-band run', function (): void {
     $season = seasonFor($user);
     $shortLong = Carbon::today()->subDays(4);
     $bigLong = Carbon::today()->subDays(2);
-    PlannedSession::factory()->for($user)->create(['date' => $shortLong->toDateString(), 'session_type' => SessionType::Long, 'distance_band' => DistanceBand::Long]);
-    PlannedSession::factory()->for($user)->create(['date' => $bigLong->toDateString(), 'session_type' => SessionType::Long, 'distance_band' => DistanceBand::Long]);
+    PlannedSession::factory()->for($user)->create(['date' => $shortLong->toDateString(), 'session_type' => SessionType::Long]);
+    PlannedSession::factory()->for($user)->create(['date' => $bigLong->toDateString(), 'session_type' => SessionType::Long]);
     ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create(['start_date_local' => $shortLong, 'distance' => 10_000]);
     ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create(['start_date_local' => $bigLong, 'distance' => 18_000]);
 

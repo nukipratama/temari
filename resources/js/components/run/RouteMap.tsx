@@ -25,7 +25,7 @@ export default function RouteMap({
 
     if (positions.length < 2) {
         return (
-            <div className="flex h-56 items-center justify-center rounded-lg border border-dashed border-line text-sm text-ink-3">
+            <div className="flex h-56 items-center justify-center rounded-lg border border-dashed border-border text-sm text-text-3">
                 Route not available
             </div>
         );
@@ -41,7 +41,7 @@ export default function RouteMap({
     // `role="img"` element's subtree to just its accessible name, which would hide
     // the tap-to-activate button below from keyboard/AT users entirely.
     return (
-        <div className="relative isolate overflow-hidden rounded-lg border border-line">
+        <div className="relative isolate overflow-hidden">
             <div
                 role="img"
                 aria-label={mapLabel}

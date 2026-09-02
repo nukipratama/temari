@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Illuminate\Testing\TestResponse;
 use App\Enums\NotificationKind;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\InboxNotification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,7 +20,7 @@ uses(RefreshDatabase::class);
 function inboxRows(TestResponse $response): array
 {
     /** @var array<int, array<string, mixed>> $data */
-    $data = $response->viewData('page')['props']['notifications']['data'];
+    $data = $response->viewData('page')['props']['notifications'];
 
     return $data;
 }
@@ -35,7 +37,7 @@ it('lists the signed-in user rows newest first', function (): void {
 
     $response = $this->actingAs($user)->get('/inbox')
         ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->component('Inbox')->has('notifications.data', 2));
+        ->assertInertia(fn (Assert $page) => $page->component('Inbox')->has('notifications', 2));
 
     expect(array_column(inboxRows($response), 'id'))->toBe([$newer->id, $older->id]);
 });
@@ -71,33 +73,10 @@ it('flattens the post-run replay handles out of the payload', function (): void 
 
     expect($row['url'])->toBe('https://temari.test/activities/42')
         ->and($row['run_card_id'])->toBe(99)
-        ->and($row['rarity'])->toBe('epic')
-        ->and($row['unlock'])->toBeNull();
+        ->and($row['rarity'])->toBe('epic');
 });
 
-it('ships the unlock celebration verbatim so the takeover can replay it', function (): void {
-    $user = User::factory()->create();
-    InboxNotification::factory()->for($user)->create([
-        'kind' => NotificationKind::Unlock,
-        'payload' => [
-            'unlock_key' => 'accessory.headband_legendary',
-            'name' => 'Legendary headband',
-            'icon' => 'mdi:hanger',
-            'is_major' => true,
-        ],
-    ]);
-
-    $row = inboxRows($this->actingAs($user)->get('/inbox'))[0];
-
-    expect($row['unlock'])->toBe([
-        'unlock_key' => 'accessory.headband_legendary',
-        'name' => 'Legendary headband',
-        'icon' => 'mdi:hanger',
-        'is_major' => true,
-    ])->and($row['run_card_id'])->toBeNull();
-});
-
-it('leaves a row with no payload with no replay handles', function (): void {
+it('leaves a row with no payload with no handles', function (): void {
     $user = User::factory()->create();
     InboxNotification::factory()->for($user)->create(['kind' => NotificationKind::Test, 'payload' => null]);
 
@@ -105,8 +84,7 @@ it('leaves a row with no payload with no replay handles', function (): void {
 
     expect($row['url'])->toBeNull()
         ->and($row['run_card_id'])->toBeNull()
-        ->and($row['rarity'])->toBeNull()
-        ->and($row['unlock'])->toBeNull();
+        ->and($row['rarity'])->toBeNull();
 });
 
 it('opens on the page holding the deep-linked row', function (): void {
@@ -127,18 +105,88 @@ it('ignores a non-numeric deep-link target', function (): void {
 
     $this->actingAs($user)->get('/inbox?item=nope')
         ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->where('focusId', null)->has('notifications.data', 1));
+        ->assertInertia(fn (Assert $page) => $page->where('focusId', null)->has('notifications', 1));
 });
 
-it('paginates rather than growing without bound', function (): void {
+it('ships a bounded first window and says older rows sit behind it', function (): void {
     $user = User::factory()->create();
     InboxNotification::factory()->for($user)->count(21)->create();
 
     $this->actingAs($user)->get('/inbox')
         ->assertInertia(fn (Assert $page) => $page
-            ->has('notifications.data', 20)
-            ->where('notifications.last_page', 2));
+            ->has('notifications', 20)
+            ->where('shown', 20)
+            ->where('hasOlder', true));
+});
 
-    $this->actingAs($user)->get('/inbox?page=2')
-        ->assertInertia(fn (Assert $page) => $page->has('notifications.data', 1));
+it('widens the window on request and drops the older flag at the end', function (): void {
+    $user = User::factory()->create();
+    InboxNotification::factory()->for($user)->count(21)->create();
+
+    $this->actingAs($user)->get('/inbox?shown=40')
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('notifications', 21)
+            ->where('shown', 40)
+            ->where('hasOlder', false));
+});
+
+it('snaps a hand-typed window size up to the page step and caps it', function (): void {
+    $user = User::factory()->create();
+    InboxNotification::factory()->for($user)->count(3)->create();
+
+    $this->actingAs($user)->get('/inbox?shown=25')
+        ->assertInertia(fn (Assert $page) => $page->where('shown', 40));
+
+    $this->actingAs($user)->get('/inbox?shown=99999')
+        ->assertInertia(fn (Assert $page) => $page->where('shown', 500));
+});
+
+it('reads an unlock rarity out of the catalog rather than the payload', function (): void {
+    config()->set('temari_unlocks.accessory.medal_gold', ['name' => 'Gold Medal', 'rarity' => 'rare']);
+
+    $user = User::factory()->create();
+    InboxNotification::factory()->for($user)->create([
+        'kind' => NotificationKind::Unlock,
+        'payload' => ['unlock_key' => 'accessory.medal_gold', 'name' => 'Gold Medal'],
+    ]);
+
+    expect(inboxRows($this->actingAs($user)->get('/inbox'))[0]['rarity'])->toBe('rare');
+});
+
+it('leaves an unlock with no catalog entry unrated', function (): void {
+    $user = User::factory()->create();
+    InboxNotification::factory()->for($user)->create([
+        'kind' => NotificationKind::Unlock,
+        'payload' => ['unlock_key' => 'season.9.track_3'],
+    ]);
+
+    expect(inboxRows($this->actingAs($user)->get('/inbox'))[0]['rarity'])->toBeNull();
+});
+
+it('carries distance and moving time for a post-run row', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['distance' => 6400.0, 'moving_time' => 1868]);
+    InboxNotification::factory()->for($user)->create([
+        'kind' => NotificationKind::PostRun,
+        'payload' => ['activity_id' => $activity->id],
+    ]);
+
+    $row = inboxRows($this->actingAs($user)->get('/inbox'))[0];
+
+    expect($row['distance_m'])->toBe(6400.0)
+        ->and($row['moving_time_s'])->toBe(1868);
+});
+
+it('leaves a recap row without run stats', function (): void {
+    $user = User::factory()->create();
+    InboxNotification::factory()->for($user)->create([
+        'kind' => NotificationKind::WeeklyRecap,
+        'payload' => ['url' => 'https://temari.test/history'],
+    ]);
+
+    $row = inboxRows($this->actingAs($user)->get('/inbox'))[0];
+
+    expect($row['distance_m'])->toBeNull()
+        ->and($row['moving_time_s'])->toBeNull();
 });

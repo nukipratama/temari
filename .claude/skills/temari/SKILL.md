@@ -19,25 +19,27 @@ Backend logic is split by domain under `app/Services/`:
 - **Geo/** — polyline encode/decode + Nominatim reverse-geocode (`app/Jobs/Geo/` resolves location names).
 - **Weather/** — Open-Meteo snapshot attached per activity.
 
-Two DB connections: default `mysql` plus a second **`analytics`** schema for metering (e.g. `ai_token_usages`); its migrations live in `database/migrations/analytics/`. Pages live under `resources/js/pages/`: `Today` (dashboard), `Activities/{Feed,Calendar}`, `Collection/{Cards,Records,Accessories}`, `Runs/Show`.
+Two DB connections: default `mysql` plus a second **`analytics`** schema for metering (e.g. `ai_token_usages`); its migrations live in `database/migrations/analytics/`. Pages live under `resources/js/pages/`, one per prototype screen: `Home` (the Today dashboard — the render name is `Home`, not `Today`), `Plan`, `Race`, `Trends`, `History` with `Activities/{Feed,Calendar}`, `Runs/Show`, `Inbox`, `Profile`, `Settings/Index`, plus `Auth/Login`, `Onboarding/Index`, `Legal/Document` and the operator screens `AiUsage` / `Devtools` / `Devtools/Design`. There is no `Collection/` tree — the cards, records and accessories pages were cut by the parity port.
 
 ## Voice & copy
 
-- **No em-dashes (`—`)** in UI copy *or* LLM prompt strings — they read as an AI/translation tell. Use commas, periods, colons, or `·`. (The `'—'` glyph as a *null placeholder* in data display is fine.)
-- Temari is a training partner who keeps score, not a soft cheerleader: warm, but competitive about the user's own numbers (never against other runners), willing to name a coast once and plainly, and stingy with praise so it means something when given. Her narrated voice leans lowercase (a soft tendency, not a rule) and dry-funny; **UI chrome stays Title Case** and does not adopt the lowercase tendency. Shared across both: plain running-domain vocabulary (`pace`, `HR`, `km`, `TRIMP`, `splits`), a jargon-accessibility tier for technical terms, a `**bold**` emphasis rule, and a tight emoji rule (zero by default, one max, only for a genuine PR/first-ever, glyphs limited to 🔥/✨/🛌).
+- **Prefer commas, periods, colons or `·` over em-dashes (`—`)** in UI copy and LLM prompt strings — a reflexive em-dash reads as an AI tell. This is a preference, not a ban: a deliberate one is fine, and the `'—'` glyph as a *null placeholder* in data display always was. Nothing gates it (the hard test was cut in `C1`); it is a judgement call at review time. `TemariPersona`'s prompt still instructs the model itself to avoid them, which is separate and unchanged.
+- Temari is a training partner who keeps score, not a soft cheerleader: warm, but competitive about the user's own numbers (never against other runners), willing to name a coast once and plainly, and stingy with praise so it means something when given. Her narrated voice leans lowercase (a soft tendency, not a rule) and dry-funny; **UI chrome is lowercase too** since 2026-09-01 (decision P37 of the prototype-parity program, which replaced the previous Title Case rule), with proper nouns, domain acronyms and CSS-uppercased mono labels unaffected. Shared across both: plain running-domain vocabulary (`pace`, `HR`, `km`, `TRIMP`, `splits`), a jargon-accessibility tier for technical terms, a `**bold**` emphasis rule, and a tight emoji rule (zero by default, one max, only for a genuine PR/first-ever, glyphs limited to 🔥/✨/🛌).
 - Full rules: [docs/voice-and-tone.md](../../../docs/voice-and-tone.md). Persona source of truth: [TemariPersona.php](../../../app/Services/AI/TemariPersona.php). Read it before writing or reviewing copy.
 
 ## Design system
 
-Jewel tones on a warm linen canvas. Tokens live in the `@theme` block of
-[resources/css/app.css](../../../resources/css/app.css), which is *generated* by
-[build-tokens.mjs](../../../resources/brand/build-tokens.mjs); full reference (colors, type scale,
-fonts, radius, elevation, spacing) in [docs/design-tokens.md](../../../docs/design-tokens.md).
+Pewter: cold near-white paper, near-black structure, lime accent. Tokens are declared in the
+`@theme static` block of [resources/css/app.css](../../../resources/css/app.css), which owns every
+emitted value; [build-tokens.mjs](../../../resources/brand/build-tokens.mjs) owns the colour
+*derivation* rules behind it (the fill/text split and the per-ground `-ink` tiers), not the radius,
+spacing, elevation or type scales. Full reference (colors, type scale, fonts, radius, elevation,
+spacing) in [docs/design-tokens.md](../../../docs/design-tokens.md).
 Use the **semantic token families, never raw Tailwind colors** like `lime-500`:
 
-- `sky` (`#241c54`) / `sky-deep` (`#170f38`) / `sky-2` (`#362a73`) — structure, dark hero panels, the only "dark" surface. Deep indigo thread.
-- `horizon` / `horizon-deep` (`#d9a53c` gold) — primary CTA, "earned"/PR state, Temari accent. Gold thread.
-- `cream` / `cream-deep` (`#f5f0e4`) — paper / secondary surface and borders. Warm linen canvas.
+- `sky` (`#171f28`) / `sky-deep` (`#0b1017`) / `sky-2` (`#26303d`) — structure, dark hero panels, and (since F2) the dark ground itself. Cold near-black.
+- `horizon` / `horizon-deep` (`#ade047` lime) — primary CTA, "earned"/PR state, Temari accent.
+- `cream` / `cream-deep` (`#f1f5f8`) — paper / secondary surface and borders. Cold near-white.
 - `ink` / `ink-2` / `ink-3` — the 3-tier text-contrast scale (see below).
 - `surface` / `surface-card` / `surface-elev` / `surface-warm` / `surface-sunken` + `line` / `line-strong` — app surfaces (dawn-shift drifts `surface`).
 - `mood-{blazing,easy,wobbly,gassed,overloaded,chill}` (each with a pastel `-bg` cell tint and an `-ink` label variant) — calendar cells + mood badges.
@@ -45,8 +47,13 @@ Use the **semantic token families, never raw Tailwind colors** like `lime-500`:
 - semantic hues `leaf` / `leaf-deep` / `leaf-ink`, `ember` / `ember-deep` / `ember-ink`, `citrus` / `citrus-ink`, `stone` (`-deep` fills a dark CTA, `-ink` carries the label; `citrus` fills no CTA and has no `-deep`).
 - `strava-orange` / `strava-orange-hover` — reserved, never themed (see below).
 
-`citrus` (`#c9971f`) is reserved for PR / legendary celebrations only. App is
-**light-mode only** (no `*-dark` tokens; `.dark` is never applied).
+`citrus` (`#c9971f`) is reserved for PR / legendary celebrations only.
+
+**Two grounds, since F2.** `[data-theme="dark"]` on `<html>` inverts Sky and Cream — Sky becomes
+ground, Cream becomes text — and is the app's **default** ground; light and system are reachable
+from Settings. A second semantic layer (`background`/`foreground`/`card`/`popover`/... plus
+`leaf-ink`/`ember-ink`/`citrus-ink`/`rarity-*-ink`, which invert per ground) sits above the palette
+above; see "Ground-reactive semantic layer" in [docs/design-tokens.md](../../../docs/design-tokens.md).
 
 **Fill vs text.** Every saturated family ships as a pair: the vivid value is the fill (dots,
 frames, strokes, tinted cells), the derived `-ink` value is the only member allowed to carry text
@@ -72,48 +79,45 @@ to neutral (`surface-sunken` + `ink`) so the brand mark gets breathing room. Str
 
 ### CTA contrast rule (WCAG)
 
-`horizon` (`#d9a53c`) is a gold thread tone, so it pairs with **dark** text, never white. Follow the
+`horizon` (`#ade047`) is a lime tone, so it pairs with **dark** text, never white. Follow the
 [`PillButton`](../../../resources/js/components/ui/PillButton.tsx) presets:
-- `horizon` bg → `text-sky` (dark indigo on gold passes comfortably); hover darkens to `horizon-deep`.
-- `sky` / `sky-deep` bg (dark indigo) → `text-cream` / white text (passes ~13:1); hover darkens to `sky-deep`.
-- `leaf-deep` (`#256f4d`) / `ember-deep` (`#8d2c3d`) bg → `text-cream` (both pass AA); used for dense "retry"/action chips. No darker step exists, so darken on hover with `hover:opacity-90`, not a hue jump.
+There are **four tones**, defined once in [`pillButtonVariants`](../../../resources/js/lib/variants.ts#L52):
+- `horizon` bg → **`text-sky`**, a fixed value rather than the ground-reactive `text-foreground`. This is deliberate and the one place the semantic layer must not be used: `foreground` flips to cream on the dark ground, which is the unreadable pairing on lime. Hover darkens to `horizon-deep`.
+- `sky` bg (near-black) → `text-cream` (passes ~15:1+); hover darkens to `sky-deep`.
+- `ghost` → transparent with an `ink`-tinted hairline; `outline` → `bg-card` with a `border` edge and `text-text-2`.
 - Never put white text on `horizon`/`citrus`/`cream` (all too light).
 
 ### Gradient primitives
 
-Gradient **text** is applied via
-[`<GradientText preset="horizon|cream-sun" fontSize=… />`](../../../resources/js/components/ui/GradientText.tsx),
-which clips a `linear-gradient` to the text via inline `background-clip`. Rule: **gradient text
-on numbers only**, only at large display sizes, and only one per visible viewport. Scarcity makes
-it feel premium, not Las-Vegas. Backdrop atmospherics (e.g. the login page) are inline CSS
+**There is no gradient-text primitive.** `GradientText` clipped a `linear-gradient` to a number at
+display sizes; the prototype draws no gradient text on any screen, so `W2` swept it. Don't
+reintroduce one for a stat: a display-tier number already carries the emphasis.
+Backdrop atmospherics (e.g. the login page) are inline CSS
 `linear-gradient` + `radial-gradient` layers on the sky→horizon ramp, not a shared component;
 in-app pages stay clean.
 
-### Dawn-shift theme
-
-[`useDawnShift`](../../../resources/js/hooks/useDawnShift.ts) is mounted in
-[AppShell](../../../resources/js/layouts/AppShell.tsx); it writes
-`data-time-of-day="dawn|morning|day|dusk|night"` on `<body>` so CSS surface tints respond to the
-user's local time. Light mode only — never auto-flips to dark mode.
-
 ### Text contrast tiers
 
-3-stop semantic system — use the tier that matches the text role, not "pick whichever color looks right":
+3-stop semantic system — use the tier that matches the text role, not "pick whichever color looks right".
+Since F3, call sites write the ground-reactive semantic classes (backed by `--color-ink` on the
+light ground, `--color-cream` on dark) rather than the raw `text-ink*` utilities, which still exist
+underneath but are fixed to the light value:
 
-- `text-ink` (`#1a1812`) — **primary text**: body paragraphs, headings, button labels, KPI values. Default for any prose the user reads.
-- `text-ink-2` (`#3d362a`) — **supporting body**: page subtitles, briefing suggestion lines, descriptive paragraphs adjacent to a primary statement.
-- `text-ink-3` (`#6e6452`) — **labels-above-values, timestamps, footnotes, table column headers, secondary metadata**. Smallest contrast tier, never use for body prose.
+- `text-foreground` (`#16181b` on light) — **primary text**: body paragraphs, headings, button labels, KPI values. Default for any prose the user reads.
+- `text-text-2` (`#34373c` on light) — **supporting body**: page subtitles, briefing suggestion lines, descriptive paragraphs adjacent to a primary statement.
+- `text-text-3` (`#60666d` on light) — **labels-above-values, timestamps, footnotes, table column headers, secondary metadata**. Smallest contrast tier, never use for body prose.
 
-Sweep `grep text-ink-3` before merging — if it's wrapping a `<p>` of running prose, it's probably wrong.
+Sweep `grep text-text-3` before merging — if it's wrapping a `<p>` of running prose, it's probably wrong.
 
 ### Typography & fonts
 
 Three families (all loaded via Google Fonts in
 [app.blade.php](../../../resources/views/app.blade.php)): **Fraunces** italic is
-`font-display` (headlines + Temari voice/quotes); **Plus Jakarta Sans** is `font-sans`, the default
+`font-serif` (headlines + Temari voice/quotes; renamed from `font-display` in F3 to match the
+prototype's own token name); **Plus Jakarta Sans** is `font-sans`, the default
 family for body/UI/buttons; **JetBrains Mono** is `font-mono`, for *numbers, stats and small
-uppercase metadata labels* (section labels, chips, stat-tile / kartu captions, timestamps). Oswald
-(`font-collectible`) is retired: the Kartu uses the same stack as everything else. Because `font-sans` is Tailwind's default, every small uppercase label must carry an
+uppercase metadata labels* (section labels, chips, stat-tile / card captions, timestamps). Oswald
+(`font-collectible`) is retired: the Card uses the same stack as everything else. Because `font-sans` is Tailwind's default, every small uppercase label must carry an
 **explicit `font-mono`** (or the `.text-label-micro` / `.text-label-small` utilities) or it falls back to
 the sans. Keep `tabular-nums` on numeric / stat displays.
 The scale is fluid `clamp()` tokens in `app.css` (`text-display-*`, `text-headline-*`,
@@ -121,15 +125,15 @@ The scale is fluid `clamp()` tokens in `app.css` (`text-display-*`, `text-headli
 
 | Role | Class |
 |---|---|
-| In-app hero title | `font-display italic text-display-2xl text-ink` |
-| Page title (`<h1>`) | `font-display text-display-lg text-ink` (compact/devtools header: `text-headline-xs`) |
-| Section heading (`<h2>`) | `font-display text-headline-sm text-ink` |
-| Temari voice / quote | `font-display italic text-quote-lg text-ink-2` |
-| Sub-label (KPI/table cap) | `font-mono text-xs font-semibold uppercase tracking-wider text-ink-3` |
-| Body paragraph | `font-sans text-sm leading-relaxed text-ink` |
-| Caption / supporting | `text-sm text-ink-2 leading-relaxed` |
-| Meta / timestamp | `text-xs text-ink-3` |
-| KPI / big stat value | display tier (`text-display-xs`+) `tabular-nums text-ink`; avoid one-off `text-[NNpx]` |
+| In-app hero title | `font-serif italic text-display-2xl text-foreground` |
+| Page title (`<h1>`) | `font-serif text-display-lg text-foreground` (compact/devtools header: `text-headline-xs`) |
+| Section heading (`<h2>`) | `font-serif text-headline-sm text-foreground` |
+| Temari voice / quote | `font-serif italic text-quote-lg text-text-2` |
+| Sub-label (KPI/table cap) | `font-mono text-xs font-semibold uppercase tracking-wider text-text-3` |
+| Body paragraph | `font-sans text-sm leading-relaxed text-foreground` |
+| Caption / supporting | `text-sm text-text-2 leading-relaxed` |
+| Meta / timestamp | `text-xs text-text-3` |
+| KPI / big stat value | display tier (`text-display-xs`+) `tabular-nums text-foreground`; avoid one-off `text-[NNpx]` |
 
 ### Section spacing rhythm
 
@@ -262,6 +266,12 @@ worktree's install just replays from cache instead of re-downloading over the ne
 `worktree-setup.sh` chowns all three cache-type volumes (`node_modules` included) to `www-data`
 right after bringing the stack up, since they're created root-owned on first boot and the container
 always runs as `www-data` — no manual fix needed.
+
+**Git hooks are shared, not per-worktree.** `core.hooksPath` lives in the common `.git/config` that
+linked worktrees inherit, so every worktree runs the *main checkout's* `.githooks/` at whatever
+version that checkout has on disk. A hook edited on a worktree branch is not exercised by that
+worktree's commits — invoke the script directly to test it. (If the stored value is absolute, it
+pins every worktree to the main checkout; `composer install` re-sets it relative.)
 
 **One fresh-worktree gotcha**, not concurrency-specific: if several worktrees cold-install at the
 same moment, one can occasionally fail mid-extraction on a transient bind-mount visibility race —

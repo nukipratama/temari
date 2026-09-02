@@ -30,17 +30,21 @@ function runCard(overrides: Partial<RunCard> = {}): RunCard {
     };
 }
 
+function moodDot() {
+    // The leading mood indicator is the row's only aria-hidden <span>.
+    return document.querySelector('span[aria-hidden]');
+}
+
 describe('RunListRow', () => {
     it('renders activity name + distance', () => {
         render(<RunListRow detail={detail()} />);
         expect(screen.getByText('Morning Run')).toBeInTheDocument();
-        expect(screen.getByText('10.00')).toBeInTheDocument();
+        expect(screen.getByText('· 10.00 km')).toBeInTheDocument();
     });
 
-    it('renders the formatted elapsed_time as the duration cell', () => {
+    it('renders the formatted elapsed_time', () => {
         render(<RunListRow detail={detail({ elapsed_time: 2054 })} />);
         expect(screen.getByText('34:14')).toBeInTheDocument();
-        expect(screen.getByText('duration')).toBeInTheDocument();
     });
 
     it('falls back to "Run" when name is null', () => {
@@ -55,39 +59,46 @@ describe('RunListRow', () => {
         );
     });
 
-    it('renders dashes when numeric fields are null', () => {
+    it('renders an em-dash placeholder when numeric fields are null', () => {
         render(
             <RunListRow
                 detail={detail({
                     distance: null,
                     elapsed_time: null,
                     average_heartrate: null,
-                    trimp_edwards: null,
                 })}
             />,
         );
-        expect(screen.getAllByText('—').length).toBeGreaterThan(0);
-        // BPM/TRIMP use a plain hyphen placeholder (no em-dash, per the copy ban).
-        expect(screen.getAllByText('-').length).toBeGreaterThan(0);
+        expect(screen.getByText('· — km')).toBeInTheDocument();
+        expect(screen.getAllByText('—').length).toBe(2);
+        expect(screen.getByText('— bpm')).toBeInTheDocument();
     });
 
     it('derives a mood from TRIMP when none is provided', () => {
         // TRIMP=70 (default fixture) falls in the `blazing` aerobic bucket.
-        // Mood surfaces as the MoodChip label text now (the Temari aria-label was dropped in the Badge refactor).
         render(<RunListRow detail={detail()} />);
-        expect(screen.getByText('Blazing')).toBeInTheDocument();
+        expect(moodDot()).toHaveClass('bg-mood-blazing');
     });
 
     it('uses passed mood when provided (overrides derivation)', () => {
         // TRIMP=70 would derive `blazing`, but the explicit `mood` prop wins.
         render(<RunListRow detail={detail()} mood="chill" />);
-        expect(screen.getByText('Chill')).toBeInTheDocument();
-        expect(screen.queryByText('Blazing')).not.toBeInTheDocument();
+        expect(moodDot()).toHaveClass('bg-mood-chill');
     });
 
     it('derives gassed for a crushing TRIMP', () => {
         render(<RunListRow detail={detail({ trimp_edwards: 220 })} />);
-        expect(screen.getByText('Gassed')).toBeInTheDocument();
+        expect(moodDot()).toHaveClass('bg-mood-gassed');
+    });
+
+    it('a post-run note overrides the derived mood too', () => {
+        render(
+            <RunListRow
+                detail={detail()}
+                note={{ oneline: 'note', mood: 'wobbly' }}
+            />,
+        );
+        expect(moodDot()).toHaveClass('bg-mood-wobbly');
     });
 
     it('renders **bold** markers in the note as <strong>', () => {
@@ -107,7 +118,7 @@ describe('RunListRow', () => {
                 detail={detail({ start_date_local: '2026-05-10T07:00:00' })}
             />,
         );
-        expect(screen.getByText('· 07:00')).toBeInTheDocument();
+        expect(screen.getByText(/· 07:00$/)).toBeInTheDocument();
     });
 
     it('renders the literal wall-clock time even when serialized with a UTC Z (no zone shift)', () => {
@@ -120,40 +131,26 @@ describe('RunListRow', () => {
                 })}
             />,
         );
-        expect(screen.getByText('· 06:52')).toBeInTheDocument();
+        expect(screen.getByText(/· 06:52$/)).toBeInTheDocument();
     });
 
     it('omits the time when start_date_local has no time component', () => {
         render(
             <RunListRow detail={detail({ start_date_local: '2026-05-10' })} />,
         );
-        expect(screen.queryByText(/^· \d{2}\.\d{2}$/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/·\s*\d{2}:\d{2}$/)).not.toBeInTheDocument();
     });
 
-    it('leads with the earned Kartu when a run_card is present', () => {
+    it('shows a rarity-coloured sparkle when a run_card is present', () => {
         render(<RunListRow detail={detail()} runCard={runCard()} />);
-        expect(
-            screen.getByRole('img', { name: 'Dawn Sprint' }),
-        ).toBeInTheDocument();
+        const sparkle = document.querySelector('[aria-label="legendary card"]');
+        expect(sparkle).toHaveClass('text-rarity-legendary-ink');
     });
 
-    it('shows compact caption stats beside the Kartu', () => {
-        render(<RunListRow detail={detail()} runCard={runCard()} />);
-        expect(screen.getByText('10.00 km')).toBeInTheDocument();
-        expect(screen.getByText('1:00:00')).toBeInTheDocument();
-        expect(screen.getByText('150 bpm')).toBeInTheDocument();
-        expect(screen.getByText('70 TRIMP')).toBeInTheDocument();
-    });
-
-    it('renders each badge as an emoji with a descriptive title', () => {
-        render(<RunListRow detail={detail()} runCard={runCard()} />);
-        const badge = screen.getByTitle('Early Bird');
-        expect(badge).toHaveTextContent('🌅');
-    });
-
-    it('falls back to the plain row when run_card is absent', () => {
+    it('shows no sparkle when run_card is absent', () => {
         render(<RunListRow detail={detail()} runCard={null} />);
-        expect(screen.getByText('Blazing')).toBeInTheDocument();
-        expect(screen.queryByRole('img', { name: 'Dawn Sprint' })).toBeNull();
+        expect(
+            document.querySelector('[aria-label$="card"]'),
+        ).not.toBeInTheDocument();
     });
 });

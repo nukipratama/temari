@@ -6,12 +6,12 @@ import BrandMark from './BrandMark';
 describe('BrandMark', () => {
     it('renders the wordmark', () => {
         render(<BrandMark />);
-        expect(screen.getByText('Temari')).toBeInTheDocument();
+        expect(screen.getByText('temari')).toBeInTheDocument();
     });
 
     it('uses cream tone on dark surfaces', () => {
         render(<BrandMark tone="cream" />);
-        expect(screen.getByText('Temari')).toHaveClass('text-cream');
+        expect(screen.getByText('temari')).toHaveClass('text-cream');
     });
 
     it('applies the provided className', () => {

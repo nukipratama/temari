@@ -12,7 +12,7 @@ code_refs:
   - app/Console/Commands/Weather/CorrectForecastWeatherCommand.php
   - app/Models/ActivityDetail.php
   - resources/js/pages/Runs/Show.tsx
-  - resources/js/components/dashboard/LastRunCard.tsx
+  - resources/js/components/run/MapWeatherPanel.tsx
   - app/Services/AI/Context/ActivityNarrationContext.php
 ---
 
@@ -24,11 +24,11 @@ Every run gets a one-shot weather reading taken at its start point and start hou
 
 [OpenMeteoClient](app/Services/Weather/OpenMeteoClient.php) talks to [Open-Meteo](https://open-meteo.com) and returns an immutable [WeatherSnapshot](app/Services/Weather/WeatherSnapshot.php) value object (temp °C, humidity %, precipitation mm, wind speed/gust km/h, wind direction °, rain-detected bool) — or `null` when anything goes wrong.
 
-**Forecast vs. archive routing.** Open-Meteo splits "recent" and "historical" across two endpoints. The client picks one based on how old the run is: fresh runs hit the forecast endpoint (which carries a window of recent past days), older runs hit the archive endpoint via `fetchArchive()`. The age cutoff and the two endpoint URLs are at [OpenMeteoClient.php:16-21](app/Services/Weather/OpenMeteoClient.php#L16) and the branch is at [OpenMeteoClient.php:36](app/Services/Weather/OpenMeteoClient.php#L36). The two endpoints take different query params — a single dated day for the archive vs. a past/forecast-days window for the forecast — assembled in [`params()`](app/Services/Weather/OpenMeteoClient.php#L117).
+**Forecast vs. archive routing.** Open-Meteo splits "recent" and "historical" across two endpoints. The client picks one based on how old the run is: fresh runs hit the forecast endpoint (which carries a window of recent past days), older runs hit the archive endpoint via `fetchArchive()`. The age cutoff and the two endpoint URLs are at [OpenMeteoClient.php:16-21](app/Services/Weather/OpenMeteoClient.php#L16) and the branch is at [`useArchive`](app/Services/Weather/OpenMeteoClient.php#L36). The two endpoints take different query params — a single dated day for the archive vs. a past/forecast-days window for the forecast — assembled in [`params()`](app/Services/Weather/OpenMeteoClient.php#L117).
 
-**Picking the hour.** Open-Meteo returns hourly arrays bucketed by local wall-clock (`timezone=auto`), which lines up with Strava's `start_date_local`. [`parse()`](app/Services/Weather/OpenMeteoClient.php#L144) finds the run's start hour in the `time` array and reads the matching temp/humidity/precipitation. Rain is a derived boolean: precipitation over a small millimetre threshold counts as rain, see [OpenMeteoClient.php:179](app/Services/Weather/OpenMeteoClient.php#L179) (threshold defined at [line 23](app/Services/Weather/OpenMeteoClient.php#L23)).
+**Picking the hour.** Open-Meteo returns hourly arrays bucketed by local wall-clock (`timezone=auto`), which lines up with Strava's `start_date_local`. [`parse()`](app/Services/Weather/OpenMeteoClient.php#L144) finds the run's start hour in the `time` array and reads the matching temp/humidity/precipitation. Rain is a derived boolean: precipitation over a small millimetre threshold counts as rain, see [`rainDetected`](app/Services/Weather/OpenMeteoClient.php#L227) (threshold defined at [line 23](app/Services/Weather/OpenMeteoClient.php#L23)).
 
-**Caching.** Results are cached keyed by rounded lat/lng + start hour ([`cacheKey()`](app/Services/Weather/OpenMeteoClient.php#L242)), with **separate TTLs**: a short TTL for forecast hits (the recent past can still be revised) and a long one for archive hits (history is settled), chosen at [OpenMeteoClient.php:50](app/Services/Weather/OpenMeteoClient.php#L50) (TTL constants at [lines 27-29](app/Services/Weather/OpenMeteoClient.php#L27)). Only the primitive shape is cached, never the `WeatherSnapshot` object — a non-array hit is treated as a miss and refetched so legacy/poisoned keys self-heal; the rationale is documented inline at [OpenMeteoClient.php:39-46](app/Services/Weather/OpenMeteoClient.php#L39). When wind fields were added the cache was version-bumped (`weather:v2:...`) so old entries that lack wind data are naturally evicted on first read.
+**Caching.** Results are cached keyed by rounded lat/lng + start hour ([`cacheKey()`](app/Services/Weather/OpenMeteoClient.php#L242)), with **separate TTLs**: a short TTL for forecast hits (the recent past can still be revised) and a long one for archive hits (history is settled), chosen at [`fetchArchive()`](app/Services/Weather/OpenMeteoClient.php#L50) (TTL constants at [lines 27-29](app/Services/Weather/OpenMeteoClient.php#L27)). Only the primitive shape is cached, never the `WeatherSnapshot` object — a non-array hit is treated as a miss and refetched so legacy/poisoned keys self-heal; the rationale is documented inline at [OpenMeteoClient.php:39-46](app/Services/Weather/OpenMeteoClient.php#L39). When wind fields were added the cache was version-bumped (`weather:v2:...`) so old entries that lack wind data are naturally evicted on first read.
 
 **Never blocks, best-effort.** The HTTP call has a tight timeout ([request()](app/Services/Weather/OpenMeteoClient.php#L193), timeout at [line 25](app/Services/Weather/OpenMeteoClient.php#L25)). A thrown request logs a warning and returns `null` ([catch at line 96](app/Services/Weather/OpenMeteoClient.php#L96)); a 4xx/5xx response returns `null` silently ([line 107](app/Services/Weather/OpenMeteoClient.php#L107)). The caller always gets either a usable snapshot or `null`, never an exception.
 
@@ -46,14 +46,13 @@ It's written during ingest by [ActivityPipeline::lookupWeather](app/Services/Run
 
 All consumers read the stored columns; none call Open-Meteo.
 
-- **[[run-detail]]** — [MapWeatherPanel](resources/js/components/run/MapWeatherPanel.tsx) renders the temp / humidity / wind / location block beside the route map, on both mobile and desktop.
-- **[[dashboard]]** — the last-run weather chip on [LastRunCard](resources/js/components/dashboard/LastRunCard.tsx#L24), via the `formatWeather` helper. It is now the only consumer: the hero banner that also showed a weather chip was deleted with the old dashboard (see [[dashboard]]).
+- **[[run-detail]]** — [MapWeatherPanel](resources/js/components/run/MapWeatherPanel.tsx) renders the temp / humidity / wind / location block beside the route map, on both mobile and desktop. It is the only screen consumer: the dashboard's last-run weather chip went with `PS3`'s port to the prototype's mini card, which draws no chip (see [[dashboard]]).
 - **[[ai-pipeline|AI narration]]** — temp and rain flow into [ActivityNarrationContext](app/Services/AI/Context/ActivityNarrationContext.php#L41) so Temari's run commentary can mention the conditions.
 
 ## Notes / gotchas
 
 - Weather is sampled **once at the start point/hour**, not averaged over the route or duration — a long run that started cool and ended hot reads as cool.
-- Because rain is a precipitation-threshold boolean, light drizzle below the threshold reads as "no rain"; see [OpenMeteoClient.php:179](app/Services/Weather/OpenMeteoClient.php#L179).
+- Because rain is a precipitation-threshold boolean, light drizzle below the threshold reads as "no rain"; see [`rainDetected`](app/Services/Weather/OpenMeteoClient.php#L227).
 - The cache key rounds coordinates, so two runs starting near each other in the same hour share a reading — intentional, it dedupes the upstream call.
 </content>
 </invoke>

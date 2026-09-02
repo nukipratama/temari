@@ -11,7 +11,7 @@ const TONE_CLASS: Record<Tone, string> = {
     positive: 'text-mood-easy-ink',
     warning: 'text-mood-blazing-ink',
     alert: 'text-mood-gassed-ink',
-    neutral: 'text-ink',
+    neutral: 'text-foreground',
 };
 
 describe('KpiTile', () => {

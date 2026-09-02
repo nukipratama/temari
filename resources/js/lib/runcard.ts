@@ -1,4 +1,3 @@
-import type { TemariPose } from '@/components/temari/TemariProto';
 import type { ActivityDetail, Rarity, ZonePct } from '@/types/inertia';
 
 import {
@@ -81,7 +80,7 @@ export const RARITY_SYMBOL: Record<Rarity, string> = {
 };
 
 // Loot-ladder rarity hex — mirrors the --color-rarity-* tokens in app.css.
-// Lives here so JS/SVG/canvas (RouteGlyph, Kartu CSS var, shareCard) all share
+// Lives here so JS/SVG/canvas (RouteGlyph, Card CSS var, shareCard) all share
 // one source where a CSS var can't reach (inline SVG fill, canvas fillStyle).
 export const RARITY_HEX: Record<Rarity, string> = {
     common: '#7d8694',
@@ -173,15 +172,6 @@ export const RARITY_DOT: Record<Rarity, string> = {
     legendary: 'bg-rarity-legendary',
 };
 
-// Mascot pose driven by rarity — reinforces the tier hierarchy on cards and detail page.
-export const RARITY_POSE: Record<Rarity, TemariPose> = {
-    common: 'observational',
-    uncommon: 'proud',
-    rare: 'excited',
-    epic: 'pumped',
-    legendary: 'glow',
-};
-
 // Slug → Title Case ("early_bird" → "Early Bird"). Fallback for unknown slugs.
 export function prettyBadge(slug: string): string {
     return slug
@@ -268,7 +258,7 @@ export function zonePctFromDetail(
     return hasData ? zones : null;
 }
 
-/** The display-formatted secondary stats a `Kartu` shows (assignable to KartuStats). */
+/** The display-formatted secondary stats a `Card` shows (assignable to CardStats). */
 export interface CardStatStrings {
     pace?: string;
     hr?: string;
@@ -279,7 +269,7 @@ export interface CardStatStrings {
 
 /**
  * Derive a card's display stats (pace · HR · cadence · fastest km) from a run's
- * detail, in one place — every `<Kartu stats={...}>` call site feeds from this so
+ * detail, in one place — every `<Card stats={...}>` call site feeds from this so
  * the `${x} bpm` / `${x} spm` / `${pace}/km` formatting can't drift. Each value is
  * omitted (not "—") when its source is missing, matching the card's honest-cells rule.
  */
@@ -304,8 +294,8 @@ export function buildCardStats(
     };
 }
 
-/** The shared `<Kartu>` prop bag derived from a run's detail. */
-export interface KartuPropsFromDetail {
+/** The shared `<Card>` prop bag derived from a run's detail. */
+export interface CardPropsFromDetail {
     km: string;
     duration: string;
     trimp: string;
@@ -315,7 +305,7 @@ export interface KartuPropsFromDetail {
     paceShape: number[];
 }
 
-export interface KartuPropsOptions {
+export interface CardPropsOptions {
     /**
      * Duration display: `'hms'` (digital "30:10", default) or `'words'`
      * ("30 min 10 sec"). Cards use HMS so the fixed-width stat-grid cell
@@ -326,15 +316,15 @@ export interface KartuPropsOptions {
 
 /**
  * Derive the `km/duration/trimp/subtitle/stats/zonePct/paceShape` prop bag a
- * `<Kartu>` renders from a run's detail, in one place. Every `<Kartu>` call site
+ * `<Card>` renders from a run's detail, in one place. Every `<Card>` call site
  * feeds from this so the `… != null ? … : '—'` sentinels can't drift. `subtitle`
  * is `null` when detail is absent (callers that always have a detail get the
- * built string). `trimp` is a string (Kartu accepts `string | number`).
+ * built string). `trimp` is a string (Card accepts `string | number`).
  */
-export function kartuPropsFromDetail(
+export function cardPropsFromDetail(
     detail?: ActivityDetail | null,
-    { durationFormat = 'hms' }: KartuPropsOptions = {},
-): KartuPropsFromDetail {
+    { durationFormat = 'hms' }: CardPropsOptions = {},
+): CardPropsFromDetail {
     const duration =
         detail?.elapsed_time == null
             ? '—'

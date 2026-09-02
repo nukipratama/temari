@@ -2,14 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Mood } from '@/types/inertia';
 
-import {
-    MOOD_FILL,
-    MOOD_FILTER_OPTIONS,
-    MOOD_HINT,
-    MOOD_LABEL,
-    MOOD_ORDER,
-    moodSigilColor,
-} from './mood';
+import { dominantMood, MOOD_ORDER, moodSigilColor } from './mood';
 
 const ALL_MOODS: Mood[] = [
     'blazing',
@@ -30,24 +23,16 @@ describe('mood', () => {
         });
     });
 
-    describe('MOOD_HINT', () => {
-        it('exposes a non-empty hint for every mood', () => {
-            ALL_MOODS.forEach((m) => {
-                expect(MOOD_HINT[m]).toBeTruthy();
-            });
+    describe('dominantMood', () => {
+        it('picks the most frequent mood, ties broken by MOOD_ORDER', () => {
+            expect(dominantMood(['chill', 'blazing', 'chill', null])).toBe(
+                'chill',
+            );
         });
-    });
 
-    describe('MOOD_FILTER_OPTIONS', () => {
-        it('follows MOOD_ORDER and carries the label, hint and swatch of each mood', () => {
-            expect(MOOD_FILTER_OPTIONS.map((o) => o.mood)).toEqual([
-                ...MOOD_ORDER,
-            ]);
-            MOOD_FILTER_OPTIONS.forEach((option) => {
-                expect(option.label).toBe(MOOD_LABEL[option.mood]);
-                expect(option.hint).toBe(MOOD_HINT[option.mood]);
-                expect(option.swatchClass).toBe(MOOD_FILL[option.mood]);
-            });
+        it('is null when nothing scores', () => {
+            expect(dominantMood([null, null])).toBeNull();
+            expect(dominantMood([])).toBeNull();
         });
     });
 

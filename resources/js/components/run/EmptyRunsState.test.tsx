@@ -10,7 +10,7 @@ import EmptyRunsState from './EmptyRunsState';
 
 const HERO_COPY: Record<StravaSyncState, { headline: string; copy: string }> = {
     disconnected: {
-        headline: 'Connect Strava first',
+        headline: 'connect Strava first',
         copy: 'I read your runs straight from Strava. Connect it first to get your first card going.',
     },
     revoked: {
@@ -18,11 +18,11 @@ const HERO_COPY: Record<StravaSyncState, { headline: string; copy: string }> = {
         copy: "Your Strava token isn't active anymore. Reconnect so new runs can be read.",
     },
     syncing: {
-        headline: 'Your runs are being pulled from Strava',
+        headline: 'your runs are being pulled from Strava',
         copy: "Hang tight, the moment your first run comes in, I'll read it and the card will show up.",
     },
     ready: {
-        headline: 'No new runs found yet',
+        headline: 'no new runs found yet',
         copy: 'If you just finished a run, try syncing again so it gets picked up.',
     },
 };
@@ -50,10 +50,7 @@ function expectHeroContent(state: StravaSyncState) {
 function expectActionLinks() {
     expect(screen.getByText('While you wait')).toBeInTheDocument();
 
-    const accessories = screen.getByText('Dress up Temari').closest('a');
-    expect(accessories).toHaveAttribute('href', '/accessories');
-
-    const activities = screen.getByText('See your run recap').closest('a');
+    const activities = screen.getByText('see your run recap').closest('a');
     expect(activities).toHaveAttribute('href', '/history');
 }
 

@@ -8,7 +8,10 @@ use App\Exceptions\AI\UnavailableException;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
+use App\Models\PlanAdaptation;
+use App\Models\PlannedSession;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -18,19 +21,26 @@ use App\Services\AI\Agent\Tools\LifetimeStatsTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\Agent\Tools\MonthTotalsTool;
 use App\Services\AI\Agent\Tools\PersonalRecordTool;
+use App\Services\AI\Agent\Tools\PlanDayTool;
+use App\Services\AI\Agent\Tools\PlanSeasonTool;
+use App\Services\AI\Agent\Tools\PlanWeekTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\TrendRangeTool;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
-use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
+use App\Services\AI\Narrators\ProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\NarratorContinuity;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
+use App\Services\AI\Narrators\PlanDayVoiceNarrator;
+use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
+use App\Services\AI\Narrators\PlanWeekVoiceNarrator;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Narrators\PrContextNarrator;
 use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
+use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\LifetimeStats;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Actions\Run\Metrics\ResolveRunBaselineAction;
@@ -167,13 +177,13 @@ function priorActivityWithDoneAnalysis(User $user, AnalysisType $kind, string $c
 
 it('PostRunSpeechNarrator feeds prev_narrative from the prior activity post-run when Done', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
-    priorActivityWithDoneAnalysis($a->user, AnalysisType::PostRunSpeech, 'Lari kemarin easy banget.');
+    priorActivityWithDoneAnalysis($a->user, AnalysisType::PostRunSpeech, 'The run yesterday was very easy.');
 
     $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class), app(TrainingLoad::class))->context($a, $d->fresh(), 'blazing');
 
-    expect($context['prev_narrative'])->toBe('Lari kemarin easy banget.')
+    expect($context['prev_narrative'])->toBe('The run yesterday was very easy.')
         // prev_opener is the first few words, so the model can steer away from it.
-        ->and($context['prev_opener'])->toBe('Lari kemarin easy banget.');
+        ->and($context['prev_opener'])->toBe('The run yesterday was very easy.');
 });
 
 it('PostRunSpeechNarrator leaves prev_narrative null when there is no prior Done post-run', function (): void {
@@ -200,12 +210,12 @@ it('PostRunSpeechNarrator truncates prev_opener to the first few words of a long
     priorActivityWithDoneAnalysis(
         $a->user,
         AnalysisType::PostRunSpeech,
-        'Masih nyambung dari sesi kemarin, kali ini penutupmu lebih hidup dan pace makin rapi di akhir.',
+        'Still carrying yesterday, and this time your close was livelier with a tidier finishing pace.',
     );
 
     $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class), app(TrainingLoad::class))->context($a, $d->fresh(), 'blazing');
 
-    expect($context['prev_opener'])->toBe('Masih nyambung dari sesi kemarin, kali ini penutupmu lebih hidup')
+    expect($context['prev_opener'])->toBe('Still carrying yesterday, and this time your close was livelier')
         ->and(str_word_count((string) $context['prev_opener']))->toBeLessThanOrEqual(10);
 });
 
@@ -437,12 +447,12 @@ it('RunInsightNarrator prompt treats a missing reading as simply not a claim can
 
 it('RunInsightNarrator feeds prev_narrative from the prior activity run-insight when Done', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
-    priorActivityWithDoneAnalysis($a->user, AnalysisType::RunInsight, 'Cadence kemarin 168, mulai membaik.');
+    priorActivityWithDoneAnalysis($a->user, AnalysisType::RunInsight, 'Cadence was 168 yesterday, starting to improve.');
 
     $narrator = new RunInsightNarrator(fakeCaller('{"claims":[]}'), new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
     $context = $narrator->context($a, $d->fresh());
 
-    expect($context['prev_narrative'])->toBe('Cadence kemarin 168, mulai membaik.');
+    expect($context['prev_narrative'])->toBe('Cadence was 168 yesterday, starting to improve.');
 });
 
 it('RunInsightNarrator leaves prev_narrative null when no prior run-insight is Done', function (): void {
@@ -514,9 +524,9 @@ it('WeeklyRecapNarrator returns narrative on valid JSON', function (): void {
         'distance_km' => 30.0,
         'runs' => 4,
     ]);
-    $caller = fakeCaller(json_encode(['narrative' => 'Minggu solid'], JSON_THROW_ON_ERROR));
+    $caller = fakeCaller(json_encode(['narrative' => 'Solid week'], JSON_THROW_ON_ERROR));
     $narrator = new WeeklyRecapNarrator($caller);
-    expect($narrator->generate($snap))->toBe('Minggu solid');
+    expect($narrator->generate($snap))->toBe('Solid week');
 });
 
 it('WeeklyRecapNarrator throws on missing narrative key', function (): void {
@@ -569,7 +579,7 @@ it('WeeklyRecapNarrator leaves previous-week deltas null on the first week', fun
 it('WeeklyRecapNarrator feeds prev_narrative when the prior week recap is Done', function (): void {
     $user = User::factory()->create();
     $prior = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10']);
-    Analysis::factory()->done('Minggu lalu kamu solid.')->create([
+    Analysis::factory()->done('You were solid last week.')->create([
         'subject_type' => WeeklySnapshot::class,
         'subject_id' => $prior->id,
         'analysis_type' => AnalysisType::WeeklyRecap,
@@ -579,7 +589,7 @@ it('WeeklyRecapNarrator feeds prev_narrative when the prior week recap is Done',
 
     $context = new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($current);
 
-    expect($context['prev_narrative'])->toBe('Minggu lalu kamu solid.');
+    expect($context['prev_narrative'])->toBe('You were solid last week.');
 });
 
 it('WeeklyRecapNarrator omits prev_narrative when the prior week recap is not yet Done', function (): void {
@@ -695,6 +705,103 @@ it('PrContextNarrator feeds the PR run conditions into the context', function ()
     expect($context['weather_temp_c'])->toBe(33);
 });
 
+// ── PlanDayVoiceNarrator ──────────────────────────────────────────────
+
+it('PlanDayVoiceNarrator returns voice on valid JSON', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create(['session_type' => 'tempo', 'date' => Carbon::today()->toDateString()]);
+    $caller = fakeCaller(json_encode(['voice' => 'tempo work today.'], JSON_THROW_ON_ERROR));
+    $narrator = new PlanDayVoiceNarrator($caller, app(TrainingBaseline::class));
+    expect($narrator->generate($session))->toBe('tempo work today.');
+});
+
+it('PlanDayVoiceNarrator throws on missing voice key', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create();
+    $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
+    $narrator = new PlanDayVoiceNarrator($caller, app(TrainingBaseline::class));
+    $narrator->generate($session);
+})->throws(UnavailableException::class);
+
+it('PlanDayTool reports the prescribed session, distance and skip state', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'session_type' => 'long',
+        'phase' => 'build',
+        'date' => Carbon::today()->toDateString(),
+        'skipped' => false,
+    ]);
+
+    $context = new PlanDayTool($session, app(TrainingBaseline::class))->handle([]);
+
+    expect($context['session_type'])->toBe('long')
+        ->and($context['phase'])->toBe('build')
+        ->and($context['distance_km'])->toBeFloat()
+        ->and($context['skipped'])->toBeFalse();
+});
+
+// ── PlanWeekVoiceNarrator ─────────────────────────────────────────────
+
+it('PlanWeekVoiceNarrator returns voice on valid JSON', function (): void {
+    $user = User::factory()->create();
+    $adaptation = PlanAdaptation::factory()->for($user)->create(['reason' => 'steady', 'deload' => false]);
+    $caller = fakeCaller(json_encode(['voice' => 'steady week ahead.'], JSON_THROW_ON_ERROR));
+    $narrator = new PlanWeekVoiceNarrator($caller);
+    expect($narrator->generate($adaptation))->toBe('steady week ahead.');
+});
+
+it('PlanWeekVoiceNarrator throws on missing voice key', function (): void {
+    $user = User::factory()->create();
+    $adaptation = PlanAdaptation::factory()->for($user)->create();
+    $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
+    $narrator = new PlanWeekVoiceNarrator($caller);
+    $narrator->generate($adaptation);
+})->throws(UnavailableException::class);
+
+it('PlanWeekTool reports the periodizer verdict as rule-based headline/detail text', function (): void {
+    $user = User::factory()->create();
+    $adaptation = PlanAdaptation::factory()->for($user)->create([
+        'reason' => 'missed_week', 'deload' => true, 'quality_delta' => -1, 'adherence_pct' => 20,
+    ]);
+
+    $context = new PlanWeekTool($adaptation)->handle([]);
+
+    expect($context['reason'])->toBe('missed_week')
+        ->and($context['deload'])->toBeTrue()
+        ->and($context['adherence_pct'])->toBe(20)
+        ->and($context['headline'])->toBeString()
+        ->and($context['detail'])->toBeString();
+});
+
+// ── PlanSeasonVoiceNarrator ───────────────────────────────────────────
+
+it('PlanSeasonVoiceNarrator returns voice on valid JSON', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create();
+    $caller = fakeCaller(json_encode(['voice' => 'a self-scaled block.'], JSON_THROW_ON_ERROR));
+    $narrator = new PlanSeasonVoiceNarrator($caller);
+    expect($narrator->generate($season))->toBe('a self-scaled block.');
+});
+
+it('PlanSeasonVoiceNarrator throws on missing voice key', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create();
+    $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
+    $narrator = new PlanSeasonVoiceNarrator($caller);
+    $narrator->generate($season);
+})->throws(UnavailableException::class);
+
+it('PlanSeasonTool reports self-scaled seasons with no race attached', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create(['race_goal_id' => null]);
+
+    $context = new PlanSeasonTool($season)->handle([]);
+
+    expect($context['is_race_oriented'])->toBeFalse()
+        ->and($context['race_name'])->toBeNull()
+        ->and($context['goals'])->toBeArray();
+});
+
 it('WeeklyRecapNarrator sends only the continuity line and reads the week', function (): void {
     $user = User::factory()->create();
     $snapshot = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
@@ -731,9 +838,9 @@ function cardFixture(): RunCard
 
 it('CardFlavorNarrator returns flavor on valid JSON', function (): void {
     $card = cardFixture();
-    $caller = fakeCaller(json_encode(['flavor' => 'Kartu epic!'], JSON_THROW_ON_ERROR));
+    $caller = fakeCaller(json_encode(['flavor' => 'Card epic!'], JSON_THROW_ON_ERROR));
     $narrator = new CardFlavorNarrator($caller, app(RelativeEffort::class));
-    expect($narrator->generate($card))->toBe('Kartu epic!');
+    expect($narrator->generate($card))->toBe('Card epic!');
 });
 
 it('CardFlavorNarrator sends an empty context and lets the model read the card', function (): void {
@@ -809,8 +916,8 @@ it('MonthTotalsTool reads month totals and the mood mix', function (): void {
     expect($context['pr_count'])->toBe(0);
     expect($context['weekly_distance_km'])->toBeArray();
 
-    expect(new MonthlyRecapNarrator(fakeCaller('{"narrative":"Bulan ini mostly blazing."}'))->generate($user, $month))
-        ->toBe('Bulan ini mostly blazing.');
+    expect(new MonthlyRecapNarrator(fakeCaller('{"narrative":"This month, mostly blazing."}'))->generate($user, $month))
+        ->toBe('This month, mostly blazing.');
 });
 
 it('MonthTotalsTool counts PRs and buckets distance by week within the month', function (): void {
@@ -864,7 +971,7 @@ it('MonthTotalsTool leaves fitness null when the month has no snapshots', functi
 
 it('MonthlyRecapNarrator feeds prev_narrative when the prior month recap is Done', function (): void {
     $user = User::factory()->create();
-    Analysis::factory()->done('Bulan lalu kamu konsisten.')->create([
+    Analysis::factory()->done('You were consistent last month.')->create([
         'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::MonthlyRecap,
@@ -873,7 +980,7 @@ it('MonthlyRecapNarrator feeds prev_narrative when the prior month recap is Done
 
     $context = new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05');
 
-    expect($context['prev_narrative'])->toBe('Bulan lalu kamu konsisten.');
+    expect($context['prev_narrative'])->toBe('You were consistent last month.');
 });
 
 it('MonthlyRecapNarrator omits prev_narrative when the prior month recap is not yet Done', function (): void {
@@ -899,9 +1006,9 @@ it('MonthlyRecapNarrator leaves prev_narrative null on the first month', functio
     expect($context['prev_narrative'])->toBeNull();
 });
 
-// ── AkuProfileVoiceNarrator ───────────────────────────────────────────
+// ── ProfileVoiceNarrator ───────────────────────────────────────────
 
-it('AkuProfileVoiceNarrator builds a mood-mix percent breakdown from story lines', function (): void {
+it('ProfileVoiceNarrator builds a mood-mix percent breakdown from story lines', function (): void {
     $user = User::factory()->create();
     $cutoff = Carbon::now()->subWeeks(11);
 
@@ -914,33 +1021,33 @@ it('AkuProfileVoiceNarrator builds a mood-mix percent breakdown from story lines
         ]);
     }
 
-    $caller = fakeCaller(json_encode(['profile_voice' => 'Larimu lebih sering blazing.'], JSON_THROW_ON_ERROR));
-    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+    $caller = fakeCaller(json_encode(['profile_voice' => 'Runmu lebih sering blazing.'], JSON_THROW_ON_ERROR));
+    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
 
     $mix = $narrator->personaMix($user->fresh());
     $blazing = collect($mix)->firstWhere('mood', 'blazing');
     expect($blazing['mood'])->toBe('blazing');
     expect($blazing['count'])->toBe(3);
     expect($blazing['percent'])->toBe(60.0);
-    expect($narrator->generate($user->fresh()))->toBe('Larimu lebih sering blazing.');
+    expect($narrator->generate($user->fresh()))->toBe('Runmu lebih sering blazing.');
 });
 
-it('AkuProfileVoiceNarrator returns an empty mix for a user with no story lines', function (): void {
+it('ProfileVoiceNarrator returns an empty mix for a user with no story lines', function (): void {
     $user = User::factory()->create();
     $caller = fakeCaller(json_encode(['profile_voice' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
 
     expect($narrator->personaMix($user))->toBe([]);
 });
 
-it('AkuProfileVoiceNarrator returns profile voice on valid JSON', function (): void {
+it('ProfileVoiceNarrator returns profile voice on valid JSON', function (): void {
     $user = User::factory()->create();
-    $caller = fakeCaller(json_encode(['profile_voice' => 'Kamu udah lari 50 km, keren.'], JSON_THROW_ON_ERROR));
-    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
-    expect($narrator->generate($user))->toBe('Kamu udah lari 50 km, keren.');
+    $caller = fakeCaller(json_encode(['profile_voice' => 'You have run 50 km. Strong.'], JSON_THROW_ON_ERROR));
+    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+    expect($narrator->generate($user))->toBe('You have run 50 km. Strong.');
 });
 
-it('AkuProfileVoiceNarrator builds context from user stats', function (): void {
+it('ProfileVoiceNarrator builds context from user stats', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
@@ -949,7 +1056,7 @@ it('AkuProfileVoiceNarrator builds context from user stats', function (): void {
     ]);
 
     $caller = fakeCaller(json_encode(['profile_voice' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
 
     $context = new LifetimeStatsTool($user->fresh(), Carbon::now(), app(LifetimeStats::class))->handle([]);
     expect($context['total_runs'])->toBe(1)
@@ -960,7 +1067,7 @@ it('AkuProfileVoiceNarrator builds context from user stats', function (): void {
         ->and($context['weekly_streak'])->toBe(0);
 });
 
-it('AkuProfileVoiceNarrator reads the weekly streak and the most common run time', function (): void {
+it('ProfileVoiceNarrator reads the weekly streak and the most common run time', function (): void {
     $user = User::factory()->create();
     // Two consecutive weeks with runs -> streak 2.
     foreach ([0, 1] as $weeksBack) {
@@ -984,7 +1091,7 @@ it('AkuProfileVoiceNarrator reads the weekly streak and the most common run time
         ->and($context['favorite_time'])->toBe('night');
 });
 
-it('AkuProfileVoiceNarrator feeds the latest form_status as the consistency spine', function (): void {
+it('ProfileVoiceNarrator feeds the latest form_status as the consistency spine', function (): void {
     $user = User::factory()->create();
     WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
@@ -996,21 +1103,21 @@ it('AkuProfileVoiceNarrator feeds the latest form_status as the consistency spin
     expect($context['form_status'])->toBe('overreaching');
 });
 
-it('AkuProfileVoiceNarrator throws on missing profile_voice key', function (): void {
+it('ProfileVoiceNarrator throws on missing profile_voice key', function (): void {
     $user = User::factory()->create();
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
     $narrator->generate($user);
 })->throws(UnavailableException::class);
 
-it('AkuProfileVoiceNarrator throws on non-JSON', function (): void {
+it('ProfileVoiceNarrator throws on non-JSON', function (): void {
     $user = User::factory()->create();
     $caller = fakeCaller('not json');
-    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
     $narrator->generate($user);
 })->throws(UnavailableException::class, 'non-JSON');
 
-it('AkuProfileVoiceNarrator feeds the four training paces derived from the runner VDOT', function (): void {
+it('ProfileVoiceNarrator feeds the four training paces derived from the runner VDOT', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
 
@@ -1022,7 +1129,7 @@ it('AkuProfileVoiceNarrator feeds the four training paces derived from the runne
         ->and($context['interval_pace_sec'])->toBeInt();
 });
 
-it('AkuProfileVoiceNarrator leaves training paces null when the user has no VDOT-eligible PR', function (): void {
+it('ProfileVoiceNarrator leaves training paces null when the user has no VDOT-eligible PR', function (): void {
     $user = User::factory()->create();
 
     $context = new TrainingPacesTool($user->fresh(), Carbon::now(), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
@@ -1052,11 +1159,11 @@ it('BriefingMascotVoiceNarrator returns the mascot voice on valid JSON', functio
     Activity::factory()->for($user)->analyzed()->create();
 
     $narrator = bootMascotNarrator(json_encode([
-        'mascot_voice' => 'Aku liat km kamu naik tipis, bagus.',
+        'mascot_voice' => 'Your km ticked up slightly. Good.',
         'session_type' => 'rest',
     ], JSON_THROW_ON_ERROR));
 
-    expect($narrator->generate($user, Carbon::today()))->toBe('Aku liat km kamu naik tipis, bagus.');
+    expect($narrator->generate($user, Carbon::today()))->toBe('Your km ticked up slightly. Good.');
 });
 
 it('BriefingMascotVoiceNarrator throws on missing mascot_voice key', function (): void {
@@ -1073,7 +1180,7 @@ it('BriefingMascotVoiceNarrator clamps to a deterministic message when session_t
     ]);
 
     $narrator = bootMascotNarrator(json_encode([
-        'mascot_voice' => "Long run santai, 8-12 km.\n\nMinggu ini enak ditutup satu sesi panjang.",
+        'mascot_voice' => "Easy long run, 8-12 km.\n\nThis week closes well on one long session.",
         'session_type' => 'quality_ok',
     ], JSON_THROW_ON_ERROR));
 
@@ -1087,11 +1194,11 @@ it('BriefingMascotVoiceNarrator clamps when session_type is unparseable', functi
     $user = User::factory()->create();
 
     $narrator = bootMascotNarrator(json_encode([
-        'mascot_voice' => 'Sesi bebas hari ini.',
+        'mascot_voice' => 'Free session today.',
         'session_type' => 'nonsense',
     ], JSON_THROW_ON_ERROR));
 
-    expect($narrator->generate($user, Carbon::today()))->not->toBe('Sesi bebas hari ini.');
+    expect($narrator->generate($user, Carbon::today()))->not->toBe('Free session today.');
 });
 
 it('BriefingMascotVoiceNarrator throws on non-JSON', function (): void {
@@ -1100,9 +1207,9 @@ it('BriefingMascotVoiceNarrator throws on non-JSON', function (): void {
     $narrator->generate($user, Carbon::today());
 })->throws(UnavailableException::class, 'non-JSON');
 
-it('BriefingMascotVoiceNarrator feeds prev_narrative from the prior day Kata Temari when Done', function (): void {
+it('BriefingMascotVoiceNarrator feeds prev_narrative from the prior day Temari note when Done', function (): void {
     $user = User::factory()->create();
-    Analysis::factory()->done('Kemarin aku liat km kamu naik.')->create([
+    Analysis::factory()->done('Yesterday your km were up.')->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::BriefingMascotVoice,
@@ -1111,10 +1218,10 @@ it('BriefingMascotVoiceNarrator feeds prev_narrative from the prior day Kata Tem
 
     $context = bootMascotNarrator('{"mascot_voice":"x"}')->context($user, Carbon::parse('2026-05-18'));
 
-    expect($context['prev_narrative'])->toBe('Kemarin aku liat km kamu naik.');
+    expect($context['prev_narrative'])->toBe('Yesterday your km were up.');
 });
 
-it('BriefingMascotVoiceNarrator omits prev_narrative when the prior day Kata Temari is not yet Done', function (): void {
+it('BriefingMascotVoiceNarrator omits prev_narrative when the prior day Temari note is not yet Done', function (): void {
     $user = User::factory()->create();
     Analysis::factory()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
@@ -1141,7 +1248,7 @@ it('BriefingMascotVoiceNarrator leaves prev_narrative null on the first day', fu
 
 /**
  * Read a narrator's private SYSTEM_PROMPT constant for wording assertions.
- * AkuProfileVoiceNarrator names its constant SYSTEM_PROMPT_TEMPLATE instead
+ * ProfileVoiceNarrator names its constant SYSTEM_PROMPT_TEMPLATE instead
  * (it's formatted with the mood vocabulary at call time), so fall back to that.
  */
 function narratorPrompt(string $class): string
@@ -1251,7 +1358,7 @@ function narratorKinds(): array
 // A prompt naming a tool the narrator does not carry is not a typo: the model
 // asks for it, AgentToolbox answers {"error":"unknown tool: ..."}, and the run
 // burns a whole step plus a round trip recovering -- on every single generation.
-// briefing_featured_kartu_voice did exactly that, telling the model to call
+// A since-deleted narrator did exactly that, telling the model to call
 // get_card_identity while holding only get_featured_card.
 it('no narrator prompt names a tool its own toolbox does not carry', function (string $class, array $tools): void {
     preg_match_all('/\bget_[a-z_]+/', narratorPrompt($class), $matches);
@@ -1286,7 +1393,6 @@ it('per-narrator step budgets cover two full read passes and only exist where th
     ksort($declared);
 
     expect($declared)->toBe([
-        'BriefingFeaturedKartuVoiceNarrator' => 6,
         'MonthlyRecapNarrator' => 4,
         'PrContextNarrator' => 6,
         'TrendReadNarrator' => 4,
@@ -1399,7 +1505,7 @@ it('invites iterative tool follow-up instead of front-loading everything into on
 })->with([
     'RunInsightNarrator' => [RunInsightNarrator::class],
     'PostRunSpeechNarrator' => [PostRunSpeechNarrator::class],
-    'AkuProfileVoiceNarrator' => [AkuProfileVoiceNarrator::class],
+    'ProfileVoiceNarrator' => [ProfileVoiceNarrator::class],
     'CardFlavorNarrator' => [CardFlavorNarrator::class],
     'BriefingMascotVoiceNarrator' => [BriefingMascotVoiceNarrator::class],
 ]);

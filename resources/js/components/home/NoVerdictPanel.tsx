@@ -2,7 +2,7 @@ import type { PastYouTrend } from '@/types/inertia';
 
 import EvidenceList from '@/components/home/EvidenceList';
 import EmptyPanel from '@/components/ui/EmptyPanel';
-import SectionLabel from '@/components/ui/SectionLabel';
+import Eyebrow from '@/components/ui/Eyebrow';
 import { verdictHeadline, verdictSupport } from '@/lib/verdict';
 
 /**
@@ -21,22 +21,18 @@ export default function NoVerdictPanel({
 
     return (
         <section>
-            <SectionLabel dot dotClass="bg-horizon">
+            <Eyebrow token="micro" className="text-foreground">
                 You vs Past You · Last {trend.window_days} Days
-            </SectionLabel>
+            </Eyebrow>
 
             <EmptyPanel
-                className="mt-0"
-                pose="reading"
+                className="mt-2"
+                face
                 title={verdictHeadline(trend)}
                 body={verdictSupport(trend)}
             />
 
-            {hasNearMiss && (
-                <div className="mt-4">
-                    <EvidenceList trend={trend} />
-                </div>
-            )}
+            {hasNearMiss && <EvidenceList trend={trend} />}
         </section>
     );
 }

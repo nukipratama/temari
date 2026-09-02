@@ -1,10 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import TemariProto, {
-    TEMARI_EXPRESSIONS,
-    type TemariEquipped,
-} from '@/components/temari/TemariProto';
+import FaceIcon, { DARK_FACE } from '@/components/temari/FaceIcon';
 import { cn } from '@/lib/cn';
 import {
     type ContrastRow,
@@ -23,34 +20,17 @@ import { cardVariants } from '@/lib/variants';
 const CARD_TONES = ['card', 'onSky', 'empty'] as const;
 const CARD_PADDINGS = ['panel', 'card', 'hero'] as const;
 
-const SLOT_SPECIMENS: ReadonlyArray<[string, TemariEquipped]> = [
-    ['headband', { headband: 'legendary' }],
-    ['shirt', { shirt: 'rainWarrior' }],
-    ['shorts', { shorts: 'negativeSplit' }],
-    ['shoes', { shoes: 'rugged' }],
-    ['medal', { medal: 'platinum' }],
-    ['aura', { aura: 'windrunner' }],
-];
-
-const FULLY_EQUIPPED: TemariEquipped = {
-    headband: 'legendary',
-    shirt: 'rainWarrior',
-    shorts: 'negativeSplit',
-    shoes: 'rugged',
-    medal: 'platinum',
-    aura: 'windrunner',
-};
-
-const SEASON_PHASES = ['base', 'build', 'peak', 'taper'] as const;
+/** Every size the app draws Temari's face at, smallest first. */
+const FACE_SIZES = [26, 34, 36, 40, 42, 48, 56, 64, 72] as const;
 
 const TYPE_SPECIMENS: ReadonlyArray<[string, string, string]> = [
-    ['display-lg', 'font-display italic text-display-lg', 'Eight point two'],
-    ['headline-sm', 'font-display text-headline-sm', 'This week so far'],
-    ['quote-lg', 'font-display italic text-quote-lg', 'same route, less work'],
+    ['display-lg', 'font-serif italic text-display-lg', 'Eight point two'],
+    ['headline-sm', 'font-serif text-headline-sm', 'This week so far'],
+    ['quote-lg', 'font-serif italic text-quote-lg', 'same route, less work'],
     ['prose', 'text-prose', 'Body copy sits in Plus Jakarta Sans at quote-md.'],
     ['stat', 'text-stat', '8.2'],
-    ['label-small', 'text-label-small text-ink-3', 'Section label'],
-    ['label-micro', 'text-label-micro text-ink-3', 'Tile caption'],
+    ['label-small', 'text-label-small text-text-3', 'Section label'],
+    ['label-micro', 'text-label-micro text-text-3', 'Tile caption'],
     ['meta', 'text-meta', '12 Aug 2026 · 05:41'],
 ];
 
@@ -61,9 +41,9 @@ function Section({
 }: Readonly<{ title: string; note?: string; children: React.ReactNode }>) {
     return (
         <section className="mt-10">
-            <h2 className="text-label-small text-ink-3">{title}</h2>
+            <h2 className="text-label-small text-text-3">{title}</h2>
             {note !== undefined && (
-                <p className="mt-2 max-w-[72ch] font-sans text-xs leading-relaxed text-ink-2">
+                <p className="mt-2 max-w-[72ch] font-sans text-xs leading-relaxed text-text-2">
                     {note}
                 </p>
             )}
@@ -76,10 +56,10 @@ function Swatch({ name, value }: Readonly<{ name: string; value: string }>) {
     return (
         <div className="w-[132px]">
             <div
-                className="h-12 rounded-sm border border-line"
+                className="h-12 rounded-sm border border-border"
                 style={{ background: value }}
             />
-            <div className="mt-1 font-sans text-[11px] font-semibold text-ink">
+            <div className="mt-1 font-sans text-[0.6875rem] font-semibold text-foreground">
                 {name.replace('--color-', '')}
             </div>
             <div className="text-meta">{value}</div>
@@ -151,10 +131,7 @@ export default function Design() {
         const names = collectTokenNames(document.styleSheets);
         return readTokenValues(names, document.documentElement);
     }, []);
-    const grounds = useMemo(
-        () => collectPaperGrounds(document.styleSheets, tokens),
-        [tokens],
-    );
+    const grounds = useMemo(() => collectPaperGrounds(tokens), [tokens]);
     const contrast = useMemo<ContrastRow[]>(
         () => [
             ...auditContrast(tokens, grounds),
@@ -189,12 +166,12 @@ export default function Design() {
     return (
         <>
             <Head title="Design tokens · Temari" />
-            <div className="min-h-screen bg-surface pad-page text-ink">
+            <div className="min-h-screen bg-background pad-page text-foreground">
                 <div className="mx-auto max-w-page">
-                    <h1 className="font-display italic text-headline-xs text-ink">
+                    <h1 className="font-serif italic text-headline-xs text-foreground">
                         Design tokens
                     </h1>
-                    <p className="mt-2 max-w-[72ch] font-sans text-xs leading-relaxed text-ink-2">
+                    <p className="mt-2 max-w-[72ch] font-sans text-xs leading-relaxed text-text-2">
                         Every value below is read out of the live stylesheet at
                         render time with getComputedStyle, never from a list
                         copied into TypeScript. If a token moves in app.css this
@@ -204,7 +181,7 @@ export default function Design() {
                     </p>
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                        <span className="text-label-micro rounded-full bg-ink/[0.06] pad-chip text-ink-2">
+                        <span className="text-label-micro rounded-full bg-ink/[0.06] pad-chip text-text-2">
                             {names.length} tokens live
                         </span>
                         <span
@@ -260,7 +237,7 @@ export default function Design() {
                             {radii.map((name) => (
                                 <div
                                     key={name}
-                                    className="flex h-[76px] w-[104px] items-center justify-center border border-line bg-surface-elev text-meta"
+                                    className="flex h-[76px] w-[104px] items-center justify-center border border-border bg-popover text-meta"
                                     style={{ borderRadius: tokens[name] }}
                                 >
                                     {name.replace('--radius-', '')} ·{' '}
@@ -278,7 +255,7 @@ export default function Design() {
                             {shadows.map((name) => (
                                 <div
                                     key={name}
-                                    className="flex h-[88px] w-[132px] items-center justify-center rounded-lg bg-surface-card text-meta"
+                                    className="flex h-[88px] w-[132px] items-center justify-center rounded-lg bg-card text-meta"
                                     style={{ boxShadow: tokens[name] }}
                                 >
                                     {name.replace('--shadow-', '')}
@@ -312,10 +289,10 @@ export default function Design() {
                             {pads.map((name) => (
                                 <div key={name} className="w-[164px]">
                                     <div
-                                        className="rounded-sm border border-line bg-surface-elev"
+                                        className="rounded-sm border border-border bg-popover"
                                         style={{ padding: tokens[name] }}
                                     >
-                                        <div className="h-6 rounded-xs bg-surface-sunken" />
+                                        <div className="h-6 rounded-xs bg-muted" />
                                     </div>
                                     <div className="mt-1 text-meta">
                                         {name} · {tokens[name]}
@@ -343,7 +320,7 @@ export default function Design() {
 
                     <Section
                         title="Contrast audit"
-                        note={`Run client-side against the live values. Text pairs need 4.5:1, a meaningful graphic 3:1, a separator 1.4:1. A fill too light to carry 3:1 itself is drawn with its -ink outline, and the outline is what gets tested. Anything sitting on paper is scored on all ${grounds.length} grounds the app can paint under text — every dawn-shift surface plus every background resources/brand/grounds.json calls paper — and reported at its worst, named after the pair.`}
+                        note={`Run client-side against the live values. Text pairs need 4.5:1, a meaningful graphic 3:1, a separator 1.4:1. A fill too light to carry 3:1 itself is drawn with its -ink outline, and the outline is what gets tested. Anything sitting on paper is scored on all ${grounds.length} grounds the app can paint under text (every dawn-shift surface plus every background resources/brand/grounds.json calls paper), reported at its worst and named after the pair.`}
                     >
                         <div className="overflow-x-auto">
                             <table className="w-full max-w-[760px] border-collapse font-sans text-xs">
@@ -358,7 +335,7 @@ export default function Design() {
                                         ].map((head) => (
                                             <th
                                                 key={head}
-                                                className="text-label-micro border-b border-line py-2 pr-3 text-left text-ink-3"
+                                                className="text-label-micro border-b border-border py-2 pr-3 text-left text-text-3"
                                             >
                                                 {head}
                                             </th>
@@ -373,27 +350,27 @@ export default function Design() {
                                                 !r.pass && 'bg-ember/[0.08]',
                                             )}
                                         >
-                                            <td className="border-b border-line py-2 pr-3 text-ink">
+                                            <td className="border-b border-border py-2 pr-3 text-foreground">
                                                 {r.use}
                                                 {r.outlined === true && (
-                                                    <span className="text-ink-3">
+                                                    <span className="text-text-3">
                                                         {' '}
                                                         (outlined)
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="border-b border-line py-2 pr-3 font-mono text-[11px] text-ink-2">
+                                            <td className="border-b border-border py-2 pr-3 font-mono text-[0.6875rem] text-text-2">
                                                 {r.fg.replace('--color-', '')}{' '}
                                                 on{' '}
                                                 {r.bg.replace('--color-', '')}
                                             </td>
-                                            <td className="border-b border-line py-2 pr-3 text-right font-mono tabular-nums text-ink">
+                                            <td className="border-b border-border py-2 pr-3 text-right font-mono tabular-nums text-foreground">
                                                 {r.ratio?.toFixed(2) ?? '—'}
                                             </td>
-                                            <td className="border-b border-line py-2 pr-3 text-right font-mono tabular-nums text-ink-3">
+                                            <td className="border-b border-border py-2 pr-3 text-right font-mono tabular-nums text-text-3">
                                                 {r.min.toFixed(1)}
                                             </td>
-                                            <td className="border-b border-line py-2">
+                                            <td className="border-b border-border py-2">
                                                 <Verdict pass={r.pass} />
                                             </td>
                                         </tr>
@@ -435,7 +412,7 @@ export default function Design() {
                                                 'text-label-micro',
                                                 tone === 'onSky'
                                                     ? 'text-cream'
-                                                    : 'text-ink-3',
+                                                    : 'text-text-3',
                                             )}
                                         >
                                             {tone} · {padding}
@@ -448,21 +425,21 @@ export default function Design() {
                             <tbody>
                                 {surfaces.map((r) => (
                                     <tr key={r.name}>
-                                        <td className="border-b border-line py-2 pr-3 text-ink">
+                                        <td className="border-b border-border py-2 pr-3 text-foreground">
                                             {r.name}
                                         </td>
-                                        <td className="border-b border-line py-2 pr-3 font-mono text-[11px] text-ink-2">
+                                        <td className="border-b border-border py-2 pr-3 font-mono text-[0.6875rem] text-text-2">
                                             {r.radius}
                                         </td>
-                                        <td className="border-b border-line py-2 pr-3">
+                                        <td className="border-b border-border py-2 pr-3">
                                             <Verdict pass={r.radiusOnScale} />
                                         </td>
-                                        <td className="border-b border-line py-2 pr-3 font-mono text-[11px] text-ink-2">
+                                        <td className="border-b border-border py-2 pr-3 font-mono text-[0.6875rem] text-text-2">
                                             {r.shadow === 'none'
                                                 ? 'no elevation'
                                                 : 'on the elevation scale'}
                                         </td>
-                                        <td className="border-b border-line py-2">
+                                        <td className="border-b border-border py-2">
                                             <Verdict pass={r.shadowOnScale} />
                                         </td>
                                     </tr>
@@ -472,95 +449,31 @@ export default function Design() {
                     </Section>
 
                     <Section
-                        title="Mascot faces"
-                        note="The ten drawn states, generated from one geometry so every face shares a skull. The halo carries mood through colour and weight and is always a closed ring, never a fill, so it can't be misread as a progress meter."
+                        title="Temari's face"
+                        note="One drawn mark at every size the app uses it, from the Card tile's 26px corner to Onboarding's 72px hero. Ring, disc and features are three separate colours so a surface can tint the ring to a mood without touching the face."
                     >
-                        <div className="flex flex-wrap gap-2.5">
-                            {TEMARI_EXPRESSIONS.map((expression) => (
-                                <Specimen key={expression} label={expression}>
-                                    <TemariProto
-                                        pose={expression}
-                                        size={96}
-                                        animate={false}
-                                    />
+                        <div className="flex flex-wrap items-end gap-2.5">
+                            {FACE_SIZES.map((size) => (
+                                <Specimen key={size} label={`${size}px`}>
+                                    <FaceIcon size={size} />
                                 </Specimen>
                             ))}
                         </div>
                     </Section>
 
                     <Section
-                        title="Mascot on sky"
-                        note="The one dark placement. Only the silhouette outline swaps; the face stays indigo because it sits on the cream body either way."
+                        title="Temari's face on sky"
+                        note="The inverted read: a dark disc with cream features, drawn on the recap cards and on the sky-gradient hero panels. The ring carries the surface's mood where it has one."
                     >
-                        <div className="flex flex-wrap gap-2.5 rounded-md bg-sky pad-card">
+                        <div className="flex flex-wrap items-end gap-2.5 rounded-md bg-sky pad-card">
                             {(
-                                [
-                                    'resting',
-                                    'challenging',
-                                    'celebrating',
-                                ] as const
-                            ).map((expression) => (
-                                <Specimen
-                                    key={expression}
-                                    label={expression}
-                                    onSky
-                                >
-                                    <TemariProto
-                                        pose={expression}
-                                        tone="sky"
-                                        size={96}
-                                        animate={false}
-                                    />
-                                </Specimen>
-                            ))}
-                        </div>
-                    </Section>
-
-                    <Section
-                        title="Wearable slots"
-                        note="Six slots, 25 catalogue items. Garments are flat bands clipped to the body circle, so they take the ball's curve for free and can never escape the silhouette. Colour carries rarity, a small detail carries the theme."
-                    >
-                        <div className="flex flex-wrap gap-2.5">
-                            {SLOT_SPECIMENS.map(([slot, equipped]) => (
-                                <Specimen key={slot} label={slot}>
-                                    <TemariProto
-                                        size={96}
-                                        equipped={equipped}
-                                        animate={false}
-                                    />
-                                </Specimen>
-                            ))}
-                            <Specimen label="all six">
-                                <TemariProto
-                                    pose="challenging"
-                                    size={96}
-                                    equipped={FULLY_EQUIPPED}
-                                    animate={false}
-                                />
-                            </Specimen>
-                            <Specimen label="all six · 28px">
-                                <TemariProto
-                                    pose="challenging"
-                                    size={28}
-                                    equipped={FULLY_EQUIPPED}
-                                    animate={false}
-                                />
-                            </Specimen>
-                        </div>
-                    </Section>
-
-                    <Section
-                        title="Season coverage"
-                        note="Plan tab only. Discrete rather than procedural: each phase is a fixed band set at rising density, and taper keeps peak's coverage and adds a rested shine instead of unwinding it."
-                    >
-                        <div className="flex flex-wrap gap-2.5">
-                            {SEASON_PHASES.map((phase) => (
-                                <Specimen key={phase} label={phase}>
-                                    <TemariProto
-                                        pose="observational"
-                                        size={96}
-                                        seasonPhase={phase}
-                                        animate={false}
+                                ['leaf', 'mood-easy', 'mood-wobbly'] as const
+                            ).map((ring) => (
+                                <Specimen key={ring} label={ring} onSky>
+                                    <FaceIcon
+                                        size={48}
+                                        ring={`var(--color-${ring})`}
+                                        {...DARK_FACE}
                                     />
                                 </Specimen>
                             ))}
@@ -571,7 +484,7 @@ export default function Design() {
                         title="Cards and screens"
                         note="Mounts here so the card art reads against the same live token set as everything above."
                     >
-                        <div className="rounded-md border border-dashed border-line-strong pad-hero text-meta">
+                        <div className="rounded-md border border-dashed border-border-strong pad-hero text-meta">
                             Reserved for the card art slice
                         </div>
                     </Section>

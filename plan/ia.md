@@ -75,7 +75,7 @@ routes, `W2` removes the backend they call.
 | route | name | renders | class | tab |
 |---|---|---|---|---|---|
 | `GET /` | `dashboard` | `Home` | **tab** | today |
-| `GET /plan`, `POST /plan/regenerate`, `PATCH/DELETE /plan/sessions/{id}` | `plan.*` | `Plan` | **tab** + actions | plan |
+| `GET /plan`, `POST /plan/regenerate`, `PATCH /plan/sessions/{id}` | `plan.*` | `Plan` | **tab** + actions | plan |
 | `GET /race`, `POST /race` | `race`, `race.store` | `Race` | pushed, under `plan` prefix | plan |
 | `GET /trends` | `trends` | `Trends` | **tab** | trends |
 | `GET /history` | `history` | `History` | **tab** | history |
@@ -95,17 +95,21 @@ routes, `W2` removes the backend they call.
 | `GET/POST /api/analyses/{type}/{subjectId}[/trigger]` | — | — | API (Inertia partial reload target, not a page) | — |
 | `GET/POST /api/activities/{id}/questions` | — | — | API | — |
 
-### Legacy 301 redirects
+### Legacy 301 redirects — all removed
+
+Every legacy redirect is gone, ruled by the user in `C1` (2026-08-31) and pulled forward out of
+`W1`. Each of these paths now 404s.
 
 | from | to | status |
 |---|---|---|
-| `/catatan`, `/runs`, `/progress` | `/activities` | unchanged |
-| `/pengaturan` | `/settings` | unchanged |
-| `/profil` | `/profile` | unchanged |
-| `/kalender` | `/calendar` | unchanged |
-| `/rekor` | `/trends` | unchanged |
-| ~~`/aksesori`~~ | ~~`/accessories`~~ | **removed** — per the ledger's Accessories cut, ruled 2026-08-28: no repoint, these 404 now |
-| `/akun` | `/account` | unchanged |
+| `/catatan`, `/runs`, `/progress` | `/activities` | **removed** — and `/activities` had no bare route, so these had been 301-ing into a 404 since `S7` |
+| `/kalender` | `/calendar` | **removed** — `/calendar` has no route either; same broken chain |
+| `/akun` | `/account` | **removed** — only `DELETE /account` exists, so this too 301-ed into a 404 |
+| `/pengaturan` | `/settings` | **removed** — target was live |
+| `/profil` | `/profile` | **removed** — target was live |
+| `/rekor` | `/trends` | **removed** — target was live |
+| `/runs/{activity}` | `/activities/{activity}` | **removed** — target was live; the only one of the nine with real deep-link value |
+| ~~`/aksesori`~~ | ~~`/accessories`~~ | **removed** — per the ledger's Accessories cut, ruled 2026-08-28 |
 | ~~`/target`~~, ~~`/goals`~~ | ~~`/accessories`~~ | **removed** — same ruling |
 
 ### Devtools (HTTP Basic Auth + throttled — not part of the tab IA)

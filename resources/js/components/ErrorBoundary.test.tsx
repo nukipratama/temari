@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { reportClientError } from '@/lib/clientErrorReporter';
@@ -45,6 +46,27 @@ describe('ErrorBoundary', () => {
             expect.objectContaining({ message: 'kaboom' }),
         );
 
+        consoleError.mockRestore();
+    });
+
+    it('reloads the page when the fallback button is clicked', async () => {
+        const consoleError = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
+        const reload = vi.fn();
+        vi.stubGlobal('location', { ...window.location, reload });
+
+        render(
+            <ErrorBoundary>
+                <Boom />
+            </ErrorBoundary>,
+        );
+
+        await userEvent.click(screen.getByRole('button', { name: /reload/i }));
+
+        expect(reload).toHaveBeenCalledOnce();
+
+        vi.unstubAllGlobals();
         consoleError.mockRestore();
     });
 });

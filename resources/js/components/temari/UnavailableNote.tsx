@@ -1,5 +1,4 @@
-import { Icon } from '@iconify/react';
-
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 export type UnavailableNoteSize = 'sm' | 'md';
@@ -21,7 +20,7 @@ export default function UnavailableNote({
     return (
         <span
             className={cn(
-                'inline-flex items-center rounded-full bg-surface-sunken text-ink-2',
+                'inline-flex items-center rounded-full bg-muted text-text-2',
                 SIZE_CLASSES[size],
             )}
             role="status"

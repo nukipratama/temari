@@ -15,7 +15,6 @@ use App\Services\Run\Ingest\DetailHydrator;
 use App\Services\Run\Story\CardPresenter;
 use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Temari;
-use App\Services\Run\Metrics\RelativeEffort;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -38,7 +37,7 @@ class RunController extends Controller
      */
     private const int LOCATION_DISPATCH_GUARD_SECONDS = 600;
 
-    public function show(Request $request, Activity $activity, PastYouMatcher $matcher, RelativeEffort $relativeEffort, CardPresenter $cards, DetailHydrator $hydrator): Response
+    public function show(Request $request, Activity $activity, PastYouMatcher $matcher, CardPresenter $cards, DetailHydrator $hydrator): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -102,9 +101,6 @@ class RunController extends Controller
             // later runs that quoted their old narrative.
             'isChainHead' => fn (): bool => Activity::latestIdForUser($user->id) === $activity->id,
             'speechAnalysis' => fn (): array => $payloadFor(AnalysisType::PostRunSpeech),
-            'notificationRetryAfterSeconds' => fn (): ?int => Analysis::notificationCooldownRemaining(
-                $payloadFor(AnalysisType::PostRunSpeech),
-            ),
             'runInsight' => fn (): array => $payloadFor(AnalysisType::RunInsight),
             'pastYou' => function () use ($matcher, $hydrator, $activity, $detail): ?array {
                 $match = $matcher->findMatch($activity, $detail);
@@ -114,7 +110,6 @@ class RunController extends Controller
 
                 return $match;
             },
-            'relativeEffort' => fn (): ?array => $relativeEffort->forRun($activity, $detail),
         ]);
     }
 

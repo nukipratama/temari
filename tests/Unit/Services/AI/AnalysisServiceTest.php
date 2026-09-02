@@ -191,13 +191,13 @@ it('requestDeferred creates a Pending row and never dispatches', function (): vo
 it('requestDeferred leaves an existing Done row untouched', function (): void {
     $snap = WeeklySnapshot::factory()->create();
     $row = $this->service->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
-    $this->service->markDone($row, 'recap minggu lalu');
+    $this->service->markDone($row, 'last week recap');
 
     $again = $this->service->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
 
     expect($again->id)->toBe($row->id)
         ->and($again->status)->toBe(AnalysisStatus::Done)
-        ->and($again->content)->toBe('recap minggu lalu');
+        ->and($again->content)->toBe('last week recap');
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
@@ -219,7 +219,7 @@ it('requestActivityGroupRuleBased fills all rows Done without dispatching', func
 
 it('requestActivityGroupRuleBased never overwrites an already-Done row with filler (e.g. real narration that aged past the cap)', function (): void {
     $activity = Activity::factory()->create();
-    $realRow = Analysis::factory()->done('narasi asli yang sudah dibayar')->create([
+    $realRow = Analysis::factory()->done('original narration, already billed')->create([
         'subject_type' => Activity::class,
         'subject_id' => $activity->id,
         'analysis_type' => AnalysisType::PostRunSpeech,
@@ -228,7 +228,7 @@ it('requestActivityGroupRuleBased never overwrites an already-Done row with fill
 
     $this->service->requestActivityGroupRuleBased($activity);
 
-    expect($realRow->fresh()->content)->toBe('narasi asli yang sudah dibayar');
+    expect($realRow->fresh()->content)->toBe('original narration, already billed');
 });
 
 it('requestActivityGroup creates its rows and dispatches one AnalyzeActivityJob', function (): void {
@@ -284,7 +284,7 @@ it('requestBriefing creates the suggestion row and dispatches one AnalyzeBriefin
 
     $this->service->requestBriefing($user, '2026-05-18');
 
-    // Mascot voice and featured-kartu voice are dispatched by their own callers.
+    // Mascot voice and featured-card voice are dispatched by their own callers.
     expect(Analysis::query()->where('subject_id', $user->id)->where('discriminator', '2026-05-18')->count())->toBe(1);
 
     $row = Analysis::query()
@@ -448,7 +448,7 @@ it('leaves the row Pending when a breached budget sits behind a tripped config b
 it('degrades every row of a group, and never overwrites one already billed for', function (): void {
     $activity = Activity::factory()->create();
     ActivityDetail::factory()->create(['activity_id' => $activity->id, 'distance' => 8000]);
-    Analysis::factory()->done('narasi asli, sudah dibayar')->create([
+    Analysis::factory()->done('original narration, already billed')->create([
         'subject_type' => Activity::class,
         'subject_id' => $activity->id,
         'analysis_type' => AnalysisType::RunInsight,
@@ -461,7 +461,7 @@ it('degrades every row of a group, and never overwrites one already billed for',
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
     expect($rows->pluck('status')->unique()->all())->toBe([AnalysisStatus::Done])
         ->and($rows->firstWhere('analysis_type', AnalysisType::RunInsight)->content)
-        ->toBe('narasi asli, sudah dibayar')
+        ->toBe('original narration, already billed')
         ->and($rows->firstWhere('analysis_type', AnalysisType::PostRunSpeech)->content)
         ->toBe(app(RuleBasedNarrationFiller::class)->fillFor(
             $rows->firstWhere('analysis_type', AnalysisType::PostRunSpeech),
@@ -624,7 +624,7 @@ it('markDone stores a content fingerprint when given, and leaves it null otherwi
         'discriminator' => '2026-05-18',
     ]);
 
-    $this->service->markDone($withFingerprint, 'cerita', fingerprint: 'abc123');
+    $this->service->markDone($withFingerprint, 'story', fingerprint: 'abc123');
     $this->service->markDone($without, 'headline');
 
     expect($withFingerprint->fresh()->content_fingerprint)->toBe('abc123')
@@ -921,7 +921,7 @@ it('a second dispatchGroup on a fully Done group does not re-dispatch', function
     $this->service->requestActivityGroup($activity);
     Analysis::query()->where('subject_id', $activity->id)->update([
         'status' => AnalysisStatus::Done->value,
-        'content' => 'sudah.',
+        'content' => 'done.',
     ]);
     Bus::fake();
 
@@ -944,7 +944,7 @@ it('markDone fans out a notification for a notifiable, wired type', function ():
         'discriminator' => null,
     ]);
 
-    $this->service->markDone($row, 'Cerita lari.');
+    $this->service->markDone($row, 'Run story.');
 
     Notification::assertSentTo(
         $user,
@@ -1128,7 +1128,7 @@ it('requestRuleBased refills an already-Done row in place rather than minting a 
 
 it('requestRuleBased with refillDone:false leaves an already-Done row untouched', function (): void {
     $snap = WeeklySnapshot::factory()->create();
-    Analysis::factory()->done('recap asli, sudah dibayar')->create([
+    Analysis::factory()->done('original recap, already billed')->create([
         'subject_type' => WeeklySnapshot::class,
         'subject_id' => $snap->id,
         'analysis_type' => AnalysisType::WeeklyRecap,
@@ -1137,7 +1137,7 @@ it('requestRuleBased with refillDone:false leaves an already-Done row untouched'
 
     $row = $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap, refillDone: false);
 
-    expect($row->content)->toBe('recap asli, sudah dibayar');
+    expect($row->content)->toBe('original recap, already billed');
 });
 
 it('runs the daily cost aggregate once per scope no matter how many rows it dispatches', function (): void {

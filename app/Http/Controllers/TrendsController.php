@@ -4,110 +4,43 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Enums\PrCategory;
 use App\Models\AI\Analysis;
-use App\Models\PersonalRecord;
 use App\Models\RunCard;
-use App\Models\TrendDailySnapshot;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
+use App\Services\Gamification\SeasonStreakSummaryBuilder;
 use App\Services\Run\Metrics\TrainingLoad;
-use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * /trends — a year of running read as lines rather than a list. This is the
- * final slice: Personal Bests and badge milestones, absorbing /records and
- * /badges.
+ * /trends — a year of running read as lines rather than a list. Four blocks
+ * only (P25): the headline, the range tabs, Temari's read, and one fitness
+ * panel carrying the CTL/ATL chart, its stat tiles and the badges earned in
+ * the window.
  */
 class TrendsController extends Controller
 {
-    public function __invoke(Request $request, TrainingLoad $trainingLoad, VdotEstimator $vdotEstimator): Response
+    public function __invoke(Request $request, TrainingLoad $trainingLoad, SeasonStreakSummaryBuilder $seasonStreakBuilder): Response
     {
         /** @var User $user */
         $user = $request->user();
-        $snapshots = $this->snapshotHistory($user);
-        $vdot = $vdotEstimator->estimate($user);
-        $personalRecordsByCategory = PersonalRecord::query()
-            ->forUser($user->id)
-            ->get()
-            ->keyBy(static fn (PersonalRecord $pr): string => $pr->category->value);
 
         return Inertia::render('Trends', [
             'ctlTrend' => $trainingLoad->ctlTrend($user, 365),
-            'loadTrend' => $trainingLoad->strainMonotonyTrend($user, 365),
-            'vdotHistory' => array_map(static fn (TrendDailySnapshot $s): array => [
-                'date' => $s->snapshot_date->toDateString(),
-                'vdot' => $s->vdot,
-            ], $snapshots),
-            'vdotSourceCategory' => $vdot !== null ? PrCategory::from($vdot['source_category'])->label() : null,
-            'paceConsistencyHistory' => array_map(static fn (TrendDailySnapshot $s): array => [
-                'date' => $s->snapshot_date->toDateString(),
-                'variabilitySec' => $s->pace_variability_sec,
-            ], $snapshots),
-            'distanceRecords' => $this->distanceRecords($personalRecordsByCategory),
-            'paceRecords' => $this->paceRecords($personalRecordsByCategory),
-            'badgeMilestones' => collect(RunCard::firstEarnedDatesForUser($user->id))
-                ->map(static fn (string $date, string $slug): array => ['key' => $slug, 'date' => $date])
+            'badgeMilestones' => collect(RunCard::firstEarnedBadgesForUser($user->id))
+                ->map(static fn (array $earned, string $slug): array => [
+                    'key' => $slug,
+                    'date' => $earned['date'],
+                    'rarity' => $earned['rarity'],
+                ])
                 ->values()
                 ->all(),
+            'streak' => $seasonStreakBuilder->streakPayload($user, Carbon::today()),
             'narration' => $this->narrationByRange($user),
         ]);
-    }
-
-    /**
-     * @param  Collection<string, PersonalRecord>  $byCategory
-     * @return array<int, array{category: string, label: string, distanceM: float|null, valueSec: float, setAt: string}>
-     */
-    private function distanceRecords(Collection $byCategory): array
-    {
-        return collect(PrCategory::distances())
-            ->map(static fn (PrCategory $c): ?PersonalRecord => $byCategory->get($c->value))
-            ->filter()
-            ->map(static fn (PersonalRecord $pr): array => [
-                'category' => $pr->category->value,
-                'label' => $pr->category->label(),
-                'distanceM' => $pr->category->distanceMeters(),
-                'valueSec' => $pr->value_sec,
-                'setAt' => $pr->set_at->toDateString(),
-            ])
-            ->values()
-            ->all();
-    }
-
-    /**
-     * @param  Collection<string, PersonalRecord>  $byCategory
-     * @return array<int, array{category: string, label: string, paceSec: float, setAt: string}>
-     */
-    private function paceRecords(Collection $byCategory): array
-    {
-        return collect(PrCategory::efforts())
-            ->map(static fn (PrCategory $c): ?PersonalRecord => $byCategory->get($c->value))
-            ->filter()
-            ->map(static fn (PersonalRecord $pr): array => [
-                'category' => $pr->category->value,
-                'label' => $pr->category->label(),
-                'paceSec' => $pr->value_sec,
-                'setAt' => $pr->set_at->toDateString(),
-            ])
-            ->values()
-            ->all();
-    }
-
-    /**
-     * @return array<int, TrendDailySnapshot>
-     */
-    private function snapshotHistory(User $user, int $days = 365): array
-    {
-        return TrendDailySnapshot::query()
-            ->where('user_id', $user->id)
-            ->where('snapshot_date', '>=', now()->subDays($days - 1)->toDateString())
-            ->orderBy('snapshot_date')
-            ->get(['snapshot_date', 'vdot', 'pace_variability_sec'])
-            ->all();
     }
 
     /**

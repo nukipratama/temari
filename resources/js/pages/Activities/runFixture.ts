@@ -1,6 +1,6 @@
 import type { ActivityDetail } from '@/types/inertia';
 
-import type { RunWithDetail } from './useFeedFilters';
+import type { RunWithDetail } from './weekBuckets';
 
 export function run(
     id: number,

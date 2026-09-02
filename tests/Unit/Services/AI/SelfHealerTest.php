@@ -580,8 +580,7 @@ it('re-kicks the earliest stalled single-row block per user with invalidate:fals
         ->and($captured[0]['invalidate'])->toBeFalse();
 })->with([
     'BriefingMascotVoice' => [AnalysisType::BriefingMascotVoice, AnalysisType::BRIEFING_SUBJECT_TYPE, '2026-05-18'],
-    'BriefingFeaturedKartuVoice' => [AnalysisType::BriefingFeaturedKartuVoice, AnalysisType::BRIEFING_SUBJECT_TYPE, '42'],
-    'AkuProfileVoice' => [AnalysisType::AkuProfileVoice, AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE, '2026-W21'],
+    'ProfileVoice' => [AnalysisType::ProfileVoice, AnalysisType::PROFILE_VOICE_SUBJECT_TYPE, '2026-W21'],
 ]);
 
 it('spaces successive single-row-type resumes across users within one sweep', function (): void {
@@ -589,9 +588,9 @@ it('spaces successive single-row-type resumes across users within one sweep', fu
     $userB = User::factory()->create();
     foreach ([$userA, $userB] as $user) {
         Analysis::factory()->create([
-            'subject_type' => AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+            'subject_type' => AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
             'subject_id' => $user->id,
-            'analysis_type' => AnalysisType::AkuProfileVoice,
+            'analysis_type' => AnalysisType::ProfileVoice,
             'discriminator' => '2026-W21',
             'status' => AnalysisStatus::Pending,
         ]);
@@ -607,9 +606,9 @@ it('spaces successive single-row-type resumes across users within one sweep', fu
 it('skips a demo user for a single-row type so the resume net never auto-bills it', function (): void {
     $demo = User::factory()->demo()->create();
     Analysis::factory()->create([
-        'subject_type' => AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+        'subject_type' => AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
         'subject_id' => $demo->id,
-        'analysis_type' => AnalysisType::AkuProfileVoice,
+        'analysis_type' => AnalysisType::ProfileVoice,
         'discriminator' => '2026-W21',
         'status' => AnalysisStatus::Pending,
     ]);

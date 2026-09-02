@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Run;
 
+use App\Enums\Rarity;
 use App\Models\ActivityDetail;
+use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\Run\Metrics\DistanceFormatter;
@@ -21,7 +23,7 @@ use Illuminate\Support\Collection;
 class BuildCalendarCellsAction
 {
     /**
-     * @return array<int, array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, activity_id: int|null}>
+     * @return array<int, array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, rarity: string|null, activity_id: int|null}>
      */
     public function __invoke(User $user, Carbon $gridStart, Carbon $gridEnd, Carbon $monthStart, Carbon $monthEnd): array
     {
@@ -42,6 +44,7 @@ class BuildCalendarCellsAction
 
         $activityIds = $details->pluck('activity_id')->all();
         $moodByActivity = $this->moodsForActivities($activityIds);
+        $rarityByActivity = $this->raritiesForActivities($activityIds);
 
         $byDay = $details->groupBy(fn ($row): string => Carbon::parse($row->start_date_local)->toDateString());
 
@@ -50,7 +53,7 @@ class BuildCalendarCellsAction
         $todayKey = Carbon::today()->toDateString();
         while ($cursor->lessThanOrEqualTo($gridEnd)) {
             $dateKey = $cursor->toDateString();
-            $cells[] = $this->cellFor($cursor, $dateKey, $byDay->get($dateKey), $moodByActivity, $monthStart, $monthEnd, $todayKey);
+            $cells[] = $this->cellFor($cursor, $dateKey, $byDay->get($dateKey), $moodByActivity, $rarityByActivity, $monthStart, $monthEnd, $todayKey);
             $cursor->addDay();
         }
 
@@ -60,9 +63,10 @@ class BuildCalendarCellsAction
     /**
      * @param  Collection<int, ActivityDetail>|null  $rows
      * @param  array<int, string>  $moodByActivity
-     * @return array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, activity_id: int|null}
+     * @param  array<int, Rarity>  $rarityByActivity
+     * @return array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, rarity: string|null, activity_id: int|null}
      */
-    private function cellFor(Carbon $cursor, string $dateKey, ?Collection $rows, array $moodByActivity, Carbon $monthStart, Carbon $monthEnd, string $todayKey): array
+    private function cellFor(Carbon $cursor, string $dateKey, ?Collection $rows, array $moodByActivity, array $rarityByActivity, Carbon $monthStart, Carbon $monthEnd, string $todayKey): array
     {
         $base = [
             'date' => $dateKey,
@@ -79,6 +83,7 @@ class BuildCalendarCellsAction
                 'avg_hr' => null,
                 'trimp' => null,
                 'mood' => null,
+                'rarity' => null,
                 'activity_id' => null,
             ];
         }
@@ -113,8 +118,30 @@ class BuildCalendarCellsAction
             'avg_hr' => $hrWeight > 0 ? (int) round($hrWeighted / $hrWeight) : null,
             'trimp' => $totalTrimp === null ? null : round($totalTrimp, 1),
             'mood' => $moodByActivity[$primaryId] ?? null,
+            'rarity' => $this->rarestOf($rows, $rarityByActivity)?->value,
             'activity_id' => $rows->count() === 1 ? $primaryId : null,
         ];
+    }
+
+    /**
+     * The best card the day's runs earned, so a week row's disclosure can badge
+     * its rarest card (P12) without a second per-week query.
+     *
+     * @param  Collection<int, ActivityDetail>  $rows
+     * @param  array<int, Rarity>  $rarityByActivity
+     */
+    private function rarestOf(Collection $rows, array $rarityByActivity): ?Rarity
+    {
+        $best = null;
+
+        foreach ($rows as $row) {
+            $rarity = $rarityByActivity[(int) $row->getAttribute('activity_id')] ?? null;
+            if ($rarity !== null && ($best === null || $rarity->rank() > $best->rank())) {
+                $best = $rarity;
+            }
+        }
+
+        return $best;
     }
 
     /**
@@ -131,6 +158,22 @@ class BuildCalendarCellsAction
             ->where('kind', StoryLine::KIND_POST_RUN)
             ->whereIn('activity_id', $activityIds)
             ->pluck('mood', 'activity_id')
+            ->all();
+    }
+
+    /**
+     * @param  array<int, int>  $activityIds
+     * @return array<int, Rarity>
+     */
+    private function raritiesForActivities(array $activityIds): array
+    {
+        if ($activityIds === []) {
+            return [];
+        }
+
+        return RunCard::query()
+            ->whereIn('activity_id', $activityIds)
+            ->pluck('rarity', 'activity_id')
             ->all();
     }
 }

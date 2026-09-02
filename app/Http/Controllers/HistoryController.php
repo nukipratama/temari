@@ -14,7 +14,6 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\FeedQuery;
 use App\Services\Run\LifetimeStats;
-use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\PostRunNoteReader;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
@@ -33,14 +32,6 @@ use Throwable;
  */
 class HistoryController extends Controller
 {
-    /**
-     * Hard cap on runs returned to the page so a wide/"all" range never ships an
-     * unbounded payload. The newest runs are kept (ordered by id desc), so the
-     * auto-widen guarantee of surfacing the latest run still holds; older runs
-     * beyond the cap are flagged via `runsTruncated`.
-     */
-    private const int MAX_RUNS = 365;
-
     /** Safety cap on weekly snapshots loaded into memory (10 years ≈ 520 weeks). */
     private const int MAX_WEEKS = 520;
 
@@ -71,20 +62,21 @@ class HistoryController extends Controller
     private function listProps(User $user, FeedQuery $feed, FeedFilterRequest $request): array
     {
         $filters = $feed->filtersFor($user, $request);
-        $runsQuery = $feed->for($user, $filters);
+        $weeks = $request->weeks();
+        // P3: "load older weeks" is a real page, not a client-side reveal — the
+        // server ships exactly the requested number of run-bearing week sections
+        // and says whether anything sits behind them.
+        ['since' => $since, 'hasOlder' => $hasOlderWeeks] = $feed->weekWindow($user, $filters, $weeks);
+        $runsQuery = $feed->for($user, $filters, $since);
 
         // Deferred behind a closure (Inertia's `useAnalysisTrigger` poll skips
-        // any prop the partial reload does not name) and memoized (four props
+        // any prop the partial reload does not name) and memoized (three props
         // below share this one query set).
         /** @var Collection<int, Activity>|null $loadedRuns */
         $loadedRuns = null;
-        $runsTruncated = false;
-        $loadRuns = function () use ($runsQuery, &$loadedRuns, &$runsTruncated): Collection {
+        $loadRuns = function () use ($runsQuery, &$loadedRuns): Collection {
             if ($loadedRuns === null) {
-                // Fetch one past the cap to detect truncation, then trim to it.
-                $rows = $runsQuery->limit(self::MAX_RUNS + 1)->get();
-                $runsTruncated = $rows->count() > self::MAX_RUNS;
-                $loadedRuns = $rows->take(self::MAX_RUNS)->values();
+                $loadedRuns = $runsQuery->get();
             }
 
             return $loadedRuns;
@@ -109,28 +101,20 @@ class HistoryController extends Controller
             // backend mood even before the speech (and its note) is ready.
             'moods' => fn (): array => $loadNotes()['moods'],
             'rangeFilter' => $filters->range,
-            'moodFilter' => $filters->moods,
-            'distanceFilter' => $filters->distanceBand,
-            'rarityFilter' => $filters->rarity,
-            'sortMode' => $filters->sort,
             'weekFilter' => $filters->week?->toDateString(),
             'rangeStart' => $filters->rangeStart?->toDateString(),
             'rangeAutoWidened' => $filters->rangeAutoWidened,
-            // Set as a side effect of $loadRuns, so it must resolve the runs
-            // first rather than reading a flag that is still false.
-            'runsTruncated' => function () use ($loadRuns, &$runsTruncated): bool {
-                $loadRuns();
-
-                return $runsTruncated;
-            },
-            'maxRuns' => self::MAX_RUNS,
+            // The header's activity count is lifetime, not page-scoped: paging
+            // by week would otherwise shrink it on first paint.
+            'lifetime' => $this->lifetimeStats->forUser($user),
+            'weeksShown' => $weeks,
+            'hasOlderWeeks' => $hasOlderWeeks,
             'weeklySnapshots' => fn (): SupportCollection => $this->weeklySnapshotPayload(
                 $user,
-                $filters->rangeStart,
+                $since ?? $filters->rangeStart,
                 $filters->week,
                 $currentWeekEnding,
             ),
-            'journeyMatch' => fn (): ?array => $this->buildJourneyMatch($user),
         ];
     }
 
@@ -144,10 +128,12 @@ class HistoryController extends Controller
         ?Carbon $rangeStart,
         ?Carbon $weekFilter,
         Carbon $currentWeekEnding,
+        ?Carbon $rangeEnd = null,
     ): SupportCollection {
         $weeklySnapshots = WeeklySnapshot::query()
             ->where('user_id', $user->id)
             ->when($rangeStart !== null, fn ($q) => $q->where('week_ending', '>=', $rangeStart))
+            ->when($rangeEnd !== null, fn ($q) => $q->where('week_ending', '<=', $rangeEnd))
             // A week deep link shows exactly that week's recap, not every recap
             // since it.
             ->when($weekFilter !== null, fn ($q) => $q->where('week_ending', '=', $weekFilter))
@@ -211,83 +197,6 @@ class HistoryController extends Controller
     }
 
     /**
-     * First-ever activity vs latest activity — surfaces an "all-time progress"
-     * delta. Hides for users with <2 activities. Pace/HR improvements use
-     * signed deltas (positive = faster / lower HR = improvement).
-     *
-     * @return array{
-     *     first: array{date: string|null, name: string|null, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: float|null},
-     *     current: array{date: string|null, name: string|null, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: float|null},
-     *     pace_improvement_sec: float|null,
-     *     hr_improvement_bpm: float|null,
-     *     total_km: float,
-     * }|null
-     */
-    private function buildJourneyMatch(User $user): ?array
-    {
-        // Boundary dates + lifetime distance in one aggregate pass (MIN/MAX skip
-        // NULL start_date_local natively); detail rows for those dates follow in
-        // a second query.
-        $bounds = ActivityDetail::query()
-            ->forUser($user->id)
-            ->selectRaw('MIN(start_date_local) as first_date, MAX(start_date_local) as latest_date, SUM(distance) as total_distance')
-            ->first();
-
-        $firstDate = $bounds?->getAttribute('first_date');
-        $latestDate = $bounds?->getAttribute('latest_date');
-        if ($firstDate === null || $latestDate === null || $firstDate === $latestDate) {
-            return null;
-        }
-
-        $boundaryDetails = ActivityDetail::query()
-            ->forUser($user->id)
-            ->whereIn('start_date_local', [$firstDate, $latestDate])
-            ->orderBy('start_date_local')
-            ->get();
-
-        $first = $boundaryDetails->first();
-        $current = $boundaryDetails->last();
-
-        if ($first === null || $current === null || $first->id === $current->id) {
-            return null;
-        }
-
-        $firstPace = $first->paceSecPerKm();
-        $currentPace = $current->paceSecPerKm();
-        $paceImprovement = ($firstPace !== null && $currentPace !== null)
-            ? $firstPace - $currentPace
-            : null;
-
-        $firstHr = $first->average_heartrate !== null ? (float) $first->average_heartrate : null;
-        $currentHr = $current->average_heartrate !== null ? (float) $current->average_heartrate : null;
-        $hrImprovement = ($firstHr !== null && $currentHr !== null)
-            ? $firstHr - $currentHr
-            : null;
-
-        return [
-            'first' => self::summariseDetail($first, $firstPace),
-            'current' => self::summariseDetail($current, $currentPace),
-            'pace_improvement_sec' => $paceImprovement,
-            'hr_improvement_bpm' => $hrImprovement,
-            'total_km' => DistanceFormatter::km((float) ($bounds->getAttribute('total_distance') ?? 0)),
-        ];
-    }
-
-    /**
-     * @return array{date: string|null, name: string|null, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: float|null}
-     */
-    private static function summariseDetail(ActivityDetail $detail, ?float $paceSec): array
-    {
-        return [
-            'date' => $detail->start_date_local?->toDateString(),
-            'name' => $detail->name,
-            'distance_km' => DistanceFormatter::kmOrNull($detail->distance, DistanceFormatter::EXACT),
-            'pace_sec_per_km' => $paceSec,
-            'avg_hr' => $detail->average_heartrate !== null ? (float) $detail->average_heartrate : null,
-        ];
-    }
-
-    /**
      * @param  array<int, WeeklySnapshot>  $snapshots
      * @return array<int, array<string, mixed>>  Keyed by snapshot id.
      */
@@ -338,7 +247,15 @@ class HistoryController extends Controller
             'todayMonth' => Carbon::today()->format('Y-m'),
             'cells' => ($this->calendarBuilder)($user, $gridStart, $gridEnd, $monthStart, $monthEnd),
             'lifetime' => $this->lifetimeStats->forUser($user),
-            'todayQuote' => $this->noteReader->speechForToday($user->id),
+            // The grid's own weeks, so each week row can disclose Temari's
+            // weekly recap without leaving the calendar (prototype WeekRow).
+            'weeklySnapshots' => fn (): SupportCollection => $this->weeklySnapshotPayload(
+                $user,
+                $gridStart,
+                null,
+                Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay(),
+                $gridEnd,
+            ),
             'monthlyRecap' => [
                 ...$recapPayload,
                 'is_chain_head' => $discriminator === $this->latestNarratedMonthFor($user),

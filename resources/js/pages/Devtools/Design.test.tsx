@@ -1,12 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { TEMARI_EXPRESSIONS } from '@/components/temari/TemariProto';
-
 import Design from './Design';
 
 const TOKENS: Record<string, string> = {
     '--color-ink': '#1a1812',
+    '--color-foreground': '#1b1917',
     '--color-surface': '#f5f0e4',
     // Every ground grounds.json calls paper, because the audit scores each one.
     '--color-cream': '#f5f0e4',
@@ -15,6 +14,12 @@ const TOKENS: Record<string, string> = {
     '--color-surface-elev': '#faf6ec',
     '--color-surface-sunken': '#ece2ce',
     '--color-surface-warm': '#f8f0dd',
+    '--color-background': '#f5f0e4',
+    '--color-card': '#f5f0e4',
+    '--color-popover': '#faf6ec',
+    '--color-muted': '#ece2ce',
+    '--color-accent': '#f8f0dd',
+    '--color-secondary': '#ece2ce',
     '--color-rarity-legendary': '#f5a623',
     '--color-rarity-legendary-ink': '#865b13',
     '--radius-md': '14px',
@@ -94,7 +99,9 @@ describe('Devtools/Design', () => {
             screen.getByText('rarity-legendary fill outline'),
         ).toBeInTheDocument();
         expect(screen.getByText('bg-ink/0.7 panel')).toBeInTheDocument();
-        expect(screen.getByText('contrast 7/7')).toBeInTheDocument();
+        // Passed/total rather than a literal count: grounds.json gains rows as
+        // screens land, and what this asserts is that none of them fail.
+        expect(screen.getByText(/^contrast (\d+)\/\1$/)).toBeInTheDocument();
     });
 
     it('says so when no custom properties are readable', () => {
@@ -105,25 +112,31 @@ describe('Devtools/Design', () => {
         ).toBeInTheDocument();
     });
 
-    it('renders every mascot face, slot and season phase against the live tokens', () => {
+    it("renders Temari's face at every shipped size against the live tokens", () => {
         cleanup = declareTokens();
         const { container } = render(<Design />);
 
-        for (const heading of [
-            'Mascot faces',
-            'Mascot on sky',
-            'Wearable slots',
-            'Season coverage',
-        ]) {
+        for (const heading of ["Temari's face", "Temari's face on sky"]) {
             expect(
                 screen.getByRole('heading', { name: heading }),
             ).toBeInTheDocument();
         }
 
-        for (const expression of TEMARI_EXPRESSIONS) {
-            expect(
-                container.querySelector(`[data-expression="${expression}"]`),
-            ).toBeInTheDocument();
+        const faces = Array.from(
+            container.querySelectorAll('[data-face-icon]'),
+        ).map((el) => el.getAttribute('width'));
+        for (const size of [
+            '26',
+            '34',
+            '36',
+            '40',
+            '42',
+            '48',
+            '56',
+            '64',
+            '72',
+        ]) {
+            expect(faces).toContain(size);
         }
     });
 

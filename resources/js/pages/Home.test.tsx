@@ -1,4 +1,5 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type {
@@ -28,16 +29,6 @@ const briefing: BriefingResult = {
         subject_id: 1,
         discriminator: '2026-06-12',
     },
-    featuredKartuVoice: {
-        id: 5,
-        status: 'done',
-        content: 'This card proves you can go further than you think.',
-        type: 'briefing_featured_kartu_voice',
-        subject_type: 'briefing_user_day',
-        subject_id: 1,
-        discriminator: '7',
-    },
-    featuredCardId: 7,
     recoveryLabel: 'Recovery: 41h',
     recoveryTone: 'positive',
     recoveryHoursLabel: '41h',
@@ -137,7 +128,6 @@ function trend(overrides: Partial<PastYouTrend> = {}): PastYouTrend {
         fitness_delta_ctl: 2.4,
         pace_consistency_now: null,
         pace_consistency_then: null,
-        relative_effort_band: null,
         ...overrides,
     };
 }
@@ -163,20 +153,30 @@ const weekPlan: WeekPlan = {
     phase: 'build',
     planned_km_this_week: 32,
     credited_this_week: 2,
-    streak_days: 0,
     days: [
         {
             id: 1,
             date: '2026-06-08',
             phase: 'build',
             session_type: 'easy',
-            distance_band: 'medium',
-            pace_band: 'easy',
-            pace_sec_per_km: 360,
+            segments: [
+                {
+                    key: 'main',
+                    minutes: 48,
+                    zone: 'Z2',
+                    pace_label: 'easy',
+                    pace_sec_per_km: 360,
+                },
+            ],
             distance_km: 8,
             pinned: false,
+            skipped: false,
             status: 'done',
+            compliance_score: 100,
+            ran_anyway: false,
             clamp_note: null,
+            actual_km: null,
+            activity: null,
         },
     ],
 };
@@ -190,49 +190,39 @@ beforeEach(() => {
 });
 
 describe('Home', () => {
-    it('answers "am I getting better?" before anything else on the page', () => {
-        const { container } = renderHome();
+    it("follows the prototype's section order: plan, past you, today, week stats", () => {
+        const { container } = renderHome(trend(), weekPlan);
 
-        const verdict = screen.getByText(
-            "you're faster than you were in March.",
-        );
-        const thisWeek = screen.getByText(/This week ·/);
+        const order = [
+            screen.getByText("this week's plan"),
+            screen.getByText("you're faster than you were in march."),
+            screen.getByText('Easy 6k.'),
+            screen.getByText(/this week's stats/),
+        ];
 
-        expect(verdict).toBeInTheDocument();
-        expect(
-            container.compareDocumentPosition(thisWeek) &
-                Node.DOCUMENT_POSITION_FOLLOWING,
-        ).toBeTruthy();
-        expect(
-            verdict.compareDocumentPosition(thisWeek) &
-                Node.DOCUMENT_POSITION_FOLLOWING,
-        ).toBeTruthy();
+        order.forEach((node, i) => {
+            expect(container).toContainElement(node);
+            const next = order[i + 1];
+            if (next) {
+                expect(
+                    node.compareDocumentPosition(next) &
+                        Node.DOCUMENT_POSITION_FOLLOWING,
+                ).toBeTruthy();
+            }
+        });
     });
 
-    it('leads with the week plan widget when the backend shipped one, verdict follows', () => {
-        renderHome(trend(), weekPlan);
-
-        const weekPlanHeading = screen.getByText("This week's plan");
-        const verdict = screen.getByText(
-            "you're faster than you were in March.",
-        );
-
-        expect(
-            weekPlanHeading.compareDocumentPosition(verdict) &
-                Node.DOCUMENT_POSITION_FOLLOWING,
-        ).toBeTruthy();
-    });
-
-    it('omits the week plan widget when the backend shipped none', () => {
+    it("draws the prototype's no-plan card when the backend shipped no plan", () => {
         renderHome(trend(), null);
 
-        expect(screen.queryByText("This week's plan")).not.toBeInTheDocument();
+        expect(screen.queryByText("this week's plan")).not.toBeInTheDocument();
+        expect(screen.getByText('No plan yet.')).toBeInTheDocument();
     });
 
     it('shows the evidence the verdict was computed from', () => {
         renderHome();
 
-        expect(screen.getAllByText('8.2 km · pace vs Mar 14')).toHaveLength(2);
+        expect(screen.getAllByText('8.2 km · pace vs mar 14')).toHaveLength(2);
         expect(screen.getAllByText('-12 s/km')).toHaveLength(2);
     });
 
@@ -240,7 +230,7 @@ describe('Home', () => {
         renderHome(trend({ verdict: 'plateaued', mean_pace_delta_sec: 0.4 }));
 
         expect(
-            screen.getByText("you're holding where you were in March."),
+            screen.getByText("you're holding where you were in march."),
         ).toBeInTheDocument();
     });
 
@@ -257,7 +247,7 @@ describe('Home', () => {
         );
 
         expect(
-            screen.getByText("you've slipped since March."),
+            screen.getByText("you've slipped since march."),
         ).toBeInTheDocument();
         expect(screen.getByText('+10 s/km')).toBeInTheDocument();
     });
@@ -281,7 +271,7 @@ describe('Home', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('renders today after the verdict', () => {
+    it("renders Temari's read on today", () => {
         renderHome();
 
         expect(screen.getByText('Easy 6k.')).toBeInTheDocument();
@@ -290,20 +280,25 @@ describe('Home', () => {
         ).toBeInTheDocument();
     });
 
-    it('demotes the week, vitals, last run and kartu below the verdict', () => {
+    // Amendment (d) of 2026-08-31 supersedes V0 fork 4: the prototype passes no
+    // `defaultOpen`, so the disclosure ships closed.
+    it('renders the week-stats disclosure closed, and opens it on click', async () => {
         renderHome();
 
-        expect(screen.getByText(/This week ·/)).toBeInTheDocument();
-        expect(screen.getByText('Vibe')).toBeInTheDocument();
-        expect(screen.getByText('Morning negative-split')).toBeInTheDocument();
-        expect(screen.getAllByText('Game Changer').length).toBeGreaterThan(0);
+        const trigger = screen.getByRole('button', { expanded: false });
+        expect(screen.queryByText('Pumped')).not.toBeInTheDocument();
+
+        await userEvent.click(trigger);
+
+        expect(screen.getByText('Pumped')).toBeInTheDocument();
+        expect(screen.getByText(/^Last run · /)).toBeInTheDocument();
     });
 
     it('omits the verdict block entirely when the backend shipped no trend', () => {
         renderHome(null);
 
         expect(screen.queryByText(/You vs Past You/)).not.toBeInTheDocument();
-        expect(screen.getByText(/This week ·/)).toBeInTheDocument();
+        expect(screen.getByText(/this week's stats/)).toBeInTheDocument();
     });
 
     it('shows the no-runs empty state instead of a verdict on a brand new account', () => {
@@ -318,31 +313,6 @@ describe('Home', () => {
         );
 
         expect(screen.queryByText(/You vs Past You/)).not.toBeInTheDocument();
-        expect(screen.queryByText(/This week ·/)).not.toBeInTheDocument();
-    });
-
-    it('leaves the weekly TRIMP tile unknown when nothing that week scored', () => {
-        render(
-            <Home
-                briefing={briefing}
-                load={{
-                    ...load,
-                    weekly_trimp: null,
-                    monotony: null,
-                    strain: null,
-                }}
-                snapshot={{ ...snapshot, weekly_trimp: null }}
-                recentRuns={[lastRun]}
-                pastYouTrend={trend()}
-            />,
-        );
-
-        const weekSection = screen.getByText(/This week ·/).closest('section');
-        expect(weekSection).not.toBeNull();
-        const trimpTile = within(weekSection!).getByText('TRIMP').parentElement
-            ?.parentElement;
-        // The whole tile carries no digit at all: unknown, never a zero.
-        expect(trimpTile?.textContent).toMatch(/—$/);
-        expect(trimpTile?.textContent).not.toMatch(/\d/);
+        expect(screen.queryByText(/this week's stats/)).not.toBeInTheDocument();
     });
 });

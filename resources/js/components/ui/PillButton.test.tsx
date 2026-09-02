@@ -9,7 +9,7 @@ describe('PillButton', () => {
         ['horizon', 'bg-horizon'],
         ['sky', 'bg-sky'],
         ['ghost', 'border-ink/[0.18]'],
-        ['outline', 'border-cream-deep'],
+        ['outline', 'border-border'],
     ] satisfies [PillTone, string][])(
         'renders tone %s with its class',
         (tone, expected) => {
@@ -20,12 +20,12 @@ describe('PillButton', () => {
         },
     );
 
-    it('renders the cream-bordered outline tone', () => {
-        render(<PillButton tone="outline">Keluar</PillButton>);
-        const button = screen.getByRole('button', { name: 'Keluar' });
-        expect(button.className).toMatch(/bg-cream/);
-        expect(button.className).toMatch(/border-cream-deep/);
-        expect(button.className).toMatch(/text-ink-2/);
+    it('renders the card-bordered outline tone', () => {
+        render(<PillButton tone="outline">Log out</PillButton>);
+        const button = screen.getByRole('button', { name: 'Log out' });
+        expect(button.className).toMatch(/bg-card/);
+        expect(button.className).toMatch(/border-border/);
+        expect(button.className).toMatch(/text-text-2/);
     });
 
     it('switches ghost to onSky variant when onSky=true', () => {

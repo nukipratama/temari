@@ -21,16 +21,6 @@ function briefing(content: string, status = 'done'): BriefingResult {
             subject_id: 1,
             discriminator: '2026-06-12',
         },
-        featuredKartuVoice: {
-            id: 5,
-            status: 'done',
-            content: 'A card.',
-            type: 'briefing_featured_kartu_voice',
-            subject_type: 'briefing_user_day',
-            subject_id: 1,
-            discriminator: '7',
-        },
-        featuredCardId: 7,
         recoveryLabel: 'Recovery: 41h',
         recoveryTone: 'positive',
         recoveryHoursLabel: '41h',
@@ -85,5 +75,18 @@ describe('TodaySession', () => {
         render(<TodaySession briefing={briefing('', 'queued')} />);
 
         expect(screen.getByRole('status')).toBeInTheDocument();
+    });
+
+    it("renders Temari's face on the leaf ring the prototype's today card uses", () => {
+        const { container } = render(
+            <TodaySession briefing={briefing('Easy 6k.')} />,
+        );
+
+        const face = container.querySelector('[data-face-icon]');
+        expect(face).toBeInTheDocument();
+        expect(face?.querySelector('circle')).toHaveAttribute(
+            'stroke',
+            'var(--color-leaf)',
+        );
     });
 });

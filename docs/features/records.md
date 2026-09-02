@@ -1,40 +1,51 @@
 ---
 title: Personal records
-description: Personal Bests, the always-full-history panel on /trends — every distance PR and best-effort-by-time PR.
+description: Where every distance PR and best-effort-by-time PR lives now that the Personal Bests panel is cut — the personal_records table and Profile's progression charts.
 tags: [feature, records]
 status: living
-reviewed: 2026-08-18
+reviewed: 2026-08-31
 code_refs:
-  - resources/js/components/trends/panels/PersonalBests.tsx
-  - app/Http/Controllers/TrendsController.php
+  - app/Http/Controllers/ProfileController.php
   - app/Models/PersonalRecord.php
   - app/Enums/PrCategory.php
+  - resources/js/components/profile/ProgressionCard.tsx
+  - resources/js/components/profile/JourneyChart.tsx
 ---
 
 # Personal records
 
-Personal bests live as a panel on `/trends` (see [TrendsController](../../app/Http/Controllers/TrendsController.php)), not their own page — retired from the standalone `/records` scoreboard it used to be. `/rekor` (the Indonesian-named legacy redirect) now points at `/trends`; visiting the old `/records`/`/badges` routes themselves 404s, no redirect, since neither had external consumers.
+PRs are detected during ingest and stored in `personal_records`. They have had three homes: a
+standalone `/records` scoreboard (retired), a **Personal Bests** panel on `/trends` (**cut in
+`PP3`**, decision P25 — the prototype's Trends screen draws four blocks and a personal-bests table
+is not one of them), and their surviving home, **[[profile]]'s progression charts**.
 
-**Navigation:** `TrendsController` ships `distanceRecords`/`paceRecords` alongside every other Trends panel; no route of its own.
+The old `/records` / `/badges` routes 404, no redirect, since neither had external consumers. The
+Indonesian-named `/rekor` redirect that used to point at `/trends` was deleted in `C1` along with
+every other legacy redirect.
 
 ## System dependencies
 
-- **Gamification** — PRs are detected during ingest by [[gamification]]; this panel reads the `personal_records` table.
+- **Gamification** — PRs are detected during ingest by [[gamification]]; nothing here writes them.
 
-## What the controller assembles
+## Where they surface
 
-`TrendsController::distanceRecords()`/`paceRecords()` walk `PrCategory::distances()`/`PrCategory::efforts()` in their declared (ascending) order, looking up each category's current `PersonalRecord` and skipping any category the user hasn't set yet — no `list<>` returned, `array<int,...>` since a fresh user's sparse categories mean the array isn't reliably contiguous by category. PR categories cover **1K / 5K / 10K / 15K / Half / Full Marathon** (distance) plus five best-effort time windows (pace); both split server-side now, not client-side.
+[ProfileController](../../app/Http/Controllers/ProfileController.php) builds
+`progressionByCategory` from `PersonalRecord` rows across 5K / 10K / Half / Marathon and renders it
+through [ProgressionCard](../../resources/js/components/profile/ProgressionCard.tsx)'s
+[JourneyChart](../../resources/js/components/profile/JourneyChart.tsx) — a
+per-distance journey line rather than a scoreboard. The prototype draws exactly that
+(`ProfileScreen.tsx`'s `ProgressionCard`), which is why this is the reading that survived the cut.
 
-## The panel (`trends/panels/PersonalBests.tsx`)
-
-[PersonalBests](../../resources/js/components/trends/panels/PersonalBests.tsx) is deliberately simpler than the retired scoreboard — no featured-PR hero, no AI context line, no splits/weather/location, no milestone-strip "sub-X" goal delta (none of that data survived the move, see below). Two sections:
-
-- **By distance** — a tile grid (`StatTile`, `tone="sunken"`), one per set category: label, duration, pace/km, and the date it was set.
-- **Best effort by time** — a flat divided list of the pace-window PRs: label, pace/km, date.
-
-When the user has no PRs at all in either section, the panel shows a one-line prompt instead.
+PR categories cover **1K / 5K / 10K / 15K / Half / Full Marathon** (distance) plus five
+best-effort time windows (pace), declared in [PrCategory](../../app/Enums/PrCategory.php). The
+profile charts only plot the four distances above; the pace windows are stored and currently drawn
+nowhere.
 
 ## Notes
 
-- **Real capability loss, not just a redesign**: the retired `RecordsController`/`PrScoreboardBuilder`/`Collection/Records.tsx` computed a featured PR's splits, weather, location, and a "you're N seconds off sub-X" milestone delta (via `MilestoneStrip`) and a `PrContext` AI context line. None of that ported — Personal Bests only shows category/value/date. Re-adding any of it is new scope, not a citation fix.
-- PR detection happens during run ingest, not here — this panel reads the `personal_records` table. See [[data-model]] for the schema and [[gamification]] for how milestones and goals are derived.
+- **Real capability loss across both retirements, not just a redesign.** The `/records`
+  scoreboard computed a featured PR's splits, weather, location, a "you're N seconds off sub-X"
+  milestone delta and a `PrContext` AI line; the Trends panel that replaced it kept only
+  category/value/date; the cut removed that too. Re-adding any of it is new scope.
+- `TrendsController` no longer ships `distanceRecords` / `paceRecords`; `W2` decides whether the
+  now-unread pace-window categories stay.

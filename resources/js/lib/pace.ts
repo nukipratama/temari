@@ -113,6 +113,20 @@ export function formatRelativeId(
     );
 }
 
+// "aug 25 · 07:12" — short month/day + local time, for TRUE INSTANTS. The
+// absolute counterpart to formatRelativeId, for a relative↔absolute toggle.
+export function formatAbsoluteId(iso: string | null | undefined): string {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '—';
+    const time = d.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    });
+    return `${formatMonthDayId(d)} · ${time}`;
+}
+
 // Relative wording for NAIVE wall-clock values (Strava's start_date_local,
 // serialized with a misleading trailing Z): the delta is measured against the
 // as-recorded local clock, so a 06:30 run reads "12 hr ago" at 18:30 local
@@ -127,21 +141,34 @@ export function formatNaiveRelativeId(
     return relativeIdFromDelta(now.getTime() - d.getTime(), iso, true);
 }
 
+/**
+ * Dates render lowercase, as the prototype writes them (`12 jun`, not `Jun 12`).
+ * Applied at every formatter's exit rather than at each call site, so a new
+ * caller cannot reintroduce Title Case by accident. See P37.
+ */
+function idCase(s: string): string {
+    return s.toLowerCase();
+}
+
 function idDateFromDate(d: Date, format: 'short' | 'long'): string {
     if (Number.isNaN(d.getTime())) return '—';
     if (format === 'long') {
-        return d.toLocaleDateString('en-US', {
+        return idCase(
+            d.toLocaleDateString('en-US', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric',
+            }),
+        );
+    }
+    return idCase(
+        d.toLocaleDateString('en-US', {
             weekday: 'long',
             day: '2-digit',
-            month: 'long',
-            year: 'numeric',
-        });
-    }
-    return d.toLocaleDateString('en-US', {
-        weekday: 'long',
-        day: '2-digit',
-        month: 'short',
-    });
+            month: 'short',
+        }),
+    );
 }
 
 // Weekday + date for TRUE INSTANTS (see formatRelativeId). For naive
@@ -166,44 +193,59 @@ export function formatNaiveIdDate(
     return idDateFromDate(d, format);
 }
 
-/** "Mon, May 11" — short weekday + numeric day + short month. */
+/** "mon, may 11" — short weekday + numeric day + short month. */
 export function formatShortWeekdayDateId(date: Date): string {
-    return date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-    });
+    return idCase(
+        date.toLocaleDateString('en-US', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+        }),
+    );
 }
 
-/** "May 11" — numeric day + short month, no weekday or year. */
+/** "may 11" — numeric day + short month, no weekday or year. */
 export function formatMonthDayId(date: Date): string {
-    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+    return idCase(
+        date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
+    );
 }
 
-/** "11 Mon" — numeric day + short weekday only. */
+// "aug 25" — short month + day for NAIVE wall-clock values, no weekday. The
+// compact counterpart to formatNaiveIdDate for space-constrained rows.
+export function formatNaiveMonthDayId(iso: string | null | undefined): string {
+    if (!iso) return '—';
+    const d = parseNaiveLocalDate(iso);
+    if (d === null) return '—';
+    return formatMonthDayId(d);
+}
+
+/** "11 mon" — numeric day + short weekday only. */
 export function formatWeekdayDayId(date: Date): string {
-    return date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        day: 'numeric',
-    });
+    return idCase(
+        date.toLocaleDateString('en-US', {
+            weekday: 'short',
+            day: 'numeric',
+        }),
+    );
 }
 
 const ID_MONTH_SHORT = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
+    'jan',
+    'feb',
+    'mar',
+    'apr',
+    'may',
+    'jun',
+    'jul',
+    'aug',
+    'sep',
+    'oct',
+    'nov',
+    'dec',
 ] as const;
 
-// "19 Feb 2026" — parses YYYY-MM-DD from the front of the string so the wall-
+// "19 feb 2026" — parses YYYY-MM-DD from the front of the string so the wall-
 // clock date renders as-is, regardless of runtime timezone.
 export function formatShortDateId(iso: string | null | undefined): string {
     if (!iso) return '—';
@@ -225,12 +267,20 @@ export function formatNaiveTimeId(
     return `${h}:${m}`;
 }
 
-// "19 Feb 2026 · 06:52" — short date + naive wall-clock time. Drops the time
+// "19 feb 2026 · 06:52" — short date + naive wall-clock time. Drops the time
 // half when the string is date-only.
 export function formatShortDateTimeId(iso: string | null | undefined): string {
     const date = formatShortDateId(iso);
     const time = formatNaiveTimeId(iso);
     return time === null ? date : `${date} · ${time}`;
+}
+
+/** Whole days from local midnight today to a naive `YYYY-MM-DD`; negative once past. */
+export function daysUntilId(iso: string): number {
+    const target = new Date(`${iso}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
 export function monthsSinceId(iso: string | null | undefined): number | null {

@@ -36,6 +36,7 @@ const BILLING = [
     'strava:sync-zones' => 'notDemo() on the connection scan',
     'strava:ingest' => 'whereHas(user, is_demo = false) on the stub drain',
     'streak:remind' => 'where(is_demo, false) inside the command',
+    'plan:regenerate' => 'is_demo === false gates the plan-narration request only; the regenerate itself stays free and still runs for demo',
 ];
 
 /**
@@ -47,7 +48,7 @@ const BILLING = [
 const NON_BILLING = [
     'schedule:heartbeat' => 'writes one Redis timestamp, touches no user',
     'demo:daily-refresh' => 'the demo account is the point; rule-based fill, zero LLM tokens',
-    'plan:regenerate' => 'deterministic periodizer, no LLM and no Strava call',
+    'plan:score-compliance' => 'free local km comparison against ActivityDetail rows, no LLM and no Strava call',
     'ai:self-heal' => 'only re-kicks Pending rows; demo rows are seeded Done, and the sweeps that could bill apply notDemo() themselves',
     'queue:prune-failed' => 'deletes rows, touches no user',
     'geo:backfill-locations' => 'free Nominatim lookup, no LLM and no Strava call',
@@ -108,4 +109,5 @@ it('reads the demo exclusion straight out of each billing command source', funct
     'strava:sync-zones' => ['strava:sync-zones', 'app/Console/Commands/Strava/SyncZonesCommand.php'],
     'strava:ingest' => ['strava:ingest', 'app/Console/Commands/Strava/IngestCommand.php'],
     'streak:remind' => ['streak:remind', 'app/Console/Commands/Gamification/StreakRemindCommand.php'],
+    'plan:regenerate' => ['plan:regenerate', 'app/Console/Commands/Run/RegeneratePlanCommand.php'],
 ]);

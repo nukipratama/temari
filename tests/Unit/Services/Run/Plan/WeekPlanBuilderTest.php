@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\DistanceBand;
-use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Services\Run\Plan\WeekPlanBuilder;
@@ -40,24 +38,20 @@ it('never assigns a row to a date before notBefore', function (): void {
     expect($rows)->toHaveCount(4); // Thu..Sun
 });
 
-it('gives the last training day of the week the Long session type and band', function (): void {
+it('gives the last training day of the week the Long session type', function (): void {
     $rows = $this->builder->build($this->monday, PlanPhase::Build, 4, [], null, false);
     // 4-session template: Tue, Thu, Sat, Sun -- Sun is the long day.
     $sunday = $this->monday->copy()->addDays(6)->toDateString();
 
-    expect($rows[$sunday]['session_type'])->toBe(SessionType::Long)
-        ->and($rows[$sunday]['distance_band'])->toBe(DistanceBand::Long)
-        ->and($rows[$sunday]['pace_band'])->toBe(PaceBand::Easy);
+    expect($rows[$sunday]['session_type'])->toBe(SessionType::Long);
 });
 
-it('marks every non-training day as Rest with a null pace band', function (): void {
+it('marks every non-training day as Rest', function (): void {
     $rows = $this->builder->build($this->monday, PlanPhase::Build, 3, [], null, false);
     // 3-session template: Tue, Thu, Sat. Monday is a rest day.
     $monday = $this->monday->toDateString();
 
-    expect($rows[$monday]['session_type'])->toBe(SessionType::Rest)
-        ->and($rows[$monday]['distance_band'])->toBe(DistanceBand::Rest)
-        ->and($rows[$monday]['pace_band'])->toBeNull();
+    expect($rows[$monday]['session_type'])->toBe(SessionType::Rest);
 });
 
 it('Base phase stays quality-free below 4 sessions/week, adds one Tempo at 4+', function (): void {
@@ -79,26 +73,23 @@ it('Build phase mixes Tempo and Interval once sessions/week exceeds 4, race-orie
 it('self-scaled Build stays threshold-only, never adds Interval, even at 2 quality slots', function (): void {
     $rows = $this->builder->build($this->monday, PlanPhase::Build, 6, [], null, true);
     $types = collect($rows)->pluck('session_type');
-    $paceBands = collect($rows)->pluck('pace_band')->filter();
 
-    expect($types)->not->toContain(SessionType::Interval)
-        ->and($paceBands)->not->toContain(PaceBand::Interval);
+    expect($types)->not->toContain(SessionType::Interval);
 });
 
-it('Peak/Taper for a marathon-distance race narrows to one race-pace-specific session', function (): void {
+it('Peak/Taper for a marathon-distance race narrows the quality block to a single race-pace-specific slot', function (): void {
+    // Pace itself (Threshold vs Marathon) is SegmentGenerator's call now — see
+    // its "switches a Tempo day to Marathon pace..." tests. What WeekPlanBuilder
+    // still decides is the SLOT COUNT: one narrowed session, not the normal mix.
     $rows = $this->builder->build($this->monday, PlanPhase::Peak, 6, [], 42_195.0, false);
-    $marathonPaceCount = collect($rows)->filter(fn (array $r): bool => $r['pace_band'] === PaceBand::Marathon)->count();
 
-    // One marathon-paced quality session, plus the long run also runs at marathon pace.
-    expect($marathonPaceCount)->toBe(2);
+    expect(qualityCount($rows))->toBe(1);
 });
 
-it('Peak/Taper for a shorter race keeps the threshold/interval mix, not marathon pace', function (): void {
+it('Peak/Taper for a shorter race keeps the normal threshold/interval mix', function (): void {
     $rows = $this->builder->build($this->monday, PlanPhase::Peak, 6, [], 10_000.0, false);
-    $sunday = $this->monday->copy()->addDays(6)->toDateString();
 
-    expect(collect($rows)->pluck('pace_band'))->not->toContain(PaceBand::Marathon)
-        ->and($rows[$sunday]['pace_band'])->toBe(PaceBand::Easy);
+    expect(qualityCount($rows))->toBe(2);
 });
 
 it('Deload carries no quality sessions at all', function (): void {
@@ -109,25 +100,29 @@ it('Deload carries no quality sessions at all', function (): void {
         ->and($types)->not->toContain(SessionType::Interval);
 });
 
-it('assigns the first Easy day Medium band and the rest Short', function (): void {
-    // 6-session template, Deload (0 quality slots): Mon,Tue,Wed,Thu,Sat,Sun train,
-    // Sun is Long, the other 5 are Easy in date order.
-    $rows = $this->builder->build($this->monday, PlanPhase::Deload, 6, [], null, true);
-    $easyDates = collect($rows)
-        ->filter(fn (array $r): bool => $r['session_type'] === SessionType::Easy)
-        ->keys()
-        ->sort()
-        ->values();
+it('clamps an out-of-range session count into the supported 2-6 template range', function (): void {
+    $tooMany = $this->builder->build($this->monday, PlanPhase::Base, 10, [], null, false);
+    $tooFew = $this->builder->build($this->monday, PlanPhase::Base, 1, [], null, false);
 
-    $bands = $easyDates->map(fn (string $date) => $rows[$date]['distance_band']);
-    expect($bands->first())->toBe(DistanceBand::Medium);
-    expect($bands->slice(1)->unique()->values()->all())->toBe([DistanceBand::Short]);
+    expect($tooMany)->toHaveCount(7) // falls back to the 6-session template
+        ->and($tooFew)->toHaveCount(7); // falls back to the 2-session template
 });
 
-it('clamps an out-of-range session count into the supported 3-6 template range', function (): void {
-    $rows = $this->builder->build($this->monday, PlanPhase::Base, 10, [], null, false);
+it('supports the 2-session template, long run on Saturday', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 2, [], null, true);
+    $saturday = $this->monday->copy()->addDays(5)->toDateString();
 
-    expect($rows)->toHaveCount(7); // still one row per day; falls back to the 6-session template
+    expect(qualityCount($rows) + collect($rows)->filter(fn (array $r): bool => $r['session_type'] === SessionType::Long)->count())
+        ->toBe(2)
+        ->and($rows[$saturday]['session_type'])->toBe(SessionType::Long);
+});
+
+it('an explicit run_days/long_run_day preference overrides the day template entirely', function (): void {
+    $friday = $this->monday->copy()->addDays(4)->toDateString();
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 4, [], null, true, null, 0, [0, 2, 4], 4);
+
+    expect($rows[$friday]['session_type'])->toBe(SessionType::Long)
+        ->and(collect($rows)->filter(fn (array $r): bool => $r['session_type'] !== SessionType::Rest))->toHaveCount(3);
 });
 
 it('tags every produced row with the phase it was built for', function (): void {
@@ -189,4 +184,11 @@ it('caps the quality block even when feedback keeps asking for more', function (
 
 it('leaves the season-goal slot count on the unadapted phase baseline', function (): void {
     expect($this->builder->qualitySlotCount(PlanPhase::Build, 6, null, true))->toBe(2);
+});
+
+it('classifies marathon distance at and above the threshold, never on a null race', function (): void {
+    expect(WeekPlanBuilder::isMarathonDistance(null))->toBeFalse()
+        ->and(WeekPlanBuilder::isMarathonDistance(21_097.5))->toBeFalse()
+        ->and(WeekPlanBuilder::isMarathonDistance(30_000.0))->toBeTrue()
+        ->and(WeekPlanBuilder::isMarathonDistance(42_195.0))->toBeTrue();
 });

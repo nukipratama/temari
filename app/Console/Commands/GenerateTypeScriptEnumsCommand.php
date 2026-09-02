@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use Override;
+use App\Enums\ExperienceLevel;
+use App\Enums\GoalType;
 use App\Enums\NotificationKind;
+use App\Enums\PlannedSessionStatus;
 use App\Enums\PrCategory;
 use App\Enums\Rarity;
 use App\Services\AI\AnalysisStatus;
@@ -35,6 +38,9 @@ final class GenerateTypeScriptEnumsCommand extends Command
         AnalysisStatus::class,
         AnalysisType::class,
         NotificationKind::class,
+        PlannedSessionStatus::class,
+        ExperienceLevel::class,
+        GoalType::class,
     ];
 
     public function handle(): int

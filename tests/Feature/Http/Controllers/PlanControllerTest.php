@@ -2,10 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Actions\Gamification\SettleStreakRestTokensAction;
 use App\Models\PlannedSession;
 use App\Models\Season;
-use App\Models\StreakRestToken;
 use App\Models\User;
 use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
@@ -22,7 +20,6 @@ it('requires authentication for every plan route', function (): void {
     $this->get('/plan')->assertRedirect('/login');
     $this->post('/plan/regenerate')->assertRedirect('/login');
     $this->patch('/plan/sessions/1')->assertRedirect('/login');
-    $this->delete('/plan/sessions/1')->assertRedirect('/login');
 });
 
 it('renders an empty week list for a fresh user with no plan yet', function (): void {
@@ -31,6 +28,20 @@ it('renders an empty week list for a fresh user with no plan yet', function (): 
     $this->actingAs($user)->get('/plan')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->component('Plan')->where('weeks', []));
+});
+
+it('renders a season-wide week summary even before any plan has been generated', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/plan')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('seasonSummary')
+            ->has('seasonSummary.0.week_start')
+            ->has('seasonSummary.0.phase')
+            ->has('seasonSummary.0.type')
+            ->has('seasonSummary.0.planned_km')
+            ->where('seasonSummary.0.type', 'current'));
 });
 
 it('creates a season and its 5 goals on a fresh user\'s first Plan view, before any regeneration', function (): void {
@@ -63,46 +74,6 @@ it('counts only an earlier season\'s track tiers as kept, never the live season\
         ->assertInertia(fn (Assert $page) => $page->where('season.tiers_kept_from_past_seasons', 2));
 });
 
-it('reports the weekly streak with its open week and no rest weeks held', function (): void {
-    $user = User::factory()->create();
-    WeeklySnapshot::factory()->create([
-        'user_id' => $user->id,
-        'week_ending' => '2026-08-16',
-        'runs' => 3,
-    ]);
-
-    $this->actingAs($user)->get('/plan')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('streak.weeks', 1)
-            ->where('streak.rest_weeks_held', 0)
-            ->where('streak.rest_weeks_cap', SettleStreakRestTokensAction::MAX_HELD)
-            ->where('streak.weeks_to_next_rest_week', 3)
-            ->where('streak.ran_this_week', true)
-            ->where('streak.week_ends_on', '2026-08-16')
-            ->where('streak.last_forgiven_week', null));
-});
-
-it('stops forecasting the next rest week once the held ones are capped, and names the last forgiven week', function (): void {
-    $user = User::factory()->create();
-    foreach (range(1, SettleStreakRestTokensAction::MAX_HELD) as $offset) {
-        StreakRestToken::factory()->create([
-            'user_id' => $user->id,
-            'earned_for_week_ending' => Carbon::parse('2026-08-09')->subWeeks($offset)->toDateString(),
-        ]);
-    }
-    StreakRestToken::factory()->create([
-        'user_id' => $user->id,
-        'earned_for_week_ending' => '2026-05-31',
-        'spent_for_week_ending' => '2026-07-05',
-    ]);
-
-    $this->actingAs($user)->get('/plan')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('streak.rest_weeks_held', SettleStreakRestTokensAction::MAX_HELD)
-            ->where('streak.weeks_to_next_rest_week', null)
-            ->where('streak.last_forgiven_week', '2026-07-05'));
-});
-
 it('regenerating populates the plan and redirects with a success flash', function (): void {
     $user = User::factory()->create();
 
@@ -132,17 +103,7 @@ it('rejects updating another user\'s planned session', function (): void {
     $intruder = User::factory()->create();
 
     $this->actingAs($intruder)
-        ->patch("/plan/sessions/{$session->id}", ['distance_band' => 'short'])
-        ->assertForbidden();
-});
-
-it('rejects deleting another user\'s planned session', function (): void {
-    $owner = User::factory()->create();
-    $session = PlannedSession::factory()->for($owner)->create(['date' => Carbon::today()->addDay()->toDateString()]);
-    $intruder = User::factory()->create();
-
-    $this->actingAs($intruder)
-        ->delete("/plan/sessions/{$session->id}")
+        ->patch("/plan/sessions/{$session->id}", ['pinned' => true])
         ->assertForbidden();
 });
 
@@ -154,11 +115,11 @@ it('updating a session automatically pins it, so the next regeneration leaves it
     ]);
 
     $this->actingAs($user)
-        ->patch("/plan/sessions/{$session->id}", ['distance_band' => 'short'])
+        ->patch("/plan/sessions/{$session->id}", ['skipped' => true])
         ->assertRedirect();
 
     $fresh = $session->fresh();
-    expect($fresh->distance_band->value)->toBe('short')
+    expect($fresh->skipped)->toBeTrue()
         ->and($fresh->pinned)->toBeTrue();
 });
 
@@ -174,34 +135,66 @@ it('allows an explicit unpin alongside an edit', function (): void {
     expect($session->fresh()->pinned)->toBeFalse();
 });
 
-it('blocking a day (session_type = rest) always clears distance_band and pace_band', function (): void {
+it('skips a day via the skipped flag, leaving the prescribed session in place', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->addDay()->toDateString(),
         'session_type' => 'tempo',
-        'distance_band' => 'medium',
-        'pace_band' => 'threshold',
+        'skipped' => false,
     ]);
 
-    $this->actingAs($user)->patch("/plan/sessions/{$session->id}", [
-        'session_type' => 'rest',
-        'distance_band' => 'medium',
-        'pace_band' => 'threshold',
-    ]);
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$session->id}", ['skipped' => true])
+        ->assertRedirect();
 
     $fresh = $session->fresh();
-    expect($fresh->session_type->value)->toBe('rest')
-        ->and($fresh->distance_band->value)->toBe('rest')
-        ->and($fresh->pace_band)->toBeNull();
+    expect($fresh->skipped)->toBeTrue()
+        ->and($fresh->session_type->value)->toBe('tempo');
 });
 
-it('deletes a planned session', function (): void {
+it('cuts block and delete, per decision P23', function (): void {
     $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->addDay()->toDateString()]);
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDay()->toDateString(),
+        'session_type' => 'tempo',
+    ]);
 
-    $this->actingAs($user)->delete("/plan/sessions/{$session->id}")->assertRedirect();
+    // The route is gone, not merely unlinked.
+    $this->actingAs($user)
+        ->delete("/plan/sessions/{$session->id}")
+        ->assertMethodNotAllowed();
 
-    expect(PlannedSession::query()->find($session->id))->toBeNull();
+    // session_type is no longer a validated field, so a block attempt is a no-op.
+    $this->actingAs($user)->patch("/plan/sessions/{$session->id}", ['session_type' => 'rest']);
+
+    expect($session->fresh()->session_type->value)->toBe('tempo')
+        ->and(PlannedSession::query()->find($session->id))->not->toBeNull();
+});
+
+it('moves a session by swapping it with whatever already sits on the target day', function (): void {
+    $user = User::factory()->create();
+    $from = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDay()->toDateString(),
+        'session_type' => 'tempo',
+        'pinned' => false,
+    ]);
+    $to = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDays(2)->toDateString(),
+        'session_type' => 'rest',
+        'pinned' => false,
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$from->id}", ['date' => $to->date->toDateString()])
+        ->assertRedirect();
+
+    // Each row keeps its own calendar slot; what they prescribe is what moves.
+    expect($from->fresh()->date->toDateString())->toBe(Carbon::today()->addDay()->toDateString())
+        ->and($from->fresh()->session_type->value)->toBe('rest')
+        ->and($to->fresh()->date->toDateString())->toBe(Carbon::today()->addDays(2)->toDateString())
+        ->and($to->fresh()->session_type->value)->toBe('tempo')
+        ->and($from->fresh()->pinned)->toBeTrue()
+        ->and($to->fresh()->pinned)->toBeTrue();
 });
 
 it('clamps today\'s session against the readiness ceiling without mutating the stored row', function (): void {
@@ -214,8 +207,6 @@ it('clamps today\'s session against the readiness ceiling without mutating the s
     $today = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->toDateString(),
         'session_type' => 'interval',
-        'distance_band' => 'short',
-        'pace_band' => 'interval',
         'pinned' => false,
     ]);
 
@@ -246,8 +237,6 @@ it('never clamps a future day, only today, even at the worst readiness ceiling',
     PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->addDays(2)->toDateString(),
         'session_type' => 'interval',
-        'distance_band' => 'short',
-        'pace_band' => 'interval',
     ]);
 
     $response = $this->actingAs($user)->get('/plan')->assertSuccessful();

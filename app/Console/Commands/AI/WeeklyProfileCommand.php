@@ -14,7 +14,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
 #[Signature('ai:weekly-profile')]
-#[Description('Refresh the Aku-page Temari voice once a week for each active user (demo excluded)')]
+#[Description('Refresh the Profile-page Temari voice once a week for each active user (demo excluded)')]
 class WeeklyProfileCommand extends Command
 {
     /**
@@ -25,7 +25,7 @@ class WeeklyProfileCommand extends Command
     private const int ACTIVE_WINDOW_DAYS = 7;
 
     /**
-     * The Aku-page voice carries no per-run cadence of its own, so this weekly
+     * The Profile-page voice carries no per-run cadence of its own, so this weekly
      * heartbeat is its only auto-refresh: each active user's Temari-voice line
      * re-narrates once a week on the week's updated data. Demo is excluded (it
      * never auto-bills any LLM cadence); the manual "Reread" button still
@@ -48,9 +48,9 @@ class WeeklyProfileCommand extends Command
 
         foreach ($activeUserIds as $userId) {
             $service->request(
-                subjectOrType: AnalysisType::AkuProfileVoice->subjectType(),
+                subjectOrType: AnalysisType::ProfileVoice->subjectType(),
                 subjectId: (int) $userId,
-                type: AnalysisType::AkuProfileVoice,
+                type: AnalysisType::ProfileVoice,
                 discriminator: $isoWeek,
                 invalidate: false,
             );

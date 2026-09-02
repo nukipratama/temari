@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
+use App\Models\PlanAdaptation;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisSubjectMap;
@@ -20,12 +22,16 @@ it('ownerId resolves the owning user across every subject type', function (): vo
     $card = RunCard::factory()->for($activity)->create();
     $pr = PersonalRecord::factory()->for($user)->create();
     $snap = WeeklySnapshot::factory()->for($user)->create();
+    $adaptation = PlanAdaptation::factory()->for($user)->create();
+    $season = Season::factory()->for($user)->create();
 
     $cases = [
         [Activity::class, $activity->id],
         [WeeklySnapshot::class, $snap->id],
         [RunCard::class, $card->id],
         [PersonalRecord::class, $pr->id],
+        [PlanAdaptation::class, $adaptation->id],
+        [Season::class, $season->id],
         // A `*_user_*` string subject type: subject_id IS the user id.
         [AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id],
     ];

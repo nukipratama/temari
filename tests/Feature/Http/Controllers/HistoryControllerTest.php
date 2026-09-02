@@ -2,12 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\NotificationPreference;
-use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\TelegramConnection;
 use App\Models\User;
@@ -111,295 +109,6 @@ it('excludes runs outside the requested range', function (): void {
             ->where('rangeFilter', '1y'));
 });
 
-/**
- * Two runs a week apart, moods 'gassed' and 'blazing', both inside the default
- * window. Returns [lemesActivity, nyalaActivity].
- *
- * @return array{0: Activity, 1: Activity}
- */
-function moodFixtures(User $user): array
-{
-    $gassed = Activity::factory()->for($user)->analyzed()->create();
-    $blazing = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($gassed)->create(['name' => 'Lemes run', 'start_date_local' => Carbon::now()->subDays(3)]);
-    ActivityDetail::factory()->for($blazing)->create(['name' => 'Nyala run', 'start_date_local' => Carbon::now()->subDays(10)]);
-    StoryLine::factory()->for($gassed)->create(['mood' => 'gassed']);
-    StoryLine::factory()->for($blazing)->create(['mood' => 'blazing']);
-
-    return [$gassed, $blazing];
-}
-
-it('returns every run when no mood filter is applied', function (): void {
-    $user = User::factory()->create();
-    moodFixtures($user);
-
-    $this->actingAs($user)->get('/history')
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('runs', 2)
-            ->where('moodFilter', []));
-});
-
-// The filter used to run client-side and merely dim non-matching runs; it now
-// removes them server-side, so the payload itself is narrowed.
-it('filters runs down to the selected mood', function (): void {
-    $user = User::factory()->create();
-    moodFixtures($user);
-
-    $this->actingAs($user)->get('/history?mood=gassed')
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('runs', 1)
-            ->where('runs.0.detail.name', 'Lemes run')
-            ->where('moodFilter', ['gassed']));
-});
-
-it('treats multiple moods as a union', function (): void {
-    $user = User::factory()->create();
-    moodFixtures($user);
-
-    $this->actingAs($user)->get('/history?mood=gassed,blazing')
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('runs', 2)
-            ->where('moodFilter', ['gassed', 'blazing']));
-});
-
-it('excludes a run whose post-run story line has not been written yet', function (): void {
-    $user = User::factory()->create();
-    $unnarrated = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($unnarrated)->create(['start_date_local' => Carbon::now()->subDays(2)]);
-
-    $this->actingAs($user)->get('/history?mood=gassed')
-        ->assertInertia(fn (Assert $page) => $page->has('runs', 0));
-});
-
-it('never leaks another user runs through the mood filter', function (): void {
-    $user = User::factory()->create();
-    $other = User::factory()->create();
-    moodFixtures($other);
-
-    $this->actingAs($user)->get('/history?mood=gassed,blazing')
-        ->assertInertia(fn (Assert $page) => $page->has('runs', 0));
-});
-
-// A stale or hand-edited link should widen, not 404.
-it('ignores unknown moods rather than erroring', function (): void {
-    $user = User::factory()->create();
-    moodFixtures($user);
-
-    $this->actingAs($user)->get('/history?mood=bogus')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('runs', 2)
-            ->where('moodFilter', []));
-
-    $this->actingAs($user)->get('/history?mood=bogus,gassed')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('runs', 1)
-            ->where('moodFilter', ['gassed']));
-});
-
-it('combines the mood filter with the range window', function (): void {
-    $user = User::factory()->create();
-    $old = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($old)->create(['name' => 'Old gassed', 'start_date_local' => Carbon::now()->subDays(200)]);
-    StoryLine::factory()->for($old)->create(['mood' => 'gassed']);
-    moodFixtures($user);
-
-    // Default window excludes the 200-day-old gassed run.
-    $this->actingAs($user)->get('/history?mood=gassed')
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('runs', 1)
-            ->where('runs.0.detail.name', 'Lemes run'));
-
-    // Widening the window brings it back.
-    $this->actingAs($user)->get('/history?mood=gassed&range=1y')
-        ->assertInertia(fn (Assert $page) => $page->has('runs', 2));
-});
-
-/**
- * Three runs spanning the distance bands, all inside the default window.
- */
-function distanceFixtures(User $user): void
-{
-    foreach ([['Sprint', 3_000], ['Sedang', 7_500], ['Long run', 25_000]] as [$name, $metres]) {
-        $activity = Activity::factory()->for($user)->analyzed()->create();
-        ActivityDetail::factory()->for($activity)->create([
-            'name' => $name,
-            'distance' => $metres,
-            'start_date_local' => Carbon::now()->subDays(5),
-        ]);
-    }
-}
-
-it('filters runs by distance band', function (string $band, array $expected): void {
-    $user = User::factory()->create();
-    distanceFixtures($user);
-
-    $this->actingAs($user)->get("/history?dist={$band}")
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('runs', count($expected))
-            ->where('distanceFilter', $band));
-})->with([
-    'under 5K' => ['0-5', ['Sprint']],
-    '5 to 10K' => ['5-10', ['Sedang']],
-    // The 25K run sits above the half-marathon cut, so the 10-21 band excludes it.
-    '10K to half' => ['10-21', []],
-    'half and up' => ['21up', ['Long run']],
-]);
-
-it('treats an unknown distance band as no filter', function (): void {
-    $user = User::factory()->create();
-    distanceFixtures($user);
-
-    $this->actingAs($user)->get('/history?dist=marathon')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('runs', 3)
-            ->where('distanceFilter', null));
-});
-
-it('filters runs by rarity through the earned run_card', function (): void {
-    $user = User::factory()->create();
-    $legendary = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($legendary)->create(['name' => 'Legendary run', 'start_date_local' => Carbon::now()->subDays(3)]);
-    RunCard::factory()->for($legendary)->create(['rarity' => Rarity::Legendary]);
-    $common = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($common)->create(['name' => 'Common run', 'start_date_local' => Carbon::now()->subDays(4)]);
-    RunCard::factory()->for($common)->create(['rarity' => Rarity::Common]);
-
-    $this->actingAs($user)->get('/history?rarity=legendary')
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('runs', 1)
-            ->where('rarityFilter', 'legendary'));
-});
-
-it('treats an unknown rarity as no filter', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()->subDays(3)]);
-
-    $this->actingAs($user)->get('/history?rarity=mythic')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('runs', 1)
-            ->where('rarityFilter', null));
-});
-
-it('combines distance, mood and range', function (): void {
-    $user = User::factory()->create();
-    $match = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($match)->create([
-        'name' => 'Long tempo',
-        'distance' => 25_000,
-        'start_date_local' => Carbon::now()->subDays(5),
-    ]);
-    StoryLine::factory()->for($match)->create(['mood' => 'blazing']);
-
-    // Same distance band, wrong mood.
-    $wrongMood = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($wrongMood)->create([
-        'name' => 'Long easy',
-        'distance' => 26_000,
-        'start_date_local' => Carbon::now()->subDays(6),
-    ]);
-    StoryLine::factory()->for($wrongMood)->create(['mood' => 'chill']);
-
-    $this->actingAs($user)->get('/history?dist=21up&mood=blazing')
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('runs', 1)
-            ->where('runs.0.detail.name', 'Long tempo'));
-});
-
-it('defaults to newest-first and reports the sort mode', function (): void {
-    $user = User::factory()->create();
-    distanceFixtures($user);
-
-    $this->actingAs($user)->get('/history')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('sortMode', 'newest')
-            // Newest-first is activity id desc, and the fixtures insert in order.
-            ->where('runs.0.detail.name', 'Long run'));
-});
-
-it('ranks by distance when sorting longest', function (): void {
-    $user = User::factory()->create();
-    distanceFixtures($user);
-
-    $this->actingAs($user)->get('/history?sort=longest')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('sortMode', 'longest')
-            ->has('runs', 3)
-            ->where('runs.0.detail.name', 'Long run')
-            ->where('runs.1.detail.name', 'Sedang')
-            ->where('runs.2.detail.name', 'Sprint'));
-});
-
-it('ranks by pace when sorting fastest', function (): void {
-    $user = User::factory()->create();
-    // 5K in 25min (5:00/km) vs 5K in 30min (6:00/km).
-    $quick = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($quick)->create([
-        'name' => 'Quick', 'distance' => 5_000, 'elapsed_time' => 1_500,
-        'start_date_local' => Carbon::now()->subDays(3),
-    ]);
-    $slow = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($slow)->create([
-        'name' => 'Slow', 'distance' => 5_000, 'elapsed_time' => 1_800,
-        'start_date_local' => Carbon::now()->subDays(2),
-    ]);
-
-    $this->actingAs($user)->get('/history?sort=fastest')
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('runs', 2)
-            ->where('runs.0.detail.name', 'Quick')
-            ->where('runs.1.detail.name', 'Slow'));
-});
-
-// A run with no distance or time has no pace, so it can't be ranked rather than
-// sorting as infinitely fast.
-it('drops pace-less runs from the fastest ranking', function (): void {
-    $user = User::factory()->create();
-    $paced = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($paced)->create([
-        'name' => 'Paced', 'distance' => 5_000, 'elapsed_time' => 1_500,
-        'start_date_local' => Carbon::now()->subDays(3),
-    ]);
-    $noDistance = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($noDistance)->create([
-        'name' => 'No distance', 'distance' => 0, 'elapsed_time' => 1_500,
-        'start_date_local' => Carbon::now()->subDays(2),
-    ]);
-
-    $this->actingAs($user)->get('/history?sort=fastest')
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('runs', 1)
-            ->where('runs.0.detail.name', 'Paced'));
-
-    // It is still present in the default chronological view.
-    $this->actingAs($user)->get('/history')
-        ->assertInertia(fn (Assert $page) => $page->has('runs', 2));
-});
-
-it('falls back to newest for an unknown sort', function (): void {
-    $user = User::factory()->create();
-    distanceFixtures($user);
-
-    $this->actingAs($user)->get('/history?sort=shortest')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->where('sortMode', 'newest'));
-});
-
-it('applies filters and sort together', function (): void {
-    $user = User::factory()->create();
-    distanceFixtures($user);
-
-    // Only the 7.5K run is in the 5-10 band, whatever the ordering.
-    $this->actingAs($user)->get('/history?dist=5-10&sort=longest')
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('runs', 1)
-            ->where('runs.0.detail.name', 'Sedang'));
-});
-
 describe('week deep link', function (): void {
     it('narrows to exactly that week and reports it', function (): void {
         $user = User::factory()->create();
@@ -475,28 +184,12 @@ describe('week deep link', function (): void {
 
     it('ignores a malformed week rather than erroring', function (): void {
         $user = User::factory()->create();
-        distanceFixtures($user);
 
         foreach (['not-a-date', '2026-13-45', ''] as $bad) {
             $this->actingAs($user)->get('/history?week='.urlencode($bad))
                 ->assertSuccessful()
                 ->assertInertia(fn (Assert $page) => $page->where('weekFilter', null));
         }
-    });
-
-    it('still applies the other filters inside the week', function (): void {
-        $user = User::factory()->create();
-        foreach ([['Short', 3_000], ['Long', 25_000]] as [$name, $metres]) {
-            $activity = Activity::factory()->for($user)->analyzed()->create();
-            ActivityDetail::factory()->for($activity)->create([
-                'name' => $name, 'distance' => $metres, 'start_date_local' => '2026-05-13 06:00:00',
-            ]);
-        }
-
-        $this->actingAs($user)->get('/history?week=2026-05-17&dist=21up')
-            ->assertInertia(fn (Assert $page) => $page
-                ->has('runs', 1)
-                ->where('runs.0.detail.name', 'Long'));
     });
 });
 
@@ -527,22 +220,44 @@ it('escalates to the all range so a run older than every preset still shows', fu
             ->where('rangeFilter', 'all')
             ->where('rangeAutoWidened', true)
             ->where('rangeStart', null)
-            ->where('runsTruncated', false)
+            ->where('hasOlderWeeks', false)
             ->has('runs', 1)
             ->where('runs.0.detail.name', 'Ancient'));
 });
 
-it('caps the runs list and flags truncation when a range holds more than the cap', function (): void {
+it('ships only the two most recent run-bearing weeks and flags that older ones exist', function (): void {
     $user = User::factory()->create();
-    // One past the 365 cap so truncation triggers; range=all has no lower bound.
-    Activity::factory()->for($user)->analyzed()->has(ActivityDetail::factory(), 'detail')->count(366)->create();
+    foreach ([0, 7, 14, 21] as $weeksAgo) {
+        $run = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($run)->create([
+            'name' => "Week {$weeksAgo}",
+            'start_date_local' => Carbon::now()->subDays($weeksAgo),
+        ]);
+    }
 
-    $this->actingAs($user)->get('/history?range=all')
+    $this->actingAs($user)->get('/history')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('runsTruncated', true)
-            ->where('maxRuns', 365)
-            ->has('runs', 365));
+            ->where('weeksShown', 2)
+            ->where('hasOlderWeeks', true)
+            ->has('runs', 2));
+});
+
+it('pages one press further when weeks is raised, and clears the flag at the oldest run', function (): void {
+    $user = User::factory()->create();
+    foreach ([0, 7, 14] as $daysAgo) {
+        $run = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($run)->create([
+            'start_date_local' => Carbon::now()->subDays($daysAgo),
+        ]);
+    }
+
+    $this->actingAs($user)->get('/history?weeks=4')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('weeksShown', 4)
+            ->where('hasOlderWeeks', false)
+            ->has('runs', 3));
 });
 
 it('accepts an explicit all range with no lower bound', function (): void {
@@ -626,90 +341,7 @@ it('flags the in-progress week with is_current_week on each snapshot payload', f
             ->where('weeklySnapshots.1.is_current_week', false));
 });
 
-it('returns null journeyMatch when the user has less than 2 activities', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()->subDays(2)]);
-
-    $this->actingAs($user)->get('/history')
-        ->assertInertia(fn (Assert $page) => $page->where('journeyMatch', null));
-});
-
-it('returns null pace + hr improvement when either activity lacks the underlying data', function (): void {
-    $user = User::factory()->create();
-    $first = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($first)->create([
-        'start_date_local' => Carbon::today()->subDays(60),
-        'distance' => null, // missing distance → paceSecPerKm returns null
-        'moving_time' => 2100,
-        'average_heartrate' => null, // missing HR
-        'name' => 'First Ever',
-    ]);
-    $latest = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($latest)->create([
-        'start_date_local' => Carbon::today()->subDays(1),
-        'distance' => 5000,
-        'moving_time' => 1800,
-        'average_heartrate' => 150,
-        'name' => 'Latest',
-    ]);
-
-    $this->actingAs($user)->get('/history?range=1y')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('journeyMatch.pace_improvement_sec', null)
-            ->where('journeyMatch.hr_improvement_bpm', null));
-});
-
-it('builds journeyMatch comparing first-ever and most-recent activities', function (): void {
-    $user = User::factory()->create();
-    $first = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($first)->create([
-        'start_date_local' => Carbon::today()->subDays(60),
-        'distance' => 5000,
-        'moving_time' => 2100, // 7:00/km
-        'average_heartrate' => 165,
-        'name' => 'First Ever',
-    ]);
-    $latest = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($latest)->create([
-        'start_date_local' => Carbon::today()->subDays(1),
-        'distance' => 5000,
-        'moving_time' => 1800, // 6:00/km
-        'average_heartrate' => 150,
-        'name' => 'Latest',
-    ]);
-
-    $this->actingAs($user)->get('/history')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('journeyMatch.first.name', 'First Ever')
-            ->where('journeyMatch.current.name', 'Latest')
-            ->where('journeyMatch.pace_improvement_sec', 60)
-            ->where('journeyMatch.hr_improvement_bpm', 15));
-});
-
-it('folds journeyMatch to first + current boundaries and a lifetime total across many runs', function (): void {
-    $user = User::factory()->create();
-    foreach ([60, 45, 30, 1] as $i => $daysAgo) {
-        $a = Activity::factory()->for($user)->analyzed()->create();
-        ActivityDetail::factory()->for($a)->create([
-            'start_date_local' => Carbon::today()->subDays($daysAgo),
-            'distance' => 5000,
-            'moving_time' => 1800,
-            'average_heartrate' => 150 + $i,
-            'name' => "Run {$i}",
-        ]);
-    }
-
-    // First/current land on the date boundaries; total_km sums every analyzed
-    // detail (4 x 5km = 20km), proving the folded aggregate + boundary fetch.
-    $this->actingAs($user)->get('/history?range=1y')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('journeyMatch.first.name', 'Run 0')
-            ->where('journeyMatch.current.name', 'Run 3')
-            ->where('journeyMatch.total_km', 20));
-});
-
-it('renders the Kalender page for the current month by default', function (): void {
+it('renders the Calendar page for the current month by default', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)->get('/history?view=calendar')
@@ -766,6 +398,20 @@ it('shares a push-only user as webPushSubscribed without a Telegram connection',
         ->assertInertia(fn (Assert $page) => $page
             ->where('telegramConnected', false)
             ->where('webPushSubscribed', true));
+});
+
+it('ships the calendar grid its own weeks, and none outside it', function (): void {
+    $user = User::factory()->create();
+    // The Jan 2026 grid runs 2025-12-29 .. 2026-02-01, so the 2026-01-04 week
+    // is inside it and the 2026-03-01 week is not.
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-01-04']);
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-03-01']);
+
+    $this->actingAs($user)->get('/history?view=calendar&month=2026-01')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('weeklySnapshots', 1)
+            ->where('weeklySnapshots.0.week_ending', '2026-01-04'));
 });
 
 it('honors ?month=YYYY-MM when valid', function (): void {
@@ -846,7 +492,7 @@ it('exposes a lifetime stats payload', function (): void {
 
 it('passes the MonthlyRecap analysis for the viewed month as the monthlyRecap prop', function (): void {
     $user = User::factory()->create();
-    Analysis::factory()->done('Bulan Mei kamu padat, ritmenya kejaga.')->create([
+    Analysis::factory()->done('May was dense and you held the rhythm.')->create([
         'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::MonthlyRecap,
@@ -856,7 +502,7 @@ it('passes the MonthlyRecap analysis for the viewed month as the monthlyRecap pr
     $this->actingAs($user)->get('/history?view=calendar&month=2026-05')
         ->assertInertia(fn (Assert $page) => $page
             ->where('monthlyRecap.status', 'done')
-            ->where('monthlyRecap.content', 'Bulan Mei kamu padat, ritmenya kejaga.')
+            ->where('monthlyRecap.content', 'May was dense and you held the rhythm.')
             ->where('monthlyRecap.type', AnalysisType::MonthlyRecap->value)
             ->where('monthlyRecap.discriminator', '2026-05')
             ->where('monthlyRecap.notification_retry_after_seconds', null));
@@ -864,7 +510,7 @@ it('passes the MonthlyRecap analysis for the viewed month as the monthlyRecap pr
 
 it('surfaces the monthly recap Telegram cooldown when a send is on cooldown', function (): void {
     $user = User::factory()->create();
-    $recap = Analysis::factory()->done('Bulan Mei kamu padat.')->create([
+    $recap = Analysis::factory()->done('May was dense.')->create([
         'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::MonthlyRecap,
@@ -880,7 +526,7 @@ it('surfaces the monthly recap Telegram cooldown when a send is on cooldown', fu
 
 it('only matches the recap row for the viewed month, not another month', function (): void {
     $user = User::factory()->create();
-    Analysis::factory()->done('Cerita bulan April.')->create([
+    Analysis::factory()->done('April story.')->create([
         'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::MonthlyRecap,
@@ -922,10 +568,10 @@ it('never flags the current (in-progress) month as the chain head', function ():
 });
 
 /**
- * The shared props gate the manual "Kirim notifikasi" pill on three pages. They
+ * The shared props gate the manual "Send notification" pill on three pages. They
  * have to mean "wired AND un-muted": a muted channel would otherwise leave the
  * button looking live while the send silently goes nowhere, which is worse than
- * the disabled state that at least points at Pengaturan.
+ * the disabled state that at least points at Settings.
  */
 it('reports telegramConnected false when the channel is muted but still linked', function (): void {
     $user = User::factory()->create();
@@ -955,7 +601,7 @@ it('surfaces the weekly recap Telegram cooldown on the snapshot payload', functi
     $snapshot = WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => Carbon::today()->toDateString(),
     ]);
-    $recap = Analysis::factory()->done('Minggu ini 28 km.')->create([
+    $recap = Analysis::factory()->done('This week, 28 km.')->create([
         'analysis_type' => AnalysisType::WeeklyRecap,
         'subject_type' => WeeklySnapshot::class,
         'subject_id' => $snapshot->id,
@@ -987,7 +633,7 @@ it('does not resolve the run payload on a partial reload that only wants snapsho
 
     $response->assertJsonPath('component', 'History');
     $response->assertJsonCount(1, 'props.weeklySnapshots');
-    foreach (['runs', 'notes', 'moods', 'journeyMatch', 'runsTruncated'] as $skipped) {
+    foreach (['runs', 'notes', 'moods'] as $skipped) {
         $response->assertJsonMissingPath("props.{$skipped}");
     }
 });
@@ -1006,18 +652,18 @@ it('runs no activity queries when only snapshots are requested', function (): vo
 
     $this->actingAs($user)->get('/history', $headers)->assertSuccessful();
 
-    // `latestRunDaysAgo` still runs — it is a single MAX() that drives the
-    // eager range scalars — so the assertion targets the payload queries the
-    // poll used to drag along: the capped run fetch (MAX_RUNS + 1 = 366) and
-    // the story-line reads behind `notes` and `moods`.
-    $runFetches = array_filter($queries, fn (string $sql): bool => str_contains($sql, 'limit 366'));
+    // `latestRunDaysAgo` and the week window still run — both are eager scalars
+    // driving `rangeFilter` / `hasOlderWeeks` — so the assertion targets the
+    // payload queries the poll used to drag along: the run fetch and the
+    // story-line reads behind `notes` and `moods`.
+    $runFetches = array_filter($queries, isRunFetch(...));
     $storyLineReads = array_filter($queries, fn (string $sql): bool => str_contains($sql, '`story_lines`'));
 
     expect($runFetches)->toBeEmpty()
         ->and($storyLineReads)->toBeEmpty();
 });
 
-it('fetches the capped run list exactly once on a full load', function (): void {
+it('fetches the paged run list exactly once on a full load', function (): void {
     $user = User::factory()->create();
     $run = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($run)->create(['start_date_local' => Carbon::now()]);
@@ -1029,10 +675,10 @@ it('fetches the capped run list exactly once on a full load', function (): void 
 
     $this->actingAs($user)->get('/history')->assertSuccessful();
 
-    // `runs`, `notes`, `moods` and `runsTruncated` are four separate closures
-    // over one memoized loader; more than one capped fetch means the
-    // memoization broke and every prop re-ran the query.
-    $runFetches = array_filter($queries, fn (string $sql): bool => str_contains($sql, 'limit 366'));
+    // `runs`, `notes` and `moods` are three separate closures over one memoized
+    // loader; more than one fetch means the memoization broke and every prop
+    // re-ran the query.
+    $runFetches = array_filter($queries, isRunFetch(...));
 
     expect($runFetches)->toHaveCount(1);
 });
@@ -1050,9 +696,15 @@ it('still returns every prop on a full page load', function (): void {
             ->has('notes')
             ->has('moods')
             ->has('weeklySnapshots')
-            ->where('runsTruncated', false)
+            ->where('hasOlderWeeks', false)
         );
 });
+
+/** The feed's paged run fetch, the only `activities` read ordered by id desc. */
+function isRunFetch(string $sql): bool
+{
+    return str_contains($sql, 'from `activities`') && str_contains($sql, 'order by `id` desc');
+}
 
 /**
  * Partial-reload headers mimicking the analysis poller's

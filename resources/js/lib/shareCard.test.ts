@@ -1,14 +1,17 @@
 import polylineCodec from '@mapbox/polyline';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { PALETTE } from '@/lib/chartTokens';
+
 import {
     CARD_GROUND,
     COLORWAYS,
+    brandMarkSvg,
     drawShareCard,
     shareCardBlob,
     type Layout,
     type Format,
-    type ShareKartuData,
+    type ShareCardData,
 } from './shareCard';
 
 // A straight two-point line used to exercise the route-stroke path.
@@ -17,7 +20,7 @@ const pointToPointPolyline = polylineCodec.encode([
     [0.01, 0.01],
 ]);
 
-const kartu: ShareKartuData = {
+const card: ShareCardData = {
     id: 1,
     name: 'Patient Hunter',
     shareUrl: '/activities/1',
@@ -119,7 +122,7 @@ beforeEach(() => {
 });
 
 describe('drawShareCard', () => {
-    const layouts: Layout[] = ['kartu', 'rute', 'stats'];
+    const layouts: Layout[] = ['card', 'route', 'stats'];
     const formats: Format[] = ['story', 'feed'];
 
     it.each(layouts)(
@@ -131,7 +134,7 @@ describe('drawShareCard', () => {
                 height: 0,
                 getContext: () => ctx,
             } as unknown as HTMLCanvasElement;
-            await drawShareCard(canvas, { kartu, layout, format: 'story' });
+            await drawShareCard(canvas, { card, layout, format: 'story' });
             expect(canvas.width).toBe(1080);
             expect(canvas.height).toBe(1920);
             expect(ctx.fillRect).toHaveBeenCalled(); // background painted
@@ -146,11 +149,11 @@ describe('drawShareCard', () => {
             height: 0,
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
-        await drawShareCard(canvas, { kartu, layout: 'rute', format });
+        await drawShareCard(canvas, { card, layout: 'route', format });
         expect(canvas.height).toBe(format === 'story' ? 1920 : 1080);
     });
 
-    const rarities: ShareKartuData['rarity'][] = [
+    const rarities: ShareCardData['rarity'][] = [
         'common',
         'uncommon',
         'rare',
@@ -159,7 +162,7 @@ describe('drawShareCard', () => {
     ];
 
     it.each(rarities)(
-        'renders the redesigned kartu hero for %s rarity (route + mascot)',
+        'renders the redesigned card hero for %s rarity (route + brand mark)',
         async (rarity) => {
             const ctx = makeCtx();
             const canvas = {
@@ -168,11 +171,11 @@ describe('drawShareCard', () => {
                 getContext: () => ctx,
             } as unknown as HTMLCanvasElement;
             await drawShareCard(canvas, {
-                kartu: { ...kartu, rarity },
-                layout: 'kartu',
+                card: { ...card, rarity },
+                layout: 'card',
                 format: 'story',
             });
-            // Pearl backdrop gradients + glowing route stroke + corner mascot.
+            // Pearl backdrop gradients + glowing route stroke + corner brand mark.
             expect(ctx.createLinearGradient).toHaveBeenCalled();
             expect(ctx.createRadialGradient).toHaveBeenCalled();
             expect(ctx.stroke).toHaveBeenCalled();
@@ -180,9 +183,9 @@ describe('drawShareCard', () => {
         },
     );
 
-    it('renders a multi-badge cluster on both layouts (2-col beside KM / row on rute)', async () => {
+    it('renders a multi-badge cluster on both layouts (2-col beside KM / row on route)', async () => {
         const many = {
-            ...kartu,
+            ...card,
             tags: [
                 'Rain Warrior',
                 'Habit Forming',
@@ -191,7 +194,7 @@ describe('drawShareCard', () => {
             ],
             tagEmojis: ['🌧️', '💪', '❤️‍🔥', '⚡'],
         };
-        for (const layout of ['kartu', 'rute'] as Layout[]) {
+        for (const layout of ['card', 'route'] as Layout[]) {
             const ctx = makeCtx();
             const canvas = {
                 width: 0,
@@ -199,7 +202,7 @@ describe('drawShareCard', () => {
                 getContext: () => ctx,
             } as unknown as HTMLCanvasElement;
             await drawShareCard(canvas, {
-                kartu: many,
+                card: many,
                 layout,
                 format: 'story',
             });
@@ -211,7 +214,7 @@ describe('drawShareCard', () => {
         }
     });
 
-    it('still renders the kartu hero when the run has no GPS route', async () => {
+    it('still renders the card hero when the run has no GPS route', async () => {
         const ctx = makeCtx();
         const canvas = {
             width: 0,
@@ -219,8 +222,8 @@ describe('drawShareCard', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, polyline: null },
-            layout: 'kartu',
+            card: { ...card, polyline: null },
+            layout: 'card',
             format: 'story',
         });
         // Mascot grows into the empty window as the fallback hero.
@@ -235,7 +238,7 @@ describe('drawShareCard', () => {
             getContext: () => null,
         } as unknown as HTMLCanvasElement;
         await expect(
-            drawShareCard(canvas, { kartu, layout: 'rute', format: 'feed' }),
+            drawShareCard(canvas, { card, layout: 'route', format: 'feed' }),
         ).resolves.toBeUndefined();
     });
 });
@@ -255,7 +258,7 @@ describe('shareCardBlob', () => {
         );
 
         await expect(
-            shareCardBlob({ kartu, layout: 'kartu', format: 'story' }),
+            shareCardBlob({ card, layout: 'card', format: 'story' }),
         ).resolves.toBe(blob);
     });
 
@@ -272,7 +275,7 @@ describe('shareCardBlob', () => {
         );
 
         await expect(
-            shareCardBlob({ kartu, layout: 'rute', format: 'feed' }),
+            shareCardBlob({ card, layout: 'route', format: 'feed' }),
         ).rejects.toThrow('toBlob failed');
     });
 });
@@ -291,8 +294,8 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, duration: '39 min 10 sec extremely long' },
-            layout: 'kartu',
+            card: { ...card, duration: '39 min 10 sec extremely long' },
+            layout: 'card',
             format: 'story',
         });
         expect(ctx.fillText).toHaveBeenCalled();
@@ -306,8 +309,8 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, zonePct: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 } },
-            layout: 'kartu',
+            card: { ...card, zonePct: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 } },
+            layout: 'card',
             format: 'story',
         });
         // Still renders the rest of the hero; the bar just contributes no segments.
@@ -323,11 +326,11 @@ describe('drawShareCard — edge / branch cases', () => {
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
             // Z2 and Z4 are zero — those segments are skipped, the rest drawn.
-            kartu: {
-                ...kartu,
+            card: {
+                ...card,
                 zonePct: { Z1: 30, Z2: 0, Z3: 40, Z4: 0, Z5: 30 },
             },
-            layout: 'kartu',
+            layout: 'card',
             format: 'story',
         });
         expect(ctx.fillRect).toHaveBeenCalled();
@@ -341,8 +344,8 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, subtitle: 'Long run this week', quote: null },
-            layout: 'kartu',
+            card: { ...card, subtitle: 'Long run this week', quote: null },
+            layout: 'card',
             format: 'story',
         });
         expect(ctx.fillText).toHaveBeenCalled();
@@ -356,14 +359,14 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: {
-                ...kartu,
+            card: {
+                ...card,
                 zonePct: null,
                 tags: [],
                 tagEmojis: [],
                 quote: null,
             },
-            layout: 'kartu',
+            layout: 'card',
             format: 'feed',
         });
         expect(ctx.fillText).toHaveBeenCalled();
@@ -377,21 +380,21 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: {
-                ...kartu,
+            card: {
+                ...card,
                 pace: null,
                 hr: null,
                 cadence: null,
                 duration: '—',
                 fastestKm: null,
             },
-            layout: 'kartu',
+            layout: 'card',
             format: 'feed',
         });
         expect(ctx.fillText).toHaveBeenCalled();
     });
 
-    it('renders the rute layout without an edition, date, or quote', async () => {
+    it('renders the route layout without an edition, date, or quote', async () => {
         const ctx = makeCtx();
         const canvas = {
             width: 0,
@@ -399,21 +402,21 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, edition: null, date: null, quote: null },
-            layout: 'rute',
+            card: { ...card, edition: null, date: null, quote: null },
+            layout: 'route',
             format: 'story',
         });
         expect(ctx.fillText).toHaveBeenCalled();
     });
 
-    it('renders the rute feed layout (trimmed stat cells, no story quote)', async () => {
+    it('renders the route feed layout (trimmed stat cells, no story quote)', async () => {
         const ctx = makeCtx();
         const canvas = {
             width: 0,
             height: 0,
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
-        await drawShareCard(canvas, { kartu, layout: 'rute', format: 'feed' });
+        await drawShareCard(canvas, { card, layout: 'route', format: 'feed' });
         expect(ctx.fillText).toHaveBeenCalled();
     });
 
@@ -425,21 +428,41 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: {
-                ...kartu,
-                rarity: 'mythic' as unknown as ShareKartuData['rarity'],
+            card: {
+                ...card,
+                rarity: 'mythic' as unknown as ShareCardData['rarity'],
             },
-            layout: 'rute',
+            layout: 'route',
             format: 'story',
         });
         expect(ctx.fillText).toHaveBeenCalled();
     });
 
-    it.each(['kartu', 'rute'] as Layout[])(
-        'draws the %s layout without a mascot/glyph when SVG glyph decode fails',
+    it('signs every layout with the two-arc brand mark, never a face', () => {
+        // Hand-ported from components/TemariMark.tsx: two nested open arcs,
+        // the outer one on the brand hue (or the card's mood, for the
+        // art-window signature), the inner one following the card's tone.
+        for (const [tone, inner] of [
+            ['ink', PALETTE.ink],
+            ['cream', '#f1f5f8'],
+        ] as const) {
+            const svg = brandMarkSvg(tone);
+            expect(svg).toContain('M50 12.5 A37.5 37.5 0 1 1 31.25 17.52');
+            expect(svg).toContain('M50 27 A23 23 0 1 1 30.09 61.5');
+            expect(svg).toContain(`stroke="${PALETTE.horizon}"`);
+            expect(svg).toContain(`stroke="${inner}"`);
+            expect(svg).toContain('fill="none"');
+            expect(svg).not.toContain('<circle');
+        }
+
+        expect(brandMarkSvg('ink', '#b23a4f')).toContain('stroke="#b23a4f"');
+    });
+
+    it.each(['card', 'route'] as Layout[])(
+        'draws the %s layout without the brand mark when SVG decode fails',
         async (layout) => {
             // Image that always errors -> loadTemari resolves null -> the hero
-            // (kartu) skips its mascot and the rute brand lockup omits the glyph.
+            // (card) and the route brand lockup both omit the mark.
             class FailingImage {
                 onload: (() => void) | null = null;
                 onerror: (() => void) | null = null;
@@ -455,7 +478,7 @@ describe('drawShareCard — edge / branch cases', () => {
                 getContext: () => ctx,
             } as unknown as HTMLCanvasElement;
             await drawShareCard(canvas, {
-                kartu: { ...kartu, polyline: null },
+                card: { ...card, polyline: null },
                 layout,
                 format: 'story',
             });
@@ -463,7 +486,7 @@ describe('drawShareCard — edge / branch cases', () => {
         },
     );
 
-    it('renders the kartu hero with no edition (no floating edition pill)', async () => {
+    it('renders the card hero with no edition (no floating edition pill)', async () => {
         const ctx = makeCtx();
         const canvas = {
             width: 0,
@@ -471,14 +494,14 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, edition: null },
-            layout: 'kartu',
+            card: { ...card, edition: null },
+            layout: 'card',
             format: 'story',
         });
         expect(ctx.fillText).toHaveBeenCalled();
     });
 
-    it('renders the feed kartu hero with a subtitle (feed sizing branch)', async () => {
+    it('renders the feed card hero with a subtitle (feed sizing branch)', async () => {
         const ctx = makeCtx();
         const canvas = {
             width: 0,
@@ -486,21 +509,21 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, subtitle: 'Tuesday tempo' },
-            layout: 'kartu',
+            card: { ...card, subtitle: 'Tuesday tempo' },
+            layout: 'card',
             format: 'feed',
         });
         expect(ctx.fillText).toHaveBeenCalled();
     });
 
-    it('draws the date + weather footer line together on the rute layout', async () => {
+    it('draws the date + weather footer line together on the route layout', async () => {
         const ctx = makeCtx();
         const canvas = {
             width: 0,
             height: 0,
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
-        await drawShareCard(canvas, { kartu, layout: 'rute', format: 'story' });
+        await drawShareCard(canvas, { card, layout: 'route', format: 'story' });
         expect(ctx.fillText).toHaveBeenCalledWith(
             '30 Mei 2026 · 06:30 · 27°C',
             expect.any(Number),
@@ -516,8 +539,8 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, date: null },
-            layout: 'rute',
+            card: { ...card, date: null },
+            layout: 'route',
             format: 'story',
         });
         expect(ctx.fillText).toHaveBeenCalledWith(
@@ -535,8 +558,8 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, date: null, weather: null },
-            layout: 'rute',
+            card: { ...card, date: null, weather: null },
+            layout: 'route',
             format: 'story',
         });
         expect(ctx.fillText).not.toHaveBeenCalledWith(
@@ -546,7 +569,7 @@ describe('drawShareCard — edge / branch cases', () => {
         );
     });
 
-    it('renders the rute layout with no stat cells', async () => {
+    it('renders the route layout with no stat cells', async () => {
         const ctx = makeCtx();
         const canvas = {
             width: 0,
@@ -554,15 +577,15 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: {
-                ...kartu,
+            card: {
+                ...card,
                 pace: null,
                 hr: null,
                 cadence: null,
                 duration: '—',
                 fastestKm: null,
             },
-            layout: 'rute',
+            layout: 'route',
             format: 'story',
         });
         expect(ctx.fillText).toHaveBeenCalled();
@@ -577,11 +600,11 @@ describe('drawShareCard — edge / branch cases', () => {
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
             // Only Z2/Z3 present; the missing keys exercise the `?? 0` fallbacks.
-            kartu: {
-                ...kartu,
-                zonePct: { Z2: 60, Z3: 40 } as ShareKartuData['zonePct'],
+            card: {
+                ...card,
+                zonePct: { Z2: 60, Z3: 40 } as ShareCardData['zonePct'],
             },
-            layout: 'kartu',
+            layout: 'card',
             format: 'story',
         });
         expect(ctx.fillRect).toHaveBeenCalled();
@@ -596,12 +619,12 @@ describe('drawShareCard — edge / branch cases', () => {
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
             // Two tags but only one emoji -> second pip uses the ✦ fallback.
-            kartu: {
-                ...kartu,
+            card: {
+                ...card,
                 tags: ['Early Bird', 'Speedster'],
                 tagEmojis: ['🌅'],
             },
-            layout: 'kartu',
+            layout: 'card',
             format: 'story',
         });
         expect(ctx.fillText).toHaveBeenCalled();
@@ -615,14 +638,14 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, name: '' },
-            layout: 'kartu',
+            card: { ...card, name: '' },
+            layout: 'card',
             format: 'story',
         });
         expect(ctx.fillText).toHaveBeenCalled();
     });
 
-    it.each(['kartu', 'rute'] as Layout[])(
+    it.each(['card', 'route'] as Layout[])(
         'strokes the route path on %s (no start/finish markers)',
         async (layout) => {
             const ctx = makeCtx();
@@ -633,7 +656,7 @@ describe('drawShareCard — edge / branch cases', () => {
                     getContext: () => ctx,
                 } as unknown as HTMLCanvasElement,
                 {
-                    kartu: { ...kartu, polyline: pointToPointPolyline },
+                    card: { ...card, polyline: pointToPointPolyline },
                     layout,
                     format: 'story',
                 },
@@ -653,8 +676,8 @@ describe('drawShareCard — edge / branch cases', () => {
                 getContext: () => shortRun.ctx,
             } as unknown as HTMLCanvasElement,
             {
-                kartu: { ...kartu, distanceKm: 1 },
-                layout: 'kartu',
+                card: { ...card, distanceKm: 1 },
+                layout: 'card',
                 format: 'story',
             },
         );
@@ -667,8 +690,8 @@ describe('drawShareCard — edge / branch cases', () => {
                 getContext: () => longRun.ctx,
             } as unknown as HTMLCanvasElement,
             {
-                kartu: { ...kartu, distanceKm: 20 },
-                layout: 'kartu',
+                card: { ...card, distanceKm: 20 },
+                layout: 'card',
                 format: 'story',
             },
         );
@@ -681,8 +704,8 @@ describe('drawShareCard — edge / branch cases', () => {
                 getContext: () => noDistance.ctx,
             } as unknown as HTMLCanvasElement,
             {
-                kartu: { ...kartu, distanceKm: null },
-                layout: 'kartu',
+                card: { ...card, distanceKm: null },
+                layout: 'card',
                 format: 'story',
             },
         );
@@ -705,8 +728,8 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, ascent: '128 m' },
-            layout: 'kartu',
+            card: { ...card, ascent: '128 m' },
+            layout: 'card',
             format: 'story',
         });
         // Elevation earns the grid's 6th cell (was TANGGAL, briefly TRIMP); TRIMP
@@ -752,8 +775,8 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, wind: '14 km/h' },
-            layout: 'kartu',
+            card: { ...card, wind: '14 km/h' },
+            layout: 'card',
             format: 'story',
         });
         expect(ctx.fillText).toHaveBeenCalledWith(
@@ -795,7 +818,7 @@ function cardBody(fills: string[]): string {
 function drawWith(
     ctx: ReturnType<typeof makeCtx>,
     colorway?: 'navy' | 'dawn' | 'ember',
-    layout: Layout = 'kartu',
+    layout: Layout = 'card',
 ) {
     return drawShareCard(
         {
@@ -803,7 +826,7 @@ function drawWith(
             height: 0,
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement,
-        { kartu, layout, format: 'story', colorway },
+        { card, layout, format: 'story', colorway },
     );
 }
 
@@ -854,7 +877,7 @@ describe('colorways', () => {
 describe('badge pills', () => {
     // The pill tint and its label were fixed cream, so on the light `dawn`
     // card the labels vanished into the card and only the emoji survived.
-    it.each(['kartu', 'rute'] as Layout[])(
+    it.each(['card', 'route'] as Layout[])(
         'inks the pill label from the colorway, never a fixed cream, on %s',
         async (layout) => {
             for (const colorway of ['navy', 'dawn', 'ember'] as const) {
@@ -904,8 +927,8 @@ describe('elevation', () => {
 });
 
 describe('colorway layouts', () => {
-    it('renders the rute and stats layouts under every colorway without crashing', async () => {
-        for (const layout of ['rute', 'stats'] as Layout[]) {
+    it('renders the route and stats layouts under every colorway without crashing', async () => {
+        for (const layout of ['route', 'stats'] as Layout[]) {
             for (const colorway of ['navy', 'dawn', 'ember'] as const) {
                 const ctx = makeCtx();
                 const canvas = {
@@ -914,7 +937,7 @@ describe('colorway layouts', () => {
                     getContext: () => ctx,
                 } as unknown as HTMLCanvasElement;
                 await drawShareCard(canvas, {
-                    kartu,
+                    card,
                     layout,
                     format: 'story',
                     colorway,
@@ -934,7 +957,7 @@ describe('stats template', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu,
+            card,
             layout: 'stats',
             format: 'story',
         });
@@ -968,7 +991,7 @@ describe('stats template', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, polyline: null },
+            card: { ...card, polyline: null },
             layout: 'stats',
             format: 'feed',
         });
@@ -987,7 +1010,7 @@ describe('stats template', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, pace: null, hr: null },
+            card: { ...card, pace: null, hr: null },
             layout: 'stats',
             format: 'story',
         });
@@ -1000,12 +1023,12 @@ describe('stats template', () => {
 });
 
 describe('thread-band accent (Slice 9c)', () => {
-    const layouts: Layout[] = ['kartu', 'rute', 'stats'];
+    const layouts: Layout[] = ['card', 'route', 'stats'];
 
     it.each(layouts)(
         'draws one stroke segment per band, scaling from common (1) to legendary (5) on the %s layout',
         async (layout) => {
-            const draw = async (rarity: ShareKartuData['rarity']) => {
+            const draw = async (rarity: ShareCardData['rarity']) => {
                 const ctx = makeCtx();
                 const canvas = {
                     width: 0,
@@ -1013,7 +1036,7 @@ describe('thread-band accent (Slice 9c)', () => {
                     getContext: () => ctx,
                 } as unknown as HTMLCanvasElement;
                 await drawShareCard(canvas, {
-                    kartu: { ...kartu, rarity },
+                    card: { ...card, rarity },
                     layout,
                     format: 'story',
                 });

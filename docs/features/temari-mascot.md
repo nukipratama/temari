@@ -1,149 +1,101 @@
 ---
-title: Temari mascot
-description: The character that voices the app — faces from mood/vibe and equipped gear from shared props
+title: Temari's face
+description: The line-art face and the brand mark — the app's whole identity art since PP2 retired the mascot rig.
 tags: [feature, temari]
 status: living
-reviewed: 2026-08-14
+reviewed: 2026-08-31
 code_refs:
-  - resources/js/components/temari/Temari.tsx
-  - resources/js/components/temari/TemariProto.tsx
-  - resources/js/lib/temariPose.ts
-  - resources/brand/build-mascot.mjs
-  - resources/brand/build-accessories.mjs
+  - resources/js/components/temari/FaceIcon.tsx
+  - resources/js/components/TemariMark.tsx
+  - resources/js/components/HeaderBrandMark.tsx
 ---
 
-# Temari mascot
+# Temari's face
 
-Temari is the app's running companion — the same character that narrates every
-recap, speech, and insight. The component family lives in
-`resources/js/components/temari/`. There are two layers: a pure SVG renderer and
-a dressed-up wrapper.
+Temari is the app's running companion — the same character that narrates every recap, speech and
+insight. Its whole drawn identity is now **two flat SVGs**: a face and a brand mark.
 
-**No dedicated route** — Temari is mounted inline across [[dashboard]], [[run-detail]], [[profile]], [[run-history]], and [[cards-collection]]. Every face, slot and season phase is also rendered live on `/devtools/design` ([Design.tsx](../../resources/js/pages/Devtools/Design.tsx)), against the same stylesheet the token audits read, so the character drifts visibly rather than quietly.
+**The elaborate mascot rig is gone.** Until `PP2` the character was a ball-bodied figure with ten
+drawn expressions, a mood halo, six wearable accessory slots and a season thread-coverage overlay,
+ported from `resources/brand/build-mascot.mjs` into `TemariProto.tsx` and pinned against that
+generator. The frozen prototype draws none of it — only a simple ring-and-face icon — so decision
+P10 cut the rig, its pose vocabulary (`temariPose.ts`), the accessory-driven variants
+(`Temari.tsx`, `lib/equippedAccessories.ts`) and the page that dressed it (see
+[[targets-accessories]]). Git history holds all of it. The generators themselves
+(`build-mascot.mjs` and the four brand scripts that imported it) were exploration art with no app
+consumer left, and `W2` swept them along with the rest of the unread brand preview layer.
+
+**No dedicated route** — both marks are mounted inline. Every size the face ships at is rendered
+live on `/devtools/design` ([Design.tsx](../../resources/js/pages/Devtools/Design.tsx)), against
+the same stylesheet the token audits read, so the art drifts visibly rather than quietly.
 
 ## System dependencies
 
-- **Gamification** — the `equipped` accessories map is written by [[gamification]] during ingest.
-- **Vibe & mood** — pose is driven by the daily vibe (`VIBE_TO_POSE`) or run mood (`MOOD_TO_POSE`) from [[vibe-and-mood]].
-- **Design tokens** — every fill resolves to a token in [[design-tokens]].
+- **Design tokens** — every stroke and fill resolves to a `--color-*` token in [[design-tokens]],
+  including the two grounds. See below.
+- **Vibe & mood** — a mood no longer picks a pose; it picks the face's *ring colour* on the
+  surfaces that carry one. See [[vibe-and-mood]].
 - **Voice** — Temari's speech copy follows [[voice-and-tone]].
 
-## The generator is the source of truth
+## FaceIcon
 
-The character is drawn by [build-mascot.mjs](../../resources/brand/build-mascot.mjs) and its
-catalogue by [build-accessories.mjs](../../resources/brand/build-accessories.mjs) — the same
-generators that produce the brand SVGs and preview sheets. One geometry produces all ten faces, so
-they share a skull; `EYE_Y` is tuned so the face *mass* balances (equal ink above and below the
-body centre), which is not the same as centring the eyes, and looks wrong if "corrected" by eye.
+[FaceIcon.tsx](../../resources/js/components/temari/FaceIcon.tsx) is a direct port of the
+prototype's own `FaceIcon`: a 100-unit viewBox holding an open ring (r 41), a filled face disc
+(r 31), two brows, two eyes and a smile. One `size` prop drives both axes.
 
-[TemariProto.tsx](../../resources/js/components/temari/TemariProto.tsx) is the React port of that
-geometry, not a second drawing of it.
-[TemariProto.test.tsx](../../resources/js/components/temari/TemariProto.test.tsx) renders each face
-and compares every path/circle/ellipse against `mascot(state)` from the generator, pins the 24
-catalogue colours against `ITEMS`, and checks the placement transform against the exported
-`BOUNDS`. A change to either generator fails the suite instead of silently forking the character.
-The generators are reachable from Vitest through the `@brand` alias in
-[vitest.config.ts](../../vitest.config.ts), which exists **only** in the test config — nothing in
-`resources/brand/` ever reaches a shipped bundle.
+Three colours are separate props so a surface can tint one without touching the others:
 
-### Placement
+| prop | default | what it is |
+|---|---|---|
+| `ring` | `--color-horizon` | the outer ring. Mood-tinted where the surface carries a mood, leaf on Today's and Profile's hero cards, brand horizon everywhere else |
+| `fill` | `--color-card` | the face disc |
+| `feature` | `--color-foreground` | brows, eyes, mouth |
 
-The mascot is drawn in its own 100-unit space and scaled into the `0 -4 120 140` viewBox every
-call site already reserves. The scale and offset are derived from the generator's exported
-`BOUNDS`, including `withAccessories` — the widest thing on a *bare* character is the mood halo,
-but an equipped aura reaches further on every side, and reading only the halo is what clipped the
-top edge on the first attempt. No hand-tuned offsets.
+The defaults are the ground-reactive semantic tokens, so the face inverts with the app's ground for
+free. `DARK_FACE` (exported alongside) is the prototype's own inverted read — `--color-sky-2` disc,
+`--color-cream` features — used where the surface is fixed-dark regardless of ground, such as the
+recap cards.
 
-## The ten faces
+### Where it is drawn
 
-`resting`, `pleased`, `impressed`, `hyped`, `skeptical`, `unimpressed`, `challenging`,
-`concerned`, `disappointed`, `celebrating`. Each is a brow pair, an eye shape
-(`open` / `wide` / `lid` / `wink-r`), a mouth, and a **mood halo**: a closed ring around the body
-whose colour and stroke weight carry the mood. The halo is never a fill, so it can't be misread as
-a progress meter, and its colours come from the mood tokens darkened only where the raw token
-misses 3:1 on cream.
+Eight of the prototype's eleven screens, at the size each one uses. It is **absent from Login,
+Trends and Settings**, which must not gain one.
 
-**An equipped aura suppresses the mood halo.** The two rings are concentric and, under the heaviest
-halo (`gold`, weight 9), leave a 0.3-unit gap — measured in the running app that is 0.11 CSS px at
-the 34 px dashboard mini and still only 0.30 CSS px at the 96 px equip preview, so the pair fused
-into one thick smear at *every* size rather than reading as two signals. The aura is the earned,
-deliberate ring and takes precedence; the ambient mood ring returns the moment the aura comes off,
-so no signal is permanently lost. The rule lives in one place per side — `mascot()`'s `showHalo` in
-[build-mascot.mjs](../../resources/brand/build-mascot.mjs) and the `aura === null` guard in
-[TemariProto.tsx](../../resources/js/components/temari/TemariProto.tsx) — and is proven identical
-by the parity block in
-[TemariProto.test.tsx](../../resources/js/components/temari/TemariProto.test.tsx), which diffs an
-aura-equipped render of every face against `mascot(state, { wearing: ['aura'] })`. Placement is
-deliberately *not* re-derived: `BOUNDS` stays the union of the bare halo and the equipped aura, so
-equipping an aura never resizes the character.
+| screen | placement | size |
+|---|---|---|
+| Today | `TodaySession`'s header (leaf ring) | 42 |
+| Today | `NoPlanCard`, when the account has no plan yet | 40 |
+| Plan · Race · Inbox · Today · History | the shared `EmptyPanel` empty state | 48 |
+| History | `RecapCard`, ringed by the week's mood | 36 |
+| History | `EmptyRunsState`'s hero | 72 |
+| Activity | the run hero panel | 56 |
+| Activity | the "what Temari says" header | 40 |
+| Profile | the hero panel (leaf ring) | 64 |
+| Onboarding | the connected step | 72 |
+| Onboarding | the centre of the required-pace ring | 26 |
 
-The eight original pose names (`proud`, `pumped`, `excited`, `holding`, `reading`, `wobble`,
-`observational`, `glow`) are still valid `pose` values and resolve to the face carrying the same
-read, so [temariPose.ts](../../resources/js/lib/temariPose.ts) and every call site are untouched.
-The resolved face is exposed as `data-expression` on the root element.
+The nudge-modal shell ([TemariNudgeModal](../../resources/js/components/temari/TemariNudgeModal.tsx))
+also draws one at 72; it is real-app plumbing the static prototype has no equivalent for (P1).
 
-## The two core components
+## TemariMark
 
-[TemariProto.tsx](../../resources/js/components/temari/TemariProto.tsx) takes `pose`, `size`,
-`tone`, `equipped`, `animate`, `dropShadow`, `seasonPhase` and `className`. It paints the six
-equipped slots: `headband` / `shirt` / `shorts` as flat bands clipped to the body circle (so they
-take the ball's curve for free and can never escape the silhouette), `shoes` under the body,
-`medal` on a lace over it, and `aura` as a dashed ring *in place of* the halo. Colour carries rarity
-and a small detail carries the theme, so two rare items in the same slot still read as different
-objects — those values were swept for separation and are not re-pickable casually. `tone` selects
-the silhouette outline (indigo on cream surfaces, cream on the one sky-panel placement). Motion is
-per-pose CSS animation only (`POSE_ANIM`, keyframes in `app.css`), never framer-motion, because the
-mascot renders on Login inside the framer-motion-free `bareLayout`. It's `memo`'d with a
-field-level comparator so a fresh inline `equipped={{...}}` doesn't rebuild the whole tree.
+[TemariMark.tsx](../../resources/js/components/TemariMark.tsx) is the brand mark — two nested open
+arcs, the outer one always on `--color-horizon`, the inner following a `color` prop. Ported from
+the prototype's `rack/TemariMark.tsx`, the only logo it draws.
 
-The catalogue lives twice for the same reason the geometry does: `MEDAL_ITEMS` and its four
-siblings in [TemariProto.tsx](../../resources/js/components/temari/TemariProto.tsx) mirror `ITEMS`
-in [build-accessories.mjs](../../resources/brand/build-accessories.mjs), and
-[TemariProto.test.tsx](../../resources/js/components/temari/TemariProto.test.tsx) pins each
-rendered fill against the generator's value, so a colour moved on one side fails the suite. The
-tightest pair is **medal silver vs platinum**: they are one neutral ramp at two lightnesses, so
-hue and chroma contribute almost nothing to the separation. Platinum was pushed cool (`#d8f0ff`,
-L\*93.5 / a\*−4.9 / b\*−9.9) to widen it — ΔE00 9.15 → 12.01 against silver, ΔE76 13.75 → 17.23 —
-which is close to the ceiling a cool push can buy before the disc stops reading as metal. It
-separates cleanly at the 96 px equip preview; at the 34 px mini the disc is ~3 px across and no
-colour choice carries a tier distinction there. Re-neutralising it collapses the pair back.
+It is the app's **single** brand mark since `PP2`. Before, there were two: this ring glyph in the
+shell header, and a second mascot-face glyph (`BrandMark`'s `TemariGlyph`) everywhere else. Four
+surfaces draw it now:
 
-[Temari.tsx](../../resources/js/components/temari/Temari.tsx) is the **wrapper you almost always
-use**. It reads `equippedAccessories` from the globally-shared Inertia props (built in
-[GamificationProps.php](../../app/Services/Inertia/GamificationProps.php)), maps them with
-`serverToEquipped` ([equippedAccessories.ts](../../resources/js/lib/equippedAccessories.ts)), and
-renders `TemariProto`. So a hard-earned headband shows up *everywhere* Temari appears, not just on
-the Accessories page. Use `TemariProto` directly only when a *specific* accessory must show (the equip
-preview, the just-unlocked celebration). See [[targets-accessories]].
-
-## Season coverage
-
-An optional `seasonPhase` prop (`base`/`build`/`peak`/`taper`) winds discrete thread bands around
-the body: `base` (one sparse band) → `build` (three) → `peak` (six, fully wound) → `taper` (peak's
-full set plus a rested shine — progress kept, never undone). Only the [[plan-periodizer]] Plan
-tab's season summary passes it, so the mascot stays phase-agnostic everywhere else.
-
-## Picking a pose
-
-[temariPose.ts](../../resources/js/lib/temariPose.ts) holds the maps from app
-state to pose:
-
-- `MOOD_TO_POSE` — run `Mood` → pose (e.g. `blazing` → `proud`, `gassed` → `wobble`,
-  `chill` → `reading`). Used on the run detail, the calendar and the recaps.
-- `poseForRun` — an `ActivityDetail` → pose, preferring the persisted backend
-  mood and falling back to the `moodFromActivity` heuristic when a run has no
-  post-run StoryLine yet. This is what the dashboard uses.
-- `poseForFormStatus` — weekly training-load `FormStatus` → pose, used on the
-  weekly recap in the run log.
-
-## Size & animation
-
-`Temari` takes `size` (px) and `animate` (`false` = static, `true` =
-pose-driven, or an explicit CSS animation string). Recap cards pass
-`animate={false}` for a calm static portrait; ambient placements animate.
+- [HeaderBrandMark](../../resources/js/components/HeaderBrandMark.tsx) — the shell header lockup.
+- [BrandMark](../../resources/js/components/BrandMark.tsx) — the larger wordmark lockup, on Login.
+- [RouteGlyph](../../resources/js/components/card/RouteGlyph.tsx) — a Card's watermark when a run
+  has no route to draw, and `RunCardMini`'s corner signature.
+- The share card, hand-ported to canvas as `brandMarkSvg` in
+  [shareCard.ts](../../resources/js/lib/shareCard.ts) — see [[cards-collection]].
 
 ## See also
 
-- [[design-tokens]] — the palette these SVG fills are tuned to
-- [[voice-and-tone]] — what Temari actually *says* in the bubbles
-- [[targets-accessories]] — where the equipped gear is earned and chosen
+- [[design-tokens]] — the palette these SVG strokes resolve through
+- [[voice-and-tone]] — what Temari actually *says*
+- [[targets-accessories]] — the accessory catalog the rig used to wear

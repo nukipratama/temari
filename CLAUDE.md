@@ -5,7 +5,8 @@
 - UI is **Inertia 2 + React 19 + TypeScript + Tailwind v4** (Laravel React Starter Kit conventions). Routes go through controllers (`Inertia::render('PageName', $props)`); pages live in `resources/js/pages/`, components in `resources/js/components/`.
 - `livewire/livewire` ships for Pulse internals only. **Do NOT use Livewire in app code.**
 - `openai-php/laravel` is wired as an **Azure OpenAI** client. `inertiajs/inertia-laravel` v3 speaks the **Inertia 2** protocol.
-- App is **light-mode only**: `.dark` is never applied to `<html>` and there are no `*-dark` tokens. Write light-only.
+- App ships **two grounds**, switched by `data-theme` on `<html>` (never a `.dark` class): **dark is the default**, light and system are reachable from Settings. The semantic `--color-*` layer (`background`/`foreground`/`card`/`popover`/`muted`/`accent`/`*-ink`) flips between them; the named palette beneath it is fixed identity and does not. Write the ground-reactive semantic classes (`text-foreground`, `bg-card`, `text-leaf-ink`), never a value pinned to one ground — and where a surface is deliberately fixed-dark (the sky cards), pin its text explicitly rather than letting it inherit. Full table in [docs/design-tokens.md](docs/design-tokens.md).
+- **English-only, no i18n layer** — UI copy, prompt strings, route paths, identifiers, enum values and env var names alike. A deliberate hard swap on 2026-08-09, and guidance rather than a gate since `C1` cut the script that enforced it, so a considered exception is fine. **`W6` closed the last pockets** ([slice doc](plan/parity/slices/W6-indonesian-pockets.md)): `aku_profile_voice` is now `profile_voice`, the share-card layout tokens `kartu`/`rute` are `card`/`route`, and `briefing_featured_kartu_voice` went with the panel `W2` deleted. **Three exceptions remain, all the same shape** — regression assertions whose Indonesian *is* the thing being asserted absent, so removing the word guts the test: `angin` and `tidak tersedia` in `RunCardImageRendererTest`, and `maksimal 90 kata` / `maksimal 100 kata` in `NarratorsCoverageTest`. The badge-rename migration also names the old slugs on purpose, being the map from them.
 - A second **`analytics`** DB connection (separate schema, same MySQL server) holds metering tables (e.g. `ai_token_usages`). Its migrations live in `database/migrations/analytics/` and run via `--database=analytics --path=...`; in tests it shares the default test DB (see [tests/TestCase.php](tests/TestCase.php)). Beyond `AI`, backend logic is split by domain under `app/Services/` (`AI`, `Run`, `Gamification`, `Strava`, `Geo`, `Weather`); see the `temari` skill for the full map.
 
 > **Design tokens, voice & tone, typography, the AI narrator pipeline, the 1:1 test convention, and the Sail toolchain all live in the `temari` skill** (`.claude/skills/temari/`). Activate it for any UI, AI-narration, or test work. Source-of-truth docs: [docs/design-tokens.md](docs/design-tokens.md), [docs/voice-and-tone.md](docs/voice-and-tone.md).
@@ -33,7 +34,7 @@ Everything runs in Docker via **Sail** (no host PHP/Node). Stop at the first fai
 ./vendor/bin/sail npm run test               # frontend (Vitest); `test:coverage` for the 95% gate
 ./vendor/bin/sail npm run build              # build assets (`npm run dev` for HMR)
 ./vendor/bin/sail bin pint                    # format PHP (pre-commit also runs phpstan + rector)
-./vendor/bin/sail composer check             # full gate: pint + phpstan + rector + pest + tsc + vitest (pre-push)
+./vendor/bin/sail composer check             # THE gate, pre-push: runs exactly what CI runs
 ```
 
 Running several agents at once, each in its own `git worktree`? See the `temari` skill's

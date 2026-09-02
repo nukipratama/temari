@@ -1,49 +1,49 @@
 ---
 title: Accessories
-description: The accessories page — equip/unequip with a live Temari preview, live unlock progress toward what's still locked.
+description: The accessory unlock catalog — still granted at ingest and surfaced in the inbox; the wardrobe that wore them is gone.
 tags: [feature, collection]
 status: living
-reviewed: 2026-08-19
+reviewed: 2026-08-31
 code_refs:
-  - resources/js/pages/Collection/Accessories.tsx
-  - app/Http/Controllers/AccessoryController.php
-  - resources/js/components/temari/TemariProto.tsx
-  - resources/js/components/celebrations/AccessoryUnlockModal.tsx
-  - resources/js/components/me/MeTabs.tsx
+  - app/Actions/Gamification/GrantEligibleUnlocksAction.php
 ---
 
 # Accessories
 
-**Accessories** (`/accessories`) is the wardrobe of what's been earned and can be put on Temari, showing live progress toward what's still locked. Accessories are organized by six equipment **slots**: medal, headband, shirt, shorts, shoes, aura.
+**Accessories** were the wardrobe of what a runner had earned and could put on Temari, organized
+into six equipment **slots**: medal, headband, shirt, shorts, shoes, aura.
 
-The badge board that used to sit alongside this page as a second Collection sub-tab (`/badges`) retired once its content moved onto `/trends` as badge milestones on the Fitness/Fatigue timeline — see [[gamification]]. `/cards` retired the same way once every earned card became browsable inline on [[run-history]] instead. There is no more standalone "Collection" bottom-nav tab either: Accessories folded into the Me destination alongside Profile and Settings, switched by the shared `MeTabs` segmented nav — see [[profile]].
+**There is no accessory surface any more.** The prototype draws no wardrobe, and `PP2` cut the
+mascot rig that was the only thing capable of wearing an item, so the page went with it: the
+`/accessories` route, its `/api/accessories/equip` write, `AccessoryController`,
+`EquipAccessoryRequest`, `Collection/Accessories.tsx`, `lib/equippedAccessories.ts`, and the three
+legacy redirects that pointed at it are all gone. The badge board and
+`/cards` had already retired the same way — badges surface as chips on `/trends`' fitness panel,
+cards inline on [[run-history]].
 
-**Navigation:** `route('accessories')` → `/accessories` (`AccessoryController::index`). The old `/goals` accessory-progress page (Slice 5 through Slice 6) and its `/target` legacy redirect both retired in Slice 7 — both now redirect straight to `/accessories`, where the progress numbers moved.
+## What still runs
 
-## System dependencies
+The **grant** engine is untouched; the **wardrobe** is entirely gone.
 
-- **Gamification** — accessory progress and grants come from `GoalResolver`/`GrantEligibleUnlocksAction`; the rest-day reward from `GrantSeasonUnlocksAction`. See [[gamification]].
-- **Temari mascot** — the live preview hero uses `TemariProto` to render equipped gear; see [[temari-mascot]].
-- **Data model** — `UserUnlock`, `RunnerProfile` shapes in [[data-model]].
+- [GrantEligibleUnlocksAction](../../app/Actions/Gamification/GrantEligibleUnlocksAction.php)
+  still grants accessories at ingest, writing `user_unlocks` rows. See [[gamification]].
+- `config/temari_unlocks.php` (display) and `config/temari_goals.php` (grant criteria) are intact,
+  and `GoalResolver` still feeds `LifetimeStatsTool`'s "accessories unlocked out of the total".
 
-## Accessories (`/accessories`)
+`W2` swept everything on the wearing side, because none of it could be read or changed: the
+`EquippedAccessories` service, its `equippedAccessories` shared prop (recomputed and cached on
+*every* page load for a value no component destructured), its `SharedPropCacheKey` entry, and the
+`user_unlocks.equipped` column itself — which had no production write path left at all once
+`AccessoryController::equip()` went, only a demo seeder and a factory state. The 25 item SVGs and
+their generator went with the rest of the unread brand preview layer. Git history holds all of it.
 
-The [AccessoryController](../../app/Http/Controllers/AccessoryController.php) `index` walks the `temari_unlocks` config catalog and, for each entry, resolves its slot (via the `EquippedAccessories` service), whether the user has unlocked it (`UserUnlock` rows), whether it's currently equipped, and — since Slice 7 — its live `current`/`target`/`unit` via `GoalResolver::forUser()` (the same server-side computation the retired `/goals` page used). It also returns the resolved `equipped` map (one key per slot).
-
-[Accessories](../../resources/js/pages/Collection/Accessories.tsx) renders:
-
-- A **live preview hero** — the currently-equipped set mapped onto [TemariProto](../../resources/js/components/temari/TemariProto.tsx), the mascot rig that actually draws each accessory (headband / medal / shirt / shorts / shoes / aura). The "Currently equipped" list mirrors what each slot holds.
-- **Per-slot sections** — unlocked items first, locked items dashed-out with a lock badge, their unlock criteria, and (Slice 7) a live progress bar/count reusing the criteria text's own `current`/`target`/`unit`. On mobile the locked items collapse behind a "+N locked" toggle; on `sm+` they're always shown. Each unlocked, un-equipped item shows an **Equip** button.
-
-### Equipping
-
-**Equip** posts to `/api/accessories/equip` with the `unlock_key` (`preserveScroll`). The controller's `equip` method validates the key is unlocked and slotted, then **unequips every sibling in the same slot** before marking this one equipped — so a slot holds at most one item. It redirects back, and Inertia re-renders with the new `equipped` map, so the preview Temari updates immediately.
-
-### Unlock celebration
-
-When a run earns a *major* accessory, [AccessoryUnlockModal](../../resources/js/components/celebrations/AccessoryUnlockModal.tsx) (mounted globally) pops with Temari wearing the new item and a CTA that routes to `/accessories`. It only opens when the unlock flash carries `is_major`. The unlock itself is granted upstream during ingest — see [[gamification]].
+An unlock still lands as an inbox row with its rarity badge, which is the one place the prototype
+does draw unlocks. The badge reads its tier out of `config/temari_unlocks.php` by `unlock_key` at
+render time — `UnlockGrantedNotification`'s stored payload has never carried one, so until `PS9`
+resolved it read-side the badge had a branch and no data — see [[notification-inbox]].
 
 ## Notes
 
-- The slot system, accessory rig, and poses live with the mascot — see [[temari-mascot]].
-- Unlock state is stored in `user_unlocks`; resolved accessory progress and season goals are never stored, only computed live — see [[data-model]].
+- Unlock state is stored in `user_unlocks`; accessory progress and season goals are never stored,
+  only computed live — see [[data-model]].
+- The unlock celebration (takeover modal + toast) was cut in `PP3` (P14).

@@ -9,5 +9,5 @@ export const ICON_TONE: Record<Tone, string> = {
     brand: 'bg-leaf/15 text-leaf-ink',
     accent: 'bg-horizon/15 text-horizon-ink',
     pop: 'bg-citrus/15 text-citrus-ink',
-    neutral: 'bg-surface-sunken text-ink-2',
+    neutral: 'bg-muted text-text-2',
 };
