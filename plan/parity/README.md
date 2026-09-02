@@ -202,6 +202,20 @@ Every deviation from §2 lands here, dated, with the reason. Empty is the health
 
 ---
 
+## 6b. Raised, not yet scheduled
+
+Things the user has asked for that are **not** parity items and need a slice of their own. Kept
+here so they are not lost between waves.
+
+| # | item | state |
+|---|---|---|
+| T1 | **A custom date picker.** The date field opens Chrome's native `<input type="date">` popup, which CSS cannot theme, so it reads as a different product from the rest of the form. The prototype uses a native `type="date"` too (`RaceGoalScreen.tsx:300`), so there is nothing to port — this is an **addition**, not parity. **Ruled by the user 2026-09-02**: a token-styled calendar popover on pointer devices, the native input kept on touch, where the OS sheet beats anything we would build. Touches `RaceGoalForm`, `Onboarding` and `UsageFilters` (the last operator-only, per P20). | ruled, unscheduled |
+| T2 | **The content column at large viewports.** Raised by the user 2026-09-02 against a ~2300px screenshot: the 760px column leaves the page reading mostly empty. **This reopens the corrected P5 and P31**, whose 760px is the prototype's own container-query value and was adopted deliberately — so it is an amendment to a settled decision, not a bug fix, and needs its own ruling on what the wide layout becomes. Note the prototype cannot answer it: its `PhoneFrame` never renders wider than the frame, so above 900px there is no drawn reference at all and whatever we choose is ours. | needs a ruling |
+| T3 | **The `empty` card tone.** `Card`'s `empty` variant is `border-dashed bg-card/40`; every empty state the prototype draws is a solid `border-border-strong bg-card shadow-e1`. Spans all nine `EmptyPanel` call sites. Raised inside `PS12` and left standing rather than folded in. | raised in `PS12` |
+| T4 | **`resources/brand/tokens.css` and `tokens.html` are stale and unread.** Both still hold the pre-Pewter gold-and-indigo palette; nothing imports either. Found in `PP5`. Belongs to `W2`'s dead-code sweep. | flagged for `W2` |
+
+---
+
 ## 7. Carried over unchanged
 
 These still hold from the original program and are not re-litigated here:
