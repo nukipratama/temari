@@ -131,7 +131,7 @@ describe('Settings', () => {
         ).toBeInTheDocument();
     });
 
-    // The page used to open with a bare <h1>Pengaturan</h1>, the only screen in
+    // The page used to open with a bare untranslated <h1>, the only screen in
     // the app not using the editorial header every other page shares.
     it('opens with the editorial header rather than a bare title', () => {
         render(<Settings />);

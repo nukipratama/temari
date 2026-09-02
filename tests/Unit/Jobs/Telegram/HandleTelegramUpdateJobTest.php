@@ -37,7 +37,7 @@ function startUpdate(int $chatId, string $token, ?string $username = null): arra
 }
 
 it('links the chat and replies with a welcome naming the account on a valid token', function (): void {
-    $user = User::factory()->create(['name' => 'Budi Lari']);
+    $user = User::factory()->create(['name' => 'Budi Santoso']);
     $token = app(TelegramLinkToken::class)->mint($user->id);
 
     runUpdate(startUpdate(555, $token, 'budi_runs'));
@@ -49,7 +49,7 @@ it('links the chat and replies with a welcome naming the account on a valid toke
         'revoked_at' => null,
     ]);
 
-    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'Budi Lari')
+    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'Budi Santoso')
         && $request['chat_id'] === 555);
 });
 
@@ -65,7 +65,7 @@ it('does not link and replies with the expired copy on an expired token', functi
 });
 
 it('treats a token as single-use: a second /start with the same token does not re-link', function (): void {
-    $user = User::factory()->create(['name' => 'Budi Lari']);
+    $user = User::factory()->create(['name' => 'Budi Santoso']);
     $token = app(TelegramLinkToken::class)->mint($user->id);
 
     // First /start links from chat 555.
@@ -124,7 +124,7 @@ it('clears a revoked connection from another user before re-linking the same cha
     $userA = User::factory()->create();
     TelegramConnection::factory()->for($userA)->revoked()->create(['chat_id' => 555]);
 
-    $userB = User::factory()->create(['name' => 'Budi Lari']);
+    $userB = User::factory()->create(['name' => 'Budi Santoso']);
     $token = app(TelegramLinkToken::class)->mint($userB->id);
 
     runUpdate(startUpdate(555, $token, 'budi_runs'));

@@ -678,7 +678,7 @@ it('reads the recent runs as mood, distance, intensity and a one-liner', functio
         'subject_id' => $a->id,
         'analysis_type' => AnalysisType::PostRunSpeech,
         'status' => AnalysisStatus::Done,
-        'content' => 'Lari yang rapi.',
+        'content' => 'A tidy run.',
     ]);
 
     $reading = new RecentRunsTool($a->user, Carbon::today(), app(VerdictNarrator::class))->handle([]);

@@ -107,7 +107,7 @@ it('accepts the discriminator shape its own dispatch sites write', function (str
     expect(triggerAnalysisPasses($type, $discriminator))->toBeTrue();
 })->with([
     'briefing mascot voice day' => ['briefing_mascot_voice', '2026-05-18'],
-    'aku profile voice ISO week' => ['profile_voice', '2026-W21'],
+    'profile voice ISO week' => ['profile_voice', '2026-W21'],
     'monthly recap month' => ['monthly_recap', '2026-05'],
     'weekly recap keys off the snapshot id' => ['weekly_recap', null],
     'card flavor keys off the card id' => ['card_flavor', null],

@@ -28,16 +28,16 @@ function postRunSpeechFor(Activity $activity, AnalysisStatus $status, ?string $c
 it('returns mood + oneline for a single ready activity', function (): void {
     $activity = Activity::factory()->create();
     StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'blazing']);
-    postRunSpeechFor($activity, AnalysisStatus::Done, 'Lari pagi yang mantap.');
+    postRunSpeechFor($activity, AnalysisStatus::Done, 'A strong morning run.');
 
     expect(new PostRunNoteReader()->forActivity($activity->id))
-        ->toBe(['oneline' => 'Lari pagi yang mantap.', 'mood' => 'blazing']);
+        ->toBe(['oneline' => 'A strong morning run.', 'mood' => 'blazing']);
 });
 
 it('returns null for a single activity when the speech is not Done', function (): void {
     $activity = Activity::factory()->create();
     StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'chill']);
-    postRunSpeechFor($activity, AnalysisStatus::Pending, 'belum siap');
+    postRunSpeechFor($activity, AnalysisStatus::Pending, 'not ready');
 
     expect(new PostRunNoteReader()->forActivity($activity->id))->toBeNull();
 });

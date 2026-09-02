@@ -19,7 +19,7 @@ function summaryPayload(int $id, array $overrides = []): array
 {
     return [
         'id' => $id,
-        'name' => 'Lari pagi',
+        'name' => 'Morning run',
         'sport_type' => 'Run',
         'start_date_local' => '2026-05-10T06:00:00Z',
         'distance' => 10_120.5,
@@ -59,7 +59,7 @@ it('maps every field the summary endpoint carries onto the detail row', function
 
     $detail = ActivityDetail::query()->firstOrFail();
 
-    expect($detail->name)->toBe('Lari pagi')
+    expect($detail->name)->toBe('Morning run')
         ->and($detail->distance)->toBe(10_120.5)
         ->and($detail->moving_time)->toBe(3300)
         ->and($detail->elapsed_time)->toBe(3400)
@@ -97,13 +97,13 @@ it('leaves every stream-derived column null so nothing is fabricated', function 
 it('never downgrades an already-detailed activity', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create(['strava_external_id' => 111]);
-    ActivityDetail::factory()->for($activity)->create(['name' => 'Sudah lengkap', 'trimp_edwards' => 120.0]);
+    ActivityDetail::factory()->for($activity)->create(['name' => 'Complete', 'trimp_edwards' => 120.0]);
 
     $inserted = app(SummaryIngest::class)->store($user->id, [summaryPayload(111)]);
 
     expect($inserted)->toBe(0)
         ->and($activity->refresh()->ingest_state)->toBe(IngestState::Detailed)
-        ->and($activity->detail?->name)->toBe('Sudah lengkap')
+        ->and($activity->detail?->name)->toBe('Complete')
         ->and($activity->detail?->trimp_edwards)->toBe(120.0);
 });
 
@@ -116,7 +116,7 @@ it('fills in a stub left behind by a failed ingest and makes it visible', functi
     $stub->refresh();
     expect($stub->analyzed_at)->not->toBeNull()
         ->and($stub->ingest_state)->toBe(IngestState::Summary)
-        ->and(ActivityDetail::query()->where('activity_id', $stub->id)->value('name'))->toBe('Lari pagi');
+        ->and(ActivityDetail::query()->where('activity_id', $stub->id)->value('name'))->toBe('Morning run');
 });
 
 it('is idempotent across repeated syncs of the same history', function (): void {

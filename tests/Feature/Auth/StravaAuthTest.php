@@ -129,7 +129,7 @@ it('exposes the stashed intended deep link as the login `from` prop', function (
 });
 
 it('drops a foreign intended url from the login `from` prop', function (): void {
-    $this->withSession(['url.intended' => 'https://evil.test/aktivitas/9'])
+    $this->withSession(['url.intended' => 'https://evil.test/activities/9'])
         ->get(route('login'))
         ->assertInertia(fn (Assert $page) => $page->component('Auth/Login')->where('from', null));
 });

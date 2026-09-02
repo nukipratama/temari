@@ -112,7 +112,7 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
         'accessory.headband_epic',
     );
 
-    // The week-keyed Aku voice is backfilled to a done analysis row.
+    // The week-keyed profile voice is backfilled to a done analysis row.
     $profileVoice = Analysis::query()
         ->where('subject_type', AnalysisType::PROFILE_VOICE_SUBJECT_TYPE)
         ->where('subject_id', $user->id)

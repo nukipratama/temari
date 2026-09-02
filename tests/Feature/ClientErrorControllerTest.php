@@ -14,7 +14,7 @@ it('logs a reported client error and returns no content', function (): void {
 
     $this->postJson('/client-errors', [
         'message' => 'Boom',
-        'url' => 'https://temari.test/aktivitas',
+        'url' => 'https://temari.test/activities',
         'stack' => 'at foo (app.tsx:1)',
         'componentStack' => 'in RunPage',
     ])->assertNoContent();
@@ -22,7 +22,7 @@ it('logs a reported client error and returns no content', function (): void {
     Log::shouldHaveReceived('warning')->withArgs(
         fn (string $message, array $context): bool => $message === 'client-error'
             && $context['message'] === 'Boom'
-            && $context['url'] === 'https://temari.test/aktivitas',
+            && $context['url'] === 'https://temari.test/activities',
     );
 });
 

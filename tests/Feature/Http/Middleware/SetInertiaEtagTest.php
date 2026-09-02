@@ -103,7 +103,7 @@ it('misses when the page data moves', function (): void {
 
     $etag = etagVisit('/history')->assertSuccessful()->headers->get('ETag');
 
-    $activity->detail->update(['name' => 'Lari sore yang beda']);
+    $activity->detail->update(['name' => 'A different evening run']);
 
     expect(etagVisit('/history', $etag)->assertSuccessful()->getStatusCode())->toBe(200);
 });

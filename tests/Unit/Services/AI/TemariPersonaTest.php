@@ -14,14 +14,14 @@ beforeEach(function (): void {
  *    Briefing Temari card. Voice should be first-person ("I" / "you"), dry,
  *    lowercase-leaning, and anchored on a number that moved. No corporate
  *    cheer, no exclamation point on an ordinary day, no profanity/ALL CAPS.
- *  - Open a recent run at /aktivitas/{id} and read all 4 thread entries
+ *  - Open a recent run at /activities/{id} and read all 4 thread entries
  *    (run story, technical translation, split highlight, HR zone). Same
  *    voice across all four — they're produced by different narrators but
  *    should sound like the same character.
- *  - Open /aktivitas + /kalender and read the weekly recap narrative + trend caption.
+ *  - Open /history and read the weekly recap narrative + trend caption.
  *    The week-over-week comparison is the centrepiece, not a footnote.
- *  - Open /rekor and read the PR context flavor lines.
- *  - Open /card and read the card flavor on the spotlight card.
+ *  - Open /profile and read the PR context flavor lines.
+ *  - Open a run's share card and read its card flavor.
  *
  *  What counts as drift now, beyond stiffness: praise handed out by default,
  *  a warm closer bolted onto a block whose numbers didn't earn one, or a
@@ -147,7 +147,7 @@ it('mandates English output regardless of tool results, prior narration, or Indo
 });
 
 it('forbids speaking internal field names, tidied or not', function (): void {
-    // Prod output said "volume-ramp-nya turun banget" and "session intent-nya
+    // Prod output said "volume ramp dropped a lot" and "session intent-nya
     // memang easy": column names read aloud as if they were words.
     expect($this->prompt)
         ->toContain('Data field names')
@@ -183,10 +183,12 @@ it('caps decimals at one place so tool precision stops leaking through', functio
 
 it('forbids announcing missing data, not just inventing it', function (): void {
     // Validated against prod: on a run with no HR the model correctly refused to
-    // invent one, then told the user so -- "Data HR zone-nya nggak kebaca, jadi
-    // aku nggak mau ngarang" -- in three of four blocks. It obeyed the
-    // don't-invent half and ignored the don't-announce half, so both are stated
-    // as separate hard rules with the observed sentences as the anti-examples.
+    // invent one, then told the user so -- announcing, in effect, "the HR zone
+    // data would not read, so I am not going to make one up" -- in three of four
+    // blocks. It obeyed the don't-invent half and ignored the don't-announce
+    // half, so both are stated as separate hard rules with the observed
+    // sentences as the anti-examples. (Observed pre-swap, hence originally in
+    // Indonesian; the rules themselves are language-independent.)
     expect($this->prompt)
         ->toContain('Two rules, both hard')
         ->toContain('NEVER announce it')

@@ -220,7 +220,7 @@ describe('cardPropsFromDetail', () => {
     const fullDetail: ActivityDetail = {
         id: 1,
         activity_id: 1,
-        name: 'Pagi santai',
+        name: 'Easy morning',
         start_date_local: '2026-05-11T06:30:00Z',
         distance: 5000,
         elapsed_time: 1810,
@@ -240,7 +240,7 @@ describe('cardPropsFromDetail', () => {
         expect(props.km).toBe('5.00');
         expect(props.duration).toBe('30:10');
         expect(props.trimp).toBe('43');
-        expect(props.subtitle).toContain('Pagi santai · ');
+        expect(props.subtitle).toContain('Easy morning · ');
         expect(props.stats).toEqual({
             pace: '6:02/km',
             hr: '152 bpm',

@@ -138,7 +138,7 @@ it('resolves the row the weekly kickoff wrote for the current ISO week', functio
     Carbon::setTestNow('2026-05-18 09:00:00');
 
     $user = User::factory()->create();
-    Analysis::factory()->done('Kamu tipe yang sabar ngebangun base.')->create([
+    Analysis::factory()->done('You are the patient type about building base.')->create([
         'subject_type' => AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::ProfileVoice,
@@ -158,7 +158,7 @@ it('resolves the row the weekly kickoff wrote for the current ISO week', functio
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('profileVoice.status', 'done')
-            ->where('profileVoice.content', 'Kamu tipe yang sabar ngebangun base.')
+            ->where('profileVoice.content', 'You are the patient type about building base.')
             ->where('profileVoice.discriminator', '2026-W21'));
 
     Carbon::setTestNow();
@@ -191,7 +191,7 @@ it('serves the hero stats from LifetimeStats, keeping 1dp total km and 2dp longe
             ->etc());
 });
 
-it('reuses the LifetimeStats cache instead of re-running the aggregate per /aku load', function (): void {
+it('reuses the LifetimeStats cache instead of re-running the aggregate per profile load', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([

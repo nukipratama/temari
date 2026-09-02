@@ -142,7 +142,7 @@ it('force-sends even when the delivery row already exists, and records the claim
     $analysisId = Analysis::factory()->create()->id;
     DB::table('notification_deliveries')->insert(['analysis_id' => $analysisId, 'channel' => 'telegram', 'created_at' => now()]);
 
-    channelSend($user, new TelegramMessage(text: 'Kirim ulang', deliveryKey: $analysisId, force: true));
+    channelSend($user, new TelegramMessage(text: 'Resend', deliveryKey: $analysisId, force: true));
 
     Http::assertSentCount(1);
     $this->assertDatabaseHas('notification_deliveries', ['analysis_id' => $analysisId, 'channel' => 'telegram']);

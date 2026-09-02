@@ -64,12 +64,12 @@ function rowOf(string $subjectType, int $subjectId, AnalysisType $type, ?string 
 
 it('AnalyzeBriefingMascotVoiceJob returns the mascot voice line', function (): void {
     $user = User::factory()->create();
-    mockNarrator(BriefingMascotVoiceNarrator::class, 'Kata Temari hari ini');
+    mockNarrator(BriefingMascotVoiceNarrator::class, 'Temari note today');
 
     $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, '2026-05-18');
     new AnalyzeBriefingMascotVoiceJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->content)->toBe('Kata Temari hari ini')
+    expect($row->fresh()->content)->toBe('Temari note today')
         ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
 });
 

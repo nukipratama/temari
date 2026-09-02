@@ -42,7 +42,7 @@ it('shows a single run detail with Temari speech + run card', function (): void 
     $card = RunCard::factory()->for($activity)->create(['special_move' => 'Paru-paru Baja', 'rarity' => 'epic']);
     StoryLine::factory()->for($activity)->create([
         'user_id' => $user->id,
-        'speech' => 'Run yang solid, paru-paru baja keluar.',
+        'speech' => 'A solid run, iron lungs on show.',
     ]);
 
     $this->actingAs($user)->get("/activities/{$activity->id}")
@@ -50,7 +50,7 @@ it('shows a single run detail with Temari speech + run card', function (): void 
         ->assertInertia(fn (Assert $page) => $page
             ->component('Runs/Show')
             ->where('detail.name', 'Morning Run')
-            ->where('storyLine.speech', 'Run yang solid, paru-paru baja keluar.')
+            ->where('storyLine.speech', 'A solid run, iron lungs on show.')
             ->where('card.special_move', 'Paru-paru Baja')
             ->has('card.flavor_analysis')
             ->where('card.edition', ['index' => 1, 'total' => 1])

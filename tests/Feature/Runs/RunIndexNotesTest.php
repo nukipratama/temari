@@ -44,13 +44,13 @@ function seedRunWithNote(User $user, int $daysAgo, string $mood, string $speech)
 
 it('attaches notes keyed by activity_id when post-run analyses exist', function (): void {
     $user = User::factory()->create();
-    $activity = seedRunWithNote($user, 0, Temari::MOOD_ENTENG, 'Run yang mantap');
+    $activity = seedRunWithNote($user, 0, Temari::MOOD_ENTENG, 'A strong run');
 
     $this->actingAs($user)->get('/history')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('History')
-            ->where("notes.{$activity->id}.oneline", 'Run yang mantap')
+            ->where("notes.{$activity->id}.oneline", 'A strong run')
             ->where("notes.{$activity->id}.mood", Temari::MOOD_ENTENG));
 });
 

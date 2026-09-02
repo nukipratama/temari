@@ -423,7 +423,7 @@ it('also re-arms a user\'s under-budget Failed blocks on retry (not only dead-le
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
-it('surfaces the "Failed, belum menyerah" bucket grouped per user', function (): void {
+it('surfaces the failed-but-still-retrying bucket grouped per user', function (): void {
     $user = User::factory()->create(['name' => 'Eve']);
     $snap = WeeklySnapshot::factory()->for($user)->create();
     Analysis::factory()->failed()->create([

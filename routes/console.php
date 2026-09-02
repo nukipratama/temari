@@ -46,7 +46,7 @@ Schedule::command('demo:daily-refresh')->dailyAt('00:05');
 // the single scheduled LLM call that fills it.
 $alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:01'), 'ai:weekly-recap');
 
-// Monday 00:05: refresh the Aku-page persona summary + Temari voice once a
+// Monday 00:05: refresh the Profile-page persona summary + Temari voice once a
 // week, just after the recap. These two have no per-run cadence, so this is
 // their only auto-refresh; persona self-throttles per ISO week and the voice is
 // invalidated weekly. Demo excluded. Mid-week freshness stays on "Reread".

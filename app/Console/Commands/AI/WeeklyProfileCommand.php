@@ -25,7 +25,7 @@ class WeeklyProfileCommand extends Command
     private const int ACTIVE_WINDOW_DAYS = 7;
 
     /**
-     * The Aku-page voice carries no per-run cadence of its own, so this weekly
+     * The Profile-page voice carries no per-run cadence of its own, so this weekly
      * heartbeat is its only auto-refresh: each active user's Temari-voice line
      * re-narrates once a week on the week's updated data. Demo is excluded (it
      * never auto-bills any LLM cadence); the manual "Reread" button still

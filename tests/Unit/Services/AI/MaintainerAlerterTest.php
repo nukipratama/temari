@@ -142,9 +142,9 @@ it('swallows a send failure so an alert never fails its caller', function (): vo
  * the mute would not reroute these alerts, it would delete them — and the
  * failure they exist to catch is exactly the one you notice days late.
  *
- * The Pengaturan copy states this scope out loud ("Balasan bot sama peringatan
- * sistem tetap masuk"), so the carve-out is documented to the user rather than
- * being a surprise. Pinned here so it stays a decision, not an accident.
+ * The Settings copy states this scope out loud -- bot replies and system alerts
+ * still arrive -- so the carve-out is documented to the user rather than being a
+ * surprise. Pinned here so it stays a decision, not an accident.
  */
 it('still alerts an admin who has muted the Telegram channel', function (): void {
     $admin = adminWithChat(4321);

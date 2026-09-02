@@ -81,7 +81,7 @@ function fakeStravaDetailEndpoints(): void
         'strava.com/api/v3/activities/*' => Http::response([
             'id' => 1,
             'sport_type' => 'Run',
-            'name' => 'Sore',
+            'name' => 'Evening',
             'start_date_local' => now()->toIso8601String(),
             'distance' => 10_000.0,
             'moving_time' => 3_000,

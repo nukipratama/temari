@@ -102,7 +102,7 @@ it('requests pr_context for the records this run holds, invalidate:false so a ba
 
     fire($activity);
     $row = Analysis::query()->forSubject(PersonalRecord::class, $held->id, AnalysisType::PrContext)->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'rekor pertama');
+    app(AnalysisService::class)->markDone($row, 'first record');
 
     fire($activity);
 
@@ -134,7 +134,7 @@ it('does not re-bill a Done ProfileVoice row on re-ingest (invalidate:false)', f
         ->where('subject_id', $activity->user_id)
         ->where('analysis_type', AnalysisType::ProfileVoice)
         ->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'kata Temari pertama');
+    app(AnalysisService::class)->markDone($row, 'first Temari note');
 
     fire($activity);
 
@@ -251,7 +251,7 @@ it('refreshes the daily briefing set on the second run of the day', function ():
             AnalysisType::BriefingMascotVoice->value,
         ])
         ->get()
-        ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'sudah jadi'));
+        ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'done'));
 
     Bus::fake();
     Carbon::setTestNow('2026-05-19 17:45:00');
@@ -278,7 +278,7 @@ it('does not re-bill the daily set when backfilling a previous-day run', functio
             AnalysisType::BriefingMascotVoice->value,
         ])
         ->get()
-        ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'sudah jadi'));
+        ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'done'));
 
     Bus::fake();
     // Backfilling a run from two days ago must not re-bill today's daily set.

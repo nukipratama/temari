@@ -81,7 +81,7 @@ it('a second same-day run never re-bills a Done row', function (): void {
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()->subDays(2)]);
 
     // Simulate the earlier (00:01) run having already completed the mascot voice.
-    Analysis::factory()->done('kata temari kemarin')->create([
+    Analysis::factory()->done('temari note yesterday')->create([
         'subject_type' => AnalysisType::BriefingMascotVoice->subjectType(),
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::BriefingMascotVoice,
@@ -104,7 +104,7 @@ it('a second same-day run never re-bills a Done row', function (): void {
         ->where('discriminator', $today)
         ->firstOrFail();
     expect($mascot->status)->toBe(AnalysisStatus::Done)
-        ->and($mascot->content)->toBe('kata temari kemarin');
+        ->and($mascot->content)->toBe('temari note yesterday');
 
     Carbon::setTestNow();
 });

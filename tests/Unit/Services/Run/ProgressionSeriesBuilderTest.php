@@ -74,7 +74,7 @@ it('builds the weekly-best series scaled to the target distance', function (): v
 it('snaps the series best to the authoritative PR time so the chart matches the hero', function (): void {
     // PR time (2400s) differs from the linearly-scaled weekly best of the same
     // near-target run (10.1km/2450s => ~2426s). The chart's best point must show
-    // the PR time, not the scaled approximation, so /rekor reads one number.
+    // the PR time, not the scaled approximation, so the PR readout shows one number.
     // set_at is aligned to the run's week so the snap targets it.
     ['user' => $user, 'featured' => $featured] = progressionFixture('10km', 2_400, '2026-05-04 07:00:00');
 

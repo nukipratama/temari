@@ -30,7 +30,7 @@ function dailyRefreshTodayRunCount(User $user): int
         ->count();
 }
 
-/** Every date-keyed Temari surface for today/this week must be filled (no "Belum dibaca"). */
+/** Every date-keyed Temari surface for today/this week must be filled (no "Unread"). */
 function expectDemoDateKeyedNarrationDone(User $user): void
 {
     $today = Carbon::today()->toDateString();

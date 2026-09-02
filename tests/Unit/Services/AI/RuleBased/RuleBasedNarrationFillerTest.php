@@ -150,7 +150,7 @@ it('returns deterministic copy for every subject-free analysis arm', function (A
     'run insight (no detail)' => [AnalysisType::RunInsight, '[]'],
     'weekly recap' => [AnalysisType::WeeklyRecap, "Nothing in the log this week. A gap is a gap, I'm not going to call it anything else."],
     'pr context' => [AnalysisType::PrContext, "That's a new PR. The old number held until today, and now it doesn't."],
-    'aku profile voice' => [AnalysisType::ProfileVoice, "You lean **chill** far more than pushed, and the log backs it up: regular, unhurried, never a big jump. That's a base built the slow way. The open question is when you decide to spend it."],
+    'profile voice' => [AnalysisType::ProfileVoice, "You lean **chill** far more than pushed, and the log backs it up: regular, unhurried, never a big jump. That's a base built the slow way. The open question is when you decide to spend it."],
     'monthly recap' => [AnalysisType::MonthlyRecap, "The rhythm held all month. You didn't force it and you didn't disappear either."],
     'trend read' => [AnalysisType::TrendRead, "Steady is the read.\n\nNothing in this window moved sharply enough to call out on its own. The rhythm held, which is its own kind of answer."],
 ]);
@@ -166,7 +166,7 @@ it('weaves the run distance into the post-run speech', function (): void {
 
 it('does not cycle the post-run speech in lockstep with consecutive activity ids', function (): void {
     // Regression for the demo feed's most visible defect: with the raw
-    // sequential activity id as the pool seed, every 6th run in the Riwayat
+    // sequential activity id as the pool seed, every 6th run in the History
     // feed rendered the byte-identical line. Consecutive real ids must land
     // on a scattered, not rhythmic, set of phrases.
     $lines = [];
@@ -318,8 +318,8 @@ it('uses km-less flavor templates when the card has no distance', function (): v
 });
 
 it('omits the badge coda when the card carries only unknown badges', function (): void {
-    $known = seededCard(Rarity::Rare, 'Sesi Dikenal', [Badge::Speedster->value]);
-    $unknown = seededCard(Rarity::Rare, 'Sesi Misteri', ['not_a_real_badge']);
+    $known = seededCard(Rarity::Rare, 'Known session', [Badge::Speedster->value]);
+    $unknown = seededCard(Rarity::Rare, 'Mystery session', ['not_a_real_badge']);
     $filler = app(RuleBasedNarrationFiller::class);
 
     $withCoda = $filler->fillFor(fillerRow(AnalysisType::CardFlavor, $known->id));
@@ -332,7 +332,7 @@ it('omits the badge coda when the card carries only unknown badges', function ()
 });
 
 it('keeps all copy free of em-dashes', function (): void {
-    $card = seededCard(Rarity::Legendary, 'Marathon Perdana', [Badge::LongSlowDistance->value], 42_195.0);
+    $card = seededCard(Rarity::Legendary, 'Personal Best', [Badge::LongSlowDistance->value], 42_195.0);
     $filler = app(RuleBasedNarrationFiller::class);
 
     $session = PlannedSession::factory()->create(['session_type' => 'long', 'date' => '2026-05-18']);

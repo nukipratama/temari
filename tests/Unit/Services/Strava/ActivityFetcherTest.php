@@ -259,7 +259,7 @@ it('returns the whole summary payload, not just the id', function (): void {
     Http::fake([
         'strava.com/api/v3/athlete/activities*' => Http::sequence()
             ->push([
-                ['id' => 7, 'sport_type' => 'Run', 'name' => 'Pagi', 'distance' => 5012.4, 'moving_time' => 1800],
+                ['id' => 7, 'sport_type' => 'Run', 'name' => 'Morning', 'distance' => 5012.4, 'moving_time' => 1800],
             ])
             ->push([]),
     ]);
@@ -267,7 +267,7 @@ it('returns the whole summary payload, not just the id', function (): void {
     $summaries = new ActivityFetcher(new StravaClient())->fetchNewSummaries($connection)['summaries'];
 
     expect($summaries)->toHaveCount(1)
-        ->and($summaries[0]['name'])->toBe('Pagi')
+        ->and($summaries[0]['name'])->toBe('Morning')
         ->and($summaries[0]['distance'])->toBe(5012.4)
         ->and($summaries[0]['moving_time'])->toBe(1800);
 });

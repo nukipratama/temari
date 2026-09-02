@@ -132,7 +132,7 @@ it('falls back to the derived mood when there is no post-run story line', functi
 it('shapes the card flavor analysis payload', function (): void {
     $user = User::factory()->create();
     $card = presenterCard($user, Rarity::Rare);
-    Analysis::factory()->done('Larimu ringan.')->create([
+    Analysis::factory()->done('Runmu ringan.')->create([
         'subject_type' => RunCard::class,
         'subject_id' => $card->id,
         'analysis_type' => AnalysisType::CardFlavor,
@@ -141,7 +141,7 @@ it('shapes the card flavor analysis payload', function (): void {
 
     expect(app(CardPresenter::class)->flavorAnalysis($card))
         ->toMatchArray([
-            'content' => 'Larimu ringan.',
+            'content' => 'Runmu ringan.',
             'status' => AnalysisStatus::Done->value,
         ]);
 });

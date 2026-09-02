@@ -165,7 +165,7 @@ describe('ShareCardModal', () => {
         expect(routeBtn).toBeInTheDocument();
         expect(statsBtn).toBeInTheDocument();
         // The dropdown and the trimmed Struk template are gone.
-        expect(screen.queryByLabelText('Pilih gaya card')).toBeNull();
+        expect(screen.queryByLabelText('Pick a card style')).toBeNull();
         expect(screen.queryByRole('button', { name: 'Receipt' })).toBeNull();
         // Switching to the route template renders without crashing.
         fireEvent.click(routeBtn);
