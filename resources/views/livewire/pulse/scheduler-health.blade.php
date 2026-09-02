@@ -45,7 +45,7 @@
                         </div>
 
                         @if ($task['status'] === 'failed' && $task['failureMessage'])
-                            <div class="mt-1 truncate text-[11px] text-ember-ink" title="{{ $task['failureMessage'] }}">
+                            <div class="mt-1 truncate text-xs text-ember-ink" title="{{ $task['failureMessage'] }}">
                                 {{ $task['failureMessage'] }}
                             </div>
                         @endif

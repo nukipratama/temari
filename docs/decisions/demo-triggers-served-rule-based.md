@@ -20,7 +20,7 @@ code_refs:
 ## Context
 
 [[demo-user-billing-exclusion]] held the demo account out of every recurring
-scheduler but deliberately left the per-block "Baca ulang" / "Coba lagi" button
+scheduler but deliberately left the per-block "Baca ulang" / "Coba lagi" button (now "Reread" / "Try again")
 live, so a reviewer could upgrade one block to a real LLM narrative on demand.
 That reasoning assumed a *reviewer*. Three facts together broke the assumption:
 

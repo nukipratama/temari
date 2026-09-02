@@ -20,7 +20,7 @@ code_refs:
 Two questions are asked about AI generation, and they were answered by two different pieces of code:
 
 - **"May we dispatch?"** — a boolean, asked by every dispatch path and by `ai:self-heal`.
-- **"Why not?"** — a string, asked by `/pulse` ([AiPipelineHealth.php:48](app/Livewire/Pulse/AiPipelineHealth.php#L48)) and by the maintainer Telegram alert ([SelfHealCommand.php:23](app/Console/Commands/AI/SelfHealCommand.php#L23)).
+- **"Why not?"** — a string, asked by `/pulse` ([`pauseReason`](app/Livewire/Pulse/AiPipelineHealth.php#L48)) and by the maintainer Telegram alert ([`syncPauseState`](app/Console/Commands/AI/SelfHealCommand.php#L23)).
 
 `pauseReason()` re-derived the stop conditions in its own hand-maintained `if` ladder rather than deriving them from the gate it reports on. Its docblock claimed the two were "checked in the same precedence". They were not, and the drift was already shipping: the ladder never checked `ai.auto_dispatch`.
 
@@ -30,12 +30,12 @@ It shipped because the tests asserted `pauseReason()` for the reasons it *did* i
 
 ## Decision
 
-**1. One ordered list, two callers.** `blockingReason()` ([AnalysisService.php:632](app/Services/AI/AnalysisService.php#L632)) returns the first condition stopping a dispatch, or `null`. `pauseReason()` ([AnalysisService.php:608](app/Services/AI/AnalysisService.php#L608)) *is* that list; `autoDispatchEnabled()` ([AnalysisService.php:613](app/Services/AI/AnalysisService.php#L613)) and `dispatchAllowedIgnoringBudget()` ([AnalysisService.php:618](app/Services/AI/AnalysisService.php#L618)) ask whether it returned `null`. Adding a stop condition changes one list and both answers follow, so the reported reason cannot drift from the decision again.
+**1. One ordered list, two callers.** `blockingReason()` ([`blockingReason()`](app/Services/AI/AnalysisService.php#L632)) returns the first condition stopping a dispatch, or `null`. `pauseReason()` ([`pauseReason()`](app/Services/AI/AnalysisService.php#L608)) *is* that list; `autoDispatchEnabled()` ([`autoDispatchEnabled()`](app/Services/AI/AnalysisService.php#L613)) and `dispatchAllowedIgnoringBudget()` ([`dispatchAllowedIgnoringBudget()`](app/Services/AI/AnalysisService.php#L618)) ask whether it returned `null`. Adding a stop condition changes one list and both answers follow, so the reported reason cannot drift from the decision again.
 
 **2. The two real asymmetries are parameters, not duplicated code.** The lists differed for two legitimate reasons, and collapsing them naively would have broken both:
 
-- **The budget is optional.** `costCeilingDegraded()` ([AnalysisService.php:668](app/Services/AI/AnalysisService.php#L668)) must know whether the ceiling is the *only* stop, per [[cost-ceiling-degrades-to-rule-based]], so it asks the list to leave the budget out. `withBudget: false`.
-- **Reporting must not consume the breaker's probe.** The config breaker half-opens after a cooldown to let exactly one request through. `allowsRequest()` ([AzureConfigCircuitBreaker.php:45](app/Services/AI/AzureConfigCircuitBreaker.php#L45)) performs that transition as a side effect; `isTripped()` ([AzureConfigCircuitBreaker.php:71](app/Services/AI/AzureConfigCircuitBreaker.php#L71)) exists precisely so a reader can look without taking the probe. A caller about to dispatch passes `probeBreaker: true` and takes it; a caller only reporting passes `false`. Without this, **rendering `/pulse` would spend the recovery probe**, and a dashboard refresh would silently consume the breaker's one chance to notice a fixed key.
+- **The budget is optional.** `costCeilingDegraded()` ([`costCeilingDegraded()`](app/Services/AI/AnalysisService.php#L668)) must know whether the ceiling is the *only* stop, per [[cost-ceiling-degrades-to-rule-based]], so it asks the list to leave the budget out. `withBudget: false`.
+- **Reporting must not consume the breaker's probe.** The config breaker half-opens after a cooldown to let exactly one request through. `allowsRequest()` ([`allowsRequest()`](app/Services/AI/AzureConfigCircuitBreaker.php#L45)) performs that transition as a side effect; `isTripped()` ([`isTripped()`](app/Services/AI/AzureConfigCircuitBreaker.php#L71)) exists precisely so a reader can look without taking the probe. A caller about to dispatch passes `probeBreaker: true` and takes it; a caller only reporting passes `false`. Without this, **rendering `/pulse` would spend the recovery probe**, and a dashboard refresh would silently consume the breaker's one chance to notice a fixed key.
 
 **3. Two new reasons become reportable.** `auto_dispatch` for the env switch, and `suppressed` for the `withoutDispatching()` scope. `suppressed` is unreachable from any reporting caller — the flag lives inside a closure in a seeding or degrade path — but it is in the list because the list's value is being total. The renderer handles an unrecognised reason generically rather than each case needing a UI arm.
 

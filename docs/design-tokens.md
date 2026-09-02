@@ -100,15 +100,17 @@ gets misused, and it is what the audit on `/devtools/design` exists to catch.
 targets the **darkest** ground the app can render, and every audit scores a paper pair against
 all of them and reports its **worst**. What counts as "all of them" is *derived*, by
 [grounds.mjs](../resources/brand/grounds.mjs): token values come out of the shipped `@theme`
-block and the `body[data-time-of-day]` rules ([app.css](../resources/css/app.css):555), and the
+block and its `[data-theme]` overrides ([app.css](../resources/css/app.css):404), and the
 set of backgrounds in play comes out of every `bg-*` utility `resources/js` actually paints.
+The `body[data-time-of-day]` rules this once also read are gone — `PP3` cut dawn-shift and `W2`
+removed the reader.
 [grounds.json](../resources/brand/grounds.json) records only what *kind* each background is, and
 one it does not classify **fails the build** rather than being skipped.
 
 An `-ink` token is scored on three things: every `paper` ground, its own `-bg` cell when it
 paints one, and its heaviest `bg-<family>/<alpha>` tint composited over the darkest paper — a
 chip prints on the tint, not on the paper under it. All three audits read that same registry:
-the generator's ([build-tokens.mjs](../resources/brand/build-tokens.mjs):177), the client-side one
+the generator's colour derivation ([build-tokens.mjs](../resources/brand/build-tokens.mjs):1), the client-side one
 behind `/devtools/design` ([designTokens.ts](../resources/js/lib/designTokens.ts):377), and the CI
 guard ([DesignTokenContrastTest.php](../tests/Unit/Architecture/DesignTokenContrastTest.php)).
 
@@ -176,11 +178,14 @@ does not (`leaf-ink`, `ember-ink`, `rarity-common/rare/epic-ink`) — derived vi
 [build-tokens.mjs](../resources/brand/build-tokens.mjs), worst-cased across sky-deep/sky/sky-2.
 `horizon-ink` has no dark counterpart: the app swaps to the vivid `horizon` fill itself instead.
 
-**Season-phase identity colours**, also added in F2: `--color-phase-{base,build,peak,taper}`,
-promoted from the prototype's `PHASE_COLOR` literals for the Plan/Today periodization display.
-Fixed identity like mood/rarity, constant across grounds. Validated colorblind-safe via the
-`dataviz` skill's palette checker — one adjacent pair sits at the CVD-separation floor, so any
-phase indicator needs a direct label or texture alongside the colour, never hue alone.
+**Season-phase identity colours** live in TypeScript, not in the token layer. `F2` promoted the
+prototype's `PHASE_COLOR` literals into four CSS colour tokens, but the periodization display went
+on reading [`PHASE_COLORS`](../resources/js/lib/chartTokens.ts#L118) — a different set, with a fifth
+`deload` key those tokens never had. `W4` deleted the unread four rather than leave two disagreeing
+sources, and pinned the removal in `DesignTokenDocsTest`'s forbidden list so the name cannot come
+back quietly. The set that ships is validated colorblind-safe via the `dataviz` skill's palette
+checker — one adjacent pair sits at the CVD-separation floor, so any phase indicator needs a direct
+label or texture alongside the colour, never hue alone.
 
 ### Text contrast tiers
 
@@ -201,9 +206,11 @@ All five clear WCAG AA on their intended background.
 
 ### CTA contrast
 
-- `horizon` (lime) → dark text (`text-foreground`), never white — clears 11.5:1 both light and dark.
-- `sky` / `sky-deep` (near-black) → `text-cream` / white.
-- `leaf-deep` / `ember-deep` → `text-cream` (both pass AA); darken on hover with `hover:opacity-90`, not a hue jump.
+- `horizon` (lime) → **`text-sky`**, never white and never `text-foreground`. This is the one CTA
+  where the ground-reactive layer is wrong: `foreground` flips to cream on the dark ground, which is
+  the unreadable pairing on lime. The fixed value clears 11.5:1 on both grounds.
+- `sky` (near-black) → `text-cream` / white.
+- `ghost` and `outline` carry no fill; their label is `text-foreground` / `text-text-2`.
 
 ## Spacing
 
@@ -238,7 +245,8 @@ Section rhythm (unchanged): major section → next major `mt-10`; subsection →
 | `rounded-full` | 9999px | Pills, chips, avatars, dots |
 | `rounded-2xl` | 18px | shadcn/prototype primitives (F2+) — a separate keyword vocabulary, not a continuation of the ladder above |
 | `rounded-3xl` | 22px | shadcn/prototype primitives |
-| `rounded-4xl` | 26px | shadcn/prototype primitives — lands on the same corner as `rounded-panel` below, independently |
+| `rounded-4xl` | 26px | shadcn/prototype primitives — lands on the same corner as `rounded-panel`, independently |
+| `rounded-panel` | 26px | The hero-panel corner (`ProfileHero`, `RunHero`). A separate name on purpose: `--radius-lg`/`--shadow-e*` are reused across ~170 unrelated call sites, so new surfaces opt in by name rather than moving shape on everything that already uses them. |
 
 These **override Tailwind's defaults for the whole namespace**, so no call site can land between
 two steps. `2xl`/`3xl`/`4xl` joined the scale in F2 to back the shadcn/prototype component set;
@@ -349,15 +357,16 @@ import { cn } from '@/lib/cn';
 className={cn(cardVariants({ tone, padding }), className)}
 ```
 
-**There is one card.** `cardVariants` is a single surface — `surface-card` on a `line` border at
-`rounded-md` with `shadow-e1` — in four states, not a spread of competing treatments:
+**There is one card.** `cardVariants` is a single surface — `bg-card` on a `border` edge at
+`rounded-md` with `shadow-e1` — in five tones, not a spread of competing treatments:
 
 | Tone | What it is |
 |---|---|
 | `card` | The card. Every resting surface in the app. |
 | `sky` | The card inverted into the dark panel itself: `bg-sky` under `text-cream`, lifted to `shadow-e2`. |
 | `onSky` | The same card mounted *on* a dark sky panel: translucent cream over the panel, no elevation (there is nothing to cast onto). |
-| `empty` | The dashed placeholder standing in for a card with no content yet. Not a surface that rests on the page, so no elevation. |
+| `empty` | The card standing in for content that is not there yet. `T3` found the prototype gives empty states no distinct treatment at all, so the invented dashed edge and 40%-opacity fill went; it keeps only a heavier `border-strong` edge to stay distinguishable from a resting card. |
+| `narration` | Temari's voice: a heavier accent-mixed edge plus a `horizon` halo, so narration reads as spoken rather than tabulated. |
 
 Padding names its role (`panel` / `card` / `hero` / `none`), never a number. A tone or padding
 that "just needs to be a bit different" at one call site is the drift this collapse removed —
