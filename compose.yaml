@@ -33,6 +33,18 @@ services:
             LARAVEL_SAIL: 1
             COMPOSER_CACHE_DIR: /var/cache/composer
             NPM_CONFIG_CACHE: /var/cache/npm
+            # The repo is bind-mounted from the host, so its files carry the host
+            # user's uid while this container runs as www-data, and git refuses a
+            # repo it does not own ("detected dubious ownership"). Pest surfaces
+            # that as the same `Tia mode requires git` message as a missing binary,
+            # which is why installing git in the Dockerfile looked like the whole
+            # fix. Without this, `composer check` dies at the pest step with every
+            # test passing and never reaches coverage, build or check:chunks.
+            # Env-based rather than a Dockerfile `git config --system`, so it needs
+            # no image rebuild and applies to images already on disk.
+            GIT_CONFIG_COUNT: 1
+            GIT_CONFIG_KEY_0: safe.directory
+            GIT_CONFIG_VALUE_0: /var/www/html
         volumes:
             - '.:/var/www/html'
             - 'node_modules:/var/www/html/node_modules'
