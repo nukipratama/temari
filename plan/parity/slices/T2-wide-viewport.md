@@ -64,9 +64,15 @@ breakpoint.
 - The same conversion applies to `app.css`'s three label-role utilities and to the fixed-px type
   tokens `--text-quote-lg/md/sm` and `--text-stat`.
 - `html { font-size: 19.2px }` at 1280px, a **20%** step, at the same breakpoint the column widens.
-  Tailwind's spacing scale is rem too, so padding and gaps grow with the type rather than leaving
-  text swelling inside boxes that did not. It shipped at 10% first and the user called it still too
-  small against a real screen; 20% is the second reading and the knob is one token.
+  It shipped at 10% first and the user called it still too small against a real screen; 20% is the
+  second reading and the knob is one token.
+- **The spacing scale had to come with it, and did not at first.** This slice originally claimed
+  "Tailwind's spacing scale is rem too, so padding and gaps grow with the type" — **that was
+  wrong**. This theme names ten steps of its own, `--spacing-1` through `-16`, and declared every
+  one in **px**; each step it does *not* name falls through to Tailwind's rem-based default. So the
+  scale was half px and half rem, which agreed exactly at a 16px root and stopped agreeing the
+  moment the root stepped. The ten named steps and the five `--pad-*` roles are now rem. Identical
+  below 1280, scaling with everything else above it.
 
 **The comment saying the quote tier must not scale is corrected, not ignored.** It reads "body
 reading should NOT scale with viewport because the focal distance is constant" — which is an
@@ -100,6 +106,22 @@ literal conversion and three co-located tests.
 - The three failing tests were updated **from the suite's own output**, one at a time. No blanket
   rewrite: the conversion regex matched `text-[Npx]` only, so it could not touch a spacing literal,
   a colour, or an identifier.
+
+## The chart the user caught
+
+`WeekVolumeChart`'s bar row pinned `h-16` around a column of `h-14` track + `gap-1` + weekday
+label. Measured, that content is **77px inside a 64px box** — so it has spilled over the legend
+above it since the day it was written, at every viewport, root step or no root step. The type step
+did not cause it; it widened the spill to 27px and made it obvious.
+
+The row no longer pins a height: its content defines one, which is what it always should have done.
+Verified by measurement (`scrollHeight - clientHeight` now 0 at both roots) and by looking at the
+rendered card.
+
+**Swept for siblings**, since one instance of this pattern implies others: every element on the
+nine main pages whose content overflows a pinned height with `overflow-y: visible`. Nine pages,
+zero further hits. The two units disagreeing was the systemic half of the bug, and that is fixed at
+the token; this component was the only place also carrying the local half.
 
 ## What the audit caught
 

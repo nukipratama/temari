@@ -68,7 +68,7 @@ export default function WeekVolumeChart({
                     actual
                 </span>
             </div>
-            <div className="flex h-16 items-end gap-1.5">
+            <div className="flex items-end gap-1.5">
                 {days.map((day) => (
                     <div
                         key={day.date}
