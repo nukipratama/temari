@@ -74,6 +74,21 @@ re-baselines the guard without weakening it — which is exactly what P34 permit
 - Every page's closure was measured, not estimated, by running the real script over a generated
   budget list covering all 17 page components.
 
+## A red guard found on the way
+
+`scripts/check-doc-citations.php` was **failing on the epic**, and had been since `T2` merged:
+deleting `StravaSyncBadge` left two citations in `docs/features/strava-connect.md` pointing at a
+file that no longer exists.
+
+Nothing caught it, and the reason is recorded in this repo already: **the doc-citation guard is not
+part of `composer check`**, so a green local gate says nothing about it, and it is the one check
+that has to be run directly. `T2` should have carried the doc edit alongside the deletion, per
+CLAUDE.md's "keep notes fresh in the same PR". It did not, so it is fixed here — the doc now
+records the cut and where the `revoked` reconnect path actually lives.
+
+Worth noting for `W4`: this is an argument for folding the citation guard into `composer check`,
+since the current split means a doc can only break in a way no one is looking at.
+
 ## Amendment recorded here: `W6` no longer needs a data migration
 
 The user ruled on 2026-09-02 that **the epic's merge to `main` will be followed by a

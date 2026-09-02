@@ -11,7 +11,6 @@ code_refs:
   - app/Http/Controllers/Strava/StravaWebhookController.php
   - app/Http/Controllers/RunnerZonesController.php
   - resources/js/components/StravaSyncButton.tsx
-  - resources/js/components/StravaSyncBadge.tsx
   - resources/js/components/StravaAction.tsx
   - resources/js/components/StravaPausedBanner.tsx
   - resources/js/components/FlashNotice.tsx
@@ -51,7 +50,7 @@ Routes: `auth.strava.redirect` / `auth.strava.callback` in [web.php](../../route
 
 [SyncController](../../app/Http/Controllers/Strava/SyncController.php) (an `__invoke` single-action) just queues `SyncActivitiesJob` for the signed-in athlete and flashes a friendly message. A double-tap is safe — the orchestrator holds a per-user lock and the walk stops at the first already-known activity.
 
-[StravaSyncBadge](../../resources/js/components/StravaSyncBadge.tsx) reflects status in the nav: a green dot + relative "Strava synced" time when ready, a pulsing "Syncing" while syncing, an ember "Strava disconnected · Reconnect" when revoked.
+There is no longer a sync-status badge in the nav. `StravaSyncBadge` showed a relative "Strava synced" time there and was cut in `T2`, because the prototype's topbar draws only the wordmark, a bell and an avatar. Its one load-bearing state was `revoked`, which was a live reconnect link; that survives in two places — [ProfileHero](../../resources/js/components/profile/ProfileHero.tsx)'s action, gated on exactly that state and reachable from the topbar avatar, and `StravaSyncButton` on the feed's empty state.
 
 One more manual re-pull exists beyond "Sync now": `RunnerZonesController::resyncFromStrava` behind the HR-zones disclosure's "Resync from Strava" on [[settings-hr-zones]] (which runs [SyncZonesJob](../../app/Jobs/Strava/SyncZonesJob.php) inline rather than queued). The run detail page had a third — `ResyncActivityController` behind its own "Resync from Strava" — cut in `PP3` (P28) along with its route; [ResyncActivityJob](../../app/Jobs/Strava/ResyncActivityJob.php) survives, still driven by the webhook path.
 
