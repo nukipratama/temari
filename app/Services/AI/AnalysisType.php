@@ -7,7 +7,6 @@ namespace App\Services\AI;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
 use App\Jobs\AI\AnalyzeBaseJob;
-use App\Jobs\AI\AnalyzeBriefingFeaturedKartuVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeGroupJob;
@@ -31,7 +30,6 @@ use Illuminate\Validation\Rules\In;
 enum AnalysisType: string
 {
     case BriefingMascotVoice = 'briefing_mascot_voice';
-    case BriefingFeaturedKartuVoice = 'briefing_featured_kartu_voice';
     case PostRunSpeech = 'post_run_speech';
     case RunInsight = 'run_insight';
     case WeeklyRecap = 'weekly_recap';
@@ -110,7 +108,6 @@ enum AnalysisType: string
             self::CardFlavor,
             self::PrContext => AnalysisCadence::PerActivity,
             self::BriefingMascotVoice,
-            self::BriefingFeaturedKartuVoice,
             self::PlanDayVoice => AnalysisCadence::Daily,
             self::WeeklyRecap,
             self::PlanWeekVoice => AnalysisCadence::Weekly,
@@ -133,7 +130,6 @@ enum AnalysisType: string
     {
         return match ($this) {
             self::BriefingMascotVoice => AnalyzeBriefingMascotVoiceJob::class,
-            self::BriefingFeaturedKartuVoice => AnalyzeBriefingFeaturedKartuVoiceJob::class,
             self::PostRunSpeech,
             self::RunInsight => AnalyzeActivityJob::class,
             self::WeeklyRecap => AnalyzeWeeklyRecapJob::class,
@@ -227,7 +223,6 @@ enum AnalysisType: string
                 'after_or_equal:'.Carbon::today()->subDays(self::MAX_DISCRIMINATOR_AGE_DAYS)->toDateString(),
                 'before_or_equal:'.Carbon::today()->toDateString(),
             ],
-            self::BriefingFeaturedKartuVoice => ['required', 'string', 'max:19', 'regex:/^[1-9][0-9]*$/'],
             self::AkuProfileVoice => ['required', 'string', 'regex:/^\d{4}-W\d{2}$/', Rule::in(self::triggerableIsoWeeks())],
             self::MonthlyRecap => ['required', 'string', 'date_format:Y-m', Rule::in(self::triggerableMonths())],
             self::TrendRead => ['required', 'string', Rule::in(self::TREND_READ_RANGES)],
@@ -253,8 +248,7 @@ enum AnalysisType: string
     public function subjectType(): string
     {
         return match ($this) {
-            self::BriefingMascotVoice,
-            self::BriefingFeaturedKartuVoice => self::BRIEFING_SUBJECT_TYPE,
+            self::BriefingMascotVoice => self::BRIEFING_SUBJECT_TYPE,
             self::PostRunSpeech,
             self::RunInsight => Activity::class,
             self::WeeklyRecap => WeeklySnapshot::class,

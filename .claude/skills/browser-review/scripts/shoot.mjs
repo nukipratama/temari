@@ -76,6 +76,24 @@ for (const vp of selected) {
         const landed = new URL(page.url()).pathname;
         if (seen.has(landed)) { continue; }            // dedupe redirects to an already-shot page
         seen.add(landed);
+        // `load` fires before Inertia hydrates and before a code-split page
+        // chunk resolves, so a flat pause after it races the first paint: a
+        // contended machine produced two blank full-page captures in one sweep,
+        // and a blank shot of a working page reads as "all content missing" to
+        // whoever reviews it. Wait for the content itself instead of guessing a
+        // longer sleep. Both waits are best-effort: a page that legitimately
+        // renders no text must still be captured, not skipped.
+        await page.waitForLoadState('networkidle').catch(() => {});
+        await page
+          .waitForFunction(
+            () => {
+              const el = document.querySelector('main') ?? document.body;
+              return el.scrollHeight > 0 && (el.innerText ?? '').trim().length > 0;
+            },
+            null,
+            { timeout: 5000 },
+          )
+          .catch(() => {});
         await page.waitForTimeout(150);
         const label = String(idx + 1).padStart(2, '0');
         await page.screenshot({ path: `${dir}/${label}-${name}-viewport.${EXT}`, fullPage: false, ...SHOT });

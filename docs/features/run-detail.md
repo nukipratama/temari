@@ -63,7 +63,7 @@ would be a column of empty panels rather than a thin page.
 ## Hero — identity, one headline stat, route + weather
 
 [RunHero](../../resources/js/components/run/RunHero.tsx) is a card-toned panel,
-not the app's sky `HeroPanel`: the prototype draws this screen's hero on the
+not a fixed-dark sky panel: the prototype draws this screen's hero on the
 card surface, so it reacts to the ground like every other panel on the page.
 It opens with `FaceIcon`, the as-recorded date and time, the run name in serif
 italic and the mood pill under it.

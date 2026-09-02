@@ -6,31 +6,25 @@ namespace App\Services\Inertia;
 
 use App\Models\RaceGoal;
 use App\Models\User;
-use App\Services\Gamification\EquippedAccessories;
 use App\Support\SharedPropCacheKey;
 use Closure;
 
 /**
- * The collection-and-progress family of shared props: what the mascot is
- * wearing, and the race being trained for.
+ * The collection-and-progress family of shared props: currently just the race
+ * being trained for. The equipped-accessories prop lived here too until `W2`
+ * swept it along with the wardrobe surface `PP2` cut.
  *
  * Every prop is returned as a closure, so Inertia skips the work entirely on a
  * partial reload that did not ask for that key.
  */
 final readonly class GamificationProps
 {
-    public function __construct(
-        private EquippedAccessories $equippedAccessories,
-    ) {
-    }
-
     /**
      * @return array<string, Closure>
      */
     public function forUser(?User $user): array
     {
         return [
-            'equippedAccessories' => fn (): array => $this->equippedAccessoriesFor($user),
             'activeRace' => fn () => $this->activeRaceFor($user),
         ];
     }
@@ -61,26 +55,6 @@ final readonly class GamificationProps
                     'name' => $race->name,
                 ];
             },
-        );
-    }
-
-    /**
-     * Which accessories the mascot is wearing. Cached because it costs a
-     * `user_unlocks` scan on every page load. Nothing writes it any more: the
-     * equip surface went with the mascot, and granting an unlock cannot change
-     * it, since rows are inserted without `equipped`, which defaults to false.
-     *
-     * @return array<string, string|null>
-     */
-    private function equippedAccessoriesFor(?User $user): array
-    {
-        if ($user === null) {
-            return $this->equippedAccessories->forUser(null);
-        }
-
-        return SharedPropCacheKey::EquippedAccessories->remember(
-            $user->id,
-            fn (): array => $this->equippedAccessories->forUser($user),
         );
     }
 }

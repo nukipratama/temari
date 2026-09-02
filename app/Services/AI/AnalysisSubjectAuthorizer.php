@@ -20,15 +20,19 @@ final class AnalysisSubjectAuthorizer
      * Exhaustive on purpose (no `default`): a new AnalysisType without an arm is
      * an UnhandledMatchError, never a silent authorization bypass.
      *
+     * `$discriminator` is accepted but unchecked: no type keys off a *resource*
+     * any more. The featured-kartu voice was the only one, and it needed its own
+     * ownership check because a RunCard id sat under the caller's own subject id.
+     * A future resource-keyed type needs that check added back here; the range or
+     * ownership bound is required by AnalysisTypeTest, which fails a type that
+     * permits a discriminator and bounds it neither way.
+     *
      * @throws AuthorizationException
      */
     public static function authorize(User $user, AnalysisType $type, int $subjectId, ?string $discriminator = null): void
     {
-        self::authorizeDiscriminator($user, $type, $discriminator);
-
         $authorized = match ($type) {
             AnalysisType::BriefingMascotVoice,
-            AnalysisType::BriefingFeaturedKartuVoice,
             AnalysisType::AkuProfileVoice,
             AnalysisType::MonthlyRecap,
             AnalysisType::TrendRead,
@@ -47,52 +51,6 @@ final class AnalysisSubjectAuthorizer
 
         if (! $authorized) {
             throw new AuthorizationException("Subject does not belong to user (type={$type->value})");
-        }
-    }
-
-    /**
-     * A discriminator that names a *resource* is a second subject and needs the
-     * same ownership check: the featured-kartu voice keys off a RunCard id under
-     * the triggering user's own subject id, so authorizing the subject alone let
-     * a forged trigger have another user's card described in the caller's row.
-     * The period-keyed and prohibited types name no resource; their bound is a
-     * range, in {@see AnalysisType::discriminatorRules()}.
-     *
-     * Exhaustive on purpose (no `default`), same as the subject match above.
-     *
-     * @throws AuthorizationException
-     */
-    private static function authorizeDiscriminator(User $user, AnalysisType $type, ?string $discriminator): void
-    {
-        if ($discriminator === null) {
-            return;
-        }
-
-        $authorized = match ($type) {
-            AnalysisType::BriefingFeaturedKartuVoice => RunCard::query()
-                ->whereKey((int) $discriminator)
-                ->forUser($user->id)
-                ->exists(),
-            AnalysisType::BriefingMascotVoice,
-            AnalysisType::AkuProfileVoice,
-            AnalysisType::MonthlyRecap,
-            AnalysisType::PostRunSpeech,
-            AnalysisType::RunInsight,
-            AnalysisType::WeeklyRecap,
-            AnalysisType::PrContext,
-            AnalysisType::CardFlavor,
-            AnalysisType::PlanWeekVoice,
-            AnalysisType::PlanSeasonVoice,
-            // Names a range (30d/90d/12mo), not a resource — bound by
-            // discriminatorRules()'s closed set, nothing further to own-check.
-            AnalysisType::TrendRead,
-            // Names a date, not a resource — bound by discriminatorRules()'s
-            // date-shape validation instead.
-            AnalysisType::PlanDayVoice => true,
-        };
-
-        if (! $authorized) {
-            throw new AuthorizationException("Discriminator does not belong to user (type={$type->value})");
         }
     }
 

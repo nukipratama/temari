@@ -181,8 +181,7 @@ it('matches runs that are still summary-only, with no streams to read', function
         ->and(collect($payload['comparisons'])->pluck('current.ingest_state')->unique()->all())->toBe(['summary'])
         ->and(collect($payload['comparisons'])->pluck('past.ingest_state')->unique()->all())->toBe(['summary'])
         ->and($payload['fitness_delta_ctl'])->toBeNull()
-        ->and($payload['pace_consistency_now'])->toBeNull()
-        ->and($payload['relative_effort_band'])->toBeNull();
+        ->and($payload['pace_consistency_now'])->toBeNull();
 });
 
 it('reports the empty state when nothing in history is comparable', function (): void {

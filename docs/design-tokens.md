@@ -1,13 +1,23 @@
 # Design tokens
 
-Single source of truth for the design system. All values are defined in the
-`@theme` block of [resources/css/app.css](../resources/css/app.css); this file is the
-human-readable index. The block is **generated**, by
-[resources/brand/build-tokens.mjs](../resources/brand/build-tokens.mjs) — that script owns
-the rules (the fill/text split, the outline rule, the derived `-ink` values), so a token is
-changed there and re-emitted, never hand-tuned in `app.css`. When a token moves, reflect it
-here. CLAUDE.md and the README point here instead of re-describing the palette so they do not
-drift again.
+Single source of truth for the design system. All values are declared in the
+`@theme static` block of [resources/css/app.css](../resources/css/app.css); this file is the
+human-readable index. When a token moves, reflect it here. CLAUDE.md and the README point here
+instead of re-describing the palette so they do not drift again.
+
+**What owns what.** `app.css` owns the emitted values — the radius, spacing, elevation and type
+scales are declared there directly and nowhere else.
+[resources/brand/build-tokens.mjs](../resources/brand/build-tokens.mjs) owns the *colour
+derivation rules*: the raw palette, the fill/text split, the outline rule, and the `-ink` tiers
+computed per ground so a label clears contrast on whatever it lands on. Change a derived colour's
+rule there; change a scale value in `app.css`. The two are held together by
+`DesignTokenContrastTest`, which scores the shipped stylesheet against the derivation, and by
+`build-tokens-dark.test.ts`, which pins the dark-ground maps.
+
+`W2` removed that script's second job. It used to emit a `tokens.css` preview alongside a
+duplicate copy of the four scales, neither of which anything read; the copies had drifted to a
+pre-Pewter palette and were the kind of unpinned duplicate `DesignTokenMirrorsTest` exists to
+prevent.
 
 > The palette carried the codename **Threadwork** through v1, borrowed from an
 > embroidery metaphor the product no longer tells. The name is retired: this is
@@ -291,7 +301,9 @@ the confetti burst — reads the same preference itself through
 
 ## Gradients & atmospherics
 
-- `<GradientText preset="horizon|cream-sun" fontSize=… />` ([component](../resources/js/components/ui/GradientText.tsx)) clips a `linear-gradient` to text. Numbers only, large sizes only, one per viewport.
+There is no gradient-text primitive any more. `GradientText` clipped a `linear-gradient` to a
+number at display sizes; no screen the prototype draws uses one, so `W2` swept it. Git history
+holds it if the treatment is ever wanted back.
 
 The sky→horizon backdrop atmospherics (Login's inline `linear-gradient` / `radial-gradient`
 layers) are not yet re-tuned for the dark ground — that lands with the screen slice that ports
@@ -365,4 +377,4 @@ plain `Record` lookups; do **not** fold those into cva.
 - **`text-text-3` on body prose.** The `ink-3` tier is for labels/timestamps/metadata only, never wrapping a `<p>` of running text. Sweep `grep text-text-3` before merging.
 - **Missing `tabular-nums` on stat displays.** Any big-number display must carry it so digits don't jitter as they change. The `.text-stat` / `.text-stat-sm` utilities include it; raw `font-mono` alone does not.
 - **`font-mono` omitted from uppercase labels.** Because `font-sans` is Tailwind's default, every `.text-label-micro` / `.text-label-small` utility needs an explicit `font-mono` — without it the label renders in the body font.
-- **Gradient text on non-numeric content.** `<GradientText>` is for numbers only (display-sized stats, KPI values), never for headlines or body prose.
+- **Reaching for gradient text.** There is no `GradientText` primitive; `W2` swept it once no screen used one. A display-sized number carries its own weight.

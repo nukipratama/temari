@@ -6,7 +6,6 @@ use App\Models\NotificationPreference;
 use App\Models\StravaConnection;
 use App\Models\TelegramConnection;
 use App\Models\User;
-use App\Models\UserUnlock;
 use App\Support\SharedPropCacheKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -44,13 +43,14 @@ function warmSharedProps(User $user): void
 
 it('serves a cached prop without recomputing it on the next request', function (): void {
     $user = User::factory()->create();
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_gold']);
+    TelegramConnection::factory()->for($user)->create();
+    config(['services.telegram.bot_token' => 'test-token']);
 
     warmSharedProps($user);
 
     $queries = 0;
     DB::listen(function ($query) use (&$queries): void {
-        if (str_contains((string) $query->sql, 'user_unlocks')) {
+        if (str_contains((string) $query->sql, 'telegram_connections')) {
             $queries++;
         }
     });
@@ -58,7 +58,7 @@ it('serves a cached prop without recomputing it on the next request', function (
     visitAs($user)
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('equippedAccessories.medal', 'accessory.medal_gold'));
+            ->where('telegramConnected', true));
 
     expect($queries)->toBe(0);
 });

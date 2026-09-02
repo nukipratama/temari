@@ -22,8 +22,8 @@ generator. The frozen prototype draws none of it — only a simple ring-and-face
 P10 cut the rig, its pose vocabulary (`temariPose.ts`), the accessory-driven variants
 (`Temari.tsx`, `lib/equippedAccessories.ts`) and the page that dressed it (see
 [[targets-accessories]]). Git history holds all of it. The generators themselves
-(`build-mascot.mjs` and the four brand scripts that import it) are untouched exploration art with
-no app consumer left; `W5` deletes that tree.
+(`build-mascot.mjs` and the four brand scripts that imported it) were exploration art with no app
+consumer left, and `W2` swept them along with the rest of the unread brand preview layer.
 
 **No dedicated route** — both marks are mounted inline. Every size the face ships at is rendered
 live on `/devtools/design` ([Design.tsx](../../resources/js/pages/Devtools/Design.tsx)), against
@@ -53,8 +53,8 @@ Three colours are separate props so a surface can tint one without touching the 
 
 The defaults are the ground-reactive semantic tokens, so the face inverts with the app's ground for
 free. `DARK_FACE` (exported alongside) is the prototype's own inverted read — `--color-sky-2` disc,
-`--color-cream` features — used where the surface is fixed-dark regardless of ground: the recap
-cards, and the app's sky-gradient `HeroPanel`.
+`--color-cream` features — used where the surface is fixed-dark regardless of ground, such as the
+recap cards.
 
 ### Where it is drawn
 

@@ -11,7 +11,6 @@ use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Services\AI\Agent\Tools\CardIdentityTool;
 use App\Services\AI\Agent\Tools\EffortContextTool;
-use App\Services\AI\Agent\Tools\FeaturedCardTool;
 use App\Services\AI\Agent\Tools\HrZonesTool;
 use App\Services\AI\Agent\Tools\KmSplitsTool;
 use App\Services\AI\Agent\Tools\LapsTool;
@@ -639,34 +638,6 @@ it('reads an empty badge list when the card carries none', function (): void {
     $card = RunCard::factory()->create(['activity_id' => $a->id, 'badges' => []]);
 
     expect(new CardIdentityTool($card)->handle([])['badges'])->toBe([]);
-});
-
-// ── FeaturedCardTool ──────────────────────────────────────────────────
-
-it('reads the featured card with badges humanised and capped at three tags', function (): void {
-    ['activity' => $a] = agentToolFixture();
-    $card = RunCard::factory()->create([
-        'activity_id' => $a->id,
-        'rarity' => 'legendary',
-        'special_move' => 'Langkah Sunyi',
-        'badges' => ['early_bird', 'negative_split', 'held_back', 'heat_tamer'],
-    ]);
-
-    $reading = new FeaturedCardTool($card->fresh()->load('activity.detail'))->handle([]);
-
-    expect($reading['name'])->toBe('Langkah Sunyi')
-        ->and($reading['rarity_label'])->toBe('Legendary')
-        ->and($reading['km'])->toBe('5km')
-        ->and($reading['tags'])->toHaveCount(3)
-        ->and($reading['tags'][0])->toBe('Early Bird');
-});
-
-it('reads a dash for the distance when the card run has none', function (): void {
-    ['activity' => $a, 'detail' => $d] = agentToolFixture();
-    $d->update(['distance' => null]);
-    $card = RunCard::factory()->create(['activity_id' => $a->id, 'badges' => []]);
-
-    expect(new FeaturedCardTool($card->fresh()->load('activity.detail'))->handle([])['km'])->toBe('-');
 });
 
 // ── WeekStateTool ─────────────────────────────────────────────────────

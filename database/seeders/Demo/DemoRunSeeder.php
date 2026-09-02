@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Database\Seeders\Demo;
 
 use App\Actions\Gamification\GrantEligibleUnlocksAction;
-use App\Actions\Run\Story\ResolveFeaturedKartuAction;
 use App\Enums\ExperienceLevel;
 use App\Enums\GoalType;
 use App\Enums\IngestState;
@@ -49,7 +48,6 @@ use App\Services\Run\Plan\WeekPlanBuilder;
 use App\Services\Run\Story\RunCardFactory;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
-use App\Support\SharedPropCacheKey;
 use Closure;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
@@ -78,7 +76,6 @@ class DemoRunSeeder
         private readonly AnalysisService $analysisService,
         private readonly RuleBasedNarrationFiller $filler,
         private readonly GrantEligibleUnlocksAction $unlockEngine,
-        private readonly ResolveFeaturedKartuAction $featuredKartu,
         private readonly Periodizer $periodizer,
         private readonly WeekPlanBuilder $weekPlanBuilder,
         private readonly TrainingBaseline $trainingBaseline,
@@ -170,24 +167,6 @@ class DemoRunSeeder
             $granted = $this->withSyncQueue(fn (): array => ($this->unlockEngine)($user));
             $log(sprintf('  %d accessory unlocks granted (%s)', count($granted), $granted === [] ? 'all already unlocked' : implode(', ', $granted)));
 
-            // Equip the best-in-slot accessories (one per slot) so the demo
-            // Temari actually shows off its hardware everywhere it appears.
-            // Clear every equipped flag first so a re-seed can't leave a stale
-            // sibling equipped in the same slot (two medals at once).
-            UserUnlock::query()
-                ->where('user_id', $user->id)
-                ->update(['equipped' => false]);
-
-            UserUnlock::query()
-                ->where('user_id', $user->id)
-                ->whereIn('unlock_key', [
-                    'accessory.headband_legendary',
-                    'accessory.medal_gold',
-                ])
-                ->update(['equipped' => true]);
-
-            SharedPropCacheKey::EquippedAccessories->forget($user->id);
-
             $log("Generating today's Temari greeting...");
             $vibeState = $this->vibe->current($user);
             $this->temari->dailyGreeting($user, $vibeState);
@@ -198,8 +177,6 @@ class DemoRunSeeder
             // withoutDispatching; the rows are flat-filled below with
             // deterministic rule-based content so demo doesn't burn tokens.
             $this->stagePendingAnalyses($user);
-
-            $this->queueBestRevealFor($user);
 
             // Backfill inside withoutDispatching so markDone's Telegram fan-out
             // stays suppressed: the demo never has a real connection, so an
@@ -299,26 +276,6 @@ class DemoRunSeeder
         );
     }
 
-    /**
-     * Point the one-shot reveal modal at the demo user's rarest card instead of
-     * whatever run happened to seed first. RunCardFactory::build() queues the
-     * first card it creates (the oldest activity, a plain Common easy run), so
-     * without this the demo's first login pops an underwhelming reveal. Here we
-     * override it to showcase the gimmick on a legendary/epic card. Ties break
-     * to the highest card id (most recently seeded).
-     */
-    private function queueBestRevealFor(User $user): void
-    {
-        $best = RunCard::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
-            ->whereNotNull('special_move')
-            ->get()
-            ->sortByDesc(fn (RunCard $card): array => [$card->rarity->rank(), $card->id])
-            ->first();
-
-        $user->forceFill(['pending_reveal_card_id' => $best?->id])->save();
-    }
-
     private function stagePendingAnalyses(User $user): void
     {
         $activities = Activity::query()->where('user_id', $user->id)->get();
@@ -365,21 +322,6 @@ class DemoRunSeeder
         // Mirrors DailyBriefingCommand so the dashboard's Temari voice card is
         // filled and never renders as empty.
         $this->analysisService->requestBriefing($user, $today);
-        // The weekly-featured-card voice (the featured-card quote on the
-        // dashboard hero) has its own job and is never auto-requested by ingest,
-        // so the demo must stage it here or the hero falls back to empty.
-        // Keyed by the featured card id (matching BriefingComposer) so the staged
-        // quote lines up with the card the hero actually shows.
-        $featuredCard = ($this->featuredKartu)($user);
-        if ($featuredCard !== null) {
-            $this->analysisService->request(
-                subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
-                subjectId: $user->id,
-                type: AnalysisType::BriefingFeaturedKartuVoice,
-                discriminator: (string) $featuredCard->id,
-            );
-        }
-
         // The Aku voice is cached per ISO week — discriminator must match
         // ProfileController::resolveProfileVoice() or the Aku hero misses it.
         $this->analysisService->request(

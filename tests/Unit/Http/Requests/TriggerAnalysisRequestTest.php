@@ -107,7 +107,6 @@ it('accepts the discriminator shape its own dispatch sites write', function (str
     expect(triggerAnalysisPasses($type, $discriminator))->toBeTrue();
 })->with([
     'briefing mascot voice day' => ['briefing_mascot_voice', '2026-05-18'],
-    'featured kartu card id' => ['briefing_featured_kartu_voice', '42'],
     'aku profile voice ISO week' => ['aku_profile_voice', '2026-W21'],
     'monthly recap month' => ['monthly_recap', '2026-05'],
     'weekly recap keys off the snapshot id' => ['weekly_recap', null],
@@ -129,9 +128,6 @@ it('rejects a novel or malformed discriminator', function (string $type, string 
     'a day where a month belongs' => ['monthly_recap', '2026-05-18'],
     'a day where an ISO week belongs' => ['aku_profile_voice', '2026-05-18'],
     'a malformed ISO week' => ['aku_profile_voice', '2026-W3'],
-    'a non-numeric featured card' => ['briefing_featured_kartu_voice', 'abc'],
-    'a zero featured card id' => ['briefing_featured_kartu_voice', '0'],
-    'a zero-padded featured card id' => ['briefing_featured_kartu_voice', '007'],
 ]);
 
 /**

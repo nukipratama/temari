@@ -85,7 +85,7 @@ Common running words everyone gets stay plain English and never get explained. B
 
 ## Emphasis: bold
 
-`**bold**` is allowed — in static UI (`<strong>` / `font-bold`) and in LLM narration — to highlight **one** key point per block (a word or short phrase, never a whole sentence). Max once per output, don't overuse it. When in doubt, skip it. Don't stack it with `<GradientText>` (which owns number emphasis). No other markdown (no italic, headings, bullets, code, numbered lists).
+`**bold**` is allowed — in static UI (`<strong>` / `font-bold`) and in LLM narration — to highlight **one** key point per block (a word or short phrase, never a whole sentence). Max once per output, don't overuse it. When in doubt, skip it. Keep it off numbers, which carry their own emphasis at display sizes. No other markdown (no italic, headings, bullets, code, numbered lists).
 
 LLM narration renders `**…**` via [`renderBold`](../resources/js/lib/richText.tsx); any surface that renders Temari's text routes through it (`AnalysisStatus` default + every `renderContent` caller), so emphasis lands instead of showing literal asterisks.
 

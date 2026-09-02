@@ -21,7 +21,7 @@ use Override;
  * @property bool $equipped
  * @property-read User $user
  */
-#[Fillable(['user_id', 'unlock_key', 'unlocked_at', 'metadata', 'equipped'])]
+#[Fillable(['user_id', 'unlock_key', 'unlocked_at', 'metadata'])]
 class UserUnlock extends Model
 {
     /** @use HasFactory<UserUnlockFactory> */
@@ -43,7 +43,6 @@ class UserUnlock extends Model
             'user_id' => 'integer',
             'unlocked_at' => 'datetime',
             'metadata' => 'array',
-            'equipped' => 'boolean',
         ];
     }
 }

@@ -1,6 +1,6 @@
 ---
 title: Vibe & mood system
-description: The daily "vibe" that sets Temari's tone, the run-level mood vocabulary, and the featured-kartu pick that headlines the dashboard.
+description: The daily "vibe" that sets Temari's tone and the run-level mood vocabulary.
 tags: [feature, story]
 status: living
 reviewed: 2026-08-03
@@ -8,7 +8,6 @@ code_refs:
   - app/Services/Run/Story/Vibe.php
   - app/Services/Run/Story/VibeMatrix.php
   - app/Services/Run/Story/Temari.php
-  - app/Actions/Run/Story/ResolveFeaturedKartuAction.php
   - app/Services/Run/Story/PastYouMatcher.php
   - app/Services/Run/Story/BriefingComposer.php
   - app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php
@@ -62,9 +61,11 @@ The bridge between the two systems is `moodForVibe` ([Temari.php:148](../../app/
 
 ## Featured kartu
 
-**No longer rendered.** `PP3` cut Today's featured-kartu panel (P29), and with it the
-`featuredCardId` / `featuredKartuVoice` briefing props. [ResolveFeaturedKartuAction::__invoke](../../app/Actions/Run/Story/ResolveFeaturedKartuAction.php)
-still picks a card — scan the last few runs (window constant at [ResolveFeaturedKartuAction.php:21](../../app/Actions/Run/Story/ResolveFeaturedKartuAction.php#L21)), keep the **highest [[cards-collection|rarity]]**, break ties toward the **most recent** run — and `ai:daily-briefing` still keys a `briefing_featured_kartu_voice` row off that card id, but nothing renders either. `W2` sweeps the resolver, the narrator and the job.
+**Gone.** `PP3` cut Today's featured-kartu panel (P29) along with the `featuredCardId` /
+`featuredKartuVoice` briefing props, and `W2` swept everything behind it: the resolver, the
+narrator, its job, its agent tool, the `briefing_featured_kartu_voice` enum case and the
+`ai:daily-briefing` dispatch that had gone on billing a narration nobody could read. Git history
+holds the picker if the surface ever returns.
 
 ## Past-you matcher
 

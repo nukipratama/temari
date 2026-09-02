@@ -44,7 +44,7 @@ This is deliberately **not** reconciled with [VdotEstimator](app/Services/Run/Me
 
 ## No fitness trend here any more
 
-`PP3` cut `/race`'s 90-day CTL chart (P26): the prototype draws that chart once, on Trends, and gives Race three blocks — race card, projection gauge, goal form. `CtlTrendChart` itself survives, unused by this page; [TrainingLoad::ctlTrend()](app/Services/Run/Metrics/TrainingLoad.php) still feeds Trends' fitness panel. See [[training-load-metrics]] for the full CTL/ATL engine.
+`PP3` cut `/race`'s 90-day CTL chart (P26): the prototype draws that chart once, on Trends, and gives Race three blocks — race card, projection gauge, goal form. `PS6` built Trends' panel on `LineChart` directly rather than reusing `CtlTrendChart`, which left that component with no consumer at all; `W2` swept it. [TrainingLoad::ctlTrend()](app/Services/Run/Metrics/TrainingLoad.php) still feeds Trends' fitness panel. See [[training-load-metrics]] for the full CTL/ATL engine.
 
 ## Sharing and cache busting
 

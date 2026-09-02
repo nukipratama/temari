@@ -53,7 +53,7 @@ it('returns stored content when analyses are done', function (): void {
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
-it('does not re-dispatch when the voice is done and the kartu voice still queued', function (): void {
+it('does not re-dispatch when the voice is already done', function (): void {
     $user = User::factory()->create();
     $asOf = Carbon::parse('2026-05-18');
 
@@ -63,13 +63,6 @@ it('does not re-dispatch when the voice is done and the kartu voice still queued
         'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-05-18',
     ]);
-    Analysis::factory()->queued()->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingFeaturedKartuVoice,
-        'discriminator' => '7',
-    ]);
-
     app(BriefingComposer::class)->compose($user, $asOf);
 
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);

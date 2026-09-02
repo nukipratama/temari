@@ -44,7 +44,6 @@ function trend(comparisons: PastYouComparison[]): PastYouTrend {
         fitness_delta_ctl: null,
         pace_consistency_now: null,
         pace_consistency_then: null,
-        relative_effort_band: null,
     };
 }
 

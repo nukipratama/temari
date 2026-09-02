@@ -29,10 +29,12 @@ Two DB connections: default `mysql` plus a second **`analytics`** schema for met
 
 ## Design system
 
-Pewter: cold near-white paper, near-black structure, lime accent. Tokens live in the `@theme` block of
-[resources/css/app.css](../../../resources/css/app.css), which is *generated* by
-[build-tokens.mjs](../../../resources/brand/build-tokens.mjs); full reference (colors, type scale,
-fonts, radius, elevation, spacing) in [docs/design-tokens.md](../../../docs/design-tokens.md).
+Pewter: cold near-white paper, near-black structure, lime accent. Tokens are declared in the
+`@theme static` block of [resources/css/app.css](../../../resources/css/app.css), which owns every
+emitted value; [build-tokens.mjs](../../../resources/brand/build-tokens.mjs) owns the colour
+*derivation* rules behind it (the fill/text split and the per-ground `-ink` tiers), not the radius,
+spacing, elevation or type scales. Full reference (colors, type scale, fonts, radius, elevation,
+spacing) in [docs/design-tokens.md](../../../docs/design-tokens.md).
 Use the **semantic token families, never raw Tailwind colors** like `lime-500`:
 
 - `sky` (`#171f28`) / `sky-deep` (`#0b1017`) / `sky-2` (`#26303d`) — structure, dark hero panels, and (since F2) the dark ground itself. Cold near-black.
@@ -86,11 +88,10 @@ to neutral (`surface-sunken` + `ink`) so the brand mark gets breathing room. Str
 
 ### Gradient primitives
 
-Gradient **text** is applied via
-[`<GradientText preset="horizon|cream-sun" fontSize=… />`](../../../resources/js/components/ui/GradientText.tsx),
-which clips a `linear-gradient` to the text via inline `background-clip`. Rule: **gradient text
-on numbers only**, only at large display sizes, and only one per visible viewport. Scarcity makes
-it feel premium, not Las-Vegas. Backdrop atmospherics (e.g. the login page) are inline CSS
+**There is no gradient-text primitive.** `GradientText` clipped a `linear-gradient` to a number at
+display sizes; the prototype draws no gradient text on any screen, so `W2` swept it. Don't
+reintroduce one for a stat: a display-tier number already carries the emphasis.
+Backdrop atmospherics (e.g. the login page) are inline CSS
 `linear-gradient` + `radial-gradient` layers on the sky→horizon ramp, not a shared component;
 in-app pages stay clean.
 

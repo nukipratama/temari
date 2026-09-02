@@ -30,7 +30,6 @@ it('keeps the documented TTLs', function (): void {
         ->and(SharedPropCacheKey::StravaPaused->ttl())->toBe(60)
         ->and(SharedPropCacheKey::StravaSync->ttl())->toBe(120)
         ->and(SharedPropCacheKey::HrZonesChangedAt->ttl())->toBe(300)
-        ->and(SharedPropCacheKey::EquippedAccessories->ttl())->toBe(300)
         ->and(SharedPropCacheKey::TelegramConnected->ttl())->toBe(300)
         ->and(SharedPropCacheKey::WebPushSubscribed->ttl())->toBe(300)
         ->and(SharedPropCacheKey::StravaZoneScopeMissing->ttl())->toBe(300);
@@ -85,21 +84,21 @@ it('recomputes after a forget', function (): void {
         return $calls;
     };
 
-    SharedPropCacheKey::EquippedAccessories->remember(1, $compute);
-    SharedPropCacheKey::EquippedAccessories->forget(1);
-    SharedPropCacheKey::EquippedAccessories->remember(1, $compute);
+    SharedPropCacheKey::TelegramConnected->remember(1, $compute);
+    SharedPropCacheKey::TelegramConnected->forget(1);
+    SharedPropCacheKey::TelegramConnected->remember(1, $compute);
 
     expect($calls)->toBe(2);
 });
 
 it('forgets only the targeted user', function (): void {
-    SharedPropCacheKey::EquippedAccessories->remember(1, fn (): string => 'one');
-    SharedPropCacheKey::EquippedAccessories->remember(2, fn (): string => 'two');
+    SharedPropCacheKey::TelegramConnected->remember(1, fn (): string => 'one');
+    SharedPropCacheKey::TelegramConnected->remember(2, fn (): string => 'two');
 
-    SharedPropCacheKey::EquippedAccessories->forget(1);
+    SharedPropCacheKey::TelegramConnected->forget(1);
 
-    expect(Cache::has(SharedPropCacheKey::EquippedAccessories->key(1)))->toBeFalse()
-        ->and(SharedPropCacheKey::EquippedAccessories->remember(2, fn (): string => 'recomputed'))->toBe('two');
+    expect(Cache::has(SharedPropCacheKey::TelegramConnected->key(1)))->toBeFalse()
+        ->and(SharedPropCacheKey::TelegramConnected->remember(2, fn (): string => 'recomputed'))->toBe('two');
 });
 
 it('round-trips every scalar type intact on the stores a test run can reach', function (string $store): void {

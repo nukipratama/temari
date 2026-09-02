@@ -35,7 +35,6 @@ it('carries the verdict, its evidence and the supporting readings', function ():
         fitnessDeltaCtl: 3.2,
         paceConsistencyNow: 'sangat rata',
         paceConsistencyThen: 'agak naik-turun',
-        relativeEffortBand: 'typical',
     );
 
     expect($trend->toArray())->toMatchArray([
@@ -47,7 +46,6 @@ it('carries the verdict, its evidence and the supporting readings', function ():
         'fitness_delta_ctl' => 3.2,
         'pace_consistency_now' => 'sangat rata',
         'pace_consistency_then' => 'agak naik-turun',
-        'relative_effort_band' => 'typical',
     ])->and($trend->toArray()['comparisons'][0]['direction'])->toBe('better');
 });
 
