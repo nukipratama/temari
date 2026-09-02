@@ -26,7 +26,7 @@ ADRs grouped by the problem they solve, for easier navigation than a flat timeli
 | **Operability** | [[pause-reason-derives-from-the-dispatch-gate]] (the monitor derives from the gate it reports on) |
 | **Notifications** | [[inbox-is-an-always-on-channel]] (the inbox as an unmuteable third channel); [[demo-notifications-are-inbox-only]] (demo routed to the record, never to an interruption) |
 | **Ops / deploy** | [[fixed-session-cookie]] (stable cookie name); [[defer-config-cache]] (config cache timing); [[telegram-account-linking]] (signed deep-link token) |
-| **Design / branding** | [[ink-grounds-derived-not-listed]] (contrast grounds derived from the render, failing closed); [[temari-keeps-score-persona]] (voice: friend → training partner who keeps score); [[thread-ball-character-rebrand]] (bunny/Daybreak → thread-ball/Threadwork) *(persona half superseded)* |
+| **Design / branding** | [[dark-is-the-default-ground]] (two grounds on a data-theme attribute, dark by default); [[ink-grounds-derived-not-listed]] (contrast grounds derived from the render, failing closed); [[temari-keeps-score-persona]] (voice: friend → training partner who keeps score); [[thread-ball-character-rebrand]] (bunny/Daybreak → thread-ball/Threadwork) *(persona half superseded)* |
 
 ## Timeline
 
@@ -68,4 +68,5 @@ _Notifications_
 _Design_
 - [[thread-ball-character-rebrand]] — full character replacement (bunny → thread-ball) and palette rename (Daybreak → Threadwork), tying the visual identity to the training arc *(its persona stance superseded by [[temari-keeps-score-persona]]; the visual decisions still stand)*
 - [[temari-keeps-score-persona]] — the voice shifts from a soft warm friend to a training partner who holds up the runner's own numbers and names a coast
+- [[dark-is-the-default-ground]] — two authored grounds switched by `data-theme` on `<html>`, dark by default, with a ground-reactive semantic layer over a fixed named palette
 - [[ink-grounds-derived-not-listed]] — the `-ink` tier is derived and audited against grounds read from the stylesheet and the components, and an unclassified background fails the build
