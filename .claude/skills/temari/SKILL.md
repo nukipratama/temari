@@ -29,10 +29,12 @@ Two DB connections: default `mysql` plus a second **`analytics`** schema for met
 
 ## Design system
 
-Pewter: cold near-white paper, near-black structure, lime accent. Tokens live in the `@theme` block of
-[resources/css/app.css](../../../resources/css/app.css), which is *generated* by
-[build-tokens.mjs](../../../resources/brand/build-tokens.mjs); full reference (colors, type scale,
-fonts, radius, elevation, spacing) in [docs/design-tokens.md](../../../docs/design-tokens.md).
+Pewter: cold near-white paper, near-black structure, lime accent. Tokens are declared in the
+`@theme static` block of [resources/css/app.css](../../../resources/css/app.css), which owns every
+emitted value; [build-tokens.mjs](../../../resources/brand/build-tokens.mjs) owns the colour
+*derivation* rules behind it (the fill/text split and the per-ground `-ink` tiers), not the radius,
+spacing, elevation or type scales. Full reference (colors, type scale, fonts, radius, elevation,
+spacing) in [docs/design-tokens.md](../../../docs/design-tokens.md).
 Use the **semantic token families, never raw Tailwind colors** like `lime-500`:
 
 - `sky` (`#171f28`) / `sky-deep` (`#0b1017`) / `sky-2` (`#26303d`) — structure, dark hero panels, and (since F2) the dark ground itself. Cold near-black.

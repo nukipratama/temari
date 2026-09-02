@@ -1,13 +1,23 @@
 # Design tokens
 
-Single source of truth for the design system. All values are defined in the
-`@theme` block of [resources/css/app.css](../resources/css/app.css); this file is the
-human-readable index. The block is **generated**, by
-[resources/brand/build-tokens.mjs](../resources/brand/build-tokens.mjs) — that script owns
-the rules (the fill/text split, the outline rule, the derived `-ink` values), so a token is
-changed there and re-emitted, never hand-tuned in `app.css`. When a token moves, reflect it
-here. CLAUDE.md and the README point here instead of re-describing the palette so they do not
-drift again.
+Single source of truth for the design system. All values are declared in the
+`@theme static` block of [resources/css/app.css](../resources/css/app.css); this file is the
+human-readable index. When a token moves, reflect it here. CLAUDE.md and the README point here
+instead of re-describing the palette so they do not drift again.
+
+**What owns what.** `app.css` owns the emitted values — the radius, spacing, elevation and type
+scales are declared there directly and nowhere else.
+[resources/brand/build-tokens.mjs](../resources/brand/build-tokens.mjs) owns the *colour
+derivation rules*: the raw palette, the fill/text split, the outline rule, and the `-ink` tiers
+computed per ground so a label clears contrast on whatever it lands on. Change a derived colour's
+rule there; change a scale value in `app.css`. The two are held together by
+`DesignTokenContrastTest`, which scores the shipped stylesheet against the derivation, and by
+`build-tokens-dark.test.ts`, which pins the dark-ground maps.
+
+`W2` removed that script's second job. It used to emit a `tokens.css` preview alongside a
+duplicate copy of the four scales, neither of which anything read; the copies had drifted to a
+pre-Pewter palette and were the kind of unpinned duplicate `DesignTokenMirrorsTest` exists to
+prevent.
 
 > The palette carried the codename **Threadwork** through v1, borrowed from an
 > embroidery metaphor the product no longer tells. The name is retired: this is

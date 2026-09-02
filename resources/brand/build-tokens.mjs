@@ -1,8 +1,10 @@
 import { contrast, darkest, darkGrounds, groundsForInk, paperGrounds } from './grounds.mjs';
 
-/* Threadwork v2 — the token set the current app is missing.
-   Colour was already largely defined; radius and elevation were not, which is
-   the main reason surfaces read inconsistently. Type drops from 4 families to 3. */
+/* The colour derivation behind resources/css/app.css: the raw palette, and the
+   -ink tiers derived from it per ground so a label always clears contrast on
+   whatever it lands on. The radius, spacing, elevation and type scales used to
+   live here too and were swept by W2 — app.css declares those directly, nothing
+   derives them, and keeping a second unread copy here was pure drift risk. */
 
 const COLOR = {
   // structure — Pewter: cold near-black
@@ -53,43 +55,6 @@ const MOOD_BG = {
 const RARITY = {
   common: '#7d8694', uncommon: '#2fb350', rare: '#2f81f7',
   epic: '#a855f7', legendary: '#f5a623',
-};
-
-/* NEW — no radius scale existed; radii came from Tailwind defaults at call sites. */
-const RADIUS = {
-  xs: '6px', sm: '10px', md: '14px', lg: '18px', xl: '24px', full: '9999px',
-};
-
-/* NEW — no spacing scale existed either, so every padding was hand-picked
-   (23 distinct values across the previews before this landed). 4px base. */
-const SPACE = { 1: '4px', 2: '8px', 3: '12px', 4: '16px', 5: '20px',
-                6: '24px', 8: '32px', 10: '40px', 12: '48px', 16: '64px' };
-
-/* Named roles, so a component asks for its *kind* rather than a number.
-   Mirrors the rhythm already documented in docs/design-tokens.md. */
-const PAD = {
-  chip:  '4px 12px',
-  panel: '12px 16px',
-  card:  '16px',
-  hero:  '24px',
-  page:  '48px 40px 80px',
-};
-
-/* NEW — no shadow tokens existed. Shadows are warm-tinted: a neutral black
-   shadow on a cream ground reads grey and dirty. */
-const SHADOW = {
-  e1: '0 1px 2px rgba(58,45,20,0.06), 0 1px 1px rgba(58,45,20,0.04)',
-  e2: '0 4px 10px rgba(58,45,20,0.08), 0 2px 4px rgba(58,45,20,0.05)',
-  e3: '0 12px 28px rgba(58,45,20,0.12), 0 4px 10px rgba(58,45,20,0.07)',
-  e4: '0 24px 56px rgba(23,15,56,0.20), 0 8px 20px rgba(23,15,56,0.12)',
-};
-
-/* 4 families -> 3. Oswald is dropped: it was Kartu-only and is the reason the
-   collection reads as a different product. Cards now use the same stack. */
-const FONT = {
-  sans:    "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif",
-  mono:    "'JetBrains Mono', ui-monospace, SFMono-Regular, monospace",
-  display: "'Fraunces', Georgia, serif",
 };
 
 // ---- contrast ---------------------------------------------------------------
@@ -180,4 +145,4 @@ export const RARITY_INK_DARK = Object.fromEntries(
   Object.entries(RARITY).map(([k, v]) => [k, inkOnDark(v, GROUNDS_DARK)]),
 );
 
-export { RARITY_INK, MOOD_INK, COLOR, MOOD, RARITY, RADIUS, SHADOW, FONT, SPACE, PAD };
+export { RARITY_INK, MOOD_INK, COLOR, MOOD, RARITY };
