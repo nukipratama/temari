@@ -145,13 +145,13 @@ describe('MobileBottomNav', () => {
         );
     });
 
-    it('holds the base column width and does not take its wide step', () => {
+    it('tracks the content column at its wide step too', () => {
         setMockPage({}, '/', 'Home');
         render(<MobileBottomNav />);
-        // P32 constrained the pill because four items spread across a wide
-        // track read as far apart; 1040 is no different from full-bleed there.
-        expect(screen.getByRole('navigation').className).not.toMatch(
-            /max-w-column-wide/,
+        // A pill narrower than the content above it reads as misaligned; P32's
+        // objection was to a full-bleed track, which 1040 still is not.
+        expect(screen.getByRole('navigation')).toHaveClass(
+            'min-[1280px]:max-w-column-wide',
         );
     });
 });

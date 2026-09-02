@@ -34,10 +34,11 @@ day rows would stretch very wide).
 it becomes `--container-column` / `--container-column-wide`. The banners have to track the column
 or they visibly drift out of alignment with the content they sit above.
 
-**The nav pill deliberately does not take the wide step.** P32 constrained it to the column because
-four items spread across a wide track read as uncomfortably far apart; that reasoning applies to
-1040 exactly as it did to the full-bleed width P32 was written about. It caps at
-`max-w-column`, asserted in its own test.
+**The nav pill tracks the column at both steps.** It was first shipped capped at 760 on the
+reading that P32's objection — four items spread across a wide track read as far apart — carried
+over to 1040. **The user overruled that on sight**: 1040 is still a bounded column rather than the
+full-bleed track P32 was written about, and a pill visibly narrower than the content above it is
+the more obviously wrong of the two. Asserted in its own test.
 
 Onboarding's 520px and Login's 440px auth card keep their prototype values. Onboarding overrides
 `max-w` through `className`, which tailwind-merge keeps *alongside* a differently-prefixed
@@ -62,9 +63,10 @@ breakpoint.
   N/16 with no rounding — so **below 1280 nothing moves at all**.
 - The same conversion applies to `app.css`'s three label-role utilities and to the fixed-px type
   tokens `--text-quote-lg/md/sm` and `--text-stat`.
-- `html { font-size: 17.6px }` at 1280px, a 10% step, at the same breakpoint the column widens.
+- `html { font-size: 19.2px }` at 1280px, a **20%** step, at the same breakpoint the column widens.
   Tailwind's spacing scale is rem too, so padding and gaps grow with the type rather than leaving
-  text swelling inside boxes that did not.
+  text swelling inside boxes that did not. It shipped at 10% first and the user called it still too
+  small against a real screen; 20% is the second reading and the knob is one token.
 
 **The comment saying the quote tier must not scale is corrected, not ignored.** It reads "body
 reading should NOT scale with viewport because the focal distance is constant" — which is an
