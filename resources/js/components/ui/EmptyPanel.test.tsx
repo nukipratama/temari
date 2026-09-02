@@ -16,13 +16,16 @@ beforeEach(() => {
 });
 
 describe('EmptyPanel', () => {
-    it('renders the title inside the dashed placeholder panel', () => {
+    it('renders the title inside a solid card, as the prototype draws it', () => {
         const { container } = render(
             <EmptyPanel title="Belum ada data" className="" />,
         );
         expect(screen.getByText('Belum ada data')).toBeInTheDocument();
-        expect(container.firstElementChild).toHaveClass('border-dashed');
         expect(container.firstElementChild).toHaveClass('border-border-strong');
+        expect(container.firstElementChild).toHaveClass('shadow-e1');
+        // The prototype draws no dashed border anywhere; its empty cards are
+        // ordinary cards on the heavier border. See T3.
+        expect(container.firstElementChild).not.toHaveClass('border-dashed');
         expect(container.firstElementChild).not.toHaveClass('border-2');
     });
 

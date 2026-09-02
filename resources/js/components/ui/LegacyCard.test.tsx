@@ -15,7 +15,7 @@ describe('Card', () => {
         ['card', 'bg-card'],
         ['sky', 'bg-sky'],
         ['onSky', 'bg-cream/[0.06]'],
-        ['empty', 'border-dashed'],
+        ['empty', 'border-border-strong'],
     ] satisfies [CardTone, string][])(
         'renders tone %s with its surface class',
         (tone, expected) => {

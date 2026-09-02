@@ -28,7 +28,7 @@ describe('cardVariants', () => {
         ['card', 'bg-card'],
         ['sky', 'bg-sky'],
         ['onSky', 'backdrop-blur'],
-        ['empty', 'border-dashed'],
+        ['empty', 'border-border-strong'],
     ] as const)('renders tone %s', (tone, expected) => {
         expect(tokens(cardVariants({ tone }))).toContain(expected);
     });

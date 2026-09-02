@@ -432,9 +432,6 @@
         "sky/0.25": {
             "text": []
         },
-        "card/0.4": {
-            "text": []
-        },
         "card/0.6": {
             "over": {
                 "resources/js/components/MobileBottomNav.tsx": [
