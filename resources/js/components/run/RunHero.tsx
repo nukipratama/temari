@@ -73,7 +73,7 @@ export default function RunHero({
             unit: null,
         },
         {
-            label: 'ELEVATION',
+            label: 'ELEV',
             icon: 'mdi:trending-up',
             value: display(
                 detail.total_elevation_gain ?? null,
