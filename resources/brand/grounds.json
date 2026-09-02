@@ -394,9 +394,6 @@
         },
         "sky/0.06": {
             "over": {
-                "resources/js/components/StravaSyncBadge.tsx": [
-                    "paper"
-                ],
                 "resources/js/components/ui/ProgressBar.tsx": [
                     "paper"
                 ]
@@ -431,9 +428,6 @@
             "text": [
                 "sky"
             ]
-        },
-        "sky/0.12": {
-            "text": []
         },
         "sky/0.25": {
             "text": []

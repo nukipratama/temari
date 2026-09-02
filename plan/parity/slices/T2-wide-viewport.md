@@ -139,6 +139,24 @@ Worth stating plainly: **the automated audit found this and a screenshot read wo
 `document.scrollWidth` was 1536 — the page did not scroll — and the mark is a transient popover
 that a sweep would not have had open. Only the per-element bounds check saw it.
 
+## Also cut here: the top bar's Strava sync badge
+
+Asked for by the user on sight. It is a parity cut as well as a preference: the prototype's
+`AppTopbar` draws the wordmark, a bell and an avatar, and nothing else — P7's list already says so.
+
+**The badge was not purely informational**, which is the part worth checking before cutting. Its
+`revoked` state was a live `/auth/strava/redirect` link, so removing it removes a reconnect
+affordance. That path survives in two other places, and neither banner is one of them:
+`StravaPausedBanner` is gated on the operator kill-switch and is action-less, and
+`StravaZoneReconnectBanner` on a *live* connection missing the zones scope. What does cover it is
+**Profile's hero action**, gated on exactly `stravaSync?.state === 'revoked'` — which the topbar's
+avatar leads to — and `StravaSyncButton` on the feed's empty state. So a revoked user still has a
+way back.
+
+The component and its test are deleted rather than left unused. The `stravaSync` shared prop stays;
+Profile and the feed still read it. Two `grounds.json` registrations were orphaned by the deletion
+(`sky/0.06`'s call site and the `sky/0.12` hover tint) and removed.
+
 ## Open questions
 
 1. **The step is a single 10% knob.** It buys coherence at the cost of per-tier control: a future
