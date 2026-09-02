@@ -38,7 +38,7 @@ export default function IconChoiceCard({
             className={cn(
                 'focus-ring flex w-full items-center gap-3 rounded-md border px-3.5 py-3 text-left transition',
                 active
-                    ? 'border-icon-accent bg-horizon/10'
+                    ? 'border-icon-accent bg-horizon/[0.18]'
                     : 'border-border-strong bg-card shadow-e1',
             )}
         >

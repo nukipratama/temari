@@ -190,7 +190,7 @@ describe('AnalysisStatus', () => {
         vi.useRealTimers();
     });
 
-    it('gives the done-state timestamp and "reread" button the on-sky muted tone instead of text-text-3', () => {
+    it('gives the done-state timestamp and "reread" pill their on-sky tone', () => {
         vi.useFakeTimers();
         const now = new Date('2026-07-07T12:00:00Z');
         vi.setSystemTime(now);
@@ -213,8 +213,8 @@ describe('AnalysisStatus', () => {
             'text-text-3',
         );
         const button = screen.getByRole('button', { name: /reread/ });
-        expect(button).toHaveClass('text-ink-on-sky');
-        expect(button).not.toHaveClass('text-text-3');
+        expect(button).toHaveClass('bg-cream/10', 'text-cream');
+        expect(button).not.toHaveClass('bg-muted');
         vi.useRealTimers();
     });
 
@@ -239,6 +239,34 @@ describe('AnalysisStatus', () => {
         );
         const button = screen.getByRole('button', { name: /Wait 2:05/ });
         expect(button).toBeDisabled();
+    });
+
+    it("draws the trigger as the prototype's right-aligned muted pill", () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({ status: 'done', content: 'x' })}
+            />,
+        );
+        const button = screen.getByRole('button', { name: /^reread$/ });
+        expect(button).toHaveClass(
+            'self-end',
+            'rounded-full',
+            'bg-muted',
+            'text-label-micro',
+        );
+    });
+
+    it('reads the cooldown as "next in", matching Plan\'s own replan trigger', () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({
+                    status: 'done',
+                    content: 'x',
+                    retry_after_seconds: 125,
+                })}
+            />,
+        );
+        expect(screen.getByText('next in 2:05')).toBeInTheDocument();
     });
 
     it('decrements the cooldown countdown each second', async () => {

@@ -82,6 +82,42 @@ describe('EmptyPanel', () => {
         );
     });
 
+    it('draws the face at 40 by default and at 48 only when the caller asks', () => {
+        const { container, rerender } = render(
+            <EmptyPanel face title="Judul" className="" />,
+        );
+        expect(container.querySelector('[data-face-icon]')).toHaveAttribute(
+            'width',
+            '40',
+        );
+
+        rerender(<EmptyPanel face faceSize={48} title="Judul" className="" />);
+        expect(container.querySelector('[data-face-icon]')).toHaveAttribute(
+            'width',
+            '48',
+        );
+    });
+
+    it('lays the face beside the copy when the layout is horizontal', () => {
+        const { container } = render(
+            <EmptyPanel
+                face
+                layout="horizontal"
+                title="Judul"
+                body="Sub-copy"
+                className=""
+            />,
+        );
+        expect(container.firstElementChild).toHaveClass(
+            'flex',
+            'items-center',
+            'text-left',
+        );
+        expect(container.firstElementChild).not.toHaveClass('text-center');
+        // The face is a sibling of the copy block, not stacked above it.
+        expect(screen.getByText('Judul')).not.toHaveClass('mt-4');
+    });
+
     it('renders as a div by default', () => {
         const { container } = render(<EmptyPanel title="Judul" />);
         expect(container.firstElementChild?.tagName).toBe('DIV');

@@ -65,7 +65,7 @@ export function DayCell({
         );
     } else if (active) {
         circleSize = 'size-8';
-        circleTone = 'border-icon-accent bg-horizon/10 text-icon-accent';
+        circleTone = 'border-icon-accent bg-horizon/[0.18] text-icon-accent';
         icon = flagCandidate ? (
             <Icon
                 icon="mdi:flag-checkered"
