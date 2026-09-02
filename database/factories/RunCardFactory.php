@@ -27,7 +27,7 @@ class RunCardFactory extends Factory
                 fake()->numberBetween(0, 3),
             ),
             'special_move' => fake()->randomElement([
-                'Langkah Mantap',
+                'Steady Tempo',
                 'Paru-paru Baja',
                 'Metronom',
                 'Pemburu Sabar',

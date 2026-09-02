@@ -32,7 +32,7 @@ return [
         'pr_context' => (string) env('AZURE_OPENAI_PR_CONTEXT_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'weekly_recap' => (string) env('AZURE_OPENAI_WEEKLY_RECAP_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'monthly_recap' => (string) env('AZURE_OPENAI_MONTHLY_RECAP_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
-        'aku_profile_voice' => (string) env('AZURE_OPENAI_AKU_PROFILE_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
+        'profile_voice' => (string) env('AZURE_OPENAI_PROFILE_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'card_flavor' => (string) env('AZURE_OPENAI_CARD_FLAVOR_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'run_question' => (string) env('AZURE_OPENAI_RUN_QUESTION_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'trend_read' => (string) env('AZURE_OPENAI_TREND_READ_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),

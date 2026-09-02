@@ -38,7 +38,7 @@ it('returns stored content when analyses are done', function (): void {
     $user = User::factory()->create();
     $asOf = Carbon::parse('2026-05-18');
 
-    Analysis::factory()->done('Aku liat kemarin lo lari santai, easy hari ini ya')->create([
+    Analysis::factory()->done('Saw you keep it easy yesterday, so stay easy today')->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::BriefingMascotVoice,
@@ -47,7 +47,7 @@ it('returns stored content when analyses are done', function (): void {
 
     $result = app(BriefingComposer::class)->compose($user, $asOf);
 
-    expect($result->mascotVoice['content'])->toBe('Aku liat kemarin lo lari santai, easy hari ini ya')
+    expect($result->mascotVoice['content'])->toBe('Saw you keep it easy yesterday, so stay easy today')
         ->and($result->mascotVoice['status'])->toBe(AnalysisStatus::Done->value);
 
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
@@ -57,7 +57,7 @@ it('does not re-dispatch when the voice is already done', function (): void {
     $user = User::factory()->create();
     $asOf = Carbon::parse('2026-05-18');
 
-    Analysis::factory()->done('Pagi yang oke')->create([
+    Analysis::factory()->done('A good morning')->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::BriefingMascotVoice,

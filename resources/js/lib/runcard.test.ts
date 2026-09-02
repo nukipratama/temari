@@ -14,7 +14,7 @@ import {
     badgeEmblem,
     badgeName,
     fastestKmFromDetail,
-    kartuPropsFromDetail,
+    cardPropsFromDetail,
     threadBandLines,
     zonePctFromDetail,
 } from './runcard';
@@ -216,11 +216,11 @@ describe('zonePctFromDetail', () => {
     });
 });
 
-describe('kartuPropsFromDetail', () => {
+describe('cardPropsFromDetail', () => {
     const fullDetail: ActivityDetail = {
         id: 1,
         activity_id: 1,
-        name: 'Pagi santai',
+        name: 'Easy morning',
         start_date_local: '2026-05-11T06:30:00Z',
         distance: 5000,
         elapsed_time: 1810,
@@ -236,11 +236,11 @@ describe('kartuPropsFromDetail', () => {
     };
 
     it('derives the full card prop bag with digital HMS duration by default', () => {
-        const props = kartuPropsFromDetail(fullDetail);
+        const props = cardPropsFromDetail(fullDetail);
         expect(props.km).toBe('5.00');
         expect(props.duration).toBe('30:10');
         expect(props.trimp).toBe('43');
-        expect(props.subtitle).toContain('Pagi santai · ');
+        expect(props.subtitle).toContain('Easy morning · ');
         expect(props.stats).toEqual({
             pace: '6:02/km',
             hr: '152 bpm',
@@ -253,19 +253,19 @@ describe('kartuPropsFromDetail', () => {
 
     it('uses the words-form duration when durationFormat is words', () => {
         expect(
-            kartuPropsFromDetail(fullDetail, { durationFormat: 'words' })
+            cardPropsFromDetail(fullDetail, { durationFormat: 'words' })
                 .duration,
         ).toBe('30 min 10 sec');
     });
 
     it('falls back to "Run" in the subtitle when the run has no name', () => {
         expect(
-            kartuPropsFromDetail({ ...fullDetail, name: null }).subtitle,
+            cardPropsFromDetail({ ...fullDetail, name: null }).subtitle,
         ).toContain('Run · ');
     });
 
     it('uses "—" sentinels and null fields when detail is null or empty', () => {
-        const props = kartuPropsFromDetail(null);
+        const props = cardPropsFromDetail(null);
         expect(props.km).toBe('—');
         expect(props.duration).toBe('—');
         expect(props.trimp).toBe('—');

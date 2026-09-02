@@ -37,7 +37,7 @@ const runCard: RunCardDetail = {
     flavor_analysis: {
         id: 2,
         status: 'done',
-        content: 'Napas kuat sampai akhir.',
+        content: 'Breathing strong to the end.',
         type: 'card_flavor',
         subject_type: String.raw`App\Models\RunCard`,
         subject_id: 1,

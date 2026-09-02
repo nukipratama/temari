@@ -31,7 +31,7 @@ function stravaHistoryPage(int $firstId, int $count, string $firstDate): array
     return array_map(fn (int $offset): array => [
         'id' => $firstId - $offset,
         'sport_type' => 'Run',
-        'name' => 'Lari',
+        'name' => 'Run',
         'start_date' => CarbonImmutable::parse($firstDate)->subDays($offset)->toIso8601String(),
         'start_date_local' => CarbonImmutable::parse($firstDate)->subDays($offset)->toIso8601String(),
         'distance' => 8_000.0,

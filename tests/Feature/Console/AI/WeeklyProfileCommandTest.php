@@ -19,7 +19,7 @@ function ranOn(User $user, Carbon $day): void
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => $day]);
 }
 
-it('refreshes the Kata Temari voice once, week-keyed and invalidate:false, for an active user', function (): void {
+it('refreshes the Temari note voice once, week-keyed and invalidate:false, for an active user', function (): void {
     // Monday 2026-05-18, ISO week 2026-W21.
     Carbon::setTestNow('2026-05-18 00:05:00');
 
@@ -38,8 +38,8 @@ it('refreshes the Kata Temari voice once, week-keyed and invalidate:false, for a
     expect($captured)->toHaveCount(1);
 
     $voice = $captured[0];
-    expect($voice['type'])->toBe(AnalysisType::AkuProfileVoice)
-        ->and($voice['subjectOrType'])->toBe(AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE)
+    expect($voice['type'])->toBe(AnalysisType::ProfileVoice)
+        ->and($voice['subjectOrType'])->toBe(AnalysisType::PROFILE_VOICE_SUBJECT_TYPE)
         ->and($voice['subjectId'])->toBe($user->id)
         ->and($voice['discriminator'])->toBe('2026-W21')
         ->and($voice['invalidate'])->toBeFalse();

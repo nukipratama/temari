@@ -30,9 +30,9 @@ it('renders every authenticated page for a fresh user', function (string $route,
     'plan' => ['plan', 'Plan'],
 ]);
 
-it('retired /cards and its /kartu alias outright, replaced by History\'s inline Kartu-per-row', function (): void {
+it('retired /cards and its /card alias outright, replaced by History\'s inline Card-per-row', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)->get('/cards')->assertNotFound();
-    $this->actingAs($user)->get('/kartu')->assertNotFound();
+    $this->actingAs($user)->get('/card')->assertNotFound();
 });

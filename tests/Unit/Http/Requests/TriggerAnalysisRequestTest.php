@@ -107,7 +107,7 @@ it('accepts the discriminator shape its own dispatch sites write', function (str
     expect(triggerAnalysisPasses($type, $discriminator))->toBeTrue();
 })->with([
     'briefing mascot voice day' => ['briefing_mascot_voice', '2026-05-18'],
-    'aku profile voice ISO week' => ['aku_profile_voice', '2026-W21'],
+    'profile voice ISO week' => ['profile_voice', '2026-W21'],
     'monthly recap month' => ['monthly_recap', '2026-05'],
     'weekly recap keys off the snapshot id' => ['weekly_recap', null],
     'card flavor keys off the card id' => ['card_flavor', null],
@@ -126,8 +126,8 @@ it('rejects a novel or malformed discriminator', function (string $type, string 
     'a month where a day belongs' => ['briefing_mascot_voice', '2026-05'],
     'a non-date on the mascot voice day' => ['briefing_mascot_voice', 'yesterday'],
     'a day where a month belongs' => ['monthly_recap', '2026-05-18'],
-    'a day where an ISO week belongs' => ['aku_profile_voice', '2026-05-18'],
-    'a malformed ISO week' => ['aku_profile_voice', '2026-W3'],
+    'a day where an ISO week belongs' => ['profile_voice', '2026-05-18'],
+    'a malformed ISO week' => ['profile_voice', '2026-W3'],
 ]);
 
 /**
@@ -143,8 +143,8 @@ it('rejects a well-formed period outside the range a trigger may name', function
     'a day in the future' => ['briefing_mascot_voice', '2026-05-19'],
     'a month past the age cap' => ['monthly_recap', '2019-07'],
     'a month in the future' => ['monthly_recap', '2026-06'],
-    'a long-past ISO week' => ['aku_profile_voice', '2019-W03'],
-    'an ISO week in the future' => ['aku_profile_voice', '2026-W31'],
+    'a long-past ISO week' => ['profile_voice', '2019-W03'],
+    'an ISO week in the future' => ['profile_voice', '2026-W31'],
 ]);
 
 it('accepts the edges of each range', function (string $type, string $discriminator): void {
@@ -153,7 +153,7 @@ it('accepts the edges of each range', function (string $type, string $discrimina
     'the oldest day still in range' => ['briefing_mascot_voice', '2025-05-18'],
     'today' => ['briefing_mascot_voice', '2026-05-18'],
     'the oldest month still in range' => ['monthly_recap', '2025-05'],
-    'the week before this one, for a rollover race' => ['aku_profile_voice', '2026-W20'],
+    'the week before this one, for a rollover race' => ['profile_voice', '2026-W20'],
 ]);
 
 /**
@@ -176,9 +176,8 @@ it('requires the discriminator on the types keyed by one', function (string $typ
     expect(triggerAnalysisPasses($type, null))->toBeFalse();
 })->with([
     'briefing_mascot_voice',
-    'aku_profile_voice',
+    'profile_voice',
     'monthly_recap',
-    'briefing_featured_kartu_voice',
 ]);
 
 it('normalizes an empty discriminator to null', function (): void {

@@ -124,7 +124,7 @@ describe('chunkIntoWeeks', () => {
         expect(week.runCount).toBe(2);
     });
 
-    it("carries the week's own mood, rarest kartu and sunday", () => {
+    it("carries the week's own mood, rarest card and sunday", () => {
         const cells = cellsFor([
             { date: '2026-05-04', day: 4, mood: 'chill', rarity: 'rare' },
             { date: '2026-05-05', day: 5, mood: 'chill' },

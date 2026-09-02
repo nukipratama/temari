@@ -50,7 +50,7 @@ it('leaves no orphaned narration, deliveries or push endpoints behind', function
 
     // Every shape of ai_analyses subject: an activity, and a synthetic per-user
     // string. Neither has a foreign key back to users.
-    $activityAnalysis = Analysis::factory()->done('Lari yang rapi.')->create([
+    $activityAnalysis = Analysis::factory()->done('A tidy run.')->create([
         'subject_type' => Activity::class,
         'subject_id' => $activity->id,
         'analysis_type' => AnalysisType::PostRunSpeech,

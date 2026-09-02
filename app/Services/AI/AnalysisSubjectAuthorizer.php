@@ -21,7 +21,7 @@ final class AnalysisSubjectAuthorizer
      * an UnhandledMatchError, never a silent authorization bypass.
      *
      * `$discriminator` is accepted but unchecked: no type keys off a *resource*
-     * any more. The featured-kartu voice was the only one, and it needed its own
+     * any more. The featured-card voice was the only one, and it needed its own
      * ownership check because a RunCard id sat under the caller's own subject id.
      * A future resource-keyed type needs that check added back here; the range or
      * ownership bound is required by AnalysisTypeTest, which fails a type that
@@ -33,7 +33,7 @@ final class AnalysisSubjectAuthorizer
     {
         $authorized = match ($type) {
             AnalysisType::BriefingMascotVoice,
-            AnalysisType::AkuProfileVoice,
+            AnalysisType::ProfileVoice,
             AnalysisType::MonthlyRecap,
             AnalysisType::TrendRead,
             AnalysisType::PlanDayVoice => $subjectId === $user->id,

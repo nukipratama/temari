@@ -28,7 +28,7 @@ interface RunListRowProps {
     detail: ActivityDetail;
     mood?: Mood | null;
     note?: RunNote | null;
-    /** The run's earned Kartu, when one has been generated. */
+    /** The run's earned Card, when one has been generated. */
     runCard?: RunCard | null;
 }
 
@@ -77,7 +77,7 @@ function RunListRow({
                                 'flex-none',
                                 RARITY_INK[runCard.rarity],
                             )}
-                            aria-label={`${runCard.rarity} kartu`}
+                            aria-label={`${runCard.rarity} card`}
                         />
                     )}
                 </div>

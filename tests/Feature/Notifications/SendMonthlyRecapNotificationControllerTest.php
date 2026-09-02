@@ -25,7 +25,7 @@ it('force-sends the push when the monthly recap is done', function (): void {
     Notification::fake();
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();
-    $analysis = doneAnalysisFor(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-06', content: 'Bulan ini 120 km.');
+    $analysis = doneAnalysisFor(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-06', content: 'This month, 120 km.');
 
     $this->actingAs($user)
         ->post(route('recaps.monthly.send', ['month' => '2026-06']))
@@ -42,7 +42,7 @@ it('force-sends the push when the monthly recap is done', function (): void {
 it('does not re-send and flashes info while the send cooldown is active', function (): void {
     Notification::fake();
     $user = User::factory()->create();
-    $analysis = doneAnalysisFor(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-06', content: 'Bulan ini 120 km.');
+    $analysis = doneAnalysisFor(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-06', content: 'This month, 120 km.');
     RateLimiter::hit(Cooldown::notificationKey($analysis->id), Cooldown::WINDOW_SECONDS);
 
     $this->actingAs($user)
@@ -56,7 +56,7 @@ it('does not re-send and flashes info while the send cooldown is active', functi
 it('does not send and flashes info when the recap is not ready', function (): void {
     Notification::fake();
     $user = User::factory()->create();
-    doneAnalysisFor(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-06', done: false, content: 'Bulan ini 120 km.');
+    doneAnalysisFor(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-06', done: false, content: 'This month, 120 km.');
 
     $this->actingAs($user)
         ->post(route('recaps.monthly.send', ['month' => '2026-06']))
@@ -69,7 +69,7 @@ it('does not send and flashes info when the recap is not ready', function (): vo
 it('does not send for a month the user has no recap for', function (): void {
     Notification::fake();
     $user = User::factory()->create();
-    doneAnalysisFor(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-06', content: 'Bulan ini 120 km.');
+    doneAnalysisFor(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-06', content: 'This month, 120 km.');
 
     $this->actingAs($user)
         ->post(route('recaps.monthly.send', ['month' => '2026-05']))

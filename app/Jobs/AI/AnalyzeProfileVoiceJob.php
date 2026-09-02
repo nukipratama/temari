@@ -7,10 +7,10 @@ namespace App\Jobs\AI;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\AI\Analysis;
 use App\Models\User;
-use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
+use App\Services\AI\Narrators\ProfileVoiceNarrator;
 use Override;
 
-class AnalyzeAkuProfileVoiceJob extends AnalyzeRowJob
+class AnalyzeProfileVoiceJob extends AnalyzeRowJob
 {
     #[Override]
     protected function generateContent(Analysis $row): string
@@ -20,6 +20,6 @@ class AnalyzeAkuProfileVoiceJob extends AnalyzeRowJob
             throw new UnavailableException("User {$row->subject_id} not found");
         }
 
-        return app(AkuProfileVoiceNarrator::class)->generate($user);
+        return app(ProfileVoiceNarrator::class)->generate($user);
     }
 }

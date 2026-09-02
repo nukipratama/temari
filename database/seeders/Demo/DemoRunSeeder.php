@@ -322,12 +322,12 @@ class DemoRunSeeder
         // Mirrors DailyBriefingCommand so the dashboard's Temari voice card is
         // filled and never renders as empty.
         $this->analysisService->requestBriefing($user, $today);
-        // The Aku voice is cached per ISO week — discriminator must match
-        // ProfileController::resolveProfileVoice() or the Aku hero misses it.
+        // The profile voice is cached per ISO week — discriminator must match
+        // ProfileController::resolveProfileVoice() or the Profile hero misses it.
         $this->analysisService->request(
-            subjectOrType: AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+            subjectOrType: AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
             subjectId: $user->id,
-            type: AnalysisType::AkuProfileVoice,
+            type: AnalysisType::ProfileVoice,
             discriminator: Carbon::now()->isoFormat('GGGG-[W]WW'),
         );
 
@@ -365,7 +365,7 @@ class DemoRunSeeder
                     ->orWhere(fn ($qq) => $qq->where('subject_type', RunCard::class)->whereIn('subject_id', $cardIds))
                     ->orWhere(fn ($qq) => $qq->whereIn('subject_type', [
                         AnalysisType::BRIEFING_SUBJECT_TYPE,
-                        AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+                        AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
                         AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
                     ])->where('subject_id', $user->id));
             })

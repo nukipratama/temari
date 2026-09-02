@@ -16,7 +16,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 uses(RefreshDatabase::class);
 
 /**
- * A stale shared prop is a user-visible bug — "Kirim notifikasi" stays greyed
+ * A stale shared prop is a user-visible bug — "Send notification" stays greyed
  * out after you connect Telegram, or a revoked Strava link keeps reading as
  * live. One case per write path that can move one of the cached props, each
  * asserting the *next* request already sees the change rather than waiting out

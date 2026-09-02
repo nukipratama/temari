@@ -21,8 +21,8 @@ describe('PillButton', () => {
     );
 
     it('renders the card-bordered outline tone', () => {
-        render(<PillButton tone="outline">Keluar</PillButton>);
-        const button = screen.getByRole('button', { name: 'Keluar' });
+        render(<PillButton tone="outline">Log out</PillButton>);
+        const button = screen.getByRole('button', { name: 'Log out' });
         expect(button.className).toMatch(/bg-card/);
         expect(button.className).toMatch(/border-border/);
         expect(button.className).toMatch(/text-text-2/);

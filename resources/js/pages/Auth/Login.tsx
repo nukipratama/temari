@@ -11,9 +11,9 @@ import { Icon } from '@/components/ui/Icon';
 import { bareLayout } from '@/layouts/BareShell';
 import { cn } from '@/lib/cn';
 
-// Lazy: KartuMini's rarity-chrome glyphs statically import framer-motion,
+// Lazy: RunCardMini's rarity-chrome glyphs statically import framer-motion,
 // which this route's entry-chunk budget must stay clear of.
-const KartuMini = lazy(() => import('@/components/card/KartuMini'));
+const RunCardMini = lazy(() => import('@/components/card/RunCardMini'));
 
 interface CopyBlock {
     headline: string;
@@ -120,7 +120,7 @@ export default function Login({
                 <Eyebrow token="micro" className="mb-2.5 text-foreground">
                     what you get
                 </Eyebrow>
-                <KartuTeaser />
+                <CardTeaser />
                 <WhyList
                     items={WHY_GET}
                     wideClassName="min-[900px]:mx-auto min-[900px]:inline-grid min-[900px]:grid-cols-2"
@@ -301,7 +301,7 @@ function WhyRow({ icon, label, desc }: Readonly<WhyItem>) {
     );
 }
 
-function KartuTeaser() {
+function CardTeaser() {
     return (
         <Card className="mb-6 flex-row items-center gap-3.5 rounded-2xl border border-border p-3.5 shadow-e1 ring-0">
             <Suspense
@@ -312,7 +312,7 @@ function KartuTeaser() {
                     />
                 }
             >
-                <KartuMini
+                <RunCardMini
                     compact
                     name="10K Sunrise"
                     rarity="legendary"

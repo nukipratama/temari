@@ -35,7 +35,7 @@ const toBlobSpy = vi.fn(function (this: HTMLCanvasElement, cb: BlobCallback) {
 });
 HTMLCanvasElement.prototype.toBlob =
     toBlobSpy as unknown as HTMLCanvasElement['toBlob'];
-import ShareCardModal, { type ShareKartuData } from './ShareCardModal';
+import ShareCardModal, { type ShareCardData } from './ShareCardModal';
 
 // Both share paths fetch the rendered data: URL and turn it into a Blob.
 // jsdom has no real fetch, so resolve data: URLs to a stub PNG blob.
@@ -50,7 +50,7 @@ function stubDataUrlFetch() {
     ) as typeof fetch;
 }
 
-const kartu: ShareKartuData = {
+const card: ShareCardData = {
     id: 7,
     name: 'Counter Kick',
     shareUrl: '/activities/7',
@@ -76,44 +76,44 @@ const kartu: ShareKartuData = {
 };
 
 describe('ShareCardModal', () => {
-    it('renders nothing when kartu is null', () => {
+    it('renders nothing when card is null', () => {
         const { container } = render(
-            <ShareCardModal kartu={null} onClose={vi.fn()} />,
+            <ShareCardModal card={null} onClose={vi.fn()} />,
         );
         expect(container.firstChild).toBeNull();
     });
 
     it('renders the card name in the header', () => {
-        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+        render(<ShareCardModal card={card} onClose={vi.fn()} />);
         expect(screen.getAllByText(/Counter Kick/).length).toBeGreaterThan(0);
     });
 
     it('renders Share and Copy Image CTAs', () => {
-        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+        render(<ShareCardModal card={card} onClose={vi.fn()} />);
         expect(screen.getAllByText(/Share/).length).toBeGreaterThan(0);
         expect(screen.getByText(/Copy image/)).toBeInTheDocument();
     });
 
     it('renders format picker Portrait and Square buttons', () => {
-        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+        render(<ShareCardModal card={card} onClose={vi.fn()} />);
         expect(screen.getByText(/portrait/)).toBeInTheDocument();
         expect(screen.getByText(/square/)).toBeInTheDocument();
     });
 
     it('calls onClose when the close button is clicked', () => {
         const onClose = vi.fn();
-        render(<ShareCardModal kartu={kartu} onClose={onClose} />);
+        render(<ShareCardModal card={card} onClose={onClose} />);
         fireEvent.click(screen.getByLabelText('Close'));
         expect(onClose).toHaveBeenCalledOnce();
     });
 
     it('renders the canvas preview', () => {
-        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+        render(<ShareCardModal card={card} onClose={vi.fn()} />);
         expect(screen.getByLabelText(/Preview of/)).toBeInTheDocument();
     });
 
     it('moves focus into the dialog when it opens', () => {
-        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+        render(<ShareCardModal card={card} onClose={vi.fn()} />);
         const dialog = screen.getByRole('dialog');
         expect(dialog.contains(document.activeElement)).toBe(true);
     });
@@ -129,7 +129,7 @@ describe('ShareCardModal', () => {
             configurable: true,
         });
         stubDataUrlFetch();
-        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+        render(<ShareCardModal card={card} onClose={vi.fn()} />);
         await act(async () => {
             fireEvent.click(
                 screen
@@ -149,7 +149,7 @@ describe('ShareCardModal', () => {
             configurable: true,
         });
         stubDataUrlFetch();
-        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+        render(<ShareCardModal card={card} onClose={vi.fn()} />);
         await act(async () => {
             fireEvent.click(screen.getByText(/Copy image/));
         });
@@ -157,25 +157,25 @@ describe('ShareCardModal', () => {
     });
 
     it('offers the share templates as buttons and switches between them', () => {
-        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
-        const kartuBtn = screen.getByRole('button', { name: 'card' });
-        const ruteBtn = screen.getByRole('button', { name: 'route' });
+        render(<ShareCardModal card={card} onClose={vi.fn()} />);
+        const cardBtn = screen.getByRole('button', { name: 'card' });
+        const routeBtn = screen.getByRole('button', { name: 'route' });
         const statsBtn = screen.getByRole('button', { name: 'stats' });
-        expect(kartuBtn).toBeInTheDocument();
-        expect(ruteBtn).toBeInTheDocument();
+        expect(cardBtn).toBeInTheDocument();
+        expect(routeBtn).toBeInTheDocument();
         expect(statsBtn).toBeInTheDocument();
         // The dropdown and the trimmed Struk template are gone.
-        expect(screen.queryByLabelText('Pilih gaya kartu')).toBeNull();
+        expect(screen.queryByLabelText('Pick a card style')).toBeNull();
         expect(screen.queryByRole('button', { name: 'Receipt' })).toBeNull();
         // Switching to the route template renders without crashing.
-        fireEvent.click(ruteBtn);
+        fireEvent.click(routeBtn);
         expect(screen.getAllByText(/Counter Kick/).length).toBeGreaterThan(0);
     });
 
     it('hides only the route template for a no-GPS run, keeping card and Stats', () => {
         render(
             <ShareCardModal
-                kartu={{ ...kartu, polyline: null }}
+                card={{ ...card, polyline: null }}
                 onClose={vi.fn()}
             />,
         );
@@ -189,14 +189,14 @@ describe('ShareCardModal', () => {
         ).toBeInTheDocument();
     });
 
-    it('clamps a stale stats-incompatible layout back to kartu for a no-GPS run, same as rute', () => {
+    it('clamps a stale stats-incompatible layout back to card for a no-GPS run, same as route', () => {
         const { rerender } = render(
-            <ShareCardModal kartu={kartu} onClose={vi.fn()} />,
+            <ShareCardModal card={card} onClose={vi.fn()} />,
         );
         fireEvent.click(screen.getByRole('button', { name: 'route' }));
         rerender(
             <ShareCardModal
-                kartu={{ ...kartu, polyline: null }}
+                card={{ ...card, polyline: null }}
                 onClose={vi.fn()}
             />,
         );
@@ -208,28 +208,28 @@ describe('ShareCardModal', () => {
         ).toBeInTheDocument();
     });
 
-    it('clamps a stale rute layout to kartu for a no-GPS run so the map is never blank', async () => {
+    it('clamps a stale route layout to card for a no-GPS run so the map is never blank', async () => {
         const { drawShareCard } = await import('@/lib/shareCard');
         vi.mocked(drawShareCard).mockClear();
         const { rerender } = render(
-            <ShareCardModal kartu={kartu} onClose={vi.fn()} />,
+            <ShareCardModal card={card} onClose={vi.fn()} />,
         );
         // Pick the route template on a GPS card, then reuse the same modal for a
-        // no-GPS run: the carried-over 'rute' selection must not paint a blank map.
+        // no-GPS run: the carried-over 'route' selection must not paint a blank map.
         fireEvent.click(screen.getByRole('button', { name: 'route' }));
         rerender(
             <ShareCardModal
-                kartu={{ ...kartu, polyline: null }}
+                card={{ ...card, polyline: null }}
                 onClose={vi.fn()}
             />,
         );
         const lastCall = vi.mocked(drawShareCard).mock.calls.at(-1);
-        expect(lastCall?.[1].layout).toBe('kartu');
+        expect(lastCall?.[1].layout).toBe('card');
     });
 
     describe('colorway swatch picker', () => {
         it('offers navy, dawn, and ember swatches with navy selected by default', () => {
-            render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+            render(<ShareCardModal card={card} onClose={vi.fn()} />);
             expect(
                 screen.getByRole('button', {
                     name: 'Colorway: navy',
@@ -253,7 +253,7 @@ describe('ShareCardModal', () => {
         it('switches the drawn colorway when a swatch is clicked', async () => {
             const { drawShareCard } = await import('@/lib/shareCard');
             vi.mocked(drawShareCard).mockClear();
-            render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+            render(<ShareCardModal card={card} onClose={vi.fn()} />);
             fireEvent.click(
                 screen.getByRole('button', { name: 'Colorway: ember' }),
             );
@@ -294,7 +294,7 @@ describe('ShareCardModal', () => {
                 configurable: true,
             });
 
-            render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+            render(<ShareCardModal card={card} onClose={vi.fn()} />);
             await act(async () => {
                 fireEvent.click(screen.getByText(/Copy image/));
             });
@@ -315,7 +315,7 @@ describe('ShareCardModal', () => {
     });
 
     it('switches the export format when a format button is clicked', () => {
-        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+        render(<ShareCardModal card={card} onClose={vi.fn()} />);
         const canvas = screen.getByLabelText(/Preview of/) as HTMLCanvasElement;
         // Story (9:16) is the default — the canvas is 1080x1920.
         expect(canvas.height).toBe(1920);
@@ -363,7 +363,7 @@ describe('ShareCardModal', () => {
                 configurable: true,
             });
             stubDataUrlFetch();
-            render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+            render(<ShareCardModal card={card} onClose={vi.fn()} />);
             await act(async () => {
                 clickShare();
             });
@@ -387,7 +387,7 @@ describe('ShareCardModal', () => {
                 configurable: true,
             });
             stubDataUrlFetch();
-            render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+            render(<ShareCardModal card={card} onClose={vi.fn()} />);
             await act(async () => {
                 clickShare();
             });
@@ -395,7 +395,7 @@ describe('ShareCardModal', () => {
                 expect.objectContaining({
                     url: expect.stringContaining('/activities/7'),
                     // The card has a quote, so it rides along as the share text.
-                    text: kartu.quote,
+                    text: card.quote,
                 }),
             );
         });
@@ -414,7 +414,7 @@ describe('ShareCardModal', () => {
             // quote=null exercises the `?? RARITY_LABELS[...]` fallback.
             render(
                 <ShareCardModal
-                    kartu={{ ...kartu, quote: null }}
+                    card={{ ...card, quote: null }}
                     onClose={vi.fn()}
                 />,
             );
@@ -423,7 +423,7 @@ describe('ShareCardModal', () => {
             });
             expect(share).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    text: expect.stringContaining(kartu.name),
+                    text: expect.stringContaining(card.name),
                 }),
             );
         });
@@ -438,7 +438,7 @@ describe('ShareCardModal', () => {
                 value: { writeText },
                 configurable: true,
             });
-            render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+            render(<ShareCardModal card={card} onClose={vi.fn()} />);
             await act(async () => {
                 clickShare();
             });
@@ -457,7 +457,7 @@ describe('ShareCardModal', () => {
                 value: { writeText },
                 configurable: true,
             });
-            render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+            render(<ShareCardModal card={card} onClose={vi.fn()} />);
             await act(async () => {
                 clickShare();
             });
@@ -475,7 +475,7 @@ describe('ShareCardModal', () => {
                 value: undefined,
                 configurable: true,
             });
-            render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+            render(<ShareCardModal card={card} onClose={vi.fn()} />);
             await act(async () => {
                 clickShare();
             });
@@ -511,7 +511,7 @@ describe('ShareCardModal', () => {
         it('shows an unsupported toast when ClipboardItem is missing', async () => {
             (globalThis as { ClipboardItem?: unknown }).ClipboardItem =
                 undefined;
-            render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+            render(<ShareCardModal card={card} onClose={vi.fn()} />);
             await act(async () => {
                 fireEvent.click(screen.getByText(/Copy image/));
             });
@@ -527,7 +527,7 @@ describe('ShareCardModal', () => {
                 configurable: true,
             });
             stubDataUrlFetch();
-            render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+            render(<ShareCardModal card={card} onClose={vi.fn()} />);
             await act(async () => {
                 fireEvent.click(screen.getByText(/Copy image/));
             });
@@ -550,7 +550,7 @@ describe('ShareCardModal', () => {
                 configurable: true,
             });
             stubDataUrlFetch();
-            render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+            render(<ShareCardModal card={card} onClose={vi.fn()} />);
             await act(async () => {
                 fireEvent.click(screen.getByText(/Copy image/));
             });

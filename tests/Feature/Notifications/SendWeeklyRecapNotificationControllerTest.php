@@ -29,7 +29,7 @@ it('force-sends the push when the weekly recap is done', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();
     $snapshot = WeeklySnapshot::factory()->for($user)->create();
-    $analysis = doneAnalysisFor(WeeklySnapshot::class, $snapshot->id, AnalysisType::WeeklyRecap, content: 'Minggu ini 28 km.');
+    $analysis = doneAnalysisFor(WeeklySnapshot::class, $snapshot->id, AnalysisType::WeeklyRecap, content: 'This week, 28 km.');
 
     $this->actingAs($user)
         ->post(route('recaps.weekly.send', $snapshot))
@@ -47,7 +47,7 @@ it('does not re-send and flashes info while the send cooldown is active', functi
     Notification::fake();
     $user = User::factory()->create();
     $snapshot = WeeklySnapshot::factory()->for($user)->create();
-    $analysis = doneAnalysisFor(WeeklySnapshot::class, $snapshot->id, AnalysisType::WeeklyRecap, content: 'Minggu ini 28 km.');
+    $analysis = doneAnalysisFor(WeeklySnapshot::class, $snapshot->id, AnalysisType::WeeklyRecap, content: 'This week, 28 km.');
     RateLimiter::hit(Cooldown::notificationKey($analysis->id), Cooldown::WINDOW_SECONDS);
 
     $this->actingAs($user)
@@ -62,7 +62,7 @@ it('does not send and flashes info when the recap is not ready', function (): vo
     Notification::fake();
     $user = User::factory()->create();
     $snapshot = WeeklySnapshot::factory()->for($user)->create();
-    doneAnalysisFor(WeeklySnapshot::class, $snapshot->id, AnalysisType::WeeklyRecap, done: false, content: 'Minggu ini 28 km.');
+    doneAnalysisFor(WeeklySnapshot::class, $snapshot->id, AnalysisType::WeeklyRecap, done: false, content: 'This week, 28 km.');
 
     $this->actingAs($user)
         ->post(route('recaps.weekly.send', $snapshot))

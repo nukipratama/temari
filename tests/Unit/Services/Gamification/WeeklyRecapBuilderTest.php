@@ -30,7 +30,7 @@ afterEach(function (): void {
 /**
  * @return array{0: Activity, 1: ActivityDetail}
  */
-function recapRun(User $user, string $startLocal, Rarity $rarity, string $move = 'Langkah Mantap'): array
+function recapRun(User $user, string $startLocal, Rarity $rarity, string $move = 'Steady Tempo'): array
 {
     $activity = Activity::factory()->for($user)->analyzed()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
@@ -161,7 +161,7 @@ it('passes the streak from GamificationContext through to the recap unchanged', 
 
 it('picks the highest-rarity card among this week as the best card', function (): void {
     $user = User::factory()->create();
-    recapRun($user, '2026-05-12 06:00:00', Rarity::Common, 'Langkah Mantap');
+    recapRun($user, '2026-05-12 06:00:00', Rarity::Common, 'Steady Tempo');
     recapRun($user, '2026-05-14 06:00:00', Rarity::Epic, 'Pemburu Sabar');
     recapRun($user, '2026-05-15 06:00:00', Rarity::Rare, 'Metronom');
 
@@ -176,29 +176,29 @@ it('picks the highest-rarity card among this week as the best card', function ()
 
 it('breaks a best-card rarity tie toward the most recent run', function (): void {
     $user = User::factory()->create();
-    recapRun($user, '2026-05-12 06:00:00', Rarity::Rare, 'Yang Lama');
-    recapRun($user, '2026-05-16 06:00:00', Rarity::Rare, 'Yang Baru');
+    recapRun($user, '2026-05-12 06:00:00', Rarity::Rare, 'Long & Chill');
+    recapRun($user, '2026-05-16 06:00:00', Rarity::Rare, 'New Record');
 
     $recap = $this->builder->forUser($user);
 
-    expect($recap->bestCard['special_move'])->toBe('Yang Baru');
+    expect($recap->bestCard['special_move'])->toBe('New Record');
 });
 
 it('excludes cards from runs outside the current week', function (): void {
     $user = User::factory()->create();
     // Last week's run — must not be picked.
-    recapRun($user, '2026-05-08 06:00:00', Rarity::Legendary, 'Minggu Lalu');
-    recapRun($user, '2026-05-13 06:00:00', Rarity::Common, 'Minggu Ini');
+    recapRun($user, '2026-05-08 06:00:00', Rarity::Legendary, 'Last week');
+    recapRun($user, '2026-05-13 06:00:00', Rarity::Common, 'This week');
 
     $recap = $this->builder->forUser($user);
 
-    expect($recap->bestCard['special_move'])->toBe('Minggu Ini')
+    expect($recap->bestCard['special_move'])->toBe('This week')
         ->and($recap->bestCard['rarity'])->toBe('common');
 });
 
 it('returns a null best card when there are no runs this week', function (): void {
     $user = User::factory()->create();
-    recapRun($user, '2026-05-08 06:00:00', Rarity::Epic, 'Minggu Lalu');
+    recapRun($user, '2026-05-08 06:00:00', Rarity::Epic, 'Last week');
 
     $recap = $this->builder->forUser($user);
 

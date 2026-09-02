@@ -25,6 +25,9 @@ code_refs:
 > historical. No type keys off a resource id today, so the ownership check has no subject and was
 > removed with it; `AnalysisTypeTest` still fails any future type that permits a discriminator
 > without bounding it by range or ownership.
+>
+> **Also (`W6`, same day):** `aku_profile_voice` below is now `profile_voice`. The exemption it
+> describes is unchanged; only the identifier moved.
 
 ## Context
 

@@ -12,7 +12,7 @@ interface TemariMarkProps {
  * which is the only logo it draws — on its topbar and its login screen.
  *
  * This is the app's single brand mark: the shell header, the wordmark lockup,
- * the Kartu route-glyph fallback and both share-card renderers all draw it.
+ * the Card route-glyph fallback and both share-card renderers all draw it.
  */
 export default function TemariMark({
     size = 22,

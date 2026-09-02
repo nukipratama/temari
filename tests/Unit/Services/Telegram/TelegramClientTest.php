@@ -41,7 +41,7 @@ it('uploads a photo as multipart with the caption for the given chat', function 
         'api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 2]]),
     ]);
 
-    new TelegramClient()->sendPhoto(4242, 'PNG-BYTES', 'Lari mantap!');
+    new TelegramClient()->sendPhoto(4242, 'PNG-BYTES', 'Strong run!');
 
     Http::assertSent(function ($request): bool {
         $names = array_column($request->data(), 'name');
@@ -50,7 +50,7 @@ it('uploads a photo as multipart with the caption for the given chat', function 
             && $request->isMultipart()
             && in_array('photo', $names, true)
             && multipartField($request, 'chat_id') === '4242'
-            && multipartField($request, 'caption') === 'Lari mantap!';
+            && multipartField($request, 'caption') === 'Strong run!';
     });
 });
 

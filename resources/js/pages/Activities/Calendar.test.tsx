@@ -344,7 +344,7 @@ describe('calendar', () => {
             ).not.toBeInTheDocument();
         });
 
-        it('suppresses every trigger on the still-open current month and reads "belum tersedia"', () => {
+        it('suppresses every trigger on the still-open current month and reads as unavailable', () => {
             render(
                 <Calendar
                     {...BASE_PROPS}

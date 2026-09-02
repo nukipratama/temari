@@ -341,7 +341,7 @@ it('flags the in-progress week with is_current_week on each snapshot payload', f
             ->where('weeklySnapshots.1.is_current_week', false));
 });
 
-it('renders the Kalender page for the current month by default', function (): void {
+it('renders the Calendar page for the current month by default', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)->get('/history?view=calendar')
@@ -492,7 +492,7 @@ it('exposes a lifetime stats payload', function (): void {
 
 it('passes the MonthlyRecap analysis for the viewed month as the monthlyRecap prop', function (): void {
     $user = User::factory()->create();
-    Analysis::factory()->done('Bulan Mei kamu padat, ritmenya kejaga.')->create([
+    Analysis::factory()->done('May was dense and you held the rhythm.')->create([
         'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::MonthlyRecap,
@@ -502,7 +502,7 @@ it('passes the MonthlyRecap analysis for the viewed month as the monthlyRecap pr
     $this->actingAs($user)->get('/history?view=calendar&month=2026-05')
         ->assertInertia(fn (Assert $page) => $page
             ->where('monthlyRecap.status', 'done')
-            ->where('monthlyRecap.content', 'Bulan Mei kamu padat, ritmenya kejaga.')
+            ->where('monthlyRecap.content', 'May was dense and you held the rhythm.')
             ->where('monthlyRecap.type', AnalysisType::MonthlyRecap->value)
             ->where('monthlyRecap.discriminator', '2026-05')
             ->where('monthlyRecap.notification_retry_after_seconds', null));
@@ -510,7 +510,7 @@ it('passes the MonthlyRecap analysis for the viewed month as the monthlyRecap pr
 
 it('surfaces the monthly recap Telegram cooldown when a send is on cooldown', function (): void {
     $user = User::factory()->create();
-    $recap = Analysis::factory()->done('Bulan Mei kamu padat.')->create([
+    $recap = Analysis::factory()->done('May was dense.')->create([
         'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::MonthlyRecap,
@@ -526,7 +526,7 @@ it('surfaces the monthly recap Telegram cooldown when a send is on cooldown', fu
 
 it('only matches the recap row for the viewed month, not another month', function (): void {
     $user = User::factory()->create();
-    Analysis::factory()->done('Cerita bulan April.')->create([
+    Analysis::factory()->done('April story.')->create([
         'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::MonthlyRecap,
@@ -568,10 +568,10 @@ it('never flags the current (in-progress) month as the chain head', function ():
 });
 
 /**
- * The shared props gate the manual "Kirim notifikasi" pill on three pages. They
+ * The shared props gate the manual "Send notification" pill on three pages. They
  * have to mean "wired AND un-muted": a muted channel would otherwise leave the
  * button looking live while the send silently goes nowhere, which is worse than
- * the disabled state that at least points at Pengaturan.
+ * the disabled state that at least points at Settings.
  */
 it('reports telegramConnected false when the channel is muted but still linked', function (): void {
     $user = User::factory()->create();
@@ -601,7 +601,7 @@ it('surfaces the weekly recap Telegram cooldown on the snapshot payload', functi
     $snapshot = WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => Carbon::today()->toDateString(),
     ]);
-    $recap = Analysis::factory()->done('Minggu ini 28 km.')->create([
+    $recap = Analysis::factory()->done('This week, 28 km.')->create([
         'analysis_type' => AnalysisType::WeeklyRecap,
         'subject_type' => WeeklySnapshot::class,
         'subject_id' => $snapshot->id,

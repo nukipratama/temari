@@ -18,7 +18,7 @@ it('accepts a message with the optional fields', function (): void {
     expect(passesClientError([
         'message' => 'Boom',
         'stack' => 'at foo (app.tsx:1)',
-        'url' => 'https://temari.test/aktivitas',
+        'url' => 'https://temari.test/activities',
         'componentStack' => 'in RunPage',
     ]))->toBeTrue();
 });

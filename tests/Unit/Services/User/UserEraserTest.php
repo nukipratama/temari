@@ -37,7 +37,7 @@ function analysesForEverySubjectShape(User $user): void
         ['daily_greeting_user_day', $user->id, AnalysisType::BriefingMascotVoice],
         ['trend_caption_user_day', $user->id, AnalysisType::BriefingMascotVoice],
         ['persona_summary_user', $user->id, AnalysisType::BriefingMascotVoice],
-        [AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::AkuProfileVoice],
+        [AnalysisType::PROFILE_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::ProfileVoice],
         [AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap],
         [AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead],
     ] as [$subjectType, $subjectId, $type]) {
@@ -153,7 +153,7 @@ it('stamps the name and Strava id onto cost history before the account goes', fu
 });
 
 it('stamps a null Strava id for an account that never connected one', function (): void {
-    $user = User::factory()->create(['name' => 'Belum Nyambung']);
+    $user = User::factory()->create(['name' => 'Not connected']);
     TokenUsage::query()->create([
         'user_id' => $user->id,
         'kind' => 'briefing',
@@ -165,13 +165,13 @@ it('stamps a null Strava id for an account that never connected one', function (
     app(UserEraser::class)->erase($user);
 
     $row = TokenUsage::query()->where('user_id', $user->id)->sole();
-    expect($row->user_name)->toBe('Belum Nyambung')
+    expect($row->user_name)->toBe('Not connected')
         ->and($row->strava_athlete_id)->toBeNull();
 });
 
 it('leaves another user cost history unstamped', function (): void {
     $user = User::factory()->create();
-    $bystander = User::factory()->create(['name' => 'Masih Lari']);
+    $bystander = User::factory()->create(['name' => 'Still Running']);
     TokenUsage::query()->create([
         'user_id' => $bystander->id,
         'kind' => 'briefing',

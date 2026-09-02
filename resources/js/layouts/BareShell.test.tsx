@@ -20,7 +20,7 @@ describe('BareShell', () => {
         );
 
         expect(screen.getByText('only child')).toBeInTheDocument();
-        expect(screen.queryByText('Hari Ini')).not.toBeInTheDocument();
+        expect(screen.queryByText('Today')).not.toBeInTheDocument();
         expect(screen.queryByTestId('mobile-top-bar')).not.toBeInTheDocument();
     });
 
@@ -84,7 +84,7 @@ describe('BareShell', () => {
         render(bareLayout(<p>login body</p>));
 
         expect(screen.getByText('login body')).toBeInTheDocument();
-        expect(screen.queryByText('Hari Ini')).not.toBeInTheDocument();
+        expect(screen.queryByText('Today')).not.toBeInTheDocument();
     });
 
     // Inertia compares the layout by reference, so these must be distinct,

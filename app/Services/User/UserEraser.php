@@ -45,7 +45,7 @@ final readonly class UserEraser
      */
     private const array USER_SUBJECT_TYPES = [
         AnalysisType::BRIEFING_SUBJECT_TYPE,
-        AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+        AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
         AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
         AnalysisType::TREND_READ_SUBJECT_TYPE,
         // Retired narration types. Their AnalysisType cases are gone but the

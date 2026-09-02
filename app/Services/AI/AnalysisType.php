@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use App\Jobs\AI\AnalyzeActivityJob;
-use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
+use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeBaseJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
@@ -35,7 +35,7 @@ enum AnalysisType: string
     case WeeklyRecap = 'weekly_recap';
     case PrContext = 'pr_context';
     case CardFlavor = 'card_flavor';
-    case AkuProfileVoice = 'aku_profile_voice';
+    case ProfileVoice = 'profile_voice';
     case MonthlyRecap = 'monthly_recap';
     case TrendRead = 'trend_read';
     case PlanDayVoice = 'plan_day_voice';
@@ -43,7 +43,7 @@ enum AnalysisType: string
     case PlanSeasonVoice = 'plan_season_voice';
 
     public const string BRIEFING_SUBJECT_TYPE = 'briefing_user_day';
-    public const string AKU_PROFILE_VOICE_SUBJECT_TYPE = 'aku_profile_voice_user';
+    public const string PROFILE_VOICE_SUBJECT_TYPE = 'profile_voice_user';
     public const string MONTHLY_RECAP_SUBJECT_TYPE = 'monthly_recap_user_month';
     public const string TREND_READ_SUBJECT_TYPE = 'trend_read_user_range';
     public const string PLAN_DAY_VOICE_SUBJECT_TYPE = 'plan_day_voice_user_day';
@@ -112,14 +112,14 @@ enum AnalysisType: string
             self::WeeklyRecap,
             self::PlanWeekVoice => AnalysisCadence::Weekly,
             self::MonthlyRecap => AnalysisCadence::Monthly,
-            // Neither AkuProfileVoice nor TrendRead is cascade-dispatched
+            // Neither ProfileVoice nor TrendRead is cascade-dispatched
             // from post-run ingest, both have their own separate scheduled
             // command(s) instead. TrendRead actually runs three different
             // cadences (one per range — see routes/console.php), which no
             // single case here represents. PlanSeasonVoice changes only at
             // season boundaries (a race set/cleared, or a self-scaled
             // season's 12-week expiry), not on any fixed clock.
-            self::AkuProfileVoice,
+            self::ProfileVoice,
             self::TrendRead,
             self::PlanSeasonVoice => AnalysisCadence::OnDemand,
         };
@@ -135,7 +135,7 @@ enum AnalysisType: string
             self::WeeklyRecap => AnalyzeWeeklyRecapJob::class,
             self::PrContext => AnalyzePrContextJob::class,
             self::CardFlavor => AnalyzeCardFlavorJob::class,
-            self::AkuProfileVoice => AnalyzeAkuProfileVoiceJob::class,
+            self::ProfileVoice => AnalyzeProfileVoiceJob::class,
             self::MonthlyRecap => AnalyzeMonthlyRecapJob::class,
             self::TrendRead => AnalyzeTrendReadJob::class,
             self::PlanDayVoice => AnalyzePlanDayVoiceJob::class,
@@ -197,10 +197,10 @@ enum AnalysisType: string
      * type's own dispatch sites write:
      *
      * - `Y-m-d` daily keys: DailyBriefingCommand, BriefingComposer.
-     * - featured kartu: the RunCard id. Never null — BriefingComposer only emits
+     * - featured card: the RunCard id. Never null — BriefingComposer only emits
      *   the block once a card is picked, and a null id would bill the narrator's
      *   "no card yet" line under a second cooldown key.
-     * - AkuProfileVoice: the ISO week key WeeklyProfileCommand + ProfileController use.
+     * - ProfileVoice: the ISO week key WeeklyProfileCommand + ProfileController use.
      * - `Y-m` months: MonthlyRecapCommand, HistoryController.
      * - every other type keys off subject_id alone and its job ignores the
      *   discriminator, so a non-null value is rejected outright.
@@ -223,7 +223,7 @@ enum AnalysisType: string
                 'after_or_equal:'.Carbon::today()->subDays(self::MAX_DISCRIMINATOR_AGE_DAYS)->toDateString(),
                 'before_or_equal:'.Carbon::today()->toDateString(),
             ],
-            self::AkuProfileVoice => ['required', 'string', 'regex:/^\d{4}-W\d{2}$/', Rule::in(self::triggerableIsoWeeks())],
+            self::ProfileVoice => ['required', 'string', 'regex:/^\d{4}-W\d{2}$/', Rule::in(self::triggerableIsoWeeks())],
             self::MonthlyRecap => ['required', 'string', 'date_format:Y-m', Rule::in(self::triggerableMonths())],
             self::TrendRead => ['required', 'string', Rule::in(self::TREND_READ_RANGES)],
             self::PlanDayVoice => [
@@ -254,7 +254,7 @@ enum AnalysisType: string
             self::WeeklyRecap => WeeklySnapshot::class,
             self::PrContext => PersonalRecord::class,
             self::CardFlavor => RunCard::class,
-            self::AkuProfileVoice => self::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+            self::ProfileVoice => self::PROFILE_VOICE_SUBJECT_TYPE,
             self::MonthlyRecap => self::MONTHLY_RECAP_SUBJECT_TYPE,
             self::TrendRead => self::TREND_READ_SUBJECT_TYPE,
             self::PlanDayVoice => self::PLAN_DAY_VOICE_SUBJECT_TYPE,

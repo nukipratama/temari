@@ -467,7 +467,7 @@ describe('AnalysisStatus', () => {
                 <AnalysisStatus
                     analysis={payload({
                         status: 'done',
-                        content: 'zona',
+                        content: 'zone',
                         is_zone_dependent: true,
                         generated_at: OLD_TS,
                     })}
@@ -482,7 +482,7 @@ describe('AnalysisStatus', () => {
                 <AnalysisStatus
                     analysis={payload({
                         status: 'done',
-                        content: 'zona',
+                        content: 'zone',
                         is_zone_dependent: true,
                         generated_at: NEW_TS,
                     })}
@@ -512,7 +512,7 @@ describe('AnalysisStatus', () => {
                 <AnalysisStatus
                     analysis={payload({
                         status: 'done',
-                        content: 'zona',
+                        content: 'zone',
                         is_zone_dependent: true,
                         generated_at: OLD_TS,
                     })}

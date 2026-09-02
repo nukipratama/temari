@@ -26,7 +26,7 @@ The page reads top to bottom as promise → mechanism → proof → cost → ask
 
 1. Hero: the positioning, a Temari-voice line, and the first `ConnectPanel`.
 2. How the comparison works: the three matching rules, ending on the one that sells the honesty (under two fair pairings, the verdict is "not enough history yet" rather than an invented trend). All three paraphrase [[past-you-engine]]; if the matcher's rules change, this section is wrong.
-3. What you get: a live [KartuMini](../../resources/js/components/card/KartuMini.tsx) rendered from a real polyline, not a mockup image.
+3. What you get: a live [RunCardMini](../../resources/js/components/card/RunCardMini.tsx) rendered from a real polyline, not a mockup image.
 4. Your data, then the training disclaimer.
 5. A closing `ConnectPanel`.
 
@@ -47,7 +47,7 @@ The four legal links stay **plain `<a>` anchors**, not Inertia `<Link>`s: they a
 
 ## Budget
 
-This page is the only one an unauthenticated visitor loads, so [check-entry-chunks.mjs](../../scripts/check-entry-chunks.mjs) — which budgets by page source file, not by url, and therefore covers both entry points from one entry — holds its cold first paint under a gzipped budget and `bareLayout` is kept framer-motion-free. The hero's route-trace and glow animations are therefore plain CSS keyframes in [app.css](../../resources/css/app.css), and `KartuMini` is behind `lazy()` because its rarity chrome imports framer-motion statically.
+This page is the only one an unauthenticated visitor loads, so [check-entry-chunks.mjs](../../scripts/check-entry-chunks.mjs) — which budgets by page source file, not by url, and therefore covers both entry points from one entry — holds its cold first paint under a gzipped budget and `bareLayout` is kept framer-motion-free. The hero's route-trace and glow animations are therefore plain CSS keyframes in [app.css](../../resources/css/app.css), and `RunCardMini` is behind `lazy()` because its rarity chrome imports framer-motion statically.
 
 ## See also
 

@@ -138,7 +138,7 @@ prototype's month grid: a weekday header, then one
 Mon–Sun week — a week-summary button beside seven bordered day boxes, each box
 carrying only its day number and a mood dot. `HistoryController`'s calendar
 branch resolves `?month=YYYY-MM`, pads the grid to full weeks, and hands the
-frontend pre-computed `cells` (per-day distance / pace / HR / mood / kartu
+frontend pre-computed `cells` (per-day distance / pace / HR / mood / card
 `rarity` / `activity_id`) so nothing needs a second query. A run-day cell still
 links to that run's [[run-detail]], and keeps its distance, pace, HR and mood in
 its accessible label — the prototype's box has nowhere visible left for them.
@@ -159,7 +159,7 @@ no rule-based fallback for monthly recaps.
 row, and it is ported: the calendar branch ships the grid's own
 `weeklySnapshots` (bounded to `gridStart`..`gridEnd`, so an old month does not
 get the newest weeks), and pressing a week reveals its recap through
-`AnalysisStatus`, the shared `WeeklyStatusChips`, and — the one Kartu surface
+`AnalysisStatus`, the shared `WeeklyStatusChips`, and — the one Card surface
 this screen keeps (decision P12) — a badge for the week's **rarest** earned
 card, tinted by rarity. A week with no snapshot leaves the button disabled and
 dimmed. The badge lives here and nowhere else on the screen; it is not a day-cell

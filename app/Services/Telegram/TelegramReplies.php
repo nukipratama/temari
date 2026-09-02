@@ -38,7 +38,7 @@ class TelegramReplies
         return "Done, I've disconnected Telegram from your Temari account. Whenever you want to reconnect, I'm here.";
     }
 
-    /** Sent by the "Send test notification" button on the Aku page. */
+    /** Sent by the "Send test notification" button on the Profile page. */
     public static function test(): string
     {
         return "Test notification from Temari. If you're seeing this, your Telegram connection is working. "

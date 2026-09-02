@@ -34,7 +34,7 @@ function recapAnalysis(
     };
 }
 
-function bucket(runs: RunWithDetail[] = [run(101, 'Pagi')]): WeekBucket {
+function bucket(runs: RunWithDetail[] = [run(101, 'Morning')]): WeekBucket {
     return {
         weekStart: '2026-05-18',
         weekEnding: '2026-05-24',
@@ -83,7 +83,7 @@ describe('WeekSection', () => {
     it('falls back to the bucket totals when the week has no snapshot', async () => {
         render(
             <WeekSection
-                bucket={bucket([run(101, 'Pagi'), run(102, 'Sore')])}
+                bucket={bucket([run(101, 'Morning'), run(102, 'Evening')])}
                 snapshot={null}
                 notes={{}}
                 moods={{}}
@@ -119,7 +119,7 @@ describe('WeekSection', () => {
     it('shows the live bucket totals (not a stale snapshot) for the in-progress week', async () => {
         render(
             <WeekSection
-                bucket={bucket([run(101, 'Pagi'), run(102, 'Sore')])}
+                bucket={bucket([run(101, 'Morning'), run(102, 'Evening')])}
                 snapshot={snapshot({
                     distance_km: 5,
                     runs: 1,
@@ -140,7 +140,7 @@ describe('WeekSection', () => {
     it('renders "1 run" without an s for a single run', async () => {
         render(
             <WeekSection
-                bucket={bucket([run(101, 'Pagi')])}
+                bucket={bucket([run(101, 'Morning')])}
                 snapshot={null}
                 notes={{}}
                 moods={{}}

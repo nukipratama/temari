@@ -87,7 +87,7 @@ it('leaves the chained types to the chain resolver', function (AnalysisType $typ
 ]);
 
 it('never blocks the types whose material is current whatever its date', function (): void {
-    expect($this->gate->blocksManualTrigger(AnalysisType::AkuProfileVoice, 1, '2019-W03'))->toBeFalse()
+    expect($this->gate->blocksManualTrigger(AnalysisType::ProfileVoice, 1, '2019-W03'))->toBeFalse()
         ->and($this->gate->blocksManualTrigger(AnalysisType::TrendRead, 1, '30d'))->toBeFalse()
         ->and($this->gate->blocksManualTrigger(AnalysisType::PlanDayVoice, 1, '2019-01-01'))->toBeFalse()
         ->and($this->gate->blocksManualTrigger(AnalysisType::PlanWeekVoice, 1, null))->toBeFalse()

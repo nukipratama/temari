@@ -125,7 +125,7 @@ it('ignores un-analyzed activities and other users', function (): void {
     expect(cellOn($cells, '2026-05-12')['distance_km'])->toBeNull();
 });
 
-it('carries the day\'s rarest earned kartu, and null when none was earned', function (): void {
+it('carries the day\'s rarest earned card, and null when none was earned', function (): void {
     $common = Activity::factory()->for($this->user)->analyzed()->create();
     ActivityDetail::factory()->for($common)->create([
         'start_date_local' => Carbon::create(2026, 5, 14, 6),

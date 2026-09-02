@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
+use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
@@ -32,7 +32,7 @@ it('does not enqueue any LLM job on GET / (Today)', function (): void {
 it('does not enqueue any LLM job on GET /profile', function (): void {
     $this->actingAs(User::factory()->create())->get('/profile')->assertSuccessful();
 
-    Bus::assertNotDispatched(AnalyzeAkuProfileVoiceJob::class);
+    Bus::assertNotDispatched(AnalyzeProfileVoiceJob::class);
 });
 
 it('does not enqueue any LLM job on GET /history?view=calendar', function (): void {

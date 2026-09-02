@@ -18,9 +18,9 @@ beforeEach(() => {
 describe('EmptyPanel', () => {
     it('renders the title inside a solid card, as the prototype draws it', () => {
         const { container } = render(
-            <EmptyPanel title="Belum ada data" className="" />,
+            <EmptyPanel title="No data yet" className="" />,
         );
-        expect(screen.getByText('Belum ada data')).toBeInTheDocument();
+        expect(screen.getByText('No data yet')).toBeInTheDocument();
         expect(container.firstElementChild).toHaveClass('border-border-strong');
         expect(container.firstElementChild).toHaveClass('shadow-e1');
         // The prototype draws no dashed border anywhere; its empty cards are

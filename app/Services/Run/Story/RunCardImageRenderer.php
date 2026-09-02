@@ -27,10 +27,10 @@ use ImagickPixel;
  * \Tests\Unit\Services\Run\Story\RunCardImageRendererTest} pins the values that
  * must stay in step.
  *
- * `$layout` mirrors the client's three templates: `rute` (route panel hero +
- * KM + stats + badges), `kartu` (no route panel, the space reallocates to a
+ * `$layout` mirrors the client's three templates: `route` (route panel hero +
+ * KM + stats + badges), `card` (no route panel, the space reallocates to a
  * giant centred KM figure), `stats` (a 2x2 stat grid). `$colorway` mirrors its
- * three palettes. A no-GPS card on `rute` degrades to a route-less panel.
+ * three palettes. A no-GPS card on `route` degrades to a route-less panel.
  */
 class RunCardImageRenderer
 {
@@ -70,7 +70,7 @@ class RunCardImageRenderer
     private const string GROUND = '#e2e8ee';
 
     /**
-     * `--shadow-e4` from app.css, the elevation the in-app Kartu mount
+     * `--shadow-e4` from app.css, the elevation the in-app Card mount
      * carries. An SVG `feDropShadow`'s `stdDeviation` is σ and a CSS blur
      * radius is 2σ, so each layer's blur halves and nothing is eyeballed.
      * 23,15,56 is `--color-sky-deep`, the same hue the token casts.
@@ -102,7 +102,7 @@ class RunCardImageRenderer
 
     private const string FONT_MONO = 'JetBrains Mono';
 
-    /** Route panel geometry, `rute` layout only. */
+    /** Route panel geometry, `route` layout only. */
     private const int PANEL_Y = 560;
 
     private const int PANEL_H = 580;
@@ -164,14 +164,14 @@ class RunCardImageRenderer
      * PNG bytes for the given card. Loads the activity detail if needed, so the
      * caller can pass a bare model.
      */
-    public function render(RunCard $card, string $layout = 'rute', string $colorway = 'navy'): string
+    public function render(RunCard $card, string $layout = 'route', string $colorway = 'navy'): string
     {
         $card->loadMissing('activity.detail');
 
         return $this->rasterise($this->buildSvg($card, $layout, $colorway));
     }
 
-    private function buildSvg(RunCard $card, string $layout = 'rute', string $colorway = 'navy'): string
+    private function buildSvg(RunCard $card, string $layout = 'route', string $colorway = 'navy'): string
     {
         $detail = $card->activity->detail ?? null;
         $rarity = $card->rarity->hexColor();
@@ -185,9 +185,9 @@ class RunCardImageRenderer
 
         $header = $this->header($card, $detail, $rarity, $meta);
         $middle = match ($layout) {
-            'kartu' => $this->kartuMiddle($km, $detail, $rarity, $text, $inkOnSky, $badges),
+            'card' => $this->cardMiddle($km, $detail, $rarity, $text, $inkOnSky, $badges),
             'stats' => $this->statsMiddle($detail, $km, $text, $inkOnSky, $sunken, $rarity, $badges),
-            default => $this->ruteMiddle($km, $detail, $rarity, $text, $inkOnSky, $badges),
+            default => $this->routeMiddle($km, $detail, $rarity, $text, $inkOnSky, $badges),
         };
         $footer = $this->footer($detail, $rarity, $card->rarity->bandCount(), $inkOnSky, $pal['divider']);
 
@@ -272,12 +272,12 @@ SVG;
     }
 
     /**
-     * `rute` — the route as poster art in a bright pearl window, then the KM
+     * `route` — the route as poster art in a bright pearl window, then the KM
      * figure, stats and badges beneath it.
      *
      * @param  list<string>  $badges
      */
-    private function ruteMiddle(
+    private function routeMiddle(
         string $km,
         ?ActivityDetail $detail,
         string $rarity,
@@ -306,12 +306,12 @@ SVG;
     }
 
     /**
-     * `kartu` — no route panel, so the reclaimed space goes to a giant centred
-     * KM figure, mirroring the client `kartu` template's emphasis.
+     * `card` — no route panel, so the reclaimed space goes to a giant centred
+     * KM figure, mirroring the client `card` template's emphasis.
      *
      * @param  list<string>  $badges
      */
-    private function kartuMiddle(
+    private function cardMiddle(
         string $km,
         ?ActivityDetail $detail,
         string $rarity,
@@ -355,8 +355,8 @@ SVG;
     }
 
     /**
-     * The KM figure with its KILOMETER caption, left-aligned for `rute` and
-     * centred for `kartu`.
+     * The KM figure with its KILOMETER caption, left-aligned for `route` and
+     * centred for `card`.
      */
     private function kmHero(string $km, string $rarity, string $inkOnSky, int $baseline, int $size, bool $centred): string
     {
@@ -646,7 +646,7 @@ SVG;
     }
 
     /**
-     * The route drawn straight onto the card ground as poster art (`rute`
+     * The route drawn straight onto the card ground as poster art (`route`
      * only), matching the client canvas, or a placeholder when the card has no
      * drawable GPS track.
      */

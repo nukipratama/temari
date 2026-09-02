@@ -125,7 +125,7 @@ describe('Login', () => {
         expect(formMock.post).toHaveBeenCalledWith('/auth/demo');
     });
 
-    it('shows a real sample Kartu as concrete proof of the product', async () => {
+    it('shows a real sample Card as concrete proof of the product', async () => {
         render(<Login authStravaUrl="/x" />);
         expect(
             screen.getByText(/this is a real card, not a mockup/),

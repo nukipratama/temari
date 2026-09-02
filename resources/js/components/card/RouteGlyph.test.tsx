@@ -52,7 +52,7 @@ describe('RouteGlyph', () => {
     });
 
     it('falls back to the default stroke width when distanceKm is NaN (e.g. an unparsed "—")', () => {
-        // Kartu passes Number.parseFloat(km), which is NaN when km is the '—' placeholder
+        // Card passes Number.parseFloat(km), which is NaN when km is the '—' placeholder
         // for a missing distance. NaN must not leak into the strokeWidth SVG attribute.
         const { container } = render(
             <RouteGlyph

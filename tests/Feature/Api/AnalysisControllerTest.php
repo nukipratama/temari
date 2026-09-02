@@ -637,7 +637,7 @@ it('chained post_run_speech resume does not re-bill an already-Done sibling row 
     // is already Done (a partially-filled group). Resuming must forward-fill the
     // Pending row only, never flip the Done sibling back to Pending (re-bill).
     $earliest = activityWithSpeech($user, '2026-05-01 06:00:00', AnalysisStatus::Pending);
-    $doneSibling = Analysis::factory()->done('zona sudah dibaca')->create([
+    $doneSibling = Analysis::factory()->done('zones read')->create([
         'subject_type' => Activity::class,
         'subject_id' => $earliest->id,
         'analysis_type' => AnalysisType::RunInsight,
@@ -651,7 +651,7 @@ it('chained post_run_speech resume does not re-bill an already-Done sibling row 
         ->assertOk();
 
     expect($doneSibling->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($doneSibling->fresh()->content)->toBe('zona sudah dibaca');
+        ->and($doneSibling->fresh()->content)->toBe('zones read');
 
     Carbon::setTestNow();
 });
@@ -675,7 +675,7 @@ it('does not dispatch a billed job for a novel discriminator', function (string 
     'random key on a daily type' => ['/api/analyses/briefing_mascot_voice/{id}/trigger?discriminator=kEy9fQ2z'],
     'wrong shape on a daily type' => ['/api/analyses/briefing_mascot_voice/{id}/trigger?discriminator=2026-05'],
     'wrong shape on the monthly recap' => ['/api/analyses/monthly_recap/{id}/trigger?discriminator=2026-05-18'],
-    'wrong shape on the Aku profile voice' => ['/api/analyses/aku_profile_voice/{id}/trigger?discriminator=2026-05-18'],
+    'wrong shape on the profile voice' => ['/api/analyses/profile_voice/{id}/trigger?discriminator=2026-05-18'],
 ]);
 
 it('does not dispatch a billed job when a discriminator is sent to a type whose job ignores it', function (): void {
@@ -834,7 +834,7 @@ it('never overwrites narration a too-old run was already billed for', function (
     config()->set('ai.backfill_max_age_days', 84);
     $user = User::factory()->create();
     [$card] = subjectsForRunAged($user, 200);
-    Analysis::factory()->done('narasi asli yang sudah dibayar')->create([
+    Analysis::factory()->done('original narration, already billed')->create([
         'subject_type' => RunCard::class,
         'subject_id' => $card->id,
         'analysis_type' => AnalysisType::CardFlavor,
@@ -844,7 +844,7 @@ it('never overwrites narration a too-old run was already billed for', function (
     $this->actingAs($user)
         ->postJson("/api/analyses/card_flavor/{$card->id}/trigger")
         ->assertSuccessful()
-        ->assertJson(['content' => 'narasi asli yang sudah dibayar']);
+        ->assertJson(['content' => 'original narration, already billed']);
 
     Bus::assertNothingDispatched();
 });
