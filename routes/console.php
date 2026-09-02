@@ -30,8 +30,10 @@ $alertOnFailure = static fn (Event $event, string $command): Event => $event->on
 // cooldown is Redis-backed.
 Schedule::command('schedule:heartbeat')->everyMinute();
 
-// 00:01: daily kickoff for active users (last 7 days) — briefing set (headline,
-// suggestion, mascot voice, featured card voice, greeting) + trend caption.
+// 00:01: daily kickoff for active users (last 7 days) — one briefing_mascot_voice
+// row each. The headline/suggestion/greeting/trend-caption types this once also
+// dispatched are retired (see UserEraser's retired-type list), and the featured
+// card voice went with W2's sweep.
 // Idempotent: a same-day re-run dispatches only still-missing types, never re-bills.
 $alertOnFailure(Schedule::command('ai:daily-briefing')->dailyAt('00:01'), 'ai:daily-briefing');
 
@@ -61,9 +63,15 @@ Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:05');
 $alertOnFailure(Schedule::command('plan:score-compliance')->dailyAt('00:03'), 'plan:score-compliance');
 
 // Monday 00:07: regenerate every user's plan today-forward against their
-// current fitness/race state. No LLM involved (deterministic periodizer);
-// past weeks and pinned rows are never touched. On-demand regeneration is
-// also available from the Plan page.
+// current fitness/race state. Past weeks and pinned rows are never touched.
+// On-demand regeneration is also available from the Plan page.
+//
+// The periodizer is deterministic and free, but this command is NOT LLM-free:
+// it then calls PlanNarrationRequester::requestForCurrentWeek() per non-demo
+// user, dispatching plan_day_voice x7 and plan_week_voice with invalidate:true
+// (deliberately re-billed weekly — the periodizer just rewrote what they
+// describe) plus an idempotent plan_season_voice. Up to 9 rows per user per
+// week. See docs/architecture/llm-triggers.md.
 $alertOnFailure(Schedule::command('plan:regenerate')->weeklyOn(1, '00:07'), 'plan:regenerate');
 
 // 1st of the month 00:10: HR zones change rarely, so a monthly sweep is enough
