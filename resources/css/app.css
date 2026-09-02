@@ -632,7 +632,7 @@ body {
        whatever it's mounted on. This is the ONLY foil treatment: no holo
        sweep, sparkle, or rainbow flooding the bright art window — so the
        route stays the hero. */
-    .kartu-glow {
+    .card-glow {
         box-shadow:
             0 0 0 1px color-mix(in oklab, var(--rarity, white) 55%, transparent),
             inset 0 0 calc(16px * var(--glow-strength, 1)) color-mix(in oklab, var(--rarity, white) 65%, transparent);

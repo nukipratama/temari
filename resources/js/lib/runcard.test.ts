@@ -14,7 +14,7 @@ import {
     badgeEmblem,
     badgeName,
     fastestKmFromDetail,
-    kartuPropsFromDetail,
+    cardPropsFromDetail,
     threadBandLines,
     zonePctFromDetail,
 } from './runcard';
@@ -216,7 +216,7 @@ describe('zonePctFromDetail', () => {
     });
 });
 
-describe('kartuPropsFromDetail', () => {
+describe('cardPropsFromDetail', () => {
     const fullDetail: ActivityDetail = {
         id: 1,
         activity_id: 1,
@@ -236,7 +236,7 @@ describe('kartuPropsFromDetail', () => {
     };
 
     it('derives the full card prop bag with digital HMS duration by default', () => {
-        const props = kartuPropsFromDetail(fullDetail);
+        const props = cardPropsFromDetail(fullDetail);
         expect(props.km).toBe('5.00');
         expect(props.duration).toBe('30:10');
         expect(props.trimp).toBe('43');
@@ -253,19 +253,19 @@ describe('kartuPropsFromDetail', () => {
 
     it('uses the words-form duration when durationFormat is words', () => {
         expect(
-            kartuPropsFromDetail(fullDetail, { durationFormat: 'words' })
+            cardPropsFromDetail(fullDetail, { durationFormat: 'words' })
                 .duration,
         ).toBe('30 min 10 sec');
     });
 
     it('falls back to "Run" in the subtitle when the run has no name', () => {
         expect(
-            kartuPropsFromDetail({ ...fullDetail, name: null }).subtitle,
+            cardPropsFromDetail({ ...fullDetail, name: null }).subtitle,
         ).toContain('Run · ');
     });
 
     it('uses "—" sentinels and null fields when detail is null or empty', () => {
-        const props = kartuPropsFromDetail(null);
+        const props = cardPropsFromDetail(null);
         expect(props.km).toBe('—');
         expect(props.duration).toBe('—');
         expect(props.trimp).toBe('—');

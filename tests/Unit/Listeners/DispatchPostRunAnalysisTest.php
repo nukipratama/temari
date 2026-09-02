@@ -83,7 +83,7 @@ it('re-narrates card flavor on a re-ingest (invalidate:true) without minting a s
 
     fire($activity);
     $row = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'kartu pertama');
+    app(AnalysisService::class)->markDone($row, 'card pertama');
 
     fire($activity);
 

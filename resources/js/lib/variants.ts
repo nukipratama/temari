@@ -228,7 +228,7 @@ export const eyebrowVariants = cva('', {
 
 /**
  * Rarity → border + flag + corner scale, the one source of truth for the card
- * surfaces. `border` backs card/Kartu.tsx and card/KartuMini.tsx; `flag` and
+ * surfaces. `border` backs card/Card.tsx and card/RunCardMini.tsx; `flag` and
  * `corner` are the remaining two slots a card surface can opt into.
  */
 export const rarityVariants = {

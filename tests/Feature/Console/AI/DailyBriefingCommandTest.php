@@ -32,7 +32,7 @@ it('dispatches the briefing group for each active user, and nothing else', funct
         ->andReturnUsing(function (User $u, string $discriminator) use (&$briefingGroupCalls): void {
             $briefingGroupCalls[] = ['user_id' => $u->id, 'discriminator' => $discriminator];
         });
-    // The featured-kartu row was this command's only direct request() call.
+    // The featured-card row was this command's only direct request() call.
     // W2 removed it with the panel it narrated, so the kickoff is the group alone.
     $service->shouldNotReceive('request');
     $this->app->instance(AnalysisService::class, $service);

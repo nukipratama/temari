@@ -24,7 +24,7 @@ const CELL_BASE =
 /**
  * One Mon-Sun row of the calendar: a week-summary button on the left, seven day
  * boxes beside it, and — when the week carries a recap — an expandable panel
- * with Temari's narration, the weekly chips and the week's rarest kartu (P12).
+ * with Temari's narration, the weekly chips and the week's rarest card (P12).
  */
 export default function CalendarWeekRow({
     week,
@@ -81,7 +81,7 @@ export default function CalendarWeekRow({
                                     height={10}
                                     aria-hidden
                                 />
-                                {RARITY_LABELS[week.rarity]} kartu
+                                {RARITY_LABELS[week.rarity]} card
                             </span>
                         )}
                     </div>

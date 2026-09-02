@@ -132,27 +132,27 @@ it('shows wind in English, not the old Indonesian "angin" wording', function ():
     expect($svg)->toContain('wind 15 km/h')->not->toContain('angin');
 });
 
-it('shows "Route unavailable" in English on a no-GPS rute layout', function (): void {
+it('shows "Route unavailable" in English on a no-GPS route layout', function (): void {
     $card = makeRunCard([
         'distance' => 3_000,
         'summary_polyline' => null,
     ], ['rarity' => 'common', 'special_move' => 'Langkah Mantap']);
 
     $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-        ->invoke(app(RunCardImageRenderer::class), $card, 'rute');
+        ->invoke(app(RunCardImageRenderer::class), $card, 'route');
 
     expect($svg)->toContain('Route unavailable')->not->toContain('tidak tersedia');
 });
 
-it('renders valid PNG bytes for the kartu layout (no route panel, larger KM hero)', function (): void {
+it('renders valid PNG bytes for the card layout (no route panel, larger KM hero)', function (): void {
     $card = makeRunCard([
         'distance' => 5_280,
         'summary_polyline' => '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
     ], ['rarity' => 'rare', 'special_move' => 'Kaki Cepat']);
 
     $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-        ->invoke(app(RunCardImageRenderer::class), $card, 'kartu');
-    $png = app(RunCardImageRenderer::class)->render($card, 'kartu');
+        ->invoke(app(RunCardImageRenderer::class), $card, 'card');
+    $png = app(RunCardImageRenderer::class)->render($card, 'card');
 
     expect(str_starts_with($png, PNG_MAGIC))->toBeTrue()
         ->and($svg)->toContain('font-size="380"') // the enlarged hero KM figure
@@ -178,7 +178,7 @@ it('renders valid PNG bytes for the stats layout (2x2 grid, no hero KM, no route
         ->not->toContain('KILOMETER'); // no single hero number on this branch
 });
 
-it('defaults render() to the original rute/navy look when called with no explicit args', function (): void {
+it('defaults render() to the original route/navy look when called with no explicit args', function (): void {
     $card = makeRunCard([
         'distance' => 5_280,
         'summary_polyline' => '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
@@ -187,7 +187,7 @@ it('defaults render() to the original rute/navy look when called with no explici
     $defaultSvg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
         ->invoke(app(RunCardImageRenderer::class), $card);
     $explicitSvg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-        ->invoke(app(RunCardImageRenderer::class), $card, 'rute', 'navy');
+        ->invoke(app(RunCardImageRenderer::class), $card, 'route', 'navy');
 
     expect($defaultSvg)->toBe($explicitSvg);
 });
@@ -223,7 +223,7 @@ it('paints a different card-body fill for each colorway', function (): void {
     ], ['rarity' => 'common', 'special_move' => 'Langkah Mantap']);
 
     $svgFor = fn (string $colorway): string => (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-        ->invoke(app(RunCardImageRenderer::class), $card, 'kartu', $colorway);
+        ->invoke(app(RunCardImageRenderer::class), $card, 'card', $colorway);
 
     $navy = $svgFor('navy');
     $dawn = $svgFor('dawn');
@@ -249,7 +249,7 @@ it('names the three real font families and never the generic sans-serif', functi
     // match font families actually installed in the image (see the font install
     // in the Dockerfile). 'sans-serif' silently resolved to DejaVu, which is why
     // the Telegram photo never matched the client-rendered share image.
-    foreach (['rute', 'kartu', 'stats'] as $layout) {
+    foreach (['route', 'card', 'stats'] as $layout) {
         $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
             ->invoke(app(RunCardImageRenderer::class), $card, $layout);
 

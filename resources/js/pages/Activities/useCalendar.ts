@@ -15,7 +15,7 @@ export interface CalendarCell {
     avg_hr: number | null;
     trimp: number | null;
     mood: Mood | null;
-    /** The day's rarest earned kartu, when one was earned. */
+    /** The day's rarest earned card, when one was earned. */
     rarity: Rarity | null;
     activity_id: number | null;
 }
@@ -32,7 +32,7 @@ export interface WeekRow {
     totalTrimp: number | null;
     /** The week's own mood, across all seven days. */
     mood: Mood | null;
-    /** The week's rarest earned kartu, across all seven days. */
+    /** The week's rarest earned card, across all seven days. */
     rarity: Rarity | null;
 }
 
@@ -58,7 +58,7 @@ export function dominantMoodOf(
 }
 
 /**
- * The week's rarest earned kartu, or null when it earned none.
+ * The week's rarest earned card, or null when it earned none.
  */
 export function rarestRarityOf(
     cells: ReadonlyArray<CalendarCell>,

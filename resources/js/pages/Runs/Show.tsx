@@ -71,7 +71,7 @@ export default function RunsShow({
         paceSec,
         hr,
         trimp,
-        kartuProps,
+        cardProps,
         shareData,
     } = useRunShow({ detail, card, storyLine, moodFallback });
 
@@ -96,7 +96,7 @@ export default function RunsShow({
                 <RunHero
                     detail={detail}
                     mood={mood}
-                    duration={kartuProps.duration}
+                    duration={cardProps.duration}
                     paceSec={paceSec}
                     hr={hr}
                     trimp={trimp}
@@ -154,7 +154,7 @@ export default function RunsShow({
             {shareOpen && shareData !== null && (
                 <Suspense fallback={null}>
                     <ShareCardModal
-                        kartu={shareData}
+                        card={shareData}
                         onClose={() => setShareOpen(false)}
                     />
                 </Suspense>

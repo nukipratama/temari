@@ -58,7 +58,7 @@ would be a column of empty panels rather than a thin page.
 - **Ingestion** — `detail` / `stream_summary` are populated by the [[run-ingest-pipeline]].
 - **Geo** — location name is resolved by [[geo-reverse-geocoding]].
 - **Weather** — conditions come from [[weather-integration]].
-- **Gamification** — the kartu rarity/badges are assigned by [[gamification]] during ingest.
+- **Gamification** — the card rarity/badges are assigned by [[gamification]] during ingest.
 
 ## Hero — identity, one headline stat, route + weather
 
@@ -203,4 +203,4 @@ separate widgets, not parts of this page.
 - [[run-ingest-pipeline]] — how `detail` / `stream_summary` get populated
 - [[data-model]] — `Activity`, `ActivityDetail`, `Analysis`, `StoryLine`
 - [[ai-pipeline]] — the run-detail narration pipeline
-- [[cards-collection]] — how the run's kartu is earned, and the share button that is now the only way to see it
+- [[cards-collection]] — how the run's card is earned, and the share button that is now the only way to see it

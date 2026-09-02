@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { Rarity } from '@/types/inertia';
 
-import KartuMini from './KartuMini';
+import RunCardMini from './RunCardMini';
 
 const SAMPLE_POLYLINE = '_p~iF~ps|U_ulLnnqC_mqNvxq`@';
 
-describe('KartuMini', () => {
+describe('RunCardMini', () => {
     it('renders name and date in the micro footer', () => {
-        render(<KartuMini name="Sunset 5K" date="18 Mei" />);
+        render(<RunCardMini name="Sunset 5K" date="18 Mei" />);
         expect(screen.getByText('Sunset 5K')).toBeInTheDocument();
         expect(screen.getByText('18 Mei')).toBeInTheDocument();
     });
@@ -21,13 +21,13 @@ describe('KartuMini', () => {
         'epic',
         'legendary',
     ] satisfies Rarity[])('renders for rarity %s', (rarity) => {
-        render(<KartuMini name="x" rarity={rarity} />);
+        render(<RunCardMini name="x" rarity={rarity} />);
         expect(screen.getByText('x')).toBeInTheDocument();
     });
 
     it('draws a route thumbnail when a polyline is present', () => {
         const { container } = render(
-            <KartuMini name="x" polyline={SAMPLE_POLYLINE} />,
+            <RunCardMini name="x" polyline={SAMPLE_POLYLINE} />,
         );
         expect(
             container.querySelector('[data-variant="route"]'),
@@ -35,13 +35,13 @@ describe('KartuMini', () => {
     });
 
     it('renders the edition mark when provided', () => {
-        render(<KartuMini name="x" edition={{ index: 2, total: 5 }} />);
+        render(<RunCardMini name="x" edition={{ index: 2, total: 5 }} />);
         expect(screen.getByText('#2/5')).toBeInTheDocument();
     });
 
     it('joins edition and date with a separator when both are provided', () => {
         render(
-            <KartuMini
+            <RunCardMini
                 name="x"
                 date="18 Mei"
                 edition={{ index: 2, total: 5 }}
@@ -54,7 +54,7 @@ describe('KartuMini', () => {
 
     it('drops the name, edition and date in compact mode, keeping the rarity ribbon', () => {
         render(
-            <KartuMini
+            <RunCardMini
                 compact
                 name="Sunset 5K"
                 rarity="legendary"
@@ -73,7 +73,7 @@ describe('KartuMini', () => {
     });
 
     it('signs the art zone with the brand mark', () => {
-        const { container } = render(<KartuMini name="x" />);
+        const { container } = render(<RunCardMini name="x" />);
         expect(container.querySelector('svg')).not.toBeNull();
     });
 
@@ -87,7 +87,7 @@ describe('KartuMini', () => {
         'scales the thread-band accent stitch count for %s',
         (rarity, count) => {
             const { container } = render(
-                <KartuMini name="x" rarity={rarity} />,
+                <RunCardMini name="x" rarity={rarity} />,
             );
             // Scoped to the thread-band's own <div aria-hidden> wrapper — the
             // mascot glyph in the art zone (a <span aria-hidden>) also draws

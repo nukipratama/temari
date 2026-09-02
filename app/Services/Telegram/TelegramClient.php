@@ -44,7 +44,7 @@ class TelegramClient
 
         $this->call('sendPhoto', $params, request: fn (PendingRequest $http): PendingRequest => $http
             ->asMultipart()
-            ->attach('photo', $photo, 'kartu.png'));
+            ->attach('photo', $photo, 'card.png'));
     }
 
     /** Cut a caption to Telegram's character cap, marking a truncation with an ellipsis. */

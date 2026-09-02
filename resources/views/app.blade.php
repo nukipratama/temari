@@ -9,8 +9,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title inertia>{{ config('app.name', 'Temari') }}</title>
 
-    {{-- Default social preview for the app (e.g. a shared /login link). The
-         public card page (public/kartu.blade.php) ships its own per-card tags. --}}
+    {{-- Default social preview for the app (e.g. a shared /login link). There is
+         no public per-card page, so these tags are the only ones the app ships. --}}
     <meta name="description" content="Temari, running alongside you every step. Turns your Strava runs into collectible cards and easygoing stories.">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Temari">

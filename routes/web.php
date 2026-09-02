@@ -185,7 +185,7 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 
 // Gated by HTTP Basic Auth against a shared devtools password, independent of
 // any Strava session — see EnsureDevtoolsAccess. Throttled like the other
-// public POSTs (60/min/IP) so a wrong password can't be brute-forced at
+// public POSTs (60/min/IP) so a wrong password can't be broute-forced at
 // line speed; generous enough to not trip Pulse's live-polling requests.
 Route::middleware(['throttle:60,1', 'devtools'])->group(function (): void {
     Route::get('/devtools', DevtoolsIndexController::class)->name('devtools.index');

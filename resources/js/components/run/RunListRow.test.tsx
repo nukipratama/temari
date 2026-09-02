@@ -143,16 +143,14 @@ describe('RunListRow', () => {
 
     it('shows a rarity-coloured sparkle when a run_card is present', () => {
         render(<RunListRow detail={detail()} runCard={runCard()} />);
-        const sparkle = document.querySelector(
-            '[aria-label="legendary kartu"]',
-        );
+        const sparkle = document.querySelector('[aria-label="legendary card"]');
         expect(sparkle).toHaveClass('text-rarity-legendary-ink');
     });
 
     it('shows no sparkle when run_card is absent', () => {
         render(<RunListRow detail={detail()} runCard={null} />);
         expect(
-            document.querySelector('[aria-label$="kartu"]'),
+            document.querySelector('[aria-label$="card"]'),
         ).not.toBeInTheDocument();
     });
 });

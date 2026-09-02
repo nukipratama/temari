@@ -284,7 +284,7 @@ it('requestBriefing creates the suggestion row and dispatches one AnalyzeBriefin
 
     $this->service->requestBriefing($user, '2026-05-18');
 
-    // Mascot voice and featured-kartu voice are dispatched by their own callers.
+    // Mascot voice and featured-card voice are dispatched by their own callers.
     expect(Analysis::query()->where('subject_id', $user->id)->where('discriminator', '2026-05-18')->count())->toBe(1);
 
     $row = Analysis::query()

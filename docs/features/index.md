@@ -14,7 +14,7 @@ One walkthrough per user-facing area — what it does and where it lives in the 
 
 _Pages_
 - [[landing]] — /login as the public landing page: the Past You promise, the sourced legal copy, and the honest throttle path
-- [[dashboard]] — the home screen: the Past You verdict and its evidence, today's session, then vitals / last run / kartu
+- [[dashboard]] — the home screen: the Past You verdict and its evidence, today's session, then vitals / last run / card
 - [[run-history]] — Feed/Calendar, weekly snapshots, week deep link
 - [[run-detail]] — single run: story + adaptive claims lenses, route map, splits, HR zones
 - [[run-qa]] — ask about this run: run-derived suggested questions, an answer scoped to that one activity
@@ -27,7 +27,7 @@ _Pages_
 - [[plan-periodizer]] — Plan, the deterministic periodizer, readiness clamp, and volume redistribution
 
 _Collection_
-- [[cards-collection]] — the Kartu's reveal + full view (rarities, badges, special moves); browsing/filtering by rarity is inline on [[run-history]]
+- [[cards-collection]] — the Card's reveal + full view (rarities, badges, special moves); browsing/filtering by rarity is inline on [[run-history]]
 - [[records]] — PRs, progression chart
 - [[targets-accessories]] — the accessory unlock catalog, granted at ingest and drawn nowhere since `PP2`
 

@@ -13,14 +13,14 @@ import {
     type ColorwayId,
     type Format,
     type Layout,
-    type ShareKartuData,
+    type ShareCardData,
 } from '@/lib/shareCard';
 import { iconButtonVariants, toggleButtonVariants } from '@/lib/variants';
 
-export type { ShareKartuData };
+export type { ShareCardData };
 
 interface ShareCardModalProps {
-    kartu: ShareKartuData | null;
+    card: ShareCardData | null;
     onClose: () => void;
 }
 
@@ -34,23 +34,23 @@ function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
     });
 }
 
-const LAYOUTS: Layout[] = ['kartu', 'rute', 'stats'];
+const LAYOUTS: Layout[] = ['card', 'route', 'stats'];
 const LAYOUT_LABELS: Record<Layout, string> = {
-    kartu: 'card',
-    rute: 'route',
+    card: 'card',
+    route: 'route',
     stats: 'stats',
 };
 /** Which templates need a drawable route — the single source of truth for
  *  both the layout picker's visibility and the draw-effect's stale-selection
- *  clamp, replacing the old ad hoc `l !== 'rute'` checks in both places. */
+ *  clamp, replacing the old ad hoc `l !== 'route'` checks in both places. */
 const TEMPLATE_CAPS: Record<Layout, boolean> = {
-    kartu: false,
-    rute: true,
+    card: false,
+    route: true,
     stats: false,
 };
 
-function hasRoute(kartu: ShareKartuData): boolean {
-    return kartu.polyline != null && kartu.polyline !== '';
+function hasRoute(card: ShareCardData): boolean {
+    return card.polyline != null && card.polyline !== '';
 }
 
 const COLORWAYS_LIST: ColorwayId[] = ['navy', 'dawn', 'ember'];
@@ -61,10 +61,10 @@ const COLORWAY_LABELS: Record<ColorwayId, string> = {
 };
 
 export default function ShareCardModal({
-    kartu,
+    card,
     onClose,
 }: Readonly<ShareCardModalProps>) {
-    const [layout, setLayout] = useState<Layout>('kartu');
+    const [layout, setLayout] = useState<Layout>('card');
     const [format, setFormat] = useState<Format>('story');
     const [colorway, setColorway] = useState<ColorwayId>('navy');
     // Transient status under the CTAs: confirms a copy/share that has no native
@@ -77,27 +77,27 @@ export default function ShareCardModal({
     const drawRef = useRef<Promise<void> | null>(null);
     const panelRef = useRef<HTMLDivElement>(null);
 
-    useModal(kartu !== null, panelRef, onClose);
+    useModal(card !== null, panelRef, onClose);
 
     // Repaint the fixed-resolution canvas whenever any knob changes. The canvas
     // IS the export, so the on-screen preview can never drift from the shared
     // image, and the output is identical on every device.
     useEffect(() => {
-        if (kartu === null || canvasRef.current === null) {
+        if (card === null || canvasRef.current === null) {
             return;
         }
         // Clamp to a drawable layout: a no-GPS run has no route, so a stale
-        // 'rute' selection (carried over from a previous GPS card) must not
+        // 'route' selection (carried over from a previous GPS card) must not
         // paint a blank map.
         const drawLayout =
-            !TEMPLATE_CAPS[layout] || hasRoute(kartu) ? layout : 'kartu';
+            !TEMPLATE_CAPS[layout] || hasRoute(card) ? layout : 'card';
         drawRef.current = drawShareCard(canvasRef.current, {
-            kartu,
+            card,
             layout: drawLayout,
             format,
             colorway,
         });
-    }, [kartu, layout, format, colorway]);
+    }, [card, layout, format, colorway]);
 
     // Auto-clear the status line so it reads as a transient toast.
     useEffect(() => {
@@ -106,18 +106,18 @@ export default function ShareCardModal({
         return () => globalThis.clearTimeout(id);
     }, [status]);
 
-    if (kartu === null) return null;
+    if (card === null) return null;
 
     // Templates that need a polyline are hidden for no-GPS runs.
-    const availableLayouts = hasRoute(kartu)
+    const availableLayouts = hasRoute(card)
         ? LAYOUTS
         : LAYOUTS.filter((l) => !TEMPLATE_CAPS[l]);
-    // Clamp so share/copy never export a stale 'rute' layout on a no-GPS run.
+    // Clamp so share/copy never export a stale 'route' layout on a no-GPS run.
     const effectiveLayout: Layout = availableLayouts.includes(layout)
         ? layout
-        : 'kartu';
+        : 'card';
 
-    const cfg = { kartu, layout: effectiveLayout, format, colorway };
+    const cfg = { card, layout: effectiveLayout, format, colorway };
 
     // The preview canvas already holds the exact export bitmap at its full
     // internal resolution, so read it back rather than redrawing every template
@@ -133,13 +133,13 @@ export default function ShareCardModal({
         if (typeof navigator.share === 'function') {
             try {
                 const blob = await captureImage();
-                const file = new File([blob], `${kartu.name}.png`, {
+                const file = new File([blob], `${card.name}.png`, {
                     type: 'image/png',
                 });
                 if (navigator.canShare?.({ files: [file] })) {
                     await navigator.share({
                         files: [file],
-                        title: `${kartu.name} · Temari`,
+                        title: `${card.name} · Temari`,
                     });
                     return;
                 }
@@ -147,14 +147,14 @@ export default function ShareCardModal({
                 // fall through to URL share
             }
         }
-        const url = kartu.shareUrl;
+        const url = card.shareUrl;
         if (typeof navigator.share === 'function') {
             try {
                 await navigator.share({
-                    title: `${kartu.name} · Temari`,
+                    title: `${card.name} · Temari`,
                     text:
-                        kartu.quote ??
-                        `${RARITY_LABELS[kartu.rarity]} card: ${kartu.name}`,
+                        card.quote ??
+                        `${RARITY_LABELS[card.rarity]} card: ${card.name}`,
                     url,
                 });
             } catch {
@@ -240,7 +240,7 @@ export default function ShareCardModal({
                                 Share card
                             </div>
                             <div className="font-serif text-xl tracking-tight text-foreground">
-                                {kartu.name}
+                                {card.name}
                             </div>
                         </div>
                         <div className="w-8" />
@@ -256,7 +256,7 @@ export default function ShareCardModal({
                             ref={canvasRef}
                             width={1080}
                             height={format === 'story' ? 1920 : 1080}
-                            aria-label={`Preview of ${kartu.name}`}
+                            aria-label={`Preview of ${card.name}`}
                             className="block rounded-lg"
                             style={{ maxWidth: '100%', maxHeight: '52vh' }}
                         />

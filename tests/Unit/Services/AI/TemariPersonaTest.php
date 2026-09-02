@@ -21,7 +21,7 @@ beforeEach(function (): void {
  *  - Open /aktivitas + /kalender and read the weekly recap narrative + trend caption.
  *    The week-over-week comparison is the centrepiece, not a footnote.
  *  - Open /rekor and read the PR context flavor lines.
- *  - Open /kartu and read the card flavor on the spotlight card.
+ *  - Open /card and read the card flavor on the spotlight card.
  *
  *  What counts as drift now, beyond stiffness: praise handed out by default,
  *  a warm closer bolted onto a block whose numbers didn't earn one, or a

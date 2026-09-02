@@ -197,7 +197,7 @@ enum AnalysisType: string
      * type's own dispatch sites write:
      *
      * - `Y-m-d` daily keys: DailyBriefingCommand, BriefingComposer.
-     * - featured kartu: the RunCard id. Never null — BriefingComposer only emits
+     * - featured card: the RunCard id. Never null — BriefingComposer only emits
      *   the block once a card is picked, and a null id would bill the narrator's
      *   "no card yet" line under a second cooldown key.
      * - ProfileVoice: the ISO week key WeeklyProfileCommand + ProfileController use.

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import type { ShareKartuData } from '@/lib/shareCard';
+import type { ShareCardData } from '@/lib/shareCard';
 import type {
     ActivityDetail,
     AnalysisPayload,
@@ -23,7 +23,7 @@ import {
     badgeEmblem,
     badgeName,
     fastestKmFromDetail,
-    kartuPropsFromDetail,
+    cardPropsFromDetail,
 } from '@/lib/runcard';
 import { districtFromLocation } from '@/pages/Home/helpers';
 
@@ -64,7 +64,7 @@ export function useRunShow({
             : null;
     const trimp =
         detail.trimp_edwards != null ? Math.round(detail.trimp_edwards) : null;
-    const kartuProps = useMemo(() => kartuPropsFromDetail(detail), [detail]);
+    const cardProps = useMemo(() => cardPropsFromDetail(detail), [detail]);
     const cardBadges = useMemo(() => (card?.badges ?? []).slice(0, 3), [card]);
     const cadence = avgCadenceFromDetail(detail);
     const fastestKm = fastestKmFromDetail(detail);
@@ -89,7 +89,7 @@ export function useRunShow({
         return `${temp}${wind}`;
     })();
 
-    const shareData: ShareKartuData | null = useMemo(
+    const shareData: ShareCardData | null = useMemo(
         () =>
             card === null
                 ? null
@@ -99,12 +99,12 @@ export function useRunShow({
                       shareUrl: card.public_share_url,
                       rarity: card.rarity,
                       mood,
-                      subtitle: kartuProps.subtitle,
+                      subtitle: cardProps.subtitle,
                       date: shareDate,
                       km,
-                      duration: kartuProps.duration,
+                      duration: cardProps.duration,
                       pace: paceSec != null ? formatPace(paceSec) : null,
-                      trimp: kartuProps.trimp,
+                      trimp: cardProps.trimp,
                       hr: hr != null ? `${hr} bpm` : null,
                       cadence: cadence != null ? `${cadence} spm` : null,
                       fastestKm: fastestKm != null ? `${fastestKm}/km` : null,
@@ -112,7 +112,7 @@ export function useRunShow({
                           detail.total_elevation_gain != null
                               ? `${Math.round(detail.total_elevation_gain)} m`
                               : null,
-                      zonePct: kartuProps.zonePct,
+                      zonePct: cardProps.zonePct,
                       location: districtFromLocation(
                           detail.location_name ?? null,
                       ),
@@ -134,7 +134,7 @@ export function useRunShow({
         [
             card,
             mood,
-            kartuProps,
+            cardProps,
             shareDate,
             km,
             paceSec,
@@ -158,7 +158,7 @@ export function useRunShow({
         paceSec,
         hr,
         trimp,
-        kartuProps,
+        cardProps,
         cardBadges,
         cadence,
         fastestKm,

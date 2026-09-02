@@ -838,9 +838,9 @@ function cardFixture(): RunCard
 
 it('CardFlavorNarrator returns flavor on valid JSON', function (): void {
     $card = cardFixture();
-    $caller = fakeCaller(json_encode(['flavor' => 'Kartu epic!'], JSON_THROW_ON_ERROR));
+    $caller = fakeCaller(json_encode(['flavor' => 'Card epic!'], JSON_THROW_ON_ERROR));
     $narrator = new CardFlavorNarrator($caller, app(RelativeEffort::class));
-    expect($narrator->generate($card))->toBe('Kartu epic!');
+    expect($narrator->generate($card))->toBe('Card epic!');
 });
 
 it('CardFlavorNarrator sends an empty context and lets the model read the card', function (): void {
@@ -1358,7 +1358,7 @@ function narratorKinds(): array
 // A prompt naming a tool the narrator does not carry is not a typo: the model
 // asks for it, AgentToolbox answers {"error":"unknown tool: ..."}, and the run
 // burns a whole step plus a round trip recovering -- on every single generation.
-// briefing_featured_kartu_voice did exactly that, telling the model to call
+// A since-deleted narrator did exactly that, telling the model to call
 // get_card_identity while holding only get_featured_card.
 it('no narrator prompt names a tool its own toolbox does not carry', function (string $class, array $tools): void {
     preg_match_all('/\bget_[a-z_]+/', narratorPrompt($class), $matches);

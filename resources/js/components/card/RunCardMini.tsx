@@ -16,7 +16,7 @@ import {
 } from '@/lib/runcard';
 import { rarityVariants } from '@/lib/variants';
 
-interface KartuMiniProps {
+interface RunCardMiniProps {
     name: string;
     rarity?: Rarity;
     mood?: Mood;
@@ -36,7 +36,7 @@ interface KartuMiniProps {
  * 140px. Bright art window with the route hero + a tiny corner brand mark, a
  * dark stat block with the rarity ribbon, name, and edition/date.
  */
-export default function KartuMini({
+export default function RunCardMini({
     name,
     rarity = 'epic',
     mood,
@@ -45,11 +45,11 @@ export default function KartuMini({
     edition,
     compact = false,
     className,
-}: Readonly<KartuMiniProps>) {
+}: Readonly<RunCardMiniProps>) {
     const rarityHex = RARITY_HEX[rarity];
     const moodColor = mood ? moodSigilColor(mood) : null;
     const rootStyle = { '--rarity': rarityHex } as CSSProperties;
-    // Pearl backdrop matching the full Kartu + canvas share card: a rarity tier
+    // Pearl backdrop matching the full Card + canvas share card: a rarity tier
     // glow up top, an optional mood echo bottom-right, over a cream depth gradient.
     const artStyle: CSSProperties = {
         background: [
@@ -151,7 +151,7 @@ export default function KartuMini({
                     )}
             </div>
 
-            {/* Thread-band rarity accent (Slice 9c) — mirrors Kartu's, scaled
+            {/* Thread-band rarity accent (Slice 9c) — mirrors Card's, scaled
                 down for the mini tile. Additive to the rarity border above,
                 not a re-hue. */}
             {!compact && (

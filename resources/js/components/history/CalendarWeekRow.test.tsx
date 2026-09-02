@@ -145,19 +145,19 @@ describe('CalendarWeekRow', () => {
         expect(screen.getByText(/Fitness 42.0/)).toBeInTheDocument();
     });
 
-    // P12: the one Kartu surface History keeps, and it lives here — inside the
+    // P12: the one Card surface History keeps, and it lives here — inside the
     // week's disclosure, never on a day cell.
-    it("badges the week's rarest kartu inside the disclosure", () => {
+    it("badges the week's rarest card inside the disclosure", () => {
         render(<CalendarWeekRow week={PLAIN_WEEK} snapshot={snapshot()} />);
 
-        expect(screen.queryByText(/Epic kartu/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Epic card/)).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: /WK 1/ }));
 
-        expect(screen.getByText(/Epic kartu/)).toBeInTheDocument();
+        expect(screen.getByText(/Epic card/)).toBeInTheDocument();
     });
 
-    it('shows no kartu badge for a week that earned none', () => {
+    it('shows no card badge for a week that earned none', () => {
         const week = weekFor([
             { date: '2026-05-04', day: 4, distance_km: 8, mood: 'easy' },
             { date: '2026-05-05', day: 5 },
@@ -171,7 +171,7 @@ describe('CalendarWeekRow', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /WK 1/ }));
 
-        expect(screen.queryByText(/kartu/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/card/i)).not.toBeInTheDocument();
     });
 
     it('collapses again on a second press', () => {

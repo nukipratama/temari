@@ -98,7 +98,7 @@ it('scopes a single card edition to the owner', function (): void {
 it('whitelists the card columns, never internal ones', function (): void {
     $user = User::factory()->create();
     $card = presenterCard($user, Rarity::Epic);
-    $card->update(['share_image_path' => 'kartu/secret.png']);
+    $card->update(['share_image_path' => 'card/secret.png']);
 
     expect(app(CardPresenter::class)->base($card))->toBe([
         'id' => $card->id,

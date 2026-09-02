@@ -115,8 +115,8 @@ Three families (all loaded via Google Fonts in
 `font-serif` (headlines + Temari voice/quotes; renamed from `font-display` in F3 to match the
 prototype's own token name); **Plus Jakarta Sans** is `font-sans`, the default
 family for body/UI/buttons; **JetBrains Mono** is `font-mono`, for *numbers, stats and small
-uppercase metadata labels* (section labels, chips, stat-tile / kartu captions, timestamps). Oswald
-(`font-collectible`) is retired: the Kartu uses the same stack as everything else. Because `font-sans` is Tailwind's default, every small uppercase label must carry an
+uppercase metadata labels* (section labels, chips, stat-tile / card captions, timestamps). Oswald
+(`font-collectible`) is retired: the Card uses the same stack as everything else. Because `font-sans` is Tailwind's default, every small uppercase label must carry an
 **explicit `font-mono`** (or the `.text-label-micro` / `.text-label-small` utilities) or it falls back to
 the sans. Keep `tabular-nums` on numeric / stat displays.
 The scale is fluid `clamp()` tokens in `app.css` (`text-display-*`, `text-headline-*`,

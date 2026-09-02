@@ -31,7 +31,7 @@ $alertOnFailure = static fn (Event $event, string $command): Event => $event->on
 Schedule::command('schedule:heartbeat')->everyMinute();
 
 // 00:01: daily kickoff for active users (last 7 days) — briefing set (headline,
-// suggestion, mascot voice, featured kartu voice, greeting) + trend caption.
+// suggestion, mascot voice, featured card voice, greeting) + trend caption.
 // Idempotent: a same-day re-run dispatches only still-missing types, never re-bills.
 $alertOnFailure(Schedule::command('ai:daily-briefing')->dailyAt('00:01'), 'ai:daily-briefing');
 

@@ -450,7 +450,7 @@ export default function Design() {
 
                     <Section
                         title="Temari's face"
-                        note="One drawn mark at every size the app uses it, from the Kartu tile's 26px corner to Onboarding's 72px hero. Ring, disc and features are three separate colours so a surface can tint the ring to a mood without touching the face."
+                        note="One drawn mark at every size the app uses it, from the Card tile's 26px corner to Onboarding's 72px hero. Ring, disc and features are three separate colours so a surface can tint the ring to a mood without touching the face."
                     >
                         <div className="flex flex-wrap items-end gap-2.5">
                             {FACE_SIZES.map((size) => (

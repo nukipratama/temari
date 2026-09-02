@@ -47,7 +47,7 @@ Three families, one job each:
 | `font-sans` | Plus Jakarta Sans | Prose + UI (the readable **default** family) |
 | `font-mono` | JetBrains Mono | **Telemetry only** — numbers, stats, splits, uppercase metadata labels |
 
-There used to be a fourth, Oswald, scoped to the collectible Kartu. It was the single biggest
+There used to be a fourth, Oswald, scoped to the collectible Card. It was the single biggest
 reason the collection read as a different product from the rest of the app, so it is retired
 and the card chrome uses the same sans/mono stack (including the share-card canvas in
 [shareCard.ts](../resources/js/lib/shareCard.ts)).
@@ -58,13 +58,13 @@ uppercase labels via `.text-label-micro` / `.text-label-small`). Keep `tabular-n
 numeric / stat display. Rule of thumb: **mono = numbers/labels · sans = prose · serif italic =
 display/voice**.
 
-**Exemption — the kartu art layer.** The collectible card's rarity label, TRIMP number and
+**Exemption — the card art layer.** The collectible card's rarity label, TRIMP number and
 edition number are **sans**, and stay that way. The card is art, not UI chrome: its type is
-composed into the illustration rather than tokenised, and since `PS8` deleted the DOM `Kartu`
-the one surface that still draws a full-size card is the `kartu` layout of the canvas share
+composed into the illustration rather than tokenised, and since `PS8` deleted the DOM card component
+the one surface that still draws a full-size card is the `card` layout of the canvas share
 renderer [shareCard.ts](../resources/js/lib/shareCard.ts#L816), so "fixing" it desyncs it from
 the server card it was converged with on purpose. The boundary is exactly that art layer:
-[KartuMini.tsx](../resources/js/components/card/KartuMini.tsx#L111), the `rute` /
+[RunCardMini.tsx](../resources/js/components/card/RunCardMini.tsx#L111), the `route` /
 `stats` share layouts, and the server story card
 [RunCardImageRenderer.php](../app/Services/Run/Story/RunCardImageRenderer.php#L204) all stay mono,
 and the mono-for-numbers-and-uppercase-metadata rule is absolute everywhere else in the app.
@@ -255,7 +255,7 @@ Four warm-tinted steps. Warm, not neutral: a grey shadow on a cream ground reads
 | Resting | `shadow-e1` | `surface-card` / `surface-warm` | Cards in the normal document flow |
 | Floating | `shadow-e2` | `surface-elev` | Popovers, dropdowns, toasts, tooltips |
 | Sheet | `shadow-e3` | `surface-elev` / `cream` | Bottom sheets, large detached panels |
-| Modal | `shadow-e4` | `cream` / `sky-deep` | Full modals (share card, kartu mount) |
+| Modal | `shadow-e4` | `cream` / `sky-deep` | Full modals (share card, card mount) |
 
 Tailwind's default `shadow-*` scale is not used and is rejected by the source guard.
 `surface-elev` is reserved for the floating step — never a resting card (that is `surface-card` /
@@ -319,7 +319,7 @@ built with `@apply` so they compose with token utilities. Prefer these over re-t
 | `.pad-chip` / `.pad-panel` / `.pad-card` / `.pad-hero` / `.pad-page` | the matching `--pad-*` role | Named padding (see Spacing) |
 | `.focus-ring` | `focus-visible:ring-2 ring-leaf ring-offset-2 ring-offset-cream` (+ `outline-none`) | Keyboard focus on cream surfaces (the app default) |
 | `.focus-ring-on-sky` | same, but `ring-offset-sky` | Keyboard focus on dark sky panels |
-| `.text-label-micro` | `font-mono text-[11px] font-bold uppercase tracking-[0.12em]` | Smallest uppercase metadata label (kartu / stat captions) |
+| `.text-label-micro` | `font-mono text-[11px] font-bold uppercase tracking-[0.12em]` | Smallest uppercase metadata label (card / stat captions) |
 | `.text-label-small` | `font-mono text-[12px] font-bold uppercase tracking-[0.14em]` | Section labels, chip-sized uppercase metadata |
 | `.text-label-hero` | `font-mono text-[11px] font-bold uppercase tracking-[0.18em]` | Page-hero eyebrow (wide tracking) |
 | `.text-prose` | `font-sans text-quote-md text-text-2` | Narrator / body sentences |
@@ -330,7 +330,7 @@ built with `@apply` so they compose with token utilities. Prefer these over re-t
 
 Text floor is **11px** in app chrome — no `text-[9px]` / `text-[10px]`. Prefer a role utility over a raw size.
 
-**Card-scoped exception:** the collectible **kartu** (`KartuMini`, and the two share-image
+**Card-scoped exception:** the collectible **card** (`RunCardMini`, and the two share-image
 renderers) is a deliberate TCG artifact, where a sub-11px nameplate, `km` unit and edition number
 are part of the trading-card look, not app chrome. Sub-11px is allowed **only inside the card
 art**; everywhere else the 11px floor holds.
