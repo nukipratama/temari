@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzeActivityJob;
-use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
+use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
@@ -25,7 +25,7 @@ it('pins the exact case list, so adding or retiring a type is a deliberate edit'
         'weekly_recap',
         'pr_context',
         'card_flavor',
-        'aku_profile_voice',
+        'profile_voice',
         'monthly_recap',
         'trend_read',
         'plan_day_voice',
@@ -41,9 +41,9 @@ it('pins the exact case list, so adding or retiring a type is a deliberate edit'
     ]));
 });
 
-it('maps AkuProfileVoice to its job + subject type', function (): void {
-    expect(AnalysisType::AkuProfileVoice->jobClass())->toBe(AnalyzeAkuProfileVoiceJob::class)
-        ->and(AnalysisType::AkuProfileVoice->subjectType())->toBe(AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE);
+it('maps ProfileVoice to its job + subject type', function (): void {
+    expect(AnalysisType::ProfileVoice->jobClass())->toBe(AnalyzeProfileVoiceJob::class)
+        ->and(AnalysisType::ProfileVoice->subjectType())->toBe(AnalysisType::PROFILE_VOICE_SUBJECT_TYPE);
 });
 
 it('maps MonthlyRecap to its job + subject type', function (): void {
@@ -110,7 +110,7 @@ it('maps representative types to the expected cadence', function (AnalysisType $
     'card flavor is per-activity' => [AnalysisType::CardFlavor, AnalysisCadence::PerActivity],
     'weekly recap is weekly' => [AnalysisType::WeeklyRecap, AnalysisCadence::Weekly],
     'monthly recap is monthly' => [AnalysisType::MonthlyRecap, AnalysisCadence::Monthly],
-    'aku profile voice is on-demand' => [AnalysisType::AkuProfileVoice, AnalysisCadence::OnDemand],
+    'aku profile voice is on-demand' => [AnalysisType::ProfileVoice, AnalysisCadence::OnDemand],
     'trend read is on-demand (its own 3 cron schedules, not cascade-driven)' => [AnalysisType::TrendRead, AnalysisCadence::OnDemand],
     'plan day voice is daily' => [AnalysisType::PlanDayVoice, AnalysisCadence::Daily],
     'plan week voice is weekly' => [AnalysisType::PlanWeekVoice, AnalysisCadence::Weekly],
@@ -157,11 +157,11 @@ it('requires the date shape each keyed type dispatches with', function (Analysis
 })->with([
     'briefing mascot voice is a day' => [AnalysisType::BriefingMascotVoice, 'date_format:Y-m-d'],
     'monthly recap is a month' => [AnalysisType::MonthlyRecap, 'date_format:Y-m'],
-    'aku profile voice is an ISO week' => [AnalysisType::AkuProfileVoice, 'regex:/^\d{4}-W\d{2}$/'],
+    'aku profile voice is an ISO week' => [AnalysisType::ProfileVoice, 'regex:/^\d{4}-W\d{2}$/'],
     'plan day voice is a day' => [AnalysisType::PlanDayVoice, 'date_format:Y-m-d'],
 ]);
 
-it('formats currentIsoWeek to the discriminator shape AkuProfileVoice requires', function (): void {
+it('formats currentIsoWeek to the discriminator shape ProfileVoice requires', function (): void {
     Carbon::setTestNow('2026-05-19 12:00:00');
 
     expect(AnalysisType::currentIsoWeek())->toBe('2026-W21')

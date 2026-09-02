@@ -125,8 +125,8 @@ it('exposes the week-keyed profileVoice payload', function (): void {
             ->missing('personaSummary')
             ->missing('personaMix')
             ->has('profileVoice')
-            ->where('profileVoice.type', 'aku_profile_voice')
-            ->where('profileVoice.subject_type', 'aku_profile_voice_user')
+            ->where('profileVoice.type', 'profile_voice')
+            ->where('profileVoice.subject_type', 'profile_voice_user')
             ->where('profileVoice.discriminator', '2026-W21'));
 
     Carbon::setTestNow();
@@ -139,17 +139,17 @@ it('resolves the row the weekly kickoff wrote for the current ISO week', functio
 
     $user = User::factory()->create();
     Analysis::factory()->done('Kamu tipe yang sabar ngebangun base.')->create([
-        'subject_type' => AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+        'subject_type' => AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::AkuProfileVoice,
+        'analysis_type' => AnalysisType::ProfileVoice,
         'discriminator' => '2026-W21',
     ]);
     // Last week's row and the pre-merge unkeyed row must both stay out of the way.
     foreach (['2026-W20', null] as $stale) {
         Analysis::factory()->done('Bacaan lama.')->create([
-            'subject_type' => AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+            'subject_type' => AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
             'subject_id' => $user->id,
-            'analysis_type' => AnalysisType::AkuProfileVoice,
+            'analysis_type' => AnalysisType::ProfileVoice,
             'discriminator' => $stale,
         ]);
     }

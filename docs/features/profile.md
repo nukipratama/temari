@@ -31,7 +31,7 @@ The Profile page (`/profile`) is the runner's about-me: who they are, how Temari
 
 ## System dependencies
 
-- **AI narration** — `profileVoice` (`AkuProfileVoice`) is an `Analysis` row from the [[ai-pipeline]]. It is the page's only narrated block.
+- **AI narration** — `profileVoice` (`ProfileVoice`) is an `Analysis` row from the [[ai-pipeline]]. It is the page's only narrated block.
 - **Gamification** — the `PersonalRecord` rows behind the progression charts, and the `Season`/`SeasonGoal`/streak data behind the Season & streak panel, come from [[gamification]].
 - **Settings** — the Telegram toggles, HR-zone entry, and account deletion moved to the [[settings]] hub; Profile links to it.
 - **Data model** — `PersonalRecord` shape in [[data-model]].
@@ -42,7 +42,7 @@ A "Profile" eyebrow sits over a "{firstName}, / *your story.*" headline with the
 
 The panel is **card-toned with a horizon halo**, not a sky-gradient panel — `PS10` matched the prototype's own `bg-card` hero, as `PS8` did on activity detail.
 
-This is the merged Aku voice: it reads who the runner is from their 12-week mood mix and backs that reading with their lifetime numbers, in one billed call ([AkuProfileVoiceNarrator](app/Services/AI/Narrators/AkuProfileVoiceNarrator.php) carries `get_persona_mix` alongside `get_lifetime_stats`, `get_training_paces` and `get_progression_signal`). Server side, `ProfileController::resolveProfileVoice` looks up the `AkuProfileVoice` analysis keyed by **ISO week** (`isoFormat('GGGG-[W]WW')`) and returns `Analysis::toPayload`. The numbers on the page are live; the prose is refreshed once a week by `ai:weekly-profile` (`invalidate: false`, so the week key is the refresh) or on demand via "Reread". See [[recaps]] and [[ai-pipeline]].
+This is the merged profile voice: it reads who the runner is from their 12-week mood mix and backs that reading with their lifetime numbers, in one billed call ([ProfileVoiceNarrator](app/Services/AI/Narrators/ProfileVoiceNarrator.php) carries `get_persona_mix` alongside `get_lifetime_stats`, `get_training_paces` and `get_progression_signal`). Server side, `ProfileController::resolveProfileVoice` looks up the `ProfileVoice` analysis keyed by **ISO week** (`isoFormat('GGGG-[W]WW')`) and returns `Analysis::toPayload`. The numbers on the page are live; the prose is refreshed once a week by `ai:weekly-profile` (`invalidate: false`, so the week key is the refresh) or on demand via "Reread". See [[recaps]] and [[ai-pipeline]].
 
 ## Stat row
 
@@ -54,13 +54,13 @@ Sharing `/calendar`'s cache means the totals can trail a just-ingested run by up
 
 When the runner has a VDOT-eligible PR, the hero stat row grows two more tiles (**VDOT**, **Threshold**) and [PaceTargetsCard](resources/js/components/profile/PaceTargetsCard.tsx) renders below the season card: a leaf→horizon rail with four markers — **Easy**, **Marathon**, **Tempo**, **Interval** — each a pace-per-km via `formatPace`. Unlike the prototype's hardcoded marker offsets, each marker's position is its own pace linearly placed between the slowest and the fastest of the four, so two targets that sit close together read as close together. `ProfileController::fitness` builds the `fitness` prop from [VdotEstimator](app/Services/Run/Metrics/VdotEstimator.php)`::estimate`, [EstimateThresholdAction](app/Actions/Run/Metrics/EstimateThresholdAction.php)`::__invoke` and [TrainingPaceCalculator](app/Services/Run/Metrics/TrainingPaceCalculator.php)`::fromVdotResult`; `fitness` is `null` (and the extra tiles don't render) when the user has no VDOT-eligible PR yet.
 
-These are the same estimators [AkuProfileVoiceNarrator](app/Services/AI/Narrators/AkuProfileVoiceNarrator.php) calls via [TrainingPacesTool](app/Services/AI/Agent/Tools/TrainingPacesTool.php) to narrate pace targets in prose — the numbers reach the user both ways, tabulated here and spoken in the hero voice above.
+These are the same estimators [ProfileVoiceNarrator](app/Services/AI/Narrators/ProfileVoiceNarrator.php) calls via [TrainingPacesTool](app/Services/AI/Agent/Tools/TrainingPacesTool.php) to narrate pace targets in prose — the numbers reach the user both ways, tabulated here and spoken in the hero voice above.
 
 ## Time in zone · last 12 weeks
 
 **P13.** [TimeInZoneBar](resources/js/components/profile/TimeInZoneBar.tsx) draws a segmented Z1-Z5 bar and a dot legend in the hero slot the behavioural persona mix used to occupy (`PersonaBar` and the `personaMix` prop were cut in `PP3`). The percentages come from [TimeInZoneSummary](app/Services/Run/Metrics/TimeInZoneSummary.php), which sums the per-run `time_in_zone_min` that [StreamAnalysis](app/Services/Run/Ingest/StreamAnalysis.php) already writes onto `activity_details.stream_summary` across the trailing 12 weeks and normalises them. Zone colours and labels are the shared `HR_ZONE_COLORS`/`HR_ZONE_LABELS` in [chartTokens](resources/js/lib/chartTokens.ts), the same pair the [[settings-hr-zones]] editor names its bands with.
 
-The whole block is absent — bar, legend and label — when no run in the window recorded heart rate, rather than drawing an empty rail. `AkuProfileVoiceNarrator::personaMix()` and `PersonaMixTool` survive as narration context for the hero voice; `W2` decides whether the method itself stays.
+The whole block is absent — bar, legend and label — when no run in the window recorded heart rate, rather than drawing an empty rail. `ProfileVoiceNarrator::personaMix()` and `PersonaMixTool` survive as narration context for the hero voice: `W2` verified both are live and kept them.
 
 ## Journey (progression)
 

@@ -47,7 +47,7 @@ final readonly class RuleBasedNarrationFiller
             AnalysisType::WeeklyRecap => $this->weeklyRecap($seed),
             AnalysisType::PrContext => $this->prContext($seed),
             AnalysisType::CardFlavor => $this->cardFlavor($seed),
-            AnalysisType::AkuProfileVoice => $this->akuProfileVoice($seed),
+            AnalysisType::ProfileVoice => $this->profileVoice($seed),
             AnalysisType::MonthlyRecap => $this->monthlyRecap($seed),
             AnalysisType::TrendRead => $this->trendRead($seed),
             AnalysisType::PlanDayVoice => $this->planDayVoice($row),
@@ -334,7 +334,7 @@ final readonly class RuleBasedNarrationFiller
         return $pool[abs($seed) % count($pool)];
     }
 
-    private function akuProfileVoice(int $seed): string
+    private function profileVoice(int $seed): string
     {
         return $this->select([
             "You lean **chill** far more than pushed, and the log backs it up: regular, unhurried, never a big jump. That's a base built the slow way. The open question is when you decide to spend it.",

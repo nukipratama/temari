@@ -33,7 +33,7 @@ final class AnalysisSubjectAuthorizer
     {
         $authorized = match ($type) {
             AnalysisType::BriefingMascotVoice,
-            AnalysisType::AkuProfileVoice,
+            AnalysisType::ProfileVoice,
             AnalysisType::MonthlyRecap,
             AnalysisType::TrendRead,
             AnalysisType::PlanDayVoice => $subjectId === $user->id,

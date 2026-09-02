@@ -117,13 +117,13 @@ class ProfileController extends Controller
         // Cache the voice per ISO week — the mood mix behind it doesn't shift by
         // the hour, and the narrator pulls 12 weeks of history regardless.
         $discriminator = AnalysisType::currentIsoWeek();
-        $subjectType = AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE;
+        $subjectType = AnalysisType::PROFILE_VOICE_SUBJECT_TYPE;
 
         $row = Analysis::query()
-            ->forSubject($subjectType, $user->id, AnalysisType::AkuProfileVoice, $discriminator)
+            ->forSubject($subjectType, $user->id, AnalysisType::ProfileVoice, $discriminator)
             ->first();
 
-        return Analysis::toPayload($row, AnalysisType::AkuProfileVoice, $subjectType, $user->id, $discriminator);
+        return Analysis::toPayload($row, AnalysisType::ProfileVoice, $subjectType, $user->id, $discriminator);
     }
 
     /**

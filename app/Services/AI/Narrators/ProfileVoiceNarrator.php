@@ -21,11 +21,11 @@ use App\Services\Run\Story\MoodMix;
 use Illuminate\Support\Carbon;
 
 /**
- * The Aku page's single Temari voice ("What Temari says about you"): one LLM call
+ * The Profile page's single Temari voice ("What Temari says about you"): one LLM call
  * that reads who the runner is from their mood mix and backs that reading with
  * their own history.
  */
-class AkuProfileVoiceNarrator
+class ProfileVoiceNarrator
 {
     private const int LOOKBACK_WEEKS = 12;
 
@@ -137,7 +137,7 @@ class AkuProfileVoiceNarrator
         $context = $this->context($user);
 
         $decoded = $this->caller->call(
-            kind: 'aku_profile_voice',
+            kind: 'profile_voice',
             systemPrompt: $this->systemPrompt(),
             context: $context,
             schemaName: 'TemariProfileVoice',

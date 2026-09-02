@@ -150,7 +150,7 @@ it('returns deterministic copy for every subject-free analysis arm', function (A
     'run insight (no detail)' => [AnalysisType::RunInsight, '[]'],
     'weekly recap' => [AnalysisType::WeeklyRecap, "Nothing in the log this week. A gap is a gap, I'm not going to call it anything else."],
     'pr context' => [AnalysisType::PrContext, "That's a new PR. The old number held until today, and now it doesn't."],
-    'aku profile voice' => [AnalysisType::AkuProfileVoice, "You lean **chill** far more than pushed, and the log backs it up: regular, unhurried, never a big jump. That's a base built the slow way. The open question is when you decide to spend it."],
+    'aku profile voice' => [AnalysisType::ProfileVoice, "You lean **chill** far more than pushed, and the log backs it up: regular, unhurried, never a big jump. That's a base built the slow way. The open question is when you decide to spend it."],
     'monthly recap' => [AnalysisType::MonthlyRecap, "The rhythm held all month. You didn't force it and you didn't disappear either."],
     'trend read' => [AnalysisType::TrendRead, "Steady is the read.\n\nNothing in this window moved sharply enough to call out on its own. The rhythm held, which is its own kind of answer."],
 ]);

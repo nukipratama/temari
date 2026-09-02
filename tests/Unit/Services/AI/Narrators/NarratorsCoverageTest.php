@@ -27,7 +27,7 @@ use App\Services\AI\Agent\Tools\PlanWeekTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\TrendRangeTool;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
-use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
+use App\Services\AI\Narrators\ProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\NarratorContinuity;
@@ -1006,9 +1006,9 @@ it('MonthlyRecapNarrator leaves prev_narrative null on the first month', functio
     expect($context['prev_narrative'])->toBeNull();
 });
 
-// ── AkuProfileVoiceNarrator ───────────────────────────────────────────
+// ── ProfileVoiceNarrator ───────────────────────────────────────────
 
-it('AkuProfileVoiceNarrator builds a mood-mix percent breakdown from story lines', function (): void {
+it('ProfileVoiceNarrator builds a mood-mix percent breakdown from story lines', function (): void {
     $user = User::factory()->create();
     $cutoff = Carbon::now()->subWeeks(11);
 
@@ -1022,7 +1022,7 @@ it('AkuProfileVoiceNarrator builds a mood-mix percent breakdown from story lines
     }
 
     $caller = fakeCaller(json_encode(['profile_voice' => 'Larimu lebih sering blazing.'], JSON_THROW_ON_ERROR));
-    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
 
     $mix = $narrator->personaMix($user->fresh());
     $blazing = collect($mix)->firstWhere('mood', 'blazing');
@@ -1032,22 +1032,22 @@ it('AkuProfileVoiceNarrator builds a mood-mix percent breakdown from story lines
     expect($narrator->generate($user->fresh()))->toBe('Larimu lebih sering blazing.');
 });
 
-it('AkuProfileVoiceNarrator returns an empty mix for a user with no story lines', function (): void {
+it('ProfileVoiceNarrator returns an empty mix for a user with no story lines', function (): void {
     $user = User::factory()->create();
     $caller = fakeCaller(json_encode(['profile_voice' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
 
     expect($narrator->personaMix($user))->toBe([]);
 });
 
-it('AkuProfileVoiceNarrator returns profile voice on valid JSON', function (): void {
+it('ProfileVoiceNarrator returns profile voice on valid JSON', function (): void {
     $user = User::factory()->create();
     $caller = fakeCaller(json_encode(['profile_voice' => 'Kamu udah lari 50 km, keren.'], JSON_THROW_ON_ERROR));
-    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
     expect($narrator->generate($user))->toBe('Kamu udah lari 50 km, keren.');
 });
 
-it('AkuProfileVoiceNarrator builds context from user stats', function (): void {
+it('ProfileVoiceNarrator builds context from user stats', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
@@ -1056,7 +1056,7 @@ it('AkuProfileVoiceNarrator builds context from user stats', function (): void {
     ]);
 
     $caller = fakeCaller(json_encode(['profile_voice' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
 
     $context = new LifetimeStatsTool($user->fresh(), Carbon::now(), app(LifetimeStats::class))->handle([]);
     expect($context['total_runs'])->toBe(1)
@@ -1067,7 +1067,7 @@ it('AkuProfileVoiceNarrator builds context from user stats', function (): void {
         ->and($context['weekly_streak'])->toBe(0);
 });
 
-it('AkuProfileVoiceNarrator reads the weekly streak and the most common run time', function (): void {
+it('ProfileVoiceNarrator reads the weekly streak and the most common run time', function (): void {
     $user = User::factory()->create();
     // Two consecutive weeks with runs -> streak 2.
     foreach ([0, 1] as $weeksBack) {
@@ -1091,7 +1091,7 @@ it('AkuProfileVoiceNarrator reads the weekly streak and the most common run time
         ->and($context['favorite_time'])->toBe('night');
 });
 
-it('AkuProfileVoiceNarrator feeds the latest form_status as the consistency spine', function (): void {
+it('ProfileVoiceNarrator feeds the latest form_status as the consistency spine', function (): void {
     $user = User::factory()->create();
     WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
@@ -1103,21 +1103,21 @@ it('AkuProfileVoiceNarrator feeds the latest form_status as the consistency spin
     expect($context['form_status'])->toBe('overreaching');
 });
 
-it('AkuProfileVoiceNarrator throws on missing profile_voice key', function (): void {
+it('ProfileVoiceNarrator throws on missing profile_voice key', function (): void {
     $user = User::factory()->create();
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
     $narrator->generate($user);
 })->throws(UnavailableException::class);
 
-it('AkuProfileVoiceNarrator throws on non-JSON', function (): void {
+it('ProfileVoiceNarrator throws on non-JSON', function (): void {
     $user = User::factory()->create();
     $caller = fakeCaller('not json');
-    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
     $narrator->generate($user);
 })->throws(UnavailableException::class, 'non-JSON');
 
-it('AkuProfileVoiceNarrator feeds the four training paces derived from the runner VDOT', function (): void {
+it('ProfileVoiceNarrator feeds the four training paces derived from the runner VDOT', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
 
@@ -1129,7 +1129,7 @@ it('AkuProfileVoiceNarrator feeds the four training paces derived from the runne
         ->and($context['interval_pace_sec'])->toBeInt();
 });
 
-it('AkuProfileVoiceNarrator leaves training paces null when the user has no VDOT-eligible PR', function (): void {
+it('ProfileVoiceNarrator leaves training paces null when the user has no VDOT-eligible PR', function (): void {
     $user = User::factory()->create();
 
     $context = new TrainingPacesTool($user->fresh(), Carbon::now(), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
@@ -1248,7 +1248,7 @@ it('BriefingMascotVoiceNarrator leaves prev_narrative null on the first day', fu
 
 /**
  * Read a narrator's private SYSTEM_PROMPT constant for wording assertions.
- * AkuProfileVoiceNarrator names its constant SYSTEM_PROMPT_TEMPLATE instead
+ * ProfileVoiceNarrator names its constant SYSTEM_PROMPT_TEMPLATE instead
  * (it's formatted with the mood vocabulary at call time), so fall back to that.
  */
 function narratorPrompt(string $class): string
@@ -1505,7 +1505,7 @@ it('invites iterative tool follow-up instead of front-loading everything into on
 })->with([
     'RunInsightNarrator' => [RunInsightNarrator::class],
     'PostRunSpeechNarrator' => [PostRunSpeechNarrator::class],
-    'AkuProfileVoiceNarrator' => [AkuProfileVoiceNarrator::class],
+    'ProfileVoiceNarrator' => [ProfileVoiceNarrator::class],
     'CardFlavorNarrator' => [CardFlavorNarrator::class],
     'BriefingMascotVoiceNarrator' => [BriefingMascotVoiceNarrator::class],
 ]);

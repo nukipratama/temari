@@ -114,7 +114,7 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
 
     // The week-keyed Aku voice is backfilled to a done analysis row.
     $profileVoice = Analysis::query()
-        ->where('subject_type', AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE)
+        ->where('subject_type', AnalysisType::PROFILE_VOICE_SUBJECT_TYPE)
         ->where('subject_id', $user->id)
         ->where('discriminator', Carbon::now()->isoFormat('GGGG-[W]WW'))
         ->first();

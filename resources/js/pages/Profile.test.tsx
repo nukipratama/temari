@@ -248,8 +248,8 @@ describe('Profile', () => {
                     id: 3,
                     status: 'done',
                     content: "You're getting more consistent every week.",
-                    type: 'aku_profile_voice',
-                    subject_type: 'aku_profile_voice_user',
+                    type: 'profile_voice',
+                    subject_type: 'profile_voice_user',
                     subject_id: 1,
                     discriminator: '2026-W21',
                 }}

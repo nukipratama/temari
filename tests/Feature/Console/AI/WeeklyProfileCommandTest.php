@@ -38,8 +38,8 @@ it('refreshes the Kata Temari voice once, week-keyed and invalidate:false, for a
     expect($captured)->toHaveCount(1);
 
     $voice = $captured[0];
-    expect($voice['type'])->toBe(AnalysisType::AkuProfileVoice)
-        ->and($voice['subjectOrType'])->toBe(AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE)
+    expect($voice['type'])->toBe(AnalysisType::ProfileVoice)
+        ->and($voice['subjectOrType'])->toBe(AnalysisType::PROFILE_VOICE_SUBJECT_TYPE)
         ->and($voice['subjectId'])->toBe($user->id)
         ->and($voice['discriminator'])->toBe('2026-W21')
         ->and($voice['invalidate'])->toBeFalse();

@@ -7,7 +7,7 @@ use App\Exceptions\AI\ContentFilterException;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBaseJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
-use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
+use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
@@ -27,7 +27,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
+use App\Services\AI\Narrators\ProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
@@ -451,21 +451,21 @@ it('AnalyzeMonthlyRecapJob does not advance into the still-open current month', 
     Carbon::setTestNow();
 });
 
-// ── AnalyzeAkuProfileVoiceJob (row) ───────────────────────────────────
+// ── AnalyzeProfileVoiceJob (row) ───────────────────────────────────
 
-it('AnalyzeAkuProfileVoiceJob returns profile voice', function (): void {
+it('AnalyzeProfileVoiceJob returns profile voice', function (): void {
     $user = User::factory()->create();
-    mockNarrator(AkuProfileVoiceNarrator::class, 'profile voice narrative');
+    mockNarrator(ProfileVoiceNarrator::class, 'profile voice narrative');
 
-    $row = rowOf(AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::AkuProfileVoice);
-    new AnalyzeAkuProfileVoiceJob($row->id)->handle(app(AnalysisService::class));
+    $row = rowOf(AnalysisType::PROFILE_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::ProfileVoice);
+    new AnalyzeProfileVoiceJob($row->id)->handle(app(AnalysisService::class));
 
     expect($row->fresh()->content)->toBe('profile voice narrative');
 });
 
-it('AnalyzeAkuProfileVoiceJob fails when user missing', function (): void {
-    $row = rowOf(AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE, 99999, AnalysisType::AkuProfileVoice);
-    new AnalyzeAkuProfileVoiceJob($row->id)->handle(app(AnalysisService::class));
+it('AnalyzeProfileVoiceJob fails when user missing', function (): void {
+    $row = rowOf(AnalysisType::PROFILE_VOICE_SUBJECT_TYPE, 99999, AnalysisType::ProfileVoice);
+    new AnalyzeProfileVoiceJob($row->id)->handle(app(AnalysisService::class));
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
 });

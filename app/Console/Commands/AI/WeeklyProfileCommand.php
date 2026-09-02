@@ -14,7 +14,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
 #[Signature('ai:weekly-profile')]
-#[Description('Refresh the Aku-page Temari voice once a week for each active user (demo excluded)')]
+#[Description('Refresh the Profile-page Temari voice once a week for each active user (demo excluded)')]
 class WeeklyProfileCommand extends Command
 {
     /**
@@ -48,9 +48,9 @@ class WeeklyProfileCommand extends Command
 
         foreach ($activeUserIds as $userId) {
             $service->request(
-                subjectOrType: AnalysisType::AkuProfileVoice->subjectType(),
+                subjectOrType: AnalysisType::ProfileVoice->subjectType(),
                 subjectId: (int) $userId,
-                type: AnalysisType::AkuProfileVoice,
+                type: AnalysisType::ProfileVoice,
                 discriminator: $isoWeek,
                 invalidate: false,
             );

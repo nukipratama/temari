@@ -129,7 +129,7 @@ it('grounds Temari in Indonesian running context', function (): void {
 
 it('mandates English output regardless of tool results, prior narration, or Indonesian context cues', function (): void {
     // Prod narration on the larger model went Indonesian for narrators with no
-    // Indonesian source data at all (pr_context, aku_profile_voice) -- the
+    // Indonesian source data at all (pr_context, profile_voice) -- the
     // persona never actually said "write in English" anywhere, it only used
     // "English" as register guidance ("casual running-app English"). This is
     // the fix: an explicit, unmissable language mandate near the top of the

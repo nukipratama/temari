@@ -22,7 +22,7 @@ Temari narrates the runner's history at three cadences — per **week**, per **m
 
 ## System dependencies
 
-- **AI pipeline** — every recap is an `Analysis` row from [[ai-pipeline]]; weekly = `AnalysisType::WeeklyRecap`, monthly = `MonthlyRecap`, profile = `AkuProfileVoice`.
+- **AI pipeline** — every recap is an `Analysis` row from [[ai-pipeline]]; weekly = `AnalysisType::WeeklyRecap`, monthly = `MonthlyRecap`, profile = `ProfileVoice`.
 - **Windowing** — the open week/month is gated by [[deferred-recap-windowing]]; chaining is handled by [[chained-narration]].
 - **Training metrics** — weekly recaps read `TrainingLoad` / `WeeklySnapshot` from [[training-load-metrics]].
 - **Notifications** — completed recaps fan out to [[telegram-notifications]].
@@ -43,7 +43,7 @@ Rendered by the same shared [RecapCard](resources/js/components/history/RecapCar
 
 ## Persona / profile voice — on Profile
 
-The profile page surfaces one more Temari narrative (see [[profile]]): **`profileVoice`** ("What Temari says about you"), `AnalysisType::AkuProfileVoice`, keyed **per ISO week**. It carries both readings the page used to bill separately, the 12-week mood persona and the lifetime/progression numbers, in a single call.
+The profile page surfaces one more Temari narrative (see [[profile]]): **`profileVoice`** ("What Temari says about you"), `AnalysisType::ProfileVoice`, keyed **per ISO week**. It carries both readings the page used to bill separately, the 12-week mood persona and the lifetime/progression numbers, in a single call.
 
 It comes from [ProfileController](app/Http/Controllers/ProfileController.php) (`resolveProfileVoice`) and renders via a plain (non-chained) `AnalysisStatus` block. `ai:weekly-profile` re-narrates it once a week with `invalidate: false`, so a mid-week "Reread" is never re-billed by the scheduler.
 

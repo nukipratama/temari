@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Models\User;
 use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
-use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
+use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzePrContextJob;
@@ -112,36 +112,36 @@ it('requests pr_context for the records this run holds, invalidate:false so a ba
         ->and(Analysis::query()->forSubject(PersonalRecord::class, $other->id, AnalysisType::PrContext)->exists())->toBeFalse();
 });
 
-it('dispatches AkuProfileVoice on first ingest, keyed by the current ISO week', function (): void {
+it('dispatches ProfileVoice on first ingest, keyed by the current ISO week', function (): void {
     Carbon::setTestNow('2026-05-19 12:00:00');
     $activity = analyzedActivity();
 
     fire($activity);
 
     Bus::assertDispatched(
-        AnalyzeAkuProfileVoiceJob::class,
-        fn (AnalyzeAkuProfileVoiceJob $job): bool => Analysis::query()->whereKey($job->analysisId)->value('discriminator') === AnalysisType::currentIsoWeek(),
+        AnalyzeProfileVoiceJob::class,
+        fn (AnalyzeProfileVoiceJob $job): bool => Analysis::query()->whereKey($job->analysisId)->value('discriminator') === AnalysisType::currentIsoWeek(),
     );
     Carbon::setTestNow();
 });
 
-it('does not re-bill a Done AkuProfileVoice row on re-ingest (invalidate:false)', function (): void {
+it('does not re-bill a Done ProfileVoice row on re-ingest (invalidate:false)', function (): void {
     $activity = analyzedActivity();
     fire($activity);
 
     $row = Analysis::query()
-        ->where('subject_type', AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE)
+        ->where('subject_type', AnalysisType::PROFILE_VOICE_SUBJECT_TYPE)
         ->where('subject_id', $activity->user_id)
-        ->where('analysis_type', AnalysisType::AkuProfileVoice)
+        ->where('analysis_type', AnalysisType::ProfileVoice)
         ->firstOrFail();
     app(AnalysisService::class)->markDone($row, 'kata Temari pertama');
 
     fire($activity);
 
     expect(Analysis::query()
-        ->where('subject_type', AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE)
+        ->where('subject_type', AnalysisType::PROFILE_VOICE_SUBJECT_TYPE)
         ->where('subject_id', $activity->user_id)
-        ->where('analysis_type', AnalysisType::AkuProfileVoice)
+        ->where('analysis_type', AnalysisType::ProfileVoice)
         ->count())->toBe(1)
         ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
 });
@@ -351,18 +351,18 @@ it('staggers card_flavor and pr_context by the same backfill delay as the activi
     Carbon::setTestNow();
 });
 
-it('staggers AkuProfileVoice by the backfill delay on the ingest that first originates its row', function (): void {
+it('staggers ProfileVoice by the backfill delay on the ingest that first originates its row', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     config()->set('ai.backfill_stagger_seconds', 100);
     $activity = analyzedActivity('2026-05-01 06:00:00');
 
     // Reserve the immediate (0-delay) slot ahead of this ingest, so its own
-    // dispatch — including the AkuProfileVoice row it originates — is staggered.
+    // dispatch — including the ProfileVoice row it originates — is staggered.
     app(StaggerBackfillAction::class)($activity->user_id);
 
     fire($activity);
 
-    Bus::assertDispatched(AnalyzeAkuProfileVoiceJob::class, fn (AnalyzeAkuProfileVoiceJob $job): bool => $job->delay === 100);
+    Bus::assertDispatched(AnalyzeProfileVoiceJob::class, fn (AnalyzeProfileVoiceJob $job): bool => $job->delay === 100);
     Carbon::setTestNow();
 });
 

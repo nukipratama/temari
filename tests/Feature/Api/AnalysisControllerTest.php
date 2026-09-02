@@ -675,7 +675,7 @@ it('does not dispatch a billed job for a novel discriminator', function (string 
     'random key on a daily type' => ['/api/analyses/briefing_mascot_voice/{id}/trigger?discriminator=kEy9fQ2z'],
     'wrong shape on a daily type' => ['/api/analyses/briefing_mascot_voice/{id}/trigger?discriminator=2026-05'],
     'wrong shape on the monthly recap' => ['/api/analyses/monthly_recap/{id}/trigger?discriminator=2026-05-18'],
-    'wrong shape on the Aku profile voice' => ['/api/analyses/aku_profile_voice/{id}/trigger?discriminator=2026-05-18'],
+    'wrong shape on the Aku profile voice' => ['/api/analyses/profile_voice/{id}/trigger?discriminator=2026-05-18'],
 ]);
 
 it('does not dispatch a billed job when a discriminator is sent to a type whose job ignores it', function (): void {

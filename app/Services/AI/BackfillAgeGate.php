@@ -67,7 +67,7 @@ class BackfillAgeGate
             // TrendRead is the same shape — its discriminator names a range
             // (30d/90d/12mo), not a date, and it is always read as of now
             // regardless of how old the user's history is.
-            AnalysisType::AkuProfileVoice,
+            AnalysisType::ProfileVoice,
             AnalysisType::TrendRead,
             // Same shape: plan narration is always about the current week or
             // season as of now, never a fixed past date to age out.
