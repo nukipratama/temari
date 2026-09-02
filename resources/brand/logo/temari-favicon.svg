@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Temari">
-  <rect width="64" height="64" rx="14" fill="#241c54"/>
+  <rect width="64" height="64" rx="14" fill="#171f28"/>
   <g transform="translate(10 10) scale(0.44)" fill="none" stroke-width="11" stroke-linecap="round">
-    <path stroke="#d9a53c" d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"/>
-    <path stroke="#f5f0e4" d="M50 27 A23 23 0 1 1 30.09 61.5"/>
+    <path stroke="#ade047" d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"/>
+    <path stroke="#f1f5f8" d="M50 27 A23 23 0 1 1 30.09 61.5"/>
   </g>
 </svg>
