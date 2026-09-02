@@ -79,14 +79,37 @@ app code.
    honest as the code moves.
 5. Any trigger found to be firing for a surface that no longer exists is **recorded as a finding**,
    not fixed here.
+6. The doc carries a runnable per-kind spend query against the `analytics` connection, and states
+   plainly that `kind` is the narrator rather than the origin — so a reader never reads a single
+   number as the cost of one trigger when that narrator has several.
 
 ## Verification notes
 
 _To be filled when the slice runs._
 
+## Ruled before the slice starts: cost is a query, not a table
+
+**Asked and answered 2026-09-02.** The map carries the shape of each trigger *plus a reproducible
+query*, not a snapshot of the numbers.
+
+Three facts drove it:
+
+- `ai_token_usages` records `kind`, `prompt_tokens` / `completion_tokens` / `total_tokens`,
+  `cached_tokens`, `reasoning_tokens`, `steps`, `model` and `latency_ms`, indexed on
+  `(created_at, kind)` — so per-narrator spend over a window is a straightforward `GROUP BY`.
+- `/ai-usage` already renders exactly that, live, with kind and range filters. A frozen table in a
+  doc would duplicate a working page and then rot.
+- **`kind` identifies the narrator, not the trigger origin.** A `run_insight` row cannot say whether
+  it came from the ingest cascade, a user's "Reread", or the hourly self-heal.
+
+So the doc ships the query and states the limitation, rather than implying a number splits cleanly
+across origins when it does not.
+
+**Recorded, not taken**: making origin genuinely queryable would mean an origin column on
+`ai_token_usages` plus a write-path change. That was offered and declined — it turns a docs-only
+slice into a schema change with the epic nearly ready to merge. If cost-per-origin is ever wanted
+properly, that is the change, and this note is where it starts.
+
 ## Open questions
 
-1. Should the map carry **observed cost per trigger** (from `ai_token_usages` on the analytics
-   connection) rather than only the shape? That would make it an assessment tool rather than a
-   reference, which is closer to what was asked for — but it dates fast, and the numbers live in a
-   database this doc cannot cite with `path:line`. Worth deciding before writing.
+_None open. See the ruling above._
