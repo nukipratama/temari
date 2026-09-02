@@ -178,7 +178,6 @@ it('requires the discriminator on the types keyed by one', function (string $typ
     'briefing_mascot_voice',
     'aku_profile_voice',
     'monthly_recap',
-    'briefing_featured_kartu_voice',
 ]);
 
 it('normalizes an empty discriminator to null', function (): void {
