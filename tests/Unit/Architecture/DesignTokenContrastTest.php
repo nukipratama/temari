@@ -773,12 +773,22 @@ it('keeps every dark-ground -ink token above AA on every dark surface', function
         ARRAY_FILTER_USE_KEY,
     );
 
-    // leaf/ember/citrus-ink and the 10 rarity-*-ink — the families F2's
-    // token model explicitly inverts for dark. horizon-ink is not among
-    // them: the app swaps to the vivid --color-horizon fill itself on dark
-    // instead (see build-tokens.mjs's DARK_INK comment), which needs no
-    // separate dark-ink token to score here.
-    expect($inks)->not->toBeEmpty();
+    // Every -ink family F2's token model inverts for dark. This scores only
+    // what the dark block redefines, so a family left out of it is silently
+    // never scored here at all — which is how horizon-ink shipped at 2.9:1
+    // on sky-deep. Assert the roster rather than whatever happens to be
+    // present, so the next omission fails instead of disappearing.
+    expect(array_keys($inks))->toEqualCanonicalizing([
+        'horizon-ink',
+        'leaf-ink',
+        'ember-ink',
+        'citrus-ink',
+        'rarity-common-ink',
+        'rarity-uncommon-ink',
+        'rarity-rare-ink',
+        'rarity-epic-ink',
+        'rarity-legendary-ink',
+    ]);
 
     $under = [];
     foreach ($inks as $name => $hex) {

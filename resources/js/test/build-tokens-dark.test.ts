@@ -52,7 +52,7 @@ describe('dark-ground token derivation (build-tokens.mjs)', () => {
         expect(lb).toBeGreaterThanOrEqual(eb);
     });
 
-    it('clears 4.5:1 on every dark ground for the three inverted accent families', () => {
+    it('clears 4.5:1 on every dark ground for the four inverted accent families', () => {
         for (const [family, hex] of Object.entries(DARK_INK)) {
             for (const bg of grounds) {
                 expect(

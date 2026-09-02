@@ -340,22 +340,9 @@
         "leaf/0.08": {
             "text": []
         },
-        "leaf/0.1": {
-            "over": {
-                "resources/js/pages/Activities/Calendar.tsx": [
-                    "paper"
-                ]
-            },
-            "text": [
-                "leaf-ink"
-            ]
-        },
         "leaf/0.15": {
             "over": {
                 "resources/js/lib/tones.ts": [
-                    "paper"
-                ],
-                "resources/js/pages/Activities/Calendar.tsx": [
                     "paper"
                 ]
             },

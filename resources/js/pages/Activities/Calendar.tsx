@@ -85,7 +85,6 @@ export default function Calendar({
                         label={monthLabel}
                         prevMonth={prevMonth}
                         nextMonth={nextMonth}
-                        showTodayButton={!isCurrentMonth}
                     />
                 </div>
 
@@ -167,12 +166,10 @@ function MonthNav({
     label,
     prevMonth,
     nextMonth,
-    showTodayButton,
 }: Readonly<{
     label: string;
     prevMonth: string;
     nextMonth: string;
-    showTodayButton: boolean;
 }>) {
     return (
         <div className="flex w-full items-center justify-between gap-2">
@@ -181,20 +178,9 @@ function MonthNav({
                 icon="mdi:chevron-left"
                 label="Previous month"
             />
-            <div className="flex items-center gap-2">
-                <h2 className="font-serif text-[15px] leading-[1.2] font-semibold text-foreground">
-                    {label}
-                </h2>
-                {showTodayButton && (
-                    <Link
-                        href="/history?view=calendar"
-                        aria-label="Jump to current month"
-                        className="pressable focus-ring rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1 text-xs font-semibold text-leaf-ink transition hover:border-leaf hover:bg-leaf/15"
-                    >
-                        Today
-                    </Link>
-                )}
-            </div>
+            <h2 className="font-serif text-[15px] leading-[1.2] font-semibold text-foreground">
+                {label}
+            </h2>
             <NavButton
                 href={`/history?view=calendar&month=${nextMonth}`}
                 icon="mdi:chevron-right"
