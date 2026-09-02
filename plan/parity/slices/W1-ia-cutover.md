@@ -80,14 +80,37 @@ re-baselines the guard without weakening it — which is exactly what P34 permit
 deleting `StravaSyncBadge` left two citations in `docs/features/strava-connect.md` pointing at a
 file that no longer exists.
 
-Nothing caught it, and the reason is recorded in this repo already: **the doc-citation guard is not
-part of `composer check`**, so a green local gate says nothing about it, and it is the one check
-that has to be run directly. `T2` should have carried the doc edit alongside the deletion, per
-CLAUDE.md's "keep notes fresh in the same PR". It did not, so it is fixed here — the doc now
-records the cut and where the `revoked` reconnect path actually lives.
+`T2` should have carried the doc edit alongside the deletion, per CLAUDE.md's "keep notes fresh in
+the same PR". It did not, so it is fixed here — the doc now records the cut and where the `revoked`
+reconnect path actually lives.
 
-Worth noting for `W4`: this is an argument for folding the citation guard into `composer check`,
-since the current split means a doc can only break in a way no one is looking at.
+### The guard was never the problem
+
+The first reading of this was that the citation guard sits outside `composer check`. **That is
+wrong**, and checking rather than repeating it turned up something worse. The guard is in
+`composer check` (fourth entry) *and* in CI as the `repo-guards` job, which is unconditional and
+which every downstream job gates on. It ran, and it failed:
+
+| PR | | checks |
+|---|---|---|
+| #699 `PS14` | | 8 pass |
+| #700 `PS12` | | 8 pass |
+| #702 `PP5` | | 8 pass |
+| #703 `PP6` | | 8 pass |
+| **#704 `T2`** | | **2 fail, 6 skipped** |
+| **#705 `T3`** | | **2 fail, 6 skipped** |
+| **#706 `T1`** | | **2 fail, 6 skipped** |
+
+**Three PRs merged with red CI.** `T2` broke the citation, `repo-guards` failed, every downstream
+job skipped — and `gh pr merge --auto` merged it regardless. `T3` and `T1` were branched after
+`T2` landed, inherited the broken citation, and merged the same way.
+
+`--auto` waits for **required** checks. With no branch protection marking any check required,
+there is nothing to wait for, so it merges immediately. The habit of "set auto-merge and move on"
+silently assumed a gate that is not configured.
+
+The content half is fixed here. **The process half is a repo setting and is the user's to make** —
+raised rather than assumed.
 
 ## Amendment recorded here: `W6` no longer needs a data migration
 
