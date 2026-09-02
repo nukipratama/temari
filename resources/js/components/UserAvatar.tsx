@@ -7,8 +7,8 @@ const SIZE_CLASS = {
 } as const;
 
 const FONT_CLASS = {
-    sm: 'text-[15px]',
-    md: 'text-[17px]',
+    sm: 'text-[0.9375rem]',
+    md: 'text-[1.0625rem]',
     lg: 'text-xl',
 } as const;
 

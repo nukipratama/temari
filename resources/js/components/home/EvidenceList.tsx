@@ -36,11 +36,11 @@ export default function EvidenceList({
                         aria-label={`${row.label}, ${row.then} to ${row.now}, ${row.delta}`}
                         className="focus-ring block bg-card px-3.5 py-2.5 transition-colors hover:bg-accent"
                     >
-                        <span className="font-sans text-[10.5px] text-foreground">
+                        <span className="font-sans text-[0.65625rem] text-foreground">
                             {row.label}
                         </span>
                         <div className="mt-1 flex items-baseline gap-2 font-mono tabular-nums">
-                            <span className="text-[12.5px] text-foreground">
+                            <span className="text-[0.78125rem] text-foreground">
                                 {row.then}
                             </span>
                             <span
@@ -49,12 +49,12 @@ export default function EvidenceList({
                             >
                                 →
                             </span>
-                            <span className="text-[14.5px] font-extrabold text-foreground">
+                            <span className="text-[0.90625rem] font-extrabold text-foreground">
                                 {row.now}
                             </span>
                             <span
                                 className={cn(
-                                    'ml-auto rounded-full px-2 py-0.5 font-mono text-[10px] font-extrabold',
+                                    'ml-auto rounded-full px-2 py-0.5 font-mono text-[0.625rem] font-extrabold',
                                     DELTA_TONE[row.direction],
                                 )}
                             >

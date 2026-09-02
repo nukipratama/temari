@@ -64,13 +64,13 @@ describe('Eyebrow', () => {
             <Eyebrow
                 token="micro"
                 tone="ink-2"
-                className="text-[8px] tracking-[0.14em] font-normal"
+                className="text-[0.5rem] tracking-[0.14em] font-normal"
             >
                 Overridden
             </Eyebrow>,
         );
         const el = screen.getByText('Overridden');
-        expect(el.className).toContain('text-[8px]');
+        expect(el.className).toContain('text-[0.5rem]');
         expect(el.className).not.toContain('text-label-micro');
     });
 });

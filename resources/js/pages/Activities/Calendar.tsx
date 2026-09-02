@@ -88,7 +88,7 @@ export default function Calendar({
                     />
                 </div>
 
-                <div className="mb-2.5 text-center font-mono text-[9.5px] leading-[1.2] text-text-3">
+                <div className="mb-2.5 text-center font-mono text-[0.59375rem] leading-[1.2] text-text-3">
                     {monthTotals.runs} run{monthTotals.runs === 1 ? '' : 's'} ·{' '}
                     {monthTotals.km.toFixed(1)} km ·{' '}
                     {monthTotals.trimp === null
@@ -127,7 +127,7 @@ export default function Calendar({
                         {WEEKDAY_LABELS.map((label) => (
                             <span
                                 key={label}
-                                className="text-center font-mono text-[7.5px] leading-[1.2] font-extrabold text-text-3 uppercase"
+                                className="text-center font-mono text-[0.46875rem] leading-[1.2] font-extrabold text-text-3 uppercase"
                             >
                                 {label}
                             </span>
@@ -178,7 +178,7 @@ function MonthNav({
                 icon="mdi:chevron-left"
                 label="Previous month"
             />
-            <h2 className="font-serif text-[15px] leading-[1.2] font-semibold text-foreground">
+            <h2 className="font-serif text-[0.9375rem] leading-[1.2] font-semibold text-foreground">
                 {label}
             </h2>
             <NavButton
@@ -213,7 +213,7 @@ function Legend() {
             {MOOD_ORDER.map((mood) => (
                 <div
                     key={mood}
-                    className="flex items-center gap-1 font-mono text-[8px] leading-[1.2] font-bold tracking-[.03em] text-foreground uppercase"
+                    className="flex items-center gap-1 font-mono text-[0.5rem] leading-[1.2] font-bold tracking-[.03em] text-foreground uppercase"
                 >
                     <span
                         className={cn(

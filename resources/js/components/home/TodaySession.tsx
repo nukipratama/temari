@@ -26,11 +26,11 @@ function SessionVoice({ text }: Readonly<{ text: string }>) {
 
     return (
         <>
-            <p className="font-serif text-[13.5px] font-bold italic leading-relaxed text-foreground">
+            <p className="font-serif text-[0.84375rem] font-bold italic leading-relaxed text-foreground">
                 {renderBold(stripEdgeQuotes(lead))}
             </p>
             {body !== '' && (
-                <p className="mt-2.5 font-serif text-[12.5px] italic leading-relaxed text-foreground">
+                <p className="mt-2.5 font-serif text-[0.78125rem] italic leading-relaxed text-foreground">
                     {renderBold(body)}
                 </p>
             )}

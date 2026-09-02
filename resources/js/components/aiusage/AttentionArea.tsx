@@ -180,7 +180,7 @@ function AttentionGroupRow({
                     {Object.entries(byType).map(([type, count]) => (
                         <li
                             key={type}
-                            className="rounded-md bg-muted px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider text-text-3"
+                            className="rounded-md bg-muted px-2 py-0.5 font-mono text-[0.6875rem] font-bold uppercase tracking-wider text-text-3"
                         >
                             {type}
                             {count > 1 && (

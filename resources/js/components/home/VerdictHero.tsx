@@ -33,14 +33,14 @@ export default function VerdictHero({
 
             <h2
                 className={cn(
-                    'mt-2 font-serif text-[25px] font-semibold italic leading-tight',
+                    'mt-2 font-serif text-[1.5625rem] font-semibold italic leading-tight',
                     TONE[verdict],
                 )}
             >
                 {verdictHeadline(trend)}
             </h2>
 
-            <p className="mt-2 font-sans text-[13px] leading-relaxed text-foreground">
+            <p className="mt-2 font-sans text-[0.8125rem] leading-relaxed text-foreground">
                 {verdictSupport(trend)}
             </p>
         </section>

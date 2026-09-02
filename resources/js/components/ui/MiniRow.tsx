@@ -7,7 +7,7 @@ export default function MiniRow({
     value,
 }: Readonly<{ label: string; value: string }>) {
     return (
-        <div className="flex justify-between border-b border-border py-1 text-[11px] last:border-b-0">
+        <div className="flex justify-between border-b border-border py-1 text-[0.6875rem] last:border-b-0">
             <span className="text-foreground">{label}</span>
             <b className="tabular-nums text-foreground">{value}</b>
         </div>

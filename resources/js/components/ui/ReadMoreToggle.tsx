@@ -15,7 +15,7 @@ export default function ReadMoreToggle({
             type="button"
             onClick={onToggle}
             className={cn(
-                'focus-ring mt-1 rounded font-mono text-[11px] font-semibold transition',
+                'focus-ring mt-1 rounded font-mono text-[0.6875rem] font-semibold transition',
                 onSky
                     ? 'text-horizon hover:text-horizon/80'
                     : 'text-horizon-ink hover:text-horizon-ink/80',

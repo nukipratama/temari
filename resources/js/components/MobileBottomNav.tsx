@@ -37,6 +37,11 @@ function scrollToTop(event: MouseEvent<Element>) {
  * the screen edges. The outer track spans the viewport so the pill can centre
  * on the content column instead of stretching to the full width the prototype's
  * own chrome uses — a recorded divergence, see plan/parity §P32.
+ *
+ * It caps at `max-w-column` and deliberately does *not* take the column's wide
+ * step: P32 constrained the pill because four items spread across a wide track
+ * read as uncomfortably far apart, and that reasoning applies to 1040 exactly
+ * as it did to the full-bleed width it was written about.
  */
 export default function MobileBottomNav() {
     const { component } = usePage<SharedProps>();
@@ -50,7 +55,7 @@ export default function MobileBottomNav() {
         <div className="pointer-events-none fixed inset-x-0 bottom-[max(0.875rem,calc(env(safe-area-inset-bottom)+0.25rem))] z-30 px-3.5">
             <nav
                 aria-label="Primary"
-                className="pointer-events-auto mx-auto flex max-w-[760px] gap-1 rounded-full border border-white/30 bg-card/60 p-1.5 shadow-e2 backdrop-blur-xl backdrop-saturate-150"
+                className="pointer-events-auto mx-auto flex max-w-column gap-1 rounded-full border border-white/30 bg-card/60 p-1.5 shadow-e2 backdrop-blur-xl backdrop-saturate-150"
             >
                 {ITEMS.map((item) => {
                     const isActive = active === item.id;
@@ -84,7 +89,7 @@ export default function MobileBottomNav() {
                             </motion.span>
                             <span
                                 className={cn(
-                                    'overflow-hidden font-mono text-[9px] font-extrabold tracking-[.05em] uppercase transition-[max-width,opacity] duration-200',
+                                    'overflow-hidden font-mono text-[0.5625rem] font-extrabold tracking-[.05em] uppercase transition-[max-width,opacity] duration-200',
                                     isActive
                                         ? 'max-w-[60px] opacity-100'
                                         : 'max-w-0 opacity-0',

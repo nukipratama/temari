@@ -141,7 +141,17 @@ describe('MobileBottomNav', () => {
         render(<MobileBottomNav />);
         expect(screen.getByRole('navigation')).toHaveClass(
             'mx-auto',
-            'max-w-[760px]',
+            'max-w-column',
+        );
+    });
+
+    it('holds the base column width and does not take its wide step', () => {
+        setMockPage({}, '/', 'Home');
+        render(<MobileBottomNav />);
+        // P32 constrained the pill because four items spread across a wide
+        // track read as far apart; 1040 is no different from full-bleed there.
+        expect(screen.getByRole('navigation').className).not.toMatch(
+            /max-w-column-wide/,
         );
     });
 });

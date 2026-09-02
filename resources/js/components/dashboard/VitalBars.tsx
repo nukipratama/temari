@@ -54,13 +54,13 @@ function VitalRow({
     return (
         <div className="flex items-center gap-3">
             <div className="w-19 flex-none">
-                <span className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.05em] text-foreground">
+                <span className="flex items-center gap-1 font-mono text-[0.5625rem] uppercase tracking-[0.05em] text-foreground">
                     {label}
                     <MetricExplainer metricKey={explainerKey} size="xs" />
                 </span>
                 <b
                     className={cn(
-                        'block text-[13px] font-extrabold',
+                        'block text-[0.8125rem] font-extrabold',
                         tone === 'watch'
                             ? 'text-citrus-ink'
                             : 'text-foreground',
@@ -87,7 +87,7 @@ function VitalRow({
                     />
                 </div>
                 {sub !== '' && (
-                    <span className="mt-1 block text-[9.5px] italic text-foreground">
+                    <span className="mt-1 block text-[0.59375rem] italic text-foreground">
                         {sub}
                     </span>
                 )}

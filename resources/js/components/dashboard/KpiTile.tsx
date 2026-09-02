@@ -50,7 +50,7 @@ export default function KpiTile({
         >
             <div
                 className={cn(
-                    'flex items-center gap-1 font-mono text-[12px] font-bold uppercase tracking-wider',
+                    'flex items-center gap-1 font-mono text-[0.75rem] font-bold uppercase tracking-wider',
                     onSky ? 'text-ink-on-sky' : 'text-text-2',
                 )}
             >

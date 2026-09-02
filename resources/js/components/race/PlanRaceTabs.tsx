@@ -27,7 +27,7 @@ export default function PlanRaceTabs({
                     href={tab.href}
                     aria-current={tab.id === active ? 'page' : undefined}
                     className={cn(
-                        'focus-ring flex-1 rounded-full py-2 text-center text-[11.5px] font-bold text-foreground transition',
+                        'focus-ring flex-1 rounded-full py-2 text-center text-[0.71875rem] font-bold text-foreground transition',
                         tab.id === active && 'bg-card shadow-e1',
                     )}
                 >

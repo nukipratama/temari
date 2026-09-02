@@ -57,7 +57,7 @@ describe('StatTile', () => {
 
     it('scales the value via size variant', () => {
         render(<StatTile value="42" label="y" size="xl" />);
-        expect(screen.getByText('42').className).toContain('text-[40px]');
+        expect(screen.getByText('42').className).toContain('text-[2.5rem]');
     });
 
     it('renders a leading dot from dotClass', () => {
