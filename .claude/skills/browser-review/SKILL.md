@@ -383,5 +383,5 @@ return results
   clicks the element, screenshots, and asserts its `boundingBox()` is within the viewport.
 - Scripts: `lib.mjs` (shared: viewports, login, route discovery), `shoot.mjs` (screenshots),
   `audit.mjs` (overflow), `contrast.mjs` (rendered contrast, per ground), `mounts.mjs` (what a panel
-  is actually mounted on), `light-islands.mjs` (surfaces wearing the wrong ground), `setup.sh` /
-  `teardown.sh`.
+  is actually mounted on), `light-islands.mjs` (surfaces wearing the wrong ground), `edges.mjs`
+  (borders and rings that are not there), `setup.sh` / `teardown.sh`.
