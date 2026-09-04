@@ -107,6 +107,8 @@ docker compose exec -u root app sh .claude/skills/browser-review/scripts/setup.s
 ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/mounts.mjs dark 'bg-leaf/15,...'
 ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/light-islands.mjs dark
 
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/edges.mjs dark
+
 # 6. teardown (restore node_modules; screenshots are kept as history)
 ./vendor/bin/sail exec app sh .claude/skills/browser-review/scripts/teardown.sh
 ```
@@ -160,6 +162,20 @@ Read the head of its output: vivid accent fills (`horizon`, `citrus`, `mood-*` d
 identity by design and legitimately sit near the top, so what you want is anything *near-white*.
 `/devtools/design` dominates the list and should be ignored wholesale — rendering every token as a
 swatch, fixed-light ones included, is that page's entire job.
+
+**`edges.mjs`** asks `light-islands.mjs`'s question of a *border* rather than a surface, which is the
+other half nothing scores: the token audit scans `bg-<token>` only, so a fixed-light border token on
+a dark ground fails nothing. It does not go unreadable, it goes **absent** — `border-ink/[0.18]` over
+a Sky card measured 1.02:1, and the selected-colorway indicator in `ShareCardModal` was `#171f28` on
+`#171f28`. Two things it gets right that are easy to get wrong: an edge is resolved against what is
+**outside** the element, since scoring it against the element's own background reports the deliberate
+`border-x bg-x` sizing trick as invisible; and colours go through a **canvas** rather than a regex,
+because computed styles come back as `oklab()` and `color-mix()` as often as `rgb()` and a regex that
+only knows `rgb()` reads a 1.02:1 border as "no data" instead of "invisible".
+
+Its known-clean baseline is **Leaflet's own zoom control on both grounds**, plus `border-border/60` on
+`/settings` at 1.31 on light — `--color-border` is derived to land exactly on 1.4:1, so any alpha
+below full is inherently under the floor.
 
 > **Reading screenshots costs more than it looks.** An image read into the main context is re-billed
 > as a cache read on *every* later turn, so cost is `size x remaining turns`, not size. A full-page
