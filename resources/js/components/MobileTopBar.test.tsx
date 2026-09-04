@@ -130,25 +130,30 @@ describe('MobileTopBar', () => {
         const { container } = render(<MobileTopBar />);
         const header = container.querySelector('header')!;
         expect(header.className).not.toMatch(/\bbg-/);
-        expect(screen.getByLabelText('Home')).toHaveClass('bg-muted');
+        expect(screen.getByLabelText('Home')).toHaveClass(
+            'bg-muted/70',
+            'backdrop-blur-md',
+        );
     });
 
     it('wraps the notification bell and avatar in a chip, matching the wordmark chip', () => {
         setMockPage({ auth: { user: makeUser({ name: 'Ada Lovelace' }) } });
         render(<MobileTopBar />);
         expect(screen.getByLabelText('Inbox').closest('span')).toHaveClass(
-            'bg-muted',
+            'bg-muted/70',
+            'backdrop-blur-md',
         );
         expect(
             screen.getByLabelText("Ada Lovelace's profile").closest('span'),
-        ).toHaveClass('bg-muted');
+        ).toHaveClass('bg-muted/70', 'backdrop-blur-md');
     });
 
     it('wraps the back button in the same chip treatment as the wordmark', () => {
         setMockPage({}, '/activities/123', 'Runs/Show');
         render(<MobileTopBar />);
         expect(screen.getByLabelText('Back to History')).toHaveClass(
-            'bg-muted',
+            'bg-muted/70',
+            'backdrop-blur-md',
         );
     });
 });

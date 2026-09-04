@@ -9,14 +9,16 @@ import UserAvatarLink from '@/components/UserAvatarLink';
 import { cn } from '@/lib/cn';
 import { backTargetFor } from '@/lib/nav';
 
-// A shared chip backdrop for the icon-only buttons — bg-muted is the exact
+// A shared chip backdrop for the icon-only buttons — muted is the exact
 // ground-reactive equivalent of the bar's old fixed cream-deep background (see
 // AppShell), so NotificationBell/UserAvatarLink's own hover/ring styling
 // (tuned against that backdrop) still reads correctly floating over content.
+// Carried at 70% over a blur so the chips read as glass against whatever
+// scrolls beneath them, matching the bottom nav's pill.
 // Unsized on purpose: it hugs whichever of the two differently-sized controls
 // it wraps rather than forcing both to match.
 const CHIP =
-    'inline-flex items-center justify-center overflow-hidden rounded-full bg-muted shadow-e1';
+    'inline-flex items-center justify-center overflow-hidden rounded-full bg-muted/70 shadow-e1 backdrop-blur-md';
 
 /** Pushed screens whose prototype topbar keeps the bell beside the back chevron. */
 const PUSHED_WITH_BELL: ReadonlySet<string> = new Set([
@@ -65,7 +67,7 @@ export default function MobileTopBar() {
                 <Link
                     href="/"
                     aria-label="Home"
-                    className="pressable focus-ring inline-flex items-center gap-2.5 rounded-full bg-muted py-1.75 pr-3.25 pl-2.5 shadow-e1"
+                    className="pressable focus-ring inline-flex items-center gap-2.5 rounded-full bg-muted/70 py-1.75 pr-3.25 pl-2.5 shadow-e1 backdrop-blur-md"
                 >
                     <HeaderBrandMark wordmarkClassName="hidden min-[350px]:inline" />
                 </Link>
