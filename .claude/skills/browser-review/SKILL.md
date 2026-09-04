@@ -1,6 +1,6 @@
 ---
 name: browser-review
-description: Drive a real browser to screenshot every user-facing page across a mobile/tablet/desktop/wide viewport matrix, capture console errors, and audit for horizontal overflow — an end-to-end visual UI review. Use when asked to "browser review", "screenshot every page", "mobile UI review", "check the UI on mobile/tablet", "full browser check", or "review the app end to end" in this repo.
+description: Drive a real browser to screenshot every user-facing page across a mobile/tablet/laptop/desktop viewport matrix, capture console errors, and audit for horizontal overflow — an end-to-end visual UI review. Use when asked to "browser review", "screenshot every page", "mobile UI review", "check the UI on mobile/tablet", "full browser check", or "review the app end to end" in this repo.
 ---
 
 # browser-review
@@ -13,27 +13,33 @@ Then read the PNGs back to spot layout bugs. Everything runs **inside the Sail `
 
 ## Viewport matrix (default)
 
-Both sides of the Tailwind `lg` (1024px) breakpoint are covered on purpose — that's where the app
-swaps its whole nav chrome (desktop `TopNav` ↔ `MobileTopBar` + `MobileBottomNav`):
+The app has **one** nav chrome at every width — `MobileTopBar` + `MobileBottomNav`. The port deleted
+the desktop `TopNav`, so no viewport here swaps chrome; what they cover is width-driven layout and
+the two type steps (`1280px` -> 19.2px, `2048px` -> 21.6px):
 
-| key | size | nav shown | in default sweep? |
+| key | size | what it covers | in default sweep? |
 |-----|------|-----------|--------------------|
-| `mobile`  | 390×844  (iPhone 13)   | mobile (top bar + bottom nav) | yes |
-| `se`      | 320×568  (iPhone SE)   | **still mobile** (320 < 1024) | yes — narrowest real device, catches width-driven bugs `mobile` misses |
-| `tablet`  | 834×1112 (iPad portrait) | **still mobile** (834 < 1024) | no — same nav chrome as `mobile`, opt in explicitly |
-| `desktop` | 1280×800               | desktop `TopNav` | yes |
-| `wide`    | 1536×864 (`2xl`)       | desktop, widest `max-w-page-2xl` layout | yes |
+| `mobile`  | 390×844  (iPhone 13)   | base type (16px) | yes |
+| `se`      | 320×568  (iPhone SE)   | base type (16px) | yes — narrowest real device, catches width-driven bugs `mobile` misses |
+| `tablet`  | 834×1112 (iPad portrait) | base type (16px) | no — nothing disagrees with `mobile` here, opt in explicitly |
+| `laptop`  | 1920×1080              | first type step (19.2px), past every column breakpoint | yes |
+| `desktop` | 2560×1440 (2K)         | **second type step (21.6px)** — the only viewport past 2048px | yes |
 
-Default is `mobile,se,desktop,wide` — `tablet` renders identical nav chrome to `mobile` (both below
-the `lg` breakpoint) *and* is wide enough that it rarely disagrees with `mobile` on layout, so it's
-dropped to keep the default sweep cheaper. `se`, in contrast, is kept in the default despite sharing
-`mobile`'s nav chrome too: its narrower 320px width has caught real overflow that 390px missed
-entirely — a CSS grid track sized to its widest child instead of shrinking to fit, a fluid font clamp
-whose floor was tuned for a wider column and silently ellipsis-truncated real values. Those are
-width-driven bugs, not breakpoint-driven ones, so they don't reproduce at 390px. Narrow further with
-`VIEWPORTS=mobile` (or `mobile,wide`, etc.), or opt into the full five-way matrix with
-`VIEWPORTS=mobile,se,tablet,desktop,wide` when tablet-specific coverage also matters (e.g. right
-before a release).
+Default is `mobile,se,laptop,desktop` — two phones and the two real desktop sizes. `laptop` and
+`desktop` differ only by the 2048px type step, which is the point: one takes 19.2px, the other
+21.6px. The old 1280 and 1536 entries are gone because 1920 is already past every breakpoint they
+tested (`lg`, the 1280 column widening, and the `2xl` page cap), so they only cost screenshots.
+
+`tablet` is dropped from the default because nothing disagrees with `mobile` there. `se`, in
+contrast, is kept despite sharing `mobile`'s chrome: its narrower 320px width has caught real
+overflow that 390px missed entirely — a CSS grid track sized to its widest child instead of shrinking
+to fit, a fluid font clamp whose floor was tuned for a wider column and silently ellipsis-truncated
+real values. Those are width-driven bugs, not breakpoint-driven ones, so they don't reproduce at
+390px. Narrow with `VIEWPORTS=mobile`, or take the full five-way matrix with
+`VIEWPORTS=mobile,se,tablet,laptop,desktop` before a release.
+
+Nothing covers 900–1279px, and nothing did before either — worth knowing rather than assuming the
+matrix is exhaustive.
 
 ## Prerequisites
 
@@ -82,10 +88,10 @@ binaries or edits `package.json`.
 # 1. one-time setup per container lifetime (apk needs root)
 docker compose exec -u root app sh .claude/skills/browser-review/scripts/setup.sh
 
-# 2. screenshots across the viewport matrix (default mobile,se,desktop,wide — see Viewport matrix above)
+# 2. screenshots across the viewport matrix (default mobile,se,laptop,desktop — see Viewport matrix above)
 ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/shoot.mjs
 #    e.g. just phone:    VIEWPORTS=mobile ./vendor/bin/sail exec -e VIEWPORTS=mobile app node .../shoot.mjs
-#    e.g. full 5-way:    VIEWPORTS=mobile,se,tablet,desktop,wide ./vendor/bin/sail exec -e VIEWPORTS=mobile,se,tablet,desktop,wide app node .../shoot.mjs
+#    e.g. full 5-way:    VIEWPORTS=mobile,se,tablet,laptop,desktop ./vendor/bin/sail exec -e VIEWPORTS=mobile,se,tablet,laptop,desktop app node .../shoot.mjs
 
 # 3. horizontal-overflow audit across the matrix (run BEFORE Inspect — its output gates which
 #    pages get the expensive vision read, see "Inspect in parallel" below)
@@ -201,10 +207,10 @@ Pass the batch dir, the viewports you shot, and the parsed `AUDIT` lines as `arg
 ```json
 {
   "dir": "storage/app/browser-review/2026-06-19/143022",
-  "viewports": ["mobile", "wide"],
+  "viewports": ["mobile", "desktop"],
   "pages": {
     "mobile": [{ "name": "today", "overflow": false }, { "name": "activities-detail", "overflow": true }],
-    "wide":   [{ "name": "today", "overflow": false }, { "name": "activities-detail", "overflow": false }]
+    "desktop": [{ "name": "today", "overflow": false }, { "name": "activities-detail", "overflow": false }]
   }
 }
 ```
@@ -221,11 +227,12 @@ export const meta = {
 }
 
 const NAV = {
-  mobile:  { size: '390x844',  nav: 'mobile nav (top bar + bottom nav)' },
-  se:      { size: '320x568',  nav: 'still mobile nav (320 < 1024 lg breakpoint), narrowest real device' },
-  tablet:  { size: '834x1112', nav: 'still mobile nav (834 < 1024 lg breakpoint)' },
-  desktop: { size: '1280x800', nav: 'desktop TopNav' },
-  wide:    { size: '1536x864', nav: 'desktop TopNav, widest max-w-page-2xl layout' },
+  mobile:  { size: '390x844',  nav: 'mobile chrome (top bar + bottom nav)' },
+  se:      { size: '320x568',  nav: 'same chrome, narrowest real device' },
+  tablet:  { size: '834x1112', nav: 'same chrome' },
+  laptop:  { size: '1280x800', nav: 'same mobile chrome, first type step (19.2px)' },
+  wide:    { size: '1536x864', nav: 'same mobile chrome, widest max-w-page-2xl column' },
+  desktop: { size: '2560x1440', nav: 'same mobile chrome, 2K, second type step (21.6px)' },
 }
 const dir = args?.dir ?? 'storage/app/browser-review'
 // args.pages: { [viewport]: [{ name, overflow }] } — parsed from audit.mjs's `AUDIT vp=... name=... overflow=...` lines

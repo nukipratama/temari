@@ -162,6 +162,48 @@ describe('collectPaperGrounds', () => {
     });
 });
 
+describe('auditContrast ground kinds', () => {
+    // The dark ground as app.css defines it: the ink tier does not flip, the
+    // foreground tier and `card` both do.
+    const DARK = {
+        '--color-ink': '#16181b',
+        '--color-ink-2': '#3d362a',
+        '--color-ink-3': '#6e6452',
+        '--color-foreground': '#f1f5f8',
+        '--color-text-2': '#c3ccd6',
+        '--color-text-3': '#98a3b0',
+        '--color-border': '#4d5560',
+        '--color-line': '#4d5560',
+        '--color-cream': '#f1f5f8',
+    };
+    const card = [{ name: 'card', value: '#171f28' }];
+    const cream = [{ name: 'cream', value: '#f1f5f8' }];
+
+    it('does not score the fixed ink tier against a reactive ground', () => {
+        const rows = auditContrast(DARK, card);
+
+        expect(rows.find((r) => r.use === 'Body text')).toBeUndefined();
+    });
+
+    it('scores the reactive tier against a reactive ground, and it holds', () => {
+        const rows = auditContrast(DARK, card);
+        const body = rows.find(
+            (r) => r.use === 'Body text on a reactive ground',
+        );
+
+        expect(body?.pass).toBe(true);
+    });
+
+    it('scores the fixed ink tier against a ground that does not flip', () => {
+        const rows = auditContrast(DARK, cream);
+
+        expect(rows.find((r) => r.use === 'Body text')?.pass).toBe(true);
+        expect(
+            rows.find((r) => r.use === 'Body text on a reactive ground'),
+        ).toBeUndefined();
+    });
+});
+
 describe('auditContrast', () => {
     const paper = { '--color-surface': '#f5f0e4' };
     const day = [{ name: 'day', value: '#f5f0e4' }];

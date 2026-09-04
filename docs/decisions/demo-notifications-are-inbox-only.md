@@ -17,6 +17,10 @@ code_refs:
 
 **Status:** Accepted (documented 2026-08-13)
 
+> **2026-09-04 — the last of that tree is gone, the decision has not changed.** `plan/todo.md`
+> has now been retired to git history too, so the whole `plan/` tree cited below lives only
+> there. The reasoning is unaffected.
+>
 > **2026-09-03 — one reference below has changed, the decision has not.** The `plan/` tree
 > cited here was retired to git history when the parity program closed; only `plan/todo.md`
 > remains. The reasoning is unaffected.

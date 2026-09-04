@@ -359,10 +359,35 @@ const PAIRS: ReadonlyArray<[string, string, string, number]> = [
     ['cream', 'sky-2', 'Text on sky-2', 4.5],
     ['horizon', 'sky', 'Gold mark on indigo', 3.0],
     ['line', 'paper', 'Separator', 1.4],
+    ['foreground', 'reactive', 'Body text on a reactive ground', 4.5],
+    ['text-2', 'reactive', 'Secondary text on a reactive ground', 4.5],
+    ['text-3', 'reactive', 'Meta text on a reactive ground', 4.5],
+    ['border', 'reactive', 'Separator on a reactive ground', 1.4],
 ];
 
-/** Stands for the whole paper set rather than one token. */
+/** Stands for the whole fixed-light paper set rather than one token. */
 const PAPER = 'paper';
+
+/** Stands for the grounds that flip with `data-theme` rather than one token. */
+const REACTIVE = 'reactive';
+
+const REACTIVE_NAMES: ReadonlySet<string> = new Set(GROUND_KINDS.reactive);
+
+/**
+ * The grounds a tier is allowed to land on. A reactive ground and a reactive
+ * text tier flip together, so they are only ever scored against each other; the
+ * fixed ink tier is scored against the grounds that do not flip. Pairing the
+ * fixed tier with every ground is what reported 67 failures on the dark ground
+ * for pairings the app never paints. A ground the classification does not know
+ * counts as fixed, so a caller can still pass a synthetic paper.
+ */
+function groundsOfKind(grounds: ReadonlyArray<Ground>, kind: string): Ground[] {
+    return grounds.filter((ground) =>
+        kind === REACTIVE
+            ? REACTIVE_NAMES.has(ground.name)
+            : !REACTIVE_NAMES.has(ground.name),
+    );
+}
 
 /**
  * Scores one pair. A pair grounded on `paper` is scored against every ground
@@ -380,8 +405,8 @@ function row(
     outlined = false,
 ): ContrastRow {
     const against =
-        bg === PAPER
-            ? grounds
+        bg === PAPER || bg === REACTIVE
+            ? groundsOfKind(grounds, bg)
             : [{ name: '', value: values[bg] ?? '' } satisfies Ground];
 
     const worst = against
@@ -418,16 +443,19 @@ export function auditContrast(
     values: Record<string, string>,
     grounds: ReadonlyArray<Ground>,
 ): ContrastRow[] {
-    const rows = PAIRS.filter(
-        ([fg, bg]) =>
-            values[`--color-${fg}`] !== undefined &&
-            (bg === PAPER || values[`--color-${bg}`] !== undefined),
-    ).map(([fg, bg, use, min]) =>
+    const rows = PAIRS.filter(([fg, bg]) => {
+        if (values[`--color-${fg}`] === undefined) {
+            return false;
+        }
+        return bg === PAPER || bg === REACTIVE
+            ? groundsOfKind(grounds, bg).length > 0
+            : values[`--color-${bg}`] !== undefined;
+    }).map(([fg, bg, use, min]) =>
         row(
             values,
             grounds,
             `--color-${fg}`,
-            bg === PAPER ? PAPER : `--color-${bg}`,
+            bg === PAPER || bg === REACTIVE ? bg : `--color-${bg}`,
             use,
             min,
         ),
