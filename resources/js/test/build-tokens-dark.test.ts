@@ -2,9 +2,14 @@ import {
     DARK_INK,
     GROUNDS_DARK,
     inkOnDark,
+    MOOD,
+    MOOD_BG,
+    MOOD_BG_DARK,
+    MOOD_INK_DARK,
     RARITY_INK_DARK,
+    tintOnDark,
 } from '@brand/build-tokens.mjs';
-import { contrast, darkGrounds } from '@brand/grounds.mjs';
+import { contrast, darkGrounds, luminance } from '@brand/grounds.mjs';
 
 /**
  * Proof for R1's mitigation (plan/README.md): before any of these values are
@@ -72,5 +77,39 @@ describe('dark-ground token derivation (build-tokens.mjs)', () => {
                 ).toBeGreaterThanOrEqual(4.5);
             }
         }
+    });
+
+    it('tints the mood cell toward the dark ground, not away from it', () => {
+        // The light -bg tier is the fill barely tinted into cream, so every
+        // dark cell has to end up darker than its own vivid fill rather than
+        // paler. A pastel here is the RunHero bug.
+        for (const [mood, hex] of Object.entries(MOOD_BG_DARK)) {
+            expect(
+                luminance(hex),
+                `mood-${mood}-bg (dark) ${hex} vs fill ${MOOD[mood]}`,
+            ).toBeLessThan(luminance(MOOD[mood]));
+            expect(luminance(hex)).toBeLessThan(
+                luminance(MOOD_BG[`mood-${mood}-bg`]),
+            );
+        }
+    });
+
+    it('keeps the mood label readable on its own dark cell, not just on Sky', () => {
+        // The cell is the ground the label most often lands on, and it is the
+        // one a Sky-only sweep would miss.
+        for (const [mood, hex] of Object.entries(MOOD_INK_DARK)) {
+            for (const bg of [...grounds, MOOD_BG_DARK[mood]]) {
+                expect(
+                    contrast(hex, bg),
+                    `mood-${mood}-ink (dark) ${hex} on ${bg}`,
+                ).toBeGreaterThanOrEqual(4.5);
+            }
+        }
+    });
+
+    it('tintOnDark() composites at the alpha it is given', () => {
+        expect(tintOnDark('#ffffff', '#000000', 0.5)).toBe('#808080');
+        expect(tintOnDark('#ffffff', '#000000', 0)).toBe('#000000');
+        expect(tintOnDark('#ffffff', '#000000', 1)).toBe('#ffffff');
     });
 });

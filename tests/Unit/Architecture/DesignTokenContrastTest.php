@@ -809,6 +809,12 @@ it('keeps every dark-ground -ink token above AA on every dark surface', function
         'rarity-rare-ink',
         'rarity-epic-ink',
         'rarity-legendary-ink',
+        'mood-blazing-ink',
+        'mood-easy-ink',
+        'mood-wobbly-ink',
+        'mood-gassed-ink',
+        'mood-overloaded-ink',
+        'mood-chill-ink',
     ]);
 
     $under = [];

@@ -11,6 +11,16 @@
 @source '../**/*.tsx';
 @source '../**/*.ts';
 
+/* Tailwind's `dark:` defaults to prefers-color-scheme, so every dark: utility
+   was firing on the OS setting rather than the ground the user chose in
+   Settings. The app switches grounds with data-theme on <html>, so point the
+   variant at the same signal. Reach for it only where the difference is not a
+   colour value — an opacity, a ring width, a whole property — since a colour
+   that flips belongs in the semantic token layer, which is audited and cannot
+   drift into a raw palette shade the way a utility can. See
+   docs/decisions/tokens-flip-colour-dark-variant-flips-the-rest.md. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
 /* `static` so every token below is emitted to :root whether or not a utility
    references it. /devtools/design reads the token set back out of the live
    stylesheet, and a pruned variable would read as a missing token there. */
@@ -704,6 +714,26 @@ body {
         --color-rarity-rare-ink: #5296f8;
         --color-rarity-epic-ink: #ba77f9;
         --color-rarity-legendary-ink: #f5a623; /* = --color-rarity-legendary */
+
+        /* The mood cell inverts with its label. The light -bg tier is the vivid
+           fill barely tinted into cream, so the dark one is that fill tinted
+           into sky-deep by the same 15%; the -ink partner is then derived
+           against that cell as well as the three Sky surfaces, via
+           tintOnDark()/inkOnDark() in resources/brand/build-tokens.mjs. Leaving
+           the pastel cell here is what put a pale-green pill on near-black in
+           RunHero. */
+        --color-mood-blazing-bg: #282418;
+        --color-mood-blazing-ink: #c9971f; /* = --color-mood-blazing, already clears */
+        --color-mood-easy-bg: #102322;
+        --color-mood-easy-ink: #57a581;
+        --color-mood-wobbly-bg: #24161f;
+        --color-mood-wobbly-ink: #ce808e;
+        --color-mood-gassed-bg: #1c121b;
+        --color-mood-gassed-ink: #b98a92;
+        --color-mood-overloaded-bg: #19172c;
+        --color-mood-overloaded-ink: #a58bc6;
+        --color-mood-chill-bg: #161829;
+        --color-mood-chill-ink: #9991bc;
     }
 }
 

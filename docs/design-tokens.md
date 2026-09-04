@@ -168,6 +168,7 @@ ground**; light is reached via Settings.
 | `border-strong` | line | one step lighter than sky-2 | A stronger separator (e.g. Login) |
 | `today-accent` | horizon-ink at 30% over the card | transparent | The Today card's accent edge — no added edge needed on dark |
 | `btn-primary-bg` / `btn-primary-fg` | horizon-ink / white | horizon / ink | Settings' solid "primary" pill |
+| `mood-*-bg` / `mood-*-ink` | pastel cell / darkened label | fill at 15% over sky-deep / lightened label | The six mood cells and their labels, derived as a pair |
 | `chart-1`..`chart-5` | horizon-ink, sky-2, leaf, ember, citrus-ink | same | Unused by Chart.js (see above); reserved for any future SVG/shadcn chart primitive |
 
 **The `-ink` tier inverts on dark**, for `leaf-ink` / `ember-ink` / `citrus-ink` and the ten
@@ -176,7 +177,15 @@ opposite holds, so the dark value is the vivid fill itself where that already cl
 (`citrus-ink`, `rarity-uncommon-ink`, `rarity-legendary-ink`), or lightened toward white where it
 does not (`leaf-ink`, `ember-ink`, `rarity-common/rare/epic-ink`) — derived via `inkOnDark()` in
 [build-tokens.mjs](../resources/brand/build-tokens.mjs), worst-cased across sky-deep/sky/sky-2.
-`horizon-ink` has no dark counterpart: the app swaps to the vivid `horizon` fill itself instead.
+`horizon-ink` was originally left out, on the reasoning that the app reaches for `icon-accent` on
+dark instead; 33 `text-horizon-ink` call sites rendering `#546d23` on `#0b1017` at 2.9:1 disproved
+that, and its dark value is now the vivid `#ade047`.
+
+**The mood cell inverts with its label.** `mood-*-bg` is the vivid fill barely tinted into the
+ground — `#d7ecdf` is `mood-easy` at ~15% over cream — so on Sky it is that same fill at 15% over
+`sky-deep`, via `tintOnDark()`. Its `mood-*-ink` partner is then derived against that cell as well
+as the three Sky surfaces, because the cell is the ground the label most often lands on. Leaving the
+pastel behind is what put a pale-green pill on near-black in `RunHero`.
 
 **Season-phase identity colours** live in TypeScript, not in the token layer. `F2` promoted the
 prototype's `PHASE_COLOR` literals into four CSS colour tokens, but the periodization display went

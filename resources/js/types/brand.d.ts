@@ -10,12 +10,22 @@ declare module '@brand/grounds.mjs' {
         tokens?: Record<string, string>,
     ): Record<string, string>;
     export function contrast(a: string, b: string): number;
+    export function luminance(hex: string): number;
 }
 
 declare module '@brand/build-tokens.mjs' {
     export const GROUNDS_DARK: Record<string, string>;
     export const DARK_INK: Record<string, string>;
     export const RARITY_INK_DARK: Record<string, string>;
+    export const MOOD: Record<string, string>;
+    export const MOOD_BG: Record<string, string>;
+    export const MOOD_BG_DARK: Record<string, string>;
+    export const MOOD_INK_DARK: Record<string, string>;
+    export function tintOnDark(
+        hex: string,
+        ground: string,
+        alpha?: number,
+    ): string;
     export function inkOnDark(
         hex: string,
         grounds: Record<string, string>,
