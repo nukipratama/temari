@@ -57,11 +57,20 @@ export default function Home({
                     <EmptyRunsState />
                 ) : (
                     <div className="flex flex-col gap-4">
+                        <TodaySession briefing={briefing} />
+
                         {weekPlan !== null ? (
                             <WeekPlanWidget weekPlan={weekPlan} />
                         ) : (
                             <NoPlanCard />
                         )}
+
+                        <WeekStatsDisclosure
+                            briefing={briefing}
+                            load={load}
+                            snapshot={snapshot}
+                            lastRun={lastRun}
+                        />
 
                         {pastYouTrend !== null &&
                             (judged !== null ? (
@@ -75,15 +84,6 @@ export default function Home({
                             ) : (
                                 <NoVerdictPanel trend={pastYouTrend} />
                             ))}
-
-                        <TodaySession briefing={briefing} />
-
-                        <WeekStatsDisclosure
-                            briefing={briefing}
-                            load={load}
-                            snapshot={snapshot}
-                            lastRun={lastRun}
-                        />
                     </div>
                 )}
             </PageContainer>
