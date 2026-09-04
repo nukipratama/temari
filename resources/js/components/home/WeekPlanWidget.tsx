@@ -71,6 +71,12 @@ function weekdayAbbr(iso: string): string {
  *  compliance score when one exists, and whether a rest day got run anyway. */
 function dayDetail(day: WeekPlanDay): string {
     const parts = [STATUS_LABEL[day.status] ?? day.status];
+    if (day.session_type !== 'rest') {
+        parts.push(`planned ${day.distance_km}k core`);
+    }
+    if (day.actual_km !== null) {
+        parts.push(`ran ${day.actual_km}k`);
+    }
     if (day.compliance_score !== null) {
         parts.push(`${day.compliance_score}%`);
     }
@@ -147,21 +153,20 @@ function PlanFigure({
     );
 }
 
-/** A rest day someone ran anyway reads as the distance they actually ran, the
- *  way the prototype's own wednesday cell does. */
-function distanceLabel(day: WeekPlanDay): string {
-    if (day.session_type !== 'rest') {
-        return `${day.distance_km}k`;
+/** A day that has happened reads as the distance actually run; a day still
+ *  ahead reads as what the plan asks for. `dayDetail` carries both. */
+function distanceLabel(day: WeekPlanDay, hasElapsed: boolean): string {
+    if (hasElapsed && day.actual_km !== null) {
+        return `${day.actual_km}k`;
     }
-    return day.ran_anyway && day.actual_km !== null
-        ? `${day.actual_km}k`
-        : 'rest';
+    return day.session_type === 'rest' ? 'rest' : `${day.distance_km}k`;
 }
 
 function DayCell({
     day,
     isToday,
-}: Readonly<{ day: WeekPlanDay; isToday: boolean }>) {
+    hasElapsed,
+}: Readonly<{ day: WeekPlanDay; isToday: boolean; hasElapsed: boolean }>) {
     const isRest = day.session_type === 'rest';
     let tone = STATUS_TONE[day.status] ?? 'text-foreground';
     if (isRest) {
@@ -187,7 +192,7 @@ function DayCell({
                 aria-hidden
             />
             <span className="font-mono text-[0.5rem] text-foreground">
-                {distanceLabel(day)}
+                {distanceLabel(day, hasElapsed)}
             </span>
         </li>
     );
@@ -233,7 +238,7 @@ export default function WeekPlanWidget({
                     />
                     <PlanFigure
                         value={kmTweened.toFixed(1)}
-                        label="Km this week"
+                        label="Km planned"
                     />
                 </div>
             </div>
@@ -244,6 +249,7 @@ export default function WeekPlanWidget({
                         key={day.date}
                         day={day}
                         isToday={day.date === todayIso}
+                        hasElapsed={day.date <= todayIso}
                     />
                 ))}
             </ul>
