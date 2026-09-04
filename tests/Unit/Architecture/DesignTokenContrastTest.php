@@ -737,6 +737,27 @@ function darkGrounds(array $tokens): array
     ];
 }
 
+it('classifies exactly the tokens the dark ground redefines as reactive', function (): void {
+    // grounds.json's `reactiveTokens` is what routes a text tier onto the
+    // grounds it can actually land on. Hand-maintained it would rot the moment
+    // a token joined or left the dark block, and the audit would go quietly
+    // wrong rather than red — so it is asserted against app.css itself.
+    // Every name the block redefines, whatever the value: darkThemeTokens()
+    // keeps only literal hex, which drops `today-accent: transparent` — real
+    // enough to flip with the ground, and so real enough to classify.
+    preg_match_all(
+        '/--color-([a-z0-9-]+):/',
+        darkThemeBlock(File::get(resource_path('css/app.css'))),
+        $found,
+    );
+    $declared = groundKinds()['reactiveTokens'];
+    $redefined = array_unique($found[1]);
+    sort($declared);
+    sort($redefined);
+
+    expect($declared)->toEqual($redefined);
+})->group('structure');
+
 it('declares every dark-ground override as literal hex, never var() or color-mix()', function (): void {
     $block = darkThemeBlock(File::get(resource_path('css/app.css')));
 

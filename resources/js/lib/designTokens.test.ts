@@ -261,7 +261,7 @@ describe('auditContrast', () => {
         expect(fill?.pass).toBe(true);
     });
 
-    it('reports a paper pair at its worst ground, not at midday', () => {
+    it('reports a pseudo-ground pair at its worst ground, not at midday', () => {
         const values = {
             ...paper,
             '--color-horizon': '#d9a53c',
@@ -270,10 +270,10 @@ describe('auditContrast', () => {
 
         expect(
             auditContrast(values, day).find((r) => r.use === 'Gold as text'),
-        ).toMatchObject({ bg: 'paper · day', pass: true });
+        ).toMatchObject({ bg: 'reactive · day', pass: true });
         expect(
             auditContrast(values, allDay).find((r) => r.use === 'Gold as text'),
-        ).toMatchObject({ bg: 'paper · night', pass: false });
+        ).toMatchObject({ bg: 'reactive · night', pass: false });
     });
 
     it("scores a family's ink on its own tinted cell, not only on paper", () => {
@@ -314,7 +314,7 @@ describe('auditContrast', () => {
         // the bg-horizon/0.18 chip is composited over that paper it drops to
         // 4.14:1, and the chip is the ground the label is really printed on.
         expect(label('#7e6023')).toMatchObject({
-            bg: 'paper · horizon/0.18 on paper',
+            bg: 'reactive · horizon/0.18 on paper',
             pass: false,
         });
         expect(label('#775a21')?.pass).toBe(true);

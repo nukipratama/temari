@@ -277,26 +277,32 @@ export function auditPanels(
             continue;
         }
 
-        const mounts = [...new Set(Object.values(entry.over).flat())]
-            .flatMap((mount) =>
-                mount === PAPER
-                    ? [...grounds]
-                    : [
-                          {
-                              name: mount,
-                              value: values[`--color-${mount}`] ?? '',
-                          },
-                      ],
-            )
-            .filter((mount) => mount.value !== '');
-        if (mounts.length === 0) {
-            continue;
-        }
+        const overs = [...new Set(Object.values(entry.over).flat())];
+        // `paper` stands for the page ground, and which grounds that means
+        // depends on the text landing on the panel: a reactive label and a
+        // reactive ground flip together, a fixed one does not.
+        const mountsFor = (kind: string): Ground[] =>
+            overs
+                .flatMap((mount) =>
+                    mount === PAPER
+                        ? groundsOfKind(grounds, kind)
+                        : [
+                              {
+                                  name: mount,
+                                  value: values[`--color-${mount}`] ?? '',
+                              },
+                          ],
+                )
+                .filter((mount) => mount.value !== '');
 
         for (const text of entry.text) {
             const fg = splitAlpha(text);
             const ink = values[`--color-${fg.name}`];
             if (!ink) {
+                continue;
+            }
+            const mounts = mountsFor(isReactive(text) ? REACTIVE : PAPER);
+            if (mounts.length === 0) {
                 continue;
             }
             const scored = mounts
@@ -371,7 +377,29 @@ const PAPER = 'paper';
 /** Stands for the grounds that flip with `data-theme` rather than one token. */
 const REACTIVE = 'reactive';
 
-const REACTIVE_NAMES: ReadonlySet<string> = new Set(GROUND_KINDS.reactive);
+const REACTIVE_NAMES: ReadonlySet<string> = new Set(
+    GROUND_KINDS.reactiveTokens,
+);
+
+const KNOWN_GROUND_NAMES: ReadonlySet<string> = new Set(GROUND_KINDS.paper);
+
+/** A `token` or `token/alpha` spec flips with the ground. */
+function isReactive(spec: string): boolean {
+    return REACTIVE_NAMES.has(spec.split('/')[0]);
+}
+
+/**
+ * Which ground kind a pair should be scored on. A pseudo-ground follows the
+ * text it carries rather than what the pair declares, so a token that becomes
+ * reactive is routed correctly without anyone remembering to move its row.
+ */
+function kindFor(fg: string, bg: string): string {
+    return bg === PAPER || bg === REACTIVE
+        ? isReactive(fg)
+            ? REACTIVE
+            : PAPER
+        : bg;
+}
 
 /**
  * The grounds a tier is allowed to land on. A reactive ground and a reactive
@@ -382,11 +410,17 @@ const REACTIVE_NAMES: ReadonlySet<string> = new Set(GROUND_KINDS.reactive);
  * counts as fixed, so a caller can still pass a synthetic paper.
  */
 function groundsOfKind(grounds: ReadonlyArray<Ground>, kind: string): Ground[] {
-    return grounds.filter((ground) =>
-        kind === REACTIVE
+    return grounds.filter((ground) => {
+        // A derived surface — a family's own tinted cell, or a caller's
+        // synthetic paper — is not a theme ground and does not flip, so it is
+        // scored for either kind. Only a classified ground is filtered.
+        if (!KNOWN_GROUND_NAMES.has(ground.name)) {
+            return true;
+        }
+        return kind === REACTIVE
             ? REACTIVE_NAMES.has(ground.name)
-            : !REACTIVE_NAMES.has(ground.name),
-    );
+            : !REACTIVE_NAMES.has(ground.name);
+    });
 }
 
 /**
@@ -448,14 +482,14 @@ export function auditContrast(
             return false;
         }
         return bg === PAPER || bg === REACTIVE
-            ? groundsOfKind(grounds, bg).length > 0
+            ? groundsOfKind(grounds, kindFor(fg, bg)).length > 0
             : values[`--color-${bg}`] !== undefined;
     }).map(([fg, bg, use, min]) =>
         row(
             values,
             grounds,
             `--color-${fg}`,
-            bg === PAPER || bg === REACTIVE ? bg : `--color-${bg}`,
+            bg === PAPER || bg === REACTIVE ? kindFor(fg, bg) : `--color-${bg}`,
             use,
             min,
         ),
@@ -473,26 +507,40 @@ export function auditContrast(
         }
 
         const label = fillToken.slice('--color-'.length);
+        const inkKind = isReactive(label + '-ink') ? REACTIVE : PAPER;
+        const fillKind = isReactive(label) ? REACTIVE : PAPER;
+        const inkGrounds = groundsForInk(inkToken, values, grounds);
+        // Nothing of this kind to score against — omit the row rather than
+        // invent a failure, the same way the fixed pairs above are filtered.
+        if (
+            groundsOfKind(inkGrounds, inkKind).length === 0 ||
+            groundsOfKind(grounds, fillKind).length === 0
+        ) {
+            continue;
+        }
         rows.push(
-            row(
-                values,
-                groundsForInk(inkToken, values, grounds),
-                inkToken,
-                PAPER,
-                `${label} label`,
-                4.5,
-            ),
+            row(values, inkGrounds, inkToken, inkKind, `${label} label`, 4.5),
         );
 
-        const fill = row(values, grounds, fillToken, PAPER, `${label} fill`, 3);
+        const fill = row(
+            values,
+            grounds,
+            fillToken,
+            fillKind,
+            `${label} fill`,
+            3,
+        );
+        // No ground of the ink's kind to draw the outline against — keep the
+        // failing fill rather than dropping the finding entirely.
+        const outlineGrounds = groundsOfKind(grounds, inkKind);
         rows.push(
-            fill.pass
+            fill.pass || outlineGrounds.length === 0
                 ? fill
                 : row(
                       values,
                       grounds,
                       inkToken,
-                      PAPER,
+                      inkKind,
                       `${label} fill outline`,
                       3,
                       true,
