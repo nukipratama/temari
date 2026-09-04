@@ -38,21 +38,27 @@ export const VIEWPORT_DEFS = {
   mobile: { ...devices['iPhone 13'] },
   se: { ...devices['iPhone SE'] },
   tablet: { viewport: { width: 834, height: 1112 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
-  desktop: { viewport: { width: 1280, height: 800 } },
-  wide: { viewport: { width: 1536, height: 864 } },
+  laptop: { viewport: { width: 1920, height: 1080 } },
+  desktop: { viewport: { width: 2560, height: 1440 } },
 };
 
 // tablet (834px) renders the same mobile nav chrome as mobile (390px) — both are
 // below the lg breakpoint — so it's dropped from the default sweep to halve the
-// screenshot/read cost. Opt back in with VIEWPORTS=tablet or VIEWPORTS=mobile,tablet,desktop,wide.
+// screenshot/read cost. Opt back in with VIEWPORTS=tablet or VIEWPORTS=mobile,tablet,laptop,desktop.
 //
 // se (iPhone SE, 320px) stays in the default sweep despite sharing mobile's nav chrome:
 // unlike tablet, it's not redundant with mobile — its narrower raw width has caught real
 // overflow mobile (390px) missed entirely (a grid track sized to its widest child instead
 // of shrinking, a fluid font clamp whose floor was tuned for a wider column and silently
 // ellipsis-truncated real values). Width-driven CSS bugs like these don't reproduce at 390px.
+//
+// laptop (1920) and desktop (2K) are the two real desktop sizes. They differ only by the
+// 2048px type step, which is the point: laptop takes the 19.2px step, desktop takes 21.6px.
+// The old 1280 and 1536 entries are gone because 1920 is already past every breakpoint they
+// tested (lg, the 1280 column widening, and the 2xl page cap), so they only cost screenshots.
+// Nothing covers 900-1279 now, and nothing did before either.
 export function parseViewports() {
-  return (process.env.VIEWPORTS ?? 'mobile,se,desktop,wide')
+  return (process.env.VIEWPORTS ?? 'mobile,se,laptop,desktop')
     .split(',').map((s) => s.trim()).filter(Boolean)
     .filter((v) => VIEWPORT_DEFS[v] || (console.log(`skip unknown viewport: ${v}`), false));
 }

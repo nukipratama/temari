@@ -358,6 +358,17 @@
     }
 }
 
+/* A second step for genuinely large panels. One 1.2x step was tuned for a
+   laptop and leaves a 2K desktop small enough to reach for browser zoom, which
+   is the reader compensating for the type scale by hand. 2048px is twice the
+   `lg` breakpoint and sits above every common laptop width, so a 1440p or 4K
+   panel takes this step and a 1920-wide desktop does not. */
+@media (min-width: 2048px) {
+    html {
+        font-size: 21.6px;
+    }
+}
+
 /* `-webkit-tap-highlight-color: transparent` drops the grey flash Safari
    paints over a tapped element — one of the loudest "this is a webview"
    tells. Safe only because tappables carry their own press feedback (the
