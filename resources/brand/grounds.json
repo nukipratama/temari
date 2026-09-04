@@ -435,9 +435,6 @@
                 "leaf-ink"
             ]
         },
-        "line/0.2": {
-            "text": []
-        },
         "line/0.6": {
             "over": {
                 "resources/js/components/MetricExplainer.tsx": [
