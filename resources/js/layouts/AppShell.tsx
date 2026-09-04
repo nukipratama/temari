@@ -42,10 +42,10 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
 
                 <MobileTopBar />
 
-                {/* MobileTopBar floats over content (absolute, no background — see its
-                own comment), so this padding is what actually clears it. Above 900px
-                the column narrows to 760px and the bar's chips sit outside it, so the
-                clearance drops to the prototype's own pt-6. */}
+                {/* MobileTopBar is fixed and out of flow (see its own comment), so
+                this padding is what actually clears it. Above 900px the column narrows
+                to 760px and the bar's chips sit outside it, so the clearance drops to
+                the prototype's own pt-6. */}
                 <div className="pt-[max(4rem,calc(env(safe-area-inset-top)+3rem))] min-[900px]:pt-6">
                     <ErrorBanner />
                     <FlashNotice />

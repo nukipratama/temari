@@ -27,14 +27,15 @@ const PUSHED_WITH_BELL: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Floating transparent chips, per the prototype's AppTopbar/ProfileTopbar —
- * `absolute` (not `sticky`): the bar no longer reserves flow space or paints a
- * background, so content scrolls underneath it; AppShell reserves the clearance
- * with top padding instead. Full-bleed at every width, as the prototype's own
- * chrome is: above 900px the content column narrows to 760px and the chips sit
- * outside it, which is what lets the column's top padding shrink to `pt-6`.
- * `max()` keeps the row clear of the notch under black-translucent; falls back
- * to 1rem in a browser tab.
+ * Floating chips, per the prototype's AppTopbar/ProfileTopbar — `fixed` (not
+ * `absolute` or `sticky`): the chips stay with the reader and never reserve
+ * flow space, so AppShell's top padding remains the whole clearance contract.
+ * The bar itself paints nothing at any scroll position; only the chips carry a
+ * backdrop, so what floats is the controls, not a band. Full-bleed at every
+ * width, as the prototype's own chrome is: above 900px the content column
+ * narrows to 760px and the chips sit outside it, which is what lets the
+ * column's top padding shrink to `pt-6`. `max()` keeps the row clear of the
+ * notch under black-translucent; falls back to 1rem in a browser tab.
  */
 export default function MobileTopBar() {
     const page = usePage<SharedProps>();
@@ -44,7 +45,7 @@ export default function MobileTopBar() {
     return (
         <header
             data-testid="mobile-top-bar"
-            className="absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-3 px-4 pb-2.5 pt-[max(1rem,env(safe-area-inset-top))]"
+            className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-3 px-4 pb-2.5 pt-[max(1rem,env(safe-area-inset-top))]"
         >
             {back ? (
                 // Real href, not history.back(): a deep link can open this cold with nothing behind it.
