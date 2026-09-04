@@ -8,7 +8,7 @@ describe('PillButton', () => {
     it.each([
         ['horizon', 'bg-horizon'],
         ['sky', 'bg-sky'],
-        ['ghost', 'border-ink/[0.18]'],
+        ['ghost', 'border-foreground/20'],
         ['outline', 'border-border'],
     ] satisfies [PillTone, string][])(
         'renders tone %s with its class',

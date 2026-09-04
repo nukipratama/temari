@@ -228,7 +228,7 @@ export default function ShareCardModal({
                     style={{ maxHeight: '92dvh' }}
                 >
                     {/* Header — pinned. */}
-                    <div className="flex items-center gap-3 border-b border-cream-deep px-5 py-3.5">
+                    <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
                         <button
                             type="button"
                             onClick={onClose}
@@ -331,8 +331,8 @@ export default function ShareCardModal({
                                     className={cn(
                                         'focus-ring h-9 w-9 rounded-full border-2 transition',
                                         colorway === c
-                                            ? 'border-sky'
-                                            : 'border-transparent hover:border-cream-deep',
+                                            ? 'border-foreground'
+                                            : 'border-transparent hover:border-foreground/40',
                                     )}
                                 >
                                     <span
