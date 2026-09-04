@@ -190,14 +190,14 @@ beforeEach(() => {
 });
 
 describe('Home', () => {
-    it("follows the prototype's section order: plan, past you, today, week stats", () => {
+    it("leads with today, then the week's plan and its stats, retrospective last", () => {
         const { container } = renderHome(trend(), weekPlan);
 
         const order = [
-            screen.getByText("this week's plan"),
-            screen.getByText("you're faster than you were in march."),
             screen.getByText('Easy 6k.'),
+            screen.getByText("this week's plan"),
             screen.getByText(/this week's stats/),
+            screen.getByText("you're faster than you were in march."),
         ];
 
         order.forEach((node, i) => {

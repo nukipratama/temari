@@ -463,6 +463,12 @@
         },
         "muted/0.7": {
             "over": {
+                "resources/js/components/MobileTopBar.test.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/MobileTopBar.tsx": [
+                    "paper"
+                ],
                 "resources/js/lib/variants.ts": [
                     "paper"
                 ]

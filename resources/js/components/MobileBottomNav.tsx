@@ -55,7 +55,7 @@ export default function MobileBottomNav() {
         <div className="pointer-events-none fixed inset-x-0 bottom-[max(0.875rem,calc(env(safe-area-inset-bottom)+0.25rem))] z-30 px-3.5">
             <nav
                 aria-label="Primary"
-                className="pointer-events-auto mx-auto flex max-w-column gap-1 min-[1280px]:max-w-column-wide rounded-full border border-white/30 bg-card/60 p-1.5 shadow-e2 backdrop-blur-xl backdrop-saturate-150"
+                className="pointer-events-auto mx-auto flex max-w-column gap-1 min-[1280px]:max-w-column-wide rounded-full border border-foreground/20 bg-card/60 p-1.5 shadow-e2 backdrop-blur-xl backdrop-saturate-150"
             >
                 {ITEMS.map((item) => {
                     const isActive = active === item.id;

@@ -65,7 +65,15 @@ if (is_dir(dirname(__DIR__).'/.git') || is_dir((string) getenv('GIT_DIR'))) {
         'tests/**/*.php' => 'tests/Unit/Architecture',
         'docs/**/*.md' => 'tests/Unit/Architecture',
         'resources/css/**' => 'tests/Unit/Architecture',
-        'resources/views/**' => 'tests/Unit/Architecture',
+        // These scanning tests read resources/js and the blade mirrors from
+        // disk, so a change there records no coverage edge and TIA replays them
+        // green. A bare `**` matches one level only, which is why these spell
+        // the extension out: `resources/js/**` never matched a component two
+        // directories deep, and `resources/views/**` never matched
+        // errors/layout.blade.php, which DesignTokenMirrorsTest mirrors.
+        'resources/js/**/*.ts' => 'tests/Unit/Architecture',
+        'resources/js/**/*.tsx' => 'tests/Unit/Architecture',
+        'resources/views/**/*.blade.php' => 'tests/Unit/Architecture',
         'public/**' => 'tests/Unit/Architecture',
         'resources/js/types/generated.ts' => 'tests/Feature/Console/GenerateTypeScriptEnumsCommandTest.php',
         'routes/**/*.php' => 'tests/Feature/Compliance',

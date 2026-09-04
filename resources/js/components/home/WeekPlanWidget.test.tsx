@@ -152,8 +152,22 @@ describe('WeekPlanWidget', () => {
         );
 
         expect(
-            container.querySelector('li[title="Partial · 62%"]'),
+            container.querySelector(
+                'li[title="Partial · planned 8k core · 62%"]',
+            ),
         ).toBeInTheDocument();
+    });
+
+    it('reads an elapsed day as what was run and a day still ahead as what is planned', () => {
+        const days = MON_TO_SUN.map((date) =>
+            date === '2026-01-05'
+                ? day({ date, status: 'done', actual_km: 9.4 })
+                : day({ date }),
+        );
+        render(<WeekPlanWidget weekPlan={weekOf(days)} />);
+
+        expect(screen.getByText('9.4k')).toBeInTheDocument();
+        expect(screen.getAllByText('8k')).toHaveLength(6);
     });
 
     it("links today's session row out to Plan, with pace and clamp note", () => {

@@ -9,14 +9,16 @@ import UserAvatarLink from '@/components/UserAvatarLink';
 import { cn } from '@/lib/cn';
 import { backTargetFor } from '@/lib/nav';
 
-// A shared chip backdrop for the icon-only buttons — bg-muted is the exact
+// A shared chip backdrop for the icon-only buttons — muted is the exact
 // ground-reactive equivalent of the bar's old fixed cream-deep background (see
 // AppShell), so NotificationBell/UserAvatarLink's own hover/ring styling
 // (tuned against that backdrop) still reads correctly floating over content.
+// Carried at 70% over a blur so the chips read as glass against whatever
+// scrolls beneath them, matching the bottom nav's pill.
 // Unsized on purpose: it hugs whichever of the two differently-sized controls
 // it wraps rather than forcing both to match.
 const CHIP =
-    'inline-flex items-center justify-center overflow-hidden rounded-full bg-muted shadow-e1';
+    'inline-flex items-center justify-center overflow-hidden rounded-full bg-muted/70 shadow-e1 backdrop-blur-md';
 
 /** Pushed screens whose prototype topbar keeps the bell beside the back chevron. */
 const PUSHED_WITH_BELL: ReadonlySet<string> = new Set([
@@ -25,14 +27,15 @@ const PUSHED_WITH_BELL: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Floating transparent chips, per the prototype's AppTopbar/ProfileTopbar —
- * `absolute` (not `sticky`): the bar no longer reserves flow space or paints a
- * background, so content scrolls underneath it; AppShell reserves the clearance
- * with top padding instead. Full-bleed at every width, as the prototype's own
- * chrome is: above 900px the content column narrows to 760px and the chips sit
- * outside it, which is what lets the column's top padding shrink to `pt-6`.
- * `max()` keeps the row clear of the notch under black-translucent; falls back
- * to 1rem in a browser tab.
+ * Floating chips, per the prototype's AppTopbar/ProfileTopbar — `fixed` (not
+ * `absolute` or `sticky`): the chips stay with the reader and never reserve
+ * flow space, so AppShell's top padding remains the whole clearance contract.
+ * The bar itself paints nothing at any scroll position; only the chips carry a
+ * backdrop, so what floats is the controls, not a band. Full-bleed at every
+ * width, as the prototype's own chrome is: above 900px the content column
+ * narrows to 760px and the chips sit outside it, which is what lets the
+ * column's top padding shrink to `pt-6`. `max()` keeps the row clear of the
+ * notch under black-translucent; falls back to 1rem in a browser tab.
  */
 export default function MobileTopBar() {
     const page = usePage<SharedProps>();
@@ -42,7 +45,7 @@ export default function MobileTopBar() {
     return (
         <header
             data-testid="mobile-top-bar"
-            className="absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-3 px-4 pb-2.5 pt-[max(1rem,env(safe-area-inset-top))]"
+            className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-3 px-4 pb-2.5 pt-[max(1rem,env(safe-area-inset-top))]"
         >
             {back ? (
                 // Real href, not history.back(): a deep link can open this cold with nothing behind it.
@@ -65,7 +68,7 @@ export default function MobileTopBar() {
                 <Link
                     href="/"
                     aria-label="Home"
-                    className="pressable focus-ring inline-flex items-center gap-2.5 rounded-full bg-muted py-1.75 pr-3.25 pl-2.5 shadow-e1"
+                    className="pressable focus-ring inline-flex items-center gap-2.5 rounded-full bg-muted/70 py-1.75 pr-3.25 pl-2.5 shadow-e1 backdrop-blur-md"
                 >
                     <HeaderBrandMark wordmarkClassName="hidden min-[350px]:inline" />
                 </Link>
