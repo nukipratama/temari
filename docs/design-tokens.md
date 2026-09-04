@@ -271,8 +271,8 @@ Tailwind's default `shadow-*` scale is not used and is rejected by the source gu
 
 The resting step ships inside `cardVariants` ([variants.ts](../resources/js/lib/variants.ts)), so
 `Card` and `LinkCard` carry it already — do not re-apply `shadow-e1` at a call site. Elevation
-applies once per stack: a tile nested inside a card ([StatTile](../resources/js/components/ui/StatTile.tsx))
-stays flat, because the card it sits in already carries the resting step.
+applies once per stack: a tile nested inside a card stays flat, because the card it sits in already
+carries the resting step.
 
 ## Motion
 

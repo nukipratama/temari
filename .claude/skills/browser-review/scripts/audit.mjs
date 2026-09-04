@@ -23,7 +23,11 @@ for (const vp of selected) {
 
   const seen = new Set();
   for (const { name, path } of routes) {
-    await page.goto(`${BASE}${path}`, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(`${BASE}${path}`, { waitUntil: 'load', timeout: 20000 });
+    // networkidle never settles on the wider viewports — more of the page renders,
+    // so map tiles and lazy chunks keep the network busy. Wait for it, but do not
+    // fail on it, the way shoot.mjs already does.
+    await page.waitForLoadState('networkidle').catch(() => {});
     const landed = new URL(page.url()).pathname;
     if (seen.has(landed)) continue;
     seen.add(landed);
