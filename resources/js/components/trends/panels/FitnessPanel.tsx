@@ -14,7 +14,7 @@ import { CHART_GROUND } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
 import { fadeInUp, pressShrink, staggerContainer } from '@/lib/motion';
 import { formatNaiveIdDate } from '@/lib/pace';
-import { badgeName, BADGE_ABILITY } from '@/lib/runcard';
+import { badgeName, BADGE_ABILITY, RARITY_INK } from '@/lib/runcard';
 
 import type { TrendRange } from '../RangeToggle';
 
@@ -62,14 +62,6 @@ const RANGE_DAYS: Record<TrendRange, number> = {
     '30d': 30,
     '90d': 90,
     '12mo': 365,
-};
-
-const RARITY_INK: Record<Rarity, string> = {
-    common: 'text-rarity-common-ink',
-    uncommon: 'text-rarity-uncommon-ink',
-    rare: 'text-rarity-rare-ink',
-    epic: 'text-rarity-epic-ink',
-    legendary: 'text-rarity-legendary-ink',
 };
 
 /** The panel's headline, read off the window the range tabs selected. */

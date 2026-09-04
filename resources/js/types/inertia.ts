@@ -44,7 +44,6 @@ export interface StravaSync {
     last_synced_at: string | null;
 }
 
-/** Resolved server-side from the user's equipped UserUnlock rows. */
 /**
  * One row of the notification centre, flattened by `InboxController` so the
  * page never reads the raw `payload` blob.
@@ -342,8 +341,6 @@ export interface PastYouTrend {
     pace_consistency_then: string | null;
 }
 
-/** One day within `WeekPlan['days']`, as `PlanRenderer::dayPayload()` ships
- *  it — the same shape Plan's own day rows use. */
 /** One ordered slice of a planned session — see `App\Services\Run\Plan\SessionSegment`.
  *  `minutes`/`pace_sec_per_km` are null exactly when the athlete has no VDOT
  *  estimate yet; the segment's shape (key, pace target) still renders. */
@@ -355,6 +352,8 @@ export interface PlanSessionSegment {
     pace_sec_per_km: number | null;
 }
 
+/** One day within `WeekPlan['days']`, as `PlanRenderer::dayPayload()` ships
+ *  it — the same shape Plan's own day rows use. */
 export interface WeekPlanDay {
     id: number;
     date: string;
@@ -421,13 +420,4 @@ export interface WeeklySnapshotWithRecap extends WeeklySnapshot {
     recap_analysis: AnalysisPayload;
     /** Remaining Telegram-send cooldown for this week's recap, or null. */
     notification_retry_after_seconds: number | null;
-}
-
-export interface PersonalRecord {
-    id: number;
-    user_id: number;
-    activity_id: number;
-    category: string;
-    value: number;
-    activity?: Activity;
 }

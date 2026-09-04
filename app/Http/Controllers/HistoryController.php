@@ -92,7 +92,7 @@ class HistoryController extends Controller
             return $loadedNotes;
         };
 
-        $currentWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+        $currentWeekEnding = $this->currentWeekEnding();
 
         return [
             'runs' => fn (): Collection => $loadRuns(),
@@ -253,7 +253,7 @@ class HistoryController extends Controller
                 $user,
                 $gridStart,
                 null,
-                Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay(),
+                $this->currentWeekEnding(),
                 $gridEnd,
             ),
             'monthlyRecap' => [
@@ -281,6 +281,11 @@ class HistoryController extends Controller
             ->max('start_date_local');
 
         return $latestDate === null ? null : Carbon::parse($latestDate)->format('Y-m');
+    }
+
+    private function currentWeekEnding(): Carbon
+    {
+        return Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
     }
 
     private function resolveMonth(mixed $raw): Carbon

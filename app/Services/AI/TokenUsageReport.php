@@ -109,7 +109,7 @@ class TokenUsageReport
 
         /** @var array<string, array{kind:string, prompt:int, completion:int, total:int, calls:int, truncated_calls:int, cached:int, reasoning:int, steps:int, avg_sum:float, latency_calls:int, max_latency_ms:int|null, cost:float}> $kinds */
         $kinds = [];
-        /** @var array<string, array{prompt:int, completion:int, total:int, calls:int}> $models */
+        /** @var array<string, array{prompt:int, completion:int, total:int, calls:int, cached:int}> $models */
         $models = [];
         foreach ($rows as $row) {
             $kindKey = (string) $row->kind;
@@ -152,12 +152,13 @@ class TokenUsageReport
             }
 
             if (! isset($models[$modelKey])) {
-                $models[$modelKey] = ['prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0];
+                $models[$modelKey] = ['prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0, 'cached' => 0];
             }
             $models[$modelKey]['prompt'] += $prompt;
             $models[$modelKey]['completion'] += $completion;
             $models[$modelKey]['total'] += (int) $row->total;
             $models[$modelKey]['calls'] += (int) $row->calls;
+            $models[$modelKey]['cached'] += $cached;
 
             $totals['prompt'] += $prompt;
             $totals['completion'] += $completion;
@@ -218,7 +219,7 @@ class TokenUsageReport
      * Per-deployment (model) breakdown with $ cost, ordered by total tokens,
      * built from the already-scanned (kind, model) rows.
      *
-     * @param  array<string, array{prompt:int, completion:int, total:int, calls:int}>  $models
+     * @param  array<string, array{prompt:int, completion:int, total:int, calls:int, cached:int}>  $models
      * @return list<array{deployment:string, prompt:int, completion:int, total:int, calls:int, cost:float, inputPer1m:float|null, outputPer1m:float|null}>
      */
     private function byDeployment(array $models): array
@@ -232,7 +233,7 @@ class TokenUsageReport
                 'completion' => $m['completion'],
                 'total' => $m['total'],
                 'calls' => $m['calls'],
-                'cost' => $this->costCalculator->costFor($deployment, $m['prompt'], $m['completion']),
+                'cost' => $this->costCalculator->costFor($deployment, $m['prompt'], $m['completion'], $m['cached']),
                 'inputPer1m' => $rate['input_per_1m'] ?? null,
                 'outputPer1m' => $rate['output_per_1m'] ?? null,
             ];
@@ -264,7 +265,7 @@ class TokenUsageReport
 
         $rows = $query->selectRaw(
             'model, SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, '.
-            'SUM(total_tokens) as total, COUNT(*) as calls'
+            'SUM(total_tokens) as total, COUNT(*) as calls, SUM(cached_tokens) as cached'
         )->groupBy('model')->get();
 
         $totals = ['prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0, 'cost' => 0.0];
@@ -275,7 +276,7 @@ class TokenUsageReport
             $totals['completion'] += $completion;
             $totals['total'] += (int) $row->total;
             $totals['calls'] += (int) $row->calls;
-            $totals['cost'] += $this->costCalculator->costFor((string) $row->model, $prompt, $completion);
+            $totals['cost'] += $this->costCalculator->costFor((string) $row->model, $prompt, $completion, (int) $row->cached);
         }
 
         return $totals;
@@ -352,7 +353,7 @@ class TokenUsageReport
             ->selectRaw(
                 'DATE(created_at) as day, model, '.
                 'SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, '.
-                'SUM(total_tokens) as total, COUNT(*) as calls'
+                'SUM(total_tokens) as total, COUNT(*) as calls, SUM(cached_tokens) as cached'
             )
             ->groupByRaw('DATE(created_at), model')
             ->orderBy('day')
@@ -373,7 +374,7 @@ class TokenUsageReport
             $days[$day]['completion'] += $completion;
             $days[$day]['total'] += (int) $row->total;
             $days[$day]['calls'] += (int) $row->calls;
-            $days[$day]['cost'] += $this->costCalculator->costFor((string) $row->model, $prompt, $completion);
+            $days[$day]['cost'] += $this->costCalculator->costFor((string) $row->model, $prompt, $completion, (int) $row->cached);
         }
 
         return array_values($days);

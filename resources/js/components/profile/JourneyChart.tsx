@@ -5,6 +5,7 @@ import { formatDurationHMS, formatNaiveMonthDayId } from '@/lib/pace';
 
 const VIEW_W = 300;
 const VIEW_H = 78;
+const VIEW_PAD_X = 8;
 
 interface Point {
     x: number;
@@ -14,13 +15,7 @@ interface Point {
     pr: boolean;
 }
 
-interface Tip {
-    x: number;
-    y: number;
-    label: string;
-    time: number;
-    pr: boolean;
-}
+type Tip = Point;
 
 /**
  * Best time per week for one distance, as the prototype draws it: a filled
@@ -72,7 +67,7 @@ export default function JourneyChart({
                 ? null
                 : {
                       x:
-                          (point.x / VIEW_W) *
+                          ((point.x + VIEW_PAD_X) / (VIEW_W + VIEW_PAD_X * 2)) *
                           (chartRef.current?.clientWidth ?? VIEW_W),
                       y: (point.y / VIEW_H) * VIEW_H,
                       label: point.label,
@@ -89,7 +84,7 @@ export default function JourneyChart({
         <div ref={chartRef} className="relative mt-3.5">
             <span className="sr-only">{`Best time journey. ${summary}`}</span>
             <svg
-                viewBox={`-8 0 ${VIEW_W + 16} ${VIEW_H}`}
+                viewBox={`-${VIEW_PAD_X} 0 ${VIEW_W + VIEW_PAD_X * 2} ${VIEW_H}`}
                 width="100%"
                 height={VIEW_H}
                 preserveAspectRatio="none"

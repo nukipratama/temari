@@ -1,4 +1,4 @@
-import { contrast, darkest, darkGrounds, groundsForInk, paperGrounds } from './grounds.mjs';
+import { contrast, darkest, darkGrounds, groundsForInk, paperGrounds, toRgb } from './grounds.mjs';
 
 /* The colour derivation behind resources/css/app.css: the raw palette, and the
    -ink tiers derived from it per ground so a label always clears contrast on
@@ -61,7 +61,6 @@ const RARITY = {
 // A saturated colour cannot be both a fill and text on cream. Vivid values stay
 // for fills/dots/strokes; each family also gets an `-ink` variant, darkened until it
 // clears 4.5:1 on paper, for labels and icons. Derived, so it cannot drift.
-const toRgb = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 const toHex = (a) => '#' + a.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('');
 /** Darken until the colour clears `target` against every ground in `grounds`. */
 export function inkOn(hex, grounds, target = 4.5) {

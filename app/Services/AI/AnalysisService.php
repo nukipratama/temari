@@ -120,9 +120,7 @@ class AnalysisService
             return $row;
         }
 
-        $this->withoutDispatching(function () use ($row): void {
-            $this->markDone($row, app(RuleBasedNarrationFiller::class)->fillFor($row));
-        });
+        $this->fillRuleBased($row);
 
         return $row;
     }
@@ -704,11 +702,15 @@ class AnalysisService
             return;
         }
 
+        $this->fillRuleBased($row);
+        $this->ceilingLedger->recordDegradedFill();
+    }
+
+    private function fillRuleBased(Analysis $row): void
+    {
         $this->withoutDispatching(function () use ($row): void {
             $this->markDone($row, app(RuleBasedNarrationFiller::class)->fillFor($row));
         });
-
-        $this->ceilingLedger->recordDegradedFill();
     }
 
     /**

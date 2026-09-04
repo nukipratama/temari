@@ -16,6 +16,7 @@ import { MOOD_FILL, MOOD_LABEL, MOOD_ORDER } from '@/lib/mood';
 import { fadeInUp } from '@/lib/motion';
 
 import { useCalendar, type CalendarCell } from './useCalendar';
+import { snapshotsByWeekEnding } from './weekBuckets';
 
 export { dominantMoodOf, type CalendarCell } from './useCalendar';
 
@@ -64,12 +65,10 @@ export default function Calendar({
     });
     const gridRef = useRef<HTMLDivElement>(null);
 
-    const snapshotsByWeek = useMemo(() => {
-        const map = new Map<string, WeeklySnapshotWithRecap>();
-        for (const snap of weeklySnapshots)
-            map.set(snap.week_ending.slice(0, 10), snap);
-        return map;
-    }, [weeklySnapshots]);
+    const snapshotsByWeek = useMemo(
+        () => snapshotsByWeekEnding(weeklySnapshots),
+        [weeklySnapshots],
+    );
 
     return (
         <>

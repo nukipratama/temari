@@ -125,11 +125,12 @@ function groundsForInk(
     const alpha = (GROUND_KINDS.tint as Record<string, number>)[family];
     const fill = values[`--color-${family}`];
     const darkest = papers.reduce<Ground | null>((a, b) => {
-        const [x, y] = [a ? luminance(a.value) : null, luminance(b.value)];
-        if (x === null) {
-            return a ?? b;
+        const y = luminance(b.value);
+        if (y === null) {
+            return a;
         }
-        return y !== null && y < x ? b : a;
+        const x = a ? luminance(a.value) : null;
+        return a === null || x === null || y < x ? b : a;
     }, null);
 
     if (alpha !== undefined && fill && darkest) {

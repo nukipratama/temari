@@ -34,18 +34,30 @@ function hasBothHeartRates(comparison: PastYouComparison): boolean {
     );
 }
 
-export function decidingMetric(comparison: PastYouComparison): EvidenceMetric {
-    if (Math.abs(comparison.pace_delta_sec) >= PACE_SIGNAL_SEC) {
+function chooseMetric(
+    paceDeltaSec: number | null,
+    hrDeltaBpm: number | null,
+    hrEligible: boolean,
+): EvidenceMetric {
+    if (paceDeltaSec !== null && Math.abs(paceDeltaSec) >= PACE_SIGNAL_SEC) {
         return 'pace';
     }
     if (
-        comparison.hr_delta_bpm !== null &&
-        Math.abs(comparison.hr_delta_bpm) >= HR_SIGNAL_BPM &&
-        hasBothHeartRates(comparison)
+        hrDeltaBpm !== null &&
+        Math.abs(hrDeltaBpm) >= HR_SIGNAL_BPM &&
+        hrEligible
     ) {
         return 'hr';
     }
     return 'pace';
+}
+
+export function decidingMetric(comparison: PastYouComparison): EvidenceMetric {
+    return chooseMetric(
+        comparison.pace_delta_sec,
+        comparison.hr_delta_bpm,
+        hasBothHeartRates(comparison),
+    );
 }
 
 /** Positive `pace_delta_sec` means the recent run was faster, so the clock went down. */
@@ -108,15 +120,11 @@ export function evidenceRows(trend: PastYouTrend): EvidenceRow[] {
 
 /** Mirrors `PastYouTrendBuilder::aggregateDirection` — pace leads, heart rate decides a flat window. */
 export function verdictMetric(trend: PastYouTrend): EvidenceMetric {
-    const pace = trend.mean_pace_delta_sec;
-    if (pace !== null && Math.abs(pace) >= PACE_SIGNAL_SEC) {
-        return 'pace';
-    }
-    const hr = trend.mean_hr_delta_bpm;
-    if (hr !== null && Math.abs(hr) >= HR_SIGNAL_BPM) {
-        return 'hr';
-    }
-    return 'pace';
+    return chooseMetric(
+        trend.mean_pace_delta_sec,
+        trend.mean_hr_delta_bpm,
+        true,
+    );
 }
 
 /** The month of the oldest run the window was matched against. */
@@ -133,6 +141,10 @@ function matchedSinceMonth(trend: PastYouTrend): string | null {
         : oldest.toLocaleDateString('en-US', { month: 'long' }).toLowerCase();
 }
 
+function sinceSuffix(since: string | null): string {
+    return since === null ? '' : ` in ${since}`;
+}
+
 export function verdictHeadline(trend: PastYouTrend): string {
     const since = matchedSinceMonth(trend);
 
@@ -145,14 +157,14 @@ export function verdictHeadline(trend: PastYouTrend): string {
     if (trend.verdict === 'improving') {
         return verdictMetric(trend) === 'hr'
             ? 'same pace, less work to hold it.'
-            : `you're faster than you were${since === null ? '' : ` in ${since}`}.`;
+            : `you're faster than you were${sinceSuffix(since)}.`;
     }
 
     if (trend.verdict === 'slipped') {
         return `you've slipped since ${since ?? 'then'}.`;
     }
 
-    return `you're holding where you were${since === null ? '' : ` in ${since}`}.`;
+    return `you're holding where you were${sinceSuffix(since)}.`;
 }
 
 export function verdictSupport(trend: PastYouTrend): string {

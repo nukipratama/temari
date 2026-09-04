@@ -98,10 +98,12 @@ final readonly class CurrentWeekPlanBuilder
         );
         $fallbackStatuses = [];
         if ($staleSessions->isNotEmpty()) {
+            $staleDates = $staleSessions->map(fn (PlannedSession $s): string => $s->date->toDateString())->all();
+            $stalePlannedKmByDate = array_intersect_key($plannedKmByDate, array_flip($staleDates));
             $staleSkipped = $staleSessions->mapWithKeys(
                 fn (PlannedSession $s): array => [$s->date->toDateString() => $s->skipped],
             )->all();
-            $fallbackStatuses = $this->sessionMatcher->statuses($user, $plannedKmByDate, $staleSkipped, $today);
+            $fallbackStatuses = $this->sessionMatcher->statuses($user, $stalePlannedKmByDate, $staleSkipped, $today);
         }
         $resolvedStatuses = $currentWeekSessions->mapWithKeys(
             fn (PlannedSession $s): array => [

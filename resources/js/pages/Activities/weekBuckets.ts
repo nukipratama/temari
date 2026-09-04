@@ -1,4 +1,8 @@
-import type { Activity, ActivityDetail } from '@/types/inertia';
+import type {
+    Activity,
+    ActivityDetail,
+    WeeklySnapshotWithRecap,
+} from '@/types/inertia';
 
 import { formatIdDate, isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
 
@@ -84,4 +88,13 @@ export function groupByWeek(rows: ReadonlyArray<RunWithDetail>): WeekBucket[] {
     }
 
     return buckets;
+}
+
+/** Weekly snapshots keyed by their week-ending date (YYYY-MM-DD). */
+export function snapshotsByWeekEnding(
+    snapshots: ReadonlyArray<WeeklySnapshotWithRecap>,
+): Map<string, WeeklySnapshotWithRecap> {
+    const map = new Map<string, WeeklySnapshotWithRecap>();
+    for (const snap of snapshots) map.set(snap.week_ending.slice(0, 10), snap);
+    return map;
 }

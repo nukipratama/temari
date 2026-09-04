@@ -25,7 +25,11 @@ import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 
-import { groupByWeek, type RunWithDetail } from './weekBuckets';
+import {
+    groupByWeek,
+    snapshotsByWeekEnding,
+    type RunWithDetail,
+} from './weekBuckets';
 
 interface LifetimeStats {
     total_runs: number;
@@ -66,12 +70,10 @@ export default function RunsIndex({
     weeklySnapshots,
 }: Readonly<RunsIndexProps>) {
     const buckets = useMemo(() => groupByWeek(runs), [runs]);
-    const snapshotsByWeek = useMemo(() => {
-        const map = new Map<string, WeeklySnapshotWithRecap>();
-        for (const snap of weeklySnapshots)
-            map.set(snap.week_ending.slice(0, 10), snap);
-        return map;
-    }, [weeklySnapshots]);
+    const snapshotsByWeek = useMemo(
+        () => snapshotsByWeekEnding(weeklySnapshots),
+        [weeklySnapshots],
+    );
 
     const hasRuns = runs.length > 0;
 

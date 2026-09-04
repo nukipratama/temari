@@ -139,6 +139,4 @@ class MonthlyRecapNarrator
             ->where('status', AnalysisStatus::Done)
             ->value('content');
     }
-
-
 }

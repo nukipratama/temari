@@ -52,10 +52,7 @@ final readonly class SeasonService
 
     public function ensureCurrent(User $user, ?Carbon $today = null): Season
     {
-        $today = ($today ?? Carbon::today())->copy()->startOfDay();
-        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
-
-        $current = Season::query()->where('user_id', $user->id)->orderByDesc('starts_at')->first();
+        [$today, $race, $current] = $this->currentContext($user, $today);
 
         if ($current !== null && $this->isCurrent($current, $race, $today)) {
             return $current;
@@ -108,11 +105,21 @@ final readonly class SeasonService
      */
     public function peekCurrent(User $user, ?Carbon $today = null): ?Season
     {
+        [$today, $race, $current] = $this->currentContext($user, $today);
+
+        return ($current !== null && $this->isCurrent($current, $race, $today)) ? $current : null;
+    }
+
+    /**
+     * @return array{0: Carbon, 1: ?RaceGoal, 2: ?Season}
+     */
+    private function currentContext(User $user, ?Carbon $today): array
+    {
         $today = ($today ?? Carbon::today())->copy()->startOfDay();
         $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
         $current = Season::query()->where('user_id', $user->id)->orderByDesc('starts_at')->first();
 
-        return ($current !== null && $this->isCurrent($current, $race, $today)) ? $current : null;
+        return [$today, $race, $current];
     }
 
     private function isCurrent(Season $season, ?RaceGoal $race, Carbon $today): bool

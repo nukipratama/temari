@@ -130,7 +130,9 @@ export default function ShareCardModal({
     };
 
     const handleShare = async () => {
-        if (typeof navigator.share === 'function') {
+        const canNativeShare = typeof navigator.share === 'function';
+
+        if (canNativeShare) {
             try {
                 const blob = await captureImage();
                 const file = new File([blob], `${card.name}.png`, {
@@ -148,7 +150,7 @@ export default function ShareCardModal({
             }
         }
         const url = card.shareUrl;
-        if (typeof navigator.share === 'function') {
+        if (canNativeShare) {
             try {
                 await navigator.share({
                     title: `${card.name} · Temari`,

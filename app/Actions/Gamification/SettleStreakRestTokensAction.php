@@ -67,6 +67,15 @@ class SettleStreakRestTokensAction
             return false;
         }
 
+        $alreadySpentForThisWeek = StreakRestToken::query()
+            ->where('user_id', $user->id)
+            ->where('spent_for_week_ending', $closedWeekEnding->toDateString())
+            ->exists();
+
+        if ($alreadySpentForThisWeek) {
+            return false;
+        }
+
         $token = StreakRestToken::query()
             ->where('user_id', $user->id)
             ->whereNull('spent_for_week_ending')

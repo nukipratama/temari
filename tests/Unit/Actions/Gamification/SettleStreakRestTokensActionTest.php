@@ -87,6 +87,23 @@ it('spends a token to forgive a runless week when a streak is live', function ()
         ->and(WeeklySnapshot::consecutiveWeekStreak($user->id))->toBe(3);
 });
 
+it('spends at most one token for the same closed week', function (): void {
+    $user = User::factory()->create();
+    $week = Carbon::parse(CLOSED_WEEK)->subDays(7);
+    for ($i = 0; $i < 3; $i++) {
+        WeeklySnapshot::factory()->for($user)->create([
+            'week_ending' => $week->copy()->subDays(7 * $i)->toDateString(),
+            'runs' => 2,
+        ]);
+    }
+    StreakRestToken::factory()->for($user)->create(['earned_for_week_ending' => '2026-05-10']);
+    StreakRestToken::factory()->for($user)->create(['earned_for_week_ending' => '2026-05-17']);
+
+    expect(($this->settle)($user, Carbon::parse(CLOSED_WEEK)))->toBe('spent')
+        ->and(($this->settle)($user, Carbon::parse(CLOSED_WEEK)))->toBe('none')
+        ->and(StreakRestToken::unspentCountForUser($user->id))->toBe(1);
+});
+
 it('burns no token when there is no streak to save', function (): void {
     $user = User::factory()->create();
     StreakRestToken::factory()->for($user)->create(['earned_for_week_ending' => '2026-05-10']);

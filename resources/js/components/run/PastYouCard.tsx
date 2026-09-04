@@ -60,6 +60,8 @@ export default function PastYouCard({
         match.past.distance != null ? match.past.distance / 1000 : null;
     const timeDelta =
         match.time_diff_sec != null ? Math.round(match.time_diff_sec) : null;
+    const hrDelta =
+        match.hr_diff_bpm != null ? Math.round(match.hr_diff_bpm) : null;
 
     return (
         <Card as="section" padding="hero" className={className}>
@@ -107,18 +109,18 @@ export default function PastYouCard({
             )}
 
             <dl className="mt-4 grid grid-cols-2 gap-3">
-                {match.hr_diff_bpm !== null && (
+                {hrDelta !== null && (
                     <Delta
                         label="Heart rate"
-                        value={`${Math.abs(Math.round(match.hr_diff_bpm))} bpm`}
+                        value={`${Math.abs(hrDelta)} bpm`}
                         suffix={
-                            match.hr_diff_bpm === 0
+                            hrDelta === 0
                                 ? 'the same'
-                                : match.hr_diff_bpm < 0
+                                : hrDelta < 0
                                   ? 'lower'
                                   : 'higher'
                         }
-                        toneClass={lowerIsBetter(Math.round(match.hr_diff_bpm))}
+                        toneClass={lowerIsBetter(hrDelta)}
                     />
                 )}
                 {timeDelta !== null && timeDelta !== 0 && (

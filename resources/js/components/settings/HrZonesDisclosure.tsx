@@ -135,6 +135,14 @@ export default function HrZonesDisclosure({
         boundsFromProfile(profile.hr_zones),
     );
 
+    const [seededFrom, setSeededFrom] = useState(profile);
+    if (seededFrom !== profile) {
+        setSeededFrom(profile);
+        setMaxHr(profile.max_hr);
+        setRestingHr(profile.resting_hr);
+        setBounds(boundsFromProfile(profile.hr_zones));
+    }
+
     const savedBounds = boundsFromProfile(profile.hr_zones);
     const isDirty =
         maxHr !== profile.max_hr ||
