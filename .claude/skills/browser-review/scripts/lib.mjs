@@ -108,15 +108,17 @@ const SKIP = [
   /^_/, /^up$/, /^storage\//, /\{.*\}.*\{/, // multi-param = not a simple page
 ];
 
-// The operator console (/devtools, /devtools/design, /devtools/ai-usage, /devtools/pulse) sits behind
-// HTTP Basic Auth (EnsureDevtoolsAccess) in production only, and /devtools/pulse is a vendor route that
-// `--except-vendor` drops from route:list — so none of the four are reachable by
-// default and all four were invisible to this skill. Set DEVTOOLS_PASSWORD to sweep
-// them; without it they'd only ever screenshot a 401 body.
+// The operator console is /devtools, /devtools/design, /devtools/ai-usage and /devtools/pulse.
+// EnsureDevtoolsAccess returns early when the app is not in production, so locally these need no
+// password: an unauthenticated request answers 200. They are swept like any other page.
+// /devtools/pulse is vendor-registered, so `--except-vendor` never reports it and it is appended
+// by hand below. This skill used to gate all four on DEVTOOLS_PASSWORD being set, which kept
+// /devtools/design out of every audit it runs — the one page rendering the token swatches an audit
+// is most likely to ask about. Do not reintroduce that gate; the variable is only needed to point
+// these scripts at a production host, where Basic Auth does apply.
 export const DEVTOOLS_AUTH = process.env.DEVTOOLS_PASSWORD
   ? { httpCredentials: { username: 'devtools', password: process.env.DEVTOOLS_PASSWORD } }
   : {};
-const GATED = [/^devtools/];
 // Vendor-registered, so route:list --except-vendor never reports it.
 const VENDOR_PAGES = [{ name: 'pulse', path: '/devtools/pulse' }];
 
@@ -142,7 +144,6 @@ export async function discoverPageRoutes(page) {
     if ((r.action ?? '').includes('RedirectController')) continue; // legacy 301 aliases
     const uri = (r.uri ?? '').replace(/^\//, '');
     if (SKIP.some((re) => re.test(uri))) continue;
-    if (GATED.some((re) => re.test(uri)) && !process.env.DEVTOOLS_PASSWORD) continue;
 
     if (!uri.includes('{')) {
       pages.push({ name: uri === '/' || uri === '' ? 'dashboard' : uri.replaceAll('/', '-'), path: `/${uri}` });
@@ -164,7 +165,6 @@ export async function discoverPageRoutes(page) {
     if (found) pages.push({ name: `${base}-detail`, path: found });
     else console.log(`  (no sample for /${base}/{id} — thin data? try: sail artisan demo:seed)`);
   }
-  if (process.env.DEVTOOLS_PASSWORD) pages.push(...VENDOR_PAGES);
-  else console.log('  (skipping /devtools, /devtools/design, /devtools/ai-usage, /devtools/pulse — set DEVTOOLS_PASSWORD to include them)');
+  pages.push(...VENDOR_PAGES);
   return pages;
 }

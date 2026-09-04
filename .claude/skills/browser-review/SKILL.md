@@ -55,17 +55,19 @@ The app is reachable **inside the container at `http://localhost`** (host-forwar
 
 ### The operator console (`/devtools`, `/devtools/design`, `/devtools/ai-usage`, `/pulse`)
 
-All four sit behind HTTP Basic Auth (`EnsureDevtoolsAccess`) and `/pulse` is a vendor route that
-`route:list --except-vendor` never reports, so they are **excluded unless `DEVTOOLS_PASSWORD` is
-set**. Pass it through and the scripts add the basic-auth credentials and append `/pulse`:
+**All four are swept by default, and locally they need no password.**
+[EnsureDevtoolsAccess](../../../app/Http/Middleware/EnsureDevtoolsAccess.php) returns early when
+the app is not in production, so an unauthenticated request to `/devtools/design` answers **200**.
+`/pulse` is a vendor route `route:list --except-vendor` never reports, so it is appended by hand.
+
+This skill used to gate all four on `DEVTOOLS_PASSWORD` being set, which kept `/devtools/design`
+out of every audit it runs — the one page that renders the token swatches an audit is most likely
+to ask about. Do not reintroduce that gate. `DEVTOOLS_PASSWORD` is needed only to point these
+scripts at a production host, where Basic Auth does apply:
 
 ```bash
 ./vendor/bin/sail exec -e DEVTOOLS_PASSWORD=<pw> app node .claude/skills/browser-review/scripts/shoot.mjs
 ```
-
-`DEVTOOLS_PASSWORD` is empty in `.env.example`, so set it in the gitignored `compose.override.yaml`
-first or every one of the four just 401s. Without the variable the scripts log a line naming the four
-pages they skipped, rather than silently omitting them.
 
 ## The Alpine/Playwright gotcha (do not rediscover this)
 
@@ -156,6 +158,8 @@ because the dark text on it still clears AA. It flags every element whose own ba
 lighter than the ground beneath it, hovering anything that carries a `hover:bg-` utility on the way.
 Read the head of its output: vivid accent fills (`horizon`, `citrus`, `mood-*` dots) are fixed
 identity by design and legitimately sit near the top, so what you want is anything *near-white*.
+`/devtools/design` dominates the list and should be ignored wholesale — rendering every token as a
+swatch, fixed-light ones included, is that page's entire job.
 
 > **Reading screenshots costs more than it looks.** An image read into the main context is re-billed
 > as a cache read on *every* later turn, so cost is `size x remaining turns`, not size. A full-page

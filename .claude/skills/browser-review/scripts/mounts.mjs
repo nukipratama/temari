@@ -21,20 +21,18 @@ import {
 } from './lib.mjs';
 
 const GROUND = process.argv[2] ?? 'dark';
+// Pass the specs a design-page shortfall names. The default is every alpha
+// panel that carries text today, in both spellings, as a worked example.
 const SPECS = process.argv[3]
     ? process.argv[3].split(',')
     : [
           'bg-citrus/15',
           'bg-cream-deep/40',
-          'bg-destructive/10',
-          'bg-destructive/20',
-          'bg-destructive/30',
           'bg-ember/8',
           'bg-ember/15',
-          'bg-ember/18',
+          'bg-ember/[0.18]',
           'bg-leaf/15',
-          'bg-leaf/18',
-          'bg-line/60',
+          'bg-leaf/[0.18]',
       ];
 
 const browser = await chromium.launch({
@@ -100,7 +98,11 @@ for (const route of routes) {
             const cls = el.className?.toString?.() ?? '';
             for (const spec of specs) {
                 if (!cls.includes(spec)) continue;
-                const esc = spec.replace('/', '\\/');
+                // Alpha is written both `bg-leaf/15` and `bg-leaf/[0.18]`, and
+                // the bracket form is a character class if it reaches a regex
+                // unescaped — which silently matched nothing and reported a
+                // live panel as dead.
+                const esc = spec.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&');
                 const base = new RegExp(`(^|\\s)${esc}(\\s|$)`).test(cls);
                 const hover = new RegExp(`(^|\\s)hover:${esc}(\\s|$)`).test(
                     cls,
