@@ -12,6 +12,15 @@
         "surface",
         "surface-sunken"
     ],
+    "__reactive": "The subset of `paper` that `[data-theme]` redefines. A reactive ground and the reactive text tier (foreground/text-2/text-3/border) flip together, so they are only scored against each other; the fixed ink tier is scored against the rest. Kept as a subset rather than a separate kind so panel mounts and the every-painted-bg-is-classified check still read one list.",
+    "reactive": [
+        "accent",
+        "background",
+        "card",
+        "muted",
+        "popover",
+        "secondary"
+    ],
     "scoped": [
         "mood-blazing-bg",
         "mood-chill-bg",
