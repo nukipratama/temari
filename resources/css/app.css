@@ -488,6 +488,21 @@ body {
     );
 }
 
+/* The cream placeholder glares just as badly when the whole page is the dark
+   ground, so `.skeleton` takes the sky treatment there rather than asking every
+   caller to remember `.skeleton-on-sky` (nine of nine forgot). The on-sky class
+   stays for a placeholder on a fixed-dark panel while the light ground is up,
+   which this rule does not cover. */
+[data-theme='dark'] .skeleton {
+    background-color: color-mix(in srgb, var(--color-cream) 15%, transparent);
+    background-image: linear-gradient(
+        90deg,
+        transparent 20%,
+        color-mix(in srgb, var(--color-cream) 12%, transparent) 50%,
+        transparent 80%
+    );
+}
+
 /* Same sweep on the dark sky panels, where the cream placeholder would glare. */
 .skeleton-on-sky {
     background-color: color-mix(in srgb, var(--color-cream) 15%, transparent);

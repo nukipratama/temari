@@ -43,8 +43,8 @@ export default function MetricExplainer({
     // 16/20px footprint in the line, so no label row reflows.
     const buttonClass =
         size === 'xs'
-            ? 'focus-ring -m-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-text-3 transition hover:bg-line/60 hover:text-foreground'
-            : 'focus-ring -m-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-text-3 transition hover:bg-line/60 hover:text-foreground';
+            ? 'focus-ring -m-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-text-3 transition hover:bg-muted hover:text-foreground'
+            : 'focus-ring -m-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-text-3 transition hover:bg-muted hover:text-foreground';
 
     return (
         <span

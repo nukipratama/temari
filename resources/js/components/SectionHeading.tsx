@@ -16,7 +16,7 @@ const ACCENT_RULE: Record<Tone, string> = {
     brand: 'before:bg-leaf',
     accent: 'before:bg-horizon',
     pop: 'before:bg-citrus',
-    neutral: 'before:bg-line',
+    neutral: 'before:bg-border',
 };
 
 // Section heading with icon-in-tinted-circle + a thin colored accent

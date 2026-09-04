@@ -308,7 +308,7 @@ function CardTeaser() {
                 fallback={
                     <div
                         aria-hidden
-                        className="h-[84px] w-[78px] flex-none rounded-sm bg-cream-deep"
+                        className="skeleton h-[84px] w-[78px] flex-none rounded-sm"
                     />
                 }
             >

@@ -99,7 +99,6 @@ export const chipVariants = cva(
             tone: {
                 neutral: 'bg-ink/[0.06] text-text-2',
                 horizon: 'bg-horizon/[0.18] text-horizon-ink',
-                leaf: 'bg-leaf/[0.18] text-leaf-ink',
                 sky: 'bg-sky/[0.08] text-sky',
                 onSky: 'bg-cream/10 text-cream/80',
             },
