@@ -101,7 +101,11 @@ docker compose exec -u root app sh .claude/skills/browser-review/scripts/setup.s
 ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/contrast.mjs dark
 ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/contrast.mjs light
 
-# 5. teardown (restore node_modules; screenshots are kept as history)
+# 5. on demand: is a design-page shortfall real, and is any surface wearing the wrong ground?
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/mounts.mjs dark 'bg-leaf/15,...'
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/light-islands.mjs dark
+
+# 6. teardown (restore node_modules; screenshots are kept as history)
 ./vendor/bin/sail exec app sh .claude/skills/browser-review/scripts/teardown.sh
 ```
 
@@ -128,6 +132,30 @@ three that were real.
 back to white and scores `text-cream` against white (1.13). In the browser it sits on a dark
 `bg-ink/70` pill over the map placeholder and is perfectly legible. Treat a **dark-ground total of 0
 and a light-ground total of 1** as the clean baseline; anything above that is new.
+
+### `mounts.mjs` and `light-islands.mjs` — the two questions a ratio can't answer
+
+`/devtools/design` worst-cases every translucent panel against every ground the app paints, because
+`grounds.json` records the mount as `paper` and `paper` is a *set*. That answers "could this pairing
+fail", never "does it". **`mounts.mjs`** resolves the other half: for each `bg-<token>/<alpha>` spec
+you pass it, it walks the rendered DOM of every discovered page and reports the nearest opaque
+ancestor background per call site. A shortfall scored against the worst ground can then be re-scored
+against the ground the component is actually mounted on. Run it before tuning a token: of 11 dark
+shortfalls it was pointed at, six rendered only on `background`/`card` and passed there (4.6-5.9),
+three came from an unused vendored variant, and two rendered only on `/devtools/design` itself.
+
+Two traps it has already sprung. Alpha panels are written **both** ways, `bg-leaf/15` and
+`bg-leaf/[0.18]`, so a grep for one silently misses the other and reports a live panel as dead. And a
+`hover:` surface has to be hovered to exist — `contrast.mjs` never hovers, so several panels that
+read as "never rendered" are simply never rested on.
+
+**`light-islands.mjs`** reports geometry rather than contrast, which is the gap both audits share: a
+fixed-light token (`cream`, `cream-deep`, `line`, the `.skeleton` utility, a `mood-*-bg` cell) used
+where a reactive one was meant renders as a bright island on a near-black page and **nothing fails**,
+because the dark text on it still clears AA. It flags every element whose own background is far
+lighter than the ground beneath it, hovering anything that carries a `hover:bg-` utility on the way.
+Read the head of its output: vivid accent fills (`horizon`, `citrus`, `mood-*` dots) are fixed
+identity by design and legitimately sit near the top, so what you want is anything *near-white*.
 
 > **Reading screenshots costs more than it looks.** An image read into the main context is re-billed
 > as a cache read on *every* later turn, so cost is `size x remaining turns`, not size. A full-page
@@ -334,4 +362,6 @@ return results
   an accessory) aren't auto-driven — spot-check those with a short one-off Playwright script that
   clicks the element, screenshots, and asserts its `boundingBox()` is within the viewport.
 - Scripts: `lib.mjs` (shared: viewports, login, route discovery), `shoot.mjs` (screenshots),
-  `audit.mjs` (overflow), `contrast.mjs` (rendered contrast, per ground), `setup.sh` / `teardown.sh`.
+  `audit.mjs` (overflow), `contrast.mjs` (rendered contrast, per ground), `mounts.mjs` (what a panel
+  is actually mounted on), `light-islands.mjs` (surfaces wearing the wrong ground), `setup.sh` /
+  `teardown.sh`.

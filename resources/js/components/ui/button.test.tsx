@@ -16,7 +16,6 @@ describe('Button', () => {
         ['outline', 'border-border'],
         ['secondary', 'bg-secondary'],
         ['ghost', 'hover:bg-muted'],
-        ['destructive', 'bg-destructive'],
         ['link', 'underline-offset-4'],
     ] as const)(
         'renders the %s variant with its class',
