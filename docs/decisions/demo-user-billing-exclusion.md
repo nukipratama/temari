@@ -21,6 +21,12 @@ code_refs:
 
 **Status:** Accepted (documented 2026-06-20)
 
+
+> **Fact update, 2026-09-04.** The decision and its reasoning stand unchanged. The `pr_context`
+> narration named below no longer exists: it was billed on every ingest and rendered on no page, so
+> the surface and its self-heal sweep were cut. Read every mention of it here as historical;
+> `card_flavor` is now the only ingest-only, unchained narration the argument covers.
+
 > **One claim below is superseded (noted 2026-08-14).** The note says `resumePerActivity()` is the one self-heal sweep that does *not* filter the demo account. It does now — [SelfHealer::resumePerActivity](app/Services/AI/SelfHealer.php#L85) constrains to `User::query()->notDemo()`, so all six families exclude the demo. The exclusion principle this note records is unchanged; only the stated exception is gone.
 
 ## Context

@@ -14,15 +14,15 @@ describe('Devtools', () => {
 
         expect(screen.getByRole('link', { name: /AI Usage/ })).toHaveAttribute(
             'href',
-            '/ai-usage',
+            '/devtools/ai-usage',
         );
         expect(screen.getByRole('link', { name: /Horizon/ })).toHaveAttribute(
             'href',
-            '/horizon',
+            '/devtools/horizon',
         );
         expect(screen.getByRole('link', { name: /Pulse/ })).toHaveAttribute(
             'href',
-            '/pulse',
+            '/devtools/pulse',
         );
     });
 });

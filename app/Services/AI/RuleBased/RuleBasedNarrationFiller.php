@@ -45,7 +45,6 @@ final readonly class RuleBasedNarrationFiller
             AnalysisType::PostRunSpeech => $this->postRunSpeech($seed),
             AnalysisType::RunInsight => $this->runInsight($seed),
             AnalysisType::WeeklyRecap => $this->weeklyRecap($seed),
-            AnalysisType::PrContext => $this->prContext($seed),
             AnalysisType::CardFlavor => $this->cardFlavor($seed),
             AnalysisType::ProfileVoice => $this->profileVoice($seed),
             AnalysisType::MonthlyRecap => $this->monthlyRecap($seed),
@@ -190,19 +189,6 @@ final readonly class RuleBasedNarrationFiller
             "The week came to {$km} km from {$runs} sessions. {$closer}",
             "{$km} km logged, {$runs} times out the door. {$closer}",
         ], $snapshotId);
-    }
-
-    private function prContext(int $seed): string
-    {
-        return $this->select([
-            "That's a new PR. The old number held until today, and now it doesn't.",
-            'New best at that distance. Nothing about it was luck.',
-            "You beat your own number. That's the only record that counts here.",
-            'PR. The seconds you took off were bought weeks ago, in sessions that felt like nothing at the time.',
-            "That's the new mark. Everything from here gets measured against it.",
-            'New PR on the board. The old one had been sitting there a while.',
-            "The gap looks small written down. It wasn't small to run.",
-        ], $seed);
     }
 
 

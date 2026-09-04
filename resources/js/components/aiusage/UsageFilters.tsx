@@ -15,7 +15,9 @@ interface UsageFiltersProps {
     from: string;
     to: string;
     kind: string | null;
+    origin: string | null;
     availableKinds: KindOption[];
+    availableOrigins: KindOption[];
 }
 
 export default function UsageFilters({
@@ -23,11 +25,14 @@ export default function UsageFilters({
     from,
     to,
     kind,
+    origin,
     availableKinds,
+    availableOrigins,
 }: Readonly<UsageFiltersProps>) {
     const [fromInput, setFromInput] = useState<string>(from);
     const [toInput, setToInput] = useState<string>(to);
     const [kindInput, setKindInput] = useState<string>(kind ?? '');
+    const [originInput, setOriginInput] = useState<string>(origin ?? '');
 
     function handleSubmit(e: React.FormEvent): void {
         e.preventDefault();
@@ -37,13 +42,31 @@ export default function UsageFilters({
             from: fromInput,
             to: toInput,
             kind: kindInput || null,
+            origin: originInput || null,
         });
     }
 
-    // Changing the kind applies immediately, keeping the current range window.
+    // Changing a filter applies immediately, keeping the current range window.
     function handleKindChange(value: string): void {
         setKindInput(value);
-        navigate({ range, from, to, kind: value || null });
+        navigate({
+            range,
+            from,
+            to,
+            kind: value || null,
+            origin: originInput || null,
+        });
+    }
+
+    function handleOriginChange(value: string): void {
+        setOriginInput(value);
+        navigate({
+            range,
+            from,
+            to,
+            kind: kindInput || null,
+            origin: value || null,
+        });
     }
 
     return (
@@ -72,10 +95,22 @@ export default function UsageFilters({
                     />
 
                     {availableKinds.length > 0 && (
-                        <KindFilter
-                            kinds={availableKinds}
+                        <SelectFilter
+                            id="kind-filter"
+                            label="Kind"
+                            options={availableKinds}
                             value={kindInput}
                             onChange={handleKindChange}
+                        />
+                    )}
+
+                    {availableOrigins.length > 0 && (
+                        <SelectFilter
+                            id="origin-filter"
+                            label="Origin"
+                            options={availableOrigins}
+                            value={originInput}
+                            onChange={handleOriginChange}
                         />
                     )}
 
@@ -89,7 +124,7 @@ export default function UsageFilters({
                             <PresetButton
                                 key={preset.token}
                                 label={preset.label}
-                                href={presetHref(preset.token, kind)}
+                                href={presetHref(preset.token, kind, origin)}
                                 active={range === preset.token}
                             />
                         ))}
@@ -104,9 +139,18 @@ export default function UsageFilters({
                 {kind && (
                     <>
                         {' '}
-                        <span className="text-text-2">|</span> Filter:{' '}
+                        <span className="text-text-2">|</span> Kind:{' '}
                         <span className="font-semibold text-foreground">
                             {kind}
+                        </span>
+                    </>
+                )}
+                {origin && (
+                    <>
+                        {' '}
+                        <span className="text-text-2">|</span> Origin:{' '}
+                        <span className="font-semibold text-foreground">
+                            {origin}
                         </span>
                     </>
                 )}
@@ -115,31 +159,35 @@ export default function UsageFilters({
     );
 }
 
-function KindFilter({
-    kinds,
+function SelectFilter({
+    id,
+    label,
+    options,
     value,
     onChange,
 }: Readonly<{
-    kinds: KindOption[];
+    id: string;
+    label: string;
+    options: KindOption[];
     value: string;
     onChange: (v: string) => void;
 }>) {
     return (
         <label
-            htmlFor="kind-filter"
+            htmlFor={id}
             className="flex flex-col gap-1 font-mono text-xs font-bold uppercase tracking-wider text-text-2"
         >
-            Kind
+            {label}
             <select
-                id="kind-filter"
+                id={id}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 className="rounded-xl border border-border bg-muted px-3 py-2 text-sm font-medium text-foreground focus:border-leaf focus:outline-none"
             >
                 <option value="">All</option>
-                {kinds.map((k) => (
-                    <option key={k.value} value={k.value}>
-                        {k.label}
+                {options.map((o) => (
+                    <option key={o.value} value={o.value}>
+                        {o.label}
                     </option>
                 ))}
             </select>

@@ -20,6 +20,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 class TokenUsageController extends Controller
 {
@@ -35,21 +37,25 @@ class TokenUsageController extends Controller
 
         [$range, $from, $to] = $this->resolveRange($validated);
         $kind = $validated['kind'] ?? null;
+        $origin = $validated['origin'] ?? null;
 
-        $report = $this->report->build($from, $to, $kind, includePrevious: $range !== 'all');
+        $report = $this->report->build($from, $to, $kind, includePrevious: $range !== 'all', origin: $origin);
 
         return Inertia::render('AiUsage', [
             'range' => $range,
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
             'kind' => $kind,
+            'origin' => $origin,
             'totals' => $report['totals'],
             'previousTotals' => $report['previousTotals'],
             'byKind' => $report['byKind'],
             'byUser' => $report['byUser'],
             'byDeployment' => $report['byDeployment'],
             'daily' => $report['daily'],
+            'byOrigin' => $report['byOrigin'],
             'availableKinds' => $report['availableKinds'],
+            'availableOrigins' => $report['availableOrigins'],
             'budget' => $report['budget'],
             'deadLettered' => $this->deadLetteredByUser(),
             'failedUnderBudget' => $this->failedUnderBudgetByUser(),
@@ -84,6 +90,8 @@ class TokenUsageController extends Controller
      */
     public function retryFailed(int $userId): RedirectResponse
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Recovery);
+
         $matching = AnalysisSubjectMap::whereOwnedBy(
             Analysis::query()->knownType()->where('status', AnalysisStatus::Failed),
             $userId,

@@ -73,7 +73,7 @@ The whole briefing object is assembled server-side by [BriefingComposer::compose
 
 ## This week's stats
 
-[WeekStatsDisclosure](resources/js/components/home/WeekStatsDisclosure.tsx) closes the page. It renders **closed**: the prototype's `Collapsible` passes no `defaultOpen`, which the 2026-08-31 amendment to `plan/parity/README.md` settled as what ships, superseding the earlier open-by-default choice. Its trigger summarises the week ("This week's stats · 4 runs · 18.2 km"); opening it reveals, in the prototype's order:
+[WeekStatsDisclosure](resources/js/components/home/WeekStatsDisclosure.tsx) closes the page. It renders **closed**: the prototype's `Collapsible` passes no `defaultOpen`, which the parity program's 2026-08-31 amendment settled as what ships, superseding the earlier open-by-default choice. Its trigger summarises the week ("This week's stats · 4 runs · 18.2 km"); opening it reveals, in the prototype's order:
 
 - **The stat strip** — runs / km / TRIMP from the latest `WeeklySnapshot`, count-up animated, as three inline figures rather than tiles.
 - [VitalBars](resources/js/components/dashboard/VitalBars.tsx) — three labelled bars: **Vibe** (the `vibeLabel` word, with `VIBE_SUB` glossing it), **Readiness** (`load.form` signed, with `formStatusLabel`) and **Recovery** (`recoveryHoursLabel` / streak / recovery label). Each rail is a real `role="meter"`, and a fatigued readiness or a non-positive recovery tone takes the citrus "watch" treatment. Renamed from `VitalChips` in `PS3`, when the 3-up gauge tiles became these bars.

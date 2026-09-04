@@ -102,17 +102,17 @@ const SKIP = [
   /^_/, /^up$/, /^storage\//, /\{.*\}.*\{/, // multi-param = not a simple page
 ];
 
-// The operator console (/devtools, /devtools/design, /ai-usage, /pulse) sits behind
-// HTTP Basic Auth (EnsureDevtoolsAccess), and /pulse is a vendor route that
+// The operator console (/devtools, /devtools/design, /devtools/ai-usage, /devtools/pulse) sits behind
+// HTTP Basic Auth (EnsureDevtoolsAccess) in production only, and /devtools/pulse is a vendor route that
 // `--except-vendor` drops from route:list — so none of the four are reachable by
 // default and all four were invisible to this skill. Set DEVTOOLS_PASSWORD to sweep
 // them; without it they'd only ever screenshot a 401 body.
 export const DEVTOOLS_AUTH = process.env.DEVTOOLS_PASSWORD
   ? { httpCredentials: { username: 'devtools', password: process.env.DEVTOOLS_PASSWORD } }
   : {};
-const GATED = [/^devtools/, /^ai-usage$/];
+const GATED = [/^devtools/];
 // Vendor-registered, so route:list --except-vendor never reports it.
-const VENDOR_PAGES = [{ name: 'pulse', path: '/pulse' }];
+const VENDOR_PAGES = [{ name: 'pulse', path: '/devtools/pulse' }];
 
 /**
  * Enumerate GET page routes from Laravel itself. Returns [{ name, uri, path }]
@@ -159,6 +159,6 @@ export async function discoverPageRoutes(page) {
     else console.log(`  (no sample for /${base}/{id} — thin data? try: sail artisan demo:seed)`);
   }
   if (process.env.DEVTOOLS_PASSWORD) pages.push(...VENDOR_PAGES);
-  else console.log('  (skipping /devtools, /devtools/design, /ai-usage, /pulse — set DEVTOOLS_PASSWORD to include them)');
+  else console.log('  (skipping /devtools, /devtools/design, /devtools/ai-usage, /devtools/pulse — set DEVTOOLS_PASSWORD to include them)');
   return pages;
 }

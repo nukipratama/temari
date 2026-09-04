@@ -10,6 +10,7 @@ use App\Services\AI\Agent\AgentTool;
 use App\Services\AI\AzureCallThrottle;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
+use App\Services\AI\NarrationOrigin;
 use App\Services\AI\StructuredChatCaller;
 use App\Actions\AI\RecordTokenUsageAction;
 use Illuminate\Support\Facades\Cache;
@@ -59,7 +60,7 @@ pest()->extend(TestCase::class)->in('Feature', 'Unit');
 */
 
 if (is_dir(dirname(__DIR__).'/.git') || is_dir((string) getenv('GIT_DIR'))) {
-    pest()->tia()->locally()->watch([
+    pest()->tia()->locally()->baselined()->watch([
         'app/**/*.php' => 'tests/Unit/Architecture',
         'tests/**/*.php' => 'tests/Unit/Architecture',
         'docs/**/*.md' => 'tests/Unit/Architecture',
@@ -68,6 +69,10 @@ if (is_dir(dirname(__DIR__).'/.git') || is_dir((string) getenv('GIT_DIR'))) {
         'public/**' => 'tests/Unit/Architecture',
         'resources/js/types/generated.ts' => 'tests/Feature/Console/GenerateTypeScriptEnumsCommandTest.php',
         'routes/**/*.php' => 'tests/Feature/Compliance',
+        // NarratorsCoverageTest globs these two directories, so a brand-new
+        // narrator or tool has no coverage edge to it and TIA would skip it.
+        'app/Services/AI/Narrators/*.php' => 'tests/Unit/Services/AI/Narrators/NarratorsCoverageTest.php',
+        'app/Services/AI/Agent/Tools/*.php' => 'tests/Unit/Services/AI/Narrators/NarratorsCoverageTest.php',
     ]);
 }
 
@@ -230,6 +235,7 @@ function fakeStructuredCaller(ClientFake $client, string $deployment = 'gpt-test
         $azure,
         app(RecordTokenUsageAction::class),
         new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)),
+        app(NarrationOrigin::class),
     );
 }
 

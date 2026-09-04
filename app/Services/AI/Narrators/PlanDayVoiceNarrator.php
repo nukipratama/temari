@@ -62,6 +62,7 @@ class PlanDayVoiceNarrator
                 userId: $session->user_id,
                 maxTokens: 300,
                 toolbox: new AgentToolbox([new PlanDayTool($session, $this->baseline)]),
+                maxSteps: 4,
             ),
         );
 

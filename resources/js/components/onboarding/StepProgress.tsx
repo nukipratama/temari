@@ -9,7 +9,7 @@ const STEPS: ReadonlyArray<{ key: OnboardingStep; label: string }> = [
 ];
 
 /** Number of preferences sub-questions (experience, sessions, goal, days). */
-export const PREFERENCES_SUB_STEPS = 4;
+const PREFERENCES_SUB_STEPS = 4;
 
 function circleTone(index: number, currentIndex: number): string {
     if (index < currentIndex) {

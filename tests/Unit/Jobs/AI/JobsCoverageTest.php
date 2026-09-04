@@ -13,11 +13,9 @@ use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\AI\AnalyzePlanWeekVoiceJob;
-use App\Jobs\AI\AnalyzePrContextJob;
 use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\AI\Analysis;
-use App\Models\PersonalRecord;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RunCard;
@@ -34,7 +32,6 @@ use App\Services\AI\Narrators\MonthlyRecapNarrator;
 use App\Services\AI\Narrators\PlanDayVoiceNarrator;
 use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
 use App\Services\AI\Narrators\PlanWeekVoiceNarrator;
-use App\Services\AI\Narrators\PrContextNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -250,25 +247,6 @@ it('AnalyzeCardFlavorJob returns flavor string', function (): void {
 it('AnalyzeCardFlavorJob throws when card missing', function (): void {
     $row = rowOf(RunCard::class, 99999, AnalysisType::CardFlavor);
     new AnalyzeCardFlavorJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
-});
-
-// ── AnalyzePrContextJob (row) ────────────────────────────────────────
-
-it('AnalyzePrContextJob returns flavor', function (): void {
-    $pr = PersonalRecord::factory()->create();
-    mockNarrator(PrContextNarrator::class, 'pr flavor');
-
-    $row = rowOf(PersonalRecord::class, $pr->id, AnalysisType::PrContext);
-    new AnalyzePrContextJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->content)->toBe('pr flavor');
-});
-
-it('AnalyzePrContextJob throws when PR missing', function (): void {
-    $row = rowOf(PersonalRecord::class, 99999, AnalysisType::PrContext);
-    new AnalyzePrContextJob($row->id)->handle(app(AnalysisService::class));
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
 });

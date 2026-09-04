@@ -12,6 +12,7 @@ use App\Listeners\RecordScheduledTaskRun;
 use App\Listeners\VerifyDependencies;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\NarrationOrigin;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\VerdictTimeline;
 use App\Support\Config\AppConfig;
@@ -42,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
         // Scoped: one shared instance per request/command (so `withoutDispatching()`
         // reaches collaborators), flushed by Octane between requests.
         $this->app->scoped(AnalysisService::class);
+        $this->app->scoped(NarrationOrigin::class);
 
         // Scoped so its per-request/per-job read memo collapses repeat lookups but
         // stays fresh across requests and queue jobs (DB remains source of truth).

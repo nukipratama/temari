@@ -57,6 +57,7 @@ class PlanWeekVoiceNarrator
                 userId: $adaptation->user_id,
                 maxTokens: 400,
                 toolbox: new AgentToolbox([new PlanWeekTool($adaptation)]),
+                maxSteps: 4,
             ),
         );
 

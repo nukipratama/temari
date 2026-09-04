@@ -15,6 +15,11 @@ code_refs:
 
 **Status:** Accepted (decided 2026-08-14)
 
+> **2026-09-03 — one path below has changed, the decision has not.** The operator console
+> moved behind a single `/devtools` prefix: `/ai-usage` is now `/devtools/ai-usage`,
+> `/pulse` is `/devtools/pulse` and `/horizon` is `/devtools/horizon`. The gate on them
+> also now skips outside production. Everything this decision says about behaviour stands.
+
 ## Context
 
 Public signup opens with **no invite gate and no per-user cost cap**, so the app-wide daily ceiling from [[idempotent-dispatch-cost-ceiling]] becomes the entire spend mechanism. How it *behaves* now matters more than its number.
@@ -29,7 +34,7 @@ Meanwhile the filler that already exists for the demo seed, [RuleBasedNarrationF
 
 ## Decision
 
-**1. The cost ceiling degrades.** Past the ceiling, a `Pending` block is filled from the rule-based filler and marked `Done` instead of resting `Pending` — at dispatch time in `AnalysisService::degradeToRuleBased()` (both the row and the group path), and again in `AnalyzeBaseJob::haltForPausedGeneration()` for a job that was already queued when the ceiling tripped ([`haltForPausedGeneration()`](app/Jobs/AI/AnalyzeBaseJob.php#L172)). Fills run under `withoutDispatching()`, so no job is queued, no cooldown starts, and no notification claims a narration that was never written.
+**1. The cost ceiling degrades.** Past the ceiling, a `Pending` block is filled from the rule-based filler and marked `Done` instead of resting `Pending` — at dispatch time in `AnalysisService::degradeToRuleBased()` (both the row and the group path), and again in `AnalyzeBaseJob::haltForPausedGeneration()` for a job that was already queued when the ceiling tripped ([`haltForPausedGeneration()`](app/Jobs/AI/AnalyzeBaseJob.php#L193)). Fills run under `withoutDispatching()`, so no job is queued, no cooldown starts, and no notification claims a narration that was never written.
 
 Two statuses are excluded. A row that is already `Done` keeps the prose it was billed for. A **`Failed`** row stays `Failed`: it means something genuinely broke — a content filter, a malformed response, an exhausted retry budget — and the bounded self-heal plus the `/ai-usage` dead-letter exist to surface exactly that. Filling it would hide a real fault behind plausible content, and on a day the ceiling trips repeatedly that signal would be erased every day, which is the opposite of what an open-signup phase needs. The user still gets content on every other block; only the genuinely broken one stays honestly empty with its "Coba lagi".
 

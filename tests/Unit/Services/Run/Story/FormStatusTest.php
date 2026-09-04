@@ -5,15 +5,15 @@ declare(strict_types=1);
 use App\Services\Run\Story\FormStatus;
 
 it('label returns fallback when load is null', function (): void {
-    expect(FormStatus::label(null))->toBe('Not read yet');
+    expect(FormStatus::label(null))->toBe('not read yet');
 });
 
 it('label resolves all form_status enum values', function (): void {
-    expect(FormStatus::label(['form_status' => 'fresh']))->toBe('Feeling Fresh')
-        ->and(FormStatus::label(['form_status' => 'optimal']))->toBe('Right on Track')
-        ->and(FormStatus::label(['form_status' => 'fatigued']))->toBe('Getting Tired')
-        ->and(FormStatus::label(['form_status' => 'overreaching']))->toBe('Overreaching')
-        ->and(FormStatus::label(['form_status' => 'unknown_value']))->toBe('Right on Track');
+    expect(FormStatus::label(['form_status' => 'fresh']))->toBe('feeling fresh')
+        ->and(FormStatus::label(['form_status' => 'optimal']))->toBe('right on track')
+        ->and(FormStatus::label(['form_status' => 'fatigued']))->toBe('getting tired')
+        ->and(FormStatus::label(['form_status' => 'overreaching']))->toBe('overreaching')
+        ->and(FormStatus::label(['form_status' => 'unknown_value']))->toBe('right on track');
 });
 
 it('tone returns neutral when load is null', function (): void {

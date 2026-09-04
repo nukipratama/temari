@@ -8,6 +8,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     config(['devtools.password' => 'secret']);
+    app()->detectEnvironment(fn (): string => 'production');
 });
 
 it('renders the design token page with the correct devtools password', function (): void {

@@ -10,7 +10,6 @@ use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
@@ -21,6 +20,8 @@ use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Carbon;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 /**
  * Owns the post-ingest AI analysis fan-out. Queued so it runs in its own job,
@@ -39,6 +40,8 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
     public function handle(ActivityIngested $event): void
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
+
         $activity = Activity::query()->with(['detail', 'user', 'runCard'])->find($event->activityId);
         if ($activity === null || $activity->detail === null) {
             return;
@@ -53,7 +56,6 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $delaySec = $isBackfill ? ($this->staggerBackfill)($activity->user_id) : 0;
         $isToday = $detail->start_date_local?->toDateString() === $today;
 
-        $this->requestPrContext($activity, $tooOld, $delaySec);
         $this->requestCardFlavor($activity, $tooOld, $delaySec);
 
         $this->dispatchActivityGroup($activity, $isBackfill, $tooOld, $delaySec);
@@ -99,44 +101,6 @@ class DispatchPostRunAnalysis implements ShouldQueue
                 $user->id,
                 AnalysisType::MonthlyRecap,
                 $detail->start_date_local->format('Y-m'),
-            );
-        }
-    }
-
-    /**
-     * The records this run currently holds, i.e. the ones its ingest just beat.
-     *
-     * invalidate:false so a chronological backfill (each historical run
-     * beats the same category record in turn) does not re-bill pr_context on
-     * every beat: the idempotency guard skips a row that is already Done. The
-     * narrator reads the live PR row at job time, so a still-pending row
-     * narrates the LATEST value regardless of how many beats preceded it.
-     */
-    private function requestPrContext(Activity $activity, bool $tooOld, int $delaySec): void
-    {
-        $prIds = PersonalRecord::query()
-            ->where('activity_id', $activity->id)
-            ->orderBy('id')
-            ->pluck('id');
-
-        foreach ($prIds as $prId) {
-            if ($tooOld) {
-                $this->analysisService->requestRuleBased(
-                    subjectOrType: PersonalRecord::class,
-                    subjectId: (int) $prId,
-                    type: AnalysisType::PrContext,
-                    refillDone: false,
-                );
-
-                continue;
-            }
-
-            $this->analysisService->request(
-                subjectOrType: PersonalRecord::class,
-                subjectId: (int) $prId,
-                type: AnalysisType::PrContext,
-                delaySeconds: $delaySec,
-                invalidate: false,
             );
         }
     }

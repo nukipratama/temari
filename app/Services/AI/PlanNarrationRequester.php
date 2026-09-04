@@ -6,8 +6,10 @@ namespace App\Services\AI;
 
 use App\Models\AI\Analysis;
 use App\Models\PlanAdaptation;
+use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
+use App\Services\Run\Plan\TrainingBaseline;
 use App\Support\Cooldown;
 use Illuminate\Support\Carbon;
 
@@ -34,8 +36,10 @@ final readonly class PlanNarrationRequester
      */
     public const int REGENERATE_COOLDOWN_SECONDS = 3600;
 
-    public function __construct(private AnalysisService $analysisService)
-    {
+    public function __construct(
+        private AnalysisService $analysisService,
+        private TrainingBaseline $baseline,
+    ) {
     }
 
     /**
@@ -65,24 +69,63 @@ final readonly class PlanNarrationRequester
     /**
      * Requests narration for every day of the current week, the current
      * week's adaptation verdict (if regenerate has run at least once), and
-     * the current season. Day and week narration are invalidated on every
-     * call — the periodizer just rewrote what they'd describe — while season
-     * narration relies on AnalysisService's own idempotency: an unchanged
-     * season's already-Done content is left alone rather than re-billed.
+     * the current season.
+     *
+     * Day and week narration re-bill **only where the material actually
+     * changed**. This runs every Monday for every user, seven days at a time,
+     * and the periodizer frequently rewrites a week into something that reads
+     * identically — an unchanged session type, phase and prescribed distance
+     * produce the same blurb, so re-narrating it buys nothing. Each row carries
+     * a {@see MaterialFingerprint} of what it describes, stamped when it was
+     * narrated; a row whose fingerprint still matches is left alone.
+     *
+     * **A row with no stored fingerprint is treated as changed**, unlike the
+     * per-run equivalent in `DispatchPostRunAnalysis`, which treats an unstamped
+     * row as unchanged so shipping it never mass-invalidates history. The
+     * opposite is right here: only the rule-based paths leave the column null
+     * (a cost-capped or content-filtered day), and those must stay eligible for
+     * a real narration on the next sweep rather than keeping filler forever.
+     *
+     * Season narration relies on AnalysisService's own idempotency: an
+     * unchanged season's already-Done content is left alone rather than re-billed.
      */
     public function requestForCurrentWeek(User $user, Carbon $today): void
     {
-        foreach ($this->currentWeekDates($today) as $date) {
-            $this->requestDayNarration($user->id, Carbon::parse($date));
+        $dates = $this->currentWeekDates($today);
+        $longRunKm = $this->baseline->forUser($user, $today)['long_run_km'];
+        $sessions = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereIn('date', $dates)
+            ->get()
+            ->keyBy(fn (PlannedSession $session): string => $session->date->toDateString());
+        $stamped = $this->stampedDayFingerprints($user, $dates);
+
+        foreach ($dates as $date) {
+            $session = $sessions->get($date);
+            $expected = $session === null
+                ? null
+                : MaterialFingerprint::forPlannedSession($session, $longRunKm);
+
+            $this->analysisService->request(
+                AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+                $user->id,
+                AnalysisType::PlanDayVoice,
+                $date,
+                invalidate: $expected === null || $stamped[$date] !== $expected,
+            );
         }
 
         $adaptation = $this->currentWeekAdaptation($user, $today);
         if ($adaptation !== null) {
+            $stampedWeek = Analysis::query()
+                ->forSubject(PlanAdaptation::class, $adaptation->id, AnalysisType::PlanWeekVoice)
+                ->value('content_fingerprint');
+
             $this->analysisService->request(
                 PlanAdaptation::class,
                 $adaptation->id,
                 AnalysisType::PlanWeekVoice,
-                invalidate: true,
+                invalidate: $stampedWeek !== MaterialFingerprint::forPlanAdaptation($adaptation),
             );
         }
 
@@ -205,6 +248,28 @@ final readonly class PlanNarrationRequester
         );
 
         return ['days' => $days, 'week' => $week, 'season' => $seasonPayload];
+    }
+
+    /**
+     * The fingerprint stamped on each day's row, keyed by date, with null for a
+     * day that has no row or was never stamped.
+     *
+     * @param  list<string>  $dates
+     * @return array<string, string|null>
+     */
+    private function stampedDayFingerprints(User $user, array $dates): array
+    {
+        $rows = Analysis::query()
+            ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
+            ->where('subject_id', $user->id)
+            ->where('analysis_type', AnalysisType::PlanDayVoice)
+            ->whereIn('discriminator', $dates)
+            ->pluck('content_fingerprint', 'discriminator');
+
+        return array_combine(
+            $dates,
+            array_map(static fn (string $date): ?string => $rows->get($date), $dates),
+        );
     }
 
     /** @return list<string> */

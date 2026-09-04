@@ -74,24 +74,20 @@ describe('RunListRow', () => {
         expect(screen.getByText('— bpm')).toBeInTheDocument();
     });
 
-    it('derives a mood from TRIMP when none is provided', () => {
-        // TRIMP=70 (default fixture) falls in the `blazing` aerobic bucket.
+    // The row used to guess a mood from TRIMP when none was stored. That guess
+    // disagreed with the backend rule engine, so a row could show one mood and
+    // then flip once narration landed. No dot beats a wrong dot.
+    it('shows no mood dot when nothing has assigned one yet', () => {
         render(<RunListRow detail={detail()} />);
-        expect(moodDot()).toHaveClass('bg-mood-blazing');
+        expect(moodDot()).toBeNull();
     });
 
-    it('uses passed mood when provided (overrides derivation)', () => {
-        // TRIMP=70 would derive `blazing`, but the explicit `mood` prop wins.
+    it('uses the passed mood when provided', () => {
         render(<RunListRow detail={detail()} mood="chill" />);
         expect(moodDot()).toHaveClass('bg-mood-chill');
     });
 
-    it('derives gassed for a crushing TRIMP', () => {
-        render(<RunListRow detail={detail({ trimp_edwards: 220 })} />);
-        expect(moodDot()).toHaveClass('bg-mood-gassed');
-    });
-
-    it('a post-run note overrides the derived mood too', () => {
+    it('a post-run note wins over the passed mood', () => {
         render(
             <RunListRow
                 detail={detail()}

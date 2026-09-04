@@ -99,8 +99,8 @@ export default function SeasonWeekRow({
                             </p>
                         </div>
                         <p className="mt-2 text-xs text-text-2">
-                            {Math.round(week.planned_km)} km · {week.sessions}{' '}
-                            sessions
+                            {Math.round(week.planned_km)} km target ·{' '}
+                            {week.sessions} sessions
                         </p>
                     </div>
                 ) : (
@@ -123,7 +123,7 @@ export default function SeasonWeekRow({
                                     {weekRangeLabel(week.week_start)}
                                 </span>
                                 <span className="mt-0.5 block text-label-micro text-text-3">
-                                    {Math.round(week.planned_km)} km ·{' '}
+                                    {Math.round(week.planned_km)} km target ·{' '}
                                     {week.sessions} sessions
                                     {isCurrent && ' · this week'}
                                     {!isCurrent &&

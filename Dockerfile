@@ -38,7 +38,9 @@ RUN install-php-extensions \
 # fontconfig is how librsvg resolves the SVG's font-family names; font-dejavu is
 # the fallback, font-jetbrains-mono one of the three families the card names.
 # git is TIA's changed-file source; Pest hard-fails "requires git" without it.
-RUN apk add --no-cache librsvg font-dejavu font-jetbrains-mono fontconfig git
+# github-cli is dev-only: Pest's TIA `baselined()` shells out to `gh` to pull
+# the shared dependency graph recorded by .github/workflows/tia-baseline.yml.
+RUN apk add --no-cache librsvg font-dejavu font-jetbrains-mono fontconfig git github-cli
 
 # Installing git is only half of it — the bind-mounted repo is owned by the host
 # user, so git refuses it as "dubious ownership". That half is fixed by

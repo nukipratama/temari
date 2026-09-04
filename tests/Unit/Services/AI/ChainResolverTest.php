@@ -256,8 +256,7 @@ it('returns no per-activity link when every run of that type is Done', function 
 it('returns no link for an unchained type', function (): void {
     $user = User::factory()->create();
 
-    expect(chainResolver()->earliestUnfilledLink($user, AnalysisType::CardFlavor))->toBeNull()
-        ->and(chainResolver()->earliestUnfilledLink($user, AnalysisType::PrContext))->toBeNull();
+    expect(chainResolver()->earliestUnfilledLink($user, AnalysisType::CardFlavor))->toBeNull();
 });
 
 it('still offers a dead-lettered weekly link to a manual resume, unlike the sweep', function (): void {

@@ -123,7 +123,7 @@ export default function Login({
                 <CardTeaser />
                 <WhyList
                     items={WHY_GET}
-                    wideClassName="min-[900px]:mx-auto min-[900px]:inline-grid min-[900px]:grid-cols-2"
+                    wideClassName="min-[900px]:grid min-[900px]:grid-cols-2"
                 />
 
                 <DataUseDisclosure

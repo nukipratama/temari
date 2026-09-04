@@ -103,7 +103,7 @@ function SeasonBody({
                                 className={cn(
                                     'text-label-micro',
                                     phase.state === 'upcoming'
-                                        ? 'text-text-2'
+                                        ? 'text-foreground'
                                         : 'text-sky',
                                 )}
                             >

@@ -14,11 +14,9 @@ use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\AI\AnalyzePlanWeekVoiceJob;
-use App\Jobs\AI\AnalyzePrContextJob;
 use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\Activity;
-use App\Models\PersonalRecord;
 use App\Models\PlanAdaptation;
 use App\Models\RunCard;
 use App\Models\Season;
@@ -33,7 +31,6 @@ enum AnalysisType: string
     case PostRunSpeech = 'post_run_speech';
     case RunInsight = 'run_insight';
     case WeeklyRecap = 'weekly_recap';
-    case PrContext = 'pr_context';
     case CardFlavor = 'card_flavor';
     case ProfileVoice = 'profile_voice';
     case MonthlyRecap = 'monthly_recap';
@@ -105,8 +102,7 @@ enum AnalysisType: string
         return match ($this) {
             self::PostRunSpeech,
             self::RunInsight,
-            self::CardFlavor,
-            self::PrContext => AnalysisCadence::PerActivity,
+            self::CardFlavor => AnalysisCadence::PerActivity,
             self::BriefingMascotVoice,
             self::PlanDayVoice => AnalysisCadence::Daily,
             self::WeeklyRecap,
@@ -133,7 +129,6 @@ enum AnalysisType: string
             self::PostRunSpeech,
             self::RunInsight => AnalyzeActivityJob::class,
             self::WeeklyRecap => AnalyzeWeeklyRecapJob::class,
-            self::PrContext => AnalyzePrContextJob::class,
             self::CardFlavor => AnalyzeCardFlavorJob::class,
             self::ProfileVoice => AnalyzeProfileVoiceJob::class,
             self::MonthlyRecap => AnalyzeMonthlyRecapJob::class,
@@ -238,7 +233,6 @@ enum AnalysisType: string
             self::PostRunSpeech,
             self::RunInsight,
             self::WeeklyRecap,
-            self::PrContext,
             self::CardFlavor,
             self::PlanWeekVoice,
             self::PlanSeasonVoice => ['prohibited'],
@@ -252,7 +246,6 @@ enum AnalysisType: string
             self::PostRunSpeech,
             self::RunInsight => Activity::class,
             self::WeeklyRecap => WeeklySnapshot::class,
-            self::PrContext => PersonalRecord::class,
             self::CardFlavor => RunCard::class,
             self::ProfileVoice => self::PROFILE_VOICE_SUBJECT_TYPE,
             self::MonthlyRecap => self::MONTHLY_RECAP_SUBJECT_TYPE,

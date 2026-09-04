@@ -41,7 +41,7 @@ auth group.
   configured at [config/ai.php](config/ai.php#L27)).
 
 Ownership is checked against the authenticated user on both
-([`ownedRun`](app/Http/Controllers/Api/RunQuestionController.php#L107)); another
+([`ownedRun`](app/Http/Controllers/Api/RunQuestionController.php#L124)); another
 user's run is a `403`, not a `404`, matching the analysis endpoints.
 
 ## Suggested questions come off the run

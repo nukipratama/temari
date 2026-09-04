@@ -12,7 +12,7 @@
     </x-pulse::card-header>
 
     <x-pulse::scroll :expand="$expand" wire:poll.30s="">
-        <div class="text-label-micro text-ink-3 mb-1">Failed blocks by attempts used</div>
+        <div class="text-label-micro text-text-3 mb-1">Failed blocks by attempts used</div>
         <div class="mb-4 flex gap-2 [&>*]:flex-1">
             @foreach ($buckets as $bucket)
                 @include('livewire.pulse.partials.stat-tile', [
@@ -42,10 +42,10 @@
                         <tr wire:key="{{ $block->subject_type }}-{{ $block->subject_id }}-{{ $block->analysis_type }}-spacer" class="h-2 first:h-0"></tr>
                         <tr wire:key="{{ $block->subject_type }}-{{ $block->subject_id }}-{{ $block->analysis_type }}-row">
                             <x-pulse::td class="max-w-[1px]">
-                                <code class="block truncate text-xs text-ink" title="{{ class_basename($block->subject_type) }} #{{ $block->subject_id }} · {{ $block->analysis_type }}">
+                                <code class="block truncate text-xs text-foreground" title="{{ class_basename($block->subject_type) }} #{{ $block->subject_id }} · {{ $block->analysis_type }}">
                                     {{ class_basename($block->subject_type) }} #{{ $block->subject_id }} · {{ $block->analysis_type }}
                                 </code>
-                                <p class="mt-1 truncate text-xs text-ink-3" title="{{ $block->error }}">
+                                <p class="mt-1 truncate text-xs text-text-3" title="{{ $block->error }}">
                                     {{ \Illuminate\Support\Str::limit((string) $block->error, 120) }}
                                 </p>
                             </x-pulse::td>
@@ -53,8 +53,8 @@
                                 <span @class([
                                     'rounded-full px-2 py-0.5 font-mono text-xs font-bold tabular-nums',
                                     'bg-ember/15 text-ember-ink' => $block->attempts >= $max,
-                                    'bg-horizon/25 text-ink' => $block->attempts === $max - 1,
-                                    'text-ink-2' => $block->attempts < $max - 1,
+                                    'bg-horizon/25 text-foreground' => $block->attempts === $max - 1,
+                                    'text-text-2' => $block->attempts < $max - 1,
                                 ])>
                                     {{ $block->attempts }}/{{ $max }}
                                 </span>

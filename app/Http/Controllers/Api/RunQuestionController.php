@@ -21,6 +21,8 @@ use App\Services\AI\RunQuestion\RunQuestionTopic;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 /**
  * "Ask about this run" — the scoped alternative to a chat surface.
@@ -54,6 +56,8 @@ class RunQuestionController extends Controller
         CostCeilingLedger $ledger,
         int $activity,
     ): JsonResponse {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::User);
+
         $user = $this->user($request);
         [, $detail] = $this->ownedRun($user, $activity);
         $question = $request->question();

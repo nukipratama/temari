@@ -30,9 +30,9 @@ code_refs:
 
 # AI usage dashboard
 
-`/ai-usage` is the operator's view of what the LLM pipeline is costing. It is not part of the runner-facing app — it has no `auth` middleware so ops can open it without a Strava session, and is gated by a separate devtools password instead (see Access below).
+`/devtools/ai-usage` is the operator's view of what the LLM pipeline is costing. It is not part of the runner-facing app — it has no `auth` middleware so ops can open it without a Strava session, and is gated by a separate devtools password instead (see Access below).
 
-**Navigation:** `route('ai-usage')` → `/ai-usage`. Named route: `ai-usage`.
+**Navigation:** `route('devtools.ai-usage')` → `/devtools/ai-usage`. Named route: `devtools.ai-usage`.
 
 ## System dependencies
 
@@ -59,15 +59,15 @@ A kind filter and from/to date controls ([UsageFilters](../../resources/js/compo
 
 The metering rows (`ai_token_usages`) live on the separate `analytics` connection, not the app database — see [[analytics-db]].
 
-## Surface split with /pulse
+## Surface split with /devtools/pulse
 
-This page owns **money**: spend, the daily budget, the per-user and per-model breakdowns, and the dead-letter re-arm. `/pulse` owns **health**: pipeline state, Strava, scheduler runs, the kill switches, notification delivery outcomes ([NotificationDeliveryHealth](../../app/Livewire/Pulse/NotificationDeliveryHealth.php)) and the per-block retry budget ([SelfHealAttempts](../../app/Livewire/Pulse/SelfHealAttempts.php)). The split is why a new operational signal goes to Pulse rather than growing this page, and why this page stays a first-party Inertia screen rather than becoming Livewire.
+This page owns **money**: spend, the daily budget, the per-user and per-model breakdowns, and the dead-letter re-arm. `/devtools/pulse` owns **health**: pipeline state, Strava, scheduler runs, the kill switches, notification delivery outcomes ([NotificationDeliveryHealth](../../app/Livewire/Pulse/NotificationDeliveryHealth.php)) and the per-block retry budget ([SelfHealAttempts](../../app/Livewire/Pulse/SelfHealAttempts.php)). The split is why a new operational signal goes to Pulse rather than growing this page, and why this page stays a first-party Inertia screen rather than becoming Livewire.
 
 Pulse renders outside the Inertia shell, so its layout loads only the packaged `pulse.css`; [resources/views/vendor/pulse/dashboard.blade.php](../../resources/views/vendor/pulse/dashboard.blade.php) registers `app.css` through `Pulse::css()` so the first-party cards can use the semantic `--color-*` tokens. Pulse's own stylesheet is unlayered and therefore still outranks the Tailwind v4 layers on every class the two vocabularies share, which is what keeps the stock cards looking stock. Utilities that Tailwind v3 initialises on `*` (`border-color`, the `--tw-ring-*` group) cannot be overridden that way, so the first-party cards use tinted backgrounds rather than rings or borders. The same file pins `localStorage.theme` to `light`, because the app is light-mode only and Pulse's switcher otherwise follows the operator's OS.
 
 ## Access (ops-gated)
 
-The route in [web.php](../../routes/web.php) (`ai-usage`) is gated by HTTP Basic Auth against one shared devtools password ([EnsureDevtoolsAccess](../../app/Http/Middleware/EnsureDevtoolsAccess.php), `config('devtools.password')`), fully independent of the Strava/`is_admin` session. The same middleware covers Horizon and Pulse (via their own `middleware` config), so all three dashboards sit behind one shared credential the browser caches per-origin — switching which Strava account is logged in doesn't affect it. A small landing page at `/devtools` links to all three. Every entry point (the `/devtools` route group, Horizon's and Pulse's own routes, and the Livewire update route Pulse's live cards POST through) is throttled at `60,1` (60 requests/minute/IP) to blunt password brute-forcing, generous enough to not trip Pulse's 5s card polling. The `viewHorizon`/`viewPulse` gates (checked internally by those packages) now always return true; they're a rubber stamp, since real enforcement happens in the middleware upstream. In production Cloudflare Access fronts the edge as well.
+The route in [web.php](../../routes/web.php) (`devtools.ai-usage`) is gated **in production** by HTTP Basic Auth against one shared devtools password ([EnsureDevtoolsAccess](../../app/Http/Middleware/EnsureDevtoolsAccess.php), `config('devtools.password')`), fully independent of the Strava/`is_admin` session. Outside production the gate is a deliberate no-op, so local and CI runs reach the console without a password; `APP_ENV` defaults to `production`, so the skip fails safe. The same middleware covers Horizon and Pulse (via their own `middleware` config), so all three dashboards sit behind one shared credential the browser caches per-origin — switching which Strava account is logged in doesn't affect it. A small landing page at `/devtools` links to all three. Every entry point (the `/devtools` route group, Horizon's and Pulse's own routes, and the Livewire update route Pulse's live cards POST through) is throttled at `60,1` (60 requests/minute/IP) to blunt password brute-forcing, generous enough to not trip Pulse's 5s card polling. The `viewHorizon`/`viewPulse` gates (checked internally by those packages) now always return true; they're a rubber stamp, since real enforcement happens in the middleware upstream. In production Cloudflare Access fronts the edge as well.
 
 ## See also
 

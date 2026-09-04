@@ -14,7 +14,7 @@ them rather than re-copying, since copies drift.
 Backend logic is split by domain under `app/Services/`:
 - **AI/** — narrators + the Analysis pipeline (see *AI narration pipeline* below).
 - **Run/** — ingest (Strava activity → `ActivityDetail` + streams), metrics (`TrainingLoad`, `PersonalRecords`, VDOT/threshold estimators, `WeeklyAggregator`), and story (`Vibe`, `Temari`, `BriefingComposer`, `RunCardFactory`).
-- **Gamification/** — `EquippedAccessories`, `GoalResolver`, `WeeklyRecapBuilder` (plus `DetectActivityMilestonesAction` and `GrantEligibleUnlocksAction` under `app/Actions/Gamification/`).
+- **Gamification/** — `GoalResolver`, `SeasonGoalResolver`, `GamificationContext`, `SeasonGamificationContext`, `SeasonStreakSummaryBuilder` (plus `DetectActivityMilestonesAction`, `GrantEligibleUnlocksAction`, `GrantSeasonUnlocksAction` and `SettleStreakRestTokensAction` under `app/Actions/Gamification/`).
 - **Strava/** — OAuth client, activity fetch, webhook + sync orchestration.
 - **Geo/** — polyline encode/decode + Nominatim reverse-geocode (`app/Jobs/Geo/` resolves location names).
 - **Weather/** — Open-Meteo snapshot attached per activity.
@@ -154,7 +154,7 @@ always-on guideline ("LLM Integration" in CLAUDE.md).
 Miss one and it fails loudly: `php artisan` breaks on enum match exhaustiveness (PHPStan), or
 the structure / coverage gates fail. **Model the shape on an existing sibling and mirror it** —
 per-user-per-day follows `TrendCaption`; per-activity follows `RunInsight*`; per-row-model
-follows `WeeklyRecap` / `PrContext` / `CardFlavor`. Let `Name` = StudlyCase, `snake` = snake_case.
+follows `WeeklyRecap` / `CardFlavor` / `PlanWeekVoice`. Let `Name` = StudlyCase, `snake` = snake_case.
 
 1. **Narrator** — `app/Services/AI/Narrators/{Name}Narrator.php`. Inject `StructuredChatCaller`;
    expose `generate(...)` returning the narrated string. Build `$context` from real metrics
@@ -203,7 +203,22 @@ before reaching for a new `AnalysisType` on anything user-initiated and free-for
 ./vendor/bin/sail composer check            # full gate: pint + phpstan + rector + pest --parallel + tsc + vitest. Pre-push only.
 ./vendor/bin/sail bin pint                  # format (also runs on pre-commit with phpstan + rector)
 ```
-Code quality (pint/phpstan/rector/tsc) runs on **pre-commit**; coverage runs in **CI**.
+Code quality (pint/phpstan/rector/tsc) runs on **pre-commit**; the 95% coverage gate runs in **CI**,
+on `pull_request` only. Coverage is deliberately *not* part of `composer check`.
+
+**When CI's coverage gate goes red** you can reproduce it locally — `pcov` ships in the dev image
+(it is what TIA records with), so this is a debugging tool, not a routine step:
+
+```bash
+./vendor/bin/sail bin pest --no-tia --coverage --filter=Name   # ~6s: is MY class covered?
+./vendor/bin/sail bin pest --no-tia --parallel --coverage --min=95   # ~64s: will the gate pass?
+```
+
+The filtered run reports 0.0% for everything else, which is expected — read only your own class's row.
+**`--no-tia` is mandatory here, and not for the obvious reason.** A TIA replay does reconstruct coverage
+in principle, but on a suite this size `--tia --coverage` does not run at all: it throws
+`InvalidCoverageDataException` against an existing graph, and with `--fresh` exhausts a 512M
+`memory_limit` merging an ~80MB coverage graph.
 
 **Pest 5 TIA is on for every local run** (`pest()->tia()->locally()` in [tests/Pest.php](../../../tests/Pest.php), backed by
 pcov in the dev image). Unaffected tests are **replayed from a cached dependency graph** rather than
@@ -213,9 +228,14 @@ internalising:
 - A green `--filter=Name` with nothing changed is a *cached* pass, not a fresh execution. Pass
   **`--no-tia`** when you need to genuinely re-run, or `--fresh` to discard the graph and re-record.
 - TIA is coverage-driven, so tests that read the filesystem (`File::allFiles`, `glob`) record no
-  edges. `tests/Unit/Architecture` is therefore pinned to run on any `app/`, `tests/`, `docs/` or
-  `resources/css/` change via the `watch()` map — extend that map when adding another scanning test,
-  or the gate silently stops firing.
+  edges. Those tests are pinned to run via the `watch()` map in [tests/Pest.php](../../../tests/Pest.php),
+  which is the **only** lever Pest gives you — there is no "always run" marker. The map is
+  hand-maintained and guarded by `TiaWatchMapTest`, which fails if a filesystem-scanning test is not
+  routed through it. It has rotted once: `NarratorsCoverageTest` globs the narrator and tool
+  directories, and a new narrator passed locally under TIA while failing under `--no-tia`.
+- A fresh clone or worktree records the graph from cold (~47s). `pest()->tia()->baselined()` skips
+  that by pulling the graph published by [tia-baseline.yml](../../../.github/workflows/tia-baseline.yml)
+  via `gh`, which ships in the dev image. It needs `GH_TOKEN` set; unset, Pest just records locally.
 
 CI passes `--no-tia` on both Pest steps: a narrowed run would quietly shrink the 95% coverage gate.
 
@@ -252,7 +272,7 @@ of it; `./vendor/bin/sail` works for everything afterwards.
 **Both** migration sets matters. `analytics` is a second connection with its own migration path, so
 a plain `artisan migrate` does not touch it — the script also runs
 `migrate --database=analytics --path=database/migrations/analytics`. Without it `strava_sync_logs`
-and `ai_token_usages` are missing and `/pulse` + `/ai-usage` 500. This lived only in the script's
+and `ai_token_usages` are missing and `/pulse` + `/devtools/ai-usage` 500. This lived only in the script's
 printed next-steps until #614, which is exactly why every worktree skipped it.
 
 The PHP suites are ready at that point (they self-initialize their own `mysql_test`/`redis_test`).

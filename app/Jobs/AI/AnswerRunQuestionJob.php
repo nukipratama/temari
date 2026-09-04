@@ -9,9 +9,11 @@ use App\Exceptions\AI\UnavailableException;
 use App\Models\Activity;
 use App\Models\AI\RunQuestion;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\Narrators\RunQuestionNarrator;
+use App\Services\AI\NarrationOrigin;
 use App\Services\AI\RunQuestion\RuleBasedRunAnswer;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -44,6 +46,10 @@ class AnswerRunQuestionJob implements ShouldQueue
 
     public function handle(AnalysisService $service, RunQuestionNarrator $narrator): void
     {
+        // Always user-initiated: the only way a RunQuestion row exists is
+        // somebody typing a question on a run.
+        app(NarrationOrigin::class)->set(AnalysisOrigin::User);
+
         $question = RunQuestion::query()->find($this->runQuestionId);
         if ($question === null || $question->status === AnalysisStatus::Done) {
             return;

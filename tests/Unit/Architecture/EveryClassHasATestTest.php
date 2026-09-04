@@ -17,7 +17,6 @@ use App\Actions\AI\RecordTokenUsageAction;
 use App\Services\Geo\ResolvedLocation;
 use App\Services\Run\FeedFilters;
 use App\Services\Run\Metrics\PaceFormatter;
-use App\Services\Gamification\WeeklyRecap;
 use App\Livewire\Pulse\Concerns\SumsPulseTotals;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousDailyNarrative;
@@ -61,7 +60,6 @@ it('has a test class for every concrete app class', function (): void {
         VerdictTimelineItem::class,
         WeatherSnapshot::class,
         FeedFilters::class,          // resolved Feed filter state, asserted via FeedQueryTest
-        WeeklyRecap::class,             // shaped recap DTO, built + asserted via WeeklyRecapBuilderTest
         NotifiableAnalysisTypes::class, // shared type registry, asserted via NotificationEligibilityTest + AnalysisMessagePresenterTest
         // Covered indirectly by the suites that drive them.
         TokenUsage::class,              // StructuredChatCallerTest

@@ -23,7 +23,6 @@ it('pins the exact case list, so adding or retiring a type is a deliberate edit'
         'post_run_speech',
         'run_insight',
         'weekly_recap',
-        'pr_context',
         'card_flavor',
         'profile_voice',
         'monthly_recap',
@@ -81,7 +80,6 @@ it('flags exactly the heart-rate-zone-derived types as zone-dependent', function
     'monthly recap (reads zone-weighted CTL for its fitness arc)' => [AnalysisType::MonthlyRecap, true],
     'trend read (reads monotony/strain/CTL, all TRIMP-derived)' => [AnalysisType::TrendRead, true],
     'post-run speech' => [AnalysisType::PostRunSpeech, false],
-    'pr context' => [AnalysisType::PrContext, false],
     'briefing mascot voice' => [AnalysisType::BriefingMascotVoice, false],
 ]);
 
@@ -146,7 +144,6 @@ it('prohibits a discriminator on the types that key off subject_id alone', funct
     'post run speech' => [AnalysisType::PostRunSpeech],
     'run insight' => [AnalysisType::RunInsight],
     'weekly recap' => [AnalysisType::WeeklyRecap],
-    'pr context' => [AnalysisType::PrContext],
     'card flavor' => [AnalysisType::CardFlavor],
     'plan week voice' => [AnalysisType::PlanWeekVoice],
     'plan season voice' => [AnalysisType::PlanSeasonVoice],

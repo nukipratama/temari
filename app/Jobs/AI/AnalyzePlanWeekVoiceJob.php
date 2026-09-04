@@ -7,6 +7,7 @@ namespace App\Jobs\AI;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\AI\Analysis;
 use App\Models\PlanAdaptation;
+use App\Services\AI\MaterialFingerprint;
 use App\Services\AI\Narrators\PlanWeekVoiceNarrator;
 
 class AnalyzePlanWeekVoiceJob extends AnalyzeRowJob
@@ -19,5 +20,12 @@ class AnalyzePlanWeekVoiceJob extends AnalyzeRowJob
         }
 
         return app(PlanWeekVoiceNarrator::class)->generate($adaptation);
+    }
+
+    protected function fingerprintFor(Analysis $row): ?string
+    {
+        $adaptation = PlanAdaptation::query()->find($row->subject_id);
+
+        return $adaptation === null ? null : MaterialFingerprint::forPlanAdaptation($adaptation);
     }
 }

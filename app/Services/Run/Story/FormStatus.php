@@ -12,16 +12,16 @@ final class FormStatus
     public static function label(?array $load): string
     {
         if ($load === null) {
-            return 'Not read yet';
+            return 'not read yet';
         }
 
         // Mirror of resources/js/lib/formStatus.ts LABELS (keep both in sync).
         return match ($load['form_status']) {
-            'fresh' => 'Feeling Fresh',
-            'optimal' => 'Right on Track',
-            'fatigued' => 'Getting Tired',
-            'overreaching' => 'Overreaching',
-            default => 'Right on Track',
+            'fresh' => 'feeling fresh',
+            'optimal' => 'right on track',
+            'fatigued' => 'getting tired',
+            'overreaching' => 'overreaching',
+            default => 'right on track',
         };
     }
 

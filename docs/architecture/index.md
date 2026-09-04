@@ -33,7 +33,7 @@ _Pipelines & metrics_
 _AI narration_
 - [[ai-pipeline]] — narrator → job → Analysis row; cadence; group/row jobs; chaining; cost ceiling; dead-lettering
 - [[ai-narration-internals]] — context builders (prompt signals) + the demo filler
-- [[llm-triggers]] — every path that reaches a model, by what starts it; what stops one, and the per-narrator spend query
+- [[llm-triggers]] — the whole LLM surface: every narrator, agent tool and deterministic producer, what starts a call, what stops one, and a proposed verdict per surface
 
 _External integrations_
 - [[strava-client]] — circuit breaker state machine, rate buckets, token refresh

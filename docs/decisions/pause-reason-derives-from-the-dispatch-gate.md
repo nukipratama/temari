@@ -15,6 +15,11 @@ code_refs:
 
 **Status:** Accepted (decided 2026-08-14)
 
+> **2026-09-03 — one path below has changed, the decision has not.** The operator console
+> moved behind a single `/devtools` prefix: `/ai-usage` is now `/devtools/ai-usage`,
+> `/pulse` is `/devtools/pulse` and `/horizon` is `/devtools/horizon`. The gate on them
+> also now skips outside production. Everything this decision says about behaviour stands.
+
 ## Context
 
 Two questions are asked about AI generation, and they were answered by two different pieces of code:

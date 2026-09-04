@@ -31,6 +31,17 @@ export const MOOD_SOFT_FILL: Record<Mood, string> = {
     chill: 'bg-mood-chill-bg',
 };
 
+// Label colour (text-mood-{key}-ink). The soft fill above is fixed identity and
+// stays pale on both grounds, so text on it must be pinned rather than inherited.
+export const MOOD_INK: Record<Mood, string> = {
+    blazing: 'text-mood-blazing-ink',
+    easy: 'text-mood-easy-ink',
+    gassed: 'text-mood-gassed-ink',
+    wobbly: 'text-mood-wobbly-ink',
+    overloaded: 'text-mood-overloaded-ink',
+    chill: 'text-mood-chill-ink',
+};
+
 // Canonical mood ordering for legends + filter rows (best-day → rest-day).
 export const MOOD_ORDER: ReadonlyArray<Mood> = [
     'blazing',

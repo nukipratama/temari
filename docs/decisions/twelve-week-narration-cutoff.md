@@ -18,6 +18,12 @@ code_refs:
 
 **Status:** Accepted (documented 2026-08-14)
 
+> **Fact update, 2026-09-04.** The decision and its reasoning stand unchanged. `pr_context` is
+> named below as one of the two unchained kinds a manual retry could re-bill past the cutoff, and
+> as an age-gate arm resolving through the PR row. That surface has since been cut entirely: it was
+> narrated on every ingest and rendered on no page, so its enum case, narrator, job, tool and
+> age-gate arm are gone. `card_flavor` is now the only unchained kind the argument applies to.
+
 > **Fact update, 2026-09-02 (`W2`).** The decision and its reasoning stand unchanged. One subject
 > named below no longer exists: `briefing_featured_kartu_voice` narrated Today's featured-kartu
 > panel, which `PP3` cut, so `W2` swept the enum case, its narrator, its job and its agent tool.

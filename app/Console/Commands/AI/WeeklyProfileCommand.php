@@ -12,6 +12,8 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 #[Signature('ai:weekly-profile')]
 #[Description('Refresh the Profile-page Temari voice once a week for each active user (demo excluded)')]
@@ -33,6 +35,8 @@ class WeeklyProfileCommand extends Command
      */
     public function handle(AnalysisService $service): int
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
+
         // The voice is keyed per ISO week (its narrator reads a 12-week mood
         // window), so the rolling week-key is itself the weekly regen: a new week
         // creates a fresh row, and invalidate:false never re-bills the row a

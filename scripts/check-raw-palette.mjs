@@ -149,7 +149,7 @@ const RULES = [
        resources/css/app.css's scale. Nothing in that closed vocabulary is
        off-scale any more; see check-raw-palette.test.ts for the regression
        test proving this removal was deliberate, not the rule silently
-       going empty (R10 in plan/README.md). */
+       going empty (risk R10 of the parity program). */
 ];
 
 /** `.blade.php` has a two-part extension, so match on the suffix, not extname(). */

@@ -6,7 +6,6 @@ import MotionLink from '@/components/MotionLink';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { MOOD_FILL } from '@/lib/mood';
-import { moodFromActivity } from '@/lib/moodFromActivity';
 import {
     formatDurationHMS,
     formatKm,
@@ -45,7 +44,7 @@ function RunListRow({
         detail.average_heartrate != null
             ? Math.round(detail.average_heartrate)
             : null;
-    const safeMood: Mood = note?.mood ?? mood ?? moodFromActivity(detail);
+    const knownMood: Mood | null = note?.mood ?? mood ?? null;
     const startTime = formatNaiveTimeId(detail.start_date_local);
 
     return (
@@ -55,13 +54,15 @@ function RunListRow({
         >
             <div className="flex items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-1.5">
-                    <span
-                        aria-hidden
-                        className={cn(
-                            'size-[7px] flex-none rounded-full',
-                            MOOD_FILL[safeMood],
-                        )}
-                    />
+                    {knownMood !== null && (
+                        <span
+                            aria-hidden
+                            className={cn(
+                                'size-[7px] flex-none rounded-full',
+                                MOOD_FILL[knownMood],
+                            )}
+                        />
+                    )}
                     <span className="truncate text-[0.8125rem] leading-[1.2] font-bold text-foreground">
                         {detail.name ?? 'Run'}
                     </span>

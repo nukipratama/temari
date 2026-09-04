@@ -22,6 +22,8 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
 
     final public function handle(AnalysisService $service): void
     {
+        $this->applyOrigin();
+
         $row = Analysis::query()->find($this->analysisId);
         if ($row === null || $row->status === AnalysisStatus::Done) {
             return;
@@ -39,7 +41,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
 
         try {
             $content = $this->generateContent($row);
-            $service->markDone($row, $content);
+            $service->markDone($row, $content, fingerprint: $this->fingerprintFor($row));
             $this->afterDone($row, $service);
         } catch (ContentFilterException) {
             // The continuity-stripped retry still content-filtered. Degrade to
@@ -80,6 +82,21 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
     }
 
     abstract protected function generateContent(Analysis $row): string;
+
+    /**
+     * A digest of the material this narration describes, stamped on the row so a
+     * scheduled re-narration can tell an unchanged subject from a changed one and
+     * skip the bill. Null (the default) means the type does not track changes and
+     * its caller decides when to re-narrate.
+     *
+     * Deliberately not written on the rule-based paths: a filler line is not a
+     * narration of the material, so a capped or content-filtered day stays
+     * eligible for a real one.
+     */
+    protected function fingerprintFor(Analysis $row): ?string
+    {
+        return null;
+    }
 
     /**
      * Hook fired after a row is marked Done. Connected + chained narrators

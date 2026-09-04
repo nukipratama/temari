@@ -56,7 +56,7 @@ One more manual re-pull exists beyond "Sync now": `RunnerZonesController::resync
 
 ## Kill-switch pause
 
-The `/pulse` Strava kill-switch (`AppConfigKey::StravaEnabled`) is enforced downstream in [ActivityPipeline](../../app/Services/Run/Ingest/ActivityPipeline.php) and [SyncOrchestrator](../../app/Services/Run/Ingest/SyncOrchestrator.php), but downstream-only enforcement is invisible: the buttons above used to queue work and flash success for a pull that would never happen.
+The `/devtools/pulse` Strava kill-switch (`AppConfigKey::StravaEnabled`) is enforced downstream in [ActivityPipeline](../../app/Services/Run/Ingest/ActivityPipeline.php) and [SyncOrchestrator](../../app/Services/Run/Ingest/SyncOrchestrator.php), but downstream-only enforcement is invisible: the buttons above used to queue work and flash success for a pull that would never happen.
 
 - **Shared state.** [StravaProps](../../app/Services/Inertia/StravaProps.php) shares a `stravaPaused` boolean, cached globally under `SharedPropCacheKey::StravaPaused` and busted by `SystemControl::toggleStrava()` so a flip lands on the next request. Only the pause *fact* crosses to the client, never the operator reason. `StravaSyncState` is deliberately untouched: other components branch on that union, and a fifth variant would force every one of them to handle it.
 - **UI.** [StravaAction](../../resources/js/components/StravaAction.tsx) wraps each manual affordance and renders nothing while paused, so the control is *absent* rather than greyed out; [StravaPausedBanner](../../resources/js/components/StravaPausedBanner.tsx) carries the single calm explanation app-wide. Connect/reconnect links are **not** gated: OAuth still completes, and Strava is the only way to sign in.

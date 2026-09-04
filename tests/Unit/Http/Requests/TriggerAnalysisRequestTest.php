@@ -168,7 +168,6 @@ it('rejects any discriminator on the types whose job ignores it', function (stri
     'post_run_speech',
     'run_insight',
     'weekly_recap',
-    'pr_context',
     'card_flavor',
 ]);
 

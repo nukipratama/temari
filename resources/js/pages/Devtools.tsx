@@ -22,19 +22,19 @@ const LINKS: ReadonlyArray<DevtoolsLink> = [
         icon: 'mdi:currency-usd',
         label: 'AI Usage',
         desc: 'Token spend, budget gauge, and self-heal panel.',
-        href: '/ai-usage',
+        href: '/devtools/ai-usage',
     },
     {
         icon: 'mdi:sail-boat',
         label: 'Horizon',
         desc: 'Queue worker & job monitoring.',
-        href: '/horizon',
+        href: '/devtools/horizon',
     },
     {
         icon: 'mdi:pulse',
         label: 'Pulse',
         desc: 'Server, request, and exception metrics.',
-        href: '/pulse',
+        href: '/devtools/pulse',
     },
 ];
 
@@ -48,7 +48,7 @@ export default function Devtools() {
                         Devtools
                     </h1>
                     <p className="mt-2 text-sm text-text-2">
-                        Internal tools, gated behind HTTP Basic.
+                        Internal tools. Gated behind HTTP Basic in production.
                     </p>
                 </div>
                 <ul className="grid w-full max-w-[560px] gap-3.5">

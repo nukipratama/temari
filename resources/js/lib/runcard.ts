@@ -162,16 +162,6 @@ export const RARITY_INK: Record<Rarity, string> = {
     legendary: 'text-rarity-legendary-ink',
 };
 
-// Static literal Tailwind class map (so JIT picks it up) for the rarity
-// swatch shared by the card and the mini tile.
-export const RARITY_DOT: Record<Rarity, string> = {
-    common: 'bg-rarity-common',
-    uncommon: 'bg-rarity-uncommon',
-    rare: 'bg-rarity-rare',
-    epic: 'bg-rarity-epic',
-    legendary: 'bg-rarity-legendary',
-};
-
 // Slug → Title Case ("early_bird" → "Early Bird"). Fallback for unknown slugs.
 export function prettyBadge(slug: string): string {
     return slug
@@ -205,7 +195,7 @@ function parsePaceSeconds(mmss: string): number | null {
 
 // Per-km pace seconds from stream_summary, for the RouteGlyph pace-shape
 // fallback when a run has no GPS polyline. Empty when no per-km data exists.
-export function paceShapeFromDetail(detail?: ActivityDetail | null): number[] {
+function paceShapeFromDetail(detail?: ActivityDetail | null): number[] {
     const perKm = detail?.stream_summary?.per_km;
     if (!perKm?.length) return [];
     return perKm
@@ -273,9 +263,7 @@ export interface CardStatStrings {
  * the `${x} bpm` / `${x} spm` / `${pace}/km` formatting can't drift. Each value is
  * omitted (not "—") when its source is missing, matching the card's honest-cells rule.
  */
-export function buildCardStats(
-    detail?: ActivityDetail | null,
-): CardStatStrings {
+function buildCardStats(detail?: ActivityDetail | null): CardStatStrings {
     const paceSec = paceSecPerKm(detail?.elapsed_time, detail?.distance);
     const cadence = avgCadenceFromDetail(detail);
     const fastestKm = fastestKmFromDetail(detail);

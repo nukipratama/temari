@@ -222,7 +222,7 @@ export default function ShareCardModal({
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.96, y: 8 }}
                     transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                    className="flex w-full max-w-md flex-col overflow-hidden rounded-xl bg-cream shadow-e4"
+                    className="flex w-full max-w-md flex-col overflow-hidden rounded-xl bg-card shadow-e4"
                     style={{ maxHeight: '92dvh' }}
                 >
                     {/* Header — pinned. */}
@@ -247,7 +247,7 @@ export default function ShareCardModal({
                     </div>
 
                     {/* Body — preview + pickers, scrolls on short screens. */}
-                    <div className="flex flex-1 flex-col items-center gap-4 overflow-y-auto bg-cream-deep px-5 py-5">
+                    <div className="flex flex-1 flex-col items-center gap-4 overflow-y-auto bg-muted px-5 py-5">
                         {/* Preview canvas — fixed internal resolution, bounded by HEIGHT so
                             a tall 9:16 story scales to fit instead of being forced to the
                             column width. Width derives from the canvas's intrinsic ratio, so
@@ -272,8 +272,8 @@ export default function ShareCardModal({
                                     className={cn(
                                         'focus-ring flex items-center justify-center gap-2 rounded-xl p-2.5 text-xs font-medium transition',
                                         format === f
-                                            ? 'border-2 border-sky bg-cream font-semibold text-foreground'
-                                            : 'border-2 border-transparent bg-cream text-text-2 hover:border-cream-deep',
+                                            ? 'border-2 border-border-strong bg-card font-semibold text-foreground'
+                                            : 'border-2 border-transparent bg-card text-text-2 hover:border-border',
                                     )}
                                 >
                                     <span
@@ -346,7 +346,7 @@ export default function ShareCardModal({
                     </div>
 
                     {/* CTAs — pinned footer. */}
-                    <div className="flex flex-col gap-2 border-t border-cream-deep bg-cream px-5 py-4">
+                    <div className="flex flex-col gap-2 border-t border-border bg-card px-5 py-4">
                         <PillButton
                             tone="sky"
                             onClick={handleShare}

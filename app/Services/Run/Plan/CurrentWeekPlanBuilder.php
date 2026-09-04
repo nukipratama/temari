@@ -26,8 +26,8 @@ use LogicException;
  */
 final readonly class CurrentWeekPlanBuilder
 {
-    /** Mirrors PlanController::HISTORY_WEEKS — must match for the shared week's multiplier to agree. */
-    private const int HISTORY_WEEKS = 3;
+    /** The trailing window both this builder and PlanController read, so the week they share resolves to one multiplier. */
+    public const int HISTORY_WEEKS = 3;
 
     public function __construct(
         private TrainingBaseline $baseline,

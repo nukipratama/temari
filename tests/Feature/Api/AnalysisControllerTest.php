@@ -8,12 +8,10 @@ use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
-use App\Jobs\AI\AnalyzePrContextJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\PersonalRecord;
 use App\Models\RunnerProfile;
 use App\Models\RunCard;
 use App\Models\User;
@@ -205,20 +203,6 @@ it('authorizes weekly_recap only for the snapshot owner', function (): void {
 
     $this->actingAs($owner)
         ->postJson("/api/analyses/weekly_recap/{$snap->id}/trigger")
-        ->assertOk();
-});
-
-it('authorizes pr_context only for the personal record owner', function (): void {
-    $owner = User::factory()->create();
-    $other = User::factory()->create();
-    $pr = PersonalRecord::factory()->for($owner)->create();
-
-    $this->actingAs($other)
-        ->postJson("/api/analyses/pr_context/{$pr->id}/trigger")
-        ->assertForbidden();
-
-    $this->actingAs($owner)
-        ->postJson("/api/analyses/pr_context/{$pr->id}/trigger")
         ->assertOk();
 });
 
@@ -783,37 +767,31 @@ it('still dispatches a real billed job for a non-demo user on the same block', f
 
 // ── trigger → narration age cutoff ──────────────────────────────────────────
 //
-// card_flavor and pr_context are not chained, so nothing else stops a manual
-// "Reread" on a years-old run from billing exactly what the ingest-side
-// cutoff routed to the rule-based filler.
+// card_flavor is not chained, so nothing else stops a manual "Reread" on a
+// years-old run from billing exactly what the ingest-side cutoff routed to the
+// rule-based filler.
 
-/** @return array{0: RunCard, 1: PersonalRecord} */
-function subjectsForRunAged(User $user, int $days): array
+function cardForRunAged(User $user, int $days): RunCard
 {
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => Carbon::now()->subDays($days),
     ]);
 
-    return [
-        RunCard::factory()->for($activity)->create(),
-        PersonalRecord::factory()->for($user)->create(['activity_id' => $activity->id]),
-    ];
+    return RunCard::factory()->for($activity)->create();
 }
 
 it('serves a manual retry rule-based when the run is past the narration cutoff', function (): void {
     config()->set('ai.backfill_max_age_days', 84);
     $user = User::factory()->create();
-    [$card, $record] = subjectsForRunAged($user, 200);
+    $card = cardForRunAged($user, 200);
 
-    foreach (["card_flavor/{$card->id}", "pr_context/{$record->id}"] as $path) {
-        $response = $this->actingAs($user)
-            ->postJson("/api/analyses/{$path}/trigger")
-            ->assertSuccessful()
-            ->assertJson(['status' => 'done']);
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/card_flavor/{$card->id}/trigger")
+        ->assertSuccessful()
+        ->assertJson(['status' => 'done']);
 
-        expect($response->json('content'))->toBeString()->not->toBeEmpty();
-    }
+    expect($response->json('content'))->toBeString()->not->toBeEmpty();
 
     Bus::assertNothingDispatched();
 });
@@ -821,19 +799,17 @@ it('serves a manual retry rule-based when the run is past the narration cutoff',
 it('still bills a manual retry on a run just inside the cutoff', function (): void {
     config()->set('ai.backfill_max_age_days', 84);
     $user = User::factory()->create();
-    [$card, $record] = subjectsForRunAged($user, 83);
+    $card = cardForRunAged($user, 83);
 
     $this->actingAs($user)->postJson("/api/analyses/card_flavor/{$card->id}/trigger")->assertSuccessful();
-    $this->actingAs($user)->postJson("/api/analyses/pr_context/{$record->id}/trigger")->assertSuccessful();
 
     Bus::assertDispatched(AnalyzeCardFlavorJob::class);
-    Bus::assertDispatched(AnalyzePrContextJob::class);
 });
 
 it('never overwrites narration a too-old run was already billed for', function (): void {
     config()->set('ai.backfill_max_age_days', 84);
     $user = User::factory()->create();
-    [$card] = subjectsForRunAged($user, 200);
+    $card = cardForRunAged($user, 200);
     Analysis::factory()->done('original narration, already billed')->create([
         'subject_type' => RunCard::class,
         'subject_id' => $card->id,

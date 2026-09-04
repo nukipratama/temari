@@ -5,7 +5,7 @@ import { pressShrink } from '@/lib/motion';
 
 export type TrendRange = '30d' | '90d' | '12mo';
 
-export const TREND_RANGES: ReadonlyArray<{
+const TREND_RANGES: ReadonlyArray<{
     key: TrendRange;
     label: string;
 }> = [

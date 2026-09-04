@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use App\Models\Activity;
-use App\Models\PersonalRecord;
 use App\Models\PlanAdaptation;
 use App\Models\RunCard;
 use App\Models\Season;
@@ -40,7 +39,6 @@ final class AnalysisSubjectAuthorizer
             AnalysisType::PostRunSpeech,
             AnalysisType::RunInsight => self::userOwns(Activity::query(), $subjectId, $user->id),
             AnalysisType::WeeklyRecap => self::userOwns(WeeklySnapshot::query(), $subjectId, $user->id),
-            AnalysisType::PrContext => self::userOwns(PersonalRecord::query(), $subjectId, $user->id),
             AnalysisType::CardFlavor => RunCard::query()
                 ->whereKey($subjectId)
                 ->forUser($user->id)

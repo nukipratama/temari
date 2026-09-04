@@ -47,7 +47,7 @@ before a release).
 The app is reachable **inside the container at `http://localhost`** (host-forwarded port is
 `APP_PORT=7001`, but the scripts run in the container, so use `localhost`).
 
-### The operator console (`/devtools`, `/devtools/design`, `/ai-usage`, `/pulse`)
+### The operator console (`/devtools`, `/devtools/design`, `/devtools/ai-usage`, `/pulse`)
 
 All four sit behind HTTP Basic Auth (`EnsureDevtoolsAccess`) and `/pulse` is a vendor route that
 `route:list --except-vendor` never reports, so they are **excluded unless `DEVTOOLS_PASSWORD` is
@@ -91,9 +91,37 @@ docker compose exec -u root app sh .claude/skills/browser-review/scripts/setup.s
 #    pages get the expensive vision read, see "Inspect in parallel" below)
 ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/audit.mjs
 
-# 4. teardown (restore node_modules; screenshots are kept as history)
+# 4. rendered-contrast audit, once per ground (dark is the app's default)
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/contrast.mjs dark
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/contrast.mjs light
+
+# 5. teardown (restore node_modules; screenshots are kept as history)
 ./vendor/bin/sail exec app sh .claude/skills/browser-review/scripts/teardown.sh
 ```
+
+### Why `contrast.mjs` exists, and why it is not the design page's audit
+
+`/devtools/design` scores *token pairings* declared in `grounds.json`. That answers "is this pair
+readable", not "is anything on screen unreadable" — a token can be perfectly specified and still be
+applied to the wrong surface. `contrast.mjs` scores what the browser actually painted: every element
+with its own text node, its background resolved by walking ancestors, against the WCAG minimum for
+its computed font size and weight.
+
+Run it per ground. The two disagree, and the dark ground is the default — three real bugs shipped
+under a token audit that read green on light, all of them a fixed-identity token used where the
+ground flips (a `mood-*` fill is fixed, `foreground` is not, so `text-foreground` on a mood chip is
+near-white on pale green).
+
+An element whose background is a gradient, image, map tile or video is **skipped, not scored** —
+there is no flat colour to compare against, and scoring it against an ancestor's colour invents
+failures that are not on screen. That was the difference between four reported failures and the
+three that were real.
+
+**One known false positive remains**, on the light ground only: the "Activate map" overlay on
+`/activities/{id}`. Nothing in its ancestor chain paints an opaque background, so the resolver falls
+back to white and scores `text-cream` against white (1.13). In the browser it sits on a dark
+`bg-ink/70` pill over the map placeholder and is perfectly legible. Treat a **dark-ground total of 0
+and a light-ground total of 1** as the clean baseline; anything above that is new.
 
 > **Reading screenshots costs more than it looks.** An image read into the main context is re-billed
 > as a cache read on *every* later turn, so cost is `size x remaining turns`, not size. A full-page
@@ -299,4 +327,4 @@ return results
   an accessory) aren't auto-driven — spot-check those with a short one-off Playwright script that
   clicks the element, screenshots, and asserts its `boundingBox()` is within the viewport.
 - Scripts: `lib.mjs` (shared: viewports, login, route discovery), `shoot.mjs` (screenshots),
-  `audit.mjs` (overflow), `setup.sh` / `teardown.sh`.
+  `audit.mjs` (overflow), `contrast.mjs` (rendered contrast, per ground), `setup.sh` / `teardown.sh`.

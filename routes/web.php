@@ -183,16 +183,17 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 
 });
 
-// Gated by HTTP Basic Auth against a shared devtools password, independent of
-// any Strava session — see EnsureDevtoolsAccess. Throttled like the other
+// Gated in production by HTTP Basic Auth against a shared devtools password,
+// independent of any Strava session, and open everywhere else — see
+// EnsureDevtoolsAccess. Throttled like the other
 // public POSTs (60/min/IP) so a wrong password can't be broute-forced at
 // line speed; generous enough to not trip Pulse's live-polling requests.
 Route::middleware(['throttle:60,1', 'devtools'])->group(function (): void {
     Route::get('/devtools', DevtoolsIndexController::class)->name('devtools.index');
     Route::get('/devtools/design', DevtoolsDesignController::class)->name('devtools.design');
-    Route::get('/ai-usage', [TokenUsageController::class, 'show'])->name('ai-usage');
-    Route::post('/ai-usage/recover', [TokenUsageController::class, 'recover'])->name('ai-usage.recover');
-    Route::post('/ai-usage/users/{userId}/retry-failed', [TokenUsageController::class, 'retryFailed'])
+    Route::get('/devtools/ai-usage', [TokenUsageController::class, 'show'])->name('devtools.ai-usage');
+    Route::post('/devtools/ai-usage/recover', [TokenUsageController::class, 'recover'])->name('devtools.ai-usage.recover');
+    Route::post('/devtools/ai-usage/users/{userId}/retry-failed', [TokenUsageController::class, 'retryFailed'])
         ->whereNumber('userId')
-        ->name('ai-usage.retry-failed');
+        ->name('devtools.ai-usage.retry-failed');
 });

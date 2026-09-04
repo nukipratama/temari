@@ -13,6 +13,11 @@ code_refs:
 
 **Status:** Accepted (documented 2026-06-20)
 
+> **Fact update, 2026-09-04.** The decision and its reasoning stand unchanged. `pr_context`, named
+> below as one of the high-value kinds pointed at the stronger model, no longer exists: the surface
+> was cut for narrating on every ingest while rendering nowhere, and its `narrators` config entry
+> and `AZURE_OPENAI_PR_CONTEXT_DEPLOYMENT` override went with it.
+
 > **Fact update, 2026-09-02 (`W6`).** The decision and its reasoning stand unchanged. Two of the
 > narrator kinds named below were renamed out of Indonesian: `aku_profile_voice` became
 > `profile_voice`, so its override key is now **`AZURE_OPENAI_PROFILE_VOICE_DEPLOYMENT`**, and

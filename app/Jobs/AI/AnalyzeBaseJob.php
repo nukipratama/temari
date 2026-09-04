@@ -7,7 +7,9 @@ namespace App\Jobs\AI;
 use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\AI\Analysis;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\NarrationOrigin;
 use App\Services\AI\AnalysisStatus;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -25,6 +27,15 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      */
     public const string QUEUE = 'ai';
 
+    /**
+     * What started this job, stamped by {@see \App\Services\AI\AnalysisService}
+     * at dispatch and restored into {@see NarrationOrigin} before generating, so
+     * the metering row can attribute the call to its trigger rather than only to
+     * the narrator that answered it. Serialized with the job, so it survives the
+     * queue and a retry.
+     */
+    public AnalysisOrigin $origin = AnalysisOrigin::Unknown;
+
     public int $tries = 3;
 
     /** @var array<int, int> */
@@ -33,6 +44,16 @@ abstract class AnalyzeBaseJob implements ShouldQueue
     public function __construct()
     {
         $this->onQueue(self::QUEUE);
+    }
+
+    /**
+     * Put this job's origin in effect for the rest of its run. Called at the top
+     * of every concrete handle(), so a long-lived worker never inherits the
+     * previous job's attribution.
+     */
+    final protected function applyOrigin(): void
+    {
+        app(NarrationOrigin::class)->set($this->origin);
     }
 
     /**

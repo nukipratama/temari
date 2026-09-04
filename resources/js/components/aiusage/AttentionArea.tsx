@@ -67,7 +67,7 @@ function RecoverBar() {
     const { post, processing } = useForm();
 
     function recover(): void {
-        post('/ai-usage/recover', { preserveScroll: true });
+        post('/devtools/ai-usage/recover', { preserveScroll: true });
     }
 
     return (
@@ -151,7 +151,7 @@ function AttentionGroupRow({
     const paused = usePage<SharedProps>().props.aiPaused ?? false;
 
     function retry(): void {
-        post(`/ai-usage/users/${group.user_id}/retry-failed`, {
+        post(`/devtools/ai-usage/users/${group.user_id}/retry-failed`, {
             preserveScroll: true,
         });
     }

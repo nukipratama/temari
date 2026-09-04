@@ -130,8 +130,8 @@ export const toggleButtonVariants = cva(
                 md: 'px-4 py-2 text-sm',
             },
             selected: {
-                true: 'bg-sky text-cream',
-                false: 'bg-cream-deep text-text-2 hover:bg-cream-deep/70',
+                true: 'bg-foreground text-background',
+                false: 'bg-muted text-text-2 hover:bg-muted/70',
             },
         },
         defaultVariants: {

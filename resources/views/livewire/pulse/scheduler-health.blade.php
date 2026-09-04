@@ -11,7 +11,7 @@
         @else
             <div class="space-y-2">
                 @foreach ($tasks as $task)
-                    <div class="rounded-sm bg-surface-sunken p-2">
+                    <div class="rounded-sm bg-muted p-2">
                         <div class="flex items-center justify-between gap-2">
                             <div class="flex items-center gap-2 min-w-0">
                                 <span @class([
@@ -21,8 +21,8 @@
                                     'bg-leaf' => $task['status'] === 'ok',
                                 ])></span>
                                 <div class="min-w-0">
-                                    <div class="truncate text-sm font-bold text-ink">{{ $task['command'] }}</div>
-                                    <div class="text-label-micro text-ink-3">
+                                    <div class="truncate text-sm font-bold text-foreground">{{ $task['command'] }}</div>
+                                    <div class="text-label-micro text-text-3">
                                         @if ($task['lastRunAt'])
                                             ran {{ $task['lastRunAt']->diffForHumans() }}
                                         @else
@@ -37,7 +37,7 @@
                             <div @class([
                                 'shrink-0 rounded-full px-2 py-0.5 text-label-micro',
                                 'bg-ember/15 text-ember-ink' => $task['status'] === 'failed',
-                                'bg-horizon/25 text-ink' => $task['status'] === 'late',
+                                'bg-horizon/25 text-foreground' => $task['status'] === 'late',
                                 'bg-leaf/10 text-leaf-ink' => $task['status'] === 'ok',
                             ])>
                                 {{ $task['status'] }}

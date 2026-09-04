@@ -12,6 +12,8 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 #[Signature('ai:trend-read {range : One of AnalysisType::TREND_READ_RANGES (30d/90d/12mo)}')]
 #[Description('Dispatch the Trends tab narration for one range (30d/90d/12mo), one cadence per range — see routes/console.php')]
@@ -27,6 +29,8 @@ class TrendReadCommand extends Command
 
     public function handle(AnalysisService $service): int
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
+
         $range = (string) $this->argument('range');
         if (! in_array($range, AnalysisType::TREND_READ_RANGES, true)) {
             $this->error('range must be one of: '.implode(', ', AnalysisType::TREND_READ_RANGES));

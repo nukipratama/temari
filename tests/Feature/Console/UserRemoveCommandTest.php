@@ -40,9 +40,9 @@ function seedUserWithData(): array
         'discriminator' => null,
     ]);
     Analysis::factory()->create([
-        'subject_type' => PersonalRecord::class,
-        'subject_id' => $personalRecord->id,
-        'analysis_type' => AnalysisType::PrContext,
+        'subject_type' => RunCard::class,
+        'subject_id' => $card->id,
+        'analysis_type' => AnalysisType::CardFlavor,
         'discriminator' => null,
     ]);
     Analysis::factory()->create([

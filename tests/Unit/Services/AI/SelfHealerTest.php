@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -368,51 +367,6 @@ it('batches multiple stalled CardFlavor rows per user, capped at the drain batch
     expect($captured)->toHaveCount(10)
         ->and(collect($captured)->pluck('type')->unique()->all())->toBe([AnalysisType::CardFlavor])
         ->and(array_column($captured, 'delaySeconds'))->toEqualCanonicalizing(range(0, 45, 5));
-});
-
-it('batches multiple stalled PrContext rows per user', function (): void {
-    $user = User::factory()->create();
-    // Pin distinct categories: the factory picks one at random, so three PRs for
-    // one user would otherwise sometimes collide on the (user_id, category) unique.
-    $categories = ['5km', '10km', 'half_marathon'];
-    for ($i = 0; $i < 3; $i++) {
-        $pr = PersonalRecord::factory()->for($user)->create([
-            'category' => $categories[$i],
-            'set_at' => Carbon::parse('2026-05-0'.($i + 1)),
-        ]);
-        Analysis::factory()->create([
-            'subject_type' => PersonalRecord::class,
-            'subject_id' => $pr->id,
-            'analysis_type' => AnalysisType::PrContext,
-            'status' => AnalysisStatus::Pending,
-        ]);
-    }
-
-    $captured = [];
-
-    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(3);
-
-    expect($captured)->toHaveCount(3);
-});
-
-it('recovers a Failed PrContext under the retry budget', function (): void {
-    $user = User::factory()->create();
-    $pr = PersonalRecord::factory()->for($user)->create(['set_at' => Carbon::parse('2026-05-01')]);
-    Analysis::factory()->failed()->create([
-        'subject_type' => PersonalRecord::class,
-        'subject_id' => $pr->id,
-        'analysis_type' => AnalysisType::PrContext,
-    ]);
-
-    $captured = [];
-
-    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(1);
-
-    expect($captured)->toHaveCount(1)
-        ->and($captured[0]['subjectOrType'])->toBe(PersonalRecord::class)
-        ->and($captured[0]['subjectId'])->toBe($pr->id)
-        ->and($captured[0]['type'])->toBe(AnalysisType::PrContext)
-        ->and($captured[0]['invalidate'])->toBeFalse();
 });
 
 it('leaves Done links alone (nothing stalled to resume)', function (): void {

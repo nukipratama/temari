@@ -11,8 +11,8 @@ import { formatMonthDayId, formatPace, parseNaiveLocalDate } from '@/lib/pace';
  * can show the reading that actually decided its direction rather than always
  * showing pace and leaving a heart-rate-driven call looking unexplained.
  */
-export const PACE_SIGNAL_SEC = 5;
-export const HR_SIGNAL_BPM = 3;
+const PACE_SIGNAL_SEC = 5;
+const HR_SIGNAL_BPM = 3;
 
 export type EvidenceMetric = 'pace' | 'hr';
 

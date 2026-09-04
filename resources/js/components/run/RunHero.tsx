@@ -151,12 +151,12 @@ export default function RunHero({
                     </div>
                 </div>
 
-                <div className="mt-3.5 grid grid-cols-3 gap-2">
+                <div className="mt-3.5 grid grid-cols-3 gap-1.5 min-[360px]:gap-2">
                     {secondary.map((stat) => (
                         <motion.div
                             key={stat.label}
                             variants={fadeInUp}
-                            className="flex items-center gap-2 rounded-sm bg-muted px-2.5 py-2"
+                            className="flex items-center gap-1.5 rounded-sm bg-muted px-2 py-2 min-[360px]:gap-2 min-[360px]:px-2.5"
                         >
                             <Icon
                                 icon={stat.icon}

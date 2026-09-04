@@ -54,15 +54,15 @@ function Section({
 
 function Swatch({ name, value }: Readonly<{ name: string; value: string }>) {
     return (
-        <div className="w-[132px]">
+        <div className="min-w-0">
             <div
-                className="h-12 rounded-sm border border-border"
+                className="h-9 rounded-sm border border-border"
                 style={{ background: value }}
             />
-            <div className="mt-1 font-sans text-[0.6875rem] font-semibold text-foreground">
+            <div className="mt-1 truncate font-sans text-[0.6875rem] font-semibold text-foreground">
                 {name.replace('--color-', '')}
             </div>
-            <div className="text-meta">{value}</div>
+            <div className="truncate text-meta">{value}</div>
         </div>
     );
 }
@@ -140,6 +140,7 @@ export default function Design() {
         [tokens, grounds],
     );
     const [surfaces, setSurfaces] = useState<SurfaceRow[]>([]);
+    const [allContrast, setAllContrast] = useState(false);
     const probesRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -168,9 +169,17 @@ export default function Design() {
             <Head title="Design tokens · Temari" />
             <div className="min-h-screen bg-background pad-page text-foreground">
                 <div className="mx-auto max-w-page">
-                    <h1 className="font-serif italic text-headline-xs text-foreground">
-                        Design tokens
-                    </h1>
+                    <div className="flex items-start justify-between gap-4">
+                        <h1 className="font-serif italic text-headline-xs text-foreground">
+                            Design tokens
+                        </h1>
+                        <a
+                            href="/devtools"
+                            className="focus-ring flex-none rounded-full px-2 py-1 text-label-micro font-semibold text-text-3 transition hover:text-foreground"
+                        >
+                            Temari · Devtools
+                        </a>
+                    </div>
                     <p className="mt-2 max-w-[72ch] font-sans text-xs leading-relaxed text-text-2">
                         Every value below is read out of the live stylesheet at
                         render time with getComputedStyle, never from a list
@@ -217,7 +226,7 @@ export default function Design() {
 
                     {groupColorFamilies(names).map(([family, tokenNames]) => (
                         <Section key={family} title={family}>
-                            <div className="flex flex-wrap gap-2.5">
+                            <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2">
                                 {tokenNames.map((name) => (
                                     <Swatch
                                         key={name}
@@ -322,6 +331,22 @@ export default function Design() {
                         title="Contrast audit"
                         note={`Run client-side against the live values. Text pairs need 4.5:1, a meaningful graphic 3:1, a separator 1.4:1. A fill too light to carry 3:1 itself is drawn with its -ink outline, and the outline is what gets tested. Anything sitting on paper is scored on all ${grounds.length} grounds the app can paint under text (every dawn-shift surface plus every background resources/brand/grounds.json calls paper), reported at its worst and named after the pair.`}
                     >
+                        <div className="mb-3 flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setAllContrast((v) => !v)}
+                                className="focus-ring rounded-full border border-border px-3 py-1 text-label-micro text-text-2 transition hover:text-foreground"
+                            >
+                                {allContrast
+                                    ? `Show failures only (${contrastFails.length})`
+                                    : `Show all ${contrast.length} pairs`}
+                            </button>
+                            {!allContrast && contrastFails.length === 0 && (
+                                <span className="text-label-micro text-leaf-ink">
+                                    every pair passes on this ground
+                                </span>
+                            )}
+                        </div>
                         <div className="overflow-x-auto">
                             <table className="w-full max-w-[760px] border-collapse font-sans text-xs">
                                 <thead>
@@ -343,7 +368,10 @@ export default function Design() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {contrast.map((r) => (
+                                    {(allContrast
+                                        ? contrast
+                                        : contrastFails
+                                    ).map((r) => (
                                         <tr
                                             key={`${r.use}-${r.fg}-${r.bg}`}
                                             className={cn(

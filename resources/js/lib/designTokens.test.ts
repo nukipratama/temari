@@ -361,17 +361,17 @@ describe('auditPanels', () => {
         '--color-ink-on-sky': '#b0a3c9',
         '--color-text-2': '#34373c',
     };
-    const PAPER = [{ name: 'cream-deep', value: '#ece2ce' }];
+    const PAPER = [{ name: 'muted', value: '#ece2ce' }];
 
     it('scores a panel on what it composites to, not on the fill it tints', () => {
-        // cream-deep at 70% over cream-deep (registered as "paper" here) is
-        // still cream-deep, so the panel keeps the contrast its own family
-        // was designed for — the fill tint alone wouldn't tell you that.
+        // muted at 70% over muted (registered as "paper" here) is still muted,
+        // so the panel keeps the contrast its own family was designed for —
+        // the fill tint alone wouldn't tell you that.
         const overPaper = auditPanels(
-            { ...VALUES, '--color-cream-deep': '#ece2ce' },
+            { ...VALUES, '--color-muted': '#ece2ce' },
             PAPER,
-        ).find((row) => row.bg.startsWith('cream-deep/0.7'));
-        expect(overPaper?.bg).toContain('on cream-deep');
+        ).find((row) => row.bg.startsWith('muted/0.7'));
+        expect(overPaper?.bg).toContain('on muted');
         expect(overPaper?.pass).toBe(true);
     });
 

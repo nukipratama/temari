@@ -89,7 +89,9 @@ describe('SeasonWeekRow', () => {
 
         expect(screen.getByText('Wk 3')).toBeInTheDocument();
         expect(screen.getByText('jun 15–21')).toBeInTheDocument();
-        expect(screen.getByText(/30 km · 5 sessions/)).toBeInTheDocument();
+        expect(
+            screen.getByText(/30 km target · 5 sessions/),
+        ).toBeInTheDocument();
     });
 
     it('shows a past week’s adherence in its header', () => {
@@ -155,7 +157,9 @@ describe('SeasonWeekRow', () => {
         renderRow({ detail: null });
 
         expect(screen.getByText('Wk 3')).toBeInTheDocument();
-        expect(screen.getByText('30 km · 5 sessions')).toBeInTheDocument();
+        expect(
+            screen.getByText('30 km target · 5 sessions'),
+        ).toBeInTheDocument();
         expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
 });

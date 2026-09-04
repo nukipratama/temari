@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use App\Models\ActivityDetail;
-use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use Illuminate\Support\Carbon;
 
@@ -53,7 +52,6 @@ class BackfillAgeGate
     {
         return match ($type) {
             AnalysisType::CardFlavor => $this->isTooOld($this->runDateForCard($subjectId)),
-            AnalysisType::PrContext => $this->isTooOld($this->runDateForPersonalRecord($subjectId)),
             AnalysisType::BriefingMascotVoice => $this->isTooOld($this->parseDay($discriminator)),
             // Chained: ChainResolver::isHeadRegenerate() admits only the true
             // chain head, so an old link resumes the chain forward instead of
@@ -80,13 +78,6 @@ class BackfillAgeGate
     private function runDateForCard(int $cardId): ?Carbon
     {
         $activityId = RunCard::query()->whereKey($cardId)->value('activity_id');
-
-        return $activityId === null ? null : $this->runDate((int) $activityId);
-    }
-
-    private function runDateForPersonalRecord(int $recordId): ?Carbon
-    {
-        $activityId = PersonalRecord::query()->whereKey($recordId)->value('activity_id');
 
         return $activityId === null ? null : $this->runDate((int) $activityId);
     }

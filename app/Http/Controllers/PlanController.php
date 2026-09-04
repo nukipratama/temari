@@ -21,6 +21,7 @@ use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\ReadinessClamp;
@@ -42,6 +43,8 @@ use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 use LogicException;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 /**
  * Serves the Plan tab: the current week (plus lookahead) of a user's
@@ -51,8 +54,6 @@ use LogicException;
  */
 class PlanController extends Controller
 {
-    private const int HISTORY_WEEKS = 3;
-
     private const int LOOKAHEAD_WEEKS = 4;
 
     public function index(
@@ -72,7 +73,7 @@ class PlanController extends Controller
         $user = $request->user();
         $today = Carbon::today();
         $currentWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
-        $rangeStart = $currentWeekStart->copy()->subWeeks(self::HISTORY_WEEKS);
+        $rangeStart = $currentWeekStart->copy()->subWeeks(CurrentWeekPlanBuilder::HISTORY_WEEKS);
         $rangeEnd = $currentWeekStart->copy()->addWeeks(self::LOOKAHEAD_WEEKS)->addDays(6);
 
         $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
@@ -232,6 +233,8 @@ class PlanController extends Controller
 
     public function regenerate(Request $request, Periodizer $periodizer, PlanNarrationRequester $narrationRequester): RedirectResponse
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::User);
+
         /** @var User $user */
         $user = $request->user();
 

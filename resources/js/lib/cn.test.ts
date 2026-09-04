@@ -56,3 +56,26 @@ describe('cn', () => {
         expect(cn('text-stat', 'text-cream')).toBe('text-stat text-cream');
     });
 });
+
+describe('container width utilities', () => {
+    // These lost to CSS source order before being registered, so a caller's
+    // narrower cap silently did nothing.
+    it('lets a caller override the PageContainer column width', () => {
+        expect(
+            cn('min-[900px]:max-w-column', 'min-[900px]:max-w-[520px]'),
+        ).toBe('min-[900px]:max-w-[520px]');
+        expect(
+            cn('min-[1280px]:max-w-column-wide', 'min-[1280px]:max-w-[520px]'),
+        ).toBe('min-[1280px]:max-w-[520px]');
+    });
+
+    it('still resolves the named container widths against each other', () => {
+        expect(cn('max-w-page', 'max-w-page-2xl')).toBe('max-w-page-2xl');
+    });
+
+    it('keeps a width at a different breakpoint', () => {
+        expect(cn('max-w-column', 'min-[1280px]:max-w-column-wide')).toBe(
+            'max-w-column min-[1280px]:max-w-column-wide',
+        );
+    });
+});

@@ -19,6 +19,11 @@ code_refs:
 
 **Status:** Accepted (documented 2026-08-13)
 
+> **2026-09-03 — one path below has changed, the decision has not.** The operator console
+> moved behind a single `/devtools` prefix: `/ai-usage` is now `/devtools/ai-usage`,
+> `/pulse` is `/devtools/pulse` and `/horizon` is `/devtools/horizon`. The gate on them
+> also now skips outside production. Everything this decision says about behaviour stands.
+
 ## Context
 
 The product decision was explicitly **no chat**. A general assistant would have

@@ -12,6 +12,19 @@ const baseProps: AiUsageProps = {
     from: '2026-05-01',
     to: '2026-05-19',
     kind: null,
+    origin: null,
+    byOrigin: [
+        {
+            origin: 'ingest',
+            label: 'Ingest cascade',
+            prompt: 400,
+            completion: 180,
+            total: 580,
+            calls: 2,
+            cost: 0.03,
+        },
+    ],
+    availableOrigins: [{ value: 'ingest', label: 'Ingest cascade' }],
     totals: {
         prompt: 600,
         completion: 280,
@@ -136,7 +149,7 @@ const deadLetteredGroup = {
             failed_at: '2026-05-19T10:00:00+00:00',
         },
         {
-            type: 'pr_context',
+            type: 'card_flavor',
             error: null,
             failed_at: '2026-05-19T09:00:00+00:00',
         },

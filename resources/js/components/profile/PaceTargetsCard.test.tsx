@@ -19,11 +19,25 @@ describe('PaceTargetsCard', () => {
 
     it('anchors the slowest pace at the left of the rail and the fastest at the right', () => {
         const { container } = render(<PaceTargetsCard paces={PACES} />);
-        const markers =
-            container.querySelectorAll<HTMLElement>('[style*="left"]');
+        const dots =
+            container.querySelectorAll<HTMLElement>('i[style*="left"]');
 
-        expect(markers[0].style.left).toBe('0%');
-        expect(markers[3].style.left).toBe('100%');
+        expect(dots[0].style.left).toBe('0%');
+        expect(dots[3].style.left).toBe('100%');
+    });
+
+    it('shifts each label by its own offset so the end ones stay inside the rail', () => {
+        const { container } = render(<PaceTargetsCard paces={PACES} />);
+        const labels = container.querySelectorAll<HTMLElement>(
+            'span[style*="left"]',
+        );
+
+        expect(labels).toHaveLength(4);
+        for (const label of labels) {
+            expect(label.style.transform).toBe(
+                `translateX(-${label.style.left})`,
+            );
+        }
     });
 
     it('centres every marker when all four paces are identical', () => {

@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
+use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
-use App\Models\PersonalRecord;
+use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
@@ -19,13 +20,22 @@ use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
-// The /ai-usage dashboard is gated by HTTP Basic Auth against a shared
-// devtools password. Every case below sends the correct credential; the
-// authorization cases override this per test.
+// The /devtools/ai-usage dashboard is gated by HTTP Basic Auth against a
+// shared devtools password. Every case below sends the correct credential;
+// the authorization cases override it and call armDevtoolsGate() first,
+// because the gate only challenges in production.
 beforeEach(function (): void {
     config(['devtools.password' => 'secret']);
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:secret')]);
 });
+
+/** The devtools gate only challenges in production; arm it, CSRF and all. */
+function armDevtoolsGate(): array
+{
+    app()->detectEnvironment(fn (): string => 'production');
+
+    return ['_token' => 'devtools-test-token'];
+}
 
 /** Dead-letter a WeeklyRecap for $user (Failed, budget burned). */
 function deadLetterWeeklyRecap(User $user): Analysis
@@ -63,19 +73,25 @@ function seedUsage(
 }
 
 it('is reachable with the correct devtools password', function (): void {
-    $this->get('/ai-usage')->assertSuccessful();
+    armDevtoolsGate();
+
+    $this->get('/devtools/ai-usage')->assertSuccessful();
 });
 
 it('challenges a request with no devtools password', function (): void {
+    armDevtoolsGate();
+
     $this->withHeaders(['Authorization' => ''])
-        ->get('/ai-usage')
+        ->get('/devtools/ai-usage')
         ->assertUnauthorized()
         ->assertHeader('WWW-Authenticate', 'Basic realm="Devtools"');
 });
 
 it('challenges a request with the wrong devtools password', function (): void {
+    armDevtoolsGate();
+
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:wrong')])
-        ->get('/ai-usage')
+        ->get('/devtools/ai-usage')
         ->assertUnauthorized();
 });
 
@@ -85,7 +101,7 @@ it('renders the AiUsage page with totals + per-kind breakdown filtered by date',
     seedUsage('run-insight', 300, 150, Carbon::parse('2026-05-12 13:00:00'), latencyMs: 2400);
     seedUsage('briefing', 999, 999, Carbon::parse('2026-04-30 23:00:00')); // outside range
 
-    $this->get('/ai-usage?from=2026-05-01&to=2026-05-19')
+    $this->get('/devtools/ai-usage?from=2026-05-01&to=2026-05-19')
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
@@ -141,7 +157,7 @@ it('defaults to the rolling last 7 days when no range is given', function (): vo
     seedUsage('inside', 50, 50, Carbon::parse('2026-05-15'));
     seedUsage('outside', 50, 50, Carbon::parse('2026-05-10')); // older than 7 days
 
-    $this->get('/ai-usage')
+    $this->get('/devtools/ai-usage')
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
@@ -156,7 +172,7 @@ it('defaults to the rolling last 7 days when no range is given', function (): vo
 it('resolves relative range tokens to self-correcting windows', function (string $range, string $expectedFrom): void {
     Carbon::setTestNow('2026-05-19 12:00:00');
 
-    $this->get("/ai-usage?range={$range}")
+    $this->get("/devtools/ai-usage?range={$range}")
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
@@ -174,7 +190,7 @@ it('resolves relative range tokens to self-correcting windows', function (string
 ]);
 
 it('maps legacy absolute from+to links (no range) to a custom range', function (): void {
-    $this->get('/ai-usage?from=2026-05-01&to=2026-05-19')
+    $this->get('/devtools/ai-usage?from=2026-05-01&to=2026-05-19')
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
@@ -189,25 +205,25 @@ it('includes previousTotals for a bounded range and null for all-time', function
     seedUsage('briefing', 100, 50, Carbon::parse('2026-05-15')); // current 7d window
     seedUsage('briefing', 40, 20, Carbon::parse('2026-05-10')); // prior window
 
-    $this->get('/ai-usage?range=7d')
+    $this->get('/devtools/ai-usage?range=7d')
         ->assertInertia(
             fn (AssertableInertia $page) => $page
                 ->where('totals.total', 150)
                 ->where('previousTotals.total', 60),
         );
 
-    $this->get('/ai-usage?range=all')
+    $this->get('/devtools/ai-usage?range=all')
         ->assertInertia(fn (AssertableInertia $page) => $page->where('previousTotals', null));
 
     Carbon::setTestNow();
 });
 
 it('rejects malformed date inputs', function (): void {
-    $this->getJson('/ai-usage?from=yesterday')->assertStatus(422);
+    $this->getJson('/devtools/ai-usage?from=yesterday')->assertStatus(422);
 });
 
 it('returns zeroed totals and empty breakdown when no rows fall within range', function (): void {
-    $this->get('/ai-usage?from=2026-05-01&to=2026-05-19')
+    $this->get('/devtools/ai-usage?from=2026-05-01&to=2026-05-19')
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
@@ -233,7 +249,7 @@ it('renders a byUser breakdown joined to users.name, skipping system-context row
     seedUsage('run-insight', 50, 25, Carbon::parse('2026-05-11'), userId: $bob->id);
     seedUsage('briefing', 10, 5, Carbon::parse('2026-05-13')); // user_id null — system call, excluded from per-user breakdown
 
-    $this->get('/ai-usage?from=2026-05-01&to=2026-05-19')
+    $this->get('/devtools/ai-usage?from=2026-05-01&to=2026-05-19')
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
@@ -270,7 +286,7 @@ it('keeps the user_id in the breakdown after the user is deleted (no FK cascade)
 
     $alice->delete();
 
-    $this->get('/ai-usage?from=2026-05-01&to=2026-05-19')
+    $this->get('/devtools/ai-usage?from=2026-05-01&to=2026-05-19')
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
@@ -291,16 +307,16 @@ it('keeps the user_id in the breakdown after the user is deleted (no FK cascade)
 it('surfaces dead-lettered blocks grouped per user', function (): void {
     $alice = User::factory()->create(['name' => 'Alice']);
     deadLetterWeeklyRecap($alice);
-    // A second dead-lettered block for the same user (PR context, subject = user).
-    $pr = PersonalRecord::factory()->for($alice)->create();
+    // A second dead-lettered block for the same user, on a different subject.
+    $card = RunCard::factory()->for(Activity::factory()->for($alice))->create();
     Analysis::factory()->failed()->create([
-        'subject_type' => PersonalRecord::class,
-        'subject_id' => $pr->id,
-        'analysis_type' => AnalysisType::PrContext,
+        'subject_type' => RunCard::class,
+        'subject_id' => $card->id,
+        'analysis_type' => AnalysisType::CardFlavor,
         'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
     ]);
 
-    $this->get('/ai-usage')
+    $this->get('/devtools/ai-usage')
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
@@ -322,7 +338,7 @@ it('excludes Done and under-budget Failed blocks from the dead-letter panel', fu
         'analysis_type' => AnalysisType::WeeklyRecap,
     ]);
 
-    $this->get('/ai-usage')
+    $this->get('/devtools/ai-usage')
         ->assertSuccessful()
         ->assertInertia(fn (AssertableInertia $page) => $page->has('deadLettered', 0));
 });
@@ -340,7 +356,7 @@ it('renders the dashboard past a dead-lettered row of a retired type', function 
         'updated_at' => Carbon::now(),
     ]);
 
-    $this->get('/ai-usage')
+    $this->get('/devtools/ai-usage')
         ->assertSuccessful()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->has('deadLettered', 0)
@@ -353,7 +369,7 @@ it('re-arms and re-dispatches a user\'s dead-lettered blocks on retry', function
     $user = User::factory()->create();
     $row = deadLetterWeeklyRecap($user);
 
-    $this->post("/ai-usage/users/{$user->id}/retry-failed")
+    $this->post("/devtools/ai-usage/users/{$user->id}/retry-failed")
         ->assertRedirect();
 
     $fresh = $row->fresh();
@@ -376,7 +392,7 @@ it('retries a dead-lettered group for a hard-deleted user instead of 404ing', fu
     ]);
     $user->delete();
 
-    $this->post("/ai-usage/users/{$userId}/retry-failed")
+    $this->post("/devtools/ai-usage/users/{$userId}/retry-failed")
         ->assertRedirect();
 
     $fresh = $row->fresh();
@@ -389,8 +405,12 @@ it('retry is reachable with the correct devtools password', function (): void {
     Bus::fake();
     $user = User::factory()->create();
 
+    $token = armDevtoolsGate();
+
     // No dead-lettered rows: still a clean redirect (0 retried).
-    $this->post("/ai-usage/users/{$user->id}/retry-failed")->assertRedirect();
+    $this->withSession($token)
+        ->post("/devtools/ai-usage/users/{$user->id}/retry-failed", $token)
+        ->assertRedirect();
     Bus::assertNothingDispatched();
 });
 
@@ -398,8 +418,11 @@ it('challenges the mutating retry with the wrong devtools password', function ()
     Bus::fake();
     $user = User::factory()->create();
 
+    $token = armDevtoolsGate();
+
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:wrong')])
-        ->post("/ai-usage/users/{$user->id}/retry-failed")
+        ->withSession($token)
+        ->post("/devtools/ai-usage/users/{$user->id}/retry-failed", $token)
         ->assertUnauthorized();
     Bus::assertNothingDispatched();
 });
@@ -415,7 +438,7 @@ it('also re-arms a user\'s under-budget Failed blocks on retry (not only dead-le
         'attempts' => 1,
     ]);
 
-    $this->post("/ai-usage/users/{$user->id}/retry-failed")->assertRedirect();
+    $this->post("/devtools/ai-usage/users/{$user->id}/retry-failed")->assertRedirect();
 
     $fresh = $underBudget->fresh();
     expect($fresh->attempts)->toBe(0)
@@ -435,7 +458,7 @@ it('surfaces the failed-but-still-retrying bucket grouped per user', function ()
     // A dead-lettered block must NOT appear here (it belongs to the dead-letter panel).
     deadLetterWeeklyRecap($user);
 
-    $this->get('/ai-usage')
+    $this->get('/devtools/ai-usage')
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
@@ -485,7 +508,7 @@ it('surfaces the "Nyangkut" bucket for stale Pending/Queued blocks, excluding op
         'queued_at' => null,
     ]);
 
-    $this->get('/ai-usage')
+    $this->get('/devtools/ai-usage')
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
@@ -499,7 +522,7 @@ it('runs the recover command and flashes a confirmation', function (): void {
     Bus::fake();
     $row = deadLetterWeeklyRecap(User::factory()->create());
 
-    $this->post('/ai-usage/recover')
+    $this->post('/devtools/ai-usage/recover')
         ->assertRedirect()
         ->assertSessionHas('info');
 
@@ -510,7 +533,10 @@ it('runs the recover command and flashes a confirmation', function (): void {
 });
 
 it('challenges the recover action with the wrong devtools password', function (): void {
+    $token = armDevtoolsGate();
+
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:wrong')])
-        ->post('/ai-usage/recover')
+        ->withSession($token)
+        ->post('/devtools/ai-usage/recover', $token)
         ->assertUnauthorized();
 });

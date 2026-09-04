@@ -12,7 +12,7 @@ export const MAX_GOAL_TIME_SEC = 259_200;
 // A pace floor a touch below current world-record pace (~2:31-2:51/km
 // depending on distance) - not personalized to the athlete, just a sanity
 // check that the numbers are physically plausible for anyone.
-export const IMPOSSIBLE_PACE_SEC_PER_KM = 155;
+const IMPOSSIBLE_PACE_SEC_PER_KM = 155;
 
 // How much faster than the athlete's own best-case (low_sec) projection
 // counts as significantly more ambitious than their data supports - not

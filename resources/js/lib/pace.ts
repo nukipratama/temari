@@ -283,18 +283,6 @@ export function daysUntilId(iso: string): number {
     return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
-export function monthsSinceId(iso: string | null | undefined): number | null {
-    if (!iso) return null;
-    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
-    if (!match) return null;
-    const [, y, m] = match;
-    const now = new Date();
-    return Math.max(
-        0,
-        (now.getFullYear() - Number(y)) * 12 + (now.getMonth() + 1 - Number(m)),
-    );
-}
-
 // Local-zone Monday-of-week, via parseNaiveLocalDate so a run is always
 // bucketed into the week it was actually run. Falls back to new Date for
 // inputs the naive parser can't read.

@@ -23,6 +23,9 @@ code_refs:
 > describes are history. The derivation itself is unchanged and still enforced — the ground set is
 > now every background `grounds.json` classifies as paper, scraped from the components rather than
 > listed.
+>
+> **2026-09-03** — the `plan/parity` tree named above was retired to git history when the
+> parity program closed.
 
 ## Context
 

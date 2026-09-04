@@ -54,6 +54,7 @@ class PlanSeasonVoiceNarrator
                 userId: $season->user_id,
                 maxTokens: 400,
                 toolbox: new AgentToolbox([new PlanSeasonTool($season)]),
+                maxSteps: 4,
             ),
         );
 

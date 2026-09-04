@@ -150,9 +150,13 @@ jobs:
       - name: Stub .env for file-scanning tests
         run: cp .env.example .env
 
-      # --no-tia on both Pest steps: TIA is a local fast-feedback tool, and a
-      # graph-narrowed run would silently shrink both this gate and the coverage
-      # gate below. CI stays exhaustive.
+      # --no-tia on both Pest steps. Pest's guidance is that CI verifies every
+      # test against a clean checkout, so it runs the full suite. It is also the
+      # only thing that works: measured on this suite, --tia --coverage throws
+      # InvalidCoverageDataException against an existing graph, and with --fresh
+      # exhausts a 512M memory_limit in CoverageMerger unserialising an 80MB
+      # coverage graph. A replay does reconstruct coverage in principle, so the
+      # older "it would shrink the gate" reasoning here was wrong.
       - name: Check {@see} references resolve
         run: php scripts/check-see-references.php
 

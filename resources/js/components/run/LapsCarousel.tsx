@@ -2,6 +2,7 @@ import type { StreamSummaryLap } from '@/types/inertia';
 
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
+import { SCROLL_FADE_MASK, useScrollFade } from '@/hooks/useScrollFade';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS, formatKm } from '@/lib/pace';
 import { paceScale, paceSecOf } from '@/lib/splits';
@@ -16,13 +17,20 @@ export default function LapsCarousel({
     className,
 }: Readonly<{ laps: StreamSummaryLap[]; className?: string }>) {
     const { fastest } = paceScale(laps);
+    const rail = useScrollFade<HTMLUListElement>();
 
     return (
         <section className={className}>
             <Eyebrow token="micro" tone="ink-2" className="mb-2 px-0.5">
                 Laps
             </Eyebrow>
-            <ul className="-mx-4 flex list-none gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <ul
+                ref={rail.ref}
+                style={{
+                    maskImage: rail.faded ? SCROLL_FADE_MASK : undefined,
+                }}
+                className="-mx-4 flex list-none gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
                 {laps.map((lap) => {
                     const isFastest =
                         fastest != null && paceSecOf(lap) === fastest;

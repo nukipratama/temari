@@ -61,14 +61,14 @@
 		file_server
 	}
 
-	# Ops dashboards (/horizon, /pulse, /ai-usage) authorize inside Laravel via
-	# HTTP Basic Auth against a shared devtools password; Cloudflare Access
-	# fronts the edge too.
+	# Ops dashboards (/devtools/*) authorize inside Laravel via HTTP Basic Auth
+	# against a shared devtools password whenever APP_ENV is production;
+	# Cloudflare Access fronts the edge too.
 
 	# Horizon (Vue) and Pulse (Alpine) compile template expressions via
 	# `new Function()`, and Horizon fetches its font from Bunny. Scoped here so the
 	# app-wide policy below stays strict.
-	@ops path /horizon /horizon/* /pulse /pulse/*
+	@ops path /devtools/horizon /devtools/horizon/* /devtools/pulse /devtools/pulse/*
 	handle @ops {
 		header -Server
 		header X-Frame-Options "DENY"

@@ -7,7 +7,6 @@ namespace App\Services\AI;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
-use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -21,7 +20,7 @@ use Illuminate\Support\Carbon;
  * Every dispatch is invalidate:false, so it never fills a template and a
  * still-capped run is a clean no-op; the Failed-sweeping families are bounded
  * by {@see Analysis::MAX_SELF_HEAL_ATTEMPTS} so a terminally-broken block
- * drops out to the /ai-usage dead-letter instead of re-billing forever.
+ * drops out to the /devtools/ai-usage dead-letter instead of re-billing forever.
  */
 class SelfHealer
 {
@@ -64,7 +63,6 @@ class SelfHealer
             + $this->resumeMonthly()
             + $this->resumePerActivity()
             + $this->resumeCardFlavor()
-            + $this->resumePrContext()
             + $this->resumeSingleRowType(AnalysisType::BriefingMascotVoice)
             + $this->resumeSingleRowType(AnalysisType::ProfileVoice);
     }
@@ -238,36 +236,6 @@ class SelfHealer
             subjectOrType: RunCard::class,
             subjectId: (int) $row->subject_id,
             type: AnalysisType::CardFlavor,
-            delaySeconds: $index * self::SWEEP_SPACING_SECONDS,
-            invalidate: false,
-        ));
-
-        return $toResume->count();
-    }
-
-    /**
-     * PR-context narration: the earliest stalled PrContext rows per user, up to
-     * {@see self::NONCASCADING_DRAIN_BATCH}. Like CardFlavor, dispatched only at
-     * ingest with no other scheduled recovery and non-cascading, so it drains in
-     * batches. Stalled + budget-bounded; ordered oldest-PR-first; demo excluded.
-     */
-    private function resumePrContext(): int
-    {
-        $toResume = Analysis::query()
-            ->stalled()
-            ->where('ai_analyses.subject_type', PersonalRecord::class)
-            ->where('ai_analyses.analysis_type', AnalysisType::PrContext)
-            ->join('personal_records', 'personal_records.id', '=', 'ai_analyses.subject_id')
-            ->whereIn('personal_records.user_id', User::query()->notDemo()->select('id'))
-            ->orderBy('personal_records.set_at')
-            ->get(['ai_analyses.subject_id', 'personal_records.user_id'])
-            ->groupBy('user_id')
-            ->flatMap(fn ($rows) => $rows->take(self::NONCASCADING_DRAIN_BATCH));
-
-        $toResume->values()->each(fn ($row, int $index) => $this->service->request(
-            subjectOrType: PersonalRecord::class,
-            subjectId: (int) $row->subject_id,
-            type: AnalysisType::PrContext,
             delaySeconds: $index * self::SWEEP_SPACING_SECONDS,
             invalidate: false,
         ));

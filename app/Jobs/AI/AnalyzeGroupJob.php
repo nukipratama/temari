@@ -27,6 +27,8 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
 
     final public function handle(AnalysisService $service): void
     {
+        $this->applyOrigin();
+
         $rows = $service->upsertGroupRows(
             static::subjectType(),
             $this->subjectId,

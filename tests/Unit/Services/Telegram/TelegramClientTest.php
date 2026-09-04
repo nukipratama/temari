@@ -135,6 +135,26 @@ it('throws when Telegram answers 200 but ok is false', function (): void {
     }
 });
 
+// Guzzle redacts user:pass@host but not the path, and the bot token lives in
+// the path — so an unredacted transport error hands the live token to every
+// caller that logs or persists the reason.
+it('keeps the bot token out of a transport failure message', function (): void {
+    $token = (string) config('services.telegram.bot_token');
+    expect($token)->not->toBe('');
+
+    Http::fake(fn () => throw new ConnectionException(
+        "cURL error 28: Operation timed out for https://api.telegram.org/bot{$token}/sendMessage",
+    ));
+
+    try {
+        new TelegramClient()->sendMessage(1, 'hi');
+        $this->fail('Expected TelegramApiException was not thrown.');
+    } catch (TelegramApiException $e) {
+        expect($e->getMessage())->not->toContain($token)
+            ->and($e->getMessage())->toContain('[redacted]');
+    }
+});
+
 it('wraps a transport failure in a TelegramApiException with no status', function (): void {
     Http::fake(fn () => throw new ConnectionException('timed out'));
 

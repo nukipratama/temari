@@ -11,6 +11,8 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 /**
  * Weekly regeneration for every user's periodized plan (see
@@ -26,6 +28,8 @@ class RegeneratePlanCommand extends Command
 {
     public function handle(Periodizer $periodizer, PlanNarrationRequester $narrationRequester): int
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
+
         $userId = $this->option('user');
         $today = Carbon::today();
 

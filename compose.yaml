@@ -45,6 +45,10 @@ services:
             GIT_CONFIG_COUNT: 1
             GIT_CONFIG_KEY_0: safe.directory
             GIT_CONFIG_VALUE_0: /var/www/html
+            # Lets Pest's TIA baselined() pull the graph recorded by
+            # .github/workflows/tia-baseline.yml. Unset is fine: Pest reports the
+            # reason and records a local baseline instead.
+            GH_TOKEN: ${GH_TOKEN:-}
         volumes:
             - '.:/var/www/html'
             - 'node_modules:/var/www/html/node_modules'

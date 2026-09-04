@@ -11,7 +11,7 @@
     <x-pulse::scroll :expand="$expand" wire:poll.15s="">
         <div class="space-y-4">
             <div>
-                <div class="text-label-micro text-ink-3 mb-1">Kill-switches</div>
+                <div class="text-label-micro text-text-3 mb-1">Kill-switches</div>
                 <div class="grid grid-cols-2 gap-2">
                     <div @class([
                         'flex items-center justify-between rounded-sm p-2',
@@ -19,7 +19,7 @@
                         'bg-ember/15' => ! $aiEnabled,
                     ])>
                         <div>
-                            <div class="text-sm font-bold text-ink">AI</div>
+                            <div class="text-sm font-bold text-foreground">AI</div>
                             <div class="text-label-micro {{ $aiEnabled ? 'text-leaf-ink' : 'text-ember-ink' }}">
                                 {{ $aiEnabled ? 'enabled' : 'disabled' }}
                             </div>
@@ -38,7 +38,7 @@
                         'bg-ember/15' => ! $stravaEnabled,
                     ])>
                         <div>
-                            <div class="text-sm font-bold text-ink">Strava</div>
+                            <div class="text-sm font-bold text-foreground">Strava</div>
                             <div class="text-label-micro {{ $stravaEnabled ? 'text-leaf-ink' : 'text-ember-ink' }}">
                                 {{ $stravaEnabled ? 'enabled' : 'disabled' }}
                             </div>
@@ -54,7 +54,7 @@
             </div>
 
             <div>
-                <div class="text-label-micro text-ink-3 mb-1">Strava circuit breaker</div>
+                <div class="text-label-micro text-text-3 mb-1">Strava circuit breaker</div>
                 <div @class([
                     'flex items-center justify-between rounded-sm p-2',
                     'bg-leaf/10' => $breaker['state'] === 'closed',
@@ -62,8 +62,8 @@
                     'bg-ember/15' => $breaker['state'] === 'open',
                 ])>
                     <div>
-                        <div class="text-sm font-bold text-ink">{{ str_replace('_', '-', $breaker['state']) }}</div>
-                        <div class="text-label-micro text-ink-3">
+                        <div class="text-sm font-bold text-foreground">{{ str_replace('_', '-', $breaker['state']) }}</div>
+                        <div class="text-label-micro text-text-3">
                             {{ $breaker['failures'] }} failures
                             @if ($breaker['opened_at'])
                                 · opened {{ \Illuminate\Support\Carbon::parse($breaker['opened_at'])->diffForHumans() }}
@@ -81,7 +81,7 @@
             </div>
 
             <div>
-                <div class="text-label-micro text-ink-3 mb-1">Ingest backlog</div>
+                <div class="text-label-micro text-text-3 mb-1">Ingest backlog</div>
                 <div class="grid grid-cols-2 gap-2">
                     @include('livewire.pulse.partials.stat-tile', [
                         'label' => 'pending',

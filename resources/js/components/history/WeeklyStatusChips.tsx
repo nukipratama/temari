@@ -100,7 +100,7 @@ function Chip({
             className={cn(
                 CHIP_BASE,
                 alert
-                    ? 'bg-mood-gassed/15 text-mood-gassed-ink'
+                    ? 'bg-ember/15 text-ember-ink'
                     : `${neutral} text-foreground`,
             )}
         >

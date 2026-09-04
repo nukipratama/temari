@@ -8,6 +8,7 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import FaceIcon from '@/components/temari/FaceIcon';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
+import { SCROLL_FADE_MASK, useScrollFade } from '@/hooks/useScrollFade';
 import { formatShortDateId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 
@@ -38,6 +39,8 @@ export default function ProfileHero({
     stats: ReadonlyArray<HeroStat>;
     action?: ReactNode;
 }>) {
+    const statRail = useScrollFade<HTMLDivElement>();
+
     return (
         <section className="relative overflow-hidden rounded-panel border-2 border-border-strong bg-card p-5 shadow-e1 ring-[1.5px] ring-horizon/45">
             <span
@@ -107,11 +110,17 @@ export default function ProfileHero({
             )}
 
             <div className="relative -mx-5 mt-5 border-t border-border-strong" />
-            <div className="relative -mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5 pt-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div
+                ref={statRail.ref}
+                style={{
+                    maskImage: statRail.faded ? SCROLL_FADE_MASK : undefined,
+                }}
+                className="relative -mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5 pt-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
                 {stats.map((stat) => (
                     <div
                         key={stat.label}
-                        className="w-[92px] flex-none rounded-sm bg-muted px-2.5 py-3 text-center ring-1 ring-horizon/30"
+                        className="grow shrink-0 basis-[108px] min-w-fit rounded-sm bg-muted px-2.5 py-3 text-center ring-1 ring-horizon/30"
                     >
                         <Icon
                             icon={stat.icon}

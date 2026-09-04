@@ -15,6 +15,11 @@ code_refs:
 
 **Status:** Accepted (decided 2026-08-14)
 
+> **2026-09-03 — one path below has changed, the decision has not.** The operator console
+> moved behind a single `/devtools` prefix: `/ai-usage` is now `/devtools/ai-usage`,
+> `/pulse` is `/devtools/pulse` and `/horizon` is `/devtools/horizon`. The gate on them
+> also now skips outside production. Everything this decision says about behaviour stands.
+
 ## Context
 
 [[cost-ceiling-degrades-to-rule-based]] established that a hit budget is policy, not fault: narration blocks are served from the deterministic filler rather than left empty, because waiting buys nothing when the stop resolves on a clock. That decision explicitly carved the Q&A surface out — "run questions are still refused" — on the reasoning that a hit budget should not become a bypass.

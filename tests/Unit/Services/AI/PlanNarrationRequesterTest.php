@@ -9,10 +9,13 @@ use App\Models\AI\Analysis;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\Season;
+use App\Enums\SessionType;
 use App\Models\User;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\MaterialFingerprint;
 use App\Services\AI\PlanNarrationRequester;
+use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
@@ -218,4 +221,126 @@ describe('ensureDemoFilled', function (): void {
 
         expect($dayRow->content)->toBe('original demo content');
     });
+});
+
+/**
+ * A Done day row already stamped with the fingerprint of the session it
+ * describes — the shape the Monday sweep must recognise as unchanged.
+ */
+function stampedDay(User $user, PlannedSession $session): Analysis
+{
+    $longRunKm = app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_km'];
+
+    return Analysis::factory()->done('already narrated')->create([
+        'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::PlanDayVoice,
+        'discriminator' => $session->date->toDateString(),
+        'content_fingerprint' => MaterialFingerprint::forPlannedSession($session, $longRunKm),
+    ]);
+}
+
+it('leaves an unchanged day alone instead of re-billing it every Monday', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
+    $row = stampedDay($user, $session);
+
+    $this->requester->requestForCurrentWeek($user, Carbon::today());
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->fresh()->content)->toBe('already narrated')
+        // The other six days have no row yet, so they still dispatch.
+        ->and(Bus::dispatched(AnalyzePlanDayVoiceJob::class))->toHaveCount(6);
+});
+
+it('re-narrates a day whose prescribed session changed', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Easy,
+    ]);
+    $row = stampedDay($user, $session);
+
+    // The periodizer rewrote the week: this day is now a tempo session, so the
+    // stored blurb describes something the athlete is no longer being asked to do.
+    $session->update(['session_type' => SessionType::Tempo]);
+
+    $this->requester->requestForCurrentWeek($user, Carbon::today());
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued)
+        ->and(Bus::dispatched(AnalyzePlanDayVoiceJob::class))->toHaveCount(7);
+});
+
+it('re-narrates a day the athlete has since excused themselves from', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'skipped' => false,
+    ]);
+    $row = stampedDay($user, $session);
+
+    $session->update(['skipped' => true]);
+
+    $this->requester->requestForCurrentWeek($user, Carbon::today());
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
+});
+
+it('re-narrates a day left rule-based, since a filler line is not a narration of the material', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
+    // A cost-capped day: marked Done with filler and never stamped.
+    $row = Analysis::factory()->done('filler line')->create([
+        'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::PlanDayVoice,
+        'discriminator' => Carbon::today()->toDateString(),
+        'content_fingerprint' => null,
+    ]);
+
+    $this->requester->requestForCurrentWeek($user, Carbon::today());
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
+});
+
+it('leaves an unchanged week adaptation alone', function (): void {
+    $user = User::factory()->create();
+    $adaptation = PlanAdaptation::factory()->for($user)->create([
+        'week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString(),
+    ]);
+    $row = Analysis::factory()->done('week narrated')->create([
+        'subject_type' => PlanAdaptation::class,
+        'subject_id' => $adaptation->id,
+        'analysis_type' => AnalysisType::PlanWeekVoice,
+        'discriminator' => null,
+        'content_fingerprint' => MaterialFingerprint::forPlanAdaptation($adaptation),
+    ]);
+
+    $this->requester->requestForCurrentWeek($user, Carbon::today());
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->fresh()->content)->toBe('week narrated');
+    Bus::assertNotDispatched(AnalyzePlanWeekVoiceJob::class);
+});
+
+it('re-narrates a week adaptation whose verdict changed', function (): void {
+    $user = User::factory()->create();
+    $adaptation = PlanAdaptation::factory()->for($user)->create([
+        'week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString(),
+        'deload' => false,
+    ]);
+    $row = Analysis::factory()->done('week narrated')->create([
+        'subject_type' => PlanAdaptation::class,
+        'subject_id' => $adaptation->id,
+        'analysis_type' => AnalysisType::PlanWeekVoice,
+        'discriminator' => null,
+        'content_fingerprint' => MaterialFingerprint::forPlanAdaptation($adaptation),
+    ]);
+
+    $adaptation->update(['deload' => true]);
+
+    $this->requester->requestForCurrentWeek($user, Carbon::today());
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
+    Bus::assertDispatched(AnalyzePlanWeekVoiceJob::class);
 });

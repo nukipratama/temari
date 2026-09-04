@@ -10,6 +10,8 @@ use App\Services\AI\SelfHealer;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 #[Signature('ai:self-heal')]
 #[Description('Hourly safety net: re-kick the earliest stalled AI block per user (chains + card/PR/briefing/profile narration), under a retry budget')]
@@ -17,6 +19,8 @@ class SelfHealCommand extends Command
 {
     public function handle(AnalysisService $service, MaintainerAlerter $alerter, SelfHealer $healer): int
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Recovery);
+
         // Detect a pause on/off transition before the early-exit, so both entering
         // a pause (healthy -> paused) and resuming (paused -> healthy) push an alert
         // once, with the reason. Runs hourly regardless of the current pause state.

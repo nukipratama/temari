@@ -12,7 +12,7 @@
     </x-pulse::card-header>
 
     <x-pulse::scroll :expand="$expand" wire:poll.30s="">
-        <div class="text-label-micro text-ink-3 mb-1">Now</div>
+        <div class="text-label-micro text-text-3 mb-1">Now</div>
         <div class="grid grid-cols-4 gap-2 mb-4">
             @foreach ($statusBoxes as $box)
                 @include('livewire.pulse.partials.stat-tile', [
@@ -25,24 +25,24 @@
 
         <div class="grid grid-cols-2 gap-2 mb-4">
             <div>
-                <div class="text-label-micro text-ink-3 mb-1">Dead-letter</div>
+                <div class="text-label-micro text-text-3 mb-1">Dead-letter</div>
                 <div @class([
                     'rounded-sm p-2 text-center',
                     'bg-ember/15' => $deadLettered > 0,
-                    'bg-surface-sunken' => $deadLettered === 0,
+                    'bg-muted' => $deadLettered === 0,
                 ])>
-                    <div class="font-mono text-lg font-bold tabular-nums text-ink">{{ number_format($deadLettered) }}</div>
+                    <div class="font-mono text-lg font-bold tabular-nums text-foreground">{{ number_format($deadLettered) }}</div>
                     @if ($deadLettered > 0)
-                        <a href="{{ url('/ai-usage') }}" class="block text-label-micro text-ember-ink underline">
+                        <a href="{{ url('/devtools/ai-usage') }}" class="block text-label-micro text-ember-ink underline">
                             /ai-usage
                         </a>
                     @else
-                        <div class="text-label-micro text-ink-3">gave up</div>
+                        <div class="text-label-micro text-text-3">gave up</div>
                     @endif
                 </div>
             </div>
             <div>
-                <div class="text-label-micro text-ink-3 mb-1">Failed jobs</div>
+                <div class="text-label-micro text-text-3 mb-1">Failed jobs</div>
                 @include('livewire.pulse.partials.stat-tile', [
                     'label' => 'in failed_jobs',
                     'value' => number_format($failedJobs),
@@ -52,11 +52,11 @@
         </div>
 
         <div class="mb-4">
-            <div class="text-label-micro text-ink-3 mb-1">AI generation</div>
+            <div class="text-label-micro text-text-3 mb-1">AI generation</div>
             <div @class([
                 'rounded-sm p-2 text-xs font-semibold',
                 'bg-leaf/10 text-leaf-ink' => $pauseReason === null,
-                'bg-horizon/25 text-ink' => $pauseReason !== null,
+                'bg-horizon/25 text-foreground' => $pauseReason !== null,
             ])>
                 {{-- Only a null reason is healthy. A @default that fell through to
                      "healthy" is why an unrecognised pause read green while the box
@@ -104,14 +104,14 @@
                         <tr wire:key="{{ $failure->subject_type }}-{{ $failure->subject_id }}-{{ $failure->analysis_type }}-spacer" class="h-2 first:h-0"></tr>
                         <tr wire:key="{{ $failure->subject_type }}-{{ $failure->subject_id }}-{{ $failure->analysis_type }}-row">
                             <x-pulse::td class="max-w-[1px]">
-                                <code class="block text-xs text-ink truncate" title="{{ class_basename($failure->subject_type) }} #{{ $failure->subject_id }} · {{ $failure->analysis_type }}">
+                                <code class="block text-xs text-foreground truncate" title="{{ class_basename($failure->subject_type) }} #{{ $failure->subject_id }} · {{ $failure->analysis_type }}">
                                     {{ class_basename($failure->subject_type) }} #{{ $failure->subject_id }} · {{ $failure->analysis_type }}
                                 </code>
-                                <p class="mt-1 text-xs text-ink-3 truncate" title="{{ $failure->error }}">
+                                <p class="mt-1 text-xs text-text-3 truncate" title="{{ $failure->error }}">
                                     {{ \Illuminate\Support\Str::limit((string) $failure->error, 120) }}
                                 </p>
                             </x-pulse::td>
-                            <x-pulse::td numeric class="text-ink-2 font-bold whitespace-nowrap">
+                            <x-pulse::td numeric class="text-text-2 font-bold whitespace-nowrap">
                                 {{ \Illuminate\Support\Carbon::parse($failure->updated_at)->ago(syntax: Carbon\CarbonInterface::DIFF_ABSOLUTE, short: true) }}
                             </x-pulse::td>
                         </tr>

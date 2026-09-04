@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Models\Activity;
-use App\Models\PersonalRecord;
 use App\Models\PlanAdaptation;
 use App\Models\RunCard;
 use App\Models\Season;
@@ -29,7 +28,6 @@ it('lets the owner through and rejects a stranger for every AnalysisType', funct
         AnalysisType::PostRunSpeech,
         AnalysisType::RunInsight => Activity::factory()->for($owner)->create()->id,
         AnalysisType::WeeklyRecap => WeeklySnapshot::factory()->for($owner)->create()->id,
-        AnalysisType::PrContext => PersonalRecord::factory()->for($owner)->create()->id,
         AnalysisType::CardFlavor => RunCard::factory()
             ->for(Activity::factory()->for($owner))
             ->create()->id,

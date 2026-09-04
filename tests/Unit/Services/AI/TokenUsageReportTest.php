@@ -6,6 +6,7 @@ use App\Models\AI\TokenUsage;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\User\UserEraser;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\TokenUsageReport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -54,10 +55,12 @@ function seedReportUsage(
     bool $truncated = false,
     ?int $userId = null,
     string $model = 'gpt-4o',
+    AnalysisOrigin $origin = AnalysisOrigin::Unknown,
 ): void {
     TokenUsage::query()->create([
         'user_id' => $userId,
         'kind' => $kind,
+        'origin' => $origin,
         'prompt_tokens' => $prompt,
         'completion_tokens' => $completion,
         'total_tokens' => $prompt + $completion,
@@ -284,14 +287,14 @@ it('reads a live user Strava id from the connection, not from any snapshot', fun
 });
 
 it('labels available kinds via AnalysisType, falling back to the raw value', function () use ($range): void {
-    seedReportUsage('pr_context', 10, 5, Carbon::parse('2026-05-10'));
+    seedReportUsage('card_flavor', 10, 5, Carbon::parse('2026-05-10'));
     seedReportUsage('totally-unknown-kind', 10, 5, Carbon::parse('2026-05-11'));
 
     [$from, $to] = $range();
     $kinds = collect($this->report->build($from, $to, null)['availableKinds'])->keyBy('value');
 
     // A known kind resolves to the AnalysisType case name; unknown stays raw.
-    expect($kinds->get('pr_context')['label'])->toBe('PrContext')
+    expect($kinds->get('card_flavor')['label'])->toBe('CardFlavor')
         ->and($kinds->get('totally-unknown-kind')['label'])->toBe('totally-unknown-kind');
 });
 
@@ -364,4 +367,56 @@ it('leaves the agent summary null when no call recorded a step', function (): vo
     expect($row['avg_steps'])->toBeNull()
         ->and($row['cached_pct'])->toBeNull()
         ->and($row['reasoning_pct'])->toBeNull();
+});
+
+it('splits spend by what started the call, which kind alone cannot express', function () use ($range): void {
+    // Same narrator, three different triggers: this is exactly the question the
+    // kind breakdown cannot answer.
+    seedReportUsage('run_insight', 100, 50, Carbon::parse('2026-05-10'), origin: AnalysisOrigin::Ingest);
+    seedReportUsage('run_insight', 200, 60, Carbon::parse('2026-05-11'), origin: AnalysisOrigin::Ingest);
+    seedReportUsage('run_insight', 40, 10, Carbon::parse('2026-05-12'), origin: AnalysisOrigin::User);
+    seedReportUsage('weekly_recap', 10, 5, Carbon::parse('2026-05-12'), origin: AnalysisOrigin::Recovery);
+
+    [$from, $to] = $range();
+    $byOrigin = collect($this->report->build($from, $to, null)['byOrigin'])->keyBy('origin');
+
+    expect($byOrigin->get('ingest')['calls'])->toBe(2)
+        ->and($byOrigin->get('ingest')['total'])->toBe(410)
+        ->and($byOrigin->get('ingest')['label'])->toBe('Ingest cascade')
+        ->and($byOrigin->get('user')['calls'])->toBe(1)
+        ->and($byOrigin->get('recovery')['calls'])->toBe(1);
+});
+
+it('orders the origin breakdown by spend, heaviest first', function () use ($range): void {
+    seedReportUsage('run_insight', 10, 5, Carbon::parse('2026-05-10'), origin: AnalysisOrigin::User);
+    seedReportUsage('run_insight', 900, 300, Carbon::parse('2026-05-11'), origin: AnalysisOrigin::Ingest);
+
+    [$from, $to] = $range();
+
+    expect(array_column($this->report->build($from, $to, null)['byOrigin'], 'origin'))
+        ->toBe(['ingest', 'user']);
+});
+
+it('narrows every figure to one origin when the filter names it', function () use ($range): void {
+    seedReportUsage('run_insight', 100, 50, Carbon::parse('2026-05-10'), origin: AnalysisOrigin::Ingest);
+    seedReportUsage('run_insight', 900, 300, Carbon::parse('2026-05-11'), origin: AnalysisOrigin::Scheduled);
+
+    [$from, $to] = $range();
+    $report = $this->report->build($from, $to, null, origin: 'ingest');
+
+    expect($report['totals']['calls'])->toBe(1)
+        ->and($report['totals']['total'])->toBe(150)
+        ->and($report['byOrigin'])->toHaveCount(1);
+});
+
+it('offers only the origins actually present in the range', function () use ($range): void {
+    seedReportUsage('run_insight', 10, 5, Carbon::parse('2026-05-10'), origin: AnalysisOrigin::Ingest);
+    seedReportUsage('weekly_recap', 10, 5, Carbon::parse('2026-05-11'), origin: AnalysisOrigin::Recovery);
+
+    [$from, $to] = $range();
+
+    expect($this->report->build($from, $to, null)['availableOrigins'])->toBe([
+        ['value' => 'ingest', 'label' => 'Ingest cascade'],
+        ['value' => 'recovery', 'label' => 'Recovery'],
+    ]);
 });

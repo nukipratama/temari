@@ -31,11 +31,13 @@ export function navigate({
     from,
     to,
     kind,
+    origin,
 }: {
     range: RangeToken;
     from: string;
     to: string;
     kind: string | null;
+    origin: string | null;
 }): void {
     const params: Record<string, string> = {};
     if (range === 'custom') {
@@ -47,19 +49,29 @@ export function navigate({
     if (kind !== null) {
         params.kind = kind;
     }
-    router.get('/ai-usage', params, {
+    if (origin !== null) {
+        params.origin = origin;
+    }
+    router.get('/devtools/ai-usage', params, {
         preserveState: true,
         preserveScroll: true,
     });
 }
 
-/** Build a durable, date-free preset href that preserves the active kind filter. */
-export function presetHref(token: RangeToken, kind: string | null): string {
+/** Build a durable, date-free preset href that preserves the active filters. */
+export function presetHref(
+    token: RangeToken,
+    kind: string | null,
+    origin: string | null = null,
+): string {
     const params = new URLSearchParams({ range: token });
     if (kind !== null) {
         params.set('kind', kind);
     }
-    return `/ai-usage?${params.toString()}`;
+    if (origin !== null) {
+        params.set('origin', origin);
+    }
+    return `/devtools/ai-usage?${params.toString()}`;
 }
 
 export const PRESETS: ReadonlyArray<{ token: RangeToken; label: string }> = [

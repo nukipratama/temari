@@ -16,7 +16,6 @@ use App\Models\ActivityStream;
 use App\Models\AI\Analysis;
 use App\Models\AI\RunQuestion;
 use App\Models\InboxNotification;
-use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\RunCard;
@@ -35,6 +34,7 @@ use App\Services\AI\PlanNarrationRequester;
 use App\Services\AI\RecapPeriod;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\AI\RunQuestion\RunQuestionSeeds;
+use App\Services\AI\RunQuestion\RunQuestionTopic;
 use App\Services\Geo\PolylineEncoder;
 use App\Services\Run\Ingest\StreamAnalysis;
 use App\Services\Run\Metrics\PaceCalculator;
@@ -279,7 +279,6 @@ class DemoRunSeeder
     private function stagePendingAnalyses(User $user): void
     {
         $activities = Activity::query()->where('user_id', $user->id)->get();
-        $prIds = PersonalRecord::query()->where('user_id', $user->id)->pluck('id')->all();
         $cardIds = RunCard::query()->whereIn('activity_id', $activities->pluck('id'))->pluck('id')->all();
 
         $today = Carbon::today()->toDateString();
@@ -295,13 +294,6 @@ class DemoRunSeeder
                 subjectOrType: RunCard::class,
                 subjectId: $cardId,
                 type: AnalysisType::CardFlavor,
-            );
-        }
-        foreach ($prIds as $prId) {
-            $this->analysisService->request(
-                subjectOrType: PersonalRecord::class,
-                subjectId: $prId,
-                type: AnalysisType::PrContext,
             );
         }
         // Recaps never narrate the still-running current period (see RecapPeriod),
@@ -353,15 +345,13 @@ class DemoRunSeeder
     {
         $activityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
         $weeklyIds = WeeklySnapshot::query()->where('user_id', $user->id)->pluck('id');
-        $prIds = PersonalRecord::query()->where('user_id', $user->id)->pluck('id');
         $cardIds = RunCard::query()->whereIn('activity_id', $activityIds)->pluck('id');
 
         $rows = Analysis::query()
             ->where('status', '!=', AnalysisStatus::Done)
-            ->where(function ($q) use ($user, $activityIds, $weeklyIds, $prIds, $cardIds): void {
+            ->where(function ($q) use ($user, $activityIds, $weeklyIds, $cardIds): void {
                 $q->where(fn ($qq) => $qq->where('subject_type', Activity::class)->whereIn('subject_id', $activityIds))
                     ->orWhere(fn ($qq) => $qq->where('subject_type', WeeklySnapshot::class)->whereIn('subject_id', $weeklyIds))
-                    ->orWhere(fn ($qq) => $qq->where('subject_type', PersonalRecord::class)->whereIn('subject_id', $prIds))
                     ->orWhere(fn ($qq) => $qq->where('subject_type', RunCard::class)->whereIn('subject_id', $cardIds))
                     ->orWhere(fn ($qq) => $qq->whereIn('subject_type', [
                         AnalysisType::BRIEFING_SUBJECT_TYPE,
@@ -609,17 +599,64 @@ class DemoRunSeeder
                 'user_id' => $user->id,
                 'activity_id' => $detail->activity_id,
                 'question' => $topic->question(),
-                'answer' => sprintf(
-                    'over %s km at %s, nothing here is off. it reads like the rest of your recent work, so treat it as a normal day rather than a signal.',
-                    $km,
-                    $pace,
-                ),
+                'answer' => self::demoAnswer($topic, $km, $pace),
                 'status' => AnalysisStatus::Done,
             ]);
             $added++;
         }
 
         return $added;
+    }
+
+    /**
+     * A rule-based answer per topic, so the demo does not show two different
+     * questions under one identical reply. No LLM tokens are spent seeding.
+     */
+    private static function demoAnswer(RunQuestionTopic $topic, float $km, string $pace): string
+    {
+        return match ($topic) {
+            RunQuestionTopic::HrDrift => sprintf(
+                'your HR climbed as the run went on, which is ordinary over %s km at %s. it only starts to mean something when the pace stays flat while the number keeps rising.',
+                $km,
+                $pace,
+            ),
+            RunQuestionTopic::Decoupling => sprintf(
+                'your pace and HR stayed close to each other across %s km. that is what an honest aerobic base looks like, so keep spending time here.',
+                $km,
+            ),
+            RunQuestionTopic::NegativeSplit => sprintf(
+                'you ran the back half quicker than the front over %s km. starting under control and finishing strong is the pattern worth repeating.',
+                $km,
+            ),
+            RunQuestionTopic::CadenceDrop => sprintf(
+                'your step rate sagged late on. that usually tracks fatigue rather than form, and it fits a %s km effort at %s.',
+                $km,
+                $pace,
+            ),
+            RunQuestionTopic::SlowestSplit => sprintf(
+                'your slowest kilometre sat well off your %s average. one heavy split inside %s km is terrain or traffic more often than fitness.',
+                $pace,
+                $km,
+            ),
+            RunQuestionTopic::HardZones => sprintf(
+                'most of this sat below threshold, so %s reads as controlled rather than a day you overreached.',
+                $pace,
+            ),
+            RunQuestionTopic::Heat => sprintf(
+                'the heat took a cut of your pace here. holding %s for %s km in those conditions is worth more than the raw number suggests.',
+                $pace,
+                $km,
+            ),
+            RunQuestionTopic::Climb => sprintf(
+                'the climbing is what shaped your %s average. put the same effort on a flat route and it reads quicker.',
+                $pace,
+            ),
+            RunQuestionTopic::Baseline => sprintf(
+                'over %s km at %s, nothing here is off. it reads like the rest of your recent work, so treat it as a normal day rather than a signal.',
+                $km,
+                $pace,
+            ),
+        };
     }
 
     /**

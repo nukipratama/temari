@@ -15,6 +15,8 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 #[Signature('ai:weekly-recap')]
 #[Description('Kick off the connected weekly-recap chain: narrate every completed week whose recap is not Done, oldest first')]
@@ -22,6 +24,8 @@ class WeeklyRecapCommand extends Command
 {
     public function handle(AnalysisService $service, BackfillAgeGate $ages): int
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
+
         $lastWeekEnding = RecapPeriod::lastClosedWeekEnding();
         $oldestReal = $ages->cutoffDate();
 

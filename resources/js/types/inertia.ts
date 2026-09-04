@@ -100,7 +100,7 @@ export interface SharedProps {
     webPushPublicKey?: string;
     /** True when the auth user's Strava connection is live but lacks the `profile:read_all` scope needed for HR-zone sync. */
     stravaZoneScopeMissing?: boolean;
-    /** True when LLM narration is globally paused, so the UI can show a soft "Temari lagi istirahat" banner. */
+    /** True when LLM narration is globally paused, so the UI can show a soft "Temari is resting" banner. */
     aiPaused?: boolean;
     /** True when the auth user has an activity still waiting on its per-activity narration, so the UI can show a soft "still catching up" banner. */
     aiCatchingUp?: boolean;

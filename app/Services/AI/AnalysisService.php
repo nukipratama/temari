@@ -6,6 +6,7 @@ namespace App\Services\AI;
 
 use Closure;
 use App\Jobs\AI\AnalyzeActivityJob;
+use App\Jobs\AI\AnalyzeBaseJob;
 use App\Jobs\AI\AnalyzeGroupJob;
 use App\Jobs\AI\AnalyzeRowJob;
 use App\Models\Activity;
@@ -46,6 +47,7 @@ class AnalysisService
         private readonly MaintainerAlerter $alerter,
         private readonly ChainResolver $chains,
         private readonly CostCeilingLedger $ceilingLedger,
+        private readonly NarrationOrigin $origin,
     ) {
     }
 
@@ -299,7 +301,7 @@ class AnalysisService
 
         /** @var class-string<AnalyzeRowJob> $jobClass */
         $jobClass = $type->jobClass();
-        $this->dispatchPending($jobClass::dispatch($row->id), $delaySeconds);
+        $this->dispatchPending($this->stamped(new $jobClass($row->id)), $delaySeconds);
 
         return $row;
     }
@@ -341,7 +343,20 @@ class AnalysisService
             }
         }
 
-        $this->dispatchPending($jobClass::dispatch($subjectId, $discriminator), $delaySeconds);
+        $this->dispatchPending($this->stamped(new $jobClass($subjectId, $discriminator)), $delaySeconds);
+    }
+
+    /**
+     * Stamp the dispatching entry point's origin onto the job, so the call it
+     * eventually makes is metered against what started it rather than against
+     * whichever narrator answered. The value rides the queue on the job itself;
+     * {@see \App\Jobs\AI\AnalyzeBaseJob} restores it before generating.
+     */
+    private function stamped(AnalyzeBaseJob $job): PendingDispatch
+    {
+        $job->origin = $this->origin->current();
+
+        return dispatch($job);
     }
 
     private function upsertRow(
@@ -678,7 +693,7 @@ class AnalysisService
      *
      * Two statuses are left alone. An already-Done row keeps the real prose it
      * was billed for. A Failed row is a genuine fault (content filter, malformed
-     * response, spent retry budget) that the bounded self-heal and the /ai-usage
+     * response, spent retry budget) that the bounded self-heal and the /devtools/ai-usage
      * dead-letter exist to surface, so it stays Failed with its "Try again"
      * rather than hiding a break behind plausible content — on a day the ceiling
      * trips repeatedly, filling it would erase that signal every time.

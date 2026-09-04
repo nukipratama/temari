@@ -75,10 +75,8 @@ describe('WeeklyStatusChips', () => {
             />,
         );
 
-        expect(screen.getByText(/Monotony 1.80/)).toHaveClass(
-            'bg-mood-gassed/15',
-        );
-        expect(screen.getByText(/Drift 9.4%/)).toHaveClass('bg-mood-gassed/15');
+        expect(screen.getByText(/Monotony 1.80/)).toHaveClass('bg-ember/15');
+        expect(screen.getByText(/Drift 9.4%/)).toHaveClass('bg-ember/15');
     });
 
     it('takes a card ground for the chips that sit inside a muted panel', () => {

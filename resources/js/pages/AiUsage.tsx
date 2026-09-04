@@ -8,6 +8,7 @@ import DailyChart from '@/components/aiusage/DailyChart';
 import DeploymentTable from '@/components/aiusage/DeploymentTable';
 import FlashBanner from '@/components/aiusage/FlashBanner';
 import KindTable from '@/components/aiusage/KindTable';
+import OriginTable from '@/components/aiusage/OriginTable';
 import UsageFilters from '@/components/aiusage/UsageFilters';
 import UsageKpis from '@/components/aiusage/UsageKpis';
 import UserTable from '@/components/aiusage/UserTable';
@@ -22,13 +23,16 @@ export default function AiUsage({
     from,
     to,
     kind,
+    origin,
     totals,
     previousTotals,
     byKind,
     byUser,
     byDeployment,
     daily,
+    byOrigin,
     availableKinds,
+    availableOrigins,
     budget,
     deadLettered,
     failedUnderBudget,
@@ -56,9 +60,12 @@ export default function AiUsage({
                             </p>
                         </div>
                     </div>
-                    <span className="hidden text-label-micro font-semibold text-text-3 sm:inline">
+                    <a
+                        href="/devtools"
+                        className="focus-ring hidden rounded-full px-2 py-1 text-label-micro font-semibold text-text-3 transition hover:text-foreground sm:inline"
+                    >
                         Temari · Devtools
-                    </span>
+                    </a>
                 </div>
             </header>
 
@@ -70,7 +77,9 @@ export default function AiUsage({
                     from={from}
                     to={to}
                     kind={kind}
+                    origin={origin}
                     availableKinds={availableKinds}
+                    availableOrigins={availableOrigins}
                 />
 
                 <UsageKpis
@@ -107,6 +116,8 @@ export default function AiUsage({
                     grandTotal={totals.total}
                     currency={currency}
                 />
+
+                <OriginTable rows={byOrigin} currency={currency} />
 
                 <UserTable rows={byUser} grandTotal={totals.total} />
             </PageContainer>

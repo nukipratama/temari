@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\View;
 use Laravel\Pulse\Livewire\Card;
 
 /**
- * Per-block self-heal retry budget on the /pulse dashboard. /ai-usage groups
+ * Per-block self-heal retry budget on the /pulse dashboard. /devtools/ai-usage groups
  * attention buckets by user, type and error; this is the numeric view of where
  * each individual Failed block sits against MAX_SELF_HEAL_ATTEMPTS, so a block
  * one attempt from dead-lettering is visible before it gets there.

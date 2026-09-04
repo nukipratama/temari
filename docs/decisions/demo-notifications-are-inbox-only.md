@@ -17,6 +17,10 @@ code_refs:
 
 **Status:** Accepted (documented 2026-08-13)
 
+> **2026-09-03 — one reference below has changed, the decision has not.** The `plan/` tree
+> cited here was retired to git history when the parity program closed; only `plan/todo.md`
+> remains. The reasoning is unaffected.
+
 ## Context
 
 [[inbox-is-an-always-on-channel]] shipped the inbox as a router channel, and

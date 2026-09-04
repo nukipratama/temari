@@ -8,13 +8,11 @@ use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
-use App\Jobs\AI\AnalyzePrContextJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Listeners\DispatchPostRunAnalysis;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
@@ -89,27 +87,6 @@ it('re-narrates card flavor on a re-ingest (invalidate:true) without minting a s
 
     expect(Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->count())->toBe(1)
         ->and($row->fresh()->status)->not->toBe(AnalysisStatus::Done);
-});
-
-it('requests pr_context for the records this run holds, invalidate:false so a backfill never re-bills', function (): void {
-    $activity = analyzedActivity();
-    $held = PersonalRecord::factory()->for($activity->user)->create([
-        'category' => '5km',
-        'activity_id' => $activity->id,
-    ]);
-    // Held by an older run: this ingest did not beat it, so it is not re-requested.
-    $other = PersonalRecord::factory()->for($activity->user)->create(['category' => '10km']);
-
-    fire($activity);
-    $row = Analysis::query()->forSubject(PersonalRecord::class, $held->id, AnalysisType::PrContext)->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'first record');
-
-    fire($activity);
-
-    expect(Analysis::query()->forSubject(PersonalRecord::class, $held->id, AnalysisType::PrContext)->count())->toBe(1)
-        // Already Done: the second fan-out is a no-op, never a second bill.
-        ->and($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and(Analysis::query()->forSubject(PersonalRecord::class, $other->id, AnalysisType::PrContext)->exists())->toBeFalse();
 });
 
 it('dispatches ProfileVoice on first ingest, keyed by the current ISO week', function (): void {
@@ -327,7 +304,7 @@ it('backfill kickoff dispatches the user earliest Pending group, not the just-in
     Carbon::setTestNow();
 });
 
-it('staggers card_flavor and pr_context by the same backfill delay as the activity group', function (): void {
+it('staggers card_flavor by the same backfill delay as the activity group', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     config()->set('ai.backfill_stagger_seconds', 100);
 
@@ -339,15 +316,10 @@ it('staggers card_flavor and pr_context by the same backfill delay as the activi
     // Second backfilled ingest for the same user gets staggered behind the first.
     $activity = analyzedActivity('2026-05-02 06:00:00', $first->user_id);
     RunCard::factory()->create(['activity_id' => $activity->id]);
-    PersonalRecord::factory()->for($activity->user)->create([
-        'category' => '5km',
-        'activity_id' => $activity->id,
-    ]);
 
     fire($activity);
 
     Bus::assertDispatched(AnalyzeCardFlavorJob::class, fn (AnalyzeCardFlavorJob $job): bool => $job->delay === 100);
-    Bus::assertDispatched(AnalyzePrContextJob::class, fn (AnalyzePrContextJob $job): bool => $job->delay === 100);
     Carbon::setTestNow();
 });
 
@@ -366,16 +338,12 @@ it('staggers ProfileVoice by the backfill delay on the ingest that first origina
     Carbon::setTestNow();
 });
 
-it('fills an activity older than the backfill depth cap rule-based (group + card + pr context), no real dispatch', function (): void {
+it('fills an activity older than the backfill depth cap rule-based (group + card), no real dispatch', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     config()->set('ai.backfill_max_age_days', 365);
     // Well over 365 days before 2026-06-10.
     $activity = analyzedActivity('2025-01-01 06:00:00');
     $card = RunCard::factory()->create(['activity_id' => $activity->id]);
-    $pr = PersonalRecord::factory()->for($activity->user)->create([
-        'category' => '5km',
-        'activity_id' => $activity->id,
-    ]);
 
     fire($activity);
 
@@ -388,9 +356,6 @@ it('fills an activity older than the backfill depth cap rule-based (group + card
 
     $cardRow = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
     expect($cardRow->status)->toBe(AnalysisStatus::Done);
-
-    $prRow = Analysis::query()->forSubject(PersonalRecord::class, $pr->id, AnalysisType::PrContext)->firstOrFail();
-    expect($prRow->status)->toBe(AnalysisStatus::Done);
 
     Carbon::setTestNow();
 });

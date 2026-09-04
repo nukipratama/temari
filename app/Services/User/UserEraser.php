@@ -33,7 +33,7 @@ use Illuminate\Support\Facades\DB;
  * `ai_token_usages` is deliberately kept. It is cost history, not user data,
  * and lives on its own connection so it survives the account entirely. Before
  * the user goes, their name and Strava athlete id are stamped onto those rows,
- * so /ai-usage can still say whose spend it was instead of showing a bare id
+ * so /devtools/ai-usage can still say whose spend it was instead of showing a bare id
  * pointing at nobody.
  */
 final readonly class UserEraser

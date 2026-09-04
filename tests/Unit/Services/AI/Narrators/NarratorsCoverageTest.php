@@ -20,7 +20,6 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\Agent\Tools\LifetimeStatsTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\Agent\Tools\MonthTotalsTool;
-use App\Services\AI\Agent\Tools\PersonalRecordTool;
 use App\Services\AI\Agent\Tools\PlanDayTool;
 use App\Services\AI\Agent\Tools\PlanSeasonTool;
 use App\Services\AI\Agent\Tools\PlanWeekTool;
@@ -36,7 +35,6 @@ use App\Services\AI\Narrators\PlanDayVoiceNarrator;
 use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
 use App\Services\AI\Narrators\PlanWeekVoiceNarrator;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
-use App\Services\AI\Narrators\PrContextNarrator;
 use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
@@ -652,53 +650,12 @@ it('TrendRangeTool exposes the current range on its own reading', function (): v
     expect($context['range'])->toBe('90d');
 });
 
-// ── PrContextNarrator ─────────────────────────────────────────────────
+// ── WeatherTool ───────────────────────────────────────────────────────
 
-it('PrContextNarrator returns flavor on valid JSON', function (): void {
-    $user = User::factory()->create();
-    $pr = PersonalRecord::factory()->for($user)->create([
-        'category' => '5km',
-        'value_sec' => 1500,
-    ]);
-    $caller = fakeCaller(json_encode(['flavor' => 'PR baru!'], JSON_THROW_ON_ERROR));
-    $narrator = new PrContextNarrator($caller, app(VdotEstimator::class));
-    expect($narrator->generate($pr))->toBe('PR baru!');
-});
-
-it('PrContextNarrator throws on missing flavor key', function (): void {
-    $user = User::factory()->create();
-    $pr = PersonalRecord::factory()->for($user)->create();
-    $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new PrContextNarrator($caller, app(VdotEstimator::class));
-    $narrator->generate($pr);
-})->throws(UnavailableException::class);
-
-it('PrContextNarrator throws on non-JSON', function (): void {
-    $user = User::factory()->create();
-    $pr = PersonalRecord::factory()->for($user)->create();
-    $caller = fakeCaller('not json');
-    $narrator = new PrContextNarrator($caller, app(VdotEstimator::class));
-    $narrator->generate($pr);
-})->throws(UnavailableException::class, 'non-JSON');
-
-it('PrContextNarrator flags the PR category as the strongest event when it drives the best VDOT', function (): void {
-    $user = User::factory()->create();
-    // A single 5km PR is, by construction, the user's best-VDOT source category.
-    $pr = PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
-
-    $context = new PersonalRecordTool($pr, app(VdotEstimator::class))->handle([]);
-
-    expect($context['is_strongest_event'])->toBeTrue()
-        ->and($context['vdot'])->not->toBeNull();
-});
-
-it('PrContextNarrator feeds the PR run conditions into the context', function (): void {
+it('WeatherTool feeds the run conditions into the context', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create(['weather_temp_c' => 33]);
-    $pr = PersonalRecord::factory()->for($user)->create([
-        'category' => '5km', 'value_sec' => 1500, 'activity_id' => $activity->id,
-    ]);
 
     $context = new WeatherTool($activity, $activity->detail)->handle([]);
 
@@ -1296,8 +1253,8 @@ function toolNamesByClass(): array
  * Each narrator paired with the tool names it can hand the model.
  *
  * Taken from the `new XxxTool(...)` sites in its source, so a conditionally
- * registered tool (CardFlavor and PrContext both vary theirs by whether the run
- * has detail) counts as carried.
+ * registered tool (CardFlavor varies its own by whether the run has detail)
+ * counts as carried.
  *
  * @return array<string, array{0: class-string, 1: list<string>}>
  */
@@ -1394,7 +1351,9 @@ it('per-narrator step budgets cover two full read passes and only exist where th
 
     expect($declared)->toBe([
         'MonthlyRecapNarrator' => 4,
-        'PrContextNarrator' => 6,
+        'PlanDayVoiceNarrator' => 4,
+        'PlanSeasonVoiceNarrator' => 4,
+        'PlanWeekVoiceNarrator' => 4,
         'TrendReadNarrator' => 4,
         'WeeklyRecapNarrator' => 4,
     ]);
@@ -1524,7 +1483,6 @@ it('tells the model to call its tool for data that is never handed to it in cont
 })->with([
     'WeeklyRecapNarrator' => [WeeklyRecapNarrator::class, 'get_week_totals'],
     'MonthlyRecapNarrator' => [MonthlyRecapNarrator::class, 'get_month_totals'],
-    'PrContextNarrator' => [PrContextNarrator::class, 'get_record'],
 ]);
 
 it('CardFlavorNarrator prompt names rarity in English, not Indonesian', function (): void {

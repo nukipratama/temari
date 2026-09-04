@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
@@ -29,7 +28,7 @@ afterEach(function (): void {
  *
  * @return array{0: RunCard, 1: PersonalRecord}
  */
-function agedRunSubjects(int $days): array
+function agedRunCard(int $days): RunCard
 {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
@@ -37,10 +36,7 @@ function agedRunSubjects(int $days): array
         'start_date_local' => Carbon::now()->subDays($days),
     ]);
 
-    return [
-        RunCard::factory()->for($activity)->create(),
-        PersonalRecord::factory()->for($user)->create(['activity_id' => $activity->id]),
-    ];
+    return RunCard::factory()->for($activity)->create();
 }
 
 it('treats the cutoff day itself as too old and the day before it as narratable', function (): void {
@@ -58,18 +54,12 @@ it('narrates an undated run, since there is no age to judge it by', function ():
     expect($this->gate->isTooOld(null))->toBeFalse();
 });
 
-it('blocks a manual card_flavor / pr_context trigger on a run past the cutoff', function (): void {
-    [$card, $record] = agedRunSubjects(200);
-
-    expect($this->gate->blocksManualTrigger(AnalysisType::CardFlavor, $card->id, null))->toBeTrue()
-        ->and($this->gate->blocksManualTrigger(AnalysisType::PrContext, $record->id, null))->toBeTrue();
+it('blocks a manual card_flavor trigger on a run past the cutoff', function (): void {
+    expect($this->gate->blocksManualTrigger(AnalysisType::CardFlavor, agedRunCard(200)->id, null))->toBeTrue();
 });
 
-it('lets a manual card_flavor / pr_context trigger through on a recent run', function (): void {
-    [$card, $record] = agedRunSubjects(3);
-
-    expect($this->gate->blocksManualTrigger(AnalysisType::CardFlavor, $card->id, null))->toBeFalse()
-        ->and($this->gate->blocksManualTrigger(AnalysisType::PrContext, $record->id, null))->toBeFalse();
+it('lets a manual card_flavor trigger through on a recent run', function (): void {
+    expect($this->gate->blocksManualTrigger(AnalysisType::CardFlavor, agedRunCard(3)->id, null))->toBeFalse();
 });
 
 it('blocks a hand-crafted briefing trigger for a long-past day', function (): void {
@@ -104,6 +94,5 @@ it('narrates a subject whose run date is unknown rather than guessing its age', 
     $detaillessCard = RunCard::factory()->create();
 
     expect($this->gate->blocksManualTrigger(AnalysisType::CardFlavor, $detaillessCard->id, null))->toBeFalse()
-        ->and($this->gate->blocksManualTrigger(AnalysisType::CardFlavor, 999999, null))->toBeFalse()
-        ->and($this->gate->blocksManualTrigger(AnalysisType::PrContext, 999999, null))->toBeFalse();
+        ->and($this->gate->blocksManualTrigger(AnalysisType::CardFlavor, 999999, null))->toBeFalse();
 });

@@ -18,6 +18,17 @@ code_refs:
 
 **Status:** Accepted (documented 2026-06-20)
 
+
+> **Fact update, 2026-09-04.** The decision and its reasoning stand unchanged. The `pr_context`
+> narration named below no longer exists: it was billed on every ingest and rendered on no page, so
+> the surface and its self-heal sweep were cut. Read every mention of it here as historical;
+> `card_flavor` is now the only ingest-only, unchained narration the argument covers.
+
+> **2026-09-03 — one path below has changed, the decision has not.** The operator console
+> moved behind a single `/devtools` prefix: `/ai-usage` is now `/devtools/ai-usage`,
+> `/pulse` is `/devtools/pulse` and `/horizon` is `/devtools/horizon`. The gate on them
+> also now skips outside production. Everything this decision says about behaviour stands.
+
 ## Context
 
 A wall of independently-generated narration blocks reads like a stranger writing each entry cold. We wanted Temari's per-activity speech and the weekly/monthly recaps to read as a *connected thread*: each link should know what the previous one said and pick up the story rather than restate it. The narrators carry a `prev_narrative` input for exactly this continuity, so each successor must wait for its predecessor to be `Done` and read that already-stored narrative.

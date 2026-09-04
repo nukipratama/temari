@@ -16,11 +16,13 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Notifications\AnalysisReadyNotification;
 use App\Notifications\Channels\InAppChannel;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\MaintainerAlerter;
+use App\Services\AI\NarrationOrigin;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
@@ -65,6 +67,37 @@ it('creates a pending row and queues a row job on first request', function (): v
     Bus::assertDispatched(
         AnalyzeWeeklyRecapJob::class,
         fn (AnalyzeWeeklyRecapJob $job): bool => $job->analysisId === $row->id,
+    );
+});
+
+it('stamps the dispatching entry point origin onto the job, so spend attributes to its trigger', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
+
+    $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    Bus::assertDispatched(
+        AnalyzeWeeklyRecapJob::class,
+        fn (AnalyzeWeeklyRecapJob $job): bool => $job->origin === AnalysisOrigin::Scheduled,
+    );
+});
+
+it('stamps an undeclared dispatch as unattributed rather than defaulting to a real origin', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+
+    $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    Bus::assertDispatched(
+        AnalyzeWeeklyRecapJob::class,
+        fn (AnalyzeWeeklyRecapJob $job): bool => $job->origin === AnalysisOrigin::Unknown,
     );
 });
 

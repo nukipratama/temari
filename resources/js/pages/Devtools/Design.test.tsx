@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import Design from './Design';
@@ -93,6 +93,14 @@ describe('Devtools/Design', () => {
     it('audits the live values, outline rule and translucent panels included', () => {
         cleanup = declareTokens();
         render(<Design />);
+
+        // The table shows failures only by default, and these tokens all pass.
+        expect(
+            screen.getByText(/every pair passes on this ground/),
+        ).toBeInTheDocument();
+        fireEvent.click(
+            screen.getByRole('button', { name: /Show all \d+ pairs/ }),
+        );
 
         expect(screen.getByText('Body text')).toBeInTheDocument();
         expect(

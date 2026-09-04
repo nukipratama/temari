@@ -83,8 +83,8 @@ Refresh failures classify just like reads: a [`400 invalid_grant`](app/Services/
 
 The breaker state lives in `app_config`, so a stuck-open breaker stays open across restarts until cooldown elapses (or the upstream recovers on the half-open probe). To inspect or force it:
 
-- **Inspect** — the `/pulse` superadmin card renders the breaker [`snapshot()`](app/Livewire/Pulse/SystemControl.php#L54) (state / failures / opened_at) alongside the ingest backlog; `open` shows as an alert, `half_open` as a warning.
-- **Force-close** — the same card's [`resetBreaker()`](app/Livewire/Pulse/SystemControl.php#L37) calls `reset()`, closing it and zeroing the counter immediately. Use it after confirming Strava has recovered rather than waiting out the cooldown. Access to `/pulse` is edge basic-auth in prod (see [[deployment]]).
+- **Inspect** — the `/devtools/pulse` superadmin card renders the breaker [`snapshot()`](app/Livewire/Pulse/SystemControl.php#L54) (state / failures / opened_at) alongside the ingest backlog; `open` shows as an alert, `half_open` as a warning.
+- **Force-close** — the same card's [`resetBreaker()`](app/Livewire/Pulse/SystemControl.php#L37) calls `reset()`, closing it and zeroing the counter immediately. Use it after confirming Strava has recovered rather than waiting out the cooldown. Access to `/devtools/pulse` is edge basic-auth in prod (see [[deployment]]).
 
 ## See also
 

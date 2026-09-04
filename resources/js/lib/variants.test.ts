@@ -120,15 +120,17 @@ describe('chipVariants', () => {
 });
 
 describe('toggleButtonVariants', () => {
-    it('renders the selected state as a sky pill', () => {
+    // Both states are ground-reactive on purpose: a fixed cream-deep fill under
+    // reactive text rendered near-white on near-white on the dark ground.
+    it('renders the selected state as an inverted pill', () => {
         const cls = tokens(toggleButtonVariants({ selected: true }));
-        expect(cls).toContain('bg-sky');
-        expect(cls).toContain('text-cream');
+        expect(cls).toContain('bg-foreground');
+        expect(cls).toContain('text-background');
     });
 
-    it('renders the unselected state on cream-deep', () => {
+    it('renders the unselected state on muted', () => {
         const cls = tokens(toggleButtonVariants({ selected: false }));
-        expect(cls).toContain('bg-cream-deep');
+        expect(cls).toContain('bg-muted');
         expect(cls).toContain('text-text-2');
     });
 

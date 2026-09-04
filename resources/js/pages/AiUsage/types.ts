@@ -62,6 +62,21 @@ export interface KindOption {
     label: string;
 }
 
+/**
+ * Spend split by what started the call. `kind` names the narrator, so it cannot
+ * say whether a run_insight row came from the ingest cascade, a "Reread", or the
+ * hourly self-heal; this is that missing dimension.
+ */
+export interface OriginRow {
+    origin: string;
+    label: string;
+    prompt: number;
+    completion: number;
+    total: number;
+    calls: number;
+    cost: number;
+}
+
 export interface Budget {
     todayCost: number;
     dailyCeiling: number | null;
@@ -94,13 +109,16 @@ export interface AiUsageProps {
     from: string;
     to: string;
     kind: string | null;
+    origin: string | null;
     totals: UsageTotals;
     previousTotals: PreviousTotals | null;
     byKind: UsageRow[];
     byUser: UserRow[];
     byDeployment: DeploymentRow[];
     daily: DailyRow[];
+    byOrigin: OriginRow[];
     availableKinds: KindOption[];
+    availableOrigins: KindOption[];
     budget: Budget;
     deadLettered: DeadLetterGroup[];
     failedUnderBudget: DeadLetterGroup[];

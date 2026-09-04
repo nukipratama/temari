@@ -1,3 +1,5 @@
+import { Fragment } from 'react';
+
 import Eyebrow from '@/components/ui/Eyebrow';
 import LegacyCard from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
@@ -43,30 +45,31 @@ export default function PaceTargetsCard({
                     const pace = paces[marker.key];
                     const left =
                         span === 0 ? 50 : ((slowest - pace) / span) * 100;
-                    const value = (
-                        <span className="text-center leading-tight whitespace-nowrap">
-                            <b className="block font-mono text-xs font-bold tabular-nums text-foreground">
-                                {formatPace(pace)}
-                            </b>
-                            <span className="block text-label-micro text-text-2">
-                                {marker.label}
-                            </span>
-                        </span>
-                    );
 
                     return (
-                        <div
-                            key={marker.key}
-                            className={cn(
-                                'absolute flex -translate-x-1/2 flex-col items-center gap-1.5',
-                                marker.below ? 'bottom-0' : 'top-0',
-                            )}
-                            style={{ left: `${left}%` }}
-                        >
-                            {!marker.below && value}
-                            <i className="size-2 flex-none rounded-full bg-foreground ring-[3px] ring-card" />
-                            {marker.below && value}
-                        </div>
+                        <Fragment key={marker.key}>
+                            <span
+                                className={cn(
+                                    'absolute text-center leading-tight whitespace-nowrap',
+                                    marker.below ? 'bottom-0' : 'top-0',
+                                )}
+                                style={{
+                                    left: `${left}%`,
+                                    transform: `translateX(-${left}%)`,
+                                }}
+                            >
+                                <b className="block font-mono text-xs font-bold tabular-nums text-foreground">
+                                    {formatPace(pace)}
+                                </b>
+                                <span className="block text-label-micro text-text-2">
+                                    {marker.label}
+                                </span>
+                            </span>
+                            <i
+                                className="absolute top-[37px] size-2 -translate-x-1/2 rounded-full bg-foreground ring-[3px] ring-card"
+                                style={{ left: `${left}%` }}
+                            />
+                        </Fragment>
                     );
                 })}
             </div>

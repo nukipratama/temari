@@ -45,7 +45,7 @@ nowhere.
 
 - **Real capability loss across both retirements, not just a redesign.** The `/records`
   scoreboard computed a featured PR's splits, weather, location, a "you're N seconds off sub-X"
-  milestone delta and a `PrContext` AI line; the Trends panel that replaced it kept only
+  milestone delta and an AI-narrated PR line; the Trends panel that replaced it kept only
   category/value/date; the cut removed that too. Re-adding any of it is new scope.
 - `TrendsController` no longer ships `distanceRecords` / `paceRecords`; `W2` decides whether the
   now-unread pace-window categories stay.

@@ -19,6 +19,11 @@ code_refs:
 
 **Status:** Accepted (documented 2026-07-27)
 
+> **2026-09-03 — one path below has changed, the decision has not.** The operator console
+> moved behind a single `/devtools` prefix: `/ai-usage` is now `/devtools/ai-usage`,
+> `/pulse` is `/devtools/pulse` and `/horizon` is `/devtools/horizon`. The gate on them
+> also now skips outside production. Everything this decision says about behaviour stands.
+
 ## Context
 
 Narrators used to receive everything they might need as one pre-computed context object — the run-insight prompt alone carried around thirty fields, most of them null on any given run. Letting the model fetch what it decides it needs means it can reach further (history, comparisons) without every prompt paying for every signal.
