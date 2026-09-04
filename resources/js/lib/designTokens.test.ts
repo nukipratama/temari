@@ -291,7 +291,9 @@ describe('auditContrast', () => {
         // Clears 5.11:1 on day paper, 4.16:1 on the cell it is actually printed
         // on. Scoring paper alone is what let it ship.
         expect(label('#b23a4f')).toMatchObject({
-            bg: 'paper · mood-wobbly-bg',
+            // `reactive` since the mood pair gained dark values: the cell is
+            // still what it is scored on, which is what this pins.
+            bg: 'reactive · mood-wobbly-bg',
             pass: false,
         });
         expect(label('#a9374b')?.pass).toBe(true);

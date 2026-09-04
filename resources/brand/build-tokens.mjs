@@ -144,4 +144,25 @@ export const RARITY_INK_DARK = Object.fromEntries(
   Object.entries(RARITY).map(([k, v]) => [k, inkOnDark(v, GROUNDS_DARK)]),
 );
 
-export { RARITY_INK, MOOD_INK, COLOR, MOOD, RARITY };
+/* The mood cell inverts for the same reason the -ink tier does: #d7ecdf is the
+   easy fill barely tinted into cream, so on a Sky ground the equivalent is that
+   fill barely tinted into sky-deep, not the pastel. Its -ink partner has to
+   move with it — a dark cell under the light tier's #226748 label is the bug
+   this pair exists to avoid — so the cell is derived first and then handed to
+   inkOnDark as one more ground the label must clear. */
+export function tintOnDark(hex, ground, alpha = 0.15) {
+  const [fill, bg] = [toRgb(hex), toRgb(ground)];
+  return toHex(fill.map((v, i) => v * alpha + bg[i] * (1 - alpha)));
+}
+
+export const MOOD_BG_DARK = Object.fromEntries(
+  Object.entries(MOOD).map(([k, v]) => [k, tintOnDark(v, GROUNDS_DARK['sky-deep'])]),
+);
+export const MOOD_INK_DARK = Object.fromEntries(
+  Object.entries(MOOD).map(([k, v]) => [
+    k,
+    inkOnDark(v, { ...GROUNDS_DARK, cell: MOOD_BG_DARK[k] }),
+  ]),
+);
+
+export { RARITY_INK, MOOD_INK, COLOR, MOOD, MOOD_BG, RARITY };

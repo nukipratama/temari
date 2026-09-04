@@ -49,6 +49,14 @@ Use the **semantic token families, never raw Tailwind colors** like `lime-500`:
 
 `citrus` (`#c9971f`) is reserved for PR / legendary celebrations only.
 
+**Which mechanism flips a value.** A ground difference in a **colour** is a semantic token,
+never a `dark:` utility (`bg-card`, not `bg-cream dark:bg-sky`) — the token layer has one
+definition site, is classified fixed-vs-reactive by `grounds.json` so the audit scores it against
+the right grounds, and cannot drift into a raw palette shade. A difference that is **not** a colour
+value — an opacity, a ring width, a whole property — may use `dark:`, because no token can hold it;
+`card.tsx`'s `dark:ring-foreground/10` is the canonical case. `dark:` is wired to `data-theme`, not
+`prefers-color-scheme`. See [tokens-flip-colour-dark-variant-flips-the-rest](../../../docs/decisions/tokens-flip-colour-dark-variant-flips-the-rest.md).
+
 **Two grounds, since F2.** `[data-theme="dark"]` on `<html>` inverts Sky and Cream — Sky becomes
 ground, Cream becomes text — and is the app's **default** ground; light and system are reachable
 from Settings. A second semantic layer (`background`/`foreground`/`card`/`popover`/... plus
