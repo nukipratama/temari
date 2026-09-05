@@ -2,18 +2,24 @@
 
 /**
  * One-off generator for the iOS apple-touch-startup-image set.
- * Composites the app icon onto each ground's background so a cold standalone
- * launch shows the brand instead of a white flash.
- * Regenerate after changing public/icon-512.png or either ground token:
+ * Regenerate after changing the mark or either ground token:
  * ./vendor/bin/sail php scripts/build-splash-screens.php
  */
 $out = __DIR__.'/../public/splash';
 @mkdir($out, 0o755, true);
 
-/** @var array<string, string> Ground slug => background, matching --color-background. */
+/* The mark is rasterised from temari-mark.svg rather than composited from
+   icon-512.png: that file carries its own #171f28 plate, which showed as a
+   square against either ground. Drawing the strokes straight onto the ground
+   leaves no edge to see, and lets each ground take the background it actually
+   paints, so first launch does not step colour. Geometry stays sourced from the
+   one SVG the in-app TemariMark draws. */
+$mark = (string) file_get_contents(__DIR__.'/../resources/brand/logo/temari-mark.svg');
+
+/** @var array<string, array{background: string, base: string}> Ground slug => background matching --color-background, plus the base-stroke colour that reads on it. */
 $grounds = [
-    'dark' => '#0B1017',  // sky-deep, the default ground
-    'light' => '#F1F5F8', // cream
+    'dark' => ['background' => '#0B1017', 'base' => '#F1F5F8'],  // sky-deep, cream strokes
+    'light' => ['background' => '#F1F5F8', 'base' => '#171F28'], // cream, sky strokes
 ];
 
 /** @var array<int, array{int, int}> Portrait device pixel sizes. */
@@ -27,16 +33,25 @@ $sizes = [
     [750, 1334],  // iPhone SE (2nd/3rd gen) / 8
 ];
 
-foreach ($grounds as $ground => $background) {
+foreach ($grounds as $ground => $palette) {
+    // The lead stroke is already a literal in the source; only the base stroke
+    // has to follow the ground.
+    $svg = str_replace('var(--mark-base, #171f28)', $palette['base'], $mark);
+
     foreach ($sizes as [$w, $h]) {
         $canvas = new Imagick();
-        $canvas->newImage($w, $h, new ImagickPixel($background));
+        $canvas->newImage($w, $h, new ImagickPixel($palette['background']));
         $canvas->setImageFormat('png');
 
-        // Icon at ~28% of the narrow edge, optically centred (slightly above middle).
-        $icon = new Imagick(__DIR__.'/../public/icon-512.png');
+        // Mark at ~28% of the narrow edge, optically centred (slightly above middle).
         $target = (int) round($w * 0.28);
-        $icon->resizeImage($target, $target, Imagick::FILTER_LANCZOS, 1);
+        $icon = new Imagick();
+        $icon->setBackgroundColor(new ImagickPixel('transparent'));
+        $icon->readImageBlob(str_replace(
+            'width="100" height="100"',
+            sprintf('width="%d" height="%d"', $target, $target),
+            $svg,
+        ));
 
         $x = (int) round(($w - $target) / 2);
         $y = (int) round(($h - $target) / 2 - $h * 0.04);
