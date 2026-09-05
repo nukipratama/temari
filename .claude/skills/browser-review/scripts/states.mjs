@@ -125,7 +125,9 @@ for (const route of routes) {
         // Escape closes a dialog or menu; a re-click closes a disclosure. Both
         // are best-effort, so reload rather than trust the page came back.
         await page.keyboard.press('Escape').catch(() => {});
-        await page.goto(`${BASE}${route.path}`, { waitUntil: 'load' }).catch(() => {});
+        await page
+            .goto(`${BASE}${route.path}`, { waitUntil: 'load' })
+            .catch(() => {});
         await settle();
     }
 }
