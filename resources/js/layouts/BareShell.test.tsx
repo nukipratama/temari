@@ -71,7 +71,7 @@ describe('BareShell', () => {
         const { container } = render(<BareShell>content</BareShell>);
 
         expect(container.querySelector('.min-h-screen')).toHaveClass(
-            'pt-[env(safe-area-inset-top)]',
+            'pt-[max(1rem,env(safe-area-inset-top))]',
         );
     });
 

@@ -9,7 +9,6 @@ code_refs:
   - public/manifest.webmanifest
   - resources/js/hooks/useSwipeBack.ts
   - resources/js/components/MobileTopBar.tsx
-  - resources/js/components/StatusBarScrim.tsx
   - resources/js/hooks/useBodyScrollLock.ts
   - resources/css/app.css
   - scripts/build-splash-screens.php
@@ -24,24 +23,22 @@ itself. This note covers the pieces that only matter once installed; the visual
 language they use is in [[design-tokens]], and the shell's structure is in
 [[dashboard]].
 
-## The status bar is ours, and takes the ground
+## The status bar is iOS's again
 
-The app runs `apple-mobile-web-app-status-bar-style: black-translucent`
-([app.blade.php](resources/views/app.blade.php)). The web view extends up under
-the status bar, `env(safe-area-inset-top)` resolves to a real value, and the page
-fills the screen edge to edge — including behind the clock.
+The app asks for `apple-mobile-web-app-status-bar-style: black`
+([app.blade.php](resources/views/app.blade.php)). iOS paints the strip a solid
+colour and the web view starts below it, so `env(safe-area-inset-top)` resolves
+to **0** in standalone. Every consumer already floors that through `max()`, so
+nothing depends on it being non-zero.
 
-[StatusBarScrim](resources/js/components/StatusBarScrim.tsx) paints that strip
-`bg-background`, mounted in `AppShell`. It is bounded to
-`env(safe-area-inset-top)`, so although it stacks above the top bar it never
-reaches the chips — those start below the inset and keep floating over
-scrolling content. `BareShell` needs no equivalent: its root element
-is already an opaque `bg-background` reaching the top of the viewport.
+`black` and not `default` because dark is the default ground and #000 against
+sky-deep is very nearly seamless; on the light ground it reads as a deliberate
+band. The style cannot vary per colour scheme, so it is one choice for both.
 
-### Four wrong turns, recorded so they are not repeated
+### Five wrong turns, recorded so they are not repeated
 
-The band above the header took five attempts, and the first four were all built
-on a premise that turned out to be false on-device:
+Getting the top of the screen right took six attempts, and the first five were
+all built on a premise that turned out to be false on-device:
 
 - **#395** pinned `theme-color` to the header's cream. iOS does not use
   `theme-color` for the standalone status bar at all — only Android/Chrome does,
@@ -49,29 +46,32 @@ on a premise that turned out to be false on-device:
 - **#396** declared `color-scheme: light`, on the theory that a Dark Mode device
   made the UA render its own strip dark. Correct and worth keeping for form
   controls and scrollbars, but the band survived a fresh install.
-- **#397 and #398** switched to `black-translucent` — which *was* the right
-  mechanism, since under `default` the strip is iOS-owned and unreachable from
-  CSS — but then assumed the documented "forced white glyphs" behaviour and
-  painted a dark backing for them: first a navy `MobileTopBar`, then a fading
+- **#397 and #398** switched to `black-translucent` — the right mechanism at the
+  time, since under `default` the strip was iOS-owned and unreachable from CSS —
+  but then assumed the documented "forced white glyphs" behaviour and painted a
+  dark backing for them: first a navy `MobileTopBar`, then a fading
   `StatusBarScrim`. On the iOS of the day the glyphs rendered **dark**, so that
-  backing was not needed, and it was itself the ugly band being reported.
-- **#399** therefore deleted the scrim and left the region unpainted. That held
-  until Safari 26, which stopped reading `theme-color` and began deriving the
-  status-bar treatment from the background of the **topmost element in the
-  viewport**. `MobileTopBar` is `fixed top-0` and paints nothing by design, so
-  iOS found no colour to take and fell back to its own glass material — a hazy
-  grey wash across the top of every page, on the dark ground especially.
+  backing was not needed and was itself the ugly band being reported.
+- **#399** therefore deleted the scrim and left the region unpainted. Correct
+  until iOS 26.
+- **#733** read Safari 26's new "chrome colour comes from the topmost element in
+  the viewport" rule as the explanation for a grey haze that appeared across the
+  top of every page, and reinstated an opaque `StatusBarScrim` to give iOS a
+  colour to read. It changed nothing on device, which is the useful part: iOS
+  was compositing **over** our content, not sampling a colour from it.
 
-The lesson worth keeping: `black-translucent` hands us the pixels, and what to
-draw there is not a fixed answer — it follows whatever rule the current Safari
-uses to read the top of the viewport. An opaque, ground-reactive strip is the
-version that satisfies both the old rule and Safari 26's. Confirm any change
-here on a device rather than assuming it from the spec; four of five attempts
-failed exactly that way.
+The actual cause is an iOS 26.1 regression — `black-translucent` stopped being
+honoured, and installed web apps lost transparency behind the status bar. The
+strip is no longer ours at any level, so the fix is to stop asking for it and
+let iOS paint a solid bar. The scrim went with it; nothing paints there now.
 
-`pt-[max(1rem,env(safe-area-inset-top))]` on the mobile top bar, and
-`pt-[env(safe-area-inset-top)]` on the shell everywhere else, are what keep
-content clear of the notch now that the web view runs edge to edge.
+The lesson worth keeping, now six attempts deep: **nothing about this strip can
+be settled from the spec.** Ship the change and look at a phone.
+
+`pt-[max(1rem,env(safe-area-inset-top))]` on the mobile top bar and on
+`BareShell`, and `pt-[max(4rem,calc(env(safe-area-inset-top)+3rem))]` on the
+content region, all keep their floor when the inset collapses to 0 — and still
+clear the notch if a future iOS hands the pixels back.
 
 ## The mobile top bar, and its back button
 

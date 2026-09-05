@@ -81,18 +81,19 @@
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    {{-- `black-translucent` extends the web view up under the status bar, which
-         is what finally makes env(safe-area-inset-top) resolve to a real value
-         and hands us those pixels to paint. Under `default` the strip stayed
-         iOS-owned and unreachable from CSS — the actual cause of the dark band,
-         after theme-color (#395) and color-scheme (#396) both failed to explain
-         it.
+    {{-- `black` rather than `black-translucent`: iOS 26.1 stopped honouring the
+         translucent mode, painting its own material over the strip instead of
+         handing it to the web view, so the app got a grey haze across the top
+         of every page that no CSS underneath could reach — an opaque scrim over
+         the same region changed nothing. Asking for a solid bar gives iOS a
+         colour to paint instead of a material to composite.
 
-         The trade: the strip is ours to paint, and Safari 26 reads its colour
-         off the topmost element in the viewport — MobileTopBar paints nothing
-         by design, so StatusBarScrim is what gives it an answer. Do not revert
-         this meta on its own. --}}
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+         `black` and not `default` because dark is the default ground, and #000
+         against sky-deep is very nearly seamless; on the light ground it reads
+         as a deliberate band. The style cannot vary per colour scheme, so this
+         is a single choice for both. env(safe-area-inset-top) resolves to 0
+         under a solid bar, which every consumer already handles via max(). --}}
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Temari">
 
     {{-- Launch images for a cold standalone start. Without these iOS holds a
