@@ -15,6 +15,7 @@ import RouteProgressBar from '@/components/RouteProgressBar';
 import StatusBarScrim from '@/components/StatusBarScrim';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
+import ViewportDebug from '@/components/ViewportDebug';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useSystemTheme } from '@/hooks/useSystemTheme';
 import { cn } from '@/lib/cn';
@@ -78,6 +79,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                 </div>
 
                 <MobileBottomNav />
+                <ViewportDebug />
             </div>
         </MotionConfig>
     );
