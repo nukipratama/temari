@@ -21,11 +21,17 @@ describe('PageHero', () => {
         );
     });
 
+    it('applies the quote-lg step for the Temari-voice register', () => {
+        render(<PageHero size="quote-lg">the weeks ahead.</PageHero>);
+        expect(screen.getByText('the weeks ahead.').className).toContain(
+            'text-quote-lg',
+        );
+    });
+
     it('defaults to the lg step and ink text on a cream surface', () => {
         render(<PageHero>Plain headline</PageHero>);
         const h1 = screen.getByText('Plain headline');
-        expect(h1.className).toContain('text-display-lg');
-        expect(h1.className).toContain('text-ink');
+        expect(h1).toHaveClass('text-display-lg', 'text-foreground');
     });
 
     it('applies the on-sky tone (cream headline text)', () => {
@@ -45,7 +51,7 @@ describe('PageHero', () => {
     it('wraps a string eyebrow in the standard hero Eyebrow, tone flipping on-sky', () => {
         render(<PageHero eyebrow="Collection">Trophy wall</PageHero>);
         expect(screen.getByText('Collection').className).toContain(
-            'text-ink-2',
+            'text-text-2',
         );
 
         render(

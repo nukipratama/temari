@@ -11,6 +11,11 @@ const availableKinds: KindOption[] = [
     { value: 'run-insight', label: 'RunInsightTechnical' },
 ];
 
+const availableOrigins: KindOption[] = [
+    { value: 'ingest', label: 'Ingest cascade' },
+    { value: 'user', label: 'User-initiated' },
+];
+
 function renderFilters(
     overrides: Partial<Parameters<typeof UsageFilters>[0]> = {},
 ) {
@@ -20,7 +25,9 @@ function renderFilters(
             from="2026-05-01"
             to="2026-05-19"
             kind={null}
+            origin={null}
             availableKinds={availableKinds}
+            availableOrigins={availableOrigins}
             {...overrides}
         />,
     );
@@ -41,13 +48,13 @@ describe('UsageFilters', () => {
     it('leaves the kind out of the readout when no filter is active', () => {
         renderFilters();
 
-        expect(screen.queryByText(/Filter:/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Kind:/)).not.toBeInTheDocument();
     });
 
     it('names the active kind filter in the readout', () => {
         renderFilters({ kind: 'briefing' });
 
-        expect(screen.getByText(/Filter:/)).toBeInTheDocument();
+        expect(screen.getByText(/Kind:/)).toBeInTheDocument();
         expect(screen.getByText('briefing')).toBeInTheDocument();
     });
 
@@ -57,7 +64,7 @@ describe('UsageFilters', () => {
         fireEvent.click(screen.getByRole('button', { name: /apply/i }));
 
         expect(router.get).toHaveBeenCalledWith(
-            '/ai-usage',
+            '/devtools/ai-usage',
             { from: '2026-05-01', to: '2026-05-19' },
             { preserveState: true, preserveScroll: true },
         );
@@ -69,7 +76,7 @@ describe('UsageFilters', () => {
         fireEvent.click(screen.getByRole('button', { name: /apply/i }));
 
         expect(router.get).toHaveBeenCalledWith(
-            '/ai-usage',
+            '/devtools/ai-usage',
             { from: '2026-05-01', to: '2026-05-19', kind: 'briefing' },
             { preserveState: true, preserveScroll: true },
         );
@@ -101,7 +108,7 @@ describe('UsageFilters', () => {
         });
 
         expect(router.get).toHaveBeenCalledWith(
-            '/ai-usage',
+            '/devtools/ai-usage',
             { range: '7d', kind: 'briefing' },
             { preserveState: true, preserveScroll: true },
         );
@@ -115,7 +122,7 @@ describe('UsageFilters', () => {
         });
 
         expect(router.get).toHaveBeenCalledWith(
-            '/ai-usage',
+            '/devtools/ai-usage',
             { range: '7d' },
             { preserveState: true, preserveScroll: true },
         );
@@ -142,7 +149,7 @@ describe('UsageFilters', () => {
                 screen
                     .getByRole('link', { name: pattern })
                     .getAttribute('href'),
-            ).toBe(`/ai-usage?range=${token}`);
+            ).toBe(`/devtools/ai-usage?range=${token}`);
         },
     );
 
@@ -151,17 +158,70 @@ describe('UsageFilters', () => {
 
         expect(
             screen.getByRole('link', { name: /7 days/i }).getAttribute('href'),
-        ).toBe('/ai-usage?range=7d&kind=briefing');
+        ).toBe('/devtools/ai-usage?range=7d&kind=briefing');
     });
 
     it('highlights the active preset', () => {
         renderFilters({ range: '7d' as RangeToken });
 
+        expect(screen.getByRole('link', { name: /7 days/i })).toHaveClass(
+            'bg-foreground',
+        );
+        expect(screen.getByRole('link', { name: /30 days/i })).toHaveClass(
+            'bg-muted',
+        );
+    });
+});
+
+describe('origin filter', () => {
+    it('offers every origin present in the range', () => {
+        renderFilters();
+
+        expect(screen.getByLabelText('Origin')).toBeInTheDocument();
         expect(
-            screen.getByRole('link', { name: /7 days/i }).className,
-        ).toContain('bg-sky');
-        expect(
-            screen.getByRole('link', { name: /30 days/i }).className,
-        ).toContain('bg-cream-deep');
+            screen.getByRole('option', { name: 'Ingest cascade' }),
+        ).toBeInTheDocument();
+    });
+
+    it('applies immediately and keeps the active range window', () => {
+        renderFilters({ range: '7d' as RangeToken });
+
+        fireEvent.change(screen.getByLabelText('Origin'), {
+            target: { value: 'ingest' },
+        });
+
+        expect(router.get).toHaveBeenCalledWith(
+            '/devtools/ai-usage',
+            { range: '7d', origin: 'ingest' },
+            { preserveState: true, preserveScroll: true },
+        );
+    });
+
+    it('carries the active kind filter alongside the origin', () => {
+        renderFilters({ range: '7d' as RangeToken, kind: 'briefing' });
+
+        fireEvent.change(screen.getByLabelText('Origin'), {
+            target: { value: 'user' },
+        });
+
+        expect(router.get).toHaveBeenCalledWith(
+            '/devtools/ai-usage',
+            { range: '7d', kind: 'briefing', origin: 'user' },
+            { preserveState: true, preserveScroll: true },
+        );
+    });
+
+    it('clears back to every origin', () => {
+        renderFilters({ range: '7d' as RangeToken, origin: 'ingest' });
+
+        fireEvent.change(screen.getByLabelText('Origin'), {
+            target: { value: '' },
+        });
+
+        expect(router.get).toHaveBeenCalledWith(
+            '/devtools/ai-usage',
+            { range: '7d' },
+            { preserveState: true, preserveScroll: true },
+        );
     });
 });

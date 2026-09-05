@@ -71,6 +71,7 @@ class RunnerProfile extends Model
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
             'max_hr' => 'integer',
             'resting_hr' => 'integer',
             'hr_zones' => 'array',

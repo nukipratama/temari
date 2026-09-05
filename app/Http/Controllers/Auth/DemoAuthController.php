@@ -7,7 +7,6 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\LocalRedirectPath;
-use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,7 +17,7 @@ class DemoAuthController extends Controller
     {
         abort_unless((bool) config('demo.login_enabled'), 404);
 
-        $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->first();
+        $user = User::query()->where('is_demo', true)->orderBy('id')->first();
         if ($user === null) {
             return redirect()->route('login')->withErrors([
                 'demo' => 'Demo user hasn\'t been seeded yet. Run `php artisan demo:seed` first.',

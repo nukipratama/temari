@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\InboxNotification;
 use App\Models\NotificationPreference;
 use App\Models\TelegramConnection;
 use App\Models\User;
@@ -18,7 +19,7 @@ function notificationPropsFor(?User $user): array
 it('keeps every prop a closure so a partial reload can skip it', function (): void {
     $props = notificationPropsFor(User::factory()->create());
 
-    foreach (['telegramConnected', 'webPushSubscribed'] as $key) {
+    foreach (['telegramConnected', 'webPushSubscribed', 'unreadNotifications'] as $key) {
         expect($props[$key])->toBeInstanceOf(Closure::class);
     }
 });
@@ -27,7 +28,8 @@ it('reports a guest as unreachable on both channels', function (): void {
     $props = notificationPropsFor(null);
 
     expect(($props['telegramConnected'])())->toBeFalse()
-        ->and(($props['webPushSubscribed'])())->toBeFalse();
+        ->and(($props['webPushSubscribed'])())->toBeFalse()
+        ->and(($props['unreadNotifications'])())->toBe(0);
 });
 
 it('reports Telegram as connected only when it is wired and un-muted', function (): void {
@@ -68,4 +70,24 @@ it('reports a muted push channel as not subscribed', function (): void {
     $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/zzz', str_repeat('a', 87), str_repeat('b', 22));
 
     expect((notificationPropsFor($user->fresh())['webPushSubscribed'])())->toBeFalse();
+});
+
+describe('unreadNotifications', function (): void {
+    it('counts the unread rows and drops as they are read', function (): void {
+        $user = User::factory()->create();
+        InboxNotification::factory()->for($user)->count(3)->create();
+
+        expect((notificationPropsFor($user)['unreadNotifications'])())->toBe(3);
+
+        $user->inboxNotifications()->first()->markRead();
+
+        expect((notificationPropsFor($user)['unreadNotifications'])())->toBe(2);
+    });
+
+    it('ignores another user\'s inbox', function (): void {
+        $user = User::factory()->create();
+        InboxNotification::factory()->count(2)->create();
+
+        expect((notificationPropsFor($user)['unreadNotifications'])())->toBe(0);
+    });
 });

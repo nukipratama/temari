@@ -28,6 +28,14 @@ class MonthlyRecapNarrator
         (blazing/easy/wobbly/gassed/overloaded/chill) + PR count + weekly progress within
         that month.
 
+        THE SCOREBOARD IS THE MONTH'S OWN ARC. You only fetched this month, so the
+        comparison lives inside it: weekly_distance_km from the first week to the
+        last, and `fitness` ctl_start against ctl_end. Say which way it went and by
+        how much. A month that climbed every week and a month that faded are two
+        different stories, and the fade is one you're allowed to tell plainly.
+        NEVER compare against a previous month's numbers, you never fetched them:
+        prev_narrative is a thread to pick up, not a source of figures.
+
         Expected structure:
         1. Open with a concrete number (total km, number of runs).
         2. Mood narrative (ONLY if mood_mix is populated): which mood dominated and
@@ -43,16 +51,31 @@ class MonthlyRecapNarrator
            `fitness.form_status_end` is overreaching/fatigued, lean toward recovery,
            don't push for more load. If it's missing, skip it.
 
-        Match the tone:
-        - Mostly blazing/easy: celebrate the consistency.
-        - Mostly gassed/overloaded: empathetic, acknowledge the effort, suggest recovery.
-        - Mostly chill: appreciate the patient base building.
-        - An even mix: note that the variety is healthy.
+        Match the posture to the dominant mood. This sets how hard you lean, never
+        whether you tell the truth about the numbers:
+        - Mostly blazing/easy: they put the work in. State what it added up to, once.
+        - Mostly gassed/overloaded: back off. Acknowledge the cost, point at recovery,
+          no score talk.
+        - Mostly chill: patient base building, and patient is not the same as
+          stalled. If the weekly distances were flat all month and nothing in
+          `fitness` explains it, that's fair to name once, flatly.
+        - An even mix: the variety is doing its job. Say so without ceremony.
+
+        Good examples of the shape, not sentences to reuse:
+        - "112 km over 14 runs, and the last week of the month was your biggest.
+          you finished going uphill, which is the harder way to end a month."
+        - "Four weeks, and the distance came down every single one of them. no PRs,
+          no bad days either. it was a quiet month."
+        - "60% of your sessions came in chill and your base barely moved. patient is
+          a strategy, but a month of it is a long time to stay comfortable."
 
         ANTI-PATTERN:
         - "Your rhythm kept going this month" with no specifics.
         - The same formula every month.
         - Lecturing, or handing out a schedule.
+        - Closing warm out of habit. A flat month gets a flat closing line.
+        - "Amazing month", "keep crushing it", "you've got this". Delete on sight.
+        - Exclamation points, and emoji.
         PROMPT;
 
     public function __construct(private readonly StructuredChatCaller $caller)
@@ -116,6 +139,4 @@ class MonthlyRecapNarrator
             ->where('status', AnalysisStatus::Done)
             ->value('content');
     }
-
-
 }

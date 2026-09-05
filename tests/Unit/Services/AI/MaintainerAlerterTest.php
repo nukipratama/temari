@@ -45,8 +45,8 @@ it('pushes a dead-letter alert to every admin chat', function (): void {
     adminWithChat(1001);
     adminWithChat(1002);
 
-    $client->shouldReceive('sendMessage')->once()->with(1001, Mockery::pattern('/nyerah/'));
-    $client->shouldReceive('sendMessage')->once()->with(1002, Mockery::pattern('/nyerah/'));
+    $client->shouldReceive('sendMessage')->once()->with(1001, Mockery::pattern('/gave up/'));
+    $client->shouldReceive('sendMessage')->once()->with(1002, Mockery::pattern('/gave up/'));
 
     app(MaintainerAlerter::class)->deadLettered();
 });
@@ -100,7 +100,7 @@ it('alerts a resume when the reason clears back to null', function (): void {
 
     app(AppConfig::class)->set(AppConfigKey::AiLastPauseReason, 'cost_ceiling');
 
-    $client->shouldReceive('sendMessage')->once()->with(3002, Mockery::pattern('/bisa narasi lagi/'));
+    $client->shouldReceive('sendMessage')->once()->with(3002, Mockery::pattern('/narrating again/'));
 
     app(MaintainerAlerter::class)->syncPauseState(null);
 
@@ -120,7 +120,7 @@ it('pushes a deploy-failure alert', function (): void {
     $client = fakeTelegram();
     adminWithChat(6001);
 
-    $client->shouldReceive('sendMessage')->once()->with(6001, Mockery::pattern('/Deploy prod gagal/'));
+    $client->shouldReceive('sendMessage')->once()->with(6001, Mockery::pattern('/Prod deploy failed/'));
 
     app(MaintainerAlerter::class)->deployFailed('healthcheck failed');
 });
@@ -142,9 +142,9 @@ it('swallows a send failure so an alert never fails its caller', function (): vo
  * the mute would not reroute these alerts, it would delete them — and the
  * failure they exist to catch is exactly the one you notice days late.
  *
- * The Pengaturan copy states this scope out loud ("Balasan bot sama peringatan
- * sistem tetap masuk"), so the carve-out is documented to the user rather than
- * being a surprise. Pinned here so it stays a decision, not an accident.
+ * The Settings copy states this scope out loud -- bot replies and system alerts
+ * still arrive -- so the carve-out is documented to the user rather than being a
+ * surprise. Pinned here so it stays a decision, not an accident.
  */
 it('still alerts an admin who has muted the Telegram channel', function (): void {
     $admin = adminWithChat(4321);
@@ -189,7 +189,7 @@ it('flushDeadLetterWindow sends one summary message carrying the coalesced count
     $alerter->deadLettered();
     $alerter->deadLettered();
 
-    $client->shouldReceive('sendMessage')->once()->with(7001, Mockery::pattern('/^3 blok AI nyerah/'));
+    $client->shouldReceive('sendMessage')->once()->with(7001, Mockery::pattern('/^3 AI blocks gave up/'));
 
     $alerter->flushDeadLetterWindow();
 });

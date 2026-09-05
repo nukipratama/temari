@@ -12,6 +12,19 @@ const baseProps: AiUsageProps = {
     from: '2026-05-01',
     to: '2026-05-19',
     kind: null,
+    origin: null,
+    byOrigin: [
+        {
+            origin: 'ingest',
+            label: 'Ingest cascade',
+            prompt: 400,
+            completion: 180,
+            total: 580,
+            calls: 2,
+            cost: 0.03,
+        },
+    ],
+    availableOrigins: [{ value: 'ingest', label: 'Ingest cascade' }],
     totals: {
         prompt: 600,
         completion: 280,
@@ -113,7 +126,13 @@ const baseProps: AiUsageProps = {
         { value: 'briefing', label: 'BriefingMascotVoice' },
         { value: 'run-insight', label: 'RunInsightTechnical' },
     ],
-    budget: { todayCost: 0.02, dailyCeiling: 0.1, currency: 'USD' },
+    budget: {
+        todayCost: 0.02,
+        dailyCeiling: 0.1,
+        currency: 'USD',
+        trippedAt: null,
+        degradedFills: 0,
+    },
     deadLettered: [],
     failedUnderBudget: [],
     nyangkut: [],
@@ -130,7 +149,7 @@ const deadLetteredGroup = {
             failed_at: '2026-05-19T10:00:00+00:00',
         },
         {
-            type: 'pr_context',
+            type: 'card_flavor',
             error: null,
             failed_at: '2026-05-19T09:00:00+00:00',
         },
@@ -197,18 +216,18 @@ describe('AiUsage page', () => {
     });
 
     it('renders the flash info banner when present', () => {
-        setMockPage({ flash: { info: 'Mencoba ulang 2 blok untuk Charlie.' } });
+        setMockPage({ flash: { info: 'Retrying 2 blocks for Charlie.' } });
         render(<AiUsage {...baseProps} />);
 
         expect(
-            screen.getByText('Mencoba ulang 2 blok untuk Charlie.'),
+            screen.getByText('Retrying 2 blocks for Charlie.'),
         ).toBeInTheDocument();
     });
 
     it('renders no flash banner when there is nothing to confirm', () => {
         render(<AiUsage {...baseProps} />);
 
-        expect(screen.queryByLabelText('Tutup')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Close')).not.toBeInTheDocument();
     });
 
     it('hides the attention area when nothing is stuck', () => {
@@ -216,7 +235,7 @@ describe('AiUsage page', () => {
 
         expect(screen.queryByText('Needs attention')).not.toBeInTheDocument();
         expect(
-            screen.queryByRole('button', { name: /Pulihkan semua/ }),
+            screen.queryByRole('button', { name: /Recover all/ }),
         ).not.toBeInTheDocument();
     });
 
@@ -235,6 +254,8 @@ describe('AiUsage page', () => {
                     todayCost: 1000,
                     dailyCeiling: 5000,
                     currency: 'IDR',
+                    trippedAt: null,
+                    degradedFills: 0,
                 }}
             />,
         );

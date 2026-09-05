@@ -15,17 +15,17 @@ use App\Services\AI\AnalysisType;
 final class NotifiableAnalysisTypes
 {
     /**
-     * Map of notifiable type to the emoji leading the title line, a data-less
-     * fallback `title` used when the type's dynamic data can't be resolved, and
-     * the tap-through CTA appended before the link. The opt-in is not per type:
+     * Map of notifiable type to a data-less fallback `title` used when the
+     * type's dynamic data can't be resolved, and the tap-through CTA appended
+     * before the link. The opt-in is not per type:
      * one channel-neutral master switch on NotificationPreference governs every
      * entry here, over both Telegram and web push.
      *
-     * @var array<string, array{emoji: string, title: string, cta: string}>
+     * @var array<string, array{title: string, cta: string}>
      */
     public const array TYPES = [
-        AnalysisType::PostRunSpeech->value => ['emoji' => '🏃', 'title' => 'Your run is in! 🏁', 'cta' => 'View run details'],
-        AnalysisType::WeeklyRecap->value => ['emoji' => '📊', 'title' => 'Your weekly recap is ready', 'cta' => 'View history'],
-        AnalysisType::MonthlyRecap->value => ['emoji' => '🗓️', 'title' => 'Your monthly recap is ready', 'cta' => 'View calendar'],
+        AnalysisType::PostRunSpeech->value => ['title' => 'Your run is in.', 'cta' => 'View run details'],
+        AnalysisType::WeeklyRecap->value => ['title' => 'Your weekly recap is ready', 'cta' => 'View history'],
+        AnalysisType::MonthlyRecap->value => ['title' => 'Your monthly recap is ready', 'cta' => 'View calendar'],
     ];
 }

@@ -1,11 +1,11 @@
 // End-to-end screenshot sweep across a viewport matrix. Runs inside the Sail
 // `app` container:  ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/shoot.mjs
-// Env: VIEWPORTS=mobile,se,tablet,desktop,wide (default mobile,se,desktop,wide)  BASE=http://localhost
+// Env: VIEWPORTS=mobile,se,tablet,laptop,desktop (default mobile,se,laptop,desktop)  BASE=http://localhost
 //      OUT=storage/app/browser-review  BATCH=<date>/<time> (override the run key)
 // Pages are discovered from `artisan route:list` (see lib.mjs) — nothing hardcoded.
 import { rmSync } from 'node:fs';
 import { chromium } from 'playwright';
-import { BASE, VIEWPORT_DEFS, parseViewports, login, dismissReveal, discoverPageRoutes, fullPageScreenshot, SHOT, EXT } from './lib.mjs';
+import { BASE, VIEWPORT_DEFS, parseViewports, login, dismissReveal, discoverPageRoutes, fullPageScreenshot, SHOT, EXT, DEVTOOLS_AUTH } from './lib.mjs';
 
 // Each run lands in its own dir keyed by date + execution time. Prior batches are
 // cleared first, so only the latest sweep is kept (stale screenshots aren't needed):
@@ -15,6 +15,9 @@ const now = new Date();
 const p2 = (n) => String(n).padStart(2, '0');
 const BATCH = process.env.BATCH
   ?? `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}/${p2(now.getHours())}${p2(now.getMinutes())}${p2(now.getSeconds())}`;
+// Optional ground override: THEME=light|dark|system. Unset uses the app default.
+const THEME = process.env.THEME ?? '';
+
 const OUT = `${BASE_OUT}/${BATCH}`;
 rmSync(BASE_OUT, { recursive: true, force: true });
 const selected = parseViewports();
@@ -39,13 +42,28 @@ for (const vp of selected) {
   const def = VIEWPORT_DEFS[vp];
   const dir = `${OUT}/${vp}`;
   const errors = [];
-  const context = await browser.newContext({ ...def, reducedMotion: 'reduce' });
+  const context = await browser.newContext({ ...def, ...DEVTOOLS_AUTH, reducedMotion: 'reduce' });
+  // The app resolves its ground from a `temari-theme` localStorage key set by a
+  // blocking script in <head>, so seeding that key before any document runs is
+  // what switches grounds. Without it the sweep only ever sees the default
+  // (dark), and "check both grounds" is not actually reachable.
+  if (THEME) {
+    await context.addInitScript((value) => {
+      try {
+        localStorage.setItem('temari-theme', value);
+      } catch {
+        /* blocked storage — the page falls back to the default ground */
+      }
+    }, THEME);
+  }
   const bootPage = await context.newPage();
   capture(bootPage, errors);
 
   console.log(`\n=== ${vp} (${def.viewport.width}x${def.viewport.height}) ===`);
   // Guest login page first, then authenticate and discover the rest.
   await bootPage.goto(`${BASE}/login`, { waitUntil: 'load' });
+  await bootPage.waitForLoadState('networkidle').catch(() => {});
+  await bootPage.waitForTimeout(400);
   await fullPageScreenshot(bootPage, `${dir}/00-login-full.${EXT}`, SHOT);
   if (!authCookies) {
     await login(bootPage);
@@ -74,6 +92,24 @@ for (const vp of selected) {
         const landed = new URL(page.url()).pathname;
         if (seen.has(landed)) { continue; }            // dedupe redirects to an already-shot page
         seen.add(landed);
+        // `load` fires before Inertia hydrates and before a code-split page
+        // chunk resolves, so a flat pause after it races the first paint: a
+        // contended machine produced two blank full-page captures in one sweep,
+        // and a blank shot of a working page reads as "all content missing" to
+        // whoever reviews it. Wait for the content itself instead of guessing a
+        // longer sleep. Both waits are best-effort: a page that legitimately
+        // renders no text must still be captured, not skipped.
+        await page.waitForLoadState('networkidle').catch(() => {});
+        await page
+          .waitForFunction(
+            () => {
+              const el = document.querySelector('main') ?? document.body;
+              return el.scrollHeight > 0 && (el.innerText ?? '').trim().length > 0;
+            },
+            null,
+            { timeout: 5000 },
+          )
+          .catch(() => {});
         await page.waitForTimeout(150);
         const label = String(idx + 1).padStart(2, '0');
         await page.screenshot({ path: `${dir}/${label}-${name}-viewport.${EXT}`, fullPage: false, ...SHOT });

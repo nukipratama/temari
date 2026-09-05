@@ -1,41 +1,47 @@
 ---
 title: Settings
-description: The settings hub at /settings — notification types and channels, the HR-zone entry, and account deletion — reached from the avatar menu.
+description: The settings hub at /settings — appearance, notification types and channels, training preferences, the HR-zone entry, account deletion, and logout — a pushed screen reached from the gear on Profile's top bar.
 tags: [feature, settings]
 status: living
-reviewed: 2026-07-13
+reviewed: 2026-08-19
 code_refs:
-  - app/Http/Controllers/SettingsController.php
-  - app/Http/Controllers/AccountController.php
-  - resources/js/pages/Settings/Index.tsx
-  - routes/web.php
+    - app/Http/Controllers/SettingsController.php
+    - app/Http/Controllers/AccountController.php
+    - resources/js/pages/Settings/Index.tsx
+    - resources/js/components/settings/TrainingPreferencesCard.tsx
+    - resources/js/components/settings/AppearanceCard.tsx
+    - resources/js/components/UserAvatarLink.tsx
+    - routes/web.php
 ---
 
 # Settings
 
-`/settings` is the one home for user settings. They were once scattered on Profile (`/profile`), then reached via a single row at the bottom of that page; the legacy `/pengaturan` redirect still points at the real page ([routes/web.php](../../routes/web.php)).
+`/settings` is the one home for user settings. They were once scattered on Profile (`/profile`), then reached via a single row at the bottom of that page. The legacy `/pengaturan` redirect was deleted in `C1` along with every other legacy redirect ([routes/web.php](../../routes/web.php)).
 
-**Navigation:** the entry point is the **avatar menu** ([UserMenu](../../resources/js/components/UserMenu.tsx)), directly above "Keluar". Because that menu is shared by [TopNav](../../resources/js/components/TopNav.tsx) and [MobileTopBar](../../resources/js/components/MobileTopBar.tsx), settings is one tap from every page on both mobile and desktop — rather than requiring a detour through Profile. `route('settings')` → `/settings` (GET). Named route: `settings`.
+**Navigation:** one entry point, two hops. The avatar in [MobileTopBar](../../resources/js/components/MobileTopBar.tsx) links to `/profile` from every bottom-nav screen; that screen's own topbar carries a gear to `/settings`. Settings is a **pushed screen** — a back chevron to Profile, no bottom nav — so it has no in-page nav of its own. `route('settings')` → `/settings` (GET). Named route: `settings`.
 
 Server entry is [SettingsController](../../app/Http/Controllers/SettingsController.php) (`__invoke`), rendering [Settings/Index](../../resources/js/pages/Settings/Index.tsx). It resolves the same Telegram payload the profile page used to (`resolveTelegram()`), including a fresh signed deep-link token per render.
 
 ## Sections
 
-- **Notifikasi** — one section holding two groups, because the user's model is one topic with two questions rather than three unrelated ones:
-  - *Apa yang dikirim* — one channel-neutral master switch, **Kabarin aku** (`notifications_enabled`), covering the post-run story, both recaps and the streak nudge, and gating Telegram and phone push alike. Full behaviour in [[telegram-notifications]].
-  - *Ke mana* — Telegram and web push ([PushNotificationToggle](../../resources/js/components/PushNotificationToggle.tsx), rendered once a VAPID key is configured), each with a **mute** toggle once connected: off keeps the link and simply stops delivery, so re-enabling needs no re-auth. The destructive "Putuskan" / "Matikan" sits demoted beneath the row it belongs to. Plus the "Kirim notifikasi tes" button, which lives here rather than with the types because what it proves is that a channel can reach you — it has a 60s cooldown and a pending state, both shorter than the 5-minute per-recap send for the reasons in [[telegram-notifications]].
-- **Lari · Zona HR** — a row linking to [[settings-hr-zones]] (`/settings/zones`).
-- **Akun · Hapus akun** — see below.
+- **Notifications** — one section holding two groups, because the user's model is one topic with two questions rather than three unrelated ones:
+    - _What gets sent_ — one channel-neutral master switch, **Keep me posted** (`notifications_enabled`), covering the post-run story, both recaps and the streak nudge, and gating Telegram and phone push alike. Full behaviour in [[telegram-notifications]].
+    - _Where it goes_ — Telegram and web push ([PushNotificationToggle](../../resources/js/components/PushNotificationToggle.tsx), rendered once a VAPID key is configured), each with a **mute** toggle once connected: off keeps the link and simply stops delivery, so re-enabling needs no re-auth. The in-app inbox is not listed here: it is never muted, because muting it would lose history rather than spare an interruption ([[inbox-is-an-always-on-channel]]). The destructive "Disconnect" / "Turn off" sits demoted beneath the row it belongs to. Plus the "Send test notification" button, which lives here rather than with the types because what it proves is that a channel can reach you — it has a 60s cooldown and a pending state, both shorter than the 5-minute per-recap send for the reasons in [[telegram-notifications]].
+- **Appearance** — the Light / Dark / System toggle group ([AppearanceCard](../../resources/js/components/settings/AppearanceCard.tsx)). Unlike the HR-zone grid below it, this control takes **no** wide step: it is full-width at every viewport, as the prototype has it.
+- **Running** — [TrainingPreferencesCard](../../resources/js/components/settings/TrainingPreferencesCard.tsx) first, then the HR-zone disclosure. Preferences are an always-open card, not a disclosure, built from the same three controls [[onboarding]] uses (`IconChoiceCard`, `SessionsDial`, `DayPicker`) rather than a parallel set of pill buttons. Zones stay an inline expand/collapse, not a separate page; see [[settings-hr-zones]].
+- **Your data** — the plain-language data-use statement, server-supplied from [DataUseStatement](../../app/Support/DataUseStatement.php) so the page and the public terms/privacy pages cannot word it differently. Why it says what it says: [[strava-data-compliance]].
+- **The fine print** — a tight label-and-chevron list linking out to the four public documents in [[legal-pages]]. No icons and no per-row descriptions: the four titles are self-describing, and the prototype draws the list this way.
+- **Account** — not a row list but a **button pair**: a bordered full-width "Log out" that becomes an auto-width row item above 900px, and a bare destructive "Delete account" beneath it. Logging out posts `/logout` directly (moved off the avatar link when it stopped opening a dropdown); delete account is covered below.
 
-Every line is one primitive. [SettingsRow](../../resources/js/components/ui/SettingsRow.tsx) takes an optional `control` slot that replaces its chevron, so toggle rows and navigation rows share a layout instead of each inventing padding and type; a row carrying a control is never itself tappable, since a row that both navigates and holds a switch gives two different outcomes for taps a few pixels apart. The switch itself is [Toggle](../../resources/js/components/ui/Toggle.tsx), promoted out of this page once more than one place needed it.
+Inside the notifications card every line is one primitive. [SettingsRow](../../resources/js/components/ui/SettingsRow.tsx) takes an optional `control` slot that replaces its chevron, so toggle rows and navigation rows share a layout instead of each inventing padding and type; a row carrying a control is never itself tappable, since a row that both navigates and holds a switch gives two different outcomes for taps a few pixels apart. The switch itself is [Switch](../../resources/js/components/ui/Switch.tsx), promoted out of this page once more than one place needed it. Renamed from `Toggle.tsx` in F3 — shadcn's own `toggle.tsx` primitive is an unrelated pressed-button control, and TypeScript won't allow both filenames to coexist differing only by case.
 
 The page opens with [PageHero](../../resources/js/components/ui/PageHero.tsx) like every other screen. It previously used a bare `<h1>`, which made it the one page that looked like it belonged to a different product.
 
-It carries **no back affordance at all** — not in the page and not in the top bar. Settings is one tap from the Me tab and from the avatar menu on every page, so a breadcrumb would be chrome without a job. `Settings/HrZones` is the exception and keeps one, since it is reachable only from here; see [[installed-app-shell]] for how the top bar decides.
+It carries **no back affordance in the page body**: Settings is a pushed screen, and the top bar's back chevron (to Profile) is the one way out, so a breadcrumb would be a redundant second. HR zones is an inline disclosure on this same page, not a pushed screen of its own — see [[installed-app-shell]] for how the top bar decides what gets a back button.
 
 ## Account deletion
 
-"Hapus akun" is the owner-facing way to release a Strava-account binding (one Strava account = one user, reused on every re-login). A confirmation modal guards against accidental deletion; confirming issues `router.delete('/account')` → [AccountController](../../app/Http/Controllers/AccountController.php) `destroy()`, which deletes the user, logs them out, invalidates the session, and redirects to `/login` with a friendly flash.
+"Delete account" is the owner-facing way to release a Strava-account binding (one Strava account = one user, reused on every re-login). A confirmation modal guards against accidental deletion; confirming issues `router.delete('/account')` → [AccountController](../../app/Http/Controllers/AccountController.php) `destroy()`, which deletes the user, logs them out, invalidates the session, and redirects to `/login` with a friendly flash.
 
 Deleting the `User` row fires the model's `deleting` hook ([User](../../app/Models/User.php)), which revokes the linked Strava connection and writes a sync log — so the OAuth grant is released as a side effect of deletion, no separate disconnect step. The shared **demo** account can't be deleted (`AccountController` rejects `is_demo` with an error flash; the UI routes demo users through the demo-blocked modal instead).
 

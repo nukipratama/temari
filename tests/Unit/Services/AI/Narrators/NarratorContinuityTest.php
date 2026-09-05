@@ -14,8 +14,8 @@ it('states the continuity rule in terms of avoiding repetition, not forcing a ca
 });
 
 it('derives an opener from the first few words of a previous narrative', function (): void {
-    expect(NarratorContinuity::opener('Masih nyambung dari sesi kemarin, kali ini penutupmu lebih hidup dan rapi.'))
-        ->toBe('Masih nyambung dari sesi kemarin, kali ini penutupmu lebih hidup');
+    expect(NarratorContinuity::opener('Still carrying yesterday, and this time your close was livelier and tidier.'))
+        ->toBe('Still carrying yesterday, and this time your close was livelier');
 });
 
 it('returns null when there is no previous narrative', function (): void {
@@ -23,21 +23,21 @@ it('returns null when there is no previous narrative', function (): void {
 });
 
 it('does not pad a short narrative', function (): void {
-    expect(NarratorContinuity::opener('Lari kemarin easy banget.'))
-        ->toBe('Lari kemarin easy banget.');
+    expect(NarratorContinuity::opener('The run yesterday was very easy.'))
+        ->toBe('The run yesterday was very easy.');
 });
 
 it('bundles prev_narrative and prev_opener into one context slice', function (): void {
-    expect(NarratorContinuity::fields('Lari kemarin easy banget.'))
+    expect(NarratorContinuity::fields('The run yesterday was very easy.'))
         ->toBe([
-            'prev_narrative' => 'Lari kemarin easy banget.',
-            'prev_opener' => 'Lari kemarin easy banget.',
+            'prev_narrative' => 'The run yesterday was very easy.',
+            'prev_opener' => 'The run yesterday was very easy.',
         ]);
 });
 
 it('keys fields() off the shared CONTEXT_KEYS constant', function (): void {
     expect(NarratorContinuity::CONTEXT_KEYS)->toBe(['prev_narrative', 'prev_opener'])
-        ->and(array_keys(NarratorContinuity::fields('Lari kemarin easy banget.')))
+        ->and(array_keys(NarratorContinuity::fields('The run yesterday was very easy.')))
         ->toBe(NarratorContinuity::CONTEXT_KEYS);
 });
 

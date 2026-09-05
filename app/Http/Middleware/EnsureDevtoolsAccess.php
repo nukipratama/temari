@@ -14,6 +14,10 @@ class EnsureDevtoolsAccess
 
     public function handle(Request $request, Closure $next): Response
     {
+        if (! app()->isProduction()) {
+            return $next($request);
+        }
+
         $password = (string) config('devtools.password');
 
         if ($password !== '' && hash_equals($password, (string) $request->getPassword())) {

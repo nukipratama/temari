@@ -109,7 +109,7 @@ class SyncZonesJob implements ShouldQueue
         }
 
         // No-op when Strava's zones match what's already effective — avoids
-        // creating a spurious `runner_profiles` row (and a false "zona lama"
+        // creating a spurious `runner_profiles` row (and a false "calculated with old zones"
         // flag) when strava zones ≈ the config default.
         if ($zones === $user->hrProfile()['hr_zones']) {
             return;

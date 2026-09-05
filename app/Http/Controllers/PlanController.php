@@ -5,38 +5,46 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Actions\Gamification\GrantSeasonUnlocksAction;
-use App\Enums\DistanceBand;
-use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\ActivityDetail;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
-use App\Models\Season;
 use App\Models\User;
+use App\Services\AI\PlanNarrationRequester;
 use App\Services\Gamification\SeasonGamificationContext;
-use App\Services\Gamification\SeasonGoalResolver;
+use App\Services\Gamification\SeasonStreakSummaryBuilder;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
-use App\Services\Run\Plan\DistanceBandKm;
+use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\Plan\Periodizer;
-use App\Services\Run\Plan\PhaseSchedule;
+use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\SeasonService;
+use App\Services\Run\Plan\SeasonSummaryBuilder;
+use App\Services\Run\Plan\SegmentGenerator;
+use App\Services\Run\Plan\SessionMatcher;
+use App\Services\Run\Plan\SessionSegment;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\VolumeRedistributor;
+use App\Services\Run\Plan\WeekPlanBuilder;
 use App\Services\Run\Story\BriefingContext;
+use App\Support\TrainingDisclaimer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 use LogicException;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 /**
  * Serves the Plan tab: the current week (plus lookahead) of a user's
@@ -46,8 +54,6 @@ use LogicException;
  */
 class PlanController extends Controller
 {
-    private const int HISTORY_WEEKS = 3;
-
     private const int LOOKAHEAD_WEEKS = 4;
 
     public function index(
@@ -57,14 +63,17 @@ class PlanController extends Controller
         VdotEstimator $vdotEstimator,
         TrainingPaceCalculator $paceCalculator,
         SeasonService $seasonService,
-        SeasonGoalResolver $seasonGoalResolver,
+        SeasonStreakSummaryBuilder $seasonStreakBuilder,
+        SeasonSummaryBuilder $seasonSummaryBuilder,
         GrantSeasonUnlocksAction $grantSeasonUnlocks,
+        SessionMatcher $sessionMatcher,
+        PlanNarrationRequester $narrationRequester,
     ): Response {
         /** @var User $user */
         $user = $request->user();
         $today = Carbon::today();
         $currentWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
-        $rangeStart = $currentWeekStart->copy()->subWeeks(self::HISTORY_WEEKS);
+        $rangeStart = $currentWeekStart->copy()->subWeeks(CurrentWeekPlanBuilder::HISTORY_WEEKS);
         $rangeEnd = $currentWeekStart->copy()->addWeeks(self::LOOKAHEAD_WEEKS)->addDays(6);
 
         $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
@@ -72,7 +81,19 @@ class PlanController extends Controller
         $season = $seasonService->ensureCurrent($user, $today);
         $seasonCtx = SeasonGamificationContext::forSeason($user, $season, $today, $trainingLoad);
         $grantSeasonUnlocks($user, $season, $seasonCtx);
-        $seasonPayload = $this->seasonPayload($season, $seasonGoalResolver->forSeason($user, $season, $seasonCtx), $today);
+
+        // Demo is excluded from plan:regenerate's real narration dispatch (no
+        // LLM billing for the public account), so its Plan page fills any gap
+        // with the same rule-based path its manual "Reread" already resolves
+        // through — otherwise the demo would show perpetually-Pending blocks.
+        if ($user->is_demo) {
+            $narrationRequester->ensureDemoFilled($user, $today);
+        }
+        $seasonPayload = $seasonStreakBuilder->seasonPayload($user, $season, $today, $seasonCtx);
+        $seasonSummary = $seasonSummaryBuilder->build($user, $season, $today);
+        $seasonAdherencePct = $seasonSummaryBuilder->adherencePct($user, $season);
+
+        $adaptationPayload = $this->adaptationPayload($user, $currentWeekStart);
 
         $sessions = PlannedSession::query()
             ->where('user_id', $user->id)
@@ -86,6 +107,13 @@ class PlanController extends Controller
                 'sessionsPerWeek' => $baseline->forUser($user, $today)['sessions_per_week'],
                 'weeks' => [],
                 'season' => $seasonPayload,
+                'seasonSummary' => $seasonSummary,
+            'seasonAdherencePct' => $seasonAdherencePct,
+                'adaptation' => $adaptationPayload,
+                'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
+                'disclaimer' => TrainingDisclaimer::TEXT,
+                'planNarration' => $narrationRequester->payloadsForCurrentWeek($user, $today),
+                'regenerateCooldownSeconds' => $narrationRequester->regenerateCooldownRemaining($user),
             ]);
         }
 
@@ -94,47 +122,70 @@ class PlanController extends Controller
         $ceiling = ReadinessCeiling::from(
             BriefingContext::forUser($user, $today, $trainingLoad->summary($user, $today))->readinessCeiling,
         );
+        $isMarathonDistance = WeekPlanBuilder::isMarathonDistance($race !== null ? (float) $race->distance_m : null);
 
         $sessionsByWeek = $sessions->groupBy(
             fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
         );
 
-        /** @var Collection<string, PlanPhase> $phaseByWeek */
-        $phaseByWeek = $sessionsByWeek->map(function (Collection $weekSessions): PlanPhase {
-            $first = $weekSessions->first();
-            if ($first === null) {
-                // groupBy never produces an empty group; this only guards the type.
-                throw new LogicException('A grouped week unexpectedly had no sessions.');
-            }
-
-            return $first->phase;
-        })->sortKeys();
-
-        $multiplierByWeek = array_combine(
-            $phaseByWeek->keys()->all(),
-            PhaseSchedule::volumeMultipliers(array_values($phaseByWeek->values()->all())),
-        );
+        [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek);
+        $primaryEasyDateByWeek = $sessionsByWeek->map(fn (Collection $weekSessions): ?string => PlanRenderer::primaryEasyDate($weekSessions));
 
         $currentWeekKey = $currentWeekStart->toDateString();
-        $currentWeekMultiplier = $multiplierByWeek[$currentWeekKey] ?? 1.0;
-        $bandKmThisWeek = $this->bandKmFor($baselineData['long_run_km'], $currentWeekMultiplier);
+
+        // Every past row should already carry its real status —
+        // plan:score-compliance (daily) persists it the morning after. This
+        // is only a safety net for whatever it hasn't reached yet, so it's
+        // computed for just that (normally empty) subset, not the whole range.
+        $staleSessions = $sessions->filter(
+            fn (PlannedSession $s): bool => $s->status === PlannedSessionStatus::Planned && $s->date->lt($today),
+        );
+        $fallbackStatuses = [];
+        if ($staleSessions->isNotEmpty()) {
+            $stalePlannedKm = [];
+            $staleSkipped = [];
+            foreach ($staleSessions as $s) {
+                $date = $s->date->toDateString();
+                $weekKey = $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
+                $stalePlannedKm[$date] = SegmentGenerator::coreKmFor(
+                    $s->session_type,
+                    $date === $primaryEasyDateByWeek->get($weekKey),
+                    $baselineData['long_run_km'],
+                    $multiplierByWeek[$weekKey] ?? 1.0,
+                );
+                $staleSkipped[$date] = $s->skipped;
+            }
+            $fallbackStatuses = $sessionMatcher->statuses($user, $stalePlannedKm, $staleSkipped, $today);
+        }
 
         // Readiness clamp: TODAY's row only — a future day's readiness isn't
         // knowable today, so clamping never reaches past this one row.
         $todaySession = $sessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
         $clamp = ($todaySession !== null && ! $todaySession->pinned)
-            ? ReadinessClamp::apply($todaySession->session_type, $todaySession->distance_band, $ceiling)
+            ? ReadinessClamp::apply(
+                $todaySession->session_type,
+                $todaySession->phase,
+                $isMarathonDistance,
+                $baselineData['long_run_km'],
+                $multiplierByWeek[$currentWeekKey] ?? 1.0,
+                $paces,
+                $ceiling,
+            )
             : null;
 
-        $redistributed = $this->redistributeCurrentWeek(
+        $volumeScaleByDate = $this->redistributeCurrentWeek(
             $user,
             $sessionsByWeek->get($currentWeekKey, collect()),
             $today,
             $currentWeekStart,
-            $bandKmThisWeek,
+            $baselineData['long_run_km'],
+            $multiplierByWeek[$currentWeekKey] ?? 1.0,
+            $primaryEasyDateByWeek->get($currentWeekKey),
             $todaySession,
             $clamp,
         );
+
+        $activityByDate = $this->activityByDate($user, $rangeStart, $today);
 
         $weeks = [];
         foreach ($sessionsByWeek as $weekStartKey => $weekSessions) {
@@ -143,19 +194,24 @@ class PlanController extends Controller
                 // Built from the same grouping as $sessionsByWeek; this only guards the type.
                 throw new LogicException('A grouped week unexpectedly had no phase.');
             }
+            $primaryEasyDate = $primaryEasyDateByWeek->get($weekStartKey);
 
             $weeks[] = [
                 'week_start' => $weekStartKey,
                 'phase' => $weekPhase->value,
                 'type' => $weekStartKey < $currentWeekKey ? 'history' : ($weekStartKey === $currentWeekKey ? 'current' : 'lookahead'),
-                'days' => $weekSessions->map(fn (PlannedSession $s) => $this->dayPayload(
+                'days' => $weekSessions->map(fn (PlannedSession $s) => PlanRenderer::dayPayload(
                     $s,
                     $today,
                     $clamp,
-                    $redistributed,
+                    $volumeScaleByDate,
+                    $isMarathonDistance,
+                    $s->date->toDateString() === $primaryEasyDate,
                     $baselineData['long_run_km'],
                     $multiplierByWeek[$weekStartKey] ?? 1.0,
                     $paces,
+                    $fallbackStatuses[$s->date->toDateString()] ?? $s->status,
+                    $activityByDate[$s->date->toDateString()] ?? null,
                 ))->all(),
             ];
         }
@@ -165,25 +221,46 @@ class PlanController extends Controller
             'sessionsPerWeek' => $baselineData['sessions_per_week'],
             'weeks' => $weeks,
             'season' => $seasonPayload,
+            'seasonSummary' => $seasonSummary,
+            'seasonAdherencePct' => $seasonAdherencePct,
+            'adaptation' => $adaptationPayload,
+            'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
+            'disclaimer' => TrainingDisclaimer::TEXT,
+            'planNarration' => $narrationRequester->payloadsForCurrentWeek($user, $today),
+            'regenerateCooldownSeconds' => $narrationRequester->regenerateCooldownRemaining($user),
         ]);
     }
 
-    public function regenerate(Request $request, Periodizer $periodizer): RedirectResponse
+    public function regenerate(Request $request, Periodizer $periodizer, PlanNarrationRequester $narrationRequester): RedirectResponse
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::User);
+
         /** @var User $user */
         $user = $request->user();
+
+        if ($narrationRequester->regenerateCooldownRemaining($user) !== null) {
+            return back()->with('info', "Temari's still catching up on the last replan. Give it a little longer.");
+        }
+
         $periodizer->regenerate($user);
+        $narrationRequester->requestForCurrentWeek($user, Carbon::today());
+        $narrationRequester->startRegenerateCooldown($user);
 
         return back()->with('success', "Temari's replanned the weeks ahead against where you are now.");
     }
 
     /**
-     * Move (date), resize (distance_band), block (session_type = rest), or
-     * pin/unpin. Any explicit edit fixes the day (pins it) so the next
-     * regeneration doesn't silently overwrite it, unless the caller passes
-     * `pinned: false` to hand control back to the periodizer.
+     * Move (date), block (session_type = rest), skip (excuse the day before
+     * it passes), or pin/unpin. Any explicit edit fixes the day (pins it) so
+     * the next regeneration doesn't silently overwrite it, unless the caller
+     * passes `pinned: false` to hand control back to the periodizer.
+     *
+     * A move onto a date the athlete already has a row for is a **swap**, not
+     * a re-date: `planned_sessions` is unique on (user_id, date) and the
+     * periodizer materializes all seven days of every week, so every in-horizon
+     * target is occupied.
      */
-    public function update(UpdatePlannedSessionRequest $request, PlannedSession $plannedSession): RedirectResponse
+    public function update(UpdatePlannedSessionRequest $request, PlannedSession $plannedSession, PlanNarrationRequester $narrationRequester): RedirectResponse
     {
         $this->authorizeOwner($request, $plannedSession);
 
@@ -191,25 +268,59 @@ class PlanController extends Controller
         if (! array_key_exists('pinned', $attributes)) {
             $attributes['pinned'] = true;
         }
-        // Blocking a day (session_type = rest) always clears its distance/pace,
-        // keeping the invariant "pace_band is null exactly when session_type is
-        // rest" regardless of what else the request sent.
-        if (($attributes['session_type'] ?? null) === SessionType::Rest->value) {
-            $attributes['distance_band'] = DistanceBand::Rest->value;
-            $attributes['pace_band'] = null;
+
+        $today = Carbon::today();
+        $touchedDates = [$plannedSession->date];
+
+        $occupant = $this->occupantOfMoveTarget($plannedSession, $attributes['date'] ?? null);
+        if ($occupant !== null) {
+            $touchedDates[] = $occupant->date;
+            $this->swapSessions($plannedSession, $occupant);
+            unset($attributes['date']);
         }
 
         $plannedSession->update($attributes);
 
+        // Keep the day's narration in sync with the edit — otherwise it keeps
+        // describing whatever was prescribed before the skip/block/move.
+        // Only within the current week: that's the only window day narration
+        // is ever requested for in the first place.
+        if ($occupant !== null || $plannedSession->wasChanged(['session_type', 'skipped', 'date'])) {
+            foreach ($touchedDates as $date) {
+                if ($narrationRequester->isWithinCurrentWeek($date, $today)) {
+                    $narrationRequester->requestDayNarration($plannedSession->user_id, $date);
+                }
+            }
+        }
+
         return back();
     }
 
-    public function destroy(Request $request, PlannedSession $plannedSession): RedirectResponse
+    private function occupantOfMoveTarget(PlannedSession $plannedSession, ?string $toDate): ?PlannedSession
     {
-        $this->authorizeOwner($request, $plannedSession);
-        $plannedSession->delete();
+        if ($toDate === null || Carbon::parse($toDate)->isSameDay($plannedSession->date)) {
+            return null;
+        }
 
-        return back();
+        return PlannedSession::query()
+            ->where('user_id', $plannedSession->user_id)
+            ->whereDate('date', $toDate)
+            ->first();
+    }
+
+    /**
+     * Trades what the two days prescribe while each keeps its own calendar
+     * slot, and pins both so the next regeneration honours the choice.
+     */
+    private function swapSessions(PlannedSession $from, PlannedSession $to): void
+    {
+        DB::transaction(function () use ($from, $to): void {
+            [$fromType, $toType] = [$from->session_type, $to->session_type];
+            [$fromSkipped, $toSkipped] = [$from->skipped, $to->skipped];
+
+            $to->update(['session_type' => $fromType, 'skipped' => $fromSkipped, 'pinned' => true]);
+            $from->update(['session_type' => $toType, 'skipped' => $toSkipped, 'pinned' => true]);
+        });
     }
 
     private function authorizeOwner(Request $request, PlannedSession $plannedSession): void
@@ -230,53 +341,18 @@ class PlanController extends Controller
     }
 
     /**
-     * The Plan tab's season summary: arc progress + the season's 5 goals +
-     * a link to the badge board. Season IS the training block (see the v2
-     * program's locked decisions) — this is the same arc at a higher zoom,
-     * not a separate page.
-     *
-     * @param  list<array{id: int, title: string, current: int|float, target: int|float, unit: string, is_completed: bool}>  $goals
-     * @return array{starts_at: string, ends_at: string, week_index: int, total_weeks: int, is_race_oriented: bool, goals: list<array{id: int, title: string, current: int|float, target: int|float, unit: string, is_completed: bool}>}
-     */
-    private function seasonPayload(Season $season, array $goals, Carbon $today): array
-    {
-        $totalWeeks = max(1, (int) $season->starts_at->diffInWeeks($season->ends_at) + 1);
-        $weekIndex = max(1, min($totalWeeks, (int) $season->starts_at->diffInWeeks($today) + 1));
-
-        return [
-            'starts_at' => $season->starts_at->toDateString(),
-            'ends_at' => $season->ends_at->toDateString(),
-            'week_index' => $weekIndex,
-            'total_weeks' => $totalWeeks,
-            'is_race_oriented' => $season->race_goal_id !== null,
-            'goals' => $goals,
-        ];
-    }
-
-    /**
-     * @return array<string, float>
-     */
-    private function bandKmFor(float $longRunKm, float $multiplier): array
-    {
-        return [
-            DistanceBand::Short->value => DistanceBandKm::kmFor(DistanceBand::Short, $longRunKm, $multiplier),
-            DistanceBand::Medium->value => DistanceBandKm::kmFor(DistanceBand::Medium, $longRunKm, $multiplier),
-            DistanceBand::Long->value => DistanceBandKm::kmFor(DistanceBand::Long, $longRunKm, $multiplier),
-        ];
-    }
-
-    /**
      * @param  Collection<int, PlannedSession>  $currentWeekSessions
-     * @param  array<string, float>  $bandKmThisWeek
-     * @param  array{session_type: SessionType, distance_band: DistanceBand, pace_band: mixed, note: string}|null  $clamp
-     * @return array<string, DistanceBand>
+     * @param array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string}|null $clamp
+     * @return array<string, float>  date => volume scale, from {@see VolumeRedistributor::redistribute()}
      */
     private function redistributeCurrentWeek(
         User $user,
         Collection $currentWeekSessions,
         Carbon $today,
         Carbon $currentWeekStart,
-        array $bandKmThisWeek,
+        float $longRunKm,
+        float $multiplier,
+        ?string $primaryEasyDate,
         ?PlannedSession $todaySession,
         ?array $clamp,
     ): array {
@@ -284,95 +360,93 @@ class PlanController extends Controller
             return [];
         }
 
-        $weekTargetKm = $currentWeekSessions->sum(fn (PlannedSession $s) => $bandKmThisWeek[$s->distance_band->value] ?? 0.0);
+        $kmFor = fn (PlannedSession $s): float => SegmentGenerator::coreKmFor(
+            $s->session_type,
+            $s->date->toDateString() === $primaryEasyDate,
+            $longRunKm,
+            $multiplier,
+        );
+
+        $weekTargetKm = $currentWeekSessions->sum($kmFor);
         $completedKm = $this->completedKmInRange($user, $currentWeekStart, $today->copy()->subDay());
-        $pinnedKm = $currentWeekSessions
-            ->filter(fn (PlannedSession $s): bool => $s->pinned)
-            ->sum(fn (PlannedSession $s) => $bandKmThisWeek[$s->distance_band->value] ?? 0.0);
+        $pinnedKm = $currentWeekSessions->filter(fn (PlannedSession $s): bool => $s->pinned)->sum($kmFor);
 
         $todayFixedKm = 0.0;
         if ($todaySession !== null && ! $todaySession->pinned) {
-            $todayBand = $clamp['distance_band'] ?? $todaySession->distance_band;
-            $todayFixedKm = $bandKmThisWeek[$todayBand->value] ?? 0.0;
+            $todayFixedKm = $clamp !== null ? $clamp['core_km'] : $kmFor($todaySession);
         }
 
-        $eligibleDays = [];
+        $eligibleDaysKm = [];
         foreach ($currentWeekSessions as $s) {
             if ($s->pinned || ! $s->date->isAfter($today)) {
                 continue;
             }
-            $eligibleDays[$s->date->toDateString()] = $s->distance_band;
+            $eligibleDaysKm[$s->date->toDateString()] = $kmFor($s);
         }
 
         $remainingTargetKm = max(0.0, $weekTargetKm - $completedKm - $pinnedKm - $todayFixedKm);
 
-        return VolumeRedistributor::redistribute($eligibleDays, $remainingTargetKm, $bandKmThisWeek);
+        return VolumeRedistributor::redistribute($eligibleDaysKm, $remainingTargetKm);
     }
 
+
     /**
-     * @param  array{session_type: SessionType, distance_band: DistanceBand, pace_band: mixed, note: string}|null  $clamp
-     * @param  array<string, DistanceBand>  $redistributed
-     * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
-     * @return array<string, mixed>
+     * @return array{reason: string, headline: string, detail: string, deload: bool}|null
      */
-    private function dayPayload(
-        PlannedSession $s,
-        Carbon $today,
-        ?array $clamp,
-        array $redistributed,
-        float $longRunKm,
-        float $multiplier,
-        ?array $paces,
-    ): array {
-        $isToday = $s->date->isSameDay($today);
+    private function adaptationPayload(User $user, Carbon $currentWeekStart): ?array
+    {
+        $adaptation = PlanAdaptation::query()
+            ->where('user_id', $user->id)
+            ->where('week_start', $currentWeekStart->toDateString())
+            ->first();
 
-        $sessionType = ($isToday && $clamp !== null) ? $clamp['session_type'] : $s->session_type;
-        $paceBand = ($isToday && $clamp !== null) ? $clamp['pace_band'] : $s->pace_band;
-
-        $band = $s->distance_band;
-        if ($isToday && $clamp !== null) {
-            $band = $clamp['distance_band'];
-        } elseif (isset($redistributed[$s->date->toDateString()])) {
-            $band = $redistributed[$s->date->toDateString()];
-        }
-
-        return [
-            'id' => $s->id,
-            'date' => $s->date->toDateString(),
-            'phase' => $s->phase->value,
-            'session_type' => $sessionType->value,
-            'distance_band' => $band->value,
-            'pace_band' => $paceBand?->value,
-            'pace_sec_per_km' => ($paceBand !== null && $paces !== null) ? ($paces[$paceBand->value] ?? null) : null,
-            'distance_km' => DistanceBandKm::kmFor($band, $longRunKm, $multiplier),
-            'pinned' => $s->pinned,
-            'status' => $this->statusFor($s, $today),
-            'clamp_note' => $isToday ? ($clamp['note'] ?? null) : null,
+        return $adaptation === null ? null : [
+            'reason' => $adaptation->reason->value,
+            'headline' => $adaptation->reason->headline(),
+            'detail' => $adaptation->reason->detail($adaptation->adherence_pct),
+            'deload' => $adaptation->deload,
         ];
     }
 
-    private function statusFor(PlannedSession $session, Carbon $today): string
+    /**
+     * The day's longest logged run, keyed by date — what the timeline's
+     * planned-vs-actual bar measures against and what its "view activity"
+     * link opens. `km` is the day's total (matching how
+     * {@see SessionMatcher} scores compliance), `id`/`seconds` describe the
+     * single longest run of that day.
+     *
+     * @return array<string, array{id: int, km: float, seconds: int|null}>
+     */
+    private function activityByDate(User $user, Carbon $from, Carbon $to): array
     {
-        if (! $session->date->isBefore($today)) {
-            return PlannedSessionStatus::Planned->value;
-        }
-        if ($session->session_type === SessionType::Rest) {
-            return PlannedSessionStatus::Done->value;
+        if ($to->lessThan($from)) {
+            return [];
         }
 
-        return $this->hasActivityOn($session->user_id, $session->date)
-            ? PlannedSessionStatus::Done->value
-            : PlannedSessionStatus::Missed->value;
-    }
-
-    private function hasActivityOn(int $userId, Carbon $date): bool
-    {
-        return ActivityDetail::query()
+        $rows = ActivityDetail::query()
             ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
-            ->where('activities.user_id', $userId)
+            ->where('activities.user_id', $user->id)
             ->whereNotNull('activity_details.start_date_local')
-            ->whereBetween('activity_details.start_date_local', [$date->copy()->startOfDay(), $date->copy()->endOfDay()])
-            ->exists();
+            ->whereBetween('activity_details.start_date_local', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->orderBy('activity_details.distance')
+            ->get(['activity_details.activity_id', 'activity_details.start_date_local', 'activity_details.distance', 'activity_details.moving_time']);
+
+        $byDate = [];
+        foreach ($rows as $row) {
+            $date = $row->start_date_local?->toDateString();
+            if ($date === null) {
+                continue;
+            }
+            // Ascending distance, so each later row of the same date overwrites
+            // id/seconds with the longer run while km keeps accumulating.
+            $byDate[$date] = [
+                'id' => (int) $row->activity_id,
+                'km' => round(($byDate[$date]['km'] ?? 0.0) + DistanceFormatter::km((float) $row->distance), 1),
+                'seconds' => $row->moving_time,
+            ];
+        }
+
+        return $byDate;
     }
 
     private function completedKmInRange(User $user, Carbon $from, Carbon $to): float

@@ -1,10 +1,11 @@
-import { Icon } from '@iconify/react';
 import { useForm, usePage } from '@inertiajs/react';
 
 import type { DeadLetterGroup } from '@/pages/AiUsage/types';
 import type { SharedProps } from '@/types/inertia';
 
 import SectionHeading from '@/components/SectionHeading';
+import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 
 /**
  * The "stuck work" cluster: a global one-shot recover action plus three buckets
@@ -66,12 +67,16 @@ function RecoverBar() {
     const { post, processing } = useForm();
 
     function recover(): void {
-        post('/ai-usage/recover', { preserveScroll: true });
+        post('/devtools/ai-usage/recover', { preserveScroll: true });
     }
 
     return (
-        <div className="mt-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface-elev p-4">
-            <p className="text-sm text-ink-2">
+        <Card
+            tone="card"
+            padding="panel"
+            className="mt-10 flex flex-wrap items-center justify-between gap-3 bg-popover"
+        >
+            <p className="text-sm text-text-2">
                 Just recovered from an outage? Recover every stuck block at
                 once.
             </p>
@@ -84,7 +89,7 @@ function RecoverBar() {
                 <Icon icon="mdi:restore" aria-hidden />
                 <span>{processing ? 'Recovering…' : 'Recover all'}</span>
             </button>
-        </div>
+        </Card>
     );
 }
 
@@ -146,7 +151,7 @@ function AttentionGroupRow({
     const paused = usePage<SharedProps>().props.aiPaused ?? false;
 
     function retry(): void {
-        post(`/ai-usage/users/${group.user_id}/retry-failed`, {
+        post(`/devtools/ai-usage/users/${group.user_id}/retry-failed`, {
             preserveScroll: true,
         });
     }
@@ -159,23 +164,27 @@ function AttentionGroupRow({
     }, {});
 
     return (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface-elev p-4">
+        <Card
+            tone="card"
+            padding="panel"
+            className="flex flex-wrap items-center justify-between gap-3 bg-popover"
+        >
             <div className="min-w-0">
-                <p className="truncate font-medium text-ink">
+                <p className="truncate font-medium text-foreground">
                     {group.user_name}
                 </p>
-                <p className="text-xs text-ink-3">
+                <p className="text-xs text-text-3">
                     {group.count} {countLabel}
                 </p>
                 <ul className="mt-2 flex flex-wrap gap-1.5">
                     {Object.entries(byType).map(([type, count]) => (
                         <li
                             key={type}
-                            className="rounded-md bg-surface-sunken px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider text-ink-3"
+                            className="rounded-md bg-muted px-2 py-0.5 font-mono text-[0.6875rem] font-bold uppercase tracking-wider text-text-3"
                         >
                             {type}
                             {count > 1 && (
-                                <span className="ml-1 text-ink-2">
+                                <span className="ml-1 text-text-2">
                                     ×{count}
                                 </span>
                             )}
@@ -199,6 +208,6 @@ function AttentionGroupRow({
                     <span>{processing ? 'Sending…' : 'Retry all'}</span>
                 </button>
             )}
-        </div>
+        </Card>
     );
 }

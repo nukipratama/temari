@@ -1,0 +1,93 @@
+name: TIA baseline
+
+# Pest's Test Impact Analysis replays unaffected tests from a recorded
+# dependency graph. Recording that graph costs a full instrumented run, and
+# every fresh clone and every new worktree pays it from cold. This job records
+# it once and publishes it as an artifact; `pest()->tia()->baselined()` in
+# tests/Pest.php pulls the latest successful run's copy via the GitHub CLI.
+#
+# Recording is the ONE place --tia belongs in CI. The PR pipeline stays
+# exhaustive on --no-tia (see ci.yml) because it exists to verify every test
+# against a clean checkout.
+#
+# Runs on ubuntu-latest, never the homelab runner: that box is shared with prod,
+# and a full pcov-instrumented suite is exactly the load it should not carry.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # 04:23 WIB, off the hour and clear of the nightly audit at 03:17.
+    - cron: '23 21 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tia-baseline
+  cancel-in-progress: true
+
+env:
+  PHP_VERSION: '8.5'
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: temari_testing
+          MYSQL_USER: sail
+          MYSQL_PASSWORD: password
+        ports: ['0:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -ppassword"
+          --health-interval=5s --health-timeout=2s --health-retries=10
+          --tmpfs /var/lib/mysql:rw
+    steps:
+      # TIA reads git to work out what changed, so it needs real history.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-php
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: pcov
+          classmap-authoritative: 'true'
+
+      - name: Stub .env for file-scanning tests
+        run: cp .env.example .env
+
+      - name: Record the baseline
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
+          DB_DATABASE: temari_testing
+          DB_USERNAME: root
+          DB_PASSWORD: password
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+        # memory_limit=-1 is not optional: merging the coverage graph for this
+        # suite exhausted a 512M limit locally while unserialising ~80MB.
+        run: |
+          php -d memory_limit=-1 ./vendor/bin/pest \
+            --parallel --processes="$(nproc)" \
+            --tia --coverage --fresh
+
+      - name: Resolve the baseline path
+        id: baseline
+        run: echo "path=$(./vendor/bin/pest --baseline)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the baseline
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: pest-tia-baseline
+          path: ${{ steps.baseline.outputs.path }}
+          include-hidden-files: true
+          retention-days: 30

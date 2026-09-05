@@ -38,21 +38,27 @@ export const VIEWPORT_DEFS = {
   mobile: { ...devices['iPhone 13'] },
   se: { ...devices['iPhone SE'] },
   tablet: { viewport: { width: 834, height: 1112 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
-  desktop: { viewport: { width: 1280, height: 800 } },
-  wide: { viewport: { width: 1536, height: 864 } },
+  laptop: { viewport: { width: 1920, height: 1080 } },
+  desktop: { viewport: { width: 2560, height: 1440 } },
 };
 
 // tablet (834px) renders the same mobile nav chrome as mobile (390px) — both are
 // below the lg breakpoint — so it's dropped from the default sweep to halve the
-// screenshot/read cost. Opt back in with VIEWPORTS=tablet or VIEWPORTS=mobile,tablet,desktop,wide.
+// screenshot/read cost. Opt back in with VIEWPORTS=tablet or VIEWPORTS=mobile,tablet,laptop,desktop.
 //
 // se (iPhone SE, 320px) stays in the default sweep despite sharing mobile's nav chrome:
 // unlike tablet, it's not redundant with mobile — its narrower raw width has caught real
 // overflow mobile (390px) missed entirely (a grid track sized to its widest child instead
 // of shrinking, a fluid font clamp whose floor was tuned for a wider column and silently
 // ellipsis-truncated real values). Width-driven CSS bugs like these don't reproduce at 390px.
+//
+// laptop (1920) and desktop (2K) are the two real desktop sizes. They differ only by the
+// 2048px type step, which is the point: laptop takes the 19.2px step, desktop takes 21.6px.
+// The old 1280 and 1536 entries are gone because 1920 is already past every breakpoint they
+// tested (lg, the 1280 column widening, and the 2xl page cap), so they only cost screenshots.
+// Nothing covers 900-1279 now, and nothing did before either.
 export function parseViewports() {
-  return (process.env.VIEWPORTS ?? 'mobile,se,desktop,wide')
+  return (process.env.VIEWPORTS ?? 'mobile,se,laptop,desktop')
     .split(',').map((s) => s.trim()).filter(Boolean)
     .filter((v) => VIEWPORT_DEFS[v] || (console.log(`skip unknown viewport: ${v}`), false));
 }
@@ -99,8 +105,22 @@ export async function fullPageScreenshot(page, path, shotOpts) {
 // URI patterns that are not screenshotable pages (apis, webhooks, auth handshakes, assets).
 const SKIP = [
   /^api\//, /^auth\//, /^strava\/(webhook|sync)/, /^logout$/, /^client-errors$/,
-  /^ai-usage$/, /^devtools/, /^_/, /^up$/, /^storage\//, /\{.*\}.*\{/, // multi-param = not a simple page
+  /^_/, /^up$/, /^storage\//, /\{.*\}.*\{/, // multi-param = not a simple page
 ];
+
+// The operator console is /devtools, /devtools/design, /devtools/ai-usage and /devtools/pulse.
+// EnsureDevtoolsAccess returns early when the app is not in production, so locally these need no
+// password: an unauthenticated request answers 200. They are swept like any other page.
+// /devtools/pulse is vendor-registered, so `--except-vendor` never reports it and it is appended
+// by hand below. This skill used to gate all four on DEVTOOLS_PASSWORD being set, which kept
+// /devtools/design out of every audit it runs — the one page rendering the token swatches an audit
+// is most likely to ask about. Do not reintroduce that gate; the variable is only needed to point
+// these scripts at a production host, where Basic Auth does apply.
+export const DEVTOOLS_AUTH = process.env.DEVTOOLS_PASSWORD
+  ? { httpCredentials: { username: 'devtools', password: process.env.DEVTOOLS_PASSWORD } }
+  : {};
+// Vendor-registered, so route:list --except-vendor never reports it.
+const VENDOR_PAGES = [{ name: 'pulse', path: '/devtools/pulse' }];
 
 /**
  * Enumerate GET page routes from Laravel itself. Returns [{ name, uri, path }]
@@ -113,6 +133,7 @@ export async function discoverPageRoutes(page) {
   const raw = execSync('php artisan route:list --json --except-vendor', { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
   const routes = JSON.parse(raw);
   const pages = [];
+  const paramBases = [];
 
   for (const r of routes) {
     const methods = (r.method ?? '').split('|');
@@ -125,18 +146,25 @@ export async function discoverPageRoutes(page) {
     if (SKIP.some((re) => re.test(uri))) continue;
 
     if (!uri.includes('{')) {
-      pages.push({ name: uri === '/' || uri === '' ? 'hari-ini' : uri.replaceAll('/', '-'), path: `/${uri}` });
+      pages.push({ name: uri === '/' || uri === '' ? 'dashboard' : uri.replaceAll('/', '-'), path: `/${uri}` });
       continue;
     }
-    // Single-param page: resolve the id from the list page (e.g. activities/{activity}).
-    const base = uri.split('/{')[0];
-    await page.goto(`${BASE}/${base}`, { waitUntil: 'load' }).catch(() => {});
-    const href = await page.locator(`a[href^="/${base}/"]`).first().getAttribute('href').catch(() => null);
-    if (href && new RegExp(`^/${base}/[^/]+$`).test(href)) {
-      pages.push({ name: `${base}-detail`, path: href });
-    } else {
-      console.log(`  (no sample for /${base}/{id} — thin data? try: sail artisan demo:seed)`);
-    }
+    paramBases.push(uri.split('/{')[0]);
   }
+
+  // Single-param pages: resolve a real id by scraping the first matching link. Try the
+  // route's own base path first (/activities), then every simple page — a detail screen
+  // is often only linked from a differently-named index (/history owns the run feed).
+  for (const base of paramBases) {
+    let found = null;
+    for (const candidate of [`/${base}`, ...pages.map((p) => p.path)]) {
+      await page.goto(`${BASE}${candidate}`, { waitUntil: 'load' }).catch(() => {});
+      const href = await page.locator(`a[href^="/${base}/"]`).first().getAttribute('href').catch(() => null);
+      if (href && new RegExp(`^/${base}/[^/]+$`).test(href)) { found = href; break; }
+    }
+    if (found) pages.push({ name: `${base}-detail`, path: found });
+    else console.log(`  (no sample for /${base}/{id} — thin data? try: sail artisan demo:seed)`);
+  }
+  pages.push(...VENDOR_PAGES);
   return pages;
 }

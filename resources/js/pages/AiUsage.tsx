@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react';
 import { Head, usePage } from '@inertiajs/react';
 
 import type { SharedProps } from '@/types/inertia';
@@ -9,10 +8,12 @@ import DailyChart from '@/components/aiusage/DailyChart';
 import DeploymentTable from '@/components/aiusage/DeploymentTable';
 import FlashBanner from '@/components/aiusage/FlashBanner';
 import KindTable from '@/components/aiusage/KindTable';
+import OriginTable from '@/components/aiusage/OriginTable';
 import UsageFilters from '@/components/aiusage/UsageFilters';
 import UsageKpis from '@/components/aiusage/UsageKpis';
 import UserTable from '@/components/aiusage/UserTable';
 import SectionHeading from '@/components/SectionHeading';
+import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 
 import type { AiUsageProps } from './AiUsage/types';
@@ -22,13 +23,16 @@ export default function AiUsage({
     from,
     to,
     kind,
+    origin,
     totals,
     previousTotals,
     byKind,
     byUser,
     byDeployment,
     daily,
+    byOrigin,
     availableKinds,
+    availableOrigins,
     budget,
     deadLettered,
     failedUnderBudget,
@@ -38,27 +42,30 @@ export default function AiUsage({
     const currency = budget.currency;
 
     return (
-        <div className="min-h-screen bg-surface text-ink">
+        <div className="min-h-screen bg-background text-foreground">
             <Head title="AI Usage" />
 
-            <header className="border-b border-line bg-surface-elev">
+            <header className="border-b border-border bg-popover">
                 <div className="mx-auto flex max-w-page items-center justify-between px-6 py-4 2xl:max-w-page-2xl">
                     <div className="flex items-center gap-3">
                         <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-leaf-deep text-cream">
                             <Icon icon="mdi:counter" width={20} aria-hidden />
                         </span>
                         <div>
-                            <h1 className="text-headline-xs font-semibold tracking-tight text-ink">
+                            <h1 className="font-serif italic text-headline-xs text-foreground">
                                 AI Usage
                             </h1>
-                            <p className="text-xs text-ink-3">
+                            <p className="text-xs text-text-3">
                                 Azure OpenAI token consumption per date range.
                             </p>
                         </div>
                     </div>
-                    <span className="hidden text-label-micro font-semibold text-ink-3 sm:inline">
+                    <a
+                        href="/devtools"
+                        className="focus-ring hidden rounded-full px-2 py-1 text-label-micro font-semibold text-text-3 transition hover:text-foreground sm:inline"
+                    >
                         Temari · Devtools
-                    </span>
+                    </a>
                 </div>
             </header>
 
@@ -70,7 +77,9 @@ export default function AiUsage({
                     from={from}
                     to={to}
                     kind={kind}
+                    origin={origin}
                     availableKinds={availableKinds}
+                    availableOrigins={availableOrigins}
                 />
 
                 <UsageKpis
@@ -107,6 +116,8 @@ export default function AiUsage({
                     grandTotal={totals.total}
                     currency={currency}
                 />
+
+                <OriginTable rows={byOrigin} currency={currency} />
 
                 <UserTable rows={byUser} grandTotal={totals.total} />
             </PageContainer>

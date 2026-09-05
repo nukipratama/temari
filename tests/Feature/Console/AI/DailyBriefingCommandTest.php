@@ -2,13 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Enums\Rarity;
-use App\Jobs\AI\AnalyzeBriefingFeaturedKartuVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\RunCard;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
@@ -19,17 +16,15 @@ use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
 
-it('dispatches briefing group and daily row types for each active user', function (): void {
+it('dispatches the briefing group for each active user, and nothing else', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
     $today = Carbon::today()->toDateString();
 
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()]);
-    $card = RunCard::factory()->for($activity)->create(['rarity' => Rarity::Epic]);
 
     $briefingGroupCalls = [];
-    $requestCalls = [];
 
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('requestBriefing')
@@ -37,42 +32,18 @@ it('dispatches briefing group and daily row types for each active user', functio
         ->andReturnUsing(function (User $u, string $discriminator) use (&$briefingGroupCalls): void {
             $briefingGroupCalls[] = ['user_id' => $u->id, 'discriminator' => $discriminator];
         });
-    $service->shouldReceive('request')
-        ->once() // FeaturedKartuVoice
-        ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null, ?int $delaySeconds = null, bool $invalidate = false) use (&$requestCalls): Analysis {
-            $requestCalls[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator', 'invalidate');
-
-            return new Analysis();
-        });
+    // The featured-card row was this command's only direct request() call.
+    // W2 removed it with the panel it narrated, so the kickoff is the group alone.
+    $service->shouldNotReceive('request');
     $this->app->instance(AnalysisService::class, $service);
 
     $this->artisan('ai:daily-briefing')
         ->expectsOutputToContain('Dispatched daily kickoff (briefing) for 1 active users.')
         ->assertSuccessful();
 
-    // Briefing group called once for the user with today's discriminator.
     expect($briefingGroupCalls)->toHaveCount(1);
     expect($briefingGroupCalls[0]['user_id'])->toBe($user->id)
         ->and($briefingGroupCalls[0]['discriminator'])->toBe($today);
-
-    // requestBriefing covers the day-keyed Temari voice; request() only the featured-kartu row.
-    $requestedTypes = collect($requestCalls)->map(fn (array $c): string => $c['type']->value)->all();
-    expect($requestedTypes)->toBe([
-        'briefing_featured_kartu_voice',
-    ]);
-
-    $byType = collect($requestCalls)->keyBy(fn (array $c): string => $c['type']->value);
-    foreach ($requestCalls as $call) {
-        expect($call['subjectId'])->toBe($user->id);
-    }
-    // The featured voice keys off the card id so it regenerates only when the
-    // featured pick changes.
-    expect($byType['briefing_featured_kartu_voice']['subjectOrType'])->toBe(AnalysisType::BRIEFING_SUBJECT_TYPE)
-        ->and($byType['briefing_featured_kartu_voice']['discriminator'])->toBe((string) $card->id);
-
-    // The LLM types never invalidate an existing row (no re-bill).
-    $invalidateByType = $byType->map(fn (array $c): bool => $c['invalidate']);
-    expect($invalidateByType['briefing_featured_kartu_voice'])->toBeFalse();
 
     Carbon::setTestNow();
 });
@@ -83,13 +54,12 @@ it('skips the demo user even with recent analyzed activity', function (): void {
     $real = User::factory()->create();
     $realActivity = Activity::factory()->for($real)->analyzed()->create(['analyzed_at' => Carbon::today()->subDays(1)]);
     ActivityDetail::factory()->for($realActivity)->create(['start_date_local' => Carbon::today()->subDays(1)]);
-    RunCard::factory()->for($realActivity)->create(['rarity' => Rarity::Rare]);
     $demo = User::factory()->demo()->create();
     Activity::factory()->for($demo)->create(['analyzed_at' => Carbon::today()->subDays(1)]);
 
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('requestBriefing')->once();
-    $service->shouldReceive('request')->once()->andReturn(new Analysis());
+    $service->shouldNotReceive('request');
     $this->app->instance(AnalysisService::class, $service);
 
     $this->artisan('ai:daily-briefing')
@@ -99,23 +69,19 @@ it('skips the demo user even with recent analyzed activity', function (): void {
     Carbon::setTestNow();
 });
 
-it('a second same-day run only fills missing types and never re-bills Done rows', function (): void {
+it('a second same-day run never re-bills a Done row', function (): void {
     // ai:daily-briefing is idempotent: if it runs a second time the same day (a
-    // manual re-trigger, or a developer re-run), it must create + dispatch ONLY the
-    // rows still missing for the day (e.g. featured_kartu_voice that never got
-    // produced), and must NOT re-dispatch (and so never re-bill) rows already Done.
+    // manual re-trigger, or a developer re-run), it must NOT re-dispatch (and so
+    // never re-bill) a row already Done.
     Carbon::setTestNow('2026-05-11 12:00:00');
     $today = Carbon::today()->toDateString();
 
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create(['analyzed_at' => Carbon::today()->subDays(2)]);
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()->subDays(2)]);
-    $card = RunCard::factory()->for($activity)->create(['rarity' => Rarity::Epic]);
 
-    // Simulate the earlier (00:01) run having already completed the mascot
-    // voice, but NOT the featured kartu voice (the row a missed tick left
-    // unproduced; here it is simply absent).
-    Analysis::factory()->done('kata temari kemarin')->create([
+    // Simulate the earlier (00:01) run having already completed the mascot voice.
+    Analysis::factory()->done('temari note yesterday')->create([
         'subject_type' => AnalysisType::BriefingMascotVoice->subjectType(),
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::BriefingMascotVoice,
@@ -129,15 +95,6 @@ it('a second same-day run only fills missing types and never re-bills Done rows'
         ->expectsOutputToContain('Dispatched daily kickoff (briefing) for 1 active users.')
         ->assertSuccessful();
 
-    // The missing type is created + dispatched once, keyed by the featured card id.
-    Bus::assertDispatched(AnalyzeBriefingFeaturedKartuVoiceJob::class, 1);
-    $featured = Analysis::query()
-        ->where('subject_id', $user->id)
-        ->where('analysis_type', AnalysisType::BriefingFeaturedKartuVoice)
-        ->where('discriminator', (string) $card->id)
-        ->firstOrFail();
-    expect($featured->status)->toBe(AnalysisStatus::Queued);
-
     // The already-Done type is neither re-dispatched nor reset (no re-bill).
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
 
@@ -147,7 +104,7 @@ it('a second same-day run only fills missing types and never re-bills Done rows'
         ->where('discriminator', $today)
         ->firstOrFail();
     expect($mascot->status)->toBe(AnalysisStatus::Done)
-        ->and($mascot->content)->toBe('kata temari kemarin');
+        ->and($mascot->content)->toBe('temari note yesterday');
 
     Carbon::setTestNow();
 });
@@ -157,6 +114,30 @@ it('reports zero active users when no analyzed activities are recent', function 
 
     $user = User::factory()->create();
     Activity::factory()->for($user)->create(['analyzed_at' => Carbon::today()->subDays(15)]);
+
+    $service = Mockery::mock(AnalysisService::class);
+    $service->shouldNotReceive('requestBriefing');
+    $service->shouldNotReceive('request');
+    $this->app->instance(AnalysisService::class, $service);
+
+    $this->artisan('ai:daily-briefing')
+        ->expectsOutputToContain('Dispatched daily kickoff (briefing) for 0 active users.')
+        ->assertSuccessful();
+
+    Carbon::setTestNow();
+});
+
+it('skips a just-connected athlete whose whole backfilled history is old', function (): void {
+    // Every imported run is stamped analyzed_at = now by the backfill, so an
+    // analyzed_at window would brief a dormant account daily for a week about a
+    // decade-old history. The run's own date is what "active" means.
+    Carbon::setTestNow('2026-05-11 12:00:00');
+
+    $dormant = User::factory()->create();
+    foreach ([60, 400, 900] as $daysAgo) {
+        $activity = Activity::factory()->for($dormant)->analyzed()->create(['analyzed_at' => Carbon::now()]);
+        ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()->subDays($daysAgo)]);
+    }
 
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldNotReceive('requestBriefing');

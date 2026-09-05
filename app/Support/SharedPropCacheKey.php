@@ -17,12 +17,12 @@ enum SharedPropCacheKey: string
     case ActiveRace = 'active-race';
     case AiCatchingUp = 'ai-catching-up';
     case AiPaused = 'ai-paused';
-    case EquippedAccessories = 'equipped-accessories';
     case HrZonesChangedAt = 'hr-zones-changed-at';
     case StravaPaused = 'strava-paused';
     case StravaSync = 'strava-sync';
     case StravaZoneScopeMissing = 'strava-zone-scope-missing';
     case TelegramConnected = 'telegram-connected';
+    case UnreadNotifications = 'unread-notifications';
     case WebPushSubscribed = 'web-push-subscribed';
 
     /**
@@ -73,11 +73,12 @@ enum SharedPropCacheKey: string
     private const int STRAVA_PAUSED_SECONDS = 60;
 
     /**
-     * TTL shared by the four settings-shaped signals: equipped accessories,
-     * Telegram reachability, web-push reachability and the missing Strava zone
-     * scope. Each moves only on an explicit write — an equip, a connect or
-     * revoke, a push subscribe or unsubscribe, a notification-preference save —
-     * and every one of those paths busts the key, so like the HR-zone marker the
+     * TTL shared by the settings-shaped signals:
+     * Telegram reachability, web-push reachability, the missing Strava zone
+     * scope and the unread inbox count. Each moves only on an explicit write —
+     * a connect or revoke, a push subscribe or unsubscribe, a
+     * notification-preference save, an inbox write or read — and every one of
+     * those paths busts the key, so like the HR-zone marker the
      * TTL is a safety net rather than the mechanism. The win is dropping their
      * per-page-load queries, which is why they get a TTL at all instead of
      * bust-only caching: a missed bust must self-heal in minutes, not never.
@@ -105,12 +106,20 @@ enum SharedPropCacheKey: string
             self::StravaPaused => self::STRAVA_PAUSED_SECONDS,
             self::HrZonesChangedAt => self::HR_ZONES_CHANGED_SECONDS,
             self::StravaSync => self::STRAVA_SYNC_SECONDS,
-            self::EquippedAccessories,
             self::StravaZoneScopeMissing,
             self::TelegramConnected,
+            self::UnreadNotifications,
             self::WebPushSubscribed => self::SETTINGS_SIGNAL_SECONDS,
         };
     }
+
+    /**
+     * Envelope key. Redis stores a numeric value unserialized and hands it back
+     * as a string, so an `int` prop round-trips as `'5'` and only fails on the
+     * request that hits the cache rather than computing. Wrapping in an array
+     * forces serialization, which preserves the type under every store.
+     */
+    private const string ENVELOPE = '__prop';
 
     /**
      * @template TValue
@@ -120,8 +129,18 @@ enum SharedPropCacheKey: string
      */
     public function remember(?int $userId, Closure $compute): mixed
     {
-        /** @var TValue */
-        return Cache::remember($this->key($userId), $this->ttl(), $compute);
+        $key = $this->key($userId);
+        $cached = Cache::get($key);
+
+        if (is_array($cached) && array_key_exists(self::ENVELOPE, $cached)) {
+            /** @var TValue */
+            return $cached[self::ENVELOPE];
+        }
+
+        $value = $compute();
+        Cache::put($key, [self::ENVELOPE => $value], $this->ttl());
+
+        return $value;
     }
 
     public function forget(?int $userId = null): void

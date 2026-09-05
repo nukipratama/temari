@@ -12,37 +12,49 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 #[Signature('ai:weekly-profile')]
-#[Description('Refresh the Aku-page Kata Temari voice once a week for each active user (demo excluded)')]
+#[Description('Refresh the Profile-page Temari voice once a week for each active user (demo excluded)')]
 class WeeklyProfileCommand extends Command
 {
     /**
-     * The Aku-page voice carries no per-run cadence of its own, so this weekly
-     * heartbeat is its only auto-refresh: each active user's "Kata Temari" line
+     * How recently a user must have run to get a refreshed voice, keyed off the
+     * run's own date because an on-connect backfill stamps `analyzed_at` to now
+     * across a whole imported history.
+     */
+    private const int ACTIVE_WINDOW_DAYS = 7;
+
+    /**
+     * The Profile-page voice carries no per-run cadence of its own, so this weekly
+     * heartbeat is its only auto-refresh: each active user's Temari-voice line
      * re-narrates once a week on the week's updated data. Demo is excluded (it
-     * never auto-bills any LLM cadence); the manual "Baca ulang" button still
+     * never auto-bills any LLM cadence); the manual "Reread" button still
      * forces an on-demand refresh between runs.
      */
     public function handle(AnalysisService $service): int
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
+
         // The voice is keyed per ISO week (its narrator reads a 12-week mood
         // window), so the rolling week-key is itself the weekly regen: a new week
         // creates a fresh row, and invalidate:false never re-bills the row a
-        // mid-week "Baca ulang" already filled.
+        // mid-week "Reread" already filled.
         $isoWeek = AnalysisType::currentIsoWeek();
 
         $activeUserIds = Activity::query()
-            ->where('analyzed_at', '>=', Carbon::today()->subDays(7))
-            ->whereIn('user_id', User::query()->notDemo()->select('id'))
+            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+            ->where('activity_details.start_date_local', '>=', Carbon::today()->subDays(self::ACTIVE_WINDOW_DAYS))
+            ->whereIn('activities.user_id', User::query()->notDemo()->select('id'))
             ->distinct()
-            ->pluck('user_id');
+            ->pluck('activities.user_id');
 
         foreach ($activeUserIds as $userId) {
             $service->request(
-                subjectOrType: AnalysisType::AkuProfileVoice->subjectType(),
+                subjectOrType: AnalysisType::ProfileVoice->subjectType(),
                 subjectId: (int) $userId,
-                type: AnalysisType::AkuProfileVoice,
+                type: AnalysisType::ProfileVoice,
                 discriminator: $isoWeek,
                 invalidate: false,
             );

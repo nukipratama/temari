@@ -28,28 +28,11 @@ it('rejects an invalid date', function (): void {
     expect(validatePlannedSessionUpdate(['date' => 'not-a-date'])->fails())->toBeTrue();
 });
 
-it('passes a valid resize (distance_band)', function (): void {
-    expect(validatePlannedSessionUpdate(['distance_band' => 'medium'])->passes())->toBeTrue();
-});
-
-it('rejects an unknown distance_band', function (): void {
-    expect(validatePlannedSessionUpdate(['distance_band' => 'huge'])->fails())->toBeTrue();
-});
-
-it('passes a valid block (session_type = rest)', function (): void {
-    expect(validatePlannedSessionUpdate(['session_type' => 'rest'])->passes())->toBeTrue();
-});
-
-it('rejects an unknown session_type', function (): void {
-    expect(validatePlannedSessionUpdate(['session_type' => 'sprint'])->fails())->toBeTrue();
-});
-
-it('allows a null pace_band, for a rest day', function (): void {
-    expect(validatePlannedSessionUpdate(['pace_band' => null])->passes())->toBeTrue();
-});
-
-it('rejects an unknown pace_band', function (): void {
-    expect(validatePlannedSessionUpdate(['pace_band' => 'sprint'])->fails())->toBeTrue();
+it('no longer validates session_type, block having been cut by P23', function (): void {
+    // Not a rule any more, so it neither passes nor fails — it is simply
+    // dropped, and PlanController never reads it.
+    expect(validatePlannedSessionUpdate(['session_type' => 'sprint'])->validated())
+        ->not->toHaveKey('session_type');
 });
 
 it('passes an explicit pin/unpin toggle', function (): void {
@@ -59,4 +42,13 @@ it('passes an explicit pin/unpin toggle', function (): void {
 
 it('rejects a non-boolean pinned value', function (): void {
     expect(validatePlannedSessionUpdate(['pinned' => 'yes'])->fails())->toBeTrue();
+});
+
+it('passes an explicit skip/unskip toggle', function (): void {
+    expect(validatePlannedSessionUpdate(['skipped' => true])->passes())->toBeTrue()
+        ->and(validatePlannedSessionUpdate(['skipped' => false])->passes())->toBeTrue();
+});
+
+it('rejects a non-boolean skipped value', function (): void {
+    expect(validatePlannedSessionUpdate(['skipped' => 'yes'])->fails())->toBeTrue();
 });

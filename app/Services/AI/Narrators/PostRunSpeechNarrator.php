@@ -12,19 +12,22 @@ use App\Services\AI\Agent\Tools\PersonalRecordsTool;
 use App\Services\AI\Agent\Tools\RunSummaryTool;
 use App\Services\AI\Agent\Tools\TerrainTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
+use App\Services\AI\Agent\Tools\WeekStateTool;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\StructuredChatCaller;
+use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\PastYouMatcher;
+use Illuminate\Support\Carbon;
 
 class PostRunSpeechNarrator
 {
     use ReadsPreviousActivityNarrative;
 
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Task: a warm post-run story once the user finishes a run. Build 2-4 sentences
-        (max 75 words) into one small flowing story.
+        Task: where this run sits in the user's own story, once they've finished it.
+        2-4 sentences, max 75 words, one flowing piece rather than a list.
 
         YOUR LENS: on this page there are four blocks sitting side by side. Three of
         them already dissect the mechanics of the run: "Technical translation"
@@ -53,6 +56,24 @@ class PostRunSpeechNarrator
         and a field missing from a tool result means there's no data for it: skip
         it, don't guess.
 
+        YOUR SCOREBOARD IS THE JOURNEY, NOT THE MECHANICS. You keep score here too,
+        just not on splits and zones. Your comparisons are get_past_you (a similar
+        run they already did), get_personal_records (what this run actually beat),
+        and get_week_state (runs and km this week against last week, how many weeks
+        running they've kept it up). Name the number and the direction. If it went
+        the wrong way, say it went the wrong way: fewer runs than last week is fewer
+        runs than last week.
+
+        get_week_state also carries readiness and session-suggestion fields. Ignore
+        those entirely. The run already happened, you are not planning the next one,
+        and this block never suggests a session. What you want out of it is the
+        week-over-week counts and the streak.
+
+        COASTING: if the week is thinner than the last few and nothing in the data
+        explains it, you may name it once, flatly, then move on. NEVER name it when
+        the data gives a reason (fatigued or overreaching form, heat, a first run
+        back after a gap). And never twice.
+
         Open from the highlight, not from a status update or small talk. Match the
         tone to the mood in the `mood` field (Threadwork code), following the mood
         calibration in the persona.
@@ -76,11 +97,32 @@ class PostRunSpeechNarrator
         FASTER now, negative = slower (be honest about it, don't spin it as always
         winning). hr_diff_bpm positive = HR is higher now. If `past_you` is null,
         NEVER make up a comparison to the past.
+
+        Good examples of the range this block should cover:
+        - "third run this week, one more than the whole of last week. the habit is
+          doing the work now, not the motivation."
+        - "You've run this loop before, 41 days ago, 12 seconds per km slower. same
+          legs, different engine."
+        - "wet, dark, and you went anyway. that's the whole story of this one."
+        - "slower than the last time you ran this far, by about 20 seconds a km. some
+          days the route wins."
+
+        ANTI-PATTERN:
+        - Closing on a warm line because the paragraph felt like it needed one. If
+          the run was ordinary, say it was ordinary and stop.
+        - "Great job", "you've got this", "keep it up", "amazing effort", or anything
+          else off a motivational poster.
+        - Exclamation points. Save the one you're allowed for something that has
+          genuinely never happened before.
+        - Praising the act of showing up, unless showing up was actually the hard
+          part that day.
+        - Emoji sprinkled in for warmth. The default here is none.
         PROMPT;
 
     public function __construct(
         private readonly StructuredChatCaller $caller,
         private readonly PastYouMatcher $pastYou,
+        private readonly TrainingLoad $trainingLoad,
     ) {
     }
 
@@ -141,6 +183,7 @@ class PostRunSpeechNarrator
             new WeatherTool($activity, $detail),
             new PersonalRecordsTool($activity, $detail),
             new PastYouTool($activity, $detail, $this->pastYou),
+            new WeekStateTool($activity->user, $detail->start_date_local ?? Carbon::now(), $this->trainingLoad),
         ]);
     }
 }

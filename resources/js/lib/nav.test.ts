@@ -1,54 +1,76 @@
 import { describe, expect, it } from 'vitest';
 
-import { activeTabFromUrl, ITEMS } from './nav';
+import { backTargetFor, ITEMS, navTabFor } from './nav';
 
 describe('nav', () => {
     it('has 4 top-level items', () => {
         expect(ITEMS.map((item) => item.id)).toEqual([
-            'hari-ini',
-            'koleksi',
+            'today',
             'plan',
-            'aku',
+            'trends',
+            'history',
         ]);
     });
 
-    it('resolves the root path to Today', () => {
-        expect(activeTabFromUrl('/')).toBe('hari-ini');
+    it('carries a lucide component name, not an iconify string, per decision 16', () => {
+        expect(ITEMS.map((item) => item.icon)).toEqual([
+            'Sunrise',
+            'CalendarCheck',
+            'LineChart',
+            'History',
+        ]);
     });
 
-    it('folds History under Today', () => {
-        expect(activeTabFromUrl('/activities')).toBe('hari-ini');
-        expect(activeTabFromUrl('/activities/123')).toBe('hari-ini');
-        expect(activeTabFromUrl('/calendar')).toBe('hari-ini');
+    describe('navTabFor', () => {
+        it('lights a tab for each of the five bottom-nav screens', () => {
+            expect(navTabFor('Home')).toBe('today');
+            expect(navTabFor('Plan')).toBe('plan');
+            expect(navTabFor('Trends')).toBe('trends');
+            expect(navTabFor('History')).toBe('history');
+        });
+
+        it('lights the plan tab on Race, which is a sub-page of Plan', () => {
+            expect(navTabFor('Race')).toBe('plan');
+        });
+
+        it('lights no tab on a pushed screen', () => {
+            expect(navTabFor('Runs/Show')).toBeNull();
+            expect(navTabFor('Inbox')).toBeNull();
+            expect(navTabFor('Profile')).toBeNull();
+            expect(navTabFor('Settings/Index')).toBeNull();
+        });
     });
 
-    it('folds Race under Plan', () => {
-        expect(activeTabFromUrl('/plan')).toBe('plan');
-        expect(activeTabFromUrl('/race')).toBe('plan');
-    });
+    describe('backTargetFor', () => {
+        it('gives no back target to a bottom-nav screen', () => {
+            expect(backTargetFor('Home')).toBeNull();
+            expect(backTargetFor('Race')).toBeNull();
+        });
 
-    it('resolves the Collection sub-pages, including /badges', () => {
-        expect(activeTabFromUrl('/cards')).toBe('koleksi');
-        expect(activeTabFromUrl('/accessories')).toBe('koleksi');
-        expect(activeTabFromUrl('/records')).toBe('koleksi');
-        expect(activeTabFromUrl('/badges')).toBe('koleksi');
-    });
+        it('sends each pushed screen to its fixed parent', () => {
+            expect(backTargetFor('Runs/Show')).toEqual({
+                href: '/history',
+                label: 'History',
+            });
+            expect(backTargetFor('Inbox')).toEqual({
+                href: '/',
+                label: 'Today',
+            });
+            expect(backTargetFor('Profile')).toEqual({
+                href: '/',
+                label: 'Today',
+            });
+            expect(backTargetFor('Settings/Index')).toEqual({
+                href: '/profile',
+                label: 'Profile',
+            });
+        });
 
-    it('no longer folds Race under Me', () => {
-        expect(activeTabFromUrl('/profile')).toBe('aku');
-        expect(activeTabFromUrl('/settings')).toBe('aku');
-        expect(activeTabFromUrl('/race')).not.toBe('aku');
-    });
-
-    it('ignores a query string when matching', () => {
-        expect(activeTabFromUrl('/plan?tab=race')).toBe('plan');
-    });
-
-    it('returns null for a path that matches no prefix', () => {
-        expect(activeTabFromUrl('/xyz')).toBeNull();
-    });
-
-    it('does not treat every path as Today just because "/" is a prefix', () => {
-        expect(activeTabFromUrl('/cards')).not.toBe('hari-ini');
+        it('defaults an unlisted routed screen to pushed chrome back to Today', () => {
+            expect(backTargetFor('Collection/Accessories')).toEqual({
+                href: '/',
+                label: 'Today',
+            });
+        });
     });
 });

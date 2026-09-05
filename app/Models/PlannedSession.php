@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\DistanceBand;
-use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
@@ -21,19 +19,24 @@ use Override;
  * One day of a user's periodized plan ({@see \App\Services\Run\Plan\Periodizer}).
  * `unique(user_id, date)` — the app's first clean single-purpose daily-grain
  * unique table. A `pinned` row is a fixed constraint the periodizer must plan
- * around and never overwrite; the readiness clamp and volume redistribution
- * are both render-time-only and never mutate this row (see
- * `docs/features/plan-periodizer.md`).
+ * around and never overwrite; the readiness clamp, volume redistribution and
+ * segment structure ({@see \App\Services\Run\Plan\SegmentGenerator}) are all
+ * render-time-only and never mutate this row (see
+ * `docs/features/plan-periodizer.md`). `status`/`compliance_score`/
+ * `ran_anyway` are the one exception — written once, by `plan:score-compliance`
+ * (daily), the morning after a day passes; `skipped` is written earlier,
+ * whenever the athlete explicitly excuses the day via `PlanController::update()`.
  *
  * @property int $id
  * @property int $user_id
  * @property Carbon $date
  * @property PlanPhase $phase
  * @property SessionType $session_type
- * @property DistanceBand $distance_band
- * @property PaceBand|null $pace_band
  * @property bool $pinned
+ * @property bool $skipped
  * @property PlannedSessionStatus $status
+ * @property int|null $compliance_score
+ * @property bool $ran_anyway
  * @property-read User $user
  */
 #[Fillable([
@@ -41,10 +44,11 @@ use Override;
     'date',
     'phase',
     'session_type',
-    'distance_band',
-    'pace_band',
     'pinned',
+    'skipped',
     'status',
+    'compliance_score',
+    'ran_anyway',
 ])]
 class PlannedSession extends Model
 {
@@ -60,11 +64,15 @@ class PlannedSession extends Model
     }
 
     /**
-     * Count PAST `Rest` rows with no `Activity` logged that date — "honored"
-     * per {@see \App\Actions\Gamification\GrantSeasonUnlocksAction}'s and
-     * the badge board's shared definition. `[$from, $to]` scopes to one
-     * season; omitted, it's the lifetime count across the user's whole plan
-     * history.
+     * Count PAST, SCORED `Rest` rows where nothing was logged that date
+     * (`ran_anyway = false`) — "honored" per
+     * {@see \App\Actions\Gamification\GrantSeasonUnlocksAction}'s and the
+     * badge board's shared definition. `[$from, $to]` scopes to one season;
+     * omitted, it's the lifetime count across the user's whole plan history.
+     * A past row `plan:score-compliance` hasn't reached yet is excluded
+     * (still `Planned`, not proven honored) rather than assumed honored —
+     * the same "stays honestly pending, never guessed" default the AI
+     * pipeline uses for its own unscored/paused states.
      */
     public static function restHonoredCountForUser(int $userId, Carbon $today, ?Carbon $from = null, ?Carbon $to = null): int
     {
@@ -79,30 +87,14 @@ class PlannedSession extends Model
         $query = self::query()
             ->where('user_id', $userId)
             ->where('session_type', SessionType::Rest)
+            ->where('status', '!=', PlannedSessionStatus::Planned)
+            ->where('ran_anyway', false)
             ->where('date', '<=', $rangeEnd->toDateString());
         if ($from !== null) {
             $query->where('date', '>=', $from->toDateString());
         }
-        $restDates = $query->pluck('date');
 
-        if ($restDates->isEmpty()) {
-            return 0;
-        }
-
-        $activityDates = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
-            ->where('activities.user_id', $userId)
-            ->whereNotNull('activity_details.start_date_local')
-            ->whereBetween('activity_details.start_date_local', [
-                $restDates->min()->copy()->startOfDay(),
-                $restDates->max()->copy()->endOfDay(),
-            ])
-            ->selectRaw('DISTINCT DATE(activity_details.start_date_local) as d')
-            ->pluck('d')
-            ->map(fn (string $d): string => Carbon::parse($d)->toDateString())
-            ->flip();
-
-        return $restDates->filter(fn (Carbon $date): bool => ! isset($activityDates[$date->toDateString()]))->count();
+        return $query->count();
     }
 
     /** @return array<string, string> */
@@ -110,13 +102,15 @@ class PlannedSession extends Model
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
             'date' => 'date:Y-m-d',
             'phase' => PlanPhase::class,
             'session_type' => SessionType::class,
-            'distance_band' => DistanceBand::class,
-            'pace_band' => PaceBand::class,
             'pinned' => 'boolean',
+            'skipped' => 'boolean',
             'status' => PlannedSessionStatus::class,
+            'compliance_score' => 'integer',
+            'ran_anyway' => 'boolean',
         ];
     }
 }

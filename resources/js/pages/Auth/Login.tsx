@@ -1,57 +1,93 @@
-import { Icon } from '@iconify/react';
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useId, useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
 import BrandMark from '@/components/BrandMark';
-import TemariProto from '@/components/temari/TemariProto';
-import PillButton from '@/components/ui/PillButton';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
 import { bareLayout } from '@/layouts/BareShell';
+import { cn } from '@/lib/cn';
 
-// Lazy: KartuMini's rarity-chrome glyphs statically import framer-motion,
+// Lazy: RunCardMini's rarity-chrome glyphs statically import framer-motion,
 // which this route's entry-chunk budget must stay clear of.
-const KartuMini = lazy(() => import('@/components/card/KartuMini'));
+const RunCardMini = lazy(() => import('@/components/card/RunCardMini'));
+
+interface CopyBlock {
+    headline: string;
+    points: string[];
+}
 
 interface LoginProps {
     authStravaUrl: string;
     /** Deep link to return to after login (sanitized same-host path), or null. */
     from?: string | null;
+    dataUse?: CopyBlock;
+    trainingDisclaimer?: { headline: string; text: string };
 }
 
-const PILLARS: ReadonlyArray<{ icon: string; label: string; desc: string }> = [
+interface WhyItem {
+    icon: string;
+    label: string;
+    desc: string;
+}
+
+const WHY_FAIR: ReadonlyArray<WhyItem> = [
     {
-        icon: 'mdi:link-variant',
-        label: 'I read 📖',
-        desc: "I'll sync straight from your Strava, no extra steps.",
+        icon: 'mdi:magnify-scan',
+        label: 'fair matches only',
+        desc: 'same pace band, comparable distance, recent history',
     },
     {
-        icon: 'mdi:cards-outline',
-        label: 'I record ✍️',
-        desc: 'Every run earns its own card, win or easy day.',
+        icon: 'mdi:swap-vertical-bold',
+        label: 'reads the gap, not the vibe',
+        desc: 'pace and heart rate, together',
     },
     {
-        icon: 'mdi:hand-heart-outline',
-        label: "I'm here for you 🫶",
-        desc: 'I care that you showed up, not how fast you went.',
+        icon: 'mdi:help-rhombus-outline',
+        label: 'says when it cannot tell',
+        desc: 'no trend gets invented to fill the space',
     },
 ];
 
+const WHY_GET: ReadonlyArray<WhyItem> = [
+    {
+        icon: 'mdi:calendar-check-outline',
+        label: 'a plan that answers to your week',
+        desc: 'built from the volume you actually ran',
+    },
+    {
+        icon: 'mdi:trophy-outline',
+        label: 'records and recaps',
+        desc: 'your PRs, your weeks, your months',
+    },
+];
+
+// Plain anchors, not Inertia <Link>: these are the pages a stranger reads
+// before deciding to connect a Strava account, so they must survive the SPA
+// runtime failing to boot at all.
+const LEGAL_LINKS: ReadonlyArray<{ href: string; label: string }> = [
+    { href: '/terms', label: 'terms' },
+    { href: '/privacy', label: 'privacy' },
+    { href: '/ai-use', label: 'how temari uses AI' },
+    { href: '/training-disclaimer', label: 'training disclaimer' },
+];
+
 const HERO_GRADIENT =
-    'linear-gradient(180deg, var(--color-sky-deep) 0%, var(--color-sky) 38%, var(--color-sky-2) 62%, oklch(58% 0.10 38) 82%, var(--color-horizon-deep) 100%)';
+    'linear-gradient(180deg, var(--color-sky-deep) 0%, var(--color-sky) 40%, oklch(42% 0.06 126) 100%)';
 
-const SUN_GLOW =
-    'radial-gradient(circle, oklch(80% 0.14 55 / 0.6) 0%, oklch(72% 0.13 50 / 0.25) 28%, transparent 58%)';
+const HERO_GLOW =
+    'radial-gradient(circle, color-mix(in oklab, var(--color-horizon) 30%, transparent) 0%, color-mix(in oklab, var(--color-horizon) 15%, transparent) 30%, transparent 60%)';
 
-const FORM_CARD_SHADOW =
-    '0 20px 50px rgba(36,28,84,0.06), 0 0 0 1px rgba(36,28,84,0.06)';
-
-// Strava button keeps #FC4C02 brand orange and the official Strava glyph per their guidelines.
 export default function Login({
     authStravaUrl,
     from = null,
+    dataUse,
+    trainingDisclaimer,
 }: Readonly<LoginProps>) {
-    const { demoLoginEnabled, flash } = usePage<SharedProps>().props;
+    const { demoLoginEnabled } = usePage<SharedProps>().props;
     const demoForm = useForm({ from });
     const submitDemo = () => demoForm.post('/auth/demo');
 
@@ -61,259 +97,314 @@ export default function Login({
 
     return (
         <>
-            <Head title="Log in · Temari" />
-            <div className="grid grid-cols-1 min-h-screen lg:grid-cols-[1.15fr_1fr]">
-                <HeroSide />
-                <FormSide
-                    authStravaUrl={stravaUrl}
-                    demoLoginEnabled={demoLoginEnabled}
-                    onSubmitDemo={submitDemo}
-                    demoPending={demoForm.processing}
-                    info={flash?.info ?? null}
+            <Head title="Temari · You vs Past You" />
+
+            <Hero />
+
+            <ConnectPanel
+                authStravaUrl={stravaUrl}
+                demoLoginEnabled={demoLoginEnabled}
+                onSubmitDemo={submitDemo}
+                demoPending={demoForm.processing}
+            />
+
+            <main className="px-4.5 pt-6.5 pb-2 min-[900px]:mx-auto min-[900px]:max-w-column min-[1280px]:max-w-column-wide min-[900px]:px-6 min-[900px]:pt-11">
+                <Eyebrow token="micro" className="mb-2.5 text-foreground">
+                    why the comparison is fair
+                </Eyebrow>
+                <WhyList
+                    items={WHY_FAIR}
+                    wideClassName="min-[900px]:grid min-[900px]:grid-cols-3"
                 />
-            </div>
+
+                <Eyebrow token="micro" className="mb-2.5 text-foreground">
+                    what you get
+                </Eyebrow>
+                <CardTeaser />
+                <WhyList
+                    items={WHY_GET}
+                    wideClassName="min-[900px]:grid min-[900px]:grid-cols-2"
+                />
+
+                <DataUseDisclosure
+                    dataUse={dataUse}
+                    trainingDisclaimer={trainingDisclaimer}
+                />
+            </main>
+
+            <footer className="mt-1 border-t border-border px-4.5 pt-1 pb-7 text-center min-[900px]:mx-auto min-[900px]:max-w-column min-[1280px]:max-w-column-wide">
+                <nav
+                    aria-label="Legal"
+                    className="mt-4 mb-2 flex flex-wrap justify-center gap-x-3 gap-y-1"
+                >
+                    {LEGAL_LINKS.map((link) => (
+                        <a
+                            key={link.href}
+                            href={link.href}
+                            className="focus-ring inline-flex min-h-6 items-center rounded text-xs text-text-2 underline underline-offset-2 hover:text-foreground"
+                        >
+                            {link.label}
+                        </a>
+                    ))}
+                </nav>
+                <p className="text-label-micro text-text-3">
+                    temari · your running companion, every step
+                </p>
+            </footer>
         </>
     );
 }
 
-function RouteEcho() {
-    // Faint GPS-trace style curves behind the hero content. Calls back to running
-    // brand without competing with the headline. Each traces itself in once on
-    // mount, staggered slowly (route-draw + :nth-child delays in app.css) so it
-    // reads as a route being laid down, not a pop-in. Plain CSS, not
-    // framer-motion -- this route's entry-chunk budget stays clear of it (see
-    // scripts/check-entry-chunks.mjs); prefers-reduced-motion is handled there too.
+function Hero() {
     return (
-        <svg
-            aria-hidden
-            className="pointer-events-none absolute inset-0 h-full w-full"
-            viewBox="0 0 800 800"
-            preserveAspectRatio="xMidYMid slice"
-            fill="none"
-        >
-            <path
-                className="route-echo-path"
-                pathLength={1}
-                d="M-40,640 Q180,440 380,540 T880,320"
-                stroke="white"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeOpacity="0.08"
-            />
-            <path
-                className="route-echo-path"
-                pathLength={1}
-                d="M-40,540 Q140,340 340,420 T820,220"
-                stroke="white"
-                strokeWidth="1.2"
-                strokeLinecap="round"
-                strokeOpacity="0.06"
-            />
-            <path
-                className="route-echo-path"
-                pathLength={1}
-                d="M-40,740 Q220,560 460,640 T920,460"
-                stroke="white"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeOpacity="0.07"
-            />
-        </svg>
-    );
-}
-
-function HeroSide() {
-    return (
-        <div
-            className="relative flex flex-col items-center justify-center overflow-hidden px-8 pb-12 pt-24 text-cream sm:px-12 lg:px-16 lg:py-[54px]"
+        <header
+            className="relative overflow-hidden px-5.5 pt-14 pb-6 text-cream min-[900px]:px-14 min-[900px]:pt-16 min-[900px]:pb-9"
             style={{ background: HERO_GRADIENT }}
         >
             <span
                 aria-hidden
-                className="hero-glow pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[560px] -translate-x-1/2 -translate-y-1/2 blur-sm"
-                style={{ background: SUN_GLOW }}
+                className="pointer-events-none absolute top-[10%] left-1/2 size-85 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[2px]"
+                style={{ background: HERO_GLOW }}
             />
-            <RouteEcho />
 
-            <div className="absolute left-8 top-12 sm:left-12 lg:left-16 lg:top-[54px]">
+            <div className="relative">
                 <BrandMark tone="cream" />
-            </div>
 
-            <div className="login-fade-in-up relative z-10 w-full max-w-[560px] text-center xl:max-w-[620px]">
-                <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl bg-sky-deep shadow-[0_24px_60px_rgba(0,0,0,0.45)] ring-1 ring-cream/15">
-                    <TemariProto pose="glow" tone="sky" size={200} animate />
-                </div>
-                <h1 className="mt-7 font-display italic text-display-lg text-cream sm:text-display-xl">
-                    <span className="block whitespace-nowrap">Your Run,</span>
-                    <span className="block whitespace-nowrap text-horizon">
-                        Never Alone.
-                    </span>
+                <Eyebrow token="hero" tone="horizon" className="mt-4.5">
+                    running companion
+                </Eyebrow>
+                <h1 className="mt-2 font-serif text-display-sm font-semibold text-cream italic">
+                    you vs
+                    <br />
+                    <em className="text-horizon italic">past you.</em>
                 </h1>
-                <p className="mt-4 font-sans text-base leading-relaxed text-cream sm:text-lg">
-                    “Hi, I'm Temari. From now on, I'll be with you on every
-                    run.”
+
+                <p className="mt-2.5 max-w-[32ch] text-sm leading-relaxed text-cream min-[900px]:max-w-[44ch] min-[900px]:text-base">
+                    every run gets matched against one you have already done.
+                    temari reads the gap and tells you which way it is going.
                 </p>
             </div>
-        </div>
+        </header>
     );
 }
 
-interface FormSideProps {
+interface ConnectPanelProps {
     authStravaUrl: string;
     demoLoginEnabled: boolean;
     onSubmitDemo: () => void;
     demoPending: boolean;
-    info?: string | null;
 }
 
-function FormSide({
+/**
+ * The one place the Strava brand mark appears. Neutral ground on purpose: the
+ * surrounding gold and sky accents stay off the panel so the mark keeps the
+ * breathing room Strava's brand guidelines require.
+ */
+function ConnectPanel({
     authStravaUrl,
     demoLoginEnabled,
     onSubmitDemo,
     demoPending,
-    info = null,
-}: Readonly<FormSideProps>) {
+}: Readonly<ConnectPanelProps>) {
     return (
-        <div className="login-fade-in-up flex flex-col items-center justify-center gap-7 bg-cream px-8 py-12 sm:px-12 lg:px-[100px] lg:py-20">
-            {info && (
-                <div
-                    role="status"
-                    className="flex w-full max-w-[480px] items-start gap-2.5 rounded-2xl border border-leaf/30 bg-leaf/[0.08] px-4 py-3 font-sans text-[13px] leading-relaxed text-ink-2 2xl:max-w-[560px]"
+        <Card className="relative z-5 mx-3.5 -mt-4.5 gap-0 bg-muted px-4.5 pt-5 pb-4.5 text-foreground shadow-e3 ring-0 min-[900px]:mx-auto min-[900px]:-mt-7.5 min-[900px]:max-w-[440px]">
+            <div className="text-label-micro text-foreground">
+                start with your history
+            </div>
+            <p className="mt-1.5 text-xs leading-relaxed text-text-2">
+                sign in through Strava, no separate account, read-only access.
+            </p>
+
+            <a
+                href={authStravaUrl}
+                className="focus-ring mt-3.5 flex w-full items-center justify-center gap-2 rounded-full bg-strava-orange py-3.5 text-sm font-bold text-white transition hover:bg-strava-orange-hover"
+            >
+                <svg
+                    viewBox="0 0 24 24"
+                    className="size-4"
+                    fill="currentColor"
+                    aria-hidden
+                >
+                    <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
+                </svg>
+                connect with Strava
+            </a>
+
+            {demoLoginEnabled && (
+                <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={onSubmitDemo}
+                    disabled={demoPending}
+                    className="mt-2 h-auto w-full gap-1.5 px-0 py-2.5 text-sm font-semibold text-foreground"
                 >
                     <Icon
-                        icon="mdi:check-circle-outline"
-                        width={16}
-                        height={16}
+                        icon="mdi:play-circle-outline"
+                        width={14}
+                        height={14}
                         aria-hidden
-                        className="mt-0.5 shrink-0 text-leaf-deep"
                     />
-                    <span>{info}</span>
-                </div>
+                    try the demo
+                </Button>
             )}
-            <ul className="grid w-full max-w-[480px] grid-cols-3 gap-3.5 2xl:max-w-[560px]">
-                {PILLARS.map((pillar) => (
-                    <li
-                        key={pillar.label}
-                        className="rounded-[10px] border border-cream-deep bg-cream px-4 py-4"
-                    >
-                        <span
-                            aria-hidden
-                            className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-horizon/[0.18] text-horizon-deep"
-                        >
-                            <Icon
-                                icon={pillar.icon}
-                                width={18}
-                                height={18}
-                                aria-hidden
-                            />
-                        </span>
-                        <div className="font-sans text-sm font-semibold text-ink">
-                            {pillar.label}
-                        </div>
-                        <div className="mt-1 font-sans text-xs leading-snug text-ink-3">
-                            {pillar.desc}
-                        </div>
-                    </li>
-                ))}
-            </ul>
 
-            <div className="flex w-full max-w-[480px] items-center gap-4 rounded-2xl border border-cream-deep bg-cream px-4 py-4 2xl:max-w-[560px]">
-                <Suspense
-                    fallback={
-                        <div
-                            aria-hidden
-                            className="h-[150px] w-[140px] flex-none rounded-[12px] bg-cream-deep"
-                        />
-                    }
+            <p className="mt-3 text-center text-xs leading-relaxed text-text-2">
+                read-only, and only for you.{' '}
+                <a
+                    href="/privacy"
+                    className="focus-ring rounded text-foreground underline underline-offset-2 hover:text-text-2"
                 >
-                    <KartuMini
-                        name="10K Sunrise"
-                        rarity="legendary"
-                        mood="blazing"
-                        date="12 Jun"
-                        edition={{ index: 3, total: 12 }}
-                        polyline="~s{d@ofekSoRaMcPdMg@b^zFtV?bN{FtVf@b^bPdMnRaMlIqTdHqFfQcAfQcP?g[gQcPgQcAeHqFmIqT"
-                        className="shadow-sm"
+                    what temari stores
+                </a>
+            </p>
+        </Card>
+    );
+}
+
+function WhyList({
+    items,
+    wideClassName,
+}: Readonly<{ items: ReadonlyArray<WhyItem>; wideClassName: string }>) {
+    return (
+        <ul
+            className={cn(
+                'mb-6 flex flex-col divide-y divide-border overflow-hidden rounded-2xl border border-border shadow-e1',
+                'min-[900px]:gap-2.5 min-[900px]:divide-y-0 min-[900px]:border-none min-[900px]:shadow-none',
+                wideClassName,
+            )}
+        >
+            {items.map((item) => (
+                <WhyRow key={item.label} {...item} />
+            ))}
+        </ul>
+    );
+}
+
+function WhyRow({ icon, label, desc }: Readonly<WhyItem>) {
+    return (
+        <li className="flex items-center gap-2.5 bg-card px-3.5 py-3 min-[900px]:flex-col min-[900px]:items-start min-[900px]:gap-2.5 min-[900px]:rounded-2xl min-[900px]:border min-[900px]:border-border-strong min-[900px]:p-4 min-[900px]:shadow-e1">
+            <span
+                aria-hidden
+                className="flex size-7.5 flex-none items-center justify-center rounded-lg bg-horizon/[0.18] text-icon-accent"
+            >
+                <Icon icon={icon} width={16} height={16} aria-hidden />
+            </span>
+            <span className="flex flex-col">
+                <b className="text-xs leading-tight font-bold text-foreground">
+                    {label}
+                </b>
+                <span className="text-xs leading-tight text-text-2">
+                    {desc}
+                </span>
+            </span>
+        </li>
+    );
+}
+
+function CardTeaser() {
+    return (
+        <Card className="mb-6 flex-row items-center gap-3.5 rounded-2xl border border-border p-3.5 shadow-e1 ring-0">
+            <Suspense
+                fallback={
+                    <div
+                        aria-hidden
+                        className="skeleton h-[84px] w-[78px] flex-none rounded-sm"
                     />
-                </Suspense>
-                <div>
-                    <p className="font-sans text-sm font-semibold text-ink">
-                        This is a real card, not a mockup
-                    </p>
-                    <p className="mt-1 font-sans text-xs leading-relaxed text-ink-3">
-                        For every run that syncs from your Strava, Temari makes
-                        a collectible card just like this one, complete with the
-                        route and that day's mood.
-                    </p>
-                </div>
-            </div>
+                }
+            >
+                <RunCardMini
+                    compact
+                    name="10K Sunrise"
+                    rarity="legendary"
+                    mood="blazing"
+                    polyline="~s{d@ofekSoRaMcPdMg@b^zFtV?bN{FtVf@b^bPdMnRaMlIqTdHqFfQcAfQcP?g[gQcPgQcAeHqFmIqT"
+                    className="shadow-e1"
+                />
+            </Suspense>
+            <p className="text-xs leading-relaxed text-text-2">
+                <b className="text-foreground">a card for every run</b>, route,
+                pace and mood, collectible and occasionally rare. this is a real
+                card, not a mockup.
+            </p>
+        </Card>
+    );
+}
+
+/**
+ * Native disclosure, deliberately not `ui/collapsible`: that primitive is Base
+ * UI backed, and this route's entry-chunk budget (scripts/check-entry-chunks.mjs)
+ * has no room for the portal machinery it drags in.
+ */
+function DataUseDisclosure({
+    dataUse,
+    trainingDisclaimer,
+}: Readonly<Pick<LoginProps, 'dataUse' | 'trainingDisclaimer'>>) {
+    const [open, setOpen] = useState(false);
+    const panelId = useId();
+
+    if (!dataUse && !trainingDisclaimer) {
+        return null;
+    }
+
+    return (
+        <section className="mb-5.5 overflow-hidden rounded-2xl border border-border bg-card shadow-e1">
+            <button
+                type="button"
+                aria-expanded={open}
+                aria-controls={panelId}
+                onClick={() => setOpen((wasOpen) => !wasOpen)}
+                className="focus-ring group flex w-full items-center justify-between px-3.5 py-3.5 text-left text-xs leading-tight font-bold text-foreground"
+            >
+                data &amp; AI use
+                <Icon
+                    icon="mdi:chevron-down"
+                    width={18}
+                    height={18}
+                    aria-hidden
+                    className="text-foreground transition-transform group-aria-expanded:rotate-180"
+                />
+            </button>
 
             <div
-                className="w-full max-w-[480px] rounded-2xl bg-cream px-9 py-10 2xl:max-w-[560px]"
-                style={{ boxShadow: FORM_CARD_SHADOW }}
+                id={panelId}
+                hidden={!open}
+                className="flex flex-col gap-2 px-3.5 pb-3.5 text-xs leading-relaxed text-text-2"
             >
-                <h2 className="font-display italic text-display-xs text-ink">
-                    Welcome.
-                </h2>
-                <p className="mt-2.5 font-sans text-sm leading-relaxed text-ink-2">
-                    Connect your Strava first. I'm waiting inside.
-                </p>
-
-                <a
-                    href={authStravaUrl}
-                    className="relative mt-6 flex w-full items-center rounded-full bg-strava-orange py-3.5 text-sm font-semibold text-white transition hover:bg-strava-orange-hover focus:outline-none focus:ring-4 focus:ring-strava-orange/30"
-                >
-                    <svg
-                        viewBox="0 0 24 24"
-                        className="absolute left-5 h-5 w-5"
-                        fill="currentColor"
-                        aria-hidden
-                    >
-                        <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
-                    </svg>
-                    <span className="flex-1 px-12 text-center">
-                        Connect with Strava
-                    </span>
-                </a>
-
-                {demoLoginEnabled && (
-                    <PillButton
-                        tone="outline"
-                        onClick={onSubmitDemo}
-                        disabled={demoPending}
-                        className="relative mt-2.5 flex w-full items-center bg-transparent px-0 py-3 text-sm text-ink hover:text-ink disabled:opacity-60"
-                    >
-                        <Icon
-                            icon="mdi:play-circle-outline"
-                            width={16}
-                            height={16}
-                            aria-hidden
-                            className="absolute left-5"
-                        />
-                        <span className="flex-1 px-12 text-center">
-                            Try the demo
-                        </span>
-                    </PillButton>
+                {dataUse && (
+                    <div>
+                        <b className="block leading-tight text-foreground">
+                            what temari stores
+                        </b>
+                        {dataUse.points.map((point) => (
+                            <p key={point} className="mt-1">
+                                {point}
+                            </p>
+                        ))}
+                    </div>
                 )}
 
-                <p className="mt-6 flex items-start gap-2.5 rounded-[10px] bg-leaf/10 px-4 py-3 font-sans text-[13px] leading-relaxed text-ink-2">
-                    <Icon
-                        icon="mdi:shield-check-outline"
-                        width={16}
-                        height={16}
-                        aria-hidden
-                        className="mt-0.5 shrink-0 text-leaf-deep"
-                    />
-                    <span>
-                        I only use Strava to read your runs, nothing else.
-                    </span>
-                </p>
+                {trainingDisclaimer && (
+                    <div>
+                        <b className="block leading-tight text-foreground">
+                            before you take its advice
+                        </b>
+                        <p className="mt-1">{trainingDisclaimer.text}</p>
+                        <a
+                            href="/training-disclaimer"
+                            className="focus-ring mt-1.5 inline-flex min-h-6 items-center gap-1 rounded text-foreground underline underline-offset-2 hover:text-text-2"
+                        >
+                            read the whole disclaimer
+                            <Icon
+                                icon="mdi:arrow-right"
+                                width={12}
+                                height={12}
+                                aria-hidden
+                            />
+                        </a>
+                    </div>
+                )}
             </div>
-
-            <p className="text-center text-label-micro text-ink-3">
-                I'll see you on the other side of that button. 🐾
-            </p>
-        </div>
+        </section>
     );
 }
 

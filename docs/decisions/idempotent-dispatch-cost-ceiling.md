@@ -15,6 +15,8 @@ code_refs:
 
 **Status:** Accepted (documented 2026-06-20)
 
+> **One claim below is superseded (noted 2026-08-14) by [[cost-ceiling-degrades-to-rule-based]].** The Gotchas say a manual UI trigger still fires past the ceiling by design. It does not: `generationPaused()` folds the ceiling in, so [AnalysisController::trigger](app/Http/Controllers/Api/AnalysisController.php#L24) refuses with a 409, and past the ceiling `pending` blocks are filled rule-based instead of resting `Pending`. The idempotency half of this decision — upserted rows, dispatch skipping rows that don't need it — still stands exactly as written.
+
 ## Context
 
 The hourly `strava:sync` fallback poll and the daily narration commands can re-touch the same subjects repeatedly. If dispatch re-billed identical content on every pass, a re-run would silently double-spend. And even with idempotent dispatch, a bug or a Strava backfill burst could still run the daily bill away from us. We needed dispatch to be safely re-runnable, plus a hard budget backstop.

@@ -9,15 +9,14 @@ use App\Models\AI\Analysis;
 use App\Models\StoryLine;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use Illuminate\Support\Carbon;
 
 /**
  * Composite read for a run's post-run note: the mood comes from the
  * post-run {@see StoryLine}, the one-liner from the {@see Analysis} row
  * carrying the {@see AnalysisType::PostRunSpeech} narration once it is Done.
  *
- * Centralised so the three page controllers (Activities / Today / Calendar)
- * share one produced shape instead of drifting.
+ * Centralised so the page controllers (History / Today) share one produced
+ * shape instead of drifting.
  */
 class PostRunNoteReader
 {
@@ -117,21 +116,5 @@ class PostRunNoteReader
             ->whereIn('activity_id', $activityIds)
             ->pluck('mood', 'activity_id')
             ->all();
-    }
-
-    /**
-     * The post-run one-liner stored on today's {@see StoryLine} for this user,
-     * read straight from the StoryLine's own `speech` column (not the Analysis
-     * row). Null when the user has no post-run line dated today.
-     */
-    public function speechForToday(int $userId): ?string
-    {
-        return StoryLine::query()
-            ->where('kind', StoryLine::KIND_POST_RUN)
-            ->whereHas('activity', fn ($q) => $q
-                ->where('user_id', $userId)
-                ->whereHas('detail', fn ($q) => $q->whereDate('start_date_local', Carbon::today())))
-            ->orderByDesc('id')
-            ->value('speech');
     }
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-    formatDayMonthYearId,
+    formatAbsoluteId,
     formatDuration,
     formatDurationHMS,
     formatIdDate,
@@ -10,17 +10,12 @@ import {
     formatNaiveIdDate,
     formatNaiveRelativeId,
     formatNaiveTimeId,
-    formatPaddedDayMonthYearId,
     formatPace,
     formatRelativeId,
     formatShortDateTimeId,
     formatShortWeekdayDateId,
-    formatTimeId,
-    formatWeekdayDateId,
     formatWeekdayDayId,
     isoDateLocal,
-    isoDaysAgoLocal,
-    isoStartOfMonthLocal,
     mondayOf,
     paceSecPerKm,
     parseNaiveLocalDate,
@@ -252,6 +247,23 @@ describe('formatRelativeId', () => {
     });
 });
 
+describe('formatAbsoluteId', () => {
+    it('returns dash for null / undefined', () => {
+        expect(formatAbsoluteId(null)).toBe('—');
+        expect(formatAbsoluteId(undefined)).toBe('—');
+    });
+
+    it('returns dash for non-parseable input', () => {
+        expect(formatAbsoluteId('totally-not-a-date')).toBe('—');
+    });
+
+    it('formats a true instant as short month/day + local time', () => {
+        expect(formatAbsoluteId('2026-08-25T07:12:00+07:00')).toMatch(
+            /^aug 2[45] · \d{2}:\d{2}$/,
+        );
+    });
+});
+
 describe('formatNaiveRelativeId', () => {
     it('measures the delta from the as-recorded wall clock, ignoring any offset', () => {
         // Wall clock 09:00 vs a local-now of 12:00 → 3 hr ago. new Date() would
@@ -298,32 +310,16 @@ describe('date/time format variants', () => {
     // 11 May 2026 is a Monday at 08:30 local.
     const d = new Date(2026, 4, 11, 8, 30);
 
-    it('formatWeekdayDateId: long weekday + day + long month', () => {
-        expect(formatWeekdayDateId(d)).toBe('Monday, May 11');
-    });
-
-    it('formatTimeId: zero-padded hour + minute', () => {
-        expect(formatTimeId(d)).toBe('08:30 AM');
-    });
-
     it('formatShortWeekdayDateId: short weekday + day + short month', () => {
-        expect(formatShortWeekdayDateId(d)).toBe('Mon, May 11');
+        expect(formatShortWeekdayDateId(d)).toBe('mon, may 11');
     });
 
     it('formatMonthDayId: day + short month', () => {
-        expect(formatMonthDayId(d)).toBe('May 11');
+        expect(formatMonthDayId(d)).toBe('may 11');
     });
 
     it('formatWeekdayDayId: short weekday + day', () => {
-        expect(formatWeekdayDayId(d)).toBe('11 Mon');
-    });
-
-    it('formatDayMonthYearId: day + long month + year', () => {
-        expect(formatDayMonthYearId(d)).toBe('May 11, 2026');
-    });
-
-    it('formatPaddedDayMonthYearId: padded day + short month + year', () => {
-        expect(formatPaddedDayMonthYearId(d)).toBe('May 11, 2026');
+        expect(formatWeekdayDayId(d)).toBe('11 mon');
     });
 });
 
@@ -335,19 +331,19 @@ describe('formatNaiveTimeId', () => {
         expect(formatNaiveTimeId('not-a-date')).toBeNull();
     });
 
-    it('reads the literal wall-clock HH.MM from the string', () => {
-        expect(formatNaiveTimeId('2026-06-09T06:52:00')).toBe('06.52');
-        expect(formatNaiveTimeId('2026-06-09T06:52')).toBe('06.52');
+    it('reads the literal wall-clock HH:MM from the string', () => {
+        expect(formatNaiveTimeId('2026-06-09T06:52:00')).toBe('06:52');
+        expect(formatNaiveTimeId('2026-06-09T06:52')).toBe('06:52');
     });
 
     it('does NOT shift the hour when the string carries a UTC Z (no timezone math)', () => {
         // Laravel serializes the naive datetime cast with a trailing Z. The hour
-        // must render as recorded (06.52), never reinterpreted as UTC and shifted.
-        expect(formatNaiveTimeId('2026-06-09T06:52:54.000000Z')).toBe('06.52');
+        // must render as recorded (06:52), never reinterpreted as UTC and shifted.
+        expect(formatNaiveTimeId('2026-06-09T06:52:54.000000Z')).toBe('06:52');
     });
 
     it('does NOT shift the hour under an explicit offset suffix', () => {
-        expect(formatNaiveTimeId('2026-06-09T23:15:00+09:00')).toBe('23.15');
+        expect(formatNaiveTimeId('2026-06-09T23:15:00+09:00')).toBe('23:15');
     });
 });
 
@@ -359,17 +355,17 @@ describe('formatShortDateTimeId', () => {
 
     it('combines short date and naive wall-clock time', () => {
         expect(formatShortDateTimeId('2026-06-09T06:52:00')).toBe(
-            '9 Jun 2026 · 06.52',
+            '9 jun 2026 · 06:52',
         );
     });
 
     it('drops the time half for a date-only string', () => {
-        expect(formatShortDateTimeId('2026-06-09')).toBe('9 Jun 2026');
+        expect(formatShortDateTimeId('2026-06-09')).toBe('9 jun 2026');
     });
 
     it('renders the as-recorded hour even with a trailing Z', () => {
         expect(formatShortDateTimeId('2026-06-09T06:52:54.000000Z')).toBe(
-            '9 Jun 2026 · 06.52',
+            '9 jun 2026 · 06:52',
         );
     });
 });
@@ -377,19 +373,6 @@ describe('formatShortDateTimeId', () => {
 describe('local-zone ISO date helpers', () => {
     it('todayLocalIso returns YYYY-MM-DD for the local current date', () => {
         expect(todayLocalIso()).toBe(isoDateLocal(new Date()));
-    });
-
-    it('isoDaysAgoLocal subtracts whole days in the local zone', () => {
-        const d = new Date();
-        d.setDate(d.getDate() - 7);
-        expect(isoDaysAgoLocal(7)).toBe(isoDateLocal(d));
-    });
-
-    it('isoStartOfMonthLocal returns the first of the current month', () => {
-        const now = new Date();
-        expect(isoStartOfMonthLocal()).toBe(
-            isoDateLocal(new Date(now.getFullYear(), now.getMonth(), 1)),
-        );
     });
 });
 

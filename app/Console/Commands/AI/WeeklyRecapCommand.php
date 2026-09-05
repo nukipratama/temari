@@ -9,21 +9,25 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\RecapPeriod;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Carbon;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 #[Signature('ai:weekly-recap')]
 #[Description('Kick off the connected weekly-recap chain: narrate every completed week whose recap is not Done, oldest first')]
 class WeeklyRecapCommand extends Command
 {
-    public function handle(AnalysisService $service): int
+    public function handle(AnalysisService $service, BackfillAgeGate $ages): int
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
+
         $lastWeekEnding = RecapPeriod::lastClosedWeekEnding();
-        $oldestReal = Carbon::now()->subDays((int) config('ai.backfill_max_age_days'))->toDateString();
+        $oldestReal = $ages->cutoffDate();
 
         // Every completed week (week_ending <= the latest fully-closed week,
         // runs > 0) whose WeeklyRecap is not yet Done — Pending, Failed, or

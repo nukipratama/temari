@@ -9,7 +9,7 @@ use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Models\User;
 
 /**
- * Row job for the dashboard's daily Temari voice ("Kata Temari hari ini"): the
+ * Row job for the dashboard's daily Temari voice: the
  * single billed call that carries both the day's reading and the session it
  * implies.
  */

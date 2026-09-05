@@ -18,8 +18,8 @@ class TelegramReplies
      */
     public static function welcome(string $name): string
     {
-        return "Hey {$name}! I'm Temari. Your Telegram is now linked to your Temari account. "
-            . "From here on, I'll ping you after every run and with your weekly recap. 🎉";
+        return "Hey {$name}, I'm Temari. Your Telegram is now linked to your Temari account. "
+            . "From here on, I'll ping you after every run and with your weekly recap.";
     }
 
     public static function expired(): string
@@ -38,10 +38,10 @@ class TelegramReplies
         return "Done, I've disconnected Telegram from your Temari account. Whenever you want to reconnect, I'm here.";
     }
 
-    /** Sent by the "Send test notification" button on the Aku page. */
+    /** Sent by the "Send test notification" button on the Profile page. */
     public static function test(): string
     {
-        return "🔔 Test notification from Temari. If you're seeing this, your Telegram connection is working. "
+        return "Test notification from Temari. If you're seeing this, your Telegram connection is working. "
             . "I'll ping you here after every run and with your weekly recap.";
     }
 }

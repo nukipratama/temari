@@ -1,7 +1,7 @@
-import { Icon } from '@iconify/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 
+import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import { useModal } from '@/hooks/useModal';
 import { cn } from '@/lib/cn';
@@ -13,14 +13,14 @@ import {
     type ColorwayId,
     type Format,
     type Layout,
-    type ShareKartuData,
+    type ShareCardData,
 } from '@/lib/shareCard';
 import { iconButtonVariants, toggleButtonVariants } from '@/lib/variants';
 
-export type { ShareKartuData };
+export type { ShareCardData };
 
 interface ShareCardModalProps {
-    kartu: ShareKartuData | null;
+    card: ShareCardData | null;
     onClose: () => void;
 }
 
@@ -34,37 +34,37 @@ function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
     });
 }
 
-const LAYOUTS: Layout[] = ['kartu', 'rute', 'stats'];
+const LAYOUTS: Layout[] = ['card', 'route', 'stats'];
 const LAYOUT_LABELS: Record<Layout, string> = {
-    kartu: 'Card',
-    rute: 'Route',
-    stats: 'Stats',
+    card: 'card',
+    route: 'route',
+    stats: 'stats',
 };
 /** Which templates need a drawable route — the single source of truth for
  *  both the layout picker's visibility and the draw-effect's stale-selection
- *  clamp, replacing the old ad hoc `l !== 'rute'` checks in both places. */
+ *  clamp, replacing the old ad hoc `l !== 'route'` checks in both places. */
 const TEMPLATE_CAPS: Record<Layout, boolean> = {
-    kartu: false,
-    rute: true,
+    card: false,
+    route: true,
     stats: false,
 };
 
-function hasRoute(kartu: ShareKartuData): boolean {
-    return kartu.polyline != null && kartu.polyline !== '';
+function hasRoute(card: ShareCardData): boolean {
+    return card.polyline != null && card.polyline !== '';
 }
 
 const COLORWAYS_LIST: ColorwayId[] = ['navy', 'dawn', 'ember'];
 const COLORWAY_LABELS: Record<ColorwayId, string> = {
-    navy: 'Navy',
-    dawn: 'Dawn',
-    ember: 'Ember',
+    navy: 'navy',
+    dawn: 'dawn',
+    ember: 'ember',
 };
 
 export default function ShareCardModal({
-    kartu,
+    card,
     onClose,
 }: Readonly<ShareCardModalProps>) {
-    const [layout, setLayout] = useState<Layout>('kartu');
+    const [layout, setLayout] = useState<Layout>('card');
     const [format, setFormat] = useState<Format>('story');
     const [colorway, setColorway] = useState<ColorwayId>('navy');
     // Transient status under the CTAs: confirms a copy/share that has no native
@@ -77,27 +77,27 @@ export default function ShareCardModal({
     const drawRef = useRef<Promise<void> | null>(null);
     const panelRef = useRef<HTMLDivElement>(null);
 
-    useModal(kartu !== null, panelRef, onClose);
+    useModal(card !== null, panelRef, onClose);
 
     // Repaint the fixed-resolution canvas whenever any knob changes. The canvas
     // IS the export, so the on-screen preview can never drift from the shared
     // image, and the output is identical on every device.
     useEffect(() => {
-        if (kartu === null || canvasRef.current === null) {
+        if (card === null || canvasRef.current === null) {
             return;
         }
         // Clamp to a drawable layout: a no-GPS run has no route, so a stale
-        // 'rute' selection (carried over from a previous GPS card) must not
+        // 'route' selection (carried over from a previous GPS card) must not
         // paint a blank map.
         const drawLayout =
-            !TEMPLATE_CAPS[layout] || hasRoute(kartu) ? layout : 'kartu';
+            !TEMPLATE_CAPS[layout] || hasRoute(card) ? layout : 'card';
         drawRef.current = drawShareCard(canvasRef.current, {
-            kartu,
+            card,
             layout: drawLayout,
             format,
             colorway,
         });
-    }, [kartu, layout, format, colorway]);
+    }, [card, layout, format, colorway]);
 
     // Auto-clear the status line so it reads as a transient toast.
     useEffect(() => {
@@ -106,18 +106,18 @@ export default function ShareCardModal({
         return () => globalThis.clearTimeout(id);
     }, [status]);
 
-    if (kartu === null) return null;
+    if (card === null) return null;
 
     // Templates that need a polyline are hidden for no-GPS runs.
-    const availableLayouts = hasRoute(kartu)
+    const availableLayouts = hasRoute(card)
         ? LAYOUTS
         : LAYOUTS.filter((l) => !TEMPLATE_CAPS[l]);
-    // Clamp so share/copy never export a stale 'rute' layout on a no-GPS run.
+    // Clamp so share/copy never export a stale 'route' layout on a no-GPS run.
     const effectiveLayout: Layout = availableLayouts.includes(layout)
         ? layout
-        : 'kartu';
+        : 'card';
 
-    const cfg = { kartu, layout: effectiveLayout, format, colorway };
+    const cfg = { card, layout: effectiveLayout, format, colorway };
 
     // The preview canvas already holds the exact export bitmap at its full
     // internal resolution, so read it back rather than redrawing every template
@@ -130,16 +130,18 @@ export default function ShareCardModal({
     };
 
     const handleShare = async () => {
-        if (typeof navigator.share === 'function') {
+        const canNativeShare = typeof navigator.share === 'function';
+
+        if (canNativeShare) {
             try {
                 const blob = await captureImage();
-                const file = new File([blob], `${kartu.name}.png`, {
+                const file = new File([blob], `${card.name}.png`, {
                     type: 'image/png',
                 });
                 if (navigator.canShare?.({ files: [file] })) {
                     await navigator.share({
                         files: [file],
-                        title: `${kartu.name} · Temari`,
+                        title: `${card.name} · Temari`,
                     });
                     return;
                 }
@@ -147,14 +149,14 @@ export default function ShareCardModal({
                 // fall through to URL share
             }
         }
-        const url = kartu.shareUrl;
-        if (typeof navigator.share === 'function') {
+        const url = card.shareUrl;
+        if (canNativeShare) {
             try {
                 await navigator.share({
-                    title: `${kartu.name} · Temari`,
+                    title: `${card.name} · Temari`,
                     text:
-                        kartu.quote ??
-                        `${RARITY_LABELS[kartu.rarity]} card: ${kartu.name}`,
+                        card.quote ??
+                        `${RARITY_LABELS[card.rarity]} card: ${card.name}`,
                     url,
                 });
             } catch {
@@ -163,14 +165,14 @@ export default function ShareCardModal({
         } else if (navigator.clipboard?.writeText !== undefined) {
             try {
                 await navigator.clipboard.writeText(url);
-                setStatus({ tone: 'ok', text: 'Activity link copied.' });
+                setStatus({ tone: 'ok', text: 'activity link copied.' });
             } catch {
-                setStatus({ tone: 'err', text: 'Failed to copy link.' });
+                setStatus({ tone: 'err', text: 'failed to copy link.' });
             }
         } else {
             setStatus({
                 tone: 'err',
-                text: "This browser doesn't support sharing.",
+                text: "this browser doesn't support sharing.",
             });
         }
     };
@@ -182,7 +184,7 @@ export default function ShareCardModal({
         ) {
             setStatus({
                 tone: 'err',
-                text: "This browser doesn't support copying images. Use Share instead.",
+                text: "this browser doesn't support copying images. use share instead.",
             });
             return;
         }
@@ -191,11 +193,11 @@ export default function ShareCardModal({
             await navigator.clipboard.write([
                 new ClipboardItem({ 'image/png': blob }),
             ]);
-            setStatus({ tone: 'ok', text: 'Card image copied.' });
+            setStatus({ tone: 'ok', text: 'card image copied.' });
         } catch {
             setStatus({
                 tone: 'err',
-                text: 'Failed to copy image. Try Share instead.',
+                text: 'failed to copy image. try share instead.',
             });
         }
     };
@@ -222,11 +224,11 @@ export default function ShareCardModal({
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.96, y: 8 }}
                     transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                    className="flex w-full max-w-md flex-col overflow-hidden rounded-3xl bg-cream shadow-2xl"
+                    className="flex w-full max-w-md flex-col overflow-hidden rounded-xl bg-card shadow-e4"
                     style={{ maxHeight: '92dvh' }}
                 >
                     {/* Header — pinned. */}
-                    <div className="flex items-center gap-3 border-b border-cream-deep px-5 py-3.5">
+                    <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
                         <button
                             type="button"
                             onClick={onClose}
@@ -236,18 +238,18 @@ export default function ShareCardModal({
                             <Icon icon="mdi:close" width={16} height={16} />
                         </button>
                         <div className="flex-1 text-center">
-                            <div className="text-label-micro text-ink-2">
+                            <div className="text-label-micro text-text-2">
                                 Share card
                             </div>
-                            <div className="font-display text-xl tracking-tight text-ink">
-                                {kartu.name}
+                            <div className="font-serif text-xl tracking-tight text-foreground">
+                                {card.name}
                             </div>
                         </div>
                         <div className="w-8" />
                     </div>
 
                     {/* Body — preview + pickers, scrolls on short screens. */}
-                    <div className="flex flex-1 flex-col items-center gap-4 overflow-y-auto bg-cream-deep px-5 py-5">
+                    <div className="flex flex-1 flex-col items-center gap-4 overflow-y-auto bg-muted px-5 py-5">
                         {/* Preview canvas — fixed internal resolution, bounded by HEIGHT so
                             a tall 9:16 story scales to fit instead of being forced to the
                             column width. Width derives from the canvas's intrinsic ratio, so
@@ -256,13 +258,9 @@ export default function ShareCardModal({
                             ref={canvasRef}
                             width={1080}
                             height={format === 'story' ? 1920 : 1080}
-                            aria-label={`Preview of ${kartu.name}`}
-                            className="block rounded-2xl"
-                            style={{
-                                maxWidth: '100%',
-                                maxHeight: '52vh',
-                                boxShadow: '0 16px 48px rgba(36,28,84,0.25)',
-                            }}
+                            aria-label={`Preview of ${card.name}`}
+                            className="block rounded-lg"
+                            style={{ maxWidth: '100%', maxHeight: '52vh' }}
                         />
 
                         {/* Format picker */}
@@ -276,8 +274,8 @@ export default function ShareCardModal({
                                     className={cn(
                                         'focus-ring flex items-center justify-center gap-2 rounded-xl p-2.5 text-xs font-medium transition',
                                         format === f
-                                            ? 'border-2 border-sky bg-cream font-semibold text-ink'
-                                            : 'border-2 border-transparent bg-cream text-ink-2 hover:border-cream-deep',
+                                            ? 'border-2 border-border-strong bg-card font-semibold text-foreground'
+                                            : 'border-2 border-transparent bg-card text-text-2 hover:border-border',
                                     )}
                                 >
                                     <span
@@ -290,8 +288,8 @@ export default function ShareCardModal({
                                         )}
                                     />
                                     {f === 'story'
-                                        ? 'Portrait · 9:16'
-                                        : 'Square · 1:1'}
+                                        ? 'portrait · 9:16'
+                                        : 'square · 1:1'}
                                 </button>
                             ))}
                         </div>
@@ -333,8 +331,8 @@ export default function ShareCardModal({
                                     className={cn(
                                         'focus-ring h-9 w-9 rounded-full border-2 transition',
                                         colorway === c
-                                            ? 'border-sky'
-                                            : 'border-transparent hover:border-cream-deep',
+                                            ? 'border-foreground'
+                                            : 'border-transparent hover:border-foreground/40',
                                     )}
                                 >
                                     <span
@@ -350,7 +348,7 @@ export default function ShareCardModal({
                     </div>
 
                     {/* CTAs — pinned footer. */}
-                    <div className="flex flex-col gap-2 border-t border-cream-deep bg-cream px-5 py-4">
+                    <div className="flex flex-col gap-2 border-t border-border bg-card px-5 py-4">
                         <PillButton
                             tone="sky"
                             onClick={handleShare}
@@ -384,8 +382,8 @@ export default function ShareCardModal({
                                 className={cn(
                                     'text-center font-sans text-xs',
                                     status.tone === 'ok'
-                                        ? 'text-leaf-deep'
-                                        : 'text-ember-deep',
+                                        ? 'text-leaf-ink'
+                                        : 'text-ember-ink',
                                 )}
                             >
                                 {status.text}

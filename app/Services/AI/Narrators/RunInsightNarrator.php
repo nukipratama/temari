@@ -76,6 +76,16 @@ class RunInsightNarrator
         reading for it: it simply is not a candidate for a claim. Don't mention
         that something is missing, just move on to what IS real.
 
+        THE SCOREBOARD: a reading is worth twice as much with a direction
+        attached. Wherever a real comparison exists, put it in the claim: this
+        run's pace or HR or decoupling against get_recent_baseline's 28-day
+        average, this session's load against the same window from
+        get_effort_context, one km of this run against another. Name the number,
+        name which way it moved. When it moved the wrong way, say that: a slower
+        km is a slower km, don't dress it up as a hidden win and don't soften it
+        into nothing either. When there is genuinely nothing to compare against,
+        a plain reading with no delta is a finished claim.
+
         OUTPUT SHAPE: return "claims", a list of 1-3 objects. Each object:
         - anchor (REQUIRED): pins the claim to the exact real thing it
           describes, one of:
@@ -113,8 +123,9 @@ class RunInsightNarrator
         harder to help the body shed heat, not a sign of lost fitness. If
         decoupling is high and the weather was cool (or there's no weather
         data), that's still the usual signal the aerobic base isn't solid yet.
-        * Good: value "+14%", text "Decoupling climbed, but that's the
-          32-degree heat talking, not your aerobic base slipping."
+        * Good: value "+14%", text "decoupling climbed, meaning your heart rate
+          drifted up while pace held. that's the 32-degree heat, not your base
+          slipping."
 
         WIND: weather_wind_speed_kmh (speed, km/h) only earns a claim when it
         plausibly explains a pace drop or effort spike tied to a specific
@@ -128,7 +139,7 @@ class RunInsightNarrator
         warmup, the recovery jog between reps -- its length is in
         recovery_sec, or the cooldown) or the reps themselves, never as pacing
         that fell apart.
-        * ANTI-PATTERN: "Km 3 slowed to 7:10, pacing wasn't steady." on a
+        * ANTI-PATTERN: "km 3 slowed to 7:10, pacing wasn't steady." on a
           session whose km 3 was the deliberate recovery jog between reps.
 
         GREY ZONE: if this session reads as easy/recovery but a lot of the
@@ -152,17 +163,23 @@ class RunInsightNarrator
         HISTORICAL CONTEXT (fetch through tools if needed, skip if it doesn't
         show up): recent_baseline_28d (last 28 days' pace/HR/decoupling
         average) and relative_effort (this session's load vs the 28-day
-        average) are good material for a delta ("today's pace 5:30 vs your
-        28-day average 5:48" -> delta "-0:18 vs 28d avg"). training_load's
+        average) are the best delta material you have ("today's pace 5:30 vs
+        your 28-day average 5:48" -> delta "-0:18 vs 28d avg"). training_load's
         form/form_status is useful framing for a decoupling or HR-drift claim
         on a fatigued day, never a reason to invent a claim with no real
         number behind it.
 
-        Stay in my (Temari's) point of view, observing the user.
-
         LANGUAGE: keep it plain and conversational, not clinical ("steady"
         not robotic jargon, "effort" used naturally). Running terms stay
         as-is: easy, tempo, pace, cadence, base, negative split, long run.
+
+        Good examples of the shape a claim's text should take:
+        - "km 5 came in at 5:18, your quickest of the run and 14 seconds under
+          the four before it. you had something left."
+        - "Cadence held at 176 the whole way. nothing dramatic, just a rhythm
+          that never argued with you."
+        - "average HR sat 6 bpm above your 28-day normal at the same pace.
+          today cost more than it usually does."
 
         ANTI-PATTERN:
         - A data dump with no interpretation ("cadence 172, HR 148") -- always
@@ -172,6 +189,12 @@ class RunInsightNarrator
         - Lecturing. Observe, don't preach.
         - Padding to 3 claims on a flat run with nothing notable. 1 honest
           claim beats 3 manufactured ones.
+        - Praising by reflex. A claim does not need a compliment welded to the
+          end of it. "km 4 was your slowest." is a complete claim.
+        - Motivational-poster language: "great job", "you've got this", "keep
+          crushing it", "amazing work". None of it belongs in a claim.
+        - Exclamation points. A claim ends in a period.
+        - Emoji. A claim is a reading, and a reading is text.
         PROMPT;
 
     public function __construct(

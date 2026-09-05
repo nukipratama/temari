@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Scope;
+use App\Enums\IngestState;
 use App\Models\AI\Analysis;
 use App\Models\Scopes\AnalyzedScope;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,6 +26,7 @@ use Override;
  * @property int $id
  * @property int $user_id
  * @property int $strava_external_id
+ * @property IngestState $ingest_state
  * @property Carbon|null $fetched_at
  * @property Carbon|null $analyzed_at
  * @property Carbon|null $milestones_detected_at
@@ -44,6 +46,7 @@ use Override;
 #[Fillable([
     'user_id',
     'strava_external_id',
+    'ingest_state',
     'fetched_at',
     'analyzed_at',
     'milestones_detected_at',
@@ -87,6 +90,33 @@ class Activity extends Model
         $query->withStubs()
             ->whereNull('analyzed_at')
             ->where('detail_fail_count', '<', self::MAX_DETAIL_FETCH_ATTEMPTS);
+    }
+
+    /**
+     * Runs that have been through the full pipeline, so streams, `stream_summary`,
+     * TRIMP, weather and the story layer are all present. The complement of
+     * {@see self::summaryOnly()} — mirrors {@see AnalyzedScope}'s job of
+     * keeping "is this row complete enough?" out of every call site.
+     *
+     * @param  Builder<Activity>  $query
+     */
+    #[Scope]
+    protected function detailed(Builder $query): void
+    {
+        $query->where($query->qualifyColumn('ingest_state'), IngestState::Detailed);
+    }
+
+    /**
+     * Runs known only from the `/athlete/activities` summary payload — distance,
+     * moving time, average speed, elevation and average HR, nothing derived from
+     * streams.
+     *
+     * @param  Builder<Activity>  $query
+     */
+    #[Scope]
+    protected function summaryOnly(Builder $query): void
+    {
+        $query->where($query->qualifyColumn('ingest_state'), IngestState::Summary);
     }
 
     /**
@@ -194,7 +224,9 @@ class Activity extends Model
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
             'strava_external_id' => 'integer',
+            'ingest_state' => IngestState::class,
             'fetched_at' => 'datetime',
             'analyzed_at' => 'datetime',
             'milestones_detected_at' => 'datetime',

@@ -8,7 +8,6 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\User;
-use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\PersonalRecords;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -204,7 +203,7 @@ it('respects per-user scoping (PR break for user A does not affect user B)', fun
         ->toBe(1500.0);
 });
 
-it('stages no pr_context row of its own, leaving the fan-out to DispatchPostRunAnalysis', function (): void {
+it('stages no analysis row of its own, leaving the fan-out to DispatchPostRunAnalysis', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create([
         'category' => '5km',
@@ -217,7 +216,7 @@ it('stages no pr_context row of its own, leaving the fan-out to DispatchPostRunA
     ]);
 
     expect($this->records->detectAndStore($activity, $detail))->toContain('5km')
-        ->and(Analysis::query()->where('analysis_type', AnalysisType::PrContext)->count())->toBe(0);
+        ->and(Analysis::query()->count())->toBe(0);
 });
 
 it('rebuildForUser drops orphaned records and re-detects from surviving runs', function (): void {

@@ -56,12 +56,12 @@ class TrainingLoad
         $cacheKey = "training-load:{$user->id}:{$today->toDateString()}";
 
         return Cache::remember($cacheKey, self::SUMMARY_CACHE_SECONDS, function () use ($user, $today): ?array {
-            $dailyTrimp = $this->loadDailyTrimp($user, $today);
+            ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->loadDailyHistory($user, $today);
             if ($dailyTrimp === []) {
                 return null;
             }
 
-            return $this->summaryFromDailyMap($dailyTrimp, $today);
+            return $this->summaryFromDailyMap($dailyTrimp, $runDays, $today);
         });
     }
 
@@ -71,10 +71,11 @@ class TrainingLoad
      * date to measure fitness as-of a day that is not the week's end (e.g. the
      * in-progress week, capped at today, so future days are not zero-filled).
      *
-     * @param  array<string, float>  $dailyTrimp
+     * @param  array<string, float>  $dailyTrimp  scored days only
+     * @param  array<string, true>  $runDays  every day the runner logged a run, scored or not
      * @return array<string, mixed>|null
      */
-    public function summaryFromDailyMap(array $dailyTrimp, Carbon $asOf, ?Carbon $loadAsOf = null): ?array
+    public function summaryFromDailyMap(array $dailyTrimp, array $runDays, Carbon $asOf, ?Carbon $loadAsOf = null): ?array
     {
         if ($dailyTrimp === []) {
             return null;
@@ -84,10 +85,10 @@ class TrainingLoad
         $loadDate = ($loadAsOf ?? $asOf)->copy()->startOfDay();
         [$atl, $ctl] = $this->rollLoads($dailyTrimp, $loadDate);
         $form = round($ctl - $atl, 1);
-        [$weeklyTrimp, $monotony, $strain] = $this->weekStats($dailyTrimp, $weekAnchor);
+        [$weeklyTrimp, $monotony, $strain] = $this->weekStats($dailyTrimp, $runDays, $weekAnchor);
 
         return [
-            'weekly_trimp' => round($weeklyTrimp, 1),
+            'weekly_trimp' => $weeklyTrimp === null ? null : round($weeklyTrimp, 1),
             'atl_7d' => round($atl, 1),
             'ctl_42d' => round($ctl, 1),
             'form' => $form,
@@ -99,17 +100,19 @@ class TrainingLoad
 
     /**
      * Loads the full TRIMP history from the user's first-ever activity so the
-     * EWMA in rollLoads converges as a continuous, window-independent series.
+     * EWMA in rollLoads converges as a continuous, window-independent series,
+     * alongside the days the runner actually ran. A summary-only run (no HR
+     * stream, so no TRIMP) lands in `runDays` but not in `trimp`, which is the
+     * only way downstream can tell a rest day from an unscorable one.
      *
-     * @return array<string, float>  date (Y-m-d) → summed TRIMP for that day
+     * @return array{trimp: array<string, float>, runDays: array<string, true>}
      */
-    private function loadDailyTrimp(User $user, Carbon $asOf): array
+    private function loadDailyHistory(User $user, Carbon $asOf): array
     {
-        /** @var Collection<int, object{dt: string, trimp_sum: float}> $rows */
+        /** @var Collection<int, object{dt: string, trimp_sum: float|null}> $rows */
         $rows = ActivityDetail::query()
             ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
             ->where('activities.user_id', $user->id)
-            ->whereNotNull('activity_details.trimp_edwards')
             ->whereNotNull('activity_details.start_date_local')
             ->where('activity_details.start_date_local', '>=', $asOf->copy()->subDays(self::CONVERGED_LOOKBACK_DAYS)->startOfDay())
             ->where('activity_details.start_date_local', '<=', $asOf->copy()->endOfDay())
@@ -120,9 +123,16 @@ class TrainingLoad
                 DB::raw('SUM(activity_details.trimp_edwards) as trimp_sum'),
             ]);
 
-        return $rows->mapWithKeys(fn (object $r): array => [
-            $r->dt => (float) $r->trimp_sum,
-        ])->all();
+        $trimp = [];
+        $runDays = [];
+        foreach ($rows as $row) {
+            $runDays[$row->dt] = true;
+            if ($row->trimp_sum !== null) {
+                $trimp[$row->dt] = (float) $row->trimp_sum;
+            }
+        }
+
+        return ['trimp' => $trimp, 'runDays' => $runDays];
     }
 
     /**
@@ -146,7 +156,7 @@ class TrainingLoad
     public function ctlTrend(User $user, int $days = 90, ?Carbon $asOf = null): array
     {
         $today = ($asOf ?? Carbon::today())->copy()->startOfDay();
-        $dailyTrimp = $this->loadDailyTrimp($user, $today);
+        $dailyTrimp = $this->loadDailyHistory($user, $today)['trimp'];
         if ($dailyTrimp === []) {
             return [];
         }
@@ -159,6 +169,41 @@ class TrainingLoad
             if ($date >= $cutoff) {
                 $trend[] = ['date' => $date, 'atl' => round($atl, 1), 'ctl' => round($ctl, 1)];
             }
+        }
+
+        return $trend;
+    }
+
+    /**
+     * The last $days days of the daily weekly-trimp/monotony/strain series
+     * (each day's own trailing-7-day window), oldest first. Reuses the exact
+     * {@see weekStats} computation `summaryFromDailyMap()` already runs for
+     * "this week" — this just runs it once per day across the range instead
+     * of once for today, the same "expose every day the computation already
+     * touches" pattern {@see ctlTrend} uses for `rollDailySeries`. No new
+     * metric math, no new storage.
+     *
+     * @return list<array{date: string, weekly_trimp: float|null, monotony: float|null, strain: float|null}>
+     */
+    public function strainMonotonyTrend(User $user, int $days = 365, ?Carbon $asOf = null): array
+    {
+        $today = ($asOf ?? Carbon::today())->copy()->startOfDay();
+        ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->loadDailyHistory($user, $today);
+        if ($dailyTrimp === [] && $runDays === []) {
+            return [];
+        }
+
+        $trend = [];
+        $cursor = $today->copy()->subDays($days - 1);
+        while ($cursor->lte($today)) {
+            [$weekly, $monotony, $strain] = $this->weekStats($dailyTrimp, $runDays, $cursor);
+            $trend[] = [
+                'date' => $cursor->toDateString(),
+                'weekly_trimp' => $weekly,
+                'monotony' => $monotony,
+                'strain' => $strain,
+            ];
+            $cursor->addDay();
         }
 
         return $trend;
@@ -184,9 +229,10 @@ class TrainingLoad
      * Rolls a continuous ATL/CTL EWMA from the first day of the supplied map
      * through $today and returns only the final day's pair. Missing days
      * contribute zero TRIMP so a rest day reduces fatigue but doesn't reduce
-     * fitness. Callers pass the full TRIMP history (from the first-ever
-     * activity), so the EWMA state converges and the result is independent of
-     * any window length.
+     * fitness; an unscored run day is missing here too, which understates both
+     * averages rather than nulling them (see the ADR on unscored load). Callers
+     * pass the full TRIMP history (from the first-ever activity), so the EWMA
+     * state converges and the result is independent of any window length.
      *
      * @param  array<string, float>  $dailyTrimp
      * @return array{0: float, 1: float}
@@ -228,15 +274,28 @@ class TrainingLoad
     }
 
     /**
-     * @param  array<string, float>  $dailyTrimp
-     * @return array{0: float, 1: float, 2: float}  weekly_trimp, monotony, strain
+     * A week nobody ran scores an honest zero; a week whose runs all lack heart
+     * rate is unscorable and returns null, because "we have no reading" is a
+     * different fact from "you did nothing" and a zero would state the second.
+     *
+     * @param  array<string, float>  $dailyTrimp  scored days only
+     * @param  array<string, true>  $runDays  every day the runner logged a run, scored or not
+     * @return array{0: float|null, 1: float|null, 2: float|null}  weekly_trimp, monotony, strain
      */
-    private function weekStats(array $dailyTrimp, Carbon $today): array
+    private function weekStats(array $dailyTrimp, array $runDays, Carbon $today): array
     {
         $week = [];
+        $ranAtAll = false;
+        $scoredAtAll = false;
         for ($i = 6; $i >= 0; $i--) {
             $date = $today->copy()->subDays($i)->toDateString();
             $week[] = $dailyTrimp[$date] ?? 0.0;
+            $ranAtAll = $ranAtAll || isset($runDays[$date]);
+            $scoredAtAll = $scoredAtAll || array_key_exists($date, $dailyTrimp);
+        }
+
+        if (! $scoredAtAll) {
+            return $ranAtAll ? [null, null, null] : [0.0, 0.0, 0.0];
         }
 
         $weekly = array_sum($week);

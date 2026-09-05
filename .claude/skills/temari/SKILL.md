@@ -1,6 +1,6 @@
 ---
 name: temari
-description: Project conventions and domain map for the temari repo — Threadwork design tokens, voice rules, the AI narrator/analysis pipeline, the 1:1 test convention with its aggregate suites, and the sail toolchain. Use when writing UI, AI narration, or tests in this codebase, or when unsure where a change wires in.
+description: Project conventions and domain map for the temari repo — design tokens, voice rules, the AI narrator/analysis pipeline, the 1:1 test convention with its aggregate suites, and the sail toolchain. Use when writing UI, AI narration, or tests in this codebase, or when unsure where a change wires in.
 ---
 
 # temari conventions
@@ -14,93 +14,118 @@ them rather than re-copying, since copies drift.
 Backend logic is split by domain under `app/Services/`:
 - **AI/** — narrators + the Analysis pipeline (see *AI narration pipeline* below).
 - **Run/** — ingest (Strava activity → `ActivityDetail` + streams), metrics (`TrainingLoad`, `PersonalRecords`, VDOT/threshold estimators, `WeeklyAggregator`), and story (`Vibe`, `Temari`, `BriefingComposer`, `RunCardFactory`).
-- **Gamification/** — `EquippedAccessories`, `GoalResolver`, `WeeklyRecapBuilder` (plus `DetectActivityMilestonesAction` and `GrantEligibleUnlocksAction` under `app/Actions/Gamification/`).
+- **Gamification/** — `GoalResolver`, `SeasonGoalResolver`, `GamificationContext`, `SeasonGamificationContext`, `SeasonStreakSummaryBuilder` (plus `DetectActivityMilestonesAction`, `GrantEligibleUnlocksAction`, `GrantSeasonUnlocksAction` and `SettleStreakRestTokensAction` under `app/Actions/Gamification/`).
 - **Strava/** — OAuth client, activity fetch, webhook + sync orchestration.
 - **Geo/** — polyline encode/decode + Nominatim reverse-geocode (`app/Jobs/Geo/` resolves location names).
 - **Weather/** — Open-Meteo snapshot attached per activity.
 
-Two DB connections: default `mysql` plus a second **`analytics`** schema for metering (e.g. `ai_token_usages`); its migrations live in `database/migrations/analytics/`. Pages live under `resources/js/pages/`: `Today` (dashboard), `Activities/{Feed,Calendar}`, `Collection/{Cards,Records,Accessories}`, `Runs/Show`.
+Two DB connections: default `mysql` plus a second **`analytics`** schema for metering (e.g. `ai_token_usages`); its migrations live in `database/migrations/analytics/`. Pages live under `resources/js/pages/`, one per prototype screen: `Home` (the Today dashboard — the render name is `Home`, not `Today`), `Plan`, `Race`, `Trends`, `History` with `Activities/{Feed,Calendar}`, `Runs/Show`, `Inbox`, `Profile`, `Settings/Index`, plus `Auth/Login`, `Onboarding/Index`, `Legal/Document` and the operator screens `AiUsage` / `Devtools` / `Devtools/Design`. There is no `Collection/` tree — the cards, records and accessories pages were cut by the parity port.
 
 ## Voice & copy
 
-- **No em-dashes (`—`)** in UI copy *or* LLM prompt strings — they read as an AI/translation tell. Use commas, periods, colons, or `·`. (The `'—'` glyph as a *null placeholder* in data display is fine.)
-- All user-facing copy (UI chrome, Temari narration, LLM prompts) follows one casual register: plain running-domain vocabulary (`pace`, `HR`, `km`, `TRIMP`, `splits`), a jargon-accessibility tier for technical terms, and a `**bold**` emphasis rule.
+- **Prefer commas, periods, colons or `·` over em-dashes (`—`)** in UI copy and LLM prompt strings — a reflexive em-dash reads as an AI tell. This is a preference, not a ban: a deliberate one is fine, and the `'—'` glyph as a *null placeholder* in data display always was. Nothing gates it (the hard test was cut in `C1`); it is a judgement call at review time. `TemariPersona`'s prompt still instructs the model itself to avoid them, which is separate and unchanged.
+- Temari is a training partner who keeps score, not a soft cheerleader: warm, but competitive about the user's own numbers (never against other runners), willing to name a coast once and plainly, and stingy with praise so it means something when given. Her narrated voice leans lowercase (a soft tendency, not a rule) and dry-funny; **UI chrome is lowercase too** since 2026-09-01 (decision P37 of the prototype-parity program, which replaced the previous Title Case rule), with proper nouns, domain acronyms and CSS-uppercased mono labels unaffected. Shared across both: plain running-domain vocabulary (`pace`, `HR`, `km`, `TRIMP`, `splits`), a jargon-accessibility tier for technical terms, a `**bold**` emphasis rule, and a tight emoji rule (zero by default, one max, only for a genuine PR/first-ever, glyphs limited to 🔥/✨/🛌).
 - Full rules: [docs/voice-and-tone.md](../../../docs/voice-and-tone.md). Persona source of truth: [TemariPersona.php](../../../app/Services/AI/TemariPersona.php). Read it before writing or reviewing copy.
 
 ## Design system
 
-Palette is **Threadwork** (thread/embroidery jewel tones on a warm linen canvas). Tokens live in
-the `@theme` block of [resources/css/app.css](../../../resources/css/app.css); full reference
-(colors, type scale, fonts, gradients, spacing) in
-[docs/design-tokens.md](../../../docs/design-tokens.md). Use the **semantic token families, never
-raw Tailwind colors** like `lime-500`:
+Pewter: cold near-white paper, near-black structure, lime accent. Tokens are declared in the
+`@theme static` block of [resources/css/app.css](../../../resources/css/app.css), which owns every
+emitted value; [build-tokens.mjs](../../../resources/brand/build-tokens.mjs) owns the colour
+*derivation* rules behind it (the fill/text split and the per-ground `-ink` tiers), not the radius,
+spacing, elevation or type scales. Full reference (colors, type scale, fonts, radius, elevation,
+spacing) in [docs/design-tokens.md](../../../docs/design-tokens.md).
+Use the **semantic token families, never raw Tailwind colors** like `lime-500`:
 
-- `sky` (`#241c54`) / `sky-deep` (`#170f38`) / `sky-2` (`#362a73`) — structure, dark hero panels, the only "dark" surface. Deep indigo thread.
-- `horizon` / `horizon-deep` (`#d9a53c` gold) — primary CTA, "earned"/PR state, Temari accent. Gold thread.
-- `cream` / `cream-deep` (`#f5f0e4`) — paper / secondary surface and borders. Warm linen canvas.
+- `sky` (`#171f28`) / `sky-deep` (`#0b1017`) / `sky-2` (`#26303d`) — structure, dark hero panels, and (since F2) the dark ground itself. Cold near-black.
+- `horizon` / `horizon-deep` (`#ade047` lime) — primary CTA, "earned"/PR state, Temari accent.
+- `cream` / `cream-deep` (`#f1f5f8`) — paper / secondary surface and borders. Cold near-white.
 - `ink` / `ink-2` / `ink-3` — the 3-tier text-contrast scale (see below).
-- `surface` / `surface-elev` / `surface-warm` / `surface-sunken` + `line` — app surfaces (dawn-shift drifts `surface`).
-- `mood-{blazing,easy,wobbly,gassed,overloaded,chill}` (each with a pastel `-bg` variant) — calendar cells + mood badges. Each remapped to a thread jewel tone.
-- `rarity-{common,uncommon,rare,epic,legendary}` — card rarity.
-- semantic hues `leaf` / `leaf-deep`, `ember` / `ember-deep`, `citrus` / `citrus-deep`, `stone`.
+- `surface` / `surface-card` / `surface-elev` / `surface-warm` / `surface-sunken` + `line` / `line-strong` — app surfaces (dawn-shift drifts `surface`).
+- `mood-{blazing,easy,wobbly,gassed,overloaded,chill}` (each with a pastel `-bg` cell tint and an `-ink` label variant) — calendar cells + mood badges.
+- `rarity-{common,uncommon,rare,epic,legendary}` (each with an `-ink` label variant) — card rarity.
+- semantic hues `leaf` / `leaf-deep` / `leaf-ink`, `ember` / `ember-deep` / `ember-ink`, `citrus` / `citrus-ink`, `stone` (`-deep` fills a dark CTA, `-ink` carries the label; `citrus` fills no CTA and has no `-deep`).
 - `strava-orange` / `strava-orange-hover` — reserved, never themed (see below).
 
-`citrus` mustard (`#d9b23a`) is reserved for PR / legendaris celebrations only. App is
-**light-mode only** (no `*-dark` tokens; `.dark` is never applied).
+`citrus` (`#c9971f`) is reserved for PR / legendary celebrations only.
+
+**Which mechanism flips a value.** A ground difference in a **colour** is a semantic token,
+never a `dark:` utility (`bg-card`, not `bg-cream dark:bg-sky`) — the token layer has one
+definition site, is classified fixed-vs-reactive by `grounds.json` so the audit scores it against
+the right grounds, and cannot drift into a raw palette shade. A difference that is **not** a colour
+value — an opacity, a ring width, a whole property — may use `dark:`, because no token can hold it;
+`card.tsx`'s `dark:ring-foreground/10` is the canonical case. `dark:` is wired to `data-theme`, not
+`prefers-color-scheme`. See [tokens-flip-colour-dark-variant-flips-the-rest](../../../docs/decisions/tokens-flip-colour-dark-variant-flips-the-rest.md).
+
+**Two grounds, since F2.** `[data-theme="dark"]` on `<html>` inverts Sky and Cream — Sky becomes
+ground, Cream becomes text — and is the app's **default** ground; light and system are reachable
+from Settings. A second semantic layer (`background`/`foreground`/`card`/`popover`/... plus
+`leaf-ink`/`ember-ink`/`citrus-ink`/`rarity-*-ink`, which invert per ground) sits above the palette
+above; see "Ground-reactive semantic layer" in [docs/design-tokens.md](../../../docs/design-tokens.md).
+
+**Fill vs text.** Every saturated family ships as a pair: the vivid value is the fill (dots,
+frames, strokes, tinted cells), the derived `-ink` value is the only member allowed to carry text
+or an icon on paper. `text-rarity-legendary` is always wrong; it is `text-rarity-legendary-ink`, and
+`text-leaf-deep` / `text-ember-deep` / `text-horizon-deep` are wrong the same way. The two fills too
+light to reach 3:1 (legendary gold, uncommon green) keep their vibrancy and are drawn with a 2px
+`-ink` outline rather than being darkened. On a **dark** ground the split inverts: the vivid fill is
+the readable label there (`text-leaf` on a sky panel), so an `onSky` branch keeps it.
+
+**Radius, elevation, spacing** are scales now, not call-site guesses: `rounded-md` (14px) is the
+card corner, `shadow-e1`..`e4` is resting → floating → sheet → modal (warm-tinted, never
+Tailwind's neutral defaults), and padding names a role (`.pad-chip` / `.pad-panel` / `.pad-card` /
+`.pad-hero` / `.pad-page`). `npm run check:palette` rejects raw palette shades, default shadows and
+off-scale radii; `/devtools/design` renders the whole set plus a live contrast audit read out of
+the shipped CSS.
 
 ### Strava brand mark — hands off
 
 The "Connect with Strava" button (and any Strava brand mark) is never restyled. Strava brand
-orange `#FC4C02` / hover `#E34402` are reserved via `--color-strava-orange` tokens. `ember` shares
-a hue family with Strava orange, so within any card that **displays the Strava brand mark** the
-warm accent is *not* used: switch the local context to neutral (`surface-sunken` + `ink`) so the
-brand mark gets breathing room. Strava can revoke API access for brand-guideline violations.
+orange `#FC4C02` / hover `#E34402` are reserved via `--color-strava-orange` tokens. Within any card
+that **displays the Strava brand mark**, keep other warm accents off it: switch the local context
+to neutral (`surface-sunken` + `ink`) so the brand mark gets breathing room. Strava can revoke API access for brand-guideline violations.
 
 ### CTA contrast rule (WCAG)
 
-`horizon` (`#d9a53c`) is a gold thread tone, so it pairs with **dark** text, never white. Follow the
+`horizon` (`#ade047`) is a lime tone, so it pairs with **dark** text, never white. Follow the
 [`PillButton`](../../../resources/js/components/ui/PillButton.tsx) presets:
-- `horizon` bg → `text-sky` (dark indigo on gold passes comfortably); hover darkens to `horizon-deep`.
-- `sky` / `sky-deep` bg (dark indigo) → `text-cream` / white text (passes ~13:1); hover darkens to `sky-deep`.
-- `leaf-deep` (`#4f6c54`) bg → white text (passes AA ~4.9:1); used for dense "retry"/action chips. No darker leaf token exists, so darken on hover with `hover:opacity-90`, not a hue jump.
+There are **four tones**, defined once in [`pillButtonVariants`](../../../resources/js/lib/variants.ts#L52):
+- `horizon` bg → **`text-sky`**, a fixed value rather than the ground-reactive `text-foreground`. This is deliberate and the one place the semantic layer must not be used: `foreground` flips to cream on the dark ground, which is the unreadable pairing on lime. Hover darkens to `horizon-deep`.
+- `sky` bg (near-black) → `text-cream` (passes ~15:1+); hover darkens to `sky-deep`.
+- `ghost` → transparent with an `ink`-tinted hairline; `outline` → `bg-card` with a `border` edge and `text-text-2`.
 - Never put white text on `horizon`/`citrus`/`cream` (all too light).
 
 ### Gradient primitives
 
-Gradient **text** is applied via
-[`<GradientText preset="horizon|cream-sun" fontSize=… />`](../../../resources/js/components/ui/GradientText.tsx),
-which clips a `linear-gradient` to the text via inline `background-clip`. Rule: **gradient text
-on numbers only**, only at large display sizes, and only one per visible viewport. Scarcity makes
-it feel premium, not Las-Vegas. Backdrop atmospherics (e.g. the login page) are inline CSS
+**There is no gradient-text primitive.** `GradientText` clipped a `linear-gradient` to a number at
+display sizes; the prototype draws no gradient text on any screen, so `W2` swept it. Don't
+reintroduce one for a stat: a display-tier number already carries the emphasis.
+Backdrop atmospherics (e.g. the login page) are inline CSS
 `linear-gradient` + `radial-gradient` layers on the sky→horizon ramp, not a shared component;
 in-app pages stay clean.
 
-### Dawn-shift theme
-
-[`useDawnShift`](../../../resources/js/hooks/useDawnShift.ts) is mounted in
-[AppShell](../../../resources/js/layouts/AppShell.tsx); it writes
-`data-time-of-day="dawn|morning|day|dusk|night"` on `<body>` so CSS surface tints respond to the
-user's local time. Light mode only — never auto-flips to dark mode.
-
 ### Text contrast tiers
 
-3-stop semantic system — use the tier that matches the text role, not "pick whichever color looks right":
+3-stop semantic system — use the tier that matches the text role, not "pick whichever color looks right".
+Since F3, call sites write the ground-reactive semantic classes (backed by `--color-ink` on the
+light ground, `--color-cream` on dark) rather than the raw `text-ink*` utilities, which still exist
+underneath but are fixed to the light value:
 
-- `text-ink` (`#1a1812`) — **primary text**: body paragraphs, headings, button labels, KPI values. Default for any prose the user reads.
-- `text-ink-2` (`#3d362a`) — **supporting body**: page subtitles, briefing suggestion lines, descriptive paragraphs adjacent to a primary statement.
-- `text-ink-3` (`#7a6f5c`) — **labels-above-values, timestamps, footnotes, table column headers, secondary metadata**. Smallest contrast tier, never use for body prose.
+- `text-foreground` (`#16181b` on light) — **primary text**: body paragraphs, headings, button labels, KPI values. Default for any prose the user reads.
+- `text-text-2` (`#34373c` on light) — **supporting body**: page subtitles, briefing suggestion lines, descriptive paragraphs adjacent to a primary statement.
+- `text-text-3` (`#60666d` on light) — **labels-above-values, timestamps, footnotes, table column headers, secondary metadata**. Smallest contrast tier, never use for body prose.
 
-Sweep `grep text-ink-3` before merging — if it's wrapping a `<p>` of running prose, it's probably wrong.
+Sweep `grep text-text-3` before merging — if it's wrapping a `<p>` of running prose, it's probably wrong.
 
 ### Typography & fonts
 
-Three app families + one card-scoped face (all loaded via Google Fonts in
+Three families (all loaded via Google Fonts in
 [app.blade.php](../../../resources/views/app.blade.php)): **Fraunces** italic is
-`font-display` (headlines + Temari voice/quotes); **Plus Jakarta Sans** is `font-sans`, the default
-family for body/UI/numbers/buttons; **JetBrains Mono** is `font-mono`, reserved for *small uppercase
-metadata labels only* (section labels, chips, stat-tile / kartu captions, timestamps). **Oswald** is
-`font-collectible`, used **only on the Kartu** (TCG nameplate, hero KM number, edition number) — never
-a global default. Because `font-sans` is Tailwind's default, every small uppercase label must carry an
+`font-serif` (headlines + Temari voice/quotes; renamed from `font-display` in F3 to match the
+prototype's own token name); **Plus Jakarta Sans** is `font-sans`, the default
+family for body/UI/buttons; **JetBrains Mono** is `font-mono`, for *numbers, stats and small
+uppercase metadata labels* (section labels, chips, stat-tile / card captions, timestamps). Oswald
+(`font-collectible`) is retired: the Card uses the same stack as everything else. Because `font-sans` is Tailwind's default, every small uppercase label must carry an
 **explicit `font-mono`** (or the `.text-label-micro` / `.text-label-small` utilities) or it falls back to
 the sans. Keep `tabular-nums` on numeric / stat displays.
 The scale is fluid `clamp()` tokens in `app.css` (`text-display-*`, `text-headline-*`,
@@ -108,15 +133,15 @@ The scale is fluid `clamp()` tokens in `app.css` (`text-display-*`, `text-headli
 
 | Role | Class |
 |---|---|
-| In-app hero title | `font-display italic text-display-2xl text-ink` |
-| Page title (`<h1>`) | `font-display text-display-lg text-ink` (compact/devtools header: `text-headline-xs`) |
-| Section heading (`<h2>`) | `font-display text-headline-sm text-ink` |
-| Temari voice / quote | `font-display italic text-quote-lg text-ink-2` |
-| Sub-label (KPI/table cap) | `font-mono text-xs font-semibold uppercase tracking-wider text-ink-3` |
-| Body paragraph | `font-sans text-sm leading-relaxed text-ink` |
-| Caption / supporting | `text-sm text-ink-2 leading-relaxed` |
-| Meta / timestamp | `text-xs text-ink-3` |
-| KPI / big stat value | display tier (`text-display-xs`+) `tabular-nums text-ink`; avoid one-off `text-[NNpx]` |
+| In-app hero title | `font-serif italic text-display-2xl text-foreground` |
+| Page title (`<h1>`) | `font-serif text-display-lg text-foreground` (compact/devtools header: `text-headline-xs`) |
+| Section heading (`<h2>`) | `font-serif text-headline-sm text-foreground` |
+| Temari voice / quote | `font-serif italic text-quote-lg text-text-2` |
+| Sub-label (KPI/table cap) | `font-mono text-xs font-semibold uppercase tracking-wider text-text-3` |
+| Body paragraph | `font-sans text-sm leading-relaxed text-foreground` |
+| Caption / supporting | `text-sm text-text-2 leading-relaxed` |
+| Meta / timestamp | `text-xs text-text-3` |
+| KPI / big stat value | display tier (`text-display-xs`+) `tabular-nums text-foreground`; avoid one-off `text-[NNpx]` |
 
 ### Section spacing rhythm
 
@@ -124,7 +149,7 @@ The scale is fluid `clamp()` tokens in `app.css` (`text-display-*`, `text-headli
 - Subsection → next: `mt-6`
 - `<h2>` → content: `mt-3`
 - Page header → first section: `mt-8`
-- Hero card padding: `p-6`; data card padding: `p-4`; chip/pill: `px-3 py-1`
+- Card padding names a role, never a number: `.pad-hero` (24px) for hero cards, `.pad-card` (16px) for data cards, `.pad-panel` (12/16px) for dense rows, `.pad-chip` for chips and pills
 
 ## AI narration pipeline
 
@@ -137,7 +162,7 @@ always-on guideline ("LLM Integration" in CLAUDE.md).
 Miss one and it fails loudly: `php artisan` breaks on enum match exhaustiveness (PHPStan), or
 the structure / coverage gates fail. **Model the shape on an existing sibling and mirror it** —
 per-user-per-day follows `TrendCaption`; per-activity follows `RunInsight*`; per-row-model
-follows `WeeklyRecap` / `PrContext` / `CardFlavor`. Let `Name` = StudlyCase, `snake` = snake_case.
+follows `WeeklyRecap` / `CardFlavor` / `PlanWeekVoice`. Let `Name` = StudlyCase, `snake` = snake_case.
 
 1. **Narrator** — `app/Services/AI/Narrators/{Name}Narrator.php`. Inject `StructuredChatCaller`;
    expose `generate(...)` returning the narrated string. Build `$context` from real metrics
@@ -161,6 +186,13 @@ follows `WeeklyRecap` / `PrContext` / `CardFlavor`. Let `Name` = StudlyCase, `sn
 
 Then run `./vendor/bin/sail composer check` and fix anything red.
 
+**Not every AI surface is a narrated block.** The scoped per-run Q&A stores its own
+`run_questions` rows and dispatches its own job instead of using the Analysis row model —
+one run holds many questions, which `(subject, type, discriminator)` cannot key. It still
+goes through `StructuredChatCaller` and a bound-at-construction toolbox, so persona,
+budget, retries and metering are unchanged. See `docs/decisions/scoped-run-qa-not-an-analysis-row.md`
+before reaching for a new `AnalysisType` on anything user-initiated and free-form.
+
 ## Testing
 
 - **1:1 class↔test.** Every concrete class has a `{Name}Test.php`, or is exempt in [tests/Unit/Architecture/EveryClassHasATestTest.php](../../../tests/Unit/Architecture/EveryClassHasATestTest.php). Frontend: co-located `{name}.test.tsx`, guarded by [resources/js/test/structure.test.ts](../../../resources/js/test/structure.test.ts).
@@ -179,7 +211,22 @@ Then run `./vendor/bin/sail composer check` and fix anything red.
 ./vendor/bin/sail composer check            # full gate: pint + phpstan + rector + pest --parallel + tsc + vitest. Pre-push only.
 ./vendor/bin/sail bin pint                  # format (also runs on pre-commit with phpstan + rector)
 ```
-Code quality (pint/phpstan/rector/tsc) runs on **pre-commit**; coverage runs in **CI**.
+Code quality (pint/phpstan/rector/tsc) runs on **pre-commit**; the 95% coverage gate runs in **CI**,
+on `pull_request` only. Coverage is deliberately *not* part of `composer check`.
+
+**When CI's coverage gate goes red** you can reproduce it locally — `pcov` ships in the dev image
+(it is what TIA records with), so this is a debugging tool, not a routine step:
+
+```bash
+./vendor/bin/sail bin pest --no-tia --coverage --filter=Name   # ~6s: is MY class covered?
+./vendor/bin/sail bin pest --no-tia --parallel --coverage --min=95   # ~64s: will the gate pass?
+```
+
+The filtered run reports 0.0% for everything else, which is expected — read only your own class's row.
+**`--no-tia` is mandatory here, and not for the obvious reason.** A TIA replay does reconstruct coverage
+in principle, but on a suite this size `--tia --coverage` does not run at all: it throws
+`InvalidCoverageDataException` against an existing graph, and with `--fresh` exhausts a 512M
+`memory_limit` merging an ~80MB coverage graph.
 
 **Pest 5 TIA is on for every local run** (`pest()->tia()->locally()` in [tests/Pest.php](../../../tests/Pest.php), backed by
 pcov in the dev image). Unaffected tests are **replayed from a cached dependency graph** rather than
@@ -189,9 +236,14 @@ internalising:
 - A green `--filter=Name` with nothing changed is a *cached* pass, not a fresh execution. Pass
   **`--no-tia`** when you need to genuinely re-run, or `--fresh` to discard the graph and re-record.
 - TIA is coverage-driven, so tests that read the filesystem (`File::allFiles`, `glob`) record no
-  edges. `tests/Unit/Architecture` is therefore pinned to run on any `app/`, `tests/`, `docs/` or
-  `resources/css/` change via the `watch()` map — extend that map when adding another scanning test,
-  or the gate silently stops firing.
+  edges. Those tests are pinned to run via the `watch()` map in [tests/Pest.php](../../../tests/Pest.php),
+  which is the **only** lever Pest gives you — there is no "always run" marker. The map is
+  hand-maintained and guarded by `TiaWatchMapTest`, which fails if a filesystem-scanning test is not
+  routed through it. It has rotted once: `NarratorsCoverageTest` globs the narrator and tool
+  directories, and a new narrator passed locally under TIA while failing under `--no-tia`.
+- A fresh clone or worktree records the graph from cold (~47s). `pest()->tia()->baselined()` skips
+  that by pulling the graph published by [tia-baseline.yml](../../../.github/workflows/tia-baseline.yml)
+  via `gh`, which ships in the dev image. It needs `GH_TOKEN` set; unset, Pest just records locally.
 
 CI passes `--no-tia` on both Pest steps: a narrowed run would quietly shrink the 95% coverage gate.
 
@@ -216,16 +268,24 @@ reached via `sail mysql`/`sail artisan tinker`/`docker exec`), so the only real 
 to bind off an unmodified `.env`. No changes needed to `compose.yaml` or `.githooks/pre-commit` —
 the pre-commit hook's `docker compose ps` check already resolves per-cwd correctly.
 
-Workflow: `EnterWorktree name=<slice>` → `./scripts/worktree-setup.sh <slot 1|2|3>` (its own
-`APP_PORT`/`VITE_PORT` off a static slot table — main stays 7001/7002, slots use 701x/702x — writes
-an untracked `compose.override.yaml` mounting the shared git dir so TIA works, then
-brings the stack up itself and fixes cache-volume ownership) → `vendor/` is empty on a
-fresh worktree, so `vendor/bin/sail` doesn't exist yet: install once with plain
-`docker compose exec -T app composer install`, then `./vendor/bin/sail npm ci` (`sail` works for
-everything from here on) → normal fast-feedback ladder → `ExitWorktree action=remove|keep`. That's
-enough to *run the automated suites* (they self-initialize their own `mysql_test`/`redis_test`) —
-to actually *load a page in a browser*, also run `sail artisan key:generate` (`.env.example` ships
-`APP_KEY` empty) and `sail artisan migrate`, plus `sail npm run dev` (or `npm run build`).
+Workflow: `EnterWorktree name=<slice>` → `./scripts/worktree-setup.sh <slot 1|2|3>` → normal
+fast-feedback ladder → `ExitWorktree action=remove|keep`. The script takes its own
+`APP_PORT`/`VITE_PORT` off a static slot table (main stays 7001/7002, slots use 701x/702x), writes
+an untracked `compose.override.yaml` mounting the shared git dir so TIA works, brings the stack up,
+fixes cache-volume ownership, then bootstraps the app: `composer install`, `key:generate`, and
+**both** migration sets. Every step is guarded or idempotent, so re-running the script after a
+failure is safe. `vendor/` is empty when it starts, so it uses plain `docker compose exec` for all
+of it; `./vendor/bin/sail` works for everything afterwards.
+
+**Both** migration sets matters. `analytics` is a second connection with its own migration path, so
+a plain `artisan migrate` does not touch it — the script also runs
+`migrate --database=analytics --path=database/migrations/analytics`. Without it `strava_sync_logs`
+and `ai_token_usages` are missing and `/pulse` + `/devtools/ai-usage` 500. This lived only in the script's
+printed next-steps until #614, which is exactly why every worktree skipped it.
+
+The PHP suites are ready at that point (they self-initialize their own `mysql_test`/`redis_test`).
+To *load a page in a browser*, also run `./vendor/bin/sail npm ci` plus `sail npm run dev` (or
+`npm run build`).
 
 Composer's and npm's **download caches** are shared across worktrees via fixed-name volumes
 (`temari_composer_cache`/`temari_npm_cache` in `compose.yaml`) — only `vendor/`/`node_modules`
@@ -235,10 +295,17 @@ worktree's install just replays from cache instead of re-downloading over the ne
 right after bringing the stack up, since they're created root-owned on first boot and the container
 always runs as `www-data` — no manual fix needed.
 
-**Two fresh-worktree gotchas**, neither concurrency-specific: a missing `APP_KEY` (see above) 500s
-every page with `MissingAppKeyException` until `key:generate` runs. And if several worktrees
-cold-install at the same moment, one can occasionally fail mid-extraction on a transient bind-mount
-visibility race — just retry once.
+**Git hooks are shared, not per-worktree.** `core.hooksPath` lives in the common `.git/config` that
+linked worktrees inherit, so every worktree runs the *main checkout's* `.githooks/` at whatever
+version that checkout has on disk. A hook edited on a worktree branch is not exercised by that
+worktree's commits — invoke the script directly to test it. (If the stored value is absolute, it
+pins every worktree to the main checkout; `composer install` re-sets it relative.)
+
+**One fresh-worktree gotcha**, not concurrency-specific: if several worktrees cold-install at the
+same moment, one can occasionally fail mid-extraction on a transient bind-mount visibility race —
+just re-run `worktree-setup.sh`, which resumes rather than redoing. (The old `MissingAppKeyException`
+gotcha is gone: the script generates the key itself, and only when `APP_KEY` is unset, so a re-run
+never rotates it out from under a live session.)
 
 The Docker image (`temari/dev`) and its build cache are shared across worktrees on purpose (plain
 local tag, not project-scoped) — only pass `--build` again if a worktree's slice actually touches

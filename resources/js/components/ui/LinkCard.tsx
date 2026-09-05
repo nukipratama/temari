@@ -4,13 +4,13 @@ import { type MouseEventHandler, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { cardVariants } from '@/lib/variants';
 
-import { type CardPadding, type CardTone } from './Card';
+import { type CardPadding, type CardTone } from './LegacyCard';
 
 interface LinkCardProps {
     href: string;
-    /** Default 'cream'. */
+    /** Default 'card'. */
     tone?: CardTone;
-    /** Default 'md' — px-5 py-5. */
+    /** Default 'card' — the --pad-card role. */
     padding?: CardPadding;
     onClick?: MouseEventHandler<Element>;
     className?: string;
@@ -19,8 +19,8 @@ interface LinkCardProps {
 
 export default function LinkCard({
     href,
-    tone = 'cream',
-    padding = 'md',
+    tone = 'card',
+    padding = 'card',
     onClick,
     className,
     children,

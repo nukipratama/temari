@@ -117,10 +117,6 @@ class ProgressionSeriesBuilder
      */
     private function snapBestToRecord(array &$bestByWeek, PersonalRecord $record): void
     {
-        if ($record->set_at === null) {
-            return;
-        }
-
         $recordWeek = Carbon::parse($record->set_at)->startOfWeek(Carbon::MONDAY)->toDateString();
         if (isset($bestByWeek[$recordWeek])) {
             $bestByWeek[$recordWeek] = (int) round($record->value_sec);

@@ -60,7 +60,7 @@ it('surfaces a recent failed analysis with its error', function (): void {
 it('shows no dead-letter attention link when nothing is dead-lettered', function (): void {
     Livewire::test(AiPipelineHealth::class)
         ->assertOk()
-        ->assertDontSee('/ai-usage');
+        ->assertDontSee('/devtools/ai-usage');
 });
 
 it('surfaces a dead-letter attention link when a failed analysis exhausted self-heal', function (): void {
@@ -73,7 +73,7 @@ it('surfaces a dead-letter attention link when a failed analysis exhausted self-
 
     Livewire::test(AiPipelineHealth::class)
         ->assertOk()
-        ->assertSee('/ai-usage');
+        ->assertSee('/devtools/ai-usage');
 });
 
 it('surfaces the failed_jobs count', function (): void {

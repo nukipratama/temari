@@ -5,22 +5,21 @@ declare(strict_types=1);
 use App\Models\User;
 use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
-use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
+use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
-use App\Jobs\AI\AnalyzePrContextJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Listeners\DispatchPostRunAnalysis;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Actions\AI\StaggerBackfillAction;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -31,7 +30,15 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Bus::fake();
+    // The default fixture run is dated 2026-05-10; pin the clock next to it so
+    // it stays inside the narration age cutoff as wall time moves on. Cases that
+    // exercise the cutoff itself set their own clock and config.
+    Carbon::setTestNow('2026-05-11 09:00:00');
     $this->listener = app(DispatchPostRunAnalysis::class);
+});
+
+afterEach(function (): void {
+    Carbon::setTestNow();
 });
 
 /** Seed an already-ingested activity (analyzed_at set + detail) the listener can fan out from. */
@@ -74,7 +81,7 @@ it('re-narrates card flavor on a re-ingest (invalidate:true) without minting a s
 
     fire($activity);
     $row = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'kartu pertama');
+    app(AnalysisService::class)->markDone($row, 'card pertama');
 
     fire($activity);
 
@@ -82,57 +89,36 @@ it('re-narrates card flavor on a re-ingest (invalidate:true) without minting a s
         ->and($row->fresh()->status)->not->toBe(AnalysisStatus::Done);
 });
 
-it('requests pr_context for the records this run holds, invalidate:false so a backfill never re-bills', function (): void {
-    $activity = analyzedActivity();
-    $held = PersonalRecord::factory()->for($activity->user)->create([
-        'category' => '5km',
-        'activity_id' => $activity->id,
-    ]);
-    // Held by an older run: this ingest did not beat it, so it is not re-requested.
-    $other = PersonalRecord::factory()->for($activity->user)->create(['category' => '10km']);
-
-    fire($activity);
-    $row = Analysis::query()->forSubject(PersonalRecord::class, $held->id, AnalysisType::PrContext)->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'rekor pertama');
-
-    fire($activity);
-
-    expect(Analysis::query()->forSubject(PersonalRecord::class, $held->id, AnalysisType::PrContext)->count())->toBe(1)
-        // Already Done: the second fan-out is a no-op, never a second bill.
-        ->and($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and(Analysis::query()->forSubject(PersonalRecord::class, $other->id, AnalysisType::PrContext)->exists())->toBeFalse();
-});
-
-it('dispatches AkuProfileVoice on first ingest, keyed by the current ISO week', function (): void {
+it('dispatches ProfileVoice on first ingest, keyed by the current ISO week', function (): void {
     Carbon::setTestNow('2026-05-19 12:00:00');
     $activity = analyzedActivity();
 
     fire($activity);
 
     Bus::assertDispatched(
-        AnalyzeAkuProfileVoiceJob::class,
-        fn (AnalyzeAkuProfileVoiceJob $job): bool => Analysis::query()->whereKey($job->analysisId)->value('discriminator') === AnalysisType::currentIsoWeek(),
+        AnalyzeProfileVoiceJob::class,
+        fn (AnalyzeProfileVoiceJob $job): bool => Analysis::query()->whereKey($job->analysisId)->value('discriminator') === AnalysisType::currentIsoWeek(),
     );
     Carbon::setTestNow();
 });
 
-it('does not re-bill a Done AkuProfileVoice row on re-ingest (invalidate:false)', function (): void {
+it('does not re-bill a Done ProfileVoice row on re-ingest (invalidate:false)', function (): void {
     $activity = analyzedActivity();
     fire($activity);
 
     $row = Analysis::query()
-        ->where('subject_type', AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE)
+        ->where('subject_type', AnalysisType::PROFILE_VOICE_SUBJECT_TYPE)
         ->where('subject_id', $activity->user_id)
-        ->where('analysis_type', AnalysisType::AkuProfileVoice)
+        ->where('analysis_type', AnalysisType::ProfileVoice)
         ->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'kata Temari pertama');
+    app(AnalysisService::class)->markDone($row, 'first Temari note');
 
     fire($activity);
 
     expect(Analysis::query()
-        ->where('subject_type', AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE)
+        ->where('subject_type', AnalysisType::PROFILE_VOICE_SUBJECT_TYPE)
         ->where('subject_id', $activity->user_id)
-        ->where('analysis_type', AnalysisType::AkuProfileVoice)
+        ->where('analysis_type', AnalysisType::ProfileVoice)
         ->count())->toBe(1)
         ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
 });
@@ -172,12 +158,12 @@ it('leaves a Done weekly recap untouched on re-ingest (no mid-week invalidation)
         ->where('subject_type', WeeklySnapshot::class)
         ->where('subject_id', $snapshot->id)
         ->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'recap dari Baca ulang');
+    app(AnalysisService::class)->markDone($row, 'recap from a reread');
 
     fire($activity);
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($row->fresh()->content)->toBe('recap dari Baca ulang');
+        ->and($row->fresh()->content)->toBe('recap from a reread');
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
@@ -242,7 +228,7 @@ it('refreshes the daily briefing set on the second run of the day', function ():
             AnalysisType::BriefingMascotVoice->value,
         ])
         ->get()
-        ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'sudah jadi'));
+        ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'done'));
 
     Bus::fake();
     Carbon::setTestNow('2026-05-19 17:45:00');
@@ -269,7 +255,7 @@ it('does not re-bill the daily set when backfilling a previous-day run', functio
             AnalysisType::BriefingMascotVoice->value,
         ])
         ->get()
-        ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'sudah jadi'));
+        ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'done'));
 
     Bus::fake();
     // Backfilling a run from two days ago must not re-bill today's daily set.
@@ -318,7 +304,7 @@ it('backfill kickoff dispatches the user earliest Pending group, not the just-in
     Carbon::setTestNow();
 });
 
-it('staggers card_flavor and pr_context by the same backfill delay as the activity group', function (): void {
+it('staggers card_flavor by the same backfill delay as the activity group', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     config()->set('ai.backfill_stagger_seconds', 100);
 
@@ -330,43 +316,34 @@ it('staggers card_flavor and pr_context by the same backfill delay as the activi
     // Second backfilled ingest for the same user gets staggered behind the first.
     $activity = analyzedActivity('2026-05-02 06:00:00', $first->user_id);
     RunCard::factory()->create(['activity_id' => $activity->id]);
-    PersonalRecord::factory()->for($activity->user)->create([
-        'category' => '5km',
-        'activity_id' => $activity->id,
-    ]);
 
     fire($activity);
 
     Bus::assertDispatched(AnalyzeCardFlavorJob::class, fn (AnalyzeCardFlavorJob $job): bool => $job->delay === 100);
-    Bus::assertDispatched(AnalyzePrContextJob::class, fn (AnalyzePrContextJob $job): bool => $job->delay === 100);
     Carbon::setTestNow();
 });
 
-it('staggers AkuProfileVoice by the backfill delay on the ingest that first originates its row', function (): void {
+it('staggers ProfileVoice by the backfill delay on the ingest that first originates its row', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     config()->set('ai.backfill_stagger_seconds', 100);
     $activity = analyzedActivity('2026-05-01 06:00:00');
 
     // Reserve the immediate (0-delay) slot ahead of this ingest, so its own
-    // dispatch — including the AkuProfileVoice row it originates — is staggered.
+    // dispatch — including the ProfileVoice row it originates — is staggered.
     app(StaggerBackfillAction::class)($activity->user_id);
 
     fire($activity);
 
-    Bus::assertDispatched(AnalyzeAkuProfileVoiceJob::class, fn (AnalyzeAkuProfileVoiceJob $job): bool => $job->delay === 100);
+    Bus::assertDispatched(AnalyzeProfileVoiceJob::class, fn (AnalyzeProfileVoiceJob $job): bool => $job->delay === 100);
     Carbon::setTestNow();
 });
 
-it('fills an activity older than the backfill depth cap rule-based (group + card + pr context), no real dispatch', function (): void {
+it('fills an activity older than the backfill depth cap rule-based (group + card), no real dispatch', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     config()->set('ai.backfill_max_age_days', 365);
     // Well over 365 days before 2026-06-10.
     $activity = analyzedActivity('2025-01-01 06:00:00');
     $card = RunCard::factory()->create(['activity_id' => $activity->id]);
-    $pr = PersonalRecord::factory()->for($activity->user)->create([
-        'category' => '5km',
-        'activity_id' => $activity->id,
-    ]);
 
     fire($activity);
 
@@ -380,11 +357,37 @@ it('fills an activity older than the backfill depth cap rule-based (group + card
     $cardRow = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
     expect($cardRow->status)->toBe(AnalysisStatus::Done);
 
-    $prRow = Analysis::query()->forSubject(PersonalRecord::class, $pr->id, AnalysisType::PrContext)->firstOrFail();
-    expect($prRow->status)->toBe(AnalysisStatus::Done);
-
     Carbon::setTestNow();
 });
+
+it('routes an ingest either side of the shipped cutoff differently, against the real config default', function (int $daysAgo, bool $expectRealNarration): void {
+    // No config()->set here on purpose: this is the proof that the value
+    // config/ai.php actually ships is the one production routes on.
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    expect(config('ai.backfill_max_age_days'))->toBe(84);
+
+    $activity = analyzedActivity(Carbon::now()->subDays($daysAgo)->toDateTimeString());
+    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
+
+    fire($activity);
+
+    $cardRow = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
+
+    if ($expectRealNarration) {
+        Bus::assertDispatched(AnalyzeCardFlavorJob::class);
+        expect($cardRow->status)->not->toBe(AnalysisStatus::Done);
+    } else {
+        Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
+        Bus::assertNotDispatched(AnalyzeActivityJob::class);
+        expect($cardRow->status)->toBe(AnalysisStatus::Done)
+            ->and($cardRow->content)->toBeString()->not->toBeEmpty();
+    }
+
+    Carbon::setTestNow();
+})->with([
+    'a day inside the 12-week window still bills the LLM' => [83, true],
+    'the cutoff day itself is filled rule-based' => [84, false],
+]);
 
 it('steady-state (fresh run) dispatches the activity group immediately', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
@@ -559,7 +562,12 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
     $activity = analyzedActivity();
     $weekly = Mockery::mock(WeeklyAggregator::class);
     $weekly->shouldReceive('rebuildForwardFrom')->once()->andReturnNull();
-    $listener = new DispatchPostRunAnalysis(app(AnalysisService::class), $weekly, app(StaggerBackfillAction::class));
+    $listener = new DispatchPostRunAnalysis(
+        app(AnalysisService::class),
+        $weekly,
+        app(StaggerBackfillAction::class),
+        app(BackfillAgeGate::class),
+    );
 
     $listener->handle(new ActivityIngested($activity->id));
 

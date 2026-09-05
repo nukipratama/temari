@@ -31,17 +31,113 @@ describe('Settings', () => {
         render(<Settings />);
         expect(screen.getByText('Notifications')).toBeInTheDocument();
         expect(screen.getByText('Telegram')).toBeInTheDocument();
-        expect(screen.getByText('HR zones')).toBeInTheDocument();
-        expect(screen.getByText('Delete account')).toBeInTheDocument();
+        expect(screen.getByText('heart-rate zones')).toBeInTheDocument();
+        expect(screen.getByText('delete account')).toBeInTheDocument();
     });
 
-    // The page used to open with a bare <h1>Pengaturan</h1>, the only screen in
+    it('expands the HR zones disclosure inline, without navigating', () => {
+        render(<Settings />);
+        expect(screen.queryByLabelText('Max HR')).not.toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: /heart-rate zones/ }),
+        );
+
+        expect(screen.getByLabelText('Max HR')).toBeInTheDocument();
+    });
+
+    it('passes the server-supplied HR-zones profile into the disclosure', () => {
+        render(
+            <Settings
+                hrZones={{
+                    profile: {
+                        max_hr: 200,
+                        resting_hr: 48,
+                        hr_zones: {
+                            Z1: { lo: 122, hi: 143 },
+                            Z2: { lo: 143, hi: 160 },
+                            Z3: { lo: 160, hi: 175 },
+                            Z4: { lo: 175, hi: 185 },
+                            Z5: { lo: 185, hi: 999 },
+                        },
+                        optimal_cadence_spm: 172,
+                    },
+                    source: 'manual',
+                    stravaSyncedLabel: null,
+                    canSyncFromStrava: false,
+                }}
+            />,
+        );
+
+        fireEvent.click(
+            screen.getByRole('button', { name: /heart-rate zones/ }),
+        );
+        expect(screen.getByLabelText('Max HR')).toHaveValue(200);
+    });
+
+    // The prototype's order: the open preferences card first, the collapsed
+    // zones disclosure under it.
+    it('puts training preferences above the zones disclosure', () => {
+        render(<Settings />);
+
+        const preferences = screen.getByText('Training preferences');
+        const zones = screen.getByText('heart-rate zones');
+
+        expect(
+            preferences.compareDocumentPosition(zones) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+    });
+
+    // Reflow #11: a button pair that turns sideways above 900px, not a
+    // SettingsRow list.
+    it('draws the account actions as the prototype button pair', () => {
+        render(<Settings />);
+
+        const logOut = screen.getByRole('button', { name: /log out/ });
+        expect(logOut).toHaveClass('w-full');
+        expect(logOut).toHaveClass('min-[900px]:w-auto');
+        expect(logOut.parentElement).toHaveClass('min-[900px]:flex-row');
+    });
+
+    it('links out to the four legal pages', () => {
+        render(<Settings />);
+
+        expect(screen.getByText('The fine print')).toBeInTheDocument();
+        for (const [label, href] of [
+            ['terms of use', '/terms'],
+            ['privacy policy', '/privacy'],
+            ['how temari uses AI', '/ai-use'],
+            ['training disclaimer', '/training-disclaimer'],
+        ]) {
+            expect(
+                screen.getByRole('link', { name: new RegExp(label) }),
+            ).toHaveAttribute('href', href);
+        }
+    });
+
+    it('renders the data-use statement the server hands it', () => {
+        render(
+            <Settings
+                dataUse={{
+                    headline: 'Your data',
+                    points: ['Inference only, never training.'],
+                }}
+            />,
+        );
+        expect(screen.getByText('Your data')).toBeInTheDocument();
+        expect(
+            screen.getByText('Inference only, never training.'),
+        ).toBeInTheDocument();
+    });
+
+    // The page used to open with a bare untranslated <h1>, the only screen in
     // the app not using the editorial header every other page shares.
     it('opens with the editorial header rather than a bare title', () => {
         render(<Settings />);
-        expect(screen.getByText('Settings')).toBeInTheDocument();
+        expect(screen.getAllByText('Settings').length).toBeGreaterThan(0);
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-            'Set up Temari, your way.',
+            'tune it your way.',
         );
     });
 
@@ -53,33 +149,52 @@ describe('Settings', () => {
         expect(screen.getByText('Where it goes')).toBeInTheDocument();
     });
 
-    // No back affordance anywhere: Settings is one tap from the Me tab and
-    // from the avatar menu on every page, so a breadcrumb has no job here.
-    it('has no back link', () => {
+    // No breadcrumb-style back affordance in the page body: Settings is a
+    // pushed screen and the shell topbar's back chevron owns the way out.
+    it('has no breadcrumb-style back link', () => {
+        const { container } = render(<Settings />);
+        expect(
+            container.querySelector('[data-icon="mdi:arrow-left"]'),
+        ).toBeNull();
+    });
+
+    it('renders no in-page Me nav — the topbar chrome replaces it', () => {
         render(<Settings />);
         expect(
-            screen.queryByRole('link', { name: /^Aku$/ }),
+            screen.queryByRole('link', { name: 'Profile' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('link', { name: 'Accessories' }),
         ).not.toBeInTheDocument();
     });
 
-    // The mute switches say "Kirim ke Telegram" nowhere near their real scope:
-    // maintainer alerts and bot replies bypass them entirely. The group states
-    // that out loud so the toggle is not writing a cheque the code will not
-    // honour. See MaintainerAlerter.
+    // The mute switches say "Send run notifications to Telegram" nowhere near
+    // their real scope: maintainer alerts and bot replies bypass them entirely.
+    // The group states that out loud so the toggle is not writing a cheque the
+    // code will not honour. See MaintainerAlerter.
     it('scopes the channel mutes to run notifications', () => {
         render(<Settings />);
         expect(
-            screen.getByText(/Controls your run notifications/),
+            screen.getByText(/controls your run notifications/),
         ).toBeInTheDocument();
         expect(
             screen.getByText(/system alerts still come through/),
         ).toBeInTheDocument();
     });
 
+    it('posts to /logout when the Log out row is clicked', () => {
+        vi.mocked(router.post).mockReset();
+        render(<Settings />);
+
+        fireEvent.click(screen.getByText('log out'));
+
+        expect(router.post).toHaveBeenCalledWith('/logout');
+    });
+
     it('tints the destructive row so it stops reading as routine', () => {
         render(<Settings />);
-        expect(screen.getByText('Delete account')).toHaveClass(
-            'text-ember-deep',
+        expect(screen.getByText('delete account')).toHaveClass(
+            'text-ember-ink',
         );
     });
 
@@ -99,7 +214,7 @@ describe('Settings', () => {
     it('shows the channel-neutral master switch from notificationPrefs', () => {
         render(<Settings notificationPrefs={prefs} />);
         expect(
-            screen.getByRole('switch', { name: 'Keep me posted' }),
+            screen.getByRole('switch', { name: 'keep me posted' }),
         ).toHaveAttribute('aria-checked', 'false');
     });
 
@@ -116,7 +231,7 @@ describe('Settings', () => {
         vi.mocked(router.patch).mockReset();
         render(<Settings notificationPrefs={prefs} />);
 
-        fireEvent.click(screen.getByRole('switch', { name: 'Keep me posted' }));
+        fireEvent.click(screen.getByRole('switch', { name: 'keep me posted' }));
 
         expect(router.patch).toHaveBeenCalledWith(
             '/profile/notifications',
@@ -129,11 +244,11 @@ describe('Settings', () => {
         );
     });
 
-    it('posts a test notification when "Send test notification" is clicked', () => {
+    it('posts a test notification when "send test notification" is clicked', () => {
         vi.mocked(router.post).mockReset();
         render(<Settings />);
 
-        fireEvent.click(screen.getByText('Send test notification'));
+        fireEvent.click(screen.getByText('send test notification'));
 
         // The button routes through usePendingPost now, which adds its own
         // onStart/onSuccess/onFinish alongside the caller's options.
@@ -163,7 +278,7 @@ describe('Settings', () => {
     it('leaves the test button live when nothing is cooling', () => {
         render(<Settings testCooldownSeconds={null} />);
         expect(
-            screen.getByText('Send test notification').closest('button'),
+            screen.getByText('send test notification').closest('button'),
         ).not.toBeDisabled();
     });
 
@@ -176,7 +291,7 @@ describe('Settings', () => {
         vi.mocked(router.patch).mockReset();
         render(<Settings notificationPrefs={prefs} />);
 
-        const toggle = screen.getByRole('switch', { name: 'Keep me posted' });
+        const toggle = screen.getByRole('switch', { name: 'keep me posted' });
         fireEvent.click(toggle);
 
         expect(router.patch).not.toHaveBeenCalled();
@@ -201,9 +316,9 @@ describe('Settings', () => {
         vi.mocked(router.delete).mockReset();
         render(<Settings />);
 
-        fireEvent.click(screen.getByText('Delete account'));
+        fireEvent.click(screen.getByText('delete account'));
         expect(
-            screen.getByText('Sure you want to delete your account?'),
+            screen.getByText('sure you want to delete your account?'),
         ).toBeInTheDocument();
         // Nothing is deleted until the user confirms.
         expect(router.delete).not.toHaveBeenCalled();
@@ -213,9 +328,9 @@ describe('Settings', () => {
         vi.mocked(router.delete).mockReset();
         render(<Settings />);
 
-        fireEvent.click(screen.getByText('Delete account'));
+        fireEvent.click(screen.getByText('delete account'));
         fireEvent.click(
-            screen.getByRole('button', { name: /Yes, delete my account/ }),
+            screen.getByRole('button', { name: /yes, delete my account/ }),
         );
 
         expect(router.delete).toHaveBeenCalledWith('/account');
@@ -225,15 +340,15 @@ describe('Settings', () => {
         vi.mocked(router.delete).mockReset();
         render(<Settings />);
 
-        fireEvent.click(screen.getByText('Delete account'));
+        fireEvent.click(screen.getByText('delete account'));
         expect(
-            screen.getByText('Sure you want to delete your account?'),
+            screen.getByText('sure you want to delete your account?'),
         ).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
         await waitFor(() => {
             expect(
-                screen.queryByText('Sure you want to delete your account?'),
+                screen.queryByText('sure you want to delete your account?'),
             ).not.toBeInTheDocument();
         });
         expect(router.delete).not.toHaveBeenCalled();

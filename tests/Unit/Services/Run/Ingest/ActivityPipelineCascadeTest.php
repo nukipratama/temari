@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Actions\Gamification\DetectActivityMilestonesAction;
 use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
-use App\Jobs\AI\AnalyzePrContextJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
@@ -76,7 +75,6 @@ it('queues no AI job from inside the ingest transaction', function (): void {
     // belongs to the post-commit listener, so nothing is billable until the
     // watermark is durable.
     Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
-    Bus::assertNotDispatched(AnalyzePrContextJob::class);
     expect(Analysis::query()->count())->toBe(0);
 });
 

@@ -10,23 +10,27 @@ use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\RecapPeriod;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 #[Signature('ai:monthly-recap')]
 #[Description('Kick off the connected monthly-recap chain: narrate every completed month whose recap is not Done, oldest first (demo excluded)')]
 class MonthlyRecapCommand extends Command
 {
-    public function handle(AnalysisService $service): int
+    public function handle(AnalysisService $service, BackfillAgeGate $ages): int
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
+
         // The latest fully-closed month (last month). The current, still-running
         // month is excluded so a recap never narrates an incomplete month.
         $lastClosedMonth = RecapPeriod::lastClosedMonth();
-        $oldestRealMonth = Carbon::now()->subDays((int) config('ai.backfill_max_age_days'))->format('Y-m');
+        $oldestRealMonth = $ages->cutoffMonth();
 
         $stagger = (int) config('ai.backfill_stagger_seconds', 360);
 

@@ -38,6 +38,7 @@ final readonly class StructuredChatCaller
         private AzureOpenAIClient $azure,
         private RecordTokenUsageAction $recordUsage,
         private AgentLoop $loop,
+        private NarrationOrigin $origin,
     ) {
     }
 
@@ -224,6 +225,7 @@ final readonly class StructuredChatCaller
             latencyMs: self::latencyMs($startedAt),
             truncated: $response !== null && self::isTruncated($response),
             userId: $userId,
+            origin: $this->origin->current(),
         );
     }
 

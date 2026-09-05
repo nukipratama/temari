@@ -3,39 +3,38 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\AccountController;
-use App\Http\Controllers\AksesoriController;
 use App\Http\Controllers\Api\AnalysisController;
-use App\Http\Controllers\Api\CardReplayController;
-use App\Http\Controllers\Api\CardSeenController;
+use App\Http\Controllers\Api\RunQuestionController;
+use App\Http\Controllers\Api\NotificationReadController;
 use App\Http\Controllers\Auth\DemoAuthController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
-use App\Http\Controllers\BadgeBoardController;
-use App\Http\Controllers\CalendarController;
-use App\Http\Controllers\CardController;
 use App\Http\Controllers\ClientErrorController;
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DevtoolsDesignController;
 use App\Http\Controllers\DevtoolsIndexController;
+use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\InboxController;
+use App\Http\Controllers\LegalController;
 use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\NotificationTestController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
-use App\Http\Controllers\RekorController;
+use App\Http\Controllers\RootController;
 use App\Http\Controllers\RunController;
 use App\Http\Controllers\RunnerZonesController;
 use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\Strava\ResyncActivityController;
 use App\Http\Controllers\Strava\StravaWebhookController;
 use App\Http\Controllers\Strava\SyncController;
-use App\Http\Controllers\Notifications\SendActivityNotificationController;
 use App\Http\Controllers\Notifications\SendMonthlyRecapNotificationController;
 use App\Http\Controllers\Notifications\SendWeeklyRecapNotificationController;
 use App\Http\Controllers\Telegram\TelegramConnectionController;
 use App\Http\Controllers\Telegram\TelegramWebhookController;
 use App\Http\Controllers\WebPush\PushSubscriptionController;
 use App\Http\Controllers\TokenUsageController;
+use App\Http\Controllers\TrainingPreferencesController;
+use App\Http\Controllers\TrendsController;
 use Illuminate\Support\Facades\Route;
 
 // Strava push subscription. Called by Strava unauthenticated — gated by the
@@ -62,6 +61,15 @@ Route::post('/client-errors', ClientErrorController::class)
     ->middleware('throttle:client-errors')
     ->name('client-errors');
 
+// Public and unauthenticated on purpose: someone deciding whether to connect
+// their Strava has to be able to read these before there is an account.
+Route::get('/terms', [LegalController::class, 'terms'])->name('legal.terms');
+Route::get('/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
+Route::get('/ai-use', [LegalController::class, 'aiUse'])->name('legal.ai-use');
+Route::get('/training-disclaimer', [LegalController::class, 'trainingDisclaimer'])->name('legal.training-disclaimer');
+
+Route::get('/', RootController::class)->middleware('onboarded')->name('dashboard');
+
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
     // Throttled like the other public POSTs to blunt session-creation spam; it
@@ -76,8 +84,13 @@ Route::middleware('guest')->group(function (): void {
 // The callback upserts by athlete id, so a logged-in user re-authing just refreshes
 // their existing connection. Keeping these out of the `guest` group is what lets the
 // reconnect flow reach the redirect/callback at all instead of bouncing to dashboard.
-Route::get('/auth/strava/redirect', [StravaAuthController::class, 'redirect'])->name('auth.strava.redirect');
-Route::get('/auth/strava/callback', [StravaAuthController::class, 'callback'])->name('auth.strava.callback');
+// Throttled per IP: this is the account-creation path, open to anyone, and the
+// callback spends a Strava token exchange (plus a history backfill on a first
+// connect) before any session exists to key a limit by.
+Route::middleware('throttle:strava-oauth')->group(function (): void {
+    Route::get('/auth/strava/redirect', [StravaAuthController::class, 'redirect'])->name('auth.strava.redirect');
+    Route::get('/auth/strava/callback', [StravaAuthController::class, 'callback'])->name('auth.strava.callback');
+});
 
 Route::middleware(['auth'])->group(function (): void {
     // Reachable regardless of onboarding status: the wizard itself, and
@@ -90,28 +103,17 @@ Route::middleware(['auth'])->group(function (): void {
 });
 
 Route::middleware(['auth', 'onboarded'])->group(function (): void {
-    Route::get('/', DashboardController::class)->name('dashboard');
-
     // Conditional GET on the three history-read pages: the same URL is genuinely
     // revisited (filter/tab toggling, month paging, deep links back into a past
     // run) and their payloads are the largest in the app.
-    Route::get('/activities', [RunController::class, 'index'])
+    // /history absorbs the former /activities (list) and /calendar pages behind
+    // ?view=list|calendar (default list) — see HistoryController's docblock.
+    Route::get('/history', [HistoryController::class, 'index'])
         ->middleware('inertia-etag')
-        ->name('activities.index');
+        ->name('history');
     Route::get('/activities/{activity}', [RunController::class, 'show'])
         ->middleware('inertia-etag')
         ->name('activities.show');
-    Route::post('/activities/{activity}/resync', ResyncActivityController::class)
-        ->middleware('throttle:strava-sync')
-        ->name('activities.resync');
-    Route::post('/activities/{activity}/send', SendActivityNotificationController::class)
-        ->middleware('block-demo-telegram')
-        ->name('activities.send');
-
-    Route::get('/calendar', CalendarController::class)
-        ->middleware('inertia-etag')
-        ->name('calendar');
-
     Route::post('/recaps/weekly/{snapshot}/send', SendWeeklyRecapNotificationController::class)
         ->middleware('block-demo-telegram')
         ->name('recaps.weekly.send');
@@ -119,12 +121,7 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
         ->middleware('block-demo-telegram')
         ->name('recaps.monthly.send');
 
-    Route::get('/cards', [CardController::class, 'index'])->name('cards.index');
-
-    // Catatan merged into Activities — keep deep links working.
-    Route::permanentRedirect('/catatan', '/activities');
-
-    Route::get('/records', RekorController::class)->name('records');
+    Route::get('/trends', TrendsController::class)->name('trends');
 
     Route::get('/race', [RaceController::class, 'index'])->name('race');
     Route::post('/race', [RaceController::class, 'store'])->name('race.store');
@@ -132,11 +129,7 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::get('/plan', [PlanController::class, 'index'])->name('plan');
     Route::post('/plan/regenerate', [PlanController::class, 'regenerate'])->name('plan.regenerate');
     Route::patch('/plan/sessions/{plannedSession}', [PlanController::class, 'update'])->name('plan.sessions.update');
-    Route::delete('/plan/sessions/{plannedSession}', [PlanController::class, 'destroy'])->name('plan.sessions.destroy');
-    Route::get('/accessories', [AksesoriController::class, 'index'])->name('accessories');
-    Route::post('/api/accessories/equip', [AksesoriController::class, 'equip'])
-        ->name('api.accessories.equip');
-    Route::get('/badges', [BadgeBoardController::class, 'index'])->name('badges');
+    Route::get('/inbox', InboxController::class)->name('inbox');
 
     Route::get('/profile', ProfileController::class)->name('profile');
 
@@ -159,36 +152,18 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 
     Route::delete('/account', [AccountController::class, 'destroy'])->name('account.destroy');
 
-    Route::get('/settings/zones', [RunnerZonesController::class, 'index'])->name('settings.zones');
     Route::patch('/settings/zones', [RunnerZonesController::class, 'update'])->name('settings.zones.update');
     Route::delete('/settings/zones', [RunnerZonesController::class, 'resetToDefault'])->name('settings.zones.reset');
     Route::post('/settings/zones/resync-strava', [RunnerZonesController::class, 'resyncFromStrava'])->name('settings.zones.resync');
+    Route::patch('/settings/training-preferences', [TrainingPreferencesController::class, 'update'])->name('settings.training-preferences.update');
 
     Route::post('/strava/sync', SyncController::class)
         ->middleware('throttle:strava-sync')
         ->name('strava.sync');
 
-    // Legacy 301 redirects — keep deep links working from external bookmarks.
-    Route::permanentRedirect('/runs', '/activities');
-    Route::redirect('/runs/{activity}', '/activities/{activity}', 301);
-    Route::permanentRedirect('/progress', '/activities');
-    Route::permanentRedirect('/kartu', '/cards');
-    Route::permanentRedirect('/pengaturan', '/settings');
-    Route::permanentRedirect('/profil', '/profile');
-    Route::permanentRedirect('/kalender', '/calendar');
-    Route::permanentRedirect('/rekor', '/records');
-    Route::permanentRedirect('/aksesori', '/accessories');
-    Route::permanentRedirect('/akun', '/account');
-    // /goals (the old accessory-progress catalog page) retired in favor of
-    // live progress on /accessories — collapse the old /target -> /goals hop
-    // to go straight there, and keep /goals itself resolving for bookmarks.
-    Route::permanentRedirect('/target', '/accessories');
-    Route::permanentRedirect('/goals', '/accessories');
-
-    Route::post('/api/cards/{card}/seen', CardSeenController::class)
-        ->name('api.cards.seen');
-    Route::post('/api/cards/{card}/replay', CardReplayController::class)
-        ->name('api.cards.replay');
+    Route::post('/api/notifications/{notification}/read', NotificationReadController::class)
+        ->whereNumber('notification')
+        ->name('api.notifications.read');
 
     Route::get('/api/analyses/{type}/{subjectId}', [AnalysisController::class, 'show'])
         ->whereNumber('subjectId')
@@ -198,17 +173,27 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
         ->middleware('throttle:analysis-trigger')
         ->name('api.analyses.trigger');
 
+    Route::get('/api/activities/{activity}/questions', [RunQuestionController::class, 'index'])
+        ->whereNumber('activity')
+        ->name('api.activities.questions.index');
+    Route::post('/api/activities/{activity}/questions', [RunQuestionController::class, 'store'])
+        ->whereNumber('activity')
+        ->middleware('throttle:run-question')
+        ->name('api.activities.questions.store');
+
 });
 
-// Gated by HTTP Basic Auth against a shared devtools password, independent of
-// any Strava session — see EnsureDevtoolsAccess. Throttled like the other
-// public POSTs (60/min/IP) so a wrong password can't be brute-forced at
+// Gated in production by HTTP Basic Auth against a shared devtools password,
+// independent of any Strava session, and open everywhere else — see
+// EnsureDevtoolsAccess. Throttled like the other
+// public POSTs (60/min/IP) so a wrong password can't be broute-forced at
 // line speed; generous enough to not trip Pulse's live-polling requests.
 Route::middleware(['throttle:60,1', 'devtools'])->group(function (): void {
     Route::get('/devtools', DevtoolsIndexController::class)->name('devtools.index');
-    Route::get('/ai-usage', [TokenUsageController::class, 'show'])->name('ai-usage');
-    Route::post('/ai-usage/recover', [TokenUsageController::class, 'recover'])->name('ai-usage.recover');
-    Route::post('/ai-usage/users/{userId}/retry-failed', [TokenUsageController::class, 'retryFailed'])
+    Route::get('/devtools/design', DevtoolsDesignController::class)->name('devtools.design');
+    Route::get('/devtools/ai-usage', [TokenUsageController::class, 'show'])->name('devtools.ai-usage');
+    Route::post('/devtools/ai-usage/recover', [TokenUsageController::class, 'recover'])->name('devtools.ai-usage.recover');
+    Route::post('/devtools/ai-usage/users/{userId}/retry-failed', [TokenUsageController::class, 'retryFailed'])
         ->whereNumber('userId')
-        ->name('ai-usage.retry-failed');
+        ->name('devtools.ai-usage.retry-failed');
 });

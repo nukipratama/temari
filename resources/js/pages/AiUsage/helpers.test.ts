@@ -39,10 +39,11 @@ describe('navigate', () => {
             from: '2026-05-01',
             to: '2026-05-19',
             kind: null,
+            origin: null,
         });
 
         expect(router.get).toHaveBeenCalledWith(
-            '/ai-usage',
+            '/devtools/ai-usage',
             { from: '2026-05-01', to: '2026-05-19' },
             { preserveState: true, preserveScroll: true },
         );
@@ -54,10 +55,11 @@ describe('navigate', () => {
             from: '2026-05-01',
             to: '2026-05-19',
             kind: null,
+            origin: null,
         });
 
         expect(router.get).toHaveBeenCalledWith(
-            '/ai-usage',
+            '/devtools/ai-usage',
             { range: '7d' },
             { preserveState: true, preserveScroll: true },
         );
@@ -69,10 +71,11 @@ describe('navigate', () => {
             from: '2026-05-01',
             to: '2026-05-19',
             kind: 'briefing',
+            origin: null,
         });
 
         expect(router.get).toHaveBeenCalledWith(
-            '/ai-usage',
+            '/devtools/ai-usage',
             { range: '7d', kind: 'briefing' },
             { preserveState: true, preserveScroll: true },
         );
@@ -81,12 +84,12 @@ describe('navigate', () => {
 
 describe('presetHref', () => {
     it('builds a date-free href so the link stays valid tomorrow', () => {
-        expect(presetHref('30d', null)).toBe('/ai-usage?range=30d');
+        expect(presetHref('30d', null)).toBe('/devtools/ai-usage?range=30d');
     });
 
     it('preserves the active kind filter', () => {
         expect(presetHref('7d', 'briefing')).toBe(
-            '/ai-usage?range=7d&kind=briefing',
+            '/devtools/ai-usage?range=7d&kind=briefing',
         );
     });
 });
@@ -105,10 +108,10 @@ describe('PRESETS', () => {
 
 describe('day labels', () => {
     it('formats a day key as day + short month', () => {
-        expect(formatDayLabel('2026-05-18')).toBe('May 18');
+        expect(formatDayLabel('2026-05-18')).toBe('may 18');
     });
 
     it('formats a day key as short weekday + day for the dense axis', () => {
-        expect(formatDayLabelShort('2026-05-18')).toBe('18 Mon');
+        expect(formatDayLabelShort('2026-05-18')).toBe('18 mon');
     });
 });

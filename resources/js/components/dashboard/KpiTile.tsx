@@ -18,10 +18,10 @@ interface KpiTileProps {
 }
 
 const TONE_CLASS: Record<Tone, string> = {
-    positive: 'text-mood-easy',
-    warning: 'text-mood-blazing',
-    alert: 'text-mood-gassed',
-    neutral: 'text-ink',
+    positive: 'text-mood-easy-ink',
+    warning: 'text-mood-blazing-ink',
+    alert: 'text-mood-gassed-ink',
+    neutral: 'text-foreground',
 };
 
 const TONE_CLASS_ON_SKY: Record<Tone, string> = {
@@ -42,16 +42,16 @@ export default function KpiTile({
     return (
         <div
             className={cn(
-                'rounded-2xl border p-3 shadow-sm sm:px-4 sm:py-3.5',
+                'rounded-lg border p-3 shadow-e1',
                 onSky
                     ? 'border-cream/[0.12] bg-cream/[0.06]'
-                    : 'border-line bg-surface-card',
+                    : 'border-border bg-card',
             )}
         >
             <div
                 className={cn(
-                    'flex items-center gap-1 font-mono text-[12px] font-bold uppercase tracking-wider sm:text-xs',
-                    onSky ? 'text-ink-on-sky' : 'text-ink-2',
+                    'flex items-center gap-1 font-mono text-[0.75rem] font-bold uppercase tracking-wider',
+                    onSky ? 'text-ink-on-sky' : 'text-text-2',
                 )}
             >
                 <span>{label}</span>
@@ -61,7 +61,7 @@ export default function KpiTile({
             </div>
             <div
                 className={cn(
-                    'mt-1.5 font-mono text-2xl font-bold tabular-nums sm:mt-2 sm:text-3xl',
+                    'mt-1.5 font-mono text-2xl font-bold tabular-nums',
                     onSky ? TONE_CLASS_ON_SKY[tone] : TONE_CLASS[tone],
                 )}
             >
@@ -71,7 +71,7 @@ export default function KpiTile({
                 <div
                     className={cn(
                         'mt-1 text-xs',
-                        onSky ? 'text-ink-on-sky' : 'text-ink-3',
+                        onSky ? 'text-ink-on-sky' : 'text-text-3',
                     )}
                 >
                     {sub}

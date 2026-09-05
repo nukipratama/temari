@@ -6,6 +6,7 @@ namespace App\Services\AI;
 
 use Closure;
 use App\Jobs\AI\AnalyzeActivityJob;
+use App\Jobs\AI\AnalyzeBaseJob;
 use App\Jobs\AI\AnalyzeGroupJob;
 use App\Jobs\AI\AnalyzeRowJob;
 use App\Models\Activity;
@@ -45,6 +46,8 @@ class AnalysisService
         private readonly AzureConfigCircuitBreaker $configBreaker,
         private readonly MaintainerAlerter $alerter,
         private readonly ChainResolver $chains,
+        private readonly CostCeilingLedger $ceilingLedger,
+        private readonly NarrationOrigin $origin,
     ) {
     }
 
@@ -94,10 +97,10 @@ class AnalysisService
      * {@see self::withoutDispatching()}, so no job is queued, no cooldown starts
      * and no notification fans out. The demo login is public and a manual
      * trigger deliberately fires past the cost ceiling, so the demo account's
-     * "Baca ulang" resolves here and can never bill Azure.
+     * "Reread" resolves here and can never bill Azure.
      *
      * $refillDone controls whether an already-Done row gets overwritten: the
-     * demo "Baca ulang" trigger wants true (its content is rule-based to begin
+     * demo "Reread" trigger wants true (its content is rule-based to begin
      * with, so refilling in place is a no-op it can rely on), but a caller
      * filling in a too-old-for-the-LLM backfill row must pass false — that row
      * can legitimately already hold real, billed-for narration (e.g. a Strava
@@ -117,9 +120,7 @@ class AnalysisService
             return $row;
         }
 
-        $this->withoutDispatching(function () use ($row): void {
-            $this->markDone($row, app(RuleBasedNarrationFiller::class)->fillFor($row));
-        });
+        $this->fillRuleBased($row);
 
         return $row;
     }
@@ -129,7 +130,7 @@ class AnalysisService
      * invalidating. For windowed cadences (weekly/monthly) the LLM generation
      * is deferred to the scheduled command that fires once the window closes,
      * instead of re-billing the narration on every ingest inside the window.
-     * The row stays visible to the UI (empty state + manual "Baca ulang").
+     * The row stays visible to the UI (empty state + manual "Reread").
      */
     public function requestDeferred(
         Model|string $subjectOrType,
@@ -216,7 +217,7 @@ class AnalysisService
             'content_fingerprint' => $fingerprint ?? $row->content_fingerprint,
         ]);
 
-        // Start the re-trigger cooldown so a "Baca ulang" can't re-fire the LLM
+        // Start the re-trigger cooldown so a "Reread" can't re-fire the LLM
         // for the same block within the window (covers both auto and manual).
         // Skipped under withoutDispatching (demo seed) so a freshly seeded demo
         // stays instantly re-narratable on demand. afterCommit: AnalyzeGroupJob
@@ -230,9 +231,9 @@ class AnalysisService
         // Fan out a notification for the notifiable types. Suppressed under
         // withoutDispatching (demo seed); the notification's via() owns every guard
         // (demo / recency / opt-in / channel wired) and the channel owns idempotency,
-        // so an unwired or opted-out user resolves to no channels and nothing is
-        // enqueued. afterCommit so the queued send can't run before the row it reads
-        // is committed.
+        // so a demo or opted-out user resolves to no channels at all while an
+        // unwired one still gets the inbox record. afterCommit so the queued send
+        // can't run before the row it reads is committed.
         if (! $this->dispatchSuppressed && $this->eligibility->isNotifiable($row)) {
             $this->eligibility->resolveUser($row)?->notify(
                 new AnalysisReadyNotification($row)->afterCommit(),
@@ -271,11 +272,15 @@ class AnalysisService
         $row = $this->upsertRow($subjectType, $subjectId, $type, $discriminator);
         $justCreated = $row->wasRecentlyCreated;
 
-        // Generation paused (cost ceiling / AI off / Azure unset / demo seed):
-        // stay honest -> a fresh row rests Pending for the empty state, an existing
-        // Done keeps its real prose. Never substitute a template; ai:self-heal
-        // resumes it once generation is back (demo flat-fills via its own seeder).
+        // Generation paused (AI off / Azure unset / broken / demo seed): stay
+        // honest -> a fresh row rests Pending for the empty state, an existing
+        // Done keeps its real prose, and ai:self-heal resumes it once generation
+        // is back. The spend ceiling is the one pause that degrades instead.
         if (! $this->autoDispatchEnabled()) {
+            if ($this->costCeilingDegraded()) {
+                $this->degradeToRuleBased($row);
+            }
+
             return $row;
         }
 
@@ -294,7 +299,7 @@ class AnalysisService
 
         /** @var class-string<AnalyzeRowJob> $jobClass */
         $jobClass = $type->jobClass();
-        $this->dispatchPending($jobClass::dispatch($row->id), $delaySeconds);
+        $this->dispatchPending($this->stamped(new $jobClass($row->id)), $delaySeconds);
 
         return $row;
     }
@@ -313,6 +318,12 @@ class AnalysisService
         $anyJustCreated = $rows->contains(fn (Analysis $row): bool => $row->wasRecentlyCreated);
 
         if (! $this->autoDispatchEnabled()) {
+            if ($this->costCeilingDegraded()) {
+                foreach ($rows as $row) {
+                    $this->degradeToRuleBased($row);
+                }
+            }
+
             return;
         }
 
@@ -330,7 +341,20 @@ class AnalysisService
             }
         }
 
-        $this->dispatchPending($jobClass::dispatch($subjectId, $discriminator), $delaySeconds);
+        $this->dispatchPending($this->stamped(new $jobClass($subjectId, $discriminator)), $delaySeconds);
+    }
+
+    /**
+     * Stamp the dispatching entry point's origin onto the job, so the call it
+     * eventually makes is metered against what started it rather than against
+     * whichever narrator answered. The value rides the queue on the job itself;
+     * {@see \App\Jobs\AI\AnalyzeBaseJob} restores it before generating.
+     */
+    private function stamped(AnalyzeBaseJob $job): PendingDispatch
+    {
+        $job->origin = $this->origin->current();
+
+        return dispatch($job);
     }
 
     private function upsertRow(
@@ -576,10 +600,12 @@ class AnalysisService
     }
 
     /**
-     * True when LLM generation is paused for everyone right now: daily cost
-     * ceiling hit, the AiEnabled kill-switch off, Azure unconfigured, or a
-     * demo-seed suppression. ai:self-heal early-exits on it and the analyze jobs
-     * refuse to bill on it; a paused row rests Pending until generation resumes.
+     * True when nothing may be billed to the LLM for anyone right now: daily
+     * cost ceiling hit, the AiEnabled kill-switch off, Azure unconfigured, or a
+     * demo-seed suppression. ai:self-heal early-exits on it, manual triggers are
+     * refused on it, and the analyze jobs refuse to bill on it. Rows rest Pending
+     * until generation resumes, except under the ceiling, which serves them from
+     * the filler instead ({@see self::costCeilingDegraded()}).
      */
     public function generationPaused(): bool
     {
@@ -588,46 +614,103 @@ class AnalysisService
 
     /**
      * Why generation is paused right now, for the /pulse dashboard's status
-     * line — null when healthy. Checked in the same precedence as
-     * {@see self::autoDispatchEnabled()}, but reported as a reason instead of
-     * a single boolean so "kill switch off" reads differently from "cost
-     * ceiling hit today".
+     * line — null when healthy. The same list {@see self::autoDispatchEnabled()}
+     * decides on, reported as a reason instead of a single boolean so "kill
+     * switch off" reads differently from "cost ceiling hit today".
      */
     public function pauseReason(): ?string
     {
+        return $this->blockingReason(withBudget: true, probeBreaker: false);
+    }
+
+    private function autoDispatchEnabled(): bool
+    {
+        return $this->blockingReason(withBudget: true, probeBreaker: true) === null;
+    }
+
+    private function dispatchAllowedIgnoringBudget(): bool
+    {
+        return $this->blockingReason(withBudget: false, probeBreaker: true) === null;
+    }
+
+    /**
+     * The first condition stopping an auto-dispatch, or null when none does.
+     * `withBudget: false` drops the daily spend ceiling so the caller can tell a
+     * budget stop from every other one.
+     *
+     * The breaker half-opens after a cooldown to allow a single probe, so a
+     * caller about to dispatch passes `probeBreaker: true` to take it; a caller
+     * only reporting passes false and reads the state without consuming it.
+     */
+    private function blockingReason(bool $withBudget, bool $probeBreaker): ?string
+    {
+        if ($this->dispatchSuppressed) {
+            return 'suppressed';
+        }
+
         if (! $this->config->boolean(AppConfigKey::AiEnabled)) {
             return 'kill_switch';
+        }
+
+        if (! (bool) config('ai.auto_dispatch', true)) {
+            return 'auto_dispatch';
         }
 
         if (blank(config('azure_openai.uri')) || blank(config('azure_openai.api_key'))) {
             return 'unconfigured';
         }
 
-        if ($this->dailyCostCeilingExceeded()) {
-            return 'cost_ceiling';
+        if ($probeBreaker ? ! $this->configBreaker->allowsRequest() : $this->configBreaker->isTripped()) {
+            return 'config';
         }
 
-        // A tripped config breaker (persistent 401/403 or wrong base URL) means
-        // the key/URL is fat-fingered: distinct from "unconfigured" (blank env).
-        if ($this->configBreaker->isTripped()) {
-            return 'config';
+        if ($withBudget && $this->dailyCostCeilingExceeded()) {
+            return 'cost_ceiling';
         }
 
         return null;
     }
 
-    private function autoDispatchEnabled(): bool
+    /**
+     * True when the daily spend ceiling is the *only* reason nothing may be
+     * billed right now. Every other stop is a fault or an explicit switch, which
+     * a Pending row honestly represents and ai:self-heal resumes for free; the
+     * budget instead resolves on a clock, so waiting buys nothing and the block
+     * is served from the deterministic filler.
+     */
+    public function costCeilingDegraded(): bool
     {
-        return ! $this->dispatchSuppressed
-            && $this->config->boolean(AppConfigKey::AiEnabled)
-            && (bool) config('ai.auto_dispatch', true)
-            && filled(config('azure_openai.uri'))
-            && filled(config('azure_openai.api_key'))
-            && ! $this->dailyCostCeilingExceeded()
-            // A tripped config breaker pauses generation (rows stay Pending, no
-            // attempt burn); it half-opens after a cooldown so a fixed env
-            // auto-resumes via the next dispatch/self-heal for free.
-            && $this->configBreaker->allowsRequest();
+        return $this->dispatchAllowedIgnoringBudget() && $this->dailyCostCeilingExceeded();
+    }
+
+    /**
+     * Serve a row from the deterministic filler because the spend ceiling is
+     * hit. Filled under {@see self::withoutDispatching()} so no job is queued, no
+     * cooldown starts and no notification claims a narration that was never
+     * written.
+     *
+     * Two statuses are left alone. An already-Done row keeps the real prose it
+     * was billed for. A Failed row is a genuine fault (content filter, malformed
+     * response, spent retry budget) that the bounded self-heal and the /devtools/ai-usage
+     * dead-letter exist to surface, so it stays Failed with its "Try again"
+     * rather than hiding a break behind plausible content — on a day the ceiling
+     * trips repeatedly, filling it would erase that signal every time.
+     */
+    public function degradeToRuleBased(Analysis $row): void
+    {
+        if ($row->status === AnalysisStatus::Done || $row->status === AnalysisStatus::Failed) {
+            return;
+        }
+
+        $this->fillRuleBased($row);
+        $this->ceilingLedger->recordDegradedFill();
+    }
+
+    private function fillRuleBased(Analysis $row): void
+    {
+        $this->withoutDispatching(function () use ($row): void {
+            $this->markDone($row, app(RuleBasedNarrationFiller::class)->fillFor($row));
+        });
     }
 
     /**
@@ -656,6 +739,7 @@ class AnalysisService
             'today_cost' => $todayCost,
             'ceiling' => (float) $ceiling,
         ]);
+        $this->ceilingLedger->recordTrip();
 
         return true;
     }

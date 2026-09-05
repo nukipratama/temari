@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\SeasonGoal;
+use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\SeasonService;
@@ -128,6 +129,33 @@ it('auto-cycles a self-scaled season into a fresh one once it expires, without o
         ->and($first->fresh()->ends_at->toDateString())->toBe(Carbon::today()->copy()->subDay()->toDateString());
 });
 
+it('peeks null when the user has no season yet, without creating one', function (): void {
+    $user = User::factory()->create();
+
+    expect($this->service->peekCurrent($user, Carbon::today()))->toBeNull()
+        ->and(Season::query()->where('user_id', $user->id)->count())->toBe(0);
+});
+
+it('peeks the same season ensureCurrent already created, without mutating it', function (): void {
+    $user = User::factory()->create();
+    $created = $this->service->ensureCurrent($user, Carbon::today());
+
+    $peeked = $this->service->peekCurrent($user, Carbon::today());
+
+    expect($peeked)->not->toBeNull()
+        ->and($peeked->id)->toBe($created->id)
+        ->and(Season::query()->where('user_id', $user->id)->count())->toBe(1);
+});
+
+it('peeks null once a self-scaled season has expired, rather than treating it as still current', function (): void {
+    $user = User::factory()->create();
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+
+    Carbon::setTestNow($season->ends_at->copy()->addDay()->format('Y-m-d H:i:s'));
+
+    expect($this->service->peekCurrent($user, Carbon::today()))->toBeNull();
+});
+
 it('scales the quality-session target with the athlete\'s own trailing session count', function (): void {
     $user = User::factory()->create();
     foreach (range(0, 3) as $i) {
@@ -144,4 +172,14 @@ it('scales the quality-session target with the athlete\'s own trailing session c
     // A 6-runs/week athlete gets 2 quality slots/week across a 12-week build/deload
     // cycle (3 build weeks at 2 slots + 1 deload week at 0, repeated 3x) = 18.
     expect($qualityGoal->target)->toBe(18.0);
+});
+
+it('respects an explicit sessions_per_week preference below the old behavioral floor of 3', function (): void {
+    $user = User::factory()->create();
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 2, 'run_days' => null, 'long_run_day' => null]);
+
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $sessionsGoal = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_sessions_completed')->first();
+
+    expect($sessionsGoal->target)->toBe(24.0); // 2 sessions/week * 12-week self-scaled horizon
 });

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 36" width="128" height="36" role="img" aria-label="temari">
+  <style>
+    .mark-base { stroke: var(--mark-base, #171f28); }
+    .mark-lead { stroke: var(--mark-lead, #ade047); }
+    .wordmark  { fill: var(--mark-word, #171f28); }
+  </style>
+  <g transform="translate(0 4) scale(0.28)" fill="none" stroke-width="11" stroke-linecap="round">
+    <path class="mark-lead" d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"/>
+    <path class="mark-base" d="M50 27 A23 23 0 1 1 30.09 61.5"/>
+  </g>
+  <text class="wordmark" x="38" y="26.5"
+        font-family="'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif"
+        font-size="25" font-weight="800" letter-spacing="-0.6">temari</text>
+</svg>

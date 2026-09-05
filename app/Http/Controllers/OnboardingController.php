@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\CompleteOnboardingRequest;
 use App\Models\RaceGoal;
+use App\Models\TrainingPreference;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -52,6 +53,19 @@ class OnboardingController extends Controller
                     ]);
                 }
             });
+        }
+
+        if ($request->hasAny(['experience_level', 'sessions_per_week', 'goal_type', 'run_days', 'long_run_day'])) {
+            TrainingPreference::query()->updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'experience_level' => $request->validated('experience_level'),
+                    'sessions_per_week' => $request->validated('sessions_per_week'),
+                    'goal_type' => $request->validated('goal_type'),
+                    'run_days' => $request->validated('run_days'),
+                    'long_run_day' => $request->validated('long_run_day'),
+                ],
+            );
         }
 
         $user->markOnboarded();

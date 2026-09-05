@@ -1,5 +1,7 @@
-import { Icon } from '@iconify/react';
 import { useState } from 'react';
+
+import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 
 /** Inline confirmation for a `back()->with('info', …)` flash (e.g. a retry
  * confirmation). This page renders standalone, not under AppShell, so it
@@ -14,16 +16,20 @@ export default function FlashBanner({
     }
 
     return (
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface-elev px-4 py-3 text-sm text-ink">
+        <Card
+            tone="card"
+            padding="panel"
+            className="mb-4 flex items-center justify-between gap-3 bg-popover text-sm text-foreground"
+        >
             <span>{message}</span>
             <button
                 type="button"
                 onClick={() => setDismissed(true)}
                 aria-label="Close"
-                className="focus-ring shrink-0 rounded-full p-1 text-ink-3 hover:text-ink"
+                className="focus-ring shrink-0 rounded-full p-1 text-text-3 hover:text-foreground"
             >
                 <Icon icon="mdi:close" width={16} aria-hidden />
             </button>
-        </div>
+        </Card>
     );
 }

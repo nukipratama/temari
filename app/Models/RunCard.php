@@ -106,6 +106,35 @@ class RunCard extends Model
     }
 
     /**
+     * The date each badge slug was first earned by this user, oldest
+     * occurrence only, with the rarity of the card that earned it — a "first
+     * time" story for Trends' badge chips, not a log of every repeat.
+     *
+     * @return array<string, array{date: string, rarity: string}>
+     */
+    public static function firstEarnedBadgesForUser(int $userId): array
+    {
+        $first = [];
+
+        self::query()
+            ->join('activities', 'activities.id', '=', 'run_cards.activity_id')
+            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+            ->where('activities.user_id', $userId)
+            ->orderBy('activity_details.start_date_local')
+            ->select('run_cards.badges', 'run_cards.rarity', 'activity_details.start_date_local')
+            ->lazy()
+            ->each(function (self $row) use (&$first): void {
+                /** @var string $startDateLocal */
+                $startDateLocal = $row->getAttribute('start_date_local');
+                foreach ($row->badges ?? [] as $badge) {
+                    $first[$badge] ??= ['date' => $startDateLocal, 'rarity' => $row->rarity->value];
+                }
+            });
+
+        return $first;
+    }
+
+    /**
      * Cards owned by the given user (i.e. whose source activity belongs to them).
      *
      * @param  Builder<RunCard>  $query
@@ -132,6 +161,7 @@ class RunCard extends Model
     protected function casts(): array
     {
         return [
+            'activity_id' => 'integer',
             'badges' => 'array',
             'rarity' => Rarity::class,
             'pr_set' => 'boolean',

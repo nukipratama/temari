@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Temari">
+  <style>
+    .mark-base { stroke: var(--mark-base, #171f28); }
+    .mark-lead { stroke: var(--mark-lead, #ade047); }
+  </style>
+  <g fill="none" stroke-width="11" stroke-linecap="round">
+    <path class="mark-lead" d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"/>
+    <path class="mark-base" d="M50 27 A23 23 0 1 1 30.09 61.5"/>
+  </g>
+</svg>

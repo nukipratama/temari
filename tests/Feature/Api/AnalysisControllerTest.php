@@ -2,21 +2,27 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\AnalysisController;
+use App\Http\Requests\TriggerAnalysisRequest;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeActivityJob;
+use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\PersonalRecord;
 use App\Models\RunnerProfile;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\BackfillAgeGate;
+use App\Services\AI\ChainResolver;
 use App\Services\Run\Metrics\SummaryRecomputer;
+use Illuminate\Auth\Access\AuthorizationException;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use App\Support\Cooldown;
@@ -29,6 +35,14 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Bus::fake();
+    // The briefing cases key off a literal 2026-05-18 day. Pin the clock to it
+    // so they stay inside the narration age cutoff as wall time moves on; the
+    // cases below that need another date set their own.
+    Carbon::setTestNow('2026-05-18 05:30:00');
+});
+
+afterEach(function (): void {
+    Carbon::setTestNow();
 });
 
 it('rejects unknown analysis types with 422', function (): void {
@@ -189,20 +203,6 @@ it('authorizes weekly_recap only for the snapshot owner', function (): void {
 
     $this->actingAs($owner)
         ->postJson("/api/analyses/weekly_recap/{$snap->id}/trigger")
-        ->assertOk();
-});
-
-it('authorizes pr_context only for the personal record owner', function (): void {
-    $owner = User::factory()->create();
-    $other = User::factory()->create();
-    $pr = PersonalRecord::factory()->for($owner)->create();
-
-    $this->actingAs($other)
-        ->postJson("/api/analyses/pr_context/{$pr->id}/trigger")
-        ->assertForbidden();
-
-    $this->actingAs($owner)
-        ->postJson("/api/analyses/pr_context/{$pr->id}/trigger")
         ->assertOk();
 });
 
@@ -621,7 +621,7 @@ it('chained post_run_speech resume does not re-bill an already-Done sibling row 
     // is already Done (a partially-filled group). Resuming must forward-fill the
     // Pending row only, never flip the Done sibling back to Pending (re-bill).
     $earliest = activityWithSpeech($user, '2026-05-01 06:00:00', AnalysisStatus::Pending);
-    $doneSibling = Analysis::factory()->done('zona sudah dibaca')->create([
+    $doneSibling = Analysis::factory()->done('zones read')->create([
         'subject_type' => Activity::class,
         'subject_id' => $earliest->id,
         'analysis_type' => AnalysisType::RunInsight,
@@ -635,7 +635,7 @@ it('chained post_run_speech resume does not re-bill an already-Done sibling row 
         ->assertOk();
 
     expect($doneSibling->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($doneSibling->fresh()->content)->toBe('zona sudah dibaca');
+        ->and($doneSibling->fresh()->content)->toBe('zones read');
 
     Carbon::setTestNow();
 });
@@ -659,8 +659,7 @@ it('does not dispatch a billed job for a novel discriminator', function (string 
     'random key on a daily type' => ['/api/analyses/briefing_mascot_voice/{id}/trigger?discriminator=kEy9fQ2z'],
     'wrong shape on a daily type' => ['/api/analyses/briefing_mascot_voice/{id}/trigger?discriminator=2026-05'],
     'wrong shape on the monthly recap' => ['/api/analyses/monthly_recap/{id}/trigger?discriminator=2026-05-18'],
-    'wrong shape on the Aku profile voice' => ['/api/analyses/aku_profile_voice/{id}/trigger?discriminator=2026-05-18'],
-    'missing card id on the featured kartu voice' => ['/api/analyses/briefing_featured_kartu_voice/{id}/trigger'],
+    'wrong shape on the profile voice' => ['/api/analyses/profile_voice/{id}/trigger?discriminator=2026-05-18'],
 ]);
 
 it('does not dispatch a billed job when a discriminator is sent to a type whose job ignores it', function (): void {
@@ -677,7 +676,7 @@ it('does not dispatch a billed job when a discriminator is sent to a type whose 
 
 /**
  * The demo login is public, so its trigger is served from the rule-based filler:
- * the reviewer keeps a working "Baca ulang" and no anonymous visitor can spend
+ * the reviewer keeps a working "Reread" and no anonymous visitor can spend
  * Azure tokens.
  */
 it('serves the demo account a rule-based narration instead of dispatching a billed job', function (): void {
@@ -766,6 +765,84 @@ it('still dispatches a real billed job for a non-demo user on the same block', f
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
+// ── trigger → narration age cutoff ──────────────────────────────────────────
+//
+// card_flavor is not chained, so nothing else stops a manual "Reread" on a
+// years-old run from billing exactly what the ingest-side cutoff routed to the
+// rule-based filler.
+
+function cardForRunAged(User $user, int $days): RunCard
+{
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::now()->subDays($days),
+    ]);
+
+    return RunCard::factory()->for($activity)->create();
+}
+
+it('serves a manual retry rule-based when the run is past the narration cutoff', function (): void {
+    config()->set('ai.backfill_max_age_days', 84);
+    $user = User::factory()->create();
+    $card = cardForRunAged($user, 200);
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/card_flavor/{$card->id}/trigger")
+        ->assertSuccessful()
+        ->assertJson(['status' => 'done']);
+
+    expect($response->json('content'))->toBeString()->not->toBeEmpty();
+
+    Bus::assertNothingDispatched();
+});
+
+it('still bills a manual retry on a run just inside the cutoff', function (): void {
+    config()->set('ai.backfill_max_age_days', 84);
+    $user = User::factory()->create();
+    $card = cardForRunAged($user, 83);
+
+    $this->actingAs($user)->postJson("/api/analyses/card_flavor/{$card->id}/trigger")->assertSuccessful();
+
+    Bus::assertDispatched(AnalyzeCardFlavorJob::class);
+});
+
+it('never overwrites narration a too-old run was already billed for', function (): void {
+    config()->set('ai.backfill_max_age_days', 84);
+    $user = User::factory()->create();
+    $card = cardForRunAged($user, 200);
+    Analysis::factory()->done('original narration, already billed')->create([
+        'subject_type' => RunCard::class,
+        'subject_id' => $card->id,
+        'analysis_type' => AnalysisType::CardFlavor,
+        'discriminator' => null,
+    ]);
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/card_flavor/{$card->id}/trigger")
+        ->assertSuccessful()
+        ->assertJson(['content' => 'original narration, already billed']);
+
+    Bus::assertNothingDispatched();
+});
+
+it('serves a hand-crafted briefing trigger for a past day rule-based', function (): void {
+    // The two bounds are deliberately different widths and this is the band
+    // between them: past the 84-day narration cutoff, so no LLM call, but still
+    // inside the 365-day discriminator range, so the request is valid and the
+    // age gate (not validation) is what answers it. A day outside the range is
+    // a 422 instead, asserted in TriggerAnalysisRequestTest.
+    config()->set('ai.backfill_max_age_days', 84);
+    $user = User::factory()->create();
+    $pastDay = Carbon::today()->subDays(200)->toDateString();
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator={$pastDay}")
+        ->assertSuccessful()
+        ->assertJson(['status' => 'done']);
+
+    Bus::assertNothingDispatched();
+});
+
 // ── trigger → zone recompute: the branch that reads the user's CURRENT zones ──
 
 it('recomputes the stream summary when a zone-dependent run block is re-triggered', function (): void {
@@ -836,4 +913,21 @@ it('skips the recompute for a block whose narration does not depend on zones', f
     $this->actingAs($user)
         ->postJson("/api/analyses/post_run_speech/{$activity->id}/trigger")
         ->assertSuccessful();
+});
+
+// ── trigger → defensive guard ───────────────────────────────────────────────
+
+it('throws Unauthenticated when the request has no user (defensive guard)', function (): void {
+    $controller = new AnalysisController();
+    $request = TriggerAnalysisRequest::create('/api/analyses/briefing_mascot_voice/1/trigger', 'POST');
+
+    expect(fn () => $controller->trigger(
+        $request,
+        app(AnalysisService::class),
+        app(SummaryRecomputer::class),
+        app(ChainResolver::class),
+        app(BackfillAgeGate::class),
+        'briefing_mascot_voice',
+        1,
+    ))->toThrow(AuthorizationException::class, 'Unauthenticated');
 });

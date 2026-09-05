@@ -1,6 +1,6 @@
 ---
 name: browser-review
-description: Drive a real browser to screenshot every user-facing page across a mobile/tablet/desktop/wide viewport matrix, capture console errors, and audit for horizontal overflow — an end-to-end visual UI review. Use when asked to "browser review", "screenshot every page", "mobile UI review", "check the UI on mobile/tablet", "full browser check", or "review the app end to end" in this repo.
+description: Drive a real browser to screenshot every user-facing page across a mobile/tablet/laptop/desktop viewport matrix, capture console errors, and audit for horizontal overflow — an end-to-end visual UI review. Use when asked to "browser review", "screenshot every page", "mobile UI review", "check the UI on mobile/tablet", "full browser check", or "review the app end to end" in this repo.
 ---
 
 # browser-review
@@ -13,27 +13,33 @@ Then read the PNGs back to spot layout bugs. Everything runs **inside the Sail `
 
 ## Viewport matrix (default)
 
-Both sides of the Tailwind `lg` (1024px) breakpoint are covered on purpose — that's where the app
-swaps its whole nav chrome (desktop `TopNav` ↔ `MobileTopBar` + `MobileBottomNav`):
+The app has **one** nav chrome at every width — `MobileTopBar` + `MobileBottomNav`. The port deleted
+the desktop `TopNav`, so no viewport here swaps chrome; what they cover is width-driven layout and
+the two type steps (`1280px` -> 19.2px, `2048px` -> 21.6px):
 
-| key | size | nav shown | in default sweep? |
+| key | size | what it covers | in default sweep? |
 |-----|------|-----------|--------------------|
-| `mobile`  | 390×844  (iPhone 13)   | mobile (top bar + bottom nav) | yes |
-| `se`      | 320×568  (iPhone SE)   | **still mobile** (320 < 1024) | yes — narrowest real device, catches width-driven bugs `mobile` misses |
-| `tablet`  | 834×1112 (iPad portrait) | **still mobile** (834 < 1024) | no — same nav chrome as `mobile`, opt in explicitly |
-| `desktop` | 1280×800               | desktop `TopNav` | yes |
-| `wide`    | 1536×864 (`2xl`)       | desktop, widest `max-w-page-2xl` layout | yes |
+| `mobile`  | 390×844  (iPhone 13)   | base type (16px) | yes |
+| `se`      | 320×568  (iPhone SE)   | base type (16px) | yes — narrowest real device, catches width-driven bugs `mobile` misses |
+| `tablet`  | 834×1112 (iPad portrait) | base type (16px) | no — nothing disagrees with `mobile` here, opt in explicitly |
+| `laptop`  | 1920×1080              | first type step (19.2px), past every column breakpoint | yes |
+| `desktop` | 2560×1440 (2K)         | **second type step (21.6px)** — the only viewport past 2048px | yes |
 
-Default is `mobile,se,desktop,wide` — `tablet` renders identical nav chrome to `mobile` (both below
-the `lg` breakpoint) *and* is wide enough that it rarely disagrees with `mobile` on layout, so it's
-dropped to keep the default sweep cheaper. `se`, in contrast, is kept in the default despite sharing
-`mobile`'s nav chrome too: its narrower 320px width has caught real overflow that 390px missed
-entirely — a CSS grid track sized to its widest child instead of shrinking to fit, a fluid font clamp
-whose floor was tuned for a wider column and silently ellipsis-truncated real values. Those are
-width-driven bugs, not breakpoint-driven ones, so they don't reproduce at 390px. Narrow further with
-`VIEWPORTS=mobile` (or `mobile,wide`, etc.), or opt into the full five-way matrix with
-`VIEWPORTS=mobile,se,tablet,desktop,wide` when tablet-specific coverage also matters (e.g. right
-before a release).
+Default is `mobile,se,laptop,desktop` — two phones and the two real desktop sizes. `laptop` and
+`desktop` differ only by the 2048px type step, which is the point: one takes 19.2px, the other
+21.6px. The old 1280 and 1536 entries are gone because 1920 is already past every breakpoint they
+tested (`lg`, the 1280 column widening, and the `2xl` page cap), so they only cost screenshots.
+
+`tablet` is dropped from the default because nothing disagrees with `mobile` there. `se`, in
+contrast, is kept despite sharing `mobile`'s chrome: its narrower 320px width has caught real
+overflow that 390px missed entirely — a CSS grid track sized to its widest child instead of shrinking
+to fit, a fluid font clamp whose floor was tuned for a wider column and silently ellipsis-truncated
+real values. Those are width-driven bugs, not breakpoint-driven ones, so they don't reproduce at
+390px. Narrow with `VIEWPORTS=mobile`, or take the full five-way matrix with
+`VIEWPORTS=mobile,se,tablet,laptop,desktop` before a release.
+
+Nothing covers 900–1279px, and nothing did before either — worth knowing rather than assuming the
+matrix is exhaustive.
 
 ## Prerequisites
 
@@ -41,11 +47,81 @@ before a release).
 ./vendor/bin/sail up -d
 ./vendor/bin/sail npm run build               # fresh built assets — stale/missing build = Vite manifest errors or old UI
 ./vendor/bin/sail artisan demo:seed          # demo user + ~126 runs, deterministic
+./vendor/bin/sail artisan demo:seed --with-edge-states   # + pending/processing/failed AI blocks
 # .env must have DEMO_LOGIN_ENABLED=true (the scripts log in via the /login demo button)
 ```
 
 The app is reachable **inside the container at `http://localhost`** (host-forwarded port is
 `APP_PORT=7001`, but the scripts run in the container, so use `localhost`).
+
+### States the demo does not produce
+
+`demo:seed` marks every Analysis row **done** — honest for a public demo, and exactly why no sweep
+ever rendered a pending, processing or failed block. A near-white `.skeleton` shipped on the dark
+ground behind that gap and survived three sweeps, because the state that would have shown it never
+existed in the seed.
+
+`--with-edge-states` opts in: a failed block and a pending one on the newest activity, and a
+processing one on the dashboard briefing. Idempotent, and off by default so the public demo stays
+pristine. Run it before an audit that cares about loading, empty or failed states.
+
+It has its **own baseline**, because it makes pages render that otherwise do not: `contrast.mjs`
+reports **dark 1** with it on, the "Attempts" header on `/devtools/pulse` at 3.67:1. That is Pulse's
+own `<x-pulse::th>` styling showing through our `self-heal-attempts` card, which only has rows once a
+failed Analysis exists. Vendor component internals on an operator page, recorded rather than chased.
+
+### The operator console (`/devtools`, `/devtools/design`, `/devtools/ai-usage`, `/pulse`)
+
+**All four are swept by default, and locally they need no password.**
+[EnsureDevtoolsAccess](../../../app/Http/Middleware/EnsureDevtoolsAccess.php) returns early when
+the app is not in production, so an unauthenticated request to `/devtools/design` answers **200**.
+`/pulse` is a vendor route `route:list --except-vendor` never reports, so it is appended by hand.
+
+This skill used to gate all four on `DEVTOOLS_PASSWORD` being set, which kept `/devtools/design`
+out of every audit it runs — the one page that renders the token swatches an audit is most likely
+to ask about. Do not reintroduce that gate. `DEVTOOLS_PASSWORD` is needed only to point these
+scripts at a production host, where Basic Auth does apply:
+
+```bash
+./vendor/bin/sail exec -e DEVTOOLS_PASSWORD=<pw> app node .claude/skills/browser-review/scripts/shoot.mjs
+```
+
+## Before merging to the epic — the probes are not in CI
+
+CI is pest + vitest. There is no browser, and there will not be one: the runner is 4 cores shared
+with prod. So of the five ways a value can wear the wrong ground, **only two are enforced
+automatically**:
+
+| what | covered by | in CI |
+|---|---|---|
+| `bg-<token>` and its alpha panels | `grounds.json` + `DesignTokenContrastTest` | yes |
+| gradient stops | `npm run check:palette` | yes |
+| `text-*` on a painted surface | `contrast.mjs` | **no** |
+| `border-*` / `ring-*` | `edges.mjs` | **no** |
+| anything only visible once opened | `states.mjs` | **no** |
+
+The bottom three found every wrong-ground bug of the audit that produced them, including two at
+**1.00:1**, and every one was findable only by someone running these by hand. Treat that as the
+standing cost of the constraint, not as coverage.
+
+**Run this before merging a branch that touches tokens, `app.css`, or any component's surface,
+border or text classes.** Build first — the review server serves `public/build`, so an unbuilt run
+silently checks stale output.
+
+```bash
+./vendor/bin/sail npm run build
+./vendor/bin/sail artisan demo:seed --with-edge-states
+for g in dark light; do
+  ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/contrast.mjs $g
+  ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/edges.mjs $g
+  ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/states.mjs $g
+done
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/light-islands.mjs dark
+```
+
+Compare against the baselines each section below documents. A number that moved is the finding;
+a number that held is the result. Neither is "clean" on its own — `contrast.mjs` read **dark 0**
+through three sweeps while a 316x280 near-white block shipped in a state the seed could not produce.
 
 ## The Alpine/Playwright gotcha (do not rediscover this)
 
@@ -68,18 +144,121 @@ binaries or edits `package.json`.
 # 1. one-time setup per container lifetime (apk needs root)
 docker compose exec -u root app sh .claude/skills/browser-review/scripts/setup.sh
 
-# 2. screenshots across the viewport matrix (default mobile,se,desktop,wide — see Viewport matrix above)
+# 2. screenshots across the viewport matrix (default mobile,se,laptop,desktop — see Viewport matrix above)
 ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/shoot.mjs
 #    e.g. just phone:    VIEWPORTS=mobile ./vendor/bin/sail exec -e VIEWPORTS=mobile app node .../shoot.mjs
-#    e.g. full 5-way:    VIEWPORTS=mobile,se,tablet,desktop,wide ./vendor/bin/sail exec -e VIEWPORTS=mobile,se,tablet,desktop,wide app node .../shoot.mjs
+#    e.g. full 5-way:    VIEWPORTS=mobile,se,tablet,laptop,desktop ./vendor/bin/sail exec -e VIEWPORTS=mobile,se,tablet,laptop,desktop app node .../shoot.mjs
 
 # 3. horizontal-overflow audit across the matrix (run BEFORE Inspect — its output gates which
 #    pages get the expensive vision read, see "Inspect in parallel" below)
 ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/audit.mjs
 
-# 4. teardown (restore node_modules; screenshots are kept as history)
+# 4. rendered-contrast audit, once per ground (dark is the app's default)
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/contrast.mjs dark
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/contrast.mjs light
+
+# 5. on demand: is a design-page shortfall real, and is any surface wearing the wrong ground?
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/mounts.mjs dark 'bg-leaf/15,...'
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/light-islands.mjs dark
+
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/edges.mjs dark
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/states.mjs dark
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/probe.mjs / dark 'document.title'
+
+# 6. teardown (restore node_modules; screenshots are kept as history)
 ./vendor/bin/sail exec app sh .claude/skills/browser-review/scripts/teardown.sh
 ```
+
+### Why `contrast.mjs` exists, and why it is not the design page's audit
+
+`/devtools/design` scores *token pairings* declared in `grounds.json`. That answers "is this pair
+readable", not "is anything on screen unreadable" — a token can be perfectly specified and still be
+applied to the wrong surface. `contrast.mjs` scores what the browser actually painted: every element
+with its own text node, its background resolved by walking ancestors, against the WCAG minimum for
+its computed font size and weight.
+
+Run it per ground. The two disagree, and the dark ground is the default — three real bugs shipped
+under a token audit that read green on light, all of them a fixed-identity token used where the
+ground flips (a `mood-*` fill is fixed, `foreground` is not, so `text-foreground` on a mood chip is
+near-white on pale green).
+
+An element whose background is a gradient, image, map tile or video is **skipped, not scored** —
+there is no flat colour to compare against, and scoring it against an ancestor's colour invents
+failures that are not on screen. That was the difference between four reported failures and the
+three that were real.
+
+**One known false positive remains**, on the light ground only: the "Activate map" overlay on
+`/activities/{id}`. Nothing in its ancestor chain paints an opaque background, so the resolver falls
+back to white and scores `text-cream` against white (1.13). In the browser it sits on a dark
+`bg-ink/70` pill over the map placeholder and is perfectly legible. Treat a **dark-ground total of 0
+and a light-ground total of 1** as the clean baseline; anything above that is new.
+
+### `mounts.mjs` and `light-islands.mjs` — the two questions a ratio can't answer
+
+`/devtools/design` worst-cases every translucent panel against every ground the app paints, because
+`grounds.json` records the mount as `paper` and `paper` is a *set*. That answers "could this pairing
+fail", never "does it". **`mounts.mjs`** resolves the other half: for each `bg-<token>/<alpha>` spec
+you pass it, it walks the rendered DOM of every discovered page and reports the nearest opaque
+ancestor background per call site. A shortfall scored against the worst ground can then be re-scored
+against the ground the component is actually mounted on. Run it before tuning a token: of 11 dark
+shortfalls it was pointed at, six rendered only on `background`/`card` and passed there (4.6-5.9),
+three came from an unused vendored variant, and two rendered only on `/devtools/design` itself.
+
+Two traps it has already sprung. Alpha panels are written **both** ways, `bg-leaf/15` and
+`bg-leaf/[0.18]`, so a grep for one silently misses the other and reports a live panel as dead. And a
+`hover:` surface has to be hovered to exist — `contrast.mjs` never hovers, so several panels that
+read as "never rendered" are simply never rested on.
+
+**`light-islands.mjs`** reports geometry rather than contrast, which is the gap both audits share: a
+fixed-light token (`cream`, `cream-deep`, `line`, the `.skeleton` utility, a `mood-*-bg` cell) used
+where a reactive one was meant renders as a bright island on a near-black page and **nothing fails**,
+because the dark text on it still clears AA. It flags every element whose own background is far
+lighter than the ground beneath it, hovering anything that carries a `hover:bg-` utility on the way.
+Read the head of its output: vivid accent fills (`horizon`, `citrus`, `mood-*` dots) are fixed
+identity by design and legitimately sit near the top, so what you want is anything *near-white*.
+`/devtools/design` dominates the list and should be ignored wholesale — rendering every token as a
+swatch, fixed-light ones included, is that page's entire job.
+
+**`edges.mjs`** asks `light-islands.mjs`'s question of a *border* rather than a surface, which is the
+other half nothing scores: the token audit scans `bg-<token>` only, so a fixed-light border token on
+a dark ground fails nothing. It does not go unreadable, it goes **absent** — `border-ink/[0.18]` over
+a Sky card measured 1.02:1, and the selected-colorway indicator in `ShareCardModal` was `#171f28` on
+`#171f28`. Two things it gets right that are easy to get wrong: an edge is resolved against what is
+**outside** the element, since scoring it against the element's own background reports the deliberate
+`border-x bg-x` sizing trick as invisible; and colours go through a **canvas** rather than a regex,
+because computed styles come back as `oklab()` and `color-mix()` as often as `rgb()` and a regex that
+only knows `rgb()` reads a 1.02:1 border as "no data" instead of "invisible".
+
+It scores **borders**; ring/box-shadow detection is best-effort and misses Tailwind's composed shadow
+chain, so the elevation rim is not scored — deliberately, since elevation sits below the separator
+floor on both grounds (1.28:1 dark rim, 1.11:1 light cast, against a 1.4 minimum meant for dividers).
+
+Its known-clean baseline is **Leaflet's own zoom control on both grounds**, plus `border-border/60` on
+`/settings` at 1.31 on light — `--color-border` is derived to land exactly on 1.4:1, so any alpha
+below full is inherently under the floor.
+
+**`states.mjs`** runs those scans in states a page load never reaches, which is where the coverage
+keeps failing: the `.skeleton` bug lived in a loading state, and three of #723's invisible edges lived
+inside a collapsed accordion and an unopened modal. All of them passed clean sweeps.
+
+It **discovers its own triggers** — `aria-expanded`, `aria-haspopup`, `aria-controls`, `summary` — so
+a new modal is covered the day it ships. A maintained list would drift the moment nobody updated it,
+which is the same failure mode as the `onSky` prop nine of nine call sites forgot. Findings present
+before the click are subtracted, so it reports what the *state* introduced.
+
+It immediately found the worst bug of the audit: `MetricExplainer`'s popover painted a near-white
+gradient with near-white body text at **1.00:1** on the dark ground, across three call sites on the
+dashboard and history. Invisible to everything else twice over — it only exists when opened, and its
+background is a **gradient**, which `contrast.mjs` skips by design and an island scan misses because
+`backgroundColor` on a gradient element is transparent. A gradient is still a blind spot; the driver
+only caught this one via its border.
+
+Its known-clean baseline is **one island on `/race`**: the selected date cell's `bg-horizon`, fixed
+identity by design. Light ground is clean.
+
+`scans.mjs` holds the colour maths all three scanners share, so a fix lands everywhere at once —
+`light-islands.mjs` was still parsing colours with a regex and silently dropping every `oklab()`
+background until it was pulled onto the shared canvas resolver.
 
 > **Reading screenshots costs more than it looks.** An image read into the main context is re-billed
 > as a cache read on *every* later turn, so cost is `size x remaining turns`, not size. A full-page
@@ -130,39 +309,42 @@ If the model roster changes later (e.g. Haiku or Sonnet is retired), swap in wha
 fast/cheap or default/capable tier at the time — the split above is the instruction, the specific model
 names are just today's mapping onto it.
 
-### Verify before acting — a real false-positive rate, not a hypothetical one
+### Verify before reporting — the rate is worse than "some"
 
-A single review pass produced 20 findings; roughly a third didn't survive verification against the
-live app (a low-contrast filler element misread as empty space, a label scrolled off-screen misread as
-CSS-hidden, cropped screenshot math, a claim about "missing" content that render unconditionally with
-no responsive class anywhere near it). Two things reduce this rate:
+A screenshot is a weak source, and the numbers are not hypothetical. One pass produced 20 findings and
+roughly a third did not survive checking. A later pass produced **3, and all 3 were wrong**: a fixed
+bottom nav read as an element collision, a notification bell read as an empty box, a token-correct
+inverted pill read as a wrong-ground bug. Every one cost a round of someone's attention.
 
-- **Screenshots come from separate logins.** `shoot.mjs` opens a fresh browser context (and re-logs
-  in) per viewport, so mobile and desktop shots of the "same" page are two independent server
-  requests. Any `Analysis`-backed content (LLM narration, pending/skeleton/retry states) can
-  legitimately differ between the two for reasons that have nothing to do with responsive CSS. Treat a
-  content difference in AI-narrated text as lower-confidence than a difference in static UI chrome —
-  it may be a request-timing artifact, not a layout bug.
-- **"Missing" is a stronger claim than "small/faint/different."** When a finding says content is
-  dropped or absent (not just small, low-contrast, or restyled), it should say so explicitly and flag
-  it as needing confirmation rather than asserting it as settled fact — that phrasing is what lets a
-  HIGH-severity claim get fixed on sight instead of re-verified first.
+So the inspect agents **must verify before returning a finding**, and the schema requires the evidence
+so the requirement cannot be quietly skipped. `probe.mjs` makes that one command:
 
-Before spending an implementation pass on a HIGH-severity "content missing" claim, re-check it live
-rather than trusting one screenshot read: navigate to the real page and query the DOM directly (e.g.
-`page.evaluate(() => ...)` for text content, or `getComputedStyle(el).width` for a suspiciously-small
-element — this caught a flex-shrink bug that squeezed a 6px indicator dot to 0px width, invisible in a
-screenshot but obvious in one `getComputedStyle` call). It's a few extra minutes against the running
-app, versus an implementation change chasing a symptom that isn't there.
+```bash
+node .claude/skills/browser-review/scripts/probe.mjs <route> [dark|light] [--click=<text>] '<expression>'
+```
+
+It logs in, sets the ground, optionally drives one control, evaluates the expression in the page and
+prints JSON. A claim that content is *missing* is answered by querying for it; a claim that something
+is *invisible* is answered by `getComputedStyle`; a claim about *size* is answered by
+`getBoundingClientRect`. That is how a flex-shrink bug squeezing a 6px dot to 0px was confirmed —
+invisible in a screenshot, obvious in one call.
+
+Two standing sources of false positives to weigh before reporting at all:
+
+- **Screenshots come from separate logins.** `shoot.mjs` opens a fresh context per viewport, so mobile
+  and desktop shots of the "same" page are independent server requests. Any `Analysis`-backed content
+  can legitimately differ for reasons unrelated to responsive CSS.
+- **"Missing" is a much stronger claim than "small/faint/different."** It is also the claim most often
+  wrong, and the one most likely to be acted on without re-checking. It always needs a probe.
 
 Pass the batch dir, the viewports you shot, and the parsed `AUDIT` lines as `args`, e.g.:
 ```json
 {
   "dir": "storage/app/browser-review/2026-06-19/143022",
-  "viewports": ["mobile", "wide"],
+  "viewports": ["mobile", "desktop"],
   "pages": {
     "mobile": [{ "name": "today", "overflow": false }, { "name": "activities-detail", "overflow": true }],
-    "wide":   [{ "name": "today", "overflow": false }, { "name": "activities-detail", "overflow": false }]
+    "desktop": [{ "name": "today", "overflow": false }, { "name": "activities-detail", "overflow": false }]
   }
 }
 ```
@@ -179,11 +361,12 @@ export const meta = {
 }
 
 const NAV = {
-  mobile:  { size: '390x844',  nav: 'mobile nav (top bar + bottom nav)' },
-  se:      { size: '320x568',  nav: 'still mobile nav (320 < 1024 lg breakpoint), narrowest real device' },
-  tablet:  { size: '834x1112', nav: 'still mobile nav (834 < 1024 lg breakpoint)' },
-  desktop: { size: '1280x800', nav: 'desktop TopNav' },
-  wide:    { size: '1536x864', nav: 'desktop TopNav, widest max-w-page-2xl layout' },
+  mobile:  { size: '390x844',  nav: 'mobile chrome (top bar + bottom nav)' },
+  se:      { size: '320x568',  nav: 'same chrome, narrowest real device' },
+  tablet:  { size: '834x1112', nav: 'same chrome' },
+  laptop:  { size: '1280x800', nav: 'same mobile chrome, first type step (19.2px)' },
+  wide:    { size: '1536x864', nav: 'same mobile chrome, widest max-w-page-2xl column' },
+  desktop: { size: '2560x1440', nav: 'same mobile chrome, 2K, second type step (21.6px)' },
 }
 const dir = args?.dir ?? 'storage/app/browser-review'
 // args.pages: { [viewport]: [{ name, overflow }] } — parsed from audit.mjs's `AUDIT vp=... name=... overflow=...` lines
@@ -201,11 +384,14 @@ const FINDINGS = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['page', 'severity', 'issue'],
+        required: ['page', 'severity', 'issue', 'evidence'],
         properties: {
           page: { type: 'string' },
           severity: { type: 'string', enum: ['high', 'medium', 'low'] },
           issue: { type: 'string' },
+          // The probe.mjs command run and what it returned. A finding without
+          // this is a screenshot guess, and the schema is where that gets refused.
+          evidence: { type: 'string' },
         },
       },
     },
@@ -235,8 +421,15 @@ for (const vp of viewports) {
       `(PageContainer / max-w-page-2xl), the fixed bottom-nav mid-page artifact, sparse demo-data grids, and ` +
       `intentional overflow-x-auto. If you're about to say content is "missing" or "dropped" rather than just ` +
       `small, low-contrast, or differently styled, say explicitly that it needs live confirmation (a false ` +
-      `positive here costs a wasted implementation pass) — don't assert it as settled fact from one screenshot. ` +
-      `Return only pages with a real, describable issue.`,
+      `positive here costs a wasted implementation pass). ` +
+      `Before returning ANY finding, verify it live with probe.mjs and put the command and its output in `
+      `the finding's \`evidence\` field — the schema requires it. From the repo root: `
+      `\`./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/probe.mjs <route> dark `
+      `[--click=<text>] '<js expression>'\`. Query for content you think is missing, getComputedStyle for `
+      `something you think is invisible, getBoundingClientRect for something you think is mis-sized. `
+      `Discard anything the probe does not confirm: of the last 3 findings reported from screenshots `
+      `alone, all 3 were wrong. `
+      `Return only pages with a real, confirmed issue.`,
       { label: `inspect:${vp}:flagged`, phase: 'Inspect', model: 'haiku' /* fast/cheap tier */, schema: FINDINGS }
     ))
   }
@@ -250,9 +443,16 @@ for (const vp of viewports) {
       `Ignore by design: width-capped content (PageContainer / max-w-page-2xl), the fixed bottom-nav mid-page ` +
       `artifact, sparse demo-data grids, and intentional overflow-x-auto. If you're about to say content is ` +
       `"missing" or "dropped" between viewports rather than just small, low-contrast, or differently styled, ` +
-      `say explicitly that it needs live confirmation instead of asserting it as fact — mobile and desktop are ` +
-      `separate logins, so AI-narrated content in particular can legitimately differ for reasons unrelated to ` +
-      `responsive CSS. Return only flagged pages.`,
+      `mobile and desktop are separate logins, so AI-narrated content in particular can legitimately differ ` +
+      `for reasons unrelated to responsive CSS. ` +
+      `Before returning ANY finding, verify it live with probe.mjs and put the command and its output in `
+      `the finding's \`evidence\` field — the schema requires it. From the repo root: `
+      `\`./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/probe.mjs <route> dark `
+      `[--click=<text>] '<js expression>'\`. Query for content you think is missing, getComputedStyle for `
+      `something you think is invisible, getBoundingClientRect for something you think is mis-sized. `
+      `Discard anything the probe does not confirm: of the last 3 findings reported from screenshots `
+      `alone, all 3 were wrong. `
+      `Return only confirmed findings; an empty array is a valid and useful result.`,
       { label: `inspect:${vp}:sample`, phase: 'Inspect', model: 'sonnet' /* default/capable tier */, effort: 'medium', schema: FINDINGS }
     ))
   }
@@ -285,4 +485,8 @@ return results
   an accessory) aren't auto-driven — spot-check those with a short one-off Playwright script that
   clicks the element, screenshots, and asserts its `boundingBox()` is within the viewport.
 - Scripts: `lib.mjs` (shared: viewports, login, route discovery), `shoot.mjs` (screenshots),
-  `audit.mjs` (overflow), `setup.sh` / `teardown.sh`.
+  `audit.mjs` (overflow), `contrast.mjs` (rendered contrast, per ground), `mounts.mjs` (what a panel
+  is actually mounted on), `light-islands.mjs` (surfaces wearing the wrong ground), `edges.mjs`
+  (borders and rings that are not there), `states.mjs` (those scans, in states a page load never
+  reaches), `scans.mjs` (the shared colour maths), `probe.mjs` (one live DOM question, answered),
+  `setup.sh` / `teardown.sh`.

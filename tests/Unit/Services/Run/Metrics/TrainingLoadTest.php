@@ -18,13 +18,22 @@ beforeEach(function (): void {
 });
 afterEach(fn () => Carbon::setTestNow());
 
-function seedTrimpDay(User $user, float $trimp, int $daysAgo): void
+function seedTrimpDay(User $user, ?float $trimp, int $daysAgo): void
 {
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create([
         'trimp_edwards' => $trimp,
         'start_date_local' => Carbon::today()->subDays($daysAgo),
     ]);
+}
+
+/**
+ * @param  array<string, float>  $dailyTrimp
+ * @return array<string, true>
+ */
+function runDaysOf(array $dailyTrimp): array
+{
+    return array_map(fn (): bool => true, $dailyTrimp);
 }
 
 it('computes Edwards TRIMP as zone-weighted minute sum', function (): void {
@@ -88,7 +97,7 @@ it('returns null when the user has no TRIMP-bearing activities', function (): vo
 });
 
 it('returns null from summaryFromDailyMap when the map is empty', function (): void {
-    expect($this->load->summaryFromDailyMap([], Carbon::today()))->toBeNull();
+    expect($this->load->summaryFromDailyMap([], [], Carbon::today()))->toBeNull();
 });
 
 it('rolls TRIMP into ATL/CTL/form with sane magnitudes', function (): void {
@@ -139,8 +148,8 @@ it('computes a CTL independent of how many lead-in days the map carries', functi
     }
     $windowedMap = array_slice($fullMap, -49, null, true);
 
-    $full = $this->load->summaryFromDailyMap($fullMap, $asOf);
-    $windowed = $this->load->summaryFromDailyMap($windowedMap, $asOf);
+    $full = $this->load->summaryFromDailyMap($fullMap, runDaysOf($fullMap), $asOf);
+    $windowed = $this->load->summaryFromDailyMap($windowedMap, runDaysOf($windowedMap), $asOf);
 
     expect($full['ctl_42d'])->toEqualWithDelta(79.3, 0.5)
         ->and($windowed['ctl_42d'])->toEqualWithDelta(55.1, 0.5)
@@ -156,7 +165,7 @@ it('zero-fills gap days between sparse activities', function (): void {
         $asOf->toDateString() => 100.0,
     ];
 
-    $summary = $this->load->summaryFromDailyMap($map, $asOf);
+    $summary = $this->load->summaryFromDailyMap($map, runDaysOf($map), $asOf);
 
     // ATL recovers toward the latest spike; CTL stays muted by the long gap.
     expect($summary['atl_7d'])->toBeGreaterThan($summary['ctl_42d'])
@@ -258,4 +267,117 @@ it('ctlTrend never returns more than the available history, even when asked for 
     }
 
     expect($this->load->ctlTrend($user, 90))->toHaveCount(10);
+});
+
+it('tells a rest week, an unscored week and a scored week apart', function (): void {
+    $user = User::factory()->create();
+
+    // One history, three weeks that must never collapse into each other:
+    // scored (HR present), rest (nobody ran), unscored (ran, no HR anywhere).
+    seedTrimpDay($user, 120.0, 29);
+    seedTrimpDay($user, 90.0, 31);
+    seedTrimpDay($user, null, 1);
+    seedTrimpDay($user, null, 3);
+
+    $scored = $this->load->summary($user, Carbon::today()->subDays(28));
+    $rest = $this->load->summary($user, Carbon::today()->subDays(14));
+    $unscored = $this->load->summary($user, Carbon::today());
+
+    expect($scored['weekly_trimp'])->toBeGreaterThan(0.0)
+        ->and($scored['monotony'])->toBeGreaterThan(0.0)
+        ->and($scored['strain'])->toBeGreaterThan(0.0);
+
+    expect($rest['weekly_trimp'])->toBe(0.0)
+        ->and($rest['monotony'])->toBe(0.0)
+        ->and($rest['strain'])->toBe(0.0);
+
+    expect($unscored['weekly_trimp'])->toBeNull()
+        ->and($unscored['monotony'])->toBeNull()
+        ->and($unscored['strain'])->toBeNull();
+});
+
+it('keeps ATL/CTL as numbers through an unscored stretch', function (): void {
+    // The week columns go unknown, but fitness/fatigue are EWMAs of the real
+    // scored history and stay reportable rather than nulling out with it.
+    $user = User::factory()->create();
+    seedTrimpDay($user, 120.0, 29);
+    seedTrimpDay($user, null, 1);
+
+    $summary = $this->load->summary($user, Carbon::today());
+
+    expect($summary['weekly_trimp'])->toBeNull()
+        ->and($summary['ctl_42d'])->toBeFloat()->toBeGreaterThan(0.0)
+        ->and($summary['atl_7d'])->toBeFloat()
+        ->and($summary['form_status'])->toBeString();
+});
+
+it('returns an empty strainMonotonyTrend for a user with no TRIMP-bearing activities', function (): void {
+    $user = User::factory()->create();
+
+    expect($this->load->strainMonotonyTrend($user))->toBe([]);
+});
+
+it('strainMonotonyTrend returns one entry per requested day, agreeing with the daily summary', function (): void {
+    $user = User::factory()->create();
+
+    for ($i = 0; $i < 100; $i++) {
+        seedTrimpDay($user, 80.0, 99 - $i);
+    }
+
+    $trend = $this->load->strainMonotonyTrend($user, 90);
+
+    expect($trend)->toHaveCount(90)
+        ->and($trend[0]['date'])->toBe(Carbon::today()->subDays(89)->toDateString())
+        ->and($trend[89]['date'])->toBe(Carbon::today()->toDateString());
+
+    // Last day's window must agree with summary()'s own weekStats() call —
+    // this is exposing the same computation across a range, not a second one.
+    $summary = $this->load->summary($user);
+    expect($trend[89]['weekly_trimp'])->toBe($summary['weekly_trimp'])
+        ->and($trend[89]['monotony'])->toBe($summary['monotony'])
+        ->and($trend[89]['strain'])->toBe($summary['strain']);
+});
+
+it('strainMonotonyTrend caps monotony at 5.0 on a uniform-load week, same as summary()', function (): void {
+    $user = User::factory()->create();
+
+    for ($i = 0; $i < 7; $i++) {
+        seedTrimpDay($user, 80.0, 6 - $i);
+    }
+
+    $trend = $this->load->strainMonotonyTrend($user, 7);
+
+    expect($trend[6]['monotony'])->toBe(5.0)
+        ->and($trend[6]['strain'])->toBeFloat()->toBeGreaterThan(0.0);
+});
+
+it('strainMonotonyTrend reports days before any history began as a rested zero, not a gap', function (): void {
+    $user = User::factory()->create();
+
+    // Only 5 days of real history, but a 30-day trend is asked for — the
+    // 25 days before that history began are a legitimate "no load yet"
+    // zero, not something to omit (unlike ctlTrend, which needs a start
+    // date to roll the EWMA forward from and so can't extend before it).
+    for ($i = 0; $i < 5; $i++) {
+        seedTrimpDay($user, 80.0, 4 - $i);
+    }
+
+    $trend = $this->load->strainMonotonyTrend($user, 30);
+
+    expect($trend)->toHaveCount(30)
+        ->and($trend[0]['weekly_trimp'])->toBe(0.0)
+        ->and($trend[0]['monotony'])->toBe(0.0)
+        ->and($trend[0]['strain'])->toBe(0.0);
+});
+
+it('strainMonotonyTrend tells an unscored week apart from a rested one, same as summary()', function (): void {
+    $user = User::factory()->create();
+    seedTrimpDay($user, 120.0, 29);
+    seedTrimpDay($user, null, 1);
+
+    $trend = $this->load->strainMonotonyTrend($user, 1);
+
+    expect($trend[0]['weekly_trimp'])->toBeNull()
+        ->and($trend[0]['monotony'])->toBeNull()
+        ->and($trend[0]['strain'])->toBeNull();
 });

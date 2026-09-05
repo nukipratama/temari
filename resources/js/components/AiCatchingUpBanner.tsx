@@ -1,7 +1,8 @@
-import { Icon } from '@iconify/react';
 import { usePage } from '@inertiajs/react';
 
 import type { SharedProps } from '@/types/inertia';
+
+import { Icon } from '@/components/ui/Icon';
 
 /**
  * Calm, app-wide reassurance shown while the auth user has at least one
@@ -21,16 +22,16 @@ export default function AiCatchingUpBanner() {
     }
 
     return (
-        <div className="px-4 pt-4 lg:px-8">
-            <div className="mx-auto flex max-w-page-2xl items-start gap-3 rounded-2xl border border-line bg-surface-sunken px-4 py-3">
+        <div className="px-4 pt-4 min-[900px]:px-6">
+            <div className="mx-auto flex max-w-column min-[1280px]:max-w-column-wide items-start gap-3 rounded-lg border border-border bg-muted px-4 py-3">
                 <Icon
                     icon="mdi:progress-clock"
                     width={20}
                     height={20}
-                    className="mt-0.5 shrink-0 text-ink-3"
+                    className="mt-0.5 shrink-0 text-text-3"
                     aria-hidden
                 />
-                <p className="flex-1 font-sans text-sm leading-relaxed text-ink">
+                <p className="flex-1 font-sans text-sm leading-relaxed text-foreground">
                     Still processing in the background. Check back in a bit, the
                     narration will catch up automatically.
                 </p>

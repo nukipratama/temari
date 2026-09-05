@@ -42,7 +42,7 @@ class NotificationEligibility
      * (the run's start, the week's ending, the recap month's end) against
      * `notify_max_age_days`, so only the freshest period pings and history stays
      * quiet. Types with no reference date, or a missing one, are never gated.
-     * Only the automatic path — the manual "Kirim ke Telegram" push (force)
+     * Only the automatic path — the manual "Send notification" push (force)
      * bypasses it on purpose.
      */
     public function isRecentEnoughToAutoNotify(Analysis $analysis): bool

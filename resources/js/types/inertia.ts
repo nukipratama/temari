@@ -1,8 +1,20 @@
 // Generated from the PHP enums — see generated.ts (`php artisan typescript:enums`).
 // Imported for local use below and re-exported so consumers keep importing from here.
-import type { AnalysisStatus, AnalysisType, Rarity } from './generated';
+import type {
+    AnalysisStatus,
+    AnalysisType,
+    NotificationKind,
+    PlannedSessionStatus,
+    Rarity,
+} from './generated';
 
-export type { AnalysisStatus, AnalysisType, Rarity } from './generated';
+export type {
+    AnalysisStatus,
+    AnalysisType,
+    NotificationKind,
+    PlannedSessionStatus,
+    Rarity,
+} from './generated';
 
 export type Mood =
     'blazing' | 'easy' | 'wobbly' | 'gassed' | 'overloaded' | 'chill';
@@ -20,24 +32,6 @@ export interface AuthUser {
     is_demo: boolean;
 }
 
-export interface PendingReveal {
-    card_id: number;
-    activity_id: number;
-    rarity: Rarity;
-    special_move: string;
-    mood: Mood;
-    badges: string[] | null;
-    detail_name: string | null;
-    distance_m: number | null;
-    elapsed_time_sec: number | null;
-    trimp_edwards: number | null;
-    average_heartrate?: number | null;
-    stream_summary?: StreamSummary | null;
-    summary_polyline?: string | null;
-    public_share_url: string;
-    edition: CardEdition;
-}
-
 export type StravaSyncState = 'disconnected' | 'revoked' | 'syncing' | 'ready';
 
 export interface StravaSync {
@@ -50,31 +44,30 @@ export interface StravaSync {
     last_synced_at: string | null;
 }
 
-/** Resolved server-side from the user's equipped UserUnlock rows. */
-export type EquippedSlot =
-    'medal' | 'headband' | 'shirt' | 'shorts' | 'shoes' | 'aura';
-
-export interface EquippedAccessories {
-    medal: string | null;
-    headband: string | null;
-    shirt: string | null;
-    shorts: string | null;
-    shoes: string | null;
-    aura: string | null;
-}
-
-/** Flashed by GrantEligibleUnlocksAction when a user earns their first new accessory in a request. */
-export interface UnlockFlash {
-    unlock_key: string;
-    name: string;
-    icon: string;
-    is_major: boolean;
+/**
+ * One row of the notification centre, flattened by `InboxController` so the
+ * page never reads the raw `payload` blob.
+ */
+export interface InboxItem {
+    id: number;
+    kind: NotificationKind;
+    title: string;
+    body: string | null;
+    /** True instant (ISO-8601 with offset), not a naive wall-clock date. */
+    created_at: string | null;
+    read_at: string | null;
+    url: string | null;
+    run_card_id: number | null;
+    rarity: Rarity | null;
+    /** Post-run rows only: the stat chips the prototype's row draws. */
+    distance_m: number | null;
+    moving_time_s: number | null;
 }
 
 /**
  * The race the user is currently training for, shared app-wide. "Race" is the
- * user-facing name; live accessory-unlock progress lives on `/accessories`,
- * see AccessoriesItem.
+ * user-facing name, kept distinct from the unrelated accessory-unlock catalog
+ * the backend still tracks.
  */
 export interface ActiveRace {
     id: number;
@@ -90,11 +83,8 @@ export interface SharedProps {
         success: string | null;
         error: string | null;
         info: string | null;
-        unlock?: UnlockFlash | null;
     };
     demoLoginEnabled: boolean;
-    pendingReveal?: PendingReveal | null;
-    equippedAccessories?: EquippedAccessories | null;
     stravaSync?: StravaSync | null;
     activeRace?: ActiveRace | null;
     /** ISO-8601 timestamp of the auth user's last heart-rate-zone change, or null. */
@@ -103,11 +93,13 @@ export interface SharedProps {
     telegramConnected?: boolean;
     /** Whether the auth user has at least one browser push subscription. */
     webPushSubscribed?: boolean;
+    /** How many of the auth user's inbox notifications are still unread. */
+    unreadNotifications?: number;
     /** The public VAPID key the browser needs to subscribe to web push; '' when unconfigured. */
     webPushPublicKey?: string;
     /** True when the auth user's Strava connection is live but lacks the `profile:read_all` scope needed for HR-zone sync. */
     stravaZoneScopeMissing?: boolean;
-    /** True when LLM narration is globally paused, so the UI can show a soft "Temari lagi istirahat" banner. */
+    /** True when LLM narration is globally paused, so the UI can show a soft "Temari is resting" banner. */
     aiPaused?: boolean;
     /** True when the auth user has an activity still waiting on its per-activity narration, so the UI can show a soft "still catching up" banner. */
     aiCatchingUp?: boolean;
@@ -137,8 +129,6 @@ export interface BriefingResult {
     vibeLabel: string;
     vibeEmoji: string;
     mascotVoice: AnalysisPayload;
-    featuredKartuVoice: AnalysisPayload;
-    featuredCardId: number | null;
     recoveryLabel: string;
     recoveryTone: RecoveryTone;
     recoveryHoursLabel: string | null;
@@ -258,8 +248,11 @@ export interface ActivityDetail {
 export interface Activity {
     id: number;
     user_id: number;
+    /** Strava's own id for the run — the provenance number in the page footer. */
+    strava_external_id?: number;
     name?: string;
     analyzed_at: string | null;
+    ingest_state?: 'summary' | 'detailed';
     detail?: ActivityDetail;
     run_card?: RunCard;
 }
@@ -292,14 +285,111 @@ export interface StoryLine {
 
 export type FormStatus = 'fresh' | 'optimal' | 'fatigued' | 'overreaching';
 
+/** The three week-window fields are null when the week's runs carried no heart
+ *  rate, which is not the same as a zero. ATL/CTL/form are EWMAs over a year of
+ *  history and stay numbers through an unscored stretch. */
 export interface TrainingLoad {
     form: number;
     form_status: FormStatus;
     ctl_42d: number;
     atl_7d: number;
-    weekly_trimp: number;
-    monotony: number;
-    strain: number;
+    weekly_trimp: number | null;
+    monotony: number | null;
+    strain: number | null;
+}
+
+export type TrendVerdict =
+    'improving' | 'plateaued' | 'slipped' | 'not_enough_history';
+
+export type TrendDirection = 'better' | 'flat' | 'worse';
+
+/** One side of a Past You pair, as `ComparableRun::toArray()` ships it. */
+export interface ComparableRun {
+    activity_id: number;
+    date: string;
+    km: number;
+    pace_sec_per_km: number;
+    average_heartrate: number | null;
+    elevation_gain_m: number | null;
+    ingest_state: 'summary' | 'detailed';
+}
+
+/** One matched pair, as `PastYouComparison::toArray()` ships it. */
+export interface PastYouComparison {
+    direction: TrendDirection;
+    days_apart: number;
+    similarity: number;
+    /** Positive when the recent run is faster. */
+    pace_delta_sec: number;
+    /** Negative when the recent run's average heart rate is lower. */
+    hr_delta_bpm: number | null;
+    current: ComparableRun;
+    past: ComparableRun;
+}
+
+/** `PastYouTrend::toArray()`. Every supporting reading stays null until the
+ *  detail pipeline has hydrated the runs the verdict was built from. */
+export interface PastYouTrend {
+    verdict: TrendVerdict;
+    window_days: number;
+    comparison_count: number;
+    comparisons: PastYouComparison[];
+    mean_pace_delta_sec: number | null;
+    mean_hr_delta_bpm: number | null;
+    fitness_delta_ctl: number | null;
+    pace_consistency_now: string | null;
+    pace_consistency_then: string | null;
+}
+
+/** One ordered slice of a planned session — see `App\Services\Run\Plan\SessionSegment`.
+ *  `minutes`/`pace_sec_per_km` are null exactly when the athlete has no VDOT
+ *  estimate yet; the segment's shape (key, pace target) still renders. */
+export interface PlanSessionSegment {
+    key: 'warmup' | 'main' | 'interval' | 'recovery' | 'cooldown';
+    minutes: number | null;
+    zone: string;
+    pace_label: 'easy' | 'marathon' | 'threshold' | 'interval';
+    pace_sec_per_km: number | null;
+}
+
+/** One day within `WeekPlan['days']`, as `PlanRenderer::dayPayload()` ships
+ *  it — the same shape Plan's own day rows use. */
+export interface WeekPlanDay {
+    id: number;
+    date: string;
+    phase: string;
+    session_type: string;
+    /** Ordered warmup/main/cooldown (or interval reps) breakdown — see
+     *  `App\Services\Run\Plan\SegmentGenerator`. Empty on a rest day. */
+    segments: PlanSessionSegment[];
+    /** The CORE work only (e.g. a Tempo day's threshold portion) — warmup/
+     *  cooldown are additional minutes on top, not counted here. */
+    distance_km: number;
+    pinned: boolean;
+    /** Explicitly excused before the day passed — never scored, doesn't
+     *  penalize the week's adherence. Toggle with `PATCH .../sessions/{id}`. */
+    skipped: boolean;
+    status: PlannedSessionStatus;
+    /** Continuous km-ratio score (0+, uncapped upward) — null on a rest day,
+     *  a not-yet-past day, or a day with no VDOT estimate to size against. */
+    compliance_score: number | null;
+    /** A rest day (`status: 'done'`) that had real activity logged anyway. */
+    ran_anyway: boolean;
+    clamp_note: string | null;
+    /** Total km actually run that day — null when nothing was logged. */
+    actual_km: number | null;
+    /** The day's longest logged run, for the link out to it. */
+    activity: { id: number; seconds: number | null } | null;
+}
+
+/** `CurrentWeekPlanBuilder::forUser()` — Home's compact pull of the current
+ *  week's plan, null once a user has no plan yet. */
+export interface WeekPlan {
+    sessions_per_week: number;
+    phase: string;
+    planned_km_this_week: number;
+    credited_this_week: number;
+    days: WeekPlanDay[];
 }
 
 /** One `weekly_snapshots` row, shipped whole (`WeeklySnapshot::toArray()`). */
@@ -321,7 +411,7 @@ export interface WeeklySnapshot {
 }
 
 /** A snapshot decorated by RunController::decorateSnapshot with its recap
- *  narration and the flags the Jejak week list renders it with. */
+ *  narration and the flags the feed week list renders it with. */
 export interface WeeklySnapshotWithRecap extends WeeklySnapshot {
     /** True for the in-progress week, whose recap waits for the weekly scheduler. */
     is_current_week: boolean;
@@ -330,22 +420,4 @@ export interface WeeklySnapshotWithRecap extends WeeklySnapshot {
     recap_analysis: AnalysisPayload;
     /** Remaining Telegram-send cooldown for this week's recap, or null. */
     notification_retry_after_seconds: number | null;
-}
-
-export interface PersonalRecord {
-    id: number;
-    user_id: number;
-    activity_id: number;
-    category: string;
-    value: number;
-    activity?: Activity;
-}
-
-export interface PaginatedResponse<T> {
-    data: T[];
-    current_page: number;
-    last_page: number;
-    per_page: number;
-    total: number;
-    links: Array<{ url: string | null; label: string; active: boolean }>;
 }

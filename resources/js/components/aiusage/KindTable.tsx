@@ -70,7 +70,7 @@ function AgentSummary({ row }: Readonly<{ row: UsageRow }>) {
     }
 
     return (
-        <div className="mt-0.5 font-mono text-[11px] text-ink-2">
+        <div className="mt-0.5 font-mono text-[0.6875rem] text-text-2">
             {parts.join(' · ')}
         </div>
     );
@@ -91,7 +91,7 @@ function KindCells({
 
     return (
         <>
-            <td className="px-5 py-3 font-medium text-ink">
+            <td className="px-5 py-3 font-medium text-foreground">
                 <div>{row.kind}</div>
                 <AgentSummary row={row} />
                 <ProgressBar
@@ -104,15 +104,15 @@ function KindCells({
             <Td>{fmt(row.calls)}</Td>
             <Td>{fmt(row.prompt)}</Td>
             <Td>{fmt(row.completion)}</Td>
-            <Td className="font-semibold text-ink">{fmt(row.total)}</Td>
-            <Td className="font-semibold text-ink">
+            <Td className="font-semibold text-foreground">{fmt(row.total)}</Td>
+            <Td className="font-semibold text-foreground">
                 {formatCost(row.cost, currency)}
             </Td>
             <Td>{latencyLabel}</Td>
             <td
                 className={cn(
                     'px-5 py-3 font-medium',
-                    truncatedRate > 1 ? 'text-mood-gassed' : 'text-ink-2',
+                    truncatedRate > 1 ? 'text-mood-gassed-ink' : 'text-text-2',
                 )}
             >
                 {row.truncated_calls > 0

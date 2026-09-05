@@ -12,11 +12,14 @@ use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisSubjectAuthorizer;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\ChainResolver;
 use App\Services\Run\Metrics\SummaryRecomputer;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 class AnalysisController extends Controller
 {
@@ -25,15 +28,18 @@ class AnalysisController extends Controller
         AnalysisService $service,
         SummaryRecomputer $summaries,
         ChainResolver $chains,
+        BackfillAgeGate $ages,
         string $type,
         int $subjectId,
     ): JsonResponse {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::User);
+
         // Validation in TriggerAnalysisRequest guarantees a known type.
         $analysisType = AnalysisType::from($type);
 
         $user = $this->user($request);
-        AnalysisSubjectAuthorizer::authorize($user, $analysisType, $subjectId);
         $discriminator = $request->discriminator();
+        AnalysisSubjectAuthorizer::authorize($user, $analysisType, $subjectId, $discriminator);
 
         $existing = Analysis::query()
             ->forSubject($analysisType->subjectType(), $subjectId, $analysisType, $discriminator)
@@ -50,6 +56,15 @@ class AnalysisController extends Controller
         if ($service->shouldServeRuleBased($user)) {
             return $this->payload(
                 $service->requestRuleBased($analysisType->subjectType(), $subjectId, $analysisType, $discriminator),
+                $analysisType,
+                $subjectId,
+                $discriminator,
+            );
+        }
+
+        if ($ages->blocksManualTrigger($analysisType, $subjectId, $discriminator)) {
+            return $this->payload(
+                $service->requestRuleBased($analysisType->subjectType(), $subjectId, $analysisType, $discriminator, refillDone: false),
                 $analysisType,
                 $subjectId,
                 $discriminator,
@@ -96,7 +111,7 @@ class AnalysisController extends Controller
         }
 
         $discriminator = $this->discriminator($request);
-        AnalysisSubjectAuthorizer::authorize($this->user($request), $analysisType, $subjectId);
+        AnalysisSubjectAuthorizer::authorize($this->user($request), $analysisType, $subjectId, $discriminator);
 
         $row = Analysis::query()
             ->forSubject($analysisType->subjectType(), $subjectId, $analysisType, $discriminator)

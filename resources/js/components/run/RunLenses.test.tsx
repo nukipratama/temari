@@ -52,8 +52,11 @@ const defaultProps = {
 };
 
 describe('RunLenses', () => {
-    it('renders both lens cards with their labels', () => {
+    it('heads the one voice card and labels both halves of it', () => {
         render(<RunLenses {...defaultProps} isChainHead />);
+        expect(
+            screen.getByRole('heading', { name: 'What Temari says' }),
+        ).toBeInTheDocument();
         expect(screen.getByText("This run's story")).toBeInTheDocument();
         expect(screen.getByText('What stood out')).toBeInTheDocument();
     });
@@ -101,14 +104,14 @@ describe('RunLenses', () => {
         expect(screen.getByText('Second claim.')).toBeInTheDocument();
     });
 
-    it('hides the insight card entirely when the claims list is empty', () => {
+    it('hides the claims half entirely when the claims list is empty', () => {
         const props = { ...defaultProps, insight: claimsAnalysis([]) };
         render(<RunLenses {...props} isChainHead />);
         expect(screen.getByText("This run's story")).toBeInTheDocument();
         expect(screen.queryByText('What stood out')).not.toBeInTheDocument();
     });
 
-    it('still shows the insight card while it is pending (nothing to parse yet)', () => {
+    it('still shows the claims half while it is pending (nothing to parse yet)', () => {
         const props = {
             ...defaultProps,
             insight: makeAnalysis(2, 'run_insight', 'pending'),
@@ -117,20 +120,26 @@ describe('RunLenses', () => {
         expect(screen.getByText('What stood out')).toBeInTheDocument();
     });
 
-    it('shows the head-only "Reread all" button on the chain head', () => {
+    it('shows the head-only reread control on the chain head', () => {
         render(<RunLenses {...defaultProps} isChainHead />);
-        expect(screen.getByText(/Reread all/i)).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /reread/i }),
+        ).toBeInTheDocument();
     });
 
-    it('hides the "Reread all" button on a historical (non-head) run', () => {
+    it('hides the reread control on a historical (non-head) run', () => {
         render(<RunLenses {...defaultProps} />);
-        expect(screen.queryByText(/Reread all/i)).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /reread/i }),
+        ).not.toBeInTheDocument();
     });
 
-    it('hides the head "Reread all" button when AI is globally paused', () => {
+    it('hides the head reread control when AI is globally paused', () => {
         setMockPage({ aiPaused: true });
         render(<RunLenses {...defaultProps} isChainHead />);
-        expect(screen.queryByText(/Reread all/i)).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /reread/i }),
+        ).not.toBeInTheDocument();
     });
 
     it('disables the bulk trigger button while pending', () => {
@@ -139,9 +148,7 @@ describe('RunLenses', () => {
             vi.fn(() => new Promise(() => {})),
         );
         render(<RunLenses {...defaultProps} isChainHead />);
-        fireEvent.click(
-            screen.getByText(/Reread all/i).closest('button') as Element,
-        );
+        fireEvent.click(screen.getByRole('button', { name: /reread/i }));
         expect(screen.getByText(/Rereading/i)).toBeInTheDocument();
     });
 
@@ -152,9 +159,7 @@ describe('RunLenses', () => {
         );
         render(<RunLenses {...defaultProps} isChainHead />);
 
-        fireEvent.click(
-            screen.getByText(/Reread all/i).closest('button') as Element,
-        );
+        fireEvent.click(screen.getByRole('button', { name: /reread/i }));
 
         await waitFor(() => {
             expect(router.reload).toHaveBeenCalledWith({
@@ -162,18 +167,18 @@ describe('RunLenses', () => {
             });
         });
         await waitFor(() => {
-            expect(screen.getByText('Reread all')).toBeInTheDocument();
+            expect(screen.getByText('Reread')).toBeInTheDocument();
         });
         expect(
-            screen.getByText(/Reread all/i).closest('button'),
+            screen.getByRole('button', { name: /reread/i }),
         ).not.toBeDisabled();
     });
 
-    it('drops the per-lens reanalyze buttons on the head run', () => {
+    it('carries exactly one reread control for both halves of the card', () => {
         render(<RunLenses {...defaultProps} isChainHead />);
-        // The single "Reread all" control replaces every per-lens "Reread".
-        expect(screen.queryByText(/^Reread$/i)).not.toBeInTheDocument();
-        expect(screen.getByText(/Reread all/i)).toBeInTheDocument();
+        expect(screen.getAllByRole('button', { name: /reread/i })).toHaveLength(
+            1,
+        );
     });
 
     it('shows the shared cooldown countdown on the bulk button', () => {
@@ -186,6 +191,6 @@ describe('RunLenses', () => {
             name: /Wait 2:00 before rereading all/i,
         });
         expect(button).toBeDisabled();
-        expect(button.textContent).toContain('2:00');
+        expect(button.textContent).toContain('Next in 2:00');
     });
 });

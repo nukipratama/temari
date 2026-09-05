@@ -10,9 +10,7 @@ describe('Eyebrow', () => {
         ['hero', 'text-label-hero'],
     ] as const)('renders token="%s"', (token, expected) => {
         render(<Eyebrow token={token}>Token {token}</Eyebrow>);
-        expect(screen.getByText(`Token ${token}`).className).toContain(
-            expected,
-        );
+        expect(screen.getByText(`Token ${token}`)).toHaveClass(expected);
     });
 
     it.each(['div', 'span', 'h3', 'dt', 'footer'] as const)(
@@ -35,10 +33,10 @@ describe('Eyebrow', () => {
     });
 
     it.each([
-        ['ink-2', 'text-ink-2'],
-        ['ink-3', 'text-ink-3'],
+        ['ink-2', 'text-text-2'],
+        ['ink-3', 'text-text-3'],
         ['horizon', 'text-horizon'],
-        ['horizon-deep', 'text-horizon-deep'],
+        ['horizon-ink', 'text-horizon-ink'],
         ['ink-on-sky', 'text-ink-on-sky'],
         ['cream', 'text-cream'],
     ] as const)('renders tone="%s"', (tone, expected) => {
@@ -47,7 +45,7 @@ describe('Eyebrow', () => {
                 Tone {tone}
             </Eyebrow>,
         );
-        expect(screen.getByText(`Tone ${tone}`).className).toContain(expected);
+        expect(screen.getByText(`Tone ${tone}`)).toHaveClass(expected);
     });
 
     it('omits a color class when tone is unset, so className can supply a one-off color', () => {
@@ -58,7 +56,7 @@ describe('Eyebrow', () => {
         );
         const el = screen.getByText('Custom color');
         expect(el.className).toContain('text-cream/60');
-        expect(el.className).not.toMatch(/text-ink|text-horizon(?!\/)/);
+        expect(el.className).not.toMatch(/text-foreground|text-horizon(?!\/)/);
     });
 
     it('lets className override the token size via tailwind-merge', () => {
@@ -66,13 +64,13 @@ describe('Eyebrow', () => {
             <Eyebrow
                 token="micro"
                 tone="ink-2"
-                className="text-[8px] tracking-[0.14em] font-normal"
+                className="text-[0.5rem] tracking-[0.14em] font-normal"
             >
                 Overridden
             </Eyebrow>,
         );
         const el = screen.getByText('Overridden');
-        expect(el.className).toContain('text-[8px]');
+        expect(el.className).toContain('text-[0.5rem]');
         expect(el.className).not.toContain('text-label-micro');
     });
 });

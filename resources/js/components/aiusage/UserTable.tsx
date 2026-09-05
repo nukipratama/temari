@@ -37,17 +37,17 @@ function UserCells({
 
     return (
         <>
-            <td className="px-5 py-3 font-medium text-ink">
+            <td className="px-5 py-3 font-medium text-foreground">
                 <div className="flex items-center gap-1.5">
                     <span>{label}</span>
                     {row.deleted && (
-                        <span className="rounded-full bg-ink/5 px-1.5 py-0.5 text-[10px] font-normal text-ink-3">
+                        <span className="rounded-full bg-ink/5 px-1.5 py-0.5 text-[0.625rem] font-normal text-text-2">
                             deleted
                         </span>
                     )}
                 </div>
                 {row.strava_athlete_id !== null && (
-                    <div className="font-mono text-xs text-ink-3">
+                    <div className="font-mono text-xs text-text-3">
                         Strava {row.strava_athlete_id}
                     </div>
                 )}
@@ -61,7 +61,7 @@ function UserCells({
             <Td>{fmt(row.calls)}</Td>
             <Td>{fmt(row.prompt)}</Td>
             <Td>{fmt(row.completion)}</Td>
-            <Td className="font-semibold text-ink">{fmt(row.total)}</Td>
+            <Td className="font-semibold text-foreground">{fmt(row.total)}</Td>
             <Td>{fmt(avg)}</Td>
         </>
     );

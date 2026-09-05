@@ -44,7 +44,7 @@ class TelegramClient
 
         $this->call('sendPhoto', $params, request: fn (PendingRequest $http): PendingRequest => $http
             ->asMultipart()
-            ->attach('photo', $photo, 'kartu.png'));
+            ->attach('photo', $photo, 'card.png'));
     }
 
     /** Cut a caption to Telegram's character cap, marking a truncation with an ellipsis. */
@@ -109,8 +109,15 @@ class TelegramClient
         try {
             $response = $http->post('/' . $method, $params);
         } catch (ConnectionException $e) {
+            // The bot token sits in the URL path, and Guzzle only redacts
+            // user:pass@host — so a transport failure carries the live token in
+            // its message, which callers log and persist.
+            $reason = $token === ''
+                ? $e->getMessage()
+                : str_replace($token, '[redacted]', $e->getMessage());
+
             throw new TelegramApiException(
-                "Telegram [{$method}] could not reach the API: {$e->getMessage()}",
+                "Telegram [{$method}] could not reach the API: {$reason}",
             );
         }
 

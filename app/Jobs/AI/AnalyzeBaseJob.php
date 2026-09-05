@@ -7,7 +7,9 @@ namespace App\Jobs\AI;
 use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\AI\Analysis;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\NarrationOrigin;
 use App\Services\AI\AnalysisStatus;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -25,6 +27,15 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      */
     public const string QUEUE = 'ai';
 
+    /**
+     * What started this job, stamped by {@see \App\Services\AI\AnalysisService}
+     * at dispatch and restored into {@see NarrationOrigin} before generating, so
+     * the metering row can attribute the call to its trigger rather than only to
+     * the narrator that answered it. Serialized with the job, so it survives the
+     * queue and a retry.
+     */
+    public AnalysisOrigin $origin = AnalysisOrigin::Unknown;
+
     public int $tries = 3;
 
     /** @var array<int, int> */
@@ -33,6 +44,16 @@ abstract class AnalyzeBaseJob implements ShouldQueue
     public function __construct()
     {
         $this->onQueue(self::QUEUE);
+    }
+
+    /**
+     * Put this job's origin in effect for the rest of its run. Called at the top
+     * of every concrete handle(), so a long-lived worker never inherits the
+     * previous job's attribution.
+     */
+    final protected function applyOrigin(): void
+    {
+        app(NarrationOrigin::class)->set($this->origin);
     }
 
     /**
@@ -53,7 +74,7 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      * carries a `Retry-After`: re-queue the row(s) and release the job. The
      * release delay is the upstream `Retry-After` when present, otherwise the
      * configured backoff, capped at {@see self::MAX_RETRY_AFTER_SECONDS}. A
-     * re-queued row is neither re-dispatchable nor shown as "Coba lagi", so a
+     * re-queued row is neither re-dispatchable nor shown as "Try again", so a
      * manual retry cannot race a second LLM call during the wait.
      *
      * Every other outcome ends this attempt failed. `UnavailableException` is
@@ -158,14 +179,27 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      * Refuse to bill while generation is paused (cost ceiling / AI off / Azure
      * unset). The cap is otherwise enforced only at dispatch time, so a job
      * dispatched just before the ceiling tripped would still call the LLM; this
-     * closes that window. Reverts the given rows to Pending (never Failed, and
-     * before markProcessing, so no `attempts` burn) and returns true to tell
-     * handle() to stop; ai:self-heal re-dispatches once generation resumes.
+     * closes that window. Returns true to tell handle() to stop.
+     *
+     * Under the spend ceiling the rows are served from the deterministic filler,
+     * matching what dispatch would have done had the ceiling been hit a moment
+     * earlier — except a row that arrived Failed, which keeps its fault and its
+     * dead-letter visibility. Every other pause reverts them to Pending (never Failed, and
+     * before markProcessing, so no `attempts` burn) for ai:self-heal to
+     * re-dispatch once generation resumes.
      *
      * @param  iterable<Analysis>  $rows
      */
     protected function haltForPausedGeneration(AnalysisService $service, iterable $rows): bool
     {
+        if ($service->costCeilingDegraded()) {
+            foreach ($rows as $row) {
+                $service->degradeToRuleBased($row);
+            }
+
+            return true;
+        }
+
         if (! $service->generationPaused()) {
             return false;
         }

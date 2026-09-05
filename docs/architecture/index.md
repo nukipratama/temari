@@ -28,13 +28,16 @@ _Pipelines & metrics_
 - [[run-ingest-pipeline]] — Strava sync → ActivityPipeline → metrics → transactional story layer
 - [[stream-analysis]] — raw streams → `stream_summary` (HR zones, splits, decoupling, cadence)
 - [[training-load-metrics]] — Edwards TRIMP, CTL/ATL EWMA, strain/monotony/form, backdated propagation
+- [[past-you-engine]] — summary-safe matching against the runner's own history, and the trend verdict it produces
 
 _AI narration_
 - [[ai-pipeline]] — narrator → job → Analysis row; cadence; group/row jobs; chaining; cost ceiling; dead-lettering
 - [[ai-narration-internals]] — context builders (prompt signals) + the demo filler
+- [[llm-triggers]] — the whole LLM surface: every narrator, agent tool and deterministic producer, what starts a call, what stops one, and a proposed verdict per surface
 
 _External integrations_
 - [[strava-client]] — circuit breaker state machine, rate buckets, token refresh
+- [[strava-data-compliance]] — the endpoints we call, cross-user isolation, dated API obligations
 - [[geo-reverse-geocoding]] — Nominatim resolver, cache, 1 req/s lock
 - [[weather-integration]] — Open-Meteo forecast/archive routing, cache TTLs, rain threshold
 

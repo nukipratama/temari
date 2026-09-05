@@ -7,7 +7,6 @@ namespace App\Services\AI;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
-use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -21,7 +20,7 @@ use Illuminate\Support\Carbon;
  * Every dispatch is invalidate:false, so it never fills a template and a
  * still-capped run is a clean no-op; the Failed-sweeping families are bounded
  * by {@see Analysis::MAX_SELF_HEAL_ATTEMPTS} so a terminally-broken block
- * drops out to the /ai-usage dead-letter instead of re-billing forever.
+ * drops out to the /devtools/ai-usage dead-letter instead of re-billing forever.
  */
 class SelfHealer
 {
@@ -48,6 +47,7 @@ class SelfHealer
     public function __construct(
         private readonly AnalysisService $service,
         private readonly ChainResolver $chains,
+        private readonly BackfillAgeGate $ages,
     ) {
     }
 
@@ -63,10 +63,8 @@ class SelfHealer
             + $this->resumeMonthly()
             + $this->resumePerActivity()
             + $this->resumeCardFlavor()
-            + $this->resumePrContext()
             + $this->resumeSingleRowType(AnalysisType::BriefingMascotVoice)
-            + $this->resumeSingleRowType(AnalysisType::BriefingFeaturedKartuVoice)
-            + $this->resumeSingleRowType(AnalysisType::AkuProfileVoice);
+            + $this->resumeSingleRowType(AnalysisType::ProfileVoice);
     }
 
     /**
@@ -76,7 +74,7 @@ class SelfHealer
      * (invalidate:false) re-kicks the group; AnalyzeActivityJob then walks
      * forward. Unlike the Pending-only chain advance, a Failed-under-budget group
      * is auto-retried here too, so the biggest silent-rot class self-heals
-     * instead of waiting on the run page's manual "Coba lagi"; the attempts
+     * instead of waiting on the run page's manual "Try again"; the attempts
      * budget still caps re-billing and dead-letters a terminally-broken group.
      * Demo is excluded (its per-activity rows are seeded Done, and this never
      * auto-bills a demo LLM call) to match the other five families.
@@ -100,7 +98,7 @@ class SelfHealer
             ->distinct()
             ->select('activities.user_id')
             ->chunkById(100, function ($users) use ($service, &$resumed, &$index): void {
-                $oldestReal = Carbon::now()->subDays((int) config('ai.backfill_max_age_days'));
+                $oldestReal = $this->ages->cutoff();
 
                 foreach ($users as $row) {
                     $earliest = AnalyzeActivityJob::earliestStalledActivityForUser((int) $row->user_id);
@@ -151,7 +149,7 @@ class SelfHealer
     private function resumeWeekly(): int
     {
         $links = $this->chains->stalledWeeklyLinkPerUser();
-        $oldestReal = Carbon::now()->subDays((int) config('ai.backfill_max_age_days'))->toDateString();
+        $oldestReal = $this->ages->cutoffDate();
         $index = 0;
 
         foreach ($links as $link) {
@@ -182,7 +180,7 @@ class SelfHealer
     private function resumeMonthly(): int
     {
         $links = $this->chains->stalledMonthlyLinkPerUser();
-        $oldestRealMonth = Carbon::now()->subDays((int) config('ai.backfill_max_age_days'))->format('Y-m');
+        $oldestRealMonth = $this->ages->cutoffMonth();
         $index = 0;
 
         foreach ($links as $link) {
@@ -246,51 +244,17 @@ class SelfHealer
     }
 
     /**
-     * PR-context narration: the earliest stalled PrContext rows per user, up to
-     * {@see self::NONCASCADING_DRAIN_BATCH}. Like CardFlavor, dispatched only at
-     * ingest with no other scheduled recovery and non-cascading, so it drains in
-     * batches. Stalled + budget-bounded; ordered oldest-PR-first; demo excluded.
-     */
-    private function resumePrContext(): int
-    {
-        $toResume = Analysis::query()
-            ->stalled()
-            ->where('ai_analyses.subject_type', PersonalRecord::class)
-            ->where('ai_analyses.analysis_type', AnalysisType::PrContext)
-            ->join('personal_records', 'personal_records.id', '=', 'ai_analyses.subject_id')
-            ->whereIn('personal_records.user_id', User::query()->notDemo()->select('id'))
-            ->orderBy('personal_records.set_at')
-            ->get(['ai_analyses.subject_id', 'personal_records.user_id'])
-            ->groupBy('user_id')
-            ->flatMap(fn ($rows) => $rows->take(self::NONCASCADING_DRAIN_BATCH));
-
-        $toResume->values()->each(fn ($row, int $index) => $this->service->request(
-            subjectOrType: PersonalRecord::class,
-            subjectId: (int) $row->subject_id,
-            type: AnalysisType::PrContext,
-            delaySeconds: $index * self::SWEEP_SPACING_SECONDS,
-            invalidate: false,
-        ));
-
-        return $toResume->count();
-    }
-
-    /**
      * Single-row-per-user narration types with no chain/group of their own:
-     * BriefingMascotVoice, BriefingFeaturedKartuVoice, AkuProfileVoice. Each is
-     * dispatched only at its own kickoff (daily briefing / weekly profile) with
-     * no other scheduled recovery, so a capped-Pending or transiently-Failed row
-     * would sit stuck without this sweep. subject_id is the user id directly for all of these
-     * types, so no join is needed to scope by user. Stalled + budget-bounded;
-     * demo excluded; re-dispatched against the stalled row's own discriminator
-     * (not recomputed) so a resumed BriefingFeaturedKartuVoice still targets the
-     * card it originally narrated.
+     * BriefingMascotVoice and ProfileVoice. Each is dispatched only at its
+     * own kickoff (daily briefing / weekly profile) with no other scheduled
+     * recovery, so a capped-Pending or transiently-Failed row would sit stuck
+     * without this sweep. subject_id is the user id directly for both types, so
+     * no join is needed to scope by user. Stalled + budget-bounded; demo
+     * excluded; re-dispatched against the stalled row's own discriminator
+     * rather than a recomputed one.
      *
-     * Every other type's discriminator is a zero-padded date/week string, so a
-     * plain string ORDER BY is chronological. BriefingFeaturedKartuVoice's
-     * discriminator is a bare card id instead, which a string sort gets wrong
-     * across a digit-count boundary ('10' sorts before '9'), so it orders by
-     * the numeric value instead to still land on the truly-earliest stalled row.
+     * Both discriminators are zero-padded date/week strings, so a plain string
+     * ORDER BY is chronological.
      */
     private function resumeSingleRowType(AnalysisType $type): int
     {
@@ -299,11 +263,7 @@ class SelfHealer
             ->where('subject_type', $type->subjectType())
             ->where('analysis_type', $type)
             ->whereIn('subject_id', User::query()->notDemo()->select('id'))
-            ->when(
-                $type === AnalysisType::BriefingFeaturedKartuVoice,
-                fn ($query) => $query->orderByRaw('CAST(discriminator AS UNSIGNED)'),
-                fn ($query) => $query->orderBy('discriminator'),
-            )
+            ->orderBy('discriminator')
             ->get(['subject_id', 'discriminator'])
             ->unique('subject_id');
 

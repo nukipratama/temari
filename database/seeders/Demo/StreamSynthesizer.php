@@ -82,6 +82,7 @@ class StreamSynthesizer
             'time' => ['data' => $time],
             'velocity_smooth' => ['data' => $velocity],
             'altitude' => ['data' => $altitude],
+            'grade_smooth' => ['data' => $this->gradeSeries($altitude, $distance)],
             'distance' => ['data' => $distance],
         ];
         if ($blueprint->hasHrSensor) {
@@ -121,6 +122,29 @@ class StreamSynthesizer
         $leg = (int) round($spm / 2);
 
         return max(75, min(95, $leg));
+    }
+
+    /**
+     * Per-sample gradient in percent, derived from the altitude and distance
+     * series rather than invented, so the hill metrics agree with the terrain
+     * the rest of the streams describe. Without this stream StreamAnalysis
+     * computes no `max_grade_pct` at all, and the vitals card's steepest-grade
+     * and flat-pace tiles are gated on it.
+     *
+     * @param  list<float>  $altitude
+     * @param  list<float>  $distance
+     * @return list<float>
+     */
+    private function gradeSeries(array $altitude, array $distance): array
+    {
+        $grade = [];
+        foreach ($altitude as $i => $alt) {
+            $run = $i === 0 ? 0.0 : $distance[$i] - $distance[$i - 1];
+            $rise = $i === 0 ? 0.0 : $alt - $altitude[$i - 1];
+            $grade[] = $run <= 0.0 ? 0.0 : round($rise / $run * 100, 2);
+        }
+
+        return $grade;
     }
 
     private function altitudeAt(RunBlueprint $b, float $progress): float

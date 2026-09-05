@@ -1,12 +1,12 @@
+import type { ReactNode } from 'react';
+
 import { usePage } from '@inertiajs/react';
 import { MotionConfig } from 'framer-motion';
-import { lazy, type ReactNode, Suspense, useState } from 'react';
 
-import type { SharedProps, UnlockFlash } from '@/types/inertia';
+import type { SharedProps } from '@/types/inertia';
 
 import AiCatchingUpBanner from '@/components/AiCatchingUpBanner';
 import AiOutageBanner from '@/components/AiOutageBanner';
-import AksesoriUnlockModal from '@/components/celebrations/AksesoriUnlockModal';
 import ErrorBanner from '@/components/ErrorBanner';
 import FlashNotice from '@/components/FlashNotice';
 import MobileBottomNav from '@/components/MobileBottomNav';
@@ -14,89 +14,68 @@ import MobileTopBar from '@/components/MobileTopBar';
 import RouteProgressBar from '@/components/RouteProgressBar';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
-import UnlockToast from '@/components/temari/UnlockToast';
-import TopNav from '@/components/TopNav';
-import { useDawnShift } from '@/hooks/useDawnShift';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
-
-// The pack reveal drags the whole share-card canvas engine in behind it, and
-// this layout wraps every page — so it stays off the first-paint path and is
-// fetched only when a reveal is actually pending.
-const CardReveal = lazy(() => import('@/components/card/CardReveal'));
+import { useSystemTheme } from '@/hooks/useSystemTheme';
+import { cn } from '@/lib/cn';
+import { navTabFor } from '@/lib/nav';
 
 interface AppShellProps {
     children: ReactNode;
 }
 
 export default function AppShell({ children }: Readonly<AppShellProps>) {
-    useDawnShift();
     useSwipeBack();
-    const { pendingReveal, flash } = usePage<SharedProps>().props;
-    const pending = pendingReveal ?? null;
-    const unlock = flash?.unlock ?? null;
-    const [majorUnlock, setMajorUnlock] = useState<UnlockFlash | null>(() =>
-        unlock?.is_major ? unlock : null,
-    );
-    const [lastUnlock, setLastUnlock] = useState(unlock);
-
-    // Capture a major unlock flash for the reveal — adjusted during render
-    // (React-endorsed) so the sync setState isn't inside an effect.
-    if (unlock !== lastUnlock) {
-        setLastUnlock(unlock);
-        if (unlock?.is_major) {
-            setMajorUnlock(unlock);
-        }
-    }
+    useSystemTheme();
+    const { component } = usePage<SharedProps>();
+    const hasBottomNav = navTabFor(component) !== null;
 
     return (
         <MotionConfig reducedMotion="user">
-            {/* MobileTopBar carries the safe-area padding for this branch, so
-            nothing is needed here — see its pt-[max(...)]. */}
-            <div className="min-h-screen bg-cream-deep text-ink">
+            <div className="min-h-screen bg-background text-foreground">
                 <RouteProgressBar />
                 <a
                     href="#main-content"
-                    className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-leaf focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg"
+                    className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-leaf focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:shadow-e2"
                 >
-                    Lompat ke konten
+                    Skip to content
                 </a>
 
-                <TopNav />
                 <MobileTopBar />
 
-                <ErrorBanner />
-                <FlashNotice />
-                <StravaZoneReconnectBanner />
-                <AiOutageBanner />
-                <AiCatchingUpBanner />
-                <StravaPausedBanner />
+                {/* MobileTopBar is fixed and out of flow (see its own comment), so
+                this padding is what actually clears it. Above 900px the column narrows
+                to 760px and the bar's chips sit outside it, so the clearance drops to
+                the prototype's own pt-6. */}
+                <div className="pt-[max(4rem,calc(env(safe-area-inset-top)+3rem))] min-[900px]:pt-6">
+                    <ErrorBanner />
+                    <FlashNotice />
+                    <StravaZoneReconnectBanner />
+                    <AiOutageBanner />
+                    <AiCatchingUpBanner />
+                    <StravaPausedBanner />
 
-                {/* Deliberately unkeyed and unanimated. A `key` here forced React to
-                tear down and rebuild the whole content subtree on every visit
-                (25 card mounts on Collection), and the enter animation it existed
-                to replay started at opacity 0 — so a navigation read as
-                "old page → blank → fade in". Inertia already swaps a different
-                component type on a real navigation, so React remounts what it
-                needs to without help. */}
-                <main id="main-content" className="pb-28 lg:pb-0">
-                    {children}
-                </main>
+                    {/* Deliberately unkeyed and unanimated. A `key` here forced React to
+                    tear down and rebuild the whole content subtree on every visit
+                    (25 card mounts on Collection), and the enter animation it existed
+                    to replay started at opacity 0 — so a navigation read as
+                    "old page → blank → fade in". Inertia already swaps a different
+                    component type on a real navigation, so React remounts what it
+                    needs to without help. */}
+                    <main
+                        id="main-content"
+                        tabIndex={-1}
+                        className={cn(
+                            'outline-none',
+                            hasBottomNav
+                                ? 'pb-28'
+                                : 'pb-[calc(1.75rem+env(safe-area-inset-bottom))]',
+                        )}
+                    >
+                        {children}
+                    </main>
+                </div>
 
                 <MobileBottomNav />
-                {/* Celebration overlays are sequenced, not stacked: CardReveal (a pack
-                reveal) takes priority over the aksesori-unlock modal, which in turn
-                takes priority over the UnlockToast, so a sync that fires more than
-                one celebration plays them back-to-back instead of all at once. */}
-                {!pending && majorUnlock === null && <UnlockToast />}
-                {pending && (
-                    <Suspense fallback={null}>
-                        <CardReveal pending={pending} />
-                    </Suspense>
-                )}
-                <AksesoriUnlockModal
-                    unlock={pending ? null : majorUnlock}
-                    onClose={() => setMajorUnlock(null)}
-                />
             </div>
         </MotionConfig>
     );

@@ -15,10 +15,15 @@ use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Notifications\AnalysisReadyNotification;
+use App\Notifications\Channels\InAppChannel;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\MaintainerAlerter;
+use App\Services\AI\NarrationOrigin;
+use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Database\Events\QueryExecuted;
@@ -35,6 +40,18 @@ beforeEach(function (): void {
     $this->service = app(AnalysisService::class);
 });
 
+/** Push today's estimated spend to $2.50, over a $1.00 ceiling. */
+function breachTheCeiling(): void
+{
+    config(['azure_openai.daily_cost_ceiling' => 1.0]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
+
+    TokenUsage::query()->create([
+        'kind' => 'briefing', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
+        'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
+    ]);
+}
+
 it('creates a pending row and queues a row job on first request', function (): void {
     $snap = WeeklySnapshot::factory()->create();
 
@@ -50,6 +67,37 @@ it('creates a pending row and queues a row job on first request', function (): v
     Bus::assertDispatched(
         AnalyzeWeeklyRecapJob::class,
         fn (AnalyzeWeeklyRecapJob $job): bool => $job->analysisId === $row->id,
+    );
+});
+
+it('stamps the dispatching entry point origin onto the job, so spend attributes to its trigger', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
+
+    $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    Bus::assertDispatched(
+        AnalyzeWeeklyRecapJob::class,
+        fn (AnalyzeWeeklyRecapJob $job): bool => $job->origin === AnalysisOrigin::Scheduled,
+    );
+});
+
+it('stamps an undeclared dispatch as unattributed rather than defaulting to a real origin', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+
+    $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    Bus::assertDispatched(
+        AnalyzeWeeklyRecapJob::class,
+        fn (AnalyzeWeeklyRecapJob $job): bool => $job->origin === AnalysisOrigin::Unknown,
     );
 });
 
@@ -176,13 +224,13 @@ it('requestDeferred creates a Pending row and never dispatches', function (): vo
 it('requestDeferred leaves an existing Done row untouched', function (): void {
     $snap = WeeklySnapshot::factory()->create();
     $row = $this->service->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
-    $this->service->markDone($row, 'recap minggu lalu');
+    $this->service->markDone($row, 'last week recap');
 
     $again = $this->service->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
 
     expect($again->id)->toBe($row->id)
         ->and($again->status)->toBe(AnalysisStatus::Done)
-        ->and($again->content)->toBe('recap minggu lalu');
+        ->and($again->content)->toBe('last week recap');
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
@@ -204,7 +252,7 @@ it('requestActivityGroupRuleBased fills all rows Done without dispatching', func
 
 it('requestActivityGroupRuleBased never overwrites an already-Done row with filler (e.g. real narration that aged past the cap)', function (): void {
     $activity = Activity::factory()->create();
-    $realRow = Analysis::factory()->done('narasi asli yang sudah dibayar')->create([
+    $realRow = Analysis::factory()->done('original narration, already billed')->create([
         'subject_type' => Activity::class,
         'subject_id' => $activity->id,
         'analysis_type' => AnalysisType::PostRunSpeech,
@@ -213,7 +261,7 @@ it('requestActivityGroupRuleBased never overwrites an already-Done row with fill
 
     $this->service->requestActivityGroupRuleBased($activity);
 
-    expect($realRow->fresh()->content)->toBe('narasi asli yang sudah dibayar');
+    expect($realRow->fresh()->content)->toBe('original narration, already billed');
 });
 
 it('requestActivityGroup creates its rows and dispatches one AnalyzeActivityJob', function (): void {
@@ -269,7 +317,7 @@ it('requestBriefing creates the suggestion row and dispatches one AnalyzeBriefin
 
     $this->service->requestBriefing($user, '2026-05-18');
 
-    // Mascot voice and featured-kartu voice are dispatched by their own callers.
+    // Mascot voice and featured-card voice are dispatched by their own callers.
     expect(Analysis::query()->where('subject_id', $user->id)->where('discriminator', '2026-05-18')->count())->toBe(1);
 
     $row = Analysis::query()
@@ -364,15 +412,24 @@ it('does not dispatch when Azure config is missing', function (): void {
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
-it('does not dispatch when today\'s LLM cost exceeds the daily ceiling', function (): void {
-    config(['azure_openai.daily_cost_ceiling' => 1.0]);
-    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
+it('serves rule-based content instead of dispatching once the daily ceiling is exceeded', function (): void {
+    breachTheCeiling();
 
-    // 1M input @ 2.50/1M = $2.50 spent today, over the $1.00 ceiling.
-    TokenUsage::query()->create([
-        'kind' => 'briefing', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
-        'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
-    ]);
+    $snap = WeeklySnapshot::factory()->create(['runs' => 3, 'distance_km' => 21.0]);
+    $row = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($row->status)->toBe(AnalysisStatus::Done)
+        ->and($row->content)->toBe(app(RuleBasedNarrationFiller::class)->fillFor($row))
+        ->and($row->content)->toContain('21.0 km');
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('leaves the row Pending when the kill switch, not the budget, stopped generation', function (): void {
+    app(AppConfig::class)->set(AppConfigKey::AiEnabled, false);
 
     $snap = WeeklySnapshot::factory()->create();
     $row = $this->service->request(
@@ -382,8 +439,131 @@ it('does not dispatch when today\'s LLM cost exceeds the daily ceiling', functio
     );
 
     expect($row->status)->toBe(AnalysisStatus::Pending)
-        ->and($row->content)->toBeNull();
+        ->and($row->content)->toBeNull()
+        ->and($this->service->costCeilingDegraded())->toBeFalse();
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('leaves the row Pending when Azure is unconfigured, not degraded', function (): void {
+    config(['azure_openai.uri' => '', 'azure_openai.api_key' => '']);
+
+    $snap = WeeklySnapshot::factory()->create();
+    $row = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($row->status)->toBe(AnalysisStatus::Pending)
+        ->and($row->content)->toBeNull()
+        ->and($this->service->costCeilingDegraded())->toBeFalse();
+});
+
+it('leaves the row Pending when a breached budget sits behind a tripped config breaker', function (): void {
+    breachTheCeiling();
+    config(['azure_openai.uri' => 'https://x.openai.azure.com/x', 'azure_openai.api_key' => 'wrong-key']);
+    $breaker = app(AzureConfigCircuitBreaker::class);
+    for ($i = 0; $i < 3; $i++) {
+        $breaker->recordFailure();
+    }
+
+    $snap = WeeklySnapshot::factory()->create();
+    $row = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($row->status)->toBe(AnalysisStatus::Pending)
+        ->and($this->service->costCeilingDegraded())->toBeFalse();
+});
+
+it('degrades every row of a group, and never overwrites one already billed for', function (): void {
+    $activity = Activity::factory()->create();
+    ActivityDetail::factory()->create(['activity_id' => $activity->id, 'distance' => 8000]);
+    Analysis::factory()->done('original narration, already billed')->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::RunInsight,
+        'discriminator' => null,
+    ]);
+    breachTheCeiling();
+
+    $this->service->requestActivityGroup($activity);
+
+    $rows = Analysis::query()->where('subject_id', $activity->id)->get();
+    expect($rows->pluck('status')->unique()->all())->toBe([AnalysisStatus::Done])
+        ->and($rows->firstWhere('analysis_type', AnalysisType::RunInsight)->content)
+        ->toBe('original narration, already billed')
+        ->and($rows->firstWhere('analysis_type', AnalysisType::PostRunSpeech)->content)
+        ->toBe(app(RuleBasedNarrationFiller::class)->fillFor(
+            $rows->firstWhere('analysis_type', AnalysisType::PostRunSpeech),
+        ));
+    Bus::assertNotDispatched(AnalyzeActivityJob::class);
+});
+
+it('leaves a Failed row Failed past the ceiling while its Pending sibling degrades', function (): void {
+    $activity = Activity::factory()->create();
+    ActivityDetail::factory()->create(['activity_id' => $activity->id, 'distance' => 8000]);
+    Analysis::factory()->failed('narator meledak')->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::RunInsight,
+        'discriminator' => null,
+    ]);
+    breachTheCeiling();
+
+    $this->service->requestActivityGroup($activity);
+
+    $rows = Analysis::query()
+        ->where('subject_id', $activity->id)
+        ->get()
+        ->keyBy(fn (Analysis $row): string => $row->analysis_type->value);
+
+    // The broken block keeps its fault (and its dead-letter visibility); the
+    // untouched sibling still gets content, so this is an exclusion, not a
+    // whole-group opt-out.
+    expect($rows['run_insight']->status)->toBe(AnalysisStatus::Failed)
+        ->and($rows['run_insight']->error)->toBe('narator meledak')
+        ->and($rows['run_insight']->content)->toBeNull()
+        ->and($rows['post_run_speech']->status)->toBe(AnalysisStatus::Done)
+        ->and($rows['post_run_speech']->content)->toBe(
+            app(RuleBasedNarrationFiller::class)->fillFor($rows['post_run_speech']),
+        );
+    expect(app(CostCeilingLedger::class)->today()['degradedFills'])->toBe(1);
+});
+
+it('records the trip time and the degraded-fill count for /ai-usage', function (): void {
+    $this->freezeTime();
+    breachTheCeiling();
+
+    foreach (WeeklySnapshot::factory()->count(2)->create() as $snap) {
+        $this->service->request(
+            subjectOrType: WeeklySnapshot::class,
+            subjectId: $snap->id,
+            type: AnalysisType::WeeklyRecap,
+        );
+    }
+
+    expect(app(CostCeilingLedger::class)->today())
+        ->trippedAt->toBe(Carbon::now()->toIso8601String())
+        ->degradedFills->toBe(2);
+});
+
+it('does not degrade a staged row under withoutDispatching', function (): void {
+    breachTheCeiling();
+    $snap = WeeklySnapshot::factory()->create();
+
+    $this->service->withoutDispatching(function () use ($snap): void {
+        $row = $this->service->request(
+            subjectOrType: WeeklySnapshot::class,
+            subjectId: $snap->id,
+            type: AnalysisType::WeeklyRecap,
+        );
+
+        expect($row->status)->toBe(AnalysisStatus::Pending)
+            ->and($this->service->costCeilingDegraded())->toBeFalse();
+    });
 });
 
 it('still dispatches when today\'s LLM cost is under the daily ceiling', function (): void {
@@ -405,7 +585,7 @@ it('still dispatches when today\'s LLM cost is under the daily ceiling', functio
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
-it('keeps existing prose when a capped "Baca ulang" regenerate is a no-op', function (): void {
+it('keeps existing prose when a capped "Reread" regenerate is a no-op', function (): void {
     config(['ai.auto_dispatch' => false]);
     $snap = WeeklySnapshot::factory()->create();
     Analysis::query()->create([
@@ -460,7 +640,7 @@ it('markDone records content and generated_at', function (): void {
     expect($fresh->status)->toBe(AnalysisStatus::Done)
         ->and($fresh->content)->toBe('final narrative')
         ->and($fresh->generated_at)->not->toBeNull()
-        ->and($fresh->cooldownRemaining())->toBeGreaterThanOrEqual(0);
+        ->and($fresh->cooldownRemaining())->toBeGreaterThan(0);
 });
 
 it('markDone stores a content fingerprint when given, and leaves it null otherwise', function (): void {
@@ -477,7 +657,7 @@ it('markDone stores a content fingerprint when given, and leaves it null otherwi
         'discriminator' => '2026-05-18',
     ]);
 
-    $this->service->markDone($withFingerprint, 'cerita', fingerprint: 'abc123');
+    $this->service->markDone($withFingerprint, 'story', fingerprint: 'abc123');
     $this->service->markDone($without, 'headline');
 
     expect($withFingerprint->fresh()->content_fingerprint)->toBe('abc123')
@@ -774,7 +954,7 @@ it('a second dispatchGroup on a fully Done group does not re-dispatch', function
     $this->service->requestActivityGroup($activity);
     Analysis::query()->where('subject_id', $activity->id)->update([
         'status' => AnalysisStatus::Done->value,
-        'content' => 'sudah.',
+        'content' => 'done.',
     ]);
     Bus::fake();
 
@@ -797,7 +977,7 @@ it('markDone fans out a notification for a notifiable, wired type', function ():
         'discriminator' => null,
     ]);
 
-    $this->service->markDone($row, 'Cerita lari.');
+    $this->service->markDone($row, 'Run story.');
 
     Notification::assertSentTo(
         $user,
@@ -884,7 +1064,52 @@ it('resumes generation for free once the config breaker resets (env fixed)', fun
         ->and($this->service->pauseReason())->toBeNull();
 });
 
-it('markDone does not notify when Telegram is unconfigured', function (): void {
+it('names a reason for every stop that pauses generation', function (Closure $stop, string $reason): void {
+    $stop();
+
+    expect($this->service->generationPaused())->toBeTrue()
+        ->and($this->service->pauseReason())->toBe($reason);
+})->with([
+    'kill switch off' => [
+        fn () => app(AppConfig::class)->set(AppConfigKey::AiEnabled, false),
+        'kill_switch',
+    ],
+    'auto-dispatch env switch off' => [
+        fn () => config(['ai.auto_dispatch' => false]),
+        'auto_dispatch',
+    ],
+    'azure unconfigured' => [
+        fn () => config(['azure_openai.uri' => '', 'azure_openai.api_key' => '']),
+        'unconfigured',
+    ],
+    'daily cost ceiling breached' => [
+        breachTheCeiling(...),
+        'cost_ceiling',
+    ],
+]);
+
+it('reports no reason while generation is running', function (): void {
+    expect($this->service->generationPaused())->toBeFalse()
+        ->and($this->service->pauseReason())->toBeNull();
+});
+
+it('reads the breaker without consuming its half-open probe when only reporting', function (): void {
+    $breaker = app(AzureConfigCircuitBreaker::class);
+    for ($i = 0; $i < 3; $i++) {
+        $breaker->recordFailure();
+    }
+    Carbon::setTestNow(Carbon::now()->addHour());
+
+    expect($this->service->pauseReason())->toBeNull()
+        ->and($breaker->state())->toBe(AzureConfigCircuitBreaker::STATE_OPEN);
+
+    expect($this->service->generationPaused())->toBeFalse()
+        ->and($breaker->state())->toBe(AzureConfigCircuitBreaker::STATE_HALF_OPEN);
+
+    Carbon::setTestNow();
+});
+
+it('markDone reaches the inbox alone when Telegram is unconfigured', function (): void {
     config(['services.telegram.bot_token' => null, 'services.telegram.notify_max_age_days' => 14]);
     Notification::fake();
     $user = User::factory()->create();
@@ -900,7 +1125,11 @@ it('markDone does not notify when Telegram is unconfigured', function (): void {
 
     $this->service->markDone($row, 'Rekap.');
 
-    Notification::assertNothingSent();
+    Notification::assertSentTo(
+        $user,
+        AnalysisReadyNotification::class,
+        fn (AnalysisReadyNotification $notification): bool => $notification->via($user) === [InAppChannel::class],
+    );
 });
 
 it('requestRuleBased fills a row from the filler without dispatching or cooling', function (): void {
@@ -932,7 +1161,7 @@ it('requestRuleBased refills an already-Done row in place rather than minting a 
 
 it('requestRuleBased with refillDone:false leaves an already-Done row untouched', function (): void {
     $snap = WeeklySnapshot::factory()->create();
-    Analysis::factory()->done('recap asli, sudah dibayar')->create([
+    Analysis::factory()->done('original recap, already billed')->create([
         'subject_type' => WeeklySnapshot::class,
         'subject_id' => $snap->id,
         'analysis_type' => AnalysisType::WeeklyRecap,
@@ -941,7 +1170,7 @@ it('requestRuleBased with refillDone:false leaves an already-Done row untouched'
 
     $row = $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap, refillDone: false);
 
-    expect($row->content)->toBe('recap asli, sudah dibayar');
+    expect($row->content)->toBe('original recap, already billed');
 });
 
 it('runs the daily cost aggregate once per scope no matter how many rows it dispatches', function (): void {
@@ -1001,12 +1230,7 @@ it('re-reads the ceiling in a fresh scope, so a memo never outlives its request 
 });
 
 it('honours a ceiling that is already breached when the scope starts', function (): void {
-    config(['azure_openai.daily_cost_ceiling' => 1.0]);
-    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
-    TokenUsage::query()->create([
-        'kind' => 'briefing', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
-        'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
-    ]);
+    breachTheCeiling();
 
     $snaps = WeeklySnapshot::factory()->count(3)->create();
     foreach ($snaps as $snap) {
@@ -1015,7 +1239,7 @@ it('honours a ceiling that is already breached when the scope starts', function 
             subjectId: $snap->id,
             type: AnalysisType::WeeklyRecap,
         );
-        expect($row->status)->toBe(AnalysisStatus::Pending);
+        expect($row->status)->toBe(AnalysisStatus::Done);
     }
 
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);

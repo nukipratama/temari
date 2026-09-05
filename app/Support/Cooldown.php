@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\RateLimiter;
 final readonly class Cooldown
 {
     /**
-     * Default window: the per-block AI re-narration guard ("Baca ulang"),
+     * Default window: the per-block AI re-narration guard ("Reread"),
      * started from AnalysisService::markDone(). This one is a **cost** guard —
      * every re-fire is a paid LLM call — so it stays long. See the
      * per-block-manual-retry decision note before shortening it.
@@ -38,7 +38,7 @@ final readonly class Cooldown
      */
     public const int NOTIFICATION_WINDOW_SECONDS = 300;
 
-    /** "Kirim notifikasi tes" — short, because it is a setup-time debug tool. */
+    /** "Send test notification" — short, because it is a setup-time debug tool. */
     public const int TEST_WINDOW_SECONDS = 60;
 
     public function __construct(private string $key, private int $window = self::WINDOW_SECONDS)

@@ -1,0 +1,77 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Requests;
+
+use App\Services\Run\FeedFilters;
+use Carbon\Exceptions\InvalidFormatException;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Carbon;
+
+/**
+ * Parses the Feed listing's query string. Every accessor normalises rather
+ * than rejects: an unknown or malformed value widens the view instead of
+ * erroring, so a stale or hand-edited URL still shows runs. That is why
+ * {@see rules()} is empty.
+ */
+class FeedFilterRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        return [];
+    }
+
+    public function range(): string
+    {
+        $raw = $this->query('range');
+        $candidate = is_string($raw) ? $raw : '';
+
+        if ($candidate === FeedFilters::RANGE_ALL || array_key_exists($candidate, FeedFilters::RANGE_DAYS)) {
+            return $candidate;
+        }
+
+        return '8w';
+    }
+
+    /**
+     * The `?weeks=N` page cursor: how many run-bearing weeks the feed shows.
+     * Clamped rather than rejected, like every other accessor here.
+     */
+    public function weeks(): int
+    {
+        $raw = $this->query('weeks');
+        $candidate = is_numeric($raw) ? (int) $raw : FeedFilters::WEEKS_PER_PAGE;
+
+        return max(FeedFilters::WEEKS_PER_PAGE, min(FeedFilters::MAX_WEEKS, $candidate));
+    }
+
+    /**
+     * The `?week=YYYY-MM-DD` deep-link target, normalised to that week's Sunday
+     * (WeeklySnapshot.week_ending), or null when absent/malformed. Any date in
+     * the week resolves to the same Sunday, so a link built from a run date
+     * still lands on the right recap.
+     */
+    public function week(): ?Carbon
+    {
+        $raw = $this->query('week');
+
+        if (! is_string($raw) || preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw) !== 1) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($raw)->endOfWeek(Carbon::SUNDAY)->startOfDay();
+        } catch (InvalidFormatException) {
+            return null;
+        }
+    }
+}

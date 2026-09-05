@@ -11,26 +11,36 @@ import { cva } from 'class-variance-authority';
  * `Record` lookups and are not folded in here.
  */
 
-/** Card surface tone + padding. Mirrors TONE_CLASS / PADDING_CLASS in components/ui/Card.tsx. */
-export const cardVariants = cva('shadow-sm', {
+/**
+ * The card system. One surface treatment — `surface-card` on a `line` border at
+ * the `md` radius with the resting `e1` elevation — in three states: the card
+ * itself, the same card mounted on a dark sky panel, and the empty state, which
+ * the prototype draws as an ordinary card on the heavier border rather than as
+ * a dashed placeholder (see T2/T3). Padding names the `--pad-*` role it wants
+ * rather than a number.
+ */
+export const cardVariants = cva('rounded-md', {
     variants: {
         tone: {
-            cream: 'rounded-2xl border border-line bg-surface-card',
-            'cream-deep': 'rounded-2xl border border-line bg-cream-deep',
-            'sky-glass':
-                'rounded-2xl border border-cream/[0.12] bg-cream/[0.06] backdrop-blur',
-            empty: 'rounded-2xl border border-dashed border-cream-deep bg-cream/40 shadow-none',
+            card: 'border border-border bg-card shadow-e1',
+            sky: 'border border-sky bg-sky text-cream shadow-e2',
+            onSky: 'border border-cream/[0.12] bg-cream/[0.06] backdrop-blur',
+            empty: 'border border-border-strong bg-card shadow-e1',
+            // Temari's voice: the card gains a heavier accent-mixed edge and a
+            // horizon halo so narration reads as spoken, not tabulated.
+            narration:
+                'border-[1.5px] border-horizon-ink/45 bg-card shadow-e1 ring-3 ring-horizon/15',
         },
         padding: {
             none: '',
-            sm: 'px-4 py-3.5',
-            md: 'px-5 py-5',
-            lg: 'px-6 py-6',
+            panel: 'pad-panel',
+            card: 'pad-card',
+            hero: 'pad-hero',
         },
     },
     defaultVariants: {
-        tone: 'cream',
-        padding: 'md',
+        tone: 'card',
+        padding: 'card',
     },
 });
 
@@ -46,12 +56,12 @@ export const pillButtonVariants = cva(
             tone: {
                 horizon: 'bg-horizon text-sky hover:bg-horizon-deep',
                 sky: 'bg-sky text-cream hover:bg-sky-deep',
-                ghost: 'bg-transparent text-ink border-[1.5px] border-ink/[0.18] hover:border-ink-2',
+                ghost: 'bg-transparent text-foreground border-[1.5px] border-foreground/20 hover:border-foreground/40',
                 outline:
-                    'bg-cream border-[1.5px] border-cream-deep text-ink-2 hover:border-ink-3 hover:text-ink',
+                    'bg-card border-[1.5px] border-border text-text-2 hover:border-foreground/40 hover:text-foreground',
             },
             size: {
-                sm: 'px-3.5 py-2 text-[13px]',
+                sm: 'px-3.5 py-2 text-[0.8125rem]',
                 md: 'px-[22px] py-3 text-sm',
             },
             onSky: {
@@ -83,19 +93,18 @@ export const pillButtonVariants = cva(
 
 /** Chip tone + size. Mirrors TONE_CLASS + size ternary in components/ui/Chip.tsx. */
 export const chipVariants = cva(
-    'inline-flex items-center gap-1 whitespace-nowrap rounded-full text-label-micro font-semibold tracking-[0.08em]',
+    'pad-chip inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold tracking-[0.08em]',
     {
         variants: {
             tone: {
-                neutral: 'bg-ink/[0.06] text-ink-2',
-                horizon: 'bg-horizon/[0.18] text-horizon-deep',
-                leaf: 'bg-leaf/[0.18] text-leaf',
+                neutral: 'bg-ink/[0.06] text-text-2',
+                horizon: 'bg-horizon/[0.18] text-horizon-ink',
                 sky: 'bg-sky/[0.08] text-sky',
                 onSky: 'bg-cream/10 text-cream/80',
             },
             size: {
-                sm: 'px-[9px] py-[3px] text-[11px]',
-                md: 'px-[11px] py-[5px] text-[12px]',
+                sm: 'text-[0.6875rem]',
+                md: 'text-[0.75rem]',
             },
         },
         defaultVariants: {
@@ -107,21 +116,21 @@ export const chipVariants = cva(
 
 /**
  * Segmented / toggle control — the solid-fill selected-vs-unselected pill used
- * by the Rekor progression tabs and the ShareCardModal theme picker. One source
+ * by the PRs progression tabs and the ShareCardModal theme picker. One source
  * of truth for radius/size/state. Filter rows that need a bordered or tinted
- * treatment (riwayat range + mood, AiUsage presets) stay hand-rolled.
+ * treatment (history range + mood, AiUsage presets) stay hand-rolled.
  */
 export const toggleButtonVariants = cva(
     'inline-flex items-center justify-center rounded-full font-sans font-medium transition focus-ring',
     {
         variants: {
             size: {
-                sm: 'px-3 py-1.5 text-[12px]',
+                sm: 'px-3 py-1.5 text-[0.75rem]',
                 md: 'px-4 py-2 text-sm',
             },
             selected: {
-                true: 'bg-sky text-cream',
-                false: 'bg-cream-deep text-ink-2 hover:bg-cream-deep/70',
+                true: 'bg-foreground text-background',
+                false: 'bg-muted text-text-2 hover:bg-muted/70',
             },
         },
         defaultVariants: {
@@ -136,7 +145,7 @@ export const toggleButtonVariants = cva(
  * arrows, modal dismiss). `onSky` flips it to the cream-on-dark treatment.
  */
 export const iconButtonVariants = cva(
-    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full transition text-ink-2 hover:bg-ink/[0.06] hover:text-ink focus-ring',
+    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full transition text-text-2 hover:bg-ink/[0.06] hover:text-foreground focus-ring',
     {
         variants: {
             size: {
@@ -156,36 +165,43 @@ export const iconButtonVariants = cva(
 );
 
 /**
- * Filter-panel option row — the sky-tinted-vs-plain toggle shared by the
- * range links, distance/sort buttons, and mood buttons in RiwayatFilter.tsx.
- * `layout: 'row'` covers the full-width justify-between rows (range,
- * distance, sort); `layout: 'mood'` covers the two-column mood grid, which
- * doesn't stretch full width and carries its own gap + weight.
+ * Bordered pill — the hairline-outlined counterpart to
+ * {@link toggleButtonVariants}'s solid fill, for a selectable filter (race
+ * distance presets, the PRs progression tabs) or an inline row action (the
+ * Plan tab's per-day controls). Gold-on-paper is `horizon-ink`, never the
+ * `horizon-deep` CTA fill.
  */
-export const filterOptionVariants = cva(
-    'focus-ring flex min-h-11 items-center rounded-lg px-2 py-2 text-left text-xs transition',
+export const outlineChipVariants = cva(
+    'focus-ring inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 py-1.5 text-label-micro transition',
     {
         variants: {
-            layout: {
-                row: 'w-full justify-between lg:text-sm',
-                mood: 'gap-2 font-medium',
-            },
-            active: {
-                true: 'bg-sky/10 text-sky',
-                false: 'text-ink hover:bg-surface-warm',
+            selected: {
+                true: 'border-horizon bg-horizon/[0.18] text-horizon-ink',
+                false: 'border-border text-text-3 hover:border-horizon/60 hover:text-foreground',
             },
         },
-        compoundVariants: [
-            {
-                layout: 'row',
-                active: true,
-                class: 'font-semibold',
+        defaultVariants: { selected: false },
+    },
+);
+
+/**
+ * Text/number/date field. `rounded-sm` is the radius scale's input corner, so
+ * a field never picks up a card's `md` or a pill's `full`. `sm` is the inline
+ * field that sits in a row of controls, and shares `min-h-8` with
+ * {@link outlineChipVariants} so the two line up: a coarse pointer forces
+ * every field to 16px (see the iOS zoom note in app.css), which would
+ * otherwise leave a field taller than the pills beside it.
+ */
+export const inputVariants = cva(
+    'focus-ring w-full border border-border bg-background rounded-sm text-foreground',
+    {
+        variants: {
+            size: {
+                sm: 'min-h-8 px-2.5 py-1 text-sm',
+                md: 'px-3 py-2 text-sm',
             },
-        ],
-        defaultVariants: {
-            layout: 'row',
-            active: false,
         },
+        defaultVariants: { size: 'md' },
     },
 );
 
@@ -198,10 +214,11 @@ export const eyebrowVariants = cva('', {
             hero: 'text-label-hero',
         },
         tone: {
-            'ink-2': 'text-ink-2',
-            'ink-3': 'text-ink-3',
+            'ink-2': 'text-text-2',
+            'ink-3': 'text-text-3',
             horizon: 'text-horizon',
-            'horizon-deep': 'text-horizon-deep',
+            'horizon-ink': 'text-horizon-ink',
+            'icon-accent': 'text-icon-accent',
             'ink-on-sky': 'text-ink-on-sky',
             cream: 'text-cream',
         },
@@ -209,10 +226,9 @@ export const eyebrowVariants = cva('', {
 });
 
 /**
- * Rarity → border + corner-flag scale. Mirrors RARITY_BORDER (lib/runcard.ts)
- * plus the per-component flag treatments in card/Kartu.tsx (RARITY_FLAG_BG)
- * and card/KartuMini.tsx (RARITY_CORNER). Exposed as three slots so each card
- * surface can opt into the part it renders.
+ * Rarity → border + flag + corner scale, the one source of truth for the card
+ * surfaces. `border` backs card/Card.tsx and card/RunCardMini.tsx; `flag` and
+ * `corner` are the remaining two slots a card surface can opt into.
  */
 export const rarityVariants = {
     border: cva('', {
@@ -230,11 +246,11 @@ export const rarityVariants = {
     flag: cva('', {
         variants: {
             rarity: {
-                common: 'bg-rarity-common text-cream',
-                uncommon: 'bg-rarity-uncommon text-cream',
-                rare: 'bg-rarity-rare text-cream',
-                epic: 'bg-rarity-epic text-ink',
-                legendary: 'bg-rarity-legendary text-ink',
+                common: 'bg-rarity-common text-ink-on-rarity',
+                uncommon: 'bg-rarity-uncommon text-ink-on-rarity',
+                rare: 'bg-rarity-rare text-ink-on-rarity',
+                epic: 'bg-rarity-epic text-ink-on-rarity',
+                legendary: 'bg-rarity-legendary text-ink-on-rarity',
             },
         },
         defaultVariants: { rarity: 'epic' },

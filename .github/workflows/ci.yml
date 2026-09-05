@@ -2,6 +2,10 @@ name: CI
 
 on:
   pull_request:
+  # `main` only: branch protection means everything else arrives via a PR, which
+  # `pull_request` already covers — including a push to a long-lived `epic/*`,
+  # since that updates the epic's own PR. Listing a branch here as well makes
+  # both events fire on the same commit.
   push:
     branches: [main]
 
@@ -19,38 +23,67 @@ permissions:
   contents: read
 
 jobs:
+  # Diffs against the PR's *own* base branch, so filtering is correct whatever
+  # the target; a hardcoded base saw the whole epic diff and never filtered
+  # anything. A push runs everything, having no base to diff against.
   changes:
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      docker: ${{ steps.filter.outputs.docker }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-
-      # Classify the push so each suite skips when its files weren't touched.
-      # Shared-infra paths (ci.yml, Dockerfile, compose, .env.example) match
-      # both, so an infra change runs the full pipeline. Diff is against the
-      # merge-base with main; on main pushes both jobs run anyway (see the `if`).
-      - name: Detect changed areas
+      - name: Classify the diff
         id: filter
         run: |
-          git fetch --no-tags --quiet origin main
-          changed=$(git diff --name-only "$(git merge-base origin/main HEAD)" HEAD)
-          printf 'Changed files:\n%s\n' "$changed"
-          backend=false; frontend=false
-          if printf '%s\n' "$changed" | grep -qE '^(app|bootstrap|config|database|routes|tests)/|^composer\.(json|lock)$|^phpunit\.xml$|^artisan$|^(phpstan|phpstan-baseline)\.neon$|^rector\.php$|^pint\.json$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
-            backend=true
-          fi
-          if printf '%s\n' "$changed" | grep -qE '^resources/(js|css|views)/|^public/|^package(-lock)?\.json$|^vite\.config\.ts$|^vitest\.config\.ts$|^tsconfig\.json$|^eslint\.config\.|^\.nvmrc$|^scripts/check-entry-chunks\.mjs$|^scripts/check-raw-palette\.mjs$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
-            frontend=true
-          fi
-          echo "backend=$backend" >> "$GITHUB_OUTPUT"
-          echo "frontend=$frontend" >> "$GITHUB_OUTPUT"
-          echo "Result: backend=$backend frontend=$frontend"
+          set -euo pipefail
 
-  # Runs on every event, independent of the path filter.
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "push event - running everything"
+            { echo "backend=true"; echo "frontend=true"; echo "docker=true"; } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Explicit refspec: `git fetch origin <branch>` updates FETCH_HEAD but
+          # does not reliably create refs/remotes/origin/<branch>, which is what
+          # merge-base is asked for below.
+          base_ref='${{ github.base_ref }}'
+          git fetch --no-tags --quiet origin "+refs/heads/${base_ref}:refs/remotes/origin/${base_ref}"
+          base="$(git merge-base "origin/${base_ref}" HEAD)"
+          changed="$(git diff --name-only "$base" HEAD)"
+          echo "diffing against ${base_ref} @ ${base:0:8}"
+          printf '%s\n' "$changed" | sed 's/^/  /'
+
+          match() { printf '%s\n' "$changed" | grep -qE "$1"; }
+
+          # Anything infrastructural runs the lot (deploy stays main-push-only).
+          ARCH='^(Dockerfile|compose[^/]*\.yaml|\.env\.example)$|^(docker|\.github)/'
+
+          # Backend also owns the token-mirror structure tests, which read files
+          # that look like frontend or documentation. See MIRROR_FILES in
+          # tests/Unit/Architecture/DesignTokenMirrorsTest.php and the doc list
+          # in DesignTokenDocsTest.php - if either grows, this pattern must too.
+          MIRRORS='^resources/(css|views|brand)/|^resources/js/lib/(shareCard|runcard|chartTokens)\.ts$'
+          DOCS_READ_BY_TESTS='^(CLAUDE|README)\.md$|^docs/design-tokens\.md$|^\.claude/skills/temari/SKILL\.md$'
+          BACKEND='^(app|bootstrap|config|database|routes|tests)/|^scripts/.*\.php$|^composer\.(json|lock)$|^(phpunit\.xml|artisan|rector\.php|pint\.json)$|^phpstan.*\.neon$'
+          FRONTEND='^resources/(js|css|views)/|^scripts/.*\.mjs$|^(package\.json|package-lock\.json|vite\.config\.ts|eslint\.config\.js)$|^tsconfig.*\.json$|^\.prettierrc'
+
+          if match "$ARCH"; then
+            b=true; f=true; d=true
+          else
+            b=false; f=false; d=false
+            match "$BACKEND" && b=true
+            match "$MIRRORS" && b=true
+            match "$DOCS_READ_BY_TESTS" && b=true
+            match "$FRONTEND" && f=true
+          fi
+
+          echo "backend=$b frontend=$f docker=$d"
+          { echo "backend=$b"; echo "frontend=$f"; echo "docker=$d"; } >> "$GITHUB_OUTPUT"
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:
@@ -62,9 +95,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: false
 
-  # Runs on every event, independent of the path filter: a code deletion anywhere
-  # can orphan a citation in docs/, so guard against "the doc references code that's gone".
-  docs-citation-guard:
+  # Unfiltered: a deletion anywhere can orphan a doc citation, so this has to see
+  # the whole tree. Every downstream job gates on it — keep it fast.
+  repo-guards:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -76,8 +109,8 @@ jobs:
         run: php scripts/check-doc-citations.php
 
   backend-tests:
-    needs: [changes, secret-scan, docs-citation-guard]
-    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && (needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main') }}
+    needs: [changes, secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.backend == 'true') }}
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -109,9 +142,9 @@ jobs:
       - name: Stub .env for file-scanning tests
         run: cp .env.example .env
 
-      # --no-tia on both Pest steps: TIA is a local fast-feedback tool, and a
-      # graph-narrowed run would silently shrink both this gate and the coverage
-      # gate below. CI stays exhaustive.
+      - name: Check {@see} references resolve
+        run: php scripts/check-see-references.php
+
       - name: Class/test 1:1 structure check
         run: ./vendor/bin/pest --no-tia --group=structure
 
@@ -127,10 +160,9 @@ jobs:
           CACHE_STORE: array
           SESSION_DRIVER: array
         run: |
-          # The coverage gate is a merge gate, not a deploy gate: every commit
-          # reaches main through a PR, where this runs with --min=95. Re-running
-          # it on the main push would only put pcov instrumentation of a 2000+
-          # test suite on the deploy critical path for an already-gated tree.
+          # A merge gate, not a deploy gate: every commit reaches main via a PR.
+          # Re-running it on the main push would put pcov instrumentation on the
+          # deploy critical path for an already-gated tree.
           coverage_flag=""
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             coverage_flag="--coverage --min=95"
@@ -161,8 +193,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   frontend-tests:
-    needs: [changes, secret-scan, docs-citation-guard]
-    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && (needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main') }}
+    needs: [changes, secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.frontend == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -179,14 +211,17 @@ jobs:
       - name: Raw Tailwind palette guard
         run: npm run check:palette
 
+      # Coverage is a merge gate, mirroring backend-tests: it runs on the PR,
+      # which is the only way anything reaches main. Running it again on the
+      # main push would gate an already-gated tree.
       - name: Vitest
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "Running Vitest without coverage"
-            npm run test
-          else
             echo "Running Vitest with coverage (threshold gate)"
             npm run test:coverage
+          else
+            echo "Running Vitest without coverage"
+            npm run test
           fi
 
       - name: Vitest summary
@@ -203,23 +238,20 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      # The only gate that reads the built bundle. Without it, a bundler
-      # upgrade or a stray static import can put a chart engine or the
-      # animation library back on every route's first paint with nothing
-      # failing — which is exactly how the React-in-charts split survived.
+      # The only gate that reads the built bundle: without it a stray static
+      # import can put a chart or animation library back on first paint silently.
       - name: Build assets
         run: npm run build
 
       - name: Entry chunk guard (first-paint budget)
         run: npm run check:chunks
 
-  # Cold static analysis. Local pre-commit/caches can mask drift (unchanged
-  # files skip re-analysis), so a fresh checkout here is the only place that
-  # reliably catches new phpstan/rector/pint regressions. Pre-existing findings
-  # are captured in phpstan-baseline.neon; this gate blocks anything NEW.
+  # A cold checkout: local caches skip unchanged files, so this is the only
+  # place new drift reliably surfaces. phpstan-baseline.neon holds the old
+  # findings; this blocks new ones.
   backend-static-analysis:
-    needs: [changes, secret-scan, docs-citation-guard]
-    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && (needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main') }}
+    needs: [changes, secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.backend == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -241,8 +273,8 @@ jobs:
         run: vendor/bin/rector --dry-run --no-progress-bar
 
   frontend-static-analysis:
-    needs: [changes, secret-scan, docs-citation-guard]
-    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && (needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main') }}
+    needs: [changes, secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.frontend == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -260,7 +292,7 @@ jobs:
 
   # Single required check for branch protection.
   ci-gate:
-    needs: [backend-tests, frontend-tests, backend-static-analysis, frontend-static-analysis, build, secret-scan, docs-citation-guard, changes]
+    needs: [changes, backend-tests, frontend-tests, backend-static-analysis, frontend-static-analysis, build, secret-scan, repo-guards]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -269,14 +301,16 @@ jobs:
           for r in "${{ needs.backend-tests.result }}" "${{ needs.frontend-tests.result }}" "${{ needs.backend-static-analysis.result }}" "${{ needs.frontend-static-analysis.result }}" "${{ needs.build.result }}"; do
             [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a required job did not pass ($r)"; exit 1; }
           done
-          for r in "${{ needs.secret-scan.result }}" "${{ needs.docs-citation-guard.result }}" "${{ needs.changes.result }}"; do
+          for r in "${{ needs.secret-scan.result }}" "${{ needs.repo-guards.result }}" "${{ needs.changes.result }}"; do
             [ "$r" = "success" ] || { echo "::error::a required unconditional job did not pass ($r)"; exit 1; }
           done
 
+  # Produces the image `deploy` pulls on a main push, and on a PR proves a
+  # Dockerfile/composer change still builds. ~40s off a warm cache.
   build:
     name: build-prod-image
-    needs: [changes, secret-scan, docs-citation-guard]
-    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+    needs: [changes, secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.docker == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -293,17 +327,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # A PR build validates only: it reads the shared buildcache but never
+      # publishes a tag or writes the cache back, so it can't displace main's.
       - name: Build and push the runtime image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: Dockerfile
           platforms: linux/amd64
-          push: true
+          push: ${{ github.event_name == 'push' }}
           tags: ${{ env.APP_IMAGE }}:${{ github.sha }}
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
           cache-from: type=registry,ref=${{ env.APP_IMAGE }}:buildcache
-          cache-to: type=registry,ref=${{ env.APP_IMAGE }}:buildcache,mode=max
+          cache-to: ${{ github.event_name == 'push' && format('type=registry,ref={0}:buildcache,mode=max', env.APP_IMAGE) || '' }}
           provenance: false
 
   deploy:

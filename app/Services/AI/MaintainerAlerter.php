@@ -93,10 +93,9 @@ class MaintainerAlerter
             return;
         }
 
-        $this->broadcast(
-            "{$count} blok AI nyerah dalam beberapa menit terakhir. "
-            .'Buka /ai-usage buat coba lagi manual ya.',
-        );
+        $blocks = $count === 1 ? '1 AI block' : "{$count} AI blocks";
+
+        $this->broadcast("{$blocks} gave up in the last few minutes. Open /devtools/ai-usage to retry manually.");
     }
 
     /**
@@ -146,24 +145,25 @@ class MaintainerAlerter
      */
     public function schedulerFailed(string $command): void
     {
-        $this->broadcast("Scheduler gagal jalanin `{$command}`. Cek Horizon sama log-nya ya.");
+        $this->broadcast("Scheduler failed to run `{$command}`. Check Horizon and the logs.");
     }
 
     /** A prod deploy failed its gate; pushed best-effort via the `deploy:alert` command. */
     public function deployFailed(string $reason): void
     {
-        $this->broadcast("Deploy prod gagal: {$reason}. Cek CI sama log deploy-nya ya.");
+        $this->broadcast("Prod deploy failed: {$reason}. Check CI and the deploy logs.");
     }
 
     private function pauseMessage(?string $reason): string
     {
         return match ($reason) {
-            'kill_switch' => 'Temari berhenti narasi: kill switch AI lagi off.',
-            'unconfigured' => 'Temari berhenti narasi: Azure OpenAI belum diisi (URI/API key kosong).',
-            'cost_ceiling' => 'Temari berhenti narasi: batas biaya harian hari ini udah kelewat.',
-            'config' => 'Temari berhenti narasi: config Azure kayaknya salah, cek API key sama base URL.',
-            null => 'Temari udah bisa narasi lagi, pause-nya kelar.',
-            default => "Temari berhenti narasi: {$reason}.",
+            'kill_switch' => 'Temari stopped narrating: the AI kill switch is off.',
+            'auto_dispatch' => 'Temari stopped narrating: AI_AUTO_DISPATCH is off.',
+            'unconfigured' => 'Temari stopped narrating: Azure OpenAI is unset (URI/API key empty).',
+            'cost_ceiling' => 'Temari stopped narrating: today hit the daily cost ceiling.',
+            'config' => 'Temari stopped narrating: the Azure config looks wrong, check the API key and base URL.',
+            null => 'Temari is narrating again, the pause is over.',
+            default => "Temari stopped narrating: {$reason}.",
         };
     }
 

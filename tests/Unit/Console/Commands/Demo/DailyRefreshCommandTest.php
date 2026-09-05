@@ -30,7 +30,7 @@ function dailyRefreshTodayRunCount(User $user): int
         ->count();
 }
 
-/** Every date-keyed Temari surface for today/this week must be filled (no "Belum dibaca"). */
+/** Every date-keyed Temari surface for today/this week must be filled (no "Unread"). */
 function expectDemoDateKeyedNarrationDone(User $user): void
 {
     $today = Carbon::today()->toDateString();
@@ -39,7 +39,7 @@ function expectDemoDateKeyedNarrationDone(User $user): void
     $cases = [
         [AnalysisType::BRIEFING_SUBJECT_TYPE, AnalysisType::BriefingMascotVoice, $today],
         [AnalysisType::BRIEFING_SUBJECT_TYPE, AnalysisType::BriefingMascotVoice, $today],
-        [AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE, AnalysisType::AkuProfileVoice, $week],
+        [AnalysisType::PROFILE_VOICE_SUBJECT_TYPE, AnalysisType::ProfileVoice, $week],
     ];
 
     foreach ($cases as [$subjectType, $type, $discriminator]) {

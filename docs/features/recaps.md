@@ -1,17 +1,16 @@
 ---
 title: Recaps (weekly / monthly / persona)
-description: Temari's narrative recaps surfaced across the app — weekly on Jejak, monthly on Kalender, persona/profile voice on Profile
+description: Temari's narrative recaps surfaced across the app — weekly on the Feed, monthly on the Calendar, persona/profile voice on Profile
 tags: [feature, recaps]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-08-19
 code_refs:
-  - resources/js/components/aktivitas/RingkasanCard.tsx
+  - resources/js/components/history/RecapCard.tsx
   - resources/js/pages/Activities/Feed.tsx
-  - resources/js/components/riwayat/WeekSection.tsx
+  - resources/js/components/history/WeekSection.tsx
   - resources/js/pages/Activities/Calendar.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
-  - app/Http/Controllers/RunController.php
-  - app/Http/Controllers/CalendarController.php
+  - app/Http/Controllers/HistoryController.php
   - app/Http/Controllers/ProfileController.php
 ---
 
@@ -19,38 +18,37 @@ code_refs:
 
 Temari narrates the runner's history at three cadences — per **week**, per **month**, and a rolling **persona** read. This note covers where each narrative is *rendered* and which controller feeds it. The generation mechanics live in [[ai-pipeline]], the "don't generate the open period yet" rule in [[deferred-recap-windowing]], and the prev-link continuity in [[chained-narration]].
 
-**No dedicated route** — recaps render inline on [[run-history]] (Jejak/Kalender) and [[profile]] pages.
+**No dedicated route** — recaps render inline on [[run-history]] (Feed/Calendar, both behind `/history`) and [[profile]] pages.
 
 ## System dependencies
 
-- **AI pipeline** — every recap is an `Analysis` row from [[ai-pipeline]]; weekly = `AnalysisType::WeeklyRecap`, monthly = `MonthlyRecap`, profile = `AkuProfileVoice`.
+- **AI pipeline** — every recap is an `Analysis` row from [[ai-pipeline]]; weekly = `AnalysisType::WeeklyRecap`, monthly = `MonthlyRecap`, profile = `ProfileVoice`.
 - **Windowing** — the open week/month is gated by [[deferred-recap-windowing]]; chaining is handled by [[chained-narration]].
 - **Training metrics** — weekly recaps read `TrainingLoad` / `WeeklySnapshot` from [[training-load-metrics]].
 - **Notifications** — completed recaps fan out to [[telegram-notifications]].
 
-Every recap is an `Analysis` row surfaced through the shared [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx) state machine, which handles spinner / failed / empty / "Coba lagi" / "Baca ulang", and — for recaps — the `chained` + `isChainHead` + `awaitingSchedule` flags.
+Every recap is an `Analysis` row surfaced through the shared [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx) state machine, which handles skeleton / failed / "Try again" / "Reread", and — for recaps — the `chained` + `isChainHead` + `awaitingSchedule` flags. A plain `pending` block renders nothing at all; only an `awaitingSchedule` one explains itself.
 
-## Weekly recap — on Jejak
+## Weekly recap — on the run log (`/history`, list view)
 
-Rendered inside each [WeekSection](resources/js/components/riwayat/WeekSection.tsx) on Jejak via [RingkasanCard](resources/js/components/aktivitas/RingkasanCard.tsx) (the "Catatan Temari" block beside a form-status-posed Temari). `RingkasanCard` is `chained`, forwards `isChainHead`, and keeps a rule-based `fallback` (`ruleBasedFallback`, alongside it — "Minggu ini kamu lari Nx sejauh …") visible whenever `analysis.status !== 'done'`, so the block never looks empty.
+Rendered inside each [WeekSection](resources/js/components/history/WeekSection.tsx) via the shared [RecapCard](resources/js/components/history/RecapCard.tsx) (a mood-ringed Temari beside the narration, metric chips and the "Send notification" trigger underneath). `RecapCard` is `chained`, forwards `isChainHead`, and keeps a rule-based `fallback` (`ruleBasedFallback`, alongside it — "You ran Nx this week for N km.") visible whenever `analysis.status !== 'done'`, so the block never looks empty.
 
-[RunController](app/Http/Controllers/RunController.php) supplies it: each `WeeklySnapshot` is mapped with `recap_analysis` (from `recapAnalysesFor`, type `AnalysisType::WeeklyRecap`), `is_current_week` (the in-progress week → `awaitingSchedule`, trigger suppressed), and `is_chain_head` (`chainHeadId` = latest completed week with runs > 0, the only link that may regenerate).
+`HistoryController`'s list branch supplies it: each `WeeklySnapshot` is mapped with `recap_analysis` (from `recapAnalysesFor`, type `AnalysisType::WeeklyRecap`), `is_current_week` (the in-progress week → `awaitingSchedule`, trigger suppressed), and `is_chain_head` (`chainHeadId` = latest completed week with runs > 0, the only link that may regenerate).
 
-## Monthly recap — on Kalender
+## Monthly recap — on the calendar (`/history?view=calendar`)
 
-Rendered by the local `MonthlyRecapCard` in [Kalender](resources/js/pages/Activities/Calendar.tsx), above the calendar grid as "Catatan Temari · {monthLabel}". Temari wears the month's dominant run mood (`dominantMoodOf` → `MOOD_TO_POSE`). It uses `AnalysisStatus` `chained` with `isChainHead={recap.is_chain_head}` and, for the current month, `awaitingSchedule` with the label "Recap bulan ini belum tersedia." There is **no rule-based fallback** for monthly — unfilled past months simply show the empty / resume state.
+Rendered by the same shared [RecapCard](resources/js/components/history/RecapCard.tsx) in [Calendar](resources/js/pages/Activities/Calendar.tsx), above the calendar grid. Temari wears the month's dominant run mood (`dominantMoodOf` → `MOOD_TO_POSE`). It uses `AnalysisStatus` `chained` with `isChainHead={recap.is_chain_head}` and, for the current month, `awaitingSchedule` with the label "This month's recap isn't ready yet." There is **no rule-based fallback** for monthly (`RecapCard`'s `fallback` prop is omitted here) — an unfilled past month shows nothing until it fails, at which point "Try again" resumes the chain.
 
-[CalendarController](app/Http/Controllers/CalendarController.php) keys the recap by `Y-m` discriminator (`AnalysisType::MonthlyRecap`) and computes `is_chain_head` via `latestNarratedMonthFor` (the latest closed month with a run). The page type aliases this as `MonthlyRecap = AnalysisPayload & { is_chain_head: boolean }`.
+`HistoryController`'s calendar branch keys the recap by `Y-m` discriminator (`AnalysisType::MonthlyRecap`) and computes `is_chain_head` via `latestNarratedMonthFor` (the latest closed month with a run). The page type aliases this as `MonthlyRecap = AnalysisPayload & { is_chain_head: boolean }`.
 
 ## Persona / profile voice — on Profile
 
-The profile page surfaces one more Temari narrative (see [[profile]]): **`profileVoice`** ("Kata Temari tentang kamu"), `AnalysisType::AkuProfileVoice`, keyed **per ISO week**. It carries both readings the page used to bill separately, the 12-week mood persona behind `PersonaBar` and the lifetime/progression numbers, in a single call.
+The profile page surfaces one more Temari narrative (see [[profile]]): **`profileVoice`** ("What Temari says about you"), `AnalysisType::ProfileVoice`, keyed **per ISO week**. It carries both readings the page used to bill separately, the 12-week mood persona and the lifetime/progression numbers, in a single call.
 
-It comes from [ProfileController](app/Http/Controllers/ProfileController.php) (`resolveProfileVoice`) and renders via a plain (non-chained) `AnalysisStatus` block. `ai:weekly-profile` re-narrates it once a week with `invalidate: false`, so a mid-week "Baca ulang" is never re-billed by the scheduler.
+It comes from [ProfileController](app/Http/Controllers/ProfileController.php) (`resolveProfileVoice`) and renders via a plain (non-chained) `AnalysisStatus` block. `ai:weekly-profile` re-narrates it once a week with `invalidate: false`, so a mid-week "Reread" is never re-billed by the scheduler.
 
 ## Notes / gotchas
 
-- `RecapCard` (`resources/js/components/dashboard/RecapCard.tsx`, the "Minggu Kamu" sky panel with share modal) exists and is fully tested but is **not currently mounted on any live page** — `<RecapCard>` appears only in its test file. The dashboard controller still passes a `weeklyRecap` prop that no page consumes today. Treat it as dormant until re-wired.
-- Weekly and monthly are **chained**: "Coba lagi" / "Minta Temari bacain" resume the chain from the earliest unfilled link; "Baca ulang" (regenerate) shows only on the chain head, so re-narrating mid-history can't desync later links. See [[chained-narration]].
+- Weekly and monthly are **chained**: "Try again" on a failed link resumes the chain from the earliest unfilled one; "Reread" (regenerate) shows only on the chain head, so re-narrating mid-history can't desync later links. See [[chained-narration]].
 - The open week/month is **window-gated** (`awaitingSchedule`): its pending row is a "recap incoming" signal, not backlog. See [[deferred-recap-windowing]].
 - Underlying rows are `Analysis` records — see [[data-model]] and [[ai-pipeline]].

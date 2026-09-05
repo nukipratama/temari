@@ -8,7 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 function runDevtoolsMiddleware(?string $password): Response
 {
-    $request = Request::create('/ai-usage', 'GET');
+    $request = Request::create('/devtools/ai-usage', 'GET');
     if ($password !== null) {
         $request->headers->set('PHP_AUTH_PW', $password);
     }
@@ -18,6 +18,7 @@ function runDevtoolsMiddleware(?string $password): Response
 
 beforeEach(function (): void {
     config(['devtools.password' => 'secret']);
+    app()->detectEnvironment(fn (): string => 'production');
 });
 
 it('lets a request through with the correct password', function (): void {
@@ -41,3 +42,10 @@ it('challenges every request when devtools.password is unconfigured', function (
     expect(runDevtoolsMiddleware(null)->getStatusCode())->toBe(401)
         ->and(runDevtoolsMiddleware('')->getStatusCode())->toBe(401);
 });
+
+it('skips the challenge entirely outside production', function (string $environment): void {
+    app()->detectEnvironment(fn (): string => $environment);
+    config(['devtools.password' => null]);
+
+    expect(runDevtoolsMiddleware(null)->getContent())->toBe('ok');
+})->with(['local', 'testing', 'staging']);

@@ -1,63 +1,110 @@
-import { Icon } from '@iconify/react';
 import { Link, usePage } from '@inertiajs/react';
 
 import type { SharedProps } from '@/types/inertia';
 
-import BrandMark from '@/components/BrandMark';
-import StravaSyncBadge from '@/components/StravaSyncBadge';
-import UserMenu from '@/components/UserMenu';
-import { useScrolled } from '@/hooks/useScrolled';
+import HeaderBrandMark from '@/components/HeaderBrandMark';
+import NotificationBell from '@/components/NotificationBell';
+import { Icon } from '@/components/ui/Icon';
+import UserAvatarLink from '@/components/UserAvatarLink';
 import { cn } from '@/lib/cn';
+import { backTargetFor } from '@/lib/nav';
 
-// Explicit map (not derived from activeTabFromUrl): calendar/records/accessories/badges/race
-// resolve to a tab too, but reach it via an in-page tab strip, so they keep the brand mark.
-const BACK_TARGETS: Record<string, { href: string; label: string }> = {
-    'Runs/Show': { href: '/activities', label: 'History' },
-    // Settings is one tap from Me/avatar menu everywhere, so it stays a root, not a push.
-    'Settings/HrZones': { href: '/settings', label: 'Settings' },
-};
+// A shared chip backdrop for the icon-only buttons — muted is the exact
+// ground-reactive equivalent of the bar's old fixed cream-deep background (see
+// AppShell), so NotificationBell/UserAvatarLink's own hover/ring styling
+// (tuned against that backdrop) still reads correctly floating over content.
+// Carried at 70% over a blur so the chips read as glass against whatever
+// scrolls beneath them, matching the bottom nav's pill.
+// Unsized on purpose: it hugs whichever of the two differently-sized controls
+// it wraps rather than forcing both to match.
+const CHIP =
+    'inline-flex items-center justify-center overflow-hidden rounded-full bg-muted/70 shadow-e1 backdrop-blur-md';
 
-// max() keeps the row clear of the notch under black-translucent; falls back to 0.75rem in a browser tab.
+/** Pushed screens whose prototype topbar keeps the bell beside the back chevron. */
+const PUSHED_WITH_BELL: ReadonlySet<string> = new Set([
+    'Profile',
+    'Settings/Index',
+]);
+
+/**
+ * Floating chips, per the prototype's AppTopbar/ProfileTopbar — `fixed` (not
+ * `absolute` or `sticky`): the chips stay with the reader and never reserve
+ * flow space, so AppShell's top padding remains the whole clearance contract.
+ * The bar itself paints nothing at any scroll position; only the chips carry a
+ * backdrop, so what floats is the controls, not a band. Full-bleed at every
+ * width, as the prototype's own chrome is: above 900px the content column
+ * narrows to 760px and the chips sit outside it, which is what lets the
+ * column's top padding shrink to `pt-6`. `max()` keeps the row clear of the
+ * notch under black-translucent; falls back to 1rem in a browser tab.
+ */
 export default function MobileTopBar() {
     const page = usePage<SharedProps>();
     const user = page.props.auth.user;
-    const stravaSync = page.props.stravaSync ?? null;
-    const scrolled = useScrolled();
-    const back = BACK_TARGETS[page.component];
+    const back = backTargetFor(page.component);
 
     return (
         <header
             data-testid="mobile-top-bar"
-            className={cn(
-                'sticky top-0 z-30 flex items-center justify-between gap-3 border-b bg-cream-deep/85 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl transition-colors lg:hidden',
-                scrolled ? 'border-line' : 'border-transparent',
-            )}
+            className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-3 px-4 pb-2.5 pt-[max(1rem,env(safe-area-inset-top))]"
         >
             {back ? (
                 // Real href, not history.back(): a deep link can open this cold with nothing behind it.
                 <Link
                     href={back.href}
                     aria-label={`Back to ${back.label}`}
-                    className="pressable focus-ring -ml-1 inline-flex min-w-0 items-center gap-1 rounded py-1 pl-1 pr-2 text-label-small text-ink-2 transition hover:text-ink"
+                    className={cn(
+                        CHIP,
+                        'pressable focus-ring size-9 text-foreground',
+                    )}
                 >
                     <Icon
-                        icon="mdi:chevron-left"
+                        icon="mdi:arrow-left"
                         width={18}
                         height={18}
                         aria-hidden
-                        className="shrink-0"
                     />
-                    <span className="truncate">{back.label}</span>
                 </Link>
             ) : (
-                <Link href="/" aria-label="Home" className="focus-ring rounded">
-                    <BrandMark wordmarkClassName="hidden min-[350px]:inline" />
+                <Link
+                    href="/"
+                    aria-label="Home"
+                    className="pressable focus-ring inline-flex items-center gap-2.5 rounded-full bg-muted/70 py-1.75 pr-3.25 pl-2.5 shadow-e1 backdrop-blur-md"
+                >
+                    <HeaderBrandMark wordmarkClassName="hidden min-[350px]:inline" />
                 </Link>
             )}
+
             <div className="flex items-center gap-2">
-                <StravaSyncBadge sync={stravaSync} density="compact" />
-                {user && (
-                    <UserMenu name={user.name} avatarUrl={user.avatar_url} />
+                {page.component === 'Profile' && (
+                    <Link
+                        href="/settings"
+                        aria-label="Settings"
+                        className={cn(
+                            CHIP,
+                            'pressable focus-ring size-9 text-text-3',
+                        )}
+                    >
+                        <Icon
+                            icon="mdi:cog-outline"
+                            width={18}
+                            height={18}
+                            aria-hidden
+                        />
+                    </Link>
+                )}
+                {user &&
+                    (back === null || PUSHED_WITH_BELL.has(page.component)) && (
+                        <span className={CHIP}>
+                            <NotificationBell density="compact" />
+                        </span>
+                    )}
+                {user && back === null && (
+                    <span className={CHIP}>
+                        <UserAvatarLink
+                            name={user.name}
+                            avatarUrl={user.avatar_url}
+                        />
+                    </span>
                 )}
             </div>
         </header>

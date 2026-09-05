@@ -1,28 +1,11 @@
 import type { MotionConfigProps } from 'framer-motion';
 
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-
-import type { PendingReveal } from '@/types/inertia';
 
 import { makeUser, setMockPage } from '@/test/setup';
 
 import AppShell from './AppShell';
-
-const pendingCard: PendingReveal = {
-    card_id: 1,
-    activity_id: 1,
-    rarity: 'common',
-    special_move: 'Pagi Santai',
-    mood: 'chill',
-    badges: null,
-    detail_name: 'Easy run',
-    distance_m: 5000,
-    elapsed_time_sec: 1800,
-    trimp_edwards: 42,
-    public_share_url: '/activities/1',
-    edition: { index: 1, total: 1 },
-};
 
 // Spy on MotionConfig so we can assert the app tree is wrapped in it with
 // reducedMotion="user" (it renders no DOM of its own, so we can't query it).
@@ -42,7 +25,6 @@ const andiUser = { id: 1, name: 'Andi', first_name: 'Andi', avatar_url: null };
 
 describe('AppShell', () => {
     afterEach(() => {
-        delete document.body.dataset.timeOfDay;
         motionConfigSpy.mockClear();
     });
 
@@ -60,22 +42,6 @@ describe('AppShell', () => {
         expect(motionConfigSpy).toHaveBeenCalledWith('user');
     });
 
-    it('sets a data-time-of-day attribute on body via useDawnShift', () => {
-        setMockPage({
-            auth: { user: andiUser },
-            flash: {},
-            demoLoginEnabled: false,
-        });
-        render(
-            <AppShell>
-                <p>x</p>
-            </AppShell>,
-        );
-        expect(document.body.dataset.timeOfDay).toMatch(
-            /^(dawn|morning|day|dusk|night)$/,
-        );
-    });
-
     it('renders the 4 primary tabs + children by default', () => {
         setMockPage({
             auth: { user: andiUser },
@@ -88,13 +54,12 @@ describe('AppShell', () => {
             </AppShell>,
         );
         expect(screen.getByText('child content')).toBeInTheDocument();
-        ['Today', 'Collection', 'Plan', 'Me'].forEach((label) => {
+        ['Today', 'Plan', 'Trends', 'History'].forEach((label) => {
             expect(screen.getAllByText(label).length).toBeGreaterThan(0);
         });
-        // <main> keeps bottom clearance for the fixed mobile bottom nav (cleared on lg).
+        // <main> keeps bottom clearance for the floating bottom nav.
         const main = document.getElementById('main-content');
         expect(main?.className).toContain('pb-28');
-        expect(main?.className).toContain('lg:pb-0');
     });
 
     it('mounts the route progress bar as shell chrome, idle by default', () => {
@@ -168,8 +133,8 @@ describe('AppShell', () => {
 
         setMockPage(
             { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
-            '/cards',
-            'Collection/Cards',
+            '/inbox',
+            'Inbox',
         );
         rerender(
             <AppShell>
@@ -192,9 +157,12 @@ describe('AppShell', () => {
             </AppShell>,
         );
 
-        expect(
-            document.getElementById('main-content')?.className,
-        ).not.toContain('page-enter');
+        const main = document.getElementById('main-content');
+        expect(main).toHaveClass('outline-none', 'pb-28');
+        // Exactly those two: an enter animation would have to add a class
+        // here, and starting one at opacity 0 is what read as "old page ->
+        // blank -> fade in".
+        expect(main?.className.split(' ')).toHaveLength(2);
     });
 
     it('keeps the content region mounted across a partial reload of the same page', () => {
@@ -226,28 +194,19 @@ describe('AppShell', () => {
     });
 
     it('shows the mobile top bar on every page', () => {
-        setMockPage(
-            { auth: { user: makeUser() } },
-            '/cards',
-            'Collection/Cards',
-        );
+        setMockPage({ auth: { user: makeUser() } }, '/inbox', 'Inbox');
         render(<AppShell>content</AppShell>);
         // Scoped by testid, not by tag: TopNav is also a <header> and stays in
         // the DOM on mobile, hidden by CSS alone.
         expect(screen.getByTestId('mobile-top-bar')).toBeInTheDocument();
     });
 
-    it('shows AksesoriUnlockModal and dismisses it when a major unlock is flashed', async () => {
+    // Without tabindex the fragment target is unfocusable, so activating the
+    // skip link scrolls but leaves focus (and the screen reader) in the header.
+    it('makes the skip link target focusable', () => {
         setMockPage({
             auth: { user: andiUser },
-            flash: {
-                unlock: {
-                    unlock_key: 'accessory.headband_epic',
-                    name: 'Ikat Kepala Istimewa',
-                    icon: 'mdi:star',
-                    is_major: true,
-                },
-            },
+            flash: {},
             demoLoginEnabled: false,
         });
         render(
@@ -255,60 +214,10 @@ describe('AppShell', () => {
                 <p>x</p>
             </AppShell>,
         );
-        expect(screen.getByText(/Ikat Kepala Istimewa/)).toBeInTheDocument();
-        // Clicking "Not now" triggers onClose (covers () => setMajorUnlock(null))
-        await act(async () => {
-            fireEvent.click(screen.getByText('Not now'));
-        });
-    });
 
-    it('defers the aksesori-unlock modal while a CardReveal pack is pending, so they never stack', async () => {
-        setMockPage({
-            auth: { user: andiUser },
-            flash: {
-                unlock: {
-                    unlock_key: 'accessory.headband_epic',
-                    name: 'Ikat Kepala Istimewa',
-                    icon: 'mdi:star',
-                    is_major: true,
-                },
-            },
-            pendingReveal: pendingCard,
-            demoLoginEnabled: false,
-        });
-        render(
-            <AppShell>
-                <p>x</p>
-            </AppShell>,
-        );
-        // CardReveal (the pack) takes priority: it's shown...
-        expect(await screen.findByText('Syncing in')).toBeInTheDocument();
-        // ...and the aksesori modal is held back, even though a major unlock fired.
-        expect(
-            screen.queryByText(/Ikat Kepala Istimewa/),
-        ).not.toBeInTheDocument();
-    });
-
-    it('hides the UnlockToast while a CardReveal pack is pending', async () => {
-        setMockPage({
-            auth: { user: andiUser },
-            flash: {
-                unlock: {
-                    unlock_key: 'accessory.medal_gold',
-                    name: 'Medali Emas',
-                    icon: 'mdi:medal',
-                    is_major: false,
-                },
-            },
-            pendingReveal: pendingCard,
-            demoLoginEnabled: false,
-        });
-        render(
-            <AppShell>
-                <p>x</p>
-            </AppShell>,
-        );
-        expect(await screen.findByText('Syncing in')).toBeInTheDocument();
-        expect(screen.queryByText('New unlock')).not.toBeInTheDocument();
+        const skip = screen.getByRole('link', { name: /konten|content/i });
+        const target = document.getElementById('main-content');
+        expect(skip).toHaveAttribute('href', '#main-content');
+        expect(target).toHaveAttribute('tabindex', '-1');
     });
 });

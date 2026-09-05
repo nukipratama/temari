@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Actions\Run\BuildCalendarCellsAction;
@@ -34,7 +36,7 @@ beforeEach(function (): void {
 });
 
 /**
- * @return array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, activity_id: int|null}|null
+ * @return array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, rarity: string|null, activity_id: int|null}|null
  */
 function cellOn(array $cells, string $date): ?array
 {
@@ -121,4 +123,31 @@ it('ignores un-analyzed activities and other users', function (): void {
     $cells = ($this->buildCells)($this->user);
 
     expect(cellOn($cells, '2026-05-12')['distance_km'])->toBeNull();
+});
+
+it('carries the day\'s rarest earned card, and null when none was earned', function (): void {
+    $common = Activity::factory()->for($this->user)->analyzed()->create();
+    ActivityDetail::factory()->for($common)->create([
+        'start_date_local' => Carbon::create(2026, 5, 14, 6),
+        'distance' => 5_000,
+    ]);
+    RunCard::factory()->for($common)->create(['rarity' => Rarity::Common]);
+
+    $epic = Activity::factory()->for($this->user)->analyzed()->create();
+    ActivityDetail::factory()->for($epic)->create([
+        'start_date_local' => Carbon::create(2026, 5, 14, 18),
+        'distance' => 8_000,
+    ]);
+    RunCard::factory()->for($epic)->create(['rarity' => Rarity::Epic]);
+
+    $cardless = Activity::factory()->for($this->user)->analyzed()->create();
+    ActivityDetail::factory()->for($cardless)->create([
+        'start_date_local' => Carbon::create(2026, 5, 15),
+        'distance' => 4_000,
+    ]);
+
+    $cells = ($this->buildCells)($this->user);
+
+    expect(cellOn($cells, '2026-05-14')['rarity'])->toBe('epic')
+        ->and(cellOn($cells, '2026-05-15')['rarity'])->toBeNull();
 });

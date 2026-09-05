@@ -18,6 +18,8 @@ use App\Services\AI\AzureCallThrottle;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\ChatCallOptions;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\AI\Agent\AgentBudget;
 use App\Actions\AI\RecordTokenUsageAction;
@@ -241,12 +243,40 @@ it('records the cached and reasoning breakdown summed across the run', function 
         ->and($row->steps)->toBe(2);
 });
 
+it('meters the call against the origin the entry point declared, not the narrator', function (): void {
+    $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR), 'completed', null, 10, 5)]);
+
+    $azure = Mockery::mock(AzureOpenAIClient::class);
+    $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
+    $azure->shouldReceive('client')->andReturn($client);
+
+    app(NarrationOrigin::class)->set(AnalysisOrigin::Recovery);
+
+    new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)), app(NarrationOrigin::class))
+        ->call('briefing', 'sys', [], 'schema', ['headline']);
+
+    expect(TokenUsage::query()->first()->origin)->toBe(AnalysisOrigin::Recovery);
+});
+
+it('meters an undeclared entry point as unattributed rather than guessing', function (): void {
+    $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR), 'completed', null, 10, 5)]);
+
+    $azure = Mockery::mock(AzureOpenAIClient::class);
+    $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
+    $azure->shouldReceive('client')->andReturn($client);
+
+    new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)), app(NarrationOrigin::class))
+        ->call('briefing', 'sys', [], 'schema', ['headline']);
+
+    expect(TokenUsage::query()->first()->origin)->toBe(AnalysisOrigin::Unknown);
+});
+
 it('does not record usage when Azure call fails', function (): void {
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
     $azure->shouldReceive('client')->andThrow(new RuntimeException('network down'));
 
-    $caller = new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)));
+    $caller = new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)), app(NarrationOrigin::class));
 
     expect(fn () => $caller->call('briefing', 'sys', [], 'schema', ['headline']))
         ->toThrow(UnavailableException::class);
@@ -264,7 +294,7 @@ it('routes the per-kind client and records the resolved deployment', function ()
     $azure->shouldReceive('deploymentFor')->with('briefing')->andReturn('gpt-4o-briefing');
     $azure->shouldReceive('client')->andReturn($client);
 
-    new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)))
+    new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)), app(NarrationOrigin::class))
         ->call('briefing', 'sys', [], 'schema', ['headline']);
 
     expect(TokenUsage::query()->first()->model)->toBe('gpt-4o-briefing');

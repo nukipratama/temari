@@ -7,10 +7,13 @@ use App\Models\StoryLine;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
+use App\Models\RaceGoal;
+use App\Models\Season;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\LifetimeStats;
+use App\Services\Run\Plan\SeasonService;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -69,6 +72,19 @@ it('requires auth', function (): void {
     $this->get('/profile')->assertRedirect('/login');
 });
 
+it('never ensures or mutates a season of its own', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+    app(SeasonService::class)->ensureCurrent($user, Carbon::today());
+
+    $this->actingAs($user)->get('/profile')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->missing('seasonStreak'));
+
+    expect(Season::query()->where('user_id', $user->id)->count())->toBe(1);
+    Carbon::setTestNow();
+});
+
 it('includes training_paces derived from VDOT when the user has a qualifying PR', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create([
@@ -92,7 +108,7 @@ it('reports null training_paces when the user has no VDOT-eligible PR', function
             ->where('fitness', null));
 });
 
-it('exposes personaMix derived from StoryLine moods + the week-keyed profileVoice payload', function (): void {
+it('exposes the week-keyed profileVoice payload', function (): void {
     Carbon::setTestNow('2026-05-18 09:00:00');
 
     $user = User::factory()->create();
@@ -107,12 +123,10 @@ it('exposes personaMix derived from StoryLine moods + the week-keyed profileVoic
         ->assertInertia(fn (Assert $page) => $page
             ->component('Profile')
             ->missing('personaSummary')
-            ->has('personaMix', 1)
-            ->where('personaMix.0.mood', 'blazing')
-            ->where('personaMix.0.percent', 100)
+            ->missing('personaMix')
             ->has('profileVoice')
-            ->where('profileVoice.type', 'aku_profile_voice')
-            ->where('profileVoice.subject_type', 'aku_profile_voice_user')
+            ->where('profileVoice.type', 'profile_voice')
+            ->where('profileVoice.subject_type', 'profile_voice_user')
             ->where('profileVoice.discriminator', '2026-W21'));
 
     Carbon::setTestNow();
@@ -124,18 +138,18 @@ it('resolves the row the weekly kickoff wrote for the current ISO week', functio
     Carbon::setTestNow('2026-05-18 09:00:00');
 
     $user = User::factory()->create();
-    Analysis::factory()->done('Kamu tipe yang sabar ngebangun base.')->create([
-        'subject_type' => AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+    Analysis::factory()->done('You are the patient type about building base.')->create([
+        'subject_type' => AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::AkuProfileVoice,
+        'analysis_type' => AnalysisType::ProfileVoice,
         'discriminator' => '2026-W21',
     ]);
     // Last week's row and the pre-merge unkeyed row must both stay out of the way.
     foreach (['2026-W20', null] as $stale) {
         Analysis::factory()->done('Bacaan lama.')->create([
-            'subject_type' => AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+            'subject_type' => AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
             'subject_id' => $user->id,
-            'analysis_type' => AnalysisType::AkuProfileVoice,
+            'analysis_type' => AnalysisType::ProfileVoice,
             'discriminator' => $stale,
         ]);
     }
@@ -144,7 +158,7 @@ it('resolves the row the weekly kickoff wrote for the current ISO week', functio
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('profileVoice.status', 'done')
-            ->where('profileVoice.content', 'Kamu tipe yang sabar ngebangun base.')
+            ->where('profileVoice.content', 'You are the patient type about building base.')
             ->where('profileVoice.discriminator', '2026-W21'));
 
     Carbon::setTestNow();
@@ -177,7 +191,7 @@ it('serves the hero stats from LifetimeStats, keeping 1dp total km and 2dp longe
             ->etc());
 });
 
-it('reuses the LifetimeStats cache instead of re-running the aggregate per /aku load', function (): void {
+it('reuses the LifetimeStats cache instead of re-running the aggregate per profile load', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
@@ -199,4 +213,56 @@ it('reuses the LifetimeStats cache instead of re-running the aggregate per /aku 
     $this->actingAs($user)->get('/profile')->assertSuccessful();
 
     expect($aggregates)->toBeEmpty();
+});
+
+it('reads the progression goal line off the active race, on that race distance only', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create([
+        'distance_m' => 10_000,
+        'goal_time_sec' => 3_000,
+        'completed_at' => null,
+    ]);
+
+    foreach (['10km' => 10_000.0, 'half_marathon' => 21_097.5] as $category => $distance) {
+        PersonalRecord::factory()->for($user)->create([
+            'category' => $category,
+            'value_sec' => $distance / 3.5,
+        ]);
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'distance' => $distance,
+            'elapsed_time' => (int) round($distance / 3.5),
+            'start_date_local' => Carbon::today()->subWeek(),
+        ]);
+    }
+
+    $this->actingAs($user)->get('/profile')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('progressionByCategory.10km.goal_sec', 3_000)
+            ->where('progressionByCategory.half_marathon.goal_sec', null)
+            ->etc());
+});
+
+it('leaves the progression goal line empty when no race is active', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create([
+        'distance_m' => 10_000,
+        'goal_time_sec' => 3_000,
+        'completed_at' => Carbon::yesterday(),
+    ]);
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '10km',
+        'value_sec' => 2_900.0,
+    ]);
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 10_000.0,
+        'elapsed_time' => 2_900,
+        'start_date_local' => Carbon::today()->subWeek(),
+    ]);
+
+    $this->actingAs($user)->get('/profile')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('progressionByCategory.10km.goal_sec', null)
+            ->etc());
 });

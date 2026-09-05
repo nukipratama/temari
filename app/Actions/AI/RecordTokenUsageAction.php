@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\AI;
 
 use App\Models\AI\TokenUsage;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\Agent\AgentBudget;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -24,11 +25,13 @@ class RecordTokenUsageAction
         ?int $latencyMs = null,
         bool $truncated = false,
         ?int $userId = null,
+        AnalysisOrigin $origin = AnalysisOrigin::Unknown,
     ): void {
         try {
             TokenUsage::query()->create([
                 'user_id' => $userId,
                 'kind' => $kind,
+                'origin' => $origin,
                 // The usage table's prompt/completion columns hold input/output.
                 'prompt_tokens' => $usage->inputTokens(),
                 'completion_tokens' => $usage->outputTokens(),

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Gamification;
 
-use App\Enums\DistanceBand;
 use App\Enums\SessionType;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
@@ -80,7 +79,7 @@ final readonly class SeasonGamificationContext
             if (in_array($session->session_type, [SessionType::Tempo, SessionType::Interval], true)) {
                 $qualityCompleted++;
             }
-            if ($session->distance_band === DistanceBand::Long) {
+            if ($session->session_type === SessionType::Long) {
                 $longestLongRunKm = max($longestLongRunKm, self::actualKmOn($user->id, $session->date));
             }
         }

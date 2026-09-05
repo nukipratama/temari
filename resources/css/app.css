@@ -11,29 +11,42 @@
 @source '../**/*.tsx';
 @source '../**/*.ts';
 
-@theme {
-    /* Threadwork typography — three families, each with one job:
-       Fraunces italic for display/voice (Temari quotes, page headlines),
-       Plus Jakarta Sans for prose/UI (the readable default), and JetBrains
-       Mono for telemetry only (numbers, stats, uppercase metadata labels).
-       Plus a fourth, card-scoped face: Oswald (condensed) for the collectible
-       Kartu nameplate / hero stat / edition number — the "trading-card" look.
-       Not a global default; use font-collectible only on the card chrome.
-       Loaded via Google Fonts <link> in app.blade.php. */
-    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
-    --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
-    --font-collectible: 'Oswald', 'Plus Jakarta Sans', system-ui, sans-serif;
+/* Tailwind's `dark:` defaults to prefers-color-scheme, so every dark: utility
+   was firing on the OS setting rather than the ground the user chose in
+   Settings. The app switches grounds with data-theme on <html>, so point the
+   variant at the same signal. Reach for it only where the difference is not a
+   colour value — an opacity, a ring width, a whole property — since a colour
+   that flips belongs in the semantic token layer, which is audited and cannot
+   drift into a raw palette shade the way a utility can. See
+   docs/decisions/tokens-flip-colour-dark-variant-flips-the-rest.md. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
-    /* ─── Threadwork display-type scale ────────────────────────────────
+/* `static` so every token below is emitted to :root whether or not a utility
+   references it. /devtools/design reads the token set back out of the live
+   stylesheet, and a pruned variable would read as a missing token there. */
+@theme static {
+    /* Three families, each with one job: Fraunces italic for display/voice,
+       Plus Jakarta Sans for prose/UI, JetBrains Mono for telemetry only
+       (numbers, stats, uppercase metadata labels). Loaded via Google Fonts
+       <link> in app.blade.php. */
+    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+
+    /* ─── Display-type scale ───────────────────────────────────────────
        Fluid clamp() so editorial type scales smoothly instead of
        stair-stepping at sm/lg. Each token bundles line-height +
        letter-spacing so one utility class lands the full spec.
 
        Display tier — fluid; editorial / hero headlines.
        Headline tier — fluid, narrower range; section-level.
-       Quote tier — fixed px; body reading should NOT scale with
-         viewport because the focal distance is constant.              */
+       Quote tier — a fixed rem; it deliberately does NOT scale with
+         viewport, because a vw-fluid body size means a phone and a
+         monitor at the same fraction render at wildly different
+         physical sizes. It does follow the root, which steps once at
+         1280px: a desktop is read at a longer focal distance than a
+         phone, so a discrete step there is the same argument, not its
+         opposite. See the root rule below.                            */
     --text-display-2xl: clamp(40px, 7.5vw, 92px);
     --text-display-2xl--line-height: 0.96;
     --text-display-2xl--letter-spacing: -0.01em;
@@ -66,16 +79,16 @@
     --text-headline-xs--line-height: 1.1;
     --text-headline-xs--letter-spacing: 0;
 
-    --text-quote-lg: 22px;
+    --text-quote-lg: 1.375rem;
     --text-quote-lg--line-height: 1.3;
-    --text-quote-md: 18px;
+    --text-quote-md: 1.125rem;
     --text-quote-md--line-height: 1.4;
-    --text-quote-sm: 15px;
+    --text-quote-sm: 0.9375rem;
     --text-quote-sm--line-height: 1.5;
 
     /* Stat value — the big tabular number on KPI tiles / PR cards. Fixed px
        (not fluid): these sit in fixed-height card layouts. */
-    --text-stat: 32px;
+    --text-stat: 2rem;
     --text-stat--line-height: 1;
 
     /* Fluid variant for stat numbers in narrow grid columns (e.g. the 3-up
@@ -90,100 +103,280 @@
 
     /* Same tuning as --text-stat-fluid (floor + coefficient proven against a
        real 320px render), capped at --text-stat's 32px ceiling instead of
-       40px: for StatTile `lg` used in a narrow 3-up row (LastLariCard's
+       40px: for StatTile `lg` used in a narrow 3-up row (LastRunCard's
        KM/PACE/TRIMP), where the fixed 32px overlapped adjacent values below
        ~375px. `lg`'s other/wider uses are untouched -- this is an explicit
        opt-in via valueClassName, not a change to `--text-stat` itself. */
     --text-stat-fluid-lg: clamp(15px, 5.5vw, 32px);
     --text-stat-fluid-lg--line-height: 1;
 
-    /* ─── Threadwork palette — thread/embroidery jewel tones on a warm
-       linen canvas. Hex values mirror THREADWORK constants in the
-       prototype source. */
+    /* ─── Palette ──────────────────────────────────────────────────────
+       Pewter: cold near-white paper, near-black structure, lime accent —
+       Graphite's colours verbatim, carried on Porcelain's shape (see the
+       Pewter entry in resources/brand/build-directions.mjs's DIRECTIONS).
+       Every saturated family ships as a pair: the vivid value is the FILL
+       (dots, frames, strokes), the `-ink` value is the same hue darkened
+       until it clears 4.5:1 on paper and is the only one allowed to carry
+       text. Ground/structure/accent/ink tokens generated by
+       resources/brand/apply-pewter.mjs, which reuses build-directions.mjs's
+       palette() (do not hand-tune a single member); do not re-run it against
+       a different direction without re-checking every mirror file (see
+       DesignTokenMirrorsTest). leaf/ember/citrus/rarity/mood/strava-orange
+       are held constant across every direction on purpose — not brand,
+       loot/effort colours — only their `-ink` members move with ground. */
 
-    /* Sky — structure, hero panels, dark surfaces. Deep indigo thread. */
-    --color-sky: #241c54;
-    --color-sky-deep: #170f38;
-    --color-sky-2: #362a73;
+    /* Sky — structure, hero panels, dark surfaces. Pewter: cold near-black. */
+    --color-sky: #171f28;
+    --color-sky-deep: #0b1017;
+    --color-sky-2: #26303d;
 
-    /* Horizon — primary CTA, "earned" state, Temari accent. Gold thread. */
-    --color-horizon: #d9a53c;
-    --color-horizon-deep: #b98a2a;
+    /* Horizon — primary CTA, "earned" state, Temari accent. Pewter: lime. */
+    --color-horizon: #ade047;
+    --color-horizon-deep: #95c134;
+    --color-horizon-ink: #546d23;
 
-    /* Cream — paper / app background, secondary surface. Warm linen canvas. */
-    --color-cream: #f5f0e4;
-    --color-cream-deep: #ece2ce;
+    /* Cream — paper / app background, secondary surface. Pewter: cold near-white. */
+    --color-cream: #f1f5f8;
+    --color-cream-deep: #e2e8ee;
 
-    /* Threadwork ink scale (3-tier text contrast). ink-3 is metadata-only:
-       darkened from #7a6f5c (which failed WCAG AA at ~4.3:1) to clear
-       4.5:1 on cream. ink-on-sky is the muted label tone on dark sky
-       panels (replaces the old text-cream/55, which was ~2.2:1); retuned
-       toward lavender so it still reads on the new indigo sky. */
-    --color-ink: #1a1812;
-    --color-ink-2: #3d362a;
-    --color-ink-3: #6e6452;
-    --color-ink-on-sky: #b0a3c9;
+    /* Ink scale (3-tier text contrast), all ≥4.5:1 on paper. ink-on-sky is
+       the muted label tone on dark sky panels; ink-on-rarity is the label tone
+       on a vivid rarity fill, the one value that clears 4.5:1 on all five. */
+    --color-ink: #16181b;
+    --color-ink-2: #34373c;
+    --color-ink-3: #60666d;
+    --color-ink-on-sky: #9c9ea7;
+    --color-ink-on-rarity: #170f38;
 
-    /* Semantic mood-family hues. Each has a deep variant for text + a
-       lighter pastel `-bg` variant for tinted cells (kalender, etc.). */
-    --color-leaf: #6b8e6f;
-    --color-leaf-deep: #4f6c54;
-    --color-ember: #c4623f;
-    --color-ember-deep: #a35030;
-    --color-citrus: #d9b23a;
-    --color-citrus-deep: #b8941e;
-    --color-stone: #8e8579;
+    /* Semantic accent hues. The plain member is the fill; `-deep` is the fill
+       for a dark CTA (cream text on it); `-ink` is the only member a label or
+       icon may use. `citrus` has no `-deep`: it never fills a CTA. Held
+       constant across every direction (loot/effort colours, not brand) —
+       only their `-ink` members are re-derived per direction (ground-dependent). */
+    --color-leaf: #2f8f63;
+    --color-leaf-deep: #256f4d;
+    --color-leaf-ink: #226748;
+    --color-ember: #b23a4f;
+    --color-ember-deep: #8d2c3d;
+    --color-ember-ink: #9b3245;
+    --color-citrus: #c9971f;
+    --color-citrus-ink: #7b5c13;
+    --color-stone: #64686c;
 
-    /* Surface tier — warm linen canvas. dawn-shift drifts the base across
-       the day (see body[data-time-of-day=…] below). */
-    --color-surface: #f5f0e4;
-    /* Card surface — the single warm linen every card shares. Lighter
-       than the cream-deep page so cards lift, paired with border-line.
-       One token = consistent cards everywhere; change here to retint all.
-       surface-elev (warmed off pure white) stays for floating UI + the
-       via-surface-elev gradient midpoints. */
-    --color-surface-card: #f5f0e4;
-    --color-surface-elev: #faf6ec;
-    --color-surface-warm: #f8f0dd;
-    --color-surface-sunken: #ece2ce;
-    --color-line: #d8d0ba;
+    /* Surface tier — Pewter: cold near-white. `surface-card` is the single
+       ground every card shares; `surface-elev` is floating UI only. */
+    --color-surface: #f1f5f8;
+    --color-surface-card: #f1f5f8;
+    --color-surface-elev: #f8fbfe;
+    --color-surface-warm: #f0f5fb;
+    --color-surface-sunken: #e2e8ee;
+    --color-line: #bfc5cc;
+    --color-line-strong: #b2b9c2;
 
-    /* Mood swatches — Threadwork vocabulary. Each mood pairs a saturated
-       dot tone (`mood-{name}`) with a pastel bg tone (`mood-{name}-bg`)
-       for calendar cells + badge fills. Each remapped to its closest-fitting
-       thread jewel tone (crimson/gold/indigo/emerald/violet). */
+    /* Mood — fill / pastel cell tint / text. */
     --color-mood-blazing: #c9971f;
     --color-mood-blazing-bg: #f3e6c2;
+    --color-mood-blazing-ink: #785a13;
     --color-mood-easy: #2f8f63;
     --color-mood-easy-bg: #d7ecdf;
+    --color-mood-easy-ink: #226748;
     --color-mood-wobbly: #b23a4f;
     --color-mood-wobbly-bg: #f0d3d8;
+    --color-mood-wobbly-ink: #a9374b;
     --color-mood-gassed: #7a2030;
     --color-mood-gassed-bg: #e3c2c7;
+    --color-mood-gassed-ink: #7a2030;
     --color-mood-overloaded: #6b3fa0;
     --color-mood-overloaded-bg: #ded0ee;
+    --color-mood-overloaded-ink: #6b3fa0;
     --color-mood-chill: #55488f;
     --color-mood-chill-bg: #dcd8ee;
+    --color-mood-chill-ink: #55488f;
 
-    /* Rarity scale — vivid "loot ladder" (gray → green → blue → purple → gold).
-       Deliberately brighter/more saturated than the muted Threadwork hues: rarity
-       is the collectible TCG signal, so it gets to be loud. Used by cards, the
-       rarity filter chips, dots, and section headers alike — one source. */
+    /* Rarity — the loot ladder (gray → green → blue → purple → gold). Loud on
+       purpose: it is the collectible signal. A fill under 3:1 on paper (gold
+       legendary, green uncommon) keeps its vibrancy and is drawn with its
+       `-ink` outline instead of being darkened. */
     --color-rarity-common: #7d8694;
+    --color-rarity-common-ink: #5f6671;
     --color-rarity-uncommon: #2fb350;
+    --color-rarity-uncommon-ink: #1f7434;
     --color-rarity-rare: #2f81f7;
+    --color-rarity-rare-ink: #2463be;
     --color-rarity-epic: #a855f7;
+    --color-rarity-epic-ink: #8543c4;
     --color-rarity-legendary: #f5a623;
+    --color-rarity-legendary-ink: #865b13;
 
     /* Strava brand (untouched, never themed). */
     --color-strava-orange: #fc4c02;
     --color-strava-orange-hover: #e34402;
+
+    /* ─── Ground-reactive semantic layer ──────────────────────────────
+       Two-ground token model (F2). Every token below is redeclared, literal
+       hex, under `[data-theme="dark"]` further down this file — this block
+       carries the light/default value only. `static` still gives each one a
+       real `var(--color-x)`-indirected utility (Tailwind v4 always defers
+       theme colours to a custom property; `static` only forces emission
+       regardless of usage), so the `[data-theme="dark"]` override below
+       repaints every `bg-card` / `text-foreground` / `text-leaf-ink` call site
+       without Tailwind regenerating anything. See DesignTokenContrastTest.php
+       for why every value here — light AND dark — stays literal hex: the
+       guard that scores these parses `#rrggbb` by regex, and a `color-mix()`
+       or `var()` value would silently score nothing.
+
+       Semantic slots (shadcn `base-luma` vocabulary) mapped onto Pewter:
+       primary/ring follow the app's own established identity (horizon is the
+       CTA colour, leaf is the focus-ring colour per .focus-ring below) rather
+       than the prototype's Luma-default choice of sky/indigo. */
+    --color-background: #f1f5f8; /* cream */
+    --color-foreground: #16181b; /* ink */
+    --color-card: #f1f5f8; /* surface-card */
+    --color-card-foreground: #16181b;
+    --color-popover: #f8fbfe; /* surface-elev */
+    --color-popover-foreground: #16181b;
+    --color-primary: #ade047; /* horizon */
+    --color-primary-foreground: #16181b; /* ink — already validated: text on gold CTA */
+    --color-secondary: #e2e8ee; /* surface-sunken */
+    --color-secondary-foreground: #16181b;
+    --color-muted: #e2e8ee;
+    --color-muted-foreground: #60666d; /* ink-3 */
+    --color-accent: #e2e8ee;
+    --color-accent-foreground: #16181b;
+    --color-destructive: #b23a4f; /* ember, constant across grounds */
+    --color-border: #bfc5cc; /* line */
+    --color-input: #bfc5cc;
+    --color-ring: #2f8f63; /* leaf — matches .focus-ring below, both grounds */
+    --color-chart-1: #546d23; /* horizon-ink */
+    --color-chart-2: #26303d; /* sky-2 */
+    --color-chart-3: #2f8f63; /* leaf */
+    --color-chart-4: #b23a4f; /* ember */
+    --color-chart-5: #7b5c13; /* citrus-ink */
+
+    /* Six hand-built theme-reactive tokens, ported from the prototype's own
+       set (resources/brand/prototype/src/index.css) — icon accents, a
+       secondary/tertiary text tier distinct from ink-2/ink-3 (light stays
+       equal to them; dark needs its own derived tones), a strong border for
+       login-style separators, the Today card's accent edge, and the
+       Settings solid-pill button pairing. */
+    --color-icon-accent: #546d23; /* horizon-ink */
+    --color-text-2: #34373c; /* = ink-2 on light */
+    --color-text-3: #60666d; /* = ink-3 on light */
+    --color-border-strong: #bfc5cc; /* = line on light */
+    --color-today-accent: #c2ccb8; /* horizon-ink at 30% over card (literal, not color-mix) */
+    --color-btn-primary-bg: #546d23; /* horizon-ink */
+    --color-btn-primary-fg: #ffffff;
+
+    /* ─── Spacing ──────────────────────────────────────────────────────
+       4px base, expressed in rem. These ten steps are the only ones this
+       theme names; every other step falls through to Tailwind's own
+       rem-based scale, so declaring these in px left the scale half px and
+       half rem — which agreed at a 16px root and stopped agreeing the
+       moment the root steps at 1280px. Named PAD roles let a component ask
+       for its *kind* of padding instead of picking a number (see the
+       .pad-* utilities). */
+    --spacing-1: 0.25rem;
+    --spacing-2: 0.5rem;
+    --spacing-3: 0.75rem;
+    --spacing-4: 1rem;
+    --spacing-5: 1.25rem;
+    --spacing-6: 1.5rem;
+    --spacing-8: 2rem;
+    --spacing-10: 2.5rem;
+    --spacing-12: 3rem;
+    --spacing-16: 4rem;
+
+    --pad-chip: 0.25rem 0.75rem;
+    --pad-panel: 0.75rem 1rem;
+    --pad-card: 1rem;
+    --pad-hero: 1.5rem;
+    --pad-page: 3rem 2.5rem 5rem;
+
+    /* ─── Radius ───────────────────────────────────────────────────────
+       md is the card/panel corner. Overrides Tailwind's defaults for the
+       whole namespace so no call site can land between two steps. */
+    --radius-xs: 6px;
+    --radius-sm: 10px;
+    --radius-md: 14px;
+    --radius-lg: 18px;
+    --radius-xl: 24px;
+    --radius-full: 9999px;
+
+    /* shadcn/prototype primitives (F3+) reach for `rounded-2xl/3xl/4xl` —
+       Tailwind's own built-in keywords, previously untokened here and banned
+       by check-raw-palette.mjs rule 3 for exactly that reason. These are
+       shadcn's own separate keyword vocabulary, not a continuation of this
+       ladder's xs-xl steps above (the two namespaces already coexist without
+       being one monotonic sequence — see --radius-panel below, which sits
+       above xl under its own name rather than being called "2xl"). Values
+       are the literal output of shadcn's own `calc(var(--radius) * N)` scheme
+       at `--radius: 0.625rem` (the prototype's base), hardcoded rather than
+       introducing that extra base var. `--radius-4xl` landing on the same
+       26px as `--radius-panel` below is the prototype's own math arriving,
+       independently, at Pewter's actual card corner — real corroboration,
+       not a new invention. */
+    --radius-2xl: 18px;
+    --radius-3xl: 22px;
+    --radius-4xl: 26px;
+
+    /* Luma/Pewter's own card radius and cast shadow (resources/brand/directions.html
+       [data-dir="pewter"]), landed additively under its own role name rather than
+       overwriting --radius-lg/--shadow-e*: those names are reused across ~170
+       unrelated call sites, so changing their values would move shape on things
+       that were never meant to adopt Luma's card look. New surfaces opt in by name;
+       nothing existing changes. */
+    --radius-panel: 26px;
+    --shadow-panel: 0 4px 6px -1px rgba(23, 31, 40, 0.11), 0 2px 4px -2px rgba(23, 31, 40, 0.08);
+
+    /* ─── Elevation ────────────────────────────────────────────────────
+       Warm-tinted, never neutral: a grey shadow on a cream ground reads
+       dirty. e1 resting card · e2 floating UI · e3 sheet · e4 modal. */
+    --shadow-e1: 0 1px 2px rgba(58, 45, 20, 0.06), 0 1px 1px rgba(58, 45, 20, 0.04);
+    --shadow-e2: 0 4px 10px rgba(58, 45, 20, 0.08), 0 2px 4px rgba(58, 45, 20, 0.05);
+    --shadow-e3: 0 12px 28px rgba(58, 45, 20, 0.12), 0 4px 10px rgba(58, 45, 20, 0.07);
+    --shadow-e4: 0 24px 56px rgba(23, 15, 56, 0.2), 0 8px 20px rgba(23, 15, 56, 0.12);
 
     /* Page content width — the centered column cap shared by the top nav,
        PageContainer, and the devtools header (`max-w-page`). Eases up at 2xl
        (`max-w-page-2xl`) so a 2K panel isn't marooned in empty gutters. */
     --container-page: 1440px;
     --container-page-2xl: 1680px;
+
+    /* The product column, as opposed to `page` above, which only the operator
+       pages still use. 760px is the prototype's own container-query value and
+       holds from 900px; `-wide` is ours, since the prototype's PhoneFrame
+       never renders past the frame and so draws no reference above it. Nine
+       call sites shared this as a literal before it was a token — the nav
+       pill and six banners have to track the column or they visibly drift
+       out of alignment with it. */
+    --container-column: 760px;
+    --container-column-wide: 1040px;
+}
+
+/* One type step, at the same 1280px the content column widens at. Everything
+   sized in rem follows it — the type tiers, the label roles, and Tailwind's
+   spacing scale, so proportions hold rather than text growing inside padding
+   that did not. This is why the ~90 px font-size literals ported from the
+   prototype were converted to rem: a px literal silently opts out of this rule
+   and would leave the UI mismatched at exactly one breakpoint.
+
+   Media queries resolve `rem` against the initial 16px, not this value, so the
+   breakpoints themselves do not move. */
+@media (min-width: 1280px) {
+    html {
+        font-size: 19.2px;
+    }
+}
+
+/* A second step for genuinely large panels. One 1.2x step was tuned for a
+   laptop and leaves a 2K desktop small enough to reach for browser zoom, which
+   is the reader compensating for the type scale by hand. 2048px is twice the
+   `lg` breakpoint and sits above every common laptop width, so a 1440p or 4K
+   panel takes this step and a 1920-wide desktop does not. */
+@media (min-width: 2048px) {
+    html {
+        font-size: 21.6px;
+    }
 }
 
 /* `-webkit-tap-highlight-color: transparent` drops the grey flash Safari
@@ -192,19 +385,33 @@
    `pressShrink` scale, see lib/motion.ts); do not remove that without
    restoring a highlight here. */
 html {
-    /* The app is light-mode only (no `.dark` on <html>, no *-dark tokens), but
-       until this was declared it never told the user agent so. On a device set
-       to Dark Mode the UA then renders everything IT owns in dark appearance —
-       form controls, scrollbars, and, in an installed iOS PWA, the status-bar
-       strip around the notch. That is what painted a dark slab above the cream
-       header, and why pinning `theme-color` to cream could not fix it: the
-       strip was never being painted from theme-color. Mirrored as a <meta> in
-       app.blade.php so it applies before this stylesheet loads. */
-    color-scheme: light;
+    /* Tells the UA how to render what it owns — form controls, scrollbars,
+       and, in an installed iOS PWA, the status-bar strip around the notch —
+       so it matches the active ground instead of just following the device's
+       own Dark Mode setting (which is how a dark slab once painted above the
+       cream header on a light-only app; pinning `theme-color` alone could not
+       fix it, since that strip was never painted from theme-color).
+
+       F2 makes the app two-ground: `dark` here is the bare fallback for a
+       pre-hydration/no-JS paint, matching decision 6's default ground; the
+       `[data-theme]` rules below are what actually apply once the blocking
+       inline script in app.blade.php runs, before first paint in the normal
+       case. Mirrored as a <meta name="color-scheme"> there for the same
+       reason the original single-value meta existed: it has to apply before
+       this stylesheet loads. */
+    color-scheme: dark;
     -webkit-tap-highlight-color: transparent;
     /* Stop iOS inflating text when a page ends up in landscape. The fluid
        clamp() type scale already handles sizing; Safari's own bump fights it. */
     -webkit-text-size-adjust: 100%;
+}
+
+html[data-theme='light'] {
+    color-scheme: light;
+}
+
+html[data-theme='dark'] {
+    color-scheme: dark;
 }
 
 /* Long-pressing app chrome on iOS pops the copy / share callout and starts a
@@ -247,7 +454,7 @@ body {
 /* iOS Safari force-zooms the whole page whenever a focused control computes to
    a font-size below 16px, and does not zoom back out afterwards — you are left
    scrolled sideways in a magnified app until you pinch out by hand. Every input
-   in the app was under that threshold (the Riwayat search and the Koleksi
+   in the app was under that threshold (the History search and the Collection
    search/sort at text-xs, the HR-zone and AI-usage fields at text-sm), so
    focusing any of them visibly broke the illusion.
 
@@ -291,6 +498,21 @@ body {
     );
 }
 
+/* The cream placeholder glares just as badly when the whole page is the dark
+   ground, so `.skeleton` takes the sky treatment there rather than asking every
+   caller to remember `.skeleton-on-sky` (nine of nine forgot). The on-sky class
+   stays for a placeholder on a fixed-dark panel while the light ground is up,
+   which this rule does not cover. */
+[data-theme='dark'] .skeleton {
+    background-color: color-mix(in srgb, var(--color-cream) 15%, transparent);
+    background-image: linear-gradient(
+        90deg,
+        transparent 20%,
+        color-mix(in srgb, var(--color-cream) 12%, transparent) 50%,
+        transparent 80%
+    );
+}
+
 /* Same sweep on the dark sky panels, where the cream placeholder would glare. */
 .skeleton-on-sky {
     background-color: color-mix(in srgb, var(--color-cream) 15%, transparent);
@@ -306,71 +528,6 @@ body {
     .skeleton,
     .skeleton-on-sky {
         background-image: none;
-        animation: none;
-    }
-}
-
-/* Login hero: route trace draw-in + a slow breathing glow, plus a shared
-   fade-in-up for both panes' content. Plain CSS, not framer-motion --
-   bareLayout/Login is a deliberately motion-library-free route (see
-   scripts/check-entry-chunks.mjs), so this can't reuse lib/motion.ts. */
-@keyframes route-draw {
-    to {
-        stroke-dashoffset: 0;
-    }
-}
-
-.route-echo-path {
-    /* pathLength="1" on the element normalizes total length to 1, so the
-       dash math is exact regardless of the curve's actual geometry. */
-    stroke-dasharray: 1;
-    stroke-dashoffset: 1;
-    animation: route-draw 2.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.route-echo-path:nth-child(2) {
-    animation-delay: 0.45s;
-}
-
-.route-echo-path:nth-child(3) {
-    animation-delay: 0.9s;
-}
-
-@keyframes hero-glow-breathe {
-    0%,
-    100% {
-        opacity: 0.85;
-        transform: translate(-50%, -50%) scale(1);
-    }
-    50% {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1.04);
-    }
-}
-
-.hero-glow {
-    animation: hero-glow-breathe 7s ease-in-out infinite;
-}
-
-@keyframes login-fade-in-up {
-    from {
-        opacity: 0;
-        transform: translateY(8px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.login-fade-in-up {
-    animation: login-fade-in-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .route-echo-path,
-    .hero-glow,
-    .login-fade-in-up {
         animation: none;
     }
 }
@@ -404,8 +561,27 @@ body {
 
 /* Reusable atomic component classes — the duplicated combos that recur
    across the UI. `@apply`-built so they compose with token utilities and
-   stay in sync with the Threadwork theme. */
+   stay in sync with the theme. */
 @layer components {
+    /* The --pad-* roles as utilities. Padding is not a Tailwind theme
+       namespace, so these are the only way a component names its padding
+       role instead of picking a number. */
+    .pad-chip {
+        padding: var(--pad-chip);
+    }
+    .pad-panel {
+        padding: var(--pad-panel);
+    }
+    .pad-card {
+        padding: var(--pad-card);
+    }
+    .pad-hero {
+        padding: var(--pad-hero);
+    }
+    .pad-page {
+        padding: var(--pad-page);
+    }
+
     /* Focus ring on cream surfaces (the app default). */
     .focus-ring {
         @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-cream;
@@ -442,35 +618,35 @@ body {
 
     /* Small uppercase metadata label — micro tier (11px). */
     .text-label-micro {
-        @apply font-mono text-[11px] font-bold uppercase tracking-[0.12em];
+        @apply font-mono text-[0.6875rem] font-bold uppercase tracking-[0.12em];
     }
     /* Small uppercase metadata label — small tier (12px). */
     .text-label-small {
-        @apply font-mono text-[12px] font-bold uppercase tracking-[0.14em];
+        @apply font-mono text-[0.75rem] font-bold uppercase tracking-[0.14em];
     }
     /* Small uppercase metadata label — hero tier (11px, wide tracking). */
     .text-label-hero {
-        @apply font-mono text-[11px] font-bold uppercase tracking-[0.18em];
+        @apply font-mono text-[0.6875rem] font-bold uppercase tracking-[0.18em];
     }
     /* Narrator / body sentences. */
     .text-prose {
-        @apply font-sans text-quote-md text-ink-2;
+        @apply font-sans text-quote-md text-text-2;
     }
     /* KPI / PR number — the big tabular figure. */
     .text-stat {
-        @apply font-mono text-stat font-bold tabular-nums tracking-[-0.02em] text-ink;
+        @apply font-mono text-stat font-bold tabular-nums tracking-[-0.02em] text-foreground;
     }
     /* Smaller stat figure (compact tiles). */
     .text-stat-sm {
-        @apply font-mono text-2xl font-bold tabular-nums tracking-[-0.02em] text-ink;
+        @apply font-mono text-2xl font-bold tabular-nums tracking-[-0.02em] text-foreground;
     }
     /* Date / timestamp / footnote — metadata, non-uppercase. */
     .text-meta {
-        @apply font-mono text-[11px] tracking-[0.04em] text-ink-3;
+        @apply font-mono text-[0.6875rem] tracking-[0.04em] text-text-3;
     }
     /* Temari voice — display serif italic. */
     .voice {
-        @apply font-display text-quote-lg italic text-ink;
+        @apply font-serif text-quote-lg italic text-foreground;
     }
 
     /* Rarity halo — every card gets a calm, static glow ring in its own
@@ -480,56 +656,122 @@ body {
        whatever it's mounted on. This is the ONLY foil treatment: no holo
        sweep, sparkle, or rainbow flooding the bright art window — so the
        route stays the hero. */
-    .kartu-glow {
+    .card-glow {
         box-shadow:
             0 0 0 1px color-mix(in oklab, var(--rarity, white) 55%, transparent),
             inset 0 0 calc(16px * var(--glow-strength, 1)) color-mix(in oklab, var(--rarity, white) 65%, transparent);
     }
 }
 
-/* Dawn-shift theme — subtle page-bg tint based on user's local
-   time-of-day. Drifts the cream surface across the day: cool pre-dawn,
-   warmer in morning + dusk, calm at night. Light-mode only. */
+/* Tailwind v4 emits `--color-*` as `var(--color-x)` inside a utility, which is
+   the whole reason a ground switch works at all — but it *inlines* a composite
+   token like a shadow, so `.shadow-e1` ships the light value baked in and
+   redefining `--shadow-e1` under [data-theme='dark'] changes nothing anyone
+   renders. The token below stays the single definition of the value; these four
+   rules are what point the utility at it on the dark ground. Verified in the
+   built CSS, not assumed: `.shadow-e1` compiles to
+   `--tw-shadow: 0 1px 2px var(--tw-shadow-color, #3a2d140f), ...`. */
+@layer utilities {
+    [data-theme='dark'] .shadow-e1 {
+        --tw-shadow: var(--shadow-e1);
+    }
+    [data-theme='dark'] .shadow-e2 {
+        --tw-shadow: var(--shadow-e2);
+    }
+    [data-theme='dark'] .shadow-e3 {
+        --tw-shadow: var(--shadow-e3);
+    }
+    [data-theme='dark'] .shadow-e4 {
+        --tw-shadow: var(--shadow-e4);
+    }
+}
+
+/* Dark ground (F2) — Sky family becomes ground, Cream becomes text, the
+   exact inverse of the app's light-only default above. Every value is
+   literal hex, matching @theme static's own convention and
+   DesignTokenContrastTest.php's regex-based guard (see the comment on the
+   light block these override, further up this file).
+
+   The `-ink` tier inverts here rather than reusing its light value: leaf/
+   ember/citrus-ink were darkened until they cleared 4.5:1 on paper, which is
+   why they read as ~2-3:1 against Sky. Each dark value below is the
+   opposite move — the vivid fill itself where it already clears 4.5:1 on
+   every Sky surface (citrus, and rarity uncommon/legendary), lightened
+   toward white where it does not (leaf, ember, rarity common/rare/epic) —
+   derived via inkOnDark() in resources/brand/build-tokens.mjs, worst-cased
+   across sky-deep/sky/sky-2. horizon-ink is derived the same way and resolves
+   to the vivid fill unchanged; it was originally left out on the reasoning
+   that the app reaches for icon-accent on dark instead, which 33
+   text-horizon-ink call sites disproved. */
 @layer base {
-    body[data-time-of-day='dawn'] {
-        --color-surface: #f0ebdb;
-    }
-    body[data-time-of-day='morning'] {
-        --color-surface: #f8f2df;
-    }
-    body[data-time-of-day='dusk'] {
-        --color-surface: #f4ead5;
-    }
-    body[data-time-of-day='night'] {
-        --color-surface: #eee8d9;
+    [data-theme='dark'] {
+        --color-background: #0b1017; /* sky-deep */
+        --color-foreground: #f1f5f8; /* cream */
+        --color-card: #171f28; /* sky */
+        --color-card-foreground: #f1f5f8;
+        --color-popover: #26303d; /* sky-2 */
+        --color-popover-foreground: #f1f5f8;
+        --color-secondary: #26303d;
+        --color-secondary-foreground: #f1f5f8;
+        --color-muted: #26303d;
+        --color-muted-foreground: #9c9ea7; /* = ink-on-sky, already 5:1+ on every dark surface */
+        --color-accent: #26303d;
+        --color-accent-foreground: #f1f5f8;
+        --color-border: #4d5560;
+        --color-input: #4d5560;
+
+        --color-icon-accent: #ade047; /* horizon */
+        --color-text-2: #c1c2c8;
+        --color-text-3: #9c9ea7; /* = ink-on-sky */
+        --color-border-strong: #4d5560;
+        --color-today-accent: transparent; /* dark Today card needs no added edge */
+        --color-btn-primary-bg: #ade047; /* horizon */
+        --color-btn-primary-fg: #16181b; /* ink — same pairing as --color-primary-foreground */
+
+        --color-horizon-ink: #ade047; /* = --color-horizon, already clears 8.6:1+ */
+        --color-leaf-ink: #57a581;
+        --color-ember-ink: #ce808e;
+        --color-citrus-ink: #c9971f; /* = --color-citrus, already clears 5:1+ */
+        --color-rarity-common-ink: #8f97a3;
+        --color-rarity-uncommon-ink: #2fb350; /* = --color-rarity-uncommon */
+        --color-rarity-rare-ink: #5296f8;
+        --color-rarity-epic-ink: #ba77f9;
+        --color-rarity-legendary-ink: #f5a623; /* = --color-rarity-legendary */
+
+        /* The mood cell inverts with its label. The light -bg tier is the vivid
+           fill barely tinted into cream, so the dark one is that fill tinted
+           into sky-deep by the same 15%; the -ink partner is then derived
+           against that cell as well as the three Sky surfaces, via
+           tintOnDark()/inkOnDark() in resources/brand/build-tokens.mjs. Leaving
+           the pastel cell here is what put a pale-green pill on near-black in
+           RunHero. */
+        --color-mood-blazing-bg: #282418;
+        --color-mood-blazing-ink: #c9971f; /* = --color-mood-blazing, already clears */
+        --color-mood-easy-bg: #102322;
+        --color-mood-easy-ink: #57a581;
+        --color-mood-wobbly-bg: #24161f;
+        --color-mood-wobbly-ink: #ce808e;
+        --color-mood-gassed-bg: #1c121b;
+        --color-mood-gassed-ink: #b98a92;
+        --color-mood-overloaded-bg: #19172c;
+        --color-mood-overloaded-ink: #a58bc6;
+        --color-mood-chill-bg: #161829;
+        --color-mood-chill-ink: #9991bc;
+
+        /* Elevation inverts too, and for a blunter reason than the -ink tier:
+           a cast shadow has nowhere to go on a near-black ground. Pure black
+           at 60% over sky-deep measures 1.06:1, against 1.14:1 for the light
+           ground's e1 at a mere 6% over cream. A hairline of the foreground
+           reaches 1.33:1 at 10% and 1.85:1 at 20%, so on dark the same scale
+           is drawn as a rim rather than a cast. Redefining the token rather
+           than the 40 call sites keeps `shadow-e1` meaning "resting card" on
+           both grounds. e4 keeps a deep cast as well, since a modal sits over
+           a scrim with room to darken. */
+        --shadow-e1: 0 0 0 1px rgba(241, 245, 248, 0.1);
+        --shadow-e2: 0 0 0 1px rgba(241, 245, 248, 0.15);
+        --shadow-e3: 0 0 0 1px rgba(241, 245, 248, 0.2);
+        --shadow-e4:
+            0 0 0 1px rgba(241, 245, 248, 0.2), 0 24px 56px rgba(0, 0, 0, 0.55);
     }
 }
 
-/* Temari mascot animations — pose-driven keyframes used by
-   <TemariProto>. Mounted globally so the SVG layers can run them via
-   the `animation` style prop or the `animation` Tailwind shortcut. */
-@layer base {
-    @keyframes temari-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.015); } }
-    @keyframes temari-bob     { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-    @keyframes temari-bounce {
-        0%, 100% { transform: translateY(0); }
-        30%      { transform: translateY(-10px) scaleY(1.04); }
-        60%      { transform: translateY(2px)  scaleY(0.96); }
-    }
-    @keyframes temari-sway   { 0%, 100% { transform: rotate(-4deg) translateX(-2px); } 50% { transform: rotate(4deg) translateX(2px); } }
-    @keyframes temari-nod    { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
-    @keyframes temari-tilt   { 0%, 100% { transform: rotate(-3deg) translateY(0); } 50% { transform: rotate(2deg) translateY(-2px); } }
-    @keyframes temari-spin-sparkle { 0% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
-    @keyframes temari-aura-pulse {
-        0%, 100% { opacity: 0.55; transform: scale(1); }
-        50%      { opacity: 0.90; transform: scale(1.08); }
-    }
-    @keyframes temari-blink { 0%, 92%, 100% { transform: scaleY(1); } 94%, 98% { transform: scaleY(0.1); } }
-
-    .temari-root { display: inline-block; transform-origin: 50% 80%; }
-
-    @media (prefers-reduced-motion: reduce) {
-        .temari-root,
-        .temari-root * { animation: none !important; }
-    }
-}

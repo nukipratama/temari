@@ -8,6 +8,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     config(['devtools.password' => 'secret']);
+    app()->detectEnvironment(fn (): string => 'production');
 });
 
 it('is reachable with the correct devtools password', function (): void {
@@ -23,18 +24,18 @@ it('challenges a request with no devtools password', function (): void {
         ->assertHeader('WWW-Authenticate', 'Basic realm="Devtools"');
 });
 
-it('challenges /horizon and /pulse the same way', function (): void {
-    $this->get('/horizon')->assertUnauthorized();
-    $this->get('/pulse')->assertUnauthorized();
+it('challenges the vendor dashboards the same way', function (): void {
+    $this->get('/devtools/horizon')->assertUnauthorized();
+    $this->get('/devtools/pulse')->assertUnauthorized();
 });
 
-it('lets /horizon and /pulse through with the correct devtools password', function (): void {
+it('lets the vendor dashboards through with the correct devtools password', function (): void {
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:secret')])
-        ->get('/horizon')
+        ->get('/devtools/horizon')
         ->assertSuccessful();
 
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:secret')])
-        ->get('/pulse')
+        ->get('/devtools/pulse')
         ->assertSuccessful();
 });
 
@@ -48,4 +49,12 @@ it('throttles repeated wrong-password guesses at 60 per minute', function (): vo
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:secret')])
         ->get('/devtools')
         ->assertStatus(429);
+});
+
+it('needs no password at all outside production', function (): void {
+    app()->detectEnvironment(fn (): string => 'local');
+    config(['devtools.password' => null]);
+
+    $this->get('/devtools')->assertSuccessful();
+    $this->get('/devtools/pulse')->assertSuccessful();
 });

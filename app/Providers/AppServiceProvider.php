@@ -12,6 +12,7 @@ use App\Listeners\RecordScheduledTaskRun;
 use App\Listeners\VerifyDependencies;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\NarrationOrigin;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\VerdictTimeline;
 use App\Support\Config\AppConfig;
@@ -42,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
         // Scoped: one shared instance per request/command (so `withoutDispatching()`
         // reaches collaborators), flushed by Octane between requests.
         $this->app->scoped(AnalysisService::class);
+        $this->app->scoped(NarrationOrigin::class);
 
         // Scoped so its per-request/per-job read memo collapses repeat lookups but
         // stays fresh across requests and queue jobs (DB remains source of truth).
@@ -95,25 +97,39 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('analysis-trigger', function (Request $request): Limit {
             $perMinute = max(1, (int) config('ai.rate_limit_per_minute', 8));
-            $key = $request->user()?->id !== null
-                ? (string) $request->user()->id
-                : (string) $request->ip();
 
-            return Limit::perMinute($perMinute)->by($key);
+            return Limit::perMinute($perMinute)->by(self::rateLimitKey($request));
         });
+
+        // "Ask about this run". Every accepted question is a full agent run, so
+        // this is tighter than the analysis trigger, which mostly no-ops on an
+        // already-Done row. A rate limit, not a cost cap: app-wide spend is the
+        // daily_cost_ceiling's job.
+        RateLimiter::for('run-question', function (Request $request): Limit {
+            $perMinute = max(1, (int) config('ai.run_question_rate_limit_per_minute', 4));
+
+            return Limit::perMinute($perMinute)->by(self::rateLimitKey($request));
+        });
+
+        // Account creation path. Anyone on the internet can reach it, and the
+        // callback spends a Strava token exchange plus, on a first connect, a
+        // whole history backfill against the app-wide Strava budget. IP-keyed
+        // because there is no user to key by until it succeeds.
+        RateLimiter::for('strava-oauth', fn (Request $request): Limit => Limit::perMinute(10)->by((string) $request->ip()));
 
         // "Sync now" button. The orchestrator lock already de-dupes overlapping
         // syncs; this just keeps an impatient tapper from flooding the queue.
-        RateLimiter::for('strava-sync', function (Request $request): Limit {
-            $key = $request->user()?->id !== null
-                ? (string) $request->user()->id
-                : (string) $request->ip();
-
-            return Limit::perMinute(2)->by($key);
-        });
+        RateLimiter::for('strava-sync', fn (Request $request): Limit => Limit::perMinute(2)->by(self::rateLimitKey($request)));
 
         // Client-error telemetry sink. IP-keyed so a single misbehaving browser
         // (error loop) can't flood the logs.
         RateLimiter::for('client-errors', fn (Request $request): Limit => Limit::perMinute(10)->by((string) $request->ip()));
+    }
+
+    private static function rateLimitKey(Request $request): string
+    {
+        return $request->user()?->id !== null
+            ? (string) $request->user()->id
+            : (string) $request->ip();
     }
 }

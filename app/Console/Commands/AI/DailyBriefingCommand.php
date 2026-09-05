@@ -4,47 +4,44 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\AI;
 
-use App\Actions\Run\Story\ResolveFeaturedKartuAction;
 use App\Models\Activity;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
-use App\Services\AI\AnalysisType;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 #[Signature('ai:daily-briefing')]
 #[Description('Dispatch the daily briefing set for each active user (last 7 days)')]
 class DailyBriefingCommand extends Command
 {
-    public function handle(AnalysisService $service, ResolveFeaturedKartuAction $featuredKartu): int
+    /**
+     * How recently a user must have run to be briefed, keyed off the run's own
+     * date because an on-connect backfill stamps `analyzed_at` to now across a
+     * whole imported history.
+     */
+    private const int ACTIVE_WINDOW_DAYS = 7;
+
+    public function handle(AnalysisService $service): int
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
+
         $today = Carbon::today()->toDateString();
 
         $activeUserIds = Activity::query()
-            ->where('analyzed_at', '>=', Carbon::today()->subDays(7))
-            ->whereIn('user_id', User::query()->notDemo()->select('id'))
+            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+            ->where('activity_details.start_date_local', '>=', Carbon::today()->subDays(self::ACTIVE_WINDOW_DAYS))
+            ->whereIn('activities.user_id', User::query()->notDemo()->select('id'))
             ->distinct()
-            ->pluck('user_id');
+            ->pluck('activities.user_id');
 
         $users = User::query()->whereIn('id', $activeUserIds)->get();
 
         foreach ($users as $user) {
             $service->requestBriefing($user, $today);
-
-            // The featured-kartu voice keys off the card id, so it regenerates
-            // exactly when the featured pick changes (and never re-bills while it
-            // stays the same), instead of once per day against a moving pick.
-            $featuredCard = $featuredKartu($user);
-            if ($featuredCard !== null) {
-                $service->request(
-                    subjectOrType: AnalysisType::BriefingFeaturedKartuVoice->subjectType(),
-                    subjectId: $user->id,
-                    type: AnalysisType::BriefingFeaturedKartuVoice,
-                    discriminator: (string) $featuredCard->id,
-                );
-            }
         }
 
         $this->info("Dispatched daily kickoff (briefing) for {$users->count()} active users.");

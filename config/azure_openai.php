@@ -27,14 +27,17 @@ return [
     // uses the primary model.
     'narrators' => [
         'briefing_mascot_voice' => (string) env('AZURE_OPENAI_BRIEFING_MASCOT_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
-        'briefing_featured_kartu_voice' => (string) env('AZURE_OPENAI_BRIEFING_FEATURED_KARTU_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'run_insight' => (string) env('AZURE_OPENAI_RUN_INSIGHT_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'post_run_speech' => (string) env('AZURE_OPENAI_POST_RUN_SPEECH_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
-        'pr_context' => (string) env('AZURE_OPENAI_PR_CONTEXT_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'weekly_recap' => (string) env('AZURE_OPENAI_WEEKLY_RECAP_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'monthly_recap' => (string) env('AZURE_OPENAI_MONTHLY_RECAP_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
-        'aku_profile_voice' => (string) env('AZURE_OPENAI_AKU_PROFILE_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
+        'profile_voice' => (string) env('AZURE_OPENAI_PROFILE_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'card_flavor' => (string) env('AZURE_OPENAI_CARD_FLAVOR_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
+        'run_question' => (string) env('AZURE_OPENAI_RUN_QUESTION_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
+        'trend_read' => (string) env('AZURE_OPENAI_TREND_READ_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
+        'plan_day_voice' => (string) env('AZURE_OPENAI_PLAN_DAY_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
+        'plan_week_voice' => (string) env('AZURE_OPENAI_PLAN_WEEK_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
+        'plan_season_voice' => (string) env('AZURE_OPENAI_PLAN_SEASON_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
     ],
 
     // Manual per-1M-token USD rates keyed by DEPLOYMENT name (the value recorded
@@ -57,10 +60,10 @@ return [
         'nuki-5.4-mini' => ['input_per_1m' => 0.75, 'cached_input_per_1m' => 0.075, 'output_per_1m' => 4.50],
     ],
 
-    // Nullable USD/day spend ceiling. null = no ceiling (auto-dispatch never
-    // budget-gated). When set, AnalysisService skips dispatch once today's spend
-    // exceeds it.
+    // USD/day spend ceiling, on by default. Once today's estimated spend exceeds
+    // it, AnalysisService stops dispatching to the LLM and serves narration from
+    // the deterministic rule-based filler until midnight resets the daily cost.
     'daily_cost_ceiling' => env('AZURE_OPENAI_DAILY_COST_CEILING') !== null
         ? (float) env('AZURE_OPENAI_DAILY_COST_CEILING')
-        : null,
+        : 5.00,
 ];

@@ -1,6 +1,6 @@
 import type { CardEdition, Mood, Rarity, ZonePct } from '@/types/inertia';
 
-import { THREADWORK, hrZone } from '@/lib/chartTokens';
+import { PALETTE, hrZone } from '@/lib/chartTokens';
 import { moodSigilColor } from '@/lib/mood';
 import { projectPolyline } from '@/lib/route';
 import {
@@ -27,7 +27,7 @@ const HR_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const;
  * here (next to the canvas engine that consumes it) rather than in the modal
  * component, so the lib has no component dependency.
  */
-export interface ShareKartuData {
+export interface ShareCardData {
     id: number;
     name: string;
     /** Activity detail page URL used as the share fallback (copied/shared when native file sharing isn't available). */
@@ -38,7 +38,7 @@ export interface ShareKartuData {
     subtitle: string | null;
     date: string | null;
     km: string;
-    durasi: string;
+    duration: string;
     pace: string | null;
     trimp: string;
     hr: string | null;
@@ -52,7 +52,7 @@ export interface ShareKartuData {
     zonePct: ZonePct | null;
     location: string | null;
     weather: string | null;
-    /** Wind label, e.g. "12 km/j", for the context strip. */
+    /** Wind label, e.g. "12 km/h", for the context strip. */
     wind?: string | null;
     tags: string[];
     /** Badge emoji emblems, parallel to tags, for the hero ability pips. */
@@ -67,11 +67,11 @@ export interface ShareKartuData {
 }
 
 export type Format = 'story' | 'feed';
-export type Layout = 'kartu' | 'rute' | 'stats';
+export type Layout = 'card' | 'route' | 'stats';
 export type ColorwayId = 'navy' | 'dawn' | 'ember';
 
 export interface ShareCardConfig {
-    kartu: ShareKartuData;
+    card: ShareCardData;
     layout: Layout;
     format: Format;
     /** Defaults to 'navy' — the original single look, so every existing
@@ -86,42 +86,76 @@ const DIMS: Record<Format, { w: number; h: number }> = {
 
 const PAD = 92;
 
-// Threadwork palette as literal hex (canvas can't read CSS vars). Brand hues
-// reference the shared THREADWORK bridge so they can't drift; the rest are
+// Palette as literal hex (canvas can't read CSS vars). Brand hues
+// reference the shared PALETTE bridge so they can't drift; the rest are
 // canvas-only shades that mirror the @theme block in app.css.
 const C = {
-    horizon: THREADWORK.horizon,
-    horizonDeep: THREADWORK.horizonDeep,
-    ink: THREADWORK.ink,
-    ink2: '#3d362a',
-    ink3: '#6e6452',
-    cream: '#f5f0e4',
-    creamDeep: '#ece2ce',
-    sky: THREADWORK.sky,
-    skyDeep: THREADWORK.skyDeep,
-    surfaceCard: '#f5f0e4',
-    surfaceSunken: '#ece2ce',
-    line: '#ddd4bd',
-    inkOnSky: '#b0a3c9',
+    horizon: PALETTE.horizon,
+    horizonDeep: PALETTE.horizonDeep,
+    ink: PALETTE.ink,
+    ink2: '#34373c',
+    ink3: '#60666d',
+    cream: '#f1f5f8',
+    creamDeep: '#e2e8ee',
+    sky: PALETTE.sky,
+    skyDeep: PALETTE.skyDeep,
+    surfaceCard: '#f1f5f8',
+    surfaceSunken: '#e2e8ee',
+    line: '#bfc5cc',
+    inkOnSky: '#9c9ea7',
     rarity: RARITY_HEX,
     // Ember colorway's dark bg/surface: the app.css `--color-ember`/`-deep`
-    // hue (#c4623f) carried down to canvas-background darkness, the same way
+    // hue (#b23a4f) carried down to canvas-background darkness, the same way
     // `horizon` sits far above `sky`/`skyDeep` in lightness.
-    emberDark: '#2a160f',
+    emberDark: '#2a1017',
 };
 
 // Every card gets the SAME bright border bloom regardless of rarity — unlike
-// the in-app Kartu's `.kartu-glow`, which only lights up rare+. The share
+// the in-app Card's `.card-glow`, which only lights up rare+. The share
 // image is a standalone poster with no surrounding hero glow to lean on, so
 // it needs its own consistent glow rather than a rarity-gated one.
 const BORDER_GLOW_BLUR = 60;
 
+/**
+ * The mat the card sits on. `--color-cream-deep` is the app's own ground
+ * (`AppShell`) and the fill of the share modal's own preview column, so the
+ * exported image reads continuous with the app around it. Deliberately NOT
+ * `--color-surface`, which is the page ground rather than the shell's own.
+ */
+export const CARD_GROUND = C.creamDeep;
+
+/**
+ * The card occupies 90% of each canvas axis, centred, leaving the rest as mat.
+ * Card and canvas share the 9:16 (and 1:1) aspect, so a single uniform scale
+ * is the only inset that doesn't distort — the mat is 5% of each dimension
+ * (54px sideways, 96px top and bottom on `story`), not an equal pixel border.
+ * Drawing happens in unscaled card-local coordinates, so no template's
+ * geometry, wrapping or type scale changes; the whole card is simply smaller.
+ */
+const CARD_SCALE = 0.9;
+
+/** Card body corner radius, in card-local units (`drawCardFrame`). */
+const CARD_RADIUS = 44;
+
+/**
+ * `--shadow-e4` out of app.css, the elevation the in-app Card mount carries,
+ * as canvas draw calls. A CSS blur radius and a canvas `shadowBlur` both mean
+ * a Gaussian of σ = radius/2, so the token's px carry over 1:1 and no radius
+ * is eyeballed. Canvas draws one shadow per fill, so the two layers become two
+ * passes over the same rounded rect — additive, like the CSS stack. Painted in
+ * canvas space rather than inside `CARD_SCALE`, so the exported elevation is
+ * the token itself and not 90% of it. 23,15,56 is `--color-sky-deep`.
+ */
+const SHADOW_E4 = [
+    { dy: 24, blur: 56, color: 'rgba(23,15,56,0.20)' },
+    { dy: 8, blur: 20, color: 'rgba(23,15,56,0.12)' },
+];
+
 interface Palette {
     isDark: boolean;
-    /** Full-canvas fill (`paintBackground`) and the card body fill
-     *  (`drawCardFrame`) — deliberately the same tone so the rounded corners
-     *  reveal a full-bleed card rather than a floating one on a backdrop. */
-    bg: string;
+    /** The card body fill (`drawCardFrame`). The mat around it is
+     *  `CARD_GROUND` in every colorway — the card is a physical object on the
+     *  app's ground, not a full-bleed poster. */
     surface: string;
     /** Inset "pearl" panels that pop off `surface` — the hero art window,
      *  bright regardless of colorway (poster art, not page chrome). */
@@ -132,6 +166,11 @@ interface Palette {
     meta: string;
     divider: string;
     quote: string;
+    /** Badge-pill tint and label ink — the colorway's own text hue at low and
+     *  high alpha, like `divider` and `quote`. Palette-driven rather than fixed
+     *  cream: on `dawn` a cream label sits on a cream card and disappears. */
+    chip: string;
+    chipInk: string;
     inkOnSky: string;
 }
 
@@ -142,7 +181,6 @@ interface Palette {
 export const COLORWAYS: Record<ColorwayId, Palette> = {
     navy: {
         isDark: true,
-        bg: C.skyDeep,
         surface: C.skyDeep,
         surfaceSunken: C.creamDeep,
         text: C.cream,
@@ -150,11 +188,12 @@ export const COLORWAYS: Record<ColorwayId, Palette> = {
         meta: 'rgba(245,240,228,0.72)',
         divider: 'rgba(245,240,228,0.18)',
         quote: 'rgba(245,240,228,0.88)',
+        chip: 'rgba(245,240,228,0.10)',
+        chipInk: 'rgba(245,240,228,0.85)',
         inkOnSky: C.inkOnSky,
     },
     dawn: {
         isDark: false,
-        bg: C.cream,
         surface: C.cream,
         surfaceSunken: C.creamDeep,
         text: C.ink,
@@ -162,11 +201,12 @@ export const COLORWAYS: Record<ColorwayId, Palette> = {
         meta: 'rgba(26,24,18,0.72)',
         divider: 'rgba(26,24,18,0.18)',
         quote: 'rgba(26,24,18,0.88)',
+        chip: 'rgba(26,24,18,0.10)',
+        chipInk: 'rgba(26,24,18,0.85)',
         inkOnSky: C.ink3,
     },
     ember: {
         isDark: true,
-        bg: C.emberDark,
         surface: C.emberDark,
         surfaceSunken: C.creamDeep,
         text: C.cream,
@@ -174,18 +214,48 @@ export const COLORWAYS: Record<ColorwayId, Palette> = {
         meta: 'rgba(245,240,228,0.72)',
         divider: 'rgba(245,240,228,0.18)',
         quote: 'rgba(245,240,228,0.88)',
+        chip: 'rgba(245,240,228,0.10)',
+        chipInk: 'rgba(245,240,228,0.85)',
         inkOnSky: C.inkOnSky,
     },
 };
 
+/** The mat behind the card — the same ground in every colorway. */
 function paintBackground(
     ctx: CanvasRenderingContext2D,
     w: number,
     h: number,
-    pal: Palette,
 ): void {
-    ctx.fillStyle = pal.bg;
+    ctx.fillStyle = CARD_GROUND;
     ctx.fillRect(0, 0, w, h);
+}
+
+/**
+ * The `--shadow-e4` stack under the card's rounded rect, in canvas
+ * coordinates. Each layer is one fill of the card shape: canvas carries a
+ * single shadow per draw call, so the stack has to be replayed. The caster
+ * fills are opaque and land exactly under the card body drawn afterwards, so
+ * only the cast falls on the mat.
+ */
+function drawElevation(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    radius: number,
+): void {
+    ctx.fillStyle = CARD_GROUND;
+    for (const layer of SHADOW_E4) {
+        ctx.shadowColor = layer.color;
+        ctx.shadowOffsetY = layer.dy;
+        ctx.shadowBlur = layer.blur;
+        roundRectPath(ctx, x, y, w, h, radius);
+        ctx.fill();
+    }
+    ctx.shadowColor = 'transparent';
+    ctx.shadowOffsetY = 0;
+    ctx.shadowBlur = 0;
 }
 
 function paintGlow(
@@ -245,13 +315,12 @@ function roundRectPathCorners(
 }
 
 /**
- * Full-bleed rounded card frame shared by every share template: a dark navy
- * body edge-to-edge with a vivid rarity border and the same bright inward
- * bloom on every rarity (matches the in-app Kartu's `.kartu-glow`). No
- * surrounding backdrop — rounded corners reveal the same navy, so it reads
- * as a full-bleed card rather than a floating one. Also draws the
- * thread-band accent (Slice 9c) hugging the border's bottom-center, additive
- * to the border above rather than a re-hue.
+ * The rounded card frame shared by every share template: a dark navy body
+ * with a vivid rarity border and the same bright inward bloom on every rarity
+ * (matches the in-app Card's `.card-glow`). Drawn edge-to-edge in
+ * card-local coordinates — `drawShareCard` is what insets and shrinks the
+ * card onto its mat. Also draws the thread-band accent (Slice 9c) hugging the
+ * border's bottom-center, additive to the border above rather than a re-hue.
  */
 function drawCardFrame(
     ctx: CanvasRenderingContext2D,
@@ -262,7 +331,7 @@ function drawCardFrame(
     pal: Palette,
 ): void {
     const border = 12;
-    const radius = 44;
+    const radius = CARD_RADIUS;
     roundRectPath(ctx, 0, 0, w, h, radius);
     ctx.fillStyle = pal.surface;
     ctx.fill();
@@ -421,8 +490,6 @@ function ensureFonts(): Promise<void> {
             '500 120px "JetBrains Mono"',
             '600 120px "Plus Jakarta Sans"',
             '700 120px "Plus Jakarta Sans"',
-            '600 120px "Oswald"',
-            '700 120px "Oswald"',
         ];
         fontsReady = Promise.all(specs.map((s) => document.fonts.load(s)))
             .then(() => document.fonts.ready)
@@ -434,13 +501,15 @@ function ensureFonts(): Promise<void> {
     return fontsReady;
 }
 
-// Flat, canvas-safe port of TemariGlyph in components/BrandMark.tsx (no
-// gradients/highlights). Keep the core geometry in sync with that source.
-function temariSvg(tone: 'ink' | 'cream', bandHex: string = C.horizon): string {
-    const isInk = tone === 'ink';
-    const face = isInk ? C.ink : C.cream;
-    const features = isInk ? C.cream : C.ink;
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><defs><clipPath id="b"><circle cx="50" cy="52" r="42"/></clipPath></defs><path d="M 42 10 Q 50 4 58 10 Q 52 12 50 16 Q 48 12 42 10 Z" fill="${face}"/><circle cx="50" cy="52" r="42" fill="${face}"/><g clip-path="url(#b)"><rect x="8" y="34" width="84" height="13" fill="${bandHex}"/></g><circle cx="38" cy="62" r="4.5" fill="${features}"/><circle cx="62" cy="62" r="4.5" fill="${features}"/><path d="M 44 74 Q 50 79 56 74" fill="none" stroke="${features}" stroke-width="2.4" stroke-linecap="round"/></svg>`;
+// Canvas-safe port of TemariMark in components/TemariMark.tsx: two nested open
+// arcs, the outer one on the brand hue (or the card's mood, for the art-window
+// corner mark). Keep the geometry in sync with that source.
+export function brandMarkSvg(
+    tone: 'ink' | 'cream',
+    bandHex: string = C.horizon,
+): string {
+    const inner = tone === 'ink' ? C.ink : C.cream;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><g fill="none" stroke-width="11" stroke-linecap="round"><path stroke="${bandHex}" d="M50 12.5 A37.5 37.5 0 1 1 31.25 17.52"/><path stroke="${inner}" d="M50 27 A23 23 0 1 1 30.09 61.5"/></g></svg>`;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -452,8 +521,8 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     });
 }
 
-// Few tone/band combinations exist and each glyph never changes; cache every
-// decoded image (keyed by tone + headband hex) so repeated repaints reuse it
+// Few tone/band combinations exist and each mark never changes; cache every
+// decoded image (keyed by tone + arc hex) so repeated repaints reuse it
 // instead of re-encoding and re-decoding the SVG.
 const temariCache: Record<string, HTMLImageElement> = {};
 
@@ -467,7 +536,7 @@ async function loadTemari(
     }
     try {
         const img = await loadImage(
-            `data:image/svg+xml;utf8,${encodeURIComponent(temariSvg(tone, bandHex))}`,
+            `data:image/svg+xml;utf8,${encodeURIComponent(brandMarkSvg(tone, bandHex))}`,
         );
         temariCache[key] = img;
         return img;
@@ -501,7 +570,7 @@ function drawRarityFlag(
     return h;
 }
 
-/** Brand lockup (Temari glyph + wordmark) right-aligned to `rightX`. */
+/** Brand lockup (Temari mark + wordmark) right-aligned to `rightX`. */
 function drawBrand(
     ctx: CanvasRenderingContext2D,
     rightX: number,
@@ -532,7 +601,7 @@ interface DrawCtx {
     cfg: ShareCardConfig;
     pal: Palette;
     temari: HTMLImageElement | null;
-    /** Temari glyph with its headband tinted to the card's mood. */
+    /** Temari mark with its outer arc tinted to the card's mood. */
     moodTemari: HTMLImageElement | null;
 }
 
@@ -540,8 +609,8 @@ interface DrawCtx {
 function drawDateFooter(d: DrawCtx): void {
     const { ctx, h, cfg, pal } = d;
     const parts = [
-        cfg.kartu.date?.replace('\n', ' · '),
-        cfg.kartu.weather,
+        cfg.card.date?.replace('\n', ' · '),
+        cfg.card.weather,
     ].filter((part): part is string => part != null && part !== '');
     if (parts.length === 0) {
         return;
@@ -555,8 +624,8 @@ function drawDateFooter(d: DrawCtx): void {
     ctx.letterSpacing = '0px';
 }
 
-/** Sections in the rute text block that share the even `gapBonus` distribution. */
-function ruteBlockSectionCount(k: ShareKartuData, story: boolean): number {
+/** Sections in the route text block that share the even `gapBonus` distribution. */
+function routeBlockSectionCount(k: ShareCardData, story: boolean): number {
     const cells = story ? heroStatCells(k) : heroStatCells(k).slice(0, 3);
     return (
         2 + // name + KM always render
@@ -566,9 +635,9 @@ function ruteBlockSectionCount(k: ShareKartuData, story: boolean): number {
 }
 
 /** Name in italic Fraunces, up to 2 lines. Returns the block's new bottom edge. */
-function ruteNameRow(
+function routeNameRow(
     ctx: CanvasRenderingContext2D,
-    k: ShareKartuData,
+    k: ShareCardData,
     pal: Palette,
     w: number,
     story: boolean,
@@ -592,9 +661,9 @@ function ruteNameRow(
 }
 
 /** KM hero + "KM" suffix + edition, left-aligned. Returns the row's bottom edge. */
-function ruteKmRow(
+function routeKmRow(
     ctx: CanvasRenderingContext2D,
-    k: ShareKartuData,
+    k: ShareCardData,
     pal: Palette,
     w: number,
     rarityCol: string,
@@ -606,7 +675,7 @@ function ruteKmRow(
     y += (story ? 24 : 12) + gapBonus;
     const kmSize = story ? 190 : 128;
     if (draw) {
-        ctx.font = `700 ${kmSize}px "Oswald"`;
+        ctx.font = `700 ${kmSize}px "JetBrains Mono"`;
         ctx.fillStyle = rarityCol;
         ctx.textAlign = 'left';
         ctx.fillText(k.km, PAD, y + kmSize * 0.8);
@@ -617,7 +686,7 @@ function ruteKmRow(
         ctx.fillText('KM', PAD + kmW + 20, y + kmSize * 0.5);
         ctx.letterSpacing = '0px';
         if (k.edition) {
-            ctx.font = '600 48px "Oswald"';
+            ctx.font = '600 48px "JetBrains Mono"';
             ctx.fillStyle = pal.meta;
             ctx.textAlign = 'right';
             ctx.fillText(
@@ -631,9 +700,9 @@ function ruteKmRow(
 }
 
 /** Stat row (single row for feed, up to 2 for story). Returns the row's bottom edge. */
-function ruteStatGridRow(
+function routeStatGridRow(
     ctx: CanvasRenderingContext2D,
-    k: ShareKartuData,
+    k: ShareCardData,
     pal: Palette,
     w: number,
     story: boolean,
@@ -657,9 +726,10 @@ function ruteStatGridRow(
 }
 
 /** Badges row — story only, so the tall 9:16's lower third carries the run's tags. */
-function ruteBadgesRow(
+function routeBadgesRow(
     ctx: CanvasRenderingContext2D,
-    k: ShareKartuData,
+    k: ShareCardData,
+    pal: Palette,
     w: number,
     story: boolean,
     draw: boolean,
@@ -681,15 +751,15 @@ function ruteBadgesRow(
         gap,
     );
     if (draw) {
-        drawBadgesRow(ctx, k, PAD, y, w - PAD * 2, story);
+        drawBadgesRow(ctx, k, PAD, y, w - PAD * 2, story, pal);
     }
     return y + rows.length * pillH + (rows.length - 1) * gap;
 }
 
-/** Measures or draws the whole rute text block (name → KM → stats → badges). */
-function drawRuteBlock(
+/** Measures or draws the whole route text block (name → KM → stats → badges). */
+function drawRouteBlock(
     ctx: CanvasRenderingContext2D,
-    k: ShareKartuData,
+    k: ShareCardData,
     pal: Palette,
     w: number,
     rarityCol: string,
@@ -698,10 +768,10 @@ function drawRuteBlock(
     y: number,
     gapBonus: number,
 ): number {
-    y = ruteNameRow(ctx, k, pal, w, story, draw, y);
-    y = ruteKmRow(ctx, k, pal, w, rarityCol, story, draw, y, gapBonus);
-    y = ruteStatGridRow(ctx, k, pal, w, story, draw, y, gapBonus);
-    y = ruteBadgesRow(ctx, k, w, story, draw, y, gapBonus);
+    y = routeNameRow(ctx, k, pal, w, story, draw, y);
+    y = routeKmRow(ctx, k, pal, w, rarityCol, story, draw, y, gapBonus);
+    y = routeStatGridRow(ctx, k, pal, w, story, draw, y, gapBonus);
+    y = routeBadgesRow(ctx, k, pal, w, story, draw, y, gapBonus);
     return y;
 }
 
@@ -711,9 +781,9 @@ function drawRuteBlock(
  *  block's sections — mirrors `drawHero`'s art-window/stat-block split so a
  *  sparse card (no badges, no edition) fills the canvas instead of leaving a
  *  dead gap at the bottom. */
-function drawRute(d: DrawCtx): void {
+function drawRouteHero(d: DrawCtx): void {
     const { ctx, w, h, cfg, pal, temari } = d;
-    const k = cfg.kartu;
+    const k = cfg.card;
     const story = cfg.format === 'story';
     const rarityCol = C.rarity[k.rarity] ?? C.line;
     paintGlow(ctx, w / 2, h * 0.38, w * 0.5);
@@ -726,7 +796,7 @@ function drawRute(d: DrawCtx): void {
     const availableH = h - topOffset - bottomReserve;
     const routeGap = story ? 84 : 56; // fixed gap between the map and the text block
 
-    const measuredBlockH = drawRuteBlock(
+    const measuredBlockH = drawRouteBlock(
         ctx,
         k,
         pal,
@@ -743,7 +813,7 @@ function drawRute(d: DrawCtx): void {
         availableH - routeGap - measuredBlockH,
     );
     const slack = Math.max(0, availableH - routeH - routeGap - measuredBlockH);
-    const gapBonus = slack / ruteBlockSectionCount(k, story);
+    const gapBonus = slack / routeBlockSectionCount(k, story);
 
     // The route is the hero: bolder and rarity-glowing so it lifts off the navy.
     const box = { x: PAD, y: topOffset, w: w - PAD * 2, h: routeH };
@@ -757,7 +827,7 @@ function drawRute(d: DrawCtx): void {
         k.distanceKm,
     );
 
-    drawRuteBlock(
+    drawRouteBlock(
         ctx,
         k,
         pal,
@@ -813,11 +883,11 @@ function drawHeroShimmer(
 /**
  * Floating pills over the bright art window, one per corner: rarity chip (top-L,
  * "★ ISTIMEWA" in the rarity hue) so the tier reads over the map, TRIMP power
- * (top-R), and the edition number (bottom-L). The mascot owns the bottom-R.
+ * (top-R), and the edition number (bottom-L). The brand mark owns the bottom-R.
  */
 function drawHeroArtBadges(
     ctx: CanvasRenderingContext2D,
-    k: ShareKartuData,
+    k: ShareCardData,
     box: { x: number; y: number; w: number; h: number },
     moodCol: string,
     rarityCol: string,
@@ -893,7 +963,7 @@ function drawHeroArtBadges(
 /** The bright art window: cream wash, route hero, corner brand mark, floating badges. */
 function drawHeroArtWindow(
     ctx: CanvasRenderingContext2D,
-    k: ShareKartuData,
+    k: ShareCardData,
     temari: HTMLImageElement | null,
     box: { x: number; y: number; w: number; h: number },
     rarityCol: string,
@@ -966,9 +1036,8 @@ function drawHeroArtWindow(
     );
     drawHeroShimmer(ctx, box.x, box.y, box.w, box.h, k.rarity, rarityCol);
 
-    // Brand mark (Temari glyph + wordmark), tucked into the map's bottom-right
-    // corner instead of a big Temari mascot watermark — a quiet signature
-    // rather than a character floating over the route.
+    // Brand mark (Temari mark + wordmark), tucked into the map's bottom-right
+    // corner — a quiet signature rather than art floating over the route.
     const brandPad = 20;
     drawBrand(
         ctx,
@@ -985,8 +1054,8 @@ function drawHeroArtWindow(
 }
 
 /**
- * The dark stat block, mirroring the live Kartu full tier: rarity ribbon, name,
- * subtitle, KM hero, a labeled PACE · HR · CADENCE · DURASI · BEST grid, a Z1..Z5
+ * The dark stat block, mirroring the live Card full tier: rarity ribbon, name,
+ * subtitle, KM hero, a labeled PACE · HR · CADENCE · DURATION · BEST grid, a Z1..Z5
  * HR-zone effort bar, badges, and (story) a flavor quote.
  *
  * Returns the total height it consumed from `box.y`. Pass `draw=false` to
@@ -995,7 +1064,7 @@ function drawHeroArtWindow(
  */
 interface HeroBlock {
     ctx: CanvasRenderingContext2D;
-    k: ShareKartuData;
+    k: ShareCardData;
     box: { x: number; y: number; w: number; h: number };
     rarityCol: string;
     pal: Palette;
@@ -1018,7 +1087,7 @@ interface HeroBlock {
  * conditional on their own data). Getting this wrong under-counts and leaves
  * unfilled slack at the bottom for sparser cards instead of an even rhythm.
  */
-function heroBlockSectionCount(k: ShareKartuData, story: boolean): number {
+function heroBlockSectionCount(k: ShareCardData, story: boolean): number {
     const statCells = story ? heroStatCells(k) : heroStatCells(k).slice(0, 3);
     const hasContext =
         (k.location != null && k.location !== '') ||
@@ -1047,13 +1116,13 @@ function drawHeroBlock(s: HeroBlock): number {
 }
 
 /**
- * Special-move name in condensed Oswald, centred over the dark block. The wrap
+ * Special-move name, centred over the dark block. The wrap
  * count is identical in the measure + draw passes so sizing is stable.
  */
 function heroNameRow(s: HeroBlock, y: number): number {
     const { ctx, k, box, story, draw, pal } = s;
     const nameSize = story ? box.w * 0.099 : box.w * 0.084;
-    ctx.font = `700 ${nameSize}px "Oswald"`;
+    ctx.font = `800 ${nameSize}px "Plus Jakarta Sans"`;
     ctx.letterSpacing = '-1px'; // condensed + tight = athletic
     ctx.textAlign = 'center';
     const lines = wrapText(ctx, k.name.toUpperCase(), box.w - 28).slice(0, 2);
@@ -1079,7 +1148,7 @@ function heroKmRow(s: HeroBlock, y: number): number {
     const gap = 16;
     y += kmSize * 0.92 + (s.gapBonus ?? 0);
     if (draw) {
-        ctx.font = `700 ${kmSize}px "Oswald"`;
+        ctx.font = `700 ${kmSize}px "JetBrains Mono"`;
         ctx.letterSpacing = '-1px';
         const kmW = ctx.measureText(k.km).width;
         ctx.letterSpacing = '0px';
@@ -1088,7 +1157,7 @@ function heroKmRow(s: HeroBlock, y: number): number {
         const startX = box.x + box.w / 2 - (kmW + gap + sufW) / 2;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
-        ctx.font = `700 ${kmSize}px "Oswald"`;
+        ctx.font = `700 ${kmSize}px "JetBrains Mono"`;
         ctx.letterSpacing = '-1px';
         ctx.fillStyle = rarityCol;
         ctx.fillText(k.km, startX, y);
@@ -1146,7 +1215,7 @@ function packPillRows(
 
 /** A centred row (wraps if needed) of up to 4 badge pills below the KM hero. */
 function heroBadgeClusterRow(s: HeroBlock, y: number): number {
-    const { ctx, k, box, story, draw } = s;
+    const { ctx, k, box, pal, story, draw } = s;
     const tags = k.tags.slice(0, 4);
     if (tags.length === 0) {
         return y;
@@ -1168,7 +1237,7 @@ function heroBadgeClusterRow(s: HeroBlock, y: number): number {
                 row.reduce((sum, p) => sum + p.w, 0) + gap * (row.length - 1);
             let bx = box.x + (box.w - rowW) / 2;
             row.forEach((p) => {
-                drawBadgePill(ctx, p.label, bx, by, p.w, pillH, padX);
+                drawBadgePill(ctx, p.label, bx, by, p.w, pillH, padX, pal);
                 bx += p.w + gap;
             });
             by += pillH + gap;
@@ -1180,7 +1249,7 @@ function heroBadgeClusterRow(s: HeroBlock, y: number): number {
 function heroStatGridRow(s: HeroBlock, y: number): number {
     const { ctx, k, box, story, draw } = s;
     // Feed (1:1) keeps only one row (3 cells, same PACE/HR/CADENCE trio as
-    // drawRute) instead of the full 2-row grid: the square canvas has far
+    // drawRoute) instead of the full 2-row grid: the square canvas has far
     // less total height than story for the same width, so a second stat row
     // was squeezing the art window into a flattened ("gepeng") banner.
     const cells = story ? heroStatCells(k) : heroStatCells(k).slice(0, 3);
@@ -1220,11 +1289,12 @@ function drawBadgePill(
     w: number,
     h: number,
     padX: number,
+    pal: Palette,
 ): void {
     roundRectPath(ctx, x, y, w, h, h / 2);
-    ctx.fillStyle = 'rgba(245,240,228,0.10)';
+    ctx.fillStyle = pal.chip;
     ctx.fill();
-    ctx.fillStyle = 'rgba(245,240,228,0.85)';
+    ctx.fillStyle = pal.chipInk;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText(label, x + padX, y + h / 2 + 1);
@@ -1236,11 +1306,12 @@ function drawBadgePill(
  */
 function drawBadgesRow(
     ctx: CanvasRenderingContext2D,
-    k: ShareKartuData,
+    k: ShareCardData,
     left: number,
     y: number,
     w: number,
     story: boolean,
+    pal: Palette,
 ): void {
     const tags = k.tags.slice(0, 4);
     if (tags.length === 0) {
@@ -1259,7 +1330,7 @@ function drawBadgesRow(
     rows.forEach((row) => {
         let x = left;
         row.forEach((p) => {
-            drawBadgePill(ctx, p.label, x, by, p.w, pillH, padX);
+            drawBadgePill(ctx, p.label, x, by, p.w, pillH, padX, pal);
             x += p.w + gap;
         });
         by += pillH + gap;
@@ -1321,19 +1392,19 @@ function truncateToWidth(
 }
 
 /**
- * PACE · HR · CADENCE · DURASI · BEST · ELEVASI cells, present-only. Elevation
+ * PACE · HR · CADENCE · DURATION · BEST · ELEVATION cells, present-only. Elevation
  * gain is the 6th cell (under CADENCE, col 3 row 2); TRIMP stays as the floating
  * power badge over the art window, so it isn't shown twice. Date moves to the
  * bottom context strip.
  */
 function heroStatCells(
-    k: ShareKartuData,
+    k: ShareCardData,
 ): Array<{ label: string; value: string }> {
     const raw: Array<{ label: string; value: string | null }> = [
         { label: 'PACE', value: k.pace ? k.pace + '/km' : null },
         { label: 'HR', value: k.hr },
         { label: 'CADENCE', value: k.cadence },
-        { label: 'DURATION', value: k.durasi },
+        { label: 'DURATION', value: k.duration },
         { label: 'BEST', value: k.fastestKm },
         { label: 'ELEVATION', value: k.ascent ?? null },
     ];
@@ -1390,7 +1461,7 @@ function drawHeroStatGrid(
 /** Stacked Z1..Z5 effort bar with tiny labels, using the shared HR-zone hexes. */
 function drawZoneBar(
     ctx: CanvasRenderingContext2D,
-    zonePct: NonNullable<ShareKartuData['zonePct']>,
+    zonePct: NonNullable<ShareCardData['zonePct']>,
     left: number,
     y: number,
     w: number,
@@ -1421,14 +1492,14 @@ function drawZoneBar(
 
 /**
  * Dark-frame TCG hero: a dark navy card with a single vivid rarity border, a
- * bright art window up top (big mascot watermark + route hero + floating
+ * bright art window up top (route hero + corner brand mark + floating
  * rarity/TRIMP/edition pills), and a dark stat block below (centred name, KM
  * hero, badges, stat grid, zone bar, location/wind/date context strip).
- * Mirrors the React Kartu component.
+ * Mirrors the React Card component.
  */
 function drawHero(d: DrawCtx): void {
     const { ctx, w, h, cfg, pal, moodTemari } = d;
-    const k = cfg.kartu;
+    const k = cfg.card;
     const story = cfg.format === 'story';
     const rarityCol = C.rarity[k.rarity] ?? C.line;
     const moodCol = moodSigilColor(k.mood);
@@ -1440,7 +1511,7 @@ function drawHero(d: DrawCtx): void {
     const cy = 0;
     const framePad = 12 + 24;
 
-    // Single clean rarity border only — the live Kartu has no inner hairline or
+    // Single clean rarity border only — the live Card has no inner hairline or
     // corner pips, so neither does the share card.
 
     // Inner content frame.
@@ -1461,7 +1532,7 @@ function drawHero(d: DrawCtx): void {
         gapBonus,
     });
 
-    // Both formats: art window on top (route hero + mascot), stat block below.
+    // Both formats: art window on top (route hero + brand mark), stat block below.
     // Measure the block's natural height, cap the map height (maxArtFrac) so it
     // doesn't dominate, then spread any leftover space EVENLY across every section
     // (gapBonus) so the block fills the card with a consistent rhythm instead of
@@ -1498,7 +1569,7 @@ function drawHero(d: DrawCtx): void {
  */
 function drawStats(d: DrawCtx): void {
     const { ctx, w, h, cfg, pal, temari } = d;
-    const k = cfg.kartu;
+    const k = cfg.card;
     const story = cfg.format === 'story';
     const rarityCol = C.rarity[k.rarity] ?? C.line;
 
@@ -1508,7 +1579,7 @@ function drawStats(d: DrawCtx): void {
     drawRarityFlag(ctx, PAD, PAD, k.rarity);
 
     const nameSize = story ? w * 0.088 : w * 0.076;
-    ctx.font = `700 ${nameSize}px "Oswald"`;
+    ctx.font = `800 ${nameSize}px "Plus Jakarta Sans"`;
     ctx.letterSpacing = '-1px';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
@@ -1528,7 +1599,7 @@ function drawStats(d: DrawCtx): void {
     const cells: Array<{ label: string; value: string }> = [
         { label: 'DISTANCE', value: `${k.km} km` },
         { label: 'PACE', value: k.pace ? `${k.pace}/km` : '—' },
-        { label: 'DURATION', value: k.durasi },
+        { label: 'DURATION', value: k.duration },
         { label: 'HR', value: k.hr ?? '—' },
     ];
 
@@ -1559,10 +1630,10 @@ function drawStats(d: DrawCtx): void {
         ctx.letterSpacing = '0px';
 
         let vSize = valueSize;
-        ctx.font = `700 ${vSize}px "Oswald"`;
+        ctx.font = `700 ${vSize}px "JetBrains Mono"`;
         while (vSize > 28 && ctx.measureText(cell.value).width > maxValueW) {
             vSize -= 3;
-            ctx.font = `700 ${vSize}px "Oswald"`;
+            ctx.font = `700 ${vSize}px "JetBrains Mono"`;
         }
         ctx.fillStyle = C.ink;
         ctx.fillText(cell.value, x + cellW / 2, y + cellH * 0.74);
@@ -1572,8 +1643,8 @@ function drawStats(d: DrawCtx): void {
 }
 
 const TEMPLATES: Record<Layout, (d: DrawCtx) => void> = {
-    kartu: drawHero,
-    rute: drawRute,
+    card: drawHero,
+    route: drawRouteHero,
     stats: drawStats,
 };
 
@@ -1596,13 +1667,31 @@ export async function drawShareCard(
     await ensureFonts();
     const pal = COLORWAYS[cfg.colorway ?? 'navy'];
     const temari = await loadTemari(pal.isDark ? 'cream' : 'ink');
-    const moodTemari = await loadTemari('ink', moodSigilColor(cfg.kartu.mood));
+    const moodTemari = await loadTemari('ink', moodSigilColor(cfg.card.mood));
 
     ctx.clearRect(0, 0, w, h);
-    paintBackground(ctx, w, h, pal);
+    paintBackground(ctx, w, h);
 
+    const offsetX = (w * (1 - CARD_SCALE)) / 2;
+    const offsetY = (h * (1 - CARD_SCALE)) / 2;
+    drawElevation(
+        ctx,
+        offsetX,
+        offsetY,
+        w * CARD_SCALE,
+        h * CARD_SCALE,
+        CARD_RADIUS * CARD_SCALE,
+    );
+
+    // Templates keep drawing against the full w x h they always have; the
+    // transform is what puts that card on its mat, so no template geometry,
+    // wrap point or font size moves.
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
+    ctx.scale(CARD_SCALE, CARD_SCALE);
     const d: DrawCtx = { ctx, w, h, cfg, pal, temari, moodTemari };
     TEMPLATES[cfg.layout](d);
+    ctx.restore();
 }
 
 /** Render the card and return it as a PNG blob (full internal resolution). */

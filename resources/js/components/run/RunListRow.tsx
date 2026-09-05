@@ -1,25 +1,22 @@
-import { Icon } from '@iconify/react';
 import { memo } from 'react';
 
-import type { ActivityDetail, Mood } from '@/types/inertia';
+import type { ActivityDetail, Mood, RunCard } from '@/types/inertia';
 
 import MotionLink from '@/components/MotionLink';
-import Temari from '@/components/temari/Temari';
-import MoodChip from '@/components/ui/MoodChip';
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
-import { MOOD_LABEL } from '@/lib/mood';
-import { moodFromActivity } from '@/lib/moodFromActivity';
+import { MOOD_FILL } from '@/lib/mood';
 import {
     formatDurationHMS,
     formatKm,
-    formatNaiveIdDate,
+    formatNaiveMonthDayId,
     formatNaiveTimeId,
     formatPace,
     paceSecPerKm,
 } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { activityUrl } from '@/lib/routes';
-import { MOOD_TO_POSE } from '@/lib/temariPose';
+import { RARITY_INK } from '@/lib/runcard';
 
 export interface RunNote {
     oneline: string;
@@ -30,12 +27,15 @@ interface RunListRowProps {
     detail: ActivityDetail;
     mood?: Mood | null;
     note?: RunNote | null;
+    /** The run's earned Card, when one has been generated. */
+    runCard?: RunCard | null;
 }
 
 function RunListRow({
     detail,
     mood = null,
     note = null,
+    runCard = null,
 }: Readonly<RunListRowProps>) {
     const km = formatKm(detail.distance);
     const paceSec = paceSecPerKm(detail.elapsed_time, detail.distance);
@@ -44,108 +44,68 @@ function RunListRow({
         detail.average_heartrate != null
             ? Math.round(detail.average_heartrate)
             : null;
-    const trimp =
-        detail.trimp_edwards != null ? Math.round(detail.trimp_edwards) : null;
-    const safeMood: Mood = note?.mood ?? mood ?? moodFromActivity(detail);
+    const knownMood: Mood | null = note?.mood ?? mood ?? null;
     const startTime = formatNaiveTimeId(detail.start_date_local);
 
     return (
         <MotionLink
             href={activityUrl(detail)}
-            className="flex items-start gap-4 border-b border-line px-5 py-4 text-sm transition last:border-b-0 hover:bg-surface"
+            className="block border-b border-border-strong p-3.5 text-sm transition last:border-b-0 hover:bg-background"
         >
-            <Temari
-                pose={MOOD_TO_POSE[safeMood]}
-                size={64}
-                className="shrink-0"
-                aria-label={`mood ${MOOD_LABEL[safeMood]}`}
-            />
-            <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <div className="flex items-center gap-4">
-                    <div className="min-w-0 flex-1">
-                        {/* Wrap to two lines instead of a hard truncate so a run's
-                            distinguishing trailing number/date survives at narrow widths. */}
-                        <div className="line-clamp-2 font-medium text-ink">
-                            {detail.name ?? 'Run'}
-                        </div>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-ink-3">
-                            <span>
-                                {formatNaiveIdDate(detail.start_date_local)}
-                                {startTime && (
-                                    <span className="text-ink-2">
-                                        {' '}
-                                        · {startTime}
-                                    </span>
-                                )}
-                            </span>
-                            <MoodChip mood={safeMood} size="sm" />
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-5 tabular-nums">
-                        <Cell value={km} unit="km" emphasize />
-                        <Cell
-                            value={formatDurationHMS(detail.elapsed_time)}
-                            unit="durasi"
-                            hideOnNarrow="sm"
-                        />
-                        <Cell value={paceLabel} unit="/km" hideOnNarrow="sm" />
-                        <Cell value={hr ?? '-'} unit="bpm" hideOnNarrow="md" />
-                        <Cell
-                            value={trimp ?? '-'}
-                            unit="TRIMP"
-                            hideOnNarrow="md"
-                        />
-                    </div>
-                </div>
-                {note && (
-                    <div className="flex items-start gap-2 rounded-xl bg-surface-warm/60 px-3 py-2 text-xs leading-relaxed text-ink">
-                        <Icon
-                            icon="mdi:comment-quote-outline"
-                            width={14}
-                            height={14}
+            <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-1.5">
+                    {knownMood !== null && (
+                        <span
                             aria-hidden
-                            className="mt-0.5 shrink-0 text-leaf-deep"
+                            className={cn(
+                                'size-[7px] flex-none rounded-full',
+                                MOOD_FILL[knownMood],
+                            )}
                         />
-                        <p className="min-w-0">{renderBold(note.oneline)}</p>
-                    </div>
-                )}
+                    )}
+                    <span className="truncate text-[0.8125rem] leading-[1.2] font-bold text-foreground">
+                        {detail.name ?? 'Run'}
+                    </span>
+                    <span className="flex-none font-mono text-[0.8125rem] leading-[1.2] font-bold text-foreground">
+                        · {km} km
+                    </span>
+                    {runCard && (
+                        <Icon
+                            icon="mdi:sparkle-outline"
+                            width={12}
+                            height={12}
+                            className={cn(
+                                'flex-none',
+                                RARITY_INK[runCard.rarity],
+                            )}
+                            aria-label={`${runCard.rarity} card`}
+                        />
+                    )}
+                </div>
+                <span className="flex-none font-mono text-[0.59375rem] leading-[1.2] text-text-3">
+                    {formatNaiveMonthDayId(detail.start_date_local)}
+                    {startTime && ` · ${startTime}`}
+                </span>
             </div>
-        </MotionLink>
-    );
-}
-
-interface CellProps {
-    value: string | number;
-    unit: string;
-    emphasize?: boolean;
-    hideOnNarrow?: 'sm' | 'md';
-}
-
-const HIDE_CLASSES = {
-    sm: 'hidden sm:block',
-    md: 'hidden md:block',
-} as const;
-
-function Cell({
-    value,
-    unit,
-    emphasize = false,
-    hideOnNarrow,
-}: Readonly<CellProps>) {
-    return (
-        <div
-            className={cn(
-                'text-center',
-                hideOnNarrow && HIDE_CLASSES[hideOnNarrow],
+            <div className="mt-1.25 flex items-baseline gap-1.75 font-mono">
+                <b className="text-[0.8125rem] leading-[1.2] font-extrabold text-foreground">
+                    {formatDurationHMS(detail.elapsed_time)}
+                </b>
+                <span className="text-[0.6875rem] text-border-strong">·</span>
+                <b className="text-[0.8125rem] leading-[1.2] font-extrabold text-foreground">
+                    {paceLabel}
+                </b>
+                <span className="text-[0.6875rem] text-border-strong">·</span>
+                <span className="text-[0.8125rem] leading-[1.2] font-extrabold text-foreground">
+                    {hr ?? '—'} bpm
+                </span>
+            </div>
+            {note && (
+                <p className="mt-1.25 truncate font-serif text-[0.65625rem] leading-[1.2] text-text-2 italic">
+                    &quot;{renderBold(note.oneline)}&quot;
+                </p>
             )}
-        >
-            <div className={cn('text-ink', emphasize && 'font-bold')}>
-                {value}
-            </div>
-            <div className="font-mono font-bold text-[11px] uppercase tracking-wide text-ink-2">
-                {unit}
-            </div>
-        </div>
+        </MotionLink>
     );
 }
 

@@ -1,20 +1,14 @@
 import type { ComponentType } from 'react';
 
-import { addCollection } from '@iconify/react';
 import { createInertiaApp } from '@inertiajs/react';
 import { createRoot } from 'react-dom/client';
 
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { syncAppBadgeOnVisible } from '@/lib/appBadge';
 import { installGlobalErrorReporting } from '@/lib/clientErrorReporter';
-import { mdiBundle } from '@/lib/iconBundle';
 import { registerServiceWorker } from '@/lib/registerServiceWorker';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME ?? 'Temari';
-
-// Render mdi icons from the bundled collection so <Icon> never fetches from
-// api.iconify.design (offline + no external connect-src). See lib/iconBundle.ts.
-addCollection(mdiBundle);
 
 // Every visitor, not just push subscribers: the worker also serves the offline
 // fallback page. See lib/registerServiceWorker.ts.
@@ -29,7 +23,7 @@ const pages = import.meta.glob<{ default: ComponentType }>([
 ]);
 
 /** The four bottom-nav destinations, by Inertia page name. */
-const TAB_PAGES = ['Today', 'Collection/Cards', 'Activities/Feed', 'Profile'];
+const TAB_PAGES = ['Home', 'Collection/Accessories', 'History', 'Profile'];
 
 /**
  * Fetches the JS chunk for each tab once the browser is idle, so the first tap
@@ -87,6 +81,6 @@ void createInertiaApp({
         warmTabChunks();
     },
     // AppShell's own <RouteProgressBar> replaces Inertia's built-in bar with
-    // one styled from the Threadwork tokens and driven by lib/motion.ts.
+    // one styled from the design tokens and driven by lib/motion.ts.
     progress: false,
 });

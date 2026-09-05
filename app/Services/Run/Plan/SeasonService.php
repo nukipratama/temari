@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
-use App\Enums\DistanceBand;
 use App\Enums\PlanPhase;
+use App\Enums\SessionType;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\SeasonGoal;
@@ -52,10 +52,7 @@ final readonly class SeasonService
 
     public function ensureCurrent(User $user, ?Carbon $today = null): Season
     {
-        $today = ($today ?? Carbon::today())->copy()->startOfDay();
-        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
-
-        $current = Season::query()->where('user_id', $user->id)->orderByDesc('starts_at')->first();
+        [$today, $race, $current] = $this->currentContext($user, $today);
 
         if ($current !== null && $this->isCurrent($current, $race, $today)) {
             return $current;
@@ -99,6 +96,32 @@ final readonly class SeasonService
         });
     }
 
+    /**
+     * The read-only counterpart to {@see self::ensureCurrent()}: returns the
+     * current season if one already exists and is still valid, `null`
+     * otherwise. Never creates, updates, or closes a {@see Season} row — for
+     * a consumer (like the Profile page) that must not trigger the same
+     * creation side effects a Plan page load does.
+     */
+    public function peekCurrent(User $user, ?Carbon $today = null): ?Season
+    {
+        [$today, $race, $current] = $this->currentContext($user, $today);
+
+        return ($current !== null && $this->isCurrent($current, $race, $today)) ? $current : null;
+    }
+
+    /**
+     * @return array{0: Carbon, 1: ?RaceGoal, 2: ?Season}
+     */
+    private function currentContext(User $user, ?Carbon $today): array
+    {
+        $today = ($today ?? Carbon::today())->copy()->startOfDay();
+        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
+        $current = Season::query()->where('user_id', $user->id)->orderByDesc('starts_at')->first();
+
+        return [$today, $race, $current];
+    }
+
     private function isCurrent(Season $season, ?RaceGoal $race, Carbon $today): bool
     {
         if ($today->isAfter($season->ends_at)) {
@@ -111,7 +134,7 @@ final readonly class SeasonService
     private function generateGoals(Season $season, User $user, ?RaceGoal $race, Carbon $today): void
     {
         $baselineData = $this->baseline->forUser($user, $today);
-        $sessionsPerWeek = max(3, min(6, $baselineData['sessions_per_week']));
+        $sessionsPerWeek = $baselineData['sessions_per_week'];
 
         $weeks = $race !== null
             ? $this->phaseSchedule->forRace($today, $race->race_date, (float) $race->distance_m)
@@ -126,7 +149,7 @@ final readonly class SeasonService
         $longestLongRunKm = 0.0;
         foreach ($phases as $index => $phase) {
             $qualityTotal += $this->weekPlanBuilder->qualitySlotCount($phase, $sessionsPerWeek, $raceDistanceM, $race === null);
-            $longRunKm = DistanceBandKm::kmFor(DistanceBand::Long, $baselineData['long_run_km'], $multipliers[$index]);
+            $longRunKm = SegmentGenerator::coreKmFor(SessionType::Long, isPrimaryEasy: false, longRunBaselineKm: $baselineData['long_run_km'], volumeMultiplier: $multipliers[$index]);
             $longestLongRunKm = max($longestLongRunKm, $longRunKm);
         }
 

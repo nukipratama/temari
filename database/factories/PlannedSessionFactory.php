@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\DistanceBand;
-use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
@@ -28,8 +26,6 @@ class PlannedSessionFactory extends Factory
             'date' => now()->toDateString(),
             'phase' => PlanPhase::Base,
             'session_type' => SessionType::Easy,
-            'distance_band' => DistanceBand::Medium,
-            'pace_band' => PaceBand::Easy,
             'pinned' => false,
             'status' => PlannedSessionStatus::Planned,
         ];
@@ -39,13 +35,21 @@ class PlannedSessionFactory extends Factory
     {
         return $this->state(fn (): array => [
             'session_type' => SessionType::Rest,
-            'distance_band' => DistanceBand::Rest,
-            'pace_band' => null,
         ]);
     }
 
     public function pinned(): static
     {
         return $this->state(fn (): array => ['pinned' => true]);
+    }
+
+    /** As if `plan:score-compliance` already reached this row — Done, no activity logged. */
+    public function scored(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => PlannedSessionStatus::Done,
+            'compliance_score' => null,
+            'ran_anyway' => false,
+        ]);
     }
 }

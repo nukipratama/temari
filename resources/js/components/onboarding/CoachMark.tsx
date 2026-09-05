@@ -26,21 +26,21 @@ interface CoachMarkProps {
 
 const GAP = 12;
 const MARGIN = 12;
-// The mobile bottom nav is fixed over the page below `lg`.
-const BOTTOM_INSET = 76;
+// The mobile bottom nav is fixed over the page below `lg`. Mirrors the height
+// MobileBottomNav actually renders at (pt-2.5 + content + pb-7); anything less
+// parks the mark underneath it.
+const BOTTOM_INSET = 96;
+/* The positioning maths below clamps against this, and the box has to render
+   at exactly it or the mark lands off-screen by the difference. It used to be
+   mirrored by a `w-64` class, which stopped agreeing the moment the root font
+   size steps at 1280px (16rem became 281.6px) — so the width is now applied
+   from this constant and the two cannot drift apart again. */
 const WIDTH = 256;
 const FALLBACK_HEIGHT = 150;
 
 function clamp(value: number, min: number, max: number): number {
     return Math.min(Math.max(value, min), Math.max(min, max));
 }
-
-const OPPOSITE: Record<CoachMarkPlacement, CoachMarkPlacement> = {
-    top: 'bottom',
-    bottom: 'top',
-    left: 'right',
-    right: 'left',
-};
 
 function offsetFor(
     anchor: DOMRect,
@@ -75,27 +75,116 @@ function fitsOnScreen(
     );
 }
 
-function positionFor(
+export interface Obstacle {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+}
+
+/** How much of `o` the mark would sit on top of, 0..1. */
+function coveredFraction(
+    { left, top }: { left: number; top: number },
+    height: number,
+    o: Obstacle,
+): number {
+    const w = Math.min(left + WIDTH, o.right) - Math.max(left, o.left);
+    const h = Math.min(top + height, o.bottom) - Math.max(top, o.top);
+    const area = (o.right - o.left) * (o.bottom - o.top);
+    return w > 0 && h > 0 && area > 0 ? (w * h) / area : 0;
+}
+
+// Total overlap area is the wrong metric: it prefers burying two small nav tabs
+// over clipping the edges of a large sparse grid. Only near-total coverage
+// actually destroys a control, so that is what the score counts.
+const BURIED_AT = 0.8;
+
+function buriedCount(
+    box: { left: number; top: number },
+    height: number,
+    obstacles: ReadonlyArray<Obstacle>,
+): number {
+    return obstacles.filter((o) => coveredFraction(box, height, o) >= BURIED_AT)
+        .length;
+}
+
+const ORDER: Record<CoachMarkPlacement, ReadonlyArray<CoachMarkPlacement>> = {
+    top: ['top', 'bottom', 'right', 'left'],
+    bottom: ['bottom', 'top', 'right', 'left'],
+    left: ['left', 'right', 'bottom', 'top'],
+    right: ['right', 'left', 'bottom', 'top'],
+};
+
+/**
+ * Picks the placement that stays on screen *and* buries the least of whatever
+ * the caller passed as `obstacles` — a coach mark that fully covers the control
+ * it is describing explains nothing. Falls back to the requested placement,
+ * clamped into the viewport, when every candidate collides.
+ */
+export function positionFor(
     anchor: DOMRect,
     placement: CoachMarkPlacement,
     height: number,
+    obstacles: ReadonlyArray<Obstacle> = [],
 ): CSSProperties {
-    const requested = offsetFor(anchor, placement, height);
-    const flipped = offsetFor(anchor, OPPOSITE[placement], height);
-    const chosen =
-        fitsOnScreen(requested, height) || !fitsOnScreen(flipped, height)
-            ? requested
-            : flipped;
+    const candidates = ORDER[placement].map((p) => {
+        const raw = offsetFor(anchor, p, height);
+        const box = {
+            left: clamp(raw.left, MARGIN, window.innerWidth - WIDTH - MARGIN),
+            top: clamp(
+                raw.top,
+                MARGIN,
+                window.innerHeight - height - BOTTOM_INSET,
+            ),
+        };
+        return {
+            box,
+            fits: fitsOnScreen(raw, height) ? 0 : 1,
+            buried: buriedCount(box, height, obstacles),
+            overlap: obstacles.reduce(
+                (sum, o) => sum + coveredFraction(box, height, o),
+                0,
+            ),
+        };
+    });
 
-    return {
-        position: 'fixed',
-        left: clamp(chosen.left, MARGIN, window.innerWidth - WIDTH - MARGIN),
-        top: clamp(
-            chosen.top,
-            MARGIN,
-            window.innerHeight - height - BOTTOM_INSET,
-        ),
-    };
+    const best = candidates.reduce((a, b) => {
+        if (b.buried !== a.buried) {
+            return b.buried < a.buried ? b : a;
+        }
+        if (b.fits !== a.fits) {
+            return b.fits < a.fits ? b : a;
+        }
+        return b.overlap < a.overlap ? b : a;
+    });
+
+    return { position: 'fixed', left: best.box.left, top: best.box.top };
+}
+
+const OBSTACLE_SELECTOR = 'a[href], button, [role="tab"], h1, h2, h3';
+
+function visibleObstacles(self: HTMLElement | null): Obstacle[] {
+    const out: Obstacle[] = [];
+    for (const el of document.querySelectorAll(OBSTACLE_SELECTOR)) {
+        if (self?.contains(el) === true) {
+            continue;
+        }
+        const r = el.getBoundingClientRect();
+        if (
+            r.width > 0 &&
+            r.height > 0 &&
+            r.bottom > 0 &&
+            r.top < window.innerHeight
+        ) {
+            out.push({
+                left: r.left,
+                top: r.top,
+                right: r.right,
+                bottom: r.bottom,
+            });
+        }
+    }
+    return out;
 }
 
 /**
@@ -151,15 +240,36 @@ export default function CoachMark({
                     anchor.getBoundingClientRect(),
                     placement,
                     containerRef.current?.offsetHeight ?? FALLBACK_HEIGHT,
+                    visibleObstacles(containerRef.current),
                 ),
             );
         };
-        const raf = requestAnimationFrame(reposition);
+
+        // The first pass necessarily runs before the mark is mounted, so it
+        // measures with FALLBACK_HEIGHT and cannot exclude the mark's own
+        // controls from the obstacle set. The second frame redoes it for real,
+        // and the observer catches any later shift (lazy content, font swap).
+        const observer = new ResizeObserver(reposition);
+        observer.observe(document.documentElement);
+        observer.observe(anchor);
+
+        let second = 0;
+        const first = requestAnimationFrame(() => {
+            reposition();
+            second = requestAnimationFrame(() => {
+                if (containerRef.current !== null) {
+                    observer.observe(containerRef.current);
+                }
+                reposition();
+            });
+        });
 
         window.addEventListener('resize', reposition);
         window.addEventListener('scroll', reposition, true);
         return () => {
-            cancelAnimationFrame(raf);
+            cancelAnimationFrame(first);
+            cancelAnimationFrame(second);
+            observer.disconnect();
             window.removeEventListener('resize', reposition);
             window.removeEventListener('scroll', reposition, true);
         };
@@ -174,20 +284,20 @@ export default function CoachMark({
             ref={containerRef}
             role="dialog"
             aria-label={title}
-            style={style}
+            style={{ ...style, width: WIDTH }}
             className={cn(
-                'z-50 w-64 rounded-2xl border border-line bg-surface-elev p-4 shadow-lg',
+                'z-50 rounded-lg border border-border bg-popover p-4 shadow-e2',
                 className,
             )}
         >
-            <p className="font-display text-sm font-semibold text-ink">
+            <p className="font-serif text-sm font-semibold text-foreground">
                 {title}
             </p>
-            {body && <p className="mt-1.5 text-sm text-ink-2">{body}</p>}
+            {body && <p className="mt-1.5 text-sm text-text-2">{body}</p>}
             <button
                 type="button"
                 onClick={dismiss}
-                className="focus-ring mt-3 text-label-micro text-horizon-deep"
+                className="focus-ring -mx-1 mt-2 inline-flex min-h-6 items-center rounded px-1 text-label-micro text-horizon-ink"
             >
                 Got it
             </button>

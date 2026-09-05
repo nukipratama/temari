@@ -3,8 +3,9 @@
 declare(strict_types=1);
 
 use App\Models\Activity;
-use App\Models\PersonalRecord;
+use App\Models\PlanAdaptation;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisSubjectAuthorizer;
@@ -20,16 +21,18 @@ it('lets the owner through and rejects a stranger for every AnalysisType', funct
 
     $subjectId = match ($type) {
         AnalysisType::BriefingMascotVoice,
-        AnalysisType::BriefingFeaturedKartuVoice,
-        AnalysisType::AkuProfileVoice,
-        AnalysisType::MonthlyRecap => $owner->id,
+        AnalysisType::ProfileVoice,
+        AnalysisType::MonthlyRecap,
+        AnalysisType::TrendRead,
+        AnalysisType::PlanDayVoice => $owner->id,
         AnalysisType::PostRunSpeech,
         AnalysisType::RunInsight => Activity::factory()->for($owner)->create()->id,
         AnalysisType::WeeklyRecap => WeeklySnapshot::factory()->for($owner)->create()->id,
-        AnalysisType::PrContext => PersonalRecord::factory()->for($owner)->create()->id,
         AnalysisType::CardFlavor => RunCard::factory()
             ->for(Activity::factory()->for($owner))
             ->create()->id,
+        AnalysisType::PlanWeekVoice => PlanAdaptation::factory()->for($owner)->create()->id,
+        AnalysisType::PlanSeasonVoice => Season::factory()->for($owner)->create()->id,
     };
 
     expect(fn () => AnalysisSubjectAuthorizer::authorize($owner, $type, $subjectId))
@@ -50,5 +53,16 @@ it('handles every AnalysisType (no UnhandledMatchError) so a new type can never 
     foreach (AnalysisType::cases() as $type) {
         expect(fn () => AnalysisSubjectAuthorizer::authorize($user, $type, PHP_INT_MAX))
             ->toThrow(AuthorizationException::class);
+    }
+});
+
+it('handles a discriminator on every AnalysisType (no UnhandledMatchError)', function (): void {
+    // No type names a resource any more, so a discriminator passes through
+    // untouched on every type rather than being ownership-checked.
+    $user = User::factory()->create();
+
+    foreach (AnalysisType::cases() as $type) {
+        expect(fn () => AnalysisSubjectAuthorizer::authorize($user, $type, $user->id, '1'))
+            ->not->toThrow(UnhandledMatchError::class);
     }
 });

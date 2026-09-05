@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Enums\IngestState;
 use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -26,6 +27,7 @@ class ActivityFactory extends Factory
             // hides stubs, so a default factory row must be visible. Use stub()
             // to model a freshly-synced, not-yet-ingested activity.
             'analyzed_at' => now(),
+            'ingest_state' => IngestState::Detailed,
             'detail_fail_count' => 0,
         ];
     }
@@ -42,6 +44,16 @@ class ActivityFactory extends Factory
     {
         return $this->state(fn (): array => [
             'analyzed_at' => null,
+            'ingest_state' => IngestState::Summary,
+        ]);
+    }
+
+    /** Visible, but known only from the `/athlete/activities` summary payload. */
+    public function summaryOnly(): static
+    {
+        return $this->state(fn (): array => [
+            'analyzed_at' => now(),
+            'ingest_state' => IngestState::Summary,
         ]);
     }
 }

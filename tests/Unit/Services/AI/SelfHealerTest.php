@@ -5,13 +5,13 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\ChainResolver;
 use App\Services\AI\SelfHealer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -75,7 +75,7 @@ function nonDispatchingResumeService(): AnalysisService
 
 function selfHealer(AnalysisService $service): SelfHealer
 {
-    return new SelfHealer($service, new ChainResolver());
+    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate());
 }
 
 /** Seed an activity for $user dated $startDate whose post-run speech is Pending. */
@@ -369,51 +369,6 @@ it('batches multiple stalled CardFlavor rows per user, capped at the drain batch
         ->and(array_column($captured, 'delaySeconds'))->toEqualCanonicalizing(range(0, 45, 5));
 });
 
-it('batches multiple stalled PrContext rows per user', function (): void {
-    $user = User::factory()->create();
-    // Pin distinct categories: the factory picks one at random, so three PRs for
-    // one user would otherwise sometimes collide on the (user_id, category) unique.
-    $categories = ['5km', '10km', 'half_marathon'];
-    for ($i = 0; $i < 3; $i++) {
-        $pr = PersonalRecord::factory()->for($user)->create([
-            'category' => $categories[$i],
-            'set_at' => Carbon::parse('2026-05-0'.($i + 1)),
-        ]);
-        Analysis::factory()->create([
-            'subject_type' => PersonalRecord::class,
-            'subject_id' => $pr->id,
-            'analysis_type' => AnalysisType::PrContext,
-            'status' => AnalysisStatus::Pending,
-        ]);
-    }
-
-    $captured = [];
-
-    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(3);
-
-    expect($captured)->toHaveCount(3);
-});
-
-it('recovers a Failed PrContext under the retry budget', function (): void {
-    $user = User::factory()->create();
-    $pr = PersonalRecord::factory()->for($user)->create(['set_at' => Carbon::parse('2026-05-01')]);
-    Analysis::factory()->failed()->create([
-        'subject_type' => PersonalRecord::class,
-        'subject_id' => $pr->id,
-        'analysis_type' => AnalysisType::PrContext,
-    ]);
-
-    $captured = [];
-
-    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(1);
-
-    expect($captured)->toHaveCount(1)
-        ->and($captured[0]['subjectOrType'])->toBe(PersonalRecord::class)
-        ->and($captured[0]['subjectId'])->toBe($pr->id)
-        ->and($captured[0]['type'])->toBe(AnalysisType::PrContext)
-        ->and($captured[0]['invalidate'])->toBeFalse();
-});
-
 it('leaves Done links alone (nothing stalled to resume)', function (): void {
     $user = User::factory()->create();
     $snap = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-03', 'runs' => 3]);
@@ -579,8 +534,7 @@ it('re-kicks the earliest stalled single-row block per user with invalidate:fals
         ->and($captured[0]['invalidate'])->toBeFalse();
 })->with([
     'BriefingMascotVoice' => [AnalysisType::BriefingMascotVoice, AnalysisType::BRIEFING_SUBJECT_TYPE, '2026-05-18'],
-    'BriefingFeaturedKartuVoice' => [AnalysisType::BriefingFeaturedKartuVoice, AnalysisType::BRIEFING_SUBJECT_TYPE, '42'],
-    'AkuProfileVoice' => [AnalysisType::AkuProfileVoice, AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE, '2026-W21'],
+    'ProfileVoice' => [AnalysisType::ProfileVoice, AnalysisType::PROFILE_VOICE_SUBJECT_TYPE, '2026-W21'],
 ]);
 
 it('spaces successive single-row-type resumes across users within one sweep', function (): void {
@@ -588,9 +542,9 @@ it('spaces successive single-row-type resumes across users within one sweep', fu
     $userB = User::factory()->create();
     foreach ([$userA, $userB] as $user) {
         Analysis::factory()->create([
-            'subject_type' => AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+            'subject_type' => AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
             'subject_id' => $user->id,
-            'analysis_type' => AnalysisType::AkuProfileVoice,
+            'analysis_type' => AnalysisType::ProfileVoice,
             'discriminator' => '2026-W21',
             'status' => AnalysisStatus::Pending,
         ]);
@@ -606,9 +560,9 @@ it('spaces successive single-row-type resumes across users within one sweep', fu
 it('skips a demo user for a single-row type so the resume net never auto-bills it', function (): void {
     $demo = User::factory()->demo()->create();
     Analysis::factory()->create([
-        'subject_type' => AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+        'subject_type' => AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
         'subject_id' => $demo->id,
-        'analysis_type' => AnalysisType::AkuProfileVoice,
+        'analysis_type' => AnalysisType::ProfileVoice,
         'discriminator' => '2026-W21',
         'status' => AnalysisStatus::Pending,
     ]);

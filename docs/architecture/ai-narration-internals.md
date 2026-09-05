@@ -40,7 +40,7 @@ Each tool is bound to its subject at construction and declares an argument-free 
 
 **What still travels in the context** is whatever no tool could serve: a value the *call itself* carries rather than the database (post-run speech's `mood`), plus the continuity line, which stays in the prompt because the content-filter retry has to be able to strip it.
 
-A toolbox is built per call, so it can be shorter when the subject is thinner — a card whose activity has no detail row is offered only `get_card_identity`, rather than four tools that would answer null to everything.
+A toolbox is built per call, so it can be shorter when the subject is thinner — a card whose activity has no detail row is offered only `get_card_identity`, rather than four tools that would answer null to everything. The same applies by ingest state: [RunQuestionNarrator](app/Services/AI/Narrators/RunQuestionNarrator.php) drops the splits, laps, zone and terrain reads on a `summary`-state run and keeps the run summary plus the history reads, since the stream pipeline has not run yet. See [[run-qa]].
 
 ### The briefing family
 
@@ -58,7 +58,7 @@ The period is fixed at construction — a `WeeklySnapshot`, or a `Y-m` string �
 
 ### The profile narrators
 
-Profile voice and PR context complete the set, and both send an **empty context** — unlike the recaps there was not even a continuity line to keep, since neither is chained. Their arithmetic moved with them: lifetime stats and the favourite-time bucket, the persona mood mix with its recent-vs-earlier split, and the progression signal were private methods on the narrators and are tools now. The persona read was a separately billed narrator of its own until it was merged into the profile voice, which now carries [PersonaMixTool](app/Services/AI/Agent/Tools/PersonaMixTool.php) beside its own three.
+Profile voice completes the set, and sends an **empty context** — unlike the recaps there was not even a continuity line to keep, since it is not chained. Their arithmetic moved with them: lifetime stats and the favourite-time bucket, the persona mood mix with its recent-vs-earlier split, and the progression signal were private methods on the narrators and are tools now. The persona read was a separately billed narrator of its own until it was merged into the profile voice, which now carries [PersonaMixTool](app/Services/AI/Agent/Tools/PersonaMixTool.php) beside its own three.
 
 Every narrator now reads rather than receives. What remains in any context is only ever one of two things: a value the *call* carries (post-run speech's `mood`, the daily greeting's `vibe`), or the continuity line.
 
@@ -71,7 +71,7 @@ Every narrator now reads rather than receives. What remains in any context is on
 - the **time-of-day bucket** (`early_morning` / `morning` / `midday` / `evening` / `night`) so a morning briefing reads differently from an evening one ([`bucketFor`](app/Services/Run/Story/BriefingContext.php#L212));
 - **consecutive weeks active** — a streak proxy reusing the `WeeklySnapshot` rows we already keep, since we don't track a day-level streak ([`countConsecutiveActiveWeeks`](app/Services/Run/Story/BriefingContext.php#L196)).
 
-Recovery hours is "hours since the most recent activity start", sharper than days-since for a mid-day briefing — now computed by [RecoveryWindow::forUser](app/Services/Run/Story/RecoveryWindow.php#L35) and passed in. `BriefingContext::forUser` is called from [WeekStateTool::handle](app/Services/AI/Agent/Tools/WeekStateTool.php#L48), one of the agent tools [BriefingMascotVoiceNarrator](app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php) reads from; the rendered surface is the [[dashboard]] Kata Temari card.
+Recovery hours is "hours since the most recent activity start", sharper than days-since for a mid-day briefing — now computed by [RecoveryWindow::forUser](app/Services/Run/Story/RecoveryWindow.php#L35) and passed in. `BriefingContext::forUser` is called from [WeekStateTool::handle](app/Services/AI/Agent/Tools/WeekStateTool.php#L48), one of the agent tools [BriefingMascotVoiceNarrator](app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php) reads from; the rendered surface is the [[dashboard]] mascot-voice block.
 
 ### MetricsContext (briefing call envelope)
 
@@ -91,7 +91,7 @@ No *dispatch* path reaches the filler any more: a paused or failing block stays 
 
 ### The demo seed path
 
-The demo seeder stages and fills all Analysis rows under [`AnalysisService::withoutDispatching()`](app/Services/AI/AnalysisService.php#L44), which suppresses every job dispatch ([DemoRunSeeder::seed](database/seeders/Demo/DemoRunSeeder.php#L104)). Rows are staged `Pending` inside that closure and then flat-filled afterward by walking them through the filler ([`backfillWithFiller`](database/seeders/Demo/DemoRunSeeder.php#L292)), so seeding spends zero LLM tokens. The "Baca ulang" button stays live for the demo, but its trigger is filled through the same filler rather than dispatched, so no demo click reaches Azure — see [[demo-triggers-served-rule-based]]. The demo user is also held out of billing schedulers — see [[demo-user-billing-exclusion]].
+The demo seeder stages and fills all Analysis rows under [`AnalysisService::withoutDispatching()`](app/Services/AI/AnalysisService.php#L60), which suppresses every job dispatch ([DemoRunSeeder::seed](database/seeders/Demo/DemoRunSeeder.php#L117)). Rows are staged `Pending` inside that closure and then flat-filled afterward by walking them through the filler ([`backfillWithFiller`](database/seeders/Demo/DemoRunSeeder.php#L352)), so seeding spends zero LLM tokens. `trend_read` and the three `plan_*_voice` types are filled the same way but bypass that walk, going straight through `AnalysisService::requestRuleBased()`/`PlanNarrationRequester::ensureDemoFilled()` instead (`F7`, since neither has a demo-reachable dispatch path otherwise). The "Reread" button stays live for the demo, but its trigger is filled through the same filler rather than dispatched, so no demo click reaches Azure — see [[demo-triggers-served-rule-based]]. The demo user is also held out of billing schedulers — see [[demo-user-billing-exclusion]].
 
 ## See also
 

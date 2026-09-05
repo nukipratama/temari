@@ -19,7 +19,7 @@ use App\Services\AI\Agent\AgentToolbox;
  *
  * `maxTokens` null = use the global `azure_openai.max_completion_tokens`
  * config default. Override per-narrator when the schema can produce longer
- * output (Cerita lari, Weekly recap, etc.) to avoid truncated responses.
+ * output (the post-run story, weekly recap, etc.) to avoid truncated responses.
  *
  * `toolbox` null = one-shot call. Supplying one turns the call into an agent
  * run: the model reads what it decides it needs before answering.

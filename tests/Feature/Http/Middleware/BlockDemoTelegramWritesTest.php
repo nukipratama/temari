@@ -2,17 +2,14 @@
 
 declare(strict_types=1);
 
-use App\Models\Activity;
-use App\Models\RunCard;
 use App\Models\TelegramConnection;
 use App\Models\User;
-use App\Models\UserUnlock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
 
-it('blocks a demo user from an Inertia notification-preference write with an Indonesian flash error', function (): void {
+it('blocks a demo user from an Inertia notification-preference write with a flash error', function (): void {
     $user = User::factory()->create(['is_demo' => true]);
 
     $this->actingAs($user)
@@ -23,7 +20,7 @@ it('blocks a demo user from an Inertia notification-preference write with an Ind
             'push_enabled' => true,
         ])
         ->assertRedirect()
-        ->assertSessionHasErrors(['demo' => 'Akun demo cuma bisa dilihat, gak bisa diubah.']);
+        ->assertSessionHasErrors(['demo' => 'The demo account is read-only. Nothing here can be changed.']);
 
     expect($user->notificationPreference()->exists())->toBeFalse();
 });
@@ -35,7 +32,7 @@ it('returns a JSON 403 to a plain fetch on the notification test endpoint from t
     $this->actingAs($user)
         ->postJson('/profile/notifications/test')
         ->assertStatus(403)
-        ->assertJson(['message' => 'Akun demo cuma bisa dilihat, gak bisa diubah.']);
+        ->assertJson(['message' => 'The demo account is read-only. Nothing here can be changed.']);
 });
 
 it('does not block a normal user from the same notification-preference write', function (): void {
@@ -53,27 +50,13 @@ it('does not block a normal user from the same notification-preference write', f
     expect($user->notificationPreference->notifications_enabled)->toBeFalse();
 });
 
-it('does not block a demo user from equipping an accessory (interactive sandbox)', function (): void {
+it('does not block a demo user from an unguarded write (interactive sandbox)', function (): void {
     $user = User::factory()->create(['is_demo' => true]);
-    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_first']);
 
     $this->actingAs($user)
-        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_first'])
+        ->delete('/settings/zones')
         ->assertRedirect()
         ->assertSessionDoesntHaveErrors();
-
-    expect(UserUnlock::query()
-        ->where('user_id', $user->id)
-        ->where('unlock_key', 'accessory.medal_first')
-        ->value('equipped'))->toBeTrue();
-});
-
-it('does not block a demo user from marking a card seen (passive UX write)', function (): void {
-    $user = User::factory()->create(['is_demo' => true]);
-    $card = RunCard::factory()->for(Activity::factory()->for($user))->create();
-
-    expect($this->actingAs($user)->postJson("/api/cards/{$card->id}/seen")->status())
-        ->not->toBe(403);
 });
 
 it('does not block a GET read from the demo user', function (): void {
@@ -92,7 +75,7 @@ it('still lets the demo user log out', function (): void {
     expect(auth()->check())->toBeFalse();
 });
 
-it('still lets the demo user trigger "Baca ulang", served rule-based so it never bills', function (): void {
+it('still lets the demo user trigger "Reread", served rule-based so it never bills', function (): void {
     Bus::fake();
     $user = User::factory()->create(['is_demo' => true]);
 

@@ -98,7 +98,7 @@ it('scopes a single card edition to the owner', function (): void {
 it('whitelists the card columns, never internal ones', function (): void {
     $user = User::factory()->create();
     $card = presenterCard($user, Rarity::Epic);
-    $card->update(['share_image_path' => 'kartu/secret.png']);
+    $card->update(['share_image_path' => 'card/secret.png']);
 
     expect(app(CardPresenter::class)->base($card))->toBe([
         'id' => $card->id,
@@ -132,7 +132,7 @@ it('falls back to the derived mood when there is no post-run story line', functi
 it('shapes the card flavor analysis payload', function (): void {
     $user = User::factory()->create();
     $card = presenterCard($user, Rarity::Rare);
-    Analysis::factory()->done('Larimu ringan.')->create([
+    Analysis::factory()->done('Runmu ringan.')->create([
         'subject_type' => RunCard::class,
         'subject_id' => $card->id,
         'analysis_type' => AnalysisType::CardFlavor,
@@ -141,7 +141,7 @@ it('shapes the card flavor analysis payload', function (): void {
 
     expect(app(CardPresenter::class)->flavorAnalysis($card))
         ->toMatchArray([
-            'content' => 'Larimu ringan.',
+            'content' => 'Runmu ringan.',
             'status' => AnalysisStatus::Done->value,
         ]);
 });

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Notifications;
 
+use App\Enums\NotificationKind;
 use App\Models\User;
+use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\Telegram\TelegramReplies;
 use App\Services\Notifications\ChannelRouter;
@@ -14,11 +16,12 @@ use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushMessage;
 
 /**
- * The one-off "test notification" from the Aku page, so a user can confirm their
+ * The one-off "test notification" from the Profile page, so a user can confirm their
  * notification channels work without waiting for a run. Channel-agnostic by
  * design: `via()` fans out to every wired channel (Telegram if connected, web
  * push if subscribed), so the single "Send test notification" action reaches
- * every channel the user has. Never sends on the shared demo identity.
+ * every channel the user has. The shared demo identity resolves to the inbox
+ * alone, so a test send there never leaves the app.
  */
 class TestNotification extends Notification implements ShouldQueue
 {
@@ -36,10 +39,6 @@ class TestNotification extends Notification implements ShouldQueue
      */
     public function via(User $notifiable): array
     {
-        if ($notifiable->is_demo) {
-            return [];
-        }
-
         return app(ChannelRouter::class)->channelsFor($notifiable);
     }
 
@@ -48,10 +47,19 @@ class TestNotification extends Notification implements ShouldQueue
         return new TelegramMessage(text: TelegramReplies::test());
     }
 
+    public function toInbox(User $notifiable): InboxMessage
+    {
+        return new InboxMessage(
+            kind: NotificationKind::Test,
+            title: 'Test notification',
+            body: TelegramReplies::test(),
+        );
+    }
+
     public function toWebPush(User $notifiable, Notification $notification): WebPushMessage
     {
         return new WebPushMessage()
-            ->title('🔔 Test notification')
+            ->title('Test notification')
             ->body(TelegramReplies::test())
             ->icon('/icon-192.png')
             // Mirror the real push: high urgency so the test is a truthful delivery signal.

@@ -42,7 +42,7 @@ return [
     |
     */
 
-    'path' => env('HORIZON_PATH', 'horizon'),
+    'path' => env('HORIZON_PATH', 'devtools/horizon'),
 
     /*
     |--------------------------------------------------------------------------

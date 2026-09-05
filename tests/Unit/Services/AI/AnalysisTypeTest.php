@@ -3,23 +3,33 @@
 declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzeActivityJob;
-use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
+use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
+use App\Jobs\AI\AnalyzePlanDayVoiceJob;
+use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
+use App\Jobs\AI\AnalyzePlanWeekVoiceJob;
+use App\Jobs\AI\AnalyzeTrendReadJob;
+use App\Models\PlanAdaptation;
+use App\Models\Season;
 use App\Services\AI\AnalysisCadence;
 use App\Services\AI\AnalysisType;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\In;
 
 it('pins the exact case list, so adding or retiring a type is a deliberate edit', function (): void {
     expect(array_column(AnalysisType::cases(), 'value'))->toBe([
         'briefing_mascot_voice',
-        'briefing_featured_kartu_voice',
         'post_run_speech',
         'run_insight',
         'weekly_recap',
-        'pr_context',
         'card_flavor',
-        'aku_profile_voice',
+        'profile_voice',
         'monthly_recap',
+        'trend_read',
+        'plan_day_voice',
+        'plan_week_voice',
+        'plan_season_voice',
     ], implode(' ', [
         'The AnalysisType case list changed. Update this list only after settling the call sites that',
         'read the cases as a set rather than one case at a time: Analysis::knownType(), which decides',
@@ -30,14 +40,34 @@ it('pins the exact case list, so adding or retiring a type is a deliberate edit'
     ]));
 });
 
-it('maps AkuProfileVoice to its job + subject type', function (): void {
-    expect(AnalysisType::AkuProfileVoice->jobClass())->toBe(AnalyzeAkuProfileVoiceJob::class)
-        ->and(AnalysisType::AkuProfileVoice->subjectType())->toBe(AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE);
+it('maps ProfileVoice to its job + subject type', function (): void {
+    expect(AnalysisType::ProfileVoice->jobClass())->toBe(AnalyzeProfileVoiceJob::class)
+        ->and(AnalysisType::ProfileVoice->subjectType())->toBe(AnalysisType::PROFILE_VOICE_SUBJECT_TYPE);
 });
 
 it('maps MonthlyRecap to its job + subject type', function (): void {
     expect(AnalysisType::MonthlyRecap->jobClass())->toBe(AnalyzeMonthlyRecapJob::class)
         ->and(AnalysisType::MonthlyRecap->subjectType())->toBe(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE);
+});
+
+it('maps TrendRead to its job + subject type', function (): void {
+    expect(AnalysisType::TrendRead->jobClass())->toBe(AnalyzeTrendReadJob::class)
+        ->and(AnalysisType::TrendRead->subjectType())->toBe(AnalysisType::TREND_READ_SUBJECT_TYPE);
+});
+
+it('maps PlanDayVoice to its job + subject type', function (): void {
+    expect(AnalysisType::PlanDayVoice->jobClass())->toBe(AnalyzePlanDayVoiceJob::class)
+        ->and(AnalysisType::PlanDayVoice->subjectType())->toBe(AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE);
+});
+
+it('maps PlanWeekVoice to its job + subject type', function (): void {
+    expect(AnalysisType::PlanWeekVoice->jobClass())->toBe(AnalyzePlanWeekVoiceJob::class)
+        ->and(AnalysisType::PlanWeekVoice->subjectType())->toBe(PlanAdaptation::class);
+});
+
+it('maps PlanSeasonVoice to its job + subject type', function (): void {
+    expect(AnalysisType::PlanSeasonVoice->jobClass())->toBe(AnalyzePlanSeasonVoiceJob::class)
+        ->and(AnalysisType::PlanSeasonVoice->subjectType())->toBe(Season::class);
 });
 
 it('flags exactly the heart-rate-zone-derived types as zone-dependent', function (AnalysisType $type, bool $expected): void {
@@ -48,8 +78,8 @@ it('flags exactly the heart-rate-zone-derived types as zone-dependent', function
     'run insight' => [AnalysisType::RunInsight, true],
     'weekly recap' => [AnalysisType::WeeklyRecap, true],
     'monthly recap (reads zone-weighted CTL for its fitness arc)' => [AnalysisType::MonthlyRecap, true],
+    'trend read (reads monotony/strain/CTL, all TRIMP-derived)' => [AnalysisType::TrendRead, true],
     'post-run speech' => [AnalysisType::PostRunSpeech, false],
-    'pr context' => [AnalysisType::PrContext, false],
     'briefing mascot voice' => [AnalysisType::BriefingMascotVoice, false],
 ]);
 
@@ -62,6 +92,7 @@ it('flags only the connected + chained kinds wired so far', function (AnalysisTy
     'run insight (per-activity chain)' => [AnalysisType::RunInsight, true],
     'card flavor (standalone)' => [AnalysisType::CardFlavor, false],
     'briefing mascot voice (standalone)' => [AnalysisType::BriefingMascotVoice, false],
+    'trend read (always as-of-now, never a sequence of closed periods)' => [AnalysisType::TrendRead, false],
 ]);
 
 it('assigns a cadence to every type', function (): void {
@@ -77,7 +108,11 @@ it('maps representative types to the expected cadence', function (AnalysisType $
     'card flavor is per-activity' => [AnalysisType::CardFlavor, AnalysisCadence::PerActivity],
     'weekly recap is weekly' => [AnalysisType::WeeklyRecap, AnalysisCadence::Weekly],
     'monthly recap is monthly' => [AnalysisType::MonthlyRecap, AnalysisCadence::Monthly],
-    'aku profile voice is on-demand' => [AnalysisType::AkuProfileVoice, AnalysisCadence::OnDemand],
+    'profile voice is on-demand' => [AnalysisType::ProfileVoice, AnalysisCadence::OnDemand],
+    'trend read is on-demand (its own 3 cron schedules, not cascade-driven)' => [AnalysisType::TrendRead, AnalysisCadence::OnDemand],
+    'plan day voice is daily' => [AnalysisType::PlanDayVoice, AnalysisCadence::Daily],
+    'plan week voice is weekly' => [AnalysisType::PlanWeekVoice, AnalysisCadence::Weekly],
+    'plan season voice is on-demand (changes only at season boundaries)' => [AnalysisType::PlanSeasonVoice, AnalysisCadence::OnDemand],
 ]);
 
 it('is the single source of truth for group membership', function (): void {
@@ -93,7 +128,6 @@ it('returns null group job for non-grouped types', function (AnalysisType $type)
     expect($type->groupJobClass())->toBeNull();
 })->with([
     'briefing mascot voice' => [AnalysisType::BriefingMascotVoice],
-    'briefing featured kartu voice' => [AnalysisType::BriefingFeaturedKartuVoice],
     'weekly recap' => [AnalysisType::WeeklyRecap],
     'monthly recap' => [AnalysisType::MonthlyRecap],
 ]);
@@ -110,8 +144,9 @@ it('prohibits a discriminator on the types that key off subject_id alone', funct
     'post run speech' => [AnalysisType::PostRunSpeech],
     'run insight' => [AnalysisType::RunInsight],
     'weekly recap' => [AnalysisType::WeeklyRecap],
-    'pr context' => [AnalysisType::PrContext],
     'card flavor' => [AnalysisType::CardFlavor],
+    'plan week voice' => [AnalysisType::PlanWeekVoice],
+    'plan season voice' => [AnalysisType::PlanSeasonVoice],
 ]);
 
 it('requires the date shape each keyed type dispatches with', function (AnalysisType $type, string $rule): void {
@@ -119,11 +154,11 @@ it('requires the date shape each keyed type dispatches with', function (Analysis
 })->with([
     'briefing mascot voice is a day' => [AnalysisType::BriefingMascotVoice, 'date_format:Y-m-d'],
     'monthly recap is a month' => [AnalysisType::MonthlyRecap, 'date_format:Y-m'],
-    'aku profile voice is an ISO week' => [AnalysisType::AkuProfileVoice, 'regex:/^\d{4}-W\d{2}$/'],
-    'featured kartu is a card id' => [AnalysisType::BriefingFeaturedKartuVoice, 'regex:/^[1-9][0-9]*$/'],
+    'profile voice is an ISO week' => [AnalysisType::ProfileVoice, 'regex:/^\d{4}-W\d{2}$/'],
+    'plan day voice is a day' => [AnalysisType::PlanDayVoice, 'date_format:Y-m-d'],
 ]);
 
-it('formats currentIsoWeek to the discriminator shape AkuProfileVoice requires', function (): void {
+it('formats currentIsoWeek to the discriminator shape ProfileVoice requires', function (): void {
     Carbon::setTestNow('2026-05-19 12:00:00');
 
     expect(AnalysisType::currentIsoWeek())->toBe('2026-W21')
@@ -131,3 +166,62 @@ it('formats currentIsoWeek to the discriminator shape AkuProfileVoice requires',
 
     Carbon::setTestNow();
 });
+
+/**
+ * A shape rule is not a closed set. Every type that permits a discriminator must
+ * bound *which* values it permits, or a caller can mint unbounded permanent rows
+ * one request at a time. Two bounds are legitimate: a range, for a discriminator
+ * naming a period, and an ownership check, for one naming a resource.
+ */
+it('bounds every discriminator it permits, by range or by ownership', function (): void {
+    // Types whose bound is ownership rather than a range, which would be checked
+    // in AnalysisSubjectAuthorizer::authorize(). Empty since W2 swept the
+    // featured-card voice, the only resource-keyed discriminator there has ever
+    // been; the escape hatch stays because the rule above still names ownership
+    // as a legitimate bound.
+    $boundedByOwnership = [];
+
+    foreach (AnalysisType::cases() as $type) {
+        $rules = $type->discriminatorRules();
+
+        if ($rules === ['prohibited'] || in_array($type, $boundedByOwnership, true)) {
+            continue;
+        }
+
+        $hasRange = collect($rules)->contains(
+            fn (string|In $rule): bool => $rule instanceof In || str_starts_with((string) $rule, 'after_or_equal:'),
+        );
+
+        expect($hasRange)->toBeTrue(
+            "[{$type->value}] permits a discriminator with a shape but no range, so a caller can mint "
+            .'an unbounded number of permanent ai_analyses rows. Add a range, or bound it by ownership '
+            .'in AnalysisSubjectAuthorizer and list it above.',
+        );
+    }
+});
+
+it('ranges each period discriminator against the age cap, not against wall clock drift', function (): void {
+    Carbon::setTestNow('2026-05-18 05:30:00');
+    $oldestDay = Carbon::today()->subDays(AnalysisType::MAX_DISCRIMINATOR_AGE_DAYS)->toDateString();
+
+    expect(AnalysisType::BriefingMascotVoice->discriminatorRules())
+        ->toContain('after_or_equal:'.$oldestDay)
+        ->toContain('before_or_equal:2026-05-18');
+
+    Carbon::setTestNow();
+});
+
+it('bounds TrendRead\'s discriminator to exactly the three ranges', function (string $range, bool $valid): void {
+    $result = Validator::make(
+        ['discriminator' => $range],
+        ['discriminator' => AnalysisType::TrendRead->discriminatorRules()],
+    );
+
+    expect($result->fails())->toBe(! $valid);
+})->with([
+    '30d' => ['30d', true],
+    '90d' => ['90d', true],
+    '12mo' => ['12mo', true],
+    '7d (not one of the three)' => ['7d', false],
+    'empty' => ['', false],
+]);

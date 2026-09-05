@@ -33,7 +33,7 @@ use Illuminate\Support\Facades\DB;
  * `ai_token_usages` is deliberately kept. It is cost history, not user data,
  * and lives on its own connection so it survives the account entirely. Before
  * the user goes, their name and Strava athlete id are stamped onto those rows,
- * so /ai-usage can still say whose spend it was instead of showing a bare id
+ * so /devtools/ai-usage can still say whose spend it was instead of showing a bare id
  * pointing at nobody.
  */
 final readonly class UserEraser
@@ -45,8 +45,9 @@ final readonly class UserEraser
      */
     private const array USER_SUBJECT_TYPES = [
         AnalysisType::BRIEFING_SUBJECT_TYPE,
-        AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+        AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
         AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        AnalysisType::TREND_READ_SUBJECT_TYPE,
         // Retired narration types. Their AnalysisType cases are gone but the
         // historical rows are kept, and erasure must still reach them.
         'daily_greeting_user_day',

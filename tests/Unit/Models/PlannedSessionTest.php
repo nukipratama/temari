@@ -2,13 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Enums\DistanceBand;
-use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
-use App\Models\Activity;
-use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\User;
 use Illuminate\Database\QueryException;
@@ -30,31 +26,27 @@ it('casts date and every enum column', function (): void {
         'date' => '2026-08-17',
         'phase' => 'build',
         'session_type' => 'tempo',
-        'distance_band' => 'medium',
-        'pace_band' => 'threshold',
         'pinned' => 1,
-        'status' => 'planned',
+        'skipped' => 0,
+        'status' => 'overreached',
+        'compliance_score' => '145',
+        'ran_anyway' => 1,
     ]);
 
     expect($session->date)->toBeInstanceOf(Carbon::class)
         ->and($session->phase)->toBe(PlanPhase::Build)
         ->and($session->session_type)->toBe(SessionType::Tempo)
-        ->and($session->distance_band)->toBe(DistanceBand::Medium)
-        ->and($session->pace_band)->toBe(PaceBand::Threshold)
         ->and($session->pinned)->toBeTrue()
-        ->and($session->status)->toBe(PlannedSessionStatus::Planned);
+        ->and($session->skipped)->toBeFalse()
+        ->and($session->status)->toBe(PlannedSessionStatus::Overreached)
+        ->and($session->compliance_score)->toBe(145)
+        ->and($session->ran_anyway)->toBeTrue();
 });
 
 it('serializes date as the naive date, not a UTC-shifted instant', function (): void {
     $session = new PlannedSession(['date' => '2026-08-17']);
 
     expect($session->toArray()['date'])->toBe('2026-08-17');
-});
-
-it('allows a null pace_band, for rest days', function (): void {
-    $session = PlannedSession::factory()->rest()->make();
-
-    expect($session->pace_band)->toBeNull();
 });
 
 it('enforces one row per user per date', function (): void {
@@ -65,22 +57,35 @@ it('enforces one row per user per date', function (): void {
         ->toThrow(QueryException::class);
 });
 
-it('restHonoredCountForUser counts a past rest day with no logged activity', function (): void {
+it('restHonoredCountForUser counts a past, scored rest day with no logged activity', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
-    PlannedSession::factory()->for($user)->rest()->create(['date' => Carbon::today()->subDay()->toDateString()]);
+    PlannedSession::factory()->for($user)->rest()->scored()->create(['date' => Carbon::today()->subDay()->toDateString()]);
 
     expect(PlannedSession::restHonoredCountForUser($user->id, Carbon::today()))->toBe(1);
 
     Carbon::setTestNow();
 });
 
-it('restHonoredCountForUser does not count a rest day an activity was logged on', function (): void {
+it('restHonoredCountForUser does not count a rest day flagged ran_anyway', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
-    $date = Carbon::today()->subDay();
-    PlannedSession::factory()->for($user)->rest()->create(['date' => $date->toDateString()]);
-    ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create(['start_date_local' => $date]);
+    PlannedSession::factory()->for($user)->rest()->scored()->create([
+        'date' => Carbon::today()->subDay()->toDateString(),
+        'ran_anyway' => true,
+    ]);
+
+    expect(PlannedSession::restHonoredCountForUser($user->id, Carbon::today()))->toBe(0);
+
+    Carbon::setTestNow();
+});
+
+it('restHonoredCountForUser does not count a past rest day plan:score-compliance has not reached yet', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+    // Still Planned — not yet scored, not proven honored (same "pending, never
+    // guessed" default the AI pipeline uses for its own unscored states).
+    PlannedSession::factory()->for($user)->rest()->create(['date' => Carbon::today()->subDay()->toDateString()]);
 
     expect(PlannedSession::restHonoredCountForUser($user->id, Carbon::today()))->toBe(0);
 
@@ -90,8 +95,8 @@ it('restHonoredCountForUser does not count a rest day an activity was logged on'
 it('restHonoredCountForUser ignores today and future rest days', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
-    PlannedSession::factory()->for($user)->rest()->create(['date' => Carbon::today()->toDateString()]);
-    PlannedSession::factory()->for($user)->rest()->create(['date' => Carbon::today()->addDay()->toDateString()]);
+    PlannedSession::factory()->for($user)->rest()->scored()->create(['date' => Carbon::today()->toDateString()]);
+    PlannedSession::factory()->for($user)->rest()->scored()->create(['date' => Carbon::today()->addDay()->toDateString()]);
 
     expect(PlannedSession::restHonoredCountForUser($user->id, Carbon::today()))->toBe(0);
 
@@ -101,8 +106,8 @@ it('restHonoredCountForUser ignores today and future rest days', function (): vo
 it('restHonoredCountForUser scopes to a date range when given one', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
-    PlannedSession::factory()->for($user)->rest()->create(['date' => Carbon::today()->subDays(10)->toDateString()]);
-    PlannedSession::factory()->for($user)->rest()->create(['date' => Carbon::today()->subDays(2)->toDateString()]);
+    PlannedSession::factory()->for($user)->rest()->scored()->create(['date' => Carbon::today()->subDays(10)->toDateString()]);
+    PlannedSession::factory()->for($user)->rest()->scored()->create(['date' => Carbon::today()->subDays(2)->toDateString()]);
 
     $count = PlannedSession::restHonoredCountForUser(
         $user->id,

@@ -11,6 +11,8 @@ use App\Services\AI\AnalysisSubjectMap;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 #[Signature('ai:recover')]
 #[Description('One-shot post-outage recovery: re-arm every dead-lettered block across users, then run the full self-heal sweep immediately (no waiting for the hourly cadence)')]
@@ -18,12 +20,12 @@ class RecoverCommand extends Command
 {
     /**
      * The manual "resume everything" lever. After a day-long outage, full recovery
-     * otherwise takes N per-user /ai-usage clicks + Horizon retries + per-run-page
+     * otherwise takes N per-user /devtools/ai-usage clicks + Horizon retries + per-run-page
      * clicks + up to 60 min of hourly self-heal cadence. This collapses that into
      * one action:
      *
      *   1. Re-arm every dead-lettered block across all non-demo users (reset the
-     *      retry budget + re-dispatch), generalizing the per-user /ai-usage re-arm.
+     *      retry budget + re-dispatch), generalizing the per-user /devtools/ai-usage re-arm.
      *   2. Run ai:self-heal inline, which reverts stale in-flight zombies to
      *      Pending, sweeps the earliest Failed per-activity group oldest-first, and
      *      re-kicks every stalled family, instead of waiting for the next hour.
@@ -34,6 +36,8 @@ class RecoverCommand extends Command
      */
     public function handle(AnalysisService $service): int
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Recovery);
+
         $rearmed = $this->rearmDeadLettered($service);
         $this->info("Re-armed {$rearmed} dead-lettered blocks.");
 

@@ -58,11 +58,28 @@ const ENTRY_ALLOWED = ['rolldown-runtime', 'app', 'react-vendor'];
  * creep below that is deliberately not caught; a budget tight enough to
  * catch it would fire on ordinary feature growth and get raised on sight.
  */
+/*
+ * One entry per screen the prototype draws, which is also every screen a user
+ * can land on cold. It used to be four, chosen before the port; measured
+ * afterwards, History (200.4), Settings (199.6) and Plan (196.0) were all
+ * heavier than Profile (185.8), which *was* budgeted -- three of the app's
+ * heaviest routes were unguarded entirely. Budgets are the measured weight
+ * plus ~10%, rounded up to 5, which is tighter than the numbers they replace.
+ * Operator pages (Devtools, Devtools/Design, AiUsage) and the legal documents
+ * stay out, per P20.
+ */
 const ROUTE_BUDGETS_KB = [
-    { name: 'Login', src: 'resources/js/pages/Auth/Login.tsx', budgetKb: 160 },
-    { name: 'Today', src: 'resources/js/pages/Today.tsx', budgetKb: 240 },
-    { name: 'Runs/Show', src: 'resources/js/pages/Runs/Show.tsx', budgetKb: 245 },
-    { name: 'Profile', src: 'resources/js/pages/Profile.tsx', budgetKb: 230 },
+    { name: 'Login', src: 'resources/js/pages/Auth/Login.tsx', budgetKb: 155 },
+    { name: 'Onboarding', src: 'resources/js/pages/Onboarding/Index.tsx', budgetKb: 200 },
+    { name: 'Today', src: 'resources/js/pages/Home.tsx', budgetKb: 225 },
+    { name: 'Plan', src: 'resources/js/pages/Plan.tsx', budgetKb: 220 },
+    { name: 'Race', src: 'resources/js/pages/Race.tsx', budgetKb: 205 },
+    { name: 'Trends', src: 'resources/js/pages/Trends.tsx', budgetKb: 205 },
+    { name: 'History', src: 'resources/js/pages/History.tsx', budgetKb: 225 },
+    { name: 'Activity', src: 'resources/js/pages/Runs/Show.tsx', budgetKb: 230 },
+    { name: 'Inbox', src: 'resources/js/pages/Inbox.tsx', budgetKb: 200 },
+    { name: 'Profile', src: 'resources/js/pages/Profile.tsx', budgetKb: 205 },
+    { name: 'Settings', src: 'resources/js/pages/Settings/Index.tsx', budgetKb: 220 },
 ];
 
 if (!existsSync(manifestPath)) {

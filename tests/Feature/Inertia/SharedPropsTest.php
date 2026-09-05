@@ -27,8 +27,6 @@ it('shares every documented key on every response', function (): void {
         'flash',
         'demoLoginEnabled',
         'webPushPublicKey',
-        'equippedAccessories',
-        'pendingReveal',
         'activeRace',
         'stravaSync',
         'stravaPaused',
@@ -36,6 +34,7 @@ it('shares every documented key on every response', function (): void {
         'stravaZoneScopeMissing',
         'telegramConnected',
         'webPushSubscribed',
+        'unreadNotifications',
         'aiPaused',
         'aiCatchingUp',
     ]);
@@ -45,8 +44,8 @@ it('keeps every derived prop a closure so a partial reload can skip it', functio
     $props = sharedPropsFor(User::factory()->create());
 
     foreach ([
-        'equippedAccessories', 'pendingReveal', 'stravaSync',
-        'activeRace', 'hrZonesChangedAt', 'telegramConnected', 'webPushSubscribed',
+        'stravaSync',
+        'activeRace', 'hrZonesChangedAt', 'telegramConnected', 'webPushSubscribed', 'unreadNotifications',
         'stravaZoneScopeMissing', 'aiPaused', 'aiCatchingUp', 'stravaPaused',
     ] as $key) {
         expect($props[$key])->toBeInstanceOf(Closure::class);
@@ -72,18 +71,10 @@ it('answers with safe guest defaults when nobody is signed in', function (): voi
         ->and(($props['hrZonesChangedAt'])())->toBeNull()
         ->and(($props['telegramConnected'])())->toBeFalse()
         ->and(($props['webPushSubscribed'])())->toBeFalse()
+        ->and(($props['unreadNotifications'])())->toBe(0)
         ->and(($props['stravaZoneScopeMissing'])())->toBeFalse()
         ->and(($props['aiPaused'])())->toBeFalse()
-        ->and(($props['aiCatchingUp'])())->toBeFalse()
-        ->and(($props['pendingReveal'])())->toBeNull()
-        ->and(($props['equippedAccessories'])())->toBe([
-            'medal' => null,
-            'headband' => null,
-            'shirt' => null,
-            'shorts' => null,
-            'shoes' => null,
-            'aura' => null,
-        ]);
+        ->and(($props['aiCatchingUp'])())->toBeFalse();
 });
 
 it('loads none of the auth user relations when no prop asks for them', function (): void {

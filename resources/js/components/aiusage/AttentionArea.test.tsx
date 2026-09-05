@@ -18,7 +18,7 @@ const deadLetteredGroup: DeadLetterGroup = {
             failed_at: '2026-05-19T10:00:00+00:00',
         },
         {
-            type: 'pr_context',
+            type: 'card_flavor',
             error: null,
             failed_at: '2026-05-19T09:00:00+00:00',
         },
@@ -67,7 +67,7 @@ describe('AttentionArea', () => {
             screen.getByText('2 blocks stopped auto-retrying'),
         ).toBeInTheDocument();
         expect(screen.getByText('weekly_recap')).toBeInTheDocument();
-        expect(screen.getByText('pr_context')).toBeInTheDocument();
+        expect(screen.getByText('card_flavor')).toBeInTheDocument();
     });
 
     it('lists block types only, never the raw error text', () => {
@@ -94,7 +94,7 @@ describe('AttentionArea', () => {
                             failed_at: '2026-05-19T09:00:00+00:00',
                         },
                         {
-                            type: 'pr_context',
+                            type: 'card_flavor',
                             error: null,
                             failed_at: '2026-05-19T08:00:00+00:00',
                         },
@@ -106,8 +106,8 @@ describe('AttentionArea', () => {
         expect(
             screen.getByText('weekly_recap').closest('li')?.textContent,
         ).toBe('weekly_recap×2');
-        expect(screen.getByText('pr_context').closest('li')?.textContent).toBe(
-            'pr_context',
+        expect(screen.getByText('card_flavor').closest('li')?.textContent).toBe(
+            'card_flavor',
         );
     });
 
@@ -117,7 +117,7 @@ describe('AttentionArea', () => {
         fireEvent.click(screen.getByRole('button', { name: /Retry all/ }));
 
         expect(formMock.post).toHaveBeenCalledWith(
-            '/ai-usage/users/7/retry-failed',
+            '/devtools/ai-usage/users/7/retry-failed',
             expect.anything(),
         );
     });
@@ -188,7 +188,7 @@ describe('AttentionArea', () => {
         fireEvent.click(screen.getByRole('button', { name: /Recover all/ }));
 
         expect(formMock.post).toHaveBeenCalledWith(
-            '/ai-usage/recover',
+            '/devtools/ai-usage/recover',
             expect.anything(),
         );
     });

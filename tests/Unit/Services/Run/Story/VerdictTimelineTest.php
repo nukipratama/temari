@@ -62,7 +62,7 @@ it('skips a story line whose activity is still an un-ingested stub', function ()
         'user_id' => $user->id, 'activity_id' => $stub->id, 'kind' => StoryLine::KIND_POST_RUN,
         'mood' => Temari::MOOD_NYALA, 'speech' => null, 'sigil_pattern' => 'dddd',
     ]);
-    Analysis::factory()->done('ada ceritanya')->create([
+    Analysis::factory()->done('ada storynya')->create([
         'subject_type' => Activity::class, 'subject_id' => $stub->id,
         'analysis_type' => AnalysisType::PostRunSpeech, 'discriminator' => null,
     ]);
@@ -94,7 +94,7 @@ it('returns exactly the newest $limit activities when more qualify', function ()
     $user = User::factory()->create();
     $ids = [];
     foreach (range(1, 6) as $day) {
-        $ids[$day] = seedVerdict($user, Carbon::parse("2026-05-{$day} 06:00:00"), Temari::MOOD_NYALA, "hari {$day}", 5000.0)->id;
+        $ids[$day] = seedVerdict($user, Carbon::parse("2026-05-{$day} 06:00:00"), Temari::MOOD_NYALA, "day {$day}", 5000.0)->id;
     }
 
     $items = app(VerdictTimeline::class)->recent($user, 3);

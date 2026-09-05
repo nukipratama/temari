@@ -78,6 +78,7 @@ class NotificationPreference extends Model
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
             'notifications_enabled' => 'boolean',
             'telegram_enabled' => 'boolean',
             'push_enabled' => 'boolean',

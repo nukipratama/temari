@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
  * How a runner's moods were distributed over a window, newest concern first:
  * each mood with its run count and share, ordered by count descending.
  *
- * Read by the persona-mix and month-totals tools and by the Aku page's persona
+ * Read by the persona-mix and month-totals tools and by the Profile page's persona
  * bar. The three had grown their own copies of the same group-by; they agreed
  * with each other, but there is no reason for three.
  *

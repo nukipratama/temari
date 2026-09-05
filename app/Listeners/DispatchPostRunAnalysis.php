@@ -10,16 +10,18 @@ use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Carbon;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 /**
  * Owns the post-ingest AI analysis fan-out. Queued so it runs in its own job,
@@ -32,11 +34,14 @@ class DispatchPostRunAnalysis implements ShouldQueue
         private readonly AnalysisService $analysisService,
         private readonly WeeklyAggregator $weeklyAggregator,
         private readonly StaggerBackfillAction $staggerBackfill,
+        private readonly BackfillAgeGate $ageGate,
     ) {
     }
 
     public function handle(ActivityIngested $event): void
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
+
         $activity = Activity::query()->with(['detail', 'user', 'runCard'])->find($event->activityId);
         if ($activity === null || $activity->detail === null) {
             return;
@@ -44,14 +49,13 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
         $user = $activity->user;
         $detail = $activity->detail;
-        $tooOld = $this->isTooOldForRealNarration($detail);
+        $tooOld = $this->ageGate->isTooOld($detail->start_date_local);
 
         $today = Carbon::today()->toDateString();
         $isBackfill = $this->isBackfill($detail);
         $delaySec = $isBackfill ? ($this->staggerBackfill)($activity->user_id) : 0;
         $isToday = $detail->start_date_local?->toDateString() === $today;
 
-        $this->requestPrContext($activity, $tooOld, $delaySec);
         $this->requestCardFlavor($activity, $tooOld, $delaySec);
 
         $this->dispatchActivityGroup($activity, $isBackfill, $tooOld, $delaySec);
@@ -63,9 +67,9 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $this->analysisService->requestBriefing($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
 
         $this->analysisService->request(
-            subjectOrType: AnalysisType::AkuProfileVoice->subjectType(),
+            subjectOrType: AnalysisType::ProfileVoice->subjectType(),
             subjectId: $user->id,
-            type: AnalysisType::AkuProfileVoice,
+            type: AnalysisType::ProfileVoice,
             discriminator: AnalysisType::currentIsoWeek(),
             delaySeconds: $delaySec,
             invalidate: false,
@@ -79,7 +83,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
             // Weekly cadence: regenerating the recap of a still-unfinished week
             // on every run was the single biggest LLM re-bill. The row is staged
             // Pending here; ai:weekly-recap narrates it once the week closes.
-            // "Baca ulang" can still force a mid-week narration on demand.
+            // "Reread" can still force a mid-week narration on demand.
             $this->analysisService->requestDeferred(
                 WeeklySnapshot::class,
                 $snapshot->id,
@@ -97,44 +101,6 @@ class DispatchPostRunAnalysis implements ShouldQueue
                 $user->id,
                 AnalysisType::MonthlyRecap,
                 $detail->start_date_local->format('Y-m'),
-            );
-        }
-    }
-
-    /**
-     * The records this run currently holds, i.e. the ones its ingest just beat.
-     *
-     * invalidate:false so a chronological backfill (each historical run
-     * beats the same category record in turn) does not re-bill pr_context on
-     * every beat: the idempotency guard skips a row that is already Done. The
-     * narrator reads the live PR row at job time, so a still-pending row
-     * narrates the LATEST value regardless of how many beats preceded it.
-     */
-    private function requestPrContext(Activity $activity, bool $tooOld, int $delaySec): void
-    {
-        $prIds = PersonalRecord::query()
-            ->where('activity_id', $activity->id)
-            ->orderBy('id')
-            ->pluck('id');
-
-        foreach ($prIds as $prId) {
-            if ($tooOld) {
-                $this->analysisService->requestRuleBased(
-                    subjectOrType: PersonalRecord::class,
-                    subjectId: (int) $prId,
-                    type: AnalysisType::PrContext,
-                    refillDone: false,
-                );
-
-                continue;
-            }
-
-            $this->analysisService->request(
-                subjectOrType: PersonalRecord::class,
-                subjectId: (int) $prId,
-                type: AnalysisType::PrContext,
-                delaySeconds: $delaySec,
-                invalidate: false,
             );
         }
     }
@@ -184,23 +150,6 @@ class DispatchPostRunAnalysis implements ShouldQueue
     }
 
     /**
-     * An activity older than `ai.backfill_max_age_days` gets the deterministic
-     * rule-based filler instead of a real LLM call — nobody's checking back on
-     * narration for a year-old run, and it keeps every chain's depth bounded.
-     */
-    private function isTooOldForRealNarration(ActivityDetail $detail): bool
-    {
-        $startedAt = $detail->start_date_local;
-        if ($startedAt === null) {
-            return false;
-        }
-
-        $maxAgeDays = (int) config('ai.backfill_max_age_days');
-
-        return Carbon::now()->diffInDays($startedAt, absolute: true) >= $maxAgeDays;
-    }
-
-    /**
      * Backfilled (old) runs stage their narration group Pending and let the
      * chain narrate them one activity at a time, oldest first: each ingest
      * stages its own group, and the kickoff dispatches the user's earliest
@@ -209,8 +158,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
      * cost ceiling is a clean no-op, never the filler branch). Steady-state
      * (fresh) runs keep the existing single immediate dispatch + graceful
      * prev-lookup (the prior activity is already Done).
-     */
-    /**
+     *
      * A fresh (non-backfill) ingest still joins the chain instead of firing
      * immediately when an older link for this user is already unresolved —
      * otherwise a live run can narrate ahead of an in-progress backfill,
@@ -251,7 +199,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
      * narrated — and its re-narrate cooldown has elapsed — invalidate the Done
      * group so it re-narrates the corrected data; otherwise it's a no-op, never
      * re-billing on Strava's byte-level jitter. Older runs are left to the manual
-     * "Baca ulang" so the connected story that quotes them doesn't desync.
+     * "Reread" so the connected story that quotes them doesn't desync.
      */
     private function maybeRefreshActivityGroup(Activity $activity): void
     {

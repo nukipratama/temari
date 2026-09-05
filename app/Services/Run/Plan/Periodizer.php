@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
+use App\Models\TrainingPreference;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +26,11 @@ use Illuminate\Support\Facades\DB;
  *   is planned around them.
  * - A mode switch (race set/cleared) only takes effect at the next call —
  *   this method always reads the CURRENT active race fresh.
+ * - The plan reacts to what actually happened: {@see PlanAdapter} can turn
+ *   the current week into a real {@see PlanPhase::Deload} (fewer km, no
+ *   quality work) and resize every week's quality block against the race
+ *   projection. Its verdict is recorded as a {@see PlanAdaptation} row so
+ *   the Plan tab can explain the week it produced.
  */
 final readonly class Periodizer
 {
@@ -38,6 +46,7 @@ final readonly class Periodizer
         private PhaseSchedule $phaseSchedule,
         private WeekPlanBuilder $weekPlanBuilder,
         private SeasonService $seasonService,
+        private PlanAdapter $planAdapter,
     ) {
     }
 
@@ -53,11 +62,17 @@ final readonly class Periodizer
         $this->seasonService->ensureCurrent($user, $today);
 
         $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
-        $sessionsPerWeek = $this->baseline->forUser($user, $today)['sessions_per_week'];
+        $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
+        $baselineData = $this->baseline->forUser($user, $today);
+        $sessionsPerWeek = $baselineData['sessions_per_week'];
+
+        $adaptation = $this->planAdapter->forWeek($user, $currentWeekStart, $today, $race);
 
         $weeks = $race !== null
             ? array_slice($this->phaseSchedule->forRace($today, $race->race_date, (float) $race->distance_m), 0, self::HORIZON_WEEKS)
             : $this->phaseSchedule->selfScaled($today, self::HORIZON_WEEKS);
+
+        $weeks = self::applyDeload($weeks, $adaptation['deload']);
 
         $pinnedDates = array_fill_keys(
             PlannedSession::query()
@@ -82,13 +97,16 @@ final readonly class Periodizer
                 $raceDistanceM,
                 $race === null,
                 $today,
+                $adaptation['quality_delta'],
+                $preference?->run_days,
+                $preference?->long_run_day,
             );
             foreach ($weekRows as $date => $row) {
                 $rows[$date] = $row;
             }
         }
 
-        DB::transaction(function () use ($user, $today, $deleteHorizonEnd, $rows): void {
+        DB::transaction(function () use ($user, $today, $currentWeekStart, $deleteHorizonEnd, $rows, $adaptation): void {
             // Clear the full horizon's stale unpinned rows (not just the
             // freshly-computed weeks) so a shrinking horizon — e.g. a
             // self-scaled plan's far-future weeks after the user sets a
@@ -105,13 +123,41 @@ final readonly class Periodizer
                     [
                         'phase' => $row['phase'],
                         'session_type' => $row['session_type'],
-                        'distance_band' => $row['distance_band'],
-                        'pace_band' => $row['pace_band'],
                         'pinned' => false,
                         'status' => PlannedSessionStatus::Planned,
                     ],
                 );
             }
+
+            PlanAdaptation::query()->updateOrCreate(
+                ['user_id' => $user->id, 'week_start' => $currentWeekStart->toDateString()],
+                [
+                    'reason' => $adaptation['reason'],
+                    'deload' => $adaptation['deload'],
+                    'quality_delta' => $adaptation['quality_delta'],
+                    'adherence_pct' => $adaptation['adherence_pct'],
+                ],
+            );
         });
+    }
+
+    /**
+     * Turns the current week into a real deload. Taper weeks are left alone:
+     * they are already a planned reduction counting down to race day, and
+     * restarting the taper curve from a deload multiplier would leave the
+     * athlete under-stimulated going in.
+     *
+     * @param  list<array{week_start: Carbon, phase: PlanPhase}>  $weeks
+     * @return list<array{week_start: Carbon, phase: PlanPhase}>
+     */
+    private static function applyDeload(array $weeks, bool $deload): array
+    {
+        if (! $deload || $weeks === [] || $weeks[0]['phase'] === PlanPhase::Taper) {
+            return $weeks;
+        }
+
+        $weeks[0]['phase'] = PlanPhase::Deload;
+
+        return $weeks;
     }
 }

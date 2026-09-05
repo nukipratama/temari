@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\Api\CardReplayController;
-use App\Http\Controllers\Api\CardSeenController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
 use App\Http\Controllers\Notifications\Concerns\PushesAnalysisNotification;
@@ -17,9 +15,8 @@ use App\Services\AI\ChatCallOptions;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Actions\AI\RecordTokenUsageAction;
 use App\Services\Geo\ResolvedLocation;
-use App\Services\Run\JejakFilters;
+use App\Services\Run\FeedFilters;
 use App\Services\Run\Metrics\PaceFormatter;
-use App\Services\Gamification\WeeklyRecap;
 use App\Livewire\Pulse\Concerns\SumsPulseTotals;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousDailyNarrative;
@@ -51,8 +48,6 @@ it('has a test class for every concrete app class', function (): void {
     // Concrete classes intentionally without their own {Name}Test file.
     $exemptClasses = [
         // Controllers exercised by behaviour-named feature tests.
-        CardSeenController::class,    // CardSeenTest
-        CardReplayController::class,  // CardSeenTest (replay cases)
         LoginController::class,       // auth feature tests
         StravaAuthController::class,  // StravaAuthTest
         HandleInertiaRequests::class, // framework wiring
@@ -64,8 +59,7 @@ it('has a test class for every concrete app class', function (): void {
         BriefingResult::class,
         VerdictTimelineItem::class,
         WeatherSnapshot::class,
-        JejakFilters::class,          // resolved Jejak filter state, asserted via JejakQueryTest
-        WeeklyRecap::class,             // shaped recap DTO, built + asserted via WeeklyRecapBuilderTest
+        FeedFilters::class,          // resolved Feed filter state, asserted via FeedQueryTest
         NotifiableAnalysisTypes::class, // shared type registry, asserted via NotificationEligibilityTest + AnalysisMessagePresenterTest
         // Covered indirectly by the suites that drive them.
         TokenUsage::class,              // StructuredChatCallerTest

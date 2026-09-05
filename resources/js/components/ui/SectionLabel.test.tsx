@@ -5,8 +5,8 @@ import SectionLabel from './SectionLabel';
 
 describe('SectionLabel', () => {
     it('renders children + trailing rule', () => {
-        const { container } = render(<SectionLabel>Hari ini</SectionLabel>);
-        expect(screen.getByText('Hari ini')).toBeInTheDocument();
+        const { container } = render(<SectionLabel>Today</SectionLabel>);
+        expect(screen.getByText('Today')).toBeInTheDocument();
         // label span + divider span
         expect(container.querySelectorAll('span').length).toBe(2);
         expect(container.firstElementChild).toHaveClass('text-label-small');
@@ -18,7 +18,9 @@ describe('SectionLabel', () => {
     });
 
     it('renders a leading dot instead of the divider when dot is set', () => {
-        const { container } = render(<SectionLabel dot>Kondisi</SectionLabel>);
+        const { container } = render(
+            <SectionLabel dot>Training load</SectionLabel>,
+        );
         const dot = container.querySelector('[aria-hidden]');
         expect(dot).not.toBeNull();
         expect(dot).toHaveClass('rounded-full');

@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Builds the /ai-usage reporting payload from the analytics-schema
+ * Builds the /devtools/ai-usage reporting payload from the analytics-schema
  * `ai_token_usages` table: totals, per-kind, per-deployment, per-user, daily,
  * the kind filter options, and $ cost. user_id lives in the analytics schema
  * while user names live in the app schema, so per-user rows are aggregated first
@@ -24,8 +24,10 @@ use Illuminate\Support\Facades\DB;
  */
 class TokenUsageReport
 {
-    public function __construct(private readonly LlmCostCalculator $costCalculator)
-    {
+    public function __construct(
+        private readonly LlmCostCalculator $costCalculator,
+        private readonly CostCeilingLedger $ceilingLedger,
+    ) {
     }
 
     /**
@@ -36,17 +38,23 @@ class TokenUsageReport
      *     byDeployment: list<array{deployment:string, prompt:int, completion:int, total:int, calls:int, cost:float, inputPer1m:float|null, outputPer1m:float|null}>,
      *     byUser: list<array{user_id:int, user_name:string|null, strava_athlete_id:int|null, deleted:bool, prompt:int, completion:int, total:int, calls:int}>,
      *     daily: list<array{day:string, prompt:int, completion:int, total:int, calls:int, cost:float}>,
-     *     availableKinds: list<array{value:string, label:string}>,
-     *     budget: array{todayCost:float, dailyCeiling:float|null, currency:string},
+     *     byOrigin: list<array{origin:string, label:string, prompt:int, completion:int, total:int, calls:int, cost:float}>,
+ *     availableKinds: list<array{value:string, label:string}>,
+ *     availableOrigins: list<array{value:string, label:string}>,
+     *     budget: array{todayCost:float, dailyCeiling:float|null, currency:string, trippedAt:string|null, degradedFills:int},
      * }
      */
-    public function build(Carbon $from, Carbon $to, ?string $kind, bool $includePrevious = true): array
+    public function build(Carbon $from, Carbon $to, ?string $kind, bool $includePrevious = true, ?string $origin = null): array
     {
         $baseQuery = DB::connection('analytics')->table('ai_token_usages')
             ->whereBetween('created_at', [$from, $to]);
 
         if ($kind !== null) {
             $baseQuery->where('kind', $kind);
+        }
+
+        if ($origin !== null) {
+            $baseQuery->where('origin', $origin);
         }
 
         $aggregate = $this->aggregate($baseQuery);
@@ -59,11 +67,14 @@ class TokenUsageReport
             'byDeployment' => $aggregate['byDeployment'],
             'byUser' => $this->byUser($baseQuery),
             'daily' => $this->daily($from, $to),
+            'byOrigin' => $this->byOrigin($baseQuery),
             'availableKinds' => $this->availableKinds($from, $to),
+            'availableOrigins' => $this->availableOrigins($from, $to),
             'budget' => [
                 'todayCost' => $this->costCalculator->dailyCost(),
                 'dailyCeiling' => $ceiling === null ? null : (float) $ceiling,
                 'currency' => 'USD', // Prices are quoted in USD.
+                ...$this->ceilingLedger->today(),
             ],
         ];
     }
@@ -98,7 +109,7 @@ class TokenUsageReport
 
         /** @var array<string, array{kind:string, prompt:int, completion:int, total:int, calls:int, truncated_calls:int, cached:int, reasoning:int, steps:int, avg_sum:float, latency_calls:int, max_latency_ms:int|null, cost:float}> $kinds */
         $kinds = [];
-        /** @var array<string, array{prompt:int, completion:int, total:int, calls:int}> $models */
+        /** @var array<string, array{prompt:int, completion:int, total:int, calls:int, cached:int}> $models */
         $models = [];
         foreach ($rows as $row) {
             $kindKey = (string) $row->kind;
@@ -141,12 +152,13 @@ class TokenUsageReport
             }
 
             if (! isset($models[$modelKey])) {
-                $models[$modelKey] = ['prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0];
+                $models[$modelKey] = ['prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0, 'cached' => 0];
             }
             $models[$modelKey]['prompt'] += $prompt;
             $models[$modelKey]['completion'] += $completion;
             $models[$modelKey]['total'] += (int) $row->total;
             $models[$modelKey]['calls'] += (int) $row->calls;
+            $models[$modelKey]['cached'] += $cached;
 
             $totals['prompt'] += $prompt;
             $totals['completion'] += $completion;
@@ -207,7 +219,7 @@ class TokenUsageReport
      * Per-deployment (model) breakdown with $ cost, ordered by total tokens,
      * built from the already-scanned (kind, model) rows.
      *
-     * @param  array<string, array{prompt:int, completion:int, total:int, calls:int}>  $models
+     * @param  array<string, array{prompt:int, completion:int, total:int, calls:int, cached:int}>  $models
      * @return list<array{deployment:string, prompt:int, completion:int, total:int, calls:int, cost:float, inputPer1m:float|null, outputPer1m:float|null}>
      */
     private function byDeployment(array $models): array
@@ -221,7 +233,7 @@ class TokenUsageReport
                 'completion' => $m['completion'],
                 'total' => $m['total'],
                 'calls' => $m['calls'],
-                'cost' => $this->costCalculator->costFor($deployment, $m['prompt'], $m['completion']),
+                'cost' => $this->costCalculator->costFor($deployment, $m['prompt'], $m['completion'], $m['cached']),
                 'inputPer1m' => $rate['input_per_1m'] ?? null,
                 'outputPer1m' => $rate['output_per_1m'] ?? null,
             ];
@@ -253,7 +265,7 @@ class TokenUsageReport
 
         $rows = $query->selectRaw(
             'model, SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, '.
-            'SUM(total_tokens) as total, COUNT(*) as calls'
+            'SUM(total_tokens) as total, COUNT(*) as calls, SUM(cached_tokens) as cached'
         )->groupBy('model')->get();
 
         $totals = ['prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0, 'cost' => 0.0];
@@ -264,7 +276,7 @@ class TokenUsageReport
             $totals['completion'] += $completion;
             $totals['total'] += (int) $row->total;
             $totals['calls'] += (int) $row->calls;
-            $totals['cost'] += $this->costCalculator->costFor((string) $row->model, $prompt, $completion);
+            $totals['cost'] += $this->costCalculator->costFor((string) $row->model, $prompt, $completion, (int) $row->cached);
         }
 
         return $totals;
@@ -341,7 +353,7 @@ class TokenUsageReport
             ->selectRaw(
                 'DATE(created_at) as day, model, '.
                 'SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, '.
-                'SUM(total_tokens) as total, COUNT(*) as calls'
+                'SUM(total_tokens) as total, COUNT(*) as calls, SUM(cached_tokens) as cached'
             )
             ->groupByRaw('DATE(created_at), model')
             ->orderBy('day')
@@ -362,10 +374,78 @@ class TokenUsageReport
             $days[$day]['completion'] += $completion;
             $days[$day]['total'] += (int) $row->total;
             $days[$day]['calls'] += (int) $row->calls;
-            $days[$day]['cost'] += $this->costCalculator->costFor((string) $row->model, $prompt, $completion);
+            $days[$day]['cost'] += $this->costCalculator->costFor((string) $row->model, $prompt, $completion, (int) $row->cached);
         }
 
         return array_values($days);
+    }
+
+    /**
+     * Spend split by what started the call, the dimension `kind` cannot express:
+     * one narrator answers the ingest cascade, a user's "Reread" and the hourly
+     * self-heal alike. Costed per (origin, model), since deployments price
+     * differently and an origin can span several.
+     *
+     * @param  Builder  $baseQuery
+     * @return list<array{origin:string, label:string, prompt:int, completion:int, total:int, calls:int, cost:float}>
+     */
+    private function byOrigin(Builder $baseQuery): array
+    {
+        $rows = (clone $baseQuery)
+            ->selectRaw(
+                'origin, model, SUM(prompt_tokens) AS prompt, SUM(cached_tokens) AS cached, '
+                .'SUM(completion_tokens) AS completion, SUM(total_tokens) AS total, COUNT(*) AS calls'
+            )
+            ->groupBy('origin', 'model')
+            ->get();
+
+        $byOrigin = [];
+        foreach ($rows as $row) {
+            $key = (string) $row->origin;
+            $byOrigin[$key] ??= ['prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0, 'cost' => 0.0];
+            $byOrigin[$key]['prompt'] += (int) $row->prompt;
+            $byOrigin[$key]['completion'] += (int) $row->completion;
+            $byOrigin[$key]['total'] += (int) $row->total;
+            $byOrigin[$key]['calls'] += (int) $row->calls;
+            $byOrigin[$key]['cost'] += $this->costCalculator->costFor(
+                (string) $row->model,
+                (int) $row->prompt,
+                (int) $row->completion,
+                (int) $row->cached,
+            );
+        }
+
+        $out = [];
+        foreach ($byOrigin as $origin => $sums) {
+            $out[] = [
+                'origin' => $origin,
+                'label' => AnalysisOrigin::tryFrom($origin)?->label() ?? $origin,
+                ...$sums,
+            ];
+        }
+
+        usort($out, fn (array $a, array $b): int => $b['total'] <=> $a['total']);
+
+        return $out;
+    }
+
+    /**
+     * The origins present in the range, for the filter dropdown.
+     *
+     * @return list<array{value:string, label:string}>
+     */
+    private function availableOrigins(Carbon $from, Carbon $to): array
+    {
+        return array_values(DB::connection('analytics')->table('ai_token_usages')
+            ->whereBetween('created_at', [$from, $to])
+            ->distinct()
+            ->orderBy('origin')
+            ->pluck('origin')
+            ->map(fn (string $o): array => [
+                'value' => $o,
+                'label' => AnalysisOrigin::tryFrom($o)?->label() ?? $o,
+            ])
+            ->all());
     }
 
     /**

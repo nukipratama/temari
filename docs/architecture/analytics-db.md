@@ -70,7 +70,7 @@ so `user_id` is a bare nullable integer.
 
 Because nothing constrains it, a usage row outlives the account it belonged to. `user_name`
 and `strava_athlete_id` are stamped onto those rows by [UserEraser](app/Services/User/UserEraser.php)
-as the user is deleted, so `/ai-usage` can still attribute the spend. They stay **null while
+as the user is deleted, so `/devtools/ai-usage` can still attribute the spend. They stay **null while
 the account exists** — [TokenUsageReport](app/Services/AI/TokenUsageReport.php) resolves live
 identity from `users` / `strava_connections` instead, so a rename never goes stale here.
 

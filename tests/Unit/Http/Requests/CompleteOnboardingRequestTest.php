@@ -22,8 +22,11 @@ function onboardingRequestPayload(array $overrides = []): array
 function validateOnboarding(array $payload): Illuminate\Validation\Validator
 {
     $request = new CompleteOnboardingRequest();
+    $validator = Validator::make($payload, $request->rules(), $request->messages());
+    $request->setValidator($validator);
+    $request->withValidator($validator);
 
-    return Validator::make($payload, $request->rules(), $request->messages());
+    return $validator;
 }
 
 it('authorizes the request', function (): void {
@@ -70,4 +73,29 @@ it('rejects a goal time below 5 minutes or above 72 hours', function (): void {
 
 it('rejects a name longer than 120 characters', function (): void {
     expect(validateOnboarding(onboardingRequestPayload(['name' => str_repeat('a', 121)]))->fails())->toBeTrue();
+});
+
+it('passes a fully filled-in training preferences step', function (): void {
+    $payload = onboardingRequestPayload([
+        'experience_level' => 'new_to_running',
+        'sessions_per_week' => 3,
+        'goal_type' => 'consistent',
+        'run_days' => [1, 3, 5],
+        'long_run_day' => 5,
+    ]);
+
+    expect(validateOnboarding($payload)->passes())->toBeTrue();
+});
+
+it('rejects an invalid experience_level or goal_type value', function (): void {
+    expect(validateOnboarding(onboardingRequestPayload(['experience_level' => 'pro']))->fails())->toBeTrue()
+        ->and(validateOnboarding(onboardingRequestPayload(['goal_type' => 'glory']))->fails())->toBeTrue();
+});
+
+it('rejects a run_days count that does not match sessions_per_week', function (): void {
+    expect(validateOnboarding(onboardingRequestPayload(['sessions_per_week' => 4, 'run_days' => [1, 3, 5]]))->fails())->toBeTrue();
+});
+
+it('rejects a long_run_day that is not one of the chosen run_days', function (): void {
+    expect(validateOnboarding(onboardingRequestPayload(['run_days' => [1, 3, 5], 'long_run_day' => 2]))->fails())->toBeTrue();
 });

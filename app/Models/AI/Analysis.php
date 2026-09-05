@@ -56,15 +56,15 @@ class Analysis extends Model
     /**
      * Max real LLM executions before ai:self-heal gives up on a Failed row and
      * dead-letters it for a manual retry. `attempts` bumps once per job run
-     * (markProcessing) and resets to 0 on invalidate, so a manual "Baca ulang"
+     * (markProcessing) and resets to 0 on invalidate, so a manual "Reread"
      * re-arms the budget; capped no-op dispatches never touch it.
      */
     public const int MAX_SELF_HEAL_ATTEMPTS = 3;
 
     /**
      * How long a Queued/Processing row may sit before it counts as a lost-queue
-     * zombie ({@see self::scopeStaleInFlight()}), and how long a Pending/Queued
-     * row may sit before /ai-usage surfaces it as "Nyangkut". Well beyond the
+     * zombie ({@see self::staleInFlight()}), and how long a Pending/Queued
+     * row may sit before /devtools/ai-usage surfaces it as "Nyangkut". Well beyond the
      * job's tries + backoff + Retry-After cap, so a genuinely in-flight row is
      * never yanked mid-attempt.
      */
@@ -78,10 +78,12 @@ class Analysis extends Model
     protected function casts(): array
     {
         return [
+            'subject_id' => 'integer',
             'analysis_type' => AnalysisType::class,
             'status' => AnalysisStatus::class,
             'generated_at' => 'datetime',
             'queued_at' => 'datetime',
+            'attempts' => 'integer',
         ];
     }
 
@@ -145,7 +147,7 @@ class Analysis extends Model
 
     /**
      * Rows ai:self-heal has given up on: Failed with the retry budget exhausted.
-     * These surface on /ai-usage for a manual per-user re-arm.
+     * These surface on /devtools/ai-usage for a manual per-user re-arm.
      *
      * @param  Builder<Analysis>  $query
      * @return Builder<Analysis>
@@ -189,7 +191,8 @@ class Analysis extends Model
     /**
      * Seconds left before this row may be re-triggered, or null if no cooldown
      * applies. Only a Done row can cool; the window is a Redis-backed
-     * {@see Cooldown} started at {@see AnalysisService::markDone()}.
+     * {@see Cooldown} started at
+     * {@see \App\Services\AI\AnalysisService::markDone()}.
      */
     public function cooldownRemaining(): ?int
     {
@@ -202,8 +205,8 @@ class Analysis extends Model
 
     /**
      * Opens this row's re-trigger cooldown window. Called from
-     * {@see AnalysisService::markDone()} so a "Baca ulang" can't re-fire the
-     * LLM for the same block until the window elapses.
+     * {@see \App\Services\AI\AnalysisService::markDone()} so a "Reread"
+     * can't re-fire the LLM for the same block until the window elapses.
      */
     public function startCooldown(): void
     {
@@ -330,8 +333,8 @@ class Analysis extends Model
     /**
      * Remaining manual-send cooldown for a {@see self::toPayload()} array, or
      * null when there is no row or it is not Done (only a Done row is ever
-     * pushed, so only it can cool). Surfaced next to the manual "Kirim
-     * notifikasi" button so it renders a disabled countdown.
+     * pushed, so only it can cool). Surfaced next to the manual "Send
+     * notification" button so it renders a disabled countdown.
      *
      * @param  array<string, mixed>  $payload
      */

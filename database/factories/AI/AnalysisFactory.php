@@ -15,8 +15,6 @@ use Override;
  */
 class AnalysisFactory extends Factory
 {
-    protected $model = Analysis::class;
-
     /** @return array<string, mixed> */
     #[Override]
     public function definition(): array

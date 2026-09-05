@@ -14,9 +14,6 @@ use Override;
  */
 class UserUnlockFactory extends Factory
 {
-    #[Override]
-    protected $model = UserUnlock::class;
-
     /** @return array<string, mixed> */
     #[Override]
     public function definition(): array
@@ -27,13 +24,5 @@ class UserUnlockFactory extends Factory
             'unlocked_at' => now(),
             'metadata' => null,
         ];
-    }
-
-    /**
-     * An unlock the user has equipped to their mascot.
-     */
-    public function equipped(): static
-    {
-        return $this->state(fn (): array => ['equipped' => true]);
     }
 }

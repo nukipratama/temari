@@ -8,6 +8,7 @@ use App\Models\Season;
 use App\Models\User;
 use App\Models\UserUnlock;
 use App\Services\Gamification\SeasonGamificationContext;
+use App\Services\Gamification\SeasonGoalResolver;
 use App\Services\Run\Plan\SeasonService;
 use Illuminate\Support\Carbon;
 
@@ -25,26 +26,33 @@ use Illuminate\Support\Carbon;
  * activity, not a new one arriving), so it's invoked opportunistically on the
  * read paths that already compute a {@see SeasonGamificationContext}: the
  * Plan tab's season summary and the badge board.
+ *
+ * The season track (`season.{id}.track_{N}`, one tier per completed
+ * {@see \App\Models\SeasonGoal}) extends that same per-season namespace for the
+ * same reason: the 25 lifetime keys are claimed 1:1 by `config/temari_goals.php`
+ * and granted once forever, so a track paying out of that catalog would have
+ * nothing left to give a returning user.
  */
 class GrantSeasonUnlocksAction
 {
+    public function __construct(
+        private readonly SeasonGoalResolver $goalResolver,
+    ) {
+    }
+
     /** @return list<string> */
     public function __invoke(User $user, Season $season, SeasonGamificationContext $ctx): array
     {
-        $prefix = "season.{$season->id}.rest_honored_";
-
         $already = UserUnlock::query()
             ->where('user_id', $user->id)
-            ->where('unlock_key', 'like', "{$prefix}%")
+            ->where('unlock_key', 'like', "season.{$season->id}.%")
             ->pluck('unlock_key')
             ->all();
 
-        $eligible = [];
-        foreach (SeasonService::REST_HONORED_THRESHOLDS as $threshold) {
-            if ($ctx->restHonored >= $threshold) {
-                $eligible[] = $prefix.$threshold;
-            }
-        }
+        $eligible = [
+            ...$this->restHonoredKeys($season, $ctx),
+            ...$this->trackKeys($user, $season, $ctx),
+        ];
 
         $new = array_values(array_diff($eligible, $already));
         if ($new === []) {
@@ -62,5 +70,42 @@ class GrantSeasonUnlocksAction
         ], $new));
 
         return $new;
+    }
+
+    /** @return list<string> */
+    private function restHonoredKeys(Season $season, SeasonGamificationContext $ctx): array
+    {
+        $keys = [];
+        foreach (SeasonService::REST_HONORED_THRESHOLDS as $threshold) {
+            if ($ctx->restHonored >= $threshold) {
+                $keys[] = "season.{$season->id}.rest_honored_{$threshold}";
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
+     * One track tier per completed season goal. Goal targets are generated
+     * scaled to the season's own length, so a short race-oriented season and a
+     * 12-week self-scaled one both run a comparable 0..n track.
+     *
+     * @return list<string>
+     */
+    private function trackKeys(User $user, Season $season, SeasonGamificationContext $ctx): array
+    {
+        $completed = 0;
+        foreach ($this->goalResolver->forSeason($user, $season, $ctx) as $goal) {
+            if ($goal['is_completed']) {
+                $completed++;
+            }
+        }
+
+        $keys = [];
+        for ($tier = 1; $tier <= $completed; $tier++) {
+            $keys[] = "season.{$season->id}.track_{$tier}";
+        }
+
+        return $keys;
     }
 }

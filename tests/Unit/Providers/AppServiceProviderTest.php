@@ -69,6 +69,23 @@ it('strava-sync limiter falls back to IP when unauthenticated', function (): voi
         ->and($limit->maxAttempts)->toBe(2);
 });
 
+it('strava-oauth limiter caps at 10/min, keyed by IP', function (): void {
+    $request = Request::create('/auth/strava/callback', 'GET', server: ['REMOTE_ADDR' => '203.0.113.7']);
+
+    $limit = RateLimiter::limiter('strava-oauth')($request);
+
+    expect($limit)->toBeInstanceOf(Limit::class)
+        ->and($limit->key)->toBe('203.0.113.7')
+        ->and($limit->maxAttempts)->toBe(10);
+});
+
+it('strava-oauth limiter stays IP-keyed for an already-signed-in reconnect', function (): void {
+    $request = Request::create('/auth/strava/callback', 'GET', server: ['REMOTE_ADDR' => '198.51.100.4']);
+    $request->setUserResolver(fn () => User::factory()->make(['id' => 7]));
+
+    expect(RateLimiter::limiter('strava-oauth')($request)->key)->toBe('198.51.100.4');
+});
+
 it('client-errors limiter caps at 10/min, keyed by IP', function (): void {
     $request = Request::create('/client-errors', 'POST', server: ['REMOTE_ADDR' => '203.0.113.7']);
 

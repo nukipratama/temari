@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
-use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\StravaConnection;
 use App\Models\User;
@@ -26,25 +25,28 @@ function analysesForEverySubjectShape(User $user): void
     $activity = Activity::factory()->for($user)->analyzed()->create();
     $card = RunCard::factory()->create(['activity_id' => $activity->id]);
     $snapshot = WeeklySnapshot::factory()->for($user)->create();
-    $record = PersonalRecord::factory()->for($user)->create();
 
     foreach ([
         [Activity::class, $activity->id, AnalysisType::PostRunSpeech],
         [RunCard::class, $card->id, AnalysisType::CardFlavor],
         [WeeklySnapshot::class, $snapshot->id, AnalysisType::WeeklyRecap],
-        [PersonalRecord::class, $record->id, AnalysisType::PrContext],
         [AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice],
         ['daily_greeting_user_day', $user->id, AnalysisType::BriefingMascotVoice],
         ['trend_caption_user_day', $user->id, AnalysisType::BriefingMascotVoice],
         ['persona_summary_user', $user->id, AnalysisType::BriefingMascotVoice],
-        [AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::AkuProfileVoice],
+        [AnalysisType::PROFILE_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::ProfileVoice],
         [AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap],
+        [AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead],
     ] as [$subjectType, $subjectId, $type]) {
         Analysis::factory()->done('x')->create([
             'subject_type' => $subjectType,
             'subject_id' => $subjectId,
             'analysis_type' => $type,
-            'discriminator' => $type === AnalysisType::MonthlyRecap ? '2026-05' : null,
+            'discriminator' => match ($type) {
+                AnalysisType::MonthlyRecap => '2026-05',
+                AnalysisType::TrendRead => '30d',
+                default => null,
+            },
         ]);
     }
 }
@@ -148,7 +150,7 @@ it('stamps the name and Strava id onto cost history before the account goes', fu
 });
 
 it('stamps a null Strava id for an account that never connected one', function (): void {
-    $user = User::factory()->create(['name' => 'Belum Nyambung']);
+    $user = User::factory()->create(['name' => 'Not connected']);
     TokenUsage::query()->create([
         'user_id' => $user->id,
         'kind' => 'briefing',
@@ -160,13 +162,13 @@ it('stamps a null Strava id for an account that never connected one', function (
     app(UserEraser::class)->erase($user);
 
     $row = TokenUsage::query()->where('user_id', $user->id)->sole();
-    expect($row->user_name)->toBe('Belum Nyambung')
+    expect($row->user_name)->toBe('Not connected')
         ->and($row->strava_athlete_id)->toBeNull();
 });
 
 it('leaves another user cost history unstamped', function (): void {
     $user = User::factory()->create();
-    $bystander = User::factory()->create(['name' => 'Masih Lari']);
+    $bystander = User::factory()->create(['name' => 'Still Running']);
     TokenUsage::query()->create([
         'user_id' => $bystander->id,
         'kind' => 'briefing',

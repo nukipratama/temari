@@ -22,7 +22,7 @@ describe('clientErrorReporter', () => {
         reportClientError({
             message: 'boom',
             stack: 'at x',
-            url: 'https://t/aktivitas',
+            url: 'https://t/activities',
             componentStack: 'in Page',
         });
 
@@ -39,7 +39,7 @@ describe('clientErrorReporter', () => {
         );
         expect(body).toMatchObject({
             message: 'boom',
-            url: 'https://t/aktivitas',
+            url: 'https://t/activities',
         });
     });
 

@@ -13,7 +13,6 @@ interface PillLinkProps {
     size?: 'sm' | 'md';
     /** Switch ghost to a cream-on-sky variant. */
     onSky?: boolean;
-    preserveScroll?: boolean;
     /** Fires on click (e.g. dismiss a modal before navigating). */
     onClick?: () => void;
     className?: string;
@@ -30,14 +29,12 @@ export default function PillLink({
     tone = 'sky',
     size = 'md',
     onSky = false,
-    preserveScroll,
     onClick,
     className,
 }: Readonly<PillLinkProps>) {
     return (
         <Link
             href={href}
-            preserveScroll={preserveScroll}
             onClick={onClick}
             className={cn(pillButtonVariants({ tone, size, onSky }), className)}
         >

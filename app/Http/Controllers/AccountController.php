@@ -26,7 +26,7 @@ class AccountController extends Controller
         $user = $request->user();
 
         if ($user->is_demo) {
-            return back()->withErrors(['akun' => 'The demo account can\'t be deleted.']);
+            return back()->withErrors(['account' => 'The demo account can\'t be deleted.']);
         }
 
         // Log out first: the session guard re-persists its authenticated user on

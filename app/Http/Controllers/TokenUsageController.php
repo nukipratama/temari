@@ -20,6 +20,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 class TokenUsageController extends Controller
 {
@@ -35,21 +37,25 @@ class TokenUsageController extends Controller
 
         [$range, $from, $to] = $this->resolveRange($validated);
         $kind = $validated['kind'] ?? null;
+        $origin = $validated['origin'] ?? null;
 
-        $report = $this->report->build($from, $to, $kind, includePrevious: $range !== 'all');
+        $report = $this->report->build($from, $to, $kind, includePrevious: $range !== 'all', origin: $origin);
 
         return Inertia::render('AiUsage', [
             'range' => $range,
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
             'kind' => $kind,
+            'origin' => $origin,
             'totals' => $report['totals'],
             'previousTotals' => $report['previousTotals'],
             'byKind' => $report['byKind'],
             'byUser' => $report['byUser'],
             'byDeployment' => $report['byDeployment'],
             'daily' => $report['daily'],
+            'byOrigin' => $report['byOrigin'],
             'availableKinds' => $report['availableKinds'],
+            'availableOrigins' => $report['availableOrigins'],
             'budget' => $report['budget'],
             'deadLettered' => $this->deadLetteredByUser(),
             'failedUnderBudget' => $this->failedUnderBudgetByUser(),
@@ -74,8 +80,8 @@ class TokenUsageController extends Controller
      * or still under budget. Resetting attempts to 0 restores the self-heal budget,
      * and invalidate:false re-dispatches without re-billing any Done siblings.
      * Cost-safe even mid-cap: the job-level guard reverts to Pending. Powers the
-     * re-arm button on both the "Perlu perhatian" (dead-letter) and "Failed, belum
-     * menyerah" panels.
+     * re-arm button on both the "Needs attention" (dead-letter) and "Failed, not
+     * giving up yet" panels.
      *
      * Binds by raw id rather than implicit `User` model binding: a hard-deleted
      * user's user-keyed `ai_analyses` rows survive (no FK), so their group must
@@ -84,6 +90,8 @@ class TokenUsageController extends Controller
      */
     public function retryFailed(int $userId): RedirectResponse
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Recovery);
+
         $matching = AnalysisSubjectMap::whereOwnedBy(
             Analysis::query()->knownType()->where('status', AnalysisStatus::Failed),
             $userId,
@@ -118,7 +126,7 @@ class TokenUsageController extends Controller
 
     /**
      * Failed blocks still under the retry budget (self-heal will keep trying), for
-     * the "Failed, belum menyerah" panel. Visible before a user complains, with the
+     * the "Failed, not giving up yet" panel. Visible before a user complains, with the
      * same per-user re-arm button to force a resume now instead of waiting.
      *
      * @return list<array{user_id:int, user_name:string, count:int, blocks:list<array{type:string, error:string|null, failed_at:string}>}>

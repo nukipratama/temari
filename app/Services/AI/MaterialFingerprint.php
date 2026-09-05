@@ -7,6 +7,8 @@ namespace App\Services\AI;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
+use App\Models\PlanAdaptation;
+use App\Models\PlannedSession;
 use App\Models\StoryLine;
 use App\Services\Run\Metrics\SessionIntent;
 use App\Services\Run\Metrics\StreamSummary;
@@ -23,10 +25,53 @@ use App\Services\Run\Metrics\StreamSummary;
  */
 final class MaterialFingerprint
 {
+    /**
+     * The material a day's plan blurb speaks to, mirroring what
+     * {@see \App\Services\AI\Agent\Tools\PlanDayTool} hands the model. The
+     * long-run baseline is passed in rather than resolved here: it is one
+     * lookup per user, and the caller is already walking seven days.
+     */
+    public static function forPlannedSession(PlannedSession $session, ?float $longRunBaselineKm): string
+    {
+        return self::digest([
+            'session_type' => $session->session_type->value,
+            'phase' => $session->phase->value,
+            // Cast, not read raw: a freshly-created model carries null here
+            // while a reloaded one carries false, and both mean "not skipped".
+            'skipped' => (bool) $session->skipped,
+            // Drives the prescribed distance the blurb quotes, so a moved
+            // baseline changes what the day should say.
+            'long_run_km' => self::half($longRunBaselineKm),
+        ]);
+    }
+
+    /**
+     * The material a week's plan blurb speaks to, mirroring
+     * {@see \App\Services\AI\Agent\Tools\PlanWeekTool}. `headline` and `detail`
+     * are derived from `reason` and `adherence_pct`, so fingerprinting those two
+     * covers them.
+     */
+    public static function forPlanAdaptation(PlanAdaptation $adaptation): string
+    {
+        return self::digest([
+            'reason' => $adaptation->reason->value,
+            'deload' => (bool) $adaptation->deload,
+            'quality_delta' => $adaptation->quality_delta,
+            'adherence_pct' => self::bucket($adaptation->adherence_pct),
+        ]);
+    }
+
     public static function forActivity(Activity $activity): string
     {
         $detail = $activity->detail;
-        $material = $detail === null ? [] : self::materialFrom($activity, $detail);
+        return self::digest($detail === null ? [] : self::materialFrom($activity, $detail));
+    }
+
+    /**
+     * @param  array<string, mixed>  $material
+     */
+    private static function digest(array $material): string
+    {
         ksort($material);
 
         // xxh128 (non-cryptographic): a change-detection digest, not a security

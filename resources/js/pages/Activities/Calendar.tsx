@@ -1,47 +1,24 @@
-import { Icon } from '@iconify/react';
 import { Head, Link } from '@inertiajs/react';
 import { motion } from 'framer-motion';
-import { memo, useRef, type ReactNode } from 'react';
+import { useMemo, useRef } from 'react';
 
-import type { AnalysisPayload, Mood } from '@/types/inertia';
+import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
 
-import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
+import CalendarWeekRow from '@/components/history/CalendarWeekRow';
+import HistoryHeader from '@/components/history/HistoryHeader';
+import RecapCard from '@/components/history/RecapCard';
 import CoachMark from '@/components/onboarding/CoachMark';
-import RiwayatFilter from '@/components/riwayat/RiwayatFilter';
-import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
-import SendNotificationButton from '@/components/SendNotificationButton';
-import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import Temari from '@/components/temari/Temari';
-import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
-import PageHero from '@/components/ui/PageHero';
-import { useCountUp } from '@/hooks/useCountUp';
-import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
-import {
-    MOOD_FILL,
-    MOOD_FILTER_OPTIONS,
-    MOOD_HINT,
-    MOOD_LABEL,
-    MOOD_ORDER,
-    MOOD_SOFT_FILL,
-    moodSigilColor,
-} from '@/lib/mood';
+import { MOOD_FILL, MOOD_LABEL, MOOD_ORDER } from '@/lib/mood';
 import { fadeInUp } from '@/lib/motion';
-import { formatPace, formatShortDateId } from '@/lib/pace';
-import { renderBold, stripEdgeQuotes } from '@/lib/richText';
-import { activityUrl } from '@/lib/routes';
-import { MOOD_TO_POSE } from '@/lib/temariPose';
 
-import {
-    isFilteredOut,
-    useKalender,
-    type CalendarCell,
-    type WeekRow,
-} from './useKalender';
+import { useCalendar, type CalendarCell } from './useCalendar';
+import { snapshotsByWeekEnding } from './weekBuckets';
 
-export { dominantMoodOf, type CalendarCell } from './useKalender';
+export { dominantMoodOf, type CalendarCell } from './useCalendar';
 
 /** The monthly recap payload plus the chain-head flag the controller adds. */
 export type MonthlyRecap = AnalysisPayload & {
@@ -64,19 +41,11 @@ interface CalendarProps {
     nextMonth: string;
     todayMonth: string;
     lifetime?: LifetimeStats;
-    todayQuote?: string | null;
+    weeklySnapshots?: ReadonlyArray<WeeklySnapshotWithRecap>;
     monthlyRecap?: MonthlyRecap;
 }
 
-const WEEKDAY_LABELS = [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun',
-] as const;
+const WEEKDAY_LABELS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'] as const;
 
 export default function Calendar({
     cells,
@@ -86,89 +55,96 @@ export default function Calendar({
     month,
     todayMonth,
     lifetime,
-    todayQuote = null,
+    weeklySnapshots = [],
     monthlyRecap,
 }: Readonly<CalendarProps>) {
-    const {
-        weeks,
-        dominantMood,
-        isCurrentMonth,
-        moodFilter,
-        toggleMood,
-        resetFilter,
-    } = useKalender({ cells, month, todayMonth });
+    const { weeks, dominantMood, monthTotals, isCurrentMonth } = useCalendar({
+        cells,
+        month,
+        todayMonth,
+    });
     const gridRef = useRef<HTMLDivElement>(null);
+
+    const snapshotsByWeek = useMemo(
+        () => snapshotsByWeekEnding(weeklySnapshots),
+        [weeklySnapshots],
+    );
 
     return (
         <>
             <Head title={`History · Calendar · ${monthLabel}`} />
             <PageContainer>
-                <header className="mb-8 min-w-0">
-                    <TodayHistoryTabs active="history" className="mb-5" />
-                    <PageHero eyebrow={<LifetimeEyebrow lifetime={lifetime} />}>
-                        Every run,
-                        <br />
-                        <em className="not-italic text-horizon-deep">
-                            has a story.
-                        </em>
-                    </PageHero>
-                </header>
+                <HistoryHeader
+                    active="calendar"
+                    activityCount={lifetime?.total_runs}
+                />
 
-                <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                    <RiwayatTabs active="kalender" />
-                    <div className="flex flex-wrap items-center gap-2.5">
-                        <MonthNav
-                            label={monthLabel}
-                            prevMonth={prevMonth}
-                            nextMonth={nextMonth}
-                            showTodayButton={!isCurrentMonth}
-                        />
-                        <RiwayatFilter
-                            mood={{
-                                selected: moodFilter,
-                                options: MOOD_FILTER_OPTIONS,
-                                onToggle: toggleMood,
-                            }}
-                            onReset={resetFilter}
-                        />
-                    </div>
+                <div className="mt-8 mb-2.5">
+                    <MonthNav
+                        label={monthLabel}
+                        prevMonth={prevMonth}
+                        nextMonth={nextMonth}
+                    />
+                </div>
+
+                <div className="mb-2.5 text-center font-mono text-[0.59375rem] leading-[1.2] text-text-3">
+                    {monthTotals.runs} run{monthTotals.runs === 1 ? '' : 's'} ·{' '}
+                    {monthTotals.km.toFixed(1)} km ·{' '}
+                    {monthTotals.trimp === null
+                        ? '— TRIMP'
+                        : `${Math.round(monthTotals.trimp)} TRIMP`}
                 </div>
 
                 {monthlyRecap && (
-                    <MonthlyRecapCard
-                        recap={monthlyRecap}
-                        month={month}
-                        monthLabel={monthLabel}
+                    <RecapCard
                         mood={dominantMood}
+                        analysis={monthlyRecap}
                         awaitingSchedule={isCurrentMonth}
+                        awaitingScheduleLabel="this month's recap isn't ready yet."
+                        isChainHead={monthlyRecap.is_chain_head}
+                        size="month"
+                        inertiaReloadProps={['monthlyRecap']}
+                        notification={{
+                            url: `/recaps/monthly/${month}/send`,
+                            retryAfterSeconds:
+                                monthlyRecap.notification_retry_after_seconds,
+                        }}
+                        className="mb-2.5"
                     />
                 )}
 
-                <Legend className="mb-4" />
+                <Legend />
 
-                {/* All 7 weekday columns fit at every width: phones get a calendar-first
-                    view (date + mood dot per cell, run stats deferred to the day drill-in),
-                    lg+ gets the full km/pace/HR cells. No horizontal scroll. */}
-                {/* The ref/data-coachmark anchor lives on this stable wrapper, not on
-                    the keyed motion.div below: CoachMark's anchor tracking sets up its
-                    IntersectionObserver once and never re-attaches, so a `key={month}`
-                    remount on the ref'd element itself would detach it from the DOM the
-                    observer is still watching, dropping the mark for the rest of the visit. */}
+                {/* The CoachMark anchor lives on this stable wrapper, not on the
+                    keyed motion.div below: anchor tracking sets up its
+                    IntersectionObserver once and never re-attaches, so a
+                    `key={month}` remount on the ref'd element would detach it
+                    from the DOM the observer is still watching. */}
                 <div ref={gridRef} data-coachmark="calendar-grid">
+                    <div className="mb-1.5 grid grid-cols-[30px_repeat(7,minmax(0,1fr))] gap-0.75">
+                        <span aria-hidden />
+                        {WEEKDAY_LABELS.map((label) => (
+                            <span
+                                key={label}
+                                className="text-center font-mono text-[0.46875rem] leading-[1.2] font-extrabold text-text-3 uppercase"
+                            >
+                                {label}
+                            </span>
+                        ))}
+                    </div>
                     <motion.div
                         key={month}
                         initial="hidden"
                         animate="visible"
                         variants={fadeInUp}
-                        className="overflow-hidden rounded-2xl border border-line/70 bg-surface-warm shadow-sm"
                     >
-                        <CalendarHeader />
                         {weeks.map((week) => (
-                            <WeekRowView
+                            <CalendarWeekRow
                                 key={week.weekStart}
                                 week={week}
-                                todayQuote={todayQuote}
-                                moodFilter={moodFilter}
+                                snapshot={
+                                    snapshotsByWeek.get(week.weekEnding) ?? null
+                                }
                             />
                         ))}
                     </motion.div>
@@ -177,107 +153,11 @@ export default function Calendar({
                     id="calendar-grid"
                     anchorRef={gridRef}
                     placement="top"
-                    title="Tap any day"
-                    body="Days you ran open straight into the run itself."
+                    title="tap any day"
+                    body="days you ran open straight into the run itself. tap a week for temari's recap."
                 />
             </PageContainer>
         </>
-    );
-}
-
-function LifetimeEyebrow({ lifetime }: Readonly<{ lifetime?: LifetimeStats }>) {
-    const hasLifetime = Boolean(lifetime && lifetime.total_runs > 0);
-    const totalRuns = useCountUp(lifetime?.total_runs ?? 0);
-    const totalKm = useCountUp(lifetime?.total_km ?? 0);
-
-    return (
-        <Eyebrow token="hero" tone="ink-2" className="mb-3.5 lg:text-xs">
-            History
-            {hasLifetime && (
-                <>
-                    {' · '}
-                    {Math.round(totalRuns)} runs · {totalKm.toFixed(0)} km
-                    {lifetime?.first_run_at && (
-                        <>
-                            {' · since '}
-                            {formatShortDateId(lifetime.first_run_at)}
-                        </>
-                    )}
-                </>
-            )}
-        </Eyebrow>
-    );
-}
-
-/**
- * Temari's narrative recap for the viewed month, keyed to that month's
- * MonthlyRecap analysis. MonthlyRecap is a connected + chained kind: the
- * "Coba lagi" / "Minta Temari bacain" actions resume the chain from the
- * earliest unfilled month, and "Baca ulang" (regenerate) shows only on the
- * latest narrated month (`is_chain_head`). No rule-based fallback exists for
- * monthly, so unfilled months simply show the empty / resume state. The
- * still-running current month (`awaitingSchedule`) suppresses every trigger and
- * waits for the scheduler, so its incomplete recap can't be generated on demand.
- * Temari wears the month's dominant run mood, mirroring the weekly recap on Jejak.
- */
-function MonthlyRecapCard({
-    recap,
-    month,
-    monthLabel,
-    mood,
-    awaitingSchedule,
-}: Readonly<{
-    recap: MonthlyRecap;
-    month: string;
-    monthLabel: string;
-    mood: Mood | null;
-    awaitingSchedule: boolean;
-}>) {
-    const notificationsReachable = useNotificationsReachable();
-    return (
-        <section
-            className="mb-4 rounded-2xl border border-line bg-surface-warm p-4 shadow-sm sm:p-5"
-            aria-label={`Temari's notes for ${monthLabel}`}
-        >
-            <div className="font-mono text-xs font-bold uppercase tracking-wider text-ink-2">
-                Temari's notes · {monthLabel}
-            </div>
-            <div className="mt-2 flex items-start gap-3.5">
-                <Temari
-                    pose={mood ? MOOD_TO_POSE[mood] : 'observational'}
-                    size={48}
-                    animate={false}
-                    className="shrink-0"
-                />
-                <div className="min-w-0 flex-1">
-                    <AnalysisStatus
-                        analysis={recap}
-                        inertiaReloadProps={['monthlyRecap']}
-                        chained
-                        isChainHead={recap.is_chain_head}
-                        awaitingSchedule={awaitingSchedule}
-                        awaitingScheduleLabel="This month's recap isn't ready yet."
-                        size="md"
-                        renderContent={(content) => (
-                            <p className="text-sm leading-relaxed text-ink">
-                                {renderBold(content)}
-                            </p>
-                        )}
-                    />
-                    {recap.status === 'done' && (
-                        <div className="mt-3">
-                            <SendNotificationButton
-                                url={`/recaps/monthly/${month}/send`}
-                                retryAfterSeconds={
-                                    recap.notification_retry_after_seconds
-                                }
-                                reachable={notificationsReachable}
-                            />
-                        </div>
-                    )}
-                </div>
-            </div>
-        </section>
     );
 }
 
@@ -285,37 +165,26 @@ function MonthNav({
     label,
     prevMonth,
     nextMonth,
-    showTodayButton,
 }: Readonly<{
     label: string;
     prevMonth: string;
     nextMonth: string;
-    showTodayButton: boolean;
 }>) {
     return (
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center justify-between gap-2">
             <NavButton
-                href={`/calendar?month=${prevMonth}`}
+                href={`/history?view=calendar&month=${prevMonth}`}
                 icon="mdi:chevron-left"
                 label="Previous month"
             />
-            <h2 className="min-w-[7rem] text-center text-base font-semibold tracking-tight text-ink lg:text-lg">
+            <h2 className="font-serif text-[0.9375rem] leading-[1.2] font-semibold text-foreground">
                 {label}
             </h2>
             <NavButton
-                href={`/calendar?month=${nextMonth}`}
+                href={`/history?view=calendar&month=${nextMonth}`}
                 icon="mdi:chevron-right"
                 label="Next month"
             />
-            {showTodayButton && (
-                <Link
-                    href="/calendar"
-                    aria-label="Jump to current month"
-                    className="pressable focus-ring ml-1 rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1 text-xs font-semibold text-leaf-deep transition hover:border-leaf hover:bg-leaf/15"
-                >
-                    Today
-                </Link>
-            )}
         </div>
     );
 }
@@ -330,319 +199,30 @@ function NavButton({
             href={href}
             aria-label={label}
             preserveScroll
-            className="pressable focus-ring flex h-9 w-9 items-center justify-center rounded-full border border-line/60 text-ink-2 transition hover:border-line hover:bg-surface-warm hover:text-ink"
+            className="pressable focus-ring flex size-7 flex-none items-center justify-center rounded-full bg-card text-foreground shadow-e1"
         >
-            <Icon icon={icon} width={18} height={18} aria-hidden />
+            <Icon icon={icon} width={16} height={16} aria-hidden />
         </Link>
     );
 }
 
-function CalendarHeader() {
+function Legend() {
     return (
-        <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] border-b border-line/60 bg-surface-sunken/60 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
-            <Eyebrow
-                token="micro"
-                tone="ink-2"
-                className="px-1 py-2.5 text-center lg:px-3 lg:text-left lg:text-xs lg:tracking-[0.14em]"
-            >
-                <span className="sr-only">Week, distance in kilometers</span>
-                <span aria-hidden>KM</span>
-            </Eyebrow>
-            {WEEKDAY_LABELS.map((label) => (
-                <Eyebrow
-                    key={label}
-                    token="micro"
-                    tone="ink-2"
-                    className="px-1 py-2.5 text-center lg:px-2 lg:text-xs lg:tracking-[0.14em]"
-                >
-                    {label}
-                </Eyebrow>
-            ))}
-        </div>
-    );
-}
-
-function WeekRowView({
-    week,
-    todayQuote,
-    moodFilter,
-}: Readonly<{
-    week: WeekRow;
-    todayQuote: string | null;
-    moodFilter: ReadonlySet<Mood>;
-}>) {
-    return (
-        <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] border-b border-line/50 last:border-b-0 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
-            <WeekSummary week={week} />
-            {week.days.map((day) => (
-                <DayCellView
-                    key={day.date}
-                    cell={day}
-                    todayQuote={todayQuote}
-                    filteredOut={isFilteredOut(day, moodFilter)}
-                />
-            ))}
-        </div>
-    );
-}
-
-function WeekSummary({ week }: Readonly<{ week: WeekRow }>) {
-    return (
-        <div className="flex flex-col items-center justify-center gap-0.5 border-r border-line/50 p-1.5 text-center lg:items-start lg:gap-1 lg:p-3 lg:text-left">
-            {week.runCount > 0 ? (
-                <>
-                    <span className="text-xs font-bold tabular-nums leading-none text-ink lg:text-lg">
-                        {week.totalKm.toFixed(1)}
-                    </span>
-                    <Eyebrow
-                        as="span"
-                        token="micro"
-                        tone="ink-2"
-                        className="lg:tracking-[0.14em]"
-                    >
-                        WK {week.weekNumber}
-                    </Eyebrow>
-                </>
-            ) : (
-                <span className="text-xs text-ink-3">—</span>
-            )}
-        </div>
-    );
-}
-
-const DayCellView = memo(function DayCellView({
-    cell,
-    todayQuote,
-    filteredOut,
-}: Readonly<{
-    cell: CalendarCell;
-    todayQuote: string | null;
-    filteredOut: boolean;
-}>) {
-    if (cell.is_today) {
-        return <TodayCell cell={cell} quote={todayQuote} />;
-    }
-
-    const hasRun = cell.distance_km !== null && cell.distance_km > 0;
-    const muted = !cell.is_current_month;
-
-    const cellChrome = cn(
-        'group relative flex min-h-[52px] flex-col gap-1 border-l border-line/50 p-1.5 transition lg:min-h-[140px] lg:gap-1.5 lg:p-3',
-        muted && 'opacity-60',
-        filteredOut && 'opacity-30',
-        hasRun && cell.mood && !filteredOut
-            ? MOOD_SOFT_FILL[cell.mood]
-            : 'bg-surface-card',
-    );
-
-    const inner = (
-        <>
-            <div className="flex items-center justify-between gap-1 lg:items-start">
-                <span
-                    className={cn(
-                        'text-xs font-bold tabular-nums lg:text-lg',
-                        hasRun ? 'text-ink' : 'text-ink-2',
-                    )}
-                >
-                    {cell.day}
-                </span>
-                {/* Solid mood dot (distinct across all six moods, unlike the pale cell tint);
-                    replaces the faint single-letter glyph that was doing all the signalling. */}
-                {hasRun && cell.mood && (
-                    <span
-                        aria-hidden
-                        className={cn(
-                            'h-1.5 w-1.5 shrink-0 rounded-full lg:h-2 lg:w-2',
-                            MOOD_FILL[cell.mood],
-                        )}
-                        title={MOOD_LABEL[cell.mood]}
-                    />
-                )}
-            </div>
-            {hasRun && (
-                <div className="mt-auto hidden lg:block">
-                    <div className="text-headline-xs font-black leading-none tabular-nums text-ink">
-                        {cell.distance_km?.toFixed(2)}
-                        <span className="ml-0.5 text-[11px] font-bold text-ink-2 lg:text-xs">
-                            km
-                        </span>
-                    </div>
-                    {(cell.pace_sec_per_km !== null ||
-                        cell.avg_hr !== null) && (
-                        <div className="mt-1.5 flex items-baseline gap-1.5 font-mono text-[11px] tabular-nums text-ink-3 lg:text-xs">
-                            {cell.pace_sec_per_km !== null && (
-                                <span>{formatPace(cell.pace_sec_per_km)}</span>
-                            )}
-                            {cell.pace_sec_per_km !== null &&
-                                cell.avg_hr !== null && (
-                                    <span aria-hidden>·</span>
-                                )}
-                            {cell.avg_hr !== null && (
-                                <span className="inline-flex items-baseline gap-0.5">
-                                    <span aria-hidden>♡</span>
-                                    {cell.avg_hr}
-                                </span>
-                            )}
-                        </div>
-                    )}
-                </div>
-            )}
-        </>
-    );
-
-    const moodAriaPart =
-        hasRun && cell.mood ? `, mood ${MOOD_LABEL[cell.mood]}` : '';
-    const ariaLabel = hasRun
-        ? `${cell.date}: ${cell.distance_km} km${moodAriaPart}`
-        : `${cell.date}: no run`;
-
-    if (cell.activity_id !== null) {
-        return (
-            <Link
-                href={activityUrl({ activity_id: cell.activity_id })}
-                className={cn(cellChrome, 'pressable focus-ring')}
-                aria-label={ariaLabel}
-            >
-                {inner}
-            </Link>
-        );
-    }
-
-    return (
-        <div className={cellChrome} aria-label={ariaLabel}>
-            {inner}
-        </div>
-    );
-});
-
-function TodayCell({
-    cell,
-    quote,
-}: Readonly<{ cell: CalendarCell; quote: string | null }>) {
-    const chrome =
-        'group relative flex min-h-[52px] flex-col gap-1 border-l border-line/50 bg-sky p-1.5 text-cream transition lg:min-h-[140px] lg:gap-2 lg:p-3';
-    const hasRun = cell.distance_km !== null && cell.distance_km > 0;
-
-    let body: ReactNode = null;
-    if (quote) {
-        body = (
-            <p className="mt-auto hidden font-display text-xs italic leading-snug text-cream/90 lg:block lg:text-sm">
-                “{stripEdgeQuotes(quote)}”
-            </p>
-        );
-    } else if (hasRun) {
-        body = (
-            <div className="mt-auto hidden lg:block">
-                <div className="text-headline-xs font-black leading-none tabular-nums text-cream">
-                    {cell.distance_km?.toFixed(2)}
-                    <span className="ml-0.5 text-[11px] font-bold text-cream/70 lg:text-xs">
-                        km
-                    </span>
-                </div>
-            </div>
-        );
-    }
-
-    const inner = (
-        <>
-            <div className="flex items-center justify-between gap-1 lg:items-start lg:gap-2">
-                <span className="inline-flex items-center gap-1 text-xs font-bold tabular-nums text-cream lg:text-lg">
-                    {cell.day}
-                    {/* Below lg, "Today" is hidden and the navy fill is the only
-                        chrome difference from a highlighted/selected cell — add a
-                        small persistent marker so "today" isn't signaled by color
-                        alone. */}
-                    <span
-                        aria-hidden
-                        className="h-1 w-1 rounded-full bg-horizon lg:hidden"
-                    />
-                </span>
-                {hasRun && cell.mood && (
-                    <span
-                        aria-hidden
-                        className={cn(
-                            'h-1.5 w-1.5 shrink-0 rounded-full lg:hidden',
-                            MOOD_FILL[cell.mood],
-                        )}
-                        title={MOOD_LABEL[cell.mood]}
-                    />
-                )}
-                <Eyebrow
-                    as="span"
-                    token="hero"
-                    tone="horizon"
-                    className="hidden lg:inline"
-                >
-                    Today
-                </Eyebrow>
-            </div>
-            {body}
-        </>
-    );
-
-    const moodAriaPart =
-        hasRun && cell.mood ? `, mood ${MOOD_LABEL[cell.mood]}` : '';
-    const distancePart = hasRun ? `, ${cell.distance_km} km` : '';
-    const ariaLabel = `${cell.date}: today${distancePart}${moodAriaPart}`;
-
-    if (cell.activity_id !== null) {
-        return (
-            <Link
-                href={activityUrl({ activity_id: cell.activity_id })}
-                className={cn(
-                    chrome,
-                    'pressable focus-ring-on-sky hover:bg-sky-2',
-                )}
-                aria-label={ariaLabel}
-            >
-                {inner}
-            </Link>
-        );
-    }
-
-    return (
-        <div className={chrome} aria-label={ariaLabel}>
-            {inner}
-        </div>
-    );
-}
-
-function Legend({ className }: Readonly<{ className?: string }>) {
-    return (
-        <div
-            className={cn(
-                'flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-line/60 bg-surface-warm/40 px-4 py-3 shadow-sm',
-                className,
-            )}
-        >
-            <Eyebrow
-                as="span"
-                token="micro"
-                tone="ink-2"
-                className="lg:text-xs"
-            >
-                Mood
-            </Eyebrow>
+        <div className="mb-3.5 flex flex-wrap gap-x-3 gap-y-1.75 px-0.5">
             {MOOD_ORDER.map((mood) => (
-                <span
+                <div
                     key={mood}
-                    className="inline-flex whitespace-nowrap items-center gap-2 text-xs lg:text-sm"
+                    className="flex items-center gap-1 font-mono text-[0.5rem] leading-[1.2] font-bold tracking-[.03em] text-foreground uppercase"
                 >
                     <span
                         className={cn(
-                            'inline-block h-3.5 w-3.5 rounded-sm border lg:h-4 lg:w-4',
+                            'size-1.5 flex-none rounded-full',
                             MOOD_FILL[mood],
                         )}
-                        style={{ borderColor: moodSigilColor(mood) }}
                         aria-hidden
                     />
-                    <span className="font-medium text-ink">
-                        {MOOD_LABEL[mood]}
-                    </span>
-                    <span className="font-mono text-[11px] text-ink-3 lg:text-xs">
-                        · {MOOD_HINT[mood]}
-                    </span>
-                </span>
+                    {MOOD_LABEL[mood]}
+                </div>
             ))}
         </div>
     );

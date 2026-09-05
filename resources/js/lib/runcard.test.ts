@@ -6,13 +6,15 @@ import {
     BADGE_ABILITY,
     BADGE_LABELS,
     RARITY_BAND_COUNT,
+    RARITY_INK,
     RARITY_LABELS,
     RARITY_ORDER,
+    RARITY_TEXT,
     avgCadenceFromDetail,
     badgeEmblem,
     badgeName,
     fastestKmFromDetail,
-    kartuPropsFromDetail,
+    cardPropsFromDetail,
     threadBandLines,
     zonePctFromDetail,
 } from './runcard';
@@ -51,6 +53,23 @@ describe('RARITY_LABELS', () => {
             rare: 'Rare',
             epic: 'Epic',
             legendary: 'Legendary',
+        });
+    });
+});
+
+// The fill-vs-text rule from docs/design-tokens.md, as a test: the vivid value
+// is the fill, the `-ink` value is the only one that may carry text on paper.
+// Shipping `text-rarity-legendary` on a cream surface is the bug this catches.
+describe('rarity text colours', () => {
+    it('keeps RARITY_TEXT on the vivid fill, for the card frame only', () => {
+        RARITY_ORDER.forEach((r) => {
+            expect(RARITY_TEXT[r]).toBe(`text-rarity-${r}`);
+        });
+    });
+
+    it('gives RARITY_INK the -ink variant for every tier', () => {
+        RARITY_ORDER.forEach((r) => {
+            expect(RARITY_INK[r]).toBe(`text-rarity-${r}-ink`);
         });
     });
 });
@@ -197,11 +216,11 @@ describe('zonePctFromDetail', () => {
     });
 });
 
-describe('kartuPropsFromDetail', () => {
+describe('cardPropsFromDetail', () => {
     const fullDetail: ActivityDetail = {
         id: 1,
         activity_id: 1,
-        name: 'Pagi santai',
+        name: 'Easy morning',
         start_date_local: '2026-05-11T06:30:00Z',
         distance: 5000,
         elapsed_time: 1810,
@@ -217,11 +236,11 @@ describe('kartuPropsFromDetail', () => {
     };
 
     it('derives the full card prop bag with digital HMS duration by default', () => {
-        const props = kartuPropsFromDetail(fullDetail);
+        const props = cardPropsFromDetail(fullDetail);
         expect(props.km).toBe('5.00');
-        expect(props.durasi).toBe('30:10');
+        expect(props.duration).toBe('30:10');
         expect(props.trimp).toBe('43');
-        expect(props.subtitle).toContain('Pagi santai · ');
+        expect(props.subtitle).toContain('Easy morning · ');
         expect(props.stats).toEqual({
             pace: '6:02/km',
             hr: '152 bpm',
@@ -234,21 +253,21 @@ describe('kartuPropsFromDetail', () => {
 
     it('uses the words-form duration when durationFormat is words', () => {
         expect(
-            kartuPropsFromDetail(fullDetail, { durationFormat: 'words' })
-                .durasi,
+            cardPropsFromDetail(fullDetail, { durationFormat: 'words' })
+                .duration,
         ).toBe('30 min 10 sec');
     });
 
     it('falls back to "Run" in the subtitle when the run has no name', () => {
         expect(
-            kartuPropsFromDetail({ ...fullDetail, name: null }).subtitle,
+            cardPropsFromDetail({ ...fullDetail, name: null }).subtitle,
         ).toContain('Run · ');
     });
 
     it('uses "—" sentinels and null fields when detail is null or empty', () => {
-        const props = kartuPropsFromDetail(null);
+        const props = cardPropsFromDetail(null);
         expect(props.km).toBe('—');
-        expect(props.durasi).toBe('—');
+        expect(props.duration).toBe('—');
         expect(props.trimp).toBe('—');
         expect(props.subtitle).toBeNull();
         expect(props.stats).toEqual({

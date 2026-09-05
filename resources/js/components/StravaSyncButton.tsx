@@ -1,10 +1,10 @@
-import { Icon } from '@iconify/react';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
 import type { StravaSyncState } from '@/types/inertia';
 
 import StravaAction from '@/components/StravaAction';
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 interface StravaSyncButtonProps {
@@ -38,7 +38,7 @@ export default function StravaSyncButton({
                 )}
             >
                 <Icon icon="mdi:strava" width={16} height={16} aria-hidden />
-                {state === 'revoked' ? 'Reconnect' : 'Connect Strava'}
+                {state === 'revoked' ? 'reconnect' : 'Connect Strava'}
             </a>
         );
     }
@@ -70,9 +70,9 @@ export default function StravaSyncButton({
                         width={16}
                         height={16}
                         aria-hidden
-                        className={cn('text-ink-3', pending && 'animate-spin')}
+                        className={cn('text-text-3', pending && 'animate-spin')}
                     />
-                    {pending ? 'Syncing…' : 'Sync now'}
+                    {pending ? 'syncing…' : 'sync now'}
                 </button>
             </StravaAction>
         );

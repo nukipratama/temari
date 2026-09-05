@@ -31,8 +31,10 @@ export default function DeploymentTable({
             emptyState={<EmptyState />}
             renderRow={(row) => (
                 <>
-                    <Td className="font-medium text-ink">{row.deployment}</Td>
-                    <Td className="whitespace-nowrap text-ink-2">
+                    <Td className="font-medium text-foreground">
+                        {row.deployment}
+                    </Td>
+                    <Td className="whitespace-nowrap text-text-2">
                         {row.inputPer1m === null || row.outputPer1m === null
                             ? '—'
                             : `${formatCost(row.inputPer1m, currency)} / ${formatCost(row.outputPer1m, currency)}`}
@@ -40,8 +42,10 @@ export default function DeploymentTable({
                     <Td>{fmt(row.calls)}</Td>
                     <Td>{fmt(row.prompt)}</Td>
                     <Td>{fmt(row.completion)}</Td>
-                    <Td className="font-semibold text-ink">{fmt(row.total)}</Td>
-                    <Td className="font-semibold text-ink">
+                    <Td className="font-semibold text-foreground">
+                        {fmt(row.total)}
+                    </Td>
+                    <Td className="font-semibold text-foreground">
                         {formatCost(row.cost, currency)}
                     </Td>
                 </>

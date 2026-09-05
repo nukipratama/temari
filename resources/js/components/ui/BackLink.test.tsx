@@ -5,15 +5,17 @@ import BackLink from './BackLink';
 
 describe('BackLink', () => {
     it('renders a link to href with the label', () => {
-        render(<BackLink href="/cards">Collection · Cards</BackLink>);
-        const link = screen.getByRole('link', { name: /collection · cards/i });
-        expect(link).toHaveAttribute('href', '/cards');
+        render(<BackLink href="/history">History · Weeks</BackLink>);
+        const link = screen.getByRole('link', {
+            name: /history · weeks/i,
+        });
+        expect(link).toHaveAttribute('href', '/history');
     });
 
     it('uses the muted tint by default', () => {
         render(<BackLink href="/x">Back</BackLink>);
         expect(screen.getByRole('link', { name: /^back$/i }).className).toMatch(
-            /text-ink-2/,
+            /text-text-2/,
         );
     });
 
@@ -25,7 +27,7 @@ describe('BackLink', () => {
         );
         expect(
             screen.getByRole('link', { name: /back to today/i }).className,
-        ).toMatch(/text-horizon-deep/);
+        ).toMatch(/text-horizon-ink/);
     });
 
     it('passes spacing className through', () => {

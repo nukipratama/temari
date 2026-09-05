@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
-use App\Actions\Run\Story\ResolveFeaturedKartuAction;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
@@ -17,7 +16,6 @@ class BriefingComposer
         private readonly Vibe $vibe,
         private readonly TrainingLoad $trainingLoad,
         private readonly Temari $temari,
-        private readonly ResolveFeaturedKartuAction $featuredKartu,
     ) {
     }
 
@@ -35,22 +33,11 @@ class BriefingComposer
 
         $mascotVoice = $this->existingRow($user, AnalysisType::BriefingMascotVoice, $subjectType, $discriminator);
 
-        // The featured-kartu voice keys off the card it describes (not the day),
-        // so the hero card and its quote stay in lockstep even as new runs slide
-        // the pick. No featured card -> no row, and the panel shows its empty state.
-        $featuredCard = ($this->featuredKartu)($user);
-        $featuredDiscriminator = $featuredCard !== null ? (string) $featuredCard->id : null;
-        $featuredKartuVoice = $featuredDiscriminator !== null
-            ? $this->existingRow($user, AnalysisType::BriefingFeaturedKartuVoice, $subjectType, $featuredDiscriminator)
-            : null;
-
         return new BriefingResult(
             vibeState: $vibeState,
             vibeLabel: Vibe::label($vibeState),
             vibeEmoji: Vibe::emoji($vibeState),
             mascotVoice: Analysis::toPayload($mascotVoice, AnalysisType::BriefingMascotVoice, $subjectType, $user->id, $discriminator),
-            featuredKartuVoice: Analysis::toPayload($featuredKartuVoice, AnalysisType::BriefingFeaturedKartuVoice, $subjectType, $user->id, $featuredDiscriminator),
-            featuredCardId: $featuredCard?->id,
             recoveryLabel: FormStatus::label($load),
             recoveryTone: FormStatus::tone($load),
             recoveryHoursLabel: $this->recoveryHoursLabel($hoursSince),

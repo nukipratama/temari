@@ -1,7 +1,6 @@
-import { Icon } from '@iconify/react';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
-import { useRef } from 'react';
+import { useMemo } from 'react';
 
 import type {
     Mood,
@@ -10,283 +9,182 @@ import type {
     WeeklySnapshotWithRecap,
 } from '@/types/inertia';
 
-import JourneyStrip, {
-    type JourneyMatchData,
-} from '@/components/aktivitas/JourneyStrip';
-import TodayHistoryTabs from '@/components/dashboard/TodayHistoryTabs';
-import CoachMark from '@/components/onboarding/CoachMark';
-import ActiveFilterChips from '@/components/riwayat/ActiveFilterChips';
+import HistoryHeader from '@/components/history/HistoryHeader';
 import {
     RangeWidenedNote,
-    RunsTruncatedNote,
     WeekFocusNote,
-} from '@/components/riwayat/InlineNote';
-import ResumeFilterChip from '@/components/riwayat/ResumeFilterChip';
-import RiwayatFilter from '@/components/riwayat/RiwayatFilter';
-import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
-import WeekSection from '@/components/riwayat/WeekSection';
-import RunListRow, { type RunNote } from '@/components/run/RunListRow';
+    type RangeFilterValue,
+} from '@/components/history/InlineNote';
+import WeekSection from '@/components/history/WeekSection';
+import { type RunNote } from '@/components/run/RunListRow';
 import StravaSyncButton from '@/components/StravaSyncButton';
-import Temari from '@/components/temari/Temari';
 import BackLink from '@/components/ui/BackLink';
-import Card from '@/components/ui/Card';
 import EmptyPanel from '@/components/ui/EmptyPanel';
-import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
-import PageHero from '@/components/ui/PageHero';
-import PillButton from '@/components/ui/PillButton';
 import { appLayout } from '@/layouts/appLayout';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 
 import {
-    DEFAULT_SORT,
-    SORT_OPTIONS,
-    labelFor,
-    useJejakFilters,
-    type DistanceBand,
-    type RangeFilterValue,
+    groupByWeek,
+    snapshotsByWeekEnding,
     type RunWithDetail,
-    type SortMode,
-} from './useJejakFilters';
+} from './weekBuckets';
+
+interface LifetimeStats {
+    total_runs: number;
+    total_km: number;
+    first_run_at: string | null;
+}
 
 interface RunsIndexProps {
     runs: ReadonlyArray<RunWithDetail>;
     notes?: Record<number, RunNote>;
     moods?: Record<number, Mood>;
     rangeFilter: RangeFilterValue;
-    /** Moods the server filtered on. Empty = no mood filter. */
-    moodFilter?: ReadonlyArray<Mood>;
-    /** Distance band the server filtered on, or null for any distance. */
-    distanceFilter?: DistanceBand | null;
-    /** Ordering the server applied. Anything but 'newest' renders a flat list. */
-    sortMode?: SortMode;
     /** Week deep link (that week's Sunday, YYYY-MM-DD), or null. */
     weekFilter?: string | null;
-    rangeStart: string | null;
     /** Server widened the requested range to reach an older run. */
     rangeAutoWidened?: boolean;
-    /** Older runs beyond the per-page cap were dropped from this list. */
-    runsTruncated?: boolean;
-    /** The per-page cap, shown in the truncation note. */
-    maxRuns?: number;
+    lifetime?: LifetimeStats;
+    /** Week sections this page asked the server for. */
+    weeksShown?: number;
+    /** A run exists behind the oldest week on the page. */
+    hasOlderWeeks?: boolean;
     weeklySnapshots: ReadonlyArray<WeeklySnapshotWithRecap>;
-    journeyMatch?: JourneyMatchData | null;
 }
+
+/** Week sections each "load older weeks" press adds — mirrors FeedFilters::WEEKS_PER_PAGE. */
+const WEEKS_PER_PAGE = 2;
 
 export default function RunsIndex({
     runs,
     notes = {},
     moods = {},
     rangeFilter,
-    moodFilter = [],
-    distanceFilter = null,
-    sortMode = DEFAULT_SORT,
     weekFilter = null,
     rangeAutoWidened = false,
-    runsTruncated = false,
-    maxRuns = 0,
+    lifetime,
+    weeksShown = WEEKS_PER_PAGE,
+    hasOlderWeeks = false,
     weeklySnapshots,
-    journeyMatch = null,
 }: Readonly<RunsIndexProps>) {
-    const filterRef = useRef<HTMLDivElement>(null);
-    const {
-        buckets,
-        snapshotsByWeek,
-        sections,
-        chips,
-        resetFilters,
-        resume,
-        anyFilterActive,
-        ranked,
-    } = useJejakFilters({
-        runs,
-        weeklySnapshots,
-        rangeFilter,
-        moodFilter,
-        distanceFilter,
-        sortMode,
-        weekFilter,
-    });
+    const buckets = useMemo(() => groupByWeek(runs), [runs]);
+    const snapshotsByWeek = useMemo(
+        () => snapshotsByWeekEnding(weeklySnapshots),
+        [weeklySnapshots],
+    );
 
     const hasRuns = runs.length > 0;
-    // Keying on the active filters replays the results reveal when they change.
-    const resultsKey = [
-        rangeFilter,
-        sortMode,
-        moodFilter.join(','),
-        distanceFilter ?? '',
-        weekFilter ?? '',
-    ].join('|');
 
     return (
         <>
             <Head title="History · Log" />
             <PageContainer>
-                <header className="flex flex-col gap-5">
-                    <TodayHistoryTabs active="history" />
-                    <PageHero
-                        eyebrow={
-                            anyFilterActive
-                                ? `History · ${runs.length} results`
-                                : `History · ${runs.length} activities`
-                        }
-                    >
-                        Every run{' '}
-                        <em className="not-italic text-horizon-deep">
-                            has a story.
-                        </em>
-                    </PageHero>
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <RiwayatTabs active="jejak" />
-                        <div ref={filterRef} data-coachmark="history-filters">
-                            <RiwayatFilter
-                                {...sections}
-                                onReset={resetFilters}
-                            />
-                        </div>
-                        <CoachMark
-                            id="history-filters"
-                            anchorRef={filterRef}
-                            placement="bottom"
-                            title="Filter the log"
-                            body="When the list gets long, narrow it down by mood, distance, or week."
-                        />
-                    </div>
-                    <ActiveFilterChips
-                        chips={chips}
-                        onClearAll={resetFilters}
-                    />
-                    {resume !== null && (
-                        <ResumeFilterChip
-                            summary={resume.summary}
-                            onResume={resume.apply}
-                            onDismiss={resume.dismiss}
-                        />
-                    )}
-                </header>
-
-                <JourneyStrip match={journeyMatch} className="mt-6 mb-6" />
+                <HistoryHeader
+                    active="feed"
+                    activityCount={lifetime?.total_runs}
+                />
 
                 {weekFilter !== null && (
-                    <WeekFocusNote weekEnding={weekFilter} />
+                    <div className="mt-8">
+                        <WeekFocusNote weekEnding={weekFilter} />
+                    </div>
                 )}
 
                 {hasRuns && (
                     <motion.div
-                        key={resultsKey}
+                        key={weekFilter ?? 'all'}
                         initial="hidden"
                         animate="visible"
                         variants={staggerContainer}
-                        className="space-y-8"
+                        className="mt-8 space-y-8"
                     >
                         {rangeAutoWidened && (
                             <RangeWidenedNote rangeFilter={rangeFilter} />
                         )}
-                        {runsTruncated && (
-                            <RunsTruncatedNote maxRuns={maxRuns} />
-                        )}
-                        {ranked ? (
-                            <motion.div variants={fadeInUp}>
-                                <RankedList
-                                    runs={runs}
+                        {buckets.map((bucket) => (
+                            <motion.div
+                                key={bucket.weekStart}
+                                variants={fadeInUp}
+                            >
+                                <WeekSection
+                                    bucket={bucket}
+                                    snapshot={
+                                        snapshotsByWeek.get(
+                                            bucket.weekEnding,
+                                        ) ?? null
+                                    }
                                     notes={notes}
                                     moods={moods}
-                                    sort={sortMode}
                                 />
                             </motion.div>
-                        ) : (
-                            buckets.map((bucket) => (
-                                <motion.div
-                                    key={bucket.weekStart}
-                                    variants={fadeInUp}
-                                >
-                                    <WeekSection
-                                        bucket={bucket}
-                                        snapshot={
-                                            snapshotsByWeek.get(
-                                                bucket.weekEnding,
-                                            ) ?? null
-                                        }
-                                        notes={notes}
-                                        moods={moods}
-                                        filtered={anyFilterActive}
-                                    />
-                                </motion.div>
-                            ))
+                        ))}
+                        {hasOlderWeeks && (
+                            <LoadOlderWeeks weeksShown={weeksShown} />
                         )}
                     </motion.div>
                 )}
-                {/* A filtered view that matched nothing is a different story from
-                    a genuinely empty history, so it gets its own state with a way
-                    back rather than the "connect Strava" onboarding copy. */}
-                {!hasRuns && anyFilterActive && (
-                    <NoFilterMatchState onReset={resetFilters} />
-                )}
-                {!hasRuns && !anyFilterActive && <EmptyState />}
+                {!hasRuns && <EmptyState />}
             </PageContainer>
         </>
     );
 }
 
 /**
- * The ranked (non-chronological) view. Week cards and their recap narration are
- * deliberately absent: a weekly recap only means something in date order, so
- * ranking globally is a different mode rather than a re-ordering of this one.
- * The header says which ranking is active so the missing weeks aren't a mystery.
+ * P3: a real page, not a reveal. Each press asks the server for two more week
+ * sections; `preserveScroll` keeps the weeks already read where they were, and
+ * only the list props are refetched.
  */
-function RankedList({
-    runs,
-    notes,
-    moods,
-    sort,
-}: Readonly<{
-    runs: ReadonlyArray<RunWithDetail>;
-    notes: Record<number, RunNote>;
-    moods: Record<number, Mood>;
-    sort: SortMode;
-}>) {
-    const label = labelFor(SORT_OPTIONS, sort);
+function LoadOlderWeeks({ weeksShown }: Readonly<{ weeksShown: number }>) {
+    const { url } = usePage();
+    const next = new URL(url, 'http://history.local');
+    next.searchParams.set('weeks', String(weeksShown + WEEKS_PER_PAGE));
 
     return (
-        <Card as="section" padding="none" className="overflow-hidden">
-            <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-cream-deep bg-cream-deep/40 px-5 py-4">
-                <div className="font-display text-lg italic text-ink">
-                    {label}
-                </div>
-                <Eyebrow token="micro" tone="ink-3">
-                    {runs.length} runs · sorted
-                </Eyebrow>
-            </header>
-            <div>
-                {runs.map((activity) => (
-                    <RunListRow
-                        key={activity.id}
-                        detail={activity.detail}
-                        note={notes[activity.id] ?? null}
-                        mood={moods[activity.id] ?? null}
-                    />
-                ))}
-            </div>
-        </Card>
+        <div className="flex justify-center">
+            <Link
+                href={`${next.pathname}${next.search}`}
+                preserveScroll
+                preserveState
+                only={[
+                    'runs',
+                    'notes',
+                    'moods',
+                    'weeklySnapshots',
+                    'weeksShown',
+                    'hasOlderWeeks',
+                ]}
+                className="pressable focus-ring inline-flex items-center gap-1.25 rounded-full border border-border-strong bg-card px-4.5 py-2.25 font-mono text-[0.59375rem] leading-[1.2] font-extrabold tracking-[.05em] text-foreground uppercase shadow-e1"
+            >
+                Load older weeks
+                <Icon
+                    icon="mdi:chevron-down"
+                    width={12}
+                    height={12}
+                    aria-hidden
+                />
+            </Link>
+        </div>
     );
 }
 
 const EMPTY_COPY: Record<StravaSyncState, { line: string; sub: string }> = {
     disconnected: {
-        line: 'Connect Strava first',
-        sub: 'I read your runs from Strava. Connect it to fill in your history.',
+        line: 'connect Strava first',
+        sub: 'i read your runs from Strava. connect it to fill in your history.',
     },
     revoked: {
         line: 'Strava connection dropped',
-        sub: "Your token isn't active anymore. Reconnect so new runs get picked up.",
+        sub: "your token isn't active anymore. reconnect so new runs get picked up.",
     },
     syncing: {
-        line: 'Pulling in your runs 🏃‍♀️',
-        sub: 'Hang tight, your history shows up as soon as the first run finishes processing.',
+        line: 'pulling in your runs',
+        sub: 'hang tight, your history shows up as soon as the first run finishes processing.',
     },
     ready: {
-        line: 'No runs to show yet',
-        sub: "New runs appear here once they're processed. Try syncing again if you just finished a run.",
+        line: 'no runs to show yet',
+        sub: "new runs appear here once they're processed. try syncing again if you just finished a run.",
     },
 };
 
@@ -301,7 +199,8 @@ function EmptyState() {
     // running (nothing for the user to do but wait).
     return (
         <EmptyPanel
-            pose="excited"
+            face
+            layout="horizontal"
             title={line}
             body={sub}
             action={
@@ -314,40 +213,8 @@ function EmptyState() {
                     </BackLink>
                 </>
             }
-            className="flex flex-col items-center"
+            className="mt-8 flex flex-col items-center"
         />
-    );
-}
-
-/**
- * Shown when a filter matched nothing. Distinct from {@see EmptyState}: the user
- * has runs, they just narrowed past them, so the copy says so and the only
- * action offered is a way back out instead of Strava onboarding.
- */
-function NoFilterMatchState({ onReset }: Readonly<{ onReset: () => void }>) {
-    return (
-        <Card
-            tone="empty"
-            padding="lg"
-            className="flex flex-col items-center text-center"
-        >
-            <Temari pose="observational" size={112} animate={false} />
-            <p className="mt-4 font-display text-2xl italic text-ink-2">
-                No runs match.
-            </p>
-            <p className="mt-2 font-sans text-sm text-ink-2">
-                Your filters are too narrow. Try loosening them up to see more.
-            </p>
-            <PillButton tone="outline" onClick={onReset} className="mt-4">
-                <Icon
-                    icon="mdi:filter-remove-outline"
-                    width={15}
-                    height={15}
-                    aria-hidden
-                />
-                Reset filter
-            </PillButton>
-        </Card>
     );
 }
 

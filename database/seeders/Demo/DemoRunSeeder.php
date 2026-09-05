@@ -5,33 +5,51 @@ declare(strict_types=1);
 namespace Database\Seeders\Demo;
 
 use App\Actions\Gamification\GrantEligibleUnlocksAction;
-use App\Actions\Run\Story\ResolveFeaturedKartuAction;
+use App\Enums\ExperienceLevel;
+use App\Enums\GoalType;
+use App\Enums\IngestState;
+use App\Enums\PlannedSessionStatus;
+use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Models\AI\Analysis;
-use App\Models\PersonalRecord;
+use App\Models\AI\RunQuestion;
+use App\Models\InboxNotification;
+use App\Models\PlannedSession;
+use App\Models\RaceGoal;
 use App\Models\RunCard;
 use App\Models\StravaConnection;
+use App\Models\TrainingPreference;
 use App\Models\User;
-use App\Support\SharedPropCacheKey;
 use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
+use App\Notifications\AnalysisReadyNotification;
+use App\Notifications\Messages\InboxMessage;
+use App\Notifications\UnlockGrantedNotification;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\PlanNarrationRequester;
 use App\Services\AI\RecapPeriod;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
+use App\Services\AI\RunQuestion\RunQuestionSeeds;
+use App\Services\AI\RunQuestion\RunQuestionTopic;
 use App\Services\Geo\PolylineEncoder;
 use App\Services\Run\Ingest\StreamAnalysis;
+use App\Services\Run\Metrics\PaceCalculator;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use App\Services\Run\Plan\Periodizer;
+use App\Services\Run\Plan\TrainingBaseline;
+use App\Services\Run\Plan\WeekPlanBuilder;
 use App\Services\Run\Story\RunCardFactory;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
 use Closure;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Random\Engine\Mt19937;
 use Random\Randomizer;
@@ -58,7 +76,10 @@ class DemoRunSeeder
         private readonly AnalysisService $analysisService,
         private readonly RuleBasedNarrationFiller $filler,
         private readonly GrantEligibleUnlocksAction $unlockEngine,
-        private readonly ResolveFeaturedKartuAction $featuredKartu,
+        private readonly Periodizer $periodizer,
+        private readonly WeekPlanBuilder $weekPlanBuilder,
+        private readonly TrainingBaseline $trainingBaseline,
+        private readonly PlanNarrationRequester $planNarrationRequester,
         private readonly PolylineEncoder $polylineEncoder = new PolylineEncoder(),
     ) {
     }
@@ -130,30 +151,21 @@ class DemoRunSeeder
             $weeks = $this->weeklyAggregator->rebuildFor($user);
             $log(sprintf('  %d weekly snapshots written', $weeks));
 
-            // PR-driven unlocks fire incrementally during seedOne, but the
-            // card-rarity ones (legendaris/epik) and the weekly-streak one
-            // depend on cards + snapshots that only exist after the loop. One
-            // final sweep grants everything the dataset now qualifies for.
-            $granted = ($this->unlockEngine)($user);
+            $log("Regenerating this week's training plan...");
+            $this->seedCurrentWeekPlan($user);
+
+            $this->seedTrendRead($user);
+
+            // Grants everything the dataset qualifies for. Card-rarity unlocks
+            // (legendary/epic) and the weekly-streak one depend on cards and
+            // snapshots that only exist once the loop above has run, so this
+            // has to come after it. Wrapped in withSyncQueue so the queued
+            // UnlockGrantedNotification runs inline rather than sitting
+            // unprocessed in the jobs table; the inbox rows themselves are
+            // written below rather than relied on from here, because this
+            // returns nothing once every key is already granted.
+            $granted = $this->withSyncQueue(fn (): array => ($this->unlockEngine)($user));
             $log(sprintf('  %d accessory unlocks granted (%s)', count($granted), $granted === [] ? 'all already unlocked' : implode(', ', $granted)));
-
-            // Equip the best-in-slot accessories (one per slot) so the demo
-            // Temari actually shows off its hardware everywhere it appears.
-            // Clear every equipped flag first so a re-seed can't leave a stale
-            // sibling equipped in the same slot (two medals at once).
-            UserUnlock::query()
-                ->where('user_id', $user->id)
-                ->update(['equipped' => false]);
-
-            UserUnlock::query()
-                ->where('user_id', $user->id)
-                ->whereIn('unlock_key', [
-                    'accessory.headband_legendary',
-                    'accessory.medal_gold',
-                ])
-                ->update(['equipped' => true]);
-
-            SharedPropCacheKey::EquippedAccessories->forget($user->id);
 
             $log("Generating today's Temari greeting...");
             $vibeState = $this->vibe->current($user);
@@ -166,13 +178,22 @@ class DemoRunSeeder
             // deterministic rule-based content so demo doesn't burn tokens.
             $this->stagePendingAnalyses($user);
 
-            $this->queueBestRevealFor($user);
-
             // Backfill inside withoutDispatching so markDone's Telegram fan-out
             // stays suppressed: the demo never has a real connection, so an
             // enqueued (no-op) notification job per row would just be waste.
             $filled = $this->backfillWithFiller($user);
-            $log(sprintf('  %d AI analyses backfilled with rule-based content (klik "Baca ulang" buat narasi LLM beneran).', $filled));
+            $log(sprintf('  %d AI analyses backfilled with rule-based content (hit "Reread" in the UI for real LLM narration).', $filled));
+
+            // Rebuilt rather than topped up. Inbox rows must be written
+            // oldest-first (see writeInboxEntries), which a top-up
+            // cannot fix: rows already written in the wrong order keep their
+            // ids, so the account never converges no matter how often the
+            // seed re-runs. Every row here is derived from the seeded dataset
+            // and re-written below, and this only ever touches the demo user.
+            $user->inboxNotifications()->delete();
+            $pendingInbox = [...$this->pendingUnlockInboxEntries($user), ...$this->pendingNarrationInboxEntries($user)];
+            $log(sprintf('  %d inbox rows rebuilt', $this->writeInboxEntries($user, $pendingInbox)));
+            $log(sprintf('  %d answered run questions seeded', $this->seedRunQuestions($user)));
         });
 
         return $count;
@@ -183,7 +204,7 @@ class DemoRunSeeder
      * scheduler. Adds one modest synthetic run for today (skipping two rest days
      * a week so the streak looks human) and re-stages + rule-based-fills today's
      * date-keyed narration, so the demo never goes stale or renders an empty
-     * "Belum dibaca" when the date rolls. Zero LLM tokens (runs under
+     * an empty, un-narrated block when the date rolls. Zero LLM tokens (runs under
      * withoutDispatching + the filler), so the demo-billing exclusion holds.
      *
      * @param  Closure(string): void|null  $log  optional reporter (command::info etc.)
@@ -208,12 +229,12 @@ class DemoRunSeeder
             // CTL is cumulative, so roll the new run forward into every later
             // week's snapshot, then refresh today's greeting + briefing narration.
             $this->weeklyAggregator->rebuildForwardFrom($user, $today);
-            ($this->unlockEngine)($user);
+            $this->withSyncQueue(fn (): array => ($this->unlockEngine)($user));
             $this->temari->dailyGreeting($user, $this->vibe->current($user));
 
             // Re-stage the date-keyed surfaces (briefing set, greeting, trend,
             // weekly persona) against today's discriminator — the line that kills
-            // "Belum dibaca" once the calendar day moves past the seed day.
+            // an empty, un-narrated block once the calendar day moves past the seed day.
             $this->stagePendingAnalyses($user);
 
             // Backfill inside withoutDispatching so markDone's Telegram fan-out
@@ -236,7 +257,7 @@ class DemoRunSeeder
         $rng = new Randomizer(new Mt19937((int) $date->format('Ymd')));
 
         $locations = DemoLocation::library();
-        $names = ['Lari pagi', 'Easy run', 'Lari santai', 'Jogging pagi', 'Lari ringan'];
+        $names = ['Morning run', 'Easy run', 'Easy miles', 'Morning jog', 'Shakeout'];
 
         return new RunBlueprint(
             startsAt: $date->copy()->setTime(6, $rng->getInt(0, 45)),
@@ -244,37 +265,20 @@ class DemoRunSeeder
             targetPaceSecPerKm: $rng->getInt(390, 460),
             hrProfile: $rng->getInt(0, 1) === 0 ? HrProfile::Z2Steady : HrProfile::Mixed,
             cadenceSpm: 170,
-            elevationGainM: $rng->getInt(10, 60),
+            // Enough relief that the day's run always clears StreamAnalysis'
+            // 3% sustained-grade gate, so the vitals card's steepest-grade and
+            // flat-pace tiles are never intermittently absent on the newest
+            // run — which is the one any reviewer lands on first.
+            elevationGainM: $rng->getInt(58, 92),
             name: $names[$rng->getInt(0, count($names) - 1)],
             tags: ['daily'],
             location: $locations[$rng->getInt(0, count($locations) - 1)],
         );
     }
 
-    /**
-     * Point the one-shot reveal modal at the demo user's rarest card instead of
-     * whatever run happened to seed first. RunCardFactory::build() queues the
-     * first card it creates (the oldest activity, a plain Common easy run), so
-     * without this the demo's first login pops an underwhelming reveal. Here we
-     * override it to showcase the gimmick on a legendary/epic card. Ties break
-     * to the highest card id (most recently seeded).
-     */
-    private function queueBestRevealFor(User $user): void
-    {
-        $best = RunCard::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
-            ->whereNotNull('special_move')
-            ->get()
-            ->sortByDesc(fn (RunCard $card): array => [$card->rarity->rank(), $card->id])
-            ->first();
-
-        $user->forceFill(['pending_reveal_card_id' => $best?->id])->save();
-    }
-
     private function stagePendingAnalyses(User $user): void
     {
         $activities = Activity::query()->where('user_id', $user->id)->get();
-        $prIds = PersonalRecord::query()->where('user_id', $user->id)->pluck('id')->all();
         $cardIds = RunCard::query()->whereIn('activity_id', $activities->pluck('id'))->pluck('id')->all();
 
         $today = Carbon::today()->toDateString();
@@ -290,13 +294,6 @@ class DemoRunSeeder
                 subjectOrType: RunCard::class,
                 subjectId: $cardId,
                 type: AnalysisType::CardFlavor,
-            );
-        }
-        foreach ($prIds as $prId) {
-            $this->analysisService->request(
-                subjectOrType: PersonalRecord::class,
-                subjectId: $prId,
-                type: AnalysisType::PrContext,
             );
         }
         // Recaps never narrate the still-running current period (see RecapPeriod),
@@ -315,29 +312,14 @@ class DemoRunSeeder
             );
         }
         // Mirrors DailyBriefingCommand so the dashboard's Temari voice card is
-        // filled and never renders "Belum dibaca".
+        // filled and never renders as empty.
         $this->analysisService->requestBriefing($user, $today);
-        // The weekly-featured-card voice ("Kartu dari Temari minggu ini" on the
-        // dashboard hero) has its own job and is never auto-requested by ingest,
-        // so the demo must stage it here or the hero falls back to "Belum dibaca".
-        // Keyed by the featured card id (matching BriefingComposer) so the staged
-        // quote lines up with the card the hero actually shows.
-        $featuredCard = ($this->featuredKartu)($user);
-        if ($featuredCard !== null) {
-            $this->analysisService->request(
-                subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
-                subjectId: $user->id,
-                type: AnalysisType::BriefingFeaturedKartuVoice,
-                discriminator: (string) $featuredCard->id,
-            );
-        }
-
-        // The Aku voice is cached per ISO week — discriminator must match
-        // ProfileController::resolveProfileVoice() or the Aku hero misses it.
+        // The profile voice is cached per ISO week — discriminator must match
+        // ProfileController::resolveProfileVoice() or the Profile hero misses it.
         $this->analysisService->request(
-            subjectOrType: AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+            subjectOrType: AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
             subjectId: $user->id,
-            type: AnalysisType::AkuProfileVoice,
+            type: AnalysisType::ProfileVoice,
             discriminator: Carbon::now()->isoFormat('GGGG-[W]WW'),
         );
 
@@ -363,19 +345,17 @@ class DemoRunSeeder
     {
         $activityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
         $weeklyIds = WeeklySnapshot::query()->where('user_id', $user->id)->pluck('id');
-        $prIds = PersonalRecord::query()->where('user_id', $user->id)->pluck('id');
         $cardIds = RunCard::query()->whereIn('activity_id', $activityIds)->pluck('id');
 
         $rows = Analysis::query()
             ->where('status', '!=', AnalysisStatus::Done)
-            ->where(function ($q) use ($user, $activityIds, $weeklyIds, $prIds, $cardIds): void {
+            ->where(function ($q) use ($user, $activityIds, $weeklyIds, $cardIds): void {
                 $q->where(fn ($qq) => $qq->where('subject_type', Activity::class)->whereIn('subject_id', $activityIds))
                     ->orWhere(fn ($qq) => $qq->where('subject_type', WeeklySnapshot::class)->whereIn('subject_id', $weeklyIds))
-                    ->orWhere(fn ($qq) => $qq->where('subject_type', PersonalRecord::class)->whereIn('subject_id', $prIds))
                     ->orWhere(fn ($qq) => $qq->where('subject_type', RunCard::class)->whereIn('subject_id', $cardIds))
                     ->orWhere(fn ($qq) => $qq->whereIn('subject_type', [
                         AnalysisType::BRIEFING_SUBJECT_TYPE,
-                        AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+                        AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
                         AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
                     ])->where('subject_id', $user->id));
             })
@@ -388,6 +368,451 @@ class DemoRunSeeder
         }
 
         return $rows->count();
+    }
+
+    /**
+     * Regenerates the real 12-week horizon via {@see Periodizer::regenerate()},
+     * then backfills the current week's *past* days, which that call always
+     * skips (`Periodizer` only ever writes today-forward — see its own
+     * docblock). Reuses {@see WeekPlanBuilder} with `notBefore: null` so the
+     * past days come from the exact same session-type template as the days
+     * `regenerate()` just wrote, then hand-assigns a status/compliance-score
+     * cycle across the real `PlannedSessionStatus` bands (see
+     * {@see \App\Services\Run\Plan\SessionMatcher}) so Today's day-glyph strip
+     * shows real variety instead of an all-`Planned` week.
+     */
+    private function seedCurrentWeekPlan(User $user): void
+    {
+        $today = Carbon::today();
+
+        $this->periodizer->regenerate($user);
+
+        $currentWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
+        $todaysRow = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->where('date', $today->toDateString())
+            ->first();
+        if ($todaysRow === null) {
+            return;
+        }
+
+        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
+        $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
+        $sessionsPerWeek = $this->trainingBaseline->forUser($user, $today)['sessions_per_week'];
+
+        $weekRows = $this->weekPlanBuilder->build(
+            $currentWeekStart,
+            $todaysRow->phase,
+            $sessionsPerWeek,
+            [],
+            $race !== null ? (float) $race->distance_m : null,
+            $race === null,
+            null,
+            0,
+            $preference?->run_days,
+            $preference?->long_run_day,
+        );
+
+        $pastDayStatuses = [
+            PlannedSessionStatus::Overreached,
+            PlannedSessionStatus::Done,
+            PlannedSessionStatus::Partial,
+            PlannedSessionStatus::Skip,
+        ];
+        $scoreFor = [
+            PlannedSessionStatus::Overreached->value => 145,
+            PlannedSessionStatus::Done->value => 100,
+            PlannedSessionStatus::Partial->value => 55,
+        ];
+
+        $trainingDayIndex = 0;
+        foreach ($weekRows as $date => $row) {
+            if (! Carbon::parse($date)->lt($today)) {
+                continue;
+            }
+
+            if ($row['session_type'] === SessionType::Rest) {
+                PlannedSession::query()->updateOrCreate(
+                    ['user_id' => $user->id, 'date' => $date],
+                    [
+                        'phase' => $row['phase'],
+                        'session_type' => $row['session_type'],
+                        'pinned' => false,
+                        'skipped' => false,
+                        'status' => PlannedSessionStatus::Done,
+                        'compliance_score' => null,
+                        'ran_anyway' => false,
+                    ],
+                );
+
+                continue;
+            }
+
+            $status = $pastDayStatuses[$trainingDayIndex % count($pastDayStatuses)];
+            $trainingDayIndex++;
+
+            PlannedSession::query()->updateOrCreate(
+                ['user_id' => $user->id, 'date' => $date],
+                [
+                    'phase' => $row['phase'],
+                    'session_type' => $row['session_type'],
+                    'pinned' => false,
+                    'skipped' => $status === PlannedSessionStatus::Skip,
+                    'status' => $status,
+                    'compliance_score' => $scoreFor[$status->value] ?? null,
+                    'ran_anyway' => false,
+                ],
+            );
+        }
+
+        // Fills plan_day_voice (current week's 7 days) / plan_week_voice
+        // (this week's PlanAdaptation) / plan_season_voice (the active
+        // Season) rule-based, mirroring the demo Plan page's own "Reread"
+        // path — see PlanNarrationRequester::ensureDemoFilled's docblock.
+        $this->planNarrationRequester->ensureDemoFilled($user, $today);
+    }
+
+    /**
+     * trend_read has no per-user cadence command reachable from a seeder
+     * (TrendReadCommand explicitly excludes demo users, matching the demo
+     * billing exclusion), so the demo's three range narrations are staged
+     * and rule-based-filled here directly instead.
+     */
+    private function seedTrendRead(User $user): void
+    {
+        foreach (AnalysisType::TREND_READ_RANGES as $range) {
+            $this->analysisService->requestRuleBased(
+                AnalysisType::TREND_READ_SUBJECT_TYPE,
+                $user->id,
+                AnalysisType::TrendRead,
+                $range,
+                refillDone: false,
+            );
+        }
+    }
+
+    /**
+     * Three representative inbox rows built straight from already-narrated
+     * Analysis content, mirroring AnalysisReadyNotification::toInbox()'s own
+     * shape (title/payload) without going through the queued notify() path:
+     * the last closed week's recap and the last closed month's, each dated to
+     * when it would really have landed, plus today's post-run summary. With
+     * the unlock rows those fill all three of the Inbox page's buckets and
+     * four distinct kinds, rather than one undifferentiated list.
+     *
+     * @return list<array{at: Carbon, message: InboxMessage, key: string}>
+     */
+    private function pendingNarrationInboxEntries(User $user): array
+    {
+        $pending = [];
+
+        $lastClosedWeekEnding = RecapPeriod::lastClosedWeekEnding();
+        $weekly = WeeklySnapshot::query()
+            ->where('user_id', $user->id)
+            ->whereDate('week_ending', $lastClosedWeekEnding)
+            ->first();
+        if ($weekly !== null) {
+            $pending[] = $this->pendingInboxFromAnalysis(
+                $user,
+                WeeklySnapshot::class,
+                $weekly->id,
+                AnalysisType::WeeklyRecap,
+                $weekly->week_ending->copy()->addDay(),
+            );
+        }
+
+        // The last closed month, dated the 1st of the next one, so the inbox
+        // carries a third kind rather than only unlocks and a weekly. Monthly
+        // recaps key on a synthetic user/month subject, so the month itself is
+        // the discriminator rather than a row id.
+        $pending[] = $this->pendingInboxFromAnalysis(
+            $user,
+            AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+            $user->id,
+            AnalysisType::MonthlyRecap,
+            Carbon::today()->startOfMonth(),
+            Carbon::today()->subMonthNoOverflow()->format('Y-m'),
+        );
+
+        // Filler blueprints can coincidentally land on the same calendar date
+        // as the D-0 keep-alive run seeded in seed()/refreshToday() (more
+        // than one activity on "today" is common in this dataset), so this
+        // orders by id to deterministically pick that keep-alive run — it's
+        // always seeded last — rather than an unordered first() that could
+        // pick a different row across re-seeds.
+        $todayActivity = Activity::query()
+            ->where('user_id', $user->id)
+            ->whereHas('detail', fn ($q) => $q->whereDate('start_date_local', Carbon::today()))
+            ->latest('id')
+            ->first();
+        if ($todayActivity !== null) {
+            $pending[] = $this->pendingInboxFromAnalysis($user, Activity::class, $todayActivity->id, AnalysisType::PostRunSpeech);
+        }
+
+        return array_values(array_filter($pending));
+    }
+
+    /**
+     * Two answered questions on the newest run, so the Q&A panel's prior-list
+     * renders rather than only ever showing its empty state, and returns how
+     * many it added.
+     *
+     * Scoped run Q&A keeps its own table rather than an Analysis row (see
+     * docs/decisions/scoped-run-qa-not-an-analysis-row.md), so the seeder's
+     * withoutDispatching guard does not reach it and RuleBasedNarrationFiller
+     * has nothing to say about it. The answers are therefore fixture text,
+     * grounded in the run's own numbers, on the same footing as the rest of
+     * the demo's rule-based narration: no LLM call, no tokens.
+     */
+    private function seedRunQuestions(User $user): int
+    {
+        $detail = ActivityDetail::query()
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->orderByDesc('start_date_local')
+            ->first();
+        if ($detail === null) {
+            return 0;
+        }
+
+        $topics = array_slice(RunQuestionSeeds::for($detail), 0, 2);
+        if ($topics === []) {
+            return 0;
+        }
+
+        $km = round((float) $detail->distance / 1000, 1);
+        $paceSec = PaceCalculator::secPerKm((float) $detail->distance, $detail->moving_time);
+        $pace = $paceSec === null
+            ? 'the pace you held'
+            : sprintf('%d:%02d/km', (int) ($paceSec / 60), (int) round(fmod($paceSec, 60)));
+
+        $added = 0;
+        foreach ($topics as $topic) {
+            $existing = RunQuestion::query()
+                ->where('activity_id', $detail->activity_id)
+                ->where('question', $topic->question())
+                ->exists();
+            if ($existing) {
+                continue;
+            }
+
+            RunQuestion::query()->create([
+                'user_id' => $user->id,
+                'activity_id' => $detail->activity_id,
+                'question' => $topic->question(),
+                'answer' => self::demoAnswer($topic, $km, $pace),
+                'status' => AnalysisStatus::Done,
+            ]);
+            $added++;
+        }
+
+        return $added;
+    }
+
+    /**
+     * A rule-based answer per topic, so the demo does not show two different
+     * questions under one identical reply. No LLM tokens are spent seeding.
+     */
+    private static function demoAnswer(RunQuestionTopic $topic, float $km, string $pace): string
+    {
+        return match ($topic) {
+            RunQuestionTopic::HrDrift => sprintf(
+                'your HR climbed as the run went on, which is ordinary over %s km at %s. it only starts to mean something when the pace stays flat while the number keeps rising.',
+                $km,
+                $pace,
+            ),
+            RunQuestionTopic::Decoupling => sprintf(
+                'your pace and HR stayed close to each other across %s km. that is what an honest aerobic base looks like, so keep spending time here.',
+                $km,
+            ),
+            RunQuestionTopic::NegativeSplit => sprintf(
+                'you ran the back half quicker than the front over %s km. starting under control and finishing strong is the pattern worth repeating.',
+                $km,
+            ),
+            RunQuestionTopic::CadenceDrop => sprintf(
+                'your step rate sagged late on. that usually tracks fatigue rather than form, and it fits a %s km effort at %s.',
+                $km,
+                $pace,
+            ),
+            RunQuestionTopic::SlowestSplit => sprintf(
+                'your slowest kilometre sat well off your %s average. one heavy split inside %s km is terrain or traffic more often than fitness.',
+                $pace,
+                $km,
+            ),
+            RunQuestionTopic::HardZones => sprintf(
+                'most of this sat below threshold, so %s reads as controlled rather than a day you overreached.',
+                $pace,
+            ),
+            RunQuestionTopic::Heat => sprintf(
+                'the heat took a cut of your pace here. holding %s for %s km in those conditions is worth more than the raw number suggests.',
+                $pace,
+                $km,
+            ),
+            RunQuestionTopic::Climb => sprintf(
+                'the climbing is what shaped your %s average. put the same effort on a flat route and it reads quicker.',
+                $pace,
+            ),
+            RunQuestionTopic::Baseline => sprintf(
+                'over %s km at %s, nothing here is off. it reads like the rest of your recent work, so treat it as a normal day rather than a signal.',
+                $km,
+                $pace,
+            ),
+        };
+    }
+
+    /**
+     * Spreads the demo account's unlocks across its seeded run history.
+     *
+     * Every unlock is granted in one sweep at the end of seeding, so they all
+     * carry the same timestamp and the inbox would render a single "today"
+     * bucket of 21 rows, with nothing in "this week" or "earlier" and nothing
+     * for the load-older window to page in. Deterministic in each row's
+     * position, so a re-seed lands on the same dates.
+     *
+     * @param  Collection<int, UserUnlock>  $unlocks
+     */
+    private function spreadUnlockDates(User $user, Collection $unlocks): void
+    {
+        $earliest = ActivityDetail::query()
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->min('start_date_local');
+        if ($earliest === null || $unlocks->isEmpty()) {
+            return;
+        }
+
+        $start = Carbon::parse($earliest);
+        $days = max(1, $start->diffInDays(Carbon::today()));
+        $step = $days / ($unlocks->count() + 1);
+
+        foreach ($unlocks->values() as $i => $unlock) {
+            $earnedAt = $start->copy()->addDays((int) round($step * ($i + 1)));
+            if (! $unlock->unlocked_at->isSameDay($earnedAt)) {
+                $unlock->forceFill(['unlocked_at' => $earnedAt])->save();
+            }
+        }
+    }
+
+    /**
+     * Writes the inbox row for every already-granted unlock that lacks one,
+     * backdated to when it was earned, and returns how many it added.
+     *
+     * GrantEligibleUnlocksAction short-circuits once every catalog key is
+     * granted, so the sweep above notifies nothing on a database whose unlocks
+     * predate it — which is every database seeded before unlock notifications
+     * existed. Without this, `demo:seed` never converges on the inbox's unlock
+     * rows no matter how often it is re-run, and P12's unlock surface stays
+     * invisible. Writes the message directly, as the narration entries
+     * does, rather than replaying a queued notification.
+     */
+    /** @return list<array{at: Carbon, message: InboxMessage, key: string}> */
+    private function pendingUnlockInboxEntries(User $user): array
+    {
+        $unlocks = UserUnlock::query()
+            ->where('user_id', $user->id)
+            ->orderBy('id')
+            ->get();
+
+        $this->spreadUnlockDates($user, $unlocks);
+
+        $pending = [];
+        foreach ($unlocks as $unlock) {
+            $celebration = $this->unlockEngine->celebration($unlock->unlock_key);
+            if ($celebration === null) {
+                continue;
+            }
+
+            $message = new UnlockGrantedNotification($celebration)->toInbox($user);
+            $pending[] = [
+                'at' => $unlock->unlocked_at,
+                'message' => $message,
+                'key' => $message->dedupeKey ?? 'unlock:' . $unlock->unlock_key,
+            ];
+        }
+
+        return $pending;
+    }
+
+    /** @return array{at: Carbon, message: InboxMessage, key: string}|null */
+    private function pendingInboxFromAnalysis(User $user, string $subjectType, int $subjectId, AnalysisType $type, ?Carbon $at = null, ?string $discriminator = null): ?array
+    {
+        $analysis = Analysis::query()
+            ->where('subject_type', $subjectType)
+            ->where('subject_id', $subjectId)
+            ->where('analysis_type', $type)
+            ->where('status', AnalysisStatus::Done)
+            ->when($discriminator !== null, fn ($q) => $q->where('discriminator', $discriminator))
+            ->first();
+        if ($analysis === null) {
+            return null;
+        }
+
+        $message = new AnalysisReadyNotification($analysis)->toInbox($user);
+        if ($message === null) {
+            return null;
+        }
+
+        return [
+            'at' => $at ?? Carbon::now(),
+            'message' => $message,
+            'key' => $message->dedupeKey ?? (string) $analysis->id,
+        ];
+    }
+
+    /**
+     * Writes pending inbox entries oldest-first and returns how many landed.
+     *
+     * InboxController paginates on `orderByDesc('id')` while the page buckets
+     * on created_at. Those only agree while rows are inserted in chronological
+     * order, which is automatic in production (a row is written when its
+     * notification fires) and has to be arranged here, because these rows are
+     * backdated across the whole season. Written out of order, a row falls off
+     * the end of the first window and its entire bucket stops rendering.
+     *
+     * @param  list<array{at: Carbon, message: InboxMessage, key: string}>  $pending
+     */
+    private function writeInboxEntries(User $user, array $pending): int
+    {
+        usort($pending, fn (array $a, array $b): int => $a['at'] <=> $b['at']);
+
+        $written = 0;
+        foreach ($pending as $entry) {
+            if (! InboxNotification::record($user, $entry['message'], $entry['key'])) {
+                continue;
+            }
+
+            InboxNotification::query()
+                ->where('user_id', $user->id)
+                ->where('dedupe_key', $entry['key'])
+                ->update(['created_at' => $entry['at']]);
+
+            $written++;
+        }
+
+        return $written;
+    }
+
+    /**
+     * Runs $work with the queue connection forced to `sync`, so a
+     * ShouldQueue notification (e.g. UnlockGrantedNotification) fires
+     * inline instead of sitting unprocessed in the `jobs` table — nothing
+     * in the demo seed ever runs a queue worker. Safe for the demo account:
+     * ChannelRouter resolves every notification's `via()` to InAppChannel
+     * only here, so this never fires a real Telegram/web-push side effect,
+     * only the InboxNotification row itself.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $work
+     * @return T
+     */
+    private function withSyncQueue(Closure $work): mixed
+    {
+        $previous = config('queue.default');
+        config(['queue.default' => 'sync']);
+        try {
+            return $work();
+        } finally {
+            config(['queue.default' => $previous]);
+        }
     }
 
     private function ensureDemoUser(Closure $log): User
@@ -420,6 +845,38 @@ class DemoRunSeeder
             ],
         );
 
+        // The demo user trains for a race, so there has to be one: without it
+        // Race renders its empty state and Profile's goal chip renders for
+        // nobody. Sub-50 over 10k, the distance the seeded history is built
+        // around. updateOrCreate on the active row so a re-seed converges.
+        RaceGoal::query()->updateOrCreate(
+            ['user_id' => $user->id, 'completed_at' => null],
+            [
+                'race_date' => Carbon::today()->addWeeks(12),
+                'distance_m' => 10_000,
+                'goal_time_sec' => 3_000,
+                'name' => 'City 10K',
+            ],
+        );
+
+        // Without a row the whole Settings preferences card runs on
+        // TrainingBaseline fallbacks and its "which one's the long run?" block
+        // never renders, since that is gated on having run days. The seeded
+        // history runs on every weekday about equally, so there is no pattern
+        // to derive these from: they are a deliberate fixture for an
+        // experienced runner on a race block, matching the race goal seeded
+        // above. updateOrCreate so a re-seed converges, as above.
+        TrainingPreference::query()->updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'experience_level' => ExperienceLevel::Experienced,
+                'sessions_per_week' => 5,
+                'goal_type' => GoalType::Race,
+                'run_days' => [1, 2, 3, 5, 6],
+                'long_run_day' => 6,
+            ],
+        );
+
         $log("Demo user ready: {$user->email} (id={$user->id})");
 
         return $user;
@@ -439,6 +896,7 @@ class DemoRunSeeder
             [
                 'fetched_at' => $blueprint->startsAt->copy()->addHour(),
                 'analyzed_at' => $blueprint->startsAt->copy()->addHour(),
+                'ingest_state' => IngestState::Detailed,
                 'detail_fail_count' => 0,
             ],
         );
@@ -521,4 +979,65 @@ class DemoRunSeeder
         ]);
     }
 
+    /**
+     * The states the demo never produces, for the audits only.
+     *
+     * seed() marks every Analysis row done, which is honest for a public demo
+     * and is exactly why no sweep has ever rendered a pending, processing or
+     * failed block. A near-white `.skeleton` shipped on the dark ground behind
+     * that gap and survived three sweeps. Opt in with `demo:seed --with-edge-states`
+     * so the audits can see them and the demo stays pristine.
+     *
+     * The states land on the two pages a sweep actually visits: the newest
+     * activity carries a failed block and a pending one, and the user-level
+     * briefing carries a processing one.
+     */
+    public function seedEdgeStates(?Closure $log = null): int
+    {
+        $log ??= static fn (string $_): null => null;
+
+        $user = User::query()->where('email', self::DEMO_USER_EMAIL)->first();
+        if (! $user instanceof User) {
+            $log('  no demo user — run demo:seed first');
+
+            return 0;
+        }
+
+        $newest = Activity::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('id')
+            ->first();
+
+        $wanted = [];
+        if ($newest instanceof Activity) {
+            $wanted[] = [Activity::class, $newest->id, AnalysisType::PostRunSpeech, AnalysisStatus::Failed];
+            $wanted[] = [Activity::class, $newest->id, AnalysisType::RunInsight, AnalysisStatus::Pending];
+        }
+        $wanted[] = [AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, AnalysisStatus::Processing];
+
+        $changed = 0;
+        foreach ($wanted as [$subjectType, $subjectId, $type, $status]) {
+            $row = Analysis::query()
+                ->where('subject_type', $subjectType)
+                ->where('subject_id', $subjectId)
+                ->where('analysis_type', $type)
+                ->first();
+
+            if (! $row instanceof Analysis || $row->status === $status) {
+                continue;
+            }
+
+            $row->update([
+                'status' => $status,
+                'content' => null,
+                'generated_at' => null,
+                'error' => $status === AnalysisStatus::Failed ? 'Seeded edge state for the audits.' : null,
+                'attempts' => $status === AnalysisStatus::Failed ? Analysis::MAX_SELF_HEAL_ATTEMPTS : 0,
+            ]);
+            $changed++;
+            $log(sprintf('  %s -> %s', $type->value, $status->value));
+        }
+
+        return $changed;
+    }
 }

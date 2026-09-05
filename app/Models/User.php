@@ -24,12 +24,11 @@ use Override;
 /**
  * @property bool $is_demo
  * @property bool $is_admin
- * @property int|null $pending_reveal_card_id
  * @property Carbon|null $onboarded_at
  */
 // `is_admin` is deliberately NOT fillable: it is a privilege flag granted only
 // via the `user:set-admin` command, never through mass assignment.
-#[Fillable(['name', 'email', 'avatar_url', 'is_demo', 'pending_reveal_card_id'])]
+#[Fillable(['name', 'email', 'avatar_url', 'is_demo'])]
 #[Hidden(['remember_token'])]
 class User extends Authenticatable
 {
@@ -118,6 +117,26 @@ class User extends Authenticatable
     public function notificationPreference(): HasOne
     {
         return $this->hasOne(NotificationPreference::class);
+    }
+
+    /**
+     * @return HasOne<TrainingPreference, $this>
+     */
+    public function trainingPreference(): HasOne
+    {
+        return $this->hasOne(TrainingPreference::class);
+    }
+
+    /**
+     * The notification inbox, newest first. Named apart from the `Notifiable`
+     * trait's own `notifications()`, which expects the framework's
+     * DatabaseNotification schema rather than ours.
+     *
+     * @return HasMany<InboxNotification, $this>
+     */
+    public function inboxNotifications(): HasMany
+    {
+        return $this->hasMany(InboxNotification::class)->latest();
     }
 
     /**

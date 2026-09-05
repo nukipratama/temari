@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Models\PlannedSession;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\Run\Story\PastYouTrendBuilder;
 use App\Models\WeeklySnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -14,8 +16,10 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
-it('redirects unauthenticated users to login', function (): void {
-    $this->get('/')->assertRedirect('/login');
+it('never renders the dashboard to a guest', function (): void {
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login'));
 });
 
 it('renders for a user with no synced activities', function (): void {
@@ -24,13 +28,17 @@ it('renders for a user with no synced activities', function (): void {
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Today')
+            ->component('Home')
             ->where('auth.user.first_name', explode(' ', (string) $user->name)[0])
             ->where('load', null)
             ->where('recentRuns', []));
 });
 
-it('includes the route polyline + stream summary on recent runs so the cards draw routes', function (): void {
+// The route hero, zone bar and weather/location chips all went with PP3's
+// featured-card cut and PS3's port to the prototype's mini last-run card, so
+// the select carries only what Today still draws. A regression here is a
+// per-request cost for nothing.
+it('selects only the recent-run columns Today still draws', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
@@ -41,20 +49,12 @@ it('includes the route polyline + stream summary on recent runs so the cards dra
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('recentRuns.0.summary_polyline', '_p~iF~ps|U_ulLnnqC_mqNvxq`@')
-            ->has('recentRuns.0.stream_summary'));
-});
-
-it('ships the persisted post-run mood per recent run for the featured card + last-run mascot', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create();
-    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'easy']);
-
-    $this->actingAs($user)->get('/')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where("recentMoods.{$activity->id}", 'easy'));
+            ->has('recentRuns.0.distance')
+            ->has('recentRuns.0.trimp_edwards')
+            ->missing('recentRuns.0.summary_polyline')
+            ->missing('recentRuns.0.stream_summary')
+            ->missing('recentRuns.0.location_name')
+            ->missing('recentRuns.0.weather_temp_c'));
 });
 
 it('renders KPIs + recent runs when the user has training-load history', function (): void {
@@ -78,7 +78,7 @@ it('renders KPIs + recent runs when the user has training-load history', functio
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Today')
+            ->component('Home')
             ->has('load.weekly_trimp')
             ->has('load.form')
             ->has('snapshot')
@@ -88,7 +88,7 @@ it('renders KPIs + recent runs when the user has training-load history', functio
 });
 
 /**
- * `snapshot` is a single row — `KondisiCard` takes one `WeeklySnapshot | null`.
+ * `snapshot` is a single row — `TrainingLoadCard` takes one `WeeklySnapshot | null`.
  * The read used to pull the newest twelve and throw eleven away.
  */
 it('reads only the newest weekly snapshot, not a window of them', function (): void {
@@ -130,7 +130,7 @@ it('does not ship the unused trendAnalysis or weeklyRecap props', function (): v
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Today')
+            ->component('Home')
             ->missing('trendAnalysis')
             ->missing('weeklyRecap'));
 });
@@ -152,8 +152,8 @@ it('reuses the same daily greeting on a second open within the day', function ()
 });
 
 /**
- * Every briefing trigger on this page (`SuggestionCard`, `KataTemariCompact`,
- * `FeaturedKartuPanel`) polls `router.reload({ only: ['briefing'] })` every
+ * Every briefing trigger on this page (`SuggestionCard`, `KataTemariCompact`)
+ * polls `router.reload({ only: ['briefing'] })` every
  * 3-15s while the analysis generates. Every prop used to be computed in the
  * method body, so each tick re-ran the eight-row recent-run fetch — polylines
  * and stream summaries included — plus the weekly-snapshot read, for props the
@@ -174,18 +174,17 @@ it('does not fetch recent runs or weekly snapshots on a briefing-only partial re
 
     $response = $this->actingAs($user)->get('/', $headers)->assertSuccessful();
 
-    // `summary_polyline` is unique to the recent-run select, which `recentRuns`,
-    // `lastRunNote` and `recentMoods` all share behind one memoized closure.
-    $recentRunFetches = array_filter($queries, fn (string $sql): bool => str_contains($sql, 'summary_polyline'));
+    // `trimp_edwards` is unique to the recent-run select.
+    $recentRunFetches = array_filter($queries, fn (string $sql): bool => str_contains($sql, 'trimp_edwards'));
     $snapshotReads = array_filter($queries, fn (string $sql): bool => str_contains($sql, '`weekly_snapshots`'));
 
     expect($recentRunFetches)->toBeEmpty()
         ->and($snapshotReads)->toBeEmpty();
 
-    $response->assertJsonPath('component', 'Today');
+    $response->assertJsonPath('component', 'Home');
     // The one prop the poll does name still has to resolve.
     $response->assertJsonPath('props.briefing.mood', fn (mixed $mood): bool => is_string($mood));
-    foreach (['load', 'snapshot', 'recentRuns', 'lastRunNote', 'recentMoods'] as $skipped) {
+    foreach (['load', 'snapshot', 'recentRuns', 'weekPlan'] as $skipped) {
         $response->assertJsonMissingPath("props.{$skipped}");
     }
 });
@@ -199,11 +198,56 @@ it('still returns every dashboard prop on a full page load', function (): void {
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Today')
+            ->component('Home')
             ->has('briefing')
             ->has('snapshot')
             ->has('recentRuns', 1)
-            ->has('recentMoods'));
+            ->has('pastYouTrend')
+            ->has('weekPlan'));
+});
+
+it('ships weekPlan as null when the user has no planned sessions this week', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Home')
+            ->where('weekPlan', null));
+});
+
+it('ships a real weekPlan when the user has a plan for the current week', function (): void {
+    Carbon::setTestNow('2026-08-12'); // a Wednesday
+    $user = User::factory()->create();
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    for ($i = 0; $i < 7; $i++) {
+        PlannedSession::factory()->for($user)->create(['date' => $weekStart->copy()->addDays($i)]);
+    }
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Home')
+            ->where('weekPlan.days', fn (mixed $days): bool => count($days) === 7)
+            ->has('weekPlan.sessions_per_week')
+            ->has('weekPlan.phase'));
+
+    Carbon::setTestNow();
+});
+
+it('ships the Past You verdict as its own outcome when history is too thin', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Home')
+            ->where('pastYouTrend.verdict', 'not_enough_history')
+            ->where('pastYouTrend.comparison_count', 0)
+            ->where('pastYouTrend.window_days', PastYouTrendBuilder::WINDOW_DAYS)
+            ->etc());
 });
 
 /**
@@ -220,7 +264,7 @@ function briefingOnlyHeaders(object $actingAs): array
     return [
         'X-Inertia' => 'true',
         'X-Inertia-Version' => inertiaVersionFor($actingAs, '/'),
-        'X-Inertia-Partial-Component' => 'Today',
+        'X-Inertia-Partial-Component' => 'Home',
         'X-Inertia-Partial-Data' => 'briefing',
     ];
 }

@@ -1,11 +1,4 @@
-import { router } from '@inertiajs/react';
-import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type {
@@ -24,6 +17,18 @@ import RunsShow from './Show';
 // real map against jsdom without those stubs.
 vi.mock('@/components/run/RouteMap', () => ({
     default: () => <div data-testid="route-map" />,
+}));
+
+// The share popup carries the ~1200-line canvas engine behind a lazy import;
+// this file only asserts that the button reaches it.
+vi.mock('@/components/card/ShareCardModal', () => ({
+    default: ({ onClose }: { onClose: () => void }) => (
+        <div data-testid="share-card-modal">
+            <button type="button" onClick={onClose}>
+                Close share
+            </button>
+        </div>
+    ),
 }));
 
 beforeEach(() => {
@@ -121,24 +126,21 @@ function runInsight(
     };
 }
 
-function renderShow(
-    overrides: Partial<Parameters<typeof RunsShow>[0]> = {},
-    {
-        telegramConnected = false,
-        stravaPaused = false,
-    }: { telegramConnected?: boolean; stravaPaused?: boolean } = {},
-) {
-    // telegramConnected is now a shared Inertia prop, read via usePage.
+function renderShow(overrides: Partial<Parameters<typeof RunsShow>[0]> = {}) {
     setMockPage({
         auth: { user: { id: 1, name: 'A', first_name: 'A', avatar_url: null } },
         flash: {},
         demoLoginEnabled: false,
-        telegramConnected,
-        stravaPaused,
     });
     return render(
         <RunsShow
-            activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail }}
+            activity={{
+                id: 99,
+                user_id: 1,
+                strava_external_id: 4821,
+                analyzed_at: '2026-05-10',
+                detail,
+            }}
             detail={detail}
             card={runCard}
             storyLine={storyLine}
@@ -156,188 +158,136 @@ function renderShow(
             )}
             moodFallback="chill"
             isChainHead
-            notificationRetryAfterSeconds={null}
             pastYou={null}
-            relativeEffort={null}
             {...overrides}
         />,
     );
 }
 
+/** Document order of two section headings on the rendered page. */
+function precedes(first: string, second: string): boolean {
+    const a = screen.getByText(first);
+    const b = screen.getByText(second);
+    return Boolean(
+        a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+}
+
 describe('Runs/Show', () => {
-    it('coach-marks the share action on a first visit', () => {
-        window.localStorage.clear();
-        stubSyncAnimationFrame();
+    it('renders the prototype section list in order', () => {
         renderShow();
-        expect(
-            screen.getByRole('dialog', { name: 'Share the card' }),
-        ).toBeInTheDocument();
+        expect(screen.getByText('Activity')).toBeInTheDocument();
+        expect(screen.getByText('What Temari says')).toBeInTheDocument();
+        expect(screen.getByText('Ask about this run')).toBeInTheDocument();
+        expect(screen.getByText('The breakdown')).toBeInTheDocument();
+        expect(screen.getByText('Vitals')).toBeInTheDocument();
+        expect(screen.getByText('Splits per km')).toBeInTheDocument();
+
+        expect(precedes('What Temari says', 'Ask about this run')).toBe(true);
+        expect(precedes('Ask about this run', 'The breakdown')).toBe(true);
+        expect(precedes('The breakdown', 'Vitals')).toBe(true);
+        expect(precedes('Vitals', 'Splits per km')).toBe(true);
     });
 
-    it('renders run name in the sky hero', () => {
+    it('renders the run in the hero, with its as-recorded date and time', () => {
         renderShow();
-        expect(screen.getAllByText('Morning Run').length).toBeGreaterThan(0);
+        expect(
+            screen.getByRole('heading', { name: 'Morning Run' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('10 may 2026 · 07:00')).toBeInTheDocument();
     });
 
     it('uses the backend moodFallback when there is no post-run story line', () => {
         renderShow({ storyLine: null, moodFallback: 'wobbly' });
-        expect(screen.getAllByText('Wobbly').length).toBeGreaterThan(0);
+        expect(screen.getByText('wobbly')).toBeInTheDocument();
     });
 
-    it('shows the relative-effort sub-line under the TRIMP tile when banded', () => {
-        renderShow({
-            relativeEffort: {
-                trimp: 98,
-                baseline: 70,
-                ratio: 1.4,
-                band: 'well_above',
-            },
-        });
-        expect(screen.getByText('harder than usual')).toBeInTheDocument();
-    });
-
-    it('shows no relative-effort sub-line when the baseline is too thin (null band)', () => {
-        renderShow({
-            relativeEffort: {
-                trimp: 98,
-                baseline: null,
-                ratio: null,
-                band: null,
-            },
-        });
-        expect(screen.queryByText(/than usual/)).not.toBeInTheDocument();
-    });
-
-    it('feeds the detail tiles from the stream summary', () => {
-        renderShow({
-            detail: {
-                ...detail,
-                stream_summary: {
-                    ...detail.stream_summary,
-                    max_grade_pct: 11,
-                    gap_pace: '5:20',
-                },
-            },
-        });
-        expect(screen.getByText('CLIMB')).toBeInTheDocument();
-        expect(screen.getByText('GAP')).toBeInTheDocument();
-    });
-
-    it('renders the DURATION hero tile with the HMS-formatted elapsed_time', () => {
+    it('says nothing about hydration when the run is already detailed', () => {
         renderShow();
-        // elapsed_time 3600s → 1:00:00 in the digital H:MM:SS form (hero tile + the
-        // kartu section below it both show it).
-        expect(screen.getByText('DURATION')).toBeInTheDocument();
-        expect(screen.getAllByText('1:00:00').length).toBeGreaterThan(0);
+        expect(screen.queryByText(/still filling this run in/i)).toBeNull();
     });
 
-    it('renders the as-recorded date and start time in the hero', () => {
-        renderShow();
-        // start_date_local '2026-05-10T07:00:00' → wall-clock date + time, no zone shift.
-        expect(screen.getByText('10 May 2026 · 07.00')).toBeInTheDocument();
+    it('explains the thin page while the deeper fetch is queued', () => {
+        renderShow({ awaitingDetail: true });
+        expect(
+            screen.getByText(/still filling this run in/i),
+        ).toBeInTheDocument();
     });
 
-    it('renders the literal hero time even when serialized with a UTC Z', () => {
+    it('withholds everything below the hero until the deeper fetch lands', () => {
         renderShow({
-            detail: {
-                ...detail,
-                start_date_local: '2026-06-09T06:52:54.000000Z',
+            awaitingDetail: true,
+            pastYou: {
+                past: { start_date_local: '2026-04-01T07:00' },
+                pace_diff_sec: 10,
+                hr_diff_bpm: -3,
+                days_ago: 30,
             },
         });
-        expect(screen.getByText('9 Jun 2026 · 06.52')).toBeInTheDocument();
+        // The hero and the provenance footer still render; the rest would only
+        // be empty panels until the splits/zones/effort arrive.
+        expect(
+            screen.getByRole('heading', { name: 'Morning Run' }),
+        ).toBeInTheDocument();
+        expect(screen.queryByText('You vs past you')).not.toBeInTheDocument();
+        expect(screen.queryByText('What Temari says')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Ask about this run'),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText('The breakdown')).not.toBeInTheDocument();
+        expect(screen.queryByText('Splits per km')).not.toBeInTheDocument();
     });
 
-    it('renders the run lenses with the What Temari Says header', () => {
-        renderShow();
-        expect(screen.getByText('What Temari says')).toBeInTheDocument();
-        expect(screen.getByText("This run's story")).toBeInTheDocument();
-        expect(screen.getByText('What stood out')).toBeInTheDocument();
+    it('slots the past-you card between the hero and the narration', () => {
+        renderShow({
+            pastYou: {
+                past: { start_date_local: '2026-04-01T07:00' },
+                pace_diff_sec: 10,
+                hr_diff_bpm: -3,
+                days_ago: 30,
+            },
+        });
+        expect(screen.getByText('You vs past you')).toBeInTheDocument();
+        expect(precedes('You vs past you', 'What Temari says')).toBe(true);
     });
 
-    it('renders the speech analysis text inside the story panel', () => {
+    it('omits the past-you card entirely when there is no match', () => {
+        renderShow({ pastYou: null });
+        expect(screen.queryByText('You vs past you')).not.toBeInTheDocument();
+    });
+
+    it('feeds the narration card both analysis rows', () => {
         renderShow();
         expect(screen.getByText(/Solid run/)).toBeInTheDocument();
-    });
-
-    it('renders the run-insight claim inside the adaptive panel', () => {
-        renderShow();
         expect(
             screen.getByText('Decoupling stayed tight all the way through.'),
         ).toBeInTheDocument();
         expect(screen.getByText('+3.2%')).toBeInTheDocument();
     });
 
-    it('renders the kartu section with its own view (no link elsewhere) when a card exists', () => {
+    it('offers the per-run ask panel', () => {
         renderShow();
-        expect(screen.getAllByText('Iron Lungs').length).toBeGreaterThan(0);
-        expect(screen.getByText('Share')).toBeInTheDocument();
-        expect(screen.getByText('Replay card reveal')).toBeInTheDocument();
-        expect(screen.getByText(/Why this earned Epic/)).toBeInTheDocument();
+        expect(
+            screen.getByPlaceholderText('ask anything about this run'),
+        ).toBeInTheDocument();
     });
 
-    it('omits the kartu section when card is null', () => {
-        renderShow({ card: null });
-        expect(screen.queryByText('Iron Lungs')).not.toBeInTheDocument();
-        expect(screen.queryByText('Share')).not.toBeInTheDocument();
+    it('tells the ask panel the toolbox is thin on a summary-only run', () => {
+        renderShow({
+            activity: {
+                id: 99,
+                user_id: 1,
+                analyzed_at: '2026-05-10',
+                ingest_state: 'summary',
+                detail,
+            },
+        });
+        expect(
+            screen.getByText(/no splits,\s+zones or terrain yet/),
+        ).toBeInTheDocument();
     });
 
-    it('surfaces an error and does not reveal when the replay POST fails (419/429/500)', async () => {
-        const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 419 });
-        const original = globalThis.fetch;
-        globalThis.fetch = fetchMock as unknown as typeof fetch;
-        vi.mocked(router.reload).mockReset();
-        try {
-            renderShow();
-            await act(async () => {
-                fireEvent.click(screen.getByText('Replay card reveal'));
-            });
-            expect(
-                await screen.findByText(/Couldn't replay the card/),
-            ).toBeInTheDocument();
-            expect(router.reload).not.toHaveBeenCalledWith({
-                only: ['pendingReveal'],
-            });
-        } finally {
-            globalThis.fetch = original;
-        }
-    });
-
-    it('reloads the pendingReveal prop on a successful replay POST', async () => {
-        const fetchMock = vi.fn().mockResolvedValue({ ok: true });
-        const original = globalThis.fetch;
-        globalThis.fetch = fetchMock as unknown as typeof fetch;
-        vi.mocked(router.reload).mockReset();
-        try {
-            renderShow();
-            await act(async () => {
-                fireEvent.click(screen.getByText('Replay card reveal'));
-            });
-            await waitFor(() =>
-                expect(router.reload).toHaveBeenCalledWith({
-                    only: ['pendingReveal'],
-                }),
-            );
-            expect(
-                screen.queryByText(/Couldn't replay the card/),
-            ).not.toBeInTheDocument();
-        } finally {
-            globalThis.fetch = original;
-        }
-    });
-
-    it('mounts the map+weather panel with the run detail', () => {
-        renderShow();
-        expect(screen.getByText(/32°/)).toBeInTheDocument();
-        expect(screen.getByText('Senayan')).toBeInTheDocument();
-    });
-
-    it('renders the splits per-km section from the stream summary', () => {
-        renderShow();
-        expect(screen.getByText('Splits per km')).toBeInTheDocument();
-        expect(screen.getByText(/Fastest at km 2/)).toBeInTheDocument();
-    });
-
-    it('stacks the laps section under the splits section, both always rendered', () => {
+    it('stacks the laps carousel under the splits chart', () => {
         const withLaps = {
             ...detail,
             stream_summary: {
@@ -354,15 +304,7 @@ describe('Runs/Show', () => {
             },
         };
         renderShow({ detail: withLaps });
-        const splits = screen.getByText('Splits per km');
-        const lapsHeading = screen.getByText('Laps');
-        expect(splits).toBeInTheDocument();
-        expect(lapsHeading).toBeInTheDocument();
-        expect(screen.getByText('647m')).toBeInTheDocument();
-        expect(
-            splits.compareDocumentPosition(lapsHeading) &
-                Node.DOCUMENT_POSITION_FOLLOWING,
-        ).toBeTruthy();
+        expect(precedes('Splits per km', 'Laps')).toBe(true);
     });
 
     it('omits the laps section when the run carries no laps', () => {
@@ -385,7 +327,7 @@ describe('Runs/Show', () => {
         expect(screen.queryByText('Splits per km')).not.toBeInTheDocument();
     });
 
-    it('still renders the splits table for a sub-1km run that has only a partial', () => {
+    it('still renders the splits chart for a sub-1km run that has only a partial', () => {
         renderShow({
             detail: {
                 ...detail,
@@ -395,60 +337,9 @@ describe('Runs/Show', () => {
             },
         });
         expect(screen.getByText('Splits per km')).toBeInTheDocument();
-        expect(screen.getByText('0.8 KM')).toBeInTheDocument();
     });
 
-    it('renders the past-you strip when journeyMatch is present', () => {
-        renderShow({
-            pastYou: {
-                past: { start_date_local: '2026-04-01T07:00' },
-                pace_diff_sec: 10,
-                hr_diff_bpm: -3,
-                days_ago: 30,
-            },
-        });
-        expect(screen.getByText(/30 days ago/)).toBeInTheDocument();
-    });
-
-    it('falls back to "Run" when detail.name is null', () => {
-        const noName = { ...detail, name: null };
-        renderShow({
-            activity: {
-                id: 99,
-                user_id: 1,
-                analyzed_at: '2026-05-10',
-                detail: noName,
-            },
-            detail: noName,
-        });
-        expect(screen.getAllByText(/^Run$/).length).toBeGreaterThan(0);
-    });
-
-    it('handles null distance/elapsed_time gracefully (dash in hero stats)', () => {
-        const noDist = { ...detail, distance: null, elapsed_time: null };
-        renderShow({
-            activity: {
-                id: 99,
-                user_id: 1,
-                analyzed_at: '2026-05-10',
-                detail: noDist,
-            },
-            detail: noDist,
-        });
-        expect(screen.getAllByText('—').length).toBeGreaterThan(0);
-    });
-
-    it('shows elevation gain as the ELEVATION hero tile, not a secondary ASCENT tile', async () => {
-        renderShow();
-        expect(screen.getByText('ELEVATION')).toBeInTheDocument();
-        // The tile value count-ups from 0 on mount, so its final text lands async.
-        await waitFor(() =>
-            expect(screen.getByText('120')).toBeInTheDocument(),
-        );
-        expect(screen.queryByText('ASCENT')).not.toBeInTheDocument();
-    });
-
-    it('falls back to an empty stream summary when the run has none', () => {
+    it('falls back to the vitals empty panel when the run recorded nothing', () => {
         const bare = {
             ...detail,
             stream_summary: null,
@@ -472,73 +363,91 @@ describe('Runs/Show', () => {
         ).toBeInTheDocument();
     });
 
-    it('resyncs the activity from Strava when the Resync button is clicked', () => {
-        vi.mocked(router.post).mockReset();
+    it('mounts the map + conditions slab with the run detail', () => {
         renderShow();
-        fireEvent.click(screen.getByText('Resync from Strava'));
-        expect(router.post).toHaveBeenCalledWith(
-            '/activities/99/resync',
-            {},
-            expect.objectContaining({
-                preserveScroll: true,
-                onStart: expect.any(Function),
-                onFinish: expect.any(Function),
-            }),
-        );
+        expect(screen.getByText(/32°/)).toBeInTheDocument();
+        expect(screen.getByText('Senayan')).toBeInTheDocument();
     });
 
-    it('hides the Resync button entirely while the Strava kill-switch is off', () => {
-        renderShow({}, { stravaPaused: true });
+    it('opens the share popup from the hero when the run has a card', async () => {
+        renderShow();
+        fireEvent.click(screen.getByRole('button', { name: /Share/ }));
+        // The popup carries the canvas engine behind a lazy import.
         expect(
-            screen.queryByText('Resync from Strava'),
+            await screen.findByTestId('share-card-modal'),
+        ).toBeInTheDocument();
+    });
+
+    it('closes the share popup again from inside it', async () => {
+        renderShow();
+        fireEvent.click(screen.getByRole('button', { name: /^Share$/ }));
+        fireEvent.click(
+            await screen.findByRole('button', { name: 'Close share' }),
+        );
+        expect(
+            screen.queryByTestId('share-card-modal'),
         ).not.toBeInTheDocument();
     });
 
-    it('disables the Resync button and shows a pending label while the request is in flight', () => {
-        vi.mocked(router.post).mockReset();
-        vi.mocked(router.post).mockImplementation((_url, _data, options) => {
-            options?.onStart?.({} as never);
-        });
-        renderShow();
-        const button = screen
-            .getByText('Resync from Strava')
-            .closest('button')!;
-        fireEvent.click(button);
-        expect(button).toBeDisabled();
-        expect(button).toHaveTextContent('Syncing…');
+    it('hides the share button when the run has no card to share', () => {
+        renderShow({ card: null });
+        expect(
+            screen.queryByRole('button', { name: /Share/ }),
+        ).not.toBeInTheDocument();
     });
 
-    it('shows a muted send button that nudges (no send) when no channel is wired', () => {
-        vi.mocked(router.post).mockReset();
+    it('draws no collectible card block — only the share button survives it', () => {
         renderShow();
-        fireEvent.click(screen.getByText('Send notification'));
-        expect(router.post).not.toHaveBeenCalled();
+        expect(screen.queryByText('Iron Lungs')).not.toBeInTheDocument();
+        expect(screen.queryByText(/Epic/)).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/Strong breathing all the way to the end/),
+        ).not.toBeInTheDocument();
     });
 
-    it('pushes the run to Telegram when connected and the button is clicked', () => {
-        vi.mocked(router.post).mockReset();
-        renderShow({}, { telegramConnected: true });
-        fireEvent.click(screen.getByText('Send notification'));
-        expect(router.post).toHaveBeenCalledWith(
-            '/activities/99/kirim',
-            {},
-            expect.objectContaining({
-                preserveScroll: true,
-                onStart: expect.any(Function),
-                onFinish: expect.any(Function),
-            }),
+    it('coach-marks the share action on a first visit', () => {
+        window.localStorage.clear();
+        stubSyncAnimationFrame();
+        renderShow();
+        expect(
+            screen.getByRole('dialog', { name: 'share the card' }),
+        ).toBeInTheDocument();
+    });
+
+    it('closes with a Strava provenance footer carrying the run’s own id', () => {
+        const { container } = renderShow();
+        expect(container.querySelector('footer')).toHaveTextContent(
+            'Synced from Strava · may 10 · 00:00 · #4821',
         );
     });
 
-    it('disables the Telegram button and shows a pending label while the request is in flight', () => {
-        vi.mocked(router.post).mockReset();
-        vi.mocked(router.post).mockImplementation((_url, _data, options) => {
-            options?.onStart?.({} as never);
+    it('drops the id from the footer when the run has no Strava id', () => {
+        const { container } = renderShow({
+            activity: {
+                id: 99,
+                user_id: 1,
+                analyzed_at: '2026-05-10',
+                detail,
+            },
         });
-        renderShow({}, { telegramConnected: true });
-        const button = screen.getByText('Send notification').closest('button')!;
-        fireEvent.click(button);
-        expect(button).toBeDisabled();
-        expect(button).toHaveTextContent('Sending…');
+        const footer = container.querySelector('footer');
+        expect(footer).toHaveTextContent('Synced from Strava');
+        expect(footer?.textContent).not.toContain('#');
+    });
+
+    it('falls back to "run" when detail.name is null', () => {
+        const noName = { ...detail, name: null };
+        renderShow({
+            activity: {
+                id: 99,
+                user_id: 1,
+                analyzed_at: '2026-05-10',
+                detail: noName,
+            },
+            detail: noName,
+        });
+        expect(
+            screen.getByRole('heading', { name: 'run' }),
+        ).toBeInTheDocument();
     });
 });

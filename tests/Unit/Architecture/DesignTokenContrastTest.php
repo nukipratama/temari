@@ -1,0 +1,857 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Support\Facades\File;
+
+/**
+ * Guards the derived `-ink` tokens against every ground they actually land on.
+ *
+ * The method S2.9 established was right — target the darkest renderable ground.
+ * Its ground list was not: it enumerated the five `--color-surface` values
+ * dawn-shift drifts between and missed `--color-cream-deep`, which is what
+ * AppShell paints under the whole app and is darker than all five. So nothing
+ * here writes grounds down. The values come out of the shipped stylesheet, the
+ * backgrounds in play come out of the components, and resources/brand/grounds.json
+ * only records what *kind* each one is. A background in use that grounds.json
+ * does not classify fails this suite rather than being skipped.
+ */
+function tokenLuminance(string $hex): float
+{
+    $n = (int) hexdec(mb_substr($hex, 1));
+    $channels = [($n >> 16) & 255, ($n >> 8) & 255, $n & 255];
+
+    $linear = array_map(static function (int $value): float {
+        $c = $value / 255;
+
+        return $c <= 0.04045 ? $c / 12.92 : (($c + 0.055) / 1.055) ** 2.4;
+    }, $channels);
+
+    return 0.2126 * $linear[0] + 0.7152 * $linear[1] + 0.0722 * $linear[2];
+}
+
+function tokenContrast(string $a, string $b): float
+{
+    $pair = [tokenLuminance($a), tokenLuminance($b)];
+    sort($pair);
+
+    return ($pair[1] + 0.05) / ($pair[0] + 0.05);
+}
+
+/**
+ * @return array{tokens: array<string, string>}
+ */
+function designTokens(): array
+{
+    $css = File::get(resource_path('css/app.css'));
+
+    preg_match('/@theme static \{.*?\n\}/s', $css, $theme);
+    preg_match_all('/--color-([a-z0-9-]+):\s*(#[0-9a-f]{6});/', $theme[0], $found, PREG_SET_ORDER);
+
+    $tokens = [];
+    foreach ($found as [, $name, $value]) {
+        $tokens[$name] = $value;
+    }
+
+    return ['tokens' => $tokens];
+}
+
+/**
+ * @return array{paper: list<string>, scoped: list<string>, fill: list<string>, keyword: list<string>, tint: array<string, float>}
+ */
+function groundKinds(): array
+{
+    return File::json(resource_path('brand/grounds.json'));
+}
+
+/** @return list<string> */
+function componentSources(): array
+{
+    $sources = [];
+    foreach (File::allFiles(resource_path('js')) as $file) {
+        if (in_array($file->getExtension(), ['ts', 'tsx'], true)) {
+            $sources[] = preg_replace(['#/\*.*?\*/#s', '#//[^\n]*#'], ' ', $file->getContents()) ?? '';
+        }
+    }
+
+    return $sources;
+}
+
+/**
+ * The heaviest `bg-<family>/<alpha>` a component paints under
+ * `text-<family>-ink`, which is the real ground that chip prints on.
+ *
+ * @return array<string, float>
+ */
+function paintedInkTints(): array
+{
+    $heaviest = [];
+
+    foreach (componentSources() as $source) {
+        preg_match_all('/\'[^\']*\'|"[^"]*"|`[^`]*`/s', $source, $literals);
+
+        foreach ($literals[0] as $literal) {
+            preg_match_all(
+                '/\bbg-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\/(?:\[([0-9.]+)\]|([0-9]{1,3}))/',
+                $literal,
+                $found,
+                PREG_SET_ORDER,
+            );
+
+            foreach ($found as $match) {
+                $name = $match[1];
+                if (preg_match('/text-'.preg_quote($name, '/').'-ink\b/', $literal) !== 1) {
+                    continue;
+                }
+                $alpha = $match[2] !== '' ? (float) $match[2] : (float) $match[3] / 100;
+                $heaviest[$name] = max($heaviest[$name] ?? 0.0, $alpha);
+            }
+        }
+    }
+
+    return $heaviest;
+}
+
+/** `$fill` at `$alpha` over `$ground`, the way the compositor does it. */
+function compositeOver(string $fill, float $alpha, string $ground): string
+{
+    $of = (int) hexdec(mb_substr($fill, 1));
+    $og = (int) hexdec(mb_substr($ground, 1));
+
+    $mixed = '';
+    foreach ([16, 8, 0] as $shift) {
+        $f = ($of >> $shift) & 255;
+        $g = ($og >> $shift) & 255;
+        $mixed .= mb_str_pad(dechex((int) round($f * $alpha + $g * (1 - $alpha))), 2, '0', STR_PAD_LEFT);
+    }
+
+    return '#'.$mixed;
+}
+
+/**
+ * Every `bg-*` utility the components paint, with any `/alpha` modifier dropped.
+ * Comments are stripped first: prose like `bg-mood-{key}` is not a class the
+ * browser ever sees, and scanning it would invent backgrounds that do not exist.
+ *
+ * @return list<string>
+ */
+function paintedBackgrounds(): array
+{
+    $names = [];
+
+    foreach (File::allFiles(resource_path('js')) as $file) {
+        if (! in_array($file->getExtension(), ['ts', 'tsx'], true)) {
+            continue;
+        }
+
+        $source = preg_replace(
+            ['#/\*.*?\*/#s', '#//[^\n]*#'],
+            ' ',
+            $file->getContents(),
+        ) ?? '';
+
+        preg_match_all('/\bbg-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\b/', $source, $found);
+        $names = [...$names, ...$found[1]];
+    }
+
+    $names = array_values(array_unique($names));
+    sort($names);
+
+    return $names;
+}
+
+/**
+ * The papers any `-ink` can land on: every background grounds.json calls paper.
+ *
+ * @param  array<string, string>  $tokens
+ * @return array<string, string>
+ */
+function paperGrounds(array $tokens): array
+{
+    $grounds = [];
+    foreach (groundKinds()['paper'] as $name) {
+        $grounds[$name] = $tokens[$name];
+    }
+
+    return $grounds;
+}
+
+it('classifies every background the components paint', function (): void {
+    $kinds = groundKinds();
+    $known = array_merge($kinds['paper'], $kinds['scoped'], $kinds['fill'], $kinds['keyword']);
+
+    $unclassified = array_values(array_diff(paintedBackgrounds(), $known));
+
+    expect($unclassified)->toBe([], sprintf(
+        "These bg-* utilities are painted but unclassified, so nothing scored them:\n  %s\n".
+        'Add each to resources/brand/grounds.json as paper (ink lands on it), scoped '.
+        "(only its own family's ink does), fill (no ink text) or keyword (not a --color-* token).",
+        implode("\n  ", $unclassified),
+    ));
+})->group('structure');
+
+it('backs every classified colour ground with a declared token', function (): void {
+    ['tokens' => $tokens] = designTokens();
+    $kinds = groundKinds();
+
+    $missing = [];
+    foreach ([...$kinds['paper'], ...$kinds['scoped']] as $name) {
+        if (! isset($tokens[$name])) {
+            $missing[] = $name;
+        }
+    }
+
+    expect($missing)->toBe([], sprintf(
+        'grounds.json classifies these as a ground, but no --color-* token declares them: %s',
+        implode(', ', $missing),
+    ));
+})->group('structure');
+
+it('finds more grounds than --color-surface alone', function (): void {
+    ['tokens' => $tokens] = designTokens();
+
+    // The S2.9 blind spot was scoring only --color-surface. A paper ground
+    // outside that one is exactly what went unscored, so the derivation is
+    // only doing its job while it reaches past it.
+    $beyondSurface = array_diff_key(paperGrounds($tokens), ['surface' => '']);
+
+    expect($beyondSurface)->not->toBeEmpty();
+})->group('structure');
+
+it('records the tint every ink actually prints on', function (): void {
+    // grounds.json carries the alphas because the live audit runs in a browser
+    // and cannot read the components. This is what keeps that copy honest: a
+    // heavier tint, or a new one, goes red until it is recorded.
+    expect(groundKinds()['tint'])->toEqual(paintedInkTints());
+})->group('structure');
+
+it('keeps every -ink token above AA on every ground it lands on', function (): void {
+    ['tokens' => $tokens] = designTokens();
+    $papers = paperGrounds($tokens);
+    ['scoped' => $scoped, 'tint' => $tints] = groundKinds();
+    $darkestPaper = collect($papers)->sortBy(fn (string $hex): float => tokenLuminance($hex))->first();
+
+    $inks = array_filter(
+        $tokens,
+        fn (string $name): bool => str_ends_with($name, '-ink') && $name !== 'ink',
+        ARRAY_FILTER_USE_KEY,
+    );
+
+    expect($inks)->not->toBeEmpty();
+
+    $under = [];
+    foreach ($inks as $name => $hex) {
+        $grounds = $papers;
+
+        // A family's own tinted cell is a ground only that family's ink lands
+        // on. The pairing is the naming convention, so a new -bg cell is scored
+        // the moment grounds.json calls it scoped.
+        $family = mb_substr($name, 0, -mb_strlen('-ink'));
+        $own = $family.'-bg';
+        if (in_array($own, $scoped, true) && isset($tokens[$own])) {
+            $grounds[$own] = $tokens[$own];
+        }
+
+        // A chip painted bg-<family>/<alpha> prints on the tint, not on the
+        // paper under it. Composited over the darkest paper it can sit on.
+        if (isset($tints[$family], $tokens[$family])) {
+            $alpha = $tints[$family];
+            $grounds["{$family}/{$alpha} on paper"] = compositeOver($tokens[$family], $alpha, $darkestPaper);
+        }
+
+        foreach ($grounds as $ground => $paper) {
+            $ratio = tokenContrast($hex, $paper);
+            if ($ratio < 4.5) {
+                $under[] = sprintf('--color-%s on %s (%s): %.2f', $name, $ground, $paper, $ratio);
+            }
+        }
+    }
+
+    expect($under)->toBe([], "These -ink tokens are under 4.5:1 as text:\n  ".implode("\n  ", $under));
+})->group('structure');
+
+it('keeps the separator above its floor on every ground', function (): void {
+    ['tokens' => $tokens] = designTokens();
+
+    foreach (paperGrounds($tokens) as $ground => $paper) {
+        expect(tokenContrast($tokens['line'], $paper))
+            ->toBeGreaterThanOrEqual(1.4, "--color-line is under 1.4:1 on {$ground}.");
+    }
+})->group('structure');
+
+/** A `token/alpha` spec, or a bare token at full opacity. */
+function splitAlpha(string $spec): array
+{
+    $parts = explode('/', $spec);
+
+    return [$parts[0], isset($parts[1]) ? (float) $parts[1] : 1.0];
+}
+
+/** The alpha spelled the way grounds.mjs spells it, so both sides agree on a key. */
+function alphaSpec(string $name, float $alpha): string
+{
+    return $name.'/'.rtrim(rtrim(number_format($alpha, 4, '.', ''), '0'), '.');
+}
+
+/**
+ * Every `bg-<token>/<alpha>` the components paint, mapped to the files that
+ * paint it.
+ *
+ * paintedBackgrounds() drops the alpha, which is right for classifying a panel
+ * and wrong for scoring it: `bg-sky/40` is not sky, it is sky over whatever it
+ * is mounted on, and it carries the text sky would take. The mount varies by
+ * call site, so the call site is the key.
+ *
+ * @param  array<string, string>  $tokens
+ * @return array<string, list<string>>
+ */
+function paintedAlphaPanelSites(array $tokens): array
+{
+    $sites = [];
+
+    foreach (File::allFiles(resource_path('js')) as $file) {
+        if (! in_array($file->getExtension(), ['ts', 'tsx'], true)) {
+            continue;
+        }
+        $source = preg_replace(['#/\*.*?\*/#s', '#//[^\n]*#'], ' ', $file->getContents()) ?? '';
+        $relative = 'resources/js/'.$file->getRelativePathname();
+
+        preg_match_all(
+            '/\bbg-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\/(?:\[([0-9.]+)\]|([0-9]{1,3}))(?![\w\-.])/',
+            $source,
+            $found,
+            PREG_SET_ORDER,
+        );
+        foreach ($found as $match) {
+            if (! isset($tokens[$match[1]])) {
+                continue;
+            }
+            $alpha = ($match[2] ?? '') !== '' ? (float) $match[2] : (float) $match[3] / 100;
+            $sites[alphaSpec($match[1], $alpha)][$relative] = true;
+        }
+    }
+
+    $out = [];
+    foreach ($sites as $spec => $files) {
+        $out[$spec] = array_keys($files);
+        sort($out[$spec]);
+    }
+    ksort($out);
+
+    return $out;
+}
+
+/**
+ * Every `text-<token>` painted in the same class string as an alpha panel. One
+ * class string is one element, so a pair found here definitely stacks; a panel
+ * carrying text from a child element is invisible here and is recorded by hand.
+ *
+ * @param  array<string, string>  $tokens
+ * @return array<string, list<string>>
+ */
+function paintedPanelText(array $tokens): array
+{
+    $painted = [];
+
+    foreach (componentSources() as $source) {
+        // A quoted literal cannot span a raw newline, but a naive `'[^']*'`
+        // does: an apostrophe in JSX text ("Temari's") opens a match that runs
+        // to the next one, swallowing whole subtrees and pairing a background
+        // in one element with text in another.
+        preg_match_all('/\'[^\'\n]*\'|"[^"\n]*"|`[^`]*`/s', $source, $literals);
+
+        foreach ($literals[0] as $literal) {
+            // No Tailwind class holds an angle or curly bracket, so this drops
+            // what is left of a mis-paired line.
+            if (preg_match('/[<>{}]/', $literal) === 1) {
+                continue;
+            }
+
+            preg_match_all(
+                '/(?:^|[\s\'"`])((?:[a-z0-9-]+:)*)bg-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\/(?:\[([0-9.]+)\]|([0-9]{1,3}))(?![\w\-.])/',
+                $literal,
+                $panels,
+                PREG_SET_ORDER,
+            );
+            if ($panels === []) {
+                continue;
+            }
+
+            preg_match_all(
+                '/(?:^|[\s\'"`])((?:[a-z0-9-]+:)*)text-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)(?:\/(?:\[([0-9.]+)\]|([0-9]{1,3})))?(?![\w-])/',
+                $literal,
+                $texts,
+                PREG_SET_ORDER,
+            );
+
+            $labels = [];
+            foreach ($texts as $match) {
+                if (! isset($tokens[$match[2]])) {
+                    continue;
+                }
+                $bracket = $match[3] ?? '';
+                $plain = $match[4] ?? '';
+                $labels[] = [
+                    'variant' => $match[1],
+                    'spec' => $bracket === '' && $plain === ''
+                        ? $match[2]
+                        : alphaSpec($match[2], $bracket !== '' ? (float) $bracket : (float) $plain / 100),
+                ];
+            }
+
+            foreach ($panels as $panel) {
+                if (! isset($tokens[$panel[2]])) {
+                    continue;
+                }
+                $alpha = ($panel[3] ?? '') !== '' ? (float) $panel[3] : (float) $panel[4] / 100;
+                $key = alphaSpec($panel[2], $alpha);
+
+                // A `hover:bg-*` tint is painted in the hover state, so the text
+                // on it is the `hover:text-*` the same element declares, not the
+                // base one it replaces.
+                $sameState = array_values(array_filter(
+                    $labels,
+                    fn (array $l): bool => $l['variant'] === $panel[1],
+                ));
+                $applicable = $sameState !== [] ? $sameState : array_values(array_filter(
+                    $labels,
+                    fn (array $l): bool => $l['variant'] === '',
+                ));
+
+                $painted[$key] = [
+                    ...($painted[$key] ?? []),
+                    ...array_column($applicable, 'spec'),
+                ];
+            }
+        }
+    }
+
+    foreach ($painted as $key => $labels) {
+        $labels = array_values(array_unique($labels));
+        sort($labels);
+        $painted[$key] = $labels;
+    }
+
+    return $painted;
+}
+
+/**
+ * Every registered panel/text pair, at the mount that scores worst. `paper`
+ * stands for the whole paper set; any other mount names the solid token the
+ * panel sits on.
+ *
+ * @return array<string, float>
+ */
+function panelPairRatios(): array
+{
+    ['tokens' => $tokens] = designTokens();
+    $papers = paperGrounds($tokens);
+
+    $ratios = [];
+    foreach (groundKinds()['panel'] as $spec => $entry) {
+        if ($entry['text'] === [] || ! isset($entry['over'])) {
+            continue;
+        }
+        [$panel, $panelAlpha] = splitAlpha($spec);
+
+        $mounts = [];
+        foreach (array_unique(array_merge(...array_values($entry['over']))) as $mount) {
+            if ($mount === 'paper') {
+                $mounts = [...$mounts, ...array_values($papers)];
+
+                continue;
+            }
+            $mounts[] = $tokens[$mount];
+        }
+
+        foreach ($entry['text'] as $text) {
+            [$ink, $inkAlpha] = splitAlpha($text);
+            $worst = null;
+            foreach ($mounts as $mount) {
+                $ground = compositeOver($tokens[$panel], $panelAlpha, $mount);
+                $ratio = tokenContrast(compositeOver($tokens[$ink], $inkAlpha, $ground), $ground);
+                $worst = $worst === null ? $ratio : min($worst, $ratio);
+            }
+            $ratios["{$spec} + {$text}"] = round($worst, 2);
+        }
+    }
+
+    return $ratios;
+}
+
+it('registers every translucent panel call site', function (): void {
+    ['tokens' => $tokens] = designTokens();
+    $registry = groundKinds()['panel'];
+    $painted = paintedAlphaPanelSites($tokens);
+
+    $unregistered = [];
+    foreach ($painted as $spec => $files) {
+        if (! isset($registry[$spec])) {
+            $unregistered[] = $spec;
+
+            continue;
+        }
+        if ($registry[$spec]['text'] === []) {
+            continue;
+        }
+        foreach ($files as $file) {
+            if (! isset($registry[$spec]['over'][$file])) {
+                $unregistered[] = "{$spec} @ {$file}";
+            }
+        }
+    }
+
+    expect($unregistered)->toBe([], sprintf(
+        "These translucent panel call sites are unregistered, so nothing scored the text on them:\n  %s\n".
+        'Add each to the "panel" block of resources/brand/grounds.json, recording the ground that call '.
+        'site is mounted on ("paper", or the solid token it sits on) and the text tokens that land on it.',
+        implode("\n  ", $unregistered),
+    ));
+
+    $stale = [];
+    foreach ($registry as $spec => $entry) {
+        if (! isset($painted[$spec])) {
+            $stale[] = $spec;
+
+            continue;
+        }
+        foreach (array_keys($entry['over'] ?? []) as $file) {
+            if (! in_array($file, $painted[$spec], true)) {
+                $stale[] = "{$spec} @ {$file}";
+            }
+        }
+    }
+
+    expect($stale)->toBe([], 'These registered panel call sites paint nothing any more; drop them from grounds.json.');
+})->group('structure');
+
+it('records every panel/text pair painted in one class string', function (): void {
+    ['tokens' => $tokens] = designTokens();
+    $registry = groundKinds()['panel'];
+
+    $missing = [];
+    foreach (paintedPanelText($tokens) as $spec => $labels) {
+        foreach ($labels as $label) {
+            if (! in_array($label, $registry[$spec]['text'] ?? [], true)) {
+                $missing[] = "{$spec} + {$label}";
+            }
+        }
+    }
+
+    expect($missing)->toBe([], sprintf(
+        "These panels carry text that grounds.json does not record:\n  %s",
+        implode("\n  ", $missing),
+    ));
+})->group('structure');
+
+/**
+ * Every opaque `bg-<token>` painted in the same class string as a `text-<token>`,
+ * scored straight: with no alpha the fill *is* the ground, so there is nothing
+ * to composite it over.
+ *
+ * The panel registry only reaches `bg-<token>/<alpha>`, and the sweep above only
+ * reaches tokens named `-ink`. An opaque fill carrying a label that is neither
+ * was scored by nothing, which is how the rarity flags shipped under AA.
+ *
+ * @param  array<string, string>  $tokens
+ * @return array<string, float>
+ */
+function paintedOpaqueFillText(array $tokens): array
+{
+    $ratios = [];
+
+    foreach (componentSources() as $source) {
+        preg_match_all('/\'[^\'\n]*\'|"[^"\n]*"|`[^`]*`/s', $source, $literals);
+
+        foreach ($literals[0] as $literal) {
+            if (preg_match('/[<>{}]/', $literal) === 1) {
+                continue;
+            }
+
+            preg_match_all(
+                '/(?:^|[\s\'"`])((?:[a-z0-9-]+:)*)bg-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)(?![\w\-.\/])/',
+                $literal,
+                $fills,
+                PREG_SET_ORDER,
+            );
+            if ($fills === []) {
+                continue;
+            }
+
+            preg_match_all(
+                '/(?:^|[\s\'"`])((?:[a-z0-9-]+:)*)text-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)(?![\w\-.\/])/',
+                $literal,
+                $labels,
+                PREG_SET_ORDER,
+            );
+
+            foreach ($fills as $fill) {
+                if (! isset($tokens[$fill[2]])) {
+                    continue;
+                }
+
+                foreach ($labels as $label) {
+                    if (! isset($tokens[$label[2]]) || $label[1] !== $fill[1]) {
+                        continue;
+                    }
+
+                    $ratios['bg-'.$fill[2].' + text-'.$label[2]] = round(
+                        tokenContrast($tokens[$label[2]], $tokens[$fill[2]]),
+                        2,
+                    );
+                }
+            }
+        }
+    }
+
+    ksort($ratios);
+
+    return $ratios;
+}
+
+it('keeps every label on an opaque fill above AA', function (): void {
+    ['tokens' => $tokens] = designTokens();
+    $pairs = paintedOpaqueFillText($tokens);
+
+    expect($pairs)->not->toBeEmpty();
+
+    $under = [];
+    foreach ($pairs as $pair => $ratio) {
+        if ($ratio < 4.5) {
+            $under[] = sprintf('%s: %.2f', $pair, $ratio);
+        }
+    }
+
+    expect($under)->toBe([], sprintf(
+        "These labels print on an opaque fill under 4.5:1:\n  %s\n".
+        'The fill is the ground here, so an -ink derived against paper scores worse, not better; '.
+        'reach for a tone derived against the fill itself.',
+        implode("\n  ", $under),
+    ));
+})->group('structure');
+
+it('keeps every panel/text pair above AA, or pinned in the ledger', function (): void {
+    $ratios = panelPairRatios();
+    $ledger = groundKinds()['belowAa'];
+
+    $under = array_filter($ratios, fn (float $ratio): bool => $ratio < 4.5);
+
+    expect(array_keys($under))->toEqualCanonicalizing(array_keys($ledger), sprintf(
+        "The set of panel/text pairs under 4.5:1 has moved.\n  under now: %s\n  ledger:    %s\n".
+        'A new pair means a real contrast failure; a ledger entry that no longer fails means the fix landed '.
+        'and the entry should go.',
+        implode(', ', array_keys($under)),
+        implode(', ', array_keys($ledger)),
+    ));
+
+    foreach ($ledger as $pair => $pinned) {
+        expect($ratios[$pair])->toBe(
+            (float) $pinned,
+            "{$pair} measures {$ratios[$pair]}:1, pinned at {$pinned}:1 in grounds.json's belowAa ledger.",
+        );
+    }
+})->group('structure');
+
+it('declares every @theme static colour as literal hex, never var() or color-mix()', function (): void {
+    // designTokens()'s own regex only ever captures already-literal-hex
+    // lines, so a var()/color-mix() value creeping in would silently vanish
+    // from $tokens rather than fail anything — R1's exact silent-green-CI
+    // failure mode. This scans the raw block text instead, so nothing can
+    // hide from it by failing to match the "good" pattern.
+    $css = File::get(resource_path('css/app.css'));
+    preg_match('/@theme static \{(.*?)\n\}/s', $css, $block);
+
+    $declarations = array_filter(array_map(trim(...), explode("\n", $block[1])), fn (string $l): bool => $l !== '');
+    $notLiteralHex = array_values(array_filter(
+        $declarations,
+        fn (string $line): bool => str_starts_with($line, '--color-')
+            && preg_match('/^--color-[a-z0-9-]+:\s*#[0-9a-f]{6};(\s*\/\*.*\*\/)?$/', $line) !== 1,
+    ));
+
+    expect($notLiteralHex)->toBe([], sprintf(
+        "These @theme static colour declarations are not literal hex:\n  %s",
+        implode("\n  ", $notLiteralHex),
+    ));
+})->group('structure');
+
+/*
+ * ─── Dark ground (F2) ──────────────────────────────────────────────────
+ *
+ * Everything above scores the app's one light ground. F2 adds a second: Sky
+ * becomes ground, Cream becomes text, under `[data-theme="dark"]`. Its
+ * values are declared in a plain CSS rule outside `@theme static` (Tailwind
+ * v4 already gives `@theme static` tokens `var(--color-x)`-indirected
+ * utilities, so a same-named override in any more specific selector
+ * repaints them — no `@theme inline` layer needed), which is exactly why it
+ * needs its own scan: designTokens() only ever reads `@theme static`.
+ */
+
+/**
+ * The `[data-theme='dark'] { ... }` block in app.css whose only selector is
+ * `[data-theme='dark']` — anchored to the start of its line so a *prefixed*
+ * selector matching the same literal text, e.g. the small
+ * `html[data-theme='dark'] { color-scheme: dark; }` UA-chrome rule earlier in
+ * the file, is structurally excluded rather than merely deprioritized (an
+ * earlier version of this picked "whichever match is longer", which broke
+ * the moment a non-greedy match starting at that rule's `{` sailed past its
+ * own `}` — a bare 0-indent close, not this file's 4-space one — and landed
+ * on some unrelated block's closing brace further down instead).
+ */
+function darkThemeBlock(string $css): string
+{
+    preg_match('/^\s*\[data-theme=\'dark\'\]\s*\{.*?\n    \}/sm', $css, $block);
+
+    return $block[0] ?? '';
+}
+
+/**
+ * @return array<string, string>
+ */
+function darkThemeTokens(): array
+{
+    $block = darkThemeBlock(File::get(resource_path('css/app.css')));
+
+    $tokens = [];
+    preg_match_all('/--color-([a-z0-9-]+):\s*(#[0-9a-f]{6});/', $block, $found, PREG_SET_ORDER);
+    foreach ($found as [, $name, $value]) {
+        $tokens[$name] = $value;
+    }
+
+    return $tokens;
+}
+
+/**
+ * The three surfaces the dark ground actually uses — sky-deep/sky/sky-2,
+ * already declared as literal hex in `@theme static` since they are the
+ * app's own named palette, not new for the dark ground.
+ *
+ * @param  array<string, string>  $tokens
+ * @return array<string, string>
+ */
+function darkGrounds(array $tokens): array
+{
+    return [
+        'sky-deep' => $tokens['sky-deep'],
+        'sky' => $tokens['sky'],
+        'sky-2' => $tokens['sky-2'],
+    ];
+}
+
+it('classifies exactly the tokens the dark ground redefines as reactive', function (): void {
+    // grounds.json's `reactiveTokens` is what routes a text tier onto the
+    // grounds it can actually land on. Hand-maintained it would rot the moment
+    // a token joined or left the dark block, and the audit would go quietly
+    // wrong rather than red — so it is asserted against app.css itself.
+    // Every name the block redefines, whatever the value: darkThemeTokens()
+    // keeps only literal hex, which drops `today-accent: transparent` — real
+    // enough to flip with the ground, and so real enough to classify.
+    preg_match_all(
+        '/--color-([a-z0-9-]+):/',
+        darkThemeBlock(File::get(resource_path('css/app.css'))),
+        $found,
+    );
+    $declared = groundKinds()['reactiveTokens'];
+    $redefined = array_unique($found[1]);
+    sort($declared);
+    sort($redefined);
+
+    expect($declared)->toEqual($redefined);
+})->group('structure');
+
+it('declares every dark-ground override as literal hex, never var() or color-mix()', function (): void {
+    $block = darkThemeBlock(File::get(resource_path('css/app.css')));
+
+    expect($block)->not->toBe('', 'Expected a [data-theme=\'dark\'] block in app.css.');
+
+    // Strip the wrapping `[data-theme='dark'] { ... }` — darkThemeBlock()
+    // returns the whole rule, this test only wants its declarations.
+    $inner = preg_replace('/^\[data-theme=\'dark\'\]\s*\{\n|\n    \}$/', '', $block);
+    $declarations = array_filter(array_map(trim(...), explode("\n", (string) $inner)), fn (string $l): bool => $l !== '');
+    $notLiteralHex = array_values(array_filter(
+        $declarations,
+        // `transparent` (today-accent's dark value — no added edge) is the one
+        // deliberate non-hex exception; everything else must be a literal hex
+        // with, optionally, a trailing `/* comment */` on the same line.
+        fn (string $line): bool => str_starts_with($line, '--color-')
+            && preg_match('/^--color-[a-z0-9-]+:\s*(#[0-9a-f]{6}|transparent);(\s*\/\*.*\*\/)?$/', $line) !== 1,
+    ));
+
+    expect($notLiteralHex)->toBe([], sprintf(
+        "These dark-ground declarations are not literal hex — the exact failure mode R1 mitigates against, ".
+        "where a token guard parses #rrggbb by regex and a var()/color-mix() value silently scores nothing:\n  %s",
+        implode("\n  ", $notLiteralHex),
+    ));
+})->group('structure');
+
+it('keeps every dark-ground -ink token above AA on every dark surface', function (): void {
+    ['tokens' => $lightTokens] = designTokens();
+    $darkTokens = darkThemeTokens();
+    $grounds = darkGrounds($lightTokens);
+
+    $inks = array_filter(
+        $darkTokens,
+        fn (string $name): bool => str_ends_with($name, '-ink'),
+        ARRAY_FILTER_USE_KEY,
+    );
+
+    // Every -ink family F2's token model inverts for dark. This scores only
+    // what the dark block redefines, so a family left out of it is silently
+    // never scored here at all — which is how horizon-ink shipped at 2.9:1
+    // on sky-deep. Assert the roster rather than whatever happens to be
+    // present, so the next omission fails instead of disappearing.
+    expect(array_keys($inks))->toEqualCanonicalizing([
+        'horizon-ink',
+        'leaf-ink',
+        'ember-ink',
+        'citrus-ink',
+        'rarity-common-ink',
+        'rarity-uncommon-ink',
+        'rarity-rare-ink',
+        'rarity-epic-ink',
+        'rarity-legendary-ink',
+        'mood-blazing-ink',
+        'mood-easy-ink',
+        'mood-wobbly-ink',
+        'mood-gassed-ink',
+        'mood-overloaded-ink',
+        'mood-chill-ink',
+    ]);
+
+    $under = [];
+    foreach ($inks as $name => $hex) {
+        foreach ($grounds as $ground => $bg) {
+            $ratio = tokenContrast($hex, $bg);
+            if ($ratio < 4.5) {
+                $under[] = sprintf('--color-%s (dark) on %s (%s): %.2f', $name, $ground, $bg, $ratio);
+            }
+        }
+    }
+
+    expect($under)->toBe([], "These dark-ground -ink tokens are under 4.5:1 as text:\n  ".implode("\n  ", $under));
+})->group('structure');
+
+it('keeps the dark-ground foreground and its text tiers above AA on every dark surface', function (): void {
+    ['tokens' => $lightTokens] = designTokens();
+    $darkTokens = darkThemeTokens();
+    $grounds = darkGrounds($lightTokens);
+
+    // foreground/text-2/text-3 are the dark ground's own body/secondary/meta
+    // text tiers — the direct counterpart of the light ground's ink/ink-2/
+    // ink-3, scored the same way: worst case across every surface the ground
+    // actually renders under text.
+    $tiers = array_intersect_key($darkTokens, array_flip(['foreground', 'text-2', 'text-3']));
+
+    expect($tiers)->toHaveCount(3, 'Expected foreground, text-2 and text-3 all declared under [data-theme=\'dark\'].');
+
+    $under = [];
+    foreach ($tiers as $name => $hex) {
+        foreach ($grounds as $ground => $bg) {
+            $ratio = tokenContrast($hex, $bg);
+            if ($ratio < 4.5) {
+                $under[] = sprintf('--color-%s (dark) on %s (%s): %.2f', $name, $ground, $bg, $ratio);
+            }
+        }
+    }
+
+    expect($under)->toBe([], "These dark-ground text tiers are under 4.5:1:\n  ".implode("\n  ", $under));
+})->group('structure');

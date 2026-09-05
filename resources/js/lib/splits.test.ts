@@ -70,8 +70,8 @@ describe('barRowFill', () => {
     });
 
     it('zebra-stripes the other rows by position', () => {
-        expect(barRowFill(false, 0)).toBe('bg-sky/[0.03]');
-        expect(barRowFill(false, 1)).toBe('bg-cream-deep/30');
+        expect(barRowFill(false, 0)).toBe('bg-foreground/[0.03]');
+        expect(barRowFill(false, 1)).toBe('bg-muted/60');
     });
 });
 

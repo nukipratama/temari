@@ -10,6 +10,7 @@ use App\Services\AI\Agent\AgentTool;
 use App\Services\AI\AzureCallThrottle;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
+use App\Services\AI\NarrationOrigin;
 use App\Services\AI\StructuredChatCaller;
 use App\Actions\AI\RecordTokenUsageAction;
 use Illuminate\Support\Facades\Cache;
@@ -46,6 +47,8 @@ pest()->extend(TestCase::class)->in('Feature', 'Unit');
 | The watch list covers the tests that read the filesystem directly. glob()
 | and File::allFiles() produce no coverage edges, so nothing would otherwise
 | link a newly added class to the 1:1 structure gate that should fail on it.
+| The compliance sweeps read the route table the same way, so a new route has
+| to re-run them.
 |
 | The guard is what keeps parallel worktrees working. A worktree's .git is a
 | *file* pointing at a host path outside the container's bind mount, so git
@@ -57,12 +60,27 @@ pest()->extend(TestCase::class)->in('Feature', 'Unit');
 */
 
 if (is_dir(dirname(__DIR__).'/.git') || is_dir((string) getenv('GIT_DIR'))) {
-    pest()->tia()->locally()->watch([
+    pest()->tia()->locally()->baselined()->watch([
         'app/**/*.php' => 'tests/Unit/Architecture',
         'tests/**/*.php' => 'tests/Unit/Architecture',
         'docs/**/*.md' => 'tests/Unit/Architecture',
         'resources/css/**' => 'tests/Unit/Architecture',
+        // These scanning tests read resources/js and the blade mirrors from
+        // disk, so a change there records no coverage edge and TIA replays them
+        // green. A bare `**` matches one level only, which is why these spell
+        // the extension out: `resources/js/**` never matched a component two
+        // directories deep, and `resources/views/**` never matched
+        // errors/layout.blade.php, which DesignTokenMirrorsTest mirrors.
+        'resources/js/**/*.ts' => 'tests/Unit/Architecture',
+        'resources/js/**/*.tsx' => 'tests/Unit/Architecture',
+        'resources/views/**/*.blade.php' => 'tests/Unit/Architecture',
+        'public/**' => 'tests/Unit/Architecture',
         'resources/js/types/generated.ts' => 'tests/Feature/Console/GenerateTypeScriptEnumsCommandTest.php',
+        'routes/**/*.php' => 'tests/Feature/Compliance',
+        // NarratorsCoverageTest globs these two directories, so a brand-new
+        // narrator or tool has no coverage edge to it and TIA would skip it.
+        'app/Services/AI/Narrators/*.php' => 'tests/Unit/Services/AI/Narrators/NarratorsCoverageTest.php',
+        'app/Services/AI/Agent/Tools/*.php' => 'tests/Unit/Services/AI/Narrators/NarratorsCoverageTest.php',
     ]);
 }
 
@@ -225,6 +243,7 @@ function fakeStructuredCaller(ClientFake $client, string $deployment = 'gpt-test
         $azure,
         app(RecordTokenUsageAction::class),
         new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)),
+        app(NarrationOrigin::class),
     );
 }
 
@@ -258,8 +277,8 @@ function captureAnalysisServiceRequests(array &$captured): AnalysisService
 /**
  * Stages an Analysis row for a Telegram push-notification test: Done (with
  * $content) by default, or still-pending when $done is false. Shared by the
- * SendActivityNotificationControllerTest/SendMonthlyRecapNotificationControllerTest/
- * SendWeeklyRecapNotificationControllerTest push tests, which all stage the
+ * SendMonthlyRecapNotificationControllerTest / SendWeeklyRecapNotificationControllerTest
+ * push tests, which both stage the
  * same shape (analysis_type/subject_type/subject_id/discriminator) and only
  * differ in which subject/type/discriminator they use.
  */

@@ -1,23 +1,14 @@
 import type { Mood } from '@/types/inertia';
 
-import { THREADWORK } from '@/lib/chartTokens';
-
-export const MOOD_FACE: Record<Mood, string> = {
-    blazing: '✨',
-    easy: '🦘',
-    gassed: '🥵',
-    wobbly: '🍳',
-    overloaded: '💫',
-    chill: '🌧️',
-};
+import { PALETTE } from '@/lib/chartTokens';
 
 export const MOOD_LABEL: Record<Mood, string> = {
-    blazing: 'Blazing',
-    easy: 'Easy',
-    gassed: 'Gassed',
-    wobbly: 'Wobbly',
-    overloaded: 'Overloaded',
-    chill: 'Chill',
+    blazing: 'blazing',
+    easy: 'easy',
+    gassed: 'gassed',
+    wobbly: 'wobbly',
+    overloaded: 'overloaded',
+    chill: 'chill',
 };
 
 // Solid mood fill (bg-mood-{key}); use for persona bar segments + sigil swatches.
@@ -40,6 +31,17 @@ export const MOOD_SOFT_FILL: Record<Mood, string> = {
     chill: 'bg-mood-chill-bg',
 };
 
+// Label colour (text-mood-{key}-ink). The soft fill above is fixed identity and
+// stays pale on both grounds, so text on it must be pinned rather than inherited.
+export const MOOD_INK: Record<Mood, string> = {
+    blazing: 'text-mood-blazing-ink',
+    easy: 'text-mood-easy-ink',
+    gassed: 'text-mood-gassed-ink',
+    wobbly: 'text-mood-wobbly-ink',
+    overloaded: 'text-mood-overloaded-ink',
+    chill: 'text-mood-chill-ink',
+};
+
 // Canonical mood ordering for legends + filter rows (best-day → rest-day).
 export const MOOD_ORDER: ReadonlyArray<Mood> = [
     'blazing',
@@ -50,55 +52,45 @@ export const MOOD_ORDER: ReadonlyArray<Mood> = [
     'chill',
 ];
 
-// Short cause hint per mood; pairs with MOOD_LABEL in filter/legend rows.
-export const MOOD_HINT: Record<Mood, string> = {
-    blazing: 'PR or win',
-    easy: 'easy pace',
-    wobbly: 'HR drift',
-    gassed: 'pushed too hard',
-    overloaded: 'overdid it',
-    chill: 'rest day',
-};
+/**
+ * The most frequent mood among a set of runs, ties broken by MOOD_ORDER
+ * (best-day → rest-day) so the pick is deterministic. Null moods (a run with
+ * no post-run story line yet) don't count. Null when nothing scores.
+ */
+export function dominantMood(moods: ReadonlyArray<Mood | null>): Mood | null {
+    const counts = new Map<Mood, number>();
+    for (const mood of moods) {
+        if (mood === null) continue;
+        counts.set(mood, (counts.get(mood) ?? 0) + 1);
+    }
 
-export interface MoodOption {
-    mood: Mood;
-    label: string;
-    hint: string;
-    /** Tailwind class for the chip swatch. */
-    swatchClass: string;
-}
+    let dominant: Mood | null = null;
+    let topCount = 0;
+    for (const mood of MOOD_ORDER) {
+        const count = counts.get(mood) ?? 0;
+        if (count > topCount) {
+            topCount = count;
+            dominant = mood;
+        }
+    }
 
-export const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = MOOD_ORDER.map(
-    (mood) => ({
-        mood,
-        label: MOOD_LABEL[mood],
-        hint: MOOD_HINT[mood],
-        swatchClass: MOOD_FILL[mood],
-    }),
-);
-
-export function moodToken(mood: Mood): Mood {
-    return mood;
+    return dominant;
 }
 
 export function moodSigilColor(mood: Mood): string {
     switch (mood) {
         case 'blazing':
-            return '#c9971f';
+            return PALETTE.citrus;
         case 'easy':
-            return '#2f8f63';
+            return PALETTE.leaf;
         case 'gassed':
-            return '#7a2030';
+            return PALETTE.gassed;
         case 'wobbly':
-            return '#b23a4f';
+            return PALETTE.ember;
         case 'overloaded':
-            return THREADWORK.overloaded;
+            return PALETTE.overloaded;
         case 'chill':
         default:
-            return '#55488f';
+            return PALETTE.chill;
     }
-}
-
-export function moodRing(mood: Mood): string {
-    return `ring-mood-${mood}/60`;
 }

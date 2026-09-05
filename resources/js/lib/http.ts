@@ -14,7 +14,7 @@ export function csrfToken(): string {
  * not `router.post`. Resolves with the raw `Response` — each caller owns its
  * own error policy.
  */
-export function postJson(url: string): Promise<Response> {
+export function postJson(url: string, body?: unknown): Promise<Response> {
     return fetch(url, {
         method: 'POST',
         credentials: 'same-origin',
@@ -24,6 +24,21 @@ export function postJson(url: string): Promise<Response> {
             'X-CSRF-TOKEN': csrfToken(),
             'X-Requested-With': 'XMLHttpRequest',
         },
-        body: '{}',
+        body: body === undefined ? '{}' : JSON.stringify(body),
+    });
+}
+
+/**
+ * GET a plain-JSON endpoint. Same "caller owns the error policy" contract as
+ * {@see postJson}: resolves with the raw `Response`, rejects on network error.
+ */
+export function getJson(url: string): Promise<Response> {
+    return fetch(url, {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
     });
 }

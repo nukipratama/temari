@@ -1,7 +1,7 @@
-import { Icon } from '@iconify/react';
 import { Link } from '@inertiajs/react';
 import { type ReactNode } from 'react';
 
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 type BackLinkTone = 'muted' | 'accent';
@@ -18,8 +18,8 @@ interface BackLinkProps {
 }
 
 const TONE_CLASS: Record<BackLinkTone, string> = {
-    muted: 'text-ink-2 hover:text-horizon-deep',
-    accent: 'text-horizon-deep hover:text-ember-deep',
+    muted: 'text-text-2 hover:text-horizon-ink',
+    accent: 'text-horizon-ink hover:text-ember-ink',
 };
 
 /**

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import SectionHeading from '@/components/SectionHeading';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/cn';
 
 interface DataTableProps<T> {
@@ -43,17 +43,13 @@ export default function DataTable<T>({
                 emptyState
             ) : (
                 <div className="relative mt-4">
-                    <Card
-                        tone="cream"
-                        padding="none"
-                        className="overflow-x-auto bg-surface-elev"
-                    >
+                    <Card className="overflow-x-auto bg-popover py-0">
                         <table
                             className="w-full text-sm tabular-nums"
                             style={{ minWidth }}
                         >
                             <thead>
-                                <tr className="border-b border-line text-left text-xs text-ink-3">
+                                <tr className="border-b border-border text-left text-xs text-text-3">
                                     {columns.map((label) => (
                                         <th
                                             key={label}
@@ -68,7 +64,7 @@ export default function DataTable<T>({
                                 {rows.map((row) => (
                                     <tr
                                         key={rowKey(row)}
-                                        className="border-b border-line last:border-b-0"
+                                        className="border-b border-border last:border-b-0"
                                     >
                                         {renderRow(row)}
                                     </tr>
@@ -81,7 +77,7 @@ export default function DataTable<T>({
                         with the table content instead of staying pinned to the visible edge. */}
                     <div
                         aria-hidden
-                        className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-surface-elev to-transparent"
+                        className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-popover to-transparent"
                     />
                 </div>
             )}
@@ -94,6 +90,6 @@ export function Td({
     className,
 }: Readonly<{ children: ReactNode; className?: string }>) {
     return (
-        <td className={cn('px-5 py-3 text-ink-2', className)}>{children}</td>
+        <td className={cn('px-5 py-3 text-text-2', className)}>{children}</td>
     );
 }

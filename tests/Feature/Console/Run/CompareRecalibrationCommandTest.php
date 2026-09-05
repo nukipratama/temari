@@ -73,6 +73,6 @@ it('counts a run that never got a card as its own bucket rather than fataling', 
     expect(RunCard::query()->count())->toBe(0);
 
     $this->artisan('run:compare-recalibration')
-        ->expectsOutputToContain('tidak ada kartu')
+        ->expectsOutputToContain('no card')
         ->assertSuccessful();
 });

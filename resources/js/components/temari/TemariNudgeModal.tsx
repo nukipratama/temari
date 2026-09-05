@@ -1,15 +1,11 @@
-import { Icon } from '@iconify/react';
-import { usePage } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRef, type ReactNode } from 'react';
 
-import type { SharedProps } from '@/types/inertia';
-
-import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
+import FaceIcon from '@/components/temari/FaceIcon';
+import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import { useModal } from '@/hooks/useModal';
 import { cn } from '@/lib/cn';
-import { serverToEquipped } from '@/lib/equippedAccessories';
 import { iconButtonVariants } from '@/lib/variants';
 
 interface TemariNudgeModalProps {
@@ -26,14 +22,13 @@ interface TemariNudgeModalProps {
     onPrimary: () => void;
     /** Secondary dismiss label; defaults to a soft "Not now". */
     secondaryLabel?: string;
-    pose?: TemariPose;
 }
 
 /**
- * The shared shell for Temari's soft "front door" modals: a calm mascot nudge
- * (not a celebration) with a title, a short body, and a primary + dismiss CTA.
- * Backs {@see DemoBlockedModal} and {@see EnableNotificationsModal} so the framer
- * shell, focus trap and equipped-mascot read live in one place.
+ * The shared shell for Temari's soft "front door" modals: a calm nudge (not a
+ * celebration) with a title, a short body, and a primary + dismiss CTA. Backs
+ * {@see DemoBlockedModal} and {@see EnableNotificationsModal} so the framer
+ * shell and focus trap live in one place.
  */
 export default function TemariNudgeModal({
     open,
@@ -45,15 +40,8 @@ export default function TemariNudgeModal({
     primaryClassName,
     onPrimary,
     secondaryLabel = 'Not now',
-    pose = 'observational',
 }: Readonly<TemariNudgeModalProps>) {
     const panelRef = useRef<HTMLDivElement>(null);
-
-    const equippedAccessories =
-        usePage<SharedProps>().props.equippedAccessories;
-    const equipped = equippedAccessories
-        ? serverToEquipped(equippedAccessories)
-        : null;
 
     useModal(open, panelRef, onClose);
 
@@ -84,7 +72,7 @@ export default function TemariNudgeModal({
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.96, y: 8 }}
                         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                        className="flex w-full max-w-sm flex-col overflow-hidden rounded-3xl bg-cream shadow-2xl"
+                        className="flex w-full max-w-sm flex-col overflow-hidden rounded-xl bg-card shadow-e4"
                     >
                         <div className="flex justify-start px-3 pt-3">
                             <button
@@ -98,24 +86,19 @@ export default function TemariNudgeModal({
                         </div>
 
                         <div className="flex flex-col items-center gap-4 px-6 pb-6 pt-1 text-center">
-                            <TemariProto
-                                pose={pose}
-                                size={120}
-                                equipped={equipped}
-                                animate
-                            />
+                            <FaceIcon size={72} />
                             <h2
                                 id="temari-nudge-title"
-                                className="font-display text-2xl tracking-tight text-ink"
+                                className="font-serif text-2xl tracking-tight text-foreground"
                             >
                                 {title}
                             </h2>
-                            <p className="font-sans text-sm leading-relaxed text-ink-2">
+                            <p className="font-sans text-sm leading-relaxed text-text-2">
                                 {body}
                             </p>
                         </div>
 
-                        <div className="flex flex-col gap-2 border-t border-cream-deep bg-cream px-5 py-4">
+                        <div className="flex flex-col gap-2 border-t border-border bg-card px-5 py-4">
                             <PillButton
                                 tone="sky"
                                 onClick={onPrimary}

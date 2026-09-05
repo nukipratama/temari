@@ -1,7 +1,7 @@
 import type { Mood } from '@/types/inertia';
 
 import { cn } from '@/lib/cn';
-import { MOOD_FILL, MOOD_LABEL, MOOD_SOFT_FILL } from '@/lib/mood';
+import { MOOD_FILL, MOOD_INK, MOOD_LABEL, MOOD_SOFT_FILL } from '@/lib/mood';
 
 interface MoodChipProps {
     mood: Mood;
@@ -27,7 +27,7 @@ export default function MoodChip({
                     : 'px-3 py-1.5 text-label-small',
                 onSky
                     ? 'bg-cream/10 text-cream'
-                    : cn(MOOD_SOFT_FILL[mood], 'text-ink'),
+                    : cn(MOOD_SOFT_FILL[mood], MOOD_INK[mood]),
                 className,
             )}
         >

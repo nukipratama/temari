@@ -133,7 +133,7 @@ it('reverts group rows to Pending without billing when generation is paused', fu
 
 // An unavailable model used to degrade the insights to deterministic template
 // copy. It no longer does: a template presented as narration is a lie the user
-// cannot see through, so the group fails honestly and the UI offers "Coba lagi".
+// cannot see through, so the group fails honestly and the UI offers "Try again".
 it('fails the whole group rather than templating run-insight when the LLM is unavailable', function (): void {
     $activity = seedActivityForJob();
 
@@ -155,7 +155,7 @@ it('fails the whole group rather than templating run-insight when the LLM is una
     }
 });
 
-it('reuses the Done insight row instead of re-billing RunInsightNarrator on a cerita-only re-dispatch', function (): void {
+it('reuses the Done insight row instead of re-billing RunInsightNarrator on a story-only re-dispatch', function (): void {
     $activity = seedActivityForJob();
 
     // The insight row is already Done with known content; only PostRunSpeech is Pending.
@@ -167,7 +167,7 @@ it('reuses the Done insight row instead of re-billing RunInsightNarrator on a ce
     ]);
 
     $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
-    $speechMock->shouldReceive('generate')->andReturn('cerita baru');
+    $speechMock->shouldReceive('generate')->andReturn('new story');
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
 
     // The insight LLM must NOT be called: the Done row is reused verbatim.
@@ -182,7 +182,7 @@ it('reuses the Done insight row instead of re-billing RunInsightNarrator on a ce
         ->get()
         ->keyBy(fn (Analysis $r): string => $r->analysis_type->value);
 
-    expect($rows[AnalysisType::PostRunSpeech->value]->content)->toBe('cerita baru')
+    expect($rows[AnalysisType::PostRunSpeech->value]->content)->toBe('new story')
         ->and(json_decode((string) $rows[AnalysisType::RunInsight->value]->content, true))
         ->toBe([sampleClaim('stored claim')]);
 });
