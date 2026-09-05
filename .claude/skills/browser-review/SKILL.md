@@ -126,6 +126,7 @@ docker compose exec -u root app sh .claude/skills/browser-review/scripts/setup.s
 
 ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/edges.mjs dark
 ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/states.mjs dark
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/probe.mjs / dark 'document.title'
 
 # 6. teardown (restore node_modules; screenshots are kept as history)
 ./vendor/bin/sail exec app sh .claude/skills/browser-review/scripts/teardown.sh
@@ -271,30 +272,33 @@ If the model roster changes later (e.g. Haiku or Sonnet is retired), swap in wha
 fast/cheap or default/capable tier at the time — the split above is the instruction, the specific model
 names are just today's mapping onto it.
 
-### Verify before acting — a real false-positive rate, not a hypothetical one
+### Verify before reporting — the rate is worse than "some"
 
-A single review pass produced 20 findings; roughly a third didn't survive verification against the
-live app (a low-contrast filler element misread as empty space, a label scrolled off-screen misread as
-CSS-hidden, cropped screenshot math, a claim about "missing" content that render unconditionally with
-no responsive class anywhere near it). Two things reduce this rate:
+A screenshot is a weak source, and the numbers are not hypothetical. One pass produced 20 findings and
+roughly a third did not survive checking. A later pass produced **3, and all 3 were wrong**: a fixed
+bottom nav read as an element collision, a notification bell read as an empty box, a token-correct
+inverted pill read as a wrong-ground bug. Every one cost a round of someone's attention.
 
-- **Screenshots come from separate logins.** `shoot.mjs` opens a fresh browser context (and re-logs
-  in) per viewport, so mobile and desktop shots of the "same" page are two independent server
-  requests. Any `Analysis`-backed content (LLM narration, pending/skeleton/retry states) can
-  legitimately differ between the two for reasons that have nothing to do with responsive CSS. Treat a
-  content difference in AI-narrated text as lower-confidence than a difference in static UI chrome —
-  it may be a request-timing artifact, not a layout bug.
-- **"Missing" is a stronger claim than "small/faint/different."** When a finding says content is
-  dropped or absent (not just small, low-contrast, or restyled), it should say so explicitly and flag
-  it as needing confirmation rather than asserting it as settled fact — that phrasing is what lets a
-  HIGH-severity claim get fixed on sight instead of re-verified first.
+So the inspect agents **must verify before returning a finding**, and the schema requires the evidence
+so the requirement cannot be quietly skipped. `probe.mjs` makes that one command:
 
-Before spending an implementation pass on a HIGH-severity "content missing" claim, re-check it live
-rather than trusting one screenshot read: navigate to the real page and query the DOM directly (e.g.
-`page.evaluate(() => ...)` for text content, or `getComputedStyle(el).width` for a suspiciously-small
-element — this caught a flex-shrink bug that squeezed a 6px indicator dot to 0px width, invisible in a
-screenshot but obvious in one `getComputedStyle` call). It's a few extra minutes against the running
-app, versus an implementation change chasing a symptom that isn't there.
+```bash
+node .claude/skills/browser-review/scripts/probe.mjs <route> [dark|light] [--click=<text>] '<expression>'
+```
+
+It logs in, sets the ground, optionally drives one control, evaluates the expression in the page and
+prints JSON. A claim that content is *missing* is answered by querying for it; a claim that something
+is *invisible* is answered by `getComputedStyle`; a claim about *size* is answered by
+`getBoundingClientRect`. That is how a flex-shrink bug squeezing a 6px dot to 0px was confirmed —
+invisible in a screenshot, obvious in one call.
+
+Two standing sources of false positives to weigh before reporting at all:
+
+- **Screenshots come from separate logins.** `shoot.mjs` opens a fresh context per viewport, so mobile
+  and desktop shots of the "same" page are independent server requests. Any `Analysis`-backed content
+  can legitimately differ for reasons unrelated to responsive CSS.
+- **"Missing" is a much stronger claim than "small/faint/different."** It is also the claim most often
+  wrong, and the one most likely to be acted on without re-checking. It always needs a probe.
 
 Pass the batch dir, the viewports you shot, and the parsed `AUDIT` lines as `args`, e.g.:
 ```json
@@ -343,11 +347,14 @@ const FINDINGS = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['page', 'severity', 'issue'],
+        required: ['page', 'severity', 'issue', 'evidence'],
         properties: {
           page: { type: 'string' },
           severity: { type: 'string', enum: ['high', 'medium', 'low'] },
           issue: { type: 'string' },
+          // The probe.mjs command run and what it returned. A finding without
+          // this is a screenshot guess, and the schema is where that gets refused.
+          evidence: { type: 'string' },
         },
       },
     },
@@ -377,8 +384,15 @@ for (const vp of viewports) {
       `(PageContainer / max-w-page-2xl), the fixed bottom-nav mid-page artifact, sparse demo-data grids, and ` +
       `intentional overflow-x-auto. If you're about to say content is "missing" or "dropped" rather than just ` +
       `small, low-contrast, or differently styled, say explicitly that it needs live confirmation (a false ` +
-      `positive here costs a wasted implementation pass) — don't assert it as settled fact from one screenshot. ` +
-      `Return only pages with a real, describable issue.`,
+      `positive here costs a wasted implementation pass). ` +
+      `Before returning ANY finding, verify it live with probe.mjs and put the command and its output in `
+      `the finding's \`evidence\` field — the schema requires it. From the repo root: `
+      `\`./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/probe.mjs <route> dark `
+      `[--click=<text>] '<js expression>'\`. Query for content you think is missing, getComputedStyle for `
+      `something you think is invisible, getBoundingClientRect for something you think is mis-sized. `
+      `Discard anything the probe does not confirm: of the last 3 findings reported from screenshots `
+      `alone, all 3 were wrong. `
+      `Return only pages with a real, confirmed issue.`,
       { label: `inspect:${vp}:flagged`, phase: 'Inspect', model: 'haiku' /* fast/cheap tier */, schema: FINDINGS }
     ))
   }
@@ -392,9 +406,16 @@ for (const vp of viewports) {
       `Ignore by design: width-capped content (PageContainer / max-w-page-2xl), the fixed bottom-nav mid-page ` +
       `artifact, sparse demo-data grids, and intentional overflow-x-auto. If you're about to say content is ` +
       `"missing" or "dropped" between viewports rather than just small, low-contrast, or differently styled, ` +
-      `say explicitly that it needs live confirmation instead of asserting it as fact — mobile and desktop are ` +
-      `separate logins, so AI-narrated content in particular can legitimately differ for reasons unrelated to ` +
-      `responsive CSS. Return only flagged pages.`,
+      `mobile and desktop are separate logins, so AI-narrated content in particular can legitimately differ ` +
+      `for reasons unrelated to responsive CSS. ` +
+      `Before returning ANY finding, verify it live with probe.mjs and put the command and its output in `
+      `the finding's \`evidence\` field — the schema requires it. From the repo root: `
+      `\`./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/probe.mjs <route> dark `
+      `[--click=<text>] '<js expression>'\`. Query for content you think is missing, getComputedStyle for `
+      `something you think is invisible, getBoundingClientRect for something you think is mis-sized. `
+      `Discard anything the probe does not confirm: of the last 3 findings reported from screenshots `
+      `alone, all 3 were wrong. `
+      `Return only confirmed findings; an empty array is a valid and useful result.`,
       { label: `inspect:${vp}:sample`, phase: 'Inspect', model: 'sonnet' /* default/capable tier */, effort: 'medium', schema: FINDINGS }
     ))
   }
@@ -430,4 +451,5 @@ return results
   `audit.mjs` (overflow), `contrast.mjs` (rendered contrast, per ground), `mounts.mjs` (what a panel
   is actually mounted on), `light-islands.mjs` (surfaces wearing the wrong ground), `edges.mjs`
   (borders and rings that are not there), `states.mjs` (those scans, in states a page load never
-  reaches), `scans.mjs` (the shared colour maths), `setup.sh` / `teardown.sh`.
+  reaches), `scans.mjs` (the shared colour maths), `probe.mjs` (one live DOM question, answered),
+  `setup.sh` / `teardown.sh`.
