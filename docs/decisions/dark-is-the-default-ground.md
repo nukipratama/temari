@@ -18,6 +18,8 @@ code_refs:
 
 **Status:** Accepted (2026-09-02, implemented in `F2`)
 
+> **One claim below is superseded (noted 2026-09-06) by [[system-is-the-default-ground]].** Dark is no longer the ground an unconfigured visitor gets: with no explicit `light`/`dark` stored, the pre-paint script, the hook and the CSS fallback all resolve from `prefers-color-scheme` instead. Everything else here — two authored grounds, the `data-theme` switch, the three-layer token model, the `-ink` tier inversion and the both-grounds audit — still stands exactly as written.
+
 ## Context
 
 Every version of this app before the mobile-UX port was light-only, and said so as a design

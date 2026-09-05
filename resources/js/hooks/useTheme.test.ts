@@ -20,9 +20,9 @@ describe('useTheme', () => {
         document.documentElement.style.colorScheme = '';
     });
 
-    it('defaults to dark when nothing is stored', () => {
+    it('defaults to system when nothing is stored', () => {
         const { result } = renderHook(() => useTheme());
-        expect(result.current.preference).toBe('dark');
+        expect(result.current.preference).toBe('system');
     });
 
     it('reads an already-stored preference on mount', () => {
@@ -31,10 +31,10 @@ describe('useTheme', () => {
         expect(result.current.preference).toBe('light');
     });
 
-    it('falls back to dark for a stale/unrecognized stored value', () => {
+    it('falls back to system for a stale/unrecognized stored value', () => {
         localStorage.setItem('temari-theme', 'sepia');
         const { result } = renderHook(() => useTheme());
-        expect(result.current.preference).toBe('dark');
+        expect(result.current.preference).toBe('system');
     });
 
     it('writes the chosen preference to localStorage', () => {

@@ -58,8 +58,9 @@ value — an opacity, a ring width, a whole property — may use `dark:`, becaus
 `prefers-color-scheme`. See [tokens-flip-colour-dark-variant-flips-the-rest](../../../docs/decisions/tokens-flip-colour-dark-variant-flips-the-rest.md).
 
 **Two grounds, since F2.** `[data-theme="dark"]` on `<html>` inverts Sky and Cream — Sky becomes
-ground, Cream becomes text — and is the app's **default** ground; light and system are reachable
-from Settings. A second semantic layer (`background`/`foreground`/`card`/`popover`/... plus
+ground, Cream becomes text. Neither ground is the default: with nothing stored the app resolves
+from `prefers-color-scheme`, and an explicit light or dark is reachable from Settings. A second
+semantic layer (`background`/`foreground`/`card`/`popover`/... plus
 `leaf-ink`/`ember-ink`/`citrus-ink`/`rarity-*-ink`, which invert per ground) sits above the palette
 above; see "Ground-reactive semantic layer" in [docs/design-tokens.md](../../../docs/design-tokens.md).
 

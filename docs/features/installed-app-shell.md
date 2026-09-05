@@ -184,7 +184,7 @@ so first launch does not step colour on either.
 `public/manifest.webmanifest` is a different consumer: Android composites the
 *manifest* icon — plate and all — onto `background_color`, and it has no way to
 vary by scheme. It therefore pins `#171f28`, the plate colour, which is what
-keeps that composite seamless; `theme_color` stays on the default ground. The
+keeps that composite seamless; `theme_color` is pinned to the dark value too. The
 `theme-color` meta *can* vary, and ships one per ground.
 
 [AppLayoutAssetsExistTest](tests/Unit/Architecture/AppLayoutAssetsExistTest.php)

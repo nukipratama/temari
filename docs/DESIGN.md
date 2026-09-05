@@ -25,7 +25,7 @@ A personal running companion: it connects to Strava, ingests each run, computes 
 
 - **Cost-predictable LLM.** AI narration never auto-retries; failed blocks wait for a manual re-trigger. Dispatch is idempotent and windowed so the same recap is never re-billed. See [[decisions/index|the ADRs]] and [app/Services/AI/AnalysisService.php](app/Services/AI/AnalysisService.php).
 - **One casual English voice.** All UI/vibes/copy speak plain, warm English; domain words (pace, splits, HR) stay as-is, running-speak. Rules in [[voice-and-tone]].
-- **Two grounds, dark by default.** A `data-theme` attribute on `<html>` (never a `.dark` class) switches a ground-reactive semantic layer over a fixed named palette; light and system are reachable from Settings. Tokens in [[design-tokens]].
+- **Two grounds, the device's by default.** A `data-theme` attribute on `<html>` (never a `.dark` class) switches a ground-reactive semantic layer over a fixed named palette; with nothing stored the ground follows `prefers-color-scheme`, and an explicit light or dark is reachable from Settings. Tokens in [[design-tokens]].
 - **Metering survives app resets.** A separate `analytics` DB connection holds token-usage/metering so it outlives `migrate:fresh`. See [config/database.php](config/database.php).
 - **Homelab runtime.** FrankenPHP + Octane behind a Cloudflare tunnel; deploys via GitHub Actions. Dev mirrors prod via Sail.
 

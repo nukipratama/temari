@@ -392,14 +392,14 @@ html {
        cream header on a light-only app; pinning `theme-color` alone could not
        fix it, since that strip was never painted from theme-color).
 
-       F2 makes the app two-ground: `dark` here is the bare fallback for a
-       pre-hydration/no-JS paint, matching decision 6's default ground; the
-       `[data-theme]` rules below are what actually apply once the blocking
-       inline script in app.blade.php runs, before first paint in the normal
-       case. Mirrored as a <meta name="color-scheme"> there for the same
-       reason the original single-value meta existed: it has to apply before
-       this stylesheet loads. */
-    color-scheme: dark;
+       F2 makes the app two-ground: `light dark` here is the bare fallback
+       for a pre-hydration/no-JS paint, leaving the ground to the device's own
+       setting; the `[data-theme]` rules below are what actually apply once
+       the blocking inline script in app.blade.php runs, before first paint in
+       the normal case. Mirrored as a <meta name="color-scheme"> there for the
+       same reason the original single-value meta existed: it has to apply
+       before this stylesheet loads. */
+    color-scheme: light dark;
     -webkit-tap-highlight-color: transparent;
     /* Stop iOS inflating text when a page ends up in landscape. The fluid
        clamp() type scale already handles sizing; Safari's own bump fights it. */

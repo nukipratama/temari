@@ -53,12 +53,16 @@ describe('AppearanceCard', () => {
         );
     });
 
-    it('defaults to dark pressed when nothing is stored', () => {
+    it('defaults to system pressed when nothing is stored', () => {
         render(<AppearanceCard />);
 
-        expect(screen.getByRole('button', { name: 'dark' })).toHaveAttribute(
+        expect(screen.getByRole('button', { name: 'system' })).toHaveAttribute(
             'aria-pressed',
             'true',
+        );
+        expect(screen.getByRole('button', { name: 'dark' })).toHaveAttribute(
+            'aria-pressed',
+            'false',
         );
     });
 
@@ -78,6 +82,7 @@ describe('AppearanceCard', () => {
 
     it('resolves system against the current OS preference', () => {
         mockMatchMedia(true);
+        localStorage.setItem('temari-theme', 'light');
         render(<AppearanceCard />);
 
         fireEvent.click(screen.getByRole('button', { name: 'system' }));
