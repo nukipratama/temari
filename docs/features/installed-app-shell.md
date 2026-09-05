@@ -9,6 +9,7 @@ code_refs:
   - public/manifest.webmanifest
   - resources/js/hooks/useSwipeBack.ts
   - resources/js/components/MobileTopBar.tsx
+  - resources/js/components/StatusBarScrim.tsx
   - resources/js/hooks/useBodyScrollLock.ts
   - resources/css/app.css
   - scripts/build-splash-screens.php
@@ -61,12 +62,27 @@ all built on a premise that turned out to be false on-device:
   was compositing **over** our content, not sampling a colour from it.
 
 The actual cause is an iOS 26.1 regression — `black-translucent` stopped being
-honoured, and installed web apps lost transparency behind the status bar. The
-strip is no longer ours at any level, so the fix is to stop asking for it and
-let iOS paint a solid bar. The scrim went with it; nothing paints there now.
+honoured, and installed web apps lost transparency behind the status bar. #734
+therefore stopped asking for it and let iOS paint a solid bar, which removed the
+haze.
 
-The lesson worth keeping, now six attempts deep: **nothing about this strip can
-be settled from the spec.** Ship the change and look at a phone.
+### Whether the strip is ours depends on the installer
+
+The wrinkle #734 missed: **a Chrome install and a Safari install do not behave
+the same.** Added from Safari, iOS covers the region itself. Added from Chrome,
+the web view still runs edge to edge and page content shows through behind the
+clock — on the Today screen the briefing text was legible behind it, and again
+in the gap above the chips, which is what made the top bar read as sitting
+oddly low.
+
+`StatusBarScrim` is therefore back, painting `env(safe-area-inset-top)` in
+`bg-background`. It is a no-op on a Safari install and load-bearing on a Chrome
+one, which is the only shape that covers both. Its earlier removal in #734 was
+right about the haze and wrong about the region being unconditionally iOS's.
+
+The lesson worth keeping, now seven attempts deep: **nothing about this strip
+can be settled from the spec** — and "on a phone" is not one configuration.
+Check a Safari install and a Chrome install; they diverge.
 
 `pt-[max(1rem,env(safe-area-inset-top))]` on the mobile top bar and on
 `BareShell`, and `pt-[max(4rem,calc(env(safe-area-inset-top)+3rem))]` on the
@@ -126,9 +142,25 @@ reads, so a user who overrode the ground in Settings still gets the OS-matching
 image; the alternative is one fixed ground that is wrong for everyone on the
 other one.
 
-`public/manifest.webmanifest` has no equivalent mechanism — `background_color`
-and `theme_color` are single values — so both pin the **default** ground
-(`#0b1017`). The `theme-color` meta *can* vary, and ships one per ground.
+**The mark is drawn, not composited from the app icon.** The first version of
+this pasted `icon-512.png` onto the ground, and that file carries its own
+`#171f28` plate ([temari-app-icon.svg](resources/brand/logo/temari-app-icon.svg))
+— a visible square against sky-deep, and an inconsistent dark tile against
+cream. The generator now rasterises
+[temari-mark.svg](resources/brand/logo/temari-mark.svg) through Imagick's RSVG
+delegate with a transparent background and composites the bare strokes, swapping
+only the base-stroke colour per ground (cream on sky-deep, sky on cream — the
+lead stroke is lime on both). Geometry still comes from the single SVG the
+in-app `TemariMark` draws.
+
+Because there is no plate, each ground takes the background it actually paints,
+so first launch does not step colour on either.
+
+`public/manifest.webmanifest` is a different consumer: Android composites the
+*manifest* icon — plate and all — onto `background_color`, and it has no way to
+vary by scheme. It therefore pins `#171f28`, the plate colour, which is what
+keeps that composite seamless; `theme_color` stays on the default ground. The
+`theme-color` meta *can* vary, and ships one per ground.
 
 [AppLayoutAssetsExistTest](tests/Unit/Architecture/AppLayoutAssetsExistTest.php)
 expands the blade's device table across both grounds, so a missing image in
