@@ -56,7 +56,7 @@ describe('AskAboutRun', () => {
         ).toBeInTheDocument();
     });
 
-    it('drops a suggestion that has already been asked', async () => {
+    it('retires the starting points once the thread has an entry', async () => {
         stubApi({
             questions: [row({ status: 'done', answer: 'Heat.' })],
             suggestions: [
@@ -66,15 +66,32 @@ describe('AskAboutRun', () => {
         });
 
         render(<AskAboutRun activityId={9} />);
+        await screen.findByText('Heat.');
 
-        await screen.findByRole('button', {
-            name: 'which km cost me the most?',
-        });
+        expect(screen.queryByText('Starting points')).not.toBeInTheDocument();
         expect(
             screen.queryByRole('button', {
-                name: 'Why did my heart rate drift up?',
+                name: 'which km cost me the most?',
             }),
         ).not.toBeInTheDocument();
+    });
+
+    it('waits for the thread before offering the starting points', async () => {
+        stubApi({
+            questions: [row({ status: 'done', answer: 'Heat.' })],
+            suggestions: ['which km cost me the most?'],
+        });
+
+        render(<AskAboutRun activityId={9} />);
+
+        expect(screen.queryByText('Starting points')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('The numbers are up there. Ask me why.'),
+        ).not.toBeInTheDocument();
+
+        await screen.findByText('Heat.');
+
+        expect(screen.queryByText('Starting points')).not.toBeInTheDocument();
     });
 
     it('sends the typed question and clears the box', async () => {

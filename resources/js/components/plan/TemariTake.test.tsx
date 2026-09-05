@@ -20,14 +20,14 @@ function analysis(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
 }
 
 describe('TemariTake', () => {
-    it('labels the block and renders the narration as serif italic', () => {
+    it('labels the block and renders the narration in the prose register', () => {
         render(<TemariTake analysis={analysis()} />);
 
         expect(screen.getByText("Temari's take")).toBeInTheDocument();
         const narration = screen.getByText(
             'Base has been steady, no red flags.',
         );
-        expect(narration).toHaveClass('font-serif', 'italic');
+        expect(narration).toHaveClass('narration');
     });
 
     it('keeps its empty state when the narration has not been generated yet', () => {

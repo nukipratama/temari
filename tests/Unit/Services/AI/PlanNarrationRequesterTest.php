@@ -29,8 +29,12 @@ beforeEach(function (): void {
 });
 afterEach(fn () => Carbon::setTestNow());
 
-it('requests narration for all 7 days of the current week', function (): void {
+it('requests narration for every planned day of the current week', function (): void {
     $user = User::factory()->create();
+    $monday = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    foreach (range(0, 6) as $offset) {
+        PlannedSession::factory()->for($user)->create(['date' => $monday->copy()->addDays($offset)->toDateString()]);
+    }
 
     $this->requester->requestForCurrentWeek($user, Carbon::today());
 
@@ -40,6 +44,20 @@ it('requests narration for all 7 days of the current week', function (): void {
         ->where('subject_id', $user->id)
         ->where('analysis_type', AnalysisType::PlanDayVoice)
         ->count())->toBe(7);
+});
+
+it('skips a day the plan prescribes nothing for, rather than requesting a narration with no material', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
+
+    $this->requester->requestForCurrentWeek($user, Carbon::today());
+
+    Bus::assertDispatchedTimes(AnalyzePlanDayVoiceJob::class, 1);
+    expect(Analysis::query()
+        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
+        ->where('subject_id', $user->id)
+        ->where('analysis_type', AnalysisType::PlanDayVoice)
+        ->pluck('discriminator')->all())->toBe([Carbon::today()->toDateString()]);
 });
 
 it('requests week narration only when a PlanAdaptation exists for the current week', function (): void {
@@ -73,6 +91,7 @@ it('requests season narration only when a Season exists', function (): void {
 it('invalidates an already-Done day row on the next request, but leaves season alone', function (): void {
     $user = User::factory()->create();
     $today = Carbon::today()->toDateString();
+    PlannedSession::factory()->for($user)->create(['date' => $today]);
     Analysis::factory()->done('yesterday\'s content')->create([
         'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
         'subject_id' => $user->id,
@@ -249,8 +268,8 @@ it('leaves an unchanged day alone instead of re-billing it every Monday', functi
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
         ->and($row->fresh()->content)->toBe('already narrated')
-        // The other six days have no row yet, so they still dispatch.
-        ->and(Bus::dispatched(AnalyzePlanDayVoiceJob::class))->toHaveCount(6);
+        // The other six days have no planned session, so they are skipped.
+        ->and(Bus::dispatched(AnalyzePlanDayVoiceJob::class))->toHaveCount(0);
 });
 
 it('re-narrates a day whose prescribed session changed', function (): void {
@@ -268,7 +287,7 @@ it('re-narrates a day whose prescribed session changed', function (): void {
     $this->requester->requestForCurrentWeek($user, Carbon::today());
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Queued)
-        ->and(Bus::dispatched(AnalyzePlanDayVoiceJob::class))->toHaveCount(7);
+        ->and(Bus::dispatched(AnalyzePlanDayVoiceJob::class))->toHaveCount(1);
 });
 
 it('re-narrates a day the athlete has since excused themselves from', function (): void {

@@ -49,7 +49,7 @@ export default function EmptyPanel({
             <div className={cn(horizontal && 'min-w-0')}>
                 <p
                     className={cn(
-                        'font-serif italic text-2xl text-text-2',
+                        'text-2xl text-text-2',
                         face && !horizontal && 'mt-4',
                     )}
                 >

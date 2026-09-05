@@ -93,7 +93,7 @@ export default function ProfileHero({
                         inertiaReloadProps={['profileVoice']}
                         showTimestamp={false}
                         renderContent={(text) => (
-                            <p className="font-serif text-sm italic leading-relaxed text-foreground">
+                            <p className="narration">
                                 {renderBold(stripEdgeQuotes(text))}
                             </p>
                         )}

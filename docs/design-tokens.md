@@ -43,7 +43,7 @@ Three families, one job each:
 
 | Token | Family | Use |
 |---|---|---|
-| `font-serif` | Fraunces (italic) | Display headlines, Temari voice / quotes. Renamed from `font-display` in F3 to match the prototype's own token name. |
+| `font-serif` | Fraunces (italic) | Display headlines and page titles only — narrator prose is sans. Renamed from `font-display` in F3 to match the prototype's own token name. |
 | `font-sans` | Plus Jakarta Sans | Prose + UI (the readable **default** family) |
 | `font-mono` | JetBrains Mono | **Telemetry only** — numbers, stats, splits, uppercase metadata labels |
 
@@ -55,8 +55,8 @@ and the card chrome uses the same sans/mono stack (including the share-card canv
 `font-sans` is Tailwind's default family, so prose / UI resolve to Plus Jakarta Sans
 automatically. **Telemetry must carry an explicit `font-mono`** (numbers/stats via `.text-stat`,
 uppercase labels via `.text-label-micro` / `.text-label-small`). Keep `tabular-nums` on any
-numeric / stat display. Rule of thumb: **mono = numbers/labels · sans = prose · serif italic =
-display/voice**.
+numeric / stat display. Rule of thumb: **mono = numbers/labels · sans = prose (narrator prose
+included) · serif italic = display/headlines**.
 
 **Exemption — the card art layer.** The collectible card's rarity label, TRIMP number and
 edition number are **sans**, and stay that way. The card is art, not UI chrome: its type is
@@ -94,7 +94,8 @@ utility class lands the full spec.
 
 The display tier is tuned for **Fraunces**, with `font-optical-sizing: auto` handling the `opsz`
 axis per size. Role → class mapping is encoded in the role utilities below (`.text-prose`,
-`.text-stat`, `.text-meta`, `.voice`) so call sites name a role instead of hardcoding.
+`.narration`, `.narration-dense`, `.text-stat`, `.text-meta`) so call sites name a role instead
+of hardcoding.
 
 ## Colors
 
@@ -355,7 +356,8 @@ built with `@apply` so they compose with token utilities. Prefer these over re-t
 | `.text-stat` | `font-mono text-stat font-bold tabular-nums text-foreground` | The big tabular KPI / PR number |
 | `.text-stat-sm` | `font-mono text-2xl font-bold tabular-nums text-foreground` | Smaller stat figure (compact tiles) |
 | `.text-meta` | `font-mono text-[11px] tracking-[0.04em] text-text-3` | Date / timestamp / footnote (non-uppercase metadata) |
-| `.voice` | `font-serif text-quote-lg italic text-foreground` | Temari voice (display serif italic) |
+| `.narration` | `font-sans text-quote-sm leading-relaxed text-foreground` | Narrator prose — the reading register for LLM and rule-based output |
+| `.narration-dense` | `font-sans text-[12px] leading-[1.45] text-foreground` | Narrator prose, compact tier (list rows, calendar cells, recap cards) |
 
 Text floor is **11px** in app chrome — no `text-[9px]` / `text-[10px]`. Prefer a role utility over a raw size.
 

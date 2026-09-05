@@ -3,7 +3,7 @@ title: Ask about this run
 description: The scoped per-run Q&A — suggested questions derived from the run's own data, an agent answer bound to that single activity, and the persisted thread.
 tags: [feature, ai]
 status: living
-reviewed: 2026-08-13
+reviewed: 2026-09-05
 code_refs:
   - app/Http/Controllers/Api/RunQuestionController.php
   - app/Http/Requests/AskRunQuestionRequest.php
@@ -97,16 +97,29 @@ and stops after a bounded number of polls into a "still working" state with a
 manual re-check, so a stuck answer degrades into a visible wait rather than an
 endless spinner or a lie.
 
+The thread reads as an **interview transcript, not a chat**. Each entry sets the
+question behind a leading accent rule, muted and a size down, with the answer
+beneath it in the `.narration` prose register — the separation is size, colour
+and rule, never font style, and never bubbles, avatars or speaker alignment,
+which would undo the boundary stated at the top of this note. The invitation
+line, the one-question-at-a-time disclaimer and the starting points are all
+**cold-start affordances**: once the thread has an entry they retire, so what
+Temari already said sits at the top of the panel rather than under a standing
+preamble, and the suggestions stop drifting further down the card with every
+answer. They are a way in, not a standing menu — past the first question the
+user is already asking their own.
+
 Each refusal gets its own line: the `429` says the asking is too fast without
 quoting a number the env can change, the `409` says generation is paused and
 that nothing was sent, and a `422` asks for a rephrase. A `failed` row offers
 to refill the box, matching the terminal-failure model above rather than
-implying a retry that does not exist. Suggestions already asked in this thread
-are dropped so they stay starting points.
+implying a retry that does not exist.
 
 The panel is the only place a summary-state run is announced: the seeds already
 collapse to `Baseline` on their own, but the smaller toolbox is said out loud
-in the UI rather than left for the reader to infer from a thinner answer.
+in the UI rather than left for the reader to infer from a thinner answer. It is
+a live caveat on every answer, not empty-state copy, so unlike the invitation
+above it stays put once the thread has entries.
 
 ## Storage
 
