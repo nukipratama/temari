@@ -271,3 +271,41 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
             ->count())->toBe(count(AnalysisType::TREND_READ_RANGES))
         ->and(InboxNotification::query()->where('user_id', $user->id)->count())->toBe($inboxCount);
 });
+
+it('leaves every analysis done unless --with-edge-states is passed', function (): void {
+    $this->artisan('demo:seed')->assertSuccessful();
+
+    expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->count())
+        ->toBe(0, 'The public demo must not render a pending or failed block.');
+});
+
+it('seeds the pending, processing and failed states the audits cannot otherwise reach', function (): void {
+    $this->artisan('demo:seed')->assertSuccessful();
+    $this->artisan('demo:seed', ['--with-edge-states' => true])->assertSuccessful();
+
+    $statuses = Analysis::query()
+        ->whereIn('status', [AnalysisStatus::Pending, AnalysisStatus::Processing, AnalysisStatus::Failed])
+        ->pluck('status')
+        ->map(fn (AnalysisStatus $s): string => $s->value)
+        ->sort()
+        ->values()
+        ->all();
+
+    expect($statuses)->toBe(['failed', 'pending', 'processing']);
+
+    // A failed row has to carry what the dead-letter UI reads, or the state
+    // renders as merely empty rather than as failed.
+    $failed = Analysis::query()->where('status', AnalysisStatus::Failed)->sole();
+    expect($failed->error)->not->toBeNull()
+        ->and($failed->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
+        ->and($failed->content)->toBeNull();
+});
+
+it('applies the edge states at most once across re-runs', function (): void {
+    $this->artisan('demo:seed', ['--with-edge-states' => true])->assertSuccessful();
+    $first = Analysis::query()->where('status', '!=', AnalysisStatus::Done)->count();
+
+    $this->artisan('demo:seed', ['--with-edge-states' => true])->assertSuccessful();
+
+    expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->count())->toBe($first);
+});
