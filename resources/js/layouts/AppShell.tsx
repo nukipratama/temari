@@ -12,6 +12,7 @@ import FlashNotice from '@/components/FlashNotice';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import MobileTopBar from '@/components/MobileTopBar';
 import RouteProgressBar from '@/components/RouteProgressBar';
+import StatusBarScrim from '@/components/StatusBarScrim';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
@@ -40,6 +41,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                     Skip to content
                 </a>
 
+                <StatusBarScrim />
                 <MobileTopBar />
 
                 {/* MobileTopBar is fixed and out of flow (see its own comment), so

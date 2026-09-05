@@ -88,11 +88,10 @@
          after theme-color (#395) and color-scheme (#396) both failed to explain
          it.
 
-         The trade: iOS forces WHITE status glyphs in this mode, with no way to
-         ask for dark ones. Everything that can reach the top of the display
-         must therefore be dark, or the clock becomes unreadable — hence the
-         navy MobileTopBar and the StatusBarScrim that backs it even while a
-         modal is open. Do not revert this meta on its own. --}}
+         The trade: the strip is ours to paint, and Safari 26 reads its colour
+         off the topmost element in the viewport — MobileTopBar paints nothing
+         by design, so StatusBarScrim is what gives it an answer. Do not revert
+         this meta on its own. --}}
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Temari">
 
