@@ -122,8 +122,8 @@ Sweep `grep text-text-3` before merging — if it's wrapping a `<p>` of running 
 
 Three families (all loaded via Google Fonts in
 [app.blade.php](../../../resources/views/app.blade.php)): **Fraunces** italic is
-`font-serif` (headlines + Temari voice/quotes; renamed from `font-display` in F3 to match the
-prototype's own token name); **Plus Jakarta Sans** is `font-sans`, the default
+`font-serif` (headlines and page titles only — narrator prose is sans; renamed from
+`font-display` in F3 to match the prototype's own token name); **Plus Jakarta Sans** is `font-sans`, the default
 family for body/UI/buttons; **JetBrains Mono** is `font-mono`, for *numbers, stats and small
 uppercase metadata labels* (section labels, chips, stat-tile / card captions, timestamps). Oswald
 (`font-collectible`) is retired: the Card uses the same stack as everything else. Because `font-sans` is Tailwind's default, every small uppercase label must carry an
@@ -137,7 +137,8 @@ The scale is fluid `clamp()` tokens in `app.css` (`text-display-*`, `text-headli
 | In-app hero title | `font-serif italic text-display-2xl text-foreground` |
 | Page title (`<h1>`) | `font-serif text-display-lg text-foreground` (compact/devtools header: `text-headline-xs`) |
 | Section heading (`<h2>`) | `font-serif text-headline-sm text-foreground` |
-| Temari voice / quote | `font-serif italic text-quote-lg text-text-2` |
+| Narrator prose | `.narration` (`font-sans text-quote-sm leading-relaxed text-foreground`) |
+| Narrator prose, compact | `.narration-dense` (`font-sans text-[12px] leading-[1.45] text-foreground`) |
 | Sub-label (KPI/table cap) | `font-mono text-xs font-semibold uppercase tracking-wider text-text-3` |
 | Body paragraph | `font-sans text-sm leading-relaxed text-foreground` |
 | Caption / supporting | `text-sm text-text-2 leading-relaxed` |

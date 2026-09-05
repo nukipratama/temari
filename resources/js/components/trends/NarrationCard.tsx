@@ -45,11 +45,9 @@ export default function NarrationCard({
                     const { title, description } = splitContent(content);
                     return (
                         <>
-                            <p className="font-serif text-[0.9375rem] font-bold italic leading-tight text-foreground">
-                                {title}
-                            </p>
+                            <p className="narration font-semibold">{title}</p>
                             {description !== '' && (
-                                <p className="mt-1.5 font-serif text-[0.78125rem] italic leading-relaxed text-foreground">
+                                <p className="narration-dense mt-1.5">
                                     {description}
                                 </p>
                             )}

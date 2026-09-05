@@ -86,7 +86,7 @@ export default function ProgressionCard({
                 </em>
             </p>
             {delta > 0 && (
-                <p className="mt-2 font-serif text-sm italic leading-relaxed text-text-2">
+                <p className="mt-2 text-sm leading-relaxed text-text-2">
                     {`“${formatDurationHMS(Math.round(deltaCount))} faster over ${series.weeks.length} weeks.”`}
                 </p>
             )}

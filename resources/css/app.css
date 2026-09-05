@@ -614,7 +614,7 @@ body {
        Each role bundles font + size + color so call sites name a role
        instead of hardcoding. The rule they encode: mono = numbers +
        uppercase labels, sans (default) = prose, Fraunces italic =
-       display + Temari voice. Mirror in docs/design-tokens.md. */
+       display + headlines. Mirror in docs/design-tokens.md. */
 
     /* Small uppercase metadata label — micro tier (11px). */
     .text-label-micro {
@@ -644,9 +644,13 @@ body {
     .text-meta {
         @apply font-mono text-[0.6875rem] tracking-[0.04em] text-text-3;
     }
-    /* Temari voice — display serif italic. */
-    .voice {
-        @apply font-serif text-quote-lg italic text-foreground;
+    /* Narrator prose — the reading register for LLM and rule-based output. */
+    .narration {
+        @apply font-sans text-quote-sm leading-relaxed text-foreground;
+    }
+    /* Narrator prose, compact tier — list rows, calendar cells, recap cards. */
+    .narration-dense {
+        @apply font-sans text-[0.75rem] leading-[1.45] text-foreground;
     }
 
     /* Rarity halo — every card gets a calm, static glow ring in its own

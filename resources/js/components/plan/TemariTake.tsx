@@ -5,7 +5,7 @@ import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 /**
- * Temari's read on a season, a week or a single day — the labelled serif
+ * Temari's read on a season, a week or a single day — the labelled
  * narration block the plan repeats at all three levels of the timeline.
  */
 export default function TemariTake({
@@ -35,9 +35,7 @@ export default function TemariTake({
                     showTimestamp={false}
                     allowReanalyze={allowReanalyze}
                     renderContent={(content) => (
-                        <p className="font-serif text-quote-sm italic text-foreground">
-                            {content}
-                        </p>
+                        <p className="narration">{content}</p>
                     )}
                 />
             </div>

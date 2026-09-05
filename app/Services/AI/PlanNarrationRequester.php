@@ -102,16 +102,18 @@ final readonly class PlanNarrationRequester
 
         foreach ($dates as $date) {
             $session = $sessions->get($date);
-            $expected = $session === null
-                ? null
-                : MaterialFingerprint::forPlannedSession($session, $longRunKm);
+            if ($session === null) {
+                continue;
+            }
+
+            $expected = MaterialFingerprint::forPlannedSession($session, $longRunKm);
 
             $this->analysisService->request(
                 AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
                 $user->id,
                 AnalysisType::PlanDayVoice,
                 $date,
-                invalidate: $expected === null || $stamped[$date] !== $expected,
+                invalidate: $stamped[$date] !== $expected,
             );
         }
 

@@ -81,13 +81,13 @@ export default function RecapCard({
                     isChainHead={isChainHead}
                     size="sm"
                     renderContent={(content) => (
-                        <p className="m-0 font-serif text-xs leading-[1.45] text-foreground italic">
+                        <p className="narration-dense m-0">
                             {renderBold(content)}
                         </p>
                     )}
                 />
                 {fallback && analysis.status !== 'done' && (
-                    <p className="m-0 font-serif text-xs leading-[1.45] text-foreground italic">
+                    <p className="narration-dense m-0">
                         {awaitingSchedule && (
                             <span className="font-semibold text-text-3">
                                 For now:{' '}

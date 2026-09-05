@@ -93,7 +93,7 @@ export default function EmptyRunsState({
                     </h2>
                     <p
                         className={cn(
-                            'mx-auto mt-3 max-w-sm font-serif text-quote-sm italic leading-relaxed',
+                            'mx-auto mt-3 max-w-sm text-quote-sm leading-relaxed',
                             onSky ? 'text-ink-on-sky' : 'text-text-2',
                         )}
                     >

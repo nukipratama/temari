@@ -39,9 +39,9 @@ interface AskAboutRunProps {
 }
 
 /**
- * The Q&A panel: the thread so far, then the starting points and the ask box —
- * the prototype's `AskAboutRun` order, so what Temari already said reads before
- * the invitation to ask again.
+ * The Q&A panel: the thread so far, then the ask box. The invitation copy and
+ * the starting points are cold-start affordances — they retire once the thread
+ * has an entry, so what Temari already said sits at the top of the panel.
  */
 export default function AskAboutRun({
     activityId,
@@ -88,13 +88,17 @@ export default function AskAboutRun({
                         Ask about this run
                     </Eyebrow>
                 </div>
-                <p className="mt-2 font-serif text-quote-sm italic leading-snug text-foreground">
-                    The numbers are up there. Ask me why.
-                </p>
-                <p className="mt-1.5 font-sans text-xs leading-relaxed text-text-2">
-                    One run, one question at a time. I can only read this run
-                    and your own history.
-                </p>
+                {questions.length === 0 && (
+                    <>
+                        <p className="narration mt-2">
+                            The numbers are up there. Ask me why.
+                        </p>
+                        <p className="mt-1.5 font-sans text-xs leading-relaxed text-text-2">
+                            One run, one question at a time. I can only read
+                            this run and your own history.
+                        </p>
+                    </>
+                )}
 
                 {summaryOnly && (
                     <p
@@ -120,7 +124,7 @@ export default function AskAboutRun({
                     </ol>
                 )}
 
-                {unasked.length > 0 && (
+                {questions.length === 0 && unasked.length > 0 && (
                     <>
                         <Eyebrow
                             token="micro"
@@ -214,7 +218,7 @@ function QuestionRow({
 
     return (
         <li className="border-b border-border-strong py-3 last:border-b-0">
-            <p className="font-sans text-sm font-semibold text-foreground">
+            <p className="border-l-2 border-horizon-ink pl-2.5 font-sans text-xs leading-relaxed text-text-2">
                 {question.question}
             </p>
             {pending && (
@@ -260,9 +264,7 @@ function QuestionRow({
                 </div>
             )}
             {question.status === 'done' && question.answer !== null && (
-                <p className="mt-1 font-serif text-quote-sm italic leading-relaxed text-foreground">
-                    {renderBold(question.answer)}
-                </p>
+                <p className="narration mt-2">{renderBold(question.answer)}</p>
             )}
         </li>
     );
