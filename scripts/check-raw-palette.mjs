@@ -19,7 +19,11 @@
  *   4. The same, for an inline `fontSize` style prop. Canvas `ctx.font` strings
  *      are deliberately not matched — a canvas is a fixed raster, so px is
  *      correct there.
- *   5. A gradient stop must use a ground-reactive token. A gradient is
+ *   5. A gradient stop must use a ground-reactive token, on either side of the
+ *      ground: a fixed-light stop (cream/surface/line/ink) is unreadable on the
+ *      dark ground and a fixed-dark one (the Sky family) is the mirror bug on
+ *      light. A deliberate fixed-ground gradient is an exemption to argue once,
+ *      not a hole to leave open. A gradient is
  *      invisible to every contrast audit — contrast.mjs skips it for want of a
  *      flat colour, and an island scan misses it because `backgroundColor` on a
  *      gradient element is transparent — so a fixed-light stop under reactive
@@ -161,7 +165,7 @@ const RULES = [
     {
         name: 'ground-fixed gradient stop',
         fix: 'Use a ground-reactive token for a gradient stop (`from-popover`, `from-card`, `to-background`). A gradient is invisible to every contrast audit — contrast.mjs skips it for want of a flat colour to score, and an island scan misses it because `backgroundColor` on a gradient element is transparent — so a fixed-light stop under reactive text is unreadable on the dark ground and nothing reports it. Both 1.00:1 bugs the wrong-ground audit found were exactly this shape.',
-        re: /\b(?:from|via|to)-(?:cream-deep|cream|surface-card|surface-elev|surface-warm|surface-sunken|surface|line-strong|line|ink-2|ink-3|ink)(?:\/[\w.[\]]+)?\b/g,
+        re: /\b(?:from|via|to)-(?:cream-deep|cream|surface-card|surface-elev|surface-warm|surface-sunken|surface|line-strong|line|ink-2|ink-3|ink|sky-deep|sky-2|sky)(?:\/[\w.[\]]+)?\b/g,
     },
 ];
 

@@ -123,6 +123,15 @@ describe('ground-fixed gradient stop', () => {
         expect(short.join(' ').match(rule)).toEqual(short);
     });
 
+    it('flags a fixed-dark stop too, the mirror bug on the light ground', () => {
+        const dark = [
+            ['from', 'sky'].join('-'),
+            ['to', 'sky', 'deep'].join('-'),
+            ['via', 'sky', '2'].join('-'),
+        ];
+        expect(dark.join(' ').match(rule)).toEqual(dark);
+    });
+
     it('leaves a reactive stop and a fixed-identity fill alone', () => {
         expect(
             `bg-gradient-to-l ${reactiveFrom} to-transparent`.match(rule),
