@@ -47,11 +47,28 @@ matrix is exhaustive.
 ./vendor/bin/sail up -d
 ./vendor/bin/sail npm run build               # fresh built assets — stale/missing build = Vite manifest errors or old UI
 ./vendor/bin/sail artisan demo:seed          # demo user + ~126 runs, deterministic
+./vendor/bin/sail artisan demo:seed --with-edge-states   # + pending/processing/failed AI blocks
 # .env must have DEMO_LOGIN_ENABLED=true (the scripts log in via the /login demo button)
 ```
 
 The app is reachable **inside the container at `http://localhost`** (host-forwarded port is
 `APP_PORT=7001`, but the scripts run in the container, so use `localhost`).
+
+### States the demo does not produce
+
+`demo:seed` marks every Analysis row **done** — honest for a public demo, and exactly why no sweep
+ever rendered a pending, processing or failed block. A near-white `.skeleton` shipped on the dark
+ground behind that gap and survived three sweeps, because the state that would have shown it never
+existed in the seed.
+
+`--with-edge-states` opts in: a failed block and a pending one on the newest activity, and a
+processing one on the dashboard briefing. Idempotent, and off by default so the public demo stays
+pristine. Run it before an audit that cares about loading, empty or failed states.
+
+It has its **own baseline**, because it makes pages render that otherwise do not: `contrast.mjs`
+reports **dark 1** with it on, the "Attempts" header on `/devtools/pulse` at 3.67:1. That is Pulse's
+own `<x-pulse::th>` styling showing through our `self-heal-attempts` card, which only has rows once a
+failed Analysis exists. Vendor component internals on an operator page, recorded rather than chased.
 
 ### The operator console (`/devtools`, `/devtools/design`, `/devtools/ai-usage`, `/pulse`)
 

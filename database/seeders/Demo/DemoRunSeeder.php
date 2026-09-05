@@ -979,4 +979,65 @@ class DemoRunSeeder
         ]);
     }
 
+    /**
+     * The states the demo never produces, for the audits only.
+     *
+     * seed() marks every Analysis row done, which is honest for a public demo
+     * and is exactly why no sweep has ever rendered a pending, processing or
+     * failed block. A near-white `.skeleton` shipped on the dark ground behind
+     * that gap and survived three sweeps. Opt in with `demo:seed --with-edge-states`
+     * so the audits can see them and the demo stays pristine.
+     *
+     * The states land on the two pages a sweep actually visits: the newest
+     * activity carries a failed block and a pending one, and the user-level
+     * briefing carries a processing one.
+     */
+    public function seedEdgeStates(?Closure $log = null): int
+    {
+        $log ??= static fn (string $_): null => null;
+
+        $user = User::query()->where('email', self::DEMO_USER_EMAIL)->first();
+        if (! $user instanceof User) {
+            $log('  no demo user — run demo:seed first');
+
+            return 0;
+        }
+
+        $newest = Activity::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('id')
+            ->first();
+
+        $wanted = [];
+        if ($newest instanceof Activity) {
+            $wanted[] = [Activity::class, $newest->id, AnalysisType::PostRunSpeech, AnalysisStatus::Failed];
+            $wanted[] = [Activity::class, $newest->id, AnalysisType::RunInsight, AnalysisStatus::Pending];
+        }
+        $wanted[] = [AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, AnalysisStatus::Processing];
+
+        $changed = 0;
+        foreach ($wanted as [$subjectType, $subjectId, $type, $status]) {
+            $row = Analysis::query()
+                ->where('subject_type', $subjectType)
+                ->where('subject_id', $subjectId)
+                ->where('analysis_type', $type)
+                ->first();
+
+            if (! $row instanceof Analysis || $row->status === $status) {
+                continue;
+            }
+
+            $row->update([
+                'status' => $status,
+                'content' => null,
+                'generated_at' => null,
+                'error' => $status === AnalysisStatus::Failed ? 'Seeded edge state for the audits.' : null,
+                'attempts' => $status === AnalysisStatus::Failed ? Analysis::MAX_SELF_HEAL_ATTEMPTS : 0,
+            ]);
+            $changed++;
+            $log(sprintf('  %s -> %s', $type->value, $status->value));
+        }
+
+        return $changed;
+    }
 }
