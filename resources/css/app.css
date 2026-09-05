@@ -663,6 +663,29 @@ body {
     }
 }
 
+/* Tailwind v4 emits `--color-*` as `var(--color-x)` inside a utility, which is
+   the whole reason a ground switch works at all — but it *inlines* a composite
+   token like a shadow, so `.shadow-e1` ships the light value baked in and
+   redefining `--shadow-e1` under [data-theme='dark'] changes nothing anyone
+   renders. The token below stays the single definition of the value; these four
+   rules are what point the utility at it on the dark ground. Verified in the
+   built CSS, not assumed: `.shadow-e1` compiles to
+   `--tw-shadow: 0 1px 2px var(--tw-shadow-color, #3a2d140f), ...`. */
+@layer utilities {
+    [data-theme='dark'] .shadow-e1 {
+        --tw-shadow: var(--shadow-e1);
+    }
+    [data-theme='dark'] .shadow-e2 {
+        --tw-shadow: var(--shadow-e2);
+    }
+    [data-theme='dark'] .shadow-e3 {
+        --tw-shadow: var(--shadow-e3);
+    }
+    [data-theme='dark'] .shadow-e4 {
+        --tw-shadow: var(--shadow-e4);
+    }
+}
+
 /* Dark ground (F2) — Sky family becomes ground, Cream becomes text, the
    exact inverse of the app's light-only default above. Every value is
    literal hex, matching @theme static's own convention and
@@ -734,6 +757,21 @@ body {
         --color-mood-overloaded-ink: #a58bc6;
         --color-mood-chill-bg: #161829;
         --color-mood-chill-ink: #9991bc;
+
+        /* Elevation inverts too, and for a blunter reason than the -ink tier:
+           a cast shadow has nowhere to go on a near-black ground. Pure black
+           at 60% over sky-deep measures 1.06:1, against 1.14:1 for the light
+           ground's e1 at a mere 6% over cream. A hairline of the foreground
+           reaches 1.33:1 at 10% and 1.85:1 at 20%, so on dark the same scale
+           is drawn as a rim rather than a cast. Redefining the token rather
+           than the 40 call sites keeps `shadow-e1` meaning "resting card" on
+           both grounds. e4 keeps a deep cast as well, since a modal sits over
+           a scrim with room to darken. */
+        --shadow-e1: 0 0 0 1px rgba(241, 245, 248, 0.1);
+        --shadow-e2: 0 0 0 1px rgba(241, 245, 248, 0.15);
+        --shadow-e3: 0 0 0 1px rgba(241, 245, 248, 0.2);
+        --shadow-e4:
+            0 0 0 1px rgba(241, 245, 248, 0.2), 0 24px 56px rgba(0, 0, 0, 0.55);
     }
 }
 

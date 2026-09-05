@@ -9,8 +9,16 @@
  * near-black on near-black, and the separator simply stops existing.
  *
  * Reports every painted edge whose contrast against the surface behind it is
- * under the separator minimum, resolving the border against the element's own
- * background where it paints one and the nearest opaque ancestor otherwise.
+ * under the separator minimum, resolving it against the nearest opaque surface
+ * outside the element.
+ *
+ * Scope, so a clean run is not read as more than it is: this scores **borders**.
+ * Ring/box-shadow detection is best-effort and misses Tailwind's composed
+ * shadow chain, which begins with four transparent layers. That is not worth
+ * chasing here, because the thing it would find is the elevation rim, and
+ * elevation is deliberately below the separator floor on both grounds -- the
+ * dark rim measures 1.28:1 and the light cast 1.11:1, against a 1.4 minimum
+ * that exists for dividers, not for the edge of a resting card.
  *
  * Usage: node edges.mjs [dark|light] [minRatio]
  */

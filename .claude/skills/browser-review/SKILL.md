@@ -173,6 +173,10 @@ a Sky card measured 1.02:1, and the selected-colorway indicator in `ShareCardMod
 because computed styles come back as `oklab()` and `color-mix()` as often as `rgb()` and a regex that
 only knows `rgb()` reads a 1.02:1 border as "no data" instead of "invisible".
 
+It scores **borders**; ring/box-shadow detection is best-effort and misses Tailwind's composed shadow
+chain, so the elevation rim is not scored — deliberately, since elevation sits below the separator
+floor on both grounds (1.28:1 dark rim, 1.11:1 light cast, against a 1.4 minimum meant for dividers).
+
 Its known-clean baseline is **Leaflet's own zoom control on both grounds**, plus `border-border/60` on
 `/settings` at 1.31 on light — `--color-border` is derived to land exactly on 1.4:1, so any alpha
 below full is inherently under the floor.
