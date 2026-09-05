@@ -6,10 +6,6 @@
     <title>@yield('title') · Temari</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="alternate icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,400;1,9..144,500&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap">
     <style>
         :root {
             --sky: #171f28;
@@ -23,7 +19,7 @@
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            font-family: system-ui, -apple-system, sans-serif;
             background: var(--cream-deep);
             color: var(--ink);
             min-height: 100vh;
@@ -39,7 +35,7 @@
             text-align: center;
         }
         .code {
-            font-family: 'Fraunces', Georgia, serif;
+            font-family: Georgia, 'Times New Roman', serif;
             font-style: italic;
             font-size: 88px;
             line-height: 1;
@@ -47,7 +43,7 @@
             color: var(--horizon-ink);
         }
         .title {
-            font-family: 'Fraunces', Georgia, serif;
+            font-family: Georgia, 'Times New Roman', serif;
             font-style: italic;
             font-size: 28px;
             font-weight: 500;

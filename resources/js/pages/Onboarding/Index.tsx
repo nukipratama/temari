@@ -509,7 +509,7 @@ export default function OnboardingIndex() {
 
                                 {runDays.length === sessionsPerWeek && (
                                     <div className="mt-6 rounded-md bg-muted p-2.5">
-                                        <p className="mb-3 font-serif text-quote-sm text-foreground italic">
+                                        <p className="mb-3 narration">
                                             Which one&rsquo;s your long run?
                                         </p>
                                         <DayRow
@@ -544,7 +544,7 @@ export default function OnboardingIndex() {
                         animate="visible"
                     >
                         {prefsSummary !== '' && (
-                            <p className="mb-3 font-serif text-sm leading-relaxed text-text-2 italic">
+                            <p className="mb-3 narration">
                                 Got it: {prefsSummary}.
                             </p>
                         )}
