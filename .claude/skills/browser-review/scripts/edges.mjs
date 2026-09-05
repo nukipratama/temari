@@ -30,6 +30,7 @@ import {
     discoverPageRoutes,
     DEVTOOLS_AUTH,
 } from './lib.mjs';
+import { HELPERS } from './scans.mjs';
 
 const GROUND = process.argv[2] ?? 'dark';
 /** The app's own separator floor, the minimum `line` is derived against. */
@@ -54,60 +55,7 @@ await login(page);
 await dismissReveal(page);
 
 const SCAN = `(() => {
-    // Resolve through a canvas rather than parsing the string. Computed styles
-    // come back as oklab(...) and color-mix(...) as often as rgb(), and a regex
-    // that only knows rgb() silently drops them — which is how a border at
-    // 1.01:1 reads as "no data" instead of "invisible".
-    const probe = document.createElement('canvas').getContext('2d', {
-        willReadFrequently: true,
-    });
-    const rgb = (v) => {
-        if (!v || v === 'none' || v === 'transparent') return null;
-        probe.clearRect(0, 0, 1, 1);
-        probe.fillStyle = '#000';
-        probe.fillStyle = v;
-        if (probe.fillStyle === '#000' && !/^#0{3,8}$|black/i.test(v)) {
-            return null; // the browser rejected it
-        }
-        probe.clearRect(0, 0, 1, 1);
-        probe.fillRect(0, 0, 1, 1);
-        const [r, g, b, a] = probe.getImageData(0, 0, 1, 1).data;
-        return { c: [r, g, b], a: a / 255 };
-    };
-    const over = (fg, bg) => fg.c.map((v, i) => v * fg.a + bg[i] * (1 - fg.a));
-    const lum = (c) => {
-        const s = c.map((v) => {
-            const x = v / 255;
-            return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
-        });
-        return 0.2126 * s[0] + 0.7152 * s[1] + 0.0722 * s[2];
-    };
-    const ratio = (a, b) => {
-        const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
-        return (x + 0.05) / (y + 0.05);
-    };
-    // The opaque colour an edge sits against: what is OUTSIDE the element,
-    // since a border separates it from its surroundings. Starting at the
-    // element itself scores \`border-x bg-x\` (a fill-coloured edge, used for
-    // sizing) as invisible, which it is, deliberately, and not a bug.
-    const behind = (el) => {
-        const stack = [];
-        let node = el.parentElement;
-        while (node) {
-            const c = rgb(getComputedStyle(node).backgroundColor);
-            if (c && c.a > 0) {
-                if (c.a === 1) {
-                    let out = c.c;
-                    for (const layer of stack.reverse()) out = over(layer, out);
-                    return out;
-                }
-                stack.push(c);
-            }
-            node = node.parentElement;
-        }
-        return null;
-    };
-
+    ${HELPERS}
     const out = [];
     for (const el of document.querySelectorAll('*')) {
         const s = getComputedStyle(el);
@@ -128,7 +76,7 @@ const SCAN = `(() => {
         }
         if (!edges.length) continue;
 
-        const ground = behind(el);
+        const ground = behind(el, false);
         if (!ground) continue;
 
         for (const [kind, colour] of edges) {

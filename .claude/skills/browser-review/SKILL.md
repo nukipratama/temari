@@ -125,6 +125,7 @@ docker compose exec -u root app sh .claude/skills/browser-review/scripts/setup.s
 ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/light-islands.mjs dark
 
 ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/edges.mjs dark
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/states.mjs dark
 
 # 6. teardown (restore node_modules; screenshots are kept as history)
 ./vendor/bin/sail exec app sh .claude/skills/browser-review/scripts/teardown.sh
@@ -197,6 +198,29 @@ floor on both grounds (1.28:1 dark rim, 1.11:1 light cast, against a 1.4 minimum
 Its known-clean baseline is **Leaflet's own zoom control on both grounds**, plus `border-border/60` on
 `/settings` at 1.31 on light — `--color-border` is derived to land exactly on 1.4:1, so any alpha
 below full is inherently under the floor.
+
+**`states.mjs`** runs those scans in states a page load never reaches, which is where the coverage
+keeps failing: the `.skeleton` bug lived in a loading state, and three of #723's invisible edges lived
+inside a collapsed accordion and an unopened modal. All of them passed clean sweeps.
+
+It **discovers its own triggers** — `aria-expanded`, `aria-haspopup`, `aria-controls`, `summary` — so
+a new modal is covered the day it ships. A maintained list would drift the moment nobody updated it,
+which is the same failure mode as the `onSky` prop nine of nine call sites forgot. Findings present
+before the click are subtracted, so it reports what the *state* introduced.
+
+It immediately found the worst bug of the audit: `MetricExplainer`'s popover painted a near-white
+gradient with near-white body text at **1.00:1** on the dark ground, across three call sites on the
+dashboard and history. Invisible to everything else twice over — it only exists when opened, and its
+background is a **gradient**, which `contrast.mjs` skips by design and an island scan misses because
+`backgroundColor` on a gradient element is transparent. A gradient is still a blind spot; the driver
+only caught this one via its border.
+
+Its known-clean baseline is **one island on `/race`**: the selected date cell's `bg-horizon`, fixed
+identity by design. Light ground is clean.
+
+`scans.mjs` holds the colour maths all three scanners share, so a fix lands everywhere at once —
+`light-islands.mjs` was still parsing colours with a regex and silently dropping every `oklab()`
+background until it was pulled onto the shared canvas resolver.
 
 > **Reading screenshots costs more than it looks.** An image read into the main context is re-billed
 > as a cache read on *every* later turn, so cost is `size x remaining turns`, not size. A full-page
@@ -405,4 +429,5 @@ return results
 - Scripts: `lib.mjs` (shared: viewports, login, route discovery), `shoot.mjs` (screenshots),
   `audit.mjs` (overflow), `contrast.mjs` (rendered contrast, per ground), `mounts.mjs` (what a panel
   is actually mounted on), `light-islands.mjs` (surfaces wearing the wrong ground), `edges.mjs`
-  (borders and rings that are not there), `setup.sh` / `teardown.sh`.
+  (borders and rings that are not there), `states.mjs` (those scans, in states a page load never
+  reaches), `scans.mjs` (the shared colour maths), `setup.sh` / `teardown.sh`.

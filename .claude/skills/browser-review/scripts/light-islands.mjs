@@ -23,6 +23,7 @@ import {
     discoverPageRoutes,
     DEVTOOLS_AUTH,
 } from './lib.mjs';
+import { HELPERS } from './scans.mjs';
 
 const GROUND = process.argv[2] ?? 'dark';
 
@@ -45,35 +46,20 @@ await login(page);
 await dismissReveal(page);
 
 const SCAN = `(() => {
-    const lum = (bg) => {
-        const m = bg.match(/rgba?\\(([^)]+)\\)/);
-        if (!m) return null;
-        const p = m[1].split(',').map((v) => parseFloat(v));
-        if (p.length > 3 && p[3] < 0.95) return null;
-        const c = p.slice(0, 3).map((v) => {
-            const s = v / 255;
-            return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-        });
-        return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-    };
-    const groundOf = (el) => {
-        let node = el.parentElement;
-        while (node) {
-            const l = lum(getComputedStyle(node).backgroundColor);
-            if (l !== null) return l;
-            node = node.parentElement;
-        }
-        return null;
-    };
+    ${HELPERS}
     const out = [];
     for (const el of document.querySelectorAll('*')) {
         const style = getComputedStyle(el);
-        const own = lum(style.backgroundColor);
-        if (own === null || own < 0.3) continue;
+        const ownColour = rgb(style.backgroundColor);
+        if (!ownColour || ownColour.a < 0.95) continue;
+        const own = lum(ownColour.c);
+        if (own < 0.3) continue;
         const box = el.getBoundingClientRect();
         if (box.width < 6 || box.height < 6) continue;
-        const ground = groundOf(el);
-        if (ground === null || ground > 0.15) continue;
+        const groundColour = behind(el, false);
+        if (!groundColour) continue;
+        const ground = lum(groundColour);
+        if (ground > 0.15) continue;
         out.push({
             cls: (el.className?.toString?.() ?? '').slice(0, 150),
             tag: el.tagName.toLowerCase(),
