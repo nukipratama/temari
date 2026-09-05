@@ -69,7 +69,18 @@ the server card it was converged with on purpose. The boundary is exactly that a
 [RunCardImageRenderer.php](../app/Services/Run/Story/RunCardImageRenderer.php#L204) all stay mono,
 and the mono-for-numbers-and-uppercase-metadata rule is absolute everywhere else in the app.
 
-Loaded via Google Fonts `<link>` in [app.blade.php](../resources/views/app.blade.php).
+All three are **self-hosted**: [fonts.css](../resources/css/fonts.css) declares the faces and
+Vite fingerprints the `.woff2` into `/build/assets`, which
+[Caddyfile](../docker/Caddyfile) serves immutable for a year. It ships the latin subset only
+(the app is English-only) as variable fonts — one file per family, plus a second for Fraunces
+italic, since Plus Jakarta Sans and JetBrains Mono are only ever used upright. The files come
+from the pinned `@fontsource-variable/*` packages rather than being committed as binaries.
+
+This replaced a Google Fonts `<link>`, which put a third-party origin in the critical path of a
+cold standalone launch — after the splash had already shown, on a connection the app has no say
+over. The error pages ([errors/layout.blade.php](../resources/views/errors/layout.blade.php))
+still load from Google, deliberately: they carry their own inlined palette so they can render
+when the app, and therefore the Vite manifest, cannot.
 
 ## Type scale
 

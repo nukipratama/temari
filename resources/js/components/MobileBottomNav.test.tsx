@@ -1,11 +1,34 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import type { GlobalEvent } from '@inertiajs/core';
+
+import { router } from '@inertiajs/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { setMockPage } from '@/test/setup';
 
 import MobileBottomNav from './MobileBottomNav';
 
+function finishHandler() {
+    const call = vi
+        .mocked(router.on)
+        .mock.calls.find(([name]) => name === 'finish');
+    if (!call) {
+        throw new Error('router.on was never called for "finish"');
+    }
+    return call[1] as (event: GlobalEvent<'finish'>) => void;
+}
+
+function fireFinish() {
+    act(() => {
+        finishHandler()({} as GlobalEvent<'finish'>);
+    });
+}
+
 describe('MobileBottomNav', () => {
+    beforeEach(() => {
+        vi.mocked(router.on).mockClear();
+    });
+
     it('renders all four primary tabs with their labels', () => {
         render(<MobileBottomNav />);
         expect(screen.getByText('Today')).toBeInTheDocument();
@@ -134,6 +157,88 @@ describe('MobileBottomNav', () => {
         setMockPage({}, '/inbox', 'Inbox');
         const { container } = render(<MobileBottomNav />);
         expect(container).toBeEmptyDOMElement();
+    });
+
+    it('lights the tapped tab before the server has answered', () => {
+        setMockPage({}, '/history', 'History');
+        render(<MobileBottomNav />);
+
+        fireEvent.click(screen.getByText('Today').closest('a')!);
+
+        expect(screen.getByText('Today').closest('a')).toHaveClass(
+            'grow-[1.6]',
+            'text-icon-accent',
+        );
+        expect(screen.getByText('History').closest('a')).not.toHaveClass(
+            'grow-[1.6]',
+        );
+    });
+
+    // The highlight is optimistic; `aria-current` is not, so a screen reader is
+    // never told it is on a page the app has not reached.
+    it('leaves aria-current on the page actually being shown', () => {
+        setMockPage({}, '/history', 'History');
+        render(<MobileBottomNav />);
+
+        fireEvent.click(screen.getByText('Today').closest('a')!);
+
+        expect(screen.getByText('History').closest('a')).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+        expect(screen.getByText('Today').closest('a')).not.toHaveAttribute(
+            'aria-current',
+        );
+    });
+
+    it('hands the highlight back to the current page when a visit never arrives', () => {
+        setMockPage({}, '/history', 'History');
+        render(<MobileBottomNav />);
+
+        fireEvent.click(screen.getByText('Today').closest('a')!);
+        fireFinish();
+
+        expect(screen.getByText('History').closest('a')).toHaveClass(
+            'grow-[1.6]',
+        );
+        expect(screen.getByText('Today').closest('a')).not.toHaveClass(
+            'grow-[1.6]',
+        );
+    });
+
+    it('keeps the second tap highlighted when the first tap is interrupted', () => {
+        setMockPage({}, '/history', 'History');
+        render(<MobileBottomNav />);
+
+        fireEvent.click(screen.getByText('Today').closest('a')!);
+        fireEvent.click(screen.getByText('Plan').closest('a')!);
+        // The interrupted first visit fires its own `finish` immediately.
+        fireFinish();
+
+        expect(screen.getByText('Plan').closest('a')).toHaveClass('grow-[1.6]');
+        expect(screen.getByText('History').closest('a')).not.toHaveClass(
+            'grow-[1.6]',
+        );
+
+        // The second visit's own `finish` then clears the pending state.
+        fireFinish();
+
+        expect(screen.getByText('History').closest('a')).toHaveClass(
+            'grow-[1.6]',
+        );
+        expect(screen.getByText('Plan').closest('a')).not.toHaveClass(
+            'grow-[1.6]',
+        );
+    });
+
+    it('keeps the pill clear of a landscape notch on both sides', () => {
+        setMockPage({}, '/', 'Home');
+        const { container } = render(<MobileBottomNav />);
+
+        expect(container.firstElementChild).toHaveClass(
+            'pl-[max(0.875rem,env(safe-area-inset-left))]',
+            'pr-[max(0.875rem,env(safe-area-inset-right))]',
+        );
     });
 
     it('centres the pill on the content column rather than spanning the viewport', () => {

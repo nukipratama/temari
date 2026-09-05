@@ -15,7 +15,7 @@ export default function BareShell({ children }: Readonly<BareShellProps>) {
     return (
         // No MobileTopBar here, so this shell pads the top itself. The inset is
         // 0 under the solid status bar, hence the floor.
-        <div className="min-h-screen bg-background pt-[max(1rem,env(safe-area-inset-top))] text-foreground">
+        <div className="min-h-screen bg-background pt-[max(1rem,env(safe-area-inset-top))] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-foreground">
             <ErrorBanner />
             {children}
         </div>

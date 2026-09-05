@@ -31,7 +31,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
 
     return (
         <MotionConfig reducedMotion="user">
-            <div className="min-h-screen bg-background text-foreground">
+            <div className="min-h-screen bg-background pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-foreground">
                 <RouteProgressBar />
                 <a
                     href="#main-content"
@@ -65,7 +65,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                         className={cn(
                             'outline-none',
                             hasBottomNav
-                                ? 'pb-28'
+                                ? 'pb-[calc(7rem+env(safe-area-inset-bottom))]'
                                 : 'pb-[calc(1.75rem+env(safe-area-inset-bottom))]',
                         )}
                     >

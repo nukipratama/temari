@@ -3,7 +3,7 @@ title: Installed app shell
 description: What makes Temari feel native once it is on the iOS Home Screen — edge-to-edge status bar, launch image, top bar with back button, touch feel, edge-swipe back
 tags: [feature, pwa]
 status: living
-reviewed: 2026-09-05
+reviewed: 2026-09-06
 code_refs:
   - resources/views/app.blade.php
   - public/manifest.webmanifest
@@ -114,6 +114,16 @@ hit it before theorising.
 `BareShell` keeps its floor when the inset collapses to 0, and still clears the
 notch if a future iOS hands the pixels back.
 
+The top is not the only edge. In landscape the notch takes a *side*, so both
+shells also carry `env(safe-area-inset-left/right)` on their outermost box
+([AppShell.tsx](resources/js/layouts/AppShell.tsx),
+[BareShell.tsx](resources/js/layouts/BareShell.tsx)) — one place rather than on
+each gutter, since the top bar and `PageContainer` sit inside it and inherit the
+inset. `MobileBottomNav` is `fixed` and therefore outside that flow, so its
+track pads itself. `<main>`'s clearance for that nav adds
+`env(safe-area-inset-bottom)` to its 7rem, so the last row of content clears the
+home indicator the way the no-nav branch beside it already did.
+
 ## The mobile top bar, and its back button
 
 [MobileTopBar](resources/js/components/MobileTopBar.tsx) is on **every** page.
@@ -191,6 +201,14 @@ keeps that composite seamless; `theme_color` is pinned to the dark value too. Th
 expands the blade's device table across both grounds, so a missing image in
 either set fails the suite.
 
+The launch image only buys time; what happens *after* it is dismissed matters
+just as much. The web fonts used to come from a Google Fonts stylesheet, so a
+cold standalone start handed the first paint to a third-party origin on a
+connection the app has no say over — the one moment where that cost is most
+visible. They are self-hosted now
+([fonts.css](resources/css/fonts.css)), fingerprinted into `/build` and served
+from the same origin, immutable, as everything else. See [[design-tokens]].
+
 ## Social preview
 
 `og:image` and `twitter:image` point at `public/og-default.png`, a static
@@ -255,6 +273,15 @@ Three things carry it, and all three are invisible on a desktop browser:
 
 Tapping the tab you are already on scrolls to top instead of issuing a fresh
 visit ([MobileBottomNav.tsx](resources/js/components/MobileBottomNav.tsx)).
+
+A tap on any *other* tab lights that tab at once. The highlight used to be
+derived from `usePage().component` alone, so it did not move until the server
+answered — a native app moves it on touch-up, and the wait was the loudest tell
+the app had. The tapped tab is held as pending state and Inertia's `finish`
+event hands the highlight back to whatever page the app actually landed on, so
+a cancelled or failed visit cannot strand it. `aria-current` stays on the real
+page throughout: the guess is visual only, and a screen reader is never told it
+is somewhere it is not.
 
 ## Deliberately absent
 
