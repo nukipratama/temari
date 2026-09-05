@@ -72,6 +72,13 @@ describe('ProfileHero', () => {
         ).toBeInTheDocument();
     });
 
+    it("holds the zone bar's space with a skeleton while it is still deferred", () => {
+        const { container } = renderHero({ timeInZone: undefined });
+
+        expect(screen.queryByText(/Time in zone/)).not.toBeInTheDocument();
+        expect(container.querySelector('.skeleton')).not.toBeNull();
+    });
+
     it('renders the narration quote when a done analysis is passed', () => {
         renderHero({
             voice: {

@@ -8,6 +8,7 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import FaceIcon from '@/components/temari/FaceIcon';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
+import Skeleton from '@/components/ui/Skeleton';
 import { SCROLL_FADE_MASK, useScrollFade } from '@/hooks/useScrollFade';
 import { formatShortDateId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
@@ -35,7 +36,7 @@ export default function ProfileHero({
     firstRunAt: string | null;
     memberSince: string | null;
     voice?: AnalysisPayload;
-    timeInZone: TimeInZone | null;
+    timeInZone: TimeInZone | null | undefined;
     stats: ReadonlyArray<HeroStat>;
     action?: ReactNode;
 }>) {
@@ -103,10 +104,16 @@ export default function ProfileHero({
 
             {action && <div className="relative mt-4">{action}</div>}
 
-            {timeInZone && (
+            {timeInZone === undefined ? (
                 <div className="relative mt-5">
-                    <TimeInZoneBar zones={timeInZone} />
+                    <Skeleton className="h-[52px] w-full rounded-lg" />
                 </div>
+            ) : (
+                timeInZone && (
+                    <div className="relative mt-5">
+                        <TimeInZoneBar zones={timeInZone} />
+                    </div>
+                )
             )}
 
             <div className="relative -mx-5 mt-5 border-t border-border-strong" />

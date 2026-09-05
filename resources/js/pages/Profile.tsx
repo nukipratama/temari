@@ -1,4 +1,4 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Deferred, Head, usePage } from '@inertiajs/react';
 
 import type { HeroStat } from '@/components/profile/ProfileHero';
 import type { ProgressionSeries } from '@/components/profile/ProgressionCard';
@@ -16,8 +16,10 @@ import RaceCard from '@/components/profile/RaceCard';
 import SeasonCard from '@/components/profile/SeasonCard';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
+import Card from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
+import { SkeletonChart, SkeletonRows } from '@/components/ui/Skeleton';
 import UserAvatar from '@/components/UserAvatar';
 import { appLayout } from '@/layouts/appLayout';
 import { formatPace } from '@/lib/pace';
@@ -58,11 +60,11 @@ export default function Profile({
     identity,
     stats,
     profileVoice,
-    progressionByCategory = null,
-    fitness = null,
-    timeInZone = null,
-    season = null,
-    seasonWeeks = null,
+    progressionByCategory,
+    fitness,
+    timeInZone,
+    season,
+    seasonWeeks,
 }: Readonly<ProfileProps>) {
     const { auth, activeRace, stravaSync } = usePage<SharedProps>().props;
     const sharedUser = auth.user;
@@ -152,24 +154,62 @@ export default function Profile({
                     <RaceCard race={activeRace ?? null} />
                 </div>
 
-                <div className="mt-4">
-                    <SeasonCard season={season} weeks={seasonWeeks ?? []} />
-                </div>
-
-                {fitness?.training_paces && (
-                    <div className="mt-4">
-                        <PaceTargetsCard paces={fitness.training_paces} />
-                    </div>
-                )}
-
-                {progressionByCategory &&
-                    Object.keys(progressionByCategory).length > 0 && (
+                <Deferred
+                    data={['season', 'seasonWeeks']}
+                    fallback={
+                        <Card as="section" className="mt-4">
+                            <SkeletonRows count={2} />
+                        </Card>
+                    }
+                >
+                    {() => (
                         <div className="mt-4">
-                            <ProgressionCard
-                                byCategory={progressionByCategory}
+                            <SeasonCard
+                                season={season ?? null}
+                                weeks={seasonWeeks ?? []}
                             />
                         </div>
                     )}
+                </Deferred>
+
+                <Deferred
+                    data="fitness"
+                    fallback={
+                        <Card as="section" className="mt-4">
+                            <SkeletonRows count={2} />
+                        </Card>
+                    }
+                >
+                    {() =>
+                        fitness?.training_paces ? (
+                            <div className="mt-4">
+                                <PaceTargetsCard
+                                    paces={fitness.training_paces}
+                                />
+                            </div>
+                        ) : null
+                    }
+                </Deferred>
+
+                <Deferred
+                    data="progressionByCategory"
+                    fallback={
+                        <Card as="section" className="mt-4">
+                            <SkeletonChart />
+                        </Card>
+                    }
+                >
+                    {() =>
+                        progressionByCategory &&
+                        Object.keys(progressionByCategory).length > 0 ? (
+                            <div className="mt-4">
+                                <ProgressionCard
+                                    byCategory={progressionByCategory}
+                                />
+                            </div>
+                        ) : null
+                    }
+                </Deferred>
             </PageContainer>
         </>
     );
