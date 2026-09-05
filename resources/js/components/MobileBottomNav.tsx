@@ -3,7 +3,7 @@ import type { ComponentType, MouseEvent, SVGProps } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { CalendarCheck, History, LineChart, Sunrise } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { TabId } from '@/lib/nav';
 import type { SharedProps } from '@/types/inertia';
@@ -53,8 +53,22 @@ export default function MobileBottomNav() {
     const { component } = usePage<SharedProps>();
     const current = navTabFor(component);
     const [pending, setPending] = useState<TabId | null>(null);
+    // Counts visits still in flight rather than trusting any single `finish`:
+    // a second tap before the first answers interrupts that first visit, which
+    // fires its own `finish` immediately — clearing on that would snap the
+    // highlight back to `current` while the second visit is still pending.
+    const inFlightRef = useRef(0);
 
-    useEffect(() => router.on('finish', () => setPending(null)), []);
+    useEffect(
+        () =>
+            router.on('finish', () => {
+                inFlightRef.current = Math.max(0, inFlightRef.current - 1);
+                if (inFlightRef.current === 0) {
+                    setPending(null);
+                }
+            }),
+        [],
+    );
 
     if (current === null) {
         return null;
@@ -80,7 +94,10 @@ export default function MobileBottomNav() {
                             onClick={
                                 isCurrent
                                     ? scrollToTop
-                                    : () => setPending(item.id)
+                                    : () => {
+                                          inFlightRef.current += 1;
+                                          setPending(item.id);
+                                      }
                             }
                             className={cn(
                                 'pressable focus-ring flex flex-1 items-center justify-center gap-1.5 rounded-full py-2.5 text-text-3 no-underline transition-[flex-grow,background-color,color] duration-150',

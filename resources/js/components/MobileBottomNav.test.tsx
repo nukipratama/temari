@@ -206,6 +206,31 @@ describe('MobileBottomNav', () => {
         );
     });
 
+    it('keeps the second tap highlighted when the first tap is interrupted', () => {
+        setMockPage({}, '/history', 'History');
+        render(<MobileBottomNav />);
+
+        fireEvent.click(screen.getByText('Today').closest('a')!);
+        fireEvent.click(screen.getByText('Plan').closest('a')!);
+        // The interrupted first visit fires its own `finish` immediately.
+        fireFinish();
+
+        expect(screen.getByText('Plan').closest('a')).toHaveClass('grow-[1.6]');
+        expect(screen.getByText('History').closest('a')).not.toHaveClass(
+            'grow-[1.6]',
+        );
+
+        // The second visit's own `finish` then clears the pending state.
+        fireFinish();
+
+        expect(screen.getByText('History').closest('a')).toHaveClass(
+            'grow-[1.6]',
+        );
+        expect(screen.getByText('Plan').closest('a')).not.toHaveClass(
+            'grow-[1.6]',
+        );
+    });
+
     it('keeps the pill clear of a landscape notch on both sides', () => {
         setMockPage({}, '/', 'Home');
         const { container } = render(<MobileBottomNav />);
