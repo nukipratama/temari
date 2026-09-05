@@ -75,6 +75,20 @@ describe('BareShell', () => {
         );
     });
 
+    it('clears the notch sideways too, for landscape', () => {
+        setMockPage({
+            auth: { user: null },
+            flash: {},
+            demoLoginEnabled: false,
+        });
+        const { container } = render(<BareShell>content</BareShell>);
+
+        expect(container.querySelector('.min-h-screen')).toHaveClass(
+            'pl-[env(safe-area-inset-left)]',
+            'pr-[env(safe-area-inset-right)]',
+        );
+    });
+
     it('wraps the page in the bare shell via bareLayout', () => {
         setMockPage({
             auth: { user: null },

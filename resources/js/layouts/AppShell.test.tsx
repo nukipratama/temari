@@ -42,6 +42,24 @@ describe('AppShell', () => {
         expect(motionConfigSpy).toHaveBeenCalledWith('user');
     });
 
+    it('insets the whole shell past a landscape notch', () => {
+        setMockPage({
+            auth: { user: andiUser },
+            flash: {},
+            demoLoginEnabled: false,
+        });
+        const { container } = render(
+            <AppShell>
+                <p>x</p>
+            </AppShell>,
+        );
+
+        expect(container.querySelector('.min-h-screen')).toHaveClass(
+            'pl-[env(safe-area-inset-left)]',
+            'pr-[env(safe-area-inset-right)]',
+        );
+    });
+
     it('renders the 4 primary tabs + children by default', () => {
         setMockPage({
             auth: { user: andiUser },
@@ -57,9 +75,12 @@ describe('AppShell', () => {
         ['Today', 'Plan', 'Trends', 'History'].forEach((label) => {
             expect(screen.getAllByText(label).length).toBeGreaterThan(0);
         });
-        // <main> keeps bottom clearance for the floating bottom nav.
+        // <main> keeps bottom clearance for the floating bottom nav, above the
+        // home-indicator inset rather than flat against it.
         const main = document.getElementById('main-content');
-        expect(main?.className).toContain('pb-28');
+        expect(main?.className).toContain(
+            'pb-[calc(7rem+env(safe-area-inset-bottom))]',
+        );
     });
 
     it('mounts the route progress bar as shell chrome, idle by default', () => {
@@ -158,7 +179,10 @@ describe('AppShell', () => {
         );
 
         const main = document.getElementById('main-content');
-        expect(main).toHaveClass('outline-none', 'pb-28');
+        expect(main).toHaveClass(
+            'outline-none',
+            'pb-[calc(7rem+env(safe-area-inset-bottom))]',
+        );
         // Exactly those two: an enter animation would have to add a class
         // here, and starting one at opacity 0 is what read as "old page ->
         // blank -> fade in".

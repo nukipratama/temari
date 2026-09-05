@@ -122,14 +122,14 @@
         @endforeach
     @endforeach
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
-        rel="stylesheet"
-    >
+    {{-- Fonts are self-hosted (resources/css/fonts.css). A cold standalone
+         launch used to block on fonts.googleapis.com *after* the splash had
+         already shown, on a connection the app has no control over; these ship
+         from the same origin as everything else, fingerprinted into /build and
+         served immutable for a year by docker/Caddyfile. First in the @vite
+         list so the faces are known before app.css asks for them. --}}
     @viteReactRefresh
-    @vite(['resources/css/app.css', 'resources/js/app.tsx'])
+    @vite(['resources/css/fonts.css', 'resources/css/app.css', 'resources/js/app.tsx'])
     @inertiaHead
 </head>
 <body class="bg-background text-foreground antialiased">

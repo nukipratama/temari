@@ -48,6 +48,9 @@
     },
     "dependencies": {
         "@base-ui/react": "^1.7.0",
+        "@fontsource-variable/fraunces": "5.3.0",
+        "@fontsource-variable/jetbrains-mono": "5.3.0",
+        "@fontsource-variable/plus-jakarta-sans": "5.3.0",
         "@inertiajs/react": "^3.1.1",
         "@mapbox/polyline": "^1.2.1",
         "chart.js": "^4.5.1",

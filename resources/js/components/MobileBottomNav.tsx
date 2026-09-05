@@ -1,9 +1,11 @@
 import type { ComponentType, MouseEvent, SVGProps } from 'react';
 
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { CalendarCheck, History, LineChart, Sunrise } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
+import type { TabId } from '@/lib/nav';
 import type { SharedProps } from '@/types/inertia';
 
 import { cn } from '@/lib/cn';
@@ -42,30 +44,44 @@ function scrollToTop(event: MouseEvent<Element>) {
  * at all was that four items spread across a *full-bleed* track read as far
  * apart; 1040 is still a bounded column, and the pill sitting narrower than the
  * content above it read as the more obviously wrong of the two.
+ *
+ * The pill lights the tapped tab immediately and reconciles on Inertia's
+ * `finish`, so a cancelled or failed visit falls back to the page the app is
+ * actually on rather than stranding the highlight on a tab it never reached.
  */
 export default function MobileBottomNav() {
     const { component } = usePage<SharedProps>();
-    const active = navTabFor(component);
+    const current = navTabFor(component);
+    const [pending, setPending] = useState<TabId | null>(null);
 
-    if (active === null) {
+    useEffect(() => router.on('finish', () => setPending(null)), []);
+
+    if (current === null) {
         return null;
     }
 
+    const active = pending ?? current;
+
     return (
-        <div className="pointer-events-none fixed inset-x-0 bottom-[max(0.875rem,calc(env(safe-area-inset-bottom)+0.25rem))] z-30 px-3.5">
+        <div className="pointer-events-none fixed inset-x-0 bottom-[max(0.875rem,calc(env(safe-area-inset-bottom)+0.25rem))] z-30 pl-[max(0.875rem,env(safe-area-inset-left))] pr-[max(0.875rem,env(safe-area-inset-right))]">
             <nav
                 aria-label="Primary"
                 className="pointer-events-auto mx-auto flex max-w-column gap-1 min-[1280px]:max-w-column-wide rounded-full border border-foreground/20 bg-card/60 p-1.5 shadow-e2 backdrop-blur-xl backdrop-saturate-150"
             >
                 {ITEMS.map((item) => {
+                    const isCurrent = current === item.id;
                     const isActive = active === item.id;
                     const TabIcon = ICONS[item.icon];
                     return (
                         <Link
                             key={item.id}
                             href={item.href}
-                            aria-current={isActive ? 'page' : undefined}
-                            onClick={isActive ? scrollToTop : undefined}
+                            aria-current={isCurrent ? 'page' : undefined}
+                            onClick={
+                                isCurrent
+                                    ? scrollToTop
+                                    : () => setPending(item.id)
+                            }
                             className={cn(
                                 'pressable focus-ring flex flex-1 items-center justify-center gap-1.5 rounded-full py-2.5 text-text-3 no-underline transition-[flex-grow,background-color,color] duration-150',
                                 isActive &&
