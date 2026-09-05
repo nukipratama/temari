@@ -5,7 +5,7 @@
  * templates under resources/views (error pages + the first-party Pulse cards),
  * minus the published vendor templates listed in EXCLUDED.
  *
- * Four rules, all enforcing the same thing — a value a designer can move must
+ * Five rules, all enforcing the same thing — a value a designer can move must
  * live in the `@theme` block of resources/css/app.css, not at a call site:
  *
  *   1. Colour must resolve through a semantic `--color-*` token (`bg-horizon`,
@@ -19,6 +19,15 @@
  *   4. The same, for an inline `fontSize` style prop. Canvas `ctx.font` strings
  *      are deliberately not matched — a canvas is a fixed raster, so px is
  *      correct there.
+ *   5. A gradient stop must use a ground-reactive token, on either side of the
+ *      ground: a fixed-light stop (cream/surface/line/ink) is unreadable on the
+ *      dark ground and a fixed-dark one (the Sky family) is the mirror bug on
+ *      light. A deliberate fixed-ground gradient is an exemption to argue once,
+ *      not a hole to leave open. A gradient is
+ *      invisible to every contrast audit — contrast.mjs skips it for want of a
+ *      flat colour, and an island scan misses it because `backgroundColor` on a
+ *      gradient element is transparent — so a fixed-light stop under reactive
+ *      text goes unreadable on the dark ground with nothing reporting it.
  *
  * A third rule (off-scale radius: `rounded-2xl`/`3xl`/`4xl` sitting outside
  * the `--radius-*` scale) existed from the v2 token set until F2, which
@@ -150,6 +159,14 @@ const RULES = [
        off-scale any more; see check-raw-palette.test.ts for the regression
        test proving this removal was deliberate, not the rule silently
        going empty (risk R10 of the parity program). */
+    /* Appended rather than inserted: check-raw-palette.test.ts pins rules by
+       index, so a mid-array insert would silently repoint two assertions at
+       the wrong rule. */
+    {
+        name: 'ground-fixed gradient stop',
+        fix: 'Use a ground-reactive token for a gradient stop (`from-popover`, `from-card`, `to-background`). A gradient is invisible to every contrast audit — contrast.mjs skips it for want of a flat colour to score, and an island scan misses it because `backgroundColor` on a gradient element is transparent — so a fixed-light stop under reactive text is unreadable on the dark ground and nothing reports it. Both 1.00:1 bugs the wrong-ground audit found were exactly this shape.',
+        re: /\b(?:from|via|to)-(?:cream-deep|cream|surface-card|surface-elev|surface-warm|surface-sunken|surface|line-strong|line|ink-2|ink-3|ink|sky-deep|sky-2|sky)(?:\/[\w.[\]]+)?\b/g,
+    },
 ];
 
 /** `.blade.php` has a two-part extension, so match on the suffix, not extname(). */

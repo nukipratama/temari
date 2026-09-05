@@ -68,12 +68,13 @@ describe('check-raw-palette rules', () => {
      * anything — proving the rule went away because it ran out of a
      * violation to find, not because RULES was silently trimmed further.
      */
-    it('has exactly the four rules the docstring documents', () => {
+    it('has exactly the five rules the docstring documents', () => {
         expect(RULES.map((rule) => rule.name)).toEqual([
             'raw Tailwind palette utility',
             'off-token shadow utility',
             'px font-size utility',
             'inline px font-size',
+            'ground-fixed gradient stop',
         ]);
     });
 
@@ -91,5 +92,50 @@ describe('check-raw-palette rules', () => {
                 RULES.some((rule) => className.match(rule.re) !== null),
             ).toBe(false);
         }
+    });
+});
+
+describe('ground-fixed gradient stop', () => {
+    // RULES[4] — appended, so the indices above stay put. Fixtures are
+    // concatenated for the reason given at the top of this file: the scanner
+    // reads this very file, so a contiguous literal would trip the rule it
+    // tests.
+    const rule = RULES[4].re;
+    const fixedFrom = ['from', 'surface', 'warm'].join('-');
+    const fixedTo = ['to', 'surface', 'elev'].join('-');
+    const reactiveFrom = ['from', 'popover'].join('-');
+    const identityFrom = ['from', 'horizon'].join('-') + '/34';
+
+    it('flags a fixed-light token used as a gradient stop', () => {
+        // The shape of the explainer popover before it was fixed: a near-white
+        // gradient carrying near-white text, 1.00:1 on the dark ground.
+        expect(`bg-gradient-to-br ${fixedFrom} ${fixedTo}`.match(rule)).toEqual(
+            [fixedFrom, fixedTo],
+        );
+    });
+
+    it('flags the short fixed names, not just the hyphenated ones', () => {
+        const short = [
+            ['from', 'ink'].join('-'),
+            ['to', 'cream'].join('-'),
+            ['via', 'line'].join('-'),
+        ];
+        expect(short.join(' ').match(rule)).toEqual(short);
+    });
+
+    it('flags a fixed-dark stop too, the mirror bug on the light ground', () => {
+        const dark = [
+            ['from', 'sky'].join('-'),
+            ['to', 'sky', 'deep'].join('-'),
+            ['via', 'sky', '2'].join('-'),
+        ];
+        expect(dark.join(' ').match(rule)).toEqual(dark);
+    });
+
+    it('leaves a reactive stop and a fixed-identity fill alone', () => {
+        expect(
+            `bg-gradient-to-l ${reactiveFrom} to-transparent`.match(rule),
+        ).toBeNull();
+        expect(`bg-gradient-to-br ${identityFrom}`.match(rule)).toBeNull();
     });
 });
