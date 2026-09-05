@@ -135,10 +135,7 @@ export default function Settings({
                     model with two questions — what gets sent, and where it goes —
                     and splitting those across "Notifications", "Push" and
                     "Telegram" made them look unrelated. */}
-                <section
-                    className="mt-10"
-                    data-coachmark="settings-notifications"
-                >
+                <section className="mt-10">
                     <SectionLabel>Notifications</SectionLabel>
                     <div className={cn('mt-3', cardVariants())}>
                         <NotificationPrefsPanel
@@ -149,7 +146,7 @@ export default function Settings({
                     </div>
                 </section>
 
-                <section className="mt-10" data-coachmark="settings-hr-zones">
+                <section className="mt-10">
                     <SectionLabel>Running</SectionLabel>
                     {/* Preferences before the zones disclosure, as the
                         prototype orders them: the open card first, the

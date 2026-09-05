@@ -1,9 +1,9 @@
 ---
-title: Onboarding wizard + coach-mark mechanism
-description: The three-step post-connect wizard, its DB-backed gate, and the reusable coach-mark anchoring mechanism.
+title: Onboarding wizard
+description: The three-step post-connect wizard and its DB-backed gate.
 tags: [feature, onboarding]
 status: living
-reviewed: 2026-08-30
+reviewed: 2026-09-05
 code_refs:
   - app/Http/Controllers/OnboardingController.php
   - app/Http/Middleware/EnsureOnboarded.php
@@ -18,14 +18,12 @@ code_refs:
   - resources/js/components/onboarding/SessionsDial.tsx
   - resources/js/components/onboarding/DayPicker.tsx
   - resources/js/lib/raceGoal.ts
-  - resources/js/hooks/useCoachMark.ts
-  - resources/js/components/onboarding/CoachMark.tsx
   - routes/web.php
 ---
 
 # Onboarding
 
-A minimal three-step wizard shown once, right after a user's *first* Strava connect, plus a reusable coach-mark mechanism for later contextual hints elsewhere in the app.
+A minimal three-step wizard shown once, right after a user's *first* Strava connect.
 
 ## The gate
 
@@ -48,16 +46,6 @@ A minimal three-step wizard shown once, right after a user's *first* Strava conn
 The goal form only offers submissions the server can accept. [raceGoal.ts](../../resources/js/lib/raceGoal.ts) mirrors the request's `after:today` and `between:300,259200` bounds into the date input's `min` and a disabled submit, and server-side field errors render beside the field that caused them. Before that, blanking the minutes field produced a `goal_time_sec` of 0 — a submit that could only ever 422, explained by nothing nearer than the global error banner. `/race` shares the same helper for the same reason ([[race-projection]]).
 
 `OnboardingController::store` creates the `RaceGoal` (if goal fields were sent), upserts `TrainingPreference` (if any preference field was sent) and calls `User::markOnboarded()`, then redirects to `dashboard`.
-
-## Coach-mark mechanism
-
-[useCoachMark](../../resources/js/hooks/useCoachMark.ts) + [CoachMark](../../resources/js/components/onboarding/CoachMark.tsx) are a general-purpose "point at any DOM element, dismiss once, never show again for this user" primitive. Dismissal is localStorage-persisted, keyed per signed-in user id so a shared/demo browser can't leak one account's dismissals into another's. `CoachMark` takes an external `anchorRef` and portals a positioned callout next to it (`top`/`bottom`/`left`/`right`), closing on Escape/outside-click via the existing `usePopover` primitive.
-
-### Where marks are mounted
-
-One mark per page, at the anchor that teaches a genuinely non-obvious interaction. **Two are mounted**: [`calendar-grid`](../../resources/js/pages/Activities/Calendar.tsx#L153) (a day opens its run, a week opens its recap) and [`run-share`](../../resources/js/pages/Runs/Show.tsx#L106) (the card shares as an image). Four have been retired with the surfaces they taught — the Feed's filter-sheet mark with the filter sheet in `S7` (see [[run-history]]), the Accessories equip mark with the page in `PP2` (see [[targets-accessories]]), Today's "a run mints a card" with the featured-card panel in `PP3`, and Plan's "upcoming days are editable" with the day actions in `PS4` (see [[plan-periodizer]]). The remaining `data-coachmark` anchors stay unmounted on purpose: where the surrounding copy or a control's own label already explains the interaction, a callout is noise, and two marks competing on one page fight each other (an outside click on either dismisses the other).
-
-**A mark must render after its anchor in tree order.** React attaches a parent's ref only once its children's layout effects have run, so a mark nested inside — or placed before — its anchor measures a null element on mount and silently never appears.
 
 ## See also
 

@@ -104,16 +104,6 @@ export function makeUser(overrides: Record<string, unknown> = {}) {
     };
 }
 
-// Layout-positioned UI (coach marks) parks its first paint behind a rAF, which
-// jsdom never runs on its own. The global afterEach unstub clears this again.
-export function stubSyncAnimationFrame() {
-    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
-        cb(performance.now());
-        return 1;
-    });
-    vi.stubGlobal('cancelAnimationFrame', () => {});
-}
-
 // Safe default fetch: any test that renders a component which fires fetch on
 // mount/interaction but doesn't stub it gets a 404 Response instead of a real
 // network call. A real Response satisfies both shapes the codebase reads off

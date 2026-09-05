@@ -122,7 +122,7 @@ export default function Profile({
                     />
                 </header>
 
-                <div data-coachmark="profile-stats">
+                <div>
                     <ProfileHero
                         firstRunAt={identity.first_run_at}
                         memberSince={identity.member_since}
@@ -164,10 +164,7 @@ export default function Profile({
 
                 {progressionByCategory &&
                     Object.keys(progressionByCategory).length > 0 && (
-                        <div
-                            data-coachmark="profile-progression"
-                            className="mt-4"
-                        >
+                        <div className="mt-4">
                             <ProgressionCard
                                 byCategory={progressionByCategory}
                             />

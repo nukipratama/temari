@@ -76,7 +76,7 @@ and elevation are three small tiles below. Every figure count-ups from zero via
 The hero also carries the page's one **Share** button, rendered only when the
 run has a card — the prototype draws no share button anywhere, and keeping one
 is the deliberate divergence recorded in `cut-list.md` §4; see
-[[cards-collection]]. It anchors the page's `run-share` coach mark.
+[[cards-collection]].
 
 At the foot of the panel,
 [MapWeatherPanel](../../resources/js/components/run/MapWeatherPanel.tsx) is one

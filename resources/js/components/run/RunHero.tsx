@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import { type RefObject } from 'react';
 
 import type { ActivityDetail, Mood } from '@/types/inertia';
 
@@ -22,8 +21,6 @@ interface RunHeroProps {
     trimp: number | null;
     /** Opens the share-card popup. Omitted when this run has no card to share. */
     onShare?: () => void;
-    /** Anchors the share coach-mark on the button itself, not the whole panel. */
-    shareRef?: RefObject<HTMLButtonElement | null>;
 }
 
 function display(
@@ -48,7 +45,6 @@ export default function RunHero({
     hr,
     trimp,
     onShare,
-    shareRef,
 }: Readonly<RunHeroProps>) {
     const distanceKm = useCountUp(
         detail.distance != null ? detail.distance / 1000 : 0,
@@ -99,7 +95,6 @@ export default function RunHero({
                 </div>
                 {onShare && (
                     <button
-                        ref={shareRef}
                         type="button"
                         onClick={onShare}
                         className="focus-ring pressable -mr-1 -mt-1 inline-flex flex-none items-center gap-1.5 rounded-full border border-border-strong px-3 py-1.5 text-label-micro text-text-2 transition hover:text-foreground"
@@ -116,7 +111,6 @@ export default function RunHero({
             </header>
 
             <motion.div
-                data-coachmark="run-hero-stats"
                 variants={staggerContainer}
                 initial="hidden"
                 animate="visible"

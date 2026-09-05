@@ -1,5 +1,4 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ActivityDetail } from '@/types/inertia';
@@ -103,14 +102,11 @@ describe('RunHero', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('offers the share button, and anchors the coach-mark ref on it', () => {
+    it('offers the share button', () => {
         const onShare = vi.fn();
-        const shareRef = createRef<HTMLButtonElement>();
-        renderHero({ onShare, shareRef });
+        renderHero({ onShare });
 
-        const button = screen.getByRole('button', { name: /Share/ });
-        expect(shareRef.current).toBe(button);
-        button.click();
+        screen.getByRole('button', { name: /Share/ }).click();
         expect(onShare).toHaveBeenCalledOnce();
     });
 

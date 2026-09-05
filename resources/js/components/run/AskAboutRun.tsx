@@ -75,7 +75,7 @@ export default function AskAboutRun({
     };
 
     return (
-        <section className={className} data-coachmark="run-ask">
+        <section className={className}>
             <Card tone="narration" padding="hero">
                 <div className="flex items-center gap-1.5">
                     <Icon
