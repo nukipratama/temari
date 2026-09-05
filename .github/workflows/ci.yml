@@ -2,8 +2,12 @@ name: CI
 
 on:
   pull_request:
+  # `main` only: branch protection means everything else arrives via a PR, which
+  # `pull_request` already covers — including a push to a long-lived `epic/*`,
+  # since that updates the epic's own PR. Listing a branch here as well makes
+  # both events fire on the same commit.
   push:
-    branches: [main, 'epic/*']
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -19,17 +23,9 @@ permissions:
   contents: read
 
 jobs:
-  # Path filtering, restored. C1 removed the previous `changes` job because it
-  # was inert, not because filtering was wrong: it diffed against the merge-base
-  # with a hardcoded `origin/main`, so on a PR into a long-lived `epic/*` branch
-  # it saw the whole epic diff — measured at 1147 files against 1 actually
-  # changed — and every output was permanently true. The fix is the base: on a
-  # pull_request we diff against *that PR's own* base branch, so the answer is
-  # correct whatever the target. On a push we run everything, since pushes only
-  # reach `main` and `epic/*`.
-  #
-  # Skipping is safe for the required check: ci-gate accepts `skipped` for the
-  # five conditional jobs and demands `success` from the unconditional ones.
+  # Diffs against the PR's *own* base branch, so filtering is correct whatever
+  # the target; a hardcoded base saw the whole epic diff and never filtered
+  # anything. A push runs everything, having no base to diff against.
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -99,12 +95,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: false
 
-  # The unconditional guards: they run on every event because a code deletion
-  # anywhere can orphan a doc citation, which is not confined to the paths that
-  # changed. Every downstream job gates on this one, so keep it to checks that
-  # are fast and that genuinely need to see the whole tree. Plural because it
-  # held two guards until C1 cut the Indonesian one; the name stays accurate for
-  # whatever lands here next.
+  # Unfiltered: a deletion anywhere can orphan a doc citation, so this has to see
+  # the whole tree. Every downstream job gates on it — keep it fast.
   repo-guards:
     runs-on: ubuntu-latest
     steps:
@@ -150,13 +142,6 @@ jobs:
       - name: Stub .env for file-scanning tests
         run: cp .env.example .env
 
-      # --no-tia on both Pest steps. Pest's guidance is that CI verifies every
-      # test against a clean checkout, so it runs the full suite. It is also the
-      # only thing that works: measured on this suite, --tia --coverage throws
-      # InvalidCoverageDataException against an existing graph, and with --fresh
-      # exhausts a 512M memory_limit in CoverageMerger unserialising an 80MB
-      # coverage graph. A replay does reconstruct coverage in principle, so the
-      # older "it would shrink the gate" reasoning here was wrong.
       - name: Check {@see} references resolve
         run: php scripts/check-see-references.php
 
@@ -175,10 +160,9 @@ jobs:
           CACHE_STORE: array
           SESSION_DRIVER: array
         run: |
-          # The coverage gate is a merge gate, not a deploy gate: every commit
-          # reaches main through a PR, where this runs with --min=95. Re-running
-          # it on the main push would only put pcov instrumentation of a 2000+
-          # test suite on the deploy critical path for an already-gated tree.
+          # A merge gate, not a deploy gate: every commit reaches main via a PR.
+          # Re-running it on the main push would put pcov instrumentation on the
+          # deploy critical path for an already-gated tree.
           coverage_flag=""
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             coverage_flag="--coverage --min=95"
@@ -227,14 +211,17 @@ jobs:
       - name: Raw Tailwind palette guard
         run: npm run check:palette
 
+      # Coverage is a merge gate, mirroring backend-tests: it runs on the PR,
+      # which is the only way anything reaches main. Running it again on the
+      # main push would gate an already-gated tree.
       - name: Vitest
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "Running Vitest without coverage"
-            npm run test
-          else
             echo "Running Vitest with coverage (threshold gate)"
             npm run test:coverage
+          else
+            echo "Running Vitest without coverage"
+            npm run test
           fi
 
       - name: Vitest summary
@@ -251,20 +238,17 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      # The only gate that reads the built bundle. Without it, a bundler
-      # upgrade or a stray static import can put a chart engine or the
-      # animation library back on every route's first paint with nothing
-      # failing — which is exactly how the React-in-charts split survived.
+      # The only gate that reads the built bundle: without it a stray static
+      # import can put a chart or animation library back on first paint silently.
       - name: Build assets
         run: npm run build
 
       - name: Entry chunk guard (first-paint budget)
         run: npm run check:chunks
 
-  # Cold static analysis. Local pre-commit/caches can mask drift (unchanged
-  # files skip re-analysis), so a fresh checkout here is the only place that
-  # reliably catches new phpstan/rector/pint regressions. Pre-existing findings
-  # are captured in phpstan-baseline.neon; this gate blocks anything NEW.
+  # A cold checkout: local caches skip unchanged files, so this is the only
+  # place new drift reliably surfaces. phpstan-baseline.neon holds the old
+  # findings; this blocks new ones.
   backend-static-analysis:
     needs: [changes, secret-scan, repo-guards]
     if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.backend == 'true') }}
@@ -321,13 +305,8 @@ jobs:
             [ "$r" = "success" ] || { echo "::error::a required unconditional job did not pass ($r)"; exit 1; }
           done
 
-  # Two reasons to run: the main push that produces the image `deploy` pulls,
-  # and validating on a PR that a Dockerfile/composer change still builds —
-  # before that existed, such a change reached main validated by hand or not at
-  # all. It used to be path-filtered to those inputs; since C1 removed the
-  # filter it builds on every PR, which costs ~40s off a warm registry cache and
-  # is what it was already doing on every epic PR anyway. A PR build reads the
-  # shared cache but never pushes a tag or writes the cache back (see below).
+  # Produces the image `deploy` pulls on a main push, and on a PR proves a
+  # Dockerfile/composer change still builds. ~40s off a warm cache.
   build:
     name: build-prod-image
     needs: [changes, secret-scan, repo-guards]
@@ -348,9 +327,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # A PR build is a validation, not a release: it reads the shared buildcache
-      # but neither publishes a :<sha> the deploy would never pull nor writes the
-      # cache back, so a branch's layers can't displace main's.
+      # A PR build validates only: it reads the shared buildcache but never
+      # publishes a tag or writes the cache back, so it can't displace main's.
       - name: Build and push the runtime image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
