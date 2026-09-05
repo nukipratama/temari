@@ -21,6 +21,31 @@ const MARKERS = [
 ] as const;
 
 /**
+ * How far from each end a label still anchors to the rail edge rather than
+ * centring over its dot. Wide enough that the longest label ("marathon")
+ * clears on a phone, where the rail is narrowest relative to the text.
+ */
+const LABEL_ANCHOR_ZONE = 25;
+
+/**
+ * Percentage of its own width to shift a label left. A label centres over its
+ * dot, except inside the anchor zones, where it ramps to flush-left at 0% and
+ * flush-right at 100% so the end labels never overhang the rail.
+ */
+function labelShift(left: number): number {
+    if (left < LABEL_ANCHOR_ZONE) {
+        return (left / LABEL_ANCHOR_ZONE) * 50;
+    }
+    if (left > 100 - LABEL_ANCHOR_ZONE) {
+        return (
+            50 + ((left - (100 - LABEL_ANCHOR_ZONE)) / LABEL_ANCHOR_ZONE) * 50
+        );
+    }
+
+    return 50;
+}
+
+/**
  * The four training paces on one rail. The prototype hardcodes each marker's
  * left offset; here the offsets are the paces themselves, linearly placed
  * between the slowest and the fastest, so a runner whose tempo sits unusually
@@ -39,7 +64,7 @@ export default function PaceTargetsCard({
             <Eyebrow token="micro" tone="ink-3">
                 Training · pace targets · per km
             </Eyebrow>
-            <div className="relative mx-2 mt-2.5 h-[78px]">
+            <div className="relative mx-4 mt-2.5 h-[78px]">
                 <div className="absolute inset-x-0 top-[39px] h-1 rounded-full bg-gradient-to-r from-leaf to-horizon" />
                 {MARKERS.map((marker) => {
                     const pace = paces[marker.key];
@@ -55,7 +80,7 @@ export default function PaceTargetsCard({
                                 )}
                                 style={{
                                     left: `${left}%`,
-                                    transform: `translateX(-${left}%)`,
+                                    transform: `translateX(-${labelShift(left)}%)`,
                                 }}
                             >
                                 <b className="block font-mono text-xs font-bold tabular-nums text-foreground">
