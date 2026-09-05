@@ -127,10 +127,10 @@ describe('MobileTopBar', () => {
         expect(container.querySelector('header')).toHaveClass('fixed', 'top-0');
     });
 
-    it('never paints a background of its own — only the chips inside it do', () => {
+    it('paints the ground colour so content cannot scroll between the chips', () => {
         const { container } = render(<MobileTopBar />);
         const header = container.querySelector('header')!;
-        expect(header.className).not.toMatch(/\bbg-|backdrop-blur/);
+        expect(header).toHaveClass('bg-background');
         expect(screen.getByLabelText('Home')).toHaveClass(
             'bg-muted/70',
             'backdrop-blur-md',
@@ -141,11 +141,9 @@ describe('MobileTopBar', () => {
             window.dispatchEvent(new Event('scroll'));
         });
 
-        expect(header.className).not.toMatch(/\bbg-|backdrop-blur/);
-        expect(screen.getByLabelText('Home')).toHaveClass(
-            'bg-muted/70',
-            'backdrop-blur-md',
-        );
+        // Unconditional, not scroll-driven: bg-background is what the page is
+        // already painting behind the bar, so it reads as transparent at rest.
+        expect(header).toHaveClass('bg-background');
     });
 
     it('wraps the notification bell and avatar in a chip, matching the wordmark chip', () => {

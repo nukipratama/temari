@@ -30,8 +30,11 @@ const PUSHED_WITH_BELL: ReadonlySet<string> = new Set([
  * Floating chips, per the prototype's AppTopbar/ProfileTopbar — `fixed` (not
  * `absolute` or `sticky`): the chips stay with the reader and never reserve
  * flow space, so AppShell's top padding remains the whole clearance contract.
- * The bar itself paints nothing at any scroll position; only the chips carry a
- * backdrop, so what floats is the controls, not a band. Full-bleed at every
+ * The bar paints the ground colour, which is the same colour the page is
+ * already painting behind it — so at rest it reads as the transparent bar it
+ * used to be, and the only thing it changes is that content no longer scrolls
+ * through the gaps between the chips. That bleed was legible page text sliding
+ * under the clock, and iOS 26 blurs whatever sits in that strip. Full-bleed at every
  * width, as the prototype's own chrome is: above 900px the content column
  * narrows to 760px and the chips sit outside it, which is what lets the
  * column's top padding shrink to `pt-6`. `max()` keeps the row clear of the
@@ -45,7 +48,7 @@ export default function MobileTopBar() {
     return (
         <header
             data-testid="mobile-top-bar"
-            className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-3 px-4 pb-2.5 pt-[max(1rem,env(safe-area-inset-top))]"
+            className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-3 bg-background px-4 pb-2.5 pt-[max(1rem,env(safe-area-inset-top))]"
         >
             {back ? (
                 // Real href, not history.back(): a deep link can open this cold with nothing behind it.
