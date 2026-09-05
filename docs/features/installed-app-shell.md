@@ -83,17 +83,21 @@ the community technique (a fixed overlay above the viewport carrying a
 `backdrop-filter`) is itself broken, its author noting that "the fixed overlay
 positioned outside the viewport no longer renders under the status bar".
 
-What works is not fighting the effect but starving it: **blurring a uniform
-field yields a uniform field.** `MobileTopBar` therefore paints `bg-background`,
-unconditionally. That is the colour the page is already painting behind it, so
-at rest the bar still reads as the transparent one the F4 port shipped — the
-only thing it changes is that page content no longer scrolls through the gaps
-*between* the chips, which is what was sliding under the clock and getting
-smeared.
+What works is not fighting the effect but removing what it feeds on. The blur
+was only ever objectionable because *page text* passed through that strip, and
+text was there because `MobileTopBar` floated: content scrolled underneath it and
+showed through the gaps between the pills. **The bar no longer floats.** It sits
+in normal flow, reserves its own space, and scrolls away with the page, so
+nothing is pinned over that region and the only thing left up there is flat
+background — which blurs to flat background.
+
+`AppShell` therefore carries no clearance padding any more; the bar's own box is
+the spacing. The bar shares `PageContainer`'s column rather than running
+full-bleed, because in flow it sits directly above the content and chips pinned
+to the screen edges of a 2560px display would read as belonging to nothing.
 
 `StatusBarScrim` is gone for good. It covered only `env(safe-area-inset-top)`,
-the bar now covers that and more, and across three attempts it never once
-demonstrably painted on device.
+and across three attempts it never once demonstrably painted on device.
 
 The check that finally made this tractable: the layout half reproduces locally.
 Chromium's CDP `Emulation.setSafeAreaInsetsOverride` makes
@@ -107,9 +111,8 @@ the spec.** Reproduce the layout locally, and search whether someone has already
 hit it before theorising.
 
 `pt-[max(1rem,env(safe-area-inset-top))]` on the mobile top bar and on
-`BareShell`, and `pt-[max(4rem,calc(env(safe-area-inset-top)+3rem))]` on the
-content region, all keep their floor when the inset collapses to 0 — and still
-clear the notch if a future iOS hands the pixels back.
+`BareShell` keeps its floor when the inset collapses to 0, and still clears the
+notch if a future iOS hands the pixels back.
 
 ## The mobile top bar, and its back button
 
@@ -206,17 +209,15 @@ cannot parse fails the suite instead of dropping out of the sweep.
 
 ## Floating top bar (F4)
 
-`MobileTopBar` is `fixed`, and what used to be a single translucent bar is now
-a row of separate pill chips (the wordmark or back button on the left,
-Strava/bell/avatar on the right), each carrying its own `bg-muted` backing so
-it stays legible. The bar itself painted nothing until iOS 26 made that
-untenable — see above; it now paints the ground colour, which at rest is
-indistinguishable from painting nothing. `AppShell`
-reserves the clearance with top padding on the content region instead of the
-bar reserving flow space itself, mirroring how `BareShell` already pads for
-the notch on standalone screens. `MobileBottomNav` followed the same move: a
-floating `rounded-full` pill inset from the screen edges rather than a
-full-width bar flush to them.
+What used to be a single translucent bar is a row of separate pill chips (the
+wordmark or back button on the left, Strava/bell/avatar on the right), each
+carrying its own `bg-muted` backing. The *floating* half of F4 is gone — see
+above; the bar is in normal flow and scrolls away, which is what stopped content
+passing under the iOS status bar. `AppShell`
+no longer reserves clearance for it at all. `MobileBottomNav` keeps the floating
+treatment — a `rounded-full` pill inset from the screen edges rather than a
+full-width bar flush to them — because the bottom of the screen has no status
+bar to collide with.
 
 ## Edge-swipe back
 
