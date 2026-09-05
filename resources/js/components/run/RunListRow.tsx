@@ -101,7 +101,7 @@ function RunListRow({
                 </span>
             </div>
             {note && (
-                <p className="mt-1.25 truncate font-serif text-[0.65625rem] leading-[1.2] text-text-2 italic">
+                <p className="narration-dense mt-1.25 truncate">
                     &quot;{renderBold(note.oneline)}&quot;
                 </p>
             )}

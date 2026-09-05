@@ -38,7 +38,7 @@ function bucket(runs: RunWithDetail[] = [run(101, 'Morning')]): WeekBucket {
     return {
         weekStart: '2026-05-18',
         weekEnding: '2026-05-24',
-        label: '18 Mei - 24 Mei 2026',
+        label: 'may 18–24',
         runs,
         totalKm: runs.length * 5,
         totalTrimp: runs.length * 50,

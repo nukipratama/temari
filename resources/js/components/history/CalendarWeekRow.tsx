@@ -60,7 +60,7 @@ export default function CalendarWeekRow({
                         isChainHead={snapshot.is_chain_head}
                         size="sm"
                         renderContent={(content) => (
-                            <p className="m-0 font-serif text-[0.71875rem] leading-[1.45] text-foreground italic">
+                            <p className="narration-dense m-0">
                                 &quot;{renderBold(stripEdgeQuotes(content))}
                                 &quot;
                             </p>

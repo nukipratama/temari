@@ -14,7 +14,7 @@ export default function NoPlanCard() {
         <Card as="section" className="flex items-center gap-3.5">
             <FaceIcon size={40} />
             <div>
-                <p className="font-serif text-base font-semibold italic text-foreground">
+                <p className="text-base font-semibold text-foreground">
                     No plan yet.
                 </p>
                 <p className="mt-1 mb-2.5 text-xs leading-relaxed text-foreground">

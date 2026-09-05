@@ -4,7 +4,8 @@ import type {
     WeeklySnapshotWithRecap,
 } from '@/types/inertia';
 
-import { formatIdDate, isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
+import { isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
+import { weekRangeLabel } from '@/lib/plan';
 
 export type RunWithDetail = Activity & { detail: ActivityDetail };
 
@@ -17,13 +18,6 @@ export interface WeekBucket {
     totalKm: number;
     /** Null when the week's runs carried no heart rate: unknown, not zero. */
     totalTrimp: number | null;
-}
-
-function weekRangeLabel(monday: Date): string {
-    const sunday = sundayOf(monday);
-    const start = formatIdDate(monday.toISOString(), 'long');
-    const end = formatIdDate(sunday.toISOString(), 'long');
-    return `${start} - ${end}`;
 }
 
 /**
@@ -49,7 +43,7 @@ export function groupByWeek(rows: ReadonlyArray<RunWithDetail>): WeekBucket[] {
             bucket = {
                 weekStart: key,
                 weekEnding: isoDateLocal(sundayOf(monday)),
-                label: weekRangeLabel(monday),
+                label: weekRangeLabel(key),
                 runs: [],
                 totalKm: 0,
                 totalTrimp: null,

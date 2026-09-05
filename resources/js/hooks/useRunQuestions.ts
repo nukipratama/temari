@@ -42,6 +42,7 @@ export function useRunQuestions(activityId: number) {
     const [asking, setAsking] = useState(false);
     const [error, setError] = useState<AskError | null>(null);
     const [stalled, setStalled] = useState(false);
+    const [loaded, setLoaded] = useState(false);
     const [tick, setTick] = useState(0);
     const pollsLeftRef = useRef(MAX_POLLS);
     const mountedRef = useRef(true);
@@ -57,7 +58,11 @@ export function useRunQuestions(activityId: number) {
 
     const load = useCallback(async () => {
         const response = await getJson(url);
-        if (!response.ok || !mountedRef.current) {
+        if (!mountedRef.current) {
+            return;
+        }
+        if (!response.ok) {
+            setLoaded(true);
             return;
         }
         const body: {
@@ -69,10 +74,15 @@ export function useRunQuestions(activityId: number) {
         }
         setQuestions(body.questions ?? []);
         setSuggestions(body.suggestions ?? []);
+        setLoaded(true);
     }, [url]);
 
     useEffect(() => {
-        void load().catch(() => undefined);
+        void load().catch(() => {
+            if (mountedRef.current) {
+                setLoaded(true);
+            }
+        });
     }, [load]);
 
     const awaitingAnswer = questions.some(isPending);
@@ -141,6 +151,7 @@ export function useRunQuestions(activityId: number) {
 
     return {
         questions,
+        loaded,
         suggestions,
         ask,
         asking,
