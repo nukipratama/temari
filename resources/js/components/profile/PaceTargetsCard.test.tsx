@@ -26,17 +26,25 @@ describe('PaceTargetsCard', () => {
         expect(dots[3].style.left).toBe('100%');
     });
 
-    it('shifts each label by its own offset so the end ones stay inside the rail', () => {
+    it('anchors the end labels to the rail but centres the ones between', () => {
         const { container } = render(<PaceTargetsCard paces={PACES} />);
         const labels = container.querySelectorAll<HTMLElement>(
             'span[style*="left"]',
         );
 
+        const shiftOf = (label: HTMLElement): number =>
+            Number(label.style.transform.replace(/[^\d.]/g, ''));
+
         expect(labels).toHaveLength(4);
-        for (const label of labels) {
-            expect(label.style.transform).toBe(
-                `translateX(-${label.style.left})`,
-            );
+        // Flush left at 0% and flush right at 100%, so neither overhangs.
+        expect(shiftOf(labels[0])).toBe(0);
+        expect(shiftOf(labels[3])).toBe(100);
+        // The two between sit essentially over their own dots. Anchoring each
+        // label by its own offset — the shape this replaced — would have put
+        // these at 49 and 76, drifting further off the dot the wider the rail.
+        for (const label of [labels[1], labels[2]]) {
+            expect(shiftOf(label)).toBeGreaterThan(45);
+            expect(shiftOf(label)).toBeLessThan(55);
         }
     });
 
