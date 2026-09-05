@@ -96,31 +96,37 @@ describe('check-raw-palette rules', () => {
 });
 
 describe('ground-fixed gradient stop', () => {
-    // RULES[4] — appended, so the indices above stay put.
+    // RULES[4] — appended, so the indices above stay put. Fixtures are
+    // concatenated for the reason given at the top of this file: the scanner
+    // reads this very file, so a contiguous literal would trip the rule it
+    // tests.
     const rule = RULES[4].re;
+    const fixedFrom = ['from', 'surface', 'warm'].join('-');
+    const fixedTo = ['to', 'surface', 'elev'].join('-');
+    const reactiveFrom = ['from', 'popover'].join('-');
+    const identityFrom = ['from', 'horizon'].join('-') + '/34';
 
     it('flags a fixed-light token used as a gradient stop', () => {
-        // The exact shape of MetricExplainer's popover before it was fixed:
-        // a near-white gradient carrying near-white text, 1.00:1 on dark.
-        expect(
-            'bg-gradient-to-br from-surface-warm to-surface-elev'.match(rule),
-        ).toEqual(['from-surface-warm', 'to-surface-elev']);
+        // The shape of the explainer popover before it was fixed: a near-white
+        // gradient carrying near-white text, 1.00:1 on the dark ground.
+        expect(`bg-gradient-to-br ${fixedFrom} ${fixedTo}`.match(rule)).toEqual(
+            [fixedFrom, fixedTo],
+        );
     });
 
-    it('flags the shorter fixed names too, not just the hyphenated ones', () => {
-        expect('from-ink to-cream via-line'.match(rule)).toEqual([
-            'from-ink',
-            'to-cream',
-            'via-line',
-        ]);
+    it('flags the short fixed names, not just the hyphenated ones', () => {
+        const short = [
+            ['from', 'ink'].join('-'),
+            ['to', 'cream'].join('-'),
+            ['via', 'line'].join('-'),
+        ];
+        expect(short.join(' ').match(rule)).toEqual(short);
     });
 
-    it('leaves a ground-reactive stop alone', () => {
+    it('leaves a reactive stop and a fixed-identity fill alone', () => {
         expect(
-            'bg-gradient-to-l from-popover to-transparent'.match(rule),
+            `bg-gradient-to-l ${reactiveFrom} to-transparent`.match(rule),
         ).toBeNull();
-        expect(
-            'bg-gradient-to-br from-horizon/34 to-horizon/10'.match(rule),
-        ).toBeNull();
+        expect(`bg-gradient-to-br ${identityFrom}`.match(rule)).toBeNull();
     });
 });
