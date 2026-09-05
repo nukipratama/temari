@@ -76,6 +76,24 @@ describe('AskAboutRun', () => {
         ).not.toBeInTheDocument();
     });
 
+    it('waits for the thread before offering the starting points', async () => {
+        stubApi({
+            questions: [row({ status: 'done', answer: 'Heat.' })],
+            suggestions: ['which km cost me the most?'],
+        });
+
+        render(<AskAboutRun activityId={9} />);
+
+        expect(screen.queryByText('Starting points')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('The numbers are up there. Ask me why.'),
+        ).not.toBeInTheDocument();
+
+        await screen.findByText('Heat.');
+
+        expect(screen.queryByText('Starting points')).not.toBeInTheDocument();
+    });
+
     it('sends the typed question and clears the box', async () => {
         const fetchMock = stubApi({ questions: [], suggestions: [] });
 
