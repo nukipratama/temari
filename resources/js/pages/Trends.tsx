@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Deferred, Head } from '@inertiajs/react';
 import { useState } from 'react';
 
 import type { AnalysisPayload } from '@/types/inertia';
@@ -11,15 +11,21 @@ import FitnessPanel, {
 } from '@/components/trends/panels/FitnessPanel';
 import RangeToggle, { type TrendRange } from '@/components/trends/RangeToggle';
 import Eyebrow from '@/components/ui/Eyebrow';
+import Card from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
+import {
+    SkeletonChart,
+    SkeletonProse,
+    SkeletonStats,
+} from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
 
 interface TrendsProps {
-    ctlTrend: FitnessTrendPoint[];
-    badgeMilestones: BadgeMilestone[];
-    streak: StreakSummaryLike;
-    narration: Record<TrendRange, AnalysisPayload>;
+    ctlTrend?: FitnessTrendPoint[];
+    badgeMilestones?: BadgeMilestone[];
+    streak?: StreakSummaryLike;
+    narration?: Record<TrendRange, AnalysisPayload>;
 }
 
 /**
@@ -57,15 +63,41 @@ export default function Trends({
                     className="mt-4"
                 />
 
-                <NarrationCard analysis={narration[range]} className="mt-4" />
+                <Deferred
+                    data="narration"
+                    fallback={
+                        <Card as="section" tone="narration" className="mt-4">
+                            <SkeletonProse />
+                        </Card>
+                    }
+                >
+                    {() => (
+                        <NarrationCard
+                            analysis={narration![range]}
+                            className="mt-4"
+                        />
+                    )}
+                </Deferred>
 
-                <FitnessPanel
-                    trend={ctlTrend}
-                    milestones={badgeMilestones}
-                    streak={streak}
-                    range={range}
-                    className="mt-4"
-                />
+                <Deferred
+                    data={['ctlTrend', 'badgeMilestones', 'streak']}
+                    fallback={
+                        <Card as="section" className="mt-4">
+                            <SkeletonStats className="mt-3.5" />
+                            <SkeletonChart className="mt-3.5 h-[168px]" />
+                        </Card>
+                    }
+                >
+                    {() => (
+                        <FitnessPanel
+                            trend={ctlTrend!}
+                            milestones={badgeMilestones!}
+                            streak={streak!}
+                            range={range}
+                            className="mt-4"
+                        />
+                    )}
+                </Deferred>
             </PageContainer>
         </>
     );

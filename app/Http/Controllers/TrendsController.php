@@ -29,17 +29,17 @@ class TrendsController extends Controller
         $user = $request->user();
 
         return Inertia::render('Trends', [
-            'ctlTrend' => $trainingLoad->ctlTrend($user, 365),
-            'badgeMilestones' => collect(RunCard::firstEarnedBadgesForUser($user->id))
+            'ctlTrend' => Inertia::defer(fn (): array => $trainingLoad->ctlTrend($user, 365), 'fitness'),
+            'badgeMilestones' => Inertia::defer(fn (): array => collect(RunCard::firstEarnedBadgesForUser($user->id))
                 ->map(static fn (array $earned, string $slug): array => [
                     'key' => $slug,
                     'date' => $earned['date'],
                     'rarity' => $earned['rarity'],
                 ])
                 ->values()
-                ->all(),
-            'streak' => $seasonStreakBuilder->streakPayload($user, Carbon::today()),
-            'narration' => $this->narrationByRange($user),
+                ->all(), 'fitness'),
+            'streak' => Inertia::defer(fn (): array => $seasonStreakBuilder->streakPayload($user, Carbon::today()), 'fitness'),
+            'narration' => Inertia::defer(fn (): array => $this->narrationByRange($user), 'narration'),
         ]);
     }
 
