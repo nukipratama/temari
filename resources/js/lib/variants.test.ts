@@ -55,7 +55,7 @@ describe('pillButtonVariants', () => {
     it.each([
         ['horizon', 'bg-horizon'],
         ['sky', 'bg-sky'],
-        ['ghost', 'border-ink/[0.18]'],
+        ['ghost', 'border-foreground/20'],
         ['outline', 'border-border'],
     ] as const)('renders tone %s', (tone, expected) => {
         expect(tokens(pillButtonVariants({ tone }))).toContain(expected);
@@ -65,7 +65,7 @@ describe('pillButtonVariants', () => {
         const cls = tokens(pillButtonVariants({ tone: 'outline' }));
         expect(cls).toContain('bg-card');
         expect(cls).toContain('text-text-2');
-        expect(cls).toContain('hover:border-ink-3');
+        expect(cls).toContain('hover:border-foreground/40');
     });
 
     it('uses sm sizing when size="sm"', () => {
