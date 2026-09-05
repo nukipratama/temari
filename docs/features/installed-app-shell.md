@@ -9,7 +9,6 @@ code_refs:
   - public/manifest.webmanifest
   - resources/js/hooks/useSwipeBack.ts
   - resources/js/components/MobileTopBar.tsx
-  - resources/js/components/StatusBarScrim.tsx
   - resources/js/hooks/useBodyScrollLock.ts
   - resources/css/app.css
   - scripts/build-splash-screens.php
@@ -74,23 +73,38 @@ not by another theory but by a control: the same stylesheet, at the same
 viewport and the same emulated inset, renders the strip sharp in headless
 Chromium, and the blur is present on device even with nothing behind the chips.
 
-### Whether the strip is ours depends on the installer
+### The strip is not recoverable, so nothing textured goes in it
 
-The wrinkle #734 missed: **a Chrome install and a Safari install do not behave
-the same.** Added from Safari, iOS covers the region itself. Added from Chrome,
-the web view still runs edge to edge and page content shows through behind the
-clock — on the Today screen the briefing text was legible behind it, and again
-in the gap above the chips, which is what made the top bar read as sitting
-oddly low.
+The blur is iOS's own and there is no opting out. `black-translucent` stopped
+being honoured, `black` only lightened the material, and `default` changed
+nothing — all three were tried on fresh installs from both Safari and Chrome.
+It is a known WebKit regression in standalone PWAs with no published workaround;
+the community technique (a fixed overlay above the viewport carrying a
+`backdrop-filter`) is itself broken, its author noting that "the fixed overlay
+positioned outside the viewport no longer renders under the status bar".
 
-`StatusBarScrim` is therefore back, painting `env(safe-area-inset-top)` in
-`bg-background`. It is a no-op on a Safari install and load-bearing on a Chrome
-one, which is the only shape that covers both. Its earlier removal in #734 was
-right about the haze and wrong about the region being unconditionally iOS's.
+What works is not fighting the effect but starving it: **blurring a uniform
+field yields a uniform field.** `MobileTopBar` therefore paints `bg-background`,
+unconditionally. That is the colour the page is already painting behind it, so
+at rest the bar still reads as the transparent one the F4 port shipped — the
+only thing it changes is that page content no longer scrolls through the gaps
+*between* the chips, which is what was sliding under the clock and getting
+smeared.
 
-The lesson worth keeping, now seven attempts deep: **nothing about this strip
-can be settled from the spec** — and "on a phone" is not one configuration.
-Check a Safari install and a Chrome install; they diverge.
+`StatusBarScrim` is gone for good. It covered only `env(safe-area-inset-top)`,
+the bar now covers that and more, and across three attempts it never once
+demonstrably painted on device.
+
+The check that finally made this tractable: the layout half reproduces locally.
+Chromium's CDP `Emulation.setSafeAreaInsetsOverride` makes
+`env(safe-area-inset-top)` resolve for real, so an iPhone 13 (390x844, inset
+47px) can be driven headless in the Sail container and screenshotted. That is
+what proved the stylesheet renders the strip sharp, and therefore that the blur
+was never ours. The blur itself reproduces nowhere but a device.
+
+The lesson, eight attempts deep: **nothing about this strip can be settled from
+the spec.** Reproduce the layout locally, and search whether someone has already
+hit it before theorising.
 
 `pt-[max(1rem,env(safe-area-inset-top))]` on the mobile top bar and on
 `BareShell`, and `pt-[max(4rem,calc(env(safe-area-inset-top)+3rem))]` on the
@@ -192,11 +206,12 @@ cannot parse fails the suite instead of dropping out of the sweep.
 
 ## Floating top bar (F4)
 
-`MobileTopBar` is `absolute`, not `sticky`, and paints no background of its
-own — content scrolls underneath it. What used to be a single translucent bar
-is now a row of separate pill chips (the wordmark or back button on the left,
+`MobileTopBar` is `fixed`, and what used to be a single translucent bar is now
+a row of separate pill chips (the wordmark or back button on the left,
 Strava/bell/avatar on the right), each carrying its own `bg-muted` backing so
-it stays legible over whatever content happens to be behind it. `AppShell`
+it stays legible. The bar itself painted nothing until iOS 26 made that
+untenable — see above; it now paints the ground colour, which at rest is
+indistinguishable from painting nothing. `AppShell`
 reserves the clearance with top padding on the content region instead of the
 bar reserving flow space itself, mirroring how `BareShell` already pads for
 the notch on standalone screens. `MobileBottomNav` followed the same move: a
