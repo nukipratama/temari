@@ -68,12 +68,13 @@ describe('check-raw-palette rules', () => {
      * anything — proving the rule went away because it ran out of a
      * violation to find, not because RULES was silently trimmed further.
      */
-    it('has exactly the four rules the docstring documents', () => {
+    it('has exactly the five rules the docstring documents', () => {
         expect(RULES.map((rule) => rule.name)).toEqual([
             'raw Tailwind palette utility',
             'off-token shadow utility',
             'px font-size utility',
             'inline px font-size',
+            'ground-fixed gradient stop',
         ]);
     });
 
@@ -91,5 +92,35 @@ describe('check-raw-palette rules', () => {
                 RULES.some((rule) => className.match(rule.re) !== null),
             ).toBe(false);
         }
+    });
+});
+
+describe('ground-fixed gradient stop', () => {
+    // RULES[4] — appended, so the indices above stay put.
+    const rule = RULES[4].re;
+
+    it('flags a fixed-light token used as a gradient stop', () => {
+        // The exact shape of MetricExplainer's popover before it was fixed:
+        // a near-white gradient carrying near-white text, 1.00:1 on dark.
+        expect(
+            'bg-gradient-to-br from-surface-warm to-surface-elev'.match(rule),
+        ).toEqual(['from-surface-warm', 'to-surface-elev']);
+    });
+
+    it('flags the shorter fixed names too, not just the hyphenated ones', () => {
+        expect('from-ink to-cream via-line'.match(rule)).toEqual([
+            'from-ink',
+            'to-cream',
+            'via-line',
+        ]);
+    });
+
+    it('leaves a ground-reactive stop alone', () => {
+        expect(
+            'bg-gradient-to-l from-popover to-transparent'.match(rule),
+        ).toBeNull();
+        expect(
+            'bg-gradient-to-br from-horizon/34 to-horizon/10'.match(rule),
+        ).toBeNull();
     });
 });
