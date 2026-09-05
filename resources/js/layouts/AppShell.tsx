@@ -42,11 +42,9 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
 
                 <MobileTopBar />
 
-                {/* MobileTopBar is fixed and out of flow (see its own comment), so
-                this padding is what actually clears it. Above 900px the column narrows
-                to 760px and the bar's chips sit outside it, so the clearance drops to
-                the prototype's own pt-6. */}
-                <div className="pt-[max(4rem,calc(env(safe-area-inset-top)+3rem))] min-[900px]:pt-6">
+                {/* No clearance padding: MobileTopBar is in normal flow and
+                reserves its own space. */}
+                <div>
                     <ErrorBanner />
                     <FlashNotice />
                     <StravaZoneReconnectBanner />

@@ -27,18 +27,24 @@ const PUSHED_WITH_BELL: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Floating chips, per the prototype's AppTopbar/ProfileTopbar — `fixed` (not
- * `absolute` or `sticky`): the chips stay with the reader and never reserve
- * flow space, so AppShell's top padding remains the whole clearance contract.
- * The bar paints the ground colour, which is the same colour the page is
- * already painting behind it — so at rest it reads as the transparent bar it
- * used to be, and the only thing it changes is that content no longer scrolls
- * through the gaps between the chips. That bleed was legible page text sliding
- * under the clock, and iOS 26 blurs whatever sits in that strip. Full-bleed at every
- * width, as the prototype's own chrome is: above 900px the content column
- * narrows to 760px and the chips sit outside it, which is what lets the
- * column's top padding shrink to `pt-6`. `max()` keeps the row clear of the
- * notch under black-translucent; falls back to 1rem in a browser tab.
+ * The app's top bar: the wordmark or a back chevron on the left, the bell and
+ * avatar on the right, each in its own pill.
+ *
+ * In normal flow, not `fixed`. It floated for the whole F4 port, which meant
+ * page content scrolled underneath it and showed through the gaps between the
+ * pills — and in a standalone PWA iOS 26 blurs whatever lands in that strip, so
+ * the bleed arrived pre-smeared. Nothing pinned can be painted over that region
+ * reliably, so the bar stops competing for it: it reserves its own space at the
+ * top of the page and scrolls away with everything else, which is also why
+ * AppShell no longer carries a clearance padding.
+ *
+ * Sharing PageContainer's column rather than running full-bleed: in flow the
+ * bar sits directly above the content, so at desktop widths, where the column
+ * narrows and centres, chips pinned to the screen edges would read as belonging
+ * to nothing.
+ *
+ * `max()` keeps the row clear of the notch where the inset resolves, and falls
+ * back to 1rem in a browser tab, which has nothing to clear.
  */
 export default function MobileTopBar() {
     const page = usePage<SharedProps>();
@@ -48,7 +54,7 @@ export default function MobileTopBar() {
     return (
         <header
             data-testid="mobile-top-bar"
-            className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-3 bg-background px-4 pb-2.5 pt-[max(1rem,env(safe-area-inset-top))]"
+            className="mx-auto flex w-full max-w-column items-center justify-between gap-3 px-4 pb-2.5 pt-[max(1rem,env(safe-area-inset-top))] min-[900px]:px-6 min-[1280px]:max-w-column-wide"
         >
             {back ? (
                 // Real href, not history.back(): a deep link can open this cold with nothing behind it.

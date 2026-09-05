@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
@@ -122,28 +122,20 @@ describe('MobileTopBar', () => {
         );
     });
 
-    it('stays with the reader rather than sitting in normal flow', () => {
-        const { container } = render(<MobileTopBar />);
-        expect(container.querySelector('header')).toHaveClass('fixed', 'top-0');
-    });
-
-    it('paints the ground colour so content cannot scroll between the chips', () => {
+    it('sits in normal flow and reserves its own space', () => {
         const { container } = render(<MobileTopBar />);
         const header = container.querySelector('header')!;
-        expect(header).toHaveClass('bg-background');
+        expect(header.className).not.toMatch(/\bfixed\b|\bsticky\b/);
+    });
+
+    it('needs no background of its own, nothing scrolling under it', () => {
+        const { container } = render(<MobileTopBar />);
+        const header = container.querySelector('header')!;
+        expect(header.className).not.toMatch(/\bbg-/);
         expect(screen.getByLabelText('Home')).toHaveClass(
             'bg-muted/70',
             'backdrop-blur-md',
         );
-
-        act(() => {
-            window.scrollY = 120;
-            window.dispatchEvent(new Event('scroll'));
-        });
-
-        // Unconditional, not scroll-driven: bg-background is what the page is
-        // already painting behind the bar, so it reads as transparent at rest.
-        expect(header).toHaveClass('bg-background');
     });
 
     it('wraps the notification bell and avatar in a chip, matching the wordmark chip', () => {
