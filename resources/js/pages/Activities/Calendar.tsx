@@ -1,13 +1,12 @@
 import { Head, Link } from '@inertiajs/react';
 import { motion } from 'framer-motion';
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 
 import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
 
 import CalendarWeekRow from '@/components/history/CalendarWeekRow';
 import HistoryHeader from '@/components/history/HistoryHeader';
 import RecapCard from '@/components/history/RecapCard';
-import CoachMark from '@/components/onboarding/CoachMark';
 import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
@@ -63,7 +62,6 @@ export default function Calendar({
         month,
         todayMonth,
     });
-    const gridRef = useRef<HTMLDivElement>(null);
 
     const snapshotsByWeek = useMemo(
         () => snapshotsByWeekEnding(weeklySnapshots),
@@ -115,47 +113,33 @@ export default function Calendar({
 
                 <Legend />
 
-                {/* The CoachMark anchor lives on this stable wrapper, not on the
-                    keyed motion.div below: anchor tracking sets up its
-                    IntersectionObserver once and never re-attaches, so a
-                    `key={month}` remount on the ref'd element would detach it
-                    from the DOM the observer is still watching. */}
-                <div ref={gridRef} data-coachmark="calendar-grid">
-                    <div className="mb-1.5 grid grid-cols-[30px_repeat(7,minmax(0,1fr))] gap-0.75">
-                        <span aria-hidden />
-                        {WEEKDAY_LABELS.map((label) => (
-                            <span
-                                key={label}
-                                className="text-center font-mono text-[0.46875rem] leading-[1.2] font-extrabold text-text-3 uppercase"
-                            >
-                                {label}
-                            </span>
-                        ))}
-                    </div>
-                    <motion.div
-                        key={month}
-                        initial="hidden"
-                        animate="visible"
-                        variants={fadeInUp}
-                    >
-                        {weeks.map((week) => (
-                            <CalendarWeekRow
-                                key={week.weekStart}
-                                week={week}
-                                snapshot={
-                                    snapshotsByWeek.get(week.weekEnding) ?? null
-                                }
-                            />
-                        ))}
-                    </motion.div>
+                <div className="mb-1.5 grid grid-cols-[30px_repeat(7,minmax(0,1fr))] gap-0.75">
+                    <span aria-hidden />
+                    {WEEKDAY_LABELS.map((label) => (
+                        <span
+                            key={label}
+                            className="text-center font-mono text-[0.46875rem] leading-[1.2] font-extrabold text-text-3 uppercase"
+                        >
+                            {label}
+                        </span>
+                    ))}
                 </div>
-                <CoachMark
-                    id="calendar-grid"
-                    anchorRef={gridRef}
-                    placement="top"
-                    title="tap any day"
-                    body="days you ran open straight into the run itself. tap a week for temari's recap."
-                />
+                <motion.div
+                    key={month}
+                    initial="hidden"
+                    animate="visible"
+                    variants={fadeInUp}
+                >
+                    {weeks.map((week) => (
+                        <CalendarWeekRow
+                            key={week.weekStart}
+                            week={week}
+                            snapshot={
+                                snapshotsByWeek.get(week.weekEnding) ?? null
+                            }
+                        />
+                    ))}
+                </motion.div>
             </PageContainer>
         </>
     );

@@ -7,7 +7,7 @@ import type {
     StoryLine,
 } from '@/types/inertia';
 
-import { setMockPage, stubSyncAnimationFrame } from '@/test/setup';
+import { setMockPage } from '@/test/setup';
 
 import RunsShow from './Show';
 
@@ -403,15 +403,6 @@ describe('Runs/Show', () => {
         expect(
             screen.queryByText(/Strong breathing all the way to the end/),
         ).not.toBeInTheDocument();
-    });
-
-    it('coach-marks the share action on a first visit', () => {
-        window.localStorage.clear();
-        stubSyncAnimationFrame();
-        renderShow();
-        expect(
-            screen.getByRole('dialog', { name: 'share the card' }),
-        ).toBeInTheDocument();
     });
 
     it('closes with a Strava provenance footer carrying the run’s own id', () => {

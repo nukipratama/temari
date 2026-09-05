@@ -27,14 +27,19 @@ function appLayoutSplashAssets(string $blade): array
 {
     preg_match_all("/\['w' => (\d+), 'h' => (\d+), 'dpr' => (\d+)\]/", $blade, $devices, PREG_SET_ORDER);
 
-    return array_map(
-        fn (array $device): string => sprintf(
-            'splash/splash-%dx%d.png',
-            (int) $device[1] * (int) $device[3],
-            (int) $device[2] * (int) $device[3],
-        ),
-        $devices,
-    );
+    $paths = [];
+    foreach ($devices as $device) {
+        foreach (['dark', 'light'] as $ground) {
+            $paths[] = sprintf(
+                'splash/splash-%s-%dx%d.png',
+                $ground,
+                (int) $device[1] * (int) $device[3],
+                (int) $device[2] * (int) $device[3],
+            );
+        }
+    }
+
+    return $paths;
 }
 
 it('resolves every asset() call the layout makes', function (): void {

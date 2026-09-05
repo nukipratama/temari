@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import { lazy, Suspense, useRef, useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 
 import type {
     Activity,
@@ -9,7 +9,6 @@ import type {
     StoryLine,
 } from '@/types/inertia';
 
-import CoachMark from '@/components/onboarding/CoachMark';
 import AskAboutRun from '@/components/run/AskAboutRun';
 import LapsCarousel from '@/components/run/LapsCarousel';
 import PastYouCard, { type PastYouMatch } from '@/components/run/PastYouCard';
@@ -60,7 +59,6 @@ export default function RunsShow({
     isChainHead,
     pastYou,
 }: Readonly<ShowProps>) {
-    const shareRef = useRef<HTMLButtonElement>(null);
     const [shareOpen, setShareOpen] = useState(false);
     const {
         summary,
@@ -100,15 +98,7 @@ export default function RunsShow({
                     paceSec={paceSec}
                     hr={hr}
                     trimp={trimp}
-                    shareRef={shareRef}
                     onShare={shareData ? () => setShareOpen(true) : undefined}
-                />
-                <CoachMark
-                    id="run-share"
-                    anchorRef={shareRef}
-                    placement="top"
-                    title="share the card"
-                    body="i'll turn this run into an image you can send anywhere."
                 />
 
                 {detailed && <PastYouCard match={pastYou} />}

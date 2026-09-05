@@ -152,7 +152,7 @@ export default function RunLenses({
     }, [bulkPending, cooling, lenses, inertiaReloadProps]);
 
     return (
-        <section className={className} data-coachmark="run-narration">
+        <section className={className}>
             <header className="mb-3 flex items-center gap-3">
                 <FaceIcon size={40} />
                 <div className="min-w-0 flex-1">

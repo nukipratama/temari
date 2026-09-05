@@ -2,7 +2,7 @@ import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { makeUser, setMockPage, stubSyncAnimationFrame } from '@/test/setup';
+import { makeUser, setMockPage } from '@/test/setup';
 
 import Calendar, {
     dominantMoodOf,
@@ -107,15 +107,6 @@ const BASE_PROPS = {
 };
 
 describe('calendar', () => {
-    it('coach-marks the month grid on a first visit', () => {
-        window.localStorage.clear();
-        stubSyncAnimationFrame();
-        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        expect(
-            screen.getByRole('dialog', { name: 'tap any day' }),
-        ).toBeInTheDocument();
-    });
-
     it("renders the month label and the prototype's two-letter weekday header", () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
