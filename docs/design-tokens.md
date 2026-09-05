@@ -150,8 +150,9 @@ The families above are the app's fixed-identity palette — the same value on ev
 second layer sits above them: values that **flip** under `[data-theme="dark"]`, declared as
 literal hex both times (never `var()` or `color-mix()` — the guard in
 [DesignTokenContrastTest.php](../tests/Unit/Architecture/DesignTokenContrastTest.php) that scores
-them parses `#rrggbb` by regex, so either one would silently score nothing). **Dark is the default
-ground**; light is reached via Settings.
+them parses `#rrggbb` by regex, so either one would silently score nothing). **The default ground
+follows the device** ([[system-is-the-default-ground]]); an explicit light or dark is reached via
+Settings.
 
 | Token | Light | Dark | Role |
 |---|---|---|---|

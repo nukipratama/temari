@@ -11,9 +11,9 @@ function isThemePreference(value: string | null): value is ThemePreference {
 function readStored(): ThemePreference {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
-        return isThemePreference(stored) ? stored : 'dark';
+        return isThemePreference(stored) ? stored : 'system';
     } catch {
-        return 'dark';
+        return 'system';
     }
 }
 
@@ -27,11 +27,12 @@ function resolve(preference: ThemePreference): 'light' | 'dark' {
 /**
  * Owns the Settings appearance control's read/write side of the
  * 'temari-theme' key: mirrors app.blade.php's blocking-script resolution
- * order (an explicit light/dark wins, system follows the OS, anything else
- * falls back to dark) and applies a change to the DOM immediately so
- * switching is live with no reload. useSystemTheme (mounted once in
- * AppShell/BareShell) is the sibling that keeps 'system' mode live across a
- * later OS change while the tab stays open; both read/write the same key.
+ * order (an explicit light/dark wins, everything else — including a missing
+ * or stale value — follows the OS) and applies a change to the DOM
+ * immediately so switching is live with no reload. useSystemTheme (mounted
+ * once in AppShell/BareShell) is the sibling that keeps 'system' mode live
+ * across a later OS change while the tab stays open; both read/write the same
+ * key.
  */
 export function useTheme() {
     const [preference, setPreference] = useState<ThemePreference>(readStored);

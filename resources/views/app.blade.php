@@ -31,20 +31,19 @@
          stylesheet applies — a deferred/external script here would let the
          light default paint for one frame before flipping to the resolved
          ground, which is the flash decision 6's toggle explicitly must not
-         have. Resolution order: an explicit stored 'light'/'dark' wins; a
-         stored 'system' follows the OS; anything else (first visit, storage
-         unavailable, a stale value) falls back to 'dark' — decision 6's
-         default ground, not the OS preference. F4 wires the live
-         prefers-color-scheme listener for an open tab in 'system' mode and
-         S11 builds the Settings control; both read/write the same
-         'temari-theme' localStorage key this script reads.
+         have. Resolution order: an explicit stored 'light'/'dark' wins;
+         everything else — a stored 'system', a first visit, storage
+         unavailable, a stale value — resolves from prefers-color-scheme. F4
+         wires the live prefers-color-scheme listener for an open tab in
+         'system' mode and S11 builds the Settings control; both read/write
+         the same 'temari-theme' localStorage key this script reads.
 
          Sets `style.colorScheme` directly rather than a <meta
          name="color-scheme">: the meta tag can only ever hold one static
          value, where this needs to vary per resolved theme. The bare
-         `html { color-scheme: dark }` rule in app.css is the fallback for
-         the (here, purely theoretical — this is an Inertia/React app with no
-         no-JS render path) case where this script cannot run at all. --}}
+         `html { color-scheme: light dark }` rule in app.css is the fallback
+         for the (here, purely theoretical — this is an Inertia/React app with
+         no no-JS render path) case where this script cannot run at all. --}}
     <script>
         (function () {
             var STORAGE_KEY = 'temari-theme';
@@ -53,15 +52,13 @@
                 stored = localStorage.getItem(STORAGE_KEY);
             } catch (e) {
                 // Storage can throw in a locked-down/private context; fall
-                // through to the hardcoded default below.
+                // through to the OS preference below.
             }
             var resolved;
             if (stored === 'light' || stored === 'dark') {
                 resolved = stored;
-            } else if (stored === 'system') {
-                resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
             } else {
-                resolved = 'dark';
+                resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
             }
             document.documentElement.dataset.theme = resolved;
             document.documentElement.style.colorScheme = resolved;

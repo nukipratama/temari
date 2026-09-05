@@ -8,6 +8,7 @@ let matches = false;
 
 function mockMatchMedia() {
     changeListener = null;
+    matches = false;
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
         matches,
         media: query,
@@ -70,12 +71,22 @@ describe('useSystemTheme', () => {
         expect(document.documentElement.dataset.theme).toBe('dark');
     });
 
-    it('ignores an OS change when nothing is stored', () => {
+    it('treats a missing stored value as system', () => {
         renderHook(() => useSystemTheme());
 
-        fireOsChange(true);
+        fireOsChange(false);
 
-        expect(document.documentElement.dataset.theme).toBe('dark');
+        expect(document.documentElement.dataset.theme).toBe('light');
+        expect(document.documentElement.style.colorScheme).toBe('light');
+    });
+
+    it('treats a stale stored value as system', () => {
+        localStorage.setItem('temari-theme', 'sepia');
+        renderHook(() => useSystemTheme());
+
+        fireOsChange(false);
+
+        expect(document.documentElement.dataset.theme).toBe('light');
     });
 
     it('stops listening after unmount', () => {

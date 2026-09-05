@@ -12,8 +12,8 @@
     $theme = <<<'HTML'
         <script>
             (() => {
-                let ground = 'dark';
-                try { ground = localStorage.getItem('temari-theme') ?? 'dark'; } catch {}
+                let ground = 'system';
+                try { ground = localStorage.getItem('temari-theme') ?? 'system'; } catch {}
                 if (ground === 'system') {
                     ground = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
                 }
