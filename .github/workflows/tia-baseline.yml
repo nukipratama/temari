@@ -16,6 +16,13 @@ name: TIA baseline
 on:
   push:
     branches: [main]
+    # The graph maps PHP tests to files under `app/` (phpunit.xml's <source>), so
+    # nothing else can move it. An allowlist rather than paths-ignore: a denylist
+    # silently re-includes whatever gets added later. The nightly cron below is
+    # the backstop, and workflow_dispatch still covers editing this file.
+    paths:
+      - '**.php'
+      - 'phpunit.xml'
   schedule:
     # 04:23 WIB, off the hour and clear of the nightly audit at 03:17.
     - cron: '23 21 * * *'
