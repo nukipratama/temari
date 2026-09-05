@@ -26,45 +26,53 @@ language they use is in [[design-tokens]], and the shell's structure is in
 
 ## The status bar is iOS's again
 
-The app asks for `apple-mobile-web-app-status-bar-style: black`
-([app.blade.php](resources/views/app.blade.php)). iOS paints the strip a solid
-colour and the web view starts below it, so `env(safe-area-inset-top)` resolves
-to **0** in standalone. Every consumer already floors that through `max()`, so
-nothing depends on it being non-zero.
+The app asks for `apple-mobile-web-app-status-bar-style: default`
+([app.blade.php](resources/views/app.blade.php)) — the last value that gets a
+plain system bar rather than a composited one. iOS 26.1 took this region away in
+stages: under `black-translucent` it stopped honouring the translucency and
+painted its own material over the strip, and `black` made that material lighter
+without opting out of it. `default` costs the dark bar — the system's own reads
+as a pale band above the app on the dark ground — and that is the deliberate
+trade for it not being blurred.
 
-`black` and not `default` because dark is the default ground and #000 against
-sky-deep is very nearly seamless; on the light ground it reads as a deliberate
-band. The style cannot vary per colour scheme, so it is one choice for both.
+The style cannot vary per colour scheme, so it is one choice for both grounds.
 
-### Five wrong turns, recorded so they are not repeated
+**This is only ever verifiable on a device.** The blur does not reproduce in a
+desktop browser at any viewport, at any emulated safe-area inset, because it is
+iOS's own art rather than anything the page draws. What *can* be reproduced
+locally is the layout: Chromium's CDP `Emulation.setSafeAreaInsetsOverride`
+makes `env(safe-area-inset-top)` resolve to a real value, so an iPhone 13
+(390x844, inset 47px) can be driven headless in the Sail container and
+screenshotted. Every layout question about this strip should be settled that way
+before anything ships.
 
-Getting the top of the screen right took six attempts, and the first five were
-all built on a premise that turned out to be false on-device:
+### Six wrong turns, recorded so they are not repeated
+
+Every one of these was reasoned from the spec, and every one was wrong on device:
 
 - **#395** pinned `theme-color` to the header's cream. iOS does not use
   `theme-color` for the standalone status bar at all — only Android/Chrome does,
   for its toolbar.
 - **#396** declared `color-scheme: light`, on the theory that a Dark Mode device
-  made the UA render its own strip dark. Correct and worth keeping for form
-  controls and scrollbars, but the band survived a fresh install.
+  made the UA render its own strip dark. Worth keeping for form controls and
+  scrollbars, but the band survived a fresh install.
 - **#397 and #398** switched to `black-translucent` — the right mechanism at the
-  time, since under `default` the strip was iOS-owned and unreachable from CSS —
-  but then assumed the documented "forced white glyphs" behaviour and painted a
-  dark backing for them: first a navy `MobileTopBar`, then a fading
-  `StatusBarScrim`. On the iOS of the day the glyphs rendered **dark**, so that
-  backing was not needed and was itself the ugly band being reported.
-- **#399** therefore deleted the scrim and left the region unpainted. Correct
-  until iOS 26.
-- **#733** read Safari 26's new "chrome colour comes from the topmost element in
-  the viewport" rule as the explanation for a grey haze that appeared across the
-  top of every page, and reinstated an opaque `StatusBarScrim` to give iOS a
-  colour to read. It changed nothing on device, which is the useful part: iOS
-  was compositing **over** our content, not sampling a colour from it.
+  time — then assumed the documented "forced white glyphs" behaviour and painted
+  a dark backing for them: first a navy `MobileTopBar`, then a fading
+  `StatusBarScrim`. The glyphs rendered **dark**, so that backing was itself the
+  band being reported.
+- **#399** deleted the scrim and left the region unpainted. Correct until iOS 26.
+- **#733** read Safari 26's "chrome colour comes from the topmost element"
+  rule as the cause of a new grey haze and reinstated an opaque scrim. It changed
+  nothing, which was misread as proof that iOS composites over our content.
+- **#734** concluded from that the region was unconditionally iOS's and deleted
+  the scrim again. It was right that `black-translucent` was broken and wrong
+  that the region is always iOS's — see the installer split below.
 
-The actual cause is an iOS 26.1 regression — `black-translucent` stopped being
-honoured, and installed web apps lost transparency behind the status bar. #734
-therefore stopped asking for it and let iOS paint a solid bar, which removed the
-haze.
+The blur that started all of this was never ours. That was finally established
+not by another theory but by a control: the same stylesheet, at the same
+viewport and the same emulated inset, renders the strip sharp in headless
+Chromium, and the blur is present on device even with nothing behind the chips.
 
 ### Whether the strip is ours depends on the installer
 

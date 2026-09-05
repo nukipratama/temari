@@ -81,19 +81,21 @@
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    {{-- `black` rather than `black-translucent`: iOS 26.1 stopped honouring the
-         translucent mode, painting its own material over the strip instead of
-         handing it to the web view, so the app got a grey haze across the top
-         of every page that no CSS underneath could reach — an opaque scrim over
-         the same region changed nothing. Asking for a solid bar gives iOS a
-         colour to paint instead of a material to composite.
+    {{-- Walking this value down as iOS 26.1 takes the strip away. Under
+         `black-translucent` iOS stopped honouring the translucency and painted
+         its own material over the region; `black` made that lighter but did not
+         opt out of it. `default` is the last value that asks iOS for a plain
+         system bar rather than a composited one.
 
-         `black` and not `default` because dark is the default ground, and #000
-         against sky-deep is very nearly seamless; on the light ground it reads
-         as a deliberate band. The style cannot vary per colour scheme, so this
-         is a single choice for both. env(safe-area-inset-top) resolves to 0
-         under a solid bar, which every consumer already handles via max(). --}}
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+         The cost is that the bar is no longer dark: it is the system's own,
+         which on the dark ground reads as a pale band above the app. That is
+         the trade for it not being blurred, and it is deliberate. The style
+         cannot vary per colour scheme, so it is a single choice for both.
+
+         Verified only by looking at a device — the blur does not reproduce in
+         a desktop browser at any viewport, because it is iOS's own art rather
+         than anything the page draws. Do not "fix" this from the spec. --}}
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Temari">
 
     {{-- Launch images for a cold standalone start. Without these iOS holds a
