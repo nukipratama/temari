@@ -17,6 +17,8 @@ code_refs:
 
 **Status:** Accepted (documented 2026-06-20)
 
+> **2026-09-06 — the scheduled tick is no longer the only trigger.** A first Strava connect now chains [KickoffRecapsJob](app/Jobs/AI/KickoffRecapsJob.php) behind the history backfill, running the same weekly + monthly kickoff for that one user. The decision below is unchanged: the kickoff still caps at the latest fully-closed period, still passes `invalidate: false`, and the scheduled commands and the job now share one implementation ([KickoffWeeklyRecaps](app/Actions/AI/KickoffWeeklyRecaps.php) / [KickoffMonthlyRecaps](app/Actions/AI/KickoffMonthlyRecaps.php)). What changed is only *when* a new user's first bill lands: on connect rather than after a 7 to 31 day wait.
+
 ## Context
 
 A weekly or monthly recap describes a whole period. But activities trickle in across that period (each Strava ingest fires the post-run cascade). If the recap narrated on every ingest, the *same* recap would be re-billed several times per week as runs landed — and any narration produced mid-window would describe an incomplete period. We needed the recap to bill once, on final data, after the window closes.

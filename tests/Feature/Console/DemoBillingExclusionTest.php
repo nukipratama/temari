@@ -18,6 +18,9 @@ uses()->group('structure');
  *
  * The behavioural proof for each entry in BILLING lives with the command's own
  * test (see the "skips/excludes the demo user" cases in tests/Feature/Console).
+ *
+ * A command that delegates its user selection to an action lists that file
+ * alongside its own, so the source scan still reaches the exclusion.
  */
 
 /**
@@ -28,9 +31,9 @@ uses()->group('structure');
  */
 const BILLING = [
     'ai:daily-briefing' => 'User::notDemo() on the active-user scan',
-    'ai:weekly-recap' => 'User::notDemo() on the recap scan',
+    'ai:weekly-recap' => 'User::notDemo() in KickoffWeeklyRecaps, the action the command delegates its scan to',
     'ai:weekly-profile' => 'User::notDemo() on the profile scan',
-    'ai:monthly-recap' => 'User::notDemo() on the user list',
+    'ai:monthly-recap' => 'User::notDemo() in KickoffMonthlyRecaps, the action the command delegates its user list to',
     'ai:trend-read' => 'User::notDemo() on the active-user scan',
     'strava:sync' => 'notDemo() on the connection scan',
     'strava:sync-zones' => 'notDemo() on the connection scan',
@@ -94,16 +97,15 @@ it('keeps every command it calls billing actually scheduled', function (): void 
     }
 });
 
-it('reads the demo exclusion straight out of each billing command source', function (string $command, string $path): void {
-    $source = file_get_contents(base_path($path));
+it('reads the demo exclusion straight out of each billing command source', function (string $command, string ...$paths): void {
+    $source = collect($paths)->map(fn (string $path): string => (string) file_get_contents(base_path($path)))->implode("\n");
 
-    expect($source)->toBeString()
-        ->and($source)->toMatch('/notDemo\(\)|is_demo.{0,20}false/s', "[{$command}] no longer filters the demo account out of its user selection");
+    expect($source)->toMatch('/notDemo\(\)|is_demo.{0,20}false/s', "[{$command}] no longer filters the demo account out of its user selection");
 })->with([
     'ai:daily-briefing' => ['ai:daily-briefing', 'app/Console/Commands/AI/DailyBriefingCommand.php'],
-    'ai:weekly-recap' => ['ai:weekly-recap', 'app/Console/Commands/AI/WeeklyRecapCommand.php'],
+    'ai:weekly-recap' => ['ai:weekly-recap', 'app/Console/Commands/AI/WeeklyRecapCommand.php', 'app/Actions/AI/KickoffWeeklyRecaps.php'],
     'ai:weekly-profile' => ['ai:weekly-profile', 'app/Console/Commands/AI/WeeklyProfileCommand.php'],
-    'ai:monthly-recap' => ['ai:monthly-recap', 'app/Console/Commands/AI/MonthlyRecapCommand.php'],
+    'ai:monthly-recap' => ['ai:monthly-recap', 'app/Console/Commands/AI/MonthlyRecapCommand.php', 'app/Actions/AI/KickoffMonthlyRecaps.php'],
     'ai:trend-read' => ['ai:trend-read', 'app/Console/Commands/AI/TrendReadCommand.php'],
     'strava:sync' => ['strava:sync', 'app/Console/Commands/Strava/SyncCommand.php'],
     'strava:sync-zones' => ['strava:sync-zones', 'app/Console/Commands/Strava/SyncZonesCommand.php'],

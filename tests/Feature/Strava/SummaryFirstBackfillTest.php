@@ -3,15 +3,22 @@
 declare(strict_types=1);
 
 use Carbon\CarbonImmutable;
+use App\Actions\AI\KickoffMonthlyRecaps;
+use App\Actions\AI\KickoffWeeklyRecaps;
 use App\Enums\IngestState;
+use App\Jobs\AI\KickoffRecapsJob;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\Analytics\StravaSyncLog;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisType;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
@@ -188,4 +195,46 @@ it('renders the feed and calendar for a summary-only run without inventing a zer
                 // Unknown load reads as unknown, never as a zero-effort day.
                 ->and($runCells->first()['trimp'])->toBeNull();
         });
+});
+
+it('lets the chained recap kickoff narrate the whole backfilled history without one extra Strava read', function (): void {
+    Carbon::setTestNow('2026-06-17 05:30:00');
+    Bus::fake();
+
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create([
+        'access_token' => 'tok',
+        'token_expires_at' => now()->addHours(2),
+    ]);
+
+    Http::fake([
+        'strava.com/api/v3/athlete/activities*' => Http::response(
+            stravaHistoryPage(9_003, 3, '2026-05-10T06:00:00Z'),
+        ),
+    ]);
+
+    app(SyncOrchestrator::class)->syncUser($user);
+    Http::assertSentCount(1);
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    new KickoffRecapsJob($user->id)->handle(app(KickoffWeeklyRecaps::class), app(KickoffMonthlyRecaps::class));
+
+    // The backfill already wrote the weekly snapshot and the summary detail rows
+    // both kickoffs read, so nothing goes back to Strava.
+    Http::assertSentCount(1);
+
+    $weekly = collect($captured)->firstWhere('type', AnalysisType::WeeklyRecap);
+    $monthly = collect($captured)->firstWhere('type', AnalysisType::MonthlyRecap);
+
+    expect($weekly)->not->toBeNull()
+        ->and($weekly['subjectOrType'])->toBe(WeeklySnapshot::class)
+        ->and($weekly['invalidate'])->toBeFalse()
+        ->and($monthly)->not->toBeNull()
+        ->and($monthly['subjectId'])->toBe($user->id)
+        ->and($monthly['discriminator'])->toBe('2026-05')
+        ->and($monthly['invalidate'])->toBeFalse();
+
+    Carbon::setTestNow();
 });

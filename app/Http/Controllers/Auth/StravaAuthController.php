@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\AI\KickoffRecapsJob;
 use App\Jobs\Strava\SyncActivitiesJob;
 use App\Jobs\Strava\SyncZonesJob;
 use App\Models\StravaConnection;
@@ -15,6 +16,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Laravel\Socialite\Facades\Socialite;
@@ -66,8 +68,14 @@ class StravaAuthController extends Controller
         // dashboard isn't empty until the hourly poll runs. Re-logins skip this
         // (the "Sync now" button covers a manual re-pull) — the orchestrator's
         // per-user lock + insertOrIgnore make a redundant dispatch harmless anyway.
+        // The recap kickoff is chained behind it: the backfill writes every
+        // weekly snapshot and summary detail in one pass, so its return is the
+        // moment those recaps become answerable.
         if ($isFreshConnection) {
-            SyncActivitiesJob::dispatch($user->id);
+            Bus::chain([
+                new SyncActivitiesJob($user->id),
+                new KickoffRecapsJob($user->id),
+            ])->dispatch();
         }
 
         // Zones need their own trigger beyond "fresh connection": an already-connected

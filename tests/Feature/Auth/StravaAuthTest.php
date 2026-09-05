@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Jobs\AI\KickoffRecapsJob;
 use App\Jobs\Strava\SyncActivitiesJob;
 use App\Jobs\Strava\SyncZonesJob;
 use App\Models\RunnerProfile;
@@ -219,11 +220,13 @@ it('creates a new user from the strava callback and logs them in', function (): 
         ->and($connection->refresh_token)->toBe('refresh-token-xyz')
         ->and($connection->scopes)->toBe('read,activity:read_all,profile:read_all');
 
-    // First connect kicks off a full-history backfill (no single-activity scope).
+    // First connect kicks off a full-history backfill (no single-activity scope),
+    // with the one-shot recap kickoff chained behind it.
     Bus::assertDispatched(
         SyncActivitiesJob::class,
         fn (SyncActivitiesJob $job): bool => $job->userId === $user->id && $job->stravaActivityId === null,
     );
+    Bus::assertChained([SyncActivitiesJob::class, KickoffRecapsJob::class]);
 });
 
 it('still connects on a fresh connect while the strava kill switch is off, without fetching zones', function (): void {
@@ -310,6 +313,7 @@ it('updates an existing user on subsequent strava callbacks', function (): void 
 
     // Re-login on an existing connection must NOT re-trigger a backfill.
     Bus::assertNotDispatched(SyncActivitiesJob::class);
+    Bus::assertNotDispatched(KickoffRecapsJob::class);
 });
 
 it('lets an already-authenticated user start a strava reconnect', function (): void {
@@ -375,6 +379,7 @@ it('dispatches SyncZonesJob when a reconnect newly grants profile:read_all', fun
     Bus::assertDispatched(SyncZonesJob::class, fn (SyncZonesJob $job): bool => $job->userId === $existingUser->id);
     // Not a fresh connection, so no redundant history backfill.
     Bus::assertNotDispatched(SyncActivitiesJob::class);
+    Bus::assertNotDispatched(KickoffRecapsJob::class);
 });
 
 it('does not re-dispatch SyncZonesJob on a reconnect that grants no new scopes', function (): void {
