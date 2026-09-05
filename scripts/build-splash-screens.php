@@ -2,13 +2,19 @@
 
 /**
  * One-off generator for the iOS apple-touch-startup-image set.
- * Composites the app icon onto the Threadwork cream background_color so a cold
- * standalone launch shows the brand instead of a white flash.
- * Regenerate after changing public/icon-512.png or the surface token:
+ * Composites the app icon onto each ground's background so a cold standalone
+ * launch shows the brand instead of a white flash.
+ * Regenerate after changing public/icon-512.png or either ground token:
  * ./vendor/bin/sail php scripts/build-splash-screens.php
  */
 $out = __DIR__.'/../public/splash';
 @mkdir($out, 0o755, true);
+
+/** @var array<string, string> Ground slug => background, matching --color-background. */
+$grounds = [
+    'dark' => '#0B1017',  // sky-deep, the default ground
+    'light' => '#F1F5F8', // cream
+];
 
 /** @var array<int, array{int, int}> Portrait device pixel sizes. */
 $sizes = [
@@ -21,25 +27,26 @@ $sizes = [
     [750, 1334],  // iPhone SE (2nd/3rd gen) / 8
 ];
 
-foreach ($sizes as [$w, $h]) {
-    // Matches manifest background_color (#F5F0E4, --color-surface).
-    $canvas = new Imagick();
-    $canvas->newImage($w, $h, new ImagickPixel('#F5F0E4'));
-    $canvas->setImageFormat('png');
+foreach ($grounds as $ground => $background) {
+    foreach ($sizes as [$w, $h]) {
+        $canvas = new Imagick();
+        $canvas->newImage($w, $h, new ImagickPixel($background));
+        $canvas->setImageFormat('png');
 
-    // Icon at ~28% of the narrow edge, optically centred (slightly above middle).
-    $icon = new Imagick(__DIR__.'/../public/icon-512.png');
-    $target = (int) round($w * 0.28);
-    $icon->resizeImage($target, $target, Imagick::FILTER_LANCZOS, 1);
+        // Icon at ~28% of the narrow edge, optically centred (slightly above middle).
+        $icon = new Imagick(__DIR__.'/../public/icon-512.png');
+        $target = (int) round($w * 0.28);
+        $icon->resizeImage($target, $target, Imagick::FILTER_LANCZOS, 1);
 
-    $x = (int) round(($w - $target) / 2);
-    $y = (int) round(($h - $target) / 2 - $h * 0.04);
-    $canvas->compositeImage($icon, Imagick::COMPOSITE_OVER, $x, $y);
+        $x = (int) round(($w - $target) / 2);
+        $y = (int) round(($h - $target) / 2 - $h * 0.04);
+        $canvas->compositeImage($icon, Imagick::COMPOSITE_OVER, $x, $y);
 
-    $canvas->stripImage();
-    $canvas->writeImage(sprintf('%s/splash-%dx%d.png', $out, $w, $h));
+        $canvas->stripImage();
+        $canvas->writeImage(sprintf('%s/splash-%s-%dx%d.png', $out, $ground, $w, $h));
 
-    $icon->destroy();
-    $canvas->destroy();
-    echo "wrote splash-{$w}x{$h}.png\n";
+        $icon->destroy();
+        $canvas->destroy();
+        echo "wrote splash-{$ground}-{$w}x{$h}.png\n";
+    }
 }

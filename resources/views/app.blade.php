@@ -70,12 +70,12 @@
 
     {{-- Android/Chrome uses this to tint its toolbar. iOS does not use it for
          the standalone status bar at all, which is why two rounds of retinting
-         it never touched the dark band around the notch — see StatusBarScrim
-         for what actually paints that. `cream-deep` because that is the ground
-         AppShell paints under the whole app, and it is what
-         public/manifest.webmanifest already declares. Fixed rather than
-         following the dawn-shift. --}}
-    <meta name="theme-color" content="#e2e8ee">
+         it never touched the dark band around the notch. One per ground, so the
+         toolbar matches the surface AppShell paints under the whole app;
+         public/manifest.webmanifest pins the dark value, having no way to vary.
+         Fixed rather than following the dawn-shift. --}}
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b1017">
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f1f5f8">
 
     {{-- PWA: installable + standalone; push works once added to the Home Screen via Safari. --}}
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
@@ -97,8 +97,13 @@
     <meta name="apple-mobile-web-app-title" content="Temari">
 
     {{-- Launch images for a cold standalone start. Without these iOS holds a
-         white screen until first paint, which on a cream app reads as a flash.
-         Keyed by CSS device size + DPR; regenerate the PNGs with
+         white screen until first paint, which reads as a flash on either
+         ground. Keyed by CSS device size + DPR, and by prefers-color-scheme so
+         the image matches the ground the app is about to paint. That follows
+         the OS, not the 'temari-theme' key the head script reads, so a user who
+         overrode the ground in Settings still sees the OS-matching image —
+         accepted, since the alternative is one fixed ground that is wrong for
+         everyone on the other one. Regenerate the PNGs with
          `scripts/build-splash-screens.php`. --}}
     @foreach ([
         ['w' => 390, 'h' => 844, 'dpr' => 3],
@@ -109,11 +114,13 @@
         ['w' => 414, 'h' => 896, 'dpr' => 2],
         ['w' => 375, 'h' => 667, 'dpr' => 2],
     ] as $s)
-        <link
-            rel="apple-touch-startup-image"
-            media="screen and (device-width: {{ $s['w'] }}px) and (device-height: {{ $s['h'] }}px) and (-webkit-device-pixel-ratio: {{ $s['dpr'] }}) and (orientation: portrait)"
-            href="{{ asset('splash/splash-'.($s['w'] * $s['dpr']).'x'.($s['h'] * $s['dpr']).'.png') }}"
-        >
+        @foreach (['dark', 'light'] as $ground)
+            <link
+                rel="apple-touch-startup-image"
+                media="screen and (device-width: {{ $s['w'] }}px) and (device-height: {{ $s['h'] }}px) and (-webkit-device-pixel-ratio: {{ $s['dpr'] }}) and (orientation: portrait) and (prefers-color-scheme: {{ $ground }})"
+                href="{{ asset('splash/splash-'.$ground.'-'.($s['w'] * $s['dpr']).'x'.($s['h'] * $s['dpr']).'.png') }}"
+            >
+        @endforeach
     @endforeach
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
