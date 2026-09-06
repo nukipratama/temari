@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs\AI;
 
 use App\Exceptions\AI\ContentFilterException;
+use App\Exceptions\AI\ObsoleteAnalysisException;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
@@ -43,6 +44,18 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
             $content = $this->generateContent($row);
             $service->markDone($row, $content, fingerprint: $this->fingerprintFor($row));
             $this->afterDone($row, $service);
+        } catch (ObsoleteAnalysisException $e) {
+            // The subject is gone for good, so the row describes nothing. Left
+            // Failed it would sit in /ai-usage as "still auto-retrying" behind a
+            // Try again that can never succeed, and burn a self-heal attempt
+            // every hour proving it.
+            $row->delete();
+            Log::info('narrator.row.obsolete_deleted', [
+                'kind' => $row->analysis_type->value,
+                'subject' => $row->subject_id,
+                'discriminator' => $row->discriminator,
+                'reason' => $e->getMessage(),
+            ]);
         } catch (ContentFilterException) {
             // The continuity-stripped retry still content-filtered. Degrade to
             // rule-based content instead of dead-lettering: the user gets a

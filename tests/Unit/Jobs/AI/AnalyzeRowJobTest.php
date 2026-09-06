@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Exceptions\AI\ContentFilterException;
+use App\Exceptions\AI\ObsoleteAnalysisException;
 use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Jobs\AI\AnalyzeRowJob;
@@ -37,6 +38,16 @@ function fakeUnavailableRowJob(int $id): AnalyzeRowJob
         protected function generateContent(Analysis $row): string
         {
             throw new UnavailableException('Azure down');
+        }
+    };
+}
+
+function fakeObsoleteRowJob(int $id): AnalyzeRowJob
+{
+    return new class ($id) extends AnalyzeRowJob {
+        protected function generateContent(Analysis $row): string
+        {
+            throw new ObsoleteAnalysisException('No PlannedSession for user 1 on 2026-08-31');
         }
     };
 }
@@ -396,4 +407,17 @@ it('settles a budget-spent row stranded in Processing to Failed so it dead-lette
     expect($calls->count())->toBe(0)
         ->and($row->fresh()->status)->toBe(AnalysisStatus::Failed)
         ->and(Analysis::query()->deadLettered()->whereKey($row->id)->exists())->toBeTrue();
+});
+
+/**
+ * A row whose subject is gone for good must not sit Failed: /ai-usage would
+ * show it as "still auto-retrying" behind a Try again that cannot succeed, and
+ * every hourly self-heal would burn an attempt proving it.
+ */
+it('deletes an obsolete row instead of failing it forever', function (): void {
+    $row = makeRowForRowJobTest();
+
+    fakeObsoleteRowJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh())->toBeNull();
 });
