@@ -192,3 +192,48 @@ it('classifies marathon distance at and above the threshold, never on a null rac
         ->and(WeekPlanBuilder::isMarathonDistance(30_000.0))->toBeTrue()
         ->and(WeekPlanBuilder::isMarathonDistance(42_195.0))->toBeTrue();
 });
+
+it('spends a four-session week\'s only quality day on interval work once a short race is being built for', function (): void {
+    $tenK = 10_000.0;
+
+    $types = fn (PlanPhase $phase): array => array_values(array_map(
+        fn (array $row): SessionType => $row['session_type'],
+        $this->builder->build($this->monday, $phase, 4, [], $tenK, false),
+    ));
+
+    // Base still opens with threshold — the safest single quality session —
+    // then the build carries the VO2max work that moves 10K pace.
+    expect($types(PlanPhase::Base))->toContain(SessionType::Tempo)
+        ->and($types(PlanPhase::Base))->not->toContain(SessionType::Interval)
+        ->and($types(PlanPhase::Build))->toContain(SessionType::Interval)
+        ->and($types(PlanPhase::Peak))->toContain(SessionType::Interval)
+        ->and($types(PlanPhase::Taper))->toContain(SessionType::Interval)
+        ->and($types(PlanPhase::Deload))->not->toContain(SessionType::Interval);
+});
+
+it('keeps a four-session week on threshold when there is no race to sharpen for', function (): void {
+    foreach ([PlanPhase::Build, PlanPhase::Peak, PlanPhase::Taper] as $phase) {
+        $types = array_column($this->builder->build($this->monday, $phase, 4, [], null, true), 'session_type');
+
+        expect($types)->toContain(SessionType::Tempo)
+            ->and($types)->not->toContain(SessionType::Interval);
+    }
+});
+
+it('keeps a marathon build on race-pace tempo rather than swapping in intervals', function (): void {
+    $marathon = 42_195.0;
+
+    foreach ([PlanPhase::Peak, PlanPhase::Taper] as $phase) {
+        $types = array_column($this->builder->build($this->monday, $phase, 4, [], $marathon, false), 'session_type');
+
+        expect($types)->toContain(SessionType::Tempo)
+            ->and($types)->not->toContain(SessionType::Interval);
+    }
+});
+
+it('still gives a five-session week both a threshold and an interval day', function (): void {
+    $types = array_column($this->builder->build($this->monday, PlanPhase::Build, 5, [], 10_000.0, false), 'session_type');
+
+    expect($types)->toContain(SessionType::Tempo)
+        ->and($types)->toContain(SessionType::Interval);
+});

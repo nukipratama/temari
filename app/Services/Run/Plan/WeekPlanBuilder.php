@@ -232,6 +232,15 @@ final class WeekPlanBuilder
     }
 
     /**
+     * A week with only one quality slot spends it on whatever the phase
+     * actually calls for, rather than always threshold: Base builds with a
+     * Tempo, and a race-oriented Build/Peak/Taper for a sub-marathon race
+     * gets the Interval work that moves race pace at those distances. Only a
+     * second slot can hold both, and that needs
+     * {@see self::MIN_SESSIONS_FOR_EXTRA_QUALITY} sessions to absorb it.
+     * Self-scaled training stays threshold-only throughout — there is no race
+     * pace to sharpen for, and its spec reads "1-2 threshold sessions".
+     *
      * @return list<array{session_type: SessionType}>
      */
     private function phaseQualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled): array
@@ -256,16 +265,12 @@ final class WeekPlanBuilder
             return [['session_type' => SessionType::Tempo]];
         }
 
-        $count = $sessionsPerWeek <= 4 ? 1 : 2;
-        $slots = [['session_type' => SessionType::Tempo]];
-        if ($count === 2) {
-            // Self-scaled Build stays threshold-only ("1-2 threshold sessions");
-            // race-oriented Build/Peak/Taper mix in interval work.
-            $slots[] = $selfScaled
-                ? ['session_type' => SessionType::Tempo]
-                : ['session_type' => SessionType::Interval];
+        $second = ['session_type' => $selfScaled ? SessionType::Tempo : SessionType::Interval];
+
+        if ($sessionsPerWeek < self::MIN_SESSIONS_FOR_EXTRA_QUALITY) {
+            return [$second];
         }
 
-        return $slots;
+        return [['session_type' => SessionType::Tempo], $second];
     }
 }
