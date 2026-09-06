@@ -178,6 +178,23 @@ describe('payloadsForCurrentWeek', function (): void {
             ->and($payloads['season'])->toBeNull();
     });
 
+    it('omits the week and season takes when their rows exist but no take has been queued', function (): void {
+        // A PlanAdaptation lands on every regenerate and a Season on the first
+        // /plan load, so a brand-new athlete has both long before anything has
+        // narrated them.
+        $user = User::factory()->create();
+        PlanAdaptation::factory()->for($user)->create(['week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)]);
+        Season::factory()->for($user)->create([
+            'starts_at' => Carbon::today()->subWeek(),
+            'ends_at' => Carbon::today()->addWeeks(8),
+        ]);
+
+        $payloads = $this->requester->payloadsForCurrentWeek($user, Carbon::today());
+
+        expect($payloads['week'])->toBeNull()
+            ->and($payloads['season'])->toBeNull();
+    });
+
     it('returns the real content once rows exist', function (): void {
         $user = User::factory()->create();
         $today = Carbon::today()->toDateString();

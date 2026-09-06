@@ -275,17 +275,26 @@ final readonly class PlanNarrationRequester
             );
         }
 
+        // A PlanAdaptation and a Season both exist from the first /plan load,
+        // so without this the week and season blocks promise a take nobody has
+        // queued — the same false hope the day loop above skips.
         $adaptation = $this->currentWeekAdaptation($user, $today);
-        $week = $adaptation === null ? null : Analysis::toPayload(
-            Analysis::query()->forSubject(PlanAdaptation::class, $adaptation->id, AnalysisType::PlanWeekVoice)->first(),
+        $weekRow = $adaptation === null
+            ? null
+            : Analysis::query()->forSubject(PlanAdaptation::class, $adaptation->id, AnalysisType::PlanWeekVoice)->first();
+        $week = $weekRow === null ? null : Analysis::toPayload(
+            $weekRow,
             AnalysisType::PlanWeekVoice,
             PlanAdaptation::class,
             $adaptation->id,
         );
 
         $season = $this->currentSeason($user);
-        $seasonPayload = $season === null ? null : Analysis::toPayload(
-            Analysis::query()->forSubject(Season::class, $season->id, AnalysisType::PlanSeasonVoice)->first(),
+        $seasonRow = $season === null
+            ? null
+            : Analysis::query()->forSubject(Season::class, $season->id, AnalysisType::PlanSeasonVoice)->first();
+        $seasonPayload = $seasonRow === null ? null : Analysis::toPayload(
+            $seasonRow,
             AnalysisType::PlanSeasonVoice,
             Season::class,
             $season->id,
