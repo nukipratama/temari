@@ -73,10 +73,10 @@ it('dayPayload generates segments fresh from the stored session when there is no
         ->and($payload['segments'][0]['key'])->toBe('main')
         ->and($payload['distance_km'])->toBe(20.0)
         ->and($payload['pinned'])->toBeTrue()
-        ->and($payload['clamp_note'])->toBeNull();
+        ->and($payload['clamp'])->toBeNull();
 });
 
-it('dayPayload substitutes the clamp\'s segments for today\'s row only', function (): void {
+it('dayPayload carries the clamp beside today\'s own prescription, never in place of it', function (): void {
     $today = Carbon::parse('2026-08-10');
     $todaySession = PlannedSession::factory()->make([
         'date' => $today,
@@ -94,10 +94,17 @@ it('dayPayload substitutes the clamp\'s segments for today\'s row only', functio
 
     $payload = PlanRenderer::dayPayload($todaySession, $today, $clamp, [], false, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
 
-    expect($payload['session_type'])->toBe('easy')
-        ->and($payload['segments'])->toBe(array_map(fn ($s) => $s->toArray(), $clampSegments))
-        ->and($payload['distance_km'])->toBe($clamp['core_km'])
-        ->and($payload['clamp_note'])->toBe('Clamped for low readiness.');
+    // The clamp is advisory: the stored Long is still what the narrator
+    // describes and what SessionMatcher grades, so it stays the payload's
+    // own session_type / segments / distance_km.
+    expect($payload['session_type'])->toBe('long')
+        ->and($payload['distance_km'])->toBe(SegmentGenerator::coreKmFor(SessionType::Long, false, 20.0, 1.0))
+        ->and($payload['clamp'])->toBe([
+            'session_type' => 'easy',
+            'distance_km' => $clamp['core_km'],
+            'pace_sec_per_km' => RENDERER_PACES['easy'],
+            'note' => 'Clamped for low readiness.',
+        ]);
 
     $tomorrowSession = PlannedSession::factory()->make([
         'date' => $today->copy()->addDay(),
@@ -108,7 +115,7 @@ it('dayPayload substitutes the clamp\'s segments for today\'s row only', functio
     $unaffected = PlanRenderer::dayPayload($tomorrowSession, $today, $clamp, [], false, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
 
     expect($unaffected['session_type'])->toBe('long')
-        ->and($unaffected['clamp_note'])->toBeNull();
+        ->and($unaffected['clamp'])->toBeNull();
 });
 
 it('dayPayload applies a redistributed volume scale for a non-today day', function (): void {

@@ -1,7 +1,12 @@
-import type { AnalysisPayload, WeekPlanDay } from '@/types/inertia';
+import type {
+    AnalysisPayload,
+    PlanDayClamp,
+    WeekPlanDay,
+} from '@/types/inertia';
 
 import {
     formatMonthDayId,
+    formatPace,
     mondayOf,
     parseNaiveLocalDate,
     sundayOf,
@@ -169,6 +174,25 @@ export function weekRangeLabel(weekStartIso: string): string {
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /** The weekday a Y-m-d falls on, as the day rows label it. */
+/**
+ * The eased session on one line. The distance is dropped when the clamp left
+ * it alone — an intensity-only step-down (Tempo/Interval to Easy keeps the
+ * same core km) otherwise prints the identical figure twice, which reads as a
+ * rendering bug rather than as "same distance, easier pace".
+ */
+export function clampSummary(clamp: PlanDayClamp, plannedKm: number): string {
+    const parts = [
+        SESSION_TYPE_LABEL[clamp.session_type] ?? clamp.session_type,
+    ];
+    if (clamp.distance_km !== plannedKm) {
+        parts.push(`${clamp.distance_km} km`);
+    }
+    if (clamp.pace_sec_per_km !== null) {
+        parts.push(`${formatPace(clamp.pace_sec_per_km)}/km`);
+    }
+    return parts.join(' · ');
+}
+
 export function weekdayLabel(iso: string): string {
     const date = parseNaiveLocalDate(iso);
     return date === null ? '' : WEEKDAYS[date.getDay()];

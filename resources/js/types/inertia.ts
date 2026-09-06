@@ -352,6 +352,16 @@ export interface PlanSessionSegment {
     pace_sec_per_km: number | null;
 }
 
+/** `PlanRenderer::clampPayload()` — the eased version of today's session.
+ *  Carries one pace rather than a segment list: the step-down renders as a
+ *  single line and only ever shows the core set's pace. */
+export interface PlanDayClamp {
+    session_type: string;
+    distance_km: number;
+    pace_sec_per_km: number | null;
+    note: string;
+}
+
 /** One day within `WeekPlan['days']`, as `PlanRenderer::dayPayload()` ships
  *  it — the same shape Plan's own day rows use. */
 export interface WeekPlanDay {
@@ -375,7 +385,11 @@ export interface WeekPlanDay {
     compliance_score: number | null;
     /** A rest day (`status: 'done'`) that had real activity logged anyway. */
     ran_anyway: boolean;
-    clamp_note: string | null;
+    /** Today's readiness step-down, when one applies — a modification shown
+     *  *beside* the day's own prescription, never in place of it. The fields
+     *  above stay the stored session, which is what the narrator describes and
+     *  `SessionMatcher` grades. Null on every other day. */
+    clamp: PlanDayClamp | null;
     /** Total km actually run that day — null when nothing was logged. */
     actual_km: number | null;
     /** Every run logged that day, oldest first — a day can hold more than one,

@@ -28,7 +28,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         status: 'planned',
         compliance_score: null,
         ran_anyway: false,
-        clamp_note: null,
+        clamp: null,
         actual_km: null,
         activities: [],
         ...overrides,
@@ -298,17 +298,38 @@ describe('WeekDayRow', () => {
         ).toBeInTheDocument();
     });
 
-    it('surfaces the readiness clamp note when today was scaled back', () => {
+    /**
+     * The clamp is advisory: it eases today, it does not replace the plan. The
+     * card must still lead with what the plan asked for, because that is what
+     * the narration above it describes and what compliance grades against.
+     */
+    it('shows the readiness step-down beside the day, not instead of it', () => {
         renderRow({
             day: day({
                 date: TODAY,
-                clamp_note: 'Eased off, you slept badly.',
+                distance_km: 9.1,
+                clamp: {
+                    session_type: 'easy',
+                    distance_km: 5.9,
+                    pace_sec_per_km: 450,
+                    note: 'Eased off, you slept badly.',
+                },
             }),
         });
         expand();
 
+        expect(screen.getByText('9.1 km · 5:00/km')).toBeInTheDocument();
+        expect(screen.getByText('eased today')).toBeInTheDocument();
+        expect(screen.getByText('easy · 5.9 km · 7:30/km')).toBeInTheDocument();
         expect(
             screen.getByText('Eased off, you slept badly.'),
         ).toBeInTheDocument();
+    });
+
+    it('shows no step-down on a day the clamp did not touch', () => {
+        renderRow();
+        expand();
+
+        expect(screen.queryByText('eased today')).not.toBeInTheDocument();
     });
 });

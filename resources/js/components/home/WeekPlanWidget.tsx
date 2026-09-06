@@ -9,6 +9,7 @@ import Card from '@/components/ui/LegacyCard';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
 import { formatPace, parseNaiveLocalDate, todayLocalIso } from '@/lib/pace';
+import { clampSummary } from '@/lib/plan';
 
 const SESSION_TYPE_LABEL: Record<string, string> = {
     easy: 'easy',
@@ -267,9 +268,20 @@ export default function WeekPlanWidget({
                             ` · ${today.distance_km} km`}
                         {todayCorePaceSecPerKm !== null &&
                             ` · ${formatPace(todayCorePaceSecPerKm)}/km`}
-                        {today.clamp_note !== null && (
-                            <span className="mt-1 block italic text-text-3">
-                                {today.clamp_note}
+                        {today.clamp !== null && (
+                            <span className="mt-1 block border-l-2 border-border pl-2">
+                                <span className="block text-[0.625rem] uppercase tracking-[0.05em] text-text-3">
+                                    ↓ eased today
+                                </span>
+                                <span className="block font-semibold text-foreground">
+                                    {clampSummary(
+                                        today.clamp,
+                                        today.distance_km,
+                                    )}
+                                </span>
+                                <span className="mt-0.5 block italic text-text-3">
+                                    {today.clamp.note}
+                                </span>
                             </span>
                         )}
                     </span>

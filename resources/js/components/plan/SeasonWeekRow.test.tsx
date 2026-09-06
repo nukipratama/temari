@@ -19,7 +19,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         status: 'done',
         compliance_score: 90,
         ran_anyway: false,
-        clamp_note: null,
+        clamp: null,
         actual_km: 8,
         activities: [],
         ...overrides,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Enums\SegmentKey;
 use App\Enums\SessionType;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
@@ -129,29 +130,21 @@ final class PlanRenderer
         $isToday = $s->date->isSameDay($today);
         $volumeScale = $volumeScaleByDate[$s->date->toDateString()] ?? 1.0;
 
-        if ($isToday && $clamp !== null) {
-            $sessionType = $clamp['session_type'];
-            $segments = $clamp['segments'];
-            // The clamp already scaled itself down for readiness; volume
-            // redistribution never also applies on top of a clamped today.
-            $distanceKm = $clamp['core_km'];
-        } else {
-            $sessionType = $s->session_type;
-            $segments = SegmentGenerator::generate(
-                $sessionType,
-                $s->phase,
-                $isMarathonDistance,
-                $isPrimaryEasy,
-                $longRunKm,
-                $multiplier,
-                $paces,
-                $volumeScale,
-            );
-            // The headline figure is the CORE work only (never null, doesn't
-            // need a VDOT estimate) — warmup/cooldown are additional minutes
-            // on top, not part of what this number has ever meant.
-            $distanceKm = round(SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier) * $volumeScale, 1);
-        }
+        $sessionType = $s->session_type;
+        $segments = SegmentGenerator::generate(
+            $sessionType,
+            $s->phase,
+            $isMarathonDistance,
+            $isPrimaryEasy,
+            $longRunKm,
+            $multiplier,
+            $paces,
+            $volumeScale,
+        );
+        // The headline figure is the CORE work only (never null, doesn't
+        // need a VDOT estimate) — warmup/cooldown are additional minutes
+        // on top, not part of what this number has ever meant.
+        $distanceKm = round(SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier) * $volumeScale, 1);
 
         return [
             'id' => $s->id,
@@ -165,9 +158,40 @@ final class PlanRenderer
             'status' => $status->value,
             'compliance_score' => $s->compliance_score,
             'ran_anyway' => $s->ran_anyway,
-            'clamp_note' => $isToday ? ($clamp['note'] ?? null) : null,
+            'clamp' => $isToday && $clamp !== null ? self::clampPayload($clamp) : null,
             'actual_km' => $activity['km'] ?? null,
             'activities' => $activity['runs'] ?? [],
+        ];
+    }
+
+    /**
+     * The clamp as a step-down *beside* the day's own prescription, never in
+     * place of it. The stored session stays the figure the card leads with,
+     * the narrator describes and {@see SessionMatcher} grades, so the eased
+     * version travels as its own object rather than overwriting those fields
+     * — see `docs/decisions/readiness-clamp-is-advisory.md`. Carries a single
+     * pace rather than the full segment list: the step-down is one line, and
+     * only the core set's pace is ever shown on it.
+     *
+     * @param array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string} $clamp
+     * @return array{session_type: string, distance_km: float, pace_sec_per_km: int|null, note: string}
+     */
+    private static function clampPayload(array $clamp): array
+    {
+        $core = null;
+        foreach ($clamp['segments'] as $segment) {
+            if (in_array($segment->key, [SegmentKey::Main, SegmentKey::Interval], true)) {
+                $core = $segment;
+
+                break;
+            }
+        }
+
+        return [
+            'session_type' => $clamp['session_type']->value,
+            'distance_km' => $clamp['core_km'],
+            'pace_sec_per_km' => $core?->paceSecPerKm,
+            'note' => $clamp['note'],
         ];
     }
 }

@@ -32,7 +32,7 @@ function day(overrides: Partial<WeekPlanDay>): WeekPlanDay {
         status: 'planned',
         compliance_score: null,
         ran_anyway: false,
-        clamp_note: null,
+        clamp: null,
         actual_km: null,
         activities: [],
         ...overrides,
@@ -186,7 +186,12 @@ describe('WeekPlanWidget', () => {
                               pace_sec_per_km: 330,
                           },
                       ],
-                      clamp_note: 'Clamped for low readiness.',
+                      clamp: {
+                          session_type: 'easy',
+                          distance_km: 5.9,
+                          pace_sec_per_km: 450,
+                          note: 'Clamped for low readiness.',
+                      },
                   })
                 : day({ date }),
         );
