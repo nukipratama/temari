@@ -16,6 +16,7 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
+use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -35,6 +36,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         private readonly WeeklyAggregator $weeklyAggregator,
         private readonly StaggerBackfillAction $staggerBackfill,
         private readonly BackfillAgeGate $ageGate,
+        private readonly RestClampRecorder $restClampRecorder,
     ) {
     }
 
@@ -55,6 +57,14 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $isBackfill = $this->isBackfill($detail);
         $delaySec = $isBackfill ? ($this->staggerBackfill)($activity->user_id) : 0;
         $isToday = $detail->start_date_local?->toDateString() === $today;
+
+        // A run today moves the readiness ceiling, which is the only moment a
+        // clamp to full rest becomes true. Backfill of an older day is skipped:
+        // it would recompute today's ceiling once per imported run for a
+        // verdict the daily briefing already covers.
+        if ($isToday) {
+            $this->restClampRecorder->record($user, Carbon::today());
+        }
 
         $this->requestCardFlavor($activity, $tooOld, $delaySec);
 

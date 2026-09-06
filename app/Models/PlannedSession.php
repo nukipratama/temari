@@ -49,6 +49,7 @@ use Override;
     'status',
     'compliance_score',
     'ran_anyway',
+    'rest_clamped_at',
 ])]
 class PlannedSession extends Model
 {
@@ -97,6 +98,19 @@ class PlannedSession extends Model
         return $query->count();
     }
 
+    /**
+     * Whether this day is exempt from being graded: the athlete excused it
+     * ahead of time, or the readiness clamp downgraded it to a full rest and
+     * {@see \App\Services\Run\Plan\RestClampRecorder} recorded that. Both
+     * resolve to {@see PlannedSessionStatus::Skip} — uncredited, but never
+     * counted against the week's adherence, since neither is a day the
+     * athlete failed to turn up for.
+     */
+    public function isExcused(): bool
+    {
+        return $this->skipped || $this->rest_clamped_at !== null;
+    }
+
     /** @return array<string, string> */
     #[Override]
     protected function casts(): array
@@ -111,6 +125,7 @@ class PlannedSession extends Model
             'status' => PlannedSessionStatus::class,
             'compliance_score' => 'integer',
             'ran_anyway' => 'boolean',
+            'rest_clamped_at' => 'datetime',
         ];
     }
 }

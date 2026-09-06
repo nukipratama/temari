@@ -6,6 +6,7 @@ namespace App\Console\Commands\AI;
 
 use App\Models\Activity;
 use App\Models\User;
+use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\AnalysisService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -25,7 +26,7 @@ class DailyBriefingCommand extends Command
      */
     private const int ACTIVE_WINDOW_DAYS = 7;
 
-    public function handle(AnalysisService $service): int
+    public function handle(AnalysisService $service, RestClampRecorder $restClampRecorder): int
     {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
 
@@ -41,6 +42,11 @@ class DailyBriefingCommand extends Command
         $users = User::query()->whereIn('id', $activeUserIds)->get();
 
         foreach ($users as $user) {
+            // The other place today's readiness ceiling is computed. Covers a
+            // clamp that fires on carried-over fatigue, with no run to trigger
+            // the ingest listener.
+            $restClampRecorder->record($user, Carbon::today());
+
             $service->requestBriefing($user, $today);
         }
 
