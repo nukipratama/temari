@@ -8,6 +8,7 @@ code_refs:
   - app/Services/Run/Ingest/SyncOrchestrator.php
   - app/Services/Run/Ingest/SummaryIngest.php
   - app/Services/Run/Ingest/DetailHydrator.php
+  - app/Console/Commands/Strava/HydrateBacklogCommand.php
   - app/Services/Run/Ingest/ActivityPipeline.php
   - app/Services/Run/Ingest/StreamAnalysis.php
   - app/Enums/IngestState.php
@@ -51,7 +52,7 @@ The webhook push path ([syncSingleActivity()](app/Services/Run/Ingest/SyncOrches
 
 A summary-only run is hydrated when the deeper data is about to be looked at. [DetailHydrator::hydrate()](app/Services/Run/Ingest/DetailHydrator.php#L28) dispatches one [IngestActivityJob](app/Jobs/Strava/IngestActivityJob.php) for a `summaryOnly()` row belonging to a non-demo user with a live connection; the job is `ShouldBeUnique`, so repeated views collapse onto one fetch. These are the *expensive* reads (two per run opened, against a whole history's handful), so they queue at [`StravaReadPriority::Background`](app/Services/Run/Ingest/DetailHydrator.php#L42) and stop at the reserve floor rather than starving live ingest — see [[live-ingest-read-reserve]]. [RunController::show()](app/Http/Controllers/RunController.php) calls it twice — for the run being opened, and for whichever past run [PastYouMatcher](app/Services/Run/Story/PastYouMatcher.php) just picked as the comparison (the matcher itself needs only summary fields, so it works across un-hydrated history).
 
-`strava:ingest` ([IngestCommand](app/Console/Commands/Strava/IngestCommand.php)) still runs every 5 min over `pendingIngest()` (`analyzed_at` null, below the give-up threshold, skipping demo + revoked connections), pacing the webhook backlog so it never 429-storms Strava. Summary rows are *not* in that set — they are already visible, and nothing drains them wholesale.
+`strava:ingest` ([IngestCommand](app/Console/Commands/Strava/IngestCommand.php)) still runs every 5 min over `pendingIngest()` (`analyzed_at` null, below the give-up threshold, skipping demo + revoked connections), pacing the webhook backlog so it never 429-storms Strava. Summary rows are *not* in that set — they are already visible. They have their own drain: `strava:hydrate-backlog` ([HydrateBacklogCommand](app/Console/Commands/Strava/HydrateBacklogCommand.php)) runs hourly over `summaryOnly()`, newest-first, sized from [`backgroundHeadroom()`](app/Services/Strava/StravaClient.php) so it only ever spends read budget live ingest is not using — see [[background-hydration-drain]].
 
 [ActivityPipeline::ingest()](app/Services/Run/Ingest/ActivityPipeline.php) does the real work, in order:
 

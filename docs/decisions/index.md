@@ -20,7 +20,7 @@ ADRs grouped by the problem they solve, for easier navigation than a flat timeli
 |---|---|
 | **Cost guards** | [[idempotent-dispatch-cost-ceiling]] (dispatch-time + daily ceiling) *(pause half superseded)*; [[cost-ceiling-degrades-to-rule-based]] (a hit budget degrades, every other stop pauses) *(its "run questions are still refused" carve-out superseded)*; [[cost-ceiling-answers-run-questions-rule-based]] (a capped day answers questions deterministically too); [[twelve-week-narration-cutoff]] (per-signup backfill depth); [[bounded-self-heal-and-dead-letter]] (execution-time + bounded retry); [[narration-agents-on-openai-php]] (per-block agent budget); [[per-block-manual-retry]] *(superseded)* |
 | **Data isolation** | [[analytics-db-separate-connection]] (metering outlives app resets); [[date-cast-utc-shift]] (UTC off-by-one guard) |
-| **Ingest** | [[summary-first-ingest]] (whole history from paged summaries, detail hydrated on demand) |
+| **Ingest** | [[summary-first-ingest]] (whole history from paged summaries, detail hydrated on demand); [[background-hydration-drain]] (an hourly drain fills the backlog it leaves) |
 | **Async / resilience** | [[chained-narration]] (connected narration threads); [[strava-circuit-breaker-rate-limit]] (per-client rate-limit guard); [[live-ingest-read-reserve]] (a quarter of that budget held for live ingest); [[narrow-trusted-proxy-headers]] (proxy trust behind tunnel); [[trust-all-proxies-cloudflare]] *(superseded)*; [[deferred-recap-windowing]] (window-gated generation) |
 | **AI routing** | [[azure-openai-routing]] (per-narrator-kind deployment selection); [[narration-agents-on-openai-php]] (SDK seam + tool calling); [[demo-user-billing-exclusion]] (demo user omitted from auto-billing); [[demo-triggers-served-rule-based]] (demo triggers filled rule-based); [[scoped-run-qa-not-an-analysis-row]] (Q&A scoped by construction, stored outside the row model) |
 | **Operability** | [[pause-reason-derives-from-the-dispatch-gate]] (the monitor derives from the gate it reports on) |
@@ -52,6 +52,7 @@ _Data_
 
 _Infra & Strava_
 - [[summary-first-ingest]] — a connect stores the whole history from paged summaries; detail, streams and the story layer are hydrated only for runs someone opens
+- [[background-hydration-drain]] — an hourly tick hydrates the summary-only backlog newest-first, sized from the read headroom background calls may already spend
 - [[unscored-load-is-null-not-zero]] — a week that ran without heart rate reports unknown load; only a week nobody ran reports zero
 - [[strava-circuit-breaker-rate-limit]] — Strava rate limit is per-client, so the guard key is global
 - [[live-ingest-read-reserve]] — browsing-driven hydration stops at 75% of each read bucket, on its own throttle key, so it cannot starve a fresh run's ingest

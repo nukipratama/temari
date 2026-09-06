@@ -24,6 +24,12 @@ class DetailHydrator
     /**
      * Returns whether a fetch was queued. {@see IngestActivityJob} is
      * `ShouldBeUnique`, so repeated views collapse onto one queued fetch.
+     *
+     * A run whose detail fetch has already exhausted
+     * {@see Activity::MAX_DETAIL_FETCH_ATTEMPTS} is refused: a permanent 4xx
+     * leaves `ingest_state` at `summary` deliberately, so without this guard a
+     * deleted or unshared run would re-spend two reads on every view and on
+     * every drain tick, forever.
      */
     public function hydrate(int $activityId): bool
     {
@@ -31,6 +37,7 @@ class DetailHydrator
             ->withStubs()
             ->summaryOnly()
             ->whereKey($activityId)
+            ->where('detail_fail_count', '<', Activity::MAX_DETAIL_FETCH_ATTEMPTS)
             ->whereHas('user', fn ($query) => $query->where('is_demo', false))
             ->whereHas('user.stravaConnection', fn ($query) => $query->whereNull('revoked_at'))
             ->exists();

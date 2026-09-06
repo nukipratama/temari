@@ -19,6 +19,11 @@ code_refs:
 
 **Status:** Accepted (documented 2026-08-14, ratifying the shape shipped earlier)
 
+> **2026-09-06** — the decision below is unchanged, but one *consequence* no longer holds.
+> "A run nobody opens never gets its splits, zones, TRIMP, card, PRs or narration" was true
+> until [[background-hydration-drain]] added an hourly drain over the summary-only backlog.
+> Hydration is still on demand *first*; it is no longer on demand *only*.
+
 ## Context
 
 Strava's read budget is **per API client, not per athlete** — 200 reads per 15 minutes and 2000 per day for the whole app ([`RATE_LIMIT_15MIN_MAX`](app/Services/Strava/StravaClient.php#L36)). Every user shares one pool.
@@ -59,6 +64,7 @@ A brand-new connection's history is **entirely** summary-only, so this is not an
 
 ## See also
 
+- [[background-hydration-drain]] — the hourly drain that fills the backlog this decision leaves behind.
 - [[run-ingest-pipeline]] — the operational mechanics: the drain, the transactional boundary, failure handling.
 - [[strava-circuit-breaker-rate-limit]] — how the shared per-client budget is actually enforced.
 - [[past-you-engine]] — the one read path that spans un-hydrated history on purpose, matching on summary fields only.

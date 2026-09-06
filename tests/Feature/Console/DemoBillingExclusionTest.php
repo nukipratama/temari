@@ -38,6 +38,7 @@ const BILLING = [
     'strava:sync' => 'notDemo() on the connection scan',
     'strava:sync-zones' => 'notDemo() on the connection scan',
     'strava:ingest' => 'whereHas(user, is_demo = false) on the stub drain',
+    'strava:hydrate-backlog' => 'where(is_demo, false) on the user scan, and DetailHydrator refuses a demo run again per activity',
     'streak:remind' => 'where(is_demo, false) inside the command',
     'plan:regenerate' => 'is_demo === false gates the plan-narration request only; the regenerate itself stays free and still runs for demo',
 ];

@@ -152,6 +152,27 @@ class StravaClient
         ];
     }
 
+    /**
+     * Reads a {@see StravaReadPriority::Background} caller may still spend
+     * before it reaches the live-ingest reserve. Distinct from
+     * {@see rateLimitRemaining()}, which reports the raw pool including the
+     * reserve on purpose (the sync log and Pulse card want the true budget).
+     *
+     * @return array{'15min': int, 'daily': int}
+     */
+    public function backgroundHeadroom(): array
+    {
+        return [
+            '15min' => $this->headroomBelowCeiling('15min', self::RATE_LIMIT_15MIN_MAX),
+            'daily' => $this->headroomBelowCeiling('daily', self::RATE_LIMIT_DAILY_MAX),
+        ];
+    }
+
+    private function headroomBelowCeiling(string $bucket, int $max): int
+    {
+        return max(0, RateLimiter::remaining($this->rateLimitKey($bucket), $this->backgroundCeiling($max)));
+    }
+
     public function refreshIfExpired(StravaConnection $connection): StravaConnection
     {
         if ($this->tokenIsFresh($connection)) {
