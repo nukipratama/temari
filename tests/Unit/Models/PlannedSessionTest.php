@@ -120,3 +120,18 @@ it('restHonoredCountForUser scopes to a date range when given one', function ():
 
     Carbon::setTestNow();
 });
+
+it('isExcused covers both an athlete skip and a recorded rest clamp', function (): void {
+    $user = User::factory()->create();
+
+    $plain = PlannedSession::factory()->for($user)->create(['date' => '2026-08-10']);
+    $skipped = PlannedSession::factory()->for($user)->create(['date' => '2026-08-11', 'skipped' => true]);
+    $clamped = PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-12',
+        'rest_clamped_at' => Carbon::parse('2026-08-12 06:00:00'),
+    ]);
+
+    expect($plain->isExcused())->toBeFalse()
+        ->and($skipped->isExcused())->toBeTrue()
+        ->and($clamped->isExcused())->toBeTrue();
+});

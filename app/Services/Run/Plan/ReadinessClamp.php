@@ -80,6 +80,22 @@ final class ReadinessClamp
     }
 
     /**
+     * Whether today's ceiling would downgrade this session all the way to a
+     * full rest — the one clamp outcome compliance has to know about, since
+     * an athlete who takes the rest the card prescribed would otherwise be
+     * graded against the session it replaced and score `missed` for
+     * complying. Shares {@see self::requiredRank()} with {@see self::apply()}
+     * so the two can never disagree about what the ceiling permits, and needs
+     * neither paces nor a volume multiplier: the `Rest` arm of `apply()` uses
+     * neither. See `docs/decisions/readiness-clamp-is-advisory.md`.
+     */
+    public static function clampsToRest(SessionType $sessionType, ReadinessCeiling $ceiling): bool
+    {
+        return $ceiling === ReadinessCeiling::Rest
+            && self::requiredRank($sessionType) > $ceiling->rank();
+    }
+
+    /**
      * The ceiling rank a session needs to run as prescribed. Quality work
      * (Tempo/Interval, in Daniels' vocabulary) needs the optimistic default;
      * a Long day is a volume day, not an intensity one, so it only needs

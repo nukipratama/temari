@@ -16,6 +16,7 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
+use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -35,6 +36,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         private readonly WeeklyAggregator $weeklyAggregator,
         private readonly StaggerBackfillAction $staggerBackfill,
         private readonly BackfillAgeGate $ageGate,
+        private readonly RestClampRecorder $restClampRecorder,
     ) {
     }
 
@@ -79,6 +81,16 @@ class DispatchPostRunAnalysis implements ShouldQueue
             return;
         }
         $snapshot = $this->weeklyAggregator->rebuildForwardFrom($user, $detail->start_date_local);
+
+        // After the rebuild, not before: a run today moves the readiness
+        // ceiling, and BriefingContext falls back to the WeeklySnapshot this
+        // line just rewrote when live load has no form status of its own.
+        // Backfill of an older day is skipped — it would recompute today's
+        // ceiling once per imported run for a verdict the daily briefing
+        // already covers.
+        if ($isToday) {
+            $this->restClampRecorder->record($user, Carbon::today());
+        }
         if ($snapshot !== null) {
             // Weekly cadence: regenerating the recap of a still-unfinished week
             // on every run was the single biggest LLM re-bill. The row is staged

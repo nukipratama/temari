@@ -102,10 +102,10 @@ final readonly class CurrentWeekPlanBuilder
         if ($staleSessions->isNotEmpty()) {
             $staleDates = $staleSessions->map(fn (PlannedSession $s): string => $s->date->toDateString())->all();
             $stalePlannedKmByDate = array_intersect_key($plannedKmByDate, array_flip($staleDates));
-            $staleSkipped = $staleSessions->mapWithKeys(
-                fn (PlannedSession $s): array => [$s->date->toDateString() => $s->skipped],
+            $staleExcused = $staleSessions->mapWithKeys(
+                fn (PlannedSession $s): array => [$s->date->toDateString() => $s->isExcused()],
             )->all();
-            $fallbackStatuses = $this->sessionMatcher->statuses($user, $stalePlannedKmByDate, $staleSkipped, $today);
+            $fallbackStatuses = $this->sessionMatcher->statuses($user, $stalePlannedKmByDate, $staleExcused, $today);
         }
         $resolvedStatuses = $currentWeekSessions->mapWithKeys(
             fn (PlannedSession $s): array => [
