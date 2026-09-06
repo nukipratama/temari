@@ -55,15 +55,18 @@ it('switches a Long day to Marathon pace only in Peak/Taper for a marathon-dista
 it('carves a Tempo day\'s fixed 10min warmup out of its distance, leaving the rest at Threshold', function (): void {
     $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, false, false, 16.0, 1.0, PACES);
 
-    // 16 * 0.65 = 10.4km for the whole outing; 10min warmup at 360 sec/km eats
-    // 1.667km of it, leaving 8.733km at 270 sec/km = 39.3 minutes.
+    // 16 * 0.65 = 10.4km for the whole outing. The 10min warmup at 360 sec/km
+    // shows as 1.7km, and the main set takes the rounded remainder so the two
+    // add up on the card: 8.7km at 270 sec/km = 39.2 minutes.
     expect($segments)->toHaveCount(2)
         ->and($segments[0]->key)->toBe(SegmentKey::Warmup)
         ->and($segments[0]->minutes)->toBe(10.0)
         ->and($segments[0]->paceLabel)->toBe(PaceBand::Easy)
         ->and($segments[1]->key)->toBe(SegmentKey::Main)
         ->and($segments[1]->paceLabel)->toBe(PaceBand::Threshold)
-        ->and($segments[1]->minutes)->toBe(39.3);
+        ->and($segments[1]->minutes)->toBe(39.2)
+        ->and($segments[0]->km)->toBe(1.7)
+        ->and($segments[1]->km)->toBe(8.7);
 });
 
 it('spends the whole prescribed distance and no more, so the card and the run agree', function (): void {
@@ -99,9 +102,10 @@ it('switches a Tempo day to Marathon pace only in Peak/Taper for a marathon-dist
 it('does not scale a Tempo day\'s warmup when volumeScale changes, only its main set', function (): void {
     $scaled = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, false, false, 16.0, 1.0, PACES, volumeScale: 1.3);
 
-    // 10.4 * 1.3 = 13.52km outing, less the same fixed 1.667km warmup.
+    // 10.4 * 1.3 = 13.5km outing, less the same fixed 1.7km warmup.
     expect($scaled[0]->minutes)->toBe(10.0)
-        ->and($scaled[1]->minutes)->toBe(round((13.52 - 10 * 60 / 360) * 270 / 60, 1));
+        ->and($scaled[0]->km)->toBe(1.7)
+        ->and($scaled[1]->minutes)->toBe(round((13.5 - 1.7) * 270 / 60, 1));
 });
 
 it('builds an Interval day as a warmup then alternating reps and recoveries, with no cooldown', function (): void {
@@ -184,4 +188,27 @@ it('coreKmFor stays available with no VDOT estimate at all — it never needs pa
     // no PR history yet still sees a real target, same guarantee DistanceBandKm
     // gave before this class existed.
     expect(SegmentGenerator::coreKmFor(SessionType::Tempo, false, 16.0, 1.0))->toBe(10.4);
+});
+
+it('rounds a session\'s segment distances so they add up to the figure on the card', function (): void {
+    // Every long-run baseline in a realistic range, so a case where the two
+    // parts each round the same way past the midpoint can't slip through.
+    foreach (range(30, 250) as $tenths) {
+        $longRunKm = $tenths / 10;
+        $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, false, false, $longRunKm, 1.0, PACES);
+
+        $shown = round(array_sum(array_map(fn ($s): float => $s->km, $segments)), 1);
+        $headline = SegmentGenerator::coreKmFor(SessionType::Tempo, false, $longRunKm, 1.0);
+
+        expect($shown)->toBe($headline, "long_run_km {$longRunKm}");
+    }
+});
+
+it('leaves a bookend\'s distance null when no VDOT estimate can size it', function (): void {
+    $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, false, false, 16.0, 1.0, null);
+
+    expect($segments[0]->key)->toBe(SegmentKey::Warmup)
+        ->and($segments[0]->km)->toBeNull()
+        // With nothing carved out, the main block still holds the whole day.
+        ->and($segments[1]->km)->toBe(SegmentGenerator::coreKmFor(SessionType::Tempo, false, 16.0, 1.0));
 });

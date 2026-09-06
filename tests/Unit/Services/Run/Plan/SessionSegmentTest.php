@@ -12,6 +12,7 @@ it('serializes every field, including a null minutes/pace when no VDOT estimate 
     expect($segment->toArray())->toBe([
         'key' => 'main',
         'minutes' => null,
+        'km' => null,
         'zone' => 'Z2',
         'pace_label' => 'easy',
         'pace_sec_per_km' => null,
@@ -19,11 +20,12 @@ it('serializes every field, including a null minutes/pace when no VDOT estimate 
 });
 
 it('serializes a fully computed segment', function (): void {
-    $segment = new SessionSegment(SegmentKey::Interval, 3.0, 'Z5', PaceBand::Interval, 240);
+    $segment = new SessionSegment(SegmentKey::Interval, 3.0, 'Z5', PaceBand::Interval, 240, 0.8);
 
     expect($segment->toArray())->toBe([
         'key' => 'interval',
         'minutes' => 3.0,
+        'km' => 0.8,
         'zone' => 'Z5',
         'pace_label' => 'interval',
         'pace_sec_per_km' => 240,
