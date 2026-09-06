@@ -67,7 +67,7 @@ final class TrainingBaseline
 
     /**
      * Long-run share of weekly volume, as `[volume_below_km, share]` ascending,
-     * with {@see LONG_RUN_SHARE_ABOVE_BANDS} past the last band. Daniels caps a
+     * with the flat high-volume share past the last band. Daniels caps a
      * long run at 25% of weekly mileage, Pfitzinger at 25-30%; both ranges
      * assume higher mileage than a beginner runs, and 25% of 20 km/week is not
      * a long run at all, so the share rises as volume falls.
@@ -83,7 +83,7 @@ final class TrainingBaseline
 
     /**
      * Long-run ceiling in km, as `[race_distance_below_m, cap_km]` ascending,
-     * with {@see LONG_RUN_CAP_MARATHON_KM} past the last band. The long-run to
+     * with the marathon cap past the last band. The long-run to
      * race-distance ratio *inverts* with distance — a 5K long run is 2-3x race
      * distance, a marathon's is 0.7-0.85x — so a single multiplier is wrong at
      * both ends and this has to be a table.

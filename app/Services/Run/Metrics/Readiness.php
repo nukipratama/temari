@@ -70,9 +70,14 @@ final readonly class Readiness
             $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
         }
 
-        // Quality needs positive fitness confirmation. Unknown/negative form or
-        // unknown recovery can't earn a quality day.
-        if ($formStatus !== 'fresh' && $formStatus !== 'optimal') {
+        // Quality needs fitness not to be a KNOWN negative. A null form_status
+        // is absence of evidence, not evidence of fatigue: an athlete whose runs
+        // carry no heart rate has no CTL or ATL at all, so this capped every
+        // quality session they were ever prescribed — permanently, and
+        // invisibly, since the plan still stored the session it never showed.
+        // 'fatigued' and 'overreaching' are already capped harder above, so
+        // this arm now only guards an unrecognised value.
+        if ($formStatus !== null && $formStatus !== 'fresh' && $formStatus !== 'optimal') {
             $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
         }
         if ($recoveryHours === null) {

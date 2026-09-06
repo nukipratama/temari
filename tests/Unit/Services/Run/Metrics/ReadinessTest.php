@@ -61,3 +61,34 @@ it('does not nudge a runner who already ramping or ran today', function (): void
     expect(Readiness::assess('fresh', 60, false, 1.0, 0.0, 'up')->buildNudge)->toBeFalse()
         ->and(Readiness::assess('fresh', 60, true, 1.0, 0.0, 'down')->buildNudge)->toBeFalse();
 });
+
+/**
+ * An athlete whose runs carry no heart rate has no CTL or ATL, so form_status
+ * is null for them on every single day. Treating that as a fatigue signal
+ * withheld every quality session the plan ever prescribed them.
+ */
+it('does not withhold quality for an athlete whose form is simply unknown', function (): void {
+    $readiness = Readiness::assess(
+        formStatus: null,
+        recoveryHours: 72,
+        ranToday: false,
+        monotony: null,
+        volumeRampPct: null,
+        fitnessTrend: 'flat',
+    );
+
+    expect($readiness->ceiling)->toBe(ReadinessCeiling::QualityOk);
+});
+
+it('still withholds quality for a form status it does not recognise', function (): void {
+    $readiness = Readiness::assess(
+        formStatus: 'something-new',
+        recoveryHours: 72,
+        ranToday: false,
+        monotony: null,
+        volumeRampPct: null,
+        fitnessTrend: 'flat',
+    );
+
+    expect($readiness->ceiling)->toBe(ReadinessCeiling::ModerateOk);
+});
