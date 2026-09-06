@@ -350,6 +350,25 @@ function inertiaVersionFor(object $actingAs, string $url): string
     return is_array($page) ? (string) ($page['version'] ?? '') : '';
 }
 
+/**
+ * Headers for the follow-up request `<Deferred>` fires once the shell has
+ * painted, and for the `only:` reloads the analysis pollers fire. Such a
+ * response is bare JSON rather than the HTML page object, so assert it with
+ * assertJsonPath()/json() rather than assertInertia()/viewData().
+ *
+ * @param  object  $actingAs  The authenticated test case.
+ * @return array<string, string>
+ */
+function inertiaPartialHeaders(object $actingAs, string $url, string $component, string $props): array
+{
+    return [
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => inertiaVersionFor($actingAs, $url),
+        'X-Inertia-Partial-Component' => $component,
+        'X-Inertia-Partial-Data' => $props,
+    ];
+}
+
 function mockStravaDriver(callable $configure): MockInterface
 {
     $driver = Mockery::mock(AbstractProvider::class);

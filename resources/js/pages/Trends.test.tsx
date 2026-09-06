@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { AnalysisPayload } from '@/types/inertia';
 
+import { setMockDeferred } from '@/test/setup';
+
 import Trends from './Trends';
 
 function narrationPayload(
@@ -98,6 +100,32 @@ describe('Trends', () => {
 
         expect(
             screen.getByRole('img', { name: /over 30 days/ }),
+        ).toBeInTheDocument();
+    });
+
+    it('shows skeletons for the deferred blocks until their props land', () => {
+        setMockDeferred(['narration', 'ctlTrend', 'badgeMilestones', 'streak']);
+
+        const { container } = render(<Trends />);
+
+        expect(screen.getByText('how things')).toBeInTheDocument();
+        expect(
+            screen.getByRole('group', { name: 'Time range' }),
+        ).toBeInTheDocument();
+        expect(screen.queryByText("Temari's read")).not.toBeInTheDocument();
+        expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(
+            0,
+        );
+    });
+
+    it('fills the fitness block in on its own once narration is still pending', () => {
+        setMockDeferred(['narration']);
+
+        render(<Trends {...BASE_PROPS} ctlTrend={yearOfTrend()} />);
+
+        expect(screen.queryByText('The full year.')).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('img', { name: /over 365 days/ }),
         ).toBeInTheDocument();
     });
 

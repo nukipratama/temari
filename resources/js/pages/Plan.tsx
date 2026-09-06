@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Deferred, Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
 import type {
@@ -16,6 +16,7 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
+import { SkeletonRows, SkeletonStats } from '@/components/ui/Skeleton';
 import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { appLayout } from '@/layouts/appLayout';
 import {
@@ -42,11 +43,11 @@ interface PlanAdaptation {
 interface PlanProps {
     race: { race_date: string; name: string | null } | null;
     sessionsPerWeek: number;
-    weeks: PlanWeek[];
+    weeks?: PlanWeek[];
     season: SeasonSummary | null;
     seasonSummary?: SeasonSummaryWeek[];
     seasonAdherencePct?: number | null;
-    adaptation: PlanAdaptation | null;
+    adaptation?: PlanAdaptation | null;
     /** Served from App\Support\TrainingDisclaimer, shared with the legal pages. */
     disclaimerHeadline: string;
     disclaimer: string;
@@ -68,7 +69,7 @@ export default function Plan({
     season,
     seasonSummary = [],
     seasonAdherencePct = null,
-    adaptation,
+    adaptation = null,
     disclaimerHeadline,
     disclaimer,
     planNarration = PLAN_NARRATION_DEFAULT,
@@ -106,10 +107,6 @@ export default function Plan({
             { preserveScroll: true },
         );
     };
-
-    const detailByWeekStart = Object.fromEntries(
-        weeks.map((week) => [week.week_start, week]),
-    );
 
     return (
         <>
@@ -165,37 +162,61 @@ export default function Plan({
 
                 <PlanRaceTabs active="plan" className="mb-4" />
 
-                {weeks.length === 0 || season === null ? (
-                    <EmptyPanel
-                        face
-                        faceSize={48}
-                        title="no plan yet."
-                        body="hit regenerate and temari will lay out the weeks ahead."
-                        className="mt-6"
-                    />
-                ) : (
-                    <>
-                        <SeasonHeaderCard
-                            weekIndex={season.week_index}
-                            totalWeeks={season.total_weeks}
-                            startsAt={season.starts_at}
-                            endsAt={season.ends_at}
-                            adherencePct={seasonAdherencePct}
-                            weeks={seasonSummary}
-                            narration={planNarration.season}
-                        />
-                        <SeasonTimeline
-                            weeks={seasonSummary}
-                            detailByWeekStart={detailByWeekStart}
-                            today={today}
-                            weekFocus={adaptation}
-                            weekNarration={planNarration.week}
-                            dayNarration={planNarration.days}
-                            onMove={moveSession}
-                            onSkip={skipSession}
-                        />
-                    </>
-                )}
+                <Deferred
+                    data={[
+                        'weeks',
+                        'seasonSummary',
+                        'seasonAdherencePct',
+                        'adaptation',
+                    ]}
+                    fallback={
+                        <>
+                            <Card padding="panel" className="mt-6">
+                                <SkeletonStats />
+                            </Card>
+                            <SkeletonRows count={4} className="mt-4" />
+                        </>
+                    }
+                >
+                    {() =>
+                        weeks!.length === 0 || season === null ? (
+                            <EmptyPanel
+                                face
+                                faceSize={48}
+                                title="no plan yet."
+                                body="hit regenerate and temari will lay out the weeks ahead."
+                                className="mt-6"
+                            />
+                        ) : (
+                            <>
+                                <SeasonHeaderCard
+                                    weekIndex={season.week_index}
+                                    totalWeeks={season.total_weeks}
+                                    startsAt={season.starts_at}
+                                    endsAt={season.ends_at}
+                                    adherencePct={seasonAdherencePct}
+                                    weeks={seasonSummary}
+                                    narration={planNarration.season}
+                                />
+                                <SeasonTimeline
+                                    weeks={seasonSummary}
+                                    detailByWeekStart={Object.fromEntries(
+                                        weeks!.map((week) => [
+                                            week.week_start,
+                                            week,
+                                        ]),
+                                    )}
+                                    today={today}
+                                    weekFocus={adaptation}
+                                    weekNarration={planNarration.week}
+                                    dayNarration={planNarration.days}
+                                    onMove={moveSession}
+                                    onSkip={skipSession}
+                                />
+                            </>
+                        )
+                    }
+                </Deferred>
 
                 <Card padding="panel" className="mt-6">
                     <p className="text-label-micro text-text-2">

@@ -85,6 +85,24 @@ it('never ensures or mutates a season of its own', function (): void {
     Carbon::setTestNow();
 });
 
+it('paints identity, stats and the voice while the heavy blocks stay deferred', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/profile')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Profile')
+            ->has('identity')
+            ->has('stats')
+            ->has('profileVoice')
+            ->missing('fitness')
+            ->missing('timeInZone')
+            ->missing('season')
+            ->missing('seasonWeeks')
+            ->missing('progressionByCategory')
+            ->etc());
+});
+
 it('includes training_paces derived from VDOT when the user has a qualifying PR', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create([
@@ -92,20 +110,17 @@ it('includes training_paces derived from VDOT when the user has a qualifying PR'
         'value_sec' => 1200.0,
     ]);
 
-    $this->actingAs($user)->get('/profile')
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('fitness.training_paces.easy')
-            ->has('fitness.training_paces.marathon')
-            ->has('fitness.training_paces.threshold')
-            ->has('fitness.training_paces.interval'));
+    $this->actingAs($user)
+        ->get('/profile', inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'fitness'))
+        ->assertJsonStructure(['props' => ['fitness' => ['training_paces' => ['easy', 'marathon', 'threshold', 'interval']]]]);
 });
 
 it('reports null training_paces when the user has no VDOT-eligible PR', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/profile')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('fitness', null));
+    $this->actingAs($user)
+        ->get('/profile', inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'fitness'))
+        ->assertJsonPath('props.fitness', null);
 });
 
 it('exposes the week-keyed profileVoice payload', function (): void {
@@ -236,11 +251,10 @@ it('reads the progression goal line off the active race, on that race distance o
         ]);
     }
 
-    $this->actingAs($user)->get('/profile')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('progressionByCategory.10km.goal_sec', 3_000)
-            ->where('progressionByCategory.half_marathon.goal_sec', null)
-            ->etc());
+    $this->actingAs($user)
+        ->get('/profile', inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'progressionByCategory'))
+        ->assertJsonPath('props.progressionByCategory.10km.goal_sec', 3_000)
+        ->assertJsonPath('props.progressionByCategory.half_marathon.goal_sec', null);
 });
 
 it('leaves the progression goal line empty when no race is active', function (): void {
@@ -261,8 +275,7 @@ it('leaves the progression goal line empty when no race is active', function ():
         'start_date_local' => Carbon::today()->subWeek(),
     ]);
 
-    $this->actingAs($user)->get('/profile')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('progressionByCategory.10km.goal_sec', null)
-            ->etc());
+    $this->actingAs($user)
+        ->get('/profile', inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'progressionByCategory'))
+        ->assertJsonPath('props.progressionByCategory.10km.goal_sec', null);
 });

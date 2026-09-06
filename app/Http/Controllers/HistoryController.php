@@ -69,9 +69,9 @@ class HistoryController extends Controller
         ['since' => $since, 'hasOlder' => $hasOlderWeeks] = $feed->weekWindow($user, $filters, $weeks);
         $runsQuery = $feed->for($user, $filters, $since);
 
-        // Deferred behind a closure (Inertia's `useAnalysisTrigger` poll skips
-        // any prop the partial reload does not name) and memoized (three props
-        // below share this one query set).
+        // Lazy, not deferred: a closure only skips work on a partial reload
+        // that doesn't name it (Inertia's `useAnalysisTrigger` poll), and still
+        // runs on first paint. Memoized — three props share this query set.
         /** @var Collection<int, Activity>|null $loadedRuns */
         $loadedRuns = null;
         $loadRuns = function () use ($runsQuery, &$loadedRuns): Collection {

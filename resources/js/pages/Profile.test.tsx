@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { makeUser, setMockPage } from '@/test/setup';
+import { makeUser, setMockDeferred, setMockPage } from '@/test/setup';
 
 import Profile from './Profile';
 
@@ -34,6 +34,27 @@ describe('Profile', () => {
         expect(screen.getByText('Profile')).toBeInTheDocument();
         expect(screen.getByText('Ada,')).toBeInTheDocument();
         expect(screen.getByText('your story.')).toBeInTheDocument();
+    });
+
+    it('paints identity and lifetime stats while the deferred blocks skeleton', () => {
+        setMockDeferred([
+            'season',
+            'seasonWeeks',
+            'fitness',
+            'timeInZone',
+            'progressionByCategory',
+        ]);
+
+        const { container } = render(
+            <Profile identity={identity} stats={stats} />,
+        );
+
+        expect(screen.getByText('Ada,')).toBeInTheDocument();
+        expect(screen.getByText('544.1')).toBeInTheDocument();
+        expect(screen.queryByText('Season')).not.toBeInTheDocument();
+        expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(
+            0,
+        );
     });
 
     it('falls back to "Runner," when no first name is available', () => {

@@ -73,8 +73,6 @@ class PlanController extends Controller
         $user = $request->user();
         $today = Carbon::today();
         $currentWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
-        $rangeStart = $currentWeekStart->copy()->subWeeks(CurrentWeekPlanBuilder::HISTORY_WEEKS);
-        $rangeEnd = $currentWeekStart->copy()->addWeeks(self::LOOKAHEAD_WEEKS)->addDays(6);
 
         $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
 
@@ -82,18 +80,56 @@ class PlanController extends Controller
         $seasonCtx = SeasonGamificationContext::forSeason($user, $season, $today, $trainingLoad);
         $grantSeasonUnlocks($user, $season, $seasonCtx);
 
-        // Demo is excluded from plan:regenerate's real narration dispatch (no
-        // LLM billing for the public account), so its Plan page fills any gap
-        // with the same rule-based path its manual "Reread" already resolves
-        // through — otherwise the demo would show perpetually-Pending blocks.
-        if ($user->is_demo) {
-            $narrationRequester->ensureDemoFilled($user, $today);
-        }
-        $seasonPayload = $seasonStreakBuilder->seasonPayload($user, $season, $today, $seasonCtx);
-        $seasonSummary = $seasonSummaryBuilder->build($user, $season, $today);
-        $seasonAdherencePct = $seasonSummaryBuilder->adherencePct($user, $season);
+        return Inertia::render('Plan', [
+            'race' => $this->racePayload($race),
+            'sessionsPerWeek' => $baseline->forUser($user, $today)['sessions_per_week'],
+            'weeks' => Inertia::defer(fn (): array => $this->weeksPayload(
+                $user,
+                $today,
+                $race,
+                $baseline,
+                $trainingLoad,
+                $vdotEstimator,
+                $paceCalculator,
+                $sessionMatcher,
+            )),
+            'season' => $seasonStreakBuilder->seasonPayload($user, $season, $today, $seasonCtx),
+            'seasonSummary' => Inertia::defer(fn (): array => $seasonSummaryBuilder->build($user, $season, $today)),
+            'seasonAdherencePct' => Inertia::defer(fn (): ?int => $seasonSummaryBuilder->adherencePct($user, $season)),
+            'adaptation' => Inertia::defer(fn (): ?array => $this->adaptationPayload($user, $currentWeekStart)),
+            'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
+            'disclaimer' => TrainingDisclaimer::TEXT,
+            'planNarration' => Inertia::defer(function () use ($narrationRequester, $user, $today): array {
+                // Demo is excluded from plan:regenerate's real narration dispatch (no
+                // LLM billing for the public account), so its Plan page fills any gap
+                // with the same rule-based path its manual "Reread" already resolves
+                // through — otherwise the demo would show perpetually-Pending blocks.
+                if ($user->is_demo) {
+                    $narrationRequester->ensureDemoFilled($user, $today);
+                }
 
-        $adaptationPayload = $this->adaptationPayload($user, $currentWeekStart);
+                return $narrationRequester->payloadsForCurrentWeek($user, $today);
+            }),
+            'regenerateCooldownSeconds' => $narrationRequester->regenerateCooldownRemaining($user),
+        ]);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function weeksPayload(
+        User $user,
+        Carbon $today,
+        ?RaceGoal $race,
+        TrainingBaseline $baseline,
+        TrainingLoad $trainingLoad,
+        VdotEstimator $vdotEstimator,
+        TrainingPaceCalculator $paceCalculator,
+        SessionMatcher $sessionMatcher,
+    ): array {
+        $currentWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
+        $rangeStart = $currentWeekStart->copy()->subWeeks(CurrentWeekPlanBuilder::HISTORY_WEEKS);
+        $rangeEnd = $currentWeekStart->copy()->addWeeks(self::LOOKAHEAD_WEEKS)->addDays(6);
 
         $sessions = PlannedSession::query()
             ->where('user_id', $user->id)
@@ -101,21 +137,6 @@ class PlanController extends Controller
             ->orderBy('date')
             ->get();
 
-        if ($sessions->isEmpty()) {
-            return Inertia::render('Plan', [
-                'race' => $this->racePayload($race),
-                'sessionsPerWeek' => $baseline->forUser($user, $today)['sessions_per_week'],
-                'weeks' => [],
-                'season' => $seasonPayload,
-                'seasonSummary' => $seasonSummary,
-            'seasonAdherencePct' => $seasonAdherencePct,
-                'adaptation' => $adaptationPayload,
-                'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
-                'disclaimer' => TrainingDisclaimer::TEXT,
-                'planNarration' => $narrationRequester->payloadsForCurrentWeek($user, $today),
-                'regenerateCooldownSeconds' => $narrationRequester->regenerateCooldownRemaining($user),
-            ]);
-        }
 
         $baselineData = $baseline->forUser($user, $today);
         $paces = $paceCalculator->fromVdotResult($vdotEstimator->estimate($user));
@@ -216,19 +237,7 @@ class PlanController extends Controller
             ];
         }
 
-        return Inertia::render('Plan', [
-            'race' => $this->racePayload($race),
-            'sessionsPerWeek' => $baselineData['sessions_per_week'],
-            'weeks' => $weeks,
-            'season' => $seasonPayload,
-            'seasonSummary' => $seasonSummary,
-            'seasonAdherencePct' => $seasonAdherencePct,
-            'adaptation' => $adaptationPayload,
-            'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
-            'disclaimer' => TrainingDisclaimer::TEXT,
-            'planNarration' => $narrationRequester->payloadsForCurrentWeek($user, $today),
-            'regenerateCooldownSeconds' => $narrationRequester->regenerateCooldownRemaining($user),
-        ]);
+        return $weeks;
     }
 
     public function regenerate(Request $request, Periodizer $periodizer, PlanNarrationRequester $narrationRequester): RedirectResponse

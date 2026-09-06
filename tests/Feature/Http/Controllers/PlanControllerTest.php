@@ -22,26 +22,43 @@ it('requires authentication for every plan route', function (): void {
     $this->patch('/plan/sessions/1')->assertRedirect('/login');
 });
 
-it('renders an empty week list for a fresh user with no plan yet', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/plan')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->component('Plan')->where('weeks', []));
-});
-
-it('renders a season-wide week summary even before any plan has been generated', function (): void {
+it('paints the shell with the plan body deferred', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)->get('/plan')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('seasonSummary')
-            ->has('seasonSummary.0.week_start')
-            ->has('seasonSummary.0.phase')
-            ->has('seasonSummary.0.type')
-            ->has('seasonSummary.0.planned_km')
-            ->where('seasonSummary.0.type', 'current'));
+            ->component('Plan')
+            ->has('race')
+            ->has('sessionsPerWeek')
+            ->has('season')
+            ->has('disclaimer')
+            ->missing('weeks')
+            ->missing('seasonSummary')
+            ->missing('seasonAdherencePct')
+            ->missing('adaptation')
+            ->missing('planNarration')
+            ->etc());
+});
+
+it('renders an empty week list for a fresh user with no plan yet', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))
+        ->assertSuccessful()
+        ->assertJsonPath('component', 'Plan')
+        ->assertJsonPath('props.weeks', []);
+});
+
+it('renders a season-wide week summary even before any plan has been generated', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'seasonSummary'))
+        ->assertSuccessful()
+        ->assertJsonStructure(['props' => ['seasonSummary' => [['week_start', 'phase', 'type', 'planned_km']]]])
+        ->assertJsonPath('props.seasonSummary.0.type', 'current');
 });
 
 it('creates a season and its 5 goals on a fresh user\'s first Plan view, before any regeneration', function (): void {
@@ -88,13 +105,11 @@ it('renders the generated weeks, current week first among non-history', function
     $user = User::factory()->create();
     $this->actingAs($user)->post('/plan/regenerate');
 
-    $this->actingAs($user)->get('/plan')
+    $this->actingAs($user)
+        ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))
         ->assertSuccessful()
-        ->assertInertia(function (Assert $page): void {
-            $page->component('Plan')
-                ->has('weeks')
-                ->has('sessionsPerWeek');
-        });
+        ->assertJsonPath('component', 'Plan')
+        ->assertJsonPath('props.weeks', fn (mixed $weeks): bool => is_array($weeks) && $weeks !== []);
 });
 
 it('rejects updating another user\'s planned session', function (): void {
@@ -210,10 +225,11 @@ it('clamps today\'s session against the readiness ceiling without mutating the s
         'pinned' => false,
     ]);
 
-    $response = $this->actingAs($user)->get('/plan');
-    $response->assertSuccessful();
+    $response = $this->actingAs($user)
+        ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))
+        ->assertSuccessful();
 
-    $weeks = $response->viewData('page')['props']['weeks'];
+    $weeks = $response->json('props.weeks');
     $todayDay = collect($weeks)
         ->flatMap(fn (array $week): array => $week['days'])
         ->firstWhere('date', Carbon::today()->toDateString());
@@ -239,9 +255,11 @@ it('never clamps a future day, only today, even at the worst readiness ceiling',
         'session_type' => 'interval',
     ]);
 
-    $response = $this->actingAs($user)->get('/plan')->assertSuccessful();
+    $response = $this->actingAs($user)
+        ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))
+        ->assertSuccessful();
 
-    $weeks = $response->viewData('page')['props']['weeks'];
+    $weeks = $response->json('props.weeks');
     $futureDay = collect($weeks)
         ->flatMap(fn (array $week): array => $week['days'])
         ->firstWhere('date', Carbon::today()->addDays(2)->toDateString());

@@ -47,6 +47,15 @@ let mockComponent = DEFAULT_COMPONENT;
  * `component` is the Inertia page name, exposed because `usePage().component`
  * is read in app code and tests may need to vary it.
  */
+// Deferred props: unit tests render a page with its props supplied directly,
+// so <Deferred> resolves its children by default. `setMockDeferred([...])`
+// holds those keys back, letting a test assert the fallback skeleton instead.
+let mockPendingDeferred = new Set<string>();
+
+export function setMockDeferred(keys: string[]) {
+    mockPendingDeferred = new Set(keys);
+}
+
 export function setMockPage(
     props: Record<string, unknown>,
     url = DEFAULT_URL,
@@ -122,6 +131,7 @@ afterEach(() => {
     vi.unstubAllGlobals();
     mockPageProps = { ...DEFAULT_PAGE_PROPS };
     mockUrl = DEFAULT_URL;
+    mockPendingDeferred = new Set();
     resetFormMock();
 });
 
@@ -177,7 +187,26 @@ vi.mock('@inertiajs/react', async () => {
         );
     };
 
+    const deferredComponent = ({
+        children,
+        data,
+        fallback,
+    }: {
+        children: ReactNode | ((slot: { reloading: boolean }) => ReactNode);
+        data: string | string[];
+        fallback: ReactNode | (() => ReactNode);
+    }) => {
+        const keys = Array.isArray(data) ? data : [data];
+        if (keys.some((key) => mockPendingDeferred.has(key))) {
+            return typeof fallback === 'function' ? fallback() : fallback;
+        }
+        return typeof children === 'function'
+            ? children({ reloading: false })
+            : children;
+    };
+
     return {
+        Deferred: deferredComponent,
         Head: ({ children }: { children?: ReactNode }) => children ?? null,
         Link: linkComponent,
         usePage: () => ({

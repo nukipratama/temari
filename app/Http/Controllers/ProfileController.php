@@ -56,13 +56,6 @@ class ProfileController extends Controller
         $today = Carbon::today();
         $lifetime = $lifetimeStats->forUser($user);
 
-        $personalRecords = PersonalRecord::query()
-            ->where('user_id', $user->id)
-            ->orderBy('category')
-            ->get();
-
-        $progressionByCategory = $this->buildProgressionByCategory($progressionSeriesBuilder, $user, $personalRecords);
-
         // peekCurrent, never ensureCurrent: opening Profile must not create a
         // season or fire the grant side effects a Plan page load does.
         $season = $seasonService->peekCurrent($user, $today);
@@ -81,12 +74,23 @@ class ProfileController extends Controller
                 'longest_run_km' => $lifetime['longest_km'],
             ],
             'profileVoice' => $this->resolveProfileVoice($user),
-            'progressionByCategory' => $progressionByCategory,
-            'fitness' => $this->fitness($vdotEstimator, $thresholdEstimator, $trainingPaceCalculator, $user),
-            'timeInZone' => $timeInZoneSummary->forUser($user, $today) ?: null,
-            'season' => $seasonStreakBuilder->seasonPayload($user, $season, $today),
-            'seasonWeeks' => $season === null ? null : $seasonSummaryBuilder->build($user, $season, $today),
+            'progressionByCategory' => Inertia::defer(fn (): array => $this->buildProgressionByCategory($progressionSeriesBuilder, $user, $this->personalRecords($user))),
+            'fitness' => Inertia::defer(fn (): ?array => $this->fitness($vdotEstimator, $thresholdEstimator, $trainingPaceCalculator, $user)),
+            'timeInZone' => Inertia::defer(fn (): ?array => $timeInZoneSummary->forUser($user, $today) ?: null),
+            'season' => Inertia::defer(fn (): ?array => $seasonStreakBuilder->seasonPayload($user, $season, $today)),
+            'seasonWeeks' => Inertia::defer(fn (): ?array => $season === null ? null : $seasonSummaryBuilder->build($user, $season, $today)),
         ]);
+    }
+
+    /**
+     * @return Collection<int, PersonalRecord>
+     */
+    private function personalRecords(User $user): Collection
+    {
+        return PersonalRecord::query()
+            ->where('user_id', $user->id)
+            ->orderBy('category')
+            ->get();
     }
 
     /**

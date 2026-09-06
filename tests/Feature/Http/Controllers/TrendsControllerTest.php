@@ -37,23 +37,37 @@ it('retired /records and /badges outright', function (): void {
     $this->actingAs($user)->get('/badges')->assertNotFound();
 });
 
-it('renders an empty fitness trend for a fresh user', function (): void {
+it('paints the shell with every heavy block deferred', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)->get('/trends')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Trends')
-            ->where('ctlTrend', []));
+            ->missing('ctlTrend')
+            ->missing('badgeMilestones')
+            ->missing('streak')
+            ->missing('narration')
+            ->etc());
+});
+
+it('renders an empty fitness trend for a fresh user', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'ctlTrend'))
+        ->assertSuccessful()
+        ->assertJsonPath('component', 'Trends')
+        ->assertJsonPath('props.ctlTrend', []);
 });
 
 it('renders a fitness trend from the user\'s TRIMP history', function (): void {
     $user = User::factory()->create();
     seedTrendsTrimpDay($user, 80);
 
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('ctlTrend', fn (mixed $trend): bool => count($trend) > 0));
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'ctlTrend'))
+        ->assertJsonPath('props.ctlTrend', fn (mixed $trend): bool => is_array($trend) && count($trend) > 0);
 });
 
 it('never surfaces another user\'s training load', function (): void {
@@ -61,18 +75,19 @@ it('never surfaces another user\'s training load', function (): void {
     $other = User::factory()->create();
     seedTrendsTrimpDay($other, 80);
 
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page->where('ctlTrend', []));
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'ctlTrend'))
+        ->assertJsonPath('props.ctlTrend', []);
 });
 
 it('passes a pending narration payload for all three ranges when none exist', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('narration.30d.status', 'pending')
-            ->where('narration.90d.status', 'pending')
-            ->where('narration.12mo.status', 'pending'));
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'narration'))
+        ->assertJsonPath('props.narration.30d.status', 'pending')
+        ->assertJsonPath('props.narration.90d.status', 'pending')
+        ->assertJsonPath('props.narration.12mo.status', 'pending');
 });
 
 it('passes the TrendRead analysis for each range as its own narration entry', function (): void {
@@ -84,14 +99,14 @@ it('passes the TrendRead analysis for each range as its own narration entry', fu
         'discriminator' => '30d',
     ]);
 
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('narration.30d.status', 'done')
-            ->where('narration.30d.content', "Fitness is climbing.\n\nCTL moved from 40 to 55.")
-            ->where('narration.30d.type', AnalysisType::TrendRead->value)
-            ->where('narration.30d.discriminator', '30d')
-            ->where('narration.90d.status', 'pending')
-            ->where('narration.12mo.status', 'pending'));
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'narration'))
+        ->assertJsonPath('props.narration.30d.status', 'done')
+        ->assertJsonPath('props.narration.30d.content', "Fitness is climbing.\n\nCTL moved from 40 to 55.")
+        ->assertJsonPath('props.narration.30d.type', AnalysisType::TrendRead->value)
+        ->assertJsonPath('props.narration.30d.discriminator', '30d')
+        ->assertJsonPath('props.narration.90d.status', 'pending')
+        ->assertJsonPath('props.narration.12mo.status', 'pending');
 });
 
 it('never surfaces another user\'s narration', function (): void {
@@ -104,15 +119,17 @@ it('never surfaces another user\'s narration', function (): void {
         'discriminator' => '30d',
     ]);
 
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page->where('narration.30d.status', 'pending'));
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'narration'))
+        ->assertJsonPath('props.narration.30d.status', 'pending');
 });
 
 it('renders empty badge milestones for a fresh user', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page->where('badgeMilestones', []));
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'badgeMilestones'))
+        ->assertJsonPath('props.badgeMilestones', []);
 });
 
 it('sets a badge milestone at its first-earned date only, with that card\'s rarity', function (): void {
@@ -124,11 +141,12 @@ it('sets a badge milestone at its first-earned date only, with that card\'s rari
     ActivityDetail::factory()->for($later)->create(['start_date_local' => now()->subDay()]);
     RunCard::factory()->for($later)->create(['badges' => [Badge::EarlyBird->value], 'rarity' => Rarity::Legendary]);
 
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('badgeMilestones', fn (mixed $milestones): bool => count($milestones) === 1
-                && $milestones[0]['key'] === Badge::EarlyBird->value
-                && $milestones[0]['rarity'] === Rarity::Rare->value));
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'badgeMilestones'))
+        ->assertJsonPath('props.badgeMilestones', fn (mixed $milestones): bool => is_array($milestones)
+            && count($milestones) === 1
+            && $milestones[0]['key'] === Badge::EarlyBird->value
+            && $milestones[0]['rarity'] === Rarity::Rare->value);
 });
 
 it('never surfaces another user\'s badges', function (): void {
@@ -138,15 +156,17 @@ it('never surfaces another user\'s badges', function (): void {
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()->subDay()]);
     RunCard::factory()->for($activity)->create(['badges' => [Badge::EarlyBird->value]]);
 
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page->where('badgeMilestones', []));
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'badgeMilestones'))
+        ->assertJsonPath('props.badgeMilestones', []);
 });
 
 it('reports a zero streak for a fresh user', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page->where('streak.weeks', 0));
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'streak'))
+        ->assertJsonPath('props.streak.weeks', 0);
 });
 
 it('reports the user\'s consecutive-week streak', function (): void {
@@ -156,10 +176,10 @@ it('reports the user\'s consecutive-week streak', function (): void {
         'runs' => 3,
     ]);
 
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('streak.weeks', 1)
-            ->where('streak.ran_this_week', true));
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'streak'))
+        ->assertJsonPath('props.streak.weeks', 1)
+        ->assertJsonPath('props.streak.ran_this_week', true);
 });
 
 it('never surfaces another user\'s streak', function (): void {
@@ -170,6 +190,7 @@ it('never surfaces another user\'s streak', function (): void {
         'runs' => 3,
     ]);
 
-    $this->actingAs($user)->get('/trends')
-        ->assertInertia(fn (Assert $page) => $page->where('streak.weeks', 0));
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'streak'))
+        ->assertJsonPath('props.streak.weeks', 0);
 });
