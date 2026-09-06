@@ -229,11 +229,11 @@ export default function WeekPlanWidget({
             <div className="mb-3.5 flex items-center gap-4 min-[900px]:gap-6">
                 <ProgressRing
                     credited={weekPlan.credited_this_week}
-                    total={weekPlan.sessions_per_week}
+                    total={weekPlan.sessions_this_week}
                 />
                 <div className="grid flex-1 grid-cols-2 gap-2">
                     <PlanFigure
-                        value={`${weekPlan.credited_this_week}/${weekPlan.sessions_per_week}`}
+                        value={`${weekPlan.credited_this_week}/${weekPlan.sessions_this_week}`}
                         label="Sessions"
                     />
                     <PlanFigure

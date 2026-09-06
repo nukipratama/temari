@@ -229,7 +229,7 @@ it('ships a real weekPlan when the user has a plan for the current week', functi
         ->assertInertia(fn (Assert $page) => $page
             ->component('Home')
             ->where('weekPlan.days', fn (mixed $days): bool => count($days) === 7)
-            ->has('weekPlan.sessions_per_week')
+            ->has('weekPlan.sessions_this_week')
             ->has('weekPlan.phase'));
 
     Carbon::setTestNow();

@@ -40,7 +40,7 @@ it('returns null when the current week has no planned sessions', function (): vo
     Carbon::setTestNow();
 });
 
-it('builds sessions_per_week, phase, and one day payload per planned session', function (): void {
+it('builds sessions_this_week, phase, and one day payload per planned session', function (): void {
     Carbon::setTestNow('2026-08-12'); // a Wednesday
     $user = User::factory()->create();
     $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
@@ -143,6 +143,97 @@ it('applies the multi-week Build ramp, not an isolated week-1 multiplier', funct
 
     expect($result['planned_km_this_week'])->toBe($rampedTotalKm)
         ->and($rampedTotalKm)->toBeGreaterThan($unrampedTotalKm); // strictly more than the un-ramped (k=0) total
+
+    Carbon::setTestNow();
+});
+
+it('counts only training days, so a week off never credits itself', function (): void {
+    Carbon::setTestNow('2026-08-16'); // the Sunday, so the whole week is past
+    $user = User::factory()->create();
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+
+    // Two Easy days and five Rest days. Nothing is logged all week, so the
+    // two training days score Missed and the five rest days score Done —
+    // which used to make an entirely unrun week read as 5 credited.
+    for ($i = 0; $i < 7; $i++) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => $weekStart->copy()->addDays($i),
+            'phase' => PlanPhase::Base,
+            'session_type' => $i < 2 ? SessionType::Easy : SessionType::Rest,
+        ]);
+    }
+
+    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+
+    expect($result['sessions_this_week'])->toBe(2)
+        ->and($result['credited_this_week'])->toBe(0);
+
+    Carbon::setTestNow();
+});
+
+it('sizes the ring by the days the week actually holds, not the weekly target', function (): void {
+    Carbon::setTestNow('2026-08-16'); // Sunday
+    $user = User::factory()->create();
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+
+    // A plan that began mid-week: WeekPlanBuilder never writes a row before
+    // the day it ran, so only Saturday and Sunday exist. A denominator taken
+    // from the baseline's weekly target would put the ring out of reach.
+    foreach ([5, 6] as $offset) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => $weekStart->copy()->addDays($offset),
+            'phase' => PlanPhase::Base,
+            'session_type' => SessionType::Easy,
+        ]);
+    }
+
+    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+
+    expect($result['sessions_this_week'])->toBe(2);
+
+    Carbon::setTestNow();
+});
+
+it('credits today once the run already clears the bar, without waiting for the nightly scorer', function (): void {
+    Carbon::setTestNow('2026-08-12 19:00:00'); // a Wednesday evening
+    $user = User::factory()->create();
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    seedWeekOfSessions($user, $weekStart);
+
+    $anchor = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($anchor)->create([
+        'start_date_local' => $weekStart->copy()->subDays(20)->setTime(7, 0),
+        'distance' => 20_000,
+    ]);
+
+    // Comfortably past the whole week's prescription, so today's own row
+    // clears its target whatever the baseline resolves it to.
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->copy()->setTime(17, 0),
+        'distance' => 30_000,
+    ]);
+
+    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $today = collect($result['days'])->firstWhere('date', Carbon::today()->toDateString());
+
+    expect($today['status'])->toBe('overreached')
+        ->and($today['actual_km'])->toBe(30.0)
+        ->and($today['activities'])->toHaveCount(1)
+        ->and($result['credited_this_week'])->toBeGreaterThanOrEqual(1);
+
+    Carbon::setTestNow();
+});
+
+it('reports the km it renders, so a clamped today cannot disagree with the headline', function (): void {
+    Carbon::setTestNow('2026-08-12');
+    $user = User::factory()->create();
+    seedWeekOfSessions($user, Carbon::today()->startOfWeek(Carbon::MONDAY));
+
+    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+
+    expect($result['planned_km_this_week'])
+        ->toBe(round(array_sum(array_column($result['days'], 'distance_km')), 1));
 
     Carbon::setTestNow();
 });

@@ -149,7 +149,7 @@ function renderHome(
 }
 
 const weekPlan: WeekPlan = {
-    sessions_per_week: 5,
+    sessions_this_week: 5,
     phase: 'build',
     planned_km_this_week: 32,
     credited_this_week: 2,

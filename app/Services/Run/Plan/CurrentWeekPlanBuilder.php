@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\PlannedSessionStatus;
+use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
@@ -39,7 +40,7 @@ final readonly class CurrentWeekPlanBuilder
     }
 
     /**
-     * @return array{sessions_per_week: int, phase: string, planned_km_this_week: float, credited_this_week: int, days: array<int, array<string, mixed>>}|null
+     * @return array{sessions_this_week: int, phase: string, planned_km_this_week: float, credited_this_week: int, days: array<int, array<string, mixed>>}|null
      */
     public function forUser(User $user, Carbon $today): ?array
     {
@@ -92,9 +93,10 @@ final readonly class CurrentWeekPlanBuilder
 
         // Every past row should already carry its real status —
         // plan:score-compliance (daily) persists it the morning after. This
-        // is only a safety net for whatever it hasn't reached yet.
+        // is the safety net for whatever it hasn't reached yet, plus today,
+        // which it deliberately never reaches.
         $staleSessions = $currentWeekSessions->filter(
-            fn (PlannedSession $s): bool => $s->status === PlannedSessionStatus::Planned && $s->date->lt($today),
+            fn (PlannedSession $s): bool => $s->status === PlannedSessionStatus::Planned && $s->date->lte($today),
         );
         $fallbackStatuses = [];
         if ($staleSessions->isNotEmpty()) {
@@ -124,6 +126,8 @@ final readonly class CurrentWeekPlanBuilder
             )
             : null;
 
+        $activityByDate = $this->sessionMatcher->activityByDate($user, $currentWeekStart, $today);
+
         $days = $currentWeekSessions->map(fn (PlannedSession $s): array => PlanRenderer::dayPayload(
             $s,
             $today,
@@ -135,14 +139,25 @@ final readonly class CurrentWeekPlanBuilder
             $currentWeekMultiplier,
             $paces,
             $resolvedStatuses[$s->date->toDateString()] ?? PlannedSessionStatus::Planned,
+            $activityByDate[$s->date->toDateString()] ?? null,
         ))->values()->all();
 
+        // A rest day asks for nothing and always scores Done, so counting it
+        // would credit the athlete for a day off. The ring measures training
+        // days, and against the ones this week actually holds — a plan that
+        // began mid-week has fewer rows than the baseline's weekly target,
+        // and a total nothing could reach is not a target.
+        $trainingDates = $currentWeekSessions
+            ->reject(fn (PlannedSession $s): bool => $s->session_type === SessionType::Rest)
+            ->map(fn (PlannedSession $s): string => $s->date->toDateString())
+            ->all();
+
         return [
-            'sessions_per_week' => $baselineData['sessions_per_week'],
+            'sessions_this_week' => count($trainingDates),
             'phase' => $currentWeekPhase->value,
-            'planned_km_this_week' => round(array_sum($plannedKmByDate), 1),
+            'planned_km_this_week' => round(array_sum(array_column($days, 'distance_km')), 1),
             'credited_this_week' => count(array_filter(
-                $resolvedStatuses,
+                array_intersect_key($resolvedStatuses, array_flip($trainingDates)),
                 static fn (PlannedSessionStatus $status): bool => $status->isCredited(),
             )),
             'days' => $days,

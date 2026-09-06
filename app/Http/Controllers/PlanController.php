@@ -156,10 +156,11 @@ class PlanController extends Controller
 
         // Every past row should already carry its real status —
         // plan:score-compliance (daily) persists it the morning after. This
-        // is only a safety net for whatever it hasn't reached yet, so it's
-        // computed for just that (normally empty) subset, not the whole range.
+        // is the safety net for whatever it hasn't reached yet, plus today,
+        // which it deliberately never reaches; both are a small subset, so
+        // it's computed for those dates rather than the whole range.
         $staleSessions = $sessions->filter(
-            fn (PlannedSession $s): bool => $s->status === PlannedSessionStatus::Planned && $s->date->lt($today),
+            fn (PlannedSession $s): bool => $s->status === PlannedSessionStatus::Planned && $s->date->lte($today),
         );
         $fallbackStatuses = [];
         if ($staleSessions->isNotEmpty()) {
@@ -206,7 +207,7 @@ class PlanController extends Controller
             $clamp,
         );
 
-        $activityByDate = $this->activityByDate($user, $rangeStart, $today);
+        $activityByDate = $sessionMatcher->activityByDate($user, $rangeStart, $today);
 
         $weeks = [];
         foreach ($sessionsByWeek as $weekStartKey => $weekSessions) {
@@ -415,48 +416,6 @@ class PlanController extends Controller
             'detail' => $adaptation->reason->detail($adaptation->adherence_pct),
             'deload' => $adaptation->deload,
         ];
-    }
-
-    /**
-     * Every logged run of each day, keyed by date, oldest first. `km` is the
-     * day's total (matching how {@see SessionMatcher} scores compliance) and
-     * drives the timeline's planned-vs-actual bar; `runs` lists each run so a
-     * two-session day can show both instead of pairing the day's total
-     * distance with one run's duration, which read as a single impossible run.
-     *
-     * @return array<string, array{km: float, runs: list<array{id: int, km: float, seconds: int|null}>}>
-     */
-    private function activityByDate(User $user, Carbon $from, Carbon $to): array
-    {
-        if ($to->lessThan($from)) {
-            return [];
-        }
-
-        $rows = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
-            ->where('activities.user_id', $user->id)
-            ->whereNotNull('activity_details.start_date_local')
-            ->whereBetween('activity_details.start_date_local', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
-            ->orderBy('activity_details.start_date_local')
-            ->get(['activity_details.activity_id', 'activity_details.start_date_local', 'activity_details.distance', 'activity_details.moving_time']);
-
-        $byDate = [];
-        foreach ($rows as $row) {
-            $date = $row->start_date_local?->toDateString();
-            if ($date === null) {
-                continue;
-            }
-
-            $km = DistanceFormatter::km((float) $row->distance);
-            $byDate[$date]['km'] = round(($byDate[$date]['km'] ?? 0.0) + $km, 1);
-            $byDate[$date]['runs'][] = [
-                'id' => (int) $row->activity_id,
-                'km' => $km,
-                'seconds' => $row->moving_time,
-            ];
-        }
-
-        return $byDate;
     }
 
     private function completedKmInRange(User $user, Carbon $from, Carbon $to): float

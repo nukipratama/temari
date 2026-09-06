@@ -387,7 +387,9 @@ export interface WeekPlanDay {
 /** `CurrentWeekPlanBuilder::forUser()` — Home's compact pull of the current
  *  week's plan, null once a user has no plan yet. */
 export interface WeekPlan {
-    sessions_per_week: number;
+    /** Training (non-rest) days this week actually holds, not the baseline's
+     *  weekly target — a plan that began mid-week has fewer. */
+    sessions_this_week: number;
     phase: string;
     planned_km_this_week: number;
     credited_this_week: number;
