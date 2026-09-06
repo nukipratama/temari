@@ -54,6 +54,12 @@ $alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:01'), 'ai:
 // invalidated weekly. Demo excluded. Mid-week freshness stays on "Reread".
 Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:05');
 
+// 00:02 daily, ahead of plan:regenerate: retire a race the athlete has already
+// run. `completed_at` was only ever stamped by RaceController::store()
+// superseding one goal with another, so an unreplaced race stayed active
+// forever and the periodizer kept planning against a day in the past.
+$alertOnFailure(Schedule::command('plan:close-finished-races')->dailyAt('00:02'), 'plan:close-finished-races');
+
 // 00:03 daily: judge every user's Planned rows that just became past —
 // status/compliance_score/ran_anyway written once, never re-touched.
 // Idempotent by construction (only ever selects still-Planned rows), so it's

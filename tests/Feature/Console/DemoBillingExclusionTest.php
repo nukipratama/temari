@@ -60,6 +60,7 @@ const NON_BILLING = [
     'weather:backfill' => 'free Open-Meteo lookup, no LLM and no Strava call',
     'streak:settle' => 'reads weekly snapshots and writes rest-token rows, no LLM and no Strava call',
     'trend:snapshot-daily' => 'free local computation (VdotEstimator + StreamSummary), no LLM and no Strava call',
+    'plan:close-finished-races' => 'stamps completed_at on race goals whose day has passed, no LLM and no Strava call',
 ];
 
 /**
