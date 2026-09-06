@@ -12,7 +12,7 @@ use App\Services\Run\Metrics\HeartRateZones;
 
 /**
  * Turns a day's `(session_type, phase)` into its full ordered list of
- * {@see SessionSegment}s — warmup, main effort, interval reps, cooldown —
+ * {@see SessionSegment}s — warmup, main effort, interval reps —
  * combining the athlete's CURRENT long-run baseline, phase-derived volume
  * multiplier and VDOT-derived paces. Render-time only, same as the
  * retired distance-band lookup before it: nothing here is stored on a row,
@@ -21,10 +21,11 @@ use App\Services\Run\Metrics\HeartRateZones;
  * ever decides `session_type`/`phase`; every number below is computed here,
  * fresh, every render.
  *
- * Warmup/cooldown are fixed-duration bookends (physiological readiness, not
- * volume) and are never scaled by `$volumeScale`. The core distance — the
- * main block on Easy/Long/Tempo, the aggregate rep budget on Interval — is
- * everything `$volumeScale` (from {@see VolumeRedistributor}) touches.
+ * A day's distance is the WHOLE outing, warmup included — {@see self::kmFor()}
+ * carves the fixed-duration warmup (and an Interval day's recovery jogs) out of
+ * that budget rather than adding them on top of it, so what the card says and
+ * what {@see SessionMatcher} grades are the same run. A cooldown is never
+ * prescribed. See `docs/decisions/a-session-is-the-whole-outing.md`.
  */
 final class SegmentGenerator
 {
@@ -33,11 +34,19 @@ final class SegmentGenerator
 
     private const float SHORT_FRACTION_OF_LONG = 0.40;
 
-    /** @var array<string, array{0: float, 1: float}> session_type value => [warmup minutes, cooldown minutes] */
-    private const array WARMUP_COOLDOWN = [
-        'tempo' => [10.0, 5.0],
-        'interval' => [12.0, 8.0],
+    /** @var array<string, float> session_type value => warmup minutes */
+    private const array WARMUP_MINUTES = [
+        'tempo' => 10.0,
+        'interval' => 12.0,
     ];
+
+    /**
+     * A warmup never eats more than half its own session. The bookend is a
+     * fixed duration while the day's budget scales with the athlete, so on a
+     * taper week at the {@see TrainingBaseline} long-run floor the warmup
+     * would otherwise exceed the whole day and leave nothing to run.
+     */
+    private const float MAX_WARMUP_SHARE = 0.5;
 
     /**
      * Rep length / recovery length by phase, minutes. Interval only ever
@@ -56,12 +65,11 @@ final class SegmentGenerator
     ];
 
     /**
-     * The core (pre-warmup/cooldown) distance this session's main work
-     * targets, before any redistribution scale — the direct replacement for
-     * the retired distance-band lookup. Exposed separately so
-     * {@see VolumeRedistributor} can sum a week's original km without
-     * needing paces (it only ever compares distances, never converts to
-     * minutes).
+     * The WHOLE distance this session asks for, warmup included, before any
+     * redistribution scale — the direct replacement for the retired
+     * distance-band lookup. Pace-independent by construction, so
+     * {@see VolumeRedistributor} can sum a week without paces and an athlete
+     * with no VDOT estimate still gets a number.
      */
     public static function coreKmFor(SessionType $sessionType, bool $isPrimaryEasy, float $longRunBaselineKm, float $volumeMultiplier): float
     {
@@ -112,8 +120,7 @@ final class SegmentGenerator
      * A single Easy-paced block sized at whatever `$originalType`'s own core
      * km would have been — {@see ReadinessClamp}'s `ModerateOk` downgrade
      * (Tempo/Interval only: keeps the day's original size, just re-paced to
-     * Easy, no warmup/cooldown structure since it's a single continuous
-     * effort now).
+     * Easy, no warmup since it's a single continuous effort now).
      *
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
      * @return list<SessionSegment>
@@ -140,12 +147,11 @@ final class SegmentGenerator
      */
     private static function tempoSegments(PlanPhase $phase, bool $isMarathonDistance, float $km, ?array $paces): array
     {
-        [$warmupMinutes, $cooldownMinutes] = self::WARMUP_COOLDOWN['tempo'];
+        $warmupMinutes = self::WARMUP_MINUTES['tempo'];
 
         return [
             self::bookend(SegmentKey::Warmup, $warmupMinutes, $paces),
-            self::block(SegmentKey::Main, $km, self::longOrTempoPace($phase, $isMarathonDistance, forTempo: true), $paces),
-            self::bookend(SegmentKey::Cooldown, $cooldownMinutes, $paces),
+            self::block(SegmentKey::Main, $km - self::warmupKm($warmupMinutes, $km, $paces), self::longOrTempoPace($phase, $isMarathonDistance, forTempo: true), $paces),
         ];
     }
 
@@ -155,11 +161,16 @@ final class SegmentGenerator
      */
     private static function intervalSegments(PlanPhase $phase, float $km, ?array $paces): array
     {
-        [$warmupMinutes, $cooldownMinutes] = self::WARMUP_COOLDOWN['interval'];
+        $warmupMinutes = self::WARMUP_MINUTES['interval'];
         [$repMinutes, $recoveryMinutes] = self::INTERVAL_REP_TABLE[$phase->value] ?? self::INTERVAL_REP_TABLE['build'];
 
-        $workMinutes = self::minutesFor($km, PaceBand::Interval, $paces);
-        $repCount = $workMinutes === null ? 1 : max(1, (int) round($workMinutes / $repMinutes));
+        $budgetKm = $km - self::warmupKm($warmupMinutes, $km, $paces);
+        $repKm = self::kmFor($repMinutes, PaceBand::Interval, $paces);
+        $recoveryKm = self::kmFor($recoveryMinutes, PaceBand::Easy, $paces);
+
+        $repCount = $repKm === null || $recoveryKm === null
+            ? 1
+            : max(1, (int) round(($budgetKm + $recoveryKm) / ($repKm + $recoveryKm)));
 
         $segments = [self::bookend(SegmentKey::Warmup, $warmupMinutes, $paces)];
         for ($i = 0; $i < $repCount; $i++) {
@@ -168,9 +179,34 @@ final class SegmentGenerator
                 $segments[] = self::bookend(SegmentKey::Recovery, $recoveryMinutes, $paces);
             }
         }
-        $segments[] = self::bookend(SegmentKey::Cooldown, $cooldownMinutes, $paces);
 
         return $segments;
+    }
+
+    /**
+     * The warmup's share of the day's budget — zero when there is no VDOT
+     * estimate to convert its fixed minutes into distance, which leaves the
+     * whole day to the main work exactly as it was before this became the
+     * whole outing.
+     *
+     * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
+     */
+    private static function warmupKm(float $minutes, float $dayKm, ?array $paces): float
+    {
+        return min(self::kmFor($minutes, PaceBand::Easy, $paces) ?? 0.0, $dayKm * self::MAX_WARMUP_SHARE);
+    }
+
+    /**
+     * Distance a fixed-duration segment covers at its own pace — the inverse
+     * of {@see self::minutesFor()}.
+     *
+     * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
+     */
+    private static function kmFor(float $minutes, PaceBand $pace, ?array $paces): ?float
+    {
+        $secPerKm = self::secPerKm($pace, $paces);
+
+        return $secPerKm === null ? null : $minutes * 60 / $secPerKm;
     }
 
     /**

@@ -152,9 +152,7 @@ describe('WeekPlanWidget', () => {
         );
 
         expect(
-            container.querySelector(
-                'li[title="Partial · planned 8k core · 62%"]',
-            ),
+            container.querySelector('li[title="Partial · planned 8k · 62%"]'),
         ).toBeInTheDocument();
     });
 

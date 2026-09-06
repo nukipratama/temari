@@ -40,7 +40,6 @@ const INTERVAL_SESSION: PlanSessionSegment[] = [
         zone: 'Z5',
         pace_label: 'interval',
     }),
-    segment({ key: 'cooldown', minutes: 10, zone: 'Z1' }),
 ];
 
 describe('SessionBarGraph', () => {
@@ -55,14 +54,12 @@ describe('SessionBarGraph', () => {
                 segments={[
                     segment({ key: 'warmup', minutes: 10, zone: 'Z1' }),
                     segment({ key: 'main', minutes: 30 }),
-                    segment({ key: 'cooldown', minutes: 5, zone: 'Z1' }),
                 ]}
             />,
         );
 
         expect(screen.getByText('warmup')).toBeInTheDocument();
         expect(screen.getByText('main set')).toBeInTheDocument();
-        expect(screen.getByText('cooldown')).toBeInTheDocument();
         expect(screen.getByText('30 min')).toBeInTheDocument();
     });
 

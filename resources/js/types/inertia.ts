@@ -345,7 +345,7 @@ export interface PastYouTrend {
  *  `minutes`/`pace_sec_per_km` are null exactly when the athlete has no VDOT
  *  estimate yet; the segment's shape (key, pace target) still renders. */
 export interface PlanSessionSegment {
-    key: 'warmup' | 'main' | 'interval' | 'recovery' | 'cooldown';
+    key: 'warmup' | 'main' | 'interval' | 'recovery';
     minutes: number | null;
     zone: string;
     pace_label: 'easy' | 'marathon' | 'threshold' | 'interval';
@@ -369,11 +369,11 @@ export interface WeekPlanDay {
     date: string;
     phase: string;
     session_type: string;
-    /** Ordered warmup/main/cooldown (or interval reps) breakdown — see
+    /** Ordered warmup/main (or interval reps) breakdown — see
      *  `App\Services\Run\Plan\SegmentGenerator`. Empty on a rest day. */
     segments: PlanSessionSegment[];
-    /** The CORE work only (e.g. a Tempo day's threshold portion) — warmup/
-     *  cooldown are additional minutes on top, not counted here. */
+    /** The whole outing, warmup included — the same figure `SessionMatcher`
+     *  grades the day's total logged distance against. */
     distance_km: number;
     pinned: boolean;
     /** Explicitly excused before the day passed — never scored, doesn't
