@@ -88,12 +88,12 @@ class ScoreComplianceCommand extends Command
 
         $longRunKm = $baseline->forUser($user, $today)['long_run_km'];
         $plannedKmByDate = PlanRenderer::plannedKmByDate($contextRows, $longRunKm);
-        $skippedByDate = $staleRows->mapWithKeys(
-            fn (PlannedSession $s): array => [$s->date->toDateString() => $s->skipped],
+        $excusedByDate = $staleRows->mapWithKeys(
+            fn (PlannedSession $s): array => [$s->date->toDateString() => $s->isExcused()],
         )->all();
-        $stalePlannedKm = array_intersect_key($plannedKmByDate, $skippedByDate);
+        $stalePlannedKm = array_intersect_key($plannedKmByDate, $excusedByDate);
 
-        $results = $sessionMatcher->scoreRange($user, $stalePlannedKm, $skippedByDate, $today);
+        $results = $sessionMatcher->scoreRange($user, $stalePlannedKm, $excusedByDate, $today);
 
         foreach ($staleRows as $row) {
             $result = $results[$row->date->toDateString()] ?? null;

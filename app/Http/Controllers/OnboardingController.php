@@ -8,6 +8,7 @@ use App\Http\Requests\CompleteOnboardingRequest;
 use App\Models\RaceGoal;
 use App\Models\TrainingPreference;
 use App\Models\User;
+use App\Services\Run\Plan\Periodizer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,7 +29,7 @@ class OnboardingController extends Controller
         return Inertia::render('Onboarding/Index');
     }
 
-    public function store(CompleteOnboardingRequest $request): RedirectResponse
+    public function store(CompleteOnboardingRequest $request, Periodizer $periodizer): RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
@@ -69,6 +70,18 @@ class OnboardingController extends Controller
         }
 
         $user->markOnboarded();
+
+        // The plan is built here, not on connect: `plan:regenerate` only runs
+        // Mondays, so before this a user who signed up on a Tuesday met an
+        // empty Plan tab and a "No plan yet." card until the following week.
+        // This is the first moment the preferences that shape a week — run
+        // days, sessions per week, the race goal above — actually exist.
+        // Strava's backfill may still be running, so a first week can be sized
+        // from TrainingBaseline's cold-start seeds; Monday's regeneration
+        // re-sizes it against the real history. Narration deliberately does
+        // NOT fire here — it waits for the backfill, so the first week is
+        // described once, against real history rather than those seeds.
+        $periodizer->regenerate($user);
 
         return redirect()->route('dashboard')->with('success', 'You\'re all set. Let\'s see how you\'ve been running.');
     }

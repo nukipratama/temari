@@ -43,14 +43,15 @@ final class SessionMatcher
      * healthy day never pays for a query it doesn't need.
      *
      * @param  array<string, float>  $plannedKmByDate  Y-m-d => prescribed km (0.0 on a rest day)
-     * @param  array<string, bool>  $skippedByDate  Y-m-d => whether the athlete excused this day
+     * @param  array<string, bool>  $excusedByDate  Y-m-d => whether this day is excused — the athlete skipped it,
+     *                                               or the readiness clamp downgraded it to a full rest
      * @return array<string, PlannedSessionStatus>  Y-m-d => status
      */
-    public function statuses(User $user, array $plannedKmByDate, array $skippedByDate, Carbon $today): array
+    public function statuses(User $user, array $plannedKmByDate, array $excusedByDate, Carbon $today): array
     {
         return array_map(
             static fn (array $result): PlannedSessionStatus => $result['status'],
-            $this->scoreRange($user, $plannedKmByDate, $skippedByDate, $today),
+            $this->scoreRange($user, $plannedKmByDate, $excusedByDate, $today),
         );
     }
 
@@ -60,10 +61,11 @@ final class SessionMatcher
      * `ran_anyway`) each row needs written back, not just the status label.
      *
      * @param  array<string, float>  $plannedKmByDate  Y-m-d => prescribed km (0.0 on a rest day)
-     * @param  array<string, bool>  $skippedByDate  Y-m-d => whether the athlete excused this day
+     * @param  array<string, bool>  $excusedByDate  Y-m-d => whether this day is excused — the athlete skipped it,
+     *                                               or the readiness clamp downgraded it to a full rest
      * @return array<string, array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}>
      */
-    public function scoreRange(User $user, array $plannedKmByDate, array $skippedByDate, Carbon $today): array
+    public function scoreRange(User $user, array $plannedKmByDate, array $excusedByDate, Carbon $today): array
     {
         if ($plannedKmByDate === []) {
             return [];
@@ -73,7 +75,7 @@ final class SessionMatcher
         $results = [];
         foreach ($plannedKmByDate as $date => $plannedKm) {
             $isPast = Carbon::parse($date)->lt($today);
-            $results[$date] = self::scoreFor($plannedKm, $completedKm[$date] ?? 0.0, $isPast, $skippedByDate[$date] ?? false);
+            $results[$date] = self::scoreFor($plannedKm, $completedKm[$date] ?? 0.0, $isPast, $excusedByDate[$date] ?? false);
         }
 
         return $results;
@@ -81,8 +83,10 @@ final class SessionMatcher
 
     /**
      * The single source of truth for turning a day's (prescribed km,
-     * completed km) into a verdict. `$skipped` always wins — an excused day
-     * is never scored, regardless of what happened to be logged that date. A
+     * completed km) into a verdict. `$excused` always wins — an excused day
+     * is never scored, regardless of what happened to be logged that date; it
+     * covers both an athlete's own skip and a readiness clamp that downgraded
+     * the day to a full rest. A
      * rest day (`$plannedKm <= 0`) is always `Done`; whether something was
      * logged anyway is reported separately via `ran_anyway` rather than
      * changing the status itself.
@@ -96,9 +100,9 @@ final class SessionMatcher
      *
      * @return array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}
      */
-    public static function scoreFor(float $plannedKm, float $completedKm, bool $isPast, bool $skipped): array
+    public static function scoreFor(float $plannedKm, float $completedKm, bool $isPast, bool $excused): array
     {
-        if ($skipped) {
+        if ($excused) {
             return $isPast ? self::verdict(PlannedSessionStatus::Skip) : self::verdict(PlannedSessionStatus::Planned);
         }
         if ($plannedKm <= 0.0) {

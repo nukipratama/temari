@@ -88,3 +88,25 @@ it('gives distinct notes for a long-run downgrade versus a quality-work downgrad
 
     expect($longNote)->not->toBe($tempoNote);
 });
+
+it('clampsToRest only when the ceiling bottoms out and the session asks for more', function (): void {
+    expect(ReadinessClamp::clampsToRest(SessionType::Interval, ReadinessCeiling::Rest))->toBeTrue()
+        ->and(ReadinessClamp::clampsToRest(SessionType::Long, ReadinessCeiling::Rest))->toBeTrue()
+        ->and(ReadinessClamp::clampsToRest(SessionType::Easy, ReadinessCeiling::Rest))->toBeTrue()
+        // A rest day already fits under a Rest ceiling, so nothing is downgraded.
+        ->and(ReadinessClamp::clampsToRest(SessionType::Rest, ReadinessCeiling::Rest))->toBeFalse()
+        // Every other ceiling downgrades to Easy at worst, never to a full rest.
+        ->and(ReadinessClamp::clampsToRest(SessionType::Interval, ReadinessCeiling::EasyOnly))->toBeFalse()
+        ->and(ReadinessClamp::clampsToRest(SessionType::Interval, ReadinessCeiling::ModerateOk))->toBeFalse()
+        ->and(ReadinessClamp::clampsToRest(SessionType::Interval, ReadinessCeiling::QualityOk))->toBeFalse();
+});
+
+/** The predicate has to agree with what apply() would actually return. */
+it('clampsToRest agrees with apply for every session type at the Rest ceiling', function (): void {
+    foreach (SessionType::cases() as $type) {
+        $clamped = ReadinessClamp::apply($type, PlanPhase::Base, false, 20.0, 1.0, null, ReadinessCeiling::Rest);
+
+        expect(ReadinessClamp::clampsToRest($type, ReadinessCeiling::Rest))
+            ->toBe($clamped !== null && $clamped['session_type'] === SessionType::Rest);
+    }
+});
