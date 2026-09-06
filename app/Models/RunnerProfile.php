@@ -65,6 +65,22 @@ class RunnerProfile extends Model
     }
 
     /**
+     * Sources that state where the bands came from. The observed-max-HR
+     * reconciler in {@see \App\Services\Run\Ingest\ActivityPipeline} re-derives
+     * zones from a percentage model and must leave these alone: a Strava sync or
+     * a hand edit is the athlete telling us their bands, and Strava's own zones
+     * routinely look nothing like the formula's.
+     *
+     * @var list<string>
+     */
+    private const array EXPLICIT_ZONE_SOURCES = ['strava', 'manual'];
+
+    public function hasExplicitZones(): bool
+    {
+        return in_array($this->source, self::EXPLICIT_ZONE_SOURCES, strict: true);
+    }
+
+    /**
      * @return array<string, string>
      */
     #[Override]

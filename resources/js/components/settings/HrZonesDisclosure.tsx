@@ -293,7 +293,7 @@ export default function HrZonesDisclosure({
                                     as="span"
                                     token="micro"
                                     tone="ink-2"
-                                    className="w-24 flex-none truncate"
+                                    className="min-w-0 flex-1 truncate"
                                 >
                                     {HR_ZONE_LABELS[key]}
                                 </Eyebrow>

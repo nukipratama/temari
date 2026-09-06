@@ -887,6 +887,108 @@ it('raises a stale max HR to the observed peak and re-derives the zones', functi
         ->and($profile->hr_zones['Z5']['lo'])->toBeGreaterThan(175);
 });
 
+/**
+ * Reported from prod: the settings card read "Synced from Strava" over bands
+ * the percentage model had produced. A backfill observed a peak above Strava's
+ * stated max, and the reconciler re-derived every zone on top of the synced
+ * ones without touching `source`.
+ */
+it('raises the max but keeps zones the athlete stated, when they came from Strava', function (): void {
+    $activity = makeActivityWithConnection();
+    $stravaZones = [
+        'Z1' => ['lo' => 0, 'hi' => 137],
+        'Z2' => ['lo' => 138, 'hi' => 153],
+        'Z3' => ['lo' => 154, 'hi' => 167],
+        'Z4' => ['lo' => 168, 'hi' => 175],
+        'Z5' => ['lo' => 176, 'hi' => 999],
+    ];
+    $profile = RunnerProfile::factory()->for($activity->user)->create([
+        'source' => 'strava',
+        'max_hr' => 180,
+        'resting_hr' => 55,
+        'hr_zones' => $stravaZones,
+    ]);
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Hard effort', 'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
+            'has_heartrate' => true, 'max_heartrate' => 188, 'splits_metric' => [], 'map' => null,
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([
+            'time' => ['data' => [0, 60, 120]],
+            'heartrate' => ['data' => [170, 180, 188]],
+        ]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    $profile->refresh();
+    expect($profile->max_hr)->toBe(188)
+        ->and($profile->hr_zones)->toEqual($stravaZones)
+        ->and($profile->source)->toBe('strava');
+});
+
+it('keeps zones the athlete set by hand too', function (): void {
+    $activity = makeActivityWithConnection();
+    $manualZones = ['Z5' => ['lo' => 170, 'hi' => 999]];
+    $profile = RunnerProfile::factory()->for($activity->user)->create([
+        'source' => 'manual',
+        'max_hr' => 180,
+        'resting_hr' => 55,
+        'hr_zones' => $manualZones,
+    ]);
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Hard effort', 'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
+            'has_heartrate' => true, 'max_heartrate' => 188, 'splits_metric' => [], 'map' => null,
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([
+            'time' => ['data' => [0, 60, 120]],
+            'heartrate' => ['data' => [170, 180, 188]],
+        ]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    expect($profile->refresh()->hr_zones)->toEqual($manualZones);
+});
+
+/**
+ * `strava:hydrate-backlog` drains newest-first, so the peak is frequently
+ * already in the history rather than in the run being ingested. Reconciling
+ * against the whole history makes the answer the same either way.
+ */
+it('reconciles against the whole history, not just the run being ingested', function (): void {
+    $activity = makeActivityWithConnection();
+    $profile = RunnerProfile::factory()->for($activity->user)->create([
+        'source' => 'default',
+        'max_hr' => 180,
+        'resting_hr' => 55,
+    ]);
+
+    $earlier = Activity::factory()->for($activity->user)->create();
+    ActivityDetail::factory()->for($earlier)->create(['max_heartrate' => 195]);
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Easy jog', 'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
+            'has_heartrate' => true, 'max_heartrate' => 150, 'splits_metric' => [], 'map' => null,
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([
+            'time' => ['data' => [0, 60, 120]],
+            'heartrate' => ['data' => [140, 148, 150]],
+        ]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    expect($profile->refresh()->max_hr)->toBe(195);
+});
+
 it('leaves the profile alone when the run peaks below the stored max', function (): void {
     $activity = makeActivityWithConnection();
     $profile = RunnerProfile::factory()->for($activity->user)->create(['max_hr' => 190, 'resting_hr' => 55]);

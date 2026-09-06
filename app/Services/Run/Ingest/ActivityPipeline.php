@@ -13,6 +13,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Models\StravaConnection;
+use App\Models\User;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\HeartRateZones;
 use App\Services\Run\Metrics\StreamSummary;
@@ -319,25 +320,30 @@ class ActivityPipeline
     }
 
     /**
-     * Raise the athlete's max HR when a run beats it, and re-derive their zones.
-     * The athlete's own peak can never be an underestimate, so it always wins.
+     * Raise the athlete's max HR when their own history beats it. The athlete's
+     * own peak can never be an underestimate, so it always wins.
      *
-     * Assumes oldest-first ingest order: the profile climbs as ingest goes, so a
-     * backfill re-zones later activities against the corrected ceiling.
+     * Order-independent by construction: the ceiling is the highest plausible
+     * `max_heartrate` across the whole history, not a running maximum built up
+     * as ingest walks. A drain hydrating newest-first therefore reaches the same
+     * answer as one walking oldest-first — the assumption the previous shape
+     * carried, which `strava:hydrate-backlog` does not satisfy.
+     *
+     * Zones are only re-derived for a profile the athlete never spoke for. A
+     * `strava` or `manual` source states where the bands came from, and the
+     * percentage model must not silently replace it: real Strava zones are
+     * routinely nothing like it, and overwriting them left the settings card
+     * still captioned "Synced from Strava" over formula-derived numbers.
      */
-    private function reconcileMaxHeartRate(Activity $activity, ActivityDetail $detail): void
+    private function reconcileMaxHeartRate(Activity $activity): void
     {
-        $observed = $detail->max_heartrate;
+        $user = $activity->user;
+        $observed = $this->highestPlausibleMaxHr($user);
+
         if ($observed === null) {
             return;
         }
 
-        $observed = (int) round((float) $observed);
-        if (! HeartRateZones::isPlausibleMax($observed)) {
-            return;
-        }
-
-        $user = $activity->user;
         $profile = $user->runnerProfile;
 
         // Most athletes have no profile row (one only exists after a manual edit
@@ -350,14 +356,13 @@ class ActivityPipeline
         }
 
         $restingHr = $profile !== null ? $profile->resting_hr : (int) config('runner.resting_hr');
-        $zones = HeartRateZones::derive($observed, $restingHr);
 
         if ($profile === null) {
             $user->runnerProfile()->create([
                 'source' => 'observed',
                 'max_hr' => $observed,
                 'resting_hr' => $restingHr,
-                'hr_zones' => $zones,
+                'hr_zones' => HeartRateZones::derive($observed, $restingHr),
                 'optimal_cadence_spm' => (int) config('runner.optimal_cadence_spm'),
             ]);
 
@@ -369,10 +374,21 @@ class ActivityPipeline
 
         // Updating in place keeps the loaded relation current, so the zone read
         // that follows sees the new bands without another query.
-        $profile->update([
-            'max_hr' => $observed,
-            'hr_zones' => $zones,
-        ]);
+        $profile->update($profile->hasExplicitZones()
+            ? ['max_hr' => $observed]
+            : ['max_hr' => $observed, 'hr_zones' => HeartRateZones::derive($observed, $restingHr)]);
+    }
+
+    /** The athlete's highest believable peak across their whole history. */
+    private function highestPlausibleMaxHr(User $user): ?int
+    {
+        $max = ActivityDetail::query()
+            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+            ->where('activities.user_id', $user->id)
+            ->whereBetween('activity_details.max_heartrate', [HeartRateZones::MIN_MAX_HR, HeartRateZones::MAX_MAX_HR])
+            ->max('activity_details.max_heartrate');
+
+        return $max === null ? null : (int) round((float) $max);
     }
 
     /**
@@ -384,7 +400,7 @@ class ActivityPipeline
             return;
         }
 
-        $this->reconcileMaxHeartRate($activity, $detail);
+        $this->reconcileMaxHeartRate($activity);
 
         // Not $detail->activity: during ingest the row is still a stub, and
         // AnalyzedScope would resolve that belongsTo to null.
