@@ -36,7 +36,12 @@ class TrainingPreferencesController extends Controller
         // week WeekPlanBuilder emits, so a saved preference that changed
         // nothing until Monday was a setting that appeared not to work.
         $periodizer->regenerate($user);
-        $narrationRequester->requestForCurrentWeekUnlessCoolingDown($user, Carbon::today());
+
+        if ($user->is_demo) {
+            $narrationRequester->ensureDemoFilled($user, Carbon::today());
+        } else {
+            $narrationRequester->requestForCurrentWeekUnlessCoolingDown($user, Carbon::today());
+        }
 
         return back()->with('success', 'Your training preferences are saved. Your plan\'s been reshaped around them.');
     }

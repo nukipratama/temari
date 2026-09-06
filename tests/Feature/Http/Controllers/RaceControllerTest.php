@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Models\PersonalRecord;
 use App\Models\RaceGoal;
 use App\Models\PlannedSession;
@@ -9,6 +10,7 @@ use Illuminate\Support\Carbon;
 use App\Models\User;
 use App\Support\SharedPropCacheKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -153,6 +155,30 @@ it('reshapes the plan the moment a race is set', function (): void {
         'name' => 'A half',
     ])->assertSessionHasNoErrors();
 
+    expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
+
+    Carbon::setTestNow();
+});
+
+/**
+ * The demo login is public and credential-free — a real narration dispatch
+ * here would be an unauthenticated path to the Azure bill, the exact gap
+ * `plan:regenerate` and `shouldServeRuleBased()` already guard against
+ * everywhere else the plan is regenerated.
+ */
+it('never bills narration for the demo account', function (): void {
+    Bus::fake();
+    Carbon::setTestNow('2026-09-08 10:00:00'); // a Tuesday
+    $user = User::factory()->create(['is_demo' => true]);
+
+    $this->actingAs($user)->post('/race', [
+        'race_date' => Carbon::today()->addMonths(4)->toDateString(),
+        'distance_m' => 21_097,
+        'goal_time_sec' => 7_200,
+        'name' => 'A half',
+    ])->assertSessionHasNoErrors();
+
+    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
     expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
 
     Carbon::setTestNow();

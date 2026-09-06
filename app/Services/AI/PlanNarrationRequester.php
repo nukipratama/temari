@@ -118,28 +118,20 @@ final readonly class PlanNarrationRequester
     public function requestForCurrentWeek(User $user, Carbon $today): void
     {
         $dates = $this->currentWeekDates($today);
-        $longRunKm = $this->baseline->forUser($user, $today)['long_run_km'];
-        $sessions = PlannedSession::query()
-            ->where('user_id', $user->id)
-            ->whereIn('date', $dates)
-            ->get()
-            ->keyBy(fn (PlannedSession $session): string => $session->date->toDateString());
+        $expected = $this->expectedDayFingerprints($user, $today, $dates);
         $stamped = $this->stampedDayFingerprints($user, $dates);
 
         foreach ($dates as $date) {
-            $session = $sessions->get($date);
-            if ($session === null) {
+            if (! isset($expected[$date])) {
                 continue;
             }
-
-            $expected = MaterialFingerprint::forPlannedSession($session, $longRunKm);
 
             $this->analysisService->request(
                 AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
                 $user->id,
                 AnalysisType::PlanDayVoice,
                 $date,
-                invalidate: $stamped[$date] !== $expected,
+                invalidate: $stamped[$date] !== $expected[$date],
             );
         }
 
@@ -301,6 +293,7 @@ final readonly class PlanNarrationRequester
         }
 
         return $row->status === AnalysisStatus::Done
+            && $row->content_fingerprint !== null
             && $expectedFingerprint !== null
             && $row->content_fingerprint !== $expectedFingerprint;
     }

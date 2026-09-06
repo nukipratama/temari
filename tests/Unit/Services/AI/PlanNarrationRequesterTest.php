@@ -456,6 +456,31 @@ describe('stale plan-day takes', function (): void {
             ->toBe('long run today');
     });
 
+    /**
+     * A rule-based fill (cost ceiling, content filter, or the demo account)
+     * never stamps a fingerprint — that null is a deliberate "eligible for a
+     * real narration later" marker, not a claim of staleness, so it must not
+     * be treated as drift and hidden.
+     */
+    it('keeps a finished take with no stamped fingerprint', function (): void {
+        $user = User::factory()->create();
+        $today = Carbon::today()->toDateString();
+        PlannedSession::factory()->for($user)->create([
+            'date' => $today,
+            'session_type' => SessionType::Long,
+        ]);
+        Analysis::factory()->done('rule-based take')->create([
+            'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::PlanDayVoice,
+            'discriminator' => $today,
+            'content_fingerprint' => null,
+        ]);
+
+        expect($this->requester->payloadsForCurrentWeek($user, Carbon::today())['days'][$today]['content'])
+            ->toBe('rule-based take');
+    });
+
     /** A queued job is real work, so the skeleton above it is a promise kept. */
     it('keeps a pending take, drifted or not, because a job is coming', function (): void {
         $user = User::factory()->create();

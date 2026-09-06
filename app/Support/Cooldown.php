@@ -38,7 +38,6 @@ final readonly class Cooldown
      */
     public const int NOTIFICATION_WINDOW_SECONDS = 300;
 
-    /** "Send test notification" — short, because it is a setup-time debug tool. */
     /**
      * Re-narrating a whole week's plan after a settings change. Editing a race
      * goal or training preferences reshapes every day the athlete has, so it
@@ -48,6 +47,7 @@ final readonly class Cooldown
      */
     public const int PLAN_NARRATION_WINDOW_SECONDS = 86_400;
 
+    /** "Send test notification" — short, because it is a setup-time debug tool. */
     public const int TEST_WINDOW_SECONDS = 60;
 
     public function __construct(private string $key, private int $window = self::WINDOW_SECONDS)

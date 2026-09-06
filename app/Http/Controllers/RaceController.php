@@ -80,7 +80,12 @@ class RaceController extends Controller
         // trained the athlete against an arc their own goal had superseded,
         // while the message below said otherwise.
         $periodizer->regenerate($user);
-        $narrationRequester->requestForCurrentWeekUnlessCoolingDown($user, Carbon::today());
+
+        if ($user->is_demo) {
+            $narrationRequester->ensureDemoFilled($user, Carbon::today());
+        } else {
+            $narrationRequester->requestForCurrentWeekUnlessCoolingDown($user, Carbon::today());
+        }
 
         return back()->with('success', 'Your race is set. Temari will keep the plan honest against it.');
     }
