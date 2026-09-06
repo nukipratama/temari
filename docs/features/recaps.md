@@ -3,7 +3,7 @@ title: Recaps (weekly / monthly / persona)
 description: Temari's narrative recaps surfaced across the app — weekly on the Feed, monthly on the Calendar, persona/profile voice on Profile
 tags: [feature, recaps]
 status: living
-reviewed: 2026-08-19
+reviewed: 2026-09-06
 code_refs:
   - resources/js/components/history/RecapCard.tsx
   - resources/js/pages/Activities/Feed.tsx
@@ -51,4 +51,5 @@ It comes from [ProfileController](app/Http/Controllers/ProfileController.php) (`
 
 - Weekly and monthly are **chained**: "Try again" on a failed link resumes the chain from the earliest unfilled one; "Reread" (regenerate) shows only on the chain head, so re-narrating mid-history can't desync later links. See [[chained-narration]].
 - The open week/month is **window-gated** (`awaitingSchedule`): its pending row is a "recap incoming" signal, not backlog. See [[deferred-recap-windowing]].
+- A **first Strava connect** runs the weekly + monthly kickoff once for that user, chained behind the history backfill ([KickoffRecapsJob](app/Jobs/AI/KickoffRecapsJob.php)), so a new runner's history narrates on day one instead of waiting for Monday 00:01 / the 1st. It reads only rows the backfill already wrote, so it costs no Strava budget, and it skips every `Done` recap, so a re-run bills nothing.
 - Underlying rows are `Analysis` records — see [[data-model]] and [[ai-pipeline]].

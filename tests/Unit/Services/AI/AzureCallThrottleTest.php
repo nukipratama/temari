@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Exceptions\AI\TransientUpstreamException;
+use Carbon\Carbon;
 use App\Services\AI\AzureCallThrottle;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -37,6 +38,9 @@ it('blocks once, then proceeds once the sleep step frees the window', function (
 });
 
 it('throws TransientUpstreamException once the block cap is exceeded under sustained oversubscription', function (): void {
+    // availableIn() is read against the wall clock, so a second ticking over
+    // between the hit and the read splits the cap 59/31 instead of 60/30.
+    Carbon::setTestNow(Carbon::now());
     config(['ai.azure_calls_per_minute' => 1]);
     RateLimiter::hit('azure-openai-calls', 60); // consume the only slot, never freed
 
@@ -53,6 +57,8 @@ it('throws TransientUpstreamException once the block cap is exceeded under susta
     // exhaust the cap before giving up — fast and deterministic regardless of
     // the real decay window's length.
     expect($sleeps)->toBe([60, 30]);
+
+    Carbon::setTestNow();
 });
 
 it('respects a configured block cap', function (): void {
