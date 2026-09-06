@@ -12,6 +12,7 @@ use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\RateLimiter;
 
 uses(RefreshDatabase::class);
 
@@ -147,7 +148,7 @@ it('stops before the live-ingest reserve when the read pool is spent', function 
 
     $this->travelTo(now());
     for ($i = 0; $i < 150; $i++) {
-        Illuminate\Support\Facades\RateLimiter::hit('strava-api:15min', 900);
+        RateLimiter::hit('strava-api:15min', 900);
     }
 
     $this->artisan('strava:hydrate-backlog')

@@ -7,6 +7,7 @@ reviewed: 2026-09-06
 code_refs:
   - app/Console/Commands/Strava/HydrateBacklogCommand.php
   - app/Services/Run/Ingest/DetailHydrator.php
+  - app/Listeners/DispatchPostRunAnalysis.php
   - app/Services/Strava/StravaClient.php
   - app/Enums/StravaReadPriority.php
   - routes/console.php
@@ -31,7 +32,7 @@ The gap was never a *Strava* cost problem. Hydrating that whole backlog is 346 r
 **`strava:hydrate-backlog` ([HydrateBacklogCommand](app/Console/Commands/Strava/HydrateBacklogCommand.php)) runs hourly and drains the summary-only backlog newest-first, through the same `DetailHydrator` the browse path uses.**
 
 - **It is paced by headroom, not by a guess.** [`StravaClient::backgroundHeadroom()`](app/Services/Strava/StravaClient.php) reports what a `Background` read may still spend *before* reaching the live-ingest reserve — the same ceiling [[live-ingest-read-reserve]] already enforces, read instead of hit. The tick's budget is that headroom divided by the two reads a run costs, so the drain shrinks itself as live ingest spends the shared pool and disappears entirely when the pool is tight. `rateLimitRemaining()` deliberately keeps reporting the raw pool for the sync log and Pulse card.
-- **Newest-first**, because recent runs are the ones a user is about to look at, and the only ones still inside the twelve-week LLM window ([[twelve-week-narration-cutoff]]).
+- **Newest-first**, because recent runs are the ones a user is about to look at, and the only ones still inside the twelve-week LLM window ([[twelve-week-narration-cutoff]]). The order also decides narration latency: [DispatchPostRunAnalysis](app/Listeners/DispatchPostRunAnalysis.php) reserves a 6-minute stagger slot for *every* backfilled run, past the cutoff or not, so draining oldest-first would have parked the runs that actually get an LLM call behind hours of slots belonging to runs that fill rule-based and free.
 - **The tick is split evenly across users with a backlog**, so one deep archive cannot consume a whole tick while another user's history stays dark.
 - **Nothing new was needed to make it safe.** `IngestActivityJob` is `ShouldBeUnique` so overlapping ticks collapse; `Background` priority already yields to live ingest; the AI fan-out already staggers backfilled cascades 6 minutes apart ([StaggerBackfillAction](app/Actions/AI/StaggerBackfillAction.php)) and already serves anything past 84 days from the rule-based filler for free; and hydration already rolls the weekly snapshots forward ([ActivityPipeline::recomputeSummary()](app/Services/Run/Ingest/ActivityPipeline.php#L425)), so the load curve repairs itself as a side effect.
 
