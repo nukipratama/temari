@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Plan\RestClampRecorder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -88,4 +91,32 @@ it('scopes to the given user', function (): void {
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeFalse()
         ->and($session->fresh()->rest_clamped_at)->toBeNull();
+});
+
+/**
+ * A dashboard load minutes earlier (the ordinary render path) warms
+ * TrainingLoad's 5-minute summary cache. The run that should trip the clamp
+ * is ingested inside that window, so an uninvalidated read would grade
+ * against the pre-run load and silently skip the one write this class exists
+ * to make.
+ */
+it('recomputes fresh training load instead of a pre-ingest cache entry', function (): void {
+    $user = User::factory()->create();
+    $session = todaysSession($user);
+
+    ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
+        'trimp_edwards' => 10.0,
+        'start_date_local' => Carbon::yesterday(),
+    ]);
+    // Warms the cache with the pre-ingest (non-overreaching) reading, exactly
+    // as a dashboard render would moments before the run comes in.
+    app(TrainingLoad::class)->summary($user, Carbon::today());
+
+    ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
+        'trimp_edwards' => 500.0,
+        'start_date_local' => Carbon::today(),
+    ]);
+
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
+        ->and($session->fresh()->rest_clamped_at)->not->toBeNull();
 });

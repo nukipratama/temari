@@ -37,6 +37,7 @@ use Override;
  * @property PlannedSessionStatus $status
  * @property int|null $compliance_score
  * @property bool $ran_anyway
+ * @property Carbon|null $rest_clamped_at
  * @property-read User $user
  */
 #[Fillable([

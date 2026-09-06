@@ -47,6 +47,13 @@ final readonly class RestClampRecorder
             return false;
         }
 
+        // The ceiling has to reflect the activity that just triggered this call
+        // (the ingest listener's whole reason to run) or a carried-over cache
+        // from an earlier dashboard load this same window would compute against
+        // stale, pre-ingest load — and unlike a render, this write never
+        // self-corrects.
+        TrainingLoad::clearSummaryCache($user);
+
         $ceiling = ReadinessCeiling::from(
             BriefingContext::forUser($user, $today, $this->trainingLoad->summary($user, $today))->readinessCeiling,
         );

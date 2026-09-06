@@ -58,14 +58,6 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $delaySec = $isBackfill ? ($this->staggerBackfill)($activity->user_id) : 0;
         $isToday = $detail->start_date_local?->toDateString() === $today;
 
-        // A run today moves the readiness ceiling, which is the only moment a
-        // clamp to full rest becomes true. Backfill of an older day is skipped:
-        // it would recompute today's ceiling once per imported run for a
-        // verdict the daily briefing already covers.
-        if ($isToday) {
-            $this->restClampRecorder->record($user, Carbon::today());
-        }
-
         $this->requestCardFlavor($activity, $tooOld, $delaySec);
 
         $this->dispatchActivityGroup($activity, $isBackfill, $tooOld, $delaySec);
@@ -89,6 +81,16 @@ class DispatchPostRunAnalysis implements ShouldQueue
             return;
         }
         $snapshot = $this->weeklyAggregator->rebuildForwardFrom($user, $detail->start_date_local);
+
+        // After the rebuild, not before: a run today moves the readiness
+        // ceiling, and BriefingContext falls back to the WeeklySnapshot this
+        // line just rewrote when live load has no form status of its own.
+        // Backfill of an older day is skipped — it would recompute today's
+        // ceiling once per imported run for a verdict the daily briefing
+        // already covers.
+        if ($isToday) {
+            $this->restClampRecorder->record($user, Carbon::today());
+        }
         if ($snapshot !== null) {
             // Weekly cadence: regenerating the recap of a still-unfinished week
             // on every run was the single biggest LLM re-bill. The row is staged
