@@ -30,6 +30,30 @@ it('leaves a date that has not happened yet as planned', function (): void {
     ]);
 });
 
+it('credits a day still in progress once the run already clears the bar', function (): void {
+    expect(SessionMatcher::scoreFor(10.0, 10.0, false, false))->toBe([
+        'status' => PlannedSessionStatus::Done,
+        'score' => 100,
+        'ran_anyway' => false,
+    ])
+        ->and(SessionMatcher::scoreFor(10.0, 5.0, false, false)['status'])->toBe(PlannedSessionStatus::Partial)
+        ->and(SessionMatcher::scoreFor(10.0, 20.0, false, false)['status'])->toBe(PlannedSessionStatus::Overreached);
+});
+
+it('floors a day still in progress back to planned when the run falls short', function (): void {
+    // Missed is the one verdict the hours left in the day can still overturn.
+    expect(SessionMatcher::scoreFor(10.0, 1.0, false, false))->toBe([
+        'status' => PlannedSessionStatus::Planned,
+        'score' => null,
+        'ran_anyway' => false,
+    ]);
+});
+
+it('leaves a rest day still in progress as planned rather than crediting the day off', function (): void {
+    expect(SessionMatcher::scoreFor(0.0, 0.0, false, false)['status'])->toBe(PlannedSessionStatus::Planned)
+        ->and(SessionMatcher::scoreFor(0.0, 5.0, false, false)['ran_anyway'])->toBeFalse();
+});
+
 it('skip wins over everything, even if the athlete happened to run', function (): void {
     expect(SessionMatcher::scoreFor(10.0, 10.0, true, true))->toBe([
         'status' => PlannedSessionStatus::Skip,

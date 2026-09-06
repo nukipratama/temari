@@ -17,9 +17,9 @@ use Illuminate\Support\Carbon;
  * {@see PlannedSessionStatus::Partial}. `plan:score-compliance` (daily) is
  * what actually calls {@see self::scoreFor()} and persists the result onto
  * each {@see \App\Models\PlannedSession} row — this class stays render-safe
- * (`statuses()`) only as a fallback for a past row the daily command hasn't
- * reached yet, so a page load never shows a stale `planned` for a day that's
- * already over.
+ * (`statuses()`) for a past row the daily command hasn't reached yet, so a
+ * page load never shows a stale `planned` for a day that's already over, and
+ * for today, which the daily command deliberately never reaches.
  *
  * Loads a whole date range in one query — the per-day existence check this
  * replaced on the Plan tab was an N+1 across every rendered week.
@@ -37,7 +37,8 @@ final class SessionMatcher
 
     /**
      * Render-time fallback for whatever subset of `$plannedKmByDate` is
-     * still `planned` despite being past-dated — see the class docblock.
+     * still `planned` despite being past-dated, plus today — see the class
+     * docblock.
      * Callers should only pass the stale subset, not the whole range, so a
      * healthy day never pays for a query it doesn't need.
      *
@@ -80,29 +81,33 @@ final class SessionMatcher
 
     /**
      * The single source of truth for turning a day's (prescribed km,
-     * completed km) into a persisted verdict. `$skipped` always wins — an
-     * excused day is never scored, regardless of what happened to be logged
-     * that date. A rest day (`$plannedKm <= 0`) is always `Done`; whether
-     * something was logged anyway is reported separately via `ran_anyway`
-     * rather than changing the status itself.
+     * completed km) into a verdict. `$skipped` always wins — an excused day
+     * is never scored, regardless of what happened to be logged that date. A
+     * rest day (`$plannedKm <= 0`) is always `Done`; whether something was
+     * logged anyway is reported separately via `ran_anyway` rather than
+     * changing the status itself.
+     *
+     * A day still in progress (`$isPast` false) is graded too, but the
+     * verdict only stands when the athlete has already earned it: anything
+     * short of credited floors back to `Planned`. Falling short is not
+     * decidable until the day ends, while clearing the bar cannot be undone
+     * by the hours left in it. See
+     * `docs/decisions/today-credits-when-earned.md`.
      *
      * @return array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}
      */
     public static function scoreFor(float $plannedKm, float $completedKm, bool $isPast, bool $skipped): array
     {
-        if (! $isPast) {
-            return ['status' => PlannedSessionStatus::Planned, 'score' => null, 'ran_anyway' => false];
-        }
         if ($skipped) {
-            return ['status' => PlannedSessionStatus::Skip, 'score' => null, 'ran_anyway' => false];
+            return $isPast ? self::verdict(PlannedSessionStatus::Skip) : self::verdict(PlannedSessionStatus::Planned);
         }
         if ($plannedKm <= 0.0) {
-            return ['status' => PlannedSessionStatus::Done, 'score' => null, 'ran_anyway' => $completedKm > 0.0];
+            return $isPast
+                ? ['status' => PlannedSessionStatus::Done, 'score' => null, 'ran_anyway' => $completedKm > 0.0]
+                : self::verdict(PlannedSessionStatus::Planned);
         }
 
         $ratio = $completedKm / $plannedKm;
-        $score = (int) round($ratio * 100);
-
         $status = match (true) {
             $ratio >= self::OVERREACHED_FRACTION => PlannedSessionStatus::Overreached,
             $ratio >= self::DONE_FRACTION => PlannedSessionStatus::Done,
@@ -110,7 +115,62 @@ final class SessionMatcher
             default => PlannedSessionStatus::Missed,
         };
 
-        return ['status' => $status, 'score' => $score, 'ran_anyway' => false];
+        if (! $isPast && ! $status->isCredited()) {
+            return self::verdict(PlannedSessionStatus::Planned);
+        }
+
+        return ['status' => $status, 'score' => (int) round($ratio * 100), 'ran_anyway' => false];
+    }
+
+    /**
+     * @return array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}
+     */
+    private static function verdict(PlannedSessionStatus $status): array
+    {
+        return ['status' => $status, 'score' => null, 'ran_anyway' => false];
+    }
+
+    /**
+     * Every logged run of each day in the range, keyed by date, oldest
+     * first. `km` is the day's total (the same figure {@see self::scoreFor()}
+     * grades against) and drives the planned-vs-actual bar; `runs` lists each
+     * run so a two-session day can show both instead of pairing the day's
+     * total distance with one run's duration, which read as a single
+     * impossible run.
+     *
+     * @return array<string, array{km: float, runs: list<array{id: int, km: float, seconds: int|null}>}>
+     */
+    public function activityByDate(User $user, Carbon $from, Carbon $to): array
+    {
+        if ($to->lessThan($from)) {
+            return [];
+        }
+
+        $rows = ActivityDetail::query()
+            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+            ->where('activities.user_id', $user->id)
+            ->whereNotNull('activity_details.start_date_local')
+            ->whereBetween('activity_details.start_date_local', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->orderBy('activity_details.start_date_local')
+            ->get(['activity_details.activity_id', 'activity_details.start_date_local', 'activity_details.distance', 'activity_details.moving_time']);
+
+        $byDate = [];
+        foreach ($rows as $row) {
+            $date = $row->start_date_local?->toDateString();
+            if ($date === null) {
+                continue;
+            }
+
+            $km = DistanceFormatter::km((float) $row->distance);
+            $byDate[$date]['km'] = round(($byDate[$date]['km'] ?? 0.0) + $km, 1);
+            $byDate[$date]['runs'][] = [
+                'id' => (int) $row->activity_id,
+                'km' => $km,
+                'seconds' => $row->moving_time,
+            ];
+        }
+
+        return $byDate;
     }
 
     /**
