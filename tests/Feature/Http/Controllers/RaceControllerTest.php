@@ -183,3 +183,71 @@ it('never bills narration for the demo account', function (): void {
 
     Carbon::setTestNow();
 });
+
+/**
+ * `/race` had only GET and POST: a race could be superseded by another but
+ * never simply called off, so a wrong date was stuck until it passed while the
+ * plan kept building phases toward it.
+ */
+it('clears the active race and rebuilds the plan without it', function (): void {
+    Carbon::setTestNow('2026-09-08 10:00:00');
+    $user = User::factory()->create();
+    $race = RaceGoal::query()->create([
+        'user_id' => $user->id,
+        'race_date' => Carbon::today()->addMonths(4)->toDateString(),
+        'distance_m' => 21_097,
+        'goal_time_sec' => 7_200,
+        'name' => 'A half',
+    ]);
+
+    $this->actingAs($user)->delete('/race')->assertSessionHasNoErrors();
+
+    expect($race->fresh()->completed_at)->not->toBeNull()
+        ->and(RaceGoal::query()->where('user_id', $user->id)->active()->exists())->toBeFalse()
+        ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
+
+    Carbon::setTestNow();
+});
+
+/** Stamped, not deleted — an abandoned race is still part of the record. */
+it('keeps the cleared race on record', function (): void {
+    Carbon::setTestNow('2026-09-08 10:00:00');
+    $user = User::factory()->create();
+    RaceGoal::query()->create([
+        'user_id' => $user->id,
+        'race_date' => Carbon::today()->addMonths(4)->toDateString(),
+        'distance_m' => 21_097,
+        'goal_time_sec' => 7_200,
+        'name' => 'A half',
+    ]);
+
+    $this->actingAs($user)->delete('/race');
+
+    expect(RaceGoal::query()->where('user_id', $user->id)->count())->toBe(1);
+
+    Carbon::setTestNow();
+});
+
+it('does nothing when there is no race to clear', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->delete('/race')->assertSessionHasNoErrors();
+
+    expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(0);
+});
+
+it('never clears another athlete\'s race', function (): void {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    $theirs = RaceGoal::query()->create([
+        'user_id' => $other->id,
+        'race_date' => Carbon::today()->addMonths(4)->toDateString(),
+        'distance_m' => 21_097,
+        'goal_time_sec' => 7_200,
+        'name' => 'Theirs',
+    ]);
+
+    $this->actingAs($user)->delete('/race');
+
+    expect($theirs->fresh()->completed_at)->toBeNull();
+});

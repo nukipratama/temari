@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { router } from '@inertiajs/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import Race from './Race';
 
@@ -112,5 +113,36 @@ describe('Race', () => {
 
         expect(screen.getByText('10.0 km')).toBeInTheDocument();
         expect(screen.getByText('50:00')).toBeInTheDocument();
+    });
+
+    /**
+     * Only rendered when a race exists — there is nothing to clear otherwise,
+     * and a control that cannot work should not be drawn at all.
+     */
+    it('offers to clear the race, and only when one is set', () => {
+        const { unmount } = render(
+            <Race race={RACE} projection={PROJECTION} />,
+        );
+        expect(
+            screen.getByRole('button', { name: /clear this race/i }),
+        ).toBeInTheDocument();
+        unmount();
+
+        render(<Race race={null} projection={null} />);
+        expect(
+            screen.queryByRole('button', { name: /clear this race/i }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('clears through to the race endpoint', () => {
+        const remove = vi.spyOn(router, 'delete').mockImplementation(() => {});
+        render(<Race race={RACE} projection={PROJECTION} />);
+
+        fireEvent.click(
+            screen.getByRole('button', { name: /clear this race/i }),
+        );
+
+        expect(remove).toHaveBeenCalledWith('/race');
+        remove.mockRestore();
     });
 });

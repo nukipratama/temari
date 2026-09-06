@@ -91,6 +91,48 @@ class RaceController extends Controller
     }
 
     /**
+     * Retires the athlete's race without replacing it, and returns the plan to
+     * its self-scaled arc.
+     *
+     * Until this existed a race could only ever be superseded by another one,
+     * so a wrong date was stuck until it passed — and the plan kept building
+     * phases toward it the whole time. Stamped rather than deleted, the same
+     * way {@see self::store()} retires the goal it supersedes: a race the
+     * athlete abandoned is still part of their record.
+     */
+    public function destroy(
+        Request $request,
+        Periodizer $periodizer,
+        PlanNarrationRequester $narrationRequester,
+    ): RedirectResponse {
+        /** @var User $user */
+        $user = $request->user();
+
+        $retired = RaceGoal::query()
+            ->where('user_id', $user->id)
+            ->active()
+            ->update(['completed_at' => now()]);
+
+        if ($retired === 0) {
+            return back();
+        }
+
+        SharedPropCacheKey::ActiveRace->forget($user->id);
+
+        // Same reasoning as store(): the plan's whole structure hangs off
+        // whether a race is active, so it is rebuilt now rather than on Monday.
+        $periodizer->regenerate($user);
+
+        if ($user->is_demo) {
+            $narrationRequester->ensureDemoFilled($user, Carbon::today());
+        } else {
+            $narrationRequester->requestForCurrentWeekUnlessCoolingDown($user, Carbon::today());
+        }
+
+        return back()->with('success', 'Race cleared. Temari\'s back to building around your own running.');
+    }
+
+    /**
      * @return array{id: int, race_date: string, distance_m: int, goal_time_sec: int, name: string|null}|null
      */
     private function racePayload(?RaceGoal $race): ?array
