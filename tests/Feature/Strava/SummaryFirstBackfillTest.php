@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -219,7 +220,11 @@ it('lets the chained recap kickoff narrate the whole backfilled history without 
     $captured = [];
     $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
 
-    new KickoffRecapsJob($user->id)->handle(app(KickoffWeeklyRecaps::class), app(KickoffMonthlyRecaps::class));
+    new KickoffRecapsJob($user->id)->handle(
+        app(KickoffWeeklyRecaps::class),
+        app(KickoffMonthlyRecaps::class),
+        app(PlanNarrationRequester::class),
+    );
 
     // The backfill already wrote the weekly snapshot and the summary detail rows
     // both kickoffs read, so nothing goes back to Strava.

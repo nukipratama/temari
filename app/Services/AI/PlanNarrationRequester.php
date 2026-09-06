@@ -71,8 +71,8 @@ final readonly class PlanNarrationRequester
      * did, and reports whether it fired. Guards **only** the voice: callers
      * regenerate the plan itself unconditionally, since a plan left describing
      * a race the athlete no longer has is worse than a day-old blurb. The
-     * manual regenerate button, `plan:regenerate` and onboarding all bypass
-     * this — see `docs/features/plan-periodizer.md`.
+     * manual regenerate button, `plan:regenerate` and the first-week paths all
+     * bypass this — see `docs/features/plan-periodizer.md`.
      */
     public function requestForCurrentWeekUnlessCoolingDown(User $user, Carbon $today): bool
     {
@@ -117,6 +117,23 @@ final readonly class PlanNarrationRequester
      */
     public function requestForCurrentWeek(User $user, Carbon $today): void
     {
+        $this->requestWeek($user, $today, invalidateChanged: true);
+    }
+
+    /**
+     * The brand-new account's one narration of its first week, requested by
+     * whichever of two racers finishes second: onboarding once
+     * {@see \App\Models\User::$backfilled_at} is stamped, or the connect
+     * chain's last link once a plan exists. Nothing is ever invalidated, so
+     * the overlap where both fire re-bills nothing.
+     */
+    public function requestForFirstWeek(User $user, Carbon $today): void
+    {
+        $this->requestWeek($user, $today, invalidateChanged: false);
+    }
+
+    private function requestWeek(User $user, Carbon $today, bool $invalidateChanged): void
+    {
         $dates = $this->currentWeekDates($today);
         $expected = $this->expectedDayFingerprints($user, $today, $dates);
         $stamped = $this->stampedDayFingerprints($user, $dates);
@@ -131,7 +148,7 @@ final readonly class PlanNarrationRequester
                 $user->id,
                 AnalysisType::PlanDayVoice,
                 $date,
-                invalidate: $stamped[$date] !== $expected[$date],
+                invalidate: $invalidateChanged && $stamped[$date] !== $expected[$date],
             );
         }
 
@@ -145,7 +162,7 @@ final readonly class PlanNarrationRequester
                 PlanAdaptation::class,
                 $adaptation->id,
                 AnalysisType::PlanWeekVoice,
-                invalidate: $stampedWeek !== MaterialFingerprint::forPlanAdaptation($adaptation),
+                invalidate: $invalidateChanged && $stampedWeek !== MaterialFingerprint::forPlanAdaptation($adaptation),
             );
         }
 

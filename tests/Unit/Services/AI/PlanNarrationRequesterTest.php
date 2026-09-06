@@ -379,9 +379,10 @@ describe('requestForCurrentWeekUnlessCoolingDown', function (): void {
     });
 
     /**
-     * The guard is on spend, not on correctness — the manual button, the weekly
-     * job and onboarding all call requestForCurrentWeek() directly and are
-     * deliberately unaffected by it.
+     * The guard is on spend, not on correctness — the manual button and the
+     * weekly job call requestForCurrentWeek() directly, onboarding and the
+     * connect chain call requestForFirstWeek(), and all four are deliberately
+     * unaffected by it.
      */
     it('does not block the uncooled request path', function (): void {
         $user = User::factory()->create();
@@ -497,5 +498,39 @@ describe('stale plan-day takes', function (): void {
 
         expect($this->requester->payloadsForCurrentWeek($user, Carbon::today())['days'])
             ->toHaveKey($today);
+    });
+});
+
+describe('requestForFirstWeek', function (): void {
+    it('narrates the day, week and season blocks of a brand-new account', function (): void {
+        $user = User::factory()->create();
+        PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
+        PlanAdaptation::factory()->for($user)->create(['week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)]);
+        Season::factory()->for($user)->create();
+
+        $this->requester->requestForFirstWeek($user, Carbon::today());
+
+        Bus::assertDispatchedTimes(AnalyzePlanDayVoiceJob::class, 1);
+        Bus::assertDispatched(AnalyzePlanWeekVoiceJob::class);
+        Bus::assertDispatched(AnalyzePlanSeasonVoiceJob::class);
+    });
+
+    /**
+     * Onboarding and the connect chain both call this, and the second one to
+     * arrive must cost nothing — even where the material has since drifted.
+     */
+    it('never invalidates a finished row, so the second racer bills nothing', function (): void {
+        $user = User::factory()->create();
+        $session = PlannedSession::factory()->for($user)->create([
+            'date' => Carbon::today()->toDateString(),
+            'session_type' => SessionType::Easy,
+        ]);
+        $row = stampedDay($user, $session);
+        $session->update(['session_type' => SessionType::Tempo]);
+
+        $this->requester->requestForFirstWeek($user, Carbon::today());
+
+        expect($row->fresh()->status)->toBe(AnalysisStatus::Done);
+        Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
     });
 });

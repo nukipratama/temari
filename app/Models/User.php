@@ -25,6 +25,7 @@ use Override;
  * @property bool $is_demo
  * @property bool $is_admin
  * @property Carbon|null $onboarded_at
+ * @property Carbon|null $backfilled_at
  */
 // `is_admin` is deliberately NOT fillable: it is a privilege flag granted only
 // via the `user:set-admin` command, never through mass assignment.
@@ -63,12 +64,24 @@ class User extends Authenticatable
             'is_demo' => 'boolean',
             'is_admin' => 'boolean',
             'onboarded_at' => 'datetime',
+            'backfilled_at' => 'datetime',
         ];
     }
 
     public function markOnboarded(): void
     {
         $this->onboarded_at = now();
+        $this->save();
+    }
+
+    /**
+     * Stamps the moment the first-connect Strava backfill finished. Nothing
+     * else can answer "is the history in yet?": the connect chain's position
+     * is not readable from outside it.
+     */
+    public function markBackfilled(): void
+    {
+        $this->backfilled_at = now();
         $this->save();
     }
 

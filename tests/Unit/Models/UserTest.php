@@ -11,6 +11,7 @@ use App\Models\StravaConnection;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use Illuminate\Support\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -182,4 +183,14 @@ it('firstName caps the token length to guard against prompt-stuffing', function 
     $user = User::factory()->make(['name' => str_repeat('a', 100)]);
 
     expect(mb_strlen($user->firstName()))->toBe(40);
+});
+
+it('stamps backfilled_at when the connect chain reports the history is in', function (): void {
+    $user = User::factory()->create();
+
+    expect($user->backfilled_at)->toBeNull();
+
+    $user->markBackfilled();
+
+    expect($user->fresh()->backfilled_at)->toBeInstanceOf(Carbon::class);
 });
