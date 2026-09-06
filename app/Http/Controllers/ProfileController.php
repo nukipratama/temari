@@ -74,11 +74,11 @@ class ProfileController extends Controller
                 'longest_run_km' => $lifetime['longest_km'],
             ],
             'profileVoice' => $this->resolveProfileVoice($user),
-            'progressionByCategory' => Inertia::defer(fn (): array => $this->buildProgressionByCategory($progressionSeriesBuilder, $user, $this->personalRecords($user)), 'progression'),
-            'fitness' => Inertia::defer(fn (): ?array => $this->fitness($vdotEstimator, $thresholdEstimator, $trainingPaceCalculator, $user), 'fitness'),
-            'timeInZone' => Inertia::defer(fn (): ?array => $timeInZoneSummary->forUser($user, $today) ?: null, 'fitness'),
-            'season' => Inertia::defer(fn (): ?array => $seasonStreakBuilder->seasonPayload($user, $season, $today), 'season'),
-            'seasonWeeks' => Inertia::defer(fn (): ?array => $season === null ? null : $seasonSummaryBuilder->build($user, $season, $today), 'season'),
+            'progressionByCategory' => Inertia::defer(fn (): array => $this->buildProgressionByCategory($progressionSeriesBuilder, $user, $this->personalRecords($user))),
+            'fitness' => Inertia::defer(fn (): ?array => $this->fitness($vdotEstimator, $thresholdEstimator, $trainingPaceCalculator, $user)),
+            'timeInZone' => Inertia::defer(fn (): ?array => $timeInZoneSummary->forUser($user, $today) ?: null),
+            'season' => Inertia::defer(fn (): ?array => $seasonStreakBuilder->seasonPayload($user, $season, $today)),
+            'seasonWeeks' => Inertia::defer(fn (): ?array => $season === null ? null : $seasonSummaryBuilder->build($user, $season, $today)),
         ]);
     }
 

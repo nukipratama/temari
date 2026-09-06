@@ -92,11 +92,11 @@ class PlanController extends Controller
                 $vdotEstimator,
                 $paceCalculator,
                 $sessionMatcher,
-            ), 'weeks'),
+            )),
             'season' => $seasonStreakBuilder->seasonPayload($user, $season, $today, $seasonCtx),
-            'seasonSummary' => Inertia::defer(fn (): array => $seasonSummaryBuilder->build($user, $season, $today), 'season'),
-            'seasonAdherencePct' => Inertia::defer(fn (): ?int => $seasonSummaryBuilder->adherencePct($user, $season), 'season'),
-            'adaptation' => Inertia::defer(fn (): ?array => $this->adaptationPayload($user, $currentWeekStart), 'adaptation'),
+            'seasonSummary' => Inertia::defer(fn (): array => $seasonSummaryBuilder->build($user, $season, $today)),
+            'seasonAdherencePct' => Inertia::defer(fn (): ?int => $seasonSummaryBuilder->adherencePct($user, $season)),
+            'adaptation' => Inertia::defer(fn (): ?array => $this->adaptationPayload($user, $currentWeekStart)),
             'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
             'disclaimer' => TrainingDisclaimer::TEXT,
             'planNarration' => Inertia::defer(function () use ($narrationRequester, $user, $today): array {
@@ -109,7 +109,7 @@ class PlanController extends Controller
                 }
 
                 return $narrationRequester->payloadsForCurrentWeek($user, $today);
-            }, 'narration'),
+            }),
             'regenerateCooldownSeconds' => $narrationRequester->regenerateCooldownRemaining($user),
         ]);
     }
