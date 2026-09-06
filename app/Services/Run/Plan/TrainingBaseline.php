@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
-use App\Models\ActivityDetail;
+use App\Models\RaceGoal;
 use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\Run\Metrics\DistanceFormatter;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
+use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * The athlete's own recent behavior, read fresh every time it's asked for
@@ -17,10 +19,16 @@ use Illuminate\Support\Carbon;
  * "not frozen into the row" design — see `docs/features/plan-periodizer.md`).
  *
  * Prescribes a frequency and volume the athlete already has, rather than
- * inventing one: session count from the trailing 4-week average run count
- * (clamped 3-6), weekly volume from the trailing 4 completed weeks'
- * distance, and a long-run reference from the single longest run in the
- * trailing 28 days.
+ * inventing one: session count from the trailing 6-week average run count
+ * (clamped 3-6), weekly volume from a trimmed mean of those weeks, and the
+ * long run derived as a share of that volume rather than read off the single
+ * longest recent run.
+ *
+ * The direction matters. Anchoring on the longest run lets one outlier — a
+ * race, an event, a one-off adventure — set every session in the plan, since
+ * {@see SegmentGenerator::coreKmFor()} scales the whole week off that one
+ * scalar. Anchoring on a trimmed weekly mean describes the athlete instead of
+ * their biggest day. See docs/decisions/plan-volume-anchors-on-weekly-mean.md.
  *
  * An explicit {@see TrainingPreference} sits above both: a set
  * `sessions_per_week` always wins over the behavioral average (this is the
@@ -33,7 +41,10 @@ use Illuminate\Support\Carbon;
  */
 final class TrainingBaseline
 {
-    private const int TRAILING_WEEKS = 4;
+    private const int TRAILING_WEEKS = 6;
+
+    /** Below this many logged weeks there is nothing to trim, so the plain mean stands. */
+    private const int MIN_WEEKS_TO_TRIM = 3;
 
     private const int MIN_SESSIONS_PER_WEEK = 3;
 
@@ -49,15 +60,67 @@ final class TrainingBaseline
      * @var array<string, array{0: int, 1: float}>
      */
     private const array EXPERIENCE_SEED = [
-        'new_to_running' => [3, 12.0],
-        'returning' => [4, 20.0],
-        'experienced' => [5, 35.0],
+        'new_to_running' => [3, 8.0],
+        'returning' => [4, 14.0],
+        'experienced' => [5, 22.0],
     ];
 
-    /** A long run is typically ~35% of weekly volume; used only when no run in the trailing window beats it. */
-    private const float LONG_RUN_FRACTION_OF_WEEKLY_VOLUME = 0.35;
+    /**
+     * Long-run share of weekly volume, as `[volume_below_km, share]` ascending,
+     * with {@see LONG_RUN_SHARE_ABOVE_BANDS} past the last band. Daniels caps a
+     * long run at 25% of weekly mileage, Pfitzinger at 25-30%; both ranges
+     * assume higher mileage than a beginner runs, and 25% of 20 km/week is not
+     * a long run at all, so the share rises as volume falls.
+     *
+     * @var list<array{0: float, 1: float}>
+     */
+    private const array LONG_RUN_SHARE_BANDS = [
+        [30.0, 0.35],
+        [60.0, 0.30],
+    ];
+
+    private const float LONG_RUN_SHARE_ABOVE_BANDS = 0.25;
+
+    /**
+     * Long-run ceiling in km, as `[race_distance_below_m, cap_km]` ascending,
+     * with {@see LONG_RUN_CAP_MARATHON_KM} past the last band. The long-run to
+     * race-distance ratio *inverts* with distance — a 5K long run is 2-3x race
+     * distance, a marathon's is 0.7-0.85x — so a single multiplier is wrong at
+     * both ends and this has to be a table.
+     *
+     * @var list<array{0: float, 1: float}>
+     */
+    private const array LONG_RUN_CAP_BANDS = [
+        [6000.0, 16.0],
+        [12000.0, 20.0],
+        [25000.0, 22.0],
+    ];
+
+    private const float LONG_RUN_CAP_MARATHON_KM = 35.0;
+
+    /**
+     * With no race goal the season is self-scaled, so there is no distance to
+     * band against. The half-marathon cap stands in: it is generous enough that
+     * the volume share below it almost always binds first (0.25 x 80 km/week is
+     * still only 20 km), and it keeps a runaway volume figure bounded.
+     */
+    private const float LONG_RUN_CAP_NO_RACE_KM = 22.0;
+
+    /**
+     * The real ceiling on a long run is time on feet, not distance: a slower
+     * runner covering 24 km accrues far more fatigue than a fast one. Daniels
+     * caps at 2.5 hours for exactly this reason. Skipped when the athlete has
+     * no VDOT yet, since there is then no pace to convert against.
+     */
+    private const int LONG_RUN_CAP_MINUTES = 150;
 
     private const float MIN_LONG_RUN_KM = 3.0;
+
+    public function __construct(
+        private readonly VdotEstimator $vdotEstimator,
+        private readonly TrainingPaceCalculator $paceCalculator,
+    ) {
+    }
 
     /**
      * @return array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float}
@@ -86,16 +149,12 @@ final class TrainingBaseline
             $sessionsPerWeek = $seed[0] ?? self::MIN_SESSIONS_PER_WEEK;
         }
 
-        $avgVolumeKm = $hasHistory ? (float) $weeks->avg('distance_km') : 0.0;
-        $weeklyVolumeKm = $avgVolumeKm > 0.0 ? $avgVolumeKm : ($seed[1] ?? self::DEFAULT_WEEKLY_VOLUME_KM);
-
-        $longRunKm = $this->longestRunKmInWindow($user, $asOf)
-            ?? round($weeklyVolumeKm * self::LONG_RUN_FRACTION_OF_WEEKLY_VOLUME, 1);
+        $weeklyVolumeKm = $this->weeklyVolumeKm($weeks, $seed);
 
         return [
             'sessions_per_week' => $sessionsPerWeek,
             'weekly_volume_km' => $weeklyVolumeKm,
-            'long_run_km' => max($longRunKm, self::MIN_LONG_RUN_KM),
+            'long_run_km' => $this->longRunKm($user, $weeklyVolumeKm),
         ];
     }
 
@@ -104,16 +163,85 @@ final class TrainingBaseline
         return max(self::MIN_SESSIONS_PER_WEEK, min(self::MAX_SESSIONS_PER_WEEK, (int) round($avgRuns)));
     }
 
-    private function longestRunKmInWindow(User $user, Carbon $asOf): ?float
+    /**
+     * A trimmed mean — drop the highest and lowest week, average the rest —
+     * so one 44 km week and one injured week neither of them typical cannot
+     * move the anchor. Still tracks a genuine ramp, where a median would lag.
+     *
+     * @param  Collection<int, WeeklySnapshot>  $weeks
+     * @param  array{0: int, 1: float}|null  $seed
+     */
+    private function weeklyVolumeKm(Collection $weeks, ?array $seed): float
     {
-        $maxMeters = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
-            ->where('activities.user_id', $user->id)
-            ->whereNotNull('activity_details.start_date_local')
-            ->where('activity_details.start_date_local', '>=', $asOf->copy()->subDays(28)->startOfDay())
-            ->where('activity_details.start_date_local', '<=', $asOf->copy()->endOfDay())
-            ->max('activity_details.distance');
+        $volumes = $weeks->map(fn (WeeklySnapshot $week): float => (float) $week->distance_km)->values();
 
-        return $maxMeters === null ? null : DistanceFormatter::km((float) $maxMeters);
+        $mean = match (true) {
+            $volumes->isEmpty() => 0.0,
+            $volumes->count() < self::MIN_WEEKS_TO_TRIM => (float) $volumes->avg(),
+            default => self::trimmedMean($volumes),
+        };
+
+        return $mean > 0.0 ? $mean : ($seed[1] ?? self::DEFAULT_WEEKLY_VOLUME_KM);
+    }
+
+    /** @param  Collection<int, float>  $volumes */
+    private static function trimmedMean(Collection $volumes): float
+    {
+        $sorted = $volumes->sort()->values();
+
+        return (float) $sorted->slice(1, $sorted->count() - 2)->avg();
+    }
+
+    /**
+     * Volume decides the long run, not the other way round. Both ceilings are
+     * applied and the tighter one wins: a race-distance band, and time on feet.
+     */
+    private function longRunKm(User $user, float $weeklyVolumeKm): float
+    {
+        $derived = $weeklyVolumeKm * self::longRunShare($weeklyVolumeKm);
+
+        $capped = min($derived, $this->raceBandCapKm($user), $this->timeCapKm($user));
+
+        return max(round($capped, 1), self::MIN_LONG_RUN_KM);
+    }
+
+    private static function longRunShare(float $weeklyVolumeKm): float
+    {
+        foreach (self::LONG_RUN_SHARE_BANDS as [$below, $share]) {
+            if ($weeklyVolumeKm < $below) {
+                return $share;
+            }
+        }
+
+        return self::LONG_RUN_SHARE_ABOVE_BANDS;
+    }
+
+    private function raceBandCapKm(User $user): float
+    {
+        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
+
+        if ($race === null) {
+            return self::LONG_RUN_CAP_NO_RACE_KM;
+        }
+
+        foreach (self::LONG_RUN_CAP_BANDS as [$below, $cap]) {
+            if ((float) $race->distance_m < $below) {
+                return $cap;
+            }
+        }
+
+        return self::LONG_RUN_CAP_MARATHON_KM;
+    }
+
+    /** INF when the athlete has no VDOT estimate, so only the band cap applies. */
+    private function timeCapKm(User $user): float
+    {
+        $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user));
+
+        if ($paces === null) {
+            return INF;
+        }
+
+        return self::LONG_RUN_CAP_MINUTES * 60 / $paces['easy'];
     }
 }
