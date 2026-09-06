@@ -270,8 +270,14 @@ export default function WeekPlanWidget({
                             ` · ${formatPace(todayCorePaceSecPerKm)}/km`}
                         {today.clamp !== null && (
                             <span className="mt-1 block border-l-2 border-border pl-2">
-                                <span className="block text-[0.625rem] uppercase tracking-[0.05em] text-text-3">
-                                    ↓ eased today
+                                <span className="flex items-center gap-1 text-[0.625rem] uppercase tracking-[0.05em] text-text-3">
+                                    <Icon
+                                        icon="mdi:arrow-down"
+                                        width={10}
+                                        height={10}
+                                        aria-hidden
+                                    />
+                                    eased today
                                 </span>
                                 <span className="block font-semibold text-foreground">
                                     {clampSummary(
