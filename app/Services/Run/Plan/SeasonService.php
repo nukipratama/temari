@@ -215,14 +215,26 @@ final readonly class SeasonService
         ];
     }
 
+    private static function floatOrNull(mixed $value): ?float
+    {
+        return is_numeric($value) ? (float) $value : null;
+    }
+
     /**
      * @return array{title: string, metric: string, metric_key: null, target: float, unit: string}
      */
     private function ctlGrowthGoal(User $user, Carbon $today): array
     {
         $summary = $this->trainingLoad->summary($user, $today);
-        $startCtl = (float) ($summary['ctl_42d'] ?? 0.0);
-        $target = max(self::MIN_CTL_GROWTH_TARGET, round($startCtl * self::CTL_GROWTH_FRACTION, 1));
+
+        // An unscored load curve is null, never zero — see
+        // docs/decisions/unscored-load-is-null-not-zero.md. Coercing it here
+        // would claim the athlete has no fitness rather than that we cannot see
+        // it; both land on the floor, but only one of them says something false.
+        $startCtl = self::floatOrNull($summary['ctl_42d'] ?? null);
+        $target = $startCtl === null
+            ? self::MIN_CTL_GROWTH_TARGET
+            : max(self::MIN_CTL_GROWTH_TARGET, round($startCtl * self::CTL_GROWTH_FRACTION, 1));
 
         return [
             'title' => 'Grow your fitness (CTL) this season',
