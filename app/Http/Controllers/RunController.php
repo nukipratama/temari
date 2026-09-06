@@ -55,9 +55,9 @@ class RunController extends Controller
             ResolveActivityLocationJob::dispatch($detail->id);
         }
 
-        // Deferred behind a closure (skipped on a partial reload that doesn't
-        // name it) and memoized, since the insight props plus the notification
-        // cooldown all read it.
+        // Lazy, not deferred: a closure only skips work on a partial reload
+        // that doesn't name it, and still runs on first paint. Memoized, since
+        // the insight props plus the notification cooldown all read it.
         /** @var Collection<string, Analysis>|null $loadedAnalyses */
         $loadedAnalyses = null;
         $loadAnalyses = function () use ($activity, &$loadedAnalyses): Collection {

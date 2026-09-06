@@ -41,8 +41,9 @@ class DashboardController extends Controller
         // it, so a closure would silently stop persisting it.
         $this->resolveGreeting($user, $temari, $vibe->current($user, $today), $today);
 
-        // Deferred behind a closure (Inertia's `useAnalysisTrigger` poll skips
-        // any prop the partial reload does not name) and memoized.
+        // Lazy, not deferred: a closure only skips work on a partial reload
+        // that doesn't name it (Inertia's `useAnalysisTrigger` poll), and still
+        // runs on first paint. Memoized.
         /** @var Collection<int, ActivityDetail>|null $loadedRecentRuns */
         $loadedRecentRuns = null;
         $loadRecentRuns = function () use ($user, &$loadedRecentRuns): Collection {
