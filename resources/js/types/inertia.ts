@@ -378,8 +378,10 @@ export interface WeekPlanDay {
     clamp_note: string | null;
     /** Total km actually run that day — null when nothing was logged. */
     actual_km: number | null;
-    /** The day's longest logged run, for the link out to it. */
-    activity: { id: number; seconds: number | null } | null;
+    /** Every run logged that day, oldest first — a day can hold more than one,
+     *  and each gets its own line rather than being folded into a single
+     *  summary whose distance and duration came from different runs. */
+    activities: { id: number; km: number; seconds: number | null }[];
 }
 
 /** `CurrentWeekPlanBuilder::forUser()` — Home's compact pull of the current

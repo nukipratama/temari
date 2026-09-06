@@ -176,7 +176,7 @@ const weekPlan: WeekPlan = {
             ran_anyway: false,
             clamp_note: null,
             actual_km: null,
-            activity: null,
+            activities: [],
         },
     ],
 };
