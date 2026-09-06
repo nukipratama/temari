@@ -264,12 +264,14 @@ it('AnalyzePlanDayVoiceJob returns voice for the discriminator date', function (
     expect($row->fresh()->content)->toBe('tempo work today.');
 });
 
-it('AnalyzePlanDayVoiceJob throws when no PlannedSession exists for that date', function (): void {
+it('AnalyzePlanDayVoiceJob deletes its row when no PlannedSession exists for that date', function (): void {
     $user = User::factory()->create();
     $row = rowOf(AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanDayVoice, '2026-05-18');
     new AnalyzePlanDayVoiceJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+    // Not Failed: nothing can ever fill a day the plan does not contain, so the
+    // row is obsolete rather than failed. See ObsoleteAnalysisException.
+    expect($row->fresh())->toBeNull();
 });
 
 // ── AnalyzePlanWeekVoiceJob (row) ──────────────────────────────────────

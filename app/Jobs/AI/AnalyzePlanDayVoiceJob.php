@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\AI;
 
-use App\Exceptions\AI\UnavailableException;
+use App\Exceptions\AI\ObsoleteAnalysisException;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
 use App\Services\AI\MaterialFingerprint;
@@ -45,7 +45,10 @@ class AnalyzePlanDayVoiceJob extends AnalyzeRowJob
             ->first();
 
         if ($session === null) {
-            throw new UnavailableException("No PlannedSession for user {$row->subject_id} on {$date}");
+            // A regenerated plan can move its training days, orphaning a row
+            // written for a day that no longer has a session. Nothing will ever
+            // fill it, so the row goes rather than failing forever.
+            throw new ObsoleteAnalysisException("No PlannedSession for user {$row->subject_id} on {$date}");
         }
 
         return $this->session = $session;
