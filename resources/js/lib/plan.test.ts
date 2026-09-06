@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { SeasonSummaryWeek } from './plan';
 
 import {
+    clampSummary,
     computeAdherence,
     phasesOf,
     weekdayLabel,
@@ -136,5 +137,54 @@ describe('phasesOf', () => {
         ]);
 
         expect(phases.map((p) => p.key)).toEqual(['build', 'deload']);
+    });
+});
+
+describe('clampSummary', () => {
+    it('names the eased session, its distance and its pace', () => {
+        expect(
+            clampSummary(
+                {
+                    session_type: 'easy',
+                    distance_km: 5.9,
+                    pace_sec_per_km: 450,
+                    note: 'n',
+                },
+                9.1,
+            ),
+        ).toBe('easy · 5.9 km · 7:30/km');
+    });
+
+    /**
+     * A Tempo/Interval step-down keeps the original core km and only drops the
+     * intensity, so printing the distance again repeats the line above it and
+     * reads as a rendering bug rather than as "same distance, easier pace".
+     */
+    it('drops the distance when the clamp left it alone', () => {
+        expect(
+            clampSummary(
+                {
+                    session_type: 'easy',
+                    distance_km: 4.7,
+                    pace_sec_per_km: 502,
+                    note: 'n',
+                },
+                4.7,
+            ),
+        ).toBe('easy · 8:22/km');
+    });
+
+    it('omits the pace when there is no VDOT estimate to size one', () => {
+        expect(
+            clampSummary(
+                {
+                    session_type: 'rest',
+                    distance_km: 0,
+                    pace_sec_per_km: null,
+                    note: 'n',
+                },
+                9.1,
+            ),
+        ).toBe('rest · 0 km');
     });
 });

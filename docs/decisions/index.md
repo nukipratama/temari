@@ -20,7 +20,7 @@ ADRs grouped by the problem they solve, for easier navigation than a flat timeli
 |---|---|
 | **Cost guards** | [[idempotent-dispatch-cost-ceiling]] (dispatch-time + daily ceiling) *(pause half superseded)*; [[cost-ceiling-degrades-to-rule-based]] (a hit budget degrades, every other stop pauses) *(its "run questions are still refused" carve-out superseded)*; [[cost-ceiling-answers-run-questions-rule-based]] (a capped day answers questions deterministically too); [[twelve-week-narration-cutoff]] (per-signup backfill depth); [[bounded-self-heal-and-dead-letter]] (execution-time + bounded retry); [[narration-agents-on-openai-php]] (per-block agent budget); [[per-block-manual-retry]] *(superseded)* |
 | **Data isolation** | [[analytics-db-separate-connection]] (metering outlives app resets); [[date-cast-utc-shift]] (UTC off-by-one guard) |
-| **Plan** | [[plan-volume-anchors-on-weekly-mean]] (prescribed volume describes the athlete, not their biggest day); [[today-credits-when-earned]] (a day in progress is graded upward only, and the ring counts the days the week holds) |
+| **Plan** | [[plan-volume-anchors-on-weekly-mean]] (prescribed volume describes the athlete, not their biggest day); [[today-credits-when-earned]] (a day in progress is graded upward only, and the ring counts the days the week holds); [[readiness-clamp-is-advisory]] (the clamp eases today beside the plan, it does not replace it) |
 | **Ingest** | [[summary-first-ingest]] (whole history from paged summaries, detail hydrated on demand); [[background-hydration-drain]] (an hourly drain fills the backlog it leaves) |
 | **Async / resilience** | [[chained-narration]] (connected narration threads); [[strava-circuit-breaker-rate-limit]] (per-client rate-limit guard); [[live-ingest-read-reserve]] (a quarter of that budget held for live ingest); [[narrow-trusted-proxy-headers]] (proxy trust behind tunnel); [[trust-all-proxies-cloudflare]] *(superseded)*; [[deferred-recap-windowing]] (window-gated generation) |
 | **AI routing** | [[azure-openai-routing]] (per-narrator-kind deployment selection); [[narration-agents-on-openai-php]] (SDK seam + tool calling); [[demo-user-billing-exclusion]] (demo user omitted from auto-billing); [[demo-triggers-served-rule-based]] (demo triggers filled rule-based); [[scoped-run-qa-not-an-analysis-row]] (Q&A scoped by construction, stored outside the row model) |
@@ -50,6 +50,7 @@ _AI cost & flow_
 _Plan_
 - [[plan-volume-anchors-on-weekly-mean]] — the long run is a share of a robust weekly volume, capped by race distance and time on feet, rather than the single longest recent run
 - [[today-credits-when-earned]] — today is graded on the same km ratio but only ever upward, and the week's ring counts training rows this week actually holds
+- [[readiness-clamp-is-advisory]] — a clamped day renders as a marked step-down beside the session the plan asked for, which stays the thing narrated and graded
 
 _Data_
 - [[analytics-db-separate-connection]] — metering on a separate connection that survives migrate:fresh

@@ -174,7 +174,7 @@ const weekPlan: WeekPlan = {
             status: 'done',
             compliance_score: 100,
             ran_anyway: false,
-            clamp_note: null,
+            clamp: null,
             actual_km: null,
             activities: [],
         },

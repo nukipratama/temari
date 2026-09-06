@@ -236,8 +236,11 @@ it('clamps today\'s session against the readiness ceiling without mutating the s
         ->flatMap(fn (array $week): array => $week['days'])
         ->firstWhere('date', Carbon::today()->toDateString());
 
-    expect($todayDay['session_type'])->toBe('rest')
-        ->and($todayDay['clamp_note'])->not->toBeNull();
+    // Advisory: the day still reports the interval it was planned as, and the
+    // clamp rides beside it saying today is a rest instead.
+    expect($todayDay['session_type'])->toBe('interval')
+        ->and($todayDay['clamp']['session_type'])->toBe('rest')
+        ->and($todayDay['clamp']['note'])->not->toBeNull();
 
     // The stored row itself is untouched — the clamp is render-only.
     $fresh = $today->fresh();
@@ -267,7 +270,7 @@ it('never clamps a future day, only today, even at the worst readiness ceiling',
         ->firstWhere('date', Carbon::today()->addDays(2)->toDateString());
 
     expect($futureDay['session_type'])->toBe('interval')
-        ->and($futureDay['clamp_note'])->toBeNull();
+        ->and($futureDay['clamp'])->toBeNull();
 });
 
 /**

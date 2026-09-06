@@ -2,7 +2,7 @@ import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 
 import type { PlanDay } from '@/lib/plan';
-import type { AnalysisPayload } from '@/types/inertia';
+import type { AnalysisPayload, PlanDayClamp } from '@/types/inertia';
 
 import MiniSessionBar, { zoneColor } from '@/components/plan/MiniSessionBar';
 import SessionBarGraph from '@/components/plan/SessionBarGraph';
@@ -16,6 +16,7 @@ import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS, formatPace } from '@/lib/pace';
 import {
+    clampSummary,
     SESSION_TYPE_ICON,
     SESSION_TYPE_LABEL,
     STATUS_LABEL,
@@ -57,6 +58,29 @@ function daySummary(day: PlanDay): string {
 function runSummary(run: PlanDay['activities'][number]): string {
     const time = run.seconds == null ? null : formatDurationHMS(run.seconds);
     return [`${run.km} km`, time].filter((part) => part !== null).join(' · ');
+}
+
+/**
+ * The readiness step-down, rendered beneath the day's own prescription rather
+ * than replacing it. The plan still asks for what it asked for; this is the
+ * eased version offered for today, and the note says why.
+ */
+function ClampStepDown({
+    clamp,
+    plannedKm,
+}: Readonly<{ clamp: PlanDayClamp; plannedKm: number }>) {
+    return (
+        <div className="mt-2 border-l-2 border-border-strong pl-3">
+            <p className="flex items-center gap-1.5 text-label-micro text-text-2">
+                <Icon icon="mdi:arrow-down" className="size-3" aria-hidden />
+                eased today
+            </p>
+            <p className="mt-0.5 text-xs font-semibold text-foreground">
+                {clampSummary(clamp, plannedKm)}
+            </p>
+            <p className="mt-1 text-xs italic text-text-2">{clamp.note}</p>
+        </div>
+    );
 }
 
 /** The zone the day's hardest segment sits in, which colours its type icon. */
@@ -171,10 +195,11 @@ export default function WeekDayRow({
                 {narration && (
                     <TemariTake analysis={narration} allowReanalyze={false} />
                 )}
-                {day.clamp_note && (
-                    <p className="mt-2 text-xs italic text-text-2">
-                        {day.clamp_note}
-                    </p>
+                {day.clamp && (
+                    <ClampStepDown
+                        clamp={day.clamp}
+                        plannedKm={day.distance_km}
+                    />
                 )}
                 <SessionBarGraph segments={day.segments} />
                 {day.activities.map((run) => (
