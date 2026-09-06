@@ -6,6 +6,7 @@ namespace App\Console\Commands\Strava;
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\Scopes\AnalyzedScope;
 use App\Models\User;
 use App\Services\Run\Ingest\DetailHydrator;
 use App\Services\Strava\StravaClient;
