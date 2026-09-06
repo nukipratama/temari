@@ -39,7 +39,7 @@ export default function Trends({
     streak,
     narration,
 }: Readonly<TrendsProps>) {
-    const [range, setRange] = useState<TrendRange>('12mo');
+    const [range, setRange] = useState<TrendRange>('30d');
 
     return (
         <>

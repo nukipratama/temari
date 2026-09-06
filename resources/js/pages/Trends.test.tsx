@@ -74,32 +74,33 @@ describe('Trends', () => {
         ).toBeInTheDocument();
     });
 
-    it('defaults to the 12 month range narration', () => {
+    it('opens on the 30 day range, the one narrated daily', () => {
         render(<Trends {...BASE_PROPS} />);
 
-        expect(screen.getByText('The full year.')).toBeInTheDocument();
+        expect(screen.getByText('Last 30 days.')).toBeInTheDocument();
+        expect(screen.queryByText('The full year.')).not.toBeInTheDocument();
     });
 
     it('switches the narration shown when the range toggle changes', () => {
         render(<Trends {...BASE_PROPS} />);
 
-        fireEvent.click(screen.getByRole('button', { name: '30 days' }));
+        fireEvent.click(screen.getByRole('button', { name: '12 months' }));
 
-        expect(screen.getByText('Last 30 days.')).toBeInTheDocument();
-        expect(screen.queryByText('The full year.')).not.toBeInTheDocument();
+        expect(screen.getByText('The full year.')).toBeInTheDocument();
+        expect(screen.queryByText('Last 30 days.')).not.toBeInTheDocument();
     });
 
     it('re-windows the fitness panel when the range toggle changes', () => {
         render(<Trends {...BASE_PROPS} ctlTrend={yearOfTrend()} />);
 
         expect(
-            screen.getByRole('img', { name: /over 365 days/ }),
+            screen.getByRole('img', { name: /over 30 days/ }),
         ).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', { name: '30 days' }));
+        fireEvent.click(screen.getByRole('button', { name: '12 months' }));
 
         expect(
-            screen.getByRole('img', { name: /over 30 days/ }),
+            screen.getByRole('img', { name: /over 365 days/ }),
         ).toBeInTheDocument();
     });
 
@@ -123,9 +124,9 @@ describe('Trends', () => {
 
         render(<Trends {...BASE_PROPS} ctlTrend={yearOfTrend()} />);
 
-        expect(screen.queryByText('The full year.')).not.toBeInTheDocument();
+        expect(screen.queryByText('Last 30 days.')).not.toBeInTheDocument();
         expect(
-            screen.getByRole('img', { name: /over 365 days/ }),
+            screen.getByRole('img', { name: /over 30 days/ }),
         ).toBeInTheDocument();
     });
 
