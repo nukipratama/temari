@@ -67,6 +67,32 @@ final readonly class PlanNarrationRequester
     }
 
     /**
+     * Requests the week's narration unless a recent settings change already
+     * did, and reports whether it fired. Guards **only** the voice: callers
+     * regenerate the plan itself unconditionally, since a plan left describing
+     * a race the athlete no longer has is worse than a day-old blurb. The
+     * manual regenerate button, `plan:regenerate` and onboarding all bypass
+     * this — see `docs/features/plan-periodizer.md`.
+     */
+    public function requestForCurrentWeekUnlessCoolingDown(User $user, Carbon $today): bool
+    {
+        $cooldown = $this->narrationCooldown($user);
+        if ($cooldown->remaining() !== null) {
+            return false;
+        }
+
+        $cooldown->start();
+        $this->requestForCurrentWeek($user, $today);
+
+        return true;
+    }
+
+    private function narrationCooldown(User $user): Cooldown
+    {
+        return new Cooldown("plan-narration:{$user->id}", Cooldown::PLAN_NARRATION_WINDOW_SECONDS);
+    }
+
+    /**
      * Requests narration for every day of the current week, the current
      * week's adaptation verdict (if regenerate has run at least once), and
      * the current season.
@@ -222,10 +248,17 @@ final readonly class PlanNarrationRequester
             ->get()
             ->keyBy('discriminator');
 
+        $expected = $this->expectedDayFingerprints($user, $today, $dates);
+
         $days = [];
         foreach ($dates as $date) {
+            $row = $dayRows->get($date);
+            if (self::isUnbacked($row, $expected[$date] ?? null)) {
+                continue;
+            }
+
             $days[$date] = Analysis::toPayload(
-                $dayRows->get($date),
+                $row,
                 AnalysisType::PlanDayVoice,
                 AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
                 $user->id,
@@ -250,6 +283,48 @@ final readonly class PlanNarrationRequester
         );
 
         return ['days' => $days, 'week' => $week, 'season' => $seasonPayload];
+    }
+
+    /**
+     * Whether a day has nothing to show and nothing coming: either no row at
+     * all, or a finished one whose content describes a plan the athlete has
+     * since changed. `Analysis::toPayload(null, ...)` reports `Pending`, which
+     * the UI draws as a skeleton — honest while a job is queued, false hope
+     * when none is. A drifted `done` row is the same problem wearing content:
+     * it would state a session that is no longer prescribed. Failed rows are
+     * left alone; that empty state is a real fault worth surfacing.
+     */
+    private static function isUnbacked(?Analysis $row, ?string $expectedFingerprint): bool
+    {
+        if ($row === null) {
+            return true;
+        }
+
+        return $row->status === AnalysisStatus::Done
+            && $expectedFingerprint !== null
+            && $row->content_fingerprint !== $expectedFingerprint;
+    }
+
+    /**
+     * The fingerprint each of `$dates` *should* carry right now — the same
+     * computation {@see self::requestForCurrentWeek()} invalidates against,
+     * read here so a stale blurb can be hidden rather than shown.
+     *
+     * @param  list<string>  $dates
+     * @return array<string, string>
+     */
+    private function expectedDayFingerprints(User $user, Carbon $today, array $dates): array
+    {
+        $longRunKm = $this->baseline->forUser($user, $today)['long_run_km'];
+
+        return PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereIn('date', $dates)
+            ->get()
+            ->mapWithKeys(fn (PlannedSession $session): array => [
+                $session->date->toDateString() => MaterialFingerprint::forPlannedSession($session, $longRunKm),
+            ])
+            ->all();
     }
 
     /**

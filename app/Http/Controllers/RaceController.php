@@ -7,9 +7,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreRaceGoalRequest;
 use App\Models\RaceGoal;
 use App\Models\User;
+use App\Services\AI\PlanNarrationRequester;
+use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Metrics\RiegelProjector;
 use App\Support\SharedPropCacheKey;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -42,8 +45,11 @@ class RaceController extends Controller
      * again supersedes the current active race with the new values while
      * keeping the old one on record (`completed_at` stamped, never deleted).
      */
-    public function store(StoreRaceGoalRequest $request): RedirectResponse
-    {
+    public function store(
+        StoreRaceGoalRequest $request,
+        Periodizer $periodizer,
+        PlanNarrationRequester $narrationRequester,
+    ): RedirectResponse {
         /** @var User $user */
         $user = $request->user();
 
@@ -67,6 +73,14 @@ class RaceController extends Controller
         // after the commit so a concurrent read can't re-warm the cache from
         // the pre-swap state. Same reasoning as AccessoryController::equip().
         SharedPropCacheKey::ActiveRace->forget($user->id);
+
+        // A race replaces the plan's whole structure — PhaseSchedule::forRace()
+        // supersedes the self-scaled arc, the season flips mode, and the
+        // week's quality work changes with it. Waiting for Monday would have
+        // trained the athlete against an arc their own goal had superseded,
+        // while the message below said otherwise.
+        $periodizer->regenerate($user);
+        $narrationRequester->requestForCurrentWeekUnlessCoolingDown($user, Carbon::today());
 
         return back()->with('success', 'Your race is set. Temari will keep the plan honest against it.');
     }

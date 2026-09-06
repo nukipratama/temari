@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Models\PersonalRecord;
 use App\Models\RaceGoal;
+use App\Models\PlannedSession;
+use Illuminate\Support\Carbon;
 use App\Models\User;
 use App\Support\SharedPropCacheKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -130,4 +132,28 @@ it('shares the active race app-wide via the activeRace prop', function (): void 
         ->assertInertia(fn (Assert $page) => $page
             ->where('activeRace.name', 'Shared race')
             ->where('activeRace.distance_m', 5_000));
+});
+
+/**
+ * A race replaces the plan's whole structure — PhaseSchedule::forRace()
+ * supersedes the self-scaled arc. Waiting for Monday trained the athlete
+ * against an arc their own goal had superseded, while the flash message said
+ * Temari would keep the plan honest against it.
+ */
+it('reshapes the plan the moment a race is set', function (): void {
+    Carbon::setTestNow('2026-09-08 10:00:00'); // a Tuesday
+    $user = User::factory()->create();
+
+    expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(0);
+
+    $this->actingAs($user)->post('/race', [
+        'race_date' => Carbon::today()->addMonths(4)->toDateString(),
+        'distance_m' => 21_097,
+        'goal_time_sec' => 7_200,
+        'name' => 'A half',
+    ])->assertSessionHasNoErrors();
+
+    expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
+
+    Carbon::setTestNow();
 });
