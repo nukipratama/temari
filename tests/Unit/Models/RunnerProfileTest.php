@@ -72,3 +72,17 @@ it('forgets the shared hr-zones-changed-at cache prop on every save', function (
 
     expect(Cache::has($cacheKey))->toBeFalse();
 });
+
+it('treats a synced or hand-set source as the athlete stating their own zones', function (
+    string $source,
+    bool $explicit,
+): void {
+    $profile = RunnerProfile::factory()->make(['source' => $source]);
+
+    expect($profile->hasExplicitZones())->toBe($explicit);
+})->with([
+    'strava is explicit' => ['strava', true],
+    'manual is explicit' => ['manual', true],
+    'observed is the reconciler talking to itself' => ['observed', false],
+    'default is nobody talking' => ['default', false],
+]);

@@ -6,6 +6,8 @@ status: living
 reviewed: 2026-08-19
 code_refs:
   - resources/js/components/settings/HrZonesDisclosure.tsx
+  - app/Services/Run/Ingest/ActivityPipeline.php
+  - app/Models/RunnerProfile.php
   - resources/js/pages/Settings/Index.tsx
   - app/Http/Controllers/SettingsController.php
   - app/Http/Controllers/RunnerZonesController.php
@@ -52,6 +54,12 @@ Submit posts `router.patch('/settings/zones', …)` with `max_hr`, `resting_hr` 
 ## Profile shape & optimal cadence
 
 `User::hrProfile()` in [User.php](../../app/Models/User.php) returns `max_hr`, `resting_hr`, `hr_zones` **and** `optimal_cadence_spm`. When no custom `RunnerProfile` exists, it serves config defaults (including `config('runner.optimal_cadence_spm')`). Note: optimal cadence is part of the stored/served profile but is **not** an editable field in this disclosure — it is surfaced in run analysis, not tuned here.
+
+## What ingest may and may not change
+
+[ActivityPipeline::reconcileMaxHeartRate()](../../app/Services/Run/Ingest/ActivityPipeline.php) raises `max_hr` when the athlete's own history proves the stored ceiling too low — their peak can never be an underestimate. It reads the highest plausible `max_heartrate` across the **whole** history rather than a maximum accumulated as ingest walks, so the result does not depend on ingest order; `strava:hydrate-backlog` drains newest-first ([[background-hydration-drain]]) and would otherwise disagree with an oldest-first backfill.
+
+It re-derives the five bands **only** for a profile the athlete never spoke for. [RunnerProfile::hasExplicitZones()](../../app/Models/RunnerProfile.php) marks `strava` and `manual` as statements of intent, and the percentage model must not silently replace them: real Strava zones routinely look nothing like it. Overwriting them left this card captioned "Synced from Strava" over formula-derived numbers, which is how the bug was found.
 
 ## See also
 
