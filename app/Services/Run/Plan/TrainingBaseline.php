@@ -39,7 +39,7 @@ use Illuminate\Support\Collection;
  * numbers regardless of what they claim; real behavior still wins the
  * moment any exists.
  */
-final class TrainingBaseline
+final readonly class TrainingBaseline
 {
     private const int TRAILING_WEEKS = 6;
 
@@ -117,8 +117,8 @@ final class TrainingBaseline
     private const float MIN_LONG_RUN_KM = 3.0;
 
     public function __construct(
-        private readonly VdotEstimator $vdotEstimator,
-        private readonly TrainingPaceCalculator $paceCalculator,
+        private VdotEstimator $vdotEstimator,
+        private TrainingPaceCalculator $paceCalculator,
     ) {
     }
 
