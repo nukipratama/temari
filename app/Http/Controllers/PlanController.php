@@ -418,13 +418,13 @@ class PlanController extends Controller
     }
 
     /**
-     * The day's longest logged run, keyed by date — what the timeline's
-     * planned-vs-actual bar measures against and what its "view activity"
-     * link opens. `km` is the day's total (matching how
-     * {@see SessionMatcher} scores compliance), `id`/`seconds` describe the
-     * single longest run of that day.
+     * Every logged run of each day, keyed by date, oldest first. `km` is the
+     * day's total (matching how {@see SessionMatcher} scores compliance) and
+     * drives the timeline's planned-vs-actual bar; `runs` lists each run so a
+     * two-session day can show both instead of pairing the day's total
+     * distance with one run's duration, which read as a single impossible run.
      *
-     * @return array<string, array{id: int, km: float, seconds: int|null}>
+     * @return array<string, array{km: float, runs: list<array{id: int, km: float, seconds: int|null}>}>
      */
     private function activityByDate(User $user, Carbon $from, Carbon $to): array
     {
@@ -437,7 +437,7 @@ class PlanController extends Controller
             ->where('activities.user_id', $user->id)
             ->whereNotNull('activity_details.start_date_local')
             ->whereBetween('activity_details.start_date_local', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
-            ->orderBy('activity_details.distance')
+            ->orderBy('activity_details.start_date_local')
             ->get(['activity_details.activity_id', 'activity_details.start_date_local', 'activity_details.distance', 'activity_details.moving_time']);
 
         $byDate = [];
@@ -446,11 +446,12 @@ class PlanController extends Controller
             if ($date === null) {
                 continue;
             }
-            // Ascending distance, so each later row of the same date overwrites
-            // id/seconds with the longer run while km keeps accumulating.
-            $byDate[$date] = [
+
+            $km = DistanceFormatter::km((float) $row->distance);
+            $byDate[$date]['km'] = round(($byDate[$date]['km'] ?? 0.0) + $km, 1);
+            $byDate[$date]['runs'][] = [
                 'id' => (int) $row->activity_id,
-                'km' => round(($byDate[$date]['km'] ?? 0.0) + DistanceFormatter::km((float) $row->distance), 1),
+                'km' => $km,
                 'seconds' => $row->moving_time,
             ];
         }

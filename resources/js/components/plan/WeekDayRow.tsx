@@ -33,13 +33,30 @@ function paceLabel(day: PlanDay): string | null {
         : `${formatPace(core.pace_sec_per_km)}/km`;
 }
 
-function activitySummary(day: PlanDay): string {
+/**
+ * The whole day, for a rest day that was run anyway. Both halves are day
+ * totals: mixing a summed distance with one run's clock is the bug this
+ * replaced.
+ */
+function daySummary(day: PlanDay): string {
     const km = day.actual_km == null ? null : `${day.actual_km} km`;
-    const time =
-        day.activity?.seconds == null
-            ? null
-            : formatDurationHMS(day.activity.seconds);
+    const seconds = day.activities.reduce<number | null>(
+        (total, run) =>
+            run.seconds == null ? total : (total ?? 0) + run.seconds,
+        null,
+    );
+    const time = seconds == null ? null : formatDurationHMS(seconds);
     return [km, time].filter((part) => part !== null).join(' · ');
+}
+
+/**
+ * One run's own distance and duration. Never the day's total paired with a
+ * single run's clock — a 5 km and a 7 km session read as one impossible
+ * 12 km in 55 minutes that way.
+ */
+function runSummary(run: PlanDay['activities'][number]): string {
+    const time = run.seconds == null ? null : formatDurationHMS(run.seconds);
+    return [`${run.km} km`, time].filter((part) => part !== null).join(' · ');
 }
 
 /** The zone the day's hardest segment sits in, which colours its type icon. */
@@ -127,7 +144,7 @@ export default function WeekDayRow({
                     )}
                     {ranAnyway && (
                         <span className="mt-0.5 block text-xs font-semibold text-leaf-ink">
-                            Ran anyway · {activitySummary(day)}
+                            Ran anyway · {daySummary(day)}
                         </span>
                     )}
                     <MiniSessionBar segments={day.segments} />
@@ -160,19 +177,20 @@ export default function WeekDayRow({
                     </p>
                 )}
                 <SessionBarGraph segments={day.segments} />
-                {day.activity && (
+                {day.activities.map((run) => (
                     <Link
-                        href={`/activities/${day.activity.id}`}
+                        key={run.id}
+                        href={`/activities/${run.id}`}
                         className="focus-ring mt-3 flex items-center gap-1.5 text-label-micro text-horizon-ink"
                     >
-                        View activity · {activitySummary(day)}
+                        View activity · {runSummary(run)}
                         <Icon
                             icon="mdi:arrow-right"
                             className="size-3"
                             aria-hidden
                         />
                     </Link>
-                )}
+                ))}
                 {(canMove || canSkip) && (
                     <div className="mt-3">
                         {picking ? (

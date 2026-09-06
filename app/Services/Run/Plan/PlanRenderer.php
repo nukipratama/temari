@@ -110,7 +110,7 @@ final class PlanRenderer
      * @param  array<string, float>  $volumeScaleByDate  date => scale, from {@see VolumeRedistributor::redistribute()}
      * @param  bool  $isPrimaryEasy  whether this is the week's first (bigger) Easy day — see {@see SegmentGenerator::coreKmFor()}
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
-     * @param  array{id: int, km: float, seconds: int|null}|null  $activity  what was actually run that day, for the planned-vs-actual bar and the "view activity" link
+     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null}>}|null  $activity  every run logged that day, for the planned-vs-actual bar and the links out
      * @return array<string, mixed>
      */
     public static function dayPayload(
@@ -167,7 +167,7 @@ final class PlanRenderer
             'ran_anyway' => $s->ran_anyway,
             'clamp_note' => $isToday ? ($clamp['note'] ?? null) : null,
             'actual_km' => $activity['km'] ?? null,
-            'activity' => $activity === null ? null : ['id' => $activity['id'], 'seconds' => $activity['seconds']],
+            'activities' => $activity['runs'] ?? [],
         ];
     }
 }

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
@@ -266,4 +268,68 @@ it('never clamps a future day, only today, even at the worst readiness ceiling',
 
     expect($futureDay['session_type'])->toBe('interval')
         ->and($futureDay['clamp_note'])->toBeNull();
+});
+
+/**
+ * Reported from prod: two sessions on one day rendered as a single
+ * "12 km · 55:00" — the day's summed distance beside only the longer run's
+ * duration. Each run now carries its own figures, while actual_km stays the
+ * day total that compliance scores against.
+ */
+it('returns every run of a two-session day, each with its own distance and time', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => 'easy',
+    ]);
+
+    $morning = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($morning)->create([
+        'start_date_local' => Carbon::today()->setTime(6, 0),
+        'distance' => 5000,
+        'moving_time' => 1380,
+    ]);
+    $evening = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($evening)->create([
+        'start_date_local' => Carbon::today()->setTime(18, 0),
+        'distance' => 7000,
+        'moving_time' => 3300,
+    ]);
+
+    $response = $this->actingAs($user)
+        ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))
+        ->assertSuccessful();
+
+    $today = collect($response->json('props.weeks'))
+        ->flatMap(fn (array $week): array => $week['days'])
+        ->firstWhere('date', Carbon::today()->toDateString());
+
+    expect((float) $today['actual_km'])->toBe(12.0)
+        ->and($today['activities'])->toHaveCount(2)
+        // Oldest first, so the list reads in the order they were run.
+        ->and($today['activities'][0]['id'])->toBe($morning->id)
+        ->and((float) $today['activities'][0]['km'])->toBe(5.0)
+        ->and($today['activities'][0]['seconds'])->toBe(1380)
+        ->and($today['activities'][1]['id'])->toBe($evening->id)
+        ->and((float) $today['activities'][1]['km'])->toBe(7.0)
+        ->and($today['activities'][1]['seconds'])->toBe(3300);
+});
+
+it('returns an empty activities list for a day with nothing logged', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => 'easy',
+    ]);
+
+    $response = $this->actingAs($user)
+        ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))
+        ->assertSuccessful();
+
+    $today = collect($response->json('props.weeks'))
+        ->flatMap(fn (array $week): array => $week['days'])
+        ->firstWhere('date', Carbon::today()->toDateString());
+
+    expect($today['activities'])->toBe([])
+        ->and($today['actual_km'])->toBeNull();
 });

@@ -30,7 +30,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         ran_anyway: false,
         clamp_note: null,
         actual_km: null,
-        activity: null,
+        activities: [],
         ...overrides,
     };
 }
@@ -209,7 +209,7 @@ describe('WeekDayRow', () => {
                 date: '2026-06-15',
                 status: 'done',
                 actual_km: 8.1,
-                activity: { id: 42, seconds: 2720 },
+                activities: [{ id: 42, km: 8.1, seconds: 2720 }],
             }),
         });
         expand();
@@ -217,6 +217,66 @@ describe('WeekDayRow', () => {
         const link = screen.getByRole('link', { name: /view activity/i });
         expect(link).toHaveAttribute('href', '/activities/42');
         expect(link).toHaveTextContent('8.1 km · 45:20');
+    });
+
+    /**
+     * Reported from prod: a 5 km and a 7 km session on one day rendered as a
+     * single "12 km · 55:00" — the day's summed distance beside the longer
+     * run's clock, an impossible 4:35/km that the athlete never ran.
+     */
+    it('gives a two-session day one line per run, each with its own time', () => {
+        renderRow({
+            day: day({
+                date: '2026-06-15',
+                status: 'done',
+                actual_km: 12,
+                activities: [
+                    { id: 11, km: 5, seconds: 1380 },
+                    { id: 12, km: 7, seconds: 3300 },
+                ],
+            }),
+        });
+        expand();
+
+        const links = screen.getAllByRole('link', { name: /view activity/i });
+        expect(links).toHaveLength(2);
+        expect(links[0]).toHaveAttribute('href', '/activities/11');
+        expect(links[0]).toHaveTextContent('5 km · 23:00');
+        expect(links[1]).toHaveAttribute('href', '/activities/12');
+        expect(links[1]).toHaveTextContent('7 km · 55:00');
+        // The summed distance must never appear beside one run's duration.
+        expect(screen.queryByText(/12 km · 55:00/)).not.toBeInTheDocument();
+    });
+
+    it('shows no activity link on a day with nothing logged', () => {
+        renderRow({ day: day({ date: '2026-06-15', activities: [] }) });
+        expand();
+
+        expect(
+            screen.queryByRole('link', { name: /view activity/i }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('sums every run when a rest day was run more than once', () => {
+        renderRow({
+            day: day({
+                date: '2026-06-15',
+                session_type: 'rest',
+                segments: [],
+                distance_km: 0,
+                status: 'done',
+                ran_anyway: true,
+                actual_km: 12,
+                activities: [
+                    { id: 11, km: 5, seconds: 1380 },
+                    { id: 12, km: 7, seconds: 3300 },
+                ],
+            }),
+        });
+
+        expect(
+            screen.getByText('Ran anyway · 12 km · 1:18:00'),
+        ).toBeInTheDocument();
     });
 
     it('calls out a rest day that was run anyway', () => {
@@ -229,7 +289,7 @@ describe('WeekDayRow', () => {
                 status: 'done',
                 ran_anyway: true,
                 actual_km: 5,
-                activity: { id: 7, seconds: 1800 },
+                activities: [{ id: 7, km: 5, seconds: 1800 }],
             }),
         });
 
