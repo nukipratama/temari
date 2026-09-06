@@ -147,8 +147,8 @@ class StravaClient
     public function rateLimitRemaining(): array
     {
         return [
-            '15min' => max(0, RateLimiter::remaining($this->rateLimitKey('15min'), self::RATE_LIMIT_15MIN_MAX)),
-            'daily' => max(0, RateLimiter::remaining($this->rateLimitKey('daily'), self::RATE_LIMIT_DAILY_MAX)),
+            '15min' => $this->remainingBelow('15min', self::RATE_LIMIT_15MIN_MAX),
+            'daily' => $this->remainingBelow('daily', self::RATE_LIMIT_DAILY_MAX),
         ];
     }
 
@@ -163,14 +163,14 @@ class StravaClient
     public function backgroundHeadroom(): array
     {
         return [
-            '15min' => $this->headroomBelowCeiling('15min', self::RATE_LIMIT_15MIN_MAX),
-            'daily' => $this->headroomBelowCeiling('daily', self::RATE_LIMIT_DAILY_MAX),
+            '15min' => $this->remainingBelow('15min', $this->backgroundCeiling(self::RATE_LIMIT_15MIN_MAX)),
+            'daily' => $this->remainingBelow('daily', $this->backgroundCeiling(self::RATE_LIMIT_DAILY_MAX)),
         ];
     }
 
-    private function headroomBelowCeiling(string $bucket, int $max): int
+    private function remainingBelow(string $bucket, int $ceiling): int
     {
-        return max(0, RateLimiter::remaining($this->rateLimitKey($bucket), $this->backgroundCeiling($max)));
+        return max(0, RateLimiter::remaining($this->rateLimitKey($bucket), $ceiling));
     }
 
     public function refreshIfExpired(StravaConnection $connection): StravaConnection
