@@ -11,6 +11,8 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarrationOrigin;
 
@@ -38,18 +40,34 @@ class RegeneratePlanCommand extends Command
             ->cursor();
 
         $count = 0;
+        $failed = 0;
         foreach ($users as $user) {
-            $periodizer->regenerate($user);
+            // One athlete's data must never cost every athlete after them
+            // their week. This ran as a bare loop until a race goal whose day
+            // had passed made PhaseSchedule::forRace() throw, and the whole
+            // command died on the first user holding one.
+            try {
+                $periodizer->regenerate($user);
 
-            if ($user->is_demo === false) {
-                $narrationRequester->requestForCurrentWeek($user, $today);
+                if ($user->is_demo === false) {
+                    $narrationRequester->requestForCurrentWeek($user, $today);
+                }
+
+                $count++;
+            } catch (Throwable $e) {
+                $failed++;
+                report($e);
+                Log::error('plan.regenerate.user_failed', [
+                    'user_id' => $user->id,
+                    'exception' => $e::class,
+                    'message' => $e->getMessage(),
+                ]);
             }
-
-            $count++;
         }
 
-        $this->info("Regenerated the plan for {$count} user(s).");
+        $this->info("Regenerated the plan for {$count} user(s)."
+            .($failed > 0 ? " {$failed} failed; see the log." : ''));
 
-        return self::SUCCESS;
+        return $failed > 0 ? self::FAILURE : self::SUCCESS;
     }
 }

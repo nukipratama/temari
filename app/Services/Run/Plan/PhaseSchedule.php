@@ -68,7 +68,13 @@ final class PhaseSchedule
     {
         $currentWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
         $raceWeekStart = $raceDate->copy()->startOfWeek(Carbon::MONDAY);
-        $weeksToRace = (int) $currentWeekStart->diffInWeeks($raceWeekStart) + 1;
+        // diffInWeeks is signed, so a race day already behind us counts down
+        // past zero. Floored at one week: `plan:close-finished-races` retires a
+        // finished race long before this could matter, but four callers reach
+        // this method and a negative count used to reach array_fill() below and
+        // throw — taking every athlete after the thrower in the same
+        // `plan:regenerate` run with it.
+        $weeksToRace = max(1, (int) $currentWeekStart->diffInWeeks($raceWeekStart) + 1);
 
         $taperWeeks = $this->taperWeeksForDistance($raceDistanceM);
 
