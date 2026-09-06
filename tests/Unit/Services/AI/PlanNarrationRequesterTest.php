@@ -11,6 +11,7 @@ use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Enums\SessionType;
 use App\Models\User;
+use App\Support\Cooldown;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\MaterialFingerprint;
@@ -161,13 +162,18 @@ describe('isWithinCurrentWeek', function (): void {
 });
 
 describe('payloadsForCurrentWeek', function (): void {
-    it('returns a Pending-shaped placeholder for every day, and null week/season, before anything exists', function (): void {
+    /**
+     * `Analysis::toPayload(null, ...)` reports Pending, which the UI draws as a
+     * skeleton. That's honest while a job is queued and false hope when none
+     * is — a day with no row has nothing coming, so it is omitted and the card
+     * simply shows no take.
+     */
+    it('omits a day with no row at all rather than promising one is coming', function (): void {
         $user = User::factory()->create();
 
         $payloads = $this->requester->payloadsForCurrentWeek($user, Carbon::today());
 
-        expect($payloads['days'])->toHaveCount(7)
-            ->and(collect($payloads['days'])->every(fn (array $p): bool => $p['status'] === AnalysisStatus::Pending->value))->toBeTrue()
+        expect($payloads['days'])->toBe([])
             ->and($payloads['week'])->toBeNull()
             ->and($payloads['season'])->toBeNull();
     });
@@ -362,4 +368,134 @@ it('re-narrates a week adaptation whose verdict changed', function (): void {
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
     Bus::assertDispatched(AnalyzePlanWeekVoiceJob::class);
+});
+
+describe('requestForCurrentWeekUnlessCoolingDown', function (): void {
+    it('requests the first time and refuses inside the window', function (): void {
+        $user = User::factory()->create();
+
+        expect($this->requester->requestForCurrentWeekUnlessCoolingDown($user, Carbon::today()))->toBeTrue()
+            ->and($this->requester->requestForCurrentWeekUnlessCoolingDown($user, Carbon::today()))->toBeFalse();
+    });
+
+    /**
+     * The guard is on spend, not on correctness — the manual button, the weekly
+     * job and onboarding all call requestForCurrentWeek() directly and are
+     * deliberately unaffected by it.
+     */
+    it('does not block the uncooled request path', function (): void {
+        $user = User::factory()->create();
+        PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
+
+        // Cooled down, so the guarded call is a no-op...
+        $this->requester->requestForCurrentWeekUnlessCoolingDown($user, Carbon::today());
+        Analysis::query()->where('subject_id', $user->id)->delete();
+        expect($this->requester->requestForCurrentWeekUnlessCoolingDown($user, Carbon::today()))->toBeFalse()
+            ->and(Analysis::query()->where('subject_id', $user->id)->count())->toBe(0);
+
+        // ...while the direct path the button, the weekly job and onboarding
+        // use still writes rows.
+        $this->requester->requestForCurrentWeek($user, Carbon::today());
+
+        expect(Analysis::query()->where('subject_id', $user->id)->count())->toBeGreaterThan(0);
+    });
+
+    it('lets the window lapse', function (): void {
+        $user = User::factory()->create();
+        $this->requester->requestForCurrentWeekUnlessCoolingDown($user, Carbon::today());
+
+        Carbon::setTestNow(Carbon::now()->addSeconds(Cooldown::PLAN_NARRATION_WINDOW_SECONDS + 1));
+
+        expect($this->requester->requestForCurrentWeekUnlessCoolingDown($user, Carbon::today()))->toBeTrue();
+    });
+});
+
+describe('stale plan-day takes', function (): void {
+    /**
+     * The settings-change cooldown deliberately leaves a finished blurb in
+     * place rather than re-billing it. That blurb describes the plan the
+     * athlete had before the change, so it must not be shown — the whole point
+     * of the advisory-clamp work was that the voice never contradicts the card.
+     */
+    it('hides a finished take whose plan has changed under it', function (): void {
+        $user = User::factory()->create();
+        $today = Carbon::today()->toDateString();
+        PlannedSession::factory()->for($user)->create([
+            'date' => $today,
+            'session_type' => SessionType::Long,
+        ]);
+        Analysis::factory()->done('long run today')->create([
+            'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::PlanDayVoice,
+            'discriminator' => $today,
+            'content_fingerprint' => str_repeat('0', 40), // a digest from the plan they used to have
+        ]);
+
+        expect($this->requester->payloadsForCurrentWeek($user, Carbon::today())['days'])
+            ->not->toHaveKey($today);
+    });
+
+    it('keeps a finished take whose plan still matches it', function (): void {
+        $user = User::factory()->create();
+        $today = Carbon::today()->toDateString();
+        $session = PlannedSession::factory()->for($user)->create([
+            'date' => $today,
+            'session_type' => SessionType::Long,
+        ]);
+        $longRunKm = app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_km'];
+        Analysis::factory()->done('long run today')->create([
+            'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::PlanDayVoice,
+            'discriminator' => $today,
+            'content_fingerprint' => MaterialFingerprint::forPlannedSession($session, $longRunKm),
+        ]);
+
+        expect($this->requester->payloadsForCurrentWeek($user, Carbon::today())['days'][$today]['content'])
+            ->toBe('long run today');
+    });
+
+    /**
+     * A rule-based fill (cost ceiling, content filter, or the demo account)
+     * never stamps a fingerprint — that null is a deliberate "eligible for a
+     * real narration later" marker, not a claim of staleness, so it must not
+     * be treated as drift and hidden.
+     */
+    it('keeps a finished take with no stamped fingerprint', function (): void {
+        $user = User::factory()->create();
+        $today = Carbon::today()->toDateString();
+        PlannedSession::factory()->for($user)->create([
+            'date' => $today,
+            'session_type' => SessionType::Long,
+        ]);
+        Analysis::factory()->done('rule-based take')->create([
+            'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::PlanDayVoice,
+            'discriminator' => $today,
+            'content_fingerprint' => null,
+        ]);
+
+        expect($this->requester->payloadsForCurrentWeek($user, Carbon::today())['days'][$today]['content'])
+            ->toBe('rule-based take');
+    });
+
+    /** A queued job is real work, so the skeleton above it is a promise kept. */
+    it('keeps a pending take, drifted or not, because a job is coming', function (): void {
+        $user = User::factory()->create();
+        $today = Carbon::today()->toDateString();
+        PlannedSession::factory()->for($user)->create(['date' => $today]);
+        Analysis::factory()->create([
+            'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::PlanDayVoice,
+            'discriminator' => $today,
+            'status' => AnalysisStatus::Pending,
+            'content_fingerprint' => str_repeat('0', 40),
+        ]);
+
+        expect($this->requester->payloadsForCurrentWeek($user, Carbon::today())['days'])
+            ->toHaveKey($today);
+    });
 });

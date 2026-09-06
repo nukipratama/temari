@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 use App\Enums\ExperienceLevel;
 use App\Enums\GoalType;
+use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Models\TrainingPreference;
+use App\Models\PlannedSession;
+use Illuminate\Support\Carbon;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
 
@@ -96,4 +100,58 @@ it('rejects a sessions_per_week outside the supported 2-6 range', function (): v
     $this->actingAs($user)
         ->patch('/settings/training-preferences', validPreferencesPayload(['sessions_per_week' => 7, 'run_days' => null, 'long_run_day' => null]))
         ->assertSessionHasErrors('sessions_per_week');
+});
+
+/**
+ * Run days, session count and long-run day decide the shape of every week
+ * WeekPlanBuilder emits. Saving them and having nothing change until Monday
+ * made the setting look broken.
+ */
+it('reshapes the plan onto the run days just saved', function (): void {
+    Carbon::setTestNow('2026-09-08 10:00:00'); // a Tuesday
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->patch('/settings/training-preferences', [
+        'experience_level' => 'experienced',
+        'sessions_per_week' => 3,
+        'goal_type' => 'consistent',
+        'run_days' => [1, 3, 5],
+        'long_run_day' => 5,
+    ])->assertSessionHasNoErrors();
+
+    $nextWeek = Carbon::today()->startOfWeek(Carbon::MONDAY)->addWeek();
+    $trainingDows = PlannedSession::query()
+        ->where('user_id', $user->id)
+        ->whereBetween('date', [$nextWeek->toDateString(), $nextWeek->copy()->addDays(6)->toDateString()])
+        ->get()
+        ->reject(fn (PlannedSession $s): bool => $s->session_type->value === 'rest')
+        ->map(fn (PlannedSession $s): int => (int) $s->date->dayOfWeekIso - 1)
+        ->sort()
+        ->values()
+        ->all();
+
+    expect($trainingDows)->toBe([1, 3, 5]);
+
+    Carbon::setTestNow();
+});
+
+/**
+ * The demo login is public and credential-free — a real narration dispatch
+ * here would be an unauthenticated path to the Azure bill, the exact gap
+ * `plan:regenerate` and `shouldServeRuleBased()` already guard against
+ * everywhere else the plan is regenerated.
+ */
+it('never bills narration for the demo account', function (): void {
+    Bus::fake();
+    Carbon::setTestNow('2026-09-08 10:00:00'); // a Tuesday
+    $user = User::factory()->create(['is_demo' => true]);
+
+    $this->actingAs($user)
+        ->patch('/settings/training-preferences', validPreferencesPayload())
+        ->assertSessionHasNoErrors();
+
+    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
+    expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
+
+    Carbon::setTestNow();
 });

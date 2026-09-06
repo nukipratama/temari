@@ -125,6 +125,7 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 
     Route::get('/race', [RaceController::class, 'index'])->name('race');
     Route::post('/race', [RaceController::class, 'store'])->name('race.store');
+    Route::delete('/race', [RaceController::class, 'destroy'])->name('race.destroy');
 
     Route::get('/plan', [PlanController::class, 'index'])->name('plan');
     Route::post('/plan/regenerate', [PlanController::class, 'regenerate'])->name('plan.regenerate');

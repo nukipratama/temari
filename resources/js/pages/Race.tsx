@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 
 import PlanRaceTabs from '@/components/race/PlanRaceTabs';
 import ProjectionBlock, {
@@ -79,6 +79,13 @@ export default function Race({ race, projection }: Readonly<RaceProps>) {
                             goalTimeSec={race.goal_time_sec}
                         />
                         <ProjectionBlock projection={projection} />
+                        <button
+                            type="button"
+                            onClick={() => router.delete('/race')}
+                            className="focus-ring self-start text-label-micro text-text-2"
+                        >
+                            clear this race
+                        </button>
                     </div>
                 ) : (
                     <EmptyPanel

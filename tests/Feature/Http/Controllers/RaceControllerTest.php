@@ -2,11 +2,15 @@
 
 declare(strict_types=1);
 
+use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Models\PersonalRecord;
 use App\Models\RaceGoal;
+use App\Models\PlannedSession;
+use Illuminate\Support\Carbon;
 use App\Models\User;
 use App\Support\SharedPropCacheKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -130,4 +134,120 @@ it('shares the active race app-wide via the activeRace prop', function (): void 
         ->assertInertia(fn (Assert $page) => $page
             ->where('activeRace.name', 'Shared race')
             ->where('activeRace.distance_m', 5_000));
+});
+
+/**
+ * A race replaces the plan's whole structure — PhaseSchedule::forRace()
+ * supersedes the self-scaled arc. Waiting for Monday trained the athlete
+ * against an arc their own goal had superseded, while the flash message said
+ * Temari would keep the plan honest against it.
+ */
+it('reshapes the plan the moment a race is set', function (): void {
+    Carbon::setTestNow('2026-09-08 10:00:00'); // a Tuesday
+    $user = User::factory()->create();
+
+    expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(0);
+
+    $this->actingAs($user)->post('/race', [
+        'race_date' => Carbon::today()->addMonths(4)->toDateString(),
+        'distance_m' => 21_097,
+        'goal_time_sec' => 7_200,
+        'name' => 'A half',
+    ])->assertSessionHasNoErrors();
+
+    expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
+
+    Carbon::setTestNow();
+});
+
+/**
+ * The demo login is public and credential-free — a real narration dispatch
+ * here would be an unauthenticated path to the Azure bill, the exact gap
+ * `plan:regenerate` and `shouldServeRuleBased()` already guard against
+ * everywhere else the plan is regenerated.
+ */
+it('never bills narration for the demo account', function (): void {
+    Bus::fake();
+    Carbon::setTestNow('2026-09-08 10:00:00'); // a Tuesday
+    $user = User::factory()->create(['is_demo' => true]);
+
+    $this->actingAs($user)->post('/race', [
+        'race_date' => Carbon::today()->addMonths(4)->toDateString(),
+        'distance_m' => 21_097,
+        'goal_time_sec' => 7_200,
+        'name' => 'A half',
+    ])->assertSessionHasNoErrors();
+
+    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
+    expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
+
+    Carbon::setTestNow();
+});
+
+/**
+ * `/race` had only GET and POST: a race could be superseded by another but
+ * never simply called off, so a wrong date was stuck until it passed while the
+ * plan kept building phases toward it.
+ */
+it('clears the active race and rebuilds the plan without it', function (): void {
+    Carbon::setTestNow('2026-09-08 10:00:00');
+    $user = User::factory()->create();
+    $race = RaceGoal::query()->create([
+        'user_id' => $user->id,
+        'race_date' => Carbon::today()->addMonths(4)->toDateString(),
+        'distance_m' => 21_097,
+        'goal_time_sec' => 7_200,
+        'name' => 'A half',
+    ]);
+
+    $this->actingAs($user)->delete('/race')->assertSessionHasNoErrors();
+
+    expect($race->fresh()->completed_at)->not->toBeNull()
+        ->and(RaceGoal::query()->where('user_id', $user->id)->active()->exists())->toBeFalse()
+        ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
+
+    Carbon::setTestNow();
+});
+
+/** Stamped, not deleted — an abandoned race is still part of the record. */
+it('keeps the cleared race on record', function (): void {
+    Carbon::setTestNow('2026-09-08 10:00:00');
+    $user = User::factory()->create();
+    RaceGoal::query()->create([
+        'user_id' => $user->id,
+        'race_date' => Carbon::today()->addMonths(4)->toDateString(),
+        'distance_m' => 21_097,
+        'goal_time_sec' => 7_200,
+        'name' => 'A half',
+    ]);
+
+    $this->actingAs($user)->delete('/race');
+
+    expect(RaceGoal::query()->where('user_id', $user->id)->count())->toBe(1);
+
+    Carbon::setTestNow();
+});
+
+it('does nothing when there is no race to clear', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->delete('/race')->assertSessionHasNoErrors();
+
+    expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(0);
+});
+
+it('never clears another athlete\'s race', function (): void {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    $theirs = RaceGoal::query()->create([
+        'user_id' => $other->id,
+        'race_date' => Carbon::today()->addMonths(4)->toDateString(),
+        'distance_m' => 21_097,
+        'goal_time_sec' => 7_200,
+        'name' => 'Theirs',
+    ]);
+
+    $this->actingAs($user)->delete('/race');
+
+    expect($theirs->fresh()->completed_at)->toBeNull();
 });
