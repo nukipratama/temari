@@ -73,7 +73,7 @@ function weekdayAbbr(iso: string): string {
 function dayDetail(day: WeekPlanDay): string {
     const parts = [STATUS_LABEL[day.status] ?? day.status];
     if (day.session_type !== 'rest') {
-        parts.push(`planned ${day.distance_km}k core`);
+        parts.push(`planned ${day.distance_km}k`);
     }
     if (day.actual_km !== null) {
         parts.push(`ran ${day.actual_km}k`);

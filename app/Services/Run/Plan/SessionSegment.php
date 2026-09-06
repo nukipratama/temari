@@ -8,8 +8,8 @@ use App\Enums\PaceBand;
 use App\Enums\SegmentKey;
 
 /**
- * One ordered slice of a planned session — e.g. a Tempo day's warmup, its
- * threshold main set, and its cooldown. Always computed fresh by
+ * One ordered slice of a planned session — e.g. a Tempo day's warmup and
+ * its threshold main set. Always computed fresh by
  * {@see SegmentGenerator}, never persisted (see that class's docblock for
  * why). `minutes` and `paceSecPerKm` are null exactly when the athlete has
  * no VDOT estimate yet — the segment's shape (key, pace target) still renders,
