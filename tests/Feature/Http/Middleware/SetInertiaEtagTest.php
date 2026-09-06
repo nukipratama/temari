@@ -101,11 +101,34 @@ it('misses when the page data moves', function (): void {
     $activity = etagSeedRun($user);
     $this->actingAs($user);
 
+    $etag = etagVisit("/activities/{$activity->id}")->assertSuccessful()->headers->get('ETag');
+
+    $activity->detail->update(['name' => 'A different evening run']);
+
+    expect(etagVisit("/activities/{$activity->id}", $etag)->assertSuccessful()->getStatusCode())->toBe(200);
+});
+
+it('tags only the shell on /history, leaving the deferred run list outside the hash', function (): void {
+    $user = User::factory()->create();
+    $activity = etagSeedRun($user);
+    $this->actingAs($user);
+
     $etag = etagVisit('/history')->assertSuccessful()->headers->get('ETag');
 
     $activity->detail->update(['name' => 'A different evening run']);
 
-    expect(etagVisit('/history', $etag)->assertSuccessful()->getStatusCode())->toBe(200);
+    expect(etagVisit('/history', $etag)->getStatusCode())->toBe(304);
+
+    $partial = $this->get('/history', [
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => currentInertiaVersion(),
+        'X-Inertia-Partial-Component' => 'History',
+        'X-Inertia-Partial-Data' => 'runs',
+    ])->assertSuccessful();
+
+    expect($partial->headers->get('ETag'))->toBeNull()
+        ->and($partial->headers->get('Cache-Control'))->toContain('no-store')
+        ->and($partial->getContent())->toContain('A different evening run');
 });
 
 it('misses when a shared prop moves even though the page data did not', function (): void {

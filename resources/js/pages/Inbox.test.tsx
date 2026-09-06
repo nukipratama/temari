@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { InboxItem } from '@/types/inertia';
 
-import { setMockPage } from '@/test/setup';
+import { setMockDeferred, setMockPage } from '@/test/setup';
 
 import Inbox from './Inbox';
 
@@ -54,6 +54,19 @@ describe('Inbox', () => {
 
         expect(screen.getByText('nothing here yet.')).toBeInTheDocument();
         expect(screen.getByText(/lands here on its own/)).toBeInTheDocument();
+    });
+
+    it('paints the hero while the rows skeleton', () => {
+        setMockDeferred(['notifications', 'shown', 'hasOlder']);
+
+        const { container } = renderInbox([item()]);
+
+        expect(screen.getByText('still here.')).toBeInTheDocument();
+        expect(screen.queryByText('Your run is in')).not.toBeInTheDocument();
+        expect(screen.queryByText('nothing here yet.')).not.toBeInTheDocument();
+        expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(
+            0,
+        );
     });
 
     it('lists the rows it was given', () => {

@@ -57,6 +57,36 @@ function authenticatedRoutes(): array
         ->all();
 }
 
+/**
+ * The deferred blocks of a page, fetched the way `<Deferred>` fetches them: a
+ * block that only arrives on the follow-up request would otherwise leave the
+ * sweep blind to whatever it renders.
+ *
+ * @param  object  $actingAs  The authenticated test case.
+ */
+function deferredBodyFor(object $actingAs, string $uri, string $html): string
+{
+    preg_match('/type="application\/json">(.*?)<\/script>/s', $html, $matches);
+    $page = json_decode(html_entity_decode($matches[1] ?? ''), true);
+
+    if (! is_array($page)) {
+        return '';
+    }
+
+    $deferred = collect($page['deferredProps'] ?? [])->flatten()->all();
+
+    if ($deferred === []) {
+        return '';
+    }
+
+    return (string) $actingAs->get($uri, [
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => (string) ($page['version'] ?? ''),
+        'X-Inertia-Partial-Component' => (string) ($page['component'] ?? ''),
+        'X-Inertia-Partial-Data' => implode(',', $deferred),
+    ])->getContent();
+}
+
 it('refuses every authenticated route that is handed another user\'s resource id', function (): void {
     $ownedParameters = [
         'activity' => fn (): int => $this->victimActivity->id,
@@ -147,6 +177,7 @@ it('never renders another user\'s activity data on a shared page', function (): 
 
         $uri = '/'.ltrim($route->uri(), '/');
         $body = (string) $this->actingAs($this->attacker)->get($uri)->getContent();
+        $body .= deferredBodyFor($this->actingAs($this->attacker), $uri, $body);
 
         if (str_contains($body, (string) $this->marker)) {
             $leaked[] = $uri;
@@ -163,8 +194,10 @@ it('never renders another user\'s activity data on a shared page', function (): 
 });
 
 it('renders the marker run to its own owner, so the sweeps are not vacuous', function (): void {
-    $this->actingAs($this->victim)
-        ->get('/history')
+    $html = (string) $this->actingAs($this->victim)->get('/history')
         ->assertSuccessful()
-        ->assertSee($this->marker, false);
+        ->getContent();
+
+    expect(deferredBodyFor($this->actingAs($this->victim), '/history', $html))
+        ->toContain((string) $this->marker);
 });
