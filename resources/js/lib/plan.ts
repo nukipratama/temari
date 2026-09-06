@@ -171,9 +171,6 @@ export function weekRangeLabel(weekStartIso: string): string {
     return `${formatMonthDayId(monday)}–${formatMonthDayId(sunday)}`;
 }
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-/** The weekday a Y-m-d falls on, as the day rows label it. */
 /**
  * The eased session on one line. The distance is dropped when the clamp left
  * it alone — an intensity-only step-down (Tempo/Interval to Easy keeps the
@@ -193,6 +190,9 @@ export function clampSummary(clamp: PlanDayClamp, plannedKm: number): string {
     return parts.join(' · ');
 }
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** The weekday a Y-m-d falls on, as the day rows label it. */
 export function weekdayLabel(iso: string): string {
     const date = parseNaiveLocalDate(iso);
     return date === null ? '' : WEEKDAYS[date.getDay()];
