@@ -22,6 +22,7 @@ it('bounds the overlap expiry on the Strava drains', function (string $command, 
 })->with([
     'strava:ingest every 5 min' => ['strava:ingest', 10],
     'strava:sync running-hours' => ['strava:sync', 55],
+    'strava:hydrate-backlog hourly' => ['strava:hydrate-backlog', 55],
 ]);
 
 /**

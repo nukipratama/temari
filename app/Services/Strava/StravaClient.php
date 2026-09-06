@@ -147,9 +147,30 @@ class StravaClient
     public function rateLimitRemaining(): array
     {
         return [
-            '15min' => max(0, RateLimiter::remaining($this->rateLimitKey('15min'), self::RATE_LIMIT_15MIN_MAX)),
-            'daily' => max(0, RateLimiter::remaining($this->rateLimitKey('daily'), self::RATE_LIMIT_DAILY_MAX)),
+            '15min' => $this->remainingBelow('15min', self::RATE_LIMIT_15MIN_MAX),
+            'daily' => $this->remainingBelow('daily', self::RATE_LIMIT_DAILY_MAX),
         ];
+    }
+
+    /**
+     * Reads a {@see StravaReadPriority::Background} caller may still spend
+     * before it reaches the live-ingest reserve. Distinct from
+     * {@see rateLimitRemaining()}, which reports the raw pool including the
+     * reserve on purpose (the sync log and Pulse card want the true budget).
+     *
+     * @return array{'15min': int, 'daily': int}
+     */
+    public function backgroundHeadroom(): array
+    {
+        return [
+            '15min' => $this->remainingBelow('15min', $this->backgroundCeiling(self::RATE_LIMIT_15MIN_MAX)),
+            'daily' => $this->remainingBelow('daily', $this->backgroundCeiling(self::RATE_LIMIT_DAILY_MAX)),
+        ];
+    }
+
+    private function remainingBelow(string $bucket, int $ceiling): int
+    {
+        return max(0, RateLimiter::remaining($this->rateLimitKey($bucket), $ceiling));
     }
 
     public function refreshIfExpired(StravaConnection $connection): StravaConnection

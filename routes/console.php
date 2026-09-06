@@ -113,6 +113,13 @@ Schedule::command('strava:sync')->cron('0 4-10,16-22 * * *')->withoutOverlapping
 // self-dispatch their own ingest); batching keeps a backlog from 429-storming Strava.
 Schedule::command('strava:ingest')->everyFiveMinutes()->withoutOverlapping(10);
 
+// Hourly: drain the summary-only backlog newest-first, so an imported history
+// converges on splits, TRIMP, PRs, cards and narration instead of waiting for
+// someone to open each run. Sized from the background read headroom, so it
+// yields the whole pool to live ingest rather than competing with it. See
+// docs/decisions/background-hydration-drain.md.
+Schedule::command('strava:hydrate-backlog')->hourly()->withoutOverlapping(55);
+
 // Hourly catch-up for activity reverse-geocoding: backfills start coords from the
 // summary_polyline and re-queues ResolveActivityLocationJob for any GPS run still
 // missing location_resolved_at. Primary dispatch is per-ingest; this sweeps up

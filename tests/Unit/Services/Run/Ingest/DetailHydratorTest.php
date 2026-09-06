@@ -83,3 +83,13 @@ it('is a no-op for an unknown activity id', function (): void {
 
     Queue::assertNothingPushed();
 });
+
+it('refuses a run whose detail fetch has exhausted its attempts', function (): void {
+    $activity = Activity::factory()->for(hydratableUser())->summaryOnly()->create([
+        'detail_fail_count' => Activity::MAX_DETAIL_FETCH_ATTEMPTS,
+    ]);
+
+    expect(app(DetailHydrator::class)->hydrate($activity->id))->toBeFalse();
+
+    Queue::assertNothingPushed();
+});

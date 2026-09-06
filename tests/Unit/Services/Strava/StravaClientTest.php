@@ -535,3 +535,26 @@ it('resets the breaker failure streak on a successful 2xx', function (): void {
 
     expect(new AppConfig()->integer(AppConfigKey::StravaBreakerFailures))->toBe(0);
 });
+
+it('reports background headroom net of the live-ingest reserve', function (): void {
+    expect(new StravaClient()->backgroundHeadroom())->toBe(['15min' => 150, 'daily' => 1500]);
+});
+
+it('shrinks background headroom as live reads spend the shared pool', function (): void {
+    for ($i = 0; $i < 40; $i++) {
+        RateLimiter::hit('strava-api:15min', 15 * 60);
+    }
+
+    $client = new StravaClient();
+
+    expect($client->backgroundHeadroom()['15min'])->toBe(110)
+        ->and($client->rateLimitRemaining()['15min'])->toBe(160);
+});
+
+it('floors background headroom at zero once live reads pass the reserve', function (): void {
+    for ($i = 0; $i < 180; $i++) {
+        RateLimiter::hit('strava-api:15min', 15 * 60);
+    }
+
+    expect(new StravaClient()->backgroundHeadroom()['15min'])->toBe(0);
+});

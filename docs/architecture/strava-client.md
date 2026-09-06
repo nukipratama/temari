@@ -61,7 +61,7 @@ Threshold and cooldown are tunable `app_config` keys with code defaults in [AppC
 
 ## Global rate-limit buckets
 
-[`guardRateLimit()`](app/Services/Strava/StravaClient.php#L238) checks two Laravel `RateLimiter` buckets (a short 15-min window and a daily one) before hitting both. The keys from [`rateLimitKey()`](app/Services/Strava/StravaClient.php#L278) carry **no `user_id`** — the budget is app-wide because Strava meters per OAuth client, not per athlete (the [[strava-circuit-breaker-rate-limit]] ADR is the rationale). Exhaustion records a `strava_rate_limited` Pulse event and throws `StravaRateLimitedException`.
+[`guardRateLimit()`](app/Services/Strava/StravaClient.php#L258) checks two Laravel `RateLimiter` buckets (a short 15-min window and a daily one) before hitting both. The keys from [`rateLimitKey()`](app/Services/Strava/StravaClient.php#L298) carry **no `user_id`** — the budget is app-wide because Strava meters per OAuth client, not per athlete (the [[strava-circuit-breaker-rate-limit]] ADR is the rationale). Exhaustion records a `strava_rate_limited` Pulse event and throws `StravaRateLimitedException`.
 
 ### The live-ingest reserve
 
@@ -75,9 +75,9 @@ The ceilings are **this app's own Read allocation, 200 per 15 min and 2,000 per 
 
 ## Per-connection token refresh
 
-[`refreshIfExpired()`](app/Services/Strava/StravaClient.php#L144) on the client (returning a refreshed [StravaConnection](app/Models/StravaConnection.php)) rotates an access token that's within the [refresh buffer](app/Services/Strava/StravaClient.php#L25) of expiry. It takes a [`strava-refresh:{id}` lock](app/Services/Strava/StravaClient.php#L153), then **re-reads inside the lock** before refreshing — because Strava rotates the `refresh_token` on every exchange, two concurrent workers refreshing the same connection would mutually invalidate each other's new token. This lock is intentionally **per-connection**, unlike the global rate buckets and global breaker.
+[`refreshIfExpired()`](app/Services/Strava/StravaClient.php#L176) on the client (returning a refreshed [StravaConnection](app/Models/StravaConnection.php)) rotates an access token that's within the [refresh buffer](app/Services/Strava/StravaClient.php#L25) of expiry. It takes a [`strava-refresh:{id}` lock](app/Services/Strava/StravaClient.php#L153), then **re-reads inside the lock** before refreshing — because Strava rotates the `refresh_token` on every exchange, two concurrent workers refreshing the same connection would mutually invalidate each other's new token. This lock is intentionally **per-connection**, unlike the global rate buckets and global breaker.
 
-Refresh failures classify just like reads: a [`400 invalid_grant`](app/Services/Strava/StravaClient.php#L192) is permanent deauthorization (`StravaTokenRefreshFailedException` → revoke), while `401` / `429` / `5xx` / connection errors are [transient](app/Services/Strava/StravaClient.php#L203) (`StravaTokenRefreshTransientException` → release & back off). Revoking a healthy connection over a momentary blip would purge its un-ingested stubs — see [`markRevoked()`](app/Models/StravaConnection.php#L93), which cascades-deletes that user's pending stubs.
+Refresh failures classify just like reads: a [`400 invalid_grant`](app/Services/Strava/StravaClient.php#L225) is permanent deauthorization (`StravaTokenRefreshFailedException` → revoke), while `401` / `429` / `5xx` / connection errors are [transient](app/Services/Strava/StravaClient.php#L203) (`StravaTokenRefreshTransientException` → release & back off). Revoking a healthy connection over a momentary blip would purge its un-ingested stubs — see [`markRevoked()`](app/Models/StravaConnection.php#L93), which cascades-deletes that user's pending stubs.
 
 ## Diagnosing & resetting a wedged breaker
 
