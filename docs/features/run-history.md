@@ -105,7 +105,10 @@ not in the controller: [FeedFilterRequest](../../app/Http/Requests/FeedFilterReq
 normalises `range`/`week` off the query string, [FeedQuery](../../app/Services/Run/FeedQuery.php)
 resolves them into a [FeedFilters](../../app/Services/Run/FeedFilters.php) DTO
 and builds the `Activity` query (always newest-first), and the controller hands
-Inertia closures over it. Two behaviours worth knowing:
+`Inertia::defer()` closures over it — `runs`, `notes`, `moods` and
+`weeklySnapshots` all arrive after the shell paints, in one follow-up request.
+The calendar branch defers `cells`, `weeklySnapshots` and `monthlyRecap` the
+same way. Two behaviours worth knowing:
 
 - **Auto-widen range** (`FeedQuery::widenRangeToReach`): the window defaults to
   `8w` but the server silently widens it to the smallest preset that reaches the

@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Deferred, Head, Link } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 
@@ -9,6 +9,7 @@ import HistoryHeader from '@/components/history/HistoryHeader';
 import RecapCard from '@/components/history/RecapCard';
 import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
+import Skeleton, { SkeletonRows } from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { MOOD_FILL, MOOD_LABEL, MOOD_ORDER } from '@/lib/mood';
@@ -33,7 +34,7 @@ interface LifetimeStats {
 }
 
 interface CalendarProps {
-    cells: ReadonlyArray<CalendarCell>;
+    cells?: ReadonlyArray<CalendarCell>;
     month: string;
     monthLabel: string;
     prevMonth: string;
@@ -47,7 +48,7 @@ interface CalendarProps {
 const WEEKDAY_LABELS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'] as const;
 
 export default function Calendar({
-    cells,
+    cells = [],
     monthLabel,
     prevMonth,
     nextMonth,
@@ -85,31 +86,41 @@ export default function Calendar({
                     />
                 </div>
 
-                <div className="mb-2.5 text-center font-mono text-[0.59375rem] leading-[1.2] text-text-3">
-                    {monthTotals.runs} run{monthTotals.runs === 1 ? '' : 's'} ·{' '}
-                    {monthTotals.km.toFixed(1)} km ·{' '}
-                    {monthTotals.trimp === null
-                        ? '— TRIMP'
-                        : `${Math.round(monthTotals.trimp)} TRIMP`}
-                </div>
+                <Deferred
+                    data={['cells', 'monthlyRecap']}
+                    fallback={<Skeleton className="mx-auto mb-2.5 h-3 w-44" />}
+                >
+                    {() => (
+                        <>
+                            <div className="mb-2.5 text-center font-mono text-[0.59375rem] leading-[1.2] text-text-3">
+                                {monthTotals.runs} run
+                                {monthTotals.runs === 1 ? '' : 's'} ·{' '}
+                                {monthTotals.km.toFixed(1)} km ·{' '}
+                                {monthTotals.trimp === null
+                                    ? '— TRIMP'
+                                    : `${Math.round(monthTotals.trimp)} TRIMP`}
+                            </div>
 
-                {monthlyRecap && (
-                    <RecapCard
-                        mood={dominantMood}
-                        analysis={monthlyRecap}
-                        awaitingSchedule={isCurrentMonth}
-                        awaitingScheduleLabel="this month's recap isn't ready yet."
-                        isChainHead={monthlyRecap.is_chain_head}
-                        size="month"
-                        inertiaReloadProps={['monthlyRecap']}
-                        notification={{
-                            url: `/recaps/monthly/${month}/send`,
-                            retryAfterSeconds:
-                                monthlyRecap.notification_retry_after_seconds,
-                        }}
-                        className="mb-2.5"
-                    />
-                )}
+                            {monthlyRecap && (
+                                <RecapCard
+                                    mood={dominantMood}
+                                    analysis={monthlyRecap}
+                                    awaitingSchedule={isCurrentMonth}
+                                    awaitingScheduleLabel="this month's recap isn't ready yet."
+                                    isChainHead={monthlyRecap.is_chain_head}
+                                    size="month"
+                                    inertiaReloadProps={['monthlyRecap']}
+                                    notification={{
+                                        url: `/recaps/monthly/${month}/send`,
+                                        retryAfterSeconds:
+                                            monthlyRecap.notification_retry_after_seconds,
+                                    }}
+                                    className="mb-2.5"
+                                />
+                            )}
+                        </>
+                    )}
+                </Deferred>
 
                 <Legend />
 
@@ -124,22 +135,30 @@ export default function Calendar({
                         </span>
                     ))}
                 </div>
-                <motion.div
-                    key={month}
-                    initial="hidden"
-                    animate="visible"
-                    variants={fadeInUp}
+                <Deferred
+                    data={['cells', 'weeklySnapshots']}
+                    fallback={<SkeletonRows count={6} />}
                 >
-                    {weeks.map((week) => (
-                        <CalendarWeekRow
-                            key={week.weekStart}
-                            week={week}
-                            snapshot={
-                                snapshotsByWeek.get(week.weekEnding) ?? null
-                            }
-                        />
-                    ))}
-                </motion.div>
+                    {() => (
+                        <motion.div
+                            key={month}
+                            initial="hidden"
+                            animate="visible"
+                            variants={fadeInUp}
+                        >
+                            {weeks.map((week) => (
+                                <CalendarWeekRow
+                                    key={week.weekStart}
+                                    week={week}
+                                    snapshot={
+                                        snapshotsByWeek.get(week.weekEnding) ??
+                                        null
+                                    }
+                                />
+                            ))}
+                        </motion.div>
+                    )}
+                </Deferred>
             </PageContainer>
         </>
     );

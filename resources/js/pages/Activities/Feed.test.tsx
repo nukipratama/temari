@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { makeUser, setMockPage } from '@/test/setup';
+import { makeUser, setMockDeferred, setMockPage } from '@/test/setup';
 
 import RunsIndex from './Feed';
 import { run } from './runFixture';
@@ -25,6 +25,27 @@ describe('Activities/Feed', () => {
     it('renders the Feed ⇄ Calendar nav with feed active', () => {
         render(<RunsIndex runs={[]} rangeFilter="8w" weeklySnapshots={[]} />);
         expect(screen.getByText('feed').closest('a')).toHaveClass('bg-card');
+    });
+
+    it('paints the header while the run list skeletons', () => {
+        setMockDeferred(['runs', 'notes', 'moods', 'weeklySnapshots']);
+
+        const { container } = render(
+            <RunsIndex
+                runs={[run(101, 'Morning', '2026-05-19T06:00:00')]}
+                rangeFilter="8w"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        expect(screen.getByText('feed').closest('a')).toHaveClass('bg-card');
+        expect(screen.queryByTestId('run-row')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/Pulling in your runs/i),
+        ).not.toBeInTheDocument();
+        expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(
+            0,
+        );
     });
 
     it('renders the empty state when no runs exist', () => {

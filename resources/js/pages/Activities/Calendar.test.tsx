@@ -2,7 +2,7 @@ import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { makeUser, setMockPage } from '@/test/setup';
+import { makeUser, setMockDeferred, setMockPage } from '@/test/setup';
 
 import Calendar, {
     dominantMoodOf,
@@ -115,6 +115,27 @@ describe('calendar', () => {
         for (const day of ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']) {
             expect(screen.getByText(day)).toBeInTheDocument();
         }
+    });
+
+    it('paints the month nav and weekday header while the grid skeletons', () => {
+        setMockDeferred(['cells', 'weeklySnapshots', 'monthlyRecap']);
+
+        const { container } = render(
+            <Calendar
+                {...BASE_PROPS}
+                cells={TWO_WEEK_CELLS}
+                monthlyRecap={makeRecap()}
+            />,
+        );
+
+        expect(
+            screen.getByRole('heading', { name: 'May 2026' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Mo')).toBeInTheDocument();
+        expect(screen.queryByText(/TRIMP/)).not.toBeInTheDocument();
+        expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(
+            0,
+        );
     });
 
     it('counts lifetime activities in the shared eyebrow', () => {

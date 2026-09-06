@@ -183,18 +183,19 @@ it('renders the feed and calendar for a summary-only run without inventing a zer
 
     $this->actingAs($user)->get(route('history'))->assertOk();
 
-    $this->actingAs($user)
-        ->get(route('history', ['view' => 'calendar']))
+    $calendarUrl = route('history', ['view' => 'calendar']);
+    $cells = $this->actingAs($user)
+        ->get($calendarUrl, inertiaPartialHeaders($this->actingAs($user), $calendarUrl, 'History', 'cells'))
         ->assertOk()
-        ->assertInertia(function ($page) use ($activity): void {
-            $runCells = collect($page->toArray()['props']['cells'])
-                ->filter(fn (array $cell): bool => $cell['activity_id'] === $activity->id);
+        ->json('props.cells');
 
-            expect($runCells)->toHaveCount(1)
-                ->and($runCells->first()['distance_km'])->not->toBeNull()
-                // Unknown load reads as unknown, never as a zero-effort day.
-                ->and($runCells->first()['trimp'])->toBeNull();
-        });
+    $runCells = collect($cells)
+        ->filter(fn (array $cell): bool => $cell['activity_id'] === $activity->id);
+
+    expect($runCells)->toHaveCount(1)
+        ->and($runCells->first()['distance_km'])->not->toBeNull()
+        // Unknown load reads as unknown, never as a zero-effort day.
+        ->and($runCells->first()['trimp'])->toBeNull();
 });
 
 it('lets the chained recap kickoff narrate the whole backfilled history without one extra Strava read', function (): void {
