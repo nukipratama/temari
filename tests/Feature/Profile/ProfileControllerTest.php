@@ -111,7 +111,7 @@ it('includes training_paces derived from VDOT when the user has a qualifying PR'
     ]);
 
     $this->actingAs($user)
-        ->get('/profile', profileDeferredHeaders($this->actingAs($user), 'fitness'))
+        ->get('/profile', inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'fitness'))
         ->assertJsonStructure(['props' => ['fitness' => ['training_paces' => ['easy', 'marathon', 'threshold', 'interval']]]]);
 });
 
@@ -119,7 +119,7 @@ it('reports null training_paces when the user has no VDOT-eligible PR', function
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->get('/profile', profileDeferredHeaders($this->actingAs($user), 'fitness'))
+        ->get('/profile', inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'fitness'))
         ->assertJsonPath('props.fitness', null);
 });
 
@@ -252,7 +252,7 @@ it('reads the progression goal line off the active race, on that race distance o
     }
 
     $this->actingAs($user)
-        ->get('/profile', profileDeferredHeaders($this->actingAs($user), 'progressionByCategory'))
+        ->get('/profile', inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'progressionByCategory'))
         ->assertJsonPath('props.progressionByCategory.10km.goal_sec', 3_000)
         ->assertJsonPath('props.progressionByCategory.half_marathon.goal_sec', null);
 });
@@ -276,24 +276,6 @@ it('leaves the progression goal line empty when no race is active', function ():
     ]);
 
     $this->actingAs($user)
-        ->get('/profile', profileDeferredHeaders($this->actingAs($user), 'progressionByCategory'))
+        ->get('/profile', inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'progressionByCategory'))
         ->assertJsonPath('props.progressionByCategory.10km.goal_sec', null);
 });
-
-/**
- * Headers for the follow-up request `<Deferred>` fires once the shell has
- * painted. Partial reloads return bare JSON, so these responses are asserted
- * with assertJsonPath() rather than assertInertia().
- *
- * @param  object  $actingAs  The authenticated test case.
- * @return array<string, string>
- */
-function profileDeferredHeaders(object $actingAs, string $props): array
-{
-    return [
-        'X-Inertia' => 'true',
-        'X-Inertia-Version' => inertiaVersionFor($actingAs, '/profile'),
-        'X-Inertia-Partial-Component' => 'Profile',
-        'X-Inertia-Partial-Data' => $props,
-    ];
-}

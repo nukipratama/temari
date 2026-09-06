@@ -16,7 +16,6 @@ use App\Services\Run\Plan\VolumeRedistributor;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
@@ -96,7 +95,7 @@ it('prescribes fewer km after a missed week than the build week it replaced', fu
     Carbon::setTestNow(LAST_MONDAY.' 08:00:00');
     $periodizer->regenerate($user, Carbon::parse(LAST_MONDAY));
 
-    $buildWeekKm = $this->actingAs($user)->get('/plan')->viewData('page')['props']['weeks'];
+    $buildWeekKm = $this->actingAs($user)->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))->json('props.weeks');
     $buildWeekKm = collect($buildWeekKm)->firstWhere('week_start', LAST_MONDAY)['days'];
     $buildWeekKm = collect($buildWeekKm)->sum('distance_km');
 
@@ -104,7 +103,7 @@ it('prescribes fewer km after a missed week than the build week it replaced', fu
     $this->artisan('plan:score-compliance')->assertSuccessful();
     $periodizer->regenerate($user, Carbon::parse(THIS_MONDAY));
 
-    $deloadWeekKm = $this->actingAs($user)->get('/plan')->viewData('page')['props']['weeks'];
+    $deloadWeekKm = $this->actingAs($user)->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))->json('props.weeks');
     $deloadWeekKm = collect($deloadWeekKm)->firstWhere('week_start', THIS_MONDAY)['days'];
     $deloadWeekKm = collect($deloadWeekKm)->sum('distance_km');
 
@@ -122,14 +121,12 @@ it('explains the deload on the Plan tab, alongside the standing disclaimer', fun
     $this->artisan('plan:score-compliance')->assertSuccessful();
     $periodizer->regenerate($user, Carbon::parse(THIS_MONDAY));
 
-    $this->actingAs($user)->get('/plan')
+    $this->actingAs($user)->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'adaptation'))
         ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('adaptation.reason', AdaptationReason::MissedWeek->value)
-            ->where('adaptation.deload', true)
-            ->where('adaptation.headline', 'deload week')
-            ->where('adaptation.detail', "you finished 0% of last week's sessions. this week comes back smaller, not doubled.")
-            ->etc());
+        ->assertJsonPath('props.adaptation.reason', AdaptationReason::MissedWeek->value)
+        ->assertJsonPath('props.adaptation.deload', true)
+        ->assertJsonPath('props.adaptation.headline', 'deload week')
+        ->assertJsonPath('props.adaptation.detail', "you finished 0% of last week's sessions. this week comes back smaller, not doubled.");
 });
 
 it('marks last week\'s untouched sessions as missed on the Plan tab', function (): void {
@@ -140,7 +137,7 @@ it('marks last week\'s untouched sessions as missed on the Plan tab', function (
     $periodizer->regenerate($user, Carbon::parse(LAST_MONDAY));
     Carbon::setTestNow(THIS_MONDAY.' 08:00:00');
 
-    $weeks = $this->actingAs($user)->get('/plan')->viewData('page')['props']['weeks'];
+    $weeks = $this->actingAs($user)->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))->json('props.weeks');
     $days = collect(collect($weeks)->firstWhere('week_start', LAST_MONDAY)['days']);
 
     expect($days->where('session_type', '!=', 'rest')->pluck('status')->unique()->all())->toBe(['missed']);
@@ -165,7 +162,7 @@ it('redistributes a half-missed week into the days that remain, up to the cap', 
     // Thursday, with Tuesday's and Thursday's sessions un-run (nothing logged).
     Carbon::setTestNow(Carbon::parse(THIS_MONDAY)->addDays(3)->setTime(18, 0));
 
-    $weeks = $this->actingAs($user)->get('/plan')->viewData('page')['props']['weeks'];
+    $weeks = $this->actingAs($user)->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))->json('props.weeks');
     $days = collect(collect($weeks)->firstWhere('week_start', THIS_MONDAY)['days'])->keyBy('date');
 
     // Reproduce the app's own week-target math (no completed/pinned km, one

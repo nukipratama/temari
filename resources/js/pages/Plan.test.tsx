@@ -6,6 +6,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { PlanDay, SeasonSummaryWeek } from '@/lib/plan';
 
+import { setMockDeferred } from '@/test/setup';
+
 import Plan from './Plan';
 
 vi.mock('@/lib/pace', async () => {
@@ -95,7 +97,7 @@ const BASE_PROPS: ComponentProps<typeof Plan> = {
 };
 
 function renderPlan(overrides: Partial<ComponentProps<typeof Plan>> = {}) {
-    render(<Plan {...BASE_PROPS} {...overrides} />);
+    return render(<Plan {...BASE_PROPS} {...overrides} />);
 }
 
 describe('Plan', () => {
@@ -112,6 +114,31 @@ describe('Plan', () => {
         expect(
             screen.getByRole('link', { name: /set a race/i }),
         ).toHaveAttribute('href', '/race');
+    });
+
+    it('paints the header and disclaimer while the plan body is still deferred', () => {
+        setMockDeferred([
+            'weeks',
+            'seasonSummary',
+            'seasonAdherencePct',
+            'adaptation',
+        ]);
+
+        const { container } = renderPlan({
+            weeks: undefined,
+            seasonSummary: undefined,
+            seasonAdherencePct: undefined,
+            adaptation: undefined,
+        });
+
+        expect(screen.getByText('Plan')).toBeInTheDocument();
+        expect(screen.getByRole('heading')).toHaveTextContent(
+            /the weeks\s*ahead\./i,
+        );
+        expect(screen.getByText(DISCLAIMER)).toBeInTheDocument();
+        expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(
+            0,
+        );
     });
 
     it('names the race it is built around once one is set', () => {
