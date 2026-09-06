@@ -7,22 +7,36 @@ import Card from '@/components/ui/LegacyCard';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 
 /**
- * Temari's read on today, split into the line that leads and the rest. The
- * narrators are prompted to open with a standalone first paragraph; anything
- * that ignores that renders as a single lead line.
+ * Paragraph breaks when the narrator honoured them, otherwise the opening
+ * sentence. A decimal never ends a sentence, so requiring whitespace after the
+ * stop keeps "25.5 km" intact.
  */
-function SessionVoice({ text }: Readonly<{ text: string }>) {
-    const parts = text
+function leadAndBody(text: string): readonly [string, string] {
+    const paragraphs = text
         .split(/\n\n+/)
         .map((part) => part.trim())
         .filter(Boolean);
 
-    if (parts.length === 0) {
-        return null;
+    if (paragraphs.length > 1) {
+        const [first, ...rest] = paragraphs;
+        return [first, rest.join(' ')];
     }
 
-    const [lead, ...rest] = parts;
-    const body = rest.join(' ');
+    const single = paragraphs[0] ?? '';
+    const sentence = /^(.+?[.!?])\s+(.*)$/s.exec(single);
+
+    return sentence ? [sentence[1], sentence[2]] : [single, ''];
+}
+
+/**
+ * Temari's read on today, split into the line that leads and the rest.
+ */
+function SessionVoice({ text }: Readonly<{ text: string }>) {
+    const [lead, body] = leadAndBody(text);
+
+    if (lead === '') {
+        return null;
+    }
 
     return (
         <>
