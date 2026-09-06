@@ -156,3 +156,44 @@ it('marks a past rest day Done and flags ran_anyway when logged despite being re
 
     Carbon::setTestNow();
 });
+
+/**
+ * The case the advisory clamp exists to fix: the card told the athlete to rest,
+ * they rested, and grading them against the session it replaced scored them 0%
+ * and called it `missed` for complying. The clamp cannot be recomputed here —
+ * the ceiling that produced it counted that day's own runs — so
+ * RestClampRecorder wrote it down at the time.
+ */
+it('excuses a day the readiness clamp had downgraded to a full rest', function (): void {
+    Carbon::setTestNow('2026-08-12');
+    $user = User::factory()->create();
+    $pastDate = Carbon::today()->subDays(2);
+    PlannedSession::factory()->for($user)->create([
+        'date' => $pastDate,
+        'session_type' => SessionType::Long,
+        'rest_clamped_at' => $pastDate->copy()->setTime(6, 0),
+    ]);
+
+    $this->artisan('plan:score-compliance')->assertSuccessful();
+
+    $row = PlannedSession::query()->where('user_id', $user->id)->first();
+    expect($row->status->value)->toBe('skip')
+        ->and($row->compliance_score)->toBeNull();
+
+    Carbon::setTestNow();
+});
+
+it('still marks an unclamped long day missed when nothing was run', function (): void {
+    Carbon::setTestNow('2026-08-12');
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->subDays(2),
+        'session_type' => SessionType::Long,
+    ]);
+
+    $this->artisan('plan:score-compliance')->assertSuccessful();
+
+    expect(PlannedSession::query()->where('user_id', $user->id)->first()->status->value)->toBe('missed');
+
+    Carbon::setTestNow();
+});

@@ -124,3 +124,20 @@ it('volumeMultipliers reduces Deload off the preceding Build run\'s final multip
     $buildFinal = 1.075 ** 2;
     expect($multipliers[3])->toEqualWithDelta($buildFinal * 0.65, 0.0001);
 });
+
+/**
+ * `diffInWeeks` is signed, so a race day already behind us counted down past
+ * zero and `array_fill(0, -1, ...)` threw — killing `plan:regenerate` for
+ * every user after the one holding a finished race. `plan:close-finished-races`
+ * retires those daily, but four callers reach this method.
+ */
+it('floors a race already run at a single taper week instead of throwing', function (): void {
+    $today = Carbon::parse('2026-09-08');
+
+    foreach ([1, 8, 21, 400] as $daysAgo) {
+        $weeks = new PhaseSchedule()->forRace($today, $today->copy()->subDays($daysAgo), 21_097.0);
+
+        expect($weeks)->not->toBeEmpty()
+            ->and($weeks[0]['phase'])->toBe(PlanPhase::Taper);
+    }
+});

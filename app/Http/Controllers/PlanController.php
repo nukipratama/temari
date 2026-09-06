@@ -165,7 +165,7 @@ class PlanController extends Controller
         $fallbackStatuses = [];
         if ($staleSessions->isNotEmpty()) {
             $stalePlannedKm = [];
-            $staleSkipped = [];
+            $staleExcused = [];
             foreach ($staleSessions as $s) {
                 $date = $s->date->toDateString();
                 $weekKey = $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
@@ -175,9 +175,9 @@ class PlanController extends Controller
                     $baselineData['long_run_km'],
                     $multiplierByWeek[$weekKey] ?? 1.0,
                 );
-                $staleSkipped[$date] = $s->skipped;
+                $staleExcused[$date] = $s->isExcused();
             }
-            $fallbackStatuses = $sessionMatcher->statuses($user, $stalePlannedKm, $staleSkipped, $today);
+            $fallbackStatuses = $sessionMatcher->statuses($user, $stalePlannedKm, $staleExcused, $today);
         }
 
         // Readiness clamp: TODAY's row only — a future day's readiness isn't
