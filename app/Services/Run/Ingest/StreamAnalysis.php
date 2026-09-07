@@ -14,6 +14,16 @@ class StreamAnalysis
     /** Grade (%) at or above which a sample counts as climbing. */
     private const float CLIMB_GRADE_PCT = 3.0;
 
+    /**
+     * Steepest sustained grade past which neither decoupling nor HR drift is
+     * published at all. The Minetti cost curve behind grade adjustment is
+     * fitted for ordinary running gradients and degrades outside them, so on a
+     * genuinely steep run the corrected figure is not trustworthy either — and
+     * a number nobody can rely on is worse than no number, since the plan reads
+     * this to decide whether an athlete faded.
+     */
+    private const float TERRAIN_UNREADABLE_GRADE_PCT = 15.0;
+
     /** Rolling window (seconds) for the steepest *sustained* grade. */
     private const int GRADE_WINDOW_SEC = 20;
 
@@ -89,8 +99,10 @@ class StreamAnalysis
             $this->grade($grade, $time, $velocity),
         );
 
-        if ($this->isSustainedEffort($time, $heartrate, $velocity, $summary)) {
-            $summary = array_merge($summary, $this->decoupling($time, $heartrate, $velocity));
+        $terrainReadable = self::terrainIsReadable($summary);
+
+        if ($terrainReadable && $this->isSustainedEffort($time, $heartrate, $velocity, $summary)) {
+            $summary = array_merge($summary, $this->decoupling($time, $heartrate, $velocity, $grade));
         }
 
         $cadenceByKm = $this->perKmCadenceFromStream($time, $distance, $cadence);
@@ -109,7 +121,10 @@ class StreamAnalysis
             $summary = array_merge(
                 $summary,
                 $this->partialSplit($splitsMetric, $cadenceByKm),
-                $this->hrDriftFromSplits($splitsMetric),
+                // HR drift is first-km against last-km average HR, with no
+                // grade term available at split granularity — so unlike
+                // decoupling it cannot be corrected, only withheld.
+                $terrainReadable ? $this->hrDriftFromSplits($splitsMetric) : [],
                 $this->cadenceDropFromSplits($splitsMetric),
                 $this->negativeSplit($splitsMetric),
                 $this->paceVariability($splitsMetric),
@@ -256,6 +271,21 @@ class StreamAnalysis
         }
 
         return $result;
+    }
+
+    /**
+     * Whether this run's terrain is gentle enough for a heart-rate-against-pace
+     * reading to mean anything. Reads the max sustained grade `grade()` has
+     * already computed, so it costs nothing; a run with no grade stream is
+     * treated as readable rather than silently losing both metrics.
+     *
+     * @param  array<string, mixed>  $summary
+     */
+    private static function terrainIsReadable(array $summary): bool
+    {
+        $maxGrade = $summary['max_grade_pct'] ?? null;
+
+        return ! is_numeric($maxGrade) || abs((float) $maxGrade) < self::TERRAIN_UNREADABLE_GRADE_PCT;
     }
 
     /**
@@ -527,19 +557,26 @@ class StreamAnalysis
      * Cardiac decoupling: ratio of average (HR / pace) in the second half
      * vs the first half. Positive = HR drifted up for the same pace.
      *
+     * Pace is **grade-adjusted** before the ratio is taken, via the same
+     * Minetti cost factor {@see self::gradeAdjustedPace()} uses. Against raw
+     * pace this metric could not tell fatigue from terrain: a climb in the
+     * back half reads as decoupling, and a downhill finish flatters it. The
+     * grade stream is already fetched for GAP, so this costs nothing extra.
+     *
      * @param  list<float|int>  $time
      * @param  list<float|int>  $heartrate
      * @param  list<float|int>  $velocity
+     * @param  list<float|int>  $grade  per-sample gradient in percent
      * @return array<string, float>
      */
-    private function decoupling(array $time, array $heartrate, array $velocity): array
+    private function decoupling(array $time, array $heartrate, array $velocity, array $grade): array
     {
         $n = min(count($time), count($heartrate), count($velocity));
         $half = (int) ($n / 2);
         if ($half < 2) {
             return [];
         }
-        $avg = function (int $from, int $to) use ($heartrate, $velocity): ?array {
+        $avg = function (int $from, int $to) use ($heartrate, $velocity, $grade): ?array {
             $hSum = 0.0;
             $pSum = 0.0;
             $c = 0;
@@ -549,7 +586,9 @@ class StreamAnalysis
                     continue;
                 }
                 $hSum += (float) ($heartrate[$i] ?? 0);
-                $pSum += 1000 / $v;
+                // Flat-equivalent pace: climbing costs more per metre, so the
+                // raw pace is divided by that cost to compare like with like.
+                $pSum += (1000 / $v) / $this->gradeCostFactor((float) ($grade[$i] ?? 0) / 100);
                 $c++;
             }
             if ($c === 0) {
