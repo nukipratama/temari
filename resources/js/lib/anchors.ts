@@ -10,43 +10,62 @@
  */
 const HIGHLIGHT_MS = 1600;
 
-export function anchorElementId(anchor: string): string | null {
+type ParsedAnchor =
+    | { kind: 'split'; km: string }
+    | { kind: 'zone'; digit: string }
+    | { kind: 'metric'; name: string };
+
+/** The one place the anchor grammar is parsed; id and label both read from it. */
+function parseAnchor(anchor: string): ParsedAnchor | null {
     const split = /^split:([1-9]\d*)$/.exec(anchor);
     if (split) {
-        return `anchor-split-${split[1]}`;
+        return { kind: 'split', km: split[1] };
     }
 
-    const zone = /^zone:(z[1-5])$/.exec(anchor);
+    const zone = /^zone:z([1-5])$/.exec(anchor);
     if (zone) {
-        return `anchor-zone-${zone[1]}`;
+        return { kind: 'zone', digit: zone[1] };
     }
 
     const metric = /^metric:([a-z_]+)$/.exec(anchor);
     if (metric) {
-        return `anchor-metric-${metric[1]}`;
+        return { kind: 'metric', name: metric[1] };
     }
 
     return null;
 }
 
+export function anchorElementId(anchor: string): string | null {
+    const parsed = parseAnchor(anchor);
+    if (parsed === null) {
+        return null;
+    }
+
+    switch (parsed.kind) {
+        case 'split':
+            return `anchor-split-${parsed.km}`;
+        case 'zone':
+            return `anchor-zone-z${parsed.digit}`;
+        case 'metric':
+            return `anchor-metric-${parsed.name}`;
+    }
+}
+
 /** What the affordance calls the thing it points at, in the reader's words. */
 export function anchorLabel(anchor: string): string | null {
-    const split = /^split:([1-9]\d*)$/.exec(anchor);
-    if (split) {
-        return `km ${split[1]}`;
+    const parsed = parseAnchor(anchor);
+    if (parsed === null) {
+        return null;
     }
 
-    const zone = /^zone:z([1-5])$/.exec(anchor);
-    if (zone) {
-        return `zone ${zone[1]}`;
+    switch (parsed.kind) {
+        case 'split':
+            return `km ${parsed.km}`;
+        case 'zone':
+            return `zone ${parsed.digit}`;
+        case 'metric':
+            return parsed.name.replace(/_/g, ' ');
     }
-
-    const metric = /^metric:([a-z_]+)$/.exec(anchor);
-    if (metric) {
-        return metric[1].replace(/_/g, ' ');
-    }
-
-    return null;
 }
 
 /**
