@@ -106,6 +106,37 @@ final class SegmentGenerator
     }
 
     /**
+     * What a generated session actually asks the athlete to run, or null when
+     * no VDOT estimate lets its fixed-duration parts become distance.
+     *
+     * Usually this is {@see self::coreKmFor()} again — an Easy day is one block
+     * of exactly that, and a Tempo day's closing block absorbs the rounding so
+     * its parts land on it. An Interval day cannot: its work is an integer
+     * number of fixed-duration reps, and no whole number of 3-minute reps hits
+     * an arbitrary kilometre budget. The budget is what sizes the week; this is
+     * what the day asks for.
+     *
+     * @param  list<SessionSegment>  $segments
+     */
+    public static function prescribedKm(array $segments): ?float
+    {
+        if ($segments === []) {
+            return null;
+        }
+
+        $km = 0.0;
+        foreach ($segments as $segment) {
+            if ($segment->km === null) {
+                return null;
+            }
+
+            $km += $segment->km;
+        }
+
+        return round($km, 1);
+    }
+
+    /**
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces  seconds per kilometre; null when the athlete has no VDOT estimate yet
      * @param  float  $volumeScale  from {@see VolumeRedistributor} — 1.0 outside a redistributed week
      * @return list<SessionSegment>

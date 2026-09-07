@@ -160,3 +160,54 @@ it('dayPayload still fills distance_km with no VDOT estimate yet — only segmen
     expect($payload['segments'][0]['minutes'])->toBeNull()
         ->and($payload['distance_km'])->toBe(13.0); // 20.0 * 0.65 (isPrimaryEasy=true), pace-independent
 });
+
+it('dayPayload reports an Interval day at what its reps add up to, not at its budget', function (): void {
+    $session = PlannedSession::factory()->make([
+        'date' => Carbon::parse('2026-08-01'),
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Interval,
+    ]);
+
+    $payload = PlanRenderer::dayPayload(
+        $session,
+        Carbon::parse('2026-08-01'),
+        null,
+        [],
+        false,
+        false,
+        20.0,
+        1.0,
+        RENDERER_PACES,
+        PlannedSessionStatus::Planned,
+    );
+
+    $summed = round(array_sum(array_column($payload['segments'], 'km')), 1);
+
+    // The card and the segments beneath it are the same run — the whole point
+    // of docs/decisions/a-session-is-the-whole-outing.md, and the one session
+    // type that used to break it.
+    expect($payload['distance_km'])->toBe($summed);
+});
+
+it('dayPayload falls back to the budget when no VDOT estimate sizes the day', function (): void {
+    $session = PlannedSession::factory()->make([
+        'date' => Carbon::parse('2026-08-01'),
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Interval,
+    ]);
+
+    $payload = PlanRenderer::dayPayload(
+        $session,
+        Carbon::parse('2026-08-01'),
+        null,
+        [],
+        false,
+        false,
+        20.0,
+        1.0,
+        null,
+        PlannedSessionStatus::Planned,
+    );
+
+    expect($payload['distance_km'])->toBe(SegmentGenerator::coreKmFor(SessionType::Interval, false, 20.0, 1.0));
+});
