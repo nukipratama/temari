@@ -79,11 +79,7 @@ class ScoreComplianceCommand extends Command
             if ($verdict === null) {
                 continue;
             }
-            $row->update([
-                'status' => $verdict['status'],
-                'compliance_score' => $verdict['score'],
-                'ran_anyway' => $verdict['ran_anyway'],
-            ]);
+            ComplianceScorer::applyVerdict($row, $verdict);
         }
 
         return $staleRows->count();

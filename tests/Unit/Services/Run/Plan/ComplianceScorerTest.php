@@ -111,3 +111,16 @@ it('returns no verdicts for an empty set of rows', function (): void {
     expect(app(ComplianceScorer::class)->verdictsFor($user, PlannedSession::query()->whereRaw('1 = 0')->get(), Carbon::parse('2026-08-07')))
         ->toBe([]);
 });
+
+it('credits a run whose local date is a day ahead of the server clock', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-06');
+    scorerRun($user, '2026-08-06', 40.0);
+
+    // The activity's own local date (2026-08-06) is ahead of $today
+    // (2026-08-05) — e.g. a WIT athlete just after their local midnight,
+    // while the server's Asia/Jakarta clock still reads the previous day.
+    app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-06'), Carbon::parse('2026-08-05'));
+
+    expect($row->refresh()->status)->toBe(PlannedSessionStatus::Overreached);
+});

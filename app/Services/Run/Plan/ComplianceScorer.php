@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
@@ -34,7 +35,7 @@ final readonly class ComplianceScorer
 
     /**
      * @param  Collection<int, PlannedSession>  $rows  the rows to judge
-     * @return array<string, array{status: \App\Enums\PlannedSessionStatus, score: int|null, ran_anyway: bool}>  Y-m-d => verdict
+     * @return array<string, array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}>  Y-m-d => verdict
      */
     public function verdictsFor(User $user, Collection $rows, Carbon $today): array
     {
@@ -44,10 +45,16 @@ final readonly class ComplianceScorer
         }
 
         $rangeStart = $first->date->copy()->startOfWeek(Carbon::MONDAY)->subWeeks(self::HISTORY_WEEKS);
+        // A run's own local date can read a calendar day ahead of the server's,
+        // for an athlete east of the app's timezone just after their midnight.
+        $rangeEnd = $rows->pluck('date')->max();
+        if ($rangeEnd === null || $rangeEnd->lessThan($today)) {
+            $rangeEnd = $today;
+        }
 
         $contextRows = PlannedSession::query()
             ->where('user_id', $user->id)
-            ->whereBetween('date', [$rangeStart->toDateString(), $today->toDateString()])
+            ->whereBetween('date', [$rangeStart->toDateString(), $rangeEnd->toDateString()])
             ->orderBy('date')
             ->get();
 
@@ -95,6 +102,14 @@ final readonly class ComplianceScorer
             return;
         }
 
+        self::applyVerdict($row, $verdict);
+    }
+
+    /**
+     * @param  array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}  $verdict
+     */
+    public static function applyVerdict(PlannedSession $row, array $verdict): void
+    {
         $row->update([
             'status' => $verdict['status'],
             'compliance_score' => $verdict['score'],
