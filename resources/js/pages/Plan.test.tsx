@@ -32,6 +32,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
                 minutes: 30,
                 zone: 'Z4',
                 pace_label: 'threshold',
+                km: 5.2,
                 pace_sec_per_km: 300,
             },
         ],

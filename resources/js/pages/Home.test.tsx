@@ -165,6 +165,7 @@ const weekPlan: WeekPlan = {
                     minutes: 48,
                     zone: 'Z2',
                     pace_label: 'easy',
+                    km: 5.2,
                     pace_sec_per_km: 360,
                 },
             ],

@@ -19,8 +19,14 @@ const ZONE_HEIGHT_PCT: Record<string, number> = {
     Z5: 100,
 };
 
-function minutesText(minutes: number | null): string {
-    return minutes == null ? '—' : `${minutes} min`;
+/** Distance leads, duration follows — the parts add up to the day's headline km. */
+function figureText(segment: PlanSessionSegment): string {
+    const parts = [
+        segment.km == null ? null : `${segment.km} km`,
+        segment.minutes == null ? null : `${segment.minutes} min`,
+    ].filter(Boolean);
+
+    return parts.length === 0 ? '—' : parts.join(' · ');
 }
 
 function paceSub(segment: PlanSessionSegment): string {
@@ -102,7 +108,7 @@ export default function SessionBarGraph({
                             <LegendItem
                                 label={SEGMENT_LABEL.warmup}
                                 zone={warmup.zone}
-                                figure={minutesText(warmup.minutes)}
+                                figure={figureText(warmup)}
                                 sub={paceSub(warmup)}
                             />
                         )}
@@ -110,7 +116,7 @@ export default function SessionBarGraph({
                             wide
                             label={`${reps.length}× ${SEGMENT_LABEL.interval}`}
                             zone={work.zone}
-                            figure={`${work.minutes ?? '—'} min hard / ${recovery?.minutes ?? 0} min easy`}
+                            figure={`${figureText(work)} hard / ${recovery?.minutes ?? 0} min easy`}
                             sub={paceSub(work)}
                         />
                     </>
@@ -120,7 +126,7 @@ export default function SessionBarGraph({
                             key={index}
                             label={SEGMENT_LABEL[segments[index].key]}
                             zone={segments[index].zone}
-                            figure={minutesText(segments[index].minutes)}
+                            figure={figureText(segments[index])}
                             sub={paceSub(segments[index])}
                         />
                     ))

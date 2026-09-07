@@ -148,10 +148,13 @@ final class SegmentGenerator
     private static function tempoSegments(PlanPhase $phase, bool $isMarathonDistance, float $km, ?array $paces): array
     {
         $warmupMinutes = self::WARMUP_MINUTES['tempo'];
+        $warmup = self::bookend(SegmentKey::Warmup, $warmupMinutes, $paces);
 
+        // The main set takes the rounded remainder rather than its own exact
+        // share, so the two figures on the card always add up to the day's.
         return [
-            self::bookend(SegmentKey::Warmup, $warmupMinutes, $paces),
-            self::block(SegmentKey::Main, $km - self::warmupKm($warmupMinutes, $km, $paces), self::longOrTempoPace($phase, $isMarathonDistance, forTempo: true), $paces),
+            $warmup,
+            self::block(SegmentKey::Main, round(round($km, 1) - ($warmup->km ?? 0.0), 1), self::longOrTempoPace($phase, $isMarathonDistance, forTempo: true), $paces),
         ];
     }
 
@@ -174,7 +177,7 @@ final class SegmentGenerator
 
         $segments = [self::bookend(SegmentKey::Warmup, $warmupMinutes, $paces)];
         for ($i = 0; $i < $repCount; $i++) {
-            $segments[] = new SessionSegment(SegmentKey::Interval, $repMinutes, self::zoneFor(PaceBand::Interval), PaceBand::Interval, self::secPerKm(PaceBand::Interval, $paces));
+            $segments[] = new SessionSegment(SegmentKey::Interval, $repMinutes, self::zoneFor(PaceBand::Interval), PaceBand::Interval, self::secPerKm(PaceBand::Interval, $paces), $repKm === null ? null : round($repKm, 1));
             if ($i < $repCount - 1) {
                 $segments[] = self::bookend(SegmentKey::Recovery, $recoveryMinutes, $paces);
             }
@@ -232,13 +235,15 @@ final class SegmentGenerator
     /** @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces */
     private static function bookend(SegmentKey $key, float $minutes, ?array $paces): SessionSegment
     {
-        return new SessionSegment($key, $minutes, self::zoneFor(PaceBand::Easy), PaceBand::Easy, self::secPerKm(PaceBand::Easy, $paces));
+        $km = self::kmFor($minutes, PaceBand::Easy, $paces);
+
+        return new SessionSegment($key, $minutes, self::zoneFor(PaceBand::Easy), PaceBand::Easy, self::secPerKm(PaceBand::Easy, $paces), $km === null ? null : round($km, 1));
     }
 
     /** @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces */
     private static function block(SegmentKey $key, float $km, PaceBand $pace, ?array $paces): SessionSegment
     {
-        return new SessionSegment($key, self::minutesFor($km, $pace, $paces), self::zoneFor($pace), $pace, self::secPerKm($pace, $paces));
+        return new SessionSegment($key, self::minutesFor($km, $pace, $paces), self::zoneFor($pace), $pace, self::secPerKm($pace, $paces), round($km, 1));
     }
 
     /** @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces */

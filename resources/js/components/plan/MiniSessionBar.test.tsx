@@ -13,6 +13,7 @@ function segment(
         minutes: 30,
         zone: 'Z2',
         pace_label: 'easy',
+        km: 5.2,
         pace_sec_per_km: 348,
         ...overrides,
     };

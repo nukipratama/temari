@@ -347,6 +347,10 @@ export interface PastYouTrend {
 export interface PlanSessionSegment {
     key: 'warmup' | 'main' | 'interval' | 'recovery';
     minutes: number | null;
+    /** The segment's own distance. A day's warmup and main set are rounded so
+     *  they sum to `WeekPlanDay['distance_km']` exactly; interval reps carry
+     *  their own per-rep figure. */
+    km: number | null;
     zone: string;
     pace_label: 'easy' | 'marathon' | 'threshold' | 'interval';
     pace_sec_per_km: number | null;

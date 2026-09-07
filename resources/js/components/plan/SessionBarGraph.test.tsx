@@ -11,6 +11,7 @@ function segment(
     return {
         key: 'main',
         minutes: 30,
+        km: 5.2,
         zone: 'Z2',
         pace_label: 'easy',
         pace_sec_per_km: 348,
@@ -19,17 +20,19 @@ function segment(
 }
 
 const INTERVAL_SESSION: PlanSessionSegment[] = [
-    segment({ key: 'warmup', minutes: 10, zone: 'Z1' }),
+    segment({ key: 'warmup', minutes: 10, km: 2, zone: 'Z1' }),
     segment({
         key: 'interval',
         minutes: 3,
+        km: 0.8,
         zone: 'Z5',
         pace_label: 'interval',
     }),
-    segment({ key: 'recovery', minutes: 2, zone: 'Z1' }),
+    segment({ key: 'recovery', minutes: 2, km: 0.3, zone: 'Z1' }),
     segment({
         key: 'interval',
         minutes: 3,
+        km: 0.8,
         zone: 'Z5',
         pace_label: 'interval',
     }),
@@ -52,22 +55,30 @@ describe('SessionBarGraph', () => {
         render(
             <SessionBarGraph
                 segments={[
-                    segment({ key: 'warmup', minutes: 10, zone: 'Z1' }),
-                    segment({ key: 'main', minutes: 30 }),
+                    segment({
+                        key: 'warmup',
+                        minutes: 10,
+                        km: 1.3,
+                        zone: 'Z1',
+                    }),
+                    segment({ key: 'main', minutes: 30, km: 4.6 }),
                 ]}
             />,
         );
 
         expect(screen.getByText('warmup')).toBeInTheDocument();
         expect(screen.getByText('main set')).toBeInTheDocument();
-        expect(screen.getByText('30 min')).toBeInTheDocument();
+        expect(screen.getByText('1.3 km · 10 min')).toBeInTheDocument();
+        expect(screen.getByText('4.6 km · 30 min')).toBeInTheDocument();
     });
 
     it('collapses interval repeats into one legend block rather than listing every rep', () => {
         render(<SessionBarGraph segments={INTERVAL_SESSION} />);
 
         expect(screen.getByText('3× interval')).toBeInTheDocument();
-        expect(screen.getByText('3 min hard / 2 min easy')).toBeInTheDocument();
+        expect(
+            screen.getByText('0.8 km · 3 min hard / 2 min easy'),
+        ).toBeInTheDocument();
         expect(screen.queryByText('Recovery')).not.toBeInTheDocument();
     });
 
@@ -110,5 +121,23 @@ describe('SessionBarGraph', () => {
         );
 
         expect(screen.getByText('easy')).toBeInTheDocument();
+    });
+
+    it('falls back to the duration alone when there is no VDOT estimate to size a bookend', () => {
+        render(
+            <SessionBarGraph
+                segments={[
+                    segment({
+                        key: 'warmup',
+                        minutes: 10,
+                        km: null,
+                        zone: 'Z1',
+                    }),
+                    segment({ key: 'main', minutes: 30, km: 4.6 }),
+                ]}
+            />,
+        );
+
+        expect(screen.getByText('10 min')).toBeInTheDocument();
     });
 });
