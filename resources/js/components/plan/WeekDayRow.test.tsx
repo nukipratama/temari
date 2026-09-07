@@ -29,6 +29,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         status: 'planned',
         compliance_score: null,
         ran_anyway: false,
+        prescribed_km: null,
         clamp: null,
         actual_km: null,
         activities: [],
@@ -267,6 +268,7 @@ describe('WeekDayRow', () => {
                 distance_km: 0,
                 status: 'done',
                 ran_anyway: true,
+                prescribed_km: null,
                 actual_km: 12,
                 activities: [
                     { id: 11, km: 5, seconds: 1380 },
@@ -289,6 +291,7 @@ describe('WeekDayRow', () => {
                 distance_km: 0,
                 status: 'done',
                 ran_anyway: true,
+                prescribed_km: null,
                 actual_km: 5,
                 activities: [{ id: 7, km: 5, seconds: 1800 }],
             }),
@@ -332,5 +335,20 @@ describe('WeekDayRow', () => {
         expand();
 
         expect(screen.queryByText('eased today')).not.toBeInTheDocument();
+    });
+
+    it('states both recorded facts on a day the plan has judged: what it asked for, and what was run', () => {
+        renderRow({
+            day: day({ prescribed_km: 6, actual_km: 5, distance_km: 8 }),
+        });
+
+        expect(screen.getByText(/5 of 6 km/)).toBeInTheDocument();
+        expect(screen.queryByText(/8 km/)).not.toBeInTheDocument();
+    });
+
+    it('shows the ask alone on a day that has not been judged yet', () => {
+        renderRow({ day: day({ prescribed_km: null, distance_km: 8 }) });
+
+        expect(screen.getByText(/8 km/)).toBeInTheDocument();
     });
 });
