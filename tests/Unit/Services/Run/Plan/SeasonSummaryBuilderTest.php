@@ -71,7 +71,9 @@ it('lays out a Base -> Build -> Peak -> Taper arc for a race-oriented season', f
     // Phases only ever move forward through the arc, never backward or repeat
     // after switching away: the first-occurrence order must be a subsequence
     // of the canonical base -> build -> peak -> taper arc.
-    $firstOccurrenceOrder = array_values(array_unique($phases));
+    // Recovery weeks interleave the ramp, so they are not part of the forward
+    // arc being checked here.
+    $firstOccurrenceOrder = array_values(array_unique(array_diff($phases, ['deload'])));
     $canonicalOrder = array_values(array_intersect(['base', 'build', 'peak', 'taper'], $firstOccurrenceOrder));
 
     expect($phases[0])->toBe('base')
@@ -142,7 +144,7 @@ it('gives a Deload week a lower planned_km than the Build week right before it',
         ->and($weeks[3]['planned_km'])->toBeGreaterThan(0.0);
 });
 
-it('never assigns Deload for a race-oriented season\'s planned volume', function (): void {
+it('breaks a race-oriented season\'s ramp with recovery weeks, but never its peak or taper', function (): void {
     $user = User::factory()->create();
     $race = RaceGoal::factory()->for($user)->create([
         'race_date' => '2026-11-02',
@@ -156,5 +158,10 @@ it('never assigns Deload for a race-oriented season\'s planned volume', function
 
     $phases = array_column($this->builder->build($user, $season, Carbon::today()), 'phase');
 
-    expect($phases)->not->toContain(PlanPhase::Deload->value);
+    // Recovery weeks break the base/build ramp, but never Peak or Taper: both
+    // are already reductions counting down to race day.
+    $peakOnwards = array_slice($phases, array_search(PlanPhase::Peak->value, $phases, true) ?: 0);
+
+    expect($phases)->toContain(PlanPhase::Deload->value)
+        ->and($peakOnwards)->not->toContain(PlanPhase::Deload->value);
 });

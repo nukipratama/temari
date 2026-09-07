@@ -19,7 +19,7 @@ code_refs:
 
 The plan prescribed roughly **59 km/week to a runner averaging 22 km/week**, and told them they were overreaching.
 
-[TrainingBaseline::forUser()](app/Services/Run/Plan/TrainingBaseline.php) set `long_run_km` to the **single longest run in the trailing 28 days**, and [SegmentGenerator::coreKmFor()](app/Services/Run/Plan/SegmentGenerator.php#L66) scales *every* session off that one scalar — Long 1.0x, Tempo 0.65x, Easy 0.65x/0.40x, Interval 0.40x — with [PhaseSchedule](app/Services/Run/Plan/PhaseSchedule.php) compounding a Build ramp on top. Nothing else determined volume.
+[TrainingBaseline::forUser()](app/Services/Run/Plan/TrainingBaseline.php) set `long_run_km` to the **single longest run in the trailing 28 days**, and [SegmentGenerator::coreKmFor()](app/Services/Run/Plan/SegmentGenerator.php#L92) scales *every* session off that one scalar — Long 1.0x, Tempo 0.65x, Easy 0.65x/0.40x, Interval 0.40x — with [PhaseSchedule](app/Services/Run/Plan/PhaseSchedule.php) compounding a Build ramp on top. Nothing else determined volume.
 
 For the reporting athlete that scalar was **24 km**, from one run on 2026-08-16 that they confirm was a one-off event. Their real shape over 12 weeks was 45 runs averaging 6.6 km, with 53% of all running between 4 and 6 km. The anchor was a singleton: 60% longer than the next-longest run and roughly 4x the mean.
 

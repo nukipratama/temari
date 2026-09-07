@@ -61,8 +61,9 @@ it('generates a race-oriented base/build/peak/taper progression when an active r
     $this->periodizer->regenerate($user, Carbon::today());
 
     $phases = PlannedSession::query()->where('user_id', $user->id)->pluck('phase')->map(fn ($p) => $p->value)->unique()->all();
-    expect($phases)->toContain('base', 'build', 'peak', 'taper')
-        ->and($phases)->not->toContain('deload');
+    // A recovery week sits inside the base/build ramp — see
+    // docs/decisions/the-plan-follows-the-coaching.md.
+    expect($phases)->toContain('base', 'build', 'peak', 'taper');
 });
 
 it('never overwrites a pinned row', function (): void {

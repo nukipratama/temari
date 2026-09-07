@@ -58,6 +58,24 @@ final class SegmentGenerator
      *
      * @var array<string, array{0: float, 1: float}>
      */
+    /**
+     * Threshold blocks / recovery length by phase, minutes. Interval work
+     * already developed across a season through {@see self::INTERVAL_REP_TABLE}
+     * while a tempo day never changed shape — it was always one continuous
+     * block, growing only as weekly volume grew. A coach progresses threshold
+     * work the other way: several shorter blocks early, fewer and longer as the
+     * athlete adapts, one continuous effort at Peak. Taper breaks it up again so
+     * the session sharpens without draining.
+     *
+     * @var array<string, array{0: int, 1: float}>
+     */
+    private const array TEMPO_BLOCK_TABLE = [
+        'base' => [3, 2.0],
+        'build' => [2, 2.0],
+        'peak' => [1, 0.0],
+        'taper' => [2, 2.0],
+    ];
+
     private const array INTERVAL_REP_TABLE = [
         'build' => [3.0, 2.0],
         'peak' => [4.0, 2.0],
@@ -147,15 +165,36 @@ final class SegmentGenerator
      */
     private static function tempoSegments(PlanPhase $phase, bool $isMarathonDistance, float $km, ?array $paces): array
     {
-        $warmupMinutes = self::WARMUP_MINUTES['tempo'];
-        $warmup = self::bookend(SegmentKey::Warmup, $warmupMinutes, $paces);
+        $warmup = self::bookend(SegmentKey::Warmup, self::WARMUP_MINUTES['tempo'], $paces);
+        [$blocks, $recoveryMinutes] = self::TEMPO_BLOCK_TABLE[$phase->value] ?? self::TEMPO_BLOCK_TABLE['build'];
 
-        // The main set takes the rounded remainder rather than its own exact
-        // share, so the two figures on the card always add up to the day's.
-        return [
-            $warmup,
-            self::block(SegmentKey::Main, round(round($km, 1) - ($warmup->km ?? 0.0), 1), self::longOrTempoPace($phase, $isMarathonDistance, forTempo: true), $paces),
-        ];
+        $budgetKm = round(round($km, 1) - ($warmup->km ?? 0.0), 1);
+        $pace = self::longOrTempoPace($phase, $isMarathonDistance, forTempo: true);
+        $recoveryKm = self::kmFor($recoveryMinutes, PaceBand::Easy, $paces) ?? 0.0;
+        $blockKm = round(($budgetKm - ($blocks - 1) * $recoveryKm) / $blocks, 1);
+
+        // One continuous effort at Peak, and on any day too small to break up.
+        if ($blocks < 2 || $blockKm <= 0.0) {
+            return [$warmup, self::block(SegmentKey::Main, $budgetKm, $pace, $paces)];
+        }
+
+        // The closing block takes the rounded remainder, so however the blocks
+        // and their recoveries round, the day still adds up to what the card says.
+        $segments = [$warmup];
+        $spent = 0.0;
+        for ($i = 0; $i < $blocks; $i++) {
+            $isLast = $i === $blocks - 1;
+            $segments[] = self::block(SegmentKey::Main, $isLast ? round($budgetKm - $spent, 1) : $blockKm, $pace, $paces);
+            $spent = round($spent + ($isLast ? $budgetKm - $spent : $blockKm), 1);
+
+            if (! $isLast) {
+                $recovery = self::bookend(SegmentKey::Recovery, $recoveryMinutes, $paces);
+                $segments[] = $recovery;
+                $spent = round($spent + ($recovery->km ?? 0.0), 1);
+            }
+        }
+
+        return $segments;
     }
 
     /**

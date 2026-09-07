@@ -81,9 +81,15 @@ export default function SessionBarGraph({
         return null;
     }
 
+    // Interval reps and a phase-split tempo day are the same shape on screen:
+    // repeated work blocks around recoveries. Collapse whichever is present
+    // rather than listing every block, which would be six legend items on a
+    // Base tempo day.
     const reps = segments.filter((s) => s.key === 'interval');
+    const mains = segments.filter((s) => s.key === 'main');
+    const repeats = reps.length > 0 ? reps : mains.length > 1 ? mains : [];
     const warmup = segments.find((s) => s.key === 'warmup');
-    const work = reps[0];
+    const work = repeats[0];
     const recovery = segments.find((s) => s.key === 'recovery');
 
     return (
@@ -114,7 +120,7 @@ export default function SessionBarGraph({
                         )}
                         <LegendItem
                             wide
-                            label={`${reps.length}× ${SEGMENT_LABEL.interval}`}
+                            label={`${repeats.length}× ${SEGMENT_LABEL[work.key]}`}
                             zone={work.zone}
                             figure={`${figureText(work)} hard / ${recovery?.minutes ?? 0} min easy`}
                             sub={paceSub(work)}

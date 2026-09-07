@@ -40,12 +40,70 @@ it('allocates base/build/peak/taper summing to exactly weeksToRace, in strict or
     $phases = array_map(fn (array $w): string => $w['phase']->value, $weeks);
     expect(array_slice($phases, -1))->toBe(['taper']);
 
+    // Recovery weeks sit inside the Base/Build ramp, so they are skipped when
+    // checking that the arc itself never runs backwards.
     $rank = ['base' => 0, 'build' => 1, 'peak' => 2, 'taper' => 3];
     $prev = -1;
     foreach ($phases as $phase) {
+        if ($phase === 'deload') {
+            continue;
+        }
         expect($rank[$phase])->toBeGreaterThanOrEqual($prev);
         $prev = $rank[$phase];
     }
+});
+
+it('breaks the base/build ramp with a recovery week every fourth week', function (): void {
+    $today = Carbon::parse('2026-08-10')->startOfWeek(Carbon::MONDAY);
+    $raceDate = $today->copy()->addWeeks(15); // weeksToRace = 16, taper = 1
+
+    $phases = array_map(
+        fn (array $w): string => $w['phase']->value,
+        $this->schedule->forRace($today, $raceDate, 10_000),
+    );
+
+    // 4 base + 7 build = 11 ramp weeks, so recovery lands on weeks 4 and 8;
+    // week 12 is already Peak and keeps its own reduction.
+    expect($phases[3])->toBe('deload')
+        ->and($phases[7])->toBe('deload')
+        ->and(array_slice($phases, -1))->toBe(['taper']);
+
+    // Never inside peak or taper — both are already reductions.
+    expect(array_slice($phases, 11))->not->toContain('deload');
+});
+
+it('leaves a ramp too short to need one without any recovery week', function (): void {
+    $today = Carbon::parse('2026-08-10')->startOfWeek(Carbon::MONDAY);
+    $raceDate = $today->copy()->addWeeks(4); // weeksToRace = 5
+
+    $phases = array_map(
+        fn (array $w): string => $w['phase']->value,
+        $this->schedule->forRace($today, $raceDate, 10_000),
+    );
+
+    expect($phases)->not->toContain('deload');
+});
+
+it('carries the build ramp across a recovery week instead of restarting it', function (): void {
+    $ramp = 1.075;
+
+    $multipliers = PhaseSchedule::volumeMultipliers([
+        PlanPhase::Build,
+        PlanPhase::Build,
+        PlanPhase::Build,
+        PlanPhase::Deload,
+        PlanPhase::Build,
+        PlanPhase::Build,
+    ]);
+
+    // Weeks 1-3 climb, week 4 dips off the level reached, and weeks 5-6 pick the
+    // ramp back up where it left off rather than restarting at 1.0 — which is
+    // what exponentiating within each contiguous run would have done, flattening
+    // every split build to a permanent 1.0.
+    expect(round($multipliers[2], 4))->toBe(round($ramp ** 2, 4))
+        ->and(round($multipliers[3], 4))->toBe(round($ramp ** 2 * 0.65, 4))
+        ->and(round($multipliers[4], 4))->toBe(round($ramp ** 3, 4))
+        ->and(round($multipliers[5], 4))->toBe(round($ramp ** 4, 4));
 });
 
 it('never produces a negative week count when remaining weeks are minimal', function (): void {

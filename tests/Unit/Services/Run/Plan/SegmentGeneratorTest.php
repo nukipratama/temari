@@ -56,17 +56,42 @@ it('carves a Tempo day\'s fixed 10min warmup out of its distance, leaving the re
     $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, false, false, 16.0, 1.0, PACES);
 
     // 16 * 0.65 = 10.4km for the whole outing. The 10min warmup at 360 sec/km
-    // shows as 1.7km, and the main set takes the rounded remainder so the two
-    // add up on the card: 8.7km at 270 sec/km = 39.2 minutes.
-    expect($segments)->toHaveCount(2)
+    // shows as 1.7km, leaving 8.7km. Build runs the threshold work as two
+    // blocks around a 2min easy recovery.
+    expect($segments)->toHaveCount(4)
         ->and($segments[0]->key)->toBe(SegmentKey::Warmup)
         ->and($segments[0]->minutes)->toBe(10.0)
         ->and($segments[0]->paceLabel)->toBe(PaceBand::Easy)
+        ->and($segments[0]->km)->toBe(1.7)
         ->and($segments[1]->key)->toBe(SegmentKey::Main)
         ->and($segments[1]->paceLabel)->toBe(PaceBand::Threshold)
-        ->and($segments[1]->minutes)->toBe(39.2)
-        ->and($segments[0]->km)->toBe(1.7)
-        ->and($segments[1]->km)->toBe(8.7);
+        ->and($segments[1]->km)->toBe(4.2)
+        ->and($segments[2]->key)->toBe(SegmentKey::Recovery)
+        ->and($segments[2]->minutes)->toBe(2.0)
+        ->and($segments[2]->paceLabel)->toBe(PaceBand::Easy)
+        ->and($segments[3]->key)->toBe(SegmentKey::Main)
+        ->and($segments[3]->km)->toBe(4.2);
+});
+
+it('progresses a Tempo day from several blocks to one continuous effort', function (): void {
+    $blocks = fn (PlanPhase $phase): int => count(array_filter(
+        SegmentGenerator::generate(SessionType::Tempo, $phase, false, false, 16.0, 1.0, PACES),
+        fn ($s): bool => $s->key === SegmentKey::Main,
+    ));
+
+    expect($blocks(PlanPhase::Base))->toBe(3)
+        ->and($blocks(PlanPhase::Build))->toBe(2)
+        ->and($blocks(PlanPhase::Peak))->toBe(1)
+        ->and($blocks(PlanPhase::Taper))->toBe(2);
+});
+
+it('keeps a Tempo day continuous when it is too small to break up', function (): void {
+    // At the long-run floor in a reduced week the threshold work barely exists;
+    // splitting it three ways would leave nothing in each block.
+    $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Base, false, false, 3.0, 0.5, PACES);
+
+    expect(array_filter($segments, fn ($s): bool => $s->key === SegmentKey::Recovery))->toBe([])
+        ->and($segments)->toHaveCount(2);
 });
 
 it('spends the whole prescribed distance and no more, so the card and the run agree', function (): void {
@@ -102,10 +127,12 @@ it('switches a Tempo day to Marathon pace only in Peak/Taper for a marathon-dist
 it('does not scale a Tempo day\'s warmup when volumeScale changes, only its main set', function (): void {
     $scaled = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, false, false, 16.0, 1.0, PACES, volumeScale: 1.3);
 
-    // 10.4 * 1.3 = 13.5km outing, less the same fixed 1.7km warmup.
+    // 10.4 * 1.3 = 13.5km outing, less the same fixed 1.7km warmup, and the
+    // 11.8km that leaves is split across Build's two threshold blocks.
     expect($scaled[0]->minutes)->toBe(10.0)
         ->and($scaled[0]->km)->toBe(1.7)
-        ->and($scaled[1]->minutes)->toBe(round((13.5 - 1.7) * 270 / 60, 1));
+        ->and($scaled[1]->km)->toBe(5.7)
+        ->and($scaled[3]->km)->toBe(5.8);
 });
 
 it('builds an Interval day as a warmup then alternating reps and recoveries, with no cooldown', function (): void {
@@ -207,8 +234,13 @@ it('rounds a session\'s segment distances so they add up to the figure on the ca
 it('leaves a bookend\'s distance null when no VDOT estimate can size it', function (): void {
     $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, false, false, 16.0, 1.0, null);
 
+    $mainKm = array_sum(array_map(
+        fn ($s): float => $s->km ?? 0.0,
+        array_filter($segments, fn ($s): bool => $s->key === SegmentKey::Main),
+    ));
+
     expect($segments[0]->key)->toBe(SegmentKey::Warmup)
         ->and($segments[0]->km)->toBeNull()
-        // With nothing carved out, the main block still holds the whole day.
-        ->and($segments[1]->km)->toBe(SegmentGenerator::coreKmFor(SessionType::Tempo, false, 16.0, 1.0));
+        // With nothing carved out, the threshold blocks still hold the whole day.
+        ->and(round($mainKm, 1))->toBe(SegmentGenerator::coreKmFor(SessionType::Tempo, false, 16.0, 1.0));
 });
