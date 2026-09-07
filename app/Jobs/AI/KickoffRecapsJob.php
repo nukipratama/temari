@@ -14,6 +14,7 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\PlanNarrationRequester;
+use App\Services\Run\Plan\Periodizer;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Carbon;
@@ -27,8 +28,8 @@ use Illuminate\Support\Carbon;
  *
  * Being last, it is also where `users.backfilled_at` is stamped — the marker
  * nothing else could supply, since the chain's own position is unreadable from
- * outside it — and where the first week is narrated if onboarding already wrote
- * a plan to narrate.
+ * outside it — and where the first week is re-sized against the history that
+ * just landed, then narrated, if onboarding already wrote a plan.
  */
 class KickoffRecapsJob implements ShouldQueue
 {
@@ -43,6 +44,7 @@ class KickoffRecapsJob implements ShouldQueue
         KickoffMonthlyRecaps $monthly,
         PlanNarrationRequester $planNarration,
         AnalysisService $analysis,
+        Periodizer $periodizer,
     ): void {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
 
@@ -59,6 +61,7 @@ class KickoffRecapsJob implements ShouldQueue
         $this->kickoffTrendReads($analysis, $user);
 
         if (PlannedSession::query()->where('user_id', $user->id)->exists()) {
+            $periodizer->regenerate($user);
             $planNarration->requestForFirstWeek($user, Carbon::today());
         }
     }
