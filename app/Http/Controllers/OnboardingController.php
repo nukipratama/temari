@@ -8,9 +8,13 @@ use App\Http\Requests\CompleteOnboardingRequest;
 use App\Models\RaceGoal;
 use App\Models\TrainingPreference;
 use App\Models\User;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
+use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,8 +33,11 @@ class OnboardingController extends Controller
         return Inertia::render('Onboarding/Index');
     }
 
-    public function store(CompleteOnboardingRequest $request, Periodizer $periodizer): RedirectResponse
-    {
+    public function store(
+        CompleteOnboardingRequest $request,
+        Periodizer $periodizer,
+        PlanNarrationRequester $narrationRequester,
+    ): RedirectResponse {
         /** @var User $user */
         $user = $request->user();
 
@@ -78,10 +85,16 @@ class OnboardingController extends Controller
         // days, sessions per week, the race goal above — actually exist.
         // Strava's backfill may still be running, so a first week can be sized
         // from TrainingBaseline's cold-start seeds; Monday's regeneration
-        // re-sizes it against the real history. Narration deliberately does
-        // NOT fire here — it waits for the backfill, so the first week is
-        // described once, against real history rather than those seeds.
+        // re-sizes it against the real history.
         $periodizer->regenerate($user);
+
+        // Whoever finishes second narrates. If the backfill already landed,
+        // that is this request; if it has not, KickoffRecapsJob narrates once
+        // it does, and finds the plan written just above.
+        if ($user->refresh()->backfilled_at !== null) {
+            app(NarrationOrigin::class)->set(AnalysisOrigin::User);
+            $narrationRequester->requestForFirstWeek($user, Carbon::today());
+        }
 
         return redirect()->route('dashboard')->with('success', 'You\'re all set. Let\'s see how you\'ve been running.');
     }

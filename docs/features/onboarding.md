@@ -11,6 +11,8 @@ code_refs:
   - app/Models/TrainingPreference.php
   - app/Models/User.php
   - app/Http/Controllers/Auth/StravaAuthController.php
+  - app/Jobs/AI/KickoffRecapsJob.php
+  - app/Services/AI/PlanNarrationRequester.php
   - app/Services/Run/Ingest/DetailHydrator.php
   - resources/js/pages/Onboarding/Index.tsx
   - resources/js/components/onboarding/StepProgress.tsx
@@ -45,7 +47,11 @@ A minimal three-step wizard shown once, right after a user's *first* Strava conn
 
 The goal form only offers submissions the server can accept. [raceGoal.ts](../../resources/js/lib/raceGoal.ts) mirrors the request's `after:today` and `between:300,259200` bounds into the date input's `min` and a disabled submit, and server-side field errors render beside the field that caused them. Before that, blanking the minutes field produced a `goal_time_sec` of 0 — a submit that could only ever 422, explained by nothing nearer than the global error banner. `/race` shares the same helper for the same reason ([[race-projection]]).
 
-`OnboardingController::store` creates the `RaceGoal` (if goal fields were sent), upserts `TrainingPreference` (if any preference field was sent) and calls `User::markOnboarded()`, then redirects to `dashboard`.
+`OnboardingController::store` creates the `RaceGoal` (if goal fields were sent), upserts `TrainingPreference` (if any preference field was sent) and calls `User::markOnboarded()`, then builds the athlete's first plan and redirects to `dashboard`.
+
+## The first week's voice
+
+Onboarding and the Strava backfill race: the wizard writes a plan the moment signup finishes, while the connect chain is still importing history. Whoever finishes second narrates that first week. Onboarding requests narration only when `users.backfilled_at` is already stamped; otherwise it writes the rows and stops, and [KickoffRecapsJob](../../app/Jobs/AI/KickoffRecapsJob.php) — the chain's last link, which stamps that column — narrates once it finds a plan waiting. Both call [PlanNarrationRequester::requestForFirstWeek()](../../app/Services/AI/PlanNarrationRequester.php), which never invalidates a row, so the interleaving where both fire costs nothing extra. Until one fires the Plan page has no `Analysis` row to render and omits the day rather than drawing a skeleton over a job nobody queued. See [[plan-periodizer]] and [[strava-connect]].
 
 ## See also
 

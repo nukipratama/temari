@@ -178,6 +178,23 @@ describe('payloadsForCurrentWeek', function (): void {
             ->and($payloads['season'])->toBeNull();
     });
 
+    it('omits the week and season takes when their rows exist but no take has been queued', function (): void {
+        // A PlanAdaptation lands on every regenerate and a Season on the first
+        // /plan load, so a brand-new athlete has both long before anything has
+        // narrated them.
+        $user = User::factory()->create();
+        PlanAdaptation::factory()->for($user)->create(['week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)]);
+        Season::factory()->for($user)->create([
+            'starts_at' => Carbon::today()->subWeek(),
+            'ends_at' => Carbon::today()->addWeeks(8),
+        ]);
+
+        $payloads = $this->requester->payloadsForCurrentWeek($user, Carbon::today());
+
+        expect($payloads['week'])->toBeNull()
+            ->and($payloads['season'])->toBeNull();
+    });
+
     it('returns the real content once rows exist', function (): void {
         $user = User::factory()->create();
         $today = Carbon::today()->toDateString();
@@ -379,9 +396,10 @@ describe('requestForCurrentWeekUnlessCoolingDown', function (): void {
     });
 
     /**
-     * The guard is on spend, not on correctness — the manual button, the weekly
-     * job and onboarding all call requestForCurrentWeek() directly and are
-     * deliberately unaffected by it.
+     * The guard is on spend, not on correctness — the manual button and the
+     * weekly job call requestForCurrentWeek() directly, onboarding and the
+     * connect chain call requestForFirstWeek(), and all four are deliberately
+     * unaffected by it.
      */
     it('does not block the uncooled request path', function (): void {
         $user = User::factory()->create();
@@ -497,5 +515,39 @@ describe('stale plan-day takes', function (): void {
 
         expect($this->requester->payloadsForCurrentWeek($user, Carbon::today())['days'])
             ->toHaveKey($today);
+    });
+});
+
+describe('requestForFirstWeek', function (): void {
+    it('narrates the day, week and season blocks of a brand-new account', function (): void {
+        $user = User::factory()->create();
+        PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
+        PlanAdaptation::factory()->for($user)->create(['week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)]);
+        Season::factory()->for($user)->create();
+
+        $this->requester->requestForFirstWeek($user, Carbon::today());
+
+        Bus::assertDispatchedTimes(AnalyzePlanDayVoiceJob::class, 1);
+        Bus::assertDispatched(AnalyzePlanWeekVoiceJob::class);
+        Bus::assertDispatched(AnalyzePlanSeasonVoiceJob::class);
+    });
+
+    /**
+     * Onboarding and the connect chain both call this, and the second one to
+     * arrive must cost nothing — even where the material has since drifted.
+     */
+    it('never invalidates a finished row, so the second racer bills nothing', function (): void {
+        $user = User::factory()->create();
+        $session = PlannedSession::factory()->for($user)->create([
+            'date' => Carbon::today()->toDateString(),
+            'session_type' => SessionType::Easy,
+        ]);
+        $row = stampedDay($user, $session);
+        $session->update(['session_type' => SessionType::Tempo]);
+
+        $this->requester->requestForFirstWeek($user, Carbon::today());
+
+        expect($row->fresh()->status)->toBe(AnalysisStatus::Done);
+        Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
     });
 });

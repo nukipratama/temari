@@ -78,6 +78,13 @@ but the command then calls
 user, touching up to nine rows: `PlanDayVoice` ×7, `PlanWeekVoice`, and `PlanSeasonVoice`. It is the
 largest scheduled spend in the app, which is why it is also the only one that checks before it bills.
 
+**A brand-new account narrates the same nine rows once, off-schedule.** Onboarding and the first-connect
+backfill chain race, and whichever finishes second calls
+[`requestForFirstWeek()`](../../app/Services/AI/PlanNarrationRequester.php) — onboarding when
+`users.backfilled_at` is already stamped, [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php)
+when a plan already exists. That path never invalidates, so the interleaving where both fire re-bills
+nothing.
+
 **Those nine re-bill only where the material changed.** The periodizer frequently rewrites a week
 into something that reads identically — the same session type, phase and prescribed distance produce
 the same blurb — so each row carries a
@@ -150,9 +157,9 @@ rendered somewhere a user can see — both directions matter, and only one of th
 | `monthly_recap` | `MonthlyRecapNarrator` | synthetic user+month · `Y-m` | staged at ingest, narrated 1st | calendar month card |
 | `profile_voice` | `ProfileVoiceNarrator` | synthetic user · ISO week | scheduled + ingest | `ProfileHero` |
 | `trend_read` | `TrendReadNarrator` | synthetic user+range · range | scheduled ×3 | `NarrationCard` on Trends |
-| `plan_day_voice` | `PlanDayVoiceNarrator` | synthetic user+day · `Y-m-d` | `plan:regenerate`, Plan page | `WeekDayRow`, collapsed |
-| `plan_week_voice` | `PlanWeekVoiceNarrator` | `PlanAdaptation` · none | `plan:regenerate`, Plan page | `SeasonWeekRow`, collapsed |
-| `plan_season_voice` | `PlanSeasonVoiceNarrator` | `Season` · none | `plan:regenerate`, Plan page | `SeasonHeaderCard`, always visible |
+| `plan_day_voice` | `PlanDayVoiceNarrator` | synthetic user+day · `Y-m-d` | `plan:regenerate`, Plan page, first week | `WeekDayRow`, collapsed |
+| `plan_week_voice` | `PlanWeekVoiceNarrator` | `PlanAdaptation` · none | `plan:regenerate`, Plan page, first week | `SeasonWeekRow`, collapsed |
+| `plan_season_voice` | `PlanSeasonVoiceNarrator` | `Season` · none | `plan:regenerate`, Plan page, first week | `SeasonHeaderCard`, always visible |
 | *(not an Analysis row)* | `RunQuestionNarrator` | `RunQuestion` rows per activity | user | `AskAboutRun` on the run page |
 
 ## What stops a call

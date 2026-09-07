@@ -26,7 +26,7 @@ Recompute is forward-only and Strava-free: [recomputeSummary](app/Services/Run/I
 
 ## How HR zones come in
 
-`compute` takes the runner's zone table and optimal cadence as arguments — it never reads config itself. The pipeline pulls them from [User::hrProfile](app/Models/User.php#L142), which returns the stored `runner_profiles` row when present and falls back to `config('runner.*')` in the identical shape ([fallback](app/Models/User.php#L110)). So a run's zone breakdown reflects whatever the runner configured in [[settings-hr-zones]] at compute time. Each zone is an inclusive-low / exclusive-high bpm band; [timeInZones](app/Services/Run/Ingest/StreamAnalysis.php#L373) classifies each sample into the first band it falls in and time-weights it by the gap to the next timestamp.
+`compute` takes the runner's zone table and optimal cadence as arguments — it never reads config itself. The pipeline pulls them from [User::hrProfile](app/Models/User.php#L155), which returns the stored `runner_profiles` row when present and falls back to `config('runner.*')` in the identical shape ([fallback](app/Models/User.php#L175)). So a run's zone breakdown reflects whatever the runner configured in [[settings-hr-zones]] at compute time. Each zone is an inclusive-low / exclusive-high bpm band; [timeInZones](app/Services/Run/Ingest/StreamAnalysis.php#L373) classifies each sample into the first band it falls in and time-weights it by the gap to the next timestamp.
 
 ## What it derives
 

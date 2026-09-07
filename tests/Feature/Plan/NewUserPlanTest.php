@@ -2,12 +2,15 @@
 
 declare(strict_types=1);
 
+use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Models\Activity;
+use App\Models\AI\Analysis;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Bus;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -102,6 +105,49 @@ it('builds the first week on the run days the athlete just chose', function (): 
         ->all();
 
     expect($trainingDows)->toBe([1, 3, 5]);
+
+    Carbon::setTestNow();
+});
+
+/**
+ * The first week is described once, by whichever of the two racers finishes
+ * second — onboarding when the backfill has already landed, `KickoffRecapsJob`
+ * when it has not.
+ */
+it('narrates the first week when the backfill has already landed', function (): void {
+    Carbon::setTestNow('2026-09-08 10:00:00'); // a Tuesday
+    Bus::fake();
+    $user = connectedRunner();
+    $user->markBackfilled();
+
+    $this->actingAs($user)->post('/onboarding', [
+        'experience_level' => 'experienced',
+        'sessions_per_week' => 4,
+        'goal_type' => 'consistent',
+    ])->assertSessionHasNoErrors();
+
+    Bus::assertDispatched(AnalyzePlanDayVoiceJob::class);
+
+    Carbon::setTestNow();
+});
+
+/** A skeleton over a job nobody queued is false hope, so the day is omitted instead. */
+it('narrates nothing, and promises nothing, while the backfill is still running', function (): void {
+    Carbon::setTestNow('2026-09-08 10:00:00'); // a Tuesday
+    Bus::fake();
+    $user = connectedRunner();
+
+    $this->actingAs($user)->post('/onboarding', [
+        'experience_level' => 'experienced',
+        'sessions_per_week' => 4,
+        'goal_type' => 'consistent',
+    ])->assertSessionHasNoErrors();
+
+    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
+
+    // No row means no payload, which is what keeps the Plan page from drawing
+    // a skeleton over a job nobody queued.
+    expect(Analysis::query()->where('subject_id', $user->id)->exists())->toBeFalse();
 
     Carbon::setTestNow();
 });
