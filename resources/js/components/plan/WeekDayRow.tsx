@@ -49,7 +49,7 @@ function kmLabel(day: PlanDay): string {
         return `${day.distance_km} km`;
     }
 
-    return `${day.actual_km ?? 0} of ${day.prescribed_km} km`;
+    return `${day.prescribed_km} km asked · ${day.actual_km ?? 0} km run`;
 }
 
 function daySummary(day: PlanDay): string {

@@ -342,8 +342,16 @@ describe('WeekDayRow', () => {
             day: day({ prescribed_km: 6, actual_km: 5, distance_km: 8 }),
         });
 
-        expect(screen.getByText(/5 of 6 km/)).toBeInTheDocument();
+        expect(screen.getByText(/6 km asked · 5 km run/)).toBeInTheDocument();
         expect(screen.queryByText(/8 km/)).not.toBeInTheDocument();
+    });
+
+    it('keeps the two numbers straight on a day that went long', () => {
+        renderRow({
+            day: day({ prescribed_km: 9, actual_km: 12, distance_km: 8 }),
+        });
+
+        expect(screen.getByText(/9 km asked · 12 km run/)).toBeInTheDocument();
     });
 
     it('shows the ask alone on a day that has not been judged yet', () => {
