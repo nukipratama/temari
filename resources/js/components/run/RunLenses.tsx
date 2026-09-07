@@ -18,6 +18,7 @@ import { anchorLabel, revealAnchor } from '@/lib/anchors';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
+import { chipVariants } from '@/lib/variants';
 
 /**
  * One anchored, falsifiable observation about this run. `anchor` names the
@@ -113,7 +114,10 @@ function ClaimLine({
                             type="button"
                             onClick={() => revealAnchor(claim.anchor)}
                             aria-label={`Show ${label} on this page`}
-                            className="focus-ring inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-label-micro text-text-2"
+                            className={cn(
+                                chipVariants({ tone: 'neutral' }),
+                                'focus-ring transition-colors hover:bg-ink/[0.12]',
+                            )}
                         >
                             <Icon
                                 icon="mdi:arrow-down"
