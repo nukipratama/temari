@@ -530,6 +530,23 @@ body {
         background-image: none;
         animation: none;
     }
+
+    /* useViewTransitions already declines to arm a transition under reduced
+       motion, but a visit started before the setting changed is mid-flight by
+       then, and the UA's default cross-fade is not covered by MotionConfig. */
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation: none !important;
+    }
+}
+
+/* The route cross-fade. Deliberately quicker than the UA default: this
+   replaces a progress bar, so it has to read as the page arriving rather than
+   as an animation being played at you. */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: 180ms;
 }
 
 /* Hide native scrollbar — used on horizontal strips where explicit
