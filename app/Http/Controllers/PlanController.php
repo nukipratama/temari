@@ -32,7 +32,6 @@ use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\SessionSegment;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\VolumeRedistributor;
-use App\Services\Run\Plan\WeekPlanBuilder;
 use App\Services\Run\Story\BriefingContext;
 use App\Support\TrainingDisclaimer;
 use Illuminate\Http\RedirectResponse;
@@ -145,7 +144,7 @@ class PlanController extends Controller
         $ceiling = ReadinessCeiling::from(
             BriefingContext::forUser($user, $today, $trainingLoad->summary($user, $today))->readinessCeiling,
         );
-        $isMarathonDistance = WeekPlanBuilder::isMarathonDistance($race !== null ? (float) $race->distance_m : null);
+        $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
 
         $sessionsByWeek = $sessions->groupBy(
             fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
@@ -176,6 +175,7 @@ class PlanController extends Controller
                     $date === $primaryEasyDateByWeek->get($weekKey),
                     $baselineData['long_run_km'],
                     $multiplierByWeek[$weekKey] ?? 1.0,
+                    $s->race_distance_m === null ? null : (float) $s->race_distance_m,
                 );
                 $staleExcused[$date] = $s->isExcused();
             }
@@ -189,7 +189,7 @@ class PlanController extends Controller
             ? ReadinessClamp::apply(
                 $todaySession->session_type,
                 $todaySession->phase,
-                $isMarathonDistance,
+                $raceDistanceM,
                 $baselineData['long_run_km'],
                 $multiplierByWeek[$currentWeekKey] ?? 1.0,
                 $paces,
@@ -233,7 +233,7 @@ class PlanController extends Controller
                     $today,
                     $clamp,
                     $volumeScaleByDate,
-                    $isMarathonDistance,
+                    $raceDistanceM,
                     $s->date->toDateString() === $primaryEasyDate,
                     $baselineData['long_run_km'],
                     $multiplierByWeek[$weekStartKey] ?? 1.0,
@@ -358,6 +358,11 @@ class PlanController extends Controller
     }
 
     /**
+     * A `Race` day carries no redistributable volume — `$kmFor` is deliberately
+     * race-blind, so the event contributes nothing to the week's target and is
+     * never scaled itself. The race is whatever distance it is; what
+     * redistributes is the training around it.
+     *
      * @param  Collection<int, PlannedSession>  $currentWeekSessions
      * @param array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string}|null $clamp
      * @return array<string, float>  date => volume scale, from {@see VolumeRedistributor::redistribute()}

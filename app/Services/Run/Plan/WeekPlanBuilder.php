@@ -79,6 +79,7 @@ final class WeekPlanBuilder
      *                                        (0=Mon..6=Sun) — when set (with `$preferredLongOffset`), replaces
      *                                        `DAY_TEMPLATES` entirely for this week rather than merely seeding it
      * @param  ?int  $preferredLongOffset  the matching `long_run_day`, always a member of `$preferredOffsets`
+     * @param  ?Carbon  $raceDate  the active race's day — reshapes the week it falls in, see {@see self::raceWeekType()}
      * @return array<string, array{phase: PlanPhase, session_type: SessionType}> keyed by Y-m-d
      */
     public function build(
@@ -93,6 +94,7 @@ final class WeekPlanBuilder
         ?array $preferredOffsets = null,
         ?int $preferredLongOffset = null,
         ?float $projectedRaceSeconds = null,
+        ?Carbon $raceDate = null,
     ): array {
         if ($preferredOffsets !== null && $preferredLongOffset !== null) {
             $trainingOffsets = $preferredOffsets;
@@ -123,6 +125,13 @@ final class WeekPlanBuilder
                 continue;
             }
 
+            $raceWeekType = self::raceWeekType($dayDate, $raceDate);
+            if ($raceWeekType !== null) {
+                $rows[$date] = ['session_type' => $raceWeekType];
+
+                continue;
+            }
+
             if (! in_array($offset, $trainingOffsets, true)) {
                 $rows[$date] = ['session_type' => SessionType::Rest];
 
@@ -149,6 +158,34 @@ final class WeekPlanBuilder
             static fn (array $row): array => [...$row, 'phase' => $phase],
             $rows,
         );
+    }
+
+    /**
+     * What race day and the days around it get, or null for any day the race
+     * has no claim on.
+     *
+     * The template knows nothing about race day, so before this the week the
+     * athlete's goal race falls in was laid out as an ordinary tapered week:
+     * a Sunday marathon got a long run on the Saturday before it and `rest`
+     * on the day itself, and a Tuesday 10K got a tempo session ON the race.
+     * Race day is the session; the day before it is rest, and so is every day
+     * after it, since the arc ends here and nothing is worth prescribing
+     * between a goal race and the fresh plan that follows it.
+     */
+    private static function raceWeekType(Carbon $dayDate, ?Carbon $raceDate): ?SessionType
+    {
+        if ($raceDate === null) {
+            return null;
+        }
+
+        $raceDay = $raceDate->copy()->startOfDay();
+
+        return match (true) {
+            $dayDate->isSameDay($raceDay) => SessionType::Race,
+            $dayDate->gt($raceDay) => SessionType::Rest,
+            $dayDate->isSameDay($raceDay->copy()->subDay()) => SessionType::Rest,
+            default => null,
+        };
     }
 
     /**

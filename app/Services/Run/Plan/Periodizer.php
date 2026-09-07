@@ -6,6 +6,7 @@ namespace App\Services\Run\Plan;
 
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
+use App\Enums\SessionType;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
@@ -37,8 +38,9 @@ final readonly class Periodizer
 {
     /**
      * How many weeks ahead get materialized as rows. A race-oriented arc may
-     * resolve to fewer weeks (it never plans past race day); self-scaled mode
-     * always fills the full horizon, since it has no natural end.
+     * resolve to fewer weeks — it ends with race week, and nothing after race
+     * day inside that week is trained; self-scaled mode always fills the full
+     * horizon, since it has no natural end.
      */
     public const int HORIZON_WEEKS = 12;
 
@@ -109,13 +111,14 @@ final readonly class Periodizer
                 $preference?->run_days,
                 $preference?->long_run_day,
                 $projectedRaceSeconds,
+                $race?->race_date,
             );
             foreach ($weekRows as $date => $row) {
                 $rows[$date] = $row;
             }
         }
 
-        DB::transaction(function () use ($user, $today, $currentWeekStart, $deleteHorizonEnd, $rows, $adaptation): void {
+        DB::transaction(function () use ($user, $today, $currentWeekStart, $deleteHorizonEnd, $rows, $adaptation, $raceDistanceM): void {
             // Clear the full horizon's stale unpinned rows (not just the
             // freshly-computed weeks) so a shrinking horizon — e.g. a
             // self-scaled plan's far-future weeks after the user sets a
@@ -132,6 +135,9 @@ final readonly class Periodizer
                     [
                         'phase' => $row['phase'],
                         'session_type' => $row['session_type'],
+                        // Stamped on the row so race day still knows its own
+                        // distance once the goal behind it has been retired.
+                        'race_distance_m' => $row['session_type'] === SessionType::Race ? (int) $raceDistanceM : null,
                         'pinned' => false,
                         'status' => PlannedSessionStatus::Planned,
                     ],

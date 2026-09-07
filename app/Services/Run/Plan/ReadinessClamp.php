@@ -31,7 +31,7 @@ final class ReadinessClamp
     public static function apply(
         SessionType $sessionType,
         PlanPhase $phase,
-        bool $isMarathonDistance,
+        ?float $raceDistanceM,
         float $longRunBaselineKm,
         float $volumeMultiplier,
         ?array $paces,
@@ -57,7 +57,7 @@ final class ReadinessClamp
                 'segments' => SegmentGenerator::generate(
                     SessionType::Easy,
                     $phase,
-                    $isMarathonDistance,
+                    $raceDistanceM,
                     $sessionType === SessionType::Long,
                     $longRunBaselineKm,
                     $volumeMultiplier,
@@ -124,11 +124,16 @@ final class ReadinessClamp
      * (Tempo/Interval, in Daniels' vocabulary) needs the optimistic default;
      * a Long day is a volume day, not an intensity one, so it only needs
      * "moderate" clearance; Easy needs the floor above Rest.
+     *
+     * A `Race` day sits at the floor with `Rest`, so no ceiling ever reaches
+     * it: the clamp is advisory, and talking an athlete out of the goal race
+     * they have trained months for — on a season's worth of load they are
+     * meant to be carrying into it — is not advice this can give.
      */
     private static function requiredRank(SessionType $sessionType): int
     {
         return match ($sessionType) {
-            SessionType::Rest => ReadinessCeiling::Rest->rank(),
+            SessionType::Rest, SessionType::Race => ReadinessCeiling::Rest->rank(),
             SessionType::Easy => ReadinessCeiling::EasyOnly->rank(),
             SessionType::Long => ReadinessCeiling::ModerateOk->rank(),
             SessionType::Tempo, SessionType::Interval => ReadinessCeiling::QualityOk->rank(),

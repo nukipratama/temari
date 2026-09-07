@@ -382,6 +382,7 @@ final readonly class RuleBasedNarrationFiller
             SessionType::Tempo => $this->select(['tempo work today.', 'a tempo day on the calendar.'], $this->seedFor($row)),
             SessionType::Interval => $this->select(['interval work today.', 'reps on the schedule.'], $this->seedFor($row)),
             SessionType::Easy => $this->select(['easy day. nothing to prove, just log the miles.', 'an easy one today.'], $this->seedFor($row)),
+            SessionType::Race => $this->select(['race day. this is the one you trained for.', "race day. go and run it."], $this->seedFor($row)),
         };
     }
 

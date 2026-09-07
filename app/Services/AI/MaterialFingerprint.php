@@ -44,6 +44,12 @@ final class MaterialFingerprint
             // Drives the prescribed distance the blurb quotes, so a moved
             // baseline changes what the day should say.
             'long_run_km' => self::half($longRunBaselineKm),
+            // Only ever present on a race day, whose distance comes from the
+            // goal rather than the baseline above — an athlete who swaps a 10K
+            // for a half on the same date changes nothing else here. Added
+            // conditionally so every already-stamped row keeps its digest
+            // rather than the new key re-narrating everyone's whole week.
+            ...($session->race_distance_m === null ? [] : ['race_distance_m' => $session->race_distance_m]),
         ]);
     }
 

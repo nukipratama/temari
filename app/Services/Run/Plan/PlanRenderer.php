@@ -79,6 +79,11 @@ final class PlanRenderer
      * ramp to be correct for the *earliest* week being scored, not just the
      * dates the caller actually wants km for.
      *
+     * A `Race` day is sized from its own stored `race_distance_m` rather than
+     * the training baseline, so this keeps working once the goal behind it has
+     * been retired — which it always has by the time `plan:score-compliance`
+     * grades race day.
+     *
      * @param  Collection<int, PlannedSession>  $sessions
      * @return array<string, float>  Y-m-d => core km
      */
@@ -100,6 +105,7 @@ final class PlanRenderer
                 $s->date->toDateString() === $primaryEasyDateByWeek->get($weekKey),
                 $longRunBaselineKm,
                 $multiplierByWeek[$weekKey] ?? 1.0,
+                self::raceDistanceOf($s),
             );
         }
 
@@ -119,7 +125,7 @@ final class PlanRenderer
         Carbon $today,
         ?array $clamp,
         array $volumeScaleByDate,
-        bool $isMarathonDistance,
+        ?float $raceDistanceM,
         bool $isPrimaryEasy,
         float $longRunKm,
         float $multiplier,
@@ -132,10 +138,13 @@ final class PlanRenderer
         $volumeScale = $volumeScaleByDate[$s->date->toDateString()] ?? 1.0;
 
         $sessionType = $s->session_type;
+        // The row's own distance on race day, the active race's everywhere
+        // else — where it only ever picks a pace band.
+        $raceDistanceM = self::raceDistanceOf($s) ?? $raceDistanceM;
         $segments = SegmentGenerator::generate(
             $sessionType,
             $s->phase,
-            $isMarathonDistance,
+            $raceDistanceM,
             $isPrimaryEasy,
             $longRunKm,
             $multiplier,
@@ -148,7 +157,7 @@ final class PlanRenderer
         // its reps actually come to. Without a VDOT estimate nothing has a
         // distance yet, and the budget stands in.
         $distanceKm = SegmentGenerator::prescribedKm($segments)
-            ?? round(SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier) * $volumeScale, 1);
+            ?? round(SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier, $raceDistanceM) * $volumeScale, 1);
 
         return [
             'id' => $s->id,
@@ -166,6 +175,12 @@ final class PlanRenderer
             'actual_km' => $activity['km'] ?? null,
             'activities' => $activity['runs'] ?? [],
         ];
+    }
+
+    /** The distance a `Race` row stores for itself, and null on every other day. */
+    private static function raceDistanceOf(PlannedSession $s): ?float
+    {
+        return $s->race_distance_m === null ? null : (float) $s->race_distance_m;
     }
 
     /**

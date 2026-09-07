@@ -80,7 +80,7 @@ final readonly class CurrentWeekPlanBuilder
             BriefingContext::forUser($user, $today, $this->trainingLoad->summary($user, $today))->readinessCeiling,
         );
         $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
-        $isMarathonDistance = WeekPlanBuilder::isMarathonDistance($race !== null ? (float) $race->distance_m : null);
+        $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
         $primaryEasyDate = PlanRenderer::primaryEasyDate($currentWeekSessions);
 
         $plannedKmByDate = [];
@@ -90,6 +90,7 @@ final readonly class CurrentWeekPlanBuilder
                 $s->date->toDateString() === $primaryEasyDate,
                 $baselineData['long_run_km'],
                 $currentWeekMultiplier,
+                $s->race_distance_m === null ? null : (float) $s->race_distance_m,
             );
         }
 
@@ -120,7 +121,7 @@ final readonly class CurrentWeekPlanBuilder
             ? ReadinessClamp::apply(
                 $todaySession->session_type,
                 $todaySession->phase,
-                $isMarathonDistance,
+                $raceDistanceM,
                 $baselineData['long_run_km'],
                 $currentWeekMultiplier,
                 $paces,
@@ -135,7 +136,7 @@ final readonly class CurrentWeekPlanBuilder
             $today,
             $clamp,
             [],
-            $isMarathonDistance,
+            $raceDistanceM,
             $s->date->toDateString() === $primaryEasyDate,
             $baselineData['long_run_km'],
             $currentWeekMultiplier,

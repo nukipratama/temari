@@ -14,7 +14,6 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\SessionSegment;
-use App\Services\Run\Plan\WeekPlanBuilder;
 use App\Services\Run\Story\CardContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -109,7 +108,7 @@ final readonly class BuildCardContextAction
         $segments = SegmentGenerator::generate(
             $session->session_type,
             $session->phase,
-            WeekPlanBuilder::isMarathonDistance($race !== null ? (float) $race->distance_m : null),
+            $race !== null ? (float) $race->distance_m : null,
             isPrimaryEasy: false,
             longRunBaselineKm: 0.0,
             volumeMultiplier: 1.0,

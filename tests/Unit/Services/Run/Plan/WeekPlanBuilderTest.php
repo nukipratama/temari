@@ -293,3 +293,44 @@ it('still gives a five-session week both a threshold and an interval day', funct
     expect($types)->toContain(SessionType::Tempo)
         ->and($types)->toContain(SessionType::Interval);
 });
+
+it('makes race day the race, and rests the day before it', function (): void {
+    // Saturday of the built week.
+    $raceDate = $this->monday->copy()->addDays(5);
+
+    $rows = $this->builder->build($this->monday, PlanPhase::Taper, 4, [], 21_097.0, false, raceDate: $raceDate);
+
+    expect($rows[$raceDate->toDateString()]['session_type'])->toBe(SessionType::Race)
+        ->and($rows[$raceDate->copy()->subDay()->toDateString()]['session_type'])->toBe(SessionType::Rest);
+});
+
+it('trains nothing after race day, so a Sunday marathon gets no long run the day before it', function (): void {
+    $raceDate = $this->monday->copy()->addDays(6);
+
+    $rows = $this->builder->build($this->monday, PlanPhase::Taper, 5, [], 42_195.0, false, raceDate: $raceDate);
+
+    expect($rows[$raceDate->copy()->subDay()->toDateString()]['session_type'])->toBe(SessionType::Rest)
+        ->and(array_column($rows, 'session_type'))->not->toContain(SessionType::Long);
+});
+
+it('rests every day after race day rather than training through the days a goal race is recovered from', function (): void {
+    // Tuesday: the layout that used to prescribe a tempo ON the race.
+    $raceDate = $this->monday->copy()->addDay();
+
+    $rows = $this->builder->build($this->monday, PlanPhase::Taper, 4, [], 10_000.0, false, raceDate: $raceDate);
+
+    $afterRace = array_column(array_slice($rows, 2), 'session_type');
+
+    expect($afterRace)->toHaveCount(5)
+        ->and($afterRace)->each->toBe(SessionType::Rest);
+});
+
+it('leaves a week the race does not fall in completely alone', function (): void {
+    $raceDate = $this->monday->copy()->addWeeks(3);
+
+    $withRace = array_column($this->builder->build($this->monday, PlanPhase::Build, 4, [], 10_000.0, false, raceDate: $raceDate), 'session_type');
+    $without = array_column($this->builder->build($this->monday, PlanPhase::Build, 4, [], 10_000.0, false), 'session_type');
+
+    expect($withRace)->toBe($without)
+        ->and($withRace)->not->toContain(SessionType::Race);
+});

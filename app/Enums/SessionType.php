@@ -9,6 +9,10 @@ namespace App\Enums;
  * {@see PaceBand}, the VDOT-derived numeric target — a `Long` session
  * typically pairs with the `Easy` pace band unless it's a race-simulation
  * long run at `Marathon` band (see the periodizer's peak-phase handling).
+ *
+ * `Race` is the goal race itself, the one case whose distance comes from the
+ * athlete's {@see \App\Models\RaceGoal} rather than from their training
+ * baseline, and the one the readiness clamp never downgrades.
  */
 enum SessionType: string
 {
@@ -17,4 +21,5 @@ enum SessionType: string
     case Tempo = 'tempo';
     case Interval = 'interval';
     case Rest = 'rest';
+    case Race = 'race';
 }
