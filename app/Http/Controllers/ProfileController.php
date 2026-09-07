@@ -94,7 +94,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * @return array{vdot: float|null, threshold_pace_sec: float|null, threshold_confidence: string|null, training_paces: array{easy: int, marathon: int, threshold: int, interval: int}|null}|null
+     * @return array{vdot: float|null, vdot_source: array{category: string, set_at: string, stale: bool}|null, threshold_pace_sec: float|null, threshold_confidence: string|null, training_paces: array{easy: int, marathon: int, threshold: int, interval: int}|null}|null
      */
     private function fitness(VdotEstimator $vdotEstimator, EstimateThresholdAction $thresholdEstimator, TrainingPaceCalculator $trainingPaceCalculator, User $user): ?array
     {
@@ -107,6 +107,11 @@ class ProfileController extends Controller
 
         return [
             'vdot' => $vdot['vdot'] ?? null,
+            'vdot_source' => $vdot === null ? null : [
+                'category' => $vdot['source_category'],
+                'set_at' => $vdot['set_at']->toDateString(),
+                'stale' => $vdot['stale'],
+            ],
             'threshold_pace_sec' => $threshold['pace_sec'] ?? null,
             'threshold_confidence' => $threshold['confidence'] ?? null,
             'training_paces' => $trainingPaceCalculator->fromVdotResult($vdot),

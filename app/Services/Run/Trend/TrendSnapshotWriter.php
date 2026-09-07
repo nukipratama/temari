@@ -32,7 +32,7 @@ class TrendSnapshotWriter
         TrendDailySnapshot::query()->firstOrCreate(
             ['user_id' => $user->id, 'snapshot_date' => $today->toDateString()],
             [
-                'vdot' => $this->vdotEstimator->estimate($user)['vdot'] ?? null,
+                'vdot' => $this->vdotEstimator->estimate($user, $today)['vdot'] ?? null,
                 'pace_variability_sec' => $this->averagePaceVariabilitySec($user, $today),
             ],
         );

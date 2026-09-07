@@ -48,6 +48,48 @@ describe('PaceTargetsCard', () => {
         }
     });
 
+    it('names the PR the targets came from, and when it was set', () => {
+        render(
+            <PaceTargetsCard
+                paces={{
+                    easy: 360,
+                    marathon: 320,
+                    threshold: 300,
+                    interval: 280,
+                }}
+                source={{
+                    category: 'half_marathon',
+                    set_at: '2026-05-19',
+                    stale: false,
+                }}
+            />,
+        );
+
+        expect(
+            screen.getByText('from your half marathon pr, set may 2026'),
+        ).toBeInTheDocument();
+    });
+
+    it('says so when no PR is recent enough, rather than passing an old one off as current', () => {
+        render(
+            <PaceTargetsCard
+                paces={{
+                    easy: 360,
+                    marathon: 320,
+                    threshold: 300,
+                    interval: 280,
+                }}
+                source={{ category: '5km', set_at: '2024-01-08', stale: true }}
+            />,
+        );
+
+        expect(
+            screen.getByText(
+                'from your 5 km pr, set jan 2024 · nothing newer to go on',
+            ),
+        ).toBeInTheDocument();
+    });
+
     it('centres every marker when all four paces are identical', () => {
         const { container } = render(
             <PaceTargetsCard

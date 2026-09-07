@@ -154,7 +154,7 @@ final readonly class TrainingBaseline
         return [
             'sessions_per_week' => $sessionsPerWeek,
             'weekly_volume_km' => $weeklyVolumeKm,
-            'long_run_km' => $this->longRunKm($user, $weeklyVolumeKm),
+            'long_run_km' => $this->longRunKm($user, $weeklyVolumeKm, $asOf),
         ];
     }
 
@@ -196,11 +196,11 @@ final readonly class TrainingBaseline
      * Volume decides the long run, not the other way round. Both ceilings are
      * applied and the tighter one wins: a race-distance band, and time on feet.
      */
-    private function longRunKm(User $user, float $weeklyVolumeKm): float
+    private function longRunKm(User $user, float $weeklyVolumeKm, Carbon $asOf): float
     {
         $derived = $weeklyVolumeKm * self::longRunShare($weeklyVolumeKm);
 
-        $capped = min($derived, $this->raceBandCapKm($user), $this->timeCapKm($user));
+        $capped = min($derived, $this->raceBandCapKm($user), $this->timeCapKm($user, $asOf));
 
         return max(round($capped, 1), self::MIN_LONG_RUN_KM);
     }
@@ -234,9 +234,9 @@ final readonly class TrainingBaseline
     }
 
     /** INF when the athlete has no VDOT estimate, so only the band cap applies. */
-    private function timeCapKm(User $user): float
+    private function timeCapKm(User $user, Carbon $asOf): float
     {
-        $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user));
+        $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $asOf));
 
         if ($paces === null) {
             return INF;

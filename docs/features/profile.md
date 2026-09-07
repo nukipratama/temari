@@ -56,6 +56,14 @@ When the runner has a VDOT-eligible PR, the hero stat row grows two more tiles (
 
 These are the same estimators [ProfileVoiceNarrator](app/Services/AI/Narrators/ProfileVoiceNarrator.php) calls via [TrainingPacesTool](app/Services/AI/Agent/Tools/TrainingPacesTool.php) to narrate pace targets in prose — the numbers reach the user both ways, tabulated here and spoken in the hero voice above.
 
+### A PR only votes while it is current
+
+`estimate` takes the **minimum** VDOT across categories on purpose, so no prescribed pace outruns a genuine PR. But [PersonalRecords](app/Services/Run/Metrics/PersonalRecords.php)`::updateIfFaster` only ever replaces a record with a *faster* one, so a record improves and never ages out on its own. Unbounded, the two rules compound: one hard effort from years ago wins the minimum forever and pins every prescribed pace to the fitness the athlete had then, which is self-reinforcing, since a well-periodized plan prescribes easy running and so rarely produces a new short-distance PR to displace it.
+
+Only records set within `VdotEstimator::RECENT_MONTHS` (12) vote. Deliberately a cut on voting rights rather than a decay applied to the number: PR age is not evidence of detraining, and an athlete running steadily who simply has not raced still holds the fitness their old record proved. When *nothing* is recent the older estimate still stands — no null cliff for a returning athlete — but it comes back flagged `stale`, and [PaceTargetsCard](resources/js/components/profile/PaceTargetsCard.tsx) names the record and its date under the rail rather than presenting an old number as current.
+
+The window is measured from a caller-supplied date, defaulting to now. [TrainingBaseline](app/Services/Run/Plan/TrainingBaseline.php) threads its own `$asOf` through, so the as-of paths [ComplianceScorer](app/Services/Run/Plan/ComplianceScorer.php) and [SeasonSummaryBuilder](app/Services/Run/Plan/SeasonSummaryBuilder.php) already use judge an old week by the evidence that existed then, the same discipline as [[a-day-is-scored-when-it-is-run]].
+
 ## Time in zone · last 12 weeks
 
 **P13.** [TimeInZoneBar](resources/js/components/profile/TimeInZoneBar.tsx) draws a segmented Z1-Z5 bar and a dot legend in the hero slot the behavioural persona mix used to occupy (`PersonaBar` and the `personaMix` prop were cut in `PP3`). The percentages come from [TimeInZoneSummary](app/Services/Run/Metrics/TimeInZoneSummary.php), which sums the per-run `time_in_zone_min` that [StreamAnalysis](app/Services/Run/Ingest/StreamAnalysis.php) already writes onto `activity_details.stream_summary` across the trailing 12 weeks and normalises them. Zone colours and labels are the shared `HR_ZONE_COLORS`/`HR_ZONE_LABELS` in [chartTokens](resources/js/lib/chartTokens.ts), the same pair the [[settings-hr-zones]] editor names its bands with.

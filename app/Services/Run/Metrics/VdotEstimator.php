@@ -7,6 +7,8 @@ namespace App\Services\Run\Metrics;
 use App\Enums\PrCategory;
 use App\Models\PersonalRecord;
 use App\Models\User;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Daniels' VDOT formula (1998 tables):
@@ -28,9 +30,16 @@ class VdotEstimator
     public const float VO2_COEFFICIENT_C = -4.60;
 
     /**
-     * @return array{vdot: float, source_category: string}|null
+     * A personal record is only ever replaced by a faster one, so it improves but
+     * never ages out on its own. Unbounded, one hard effort from years ago keeps
+     * a permanent veto over every prescribed pace.
      */
-    public function estimate(User $user): ?array
+    public const int RECENT_MONTHS = 12;
+
+    /**
+     * @return array{vdot: float, source_category: string, set_at: Carbon, stale: bool}|null
+     */
+    public function estimate(User $user, ?Carbon $asOf = null): ?array
     {
         $eligibleValues = array_map(static fn (PrCategory $c): string => $c->value, PrCategory::distances());
 
@@ -39,6 +48,23 @@ class VdotEstimator
             ->whereIn('category', $eligibleValues)
             ->get();
 
+        $cutoff = ($asOf ?? Carbon::now())->copy()->subMonths(self::RECENT_MONTHS);
+
+        $result = $this->lowestVdot($prs->filter(
+            static fn (PersonalRecord $pr): bool => $pr->set_at->greaterThanOrEqualTo($cutoff),
+        ));
+        $stale = $result === null;
+        $result ??= $this->lowestVdot($prs);
+
+        return $result === null ? null : [...$result, 'stale' => $stale];
+    }
+
+    /**
+     * @param  Collection<int, PersonalRecord>  $prs
+     * @return array{vdot: float, source_category: string, set_at: Carbon}|null
+     */
+    private function lowestVdot(Collection $prs): ?array
+    {
         $best = null;
         $bestVdot = null;
 
@@ -62,7 +88,7 @@ class VdotEstimator
             // reachable, never faster than the athlete's slowest relative PR.
             if ($bestVdot === null || $vdot < $bestVdot) {
                 $bestVdot = $vdot;
-                $best = $pr->category;
+                $best = $pr;
             }
         }
 
@@ -70,7 +96,11 @@ class VdotEstimator
             return null;
         }
 
-        return ['vdot' => round($bestVdot, 1), 'source_category' => $best->value];
+        return [
+            'vdot' => round($bestVdot, 1),
+            'source_category' => $best->category->value,
+            'set_at' => $best->set_at,
+        ];
     }
 
     public function vdotFromTimeAndDistance(float $elapsedSec, float $distanceMeters): ?float

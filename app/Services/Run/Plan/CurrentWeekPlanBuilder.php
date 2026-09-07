@@ -75,7 +75,7 @@ final readonly class CurrentWeekPlanBuilder
         $currentWeekMultiplier = $multiplierByWeek[$currentWeekKey] ?? 1.0;
 
         $baselineData = $this->baseline->forUser($user, $today);
-        $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user));
+        $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today));
         $ceiling = ReadinessCeiling::from(
             BriefingContext::forUser($user, $today, $this->trainingLoad->summary($user, $today))->readinessCeiling,
         );
