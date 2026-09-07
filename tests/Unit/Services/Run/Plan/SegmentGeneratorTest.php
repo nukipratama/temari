@@ -231,6 +231,41 @@ it('rounds a session\'s segment distances so they add up to the figure on the ca
     }
 });
 
+it('reports what an Interval day actually asks for, which its budget cannot always be', function (): void {
+    // A whole number of fixed-duration reps rarely lands on an arbitrary
+    // kilometre budget: this is quantisation, not a rounding slip, and it is
+    // why prescribedKm() exists rather than the day reporting coreKmFor().
+    $paces = ['easy' => 450, 'marathon' => 408, 'threshold' => 378, 'interval' => 354];
+    $segments = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Build, false, false, 9.1, 1.08, $paces);
+
+    $budget = round(SegmentGenerator::coreKmFor(SessionType::Interval, false, 9.1, 1.08) * 1.0, 1);
+    $asked = SegmentGenerator::prescribedKm($segments);
+
+    expect($asked)->not->toBeNull()
+        ->and($asked)->not->toBe($budget)
+        ->and(abs($asked - $budget))->toBeLessThan(0.6);
+});
+
+it('reports a Tempo and an Easy day at exactly their budget', function (): void {
+    foreach (range(30, 250) as $tenths) {
+        $longRunKm = $tenths / 10;
+
+        foreach ([SessionType::Tempo, SessionType::Easy, SessionType::Long] as $type) {
+            $segments = SegmentGenerator::generate($type, PlanPhase::Build, false, false, $longRunKm, 1.0, PACES);
+
+            expect(SegmentGenerator::prescribedKm($segments))
+                ->toBe(SegmentGenerator::coreKmFor($type, false, $longRunKm, 1.0), "{$type->value} at {$longRunKm}");
+        }
+    }
+});
+
+it('reports no distance at all when no VDOT estimate can size the day', function (): void {
+    $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, false, false, 16.0, 1.0, null);
+
+    expect(SegmentGenerator::prescribedKm($segments))->toBeNull()
+        ->and(SegmentGenerator::prescribedKm([]))->toBeNull();
+});
+
 it('leaves a bookend\'s distance null when no VDOT estimate can size it', function (): void {
     $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, false, false, 16.0, 1.0, null);
 

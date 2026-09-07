@@ -141,10 +141,13 @@ final class PlanRenderer
             $paces,
             $volumeScale,
         );
-        // The headline figure is the CORE work only (never null, doesn't
-        // need a VDOT estimate) — warmup/cooldown are additional minutes
-        // on top, not part of what this number has ever meant.
-        $distanceKm = round(SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier) * $volumeScale, 1);
+        // The whole outing, and the figure the segments beneath it add up to.
+        // An Interval day is the one that cannot land on its own budget — a
+        // whole number of fixed-duration reps rarely does — so it reports what
+        // its reps actually come to. Without a VDOT estimate nothing has a
+        // distance yet, and the budget stands in.
+        $distanceKm = SegmentGenerator::prescribedKm($segments)
+            ?? round(SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier) * $volumeScale, 1);
 
         return [
             'id' => $s->id,
