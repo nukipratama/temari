@@ -11,7 +11,7 @@ return [
     // toolbox; a narrator with a small one tightens it via
     // ChatCallOptions::$maxSteps, since every turn re-bills the whole prefix.
     'agent' => [
-        'max_steps' => (int) env('AI_AGENT_MAX_STEPS', 8),
+        'max_steps' => (int) env('AI_AGENT_MAX_STEPS', 10),
         'max_tokens' => (int) env('AI_AGENT_MAX_TOKENS', 30000),
     ],
 
