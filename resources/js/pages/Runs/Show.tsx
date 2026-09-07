@@ -9,6 +9,7 @@ import type {
     StoryLine,
 } from '@/types/inertia';
 
+import TimeInZoneBar from '@/components/profile/TimeInZoneBar';
 import AskAboutRun from '@/components/run/AskAboutRun';
 import LapsCarousel from '@/components/run/LapsCarousel';
 import PastYouCard, { type PastYouMatch } from '@/components/run/PastYouCard';
@@ -20,7 +21,9 @@ import VitalsCard from '@/components/run/VitalsCard';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
+import { drawnRunAnchors } from '@/lib/anchors';
 import { formatAbsoluteId } from '@/lib/pace';
+import { zonePctFromDetail } from '@/lib/runcard';
 
 import { useRunShow, type RunCardDetail } from './useRunShow';
 
@@ -77,6 +80,8 @@ export default function RunsShow({
     // the page shows the notice and the summary it does have, not a column of
     // empty panels — the prototype's `awaitingDetail: 'hydrating'` shape.
     const detailed = !awaitingDetail;
+    const zonePct = zonePctFromDetail(detail);
+    const anchors = drawnRunAnchors(summary, perKm.length, zonePct);
     // The sync moment, not the run's own clock — analyzed_at is a true instant,
     // so it takes the absolute (date + local time) formatter.
     const syncedAt = formatAbsoluteId(activity.analyzed_at);
@@ -109,6 +114,7 @@ export default function RunsShow({
                             story={speechAnalysis}
                             insight={runInsight}
                             isChainHead={isChainHead}
+                            drawnAnchors={anchors}
                         />
 
                         <AskAboutRun
@@ -121,6 +127,14 @@ export default function RunsShow({
                         </Eyebrow>
 
                         <VitalsCard detail={detail} summary={summary} />
+
+                        {zonePct && (
+                            <TimeInZoneBar
+                                zones={zonePct}
+                                label="Time in zone · this run"
+                                anchored
+                            />
+                        )}
 
                         {(perKm.length > 0 || partialSplit) && (
                             <SplitsChart rows={perKm} partial={partialSplit} />

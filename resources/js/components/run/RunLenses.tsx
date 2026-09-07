@@ -14,6 +14,7 @@ import {
     cooldownAriaLabel,
     useCooldownCountdown,
 } from '@/hooks/useCooldownCountdown';
+import { anchorLabel, revealAnchor } from '@/lib/anchors';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
@@ -22,8 +23,9 @@ import { renderBold } from '@/lib/richText';
  * One anchored, falsifiable observation about this run. `anchor` names the
  * exact split/zone/metric it describes (validated server-side against the
  * run's own data before this ever reaches the client — see
- * RunInsightNarrator); it drives nothing in this component beyond a React
- * key. `value`/`delta` are optional headline figures shown next to the text.
+ * RunInsightNarrator), and the claim carries a control that scrolls to
+ * whichever component draws it. `value`/`delta` are optional headline figures
+ * shown next to the text.
  */
 interface RunInsightClaim {
     anchor: string;
@@ -37,6 +39,12 @@ interface RunLensesProps {
     story: AnalysisPayload;
     /** The adaptive claims block (RunInsight) — a variable-length list of anchored observations. */
     insight: AnalysisPayload;
+    /**
+     * The anchors this page actually draws, from {@link drawnRunAnchors}. A
+     * claim whose anchor is not in here gets no control: the narrator validates
+     * against readings no component renders.
+     */
+    drawnAnchors?: ReadonlySet<string>;
     /**
      * This run is the head of the per-activity narration chain (the latest run).
      * Per-activity narration is connected + chained: only the head may
@@ -87,16 +95,56 @@ function insightHasContent(insight: AnalysisPayload): boolean {
     return parseClaims(insight.content).length > 0;
 }
 
-function ClaimLine({ claim }: Readonly<{ claim: RunInsightClaim }>) {
+function ClaimLine({
+    claim,
+    drawn,
+}: Readonly<{ claim: RunInsightClaim; drawn: boolean }>) {
+    const label = anchorLabel(claim.anchor);
+
     return (
         <div className="flex flex-col gap-1.5">
             <p className="narration">{renderBold(claim.text)}</p>
-            {(claim.value ?? claim.delta) && (
+            {(claim.value ?? claim.delta ?? (drawn && label !== null)) && (
                 <div className="flex flex-wrap items-center gap-1.5">
                     {claim.value && <Chip tone="neutral">{claim.value}</Chip>}
                     {claim.delta && <Chip tone="horizon">{claim.delta}</Chip>}
+                    {drawn && label !== null && (
+                        <button
+                            type="button"
+                            onClick={() => revealAnchor(claim.anchor)}
+                            aria-label={`Show ${label} on this page`}
+                            className="focus-ring inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-label-micro text-text-2"
+                        >
+                            <Icon
+                                icon="mdi:arrow-down"
+                                width={10}
+                                height={10}
+                                aria-hidden
+                            />
+                            {label}
+                        </button>
+                    )}
                 </div>
             )}
+        </div>
+    );
+}
+
+function ClaimList({
+    text,
+    drawn,
+}: Readonly<{ text: string; drawn: ReadonlySet<string> }>) {
+    const claims = useMemo(() => parseClaims(text), [text]);
+
+    return (
+        <div className="flex flex-col gap-2.5">
+            {claims.map((claim) => (
+                <ClaimLine
+                    key={claim.anchor}
+                    claim={claim}
+                    drawn={drawn.has(claim.anchor)}
+                />
+            ))}
         </div>
     );
 }
@@ -125,6 +173,7 @@ export default function RunLenses({
     insight,
     isChainHead = false,
     inertiaReloadProps = DEFAULT_RELOAD_PROPS,
+    drawnAnchors = new Set<string>(),
     className,
 }: Readonly<RunLensesProps>) {
     const [bulkPending, setBulkPending] = useState(false);
@@ -196,14 +245,7 @@ export default function RunLenses({
                             allowReanalyze={!isChainHead}
                             showTimestamp={false}
                             renderContent={(text) => (
-                                <div className="flex flex-col gap-2.5">
-                                    {parseClaims(text).map((claim) => (
-                                        <ClaimLine
-                                            key={claim.anchor}
-                                            claim={claim}
-                                        />
-                                    ))}
-                                </div>
+                                <ClaimList text={text} drawn={drawnAnchors} />
                             )}
                         />
                     </>
