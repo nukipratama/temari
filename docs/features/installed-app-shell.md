@@ -283,6 +283,36 @@ a cancelled or failed visit cannot strand it. `aria-current` stays on the real
 page throughout: the guess is visual only, and a screen reader is never told it
 is somewhere it is not.
 
+## The route cross-fade
+
+Real navigations cross-fade through the **View Transitions API**, and none of it
+is hand-rolled: Inertia's own `Page.swap()` wraps the component swap in
+`document.startViewTransition()` whenever a visit carries `viewTransition`, and
+already declines on a browser without the API and on a hidden tab. That option
+is per-visit and defaults to false, so
+[useViewTransitions](../../resources/js/hooks/useViewTransitions.ts) only
+decides which visits earn one.
+
+This is not the thing #396 removed. That attempt keyed `<main>` and animated the
+new subtree up from opacity 0, which needs the old page gone before the new one
+appears. A view transition snapshots the frame already on screen, swaps
+underneath it, and cross-fades the two — `<main>` stays unkeyed, nothing
+remounts, and there is no blank frame to be seen.
+
+Gated on `visit.showProgress`, the same flag
+[RouteProgressBar](../../resources/js/components/RouteProgressBar.tsx) uses:
+Inertia's request layer already computes it to separate a real navigation from
+the background `only`/`except` reloads this app runs for AI polling and card
+reveals. A poll tick is not a navigation and must not animate.
+
+Reduced motion is honoured twice over, because `MotionConfig reducedMotion="user"`
+covers framer-motion and not the UA's own cross-fade: the hook reads the media
+query **at event time** rather than on mount, so a mid-session change applies to
+the next tap, and `app.css` additionally kills
+`::view-transition-old/new/group` animations under `prefers-reduced-motion`. The
+duration is set to 180ms — quicker than the UA default, since this replaces a
+progress bar and should read as the page arriving rather than as an animation.
+
 ## Deliberately absent
 
 - **Haptics.** iOS Safari does not implement `navigator.vibrate`, so any haptics
@@ -290,6 +320,9 @@ is somewhere it is not.
 - **Pull-to-refresh.** `overscroll-behavior-y: none` is set on purpose; the app
   is all-dynamic and uncached, so an accidental pull re-runs every controller.
   See the note in `resources/css/app.css`.
-- **Page transition animations.** Removed in #396. A fade on a screen you just
-  asked for costs time and says nothing, and the one shipped here started at
-  opacity 0, so every navigation read as "old page → blank → fade in".
+- **Keyed, self-animated page transitions.** Removed in #396 and not coming
+  back. Keying `<main>` tore down the whole content subtree on every visit (25
+  card mounts on Collection), and the enter animation it existed to replay
+  started at opacity 0 — so a navigation read as "old page → blank → fade in".
+  The route cross-fade that ships today is a different mechanism entirely; see
+  below.
