@@ -308,6 +308,7 @@ inline in its `toolbox()` method.
 | `PlanDayTool` · `get_day_plan` | `date`, `session_type`, `phase`, `distance_km`, `skipped` | `TrainingBaseline`, `SegmentGenerator::coreKmFor()` |
 | `PlanWeekTool` · `get_week_adaptation` | `week_start`, `reason`, `headline`, `detail`, `deload`, `quality_delta`, `adherence_pct` | stored `PlanAdaptation`, written by `PlanAdapter` |
 | `PlanSeasonTool` · `get_season` | `starts_at`, `ends_at`, `is_race_oriented`, `race_name`, `race_date`, `race_distance_m`, `goals` | stored `Season`, `RaceGoal` and `SeasonGoal` rows |
+| `PlanContextTool` · `get_planned_sessions` | `days[]` of `date`, `session_type`, `phase`, `distance_km`, `target_pace_sec`, `skipped`, `status`, `compliance_score`, `ran_anyway` | `PlannedSession` rows over the bound span; `SegmentGenerator::coreKmFor()` for days `ComplianceScorer` has not yet written `prescribed_km` on; `VdotEstimator` into `TrainingPaceCalculator` for the pace |
 
 **Which narrator carries which toolbox:**
 
@@ -317,7 +318,7 @@ inline in its `toolbox()` method.
 | `RunQuestionNarrator` | `RunSummaryTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool` always; `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool` only once the run is `Detailed` |
 | `PostRunSpeechNarrator` | `RunSummaryTool`, `TerrainTool`, `WeatherTool`, `PersonalRecordsTool`, `PastYouTool`, `WeekStateTool` |
 | `CardFlavorNarrator` | `CardIdentityTool` always; `RunSummaryTool`, `KmSplitsTool`, `WeatherTool`, `EffortContextTool`, `PersonalRecordsTool` when the run has detail |
-| `BriefingMascotVoiceNarrator` | `WeekStateTool`, `RecentRunsTool`, `TrainingLoadTool`, `LatestPastYouTool`, `RecentBaselineTool` |
+| `BriefingMascotVoiceNarrator` | `WeekStateTool`, `RecentRunsTool`, `TrainingLoadTool`, `LatestPastYouTool`, `RecentBaselineTool`, `PlanContextTool` |
 | `ProfileVoiceNarrator` | `LifetimeStatsTool`, `PersonaMixTool`, `TrainingPacesTool`, `ProgressionSignalTool` |
 | `WeeklyRecapNarrator` | `WeekTotalsTool` |
 | `MonthlyRecapNarrator` | `MonthTotalsTool` |
@@ -371,6 +372,9 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 - The three plan tools (`PlanDayTool`, `PlanWeekTool`, `PlanSeasonTool`) each return one bound read
   with nothing for the model to decide. Handing the payload straight to the prompt would remove a
   tool round trip per plan block, which is up to nine per user per week.
+- `PlanContextTool` is the one plan read bound to a *span* rather than a row, so a narrator with no
+  `PlannedSession` in hand can still say what was prescribed. It is the only plan tool a block that
+  is not itself about the plan carries.
 - `RunInsightNarrator`'s three user-level tools are the ones to question first if its toolbox is
   narrowed.
 

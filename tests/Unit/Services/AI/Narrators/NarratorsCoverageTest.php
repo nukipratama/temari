@@ -498,12 +498,12 @@ it('RunInsightNarrator prompt tells the model to fetch its own numbers and not i
         ->and($prompt)->toContain('NEVER make up');
 });
 
-it('BriefingMascotVoiceNarrator reads the day, the last run and the 28d baseline', function (): void {
+it('BriefingMascotVoiceNarrator reads the day, the last run, the 28d baseline and what was prescribed', function (): void {
     $user = User::factory()->create();
     $narrator = app(BriefingMascotVoiceNarrator::class);
 
     expect(array_column($narrator->toolbox($user, Carbon::today())->definitions(), 'name'))
-        ->toBe(['get_week_state', 'get_recent_runs', 'get_training_load', 'get_latest_past_you', 'get_recent_baseline']);
+        ->toBe(['get_week_state', 'get_recent_runs', 'get_training_load', 'get_latest_past_you', 'get_recent_baseline', 'get_planned_sessions']);
 });
 
 it('BriefingMascotVoiceNarrator prompt tells the model to fetch its own numbers and not invent the rest', function (): void {
@@ -1108,6 +1108,9 @@ function bootMascotNarrator(string $content): BriefingMascotVoiceNarrator
         fakeCaller($content),
         app(PastYouMatcher::class),
         app(ResolveRunBaselineAction::class),
+        app(TrainingBaseline::class),
+        app(VdotEstimator::class),
+        app(TrainingPaceCalculator::class),
     );
 }
 

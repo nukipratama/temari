@@ -22,6 +22,10 @@ use App\Services\AI\Agent\Tools\RecentBaselineTool;
 use App\Services\AI\Agent\Tools\RunSummaryTool;
 use App\Services\AI\Agent\Tools\TerrainTool;
 use App\Services\AI\Agent\Tools\TrainingLoadTool;
+use App\Enums\SessionType;
+use App\Models\PlannedSession;
+use App\Services\AI\Agent\Tools\PlanContextTool;
+use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\Agent\Tools\WeekStateTool;
@@ -86,6 +90,7 @@ it('names every tool in snake_case with a description the model can choose on', 
         new TrainingLoadTool($a->user, $d->start_date_local, new TrainingLoad()),
         new RecentBaselineTool($a->user, $d->start_date_local, new ResolveRunBaselineAction()),
         new TrainingPacesTool($a->user, $d->start_date_local, app(VdotEstimator::class), app(TrainingPaceCalculator::class)),
+        planContextTool($a->user, $d->start_date_local, $d->start_date_local),
     ];
 
     foreach ($tools as $tool) {
@@ -811,4 +816,149 @@ it('reads an empty mood mix when the runner has no story lines', function (): vo
 
     expect($reading['persona_mix'])->toBe([])
         ->and($reading['total_runs'])->toBe(0);
+});
+
+// ── PlanContextTool ───────────────────────────────────────────────────
+
+function planContextTool(User $user, Carbon $from, Carbon $through): PlanContextTool
+{
+    return new PlanContextTool(
+        $user,
+        $from,
+        $through,
+        app(TrainingBaseline::class),
+        app(VdotEstimator::class),
+        app(TrainingPaceCalculator::class),
+    );
+}
+
+it('reads what the plan prescribed across the span it is bound to', function (): void {
+    $user = User::factory()->create();
+    $monday = Carbon::parse('2026-09-07');
+    PlannedSession::factory()->for($user)->create([
+        'date' => $monday->toDateString(),
+        'session_type' => SessionType::Tempo,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => $monday->copy()->addDay()->toDateString(),
+        'session_type' => SessionType::Easy,
+    ]);
+
+    $reading = planContextTool($user, $monday, $monday->copy()->addDay())->handle([]);
+
+    expect(array_column($reading['days'], 'session_type'))->toBe(['tempo', 'easy'])
+        ->and(array_column($reading['days'], 'date'))->toBe(['2026-09-07', '2026-09-08']);
+});
+
+/** The span is the binding, so a day outside it is another block's business. */
+it('leaves out a day outside the span', function (): void {
+    $user = User::factory()->create();
+    $monday = Carbon::parse('2026-09-07');
+    PlannedSession::factory()->for($user)->create(['date' => $monday->toDateString()]);
+    PlannedSession::factory()->for($user)->create(['date' => $monday->copy()->addWeek()->toDateString()]);
+
+    $reading = planContextTool($user, $monday, $monday)->handle([]);
+
+    expect($reading['days'])->toHaveCount(1);
+});
+
+/**
+ * ComplianceScorer writes prescribed_km the morning after a day passes, so
+ * today and every future day would read null and the model would be told the
+ * plan asked for no distance at all.
+ */
+it('derives the distance for a day the scorer has not reached yet', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::today();
+    PlannedSession::factory()->for($user)->create([
+        'date' => $today->toDateString(),
+        'session_type' => SessionType::Long,
+        'prescribed_km' => null,
+    ]);
+
+    $reading = planContextTool($user, $today, $today)->handle([]);
+
+    expect($reading['days'][0]['distance_km'])->toBeGreaterThan(0.0);
+});
+
+it('prefers the scored distance once the scorer has written one', function (): void {
+    $user = User::factory()->create();
+    $yesterday = Carbon::yesterday();
+    PlannedSession::factory()->for($user)->create([
+        'date' => $yesterday->toDateString(),
+        'session_type' => SessionType::Long,
+        'prescribed_km' => 12.34,
+    ]);
+
+    $reading = planContextTool($user, $yesterday, $yesterday)->handle([]);
+
+    expect($reading['days'][0]['distance_km'])->toBe(12.3);
+});
+
+/**
+ * The row stores no pace, so each day's target is its session type read against
+ * the athlete's current VDOT. A rest day has no pace to hit, and offering one
+ * would invite a run.
+ */
+it('targets each day at the pace its session type calls for', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
+    $monday = Carbon::parse('2026-09-07');
+    foreach ([SessionType::Easy, SessionType::Tempo, SessionType::Rest] as $offset => $type) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => $monday->copy()->addDays($offset)->toDateString(),
+            'session_type' => $type,
+        ]);
+    }
+
+    $paces = array_column(
+        planContextTool($user, $monday, $monday->copy()->addDays(2))->handle([])['days'],
+        'target_pace_sec',
+    );
+
+    expect($paces[0])->toBeInt()
+        ->and($paces[1])->toBeInt()
+        ->and($paces[0])->toBeGreaterThan($paces[1])
+        ->and($paces[2])->toBeNull();
+});
+
+/**
+ * {@see \App\Services\Run\Plan\SegmentGenerator::raceSegments()} races anything
+ * short of marathon distance at threshold effort, not marathon effort — a 5K
+ * race day must target the same pace, not the much slower marathon band.
+ */
+it('targets a sub-marathon race day at threshold pace, not marathon pace', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
+    $today = Carbon::today();
+    PlannedSession::factory()->for($user)->create([
+        'date' => $today->toDateString(),
+        'session_type' => SessionType::Race,
+        'race_distance_m' => 5000,
+    ]);
+
+    $paces = planContextTool($user, $today, $today)->handle([])['days'][0];
+
+    $expectedThreshold = app(TrainingPaceCalculator::class)
+        ->fromVdotResult(app(VdotEstimator::class)->estimate($user, $today))['threshold'];
+
+    expect($paces['target_pace_sec'])->toBe($expectedThreshold);
+});
+
+/** A brand-new athlete has no VDOT, and a guessed pace is worse than none. */
+it('carries no target pace at all until the PR history can estimate a VDOT', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::today();
+    PlannedSession::factory()->for($user)->create([
+        'date' => $today->toDateString(),
+        'session_type' => SessionType::Tempo,
+    ]);
+
+    expect(planContextTool($user, $today, $today)->handle([])['days'][0]['target_pace_sec'])->toBeNull();
+});
+
+it('answers with an empty span rather than failing when no plan covers it', function (): void {
+    $user = User::factory()->create();
+
+    expect(planContextTool($user, Carbon::today(), Carbon::today())->handle([]))->toBe(['days' => []]);
 });

@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\LatestPastYouTool;
+use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\AI\Agent\Tools\RecentBaselineTool;
 use App\Services\AI\Agent\Tools\RecentRunsTool;
 use App\Services\AI\Agent\Tools\TrainingLoadTool;
@@ -18,6 +19,9 @@ use App\Services\AI\Narrators\Concerns\ReadsPreviousDailyNarrative;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
+use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Story\BriefingContext;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\PastYouMatcher;
@@ -55,6 +59,14 @@ class BriefingMascotVoiceNarrator
         turn out of habit; read results as you go. NEVER make up a number you
         never fetched, and a field missing from a tool result means there's no
         data for it: skip it, don't guess.
+
+        THE PLAN: this athlete is following a training plan.
+        get_planned_sessions returns what it prescribed for today, the target
+        pace, and how they did on days already graded. Start from what was
+        prescribed. If your reading of their condition says it's too much, step
+        it down and say plainly what was on the board and why you're moving off
+        it. An empty list means no plan covers today, and the session is yours
+        to pick.
 
         RULE ABOUT TIMING (IMPORTANT):
         This dashboard can be opened any time of day (morning, midday, evening,
@@ -238,6 +250,9 @@ class BriefingMascotVoiceNarrator
         private readonly StructuredChatCaller $caller,
         private readonly PastYouMatcher $pastYou,
         private readonly ResolveRunBaselineAction $runBaseline,
+        private readonly TrainingBaseline $trainingBaseline,
+        private readonly VdotEstimator $vdotEstimator,
+        private readonly TrainingPaceCalculator $paceCalculator,
     ) {
     }
 
@@ -333,6 +348,7 @@ class BriefingMascotVoiceNarrator
             new TrainingLoadTool($user, $asOf, $this->trainingLoad),
             new LatestPastYouTool($user, $asOf, $this->pastYou),
             new RecentBaselineTool($user, $asOf, $this->runBaseline),
+            new PlanContextTool($user, $asOf, $asOf, $this->trainingBaseline, $this->vdotEstimator, $this->paceCalculator),
         ]);
     }
 }

@@ -41,19 +41,13 @@ final class PlanDayTool extends NoArgumentTool
     public function handle(array $arguments): array
     {
         $baselineData = $this->baseline->forUser($this->session->user, Carbon::today());
-        $coreKm = SegmentGenerator::coreKmFor(
-            $this->session->session_type,
-            isPrimaryEasy: false,
-            longRunBaselineKm: $baselineData['long_run_km'],
-            volumeMultiplier: 1.0,
-            raceDistanceM: $this->session->race_distance_m === null ? null : (float) $this->session->race_distance_m,
-        );
+        $coreKm = SegmentGenerator::coreKmForPlannedSession($this->session, $baselineData['long_run_km']);
 
         return [
             'date' => $this->session->date->toDateString(),
             'session_type' => $this->session->session_type->value,
             'phase' => $this->session->phase->value,
-            'distance_km' => round($coreKm, 1),
+            'distance_km' => $coreKm,
             'skipped' => $this->session->skipped,
         ];
     }
