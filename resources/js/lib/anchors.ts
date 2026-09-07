@@ -1,3 +1,5 @@
+import { ANCHOR_KIND_VALUES, type AnchorKind } from '@/types/generated';
+
 /**
  * The anchor namespace `RunInsightNarrator` already validates server-side
  * (`split:<n>`, `zone:z1..z5`, `metric:<name>`), resolved here to the element
@@ -10,26 +12,33 @@
  */
 const HIGHLIGHT_MS = 1600;
 
-type ParsedAnchor =
-    | { kind: 'split'; km: string }
-    | { kind: 'zone'; digit: string }
-    | { kind: 'metric'; name: string };
+/**
+ * The value half of each kind's grammar, mirroring
+ * `App\Services\AI\Anchor\AnchorKind::valuePattern()`. Typed as a total
+ * record over the generated `AnchorKind`, so adding a kind in PHP fails the
+ * TypeScript build here until this side handles it — the two used to hold
+ * separate regexes for one grammar with nothing keeping them honest.
+ */
+const VALUE_PATTERN: Record<AnchorKind, string> = {
+    split: '[1-9]\\d*',
+    zone: 'z[1-5]',
+    metric: '[a-z_]+',
+};
+
+interface ParsedAnchor {
+    kind: AnchorKind;
+    value: string;
+}
 
 /** The one place the anchor grammar is parsed; id and label both read from it. */
 function parseAnchor(anchor: string): ParsedAnchor | null {
-    const split = /^split:([1-9]\d*)$/.exec(anchor);
-    if (split) {
-        return { kind: 'split', km: split[1] };
-    }
-
-    const zone = /^zone:z([1-5])$/.exec(anchor);
-    if (zone) {
-        return { kind: 'zone', digit: zone[1] };
-    }
-
-    const metric = /^metric:([a-z_]+)$/.exec(anchor);
-    if (metric) {
-        return { kind: 'metric', name: metric[1] };
+    for (const kind of ANCHOR_KIND_VALUES) {
+        const match = new RegExp(`^${kind}:(${VALUE_PATTERN[kind]})$`).exec(
+            anchor,
+        );
+        if (match) {
+            return { kind, value: match[1] };
+        }
     }
 
     return null;
@@ -41,14 +50,7 @@ export function anchorElementId(anchor: string): string | null {
         return null;
     }
 
-    switch (parsed.kind) {
-        case 'split':
-            return `anchor-split-${parsed.km}`;
-        case 'zone':
-            return `anchor-zone-z${parsed.digit}`;
-        case 'metric':
-            return `anchor-metric-${parsed.name}`;
-    }
+    return `anchor-${parsed.kind}-${parsed.value}`;
 }
 
 /** What the affordance calls the thing it points at, in the reader's words. */
@@ -60,11 +62,11 @@ export function anchorLabel(anchor: string): string | null {
 
     switch (parsed.kind) {
         case 'split':
-            return `km ${parsed.km}`;
+            return `km ${parsed.value}`;
         case 'zone':
-            return `zone ${parsed.digit}`;
+            return `zone ${parsed.value.slice(1)}`;
         case 'metric':
-            return parsed.name.replace(/_/g, ' ');
+            return parsed.value.replace(/_/g, ' ');
     }
 }
 

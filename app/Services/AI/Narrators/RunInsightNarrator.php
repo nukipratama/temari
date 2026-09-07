@@ -19,6 +19,7 @@ use App\Services\AI\Agent\Tools\TrainingLoadTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\Anchor\RunAnchorResolver;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\StructuredChatCaller;
@@ -204,6 +205,7 @@ class RunInsightNarrator
         private readonly VdotEstimator $vdotEstimator,
         private readonly TrainingPaceCalculator $trainingPaceCalculator,
         private readonly RelativeEffort $relativeEffort,
+        private readonly RunAnchorResolver $anchorResolver,
     ) {
     }
 
@@ -259,7 +261,7 @@ class RunInsightNarrator
 
             $anchor = $claim['anchor'] ?? null;
             $text = $claim['text'] ?? null;
-            if (! is_string($anchor) || ! is_string($text) || $text === '' || ! self::anchorResolves($anchor, $summary)) {
+            if (! is_string($anchor) || ! is_string($text) || $text === '' || ! $this->anchorResolver->resolves($anchor, $summary)) {
                 continue;
             }
 
@@ -272,45 +274,6 @@ class RunInsightNarrator
         }
 
         return $resolved;
-    }
-
-    /**
-     * Whether $anchor names something this run's own {@see StreamSummary}
-     * actually has, per the anchor namespace: `split:<n>`, `zone:<z1..z5>`,
-     * `metric:<name>`.
-     */
-    private static function anchorResolves(string $anchor, StreamSummary $summary): bool
-    {
-        if (preg_match('/^split:([1-9]\d*)$/', $anchor, $matches) === 1) {
-            return count($summary->perKm() ?? []) >= (int) $matches[1];
-        }
-
-        if (preg_match('/^zone:z[1-5]$/', $anchor) === 1) {
-            return $summary->zonePct() !== [] || $summary->zoneMinutes() !== null;
-        }
-
-        if (preg_match('/^metric:([a-z_]+)$/', $anchor, $matches) === 1) {
-            return self::metricResolves($matches[1], $summary);
-        }
-
-        return false;
-    }
-
-    /** The exhaustive `metric:<name>` set; any other name falls through to false. */
-    private static function metricResolves(string $name, StreamSummary $summary): bool
-    {
-        return match ($name) {
-            'decoupling' => $summary->hasDecouplingPct(),
-            'hr_drift' => $summary->hrDriftBpm() !== null,
-            'cadence_drop' => $summary->cadenceDropSpm() !== null,
-            'pace_variability' => $summary->paceVariabilitySec() !== null,
-            'grade' => $summary->maxGradePct() !== null,
-            'gap_pace' => $summary->gapPace() !== null,
-            // A computed bool (true or false) is a real reading; only the
-            // absence of the key at all means this run never measured it.
-            'negative_split' => $summary->negativeSplit() !== null,
-            default => false,
-        };
     }
 
     /**
