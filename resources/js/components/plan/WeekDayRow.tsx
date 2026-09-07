@@ -39,6 +39,19 @@ function paceLabel(day: PlanDay): string | null {
  * totals: mixing a summed distance with one run's clock is the bug this
  * replaced.
  */
+/**
+ * A day the plan has already judged states both facts it recorded: what it
+ * asked for, and what was run. Every other day shows the ask alone, sized
+ * against the athlete's fitness today.
+ */
+function kmLabel(day: PlanDay): string {
+    if (day.prescribed_km == null) {
+        return `${day.distance_km} km`;
+    }
+
+    return `${day.prescribed_km} km asked · ${day.actual_km ?? 0} km run`;
+}
+
 function daySummary(day: PlanDay): string {
     const km = day.actual_km == null ? null : `${day.actual_km} km`;
     const seconds = day.activities.reduce<number | null>(
@@ -162,7 +175,7 @@ export default function WeekDayRow({
                     </span>
                     {!isRest && (
                         <span className="mt-0.5 block text-xs text-text-2">
-                            {day.distance_km} km
+                            {kmLabel(day)}
                             {paceLabel(day) && ` · ${paceLabel(day)}`}
                         </span>
                     )}

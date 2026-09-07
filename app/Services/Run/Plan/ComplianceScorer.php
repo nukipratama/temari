@@ -34,8 +34,13 @@ final readonly class ComplianceScorer
     }
 
     /**
+     * Each day is measured against the baseline **as it stood that day**, not
+     * against today's. A verdict is a historical judgment, so it has to be
+     * the same figure whether it is reached the morning after or three days
+     * later when a delayed run finally syncs.
+     *
      * @param  Collection<int, PlannedSession>  $rows  the rows to judge
-     * @return array<string, array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}>  Y-m-d => verdict
+     * @return array<string, array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool, prescribed_km: float|null}>  Y-m-d => verdict
      */
     public function verdictsFor(User $user, Collection $rows, Carbon $today): array
     {
@@ -58,17 +63,28 @@ final readonly class ComplianceScorer
             ->orderBy('date')
             ->get();
 
-        $plannedKmByDate = PlanRenderer::plannedKmByDate($contextRows, $this->baseline->forUser($user, $today)['long_run_km']);
+        $longRunKmByDate = [];
+        $kmByBaseline = [];
+        $plannedKmByDate = [];
+        foreach ($rows as $row) {
+            $date = $row->date->toDateString();
+            $longRunKm = $longRunKmByDate[$date] ??= (float) $this->baseline->forUser($user, $row->date)['long_run_km'];
+            $byDate = $kmByBaseline[(string) $longRunKm] ??= PlanRenderer::plannedKmByDate($contextRows, $longRunKm);
+            if (array_key_exists($date, $byDate)) {
+                $plannedKmByDate[$date] = $byDate[$date];
+            }
+        }
+
         $excusedByDate = $rows->mapWithKeys(
             static fn (PlannedSession $session): array => [$session->date->toDateString() => $session->isExcused()],
         )->all();
 
-        return $this->sessionMatcher->scoreRange(
-            $user,
-            array_intersect_key($plannedKmByDate, $excusedByDate),
-            $excusedByDate,
-            $today,
-        );
+        $verdicts = $this->sessionMatcher->scoreRange($user, $plannedKmByDate, $excusedByDate, $today);
+        foreach ($verdicts as $date => $verdict) {
+            $verdicts[$date]['prescribed_km'] = $plannedKmByDate[$date] ?? null;
+        }
+
+        return $verdicts;
     }
 
     /**
@@ -106,13 +122,19 @@ final readonly class ComplianceScorer
     }
 
     /**
-     * @param  array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}  $verdict
+     * Records the denominator beside the verdict. Prescribed km is otherwise
+     * recomputed from the athlete's *current* baseline on every render, so a
+     * past day would drift away from the figure it was actually judged
+     * against as fitness moved.
+     *
+     * @param  array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool, prescribed_km?: float|null}  $verdict
      */
     public static function applyVerdict(PlannedSession $row, array $verdict): void
     {
         $row->update([
             'status' => $verdict['status'],
             'compliance_score' => $verdict['score'],
+            'prescribed_km' => $verdict['prescribed_km'] ?? null,
             'ran_anyway' => $verdict['ran_anyway'],
         ]);
     }

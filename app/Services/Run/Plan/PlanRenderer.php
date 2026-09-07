@@ -170,6 +170,7 @@ final class PlanRenderer
             'skipped' => $s->skipped,
             'status' => $status->value,
             'compliance_score' => $s->compliance_score,
+            'prescribed_km' => $s->prescribed_km,
             'ran_anyway' => $s->ran_anyway,
             'clamp' => $isToday && $clamp !== null ? self::clampPayload($clamp, $clampVoice) : null,
             'actual_km' => $activity['km'] ?? null,

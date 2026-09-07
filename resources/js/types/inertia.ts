@@ -389,6 +389,10 @@ export interface WeekPlanDay {
     compliance_score: number | null;
     /** A rest day (`status: 'done'`) that had real activity logged anyway. */
     ran_anyway: boolean;
+    /** What this day actually asked for, recorded when it was judged. Null
+     *  until then — `distance_km` above is recomputed against current fitness
+     *  and drifts away from it as the athlete's baseline moves. */
+    prescribed_km: number | null;
     /** Today's readiness step-down, when one applies — a modification shown
      *  *beside* the day's own prescription, never in place of it. The fields
      *  above stay the stored session, which is what the narrator describes and

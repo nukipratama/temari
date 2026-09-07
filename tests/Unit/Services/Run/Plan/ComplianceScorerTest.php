@@ -9,6 +9,9 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\User;
+use App\Models\WeeklySnapshot;
+use App\Services\Run\Plan\PlanRenderer;
+use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\ComplianceScorer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -123,4 +126,32 @@ it('credits a run whose local date is a day ahead of the server clock', function
     app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-06'), Carbon::parse('2026-08-05'));
 
     expect($row->refresh()->status)->toBe(PlannedSessionStatus::Overreached);
+});
+
+it('records what the day was judged against, so the denominator outlives the baseline', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05');
+    scorerRun($user, '2026-08-05', 40.0);
+
+    app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-05'), Carbon::parse('2026-08-05'));
+
+    expect($row->refresh()->prescribed_km)->toBeGreaterThan(0.0);
+});
+
+it('measures a day against the baseline as it stood that day, not against today\'s', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05');
+    scorerRun($user, '2026-08-05', 40.0);
+
+    // Two weeks of history the athlete only accumulates AFTER the day being
+    // judged. Scoring as-of today would measure the day against them.
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-08-09', 'distance_km' => 120.0, 'runs' => 6]);
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-08-16', 'distance_km' => 140.0, 'runs' => 6]);
+
+    app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-05'), Carbon::parse('2026-08-20'));
+
+    $asOf = app(TrainingBaseline::class)->forUser($user, Carbon::parse('2026-08-05'))['long_run_km'];
+    $expected = PlanRenderer::plannedKmByDate(PlannedSession::query()->where('user_id', $user->id)->get(), $asOf)['2026-08-05'];
+
+    expect($row->refresh()->prescribed_km)->toBe($expected);
 });
