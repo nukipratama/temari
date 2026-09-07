@@ -17,9 +17,8 @@ import { useEffect } from 'react';
  * fade in". And the swap happens inside the transition, so the browser
  * cross-fades between two real frames instead of animating up from opacity 0.
  *
- * `showProgress` is the same flag {@link RouteProgressBar} gates on: Inertia's
- * request layer already uses it to separate a real navigation from the
- * background `only`/`except` reloads this app runs for AI polling and card
+ * `showProgress` is Inertia's own flag for separating a real navigation from
+ * the background `only`/`except` reloads this app runs for AI polling and card
  * reveals. Those must not animate — a poll tick is not a navigation.
  */
 export default function useViewTransitions(): void {

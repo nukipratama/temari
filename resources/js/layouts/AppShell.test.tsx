@@ -83,7 +83,7 @@ describe('AppShell', () => {
         );
     });
 
-    it('mounts the route progress bar as shell chrome, idle by default', () => {
+    it('draws no progress bar — the shell paints at once and the swap cross-fades', () => {
         setMockPage({
             auth: { user: andiUser },
             flash: {},
@@ -94,10 +94,7 @@ describe('AppShell', () => {
                 <p>child content</p>
             </AppShell>,
         );
-        expect(screen.getByTestId('route-progress-bar')).toHaveAttribute(
-            'data-phase',
-            'idle',
-        );
+        expect(screen.queryByTestId('route-progress-bar')).toBeNull();
     });
 
     // The shell owns the cross-page banners; pages no longer render them, so

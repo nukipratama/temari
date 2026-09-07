@@ -314,11 +314,9 @@ the confetti burst — reads the same preference itself through
    `pressShrink` (scale 0.97 + 70% opacity dip, 150ms) is the one convention both
    [MotionLink](../resources/js/components/MotionLink.tsx) (default `whileTap`) and `.pressable`
    (its CSS `active:` state) implement, so a framer-driven link and a plain button feel identical.
-   `routeProgressBar` drives [RouteProgressBar](../resources/js/components/RouteProgressBar.tsx),
-   a thin top bar mounted as a **sibling** of AppShell's `<main>`, never a wrapper around it — that
-   element is deliberately unkeyed (keying it once caused 25 card remounts on Collection). It's
-   gated on Inertia's own `visit.showProgress` flag, so background/partial reloads (AI-analysis
-   polling and other `only` refreshes) never light the bar.
+   Route transitions carry no tokens at all any more: the swap cross-fades through the
+   **View Transitions API** (the browser's own animation, tuned only by a 180ms duration in
+   `app.css`), and the progress bar it replaced is gone — see [[installed-app-shell]].
 2. **Data reveal** — a page's first showing of real data, not every render. Stat count-ups
    (`useCountUp` + `countUpEase`, an ease-out curve with no overshoot — a tallying number should
    land exactly on target), chart/route draw-ins (`drawIn`, SVG `pathLength` 0→1), and staggered
