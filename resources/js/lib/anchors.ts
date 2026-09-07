@@ -25,6 +25,13 @@ const VALUE_PATTERN: Record<AnchorKind, string> = {
     metric: '[a-z_]+',
 };
 
+const VALUE_REGEX: Record<AnchorKind, RegExp> = Object.fromEntries(
+    ANCHOR_KIND_VALUES.map((kind) => [
+        kind,
+        new RegExp(`^${kind}:(${VALUE_PATTERN[kind]})$`),
+    ]),
+) as Record<AnchorKind, RegExp>;
+
 interface ParsedAnchor {
     kind: AnchorKind;
     value: string;
@@ -33,9 +40,7 @@ interface ParsedAnchor {
 /** The one place the anchor grammar is parsed; id and label both read from it. */
 function parseAnchor(anchor: string): ParsedAnchor | null {
     for (const kind of ANCHOR_KIND_VALUES) {
-        const match = new RegExp(`^${kind}:(${VALUE_PATTERN[kind]})$`).exec(
-            anchor,
-        );
+        const match = VALUE_REGEX[kind].exec(anchor);
         if (match) {
             return { kind, value: match[1] };
         }
