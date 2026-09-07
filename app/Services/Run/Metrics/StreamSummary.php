@@ -80,6 +80,22 @@ final readonly class StreamSummary
     }
 
     /**
+     * Combined share of moving time spent in Z4 and Z5.
+     *
+     * Distinct from {@see self::hardZoneShare()} on purpose. Z3 starts around
+     * 80% of max HR, which is where a runner with little true easy running
+     * spends most of an ordinary day, so a Z3-inclusive share does not separate
+     * a quality session from a steady one. Z4 begins at the threshold boundary
+     * and is only reached deliberately.
+     */
+    public function thresholdZoneShare(): float
+    {
+        $zonePct = $this->zonePct();
+
+        return (float) ($zonePct['Z4'] ?? 0) + (float) ($zonePct['Z5'] ?? 0);
+    }
+
+    /**
      * Fastest pace sustained over one of the producer's best-effort windows,
      * as an "M:SS" string. $window is the label suffix ("30s", "5min", "60min").
      */

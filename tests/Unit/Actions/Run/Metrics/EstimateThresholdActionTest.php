@@ -101,3 +101,40 @@ it('ignores stream summaries that have neither 30min nor 60min best paces', func
 
     expect(($this->estimator)($this->user))->toBeNull();
 });
+
+it('rejects a steady run that lives in Z3 without ever reaching Z4', function (): void {
+    // The shape that broke this on real data: an easy 10km at 7:31/km logging
+    // 84.3% Z3+, which a Z3-inclusive bar reads as a threshold session.
+    seedDetail($this->user, [
+        'time_in_zone_pct' => ['Z2' => 15.0, 'Z3' => 77.7, 'Z4' => 6.6, 'Z5' => 0.0],
+        'best_60min_pace' => '7:31',
+    ]);
+
+    expect(($this->estimator)($this->user))->toBeNull();
+});
+
+it('counts a hard session too short for a 30 minute window', function (): void {
+    // A 28-minute 5km time trial fills neither a 60 nor a 30 minute window, so
+    // the athlete's single best piece of evidence used to contribute nothing
+    // while slower, longer runs set the estimate.
+    seedDetail($this->user, [
+        'time_in_zone_pct' => ['Z3' => 10.1, 'Z4' => 40.0, 'Z5' => 38.3],
+        'best_20min_pace' => '5:30',
+    ]);
+
+    $result = ($this->estimator)($this->user);
+
+    expect($result)->not->toBeNull()
+        ->and($result['pace_sec'])->toEqualWithDelta(330.0, 0.1);
+});
+
+it('prefers the longest sustained window when a session offers several', function (): void {
+    seedDetail($this->user, [
+        'time_in_zone_pct' => ['Z4' => 35.0, 'Z5' => 10.0],
+        'best_60min_pace' => '6:00',
+        'best_30min_pace' => '5:40',
+        'best_20min_pace' => '5:20',
+    ]);
+
+    expect(($this->estimator)($this->user)['pace_sec'])->toEqualWithDelta(360.0, 0.1);
+});

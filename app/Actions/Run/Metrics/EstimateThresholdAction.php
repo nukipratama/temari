@@ -15,7 +15,21 @@ class EstimateThresholdAction
 {
     private const int LOOKBACK_DAYS = 60;
 
-    private const float HARD_SESSION_Z3_PLUS_PCT = 30.0;
+    /**
+     * Z4+ rather than Z3+. Measured against a real athlete's 60 days, a 30% Z3+
+     * bar admitted 30 of 38 runs, including easy ones: an easy 10 km at 7:31/km
+     * logged 84.3% Z3+. The same 30% bar on Z4+ admits 8, and every one of them
+     * ran 6:26/km or faster while everything rejected ran 6:43/km or slower.
+     */
+    private const float QUALITY_Z4_PLUS_PCT = 30.0;
+
+    /**
+     * Longest first, so a genuine hour of threshold work wins when it exists.
+     * 20 minutes is the shortest window that still describes sustained effort
+     * rather than a surge, and without it a 28-minute time trial contributes
+     * nothing while slower, longer runs set the estimate.
+     */
+    private const array SUSTAINED_WINDOWS = ['60min', '30min', '20min'];
 
     /**
      * @return array{pace_sec: float, confidence: 'high'|'medium'|'low', sample_size: int}|null
@@ -62,12 +76,12 @@ class EstimateThresholdAction
 
     private function isHardSession(StreamSummary $summary): bool
     {
-        return $summary->hardZoneShare() >= self::HARD_SESSION_Z3_PLUS_PCT;
+        return $summary->thresholdZoneShare() >= self::QUALITY_Z4_PLUS_PCT;
     }
 
     private function bestSustainedPace(StreamSummary $summary): ?float
     {
-        foreach (['60min', '30min'] as $window) {
+        foreach (self::SUSTAINED_WINDOWS as $window) {
             $label = $summary->bestPace($window);
             if ($label === null) {
                 continue;

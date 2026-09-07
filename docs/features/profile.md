@@ -62,6 +62,16 @@ These are the same estimators [ProfileVoiceNarrator](app/Services/AI/Narrators/P
 
 Only records set within `VdotEstimator::RECENT_MONTHS` (12) vote. Deliberately a cut on voting rights rather than a decay applied to the number: PR age is not evidence of detraining, and an athlete running steadily who simply has not raced still holds the fitness their old record proved. When *nothing* is recent the older estimate still stands — no null cliff for a returning athlete — but it comes back flagged `stale`, and [PaceTargetsCard](resources/js/components/profile/PaceTargetsCard.tsx) names the record and its date under the rail rather than presenting an old number as current.
 
+### What counts as a threshold session
+
+[EstimateThresholdAction](app/Actions/Run/Metrics/EstimateThresholdAction.php) reports the median best-sustained pace across the athlete's quality sessions in the trailing 60 days. Two things decide which sessions those are, and both were wrong until measured against a real athlete's 60 days.
+
+**The filter reads Z4+, not Z3+.** Z3 begins near 80% of max HR, which is where a runner with little genuine easy running spends most of an ordinary day. A 30% *Z3+* bar admitted **30 of 38 runs**, including an easy 10 km at 7:31/km that logged 84.3% Z3+. The same 30% bar on *Z4+* admits **8**, and the split is clean: everything accepted ran 6:26/km or faster, everything rejected 6:43/km or slower. `StreamSummary::thresholdZoneShare()` is deliberately separate from `hardZoneShare()`, which has ten other callers and keeps its Z3-inclusive meaning.
+
+**A 20-minute window counts.** The windows are tried longest-first, so a real hour of threshold work still wins where it exists. But quality sessions for this athlete ran **18 to 37 minutes**, and requiring 30 minutes discarded most of them — including a 28-minute 5 km time trial, the single strongest piece of evidence on record. The estimate was then drawn from slower, longer runs.
+
+Together these produced **6:56/km at "high confidence" from 23 samples** for an athlete who had just run 5 km at 5:34/km. The figure is display-only (`ProfileController` is its one consumer, and no prescribed pace reads it), so it never distorted training — but it sits beside VDOT on the Profile, and a wrong number presented confidently is worse than no number.
+
 ### Endurance and quality read different evidence
 
 A record is a **floor** on what the athlete could do on its own date, never a **ceiling** on what they can do now. One minimum taken across every distance *and* every date conflates the two, and on real data that broke the quality end outright: a hard half from four months ago outvoted a week-old 5 km and had the plan prescribing **interval reps slower than the athlete's own sub-maximal 5 km training pace**.
