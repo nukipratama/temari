@@ -20,6 +20,10 @@ export interface VdotSource {
     set_at: string;
     /** No PR inside the estimator's recency window, so an older one still stands in. */
     stale: boolean;
+    /** Set only when tempo and interval read a different, more recent record than
+     *  easy and marathon do. Null when one record drives all four. */
+    quality_category: string | null;
+    quality_set_at: string | null;
 }
 
 // parseNaiveLocalDate rather than `new Date(iso)`: the latter reads
@@ -34,13 +38,24 @@ function monthYear(iso: string): string {
         .toLowerCase();
 }
 
-function sourceLine(source: VdotSource): string {
-    const pr = (
-        PR_CATEGORY_LABELS[source.category] ?? source.category
-    ).toLowerCase();
-    const set = `from your ${pr} pr, set ${monthYear(source.set_at)}`;
+function prLabel(category: string): string {
+    return (PR_CATEGORY_LABELS[category] ?? category).toLowerCase();
+}
 
-    return source.stale ? `${set} · nothing newer to go on` : set;
+function sourceLine(source: VdotSource): string {
+    const set = `from your ${prLabel(source.category)} pr, set ${monthYear(source.set_at)}`;
+
+    if (source.stale) {
+        return `${set} · nothing newer to go on`;
+    }
+
+    // Easy and marathon stay on the endurance record; tempo and interval read a
+    // recent short one, which is a different number and should say so.
+    if (source.quality_category !== null && source.quality_set_at !== null) {
+        return `easy and marathon ${set} · tempo and interval from your ${prLabel(source.quality_category)} pr, set ${monthYear(source.quality_set_at)}`;
+    }
+
+    return set;
 }
 
 /** Slowest first, so the rail reads easy → hard left to right. */

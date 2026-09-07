@@ -35,3 +35,22 @@ it('produces faster easy pace for a higher VDOT (monotonic)', function (): void 
         ->and($higherVdot['interval'])->toBeLessThan($lowerVdot['interval'])
         ->and($higherVdot['marathon'])->toBeLessThan($lowerVdot['marathon']);
 });
+
+it('reads the quality anchor for threshold and interval while easy and marathon stay on the endurance one', function (): void {
+    $calculator = new TrainingPaceCalculator();
+
+    $single = $calculator->fromVdot(28.4);
+    $split = $calculator->fromVdot(28.4, 31.9);
+
+    expect($split['easy'])->toBe($single['easy'])
+        ->and($split['marathon'])->toBe($single['marathon'])
+        ->and($split['threshold'])->toBeLessThan($single['threshold'])
+        ->and($split['interval'])->toBeLessThan($single['interval']);
+});
+
+it('falls back to the single anchor when no quality anchor is supplied', function (): void {
+    $calculator = new TrainingPaceCalculator();
+
+    expect($calculator->fromVdotResult(['vdot' => 30.0]))
+        ->toBe($calculator->fromVdot(30.0));
+});
