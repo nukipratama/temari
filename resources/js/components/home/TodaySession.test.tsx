@@ -52,6 +52,38 @@ describe('TodaySession', () => {
         expect(screen.getByText('Keep it under 6:00.')).toBeInTheDocument();
     });
 
+    it('leads with the opening sentence when the narrator skipped its paragraph break', () => {
+        render(
+            <TodaySession
+                briefing={briefing(
+                    '25.5 km this week, 5 runs, and the line still points down in fitness. that\u2019s why I\u2019m keeping this to an easy one, 25\u201335 minutes with a short warmup.',
+                )}
+            />,
+        );
+
+        expect(
+            screen.getByText(
+                '25.5 km this week, 5 runs, and the line still points down in fitness.',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'that\u2019s why I\u2019m keeping this to an easy one, 25\u201335 minutes with a short warmup.',
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('does not mistake a decimal for the end of the opening sentence', () => {
+        render(
+            <TodaySession
+                briefing={briefing('You ran 25.5 km. Take it easy today.')}
+            />,
+        );
+
+        expect(screen.getByText('You ran 25.5 km.')).toBeInTheDocument();
+        expect(screen.getByText('Take it easy today.')).toBeInTheDocument();
+    });
+
     it('labels the block as today', () => {
         render(<TodaySession briefing={briefing('Easy 6k.')} />);
 
