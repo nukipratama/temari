@@ -27,32 +27,6 @@ export const pressShrink = {
     transition: { duration: 0.15, ease: LIVELY_EASE },
 };
 
-// ─── Tier 1: route transitions (global / subtle) ───────────────────────
-// Thin top-of-viewport bar for an in-flight full-page navigation.
-// Deliberately its own element rather than a wrapper around page content:
-// AppShell's <main> is unkeyed on purpose (keying it once caused 25 card
-// remounts on Collection), so this drives a sibling bar instead of
-// animating the content subtree. `scaleX` (transform-origin: left) reads
-// as filling in; `done` snaps to full width and fades rather than
-// looping, so it reads as "arrived" instead of an indefinite spinner.
-export const routeProgressBar: Variants = {
-    idle: { scaleX: 0, opacity: 0 },
-    loading: {
-        opacity: 1,
-        scaleX: [0, 0.35, 0.6, 0.75],
-        transition: {
-            duration: 1.4,
-            ease: SOFT_EASE,
-            times: [0, 0.3, 0.65, 1],
-        },
-    },
-    done: {
-        scaleX: 1,
-        opacity: [1, 1, 0],
-        transition: { duration: 0.4, ease: SOFT_EASE, times: [0, 0.5, 1] },
-    },
-};
-
 // ─── Tier 2: data reveal ────────────────────────────────────────────────
 // Landing curve for animated stat reveals (KPI count-ups via useCountUp).
 // Ease-out only, no overshoot — a tallying number should settle exactly on

@@ -80,7 +80,7 @@ void createInertiaApp({
         );
         warmTabChunks();
     },
-    // AppShell's own <RouteProgressBar> replaces Inertia's built-in bar with
-    // one styled from the design tokens and driven by lib/motion.ts.
+    // No progress bar at all. Deferred props paint a shell immediately and the
+    // route cross-fade covers the swap, so a bar would only ever flash.
     progress: false,
 });

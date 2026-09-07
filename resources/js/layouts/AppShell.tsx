@@ -11,7 +11,6 @@ import ErrorBanner from '@/components/ErrorBanner';
 import FlashNotice from '@/components/FlashNotice';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import MobileTopBar from '@/components/MobileTopBar';
-import RouteProgressBar from '@/components/RouteProgressBar';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
@@ -34,7 +33,6 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
     return (
         <MotionConfig reducedMotion="user">
             <div className="min-h-screen bg-background pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-foreground">
-                <RouteProgressBar />
                 <a
                     href="#main-content"
                     className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-leaf focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:shadow-e2"
