@@ -311,14 +311,16 @@ the confetti burst — reads the same preference itself through
 [useReducedMotion](../resources/js/hooks/useReducedMotion.ts) and snaps to its end state.
 
 1. **Global / subtle** — press feedback and route transitions; present everywhere, never opt-in.
-   `pressShrink` (scale 0.97 + 70% opacity dip, 150ms) is the one convention both
-   [MotionLink](../resources/js/components/MotionLink.tsx) (default `whileTap`) and `.pressable`
-   (its CSS `active:` state) implement, so a framer-driven link and a plain button feel identical.
-   `routeProgressBar` drives [RouteProgressBar](../resources/js/components/RouteProgressBar.tsx),
-   a thin top bar mounted as a **sibling** of AppShell's `<main>`, never a wrapper around it — that
-   element is deliberately unkeyed (keying it once caused 25 card remounts on Collection). It's
-   gated on Inertia's own `visit.showProgress` flag, so background/partial reloads (AI-analysis
-   polling and other `only` refreshes) never light the bar.
+   `pressShrink` (scale 0.97 + 70% opacity dip, 150ms) is the one convention
+   [MotionLink](../resources/js/components/MotionLink.tsx) (default `whileTap`), `.pressable`
+   (its CSS `active:` state) and [button](../resources/js/components/ui/button.tsx) all implement,
+   so a framer-driven link, a nav item and a plain button feel identical under the thumb. Button
+   used to press with a 1px translate instead, which is why it did not. The one exception is a
+   control with `aria-haspopup`: it keeps `touch-manipulation` and gives up the movement, since the
+   popup it opens is anchored to it.
+   Route transitions carry no tokens at all any more: the swap cross-fades through the
+   **View Transitions API** (the browser's own animation, tuned only by a 180ms duration in
+   `app.css`), and the progress bar it replaced is gone — see [[installed-app-shell]].
 2. **Data reveal** — a page's first showing of real data, not every render. Stat count-ups
    (`useCountUp` + `countUpEase`, an ease-out curve with no overshoot — a tallying number should
    land exactly on target), chart/route draw-ins (`drawIn`, SVG `pathLength` 0→1), and staggered

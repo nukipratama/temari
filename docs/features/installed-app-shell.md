@@ -299,11 +299,15 @@ appears. A view transition snapshots the frame already on screen, swaps
 underneath it, and cross-fades the two — `<main>` stays unkeyed, nothing
 remounts, and there is no blank frame to be seen.
 
-Gated on `visit.showProgress`, the same flag
-[RouteProgressBar](../../resources/js/components/RouteProgressBar.tsx) uses:
-Inertia's request layer already computes it to separate a real navigation from
-the background `only`/`except` reloads this app runs for AI polling and card
-reveals. A poll tick is not a navigation and must not animate.
+Gated on `visit.showProgress`, Inertia's own flag for separating a real
+navigation from the background `only`/`except` reloads this app runs for AI
+polling and card reveals. A poll tick is not a navigation and must not animate.
+
+**This replaced the progress bar rather than joining it.** The app drew its own
+thin top bar until deferred props ([[frontend-architecture]]) made pages paint a
+shell immediately: between an instant shell and a cross-faded swap there is no
+gap left for a bar to fill, so it only ever flashed. It is deleted, along with
+its motion variants, and Inertia's built-in bar stays off.
 
 Reduced motion is honoured twice over, because `MotionConfig reducedMotion="user"`
 covers framer-motion and not the UA's own cross-fade: the hook reads the media
