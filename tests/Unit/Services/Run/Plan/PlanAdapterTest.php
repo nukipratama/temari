@@ -6,6 +6,8 @@ use App\Enums\AdaptationReason;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
@@ -24,9 +26,10 @@ function decide(
     ?float $strain = 400.0,
     ?float $ctl = 40.0,
     int $adherencePct = 100,
+    int $raggedDays = 0,
     ?float $raceGapRatio = null,
 ): array {
-    return PlanAdapter::decide($ceiling, $monotony, $strain, $ctl, $adherencePct, $raceGapRatio);
+    return PlanAdapter::decide($ceiling, $monotony, $strain, $ctl, $adherencePct, $raggedDays, $raceGapRatio);
 }
 
 it('leaves a healthy, fully adhered week alone', function (): void {
@@ -70,6 +73,29 @@ it('treats a mostly missed week as a re-entry deload, not a catch-up', function 
         ->and($decision['deload'])->toBeTrue()
         ->and($decision['quality_delta'])->toBe(0)
         ->and($decision['adherence_pct'])->toBe(20);
+});
+
+it('drops a quality session when last week was run harder than it was written', function (): void {
+    $decision = decide(raggedDays: PlanAdapter::RAGGED_DAYS_MIN);
+
+    expect($decision['reason'])->toBe(AdaptationReason::RanTooHard)
+        ->and($decision['quality_delta'])->toBe(-1)
+        ->and($decision['deload'])->toBeFalse();
+});
+
+it('reads a single ragged day as a bad morning, not as how the week was run', function (): void {
+    expect(decide(raggedDays: PlanAdapter::RAGGED_DAYS_MIN - 1)['reason'])->toBe(AdaptationReason::Steady);
+});
+
+it('keeps a safety deload ahead of how the week was run', function (): void {
+    expect(decide(adherencePct: 20, raggedDays: 5)['reason'])->toBe(AdaptationReason::MissedWeek);
+});
+
+it('backs off instead of adding work when an athlete behind their goal ran the week too hard', function (): void {
+    $decision = decide(raggedDays: PlanAdapter::RAGGED_DAYS_MIN, raceGapRatio: 1.5);
+
+    expect($decision['reason'])->toBe(AdaptationReason::RanTooHard)
+        ->and($decision['quality_delta'])->toBe(-1);
 });
 
 it('adds a quality session when the projection is behind the goal time', function (): void {
@@ -249,6 +275,110 @@ it('ignores the race projection when the athlete has no usable PR to anchor it',
     $adapter = new PlanAdapter($trainingLoad, $riegel);
 
     expect($adapter->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), $race)['reason'])
+        ->toBe(AdaptationReason::Steady);
+
+    Carbon::setTestNow();
+});
+
+/**
+ * A run on $date owned by $user, carrying exactly the stream summary given.
+ *
+ * @param  array<string, mixed>  $streamSummary
+ */
+function planAdapterRunOn(User $user, string $date, array $streamSummary): void
+{
+    ActivityDetail::factory()
+        ->for(Activity::factory()->for($user))
+        ->create([
+            'start_date_local' => Carbon::parse($date.' 06:00:00'),
+            'stream_summary' => $streamSummary,
+        ]);
+}
+
+/** A day last week that was prescribed and fully credited, so adherence stays out of the way. */
+function planAdapterCreditedDay(User $user, string $date, SessionType $type): void
+{
+    PlannedSession::factory()->for($user)->create([
+        'date' => $date,
+        'phase' => PlanPhase::Build,
+        'session_type' => $type,
+        'status' => PlannedSessionStatus::Done,
+        'compliance_score' => 100,
+    ]);
+}
+
+/** @param  array<string, mixed>  $load */
+function planAdapterFor(array $load = ['monotony' => 1.1, 'strain' => 300.0, 'ctl_42d' => 30.0, 'form' => 5.0, 'form_status' => 'optimal']): PlanAdapter
+{
+    $trainingLoad = Mockery::mock(TrainingLoad::class);
+    $trainingLoad->shouldReceive('summary')->andReturn($load);
+
+    return new PlanAdapter($trainingLoad, app(RiegelProjector::class));
+}
+
+it('reads an easy day run above Z2 and a long day that decoupled as how the week was run', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+
+    planAdapterCreditedDay($user, '2026-08-03', SessionType::Easy);
+    planAdapterCreditedDay($user, '2026-08-05', SessionType::Long);
+
+    planAdapterRunOn($user, '2026-08-03', ['time_in_zone_pct' => ['Z1' => 20, 'Z2' => 55, 'Z3' => 25]]);
+    planAdapterRunOn($user, '2026-08-05', ['decoupling_pct' => PlanAdapter::HIGH_DECOUPLING + 2.5]);
+
+    $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
+
+    expect($decision['reason'])->toBe(AdaptationReason::RanTooHard)
+        ->and($decision['quality_delta'])->toBe(-1)
+        ->and($decision['adherence_pct'])->toBe(100);
+
+    Carbon::setTestNow();
+});
+
+it('judges no day it cannot read: a run with no heart-rate stream is no signal, not a clean one', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+
+    planAdapterCreditedDay($user, '2026-08-03', SessionType::Easy);
+    planAdapterCreditedDay($user, '2026-08-05', SessionType::Long);
+
+    planAdapterRunOn($user, '2026-08-03', []);
+    planAdapterRunOn($user, '2026-08-05', []);
+
+    expect(planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null)['reason'])
+        ->toBe(AdaptationReason::Steady);
+
+    Carbon::setTestNow();
+});
+
+it('counts a day once however many runs it holds', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+
+    planAdapterCreditedDay($user, '2026-08-03', SessionType::Easy);
+
+    $hard = ['time_in_zone_pct' => ['Z1' => 10, 'Z2' => 50, 'Z3' => 40]];
+    planAdapterRunOn($user, '2026-08-03', $hard);
+    planAdapterRunOn($user, '2026-08-03', $hard);
+
+    expect(planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null)['reason'])
+        ->toBe(AdaptationReason::Steady);
+
+    Carbon::setTestNow();
+});
+
+it('leaves a rest day unjudged, however it was run', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+
+    planAdapterCreditedDay($user, '2026-08-03', SessionType::Rest);
+    planAdapterCreditedDay($user, '2026-08-04', SessionType::Rest);
+
+    $hard = ['time_in_zone_pct' => ['Z1' => 10, 'Z2' => 40, 'Z4' => 50], 'decoupling_pct' => 12.0];
+    planAdapterRunOn($user, '2026-08-03', $hard);
+    planAdapterRunOn($user, '2026-08-04', $hard);
+
+    expect(planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null)['reason'])
         ->toBe(AdaptationReason::Steady);
 
     Carbon::setTestNow();

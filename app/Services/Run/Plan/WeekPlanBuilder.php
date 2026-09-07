@@ -74,7 +74,7 @@ final class WeekPlanBuilder
      * @param  array<string, true>  $pinnedDates  Y-m-d dates already fixed by the user; never assigned a row here
      * @param  Carbon  $notBefore  dates earlier than this (a past day within the current week) are skipped too —
      *                             regeneration only ever writes today-forward, so past days stay untouched
-     * @param  int  $qualityDelta  race-pace feedback from {@see PlanAdapter}: +1 adds a quality session, -1 drops one
+     * @param  int  $qualityDelta  the adapter's verdict on this week's quality block: +1 adds a session, -1 drops one
      * @param  ?list<int>  $preferredOffsets  an explicit {@see \App\Models\TrainingPreference} `run_days`
      *                                        (0=Mon..6=Sun) — when set (with `$preferredLongOffset`), replaces
      *                                        `DAY_TEMPLATES` entirely for this week rather than merely seeding it
@@ -283,7 +283,9 @@ final class WeekPlanBuilder
     }
 
     /**
-     * Race-pace feedback resizes the week's quality block. Deload and Taper
+     * The adapter's verdict resizes the week's quality block: race-pace
+     * feedback moves it either way, a week run harder than it was written
+     * only ever drops one. Deload and Taper
      * are exempt in both directions: neither exists to carry quality work,
      * and a taper's whole job is arriving fresh. Adding is further gated on
      * the week having enough sessions to absorb it, so a 3-day week never
