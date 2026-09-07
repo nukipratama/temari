@@ -36,6 +36,7 @@ return [
         'run_question' => (string) env('AZURE_OPENAI_RUN_QUESTION_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'trend_read' => (string) env('AZURE_OPENAI_TREND_READ_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'plan_day_voice' => (string) env('AZURE_OPENAI_PLAN_DAY_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
+        'plan_clamp_voice' => (string) env('AZURE_OPENAI_PLAN_CLAMP_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'plan_week_voice' => (string) env('AZURE_OPENAI_PLAN_WEEK_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'plan_season_voice' => (string) env('AZURE_OPENAI_PLAN_SEASON_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
     ],

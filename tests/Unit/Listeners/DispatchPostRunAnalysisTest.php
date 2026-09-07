@@ -20,6 +20,7 @@ use App\Actions\AI\StaggerBackfillAction;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
+use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
@@ -569,6 +570,7 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
         app(StaggerBackfillAction::class),
         app(BackfillAgeGate::class),
         app(RestClampRecorder::class),
+        app(PlanNarrationRequester::class),
     );
 
     $listener->handle(new ActivityIngested($activity->id));

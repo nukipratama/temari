@@ -75,7 +75,7 @@ scheduled command missing from this table is a bug in this table.
 
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
 but the command then calls
-[`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php#L86) for every non-demo
+[`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php#L163) for every non-demo
 user, touching up to nine rows: `PlanDayVoice` ×7, `PlanWeekVoice`, and `PlanSeasonVoice`. It is the
 largest scheduled spend in the app, which is why it is also the only one that checks before it bills.
 
@@ -167,6 +167,7 @@ rendered somewhere a user can see — both directions matter, and only one of th
 | `profile_voice` | `ProfileVoiceNarrator` | synthetic user · ISO week | scheduled + ingest | `ProfileHero` |
 | `trend_read` | `TrendReadNarrator` | synthetic user+range · range | scheduled ×3 | `NarrationCard` on Trends |
 | `plan_day_voice` | `PlanDayVoiceNarrator` | synthetic user+day · `Y-m-d` | `plan:regenerate`, Plan page, first week | `WeekDayRow`, collapsed |
+| `plan_clamp_voice` | `PlanClampVoiceNarrator` | synthetic user+day · `Y-m-d` | ingest listener, 00:01 briefing | today's step-down, on both surfaces |
 | `plan_week_voice` | `PlanWeekVoiceNarrator` | `PlanAdaptation` · none | `plan:regenerate`, Plan page, first week | `SeasonWeekRow`, collapsed |
 | `plan_season_voice` | `PlanSeasonVoiceNarrator` | `Season` · none | `plan:regenerate`, Plan page, first week | `SeasonHeaderCard`, always visible |
 | *(not an Analysis row)* | `RunQuestionNarrator` | `RunQuestion` rows per activity | user | `AskAboutRun` on the run page |
@@ -237,6 +238,7 @@ drives everything below.
 | `MonthlyRecapNarrator` | 1 | **4** | 1500 | 0.7 | `monthly_recap` |
 | `TrendReadNarrator` | 1 | **4** | 1200 | 0.7 | `trend_read` |
 | `PlanDayVoiceNarrator` | 1 | **4** | 300 | 0.7 | `plan_day_voice` |
+| `PlanClampVoiceNarrator` | 1 | — | 200 | 0.7 | `plan_clamp_voice` |
 | `PlanWeekVoiceNarrator` | 1 | **4** | 400 | 0.7 | `plan_week_voice` |
 | `PlanSeasonVoiceNarrator` | 1 | **4** | 400 | 0.7 | `plan_season_voice` |
 

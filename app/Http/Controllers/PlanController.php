@@ -92,6 +92,7 @@ class PlanController extends Controller
                 $vdotEstimator,
                 $paceCalculator,
                 $sessionMatcher,
+                $narrationRequester,
             )),
             'season' => $seasonStreakBuilder->seasonPayload($user, $season, $today, $seasonCtx),
             'seasonSummary' => Inertia::defer(fn (): array => $seasonSummaryBuilder->build($user, $season, $today)),
@@ -126,6 +127,7 @@ class PlanController extends Controller
         VdotEstimator $vdotEstimator,
         TrainingPaceCalculator $paceCalculator,
         SessionMatcher $sessionMatcher,
+        PlanNarrationRequester $narrationRequester,
     ): array {
         $currentWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
         $rangeStart = $currentWeekStart->copy()->subWeeks(CurrentWeekPlanBuilder::HISTORY_WEEKS);
@@ -195,6 +197,10 @@ class PlanController extends Controller
             )
             : null;
 
+        // Falls back to the clamp's own templated note when no line has landed
+        // yet, so the step-down is never unexplained.
+        $clampVoice = $clamp === null ? null : $narrationRequester->clampVoiceFor($user, $today);
+
         $volumeScaleByDate = $this->redistributeCurrentWeek(
             $user,
             $sessionsByWeek->get($currentWeekKey, collect()),
@@ -234,6 +240,7 @@ class PlanController extends Controller
                     $paces,
                     $fallbackStatuses[$s->date->toDateString()] ?? $s->status,
                     $activityByDate[$s->date->toDateString()] ?? null,
+                    $clampVoice,
                 ))->all(),
             ];
         }

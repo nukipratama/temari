@@ -11,6 +11,7 @@ use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeGroupJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
+use App\Jobs\AI\AnalyzePlanClampVoiceJob;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\AI\AnalyzePlanWeekVoiceJob;
@@ -36,6 +37,7 @@ enum AnalysisType: string
     case MonthlyRecap = 'monthly_recap';
     case TrendRead = 'trend_read';
     case PlanDayVoice = 'plan_day_voice';
+    case PlanClampVoice = 'plan_clamp_voice';
     case PlanWeekVoice = 'plan_week_voice';
     case PlanSeasonVoice = 'plan_season_voice';
 
@@ -44,6 +46,7 @@ enum AnalysisType: string
     public const string MONTHLY_RECAP_SUBJECT_TYPE = 'monthly_recap_user_month';
     public const string TREND_READ_SUBJECT_TYPE = 'trend_read_user_range';
     public const string PLAN_DAY_VOICE_SUBJECT_TYPE = 'plan_day_voice_user_day';
+    public const string PLAN_CLAMP_VOICE_SUBJECT_TYPE = 'plan_clamp_voice_user_day';
 
     /**
      * The three windows Trends narrates. Not chained, not date-keyed — each is
@@ -104,7 +107,8 @@ enum AnalysisType: string
             self::RunInsight,
             self::CardFlavor => AnalysisCadence::PerActivity,
             self::BriefingMascotVoice,
-            self::PlanDayVoice => AnalysisCadence::Daily,
+            self::PlanDayVoice,
+            self::PlanClampVoice => AnalysisCadence::Daily,
             self::WeeklyRecap,
             self::PlanWeekVoice => AnalysisCadence::Weekly,
             self::MonthlyRecap => AnalysisCadence::Monthly,
@@ -134,6 +138,7 @@ enum AnalysisType: string
             self::MonthlyRecap => AnalyzeMonthlyRecapJob::class,
             self::TrendRead => AnalyzeTrendReadJob::class,
             self::PlanDayVoice => AnalyzePlanDayVoiceJob::class,
+            self::PlanClampVoice => AnalyzePlanClampVoiceJob::class,
             self::PlanWeekVoice => AnalyzePlanWeekVoiceJob::class,
             self::PlanSeasonVoice => AnalyzePlanSeasonVoiceJob::class,
         };
@@ -179,7 +184,10 @@ enum AnalysisType: string
             self::MonthlyRecap,
             // Narrates monotony/strain/CTL movement, all TRIMP-derived and
             // therefore zone-weighted, same reasoning as WeeklyRecap/MonthlyRecap.
-            self::TrendRead => true,
+            self::TrendRead,
+            // Speaks to a ReadinessCeiling, which comes off TrainingLoad and is
+            // therefore TRIMP-derived too.
+            self::PlanClampVoice => true,
             default => false,
         };
     }
@@ -221,6 +229,13 @@ enum AnalysisType: string
             self::ProfileVoice => ['required', 'string', 'regex:/^\d{4}-W\d{2}$/', Rule::in(self::triggerableIsoWeeks())],
             self::MonthlyRecap => ['required', 'string', 'date_format:Y-m', Rule::in(self::triggerableMonths())],
             self::TrendRead => ['required', 'string', Rule::in(self::TREND_READ_RANGES)],
+            // The clamp only ever exists for today, so unlike PlanDayVoice
+            // this never reaches forward.
+            self::PlanClampVoice => [
+                'required', 'string', 'date_format:Y-m-d',
+                'after_or_equal:'.Carbon::today()->subDays(self::MAX_DISCRIMINATOR_AGE_DAYS)->toDateString(),
+                'before_or_equal:'.Carbon::today()->toDateString(),
+            ],
             self::PlanDayVoice => [
                 'required', 'string', 'date_format:Y-m-d',
                 'after_or_equal:'.Carbon::today()->subDays(self::MAX_DISCRIMINATOR_AGE_DAYS)->toDateString(),
@@ -251,6 +266,7 @@ enum AnalysisType: string
             self::MonthlyRecap => self::MONTHLY_RECAP_SUBJECT_TYPE,
             self::TrendRead => self::TREND_READ_SUBJECT_TYPE,
             self::PlanDayVoice => self::PLAN_DAY_VOICE_SUBJECT_TYPE,
+            self::PlanClampVoice => self::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
             self::PlanWeekVoice => PlanAdaptation::class,
             self::PlanSeasonVoice => Season::class,
         };

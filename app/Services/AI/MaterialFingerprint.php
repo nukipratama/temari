@@ -10,6 +10,8 @@ use App\Models\PersonalRecord;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\StoryLine;
+use App\Enums\SessionType;
+use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\SessionIntent;
 use App\Services\Run\Metrics\StreamSummary;
 
@@ -42,6 +44,24 @@ final class MaterialFingerprint
             // Drives the prescribed distance the blurb quotes, so a moved
             // baseline changes what the day should say.
             'long_run_km' => self::half($longRunBaselineKm),
+        ]);
+    }
+
+    /**
+     * What a clamp explanation actually speaks to, deliberately coarser than
+     * the clamp itself. The ceiling is recomputed from {@see \App\Services\Run\Metrics\TrainingLoad}
+     * on every ingest, so it drifts a little with each run logged; fingerprinting
+     * the exact figures would re-bill this line several times on the one kind of
+     * day it exists for. The band, the type it was downgraded to, and whether the
+     * athlete has already run are the whole substance of the sentence — a
+     * ceiling that slides within its own band changes nothing worth saying.
+     */
+    public static function forClamp(ReadinessCeiling $ceiling, SessionType $clampedTo, bool $hasRunToday): string
+    {
+        return self::digest([
+            'ceiling' => $ceiling->value,
+            'clamped_to' => $clampedTo->value,
+            'has_run_today' => $hasRunToday,
         ]);
     }
 

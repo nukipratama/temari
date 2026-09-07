@@ -28,6 +28,7 @@ it('pins the exact case list, so adding or retiring a type is a deliberate edit'
         'monthly_recap',
         'trend_read',
         'plan_day_voice',
+        'plan_clamp_voice',
         'plan_week_voice',
         'plan_season_voice',
     ], implode(' ', [
