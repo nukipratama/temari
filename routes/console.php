@@ -110,21 +110,32 @@ $alertOnFailure(Schedule::command('ai:self-heal')->hourly()->withoutOverlapping(
 // table just bloats and reads as an alarming unexplained count during triage.
 Schedule::command('queue:prune-failed --hours=168')->dailyAt('02:20');
 
-// Fallback poll behind the Strava webhook, hourly across the two running peaks
-// (WIB: 04-10 and 16-22). Bounded withoutOverlapping so a strand self-releases, not 24h.
-Schedule::command('strava:sync')->cron('0 4-10,16-22 * * *')->withoutOverlapping(55);
+// Fallback poll behind the Strava webhook. Hourly around the clock rather than
+// only across the two running peaks: the old window left a five-hour overnight
+// gap in which a missed webhook went unnoticed, and one read per connected user
+// per run is a rounding error against the shared pool at this size. It is the
+// one scheduled job whose cost scales with user count, so revisit the cadence
+// long before the athlete cap does — see docs/decisions/background-hydration-drain.md.
+// Bounded withoutOverlapping so a strand self-releases, not 24h.
+Schedule::command('strava:sync')->hourly()->withoutOverlapping(55);
 
 // Every 5 minutes: paced drain of pending activity stubs (the Strava rate-limit
 // pacer). Its input is strava:sync stubs + detail-fetch retries (webhook activities
 // self-dispatch their own ingest); batching keeps a backlog from 429-storming Strava.
 Schedule::command('strava:ingest')->everyFiveMinutes()->withoutOverlapping(10);
 
-// Hourly: drain the summary-only backlog newest-first, so an imported history
-// converges on splits, TRIMP, PRs, cards and narration instead of waiting for
-// someone to open each run. Sized from the background read headroom, so it
-// yields the whole pool to live ingest rather than competing with it. See
-// docs/decisions/background-hydration-drain.md.
-Schedule::command('strava:hydrate-backlog')->hourly()->withoutOverlapping(55);
+// Every 15 minutes: drain the summary-only backlog newest-first, so an imported
+// history converges on splits, TRIMP, PRs, cards and narration instead of waiting
+// for someone to open each run. Sized from the background read headroom, so it
+// yields the whole pool to live ingest rather than competing with it, and the
+// cadence cannot overspend — a tick only ever takes what the buckets allow.
+//
+// Matches the 15-minute read bucket's own decay window. Hourly left recovered
+// headroom idle for most of an hour, which bit hardest against the drain's known
+// "headroom is measured at dispatch, not spent at dispatch" behaviour: a tick that
+// fires into a still-draining bucket queues only a handful of runs, and used to
+// wait an hour for its next chance. See docs/decisions/background-hydration-drain.md.
+Schedule::command('strava:hydrate-backlog')->everyFifteenMinutes()->withoutOverlapping(14);
 
 // Hourly catch-up for activity reverse-geocoding: backfills start coords from the
 // summary_polyline and re-queues ResolveActivityLocationJob for any GPS run still
