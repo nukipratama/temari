@@ -129,6 +129,8 @@ it('re-sizes before narrating, so the described week is the week that stands', f
 
     expect($narrated)->toEqualCanonicalizing($plannedThisWeek)
         ->and($plannedThisWeek)->not->toHaveCount(1);
+
+    Carbon::setTestNow();
 });
 
 /** Onboarding is still open, so there is no first week to describe yet. */

@@ -18,6 +18,7 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Ingest\SyncOrchestrator;
+use App\Services\Run\Plan\Periodizer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
@@ -226,6 +227,7 @@ it('lets the chained recap kickoff narrate the whole backfilled history without 
         app(KickoffMonthlyRecaps::class),
         app(PlanNarrationRequester::class),
         app(AnalysisService::class),
+        app(Periodizer::class),
     );
 
     // The backfill already wrote the weekly snapshot and the summary detail rows
