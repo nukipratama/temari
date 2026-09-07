@@ -30,7 +30,7 @@ class TrainingPaceCalculator
      * {@see VdotEstimator::estimate()} result directly, which is null whenever
      * there is not yet enough PR history to estimate a VDOT.
      *
-     * @param  array{vdot: float, source_category: string}|null  $vdotResult
+     * @param  array{vdot: float, ...}|null  $vdotResult
      * @return array{easy: int, marathon: int, threshold: int, interval: int}|null seconds per kilometre
      */
     public function fromVdotResult(?array $vdotResult): ?array

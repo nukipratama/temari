@@ -3,13 +3,44 @@ import { Fragment } from 'react';
 import Eyebrow from '@/components/ui/Eyebrow';
 import LegacyCard from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
-import { formatPace } from '@/lib/pace';
+import { formatPace, parseNaiveLocalDate } from '@/lib/pace';
+import { PR_CATEGORY_LABELS } from '@/lib/pr';
 
 export interface TrainingPaces {
     easy: number;
     marathon: number;
     threshold: number;
     interval: number;
+}
+
+/** Which PR these targets were computed from, and when it was set. */
+export interface VdotSource {
+    category: string;
+    /** `Y-m-d`. */
+    set_at: string;
+    /** No PR inside the estimator's recency window, so an older one still stands in. */
+    stale: boolean;
+}
+
+// parseNaiveLocalDate rather than `new Date(iso)`: the latter reads
+// '2025-05-19' as UTC midnight, which is the previous month in any
+// negative-offset timezone.
+function monthYear(iso: string): string {
+    const date = parseNaiveLocalDate(iso);
+    if (date === null) return iso;
+
+    return date
+        .toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+        .toLowerCase();
+}
+
+function sourceLine(source: VdotSource): string {
+    const pr = (
+        PR_CATEGORY_LABELS[source.category] ?? source.category
+    ).toLowerCase();
+    const set = `from your ${pr} pr, set ${monthYear(source.set_at)}`;
+
+    return source.stale ? `${set} · nothing newer to go on` : set;
 }
 
 /** Slowest first, so the rail reads easy → hard left to right. */
@@ -53,7 +84,8 @@ function labelShift(left: number): number {
  */
 export default function PaceTargetsCard({
     paces,
-}: Readonly<{ paces: TrainingPaces }>) {
+    source = null,
+}: Readonly<{ paces: TrainingPaces; source?: VdotSource | null }>) {
     const values = MARKERS.map((m) => paces[m.key]);
     const slowest = Math.max(...values);
     const fastest = Math.min(...values);
@@ -98,6 +130,9 @@ export default function PaceTargetsCard({
                     );
                 })}
             </div>
+            {source && (
+                <p className="mx-4 text-xs text-text-3">{sourceLine(source)}</p>
+            )}
         </LegacyCard>
     );
 }

@@ -102,3 +102,28 @@ it('accepts an explicit date so a row can be written for a day other than today'
     $snap = TrendDailySnapshot::query()->where('user_id', $user->id)->sole();
     expect($snap->snapshot_date->toDateString())->toBe(Carbon::yesterday()->toDateString());
 });
+
+it('backfills a snapshot with the VDOT the athlete had proven by that date, not by today', function (): void {
+    $user = User::factory()->create();
+    // Slow marathon two years back, fast kilometre last month. Today only the
+    // kilometre is inside the estimator's window; on a 2024 date both are, and
+    // the min-across-categories rule hands the marathon the lower VDOT.
+    PersonalRecord::factory()->for($user)->create([
+        'category' => 'marathon',
+        'value_sec' => 20_292.0,
+        'set_at' => Carbon::parse('2024-01-01'),
+    ]);
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '1km',
+        'value_sec' => 278.0,
+        'set_at' => Carbon::parse('2026-07-01'),
+    ]);
+
+    $this->writer->writeToday($user);
+    $this->writer->writeToday($user, Carbon::parse('2024-06-01'));
+
+    $today = TrendDailySnapshot::query()->where('snapshot_date', Carbon::today()->toDateString())->sole();
+    $backfilled = TrendDailySnapshot::query()->where('snapshot_date', '2024-06-01')->sole();
+
+    expect($backfilled->vdot)->toBeLessThan($today->vdot);
+});

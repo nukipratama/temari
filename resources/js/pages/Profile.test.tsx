@@ -204,6 +204,7 @@ describe('Profile', () => {
                 stats={stats}
                 fitness={{
                     vdot: 52.3,
+                    vdot_source: null,
                     threshold_pace_sec: 258,
                     threshold_confidence: 'high',
                     training_paces: {

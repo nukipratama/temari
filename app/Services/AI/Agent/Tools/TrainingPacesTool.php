@@ -35,7 +35,7 @@ final class TrainingPacesTool extends UserTool
     /** @return array<string, mixed> */
     public function handle(array $arguments): array
     {
-        $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($this->user));
+        $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($this->user, $this->asOf));
 
         return [
             'easy_pace_sec' => $paces['easy'] ?? null,

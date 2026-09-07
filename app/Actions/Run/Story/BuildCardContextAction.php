@@ -99,7 +99,7 @@ final readonly class BuildCardContextAction
             return false;
         }
 
-        $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($activity->user));
+        $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($activity->user, $startDate));
         $race = RaceGoal::query()->where('user_id', $activity->user_id)->active()->first();
         // Segment structure only — $paces:null skips the minutes computation
         // this call doesn't need, it only wants the main/interval segment's
