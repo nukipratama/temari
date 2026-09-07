@@ -103,13 +103,14 @@ Route::middleware(['auth'])->group(function (): void {
 });
 
 Route::middleware(['auth', 'onboarded'])->group(function (): void {
-    // Conditional GET on the three history-read pages: the same URL is genuinely
-    // revisited (filter/tab toggling, month paging, deep links back into a past
-    // run) and their payloads are the largest in the app.
+    // Conditional GET on run detail: the same URL is genuinely revisited (deep
+    // links back into a past run) and its payload is the largest still served
+    // eagerly. /history carried it too until its run list, calendar grid and
+    // recaps moved behind Inertia::defer() — the volatile bytes now arrive in an
+    // untagged partial, leaving the alias to guard a 1.3 KB shell.
     // /history absorbs the former /activities (list) and /calendar pages behind
     // ?view=list|calendar (default list) — see HistoryController's docblock.
     Route::get('/history', [HistoryController::class, 'index'])
-        ->middleware('inertia-etag')
         ->name('history');
     Route::get('/activities/{activity}', [RunController::class, 'show'])
         ->middleware('inertia-etag')
