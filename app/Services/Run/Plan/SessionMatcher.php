@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\PlannedSessionStatus;
+use App\Enums\SessionType;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\Run\Metrics\DistanceFormatter;
 use Illuminate\Support\Carbon;
@@ -71,11 +73,17 @@ final class SessionMatcher
             return [];
         }
 
-        $completedKm = $this->completedKmByDate($user, $plannedKmByDate);
+        $completed = $this->completedKmByDate($user, $plannedKmByDate);
+        $longRunDates = $this->longRunDates($user, array_keys($plannedKmByDate));
         $results = [];
         foreach ($plannedKmByDate as $date => $plannedKm) {
             $isPast = Carbon::parse($date)->lt($today);
-            $results[$date] = self::scoreFor($plannedKm, $completedKm[$date] ?? 0.0, $isPast, $excusedByDate[$date] ?? false);
+            $day = $completed[$date] ?? ['sum' => 0.0, 'longest' => 0.0];
+            // A long run's training effect is continuity, so its day is
+            // credited from its single longest run. Everywhere else the day's
+            // runs add up, because easy volume genuinely does.
+            $completedKm = ($longRunDates[$date] ?? false) ? $day['longest'] : $day['sum'];
+            $results[$date] = self::scoreFor($plannedKm, $completedKm, $isPast, $excusedByDate[$date] ?? false);
         }
 
         return $results;
@@ -178,14 +186,16 @@ final class SessionMatcher
     }
 
     /**
+     * A day's runs as both figures the scorer can need: everything that day
+     * added up, and its single longest run.
+     *
      * @param  non-empty-array<string, float>  $plannedKmByDate
-     * @return array<string, float>  Y-m-d => km run that day
+     * @return array<string, array{sum: float, longest: float}>  Y-m-d => km run that day
      */
     private function completedKmByDate(User $user, array $plannedKmByDate): array
     {
         $dates = array_keys($plannedKmByDate);
 
-        /** @var array<string, mixed> $rows */
         $rows = ActivityDetail::query()
             ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
             ->where('activities.user_id', $user->id)
@@ -194,11 +204,39 @@ final class SessionMatcher
                 Carbon::parse(min($dates))->startOfDay(),
                 Carbon::parse(max($dates))->endOfDay(),
             ])
-            ->selectRaw('DATE(activity_details.start_date_local) as d, SUM(activity_details.distance) as meters')
+            ->selectRaw('DATE(activity_details.start_date_local) as d, SUM(activity_details.distance) as meters, MAX(activity_details.distance) as longest')
             ->groupBy('d')
-            ->pluck('meters', 'd')
-            ->all();
+            ->toBase()
+            ->get();
 
-        return array_map(static fn (mixed $meters): float => DistanceFormatter::km((float) $meters), $rows);
+        $byDate = [];
+        foreach ($rows as $row) {
+            /** @var object{d: string, meters: float|string|null, longest: float|string|null} $row */
+            $byDate[$row->d] = [
+                'sum' => DistanceFormatter::km((float) $row->meters),
+                'longest' => DistanceFormatter::km((float) $row->longest),
+            ];
+        }
+
+        return $byDate;
+    }
+
+    /**
+     * Which of these dates prescribed a long run. Read here rather than
+     * passed in, so the three callers that build `$plannedKmByDate` cannot
+     * drift out of step with it.
+     *
+     * @param  list<string>  $dates
+     * @return array<string, bool>
+     */
+    private function longRunDates(User $user, array $dates): array
+    {
+        return PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->where('session_type', SessionType::Long)
+            ->whereIn('date', $dates)
+            ->get(['date'])
+            ->mapWithKeys(static fn (PlannedSession $session): array => [$session->date->toDateString() => true])
+            ->all();
     }
 }

@@ -16,6 +16,7 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
+use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\AI\PlanNarrationRequester;
@@ -39,6 +40,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         private readonly BackfillAgeGate $ageGate,
         private readonly RestClampRecorder $restClampRecorder,
         private readonly PlanNarrationRequester $planNarration,
+        private readonly ComplianceScorer $complianceScorer,
     ) {
     }
 
@@ -59,6 +61,10 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $isBackfill = $this->isBackfill($detail);
         $delaySec = $isBackfill ? ($this->staggerBackfill)($activity->user_id) : 0;
         $isToday = $detail->start_date_local?->toDateString() === $today;
+
+        if ($detail->start_date_local !== null) {
+            $this->complianceScorer->creditIfEarned($user, $detail->start_date_local, Carbon::today());
+        }
 
         $this->requestCardFlavor($activity, $tooOld, $delaySec);
 

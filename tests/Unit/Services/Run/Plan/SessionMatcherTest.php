@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
+use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\Run\Plan\SessionMatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -166,4 +169,35 @@ it('scoreRange returns the full verdict per day, not just the status', function 
 
     expect($results['2026-08-03'])->toBe(['status' => PlannedSessionStatus::Done, 'score' => 100, 'ran_anyway' => false])
         ->and($results['2026-08-04'])->toBe(['status' => PlannedSessionStatus::Done, 'score' => null, 'ran_anyway' => false]);
+});
+
+function prescribe(User $user, string $date, SessionType $type): void
+{
+    PlannedSession::factory()->for($user)->create([
+        'date' => $date,
+        'phase' => PlanPhase::Build,
+        'session_type' => $type,
+    ]);
+}
+
+it('credits a long run day from its longest run, not from the day adding up', function (): void {
+    $user = User::factory()->create();
+    prescribe($user, '2026-08-03', SessionType::Long);
+    logRun($user, '2026-08-03', 6.0);
+    logRun($user, '2026-08-03', 6.0);
+
+    $statuses = app(SessionMatcher::class)->statuses($user, ['2026-08-03' => 12.0], [], Carbon::parse('2026-08-10'));
+
+    expect($statuses['2026-08-03'])->toBe(PlannedSessionStatus::Partial);
+});
+
+it('still sums the day everywhere a long run was not what was asked for', function (): void {
+    $user = User::factory()->create();
+    prescribe($user, '2026-08-03', SessionType::Easy);
+    logRun($user, '2026-08-03', 6.0);
+    logRun($user, '2026-08-03', 6.0);
+
+    $statuses = app(SessionMatcher::class)->statuses($user, ['2026-08-03' => 10.0], [], Carbon::parse('2026-08-10'));
+
+    expect($statuses['2026-08-03'])->toBe(PlannedSessionStatus::Done);
 });
