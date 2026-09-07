@@ -394,6 +394,16 @@
                 "text-2"
             ]
         },
+        "ink/0.12": {
+            "over": {
+                "resources/js/components/run/RunLenses.tsx": [
+                    "paper"
+                ]
+            },
+            "text": [
+                "text-2"
+            ]
+        },
         "ink/0.7": {
             "over": {
                 "resources/js/components/run/RouteMap.tsx": [
