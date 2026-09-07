@@ -22,7 +22,10 @@ use Symfony\Component\HttpFoundation\Response;
  * from its own store.
  *
  * Applied per-route, never globally: it saves wire bytes, not server work, so
- * it only pays off where the same URL is genuinely revisited.
+ * it only pays off where the same URL is genuinely revisited AND the bytes it
+ * would tag are actually in the response. A page whose payload sits behind
+ * `Inertia::defer()` fails that second test — the deferred partial is
+ * deliberately `no-store`, so the tag would only ever cover the shell.
  */
 class SetInertiaEtag
 {

@@ -28,8 +28,14 @@ destination with its own URL, not a widget that polls: a push tap has to land on
 `unreadNotifications` already rides on every page as a shared prop
 ([NotificationProps](../../app/Services/Inertia/NotificationProps.php#L37)).
 
+`notifications`, `shown` and `hasOlder` ship behind `Inertia::defer()`, so the hero paints before the
+window is queried and the rows arrive in one follow-up request; only `focusId` is instant. The three
+are built together by one memoized loader
+([InboxController](../../app/Http/Controllers/InboxController.php#L61)), since `hasOlder` is a fact
+about the same query that produced the rows.
+
 Rows arrive **flattened**, not as the stored `payload` blob. The controller lifts out the deep
-link and the replay handles ([InboxController](../../app/Http/Controllers/InboxController.php#L70))
+link and the replay handles ([InboxController](../../app/Http/Controllers/InboxController.php#L90))
 so the page never reads untyped JSON, and the shape is a declared TypeScript interface
 (`InboxItem` in [types/inertia.ts](../../resources/js/types/inertia.ts)) rather than
 `Record<string, unknown>`. `created_at` ships as `toIso8601String()` — a true instant with its
@@ -41,7 +47,7 @@ The list is a **growing window**, not a pager. The first request ships 20 rows
 ([InboxController](../../app/Http/Controllers/InboxController.php#L32)); each "load older" press
 asks for `?shown=` twenty more and the server also says whether anything sits behind what it sent,
 so the button hides itself at the end. The requested size is snapped up to the page step and capped
-([InboxController](../../app/Http/Controllers/InboxController.php#L130)), so a hand-typed `?shown=`
+([InboxController](../../app/Http/Controllers/InboxController.php#L150)), so a hand-typed `?shown=`
 cannot ask for an unbounded scan. Retention is undecided and nothing prunes the table, so the window
 is what keeps an old account's inbox usable without deciding how long a record lives.
 
@@ -53,12 +59,12 @@ action is the "Open" link into the page the notification was about, which is the
 push already carried.
 
 An **unlock** row's rarity badge is resolved read-side from the unlock catalog by `unlock_key`
-([InboxController](../../app/Http/Controllers/InboxController.php#L150)) rather than read out of the
+([InboxController](../../app/Http/Controllers/InboxController.php#L170)) rather than read out of the
 stored payload, which never carried one — so rows recorded before the badge existed are rated too,
 and a key outside the catalog (the per-season `season.{id}.*` namespace) simply stays unrated and
 falls back to the plain kind label. A **post-run** row carries its run's distance and moving time,
 looked up over the whole window in one query
-([InboxController](../../app/Http/Controllers/InboxController.php#L102)), which is what the row's
+([InboxController](../../app/Http/Controllers/InboxController.php#L122)), which is what the row's
 distance/pace stat chips render.
 
 ## Grouped sections and the time toggle
@@ -88,7 +94,7 @@ reloads only `unreadNotifications`, which is what the bell in
 button that lies about that is worse than a count that stays high.
 
 `/inbox?item={id}` is the per-row deep link. The controller widens the window far enough to contain
-that row ([InboxController](../../app/Http/Controllers/InboxController.php#L130)) so the target is on
+that row ([InboxController](../../app/Http/Controllers/InboxController.php#L150)) so the target is on
 screen even when it sits well behind the first twenty, and arriving on a row counts as reading it.
 
 ## Empty inbox

@@ -64,32 +64,38 @@ it('tags a full Inertia page visit with an ETag and a revalidate-always private 
         ->and($response->headers->get('Cache-Control'))->not->toContain('public');
 });
 
-it('answers a replayed ETag with an empty 304 on every tagged route', function (): void {
+it('answers a replayed ETag with an empty 304', function (): void {
     $user = User::factory()->create();
     $activity = etagSeedRun($user);
     $this->actingAs($user);
 
-    foreach (['/history', '/history?view=calendar', "/activities/{$activity->id}"] as $url) {
-        $etag = etagVisit($url)->assertSuccessful()->headers->get('ETag');
+    $url = "/activities/{$activity->id}";
+    $etag = etagVisit($url)->assertSuccessful()->headers->get('ETag');
 
-        $revalidated = etagVisit($url, $etag);
+    $revalidated = etagVisit($url, $etag);
 
-        expect($revalidated->getStatusCode())->toBe(304)
-            ->and($revalidated->getContent())->toBe('');
-    }
+    expect($revalidated->getStatusCode())->toBe(304)
+        ->and($revalidated->getContent())->toBe('');
 });
 
-it('never answers one user with another user\'s 304 on a shared URL', function (): void {
+it('never lets a replayed ETag short-circuit authorization', function (): void {
+    // Every tagged route is now owner-scoped, so the old shared-URL collision
+    // has no subject. The guarantee underneath it is stronger and still
+    // reachable: a 304 must never be the reason a request skips its own
+    // authorization.
     $alice = User::factory()->create();
     $bob = User::factory()->create();
-    etagSeedRun($alice);
-    etagSeedRun($bob);
+    $aliceRun = etagSeedRun($alice);
+    $bobRun = etagSeedRun($bob);
 
     $this->actingAs($alice);
-    $aliceEtag = etagVisit('/history?view=calendar')->assertSuccessful()->headers->get('ETag');
+    $aliceEtag = etagVisit("/activities/{$aliceRun->id}")->assertSuccessful()->headers->get('ETag');
 
     $this->actingAs($bob);
-    $bobResponse = etagVisit('/history?view=calendar', $aliceEtag)->assertSuccessful();
+
+    expect(etagVisit("/activities/{$aliceRun->id}", $aliceEtag)->getStatusCode())->toBe(404);
+
+    $bobResponse = etagVisit("/activities/{$bobRun->id}", $aliceEtag)->assertSuccessful();
 
     expect($bobResponse->getStatusCode())->toBe(200)
         ->and($bobResponse->headers->get('ETag'))->not->toBe($aliceEtag)
@@ -101,39 +107,51 @@ it('misses when the page data moves', function (): void {
     $activity = etagSeedRun($user);
     $this->actingAs($user);
 
-    $etag = etagVisit('/history')->assertSuccessful()->headers->get('ETag');
+    $etag = etagVisit("/activities/{$activity->id}")->assertSuccessful()->headers->get('ETag');
 
     $activity->detail->update(['name' => 'A different evening run']);
 
-    expect(etagVisit('/history', $etag)->assertSuccessful()->getStatusCode())->toBe(200);
+    expect(etagVisit("/activities/{$activity->id}", $etag)->assertSuccessful()->getStatusCode())->toBe(200);
+});
+
+it('leaves /history untagged now that its payload is deferred', function (): void {
+    // The alias was bought for /history's 10 KB page object. Its run list,
+    // calendar grid and recaps now arrive in a deliberately no-store partial,
+    // so a tag there would only ever cover a 1.3 KB shell.
+    $user = User::factory()->create();
+    etagSeedRun($user);
+    $this->actingAs($user);
+
+    expect(etagVisit('/history')->assertSuccessful()->headers->get('ETag'))->toBeNull()
+        ->and(etagVisit('/history?view=calendar')->assertSuccessful()->headers->get('ETag'))->toBeNull();
 });
 
 it('misses when a shared prop moves even though the page data did not', function (): void {
     $user = User::factory()->create();
-    etagSeedRun($user);
+    $activity = etagSeedRun($user);
     $this->actingAs($user);
 
-    $etag = etagVisit('/history?view=calendar')->assertSuccessful()->headers->get('ETag');
+    $etag = etagVisit("/activities/{$activity->id}")->assertSuccessful()->headers->get('ETag');
 
     $user->forceFill(['name' => 'Nama Baru'])->save();
 
-    expect(etagVisit('/history?view=calendar', $etag)->assertSuccessful()->getStatusCode())->toBe(200);
+    expect(etagVisit("/activities/{$activity->id}", $etag)->assertSuccessful()->getStatusCode())->toBe(200);
 });
 
 it('never serves a stale flash from a 304', function (): void {
     $user = User::factory()->create();
-    etagSeedRun($user);
+    $activity = etagSeedRun($user);
     $this->actingAs($user);
 
     $flashed = $this->withSession(['success' => 'Sinkron jalan.'])
-        ->get('/history?view=calendar', ['X-Inertia' => 'true', 'X-Inertia-Version' => currentInertiaVersion()])
+        ->get("/activities/{$activity->id}", ['X-Inertia' => 'true', 'X-Inertia-Version' => currentInertiaVersion()])
         ->assertSuccessful();
 
     expect($flashed->getContent())->toContain('Sinkron jalan.');
 
     $this->flushSession();
 
-    $quiet = etagVisit('/history?view=calendar', $flashed->headers->get('ETag'))->assertSuccessful();
+    $quiet = etagVisit("/activities/{$activity->id}", $flashed->headers->get('ETag'))->assertSuccessful();
 
     expect($quiet->getStatusCode())->toBe(200)
         ->and($quiet->getContent())->not->toContain('Sinkron jalan.');
@@ -156,9 +174,9 @@ it('keeps a partial reload out of every cache and leaves it untagged', function 
 
 it('leaves the initial HTML document untagged', function (): void {
     $user = User::factory()->create();
-    etagSeedRun($user);
+    $activity = etagSeedRun($user);
 
-    $response = $this->actingAs($user)->get('/history?view=calendar')->assertSuccessful();
+    $response = $this->actingAs($user)->get("/activities/{$activity->id}")->assertSuccessful();
 
     expect($response->headers->get('ETag'))->toBeNull();
 });

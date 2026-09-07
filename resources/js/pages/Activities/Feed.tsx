@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Deferred, Head, Link, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 
@@ -22,6 +22,7 @@ import BackLink from '@/components/ui/BackLink';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 
@@ -38,7 +39,7 @@ interface LifetimeStats {
 }
 
 interface RunsIndexProps {
-    runs: ReadonlyArray<RunWithDetail>;
+    runs?: ReadonlyArray<RunWithDetail>;
     notes?: Record<number, RunNote>;
     moods?: Record<number, Mood>;
     rangeFilter: RangeFilterValue;
@@ -51,14 +52,14 @@ interface RunsIndexProps {
     weeksShown?: number;
     /** A run exists behind the oldest week on the page. */
     hasOlderWeeks?: boolean;
-    weeklySnapshots: ReadonlyArray<WeeklySnapshotWithRecap>;
+    weeklySnapshots?: ReadonlyArray<WeeklySnapshotWithRecap>;
 }
 
 /** Week sections each "load older weeks" press adds — mirrors FeedFilters::WEEKS_PER_PAGE. */
 const WEEKS_PER_PAGE = 2;
 
 export default function RunsIndex({
-    runs,
+    runs = [],
     notes = {},
     moods = {},
     rangeFilter,
@@ -67,7 +68,7 @@ export default function RunsIndex({
     lifetime,
     weeksShown = WEEKS_PER_PAGE,
     hasOlderWeeks = false,
-    weeklySnapshots,
+    weeklySnapshots = [],
 }: Readonly<RunsIndexProps>) {
     const buckets = useMemo(() => groupByWeek(runs), [runs]);
     const snapshotsByWeek = useMemo(
@@ -92,40 +93,50 @@ export default function RunsIndex({
                     </div>
                 )}
 
-                {hasRuns && (
-                    <motion.div
-                        key={weekFilter ?? 'all'}
-                        initial="hidden"
-                        animate="visible"
-                        variants={staggerContainer}
-                        className="mt-8 space-y-8"
-                    >
-                        {rangeAutoWidened && (
-                            <RangeWidenedNote rangeFilter={rangeFilter} />
-                        )}
-                        {buckets.map((bucket) => (
+                <Deferred
+                    data={['runs', 'notes', 'moods', 'weeklySnapshots']}
+                    fallback={<SkeletonRows count={4} className="mt-8" />}
+                >
+                    {() =>
+                        hasRuns ? (
                             <motion.div
-                                key={bucket.weekStart}
-                                variants={fadeInUp}
+                                key={weekFilter ?? 'all'}
+                                initial="hidden"
+                                animate="visible"
+                                variants={staggerContainer}
+                                className="mt-8 space-y-8"
                             >
-                                <WeekSection
-                                    bucket={bucket}
-                                    snapshot={
-                                        snapshotsByWeek.get(
-                                            bucket.weekEnding,
-                                        ) ?? null
-                                    }
-                                    notes={notes}
-                                    moods={moods}
-                                />
+                                {rangeAutoWidened && (
+                                    <RangeWidenedNote
+                                        rangeFilter={rangeFilter}
+                                    />
+                                )}
+                                {buckets.map((bucket) => (
+                                    <motion.div
+                                        key={bucket.weekStart}
+                                        variants={fadeInUp}
+                                    >
+                                        <WeekSection
+                                            bucket={bucket}
+                                            snapshot={
+                                                snapshotsByWeek.get(
+                                                    bucket.weekEnding,
+                                                ) ?? null
+                                            }
+                                            notes={notes}
+                                            moods={moods}
+                                        />
+                                    </motion.div>
+                                ))}
+                                {hasOlderWeeks && (
+                                    <LoadOlderWeeks weeksShown={weeksShown} />
+                                )}
                             </motion.div>
-                        ))}
-                        {hasOlderWeeks && (
-                            <LoadOlderWeeks weeksShown={weeksShown} />
-                        )}
-                    </motion.div>
-                )}
-                {!hasRuns && <EmptyState />}
+                        ) : (
+                            <EmptyState />
+                        )
+                    }
+                </Deferred>
             </PageContainer>
         </>
     );

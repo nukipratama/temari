@@ -11,7 +11,6 @@ use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\Temari;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
@@ -46,12 +45,12 @@ it('attaches notes keyed by activity_id when post-run analyses exist', function 
     $user = User::factory()->create();
     $activity = seedRunWithNote($user, 0, Temari::MOOD_ENTENG, 'A strong run');
 
-    $this->actingAs($user)->get('/history')
+    $this->actingAs($user)
+        ->get('/history', inertiaPartialHeaders($this->actingAs($user), '/history', 'History', 'notes'))
         ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('History')
-            ->where("notes.{$activity->id}.oneline", 'A strong run')
-            ->where("notes.{$activity->id}.mood", Temari::MOOD_ENTENG));
+        ->assertJsonPath('component', 'History')
+        ->assertJsonPath("props.notes.{$activity->id}.oneline", 'A strong run')
+        ->assertJsonPath("props.notes.{$activity->id}.mood", Temari::MOOD_ENTENG);
 });
 
 it('omits notes when there are no post-run StoryLines', function (): void {
@@ -62,9 +61,10 @@ it('omits notes when there are no post-run StoryLines', function (): void {
         'trimp_edwards' => 60.0,
     ]);
 
-    $this->actingAs($user)->get('/history')
+    $this->actingAs($user)
+        ->get('/history', inertiaPartialHeaders($this->actingAs($user), '/history', 'History', 'notes'))
         ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->where('notes', []));
+        ->assertJsonPath('props.notes', []);
 });
 
 it('does not leak notes across users', function (): void {
@@ -72,7 +72,8 @@ it('does not leak notes across users', function (): void {
     $b = User::factory()->create();
     seedRunWithNote($a, 0, Temari::MOOD_ENTENG, 'a-only line');
 
-    $this->actingAs($b)->get('/history')
+    $this->actingAs($b)
+        ->get('/history', inertiaPartialHeaders($this->actingAs($b), '/history', 'History', 'notes'))
         ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->where('notes', []));
+        ->assertJsonPath('props.notes', []);
 });

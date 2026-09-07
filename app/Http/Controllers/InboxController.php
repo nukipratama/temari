@@ -39,7 +39,28 @@ final class InboxController extends Controller
         $user = $request->user();
 
         $focusId = $request->integer('item') ?: null;
-        $shown = $this->shownFor($user, $request->integer('shown'), $focusId);
+        $requested = $request->integer('shown');
+
+        /** @var array{notifications: array<int, array<string, mixed>>, shown: int, hasOlder: bool}|null $loadedWindow */
+        $loadedWindow = null;
+        $loadWindow = function () use ($user, $requested, $focusId, &$loadedWindow): array {
+            return $loadedWindow ??= $this->window($user, $requested, $focusId);
+        };
+
+        return Inertia::render('Inbox', [
+            'notifications' => Inertia::defer(fn (): array => $loadWindow()['notifications']),
+            'shown' => Inertia::defer(fn (): int => $loadWindow()['shown']),
+            'hasOlder' => Inertia::defer(fn (): bool => $loadWindow()['hasOlder']),
+            'focusId' => $focusId,
+        ]);
+    }
+
+    /**
+     * @return array{notifications: array<int, array<string, mixed>>, shown: int, hasOlder: bool}
+     */
+    private function window(User $user, int $requested, ?int $focusId): array
+    {
+        $shown = $this->shownFor($user, $requested, $focusId);
 
         $rows = $user->inboxNotifications()
             ->reorder()
@@ -52,15 +73,14 @@ final class InboxController extends Controller
 
         $runStats = $this->runStatsFor($rows);
 
-        return Inertia::render('Inbox', [
+        return [
             'notifications' => $rows
                 ->map(fn (InboxNotification $row): array => $this->present($row, $runStats))
                 ->values()
                 ->all(),
             'shown' => $shown,
             'hasOlder' => $hasOlder,
-            'focusId' => $focusId,
-        ]);
+        ];
     }
 
     /**

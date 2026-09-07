@@ -1,4 +1,4 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Deferred, Head, Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
 import type { InboxItem, SharedProps } from '@/types/inertia';
@@ -10,6 +10,7 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
 import { postJson } from '@/lib/http';
 
@@ -17,11 +18,11 @@ import { postJson } from '@/lib/http';
 const PER_PAGE = 20;
 
 interface InboxProps {
-    notifications: InboxItem[];
+    notifications?: InboxItem[];
     /** Size of the window the server shipped. */
-    shown: number;
+    shown?: number;
     /** Whether anything sits behind that window. */
-    hasOlder: boolean;
+    hasOlder?: boolean;
     /** Deep-link target from a push tap (`/inbox?item=123`). */
     focusId: number | null;
 }
@@ -33,7 +34,7 @@ function sendRead(id: number): Promise<void> {
 }
 
 export default function Inbox({
-    notifications,
+    notifications = [],
     shown,
     hasOlder,
     focusId,
@@ -49,12 +50,16 @@ export default function Inbox({
             ? focusTarget.id
             : null;
 
-    const [readIds, setReadIds] = useState<ReadonlySet<number>>(() =>
-        focusUnreadId === null ? new Set() : new Set([focusUnreadId]),
+    const [readIds, setReadIds] = useState<ReadonlySet<number>>(
+        () => new Set(),
     );
 
+    // The deep-linked row counts as read from the moment it lands, which is a
+    // beat after paint now that the window is deferred.
     const isRead = (item: InboxItem) =>
-        item.read_at !== null || readIds.has(item.id);
+        item.read_at !== null ||
+        readIds.has(item.id) ||
+        item.id === focusUnreadId;
 
     const markRead = (item: InboxItem) => {
         if (isRead(item)) {
@@ -90,48 +95,63 @@ export default function Inbox({
                     <em className="italic text-icon-accent">still here.</em>
                 </PageHero>
 
-                {notifications.length === 0 ? (
-                    <EmptyPanel
-                        face
-                        layout="horizontal"
-                        title="nothing here yet."
-                        body="every run, recap, and unlock lands here on its own. nothing for you to do."
-                        className="mt-4"
-                    />
-                ) : (
-                    <>
-                        <div className="mt-4 flex flex-col gap-3.5">
-                            {groupByBucket(notifications).map(
-                                ({ bucket, items }) => (
-                                    <div key={bucket}>
-                                        <Eyebrow token="small" className="mb-2">
-                                            {BUCKET_LABEL[bucket]}
-                                        </Eyebrow>
-                                        <div className="flex flex-col gap-2.5">
-                                            {items.map((item) => (
-                                                <div
-                                                    key={item.id}
-                                                    id={`inbox-item-${item.id}`}
+                <Deferred
+                    data={['notifications', 'shown', 'hasOlder']}
+                    fallback={<SkeletonRows count={4} className="mt-4" />}
+                >
+                    {() =>
+                        notifications.length === 0 ? (
+                            <EmptyPanel
+                                face
+                                layout="horizontal"
+                                title="nothing here yet."
+                                body="every run, recap, and unlock lands here on its own. nothing for you to do."
+                                className="mt-4"
+                            />
+                        ) : (
+                            <>
+                                <div className="mt-4 flex flex-col gap-3.5">
+                                    {groupByBucket(notifications).map(
+                                        ({ bucket, items }) => (
+                                            <div key={bucket}>
+                                                <Eyebrow
+                                                    token="small"
+                                                    className="mb-2"
                                                 >
-                                                    <InboxRow
-                                                        item={item}
-                                                        read={isRead(item)}
-                                                        focused={
-                                                            item.id === focusId
-                                                        }
-                                                        onOpen={markRead}
-                                                    />
+                                                    {BUCKET_LABEL[bucket]}
+                                                </Eyebrow>
+                                                <div className="flex flex-col gap-2.5">
+                                                    {items.map((item) => (
+                                                        <div
+                                                            key={item.id}
+                                                            id={`inbox-item-${item.id}`}
+                                                        >
+                                                            <InboxRow
+                                                                item={item}
+                                                                read={isRead(
+                                                                    item,
+                                                                )}
+                                                                focused={
+                                                                    item.id ===
+                                                                    focusId
+                                                                }
+                                                                onOpen={
+                                                                    markRead
+                                                                }
+                                                            />
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ),
-                            )}
-                        </div>
+                                            </div>
+                                        ),
+                                    )}
+                                </div>
 
-                        {hasOlder && <LoadOlder shown={shown} />}
-                    </>
-                )}
+                                {hasOlder && <LoadOlder shown={shown!} />}
+                            </>
+                        )
+                    }
+                </Deferred>
             </PageContainer>
         </>
     );

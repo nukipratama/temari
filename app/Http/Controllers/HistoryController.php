@@ -69,9 +69,7 @@ class HistoryController extends Controller
         ['since' => $since, 'hasOlder' => $hasOlderWeeks] = $feed->weekWindow($user, $filters, $weeks);
         $runsQuery = $feed->for($user, $filters, $since);
 
-        // Lazy, not deferred: a closure only skips work on a partial reload
-        // that doesn't name it (Inertia's `useAnalysisTrigger` poll), and still
-        // runs on first paint. Memoized — three props share this query set.
+        // Memoized — three props share this query set.
         /** @var Collection<int, Activity>|null $loadedRuns */
         $loadedRuns = null;
         $loadRuns = function () use ($runsQuery, &$loadedRuns): Collection {
@@ -95,11 +93,11 @@ class HistoryController extends Controller
         $currentWeekEnding = $this->currentWeekEnding();
 
         return [
-            'runs' => fn (): Collection => $loadRuns(),
-            'notes' => fn (): array => $loadNotes()['notes'],
+            'runs' => Inertia::defer(fn (): Collection => $loadRuns()),
+            'notes' => Inertia::defer(fn (): array => $loadNotes()['notes']),
             // Persisted post-run mood per run, so the list mascot matches the
             // backend mood even before the speech (and its note) is ready.
-            'moods' => fn (): array => $loadNotes()['moods'],
+            'moods' => Inertia::defer(fn (): array => $loadNotes()['moods']),
             'rangeFilter' => $filters->range,
             'weekFilter' => $filters->week?->toDateString(),
             'rangeStart' => $filters->rangeStart?->toDateString(),
@@ -109,12 +107,12 @@ class HistoryController extends Controller
             'lifetime' => $this->lifetimeStats->forUser($user),
             'weeksShown' => $weeks,
             'hasOlderWeeks' => $hasOlderWeeks,
-            'weeklySnapshots' => fn (): SupportCollection => $this->weeklySnapshotPayload(
+            'weeklySnapshots' => Inertia::defer(fn (): SupportCollection => $this->weeklySnapshotPayload(
                 $user,
                 $since ?? $filters->rangeStart,
                 $filters->week,
                 $currentWeekEnding,
-            ),
+            )),
         ];
     }
 
@@ -222,22 +220,6 @@ class HistoryController extends Controller
         $gridEnd = $monthEnd->copy()->endOfWeek(Carbon::SUNDAY);
 
         $discriminator = $monthStart->format('Y-m');
-        $recapRow = Analysis::query()
-            ->forSubject(
-                AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
-                $user->id,
-                AnalysisType::MonthlyRecap,
-                $discriminator,
-            )
-            ->first();
-
-        $recapPayload = Analysis::toPayload(
-            $recapRow,
-            AnalysisType::MonthlyRecap,
-            AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
-            $user->id,
-            $discriminator,
-        );
 
         return [
             'month' => $discriminator,
@@ -245,22 +227,45 @@ class HistoryController extends Controller
             'prevMonth' => $monthStart->copy()->subMonthNoOverflow()->format('Y-m'),
             'nextMonth' => $monthStart->copy()->addMonthNoOverflow()->format('Y-m'),
             'todayMonth' => Carbon::today()->format('Y-m'),
-            'cells' => ($this->calendarBuilder)($user, $gridStart, $gridEnd, $monthStart, $monthEnd),
+            'cells' => Inertia::defer(fn (): array => ($this->calendarBuilder)($user, $gridStart, $gridEnd, $monthStart, $monthEnd)),
             'lifetime' => $this->lifetimeStats->forUser($user),
             // The grid's own weeks, so each week row can disclose Temari's
             // weekly recap without leaving the calendar (prototype WeekRow).
-            'weeklySnapshots' => fn (): SupportCollection => $this->weeklySnapshotPayload(
+            'weeklySnapshots' => Inertia::defer(fn (): SupportCollection => $this->weeklySnapshotPayload(
                 $user,
                 $gridStart,
                 null,
                 $this->currentWeekEnding(),
                 $gridEnd,
-            ),
-            'monthlyRecap' => [
-                ...$recapPayload,
-                'is_chain_head' => $discriminator === $this->latestNarratedMonthFor($user),
-                'notification_retry_after_seconds' => Analysis::notificationCooldownRemaining($recapPayload),
-            ],
+            )),
+            'monthlyRecap' => Inertia::defer(fn (): array => $this->monthlyRecapPayload($user, $discriminator)),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function monthlyRecapPayload(User $user, string $discriminator): array
+    {
+        $payload = Analysis::toPayload(
+            Analysis::query()
+                ->forSubject(
+                    AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+                    $user->id,
+                    AnalysisType::MonthlyRecap,
+                    $discriminator,
+                )
+                ->first(),
+            AnalysisType::MonthlyRecap,
+            AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+            $user->id,
+            $discriminator,
+        );
+
+        return [
+            ...$payload,
+            'is_chain_head' => $discriminator === $this->latestNarratedMonthFor($user),
+            'notification_retry_after_seconds' => Analysis::notificationCooldownRemaining($payload),
         ];
     }
 
