@@ -317,3 +317,82 @@ it('lets the race projection move prescribed quality work in both directions', f
     expect($behindGoal)->toBeGreaterThan($aheadOfGoal)
         ->and($aheadOfGoal)->toBe(0);
 });
+
+it('writes race day into the plan and stamps the distance onto the row', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    $raceDate = Carbon::today()->addWeeks(4)->startOfWeek(Carbon::MONDAY)->addDays(6);
+    RaceGoal::factory()->for($user)->create([
+        'race_date' => $raceDate,
+        'distance_m' => 21_097,
+        'completed_at' => null,
+    ]);
+
+    $this->periodizer->regenerate($user);
+
+    $raceRow = PlannedSession::query()->where('user_id', $user->id)
+        ->where('date', $raceDate->toDateString())->firstOrFail();
+
+    expect($raceRow->session_type)->toBe(SessionType::Race)
+        ->and($raceRow->race_distance_m)->toBe(21_097);
+});
+
+it('stamps no race distance on any day that is not the race', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    RaceGoal::factory()->for($user)->create([
+        'race_date' => Carbon::today()->addWeeks(4),
+        'distance_m' => 21_097,
+        'completed_at' => null,
+    ]);
+
+    $this->periodizer->regenerate($user);
+
+    $stamped = PlannedSession::query()->where('user_id', $user->id)
+        ->whereNotNull('race_distance_m')->get();
+
+    expect($stamped)->toHaveCount(1)
+        ->and($stamped->first()->session_type)->toBe(SessionType::Race);
+});
+
+it('plans no race day at all once the athlete clears their race', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    $race = RaceGoal::factory()->for($user)->create([
+        'race_date' => Carbon::today()->addWeeks(4),
+        'distance_m' => 21_097,
+        'completed_at' => null,
+    ]);
+    $this->periodizer->regenerate($user);
+
+    $race->update(['completed_at' => now()]);
+    $this->periodizer->regenerate($user);
+
+    expect(PlannedSession::query()->where('user_id', $user->id)->where('session_type', SessionType::Race)->exists())->toBeFalse()
+        ->and(PlannedSession::query()->where('user_id', $user->id)->whereNotNull('race_distance_m')->exists())->toBeFalse();
+});
+
+it('leaves nothing behind when a near-term race shrinks the horizon, and refills it when the race is cleared', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+
+    $this->periodizer->regenerate($user);
+    $selfScaledEnd = PlannedSession::query()->where('user_id', $user->id)->max('date');
+
+    $race = RaceGoal::factory()->for($user)->create([
+        'race_date' => Carbon::today()->addWeeks(3),
+        'distance_m' => 10_000,
+        'completed_at' => null,
+    ]);
+    $this->periodizer->regenerate($user);
+
+    $raceArcEnd = Carbon::today()->addWeeks(3)->endOfWeek(Carbon::SUNDAY)->toDateString();
+    expect(PlannedSession::query()->where('user_id', $user->id)->max('date'))->toBe($raceArcEnd)
+        // The shrink leaves no row from the longer arc it replaced.
+        ->and(PlannedSession::query()->where('user_id', $user->id)->where('date', '>', $raceArcEnd)->exists())->toBeFalse();
+
+    $race->update(['completed_at' => now()]);
+    $this->periodizer->regenerate($user);
+
+    expect(PlannedSession::query()->where('user_id', $user->id)->max('date'))->toBe($selfScaledEnd);
+});

@@ -27,11 +27,18 @@ use Override;
  * (daily), the morning after a day passes; `skipped` is written earlier,
  * whenever the athlete explicitly excuses the day via `PlanController::update()`.
  *
+ * `race_distance_m` is set only on a {@see SessionType::Race} row, and is what
+ * keeps race day self-describing: `plan:close-finished-races` retires the
+ * {@see RaceGoal} at 00:02, before `plan:score-compliance` grades the day, so a
+ * race read back from the goal alone would already be gone by the time anything
+ * needed its distance.
+ *
  * @property int $id
  * @property int $user_id
  * @property Carbon $date
  * @property PlanPhase $phase
  * @property SessionType $session_type
+ * @property int|null $race_distance_m
  * @property bool $pinned
  * @property bool $skipped
  * @property PlannedSessionStatus $status
@@ -45,6 +52,7 @@ use Override;
     'date',
     'phase',
     'session_type',
+    'race_distance_m',
     'pinned',
     'skipped',
     'status',
@@ -121,6 +129,7 @@ class PlannedSession extends Model
             'date' => 'date:Y-m-d',
             'phase' => PlanPhase::class,
             'session_type' => SessionType::class,
+            'race_distance_m' => 'integer',
             'pinned' => 'boolean',
             'skipped' => 'boolean',
             'status' => PlannedSessionStatus::class,

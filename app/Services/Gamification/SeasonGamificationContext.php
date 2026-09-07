@@ -76,7 +76,7 @@ final readonly class SeasonGamificationContext
             }
 
             $sessionsCompleted++;
-            if (in_array($session->session_type, [SessionType::Tempo, SessionType::Interval], true)) {
+            if (in_array($session->session_type, [SessionType::Tempo, SessionType::Interval, SessionType::Race], true)) {
                 $qualityCompleted++;
             }
             if ($session->session_type === SessionType::Long) {

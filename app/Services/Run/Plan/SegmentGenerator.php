@@ -88,11 +88,26 @@ final class SegmentGenerator
      * distance-band lookup. Pace-independent by construction, so
      * {@see VolumeRedistributor} can sum a week without paces and an athlete
      * with no VDOT estimate still gets a number.
+     *
+     * A `Race` day is the one session sized from outside the athlete's own
+     * training: it asks for the race distance, untouched by the volume
+     * multiplier, because the event is whatever length it is.
+     *
+     * @param  ?float  $raceDistanceM  the active {@see \App\Models\RaceGoal}'s distance, required only on a `Race` day
      */
-    public static function coreKmFor(SessionType $sessionType, bool $isPrimaryEasy, float $longRunBaselineKm, float $volumeMultiplier): float
-    {
+    public static function coreKmFor(
+        SessionType $sessionType,
+        bool $isPrimaryEasy,
+        float $longRunBaselineKm,
+        float $volumeMultiplier,
+        ?float $raceDistanceM = null,
+    ): float {
         if ($sessionType === SessionType::Rest) {
             return 0.0;
+        }
+
+        if ($sessionType === SessionType::Race) {
+            return round(($raceDistanceM ?? 0.0) / 1000.0, 1);
         }
 
         $effectiveLong = $longRunBaselineKm * $volumeMultiplier;
@@ -137,6 +152,11 @@ final class SegmentGenerator
     }
 
     /**
+     * Carries the race DISTANCE rather than the marathon-or-not flag derived
+     * from it: a `Race` day needs the distance itself, and every pace decision
+     * that used the flag can still ask for it.
+     *
+     * @param  ?float  $raceDistanceM  the active {@see \App\Models\RaceGoal}'s distance, or null in self-scaled mode
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces  seconds per kilometre; null when the athlete has no VDOT estimate yet
      * @param  float  $volumeScale  from {@see VolumeRedistributor} — 1.0 outside a redistributed week
      * @return list<SessionSegment>
@@ -144,7 +164,7 @@ final class SegmentGenerator
     public static function generate(
         SessionType $sessionType,
         PlanPhase $phase,
-        bool $isMarathonDistance,
+        ?float $raceDistanceM,
         bool $isPrimaryEasy,
         float $longRunBaselineKm,
         float $volumeMultiplier,
@@ -155,6 +175,14 @@ final class SegmentGenerator
             return [];
         }
 
+        $isMarathonDistance = WeekPlanBuilder::isMarathonDistance($raceDistanceM);
+
+        // The race is the distance it is: a redistributed week may scale the
+        // training around it, never the event itself.
+        if ($sessionType === SessionType::Race) {
+            return self::raceSegments(self::coreKmFor($sessionType, $isPrimaryEasy, $longRunBaselineKm, $volumeMultiplier, $raceDistanceM), $isMarathonDistance, $paces);
+        }
+
         $coreKm = self::coreKmFor($sessionType, $isPrimaryEasy, $longRunBaselineKm, $volumeMultiplier) * $volumeScale;
 
         return match ($sessionType) {
@@ -163,6 +191,20 @@ final class SegmentGenerator
             SessionType::Tempo => self::tempoSegments($phase, $isMarathonDistance, $coreKm, $paces),
             SessionType::Interval => self::intervalSegments($phase, $coreKm, $paces),
         };
+    }
+
+    /**
+     * The race, as one block at the pace the athlete is racing it at, and
+     * nothing else. No warmup is carved out and no cooldown prescribed: a
+     * race-day routine belongs to the athlete, the same reasoning that keeps
+     * a cooldown off every other session (see `docs/decisions/a-session-is-the-whole-outing.md`).
+     *
+     * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
+     * @return list<SessionSegment>
+     */
+    private static function raceSegments(float $km, bool $isMarathonDistance, ?array $paces): array
+    {
+        return [self::block(SegmentKey::Main, $km, $isMarathonDistance ? PaceBand::Marathon : PaceBand::Threshold, $paces)];
     }
 
     /**

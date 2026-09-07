@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Enums\PlanPhase;
+use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
 use App\Models\StoryLine;
 use App\Services\AI\MaterialFingerprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -94,4 +97,40 @@ it('changes when the mood flips', function (): void {
     StoryLine::query()->where('activity_id', $activity->id)->update(['mood' => 'blazing']);
 
     expect(fingerprint($activity->id))->not->toBe($before);
+});
+
+it('re-narrates a race day whose distance changed, and leaves every other row\'s fingerprint untouched', function (): void {
+    $tenK = PlannedSession::factory()->make([
+        'session_type' => SessionType::Race,
+        'phase' => PlanPhase::Taper,
+        'race_distance_m' => 10_000,
+    ]);
+    $half = PlannedSession::factory()->make([
+        'session_type' => SessionType::Race,
+        'phase' => PlanPhase::Taper,
+        'race_distance_m' => 21_097,
+    ]);
+
+    expect(MaterialFingerprint::forPlannedSession($tenK, 16.0))
+        ->not->toBe(MaterialFingerprint::forPlannedSession($half, 16.0));
+});
+
+it('leaves a non-race day fingerprinted exactly as it was before race days existed', function (): void {
+    $session = PlannedSession::factory()->make([
+        'session_type' => SessionType::Long,
+        'phase' => PlanPhase::Build,
+        'skipped' => false,
+        'race_distance_m' => null,
+    ]);
+
+    // Pinned: the digest of the four keys a non-race row has always carried,
+    // ksorted as MaterialFingerprint::digest() does. A fifth key here would
+    // re-narrate every stored row on the next sweep.
+    expect(MaterialFingerprint::forPlannedSession($session, 16.0))
+        ->toBe(hash('xxh128', (string) json_encode([
+            'long_run_km' => 16.0,
+            'phase' => 'build',
+            'session_type' => 'long',
+            'skipped' => false,
+        ])));
 });

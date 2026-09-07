@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\PlanPhase;
+use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -196,4 +197,36 @@ it('still marks an unclamped long day missed when nothing was run', function ():
     expect(PlannedSession::query()->where('user_id', $user->id)->first()->status->value)->toBe('missed');
 
     Carbon::setTestNow();
+});
+
+it('grades race day against the race distance even once the goal behind it has been retired', function (): void {
+    Carbon::setTestNow('2026-08-12');
+    $user = User::factory()->create();
+    $raceDate = Carbon::today()->subDay();
+
+    // plan:close-finished-races runs at 00:02, before this command — by the
+    // time race day is graded the RaceGoal is already retired, so the row's
+    // own race_distance_m is the only thing left that knows the distance.
+    PlannedSession::factory()->for($user)->create([
+        'date' => $raceDate,
+        'phase' => PlanPhase::Taper,
+        'session_type' => SessionType::Race,
+        'race_distance_m' => 10_000,
+    ]);
+
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => $raceDate->copy()->setTime(7, 0),
+        'distance' => 10_000,
+    ]);
+
+    $this->artisan('plan:score-compliance')->assertSuccessful();
+
+    $row = PlannedSession::query()->where('user_id', $user->id)->firstOrFail();
+
+    expect($row->status)->toBe(PlannedSessionStatus::Done)
+        ->and($row->compliance_score)->toBe(100)
+        // The failure this replaces: a 0 km target scored the race "rest day,
+        // ran anyway" instead of grading it.
+        ->and($row->ran_anyway)->toBeFalse();
 });

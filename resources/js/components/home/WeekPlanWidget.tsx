@@ -17,6 +17,7 @@ const SESSION_TYPE_LABEL: Record<string, string> = {
     tempo: 'tempo',
     interval: 'interval',
     rest: 'rest',
+    race: 'race day',
 };
 
 const PHASE_LABEL: Record<string, string> = {
@@ -38,13 +39,15 @@ const STATUS_LABEL: Record<string, string> = {
 
 /** Same shape-per-intensity vocabulary as the frozen prototype's TodayScreen:
  *  quality/hard days read as a flame, easy/long days as a feather, rest as a
- *  bed. This is the day's `session_type`, independent of how it went. */
+ *  bed, and the goal race as the chequered flag it is. This is the day's
+ *  `session_type`, independent of how it went. */
 const TYPE_ICON: Record<string, string> = {
     tempo: 'mdi:fire',
     interval: 'mdi:fire',
     easy: 'mdi:feather',
     long: 'mdi:feather',
     rest: 'mdi:bed',
+    race: 'mdi:flag-checkered',
 };
 
 /** Compliance-v2's six statuses, colored distinctly so "did more than asked"

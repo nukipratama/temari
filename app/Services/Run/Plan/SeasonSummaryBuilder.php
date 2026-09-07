@@ -101,7 +101,7 @@ final readonly class SeasonSummaryBuilder
             $phase = $week['phase'];
             $multiplier = $multipliers[$i];
 
-            $dayRows = $this->weekPlanBuilder->build($weekStart, $phase, $baselineData['sessions_per_week'], [], $raceDistanceM, $isSelfScaled);
+            $dayRows = $this->weekPlanBuilder->build($weekStart, $phase, $baselineData['sessions_per_week'], [], $raceDistanceM, $isSelfScaled, raceDate: $race?->race_date);
             $primaryEasyDate = self::primaryEasyDate($dayRows);
 
             $plannedKm = 0.0;
@@ -112,6 +112,7 @@ final readonly class SeasonSummaryBuilder
                     $date === $primaryEasyDate,
                     $baselineData['long_run_km'],
                     $multiplier,
+                    $raceDistanceM,
                 );
                 if ($row['session_type'] !== SessionType::Rest) {
                     $sessions++;

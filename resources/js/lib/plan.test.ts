@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { SeasonSummaryWeek } from './plan';
 
 import {
+    SESSION_TYPE_ICON,
+    SESSION_TYPE_LABEL,
     clampSummary,
     computeAdherence,
     phasesOf,
@@ -186,5 +188,12 @@ describe('clampSummary', () => {
                 9.1,
             ),
         ).toBe('rest · 0 km');
+    });
+});
+
+describe('race day', () => {
+    it('names and marks race day, so the goal race never reads as an ordinary session', () => {
+        expect(SESSION_TYPE_LABEL.race).toBe('race day');
+        expect(SESSION_TYPE_ICON.race).toBe('mdi:flag-checkered');
     });
 });

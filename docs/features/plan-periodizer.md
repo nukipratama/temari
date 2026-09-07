@@ -3,7 +3,7 @@ title: Plan — deterministic periodizer and the Plan tab
 description: The rules-only training periodizer that fills the Plan tab, its two modes, the render-time readiness clamp, and the render-time volume redistribution
 tags: [feature, run]
 status: living
-reviewed: 2026-08-29
+reviewed: 2026-09-07
 code_refs:
   - app/Services/Run/Plan/Periodizer.php
   - app/Services/Run/Plan/PhaseSchedule.php
@@ -54,7 +54,11 @@ The training instrument's forward half: a rules-only periodizer that fills a per
 - **Race-oriented** ([PhaseSchedule::forRace()](app/Services/Run/Plan/PhaseSchedule.php)): taper length scales with race distance (1 week &le;15&nbsp;km, 2 weeks 15&ndash;25&nbsp;km, 3 weeks &gt;25&nbsp;km). Too little time to build anything (`weeksToRace &le; taperWeeks + 1`) skips straight to a taper-only arc. Otherwise the weeks remaining after the taper split `base 30% / build 45% / peak 25%` (peak and build each floored at 1 week, base absorbs the remainder so the three always sum exactly — no rounding drift). Build ramps volume ~7.5%/week compounding; Peak sits at `build's final multiplier * 0.92`; Taper reduces further along a `-20% / -40% / -60%` curve (the nearest-to-race week always lands on the steepest cut, scaled for shorter tapers) — see [PhaseSchedule::volumeMultipliers()](app/Services/Run/Plan/PhaseSchedule.php). **Every fourth week of the base/build stretch is a scheduled recovery week**, so the ramp never compounds unbroken (five build weeks would otherwise be +33% with nothing absorbing it); Peak and Taper are exempt as reductions already, a ramp shorter than four weeks gets none, and the ramp *resumes* from the level it reached rather than restarting after the dip. Until [[the-plan-follows-the-coaching]] the only deload here was the reactive one below, which fires after monotony or adherence has already slipped.
 - **Self-scaled** ([PhaseSchedule::selfScaled()](app/Services/Run/Plan/PhaseSchedule.php)): no taper/peak exists without a race date to count back from, so it cycles a repeating 3-weeks-build : 1-week-deload mesocycle (deload at `build's final multiplier * 0.65`) indefinitely.
 
-Both modes materialize up to `Periodizer::HORIZON_WEEKS` (12) weeks of rows; a race-oriented arc that resolves to fewer weeks (the plan never extends past race day) simply writes fewer.
+Both modes materialize up to `Periodizer::HORIZON_WEEKS` (12) weeks of rows; a race-oriented arc that resolves to fewer weeks simply writes fewer. A race arc ends with race *week*, not race day.
+
+**Race week is shaped around the race.** [WeekPlanBuilder::raceWeekType()](app/Services/Run/Plan/WeekPlanBuilder.php) overrides the day template for the week the goal race falls in: race day is a [SessionType::Race](app/Enums/SessionType.php), the day before it is rest, and so is every day after it. Until [[the-plan-knows-its-race-day]] the race date reached [PhaseSchedule::forRace()](app/Services/Run/Plan/PhaseSchedule.php) and nowhere else, so race week was laid out as an ordinary tapered week — a Sunday marathon got a long run the day before it and `rest` on the day itself, and a Tuesday 10K got a tempo session ON the race.
+
+A `Race` row carries its own `race_distance_m` ([PlannedSession](app/Models/PlannedSession.php)) rather than reading the goal back at render time: `plan:close-finished-races` retires the `RaceGoal` at 00:02, *before* `plan:score-compliance` grades the day, so the goal is already gone by the time anything needs the distance. That distance is what [SegmentGenerator::coreKmFor()](app/Services/Run/Plan/SegmentGenerator.php) sizes the day from — the one session sized from outside the athlete's own training, and the one the volume redistributor never scales. [ReadinessClamp](app/Services/Run/Plan/ReadinessClamp.php) never downgrades a race at any ceiling.
 
 ## Shared session-structure logic
 

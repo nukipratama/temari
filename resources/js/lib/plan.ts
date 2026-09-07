@@ -105,6 +105,7 @@ export const SESSION_TYPE_LABEL: Record<string, string> = {
     tempo: 'tempo',
     interval: 'interval',
     rest: 'rest',
+    race: 'race day',
 };
 
 export const SESSION_TYPE_ICON: Record<string, string> = {
@@ -113,6 +114,7 @@ export const SESSION_TYPE_ICON: Record<string, string> = {
     tempo: 'mdi:fire',
     interval: 'mdi:fire',
     rest: 'mdi:bed',
+    race: 'mdi:flag-checkered',
 };
 
 export const STATUS_LABEL: Record<string, string> = {

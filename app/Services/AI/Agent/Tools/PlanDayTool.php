@@ -32,7 +32,7 @@ final class PlanDayTool extends NoArgumentTool
 
     public function description(): string
     {
-        return 'The prescribed session for this day: type (easy/long/tempo/interval/rest), '
+        return 'The prescribed session for this day: type (easy/long/tempo/interval/rest/race), '
             .'training phase, and an approximate distance in km. skipped true means the athlete '
             .'has already excused themselves from this day.';
     }
@@ -46,6 +46,7 @@ final class PlanDayTool extends NoArgumentTool
             isPrimaryEasy: false,
             longRunBaselineKm: $baselineData['long_run_km'],
             volumeMultiplier: 1.0,
+            raceDistanceM: $this->session->race_distance_m === null ? null : (float) $this->session->race_distance_m,
         );
 
         return [

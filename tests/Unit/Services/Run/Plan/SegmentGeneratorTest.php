@@ -11,7 +11,7 @@ use App\Services\Run\Plan\SegmentGenerator;
 const PACES = ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240];
 
 it('returns no segments for a rest day', function (): void {
-    expect(SegmentGenerator::generate(SessionType::Rest, PlanPhase::Base, false, false, 16.0, 1.0, PACES))->toBe([]);
+    expect(SegmentGenerator::generate(SessionType::Rest, PlanPhase::Base, null, false, 16.0, 1.0, PACES))->toBe([]);
 });
 
 it('returns no core km for a rest day', function (): void {
@@ -19,8 +19,8 @@ it('returns no core km for a rest day', function (): void {
 });
 
 it('gives an Easy day a single main segment, sized Medium when primary and Short otherwise', function (): void {
-    $primary = SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, false, true, 16.0, 1.0, PACES);
-    $secondary = SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, false, false, 16.0, 1.0, PACES);
+    $primary = SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, true, 16.0, 1.0, PACES);
+    $secondary = SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, false, 16.0, 1.0, PACES);
 
     expect($primary)->toHaveCount(1)
         ->and($primary[0]->key)->toBe(SegmentKey::Main)
@@ -33,7 +33,7 @@ it('gives an Easy day a single main segment, sized Medium when primary and Short
 });
 
 it('gives a Long day a single main segment at Easy pace outside a marathon race-pace phase', function (): void {
-    $segments = SegmentGenerator::generate(SessionType::Long, PlanPhase::Build, true, false, 16.0, 1.0, PACES);
+    $segments = SegmentGenerator::generate(SessionType::Long, PlanPhase::Build, 42_195.0, false, 16.0, 1.0, PACES);
 
     expect($segments)->toHaveCount(1)
         ->and($segments[0]->key)->toBe(SegmentKey::Main)
@@ -43,9 +43,9 @@ it('gives a Long day a single main segment at Easy pace outside a marathon race-
 });
 
 it('switches a Long day to Marathon pace only in Peak/Taper for a marathon-distance race', function (): void {
-    $peakMarathon = SegmentGenerator::generate(SessionType::Long, PlanPhase::Peak, true, false, 16.0, 1.0, PACES);
-    $peakNonMarathon = SegmentGenerator::generate(SessionType::Long, PlanPhase::Peak, false, false, 16.0, 1.0, PACES);
-    $buildMarathon = SegmentGenerator::generate(SessionType::Long, PlanPhase::Build, true, false, 16.0, 1.0, PACES);
+    $peakMarathon = SegmentGenerator::generate(SessionType::Long, PlanPhase::Peak, 42_195.0, false, 16.0, 1.0, PACES);
+    $peakNonMarathon = SegmentGenerator::generate(SessionType::Long, PlanPhase::Peak, null, false, 16.0, 1.0, PACES);
+    $buildMarathon = SegmentGenerator::generate(SessionType::Long, PlanPhase::Build, 42_195.0, false, 16.0, 1.0, PACES);
 
     expect($peakMarathon[0]->paceLabel)->toBe(PaceBand::Marathon)
         ->and($peakNonMarathon[0]->paceLabel)->toBe(PaceBand::Easy)
@@ -53,7 +53,7 @@ it('switches a Long day to Marathon pace only in Peak/Taper for a marathon-dista
 });
 
 it('carves a Tempo day\'s fixed 10min warmup out of its distance, leaving the rest at Threshold', function (): void {
-    $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, false, false, 16.0, 1.0, PACES);
+    $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, null, false, 16.0, 1.0, PACES);
 
     // 16 * 0.65 = 10.4km for the whole outing. The 10min warmup at 360 sec/km
     // shows as 1.7km, leaving 8.7km. Build runs the threshold work as two
@@ -75,7 +75,7 @@ it('carves a Tempo day\'s fixed 10min warmup out of its distance, leaving the re
 
 it('progresses a Tempo day from several blocks to one continuous effort', function (): void {
     $blocks = fn (PlanPhase $phase): int => count(array_filter(
-        SegmentGenerator::generate(SessionType::Tempo, $phase, false, false, 16.0, 1.0, PACES),
+        SegmentGenerator::generate(SessionType::Tempo, $phase, null, false, 16.0, 1.0, PACES),
         fn ($s): bool => $s->key === SegmentKey::Main,
     ));
 
@@ -88,14 +88,14 @@ it('progresses a Tempo day from several blocks to one continuous effort', functi
 it('keeps a Tempo day continuous when it is too small to break up', function (): void {
     // At the long-run floor in a reduced week the threshold work barely exists;
     // splitting it three ways would leave nothing in each block.
-    $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Base, false, false, 3.0, 0.5, PACES);
+    $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Base, null, false, 3.0, 0.5, PACES);
 
     expect(array_filter($segments, fn ($s): bool => $s->key === SegmentKey::Recovery))->toBe([])
         ->and($segments)->toHaveCount(2);
 });
 
 it('spends the whole prescribed distance and no more, so the card and the run agree', function (): void {
-    $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, false, false, 16.0, 1.0, PACES);
+    $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, null, false, 16.0, 1.0, PACES);
 
     $km = array_sum(array_map(
         fn ($s): float => $s->minutes * 60 / $s->paceSecPerKm,
@@ -108,7 +108,7 @@ it('spends the whole prescribed distance and no more, so the card and the run ag
 it('never lets the warmup swallow more than half a session too small to hold it', function (): void {
     // A 3km long-run floor in a reduced taper week: the 12min warmup alone
     // would be 2km of a 0.6km day.
-    $segments = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Taper, false, false, 3.0, 0.5, PACES);
+    $segments = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Taper, null, false, 3.0, 0.5, PACES);
 
     $warmupKm = $segments[0]->minutes * 60 / $segments[0]->paceSecPerKm;
     $dayKm = SegmentGenerator::coreKmFor(SessionType::Interval, false, 3.0, 0.5);
@@ -119,13 +119,13 @@ it('never lets the warmup swallow more than half a session too small to hold it'
 });
 
 it('switches a Tempo day to Marathon pace only in Peak/Taper for a marathon-distance race', function (): void {
-    $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Taper, true, false, 16.0, 1.0, PACES);
+    $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Taper, 42_195.0, false, 16.0, 1.0, PACES);
 
     expect($segments[1]->paceLabel)->toBe(PaceBand::Marathon);
 });
 
 it('does not scale a Tempo day\'s warmup when volumeScale changes, only its main set', function (): void {
-    $scaled = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, false, false, 16.0, 1.0, PACES, volumeScale: 1.3);
+    $scaled = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, null, false, 16.0, 1.0, PACES, volumeScale: 1.3);
 
     // 10.4 * 1.3 = 13.5km outing, less the same fixed 1.7km warmup, and the
     // 11.8km that leaves is split across Build's two threshold blocks.
@@ -136,7 +136,7 @@ it('does not scale a Tempo day\'s warmup when volumeScale changes, only its main
 });
 
 it('builds an Interval day as a warmup then alternating reps and recoveries, with no cooldown', function (): void {
-    $segments = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Build, false, false, 16.0, 1.0, PACES);
+    $segments = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Build, null, false, 16.0, 1.0, PACES);
 
     // 16 * 0.40 = 6.4km outing, less a 2km warmup = 4.4km for the work. A Build
     // rep is 3min (0.75km at 240 sec/km) and its recovery 2min (0.333km at 360),
@@ -158,8 +158,8 @@ it('builds an Interval day as a warmup then alternating reps and recoveries, wit
 });
 
 it('gives Interval days a longer rep and same recovery in Peak than in Build', function (): void {
-    $build = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Build, false, false, 16.0, 1.0, PACES);
-    $peak = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Peak, false, false, 16.0, 1.0, PACES);
+    $build = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Build, null, false, 16.0, 1.0, PACES);
+    $peak = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Peak, null, false, 16.0, 1.0, PACES);
 
     $buildRep = array_first(array_filter($build, fn ($s) => $s->key === SegmentKey::Interval));
     $peakRep = array_first(array_filter($peak, fn ($s) => $s->key === SegmentKey::Interval));
@@ -169,7 +169,7 @@ it('gives Interval days a longer rep and same recovery in Peak than in Build', f
 });
 
 it('gives Interval days shorter reps and longer recovery in Taper, sharpening rather than grinding', function (): void {
-    $segments = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Taper, false, false, 16.0, 1.0, PACES);
+    $segments = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Taper, null, false, 16.0, 1.0, PACES);
 
     $rep = array_first(array_filter($segments, fn ($s) => $s->key === SegmentKey::Interval));
     $recovery = array_first(array_filter($segments, fn ($s) => $s->key === SegmentKey::Recovery));
@@ -179,7 +179,7 @@ it('gives Interval days shorter reps and longer recovery in Taper, sharpening ra
 });
 
 it('falls back to a single rep when no VDOT estimate exists to size the work budget', function (): void {
-    $segments = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Build, false, false, 16.0, 1.0, null);
+    $segments = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Build, null, false, 16.0, 1.0, null);
     $reps = array_values(array_filter($segments, fn ($s) => $s->key === SegmentKey::Interval));
 
     // Every segment's minutes here comes from a fixed table (warmup/cooldown,
@@ -197,7 +197,7 @@ it('falls back to a single rep when no VDOT estimate exists to size the work bud
 
 it('renders a null main-set minutes/pace with no VDOT estimate, keeping fixed warmup/cooldown minutes', function (): void {
     foreach ([SessionType::Easy, SessionType::Long, SessionType::Tempo] as $type) {
-        $segments = SegmentGenerator::generate($type, PlanPhase::Build, false, true, 16.0, 1.0, null);
+        $segments = SegmentGenerator::generate($type, PlanPhase::Build, null, true, 16.0, 1.0, null);
         foreach ($segments as $segment) {
             expect($segment->paceSecPerKm)->toBeNull();
             if ($segment->key === SegmentKey::Main) {
@@ -222,7 +222,7 @@ it('rounds a session\'s segment distances so they add up to the figure on the ca
     // parts each round the same way past the midpoint can't slip through.
     foreach (range(30, 250) as $tenths) {
         $longRunKm = $tenths / 10;
-        $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, false, false, $longRunKm, 1.0, PACES);
+        $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, null, false, $longRunKm, 1.0, PACES);
 
         $shown = round(array_sum(array_map(fn ($s): float => $s->km, $segments)), 1);
         $headline = SegmentGenerator::coreKmFor(SessionType::Tempo, false, $longRunKm, 1.0);
@@ -236,7 +236,7 @@ it('reports what an Interval day actually asks for, which its budget cannot alwa
     // kilometre budget: this is quantisation, not a rounding slip, and it is
     // why prescribedKm() exists rather than the day reporting coreKmFor().
     $paces = ['easy' => 450, 'marathon' => 408, 'threshold' => 378, 'interval' => 354];
-    $segments = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Build, false, false, 9.1, 1.08, $paces);
+    $segments = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Build, null, false, 9.1, 1.08, $paces);
 
     $budget = round(SegmentGenerator::coreKmFor(SessionType::Interval, false, 9.1, 1.08) * 1.0, 1);
     $asked = SegmentGenerator::prescribedKm($segments);
@@ -251,7 +251,7 @@ it('reports a Tempo and an Easy day at exactly their budget', function (): void 
         $longRunKm = $tenths / 10;
 
         foreach ([SessionType::Tempo, SessionType::Easy, SessionType::Long] as $type) {
-            $segments = SegmentGenerator::generate($type, PlanPhase::Build, false, false, $longRunKm, 1.0, PACES);
+            $segments = SegmentGenerator::generate($type, PlanPhase::Build, null, false, $longRunKm, 1.0, PACES);
 
             expect(SegmentGenerator::prescribedKm($segments))
                 ->toBe(SegmentGenerator::coreKmFor($type, false, $longRunKm, 1.0), "{$type->value} at {$longRunKm}");
@@ -260,14 +260,14 @@ it('reports a Tempo and an Easy day at exactly their budget', function (): void 
 });
 
 it('reports no distance at all when no VDOT estimate can size the day', function (): void {
-    $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, false, false, 16.0, 1.0, null);
+    $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, null, false, 16.0, 1.0, null);
 
     expect(SegmentGenerator::prescribedKm($segments))->toBeNull()
         ->and(SegmentGenerator::prescribedKm([]))->toBeNull();
 });
 
 it('leaves a bookend\'s distance null when no VDOT estimate can size it', function (): void {
-    $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, false, false, 16.0, 1.0, null);
+    $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, null, false, 16.0, 1.0, null);
 
     $mainKm = array_sum(array_map(
         fn ($s): float => $s->km ?? 0.0,
@@ -278,4 +278,32 @@ it('leaves a bookend\'s distance null when no VDOT estimate can size it', functi
         ->and($segments[0]->km)->toBeNull()
         // With nothing carved out, the threshold blocks still hold the whole day.
         ->and(round($mainKm, 1))->toBe(SegmentGenerator::coreKmFor(SessionType::Tempo, false, 16.0, 1.0));
+});
+
+it('gives a race day one block at the race distance, untouched by the volume multiplier', function (): void {
+    $segments = SegmentGenerator::generate(SessionType::Race, PlanPhase::Taper, 21_097.0, false, 16.0, 0.5, PACES);
+
+    expect($segments)->toHaveCount(1)
+        ->and($segments[0]->key)->toBe(SegmentKey::Main)
+        ->and($segments[0]->km)->toBe(21.1);
+});
+
+it('races a marathon at marathon pace and anything shorter at threshold', function (): void {
+    $marathon = SegmentGenerator::generate(SessionType::Race, PlanPhase::Taper, 42_195.0, false, 16.0, 1.0, PACES);
+    $tenK = SegmentGenerator::generate(SessionType::Race, PlanPhase::Taper, 10_000.0, false, 16.0, 1.0, PACES);
+
+    expect($marathon[0]->paceLabel)->toBe(PaceBand::Marathon)
+        ->and($tenK[0]->paceLabel)->toBe(PaceBand::Threshold);
+});
+
+it('sizes a race day from the race rather than the training baseline', function (): void {
+    expect(SegmentGenerator::coreKmFor(SessionType::Race, false, 16.0, 1.0, 10_000.0))->toBe(10.0)
+        ->and(SegmentGenerator::coreKmFor(SessionType::Race, false, 99.0, 2.0, 10_000.0))->toBe(10.0);
+});
+
+it('never scales a race by a redistributed week, since the event is the distance it is', function (): void {
+    $full = SegmentGenerator::generate(SessionType::Race, PlanPhase::Taper, 10_000.0, false, 16.0, 1.0, PACES, 1.0);
+    $scaled = SegmentGenerator::generate(SessionType::Race, PlanPhase::Taper, 10_000.0, false, 16.0, 1.0, PACES, 0.5);
+
+    expect($scaled[0]->km)->toBe($full[0]->km);
 });

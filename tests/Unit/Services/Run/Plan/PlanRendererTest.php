@@ -60,7 +60,7 @@ it('dayPayload generates segments fresh from the stored session when there is no
         Carbon::parse('2026-08-01'),
         null,
         [],
-        false,
+        null,
         false,
         20.0,
         1.0,
@@ -84,7 +84,7 @@ it('dayPayload carries the clamp beside today\'s own prescription, never in plac
         'session_type' => SessionType::Long,
         'pinned' => false,
     ]);
-    $clampSegments = SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, false, false, 20.0, 1.0, RENDERER_PACES);
+    $clampSegments = SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, false, 20.0, 1.0, RENDERER_PACES);
     $clamp = [
         'session_type' => SessionType::Easy,
         'segments' => $clampSegments,
@@ -92,7 +92,7 @@ it('dayPayload carries the clamp beside today\'s own prescription, never in plac
         'note' => 'Clamped for low readiness.',
     ];
 
-    $payload = PlanRenderer::dayPayload($todaySession, $today, $clamp, [], false, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
+    $payload = PlanRenderer::dayPayload($todaySession, $today, $clamp, [], null, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
 
     // The clamp is advisory: the stored Long is still what the narrator
     // describes and what SessionMatcher grades, so it stays the payload's
@@ -112,7 +112,7 @@ it('dayPayload carries the clamp beside today\'s own prescription, never in plac
         'session_type' => SessionType::Long,
         'pinned' => false,
     ]);
-    $unaffected = PlanRenderer::dayPayload($tomorrowSession, $today, $clamp, [], false, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
+    $unaffected = PlanRenderer::dayPayload($tomorrowSession, $today, $clamp, [], null, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
 
     expect($unaffected['session_type'])->toBe('long')
         ->and($unaffected['clamp'])->toBeNull();
@@ -126,8 +126,8 @@ it('dayPayload applies a redistributed volume scale for a non-today day', functi
         'pinned' => false,
     ]);
 
-    $unscaled = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, [], false, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
-    $scaled = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, ['2026-08-12' => 0.5], false, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
+    $unscaled = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, [], null, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
+    $scaled = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, ['2026-08-12' => 0.5], null, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
 
     expect($scaled['distance_km'])->toBe(round($unscaled['distance_km'] * 0.5, 1));
 });
@@ -140,7 +140,7 @@ it('dayPayload returns no segments and a null distance_km for a rest day', funct
         Carbon::parse('2026-08-01'),
         null,
         [],
-        false,
+        null,
         false,
         20.0,
         1.0,
@@ -155,7 +155,7 @@ it('dayPayload returns no segments and a null distance_km for a rest day', funct
 it('dayPayload still fills distance_km with no VDOT estimate yet — only segment minutes go null', function (): void {
     $session = PlannedSession::factory()->make(['date' => '2026-08-10', 'phase' => PlanPhase::Build, 'session_type' => SessionType::Easy]);
 
-    $payload = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-01'), null, [], false, true, 20.0, 1.0, null, PlannedSessionStatus::Planned);
+    $payload = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-01'), null, [], null, true, 20.0, 1.0, null, PlannedSessionStatus::Planned);
 
     expect($payload['segments'][0]['minutes'])->toBeNull()
         ->and($payload['distance_km'])->toBe(13.0); // 20.0 * 0.65 (isPrimaryEasy=true), pace-independent
@@ -173,7 +173,7 @@ it('dayPayload reports an Interval day at what its reps add up to, not at its bu
         Carbon::parse('2026-08-01'),
         null,
         [],
-        false,
+        null,
         false,
         20.0,
         1.0,
@@ -201,7 +201,7 @@ it('dayPayload falls back to the budget when no VDOT estimate sizes the day', fu
         Carbon::parse('2026-08-01'),
         null,
         [],
-        false,
+        null,
         false,
         20.0,
         1.0,
@@ -210,4 +210,30 @@ it('dayPayload falls back to the budget when no VDOT estimate sizes the day', fu
     );
 
     expect($payload['distance_km'])->toBe(SegmentGenerator::coreKmFor(SessionType::Interval, false, 20.0, 1.0));
+});
+
+it('dayPayload puts the race on the card at its own distance, whatever the training baseline says', function (): void {
+    $session = PlannedSession::factory()->make([
+        'date' => '2026-08-10',
+        'phase' => PlanPhase::Taper,
+        'session_type' => SessionType::Race,
+        'race_distance_m' => 21_097,
+    ]);
+
+    $payload = PlanRenderer::dayPayload(
+        $session,
+        Carbon::parse('2026-08-01'),
+        null,
+        ['2026-08-10' => 0.5],
+        null,
+        false,
+        20.0,
+        1.0,
+        RENDERER_PACES,
+        PlannedSessionStatus::Planned,
+    );
+
+    expect($payload['session_type'])->toBe('race')
+        ->and($payload['distance_km'])->toBe(21.1)
+        ->and($payload['segments'])->toHaveCount(1);
 });
