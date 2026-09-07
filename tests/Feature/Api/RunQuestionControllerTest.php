@@ -196,15 +196,16 @@ it('serves the demo even while generation is paused, since it never bills', func
 // ── Pause + rate limit ──────────────────────────────────────────────────────
 
 it('answers a real question rule-based when only the cost ceiling stops it', function (): void {
+    $user = User::factory()->create();
     config([
-        'azure_openai.daily_cost_ceiling' => 1.0,
+        'azure_openai.daily_cost_ceiling_per_user' => 1.0,
         'azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]],
     ]);
     TokenUsage::query()->create([
+        'user_id' => $user->id,
         'kind' => 'run_question', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
         'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
     ]);
-    $user = User::factory()->create();
     $activity = runFor($user, ['stream_summary' => ['hr_drift_bpm' => 6.4]]);
 
     $this->actingAs($user)

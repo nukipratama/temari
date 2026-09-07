@@ -61,10 +61,17 @@ return [
         'nuki-5.4-mini' => ['input_per_1m' => 0.75, 'cached_input_per_1m' => 0.075, 'output_per_1m' => 4.50],
     ],
 
-    // USD/day spend ceiling, on by default. Once today's estimated spend exceeds
-    // it, AnalysisService stops dispatching to the LLM and serves narration from
-    // the deterministic rule-based filler until midnight resets the daily cost.
-    'daily_cost_ceiling' => env('AZURE_OPENAI_DAILY_COST_CEILING') !== null
-        ? (float) env('AZURE_OPENAI_DAILY_COST_CEILING')
-        : 5.00,
+    // USD/day spend ceiling for a SINGLE athlete, on by default. Once their own
+    // estimated spend today exceeds it, AnalysisService stops dispatching to the
+    // LLM for them and serves their narration from the deterministic rule-based
+    // filler until midnight resets the daily cost. Everyone else is unaffected.
+    //
+    // This is the only enforced ceiling. A shared pool used to sit above it, but
+    // it meant the heaviest athlete on a given day spent the whole budget and
+    // *everyone* silently degraded, which is the failure a ceiling is supposed to
+    // prevent. The total bill is bounded by this figure times the number of
+    // athletes, which /devtools/ai-usage reports so the aggregate stays visible.
+    'daily_cost_ceiling_per_user' => env('AZURE_OPENAI_DAILY_COST_CEILING_PER_USER') !== null
+        ? (float) env('AZURE_OPENAI_DAILY_COST_CEILING_PER_USER')
+        : 1.00,
 ];

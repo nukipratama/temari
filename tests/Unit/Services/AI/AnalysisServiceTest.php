@@ -40,13 +40,14 @@ beforeEach(function (): void {
     $this->service = app(AnalysisService::class);
 });
 
-/** Push today's estimated spend to $2.50, over a $1.00 ceiling. */
-function breachTheCeiling(): void
+/** Push ONE athlete's estimated spend to $2.50, over a $1.00 per-athlete ceiling. */
+function breachTheCeilingFor(int $userId): void
 {
-    config(['azure_openai.daily_cost_ceiling' => 1.0]);
+    config(['azure_openai.daily_cost_ceiling_per_user' => 1.0]);
     config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
 
     TokenUsage::query()->create([
+        'user_id' => $userId,
         'kind' => 'briefing', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
         'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
     ]);
@@ -413,9 +414,9 @@ it('does not dispatch when Azure config is missing', function (): void {
 });
 
 it('serves rule-based content instead of dispatching once the daily ceiling is exceeded', function (): void {
-    breachTheCeiling();
-
     $snap = WeeklySnapshot::factory()->create(['runs' => 3, 'distance_km' => 21.0]);
+    breachTheCeilingFor($snap->user_id);
+
     $row = $this->service->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
@@ -459,15 +460,49 @@ it('leaves the row Pending when Azure is unconfigured, not degraded', function (
         ->and($this->service->costCeilingDegraded())->toBeFalse();
 });
 
+it('degrades only the athlete who spent, and leaves everyone else billing normally', function (): void {
+    $heavy = WeeklySnapshot::factory()->create();
+    $bystander = WeeklySnapshot::factory()->create();
+    breachTheCeilingFor($heavy->user_id);
+
+    $heavyRow = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $heavy->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+    $bystanderRow = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $bystander->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    // The whole reason the ceiling is per athlete: a shared pool let the
+    // heaviest athlete of the day silently degrade everyone else's narration.
+    expect($heavyRow->status)->toBe(AnalysisStatus::Done)
+        ->and($bystanderRow->status)->toBe(AnalysisStatus::Queued)
+        ->and($this->service->costCeilingDegraded($heavy->user_id))->toBeTrue()
+        ->and($this->service->costCeilingDegraded($bystander->user_id))->toBeFalse();
+    Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 1);
+});
+
+it('never reports a spent athlete as a global pause, since nothing shared has stopped', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    breachTheCeilingFor($snap->user_id);
+
+    expect($this->service->generationPaused($snap->user_id))->toBeTrue()
+        ->and($this->service->generationPaused())->toBeFalse()
+        ->and($this->service->pauseReason())->toBeNull();
+});
+
 it('leaves the row Pending when a breached budget sits behind a tripped config breaker', function (): void {
-    breachTheCeiling();
+    $snap = WeeklySnapshot::factory()->create();
+    breachTheCeilingFor($snap->user_id);
     config(['azure_openai.uri' => 'https://x.openai.azure.com/x', 'azure_openai.api_key' => 'wrong-key']);
     $breaker = app(AzureConfigCircuitBreaker::class);
     for ($i = 0; $i < 3; $i++) {
         $breaker->recordFailure();
     }
 
-    $snap = WeeklySnapshot::factory()->create();
     $row = $this->service->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
@@ -487,7 +522,7 @@ it('degrades every row of a group, and never overwrites one already billed for',
         'analysis_type' => AnalysisType::RunInsight,
         'discriminator' => null,
     ]);
-    breachTheCeiling();
+    breachTheCeilingFor($activity->user_id);
 
     $this->service->requestActivityGroup($activity);
 
@@ -511,7 +546,7 @@ it('leaves a Failed row Failed past the ceiling while its Pending sibling degrad
         'analysis_type' => AnalysisType::RunInsight,
         'discriminator' => null,
     ]);
-    breachTheCeiling();
+    breachTheCeilingFor($activity->user_id);
 
     $this->service->requestActivityGroup($activity);
 
@@ -535,9 +570,9 @@ it('leaves a Failed row Failed past the ceiling while its Pending sibling degrad
 
 it('records the trip time and the degraded-fill count for /ai-usage', function (): void {
     $this->freezeTime();
-    breachTheCeiling();
 
     foreach (WeeklySnapshot::factory()->count(2)->create() as $snap) {
+        breachTheCeilingFor($snap->user_id);
         $this->service->request(
             subjectOrType: WeeklySnapshot::class,
             subjectId: $snap->id,
@@ -551,8 +586,8 @@ it('records the trip time and the degraded-fill count for /ai-usage', function (
 });
 
 it('does not degrade a staged row under withoutDispatching', function (): void {
-    breachTheCeiling();
     $snap = WeeklySnapshot::factory()->create();
+    breachTheCeilingFor($snap->user_id);
 
     $this->service->withoutDispatching(function () use ($snap): void {
         $row = $this->service->request(
@@ -562,12 +597,12 @@ it('does not degrade a staged row under withoutDispatching', function (): void {
         );
 
         expect($row->status)->toBe(AnalysisStatus::Pending)
-            ->and($this->service->costCeilingDegraded())->toBeFalse();
+            ->and($this->service->costCeilingDegraded($snap->user_id))->toBeFalse();
     });
 });
 
 it('still dispatches when today\'s LLM cost is under the daily ceiling', function (): void {
-    config(['azure_openai.daily_cost_ceiling' => 100.0]);
+    config(['azure_openai.daily_cost_ceiling_per_user' => 100.0]);
     config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
 
     TokenUsage::query()->create([
@@ -1082,10 +1117,6 @@ it('names a reason for every stop that pauses generation', function (Closure $st
         fn () => config(['azure_openai.uri' => '', 'azure_openai.api_key' => '']),
         'unconfigured',
     ],
-    'daily cost ceiling breached' => [
-        breachTheCeiling(...),
-        'cost_ceiling',
-    ],
 ]);
 
 it('reports no reason while generation is running', function (): void {
@@ -1173,10 +1204,39 @@ it('requestRuleBased with refillDone:false leaves an already-Done row untouched'
     expect($row->content)->toBe('original recap, already billed');
 });
 
-it('runs the daily cost aggregate once per scope no matter how many rows it dispatches', function (): void {
-    config(['azure_openai.daily_cost_ceiling' => 100.0]);
+it('runs the daily cost aggregate once per scope no matter how many rows one athlete dispatches', function (): void {
+    config(['azure_openai.daily_cost_ceiling_per_user' => 100.0]);
+    config(['azure_openai.daily_cost_ceiling_per_user' => 50.0]);
     config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
 
+    $user = User::factory()->create();
+    $snaps = WeeklySnapshot::factory()->for($user)->count(4)->create();
+
+    $aggregates = 0;
+    DB::listen(function (QueryExecuted $query) use (&$aggregates): void {
+        if (str_contains($query->sql, 'ai_token_usages')) {
+            $aggregates++;
+        }
+    });
+
+    foreach ($snaps as $snap) {
+        $this->service->request(
+            subjectOrType: WeeklySnapshot::class,
+            subjectId: $snap->id,
+            type: AnalysisType::WeeklyRecap,
+        );
+    }
+
+    // This athlete's slice once, not once per row.
+    expect($aggregates)->toBe(1);
+    Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 4);
+});
+
+it('reads each athlete\'s slice once, so a scope touching several does not re-read one of them', function (): void {
+    config(['azure_openai.daily_cost_ceiling_per_user' => 100.0]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
+
+    // Each snapshot brings its own athlete, as a command looping them would.
     $snaps = WeeklySnapshot::factory()->count(4)->create();
 
     $aggregates = 0;
@@ -1194,12 +1254,11 @@ it('runs the daily cost aggregate once per scope no matter how many rows it disp
         );
     }
 
-    expect($aggregates)->toBe(1);
-    Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 4);
+    expect($aggregates)->toBe(4);
 });
 
 it('re-reads the ceiling in a fresh scope, so a memo never outlives its request or job', function (): void {
-    config(['azure_openai.daily_cost_ceiling' => 100.0]);
+    config(['azure_openai.daily_cost_ceiling_per_user' => 100.0]);
     config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
 
     $aggregates = 0;
@@ -1230,10 +1289,9 @@ it('re-reads the ceiling in a fresh scope, so a memo never outlives its request 
 });
 
 it('honours a ceiling that is already breached when the scope starts', function (): void {
-    breachTheCeiling();
-
     $snaps = WeeklySnapshot::factory()->count(3)->create();
     foreach ($snaps as $snap) {
+        breachTheCeilingFor($snap->user_id);
         $row = $this->service->request(
             subjectOrType: WeeklySnapshot::class,
             subjectId: $snap->id,
@@ -1243,11 +1301,11 @@ it('honours a ceiling that is already breached when the scope starts', function 
     }
 
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
-    expect($this->service->generationPaused())->toBeTrue();
+    expect($this->service->generationPaused($snaps->last()->user_id))->toBeTrue();
 });
 
 it('keeps withoutDispatching suppressing after the memo is already warm', function (): void {
-    config(['azure_openai.daily_cost_ceiling' => 100.0]);
+    config(['azure_openai.daily_cost_ceiling_per_user' => 100.0]);
 
     $warm = WeeklySnapshot::factory()->create();
     $this->service->request(

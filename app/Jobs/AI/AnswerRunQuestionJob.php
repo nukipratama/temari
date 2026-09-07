@@ -63,7 +63,7 @@ class AnswerRunQuestionJob implements ShouldQueue
             return;
         }
 
-        if ($service->costCeilingDegraded()) {
+        if ($service->costCeilingDegraded($activity->user_id)) {
             $question->update([
                 'status' => AnalysisStatus::Done,
                 'answer' => RuleBasedRunAnswer::for($detail, $question->question),
@@ -74,7 +74,7 @@ class AnswerRunQuestionJob implements ShouldQueue
             return;
         }
 
-        if ($service->generationPaused()) {
+        if ($service->generationPaused($activity->user_id)) {
             $this->settleFailed($question, self::PAUSED_ERROR);
 
             return;

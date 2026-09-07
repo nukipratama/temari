@@ -15,6 +15,24 @@ code_refs:
 
 **Status:** Accepted (decided 2026-08-14)
 
+> **2026-09-07 — the ceiling is now PER ATHLETE, not a shared pool. The decision below
+> is unchanged: it still degrades to rule-based rather than pausing.** What changed is
+> blast radius. `azure_openai.daily_cost_ceiling` was one budget shared by everyone, so
+> the heaviest athlete on a given day spent it and *every other athlete* silently
+> degraded — the failure a ceiling exists to prevent. It is replaced by
+> `azure_openai.daily_cost_ceiling_per_user` (default **$1.00/athlete/day**), the only
+> enforced ceiling; `ai_token_usages` already carried `user_id`, so the per-athlete sum
+> is the same query with one more predicate.
+>
+> Two consequences. The total bill is now bounded by that figure times the athlete
+> count rather than by a single number, so `/devtools/ai-usage` reports the combined
+> figure and the athlete count beside today's spend — derived and visible, never
+> enforced. And an athlete exhausting their own slice is **no longer a global pause**:
+> `pauseReason()` cannot return `cost_ceiling`, the /pulse card no longer has that
+> state, and the maintainer alert for it is gone. One athlete running out is ordinary
+> operation, not an incident; the trip is still recorded per day by `CostCeilingLedger`
+> and shown on `/devtools/ai-usage`.
+
 > **2026-09-03 — one path below has changed, the decision has not.** The operator console
 > moved behind a single `/devtools` prefix: `/ai-usage` is now `/devtools/ai-usage`,
 > `/pulse` is `/devtools/pulse` and `/horizon` is `/devtools/horizon`. The gate on them

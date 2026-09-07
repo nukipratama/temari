@@ -9,6 +9,8 @@ function budget(overrides: Partial<Budget> = {}): Budget {
     return {
         todayCost: 0.02,
         dailyCeiling: 0.1,
+        perUserCeiling: 0.05,
+        athletes: 2,
         currency: 'USD',
         trippedAt: null,
         degradedFills: 0,
@@ -52,7 +54,7 @@ describe('BudgetGauge', () => {
         render(<BudgetGauge budget={budget({ todayCost: 0.15 })} />);
 
         expect(
-            screen.getByText('Over the daily limit by $0.05.'),
+            screen.getByText(/Past the combined figure by \$0\.05/),
         ).toBeInTheDocument();
     });
 
@@ -110,5 +112,32 @@ describe('BudgetGauge', () => {
         );
 
         expect(screen.getByText('Rp 1,000.00')).toBeInTheDocument();
+    });
+
+    it('names the enforced per-athlete ceiling, so the combined figure is not read as a limit', () => {
+        render(
+            <BudgetGauge
+                budget={budget({
+                    perUserCeiling: 1,
+                    athletes: 5,
+                    dailyCeiling: 5,
+                })}
+            />,
+        );
+
+        expect(screen.getByText(/\$1\.00 per athlete/)).toBeInTheDocument();
+        expect(screen.getByText(/5 athletes/)).toBeInTheDocument();
+        expect(screen.getByText(/not a limit of its own/)).toBeInTheDocument();
+    });
+
+    it('says nothing about athletes when no ceiling is configured', () => {
+        render(
+            <BudgetGauge
+                budget={budget({ dailyCeiling: null, perUserCeiling: null })}
+            />,
+        );
+
+        expect(screen.queryByText(/per athlete/)).not.toBeInTheDocument();
+        expect(screen.getByText('No daily limit set.')).toBeInTheDocument();
     });
 });

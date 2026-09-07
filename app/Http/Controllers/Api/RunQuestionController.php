@@ -70,13 +70,13 @@ class RunQuestionController extends Controller
             return $this->created($this->ruleBasedRow($user, $activity, $question, $detail));
         }
 
-        if ($service->costCeilingDegraded()) {
+        if ($service->costCeilingDegraded($user->id)) {
             $ledger->recordDegradedFill();
 
             return $this->created($this->ruleBasedRow($user, $activity, $question, $detail));
         }
 
-        if ($service->generationPaused()) {
+        if ($service->generationPaused($user->id)) {
             return response()->json(['error' => 'generation_paused'], 409);
         }
 

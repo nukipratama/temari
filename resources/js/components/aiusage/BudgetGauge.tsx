@@ -5,8 +5,15 @@ import ProgressBar from '@/components/ui/ProgressBar';
 import { formatCost } from '@/pages/AiUsage/helpers';
 
 export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
-    const { todayCost, dailyCeiling, currency, trippedAt, degradedFills } =
-        budget;
+    const {
+        todayCost,
+        dailyCeiling,
+        perUserCeiling,
+        athletes,
+        currency,
+        trippedAt,
+        degradedFills,
+    } = budget;
     const trippedTime = trippedAt?.slice(11, 16);
     const hasCeiling = dailyCeiling !== null && dailyCeiling > 0;
     const ratio = hasCeiling ? todayCost / dailyCeiling : 0;
@@ -50,10 +57,20 @@ export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
                 <p className="mt-3 text-xs text-text-3">No daily limit set.</p>
             )}
 
+            {hasCeiling && perUserCeiling !== null && (
+                <p className="mt-2 text-xs text-text-3">
+                    {formatCost(perUserCeiling, currency)} per athlete, enforced
+                    individually · {athletes}{' '}
+                    {athletes === 1 ? 'athlete' : 'athletes'}. The combined
+                    figure is the sum of those, not a limit of its own.
+                </p>
+            )}
+
             {overBudget && (
                 <p className="mt-2 text-xs font-semibold text-mood-gassed-ink">
-                    Over the daily limit by{' '}
-                    {formatCost(todayCost - dailyCeiling, currency)}.
+                    Past the combined figure by{' '}
+                    {formatCost(todayCost - dailyCeiling, currency)} — spend
+                    predating the current ceiling, or an athlete since removed.
                 </p>
             )}
 

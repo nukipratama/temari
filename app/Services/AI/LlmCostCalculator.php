@@ -59,11 +59,16 @@ class LlmCostCalculator
     /**
      * Total USD cost of today's ai_token_usages rows (analytics connection),
      * grouped by deployment so each group bills against its own rate.
+     *
+     * `$userId` scopes the sum to one athlete's spend. Rows carry `user_id`
+     * already, so this is the same query with one more predicate — what makes a
+     * per-athlete budget possible without any new bookkeeping.
      */
-    public function dailyCost(): float
+    public function dailyCost(?int $userId = null): float
     {
         $rows = DB::connection('analytics')->table('ai_token_usages')
             ->whereBetween('created_at', [Carbon::today()->startOfDay(), Carbon::today()->endOfDay()])
+            ->when($userId !== null, fn ($query) => $query->where('user_id', $userId))
             ->selectRaw('model, SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, SUM(cached_tokens) as cached')
             ->groupBy('model')
             ->get();

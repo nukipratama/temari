@@ -89,15 +89,16 @@ it('refuses to bill while generation is paused, and says so on the row', functio
 });
 
 it('serves the deterministic answer when the daily cost ceiling is the only stop', function (): void {
+    $row = questionRow();
     config([
-        'azure_openai.daily_cost_ceiling' => 1.0,
+        'azure_openai.daily_cost_ceiling_per_user' => 1.0,
         'azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]],
     ]);
     TokenUsage::query()->create([
+        'user_id' => $row->user_id,
         'kind' => 'run_question', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
         'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
     ]);
-    $row = questionRow();
 
     $narrator = Mockery::mock(RunQuestionNarrator::class);
     $narrator->shouldNotReceive('generate');
