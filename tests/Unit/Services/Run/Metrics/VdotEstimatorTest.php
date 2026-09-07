@@ -227,3 +227,53 @@ it('never lets the quality anchor fall below the endurance one', function (): vo
 
     expect($result['quality_vdot'])->toBeGreaterThanOrEqual($result['vdot']);
 });
+
+it('will not let a lone short record establish the quality anchor', function (): void {
+    // A 1km "record" is often a closing surge inside an easy run. With nothing
+    // sustained beside it there is nothing for the minimum to be conservative
+    // against, so quality work falls back to the endurance anchor.
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create([
+        'category' => 'half_marathon',
+        'value_sec' => 8_845.0,
+        'set_at' => Carbon::today()->subMonths(4),
+    ]);
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '1km',
+        'value_sec' => 210.0,
+        'set_at' => Carbon::today()->subWeek(),
+    ]);
+
+    $result = $this->estimator->estimate($user);
+
+    expect($result['quality_vdot'])->toBe($result['vdot'])
+        ->and($result['quality_source'])->toBeNull();
+});
+
+it('still lets a short record pull the quality anchor down when sustained evidence sits beside it', function (): void {
+    // The prod shape: a 5km time trial plus a 1km surge from an easy run. The
+    // surge implies the LOWER vdot, so the minimum keeps it — dropping it
+    // would make quality paces faster, not safer.
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create([
+        'category' => 'half_marathon',
+        'value_sec' => 8_845.0,
+        'set_at' => Carbon::today()->subMonths(4),
+    ]);
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1_675.0,
+        'set_at' => Carbon::today()->subWeek(),
+    ]);
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '1km',
+        'value_sec' => 309.0,
+        'set_at' => Carbon::today()->subWeeks(2),
+    ]);
+
+    $result = $this->estimator->estimate($user);
+
+    expect($result['quality_source']['source_category'])->toBe('1km')
+        ->and($result['quality_vdot'])->toEqualWithDelta(31.9, 0.3)
+        ->and($result['quality_vdot'])->toBeGreaterThan($result['vdot']);
+});

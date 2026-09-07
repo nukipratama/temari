@@ -49,6 +49,16 @@ class VdotEstimator
     public const float QUALITY_MAX_METERS = 10_000.0;
 
     /**
+     * A record shorter than this is a few minutes of work, and is often a
+     * closing surge inside an easy run rather than an effort. It may still
+     * refine the quality anchor, since the minimum keeps whichever evidence is
+     * most conservative, but it cannot establish one on its own: an athlete
+     * whose only recent short record is a sprint would otherwise have 30-minute
+     * tempo work prescribed from three minutes of running.
+     */
+    public const float QUALITY_MIN_METERS = 3_000.0;
+
+    /**
      * `vdot` anchors endurance work and takes the minimum across every category
      * in the window, so an easy or long pace never outruns a proven distance.
      * `quality_vdot` anchors threshold and interval work. It reads the same
@@ -80,10 +90,16 @@ class VdotEstimator
             return null;
         }
 
-        $quality = $this->lowestVdot($prs->filter(
+        $qualitySlice = $prs->filter(
             static fn (PersonalRecord $pr): bool => $pr->set_at->greaterThanOrEqualTo($qualityCutoff)
                 && ($pr->category->distanceMeters() ?? INF) <= self::QUALITY_MAX_METERS,
-        ));
+        );
+
+        $sustained = $qualitySlice->contains(
+            static fn (PersonalRecord $pr): bool => ($pr->category->distanceMeters() ?? 0.0) >= self::QUALITY_MIN_METERS,
+        );
+
+        $quality = $sustained ? $this->lowestVdot($qualitySlice) : null;
 
         $split = $quality !== null && $quality['vdot'] > $result['vdot'];
 
