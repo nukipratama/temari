@@ -168,10 +168,10 @@ final readonly class PlanAdapter
      */
     private function previousWeekAdherencePct(User $user, Carbon $weekStart): int
     {
-        $previousStart = $weekStart->copy()->subWeek();
+        [$previousStart, $previousEnd] = self::previousWeekBounds($weekStart);
         $scores = PlannedSession::query()
             ->where('user_id', $user->id)
-            ->whereBetween('date', [$previousStart->toDateString(), $previousStart->copy()->addDays(6)->toDateString()])
+            ->whereBetween('date', [$previousStart->toDateString(), $previousEnd->toDateString()])
             ->whereNotIn('status', [PlannedSessionStatus::Planned, PlannedSessionStatus::Skip])
             ->whereNotNull('compliance_score')
             ->pluck('compliance_score');
@@ -197,8 +197,7 @@ final readonly class PlanAdapter
      */
     private function previousWeekRaggedDays(User $user, Carbon $weekStart): int
     {
-        $previousStart = $weekStart->copy()->subWeek();
-        $previousEnd = $previousStart->copy()->addDays(6);
+        [$previousStart, $previousEnd] = self::previousWeekBounds($weekStart);
 
         $prescribed = PlannedSession::query()
             ->where('user_id', $user->id)
@@ -238,6 +237,16 @@ final readonly class PlanAdapter
             SessionType::Long, SessionType::Tempo, SessionType::Interval => ($summary->decouplingPct() ?? 0.0) > self::HIGH_DECOUPLING,
             SessionType::Rest, SessionType::Race => false,
         };
+    }
+
+    /**
+     * @return array{0: Carbon, 1: Carbon} last week's [start, end] dates
+     */
+    private static function previousWeekBounds(Carbon $weekStart): array
+    {
+        $previousStart = $weekStart->copy()->subWeek();
+
+        return [$previousStart, $previousStart->copy()->addDays(6)];
     }
 
     private function raceGapRatio(User $user, ?RaceGoal $race): ?float
