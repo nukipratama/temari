@@ -45,6 +45,11 @@ final readonly class AiProps
      * (that stays maintainer-only via the Telegram alert + /devtools/ai-usage). Cached
      * globally for a short window since it fires on every page load; guests never
      * see it, so the check is skipped for them.
+     *
+     * Deliberately still the GLOBAL question, not this athlete's. An athlete past
+     * their own per-user ceiling has narration served from the rule-based filler,
+     * which reads normally — "Temari is resting" would be a false explanation for
+     * a screen that is filled in, and the cache key is global besides.
      */
     private function aiPausedFor(?User $user): bool
     {

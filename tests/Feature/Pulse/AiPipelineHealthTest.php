@@ -7,6 +7,7 @@ use App\Models\Activity;
 use App\Livewire\Pulse\AiPipelineHealth;
 use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
+use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
@@ -127,17 +128,22 @@ it('shows AI generation as paused when the config circuit breaker is tripped', f
         ->assertSee('paused: check API key / base URL');
 });
 
-it('shows AI generation as paused when the daily cost ceiling is hit', function (): void {
-    config(['azure_openai.daily_cost_ceiling' => 1.0]);
+it('stays healthy when one athlete has spent their own ceiling, since nothing shared has stopped', function (): void {
+    $user = User::factory()->create();
+    config(['azure_openai.daily_cost_ceiling_per_user' => 1.0]);
     config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
 
-    // 1M input @ 2.50/1M = $2.50 spent today, over the $1.00 ceiling.
+    // 1M input @ 2.50/1M = $2.50 spent today by this athlete, over their $1.00.
     TokenUsage::query()->create([
+        'user_id' => $user->id,
         'kind' => 'briefing', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
         'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => now(),
     ]);
 
+    // The ceiling is per athlete, so one of them running out is ordinary
+    // operation rather than an incident the maintainer should be alerted to.
+    // Their trip is still visible on /devtools/ai-usage via CostCeilingLedger.
     Livewire::test(AiPipelineHealth::class)
         ->assertOk()
-        ->assertSee('paused: cost ceiling hit today');
+        ->assertSee('healthy');
 });

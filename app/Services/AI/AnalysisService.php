@@ -31,13 +31,17 @@ class AnalysisService
     private bool $dispatchSuppressed = false;
 
     /**
-     * Memoized {@see self::dailyCostCeilingExceeded()} answer. The service is a
-     * `scoped` binding, so this lives exactly one HTTP request or one queue job:
-     * both the queue worker and Octane discard it via forgetScopedInstances().
-     * Only the cost read is memoized -- the kill switch and the config breaker
-     * stay live, so a breaker reset still resumes generation within the scope.
+     * Memoized {@see self::dailyCostCeilingExceeded()} answers, keyed by the
+     * athlete the question was asked about (`'global'` for the shared pool). The
+     * service is a `scoped` binding, so this lives exactly one HTTP request or
+     * one queue job: both the queue worker and Octane discard it via
+     * forgetScopedInstances(). Only the cost read is memoized -- the kill switch
+     * and the config breaker stay live, so a breaker reset still resumes
+     * generation within the scope.
+     *
+     * @var array<string, bool>
      */
-    private ?bool $costCeilingMemo = null;
+    private array $costCeilingMemo = [];
 
     public function __construct(
         private readonly AppConfig $config,
@@ -276,8 +280,10 @@ class AnalysisService
         // honest -> a fresh row rests Pending for the empty state, an existing
         // Done keeps its real prose, and ai:self-heal resumes it once generation
         // is back. The spend ceiling is the one pause that degrades instead.
-        if (! $this->autoDispatchEnabled()) {
-            if ($this->costCeilingDegraded()) {
+        $ownerId = AnalysisSubjectMap::ownerId($subjectType, $subjectId);
+
+        if (! $this->autoDispatchEnabled($ownerId)) {
+            if ($this->costCeilingDegraded($ownerId)) {
                 $this->degradeToRuleBased($row);
             }
 
@@ -316,9 +322,10 @@ class AnalysisService
     ): void {
         $rows = $this->upsertGroupRows($jobClass::subjectType(), $subjectId, $discriminator, $jobClass::groupedTypes());
         $anyJustCreated = $rows->contains(fn (Analysis $row): bool => $row->wasRecentlyCreated);
+        $ownerId = AnalysisSubjectMap::ownerId($jobClass::subjectType(), $subjectId);
 
-        if (! $this->autoDispatchEnabled()) {
-            if ($this->costCeilingDegraded()) {
+        if (! $this->autoDispatchEnabled($ownerId)) {
+            if ($this->costCeilingDegraded($ownerId)) {
                 foreach ($rows as $row) {
                     $this->degradeToRuleBased($row);
                 }
@@ -607,9 +614,9 @@ class AnalysisService
      * until generation resumes, except under the ceiling, which serves them from
      * the filler instead ({@see self::costCeilingDegraded()}).
      */
-    public function generationPaused(): bool
+    public function generationPaused(?int $userId = null): bool
     {
-        return ! $this->autoDispatchEnabled();
+        return ! $this->autoDispatchEnabled($userId);
     }
 
     /**
@@ -623,9 +630,9 @@ class AnalysisService
         return $this->blockingReason(withBudget: true, probeBreaker: false);
     }
 
-    private function autoDispatchEnabled(): bool
+    private function autoDispatchEnabled(?int $userId = null): bool
     {
-        return $this->blockingReason(withBudget: true, probeBreaker: true) === null;
+        return $this->blockingReason(withBudget: true, probeBreaker: true, userId: $userId) === null;
     }
 
     private function dispatchAllowedIgnoringBudget(): bool
@@ -642,7 +649,7 @@ class AnalysisService
      * caller about to dispatch passes `probeBreaker: true` to take it; a caller
      * only reporting passes false and reads the state without consuming it.
      */
-    private function blockingReason(bool $withBudget, bool $probeBreaker): ?string
+    private function blockingReason(bool $withBudget, bool $probeBreaker, ?int $userId = null): ?string
     {
         if ($this->dispatchSuppressed) {
             return 'suppressed';
@@ -664,7 +671,7 @@ class AnalysisService
             return 'config';
         }
 
-        if ($withBudget && $this->dailyCostCeilingExceeded()) {
+        if ($withBudget && $this->dailyCostCeilingExceeded($userId)) {
             return 'cost_ceiling';
         }
 
@@ -678,9 +685,9 @@ class AnalysisService
      * budget instead resolves on a clock, so waiting buys nothing and the block
      * is served from the deterministic filler.
      */
-    public function costCeilingDegraded(): bool
+    public function costCeilingDegraded(?int $userId = null): bool
     {
-        return $this->dispatchAllowedIgnoringBudget() && $this->dailyCostCeilingExceeded();
+        return $this->dispatchAllowedIgnoringBudget() && $this->dailyCostCeilingExceeded($userId);
     }
 
     /**
@@ -714,33 +721,54 @@ class AnalysisService
     }
 
     /**
-     * True when a daily_cost_ceiling is configured and today's LLM spend has
-     * already exceeded it, so further auto-dispatch is skipped to cap cost. No
-     * ceiling configured (null) means this never gates dispatch.
+     * True when this athlete has already spent past their own daily ceiling, so
+     * further auto-dispatch for them is skipped to cap cost. No ceiling
+     * configured (null) means this never gates dispatch, and a caller with no
+     * athlete in hand (the /pulse status line, ai:self-heal) is never gated —
+     * there is no shared pool left to trip.
      */
-    private function dailyCostCeilingExceeded(): bool
+    private function dailyCostCeilingExceeded(?int $userId = null): bool
     {
-        return $this->costCeilingMemo ??= $this->computeDailyCostCeilingExceeded();
+        // Memoized per athlete, prefixed so the key stays a string: PHP silently
+        // casts a numeric string array key to an int, which the declared shape
+        // is not.
+        return $userId !== null
+            && $this->ceilingExceeded('user:'.$userId, 'azure_openai.daily_cost_ceiling_per_user', $userId);
     }
 
-    private function computeDailyCostCeilingExceeded(): bool
+    /**
+     * A configured ceiling with today's spend already past it, memoized under
+     * `$memoKey` for the life of the scope. Null ceiling means that ceiling never
+     * gates dispatch.
+     *
+     * The ceiling is per athlete rather than a shared pool: a shared one meant
+     * the heaviest athlete on a given day spent the whole budget and *everyone*
+     * silently degraded to rule-based narration, which is the failure a ceiling
+     * exists to prevent.
+     */
+    private function ceilingExceeded(string $memoKey, string $configKey, ?int $userId): bool
     {
-        $ceiling = config('azure_openai.daily_cost_ceiling');
-        if ($ceiling === null) {
-            return false;
+        if (isset($this->costCeilingMemo[$memoKey])) {
+            return $this->costCeilingMemo[$memoKey];
         }
 
-        $todayCost = $this->costCalculator->dailyCost();
+        $ceiling = config($configKey);
+        if ($ceiling === null) {
+            return $this->costCeilingMemo[$memoKey] = false;
+        }
+
+        $todayCost = $this->costCalculator->dailyCost($userId);
         if ($todayCost <= (float) $ceiling) {
-            return false;
+            return $this->costCeilingMemo[$memoKey] = false;
         }
 
         Log::warning('ai.daily_cost_ceiling_exceeded', [
             'today_cost' => $todayCost,
             'ceiling' => (float) $ceiling,
+            'user_id' => $userId,
         ]);
         $this->ceilingLedger->recordTrip();
 
-        return true;
+        return $this->costCeilingMemo[$memoKey] = true;
     }
 }

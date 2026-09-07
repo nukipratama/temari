@@ -166,12 +166,17 @@ it('reverts the row to Pending without billing when generation is paused', funct
         ->and($fresh->content)->toBeNull();
 });
 
-/** Azure stays configured, so the budget is the only thing stopping this job. */
+/**
+ * Azure stays configured, so the budget is the only thing stopping this job.
+ * Attributed to user 1, which is the owner {@see makeRowForRowJobTest()} implies:
+ * a `*_user_*` subject type stores the athlete's id as its subject_id.
+ */
 function breachTheCeilingForRowJobTest(): void
 {
-    config(['azure_openai.daily_cost_ceiling' => 1.0]);
+    config(['azure_openai.daily_cost_ceiling_per_user' => 1.0]);
     config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
     TokenUsage::query()->create([
+        'user_id' => 1,
         'kind' => 'briefing', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
         'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
     ]);

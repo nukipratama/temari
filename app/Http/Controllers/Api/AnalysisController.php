@@ -71,7 +71,9 @@ class AnalysisController extends Controller
             );
         }
 
-        if ($service->generationPaused()) {
+        // Asked about this athlete: a manual re-read is theirs to pay for, so
+        // their own exhausted slice refuses it without touching anyone else's.
+        if ($service->generationPaused($user->id)) {
             return $this->payload($existing, $analysisType, $subjectId, $discriminator)
                 ->setStatusCode(409);
         }

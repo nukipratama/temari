@@ -79,7 +79,15 @@ export interface OriginRow {
 
 export interface Budget {
     todayCost: number;
+    /**
+     * Combined ceiling: perUserCeiling x athletes. Derived, not configured and
+     * not enforced as a total — the only enforced limit is per athlete.
+     */
     dailyCeiling: number | null;
+    /** The enforced per-athlete daily ceiling. */
+    perUserCeiling: number | null;
+    /** Non-demo athletes the combined ceiling is derived from. */
+    athletes: number;
     currency: string;
     /** ISO8601 local time the ceiling first tripped today; null if it hasn't. */
     trippedAt: string | null;

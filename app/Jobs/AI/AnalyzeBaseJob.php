@@ -9,6 +9,7 @@ use App\Exceptions\AI\UnavailableException;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisSubjectMap;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\AnalysisStatus;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -181,6 +182,10 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      * dispatched just before the ceiling tripped would still call the LLM; this
      * closes that window. Returns true to tell handle() to stop.
      *
+     * The ceiling is asked about the athlete these rows belong to, not just the
+     * shared pool. A group's rows are all upserted for one subject, so the first
+     * row's owner is every row's owner.
+     *
      * Under the spend ceiling the rows are served from the deterministic filler,
      * matching what dispatch would have done had the ceiling been hit a moment
      * earlier — except a row that arrived Failed, which keeps its fault and its
@@ -192,7 +197,13 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      */
     protected function haltForPausedGeneration(AnalysisService $service, iterable $rows): bool
     {
-        if ($service->costCeilingDegraded()) {
+        $rows = collect($rows);
+        $first = $rows->first();
+        $ownerId = $first instanceof Analysis
+            ? AnalysisSubjectMap::ownerId($first->subject_type, $first->subject_id)
+            : null;
+
+        if ($service->costCeilingDegraded($ownerId)) {
             foreach ($rows as $row) {
                 $service->degradeToRuleBased($row);
             }
@@ -200,7 +211,7 @@ abstract class AnalyzeBaseJob implements ShouldQueue
             return true;
         }
 
-        if (! $service->generationPaused()) {
+        if (! $service->generationPaused($ownerId)) {
             return false;
         }
 

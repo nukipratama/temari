@@ -35,7 +35,7 @@ beforeEach(function (): void {
     // can't straddle the Asia/Jakarta midnight boundary and flake the todayCost.
     $this->freezeTime();
 
-    config()->set('azure_openai.daily_cost_ceiling', null);
+    config()->set('azure_openai.daily_cost_ceiling_per_user', null);
 
     // Deterministic manual rates: gpt-4o = 2.50 in / 10.00 out, gpt-4o-mini =
     // 0.15 / 0.60 (per 1M).
@@ -158,15 +158,30 @@ it('reports the budget block with null ceiling and the config currency by defaul
     ]);
 });
 
-it('surfaces a configured daily ceiling and today cost in the budget block', function () use ($range): void {
-    config()->set('azure_openai.daily_cost_ceiling', 5.0);
+it('reports total spend against a combined ceiling derived from the per-athlete one', function () use ($range): void {
+    config()->set('azure_openai.daily_cost_ceiling_per_user', 5.0);
+    User::factory()->count(3)->create();
+    User::factory()->create(['is_demo' => true]); // spends nothing, so it is not counted
     seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), model: 'gpt-4o'); // 2.50 today
 
     [$from, $to] = [Carbon::today()->subDay(), Carbon::today()->addDay()];
     $result = $this->report->build($from, $to, null);
 
-    expect($result['budget']['dailyCeiling'])->toBe(5.0)
+    // Nothing enforces the combined figure — it is the sum of what each athlete
+    // may individually spend, reported so the total bill stays visible.
+    expect($result['budget']['perUserCeiling'])->toBe(5.0)
+        ->and($result['budget']['athletes'])->toBe(3)
+        ->and($result['budget']['dailyCeiling'])->toBe(15.0)
         ->and($result['budget']['todayCost'])->toBe(2.50);
+});
+
+it('reports no combined ceiling when none is configured', function () use ($range): void {
+    config()->set('azure_openai.daily_cost_ceiling_per_user', null);
+
+    $result = $this->report->build(Carbon::today()->subDay(), Carbon::today()->addDay(), null);
+
+    expect($result['budget']['dailyCeiling'])->toBeNull()
+        ->and($result['budget']['perUserCeiling'])->toBeNull();
 });
 
 it('carries the ceiling trip and the rule-based fill count into the budget block', function () use ($range): void {
