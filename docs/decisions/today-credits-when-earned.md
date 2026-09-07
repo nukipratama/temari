@@ -16,6 +16,10 @@ code_refs:
 
 **Status:** Accepted (2026-09-06)
 
+> **2026-09-07:** the *"this stays render-only"* clause below is superseded by
+> [[a-day-is-scored-when-it-is-run]] — a day the athlete has earned is now persisted at
+> ingest, still upward-only. Everything else in this note stands.
+
 ## Context
 
 Reported from prod, on the first real account: Home's week card read **0/4 sessions** on an evening the athlete had run 12 km, in a week the same page's stats row correctly summarised as *5 runs · 25.5 km*.
