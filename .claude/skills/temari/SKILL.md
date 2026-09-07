@@ -243,6 +243,16 @@ internalising:
   hand-maintained and guarded by `TiaWatchMapTest`, which fails if a filesystem-scanning test is not
   routed through it. It has rotted once: `NarratorsCoverageTest` globs the narrator and tool
   directories, and a new narrator passed locally under TIA while failing under `--no-tia`.
+- **The map cannot cover a file the graph already knows, and that is most of `resources/js`.**
+  Pest's watch hook collects a changed path only when `! isset($this->fileIds[$rel])`
+  (`vendor/pestphp/pest/src/Plugins/Tia/Graph.php`), so every component Pest has linked through
+  Inertia page resolution — anything a feature test renders — never reaches the map. The
+  `resources/js/**/*.tsx` entry is therefore dead for exactly the most-edited files in the repo;
+  `resources/css/**` works only because nothing links it. **The globs are fine** — verified by
+  probing the matcher, `**` compiles to `.*` and spans path segments. Because of this,
+  `composer check` runs `pest --no-tia --group=structure` (1.5s) rather than trusting TIA for the
+  architecture gates. Found when an unregistered translucent panel in a component three
+  directories deep passed the local gate and broke `main`.
 - A fresh clone or worktree records the graph from cold (~47s). `pest()->tia()->baselined()` skips
   that by pulling the graph published by [tia-baseline.yml](../../../.github/workflows/tia-baseline.yml)
   via `gh`, which ships in the dev image. It needs `GH_TOKEN` set; unset, Pest just records locally.
