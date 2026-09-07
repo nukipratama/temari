@@ -627,6 +627,12 @@ body {
     .pressable {
         @apply touch-manipulation transition-opacity duration-100 active:opacity-70 motion-safe:transition-[transform,opacity] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.34,1.1,0.64,1)] motion-safe:active:scale-[0.97];
     }
+    /* A control that opens something anchored to itself keeps the tap-delay
+       fix and gives up the movement: the popup is positioned against this
+       element, so pressing it must not move it. */
+    .pressable[aria-haspopup] {
+        @apply active:opacity-100 motion-safe:active:scale-100;
+    }
     /* ─── Typography role utilities ──────────────────────────────────
        Each role bundles font + size + color so call sites name a role
        instead of hardcoding. The rule they encode: mono = numbers +

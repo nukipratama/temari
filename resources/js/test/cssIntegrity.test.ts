@@ -97,6 +97,19 @@ describe('app.css integrity', () => {
     // deleting the selector, fails here. `touch-manipulation` is the
     // load-bearing half: without it every control keeps the ~300ms
     // double-tap-zoom wait.
+    it('keeps a popup trigger still under the thumb', () => {
+        // The popup is anchored to this element, so pressing it must not move
+        // it — but it keeps touch-manipulation from the base rule, which is
+        // the load-bearing half.
+        const block = css.match(
+            /\.pressable\[aria-haspopup\]\s*\{[^}]*\}/,
+        )?.[0];
+
+        expect(block).toBeDefined();
+        expect(block).toContain('active:opacity-100');
+        expect(block).toContain('active:scale-100');
+    });
+
     it('still declares the press-feedback rule', () => {
         const blocks = [...css.matchAll(/\.pressable\s*\{[^}]*\}/g)].map(
             (m) => m[0],
