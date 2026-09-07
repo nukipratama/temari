@@ -11,6 +11,7 @@ use App\Enums\NotificationKind;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\PrCategory;
 use App\Enums\Rarity;
+use App\Services\AI\Anchor\AnchorKind;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use Illuminate\Console\Command;
@@ -41,6 +42,7 @@ final class GenerateTypeScriptEnumsCommand extends Command
         PlannedSessionStatus::class,
         ExperienceLevel::class,
         GoalType::class,
+        AnchorKind::class,
     ];
 
     public function handle(): int

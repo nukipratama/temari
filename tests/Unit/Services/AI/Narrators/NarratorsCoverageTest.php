@@ -35,6 +35,7 @@ use App\Services\AI\Narrators\PlanDayVoiceNarrator;
 use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
 use App\Services\AI\Narrators\PlanWeekVoiceNarrator;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
+use App\Services\AI\Anchor\RunAnchorResolver;
 use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
@@ -79,6 +80,11 @@ function capturingCaller(string $content): array
     $client = new ClientFake([fakeAzureResponse($content)]);
 
     return [fakeStructuredCaller($client), $client];
+}
+
+function runInsightNarrator(StructuredChatCaller $caller): RunInsightNarrator
+{
+    return new RunInsightNarrator($caller, new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class), new RunAnchorResolver());
 }
 
 // ── PostRunSpeechNarrator ─────────────────────────────────────────────
@@ -262,7 +268,7 @@ it('RunInsightNarrator returns the claims payload on valid JSON, dropping only t
         ['anchor' => 'metric:decoupling', 'text' => 'Decoupling ran high.', 'value' => '+12%', 'delta' => null],
         ['anchor' => 'split:99', 'text' => 'A km this run never ran.', 'value' => null, 'delta' => null],
     ]], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $narrator = runInsightNarrator($caller);
 
     $payload = $narrator->generate($a, $d->fresh());
 
@@ -274,14 +280,14 @@ it('RunInsightNarrator returns the claims payload on valid JSON, dropping only t
 it('RunInsightNarrator throws on missing keys', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller(json_encode(['something_else' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $narrator = runInsightNarrator($caller);
     $narrator->generate($a, $d);
 })->throws(UnavailableException::class);
 
 it('RunInsightNarrator throws on non-JSON', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller('not json');
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $narrator = runInsightNarrator($caller);
     $narrator->generate($a, $d);
 })->throws(UnavailableException::class, 'non-JSON');
 
@@ -291,7 +297,7 @@ it('RunInsightNarrator does not fatal when the stream summary is null, and rende
     $caller = fakeCaller(json_encode(['claims' => [
         ['anchor' => 'metric:decoupling', 'text' => 'z', 'value' => null, 'delta' => null],
     ]], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $narrator = runInsightNarrator($caller);
 
     $payload = $narrator->generate($a, $d->fresh());
 
@@ -309,7 +315,7 @@ it('RunInsightNarrator survives a claim anchored to a split the run actually has
     $caller = fakeCaller(json_encode(['claims' => [
         ['anchor' => 'split:2', 'text' => 'Km 2 was quick.', 'value' => '5:50/km', 'delta' => null],
     ]], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $narrator = runInsightNarrator($caller);
 
     expect($narrator->generate($a, $d->fresh())['claims'])->toHaveCount(1);
 });
@@ -320,7 +326,7 @@ it('RunInsightNarrator drops a claim anchored to a split the run never recorded'
     $caller = fakeCaller(json_encode(['claims' => [
         ['anchor' => 'split:5', 'text' => 'A km that never happened.', 'value' => null, 'delta' => null],
     ]], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $narrator = runInsightNarrator($caller);
 
     expect($narrator->generate($a, $d->fresh())['claims'])->toBe([]);
 });
@@ -331,7 +337,7 @@ it('RunInsightNarrator drops a claim anchored to a zone with no HR breakdown', f
     $caller = fakeCaller(json_encode(['claims' => [
         ['anchor' => 'zone:z4', 'text' => 'Mostly Z4.', 'value' => null, 'delta' => null],
     ]], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $narrator = runInsightNarrator($caller);
 
     expect($narrator->generate($a, $d->fresh())['claims'])->toBe([]);
 });
@@ -342,7 +348,7 @@ it('RunInsightNarrator survives a zone claim when the run has a real HR breakdow
     $caller = fakeCaller(json_encode(['claims' => [
         ['anchor' => 'zone:z2', 'text' => 'Mostly Z2.', 'value' => '70%', 'delta' => null],
     ]], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $narrator = runInsightNarrator($caller);
 
     expect($narrator->generate($a, $d->fresh())['claims'])->toHaveCount(1);
 });
@@ -353,7 +359,7 @@ it('RunInsightNarrator drops a metric claim whose reading was never computed for
     $caller = fakeCaller(json_encode(['claims' => [
         ['anchor' => 'metric:hr_drift', 'text' => 'HR crept up.', 'value' => null, 'delta' => null],
     ]], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $narrator = runInsightNarrator($caller);
 
     expect($narrator->generate($a, $d->fresh())['claims'])->toBe([]);
 });
@@ -364,7 +370,7 @@ it('RunInsightNarrator drops a claim whose anchor is not in the closed namespace
     $caller = fakeCaller(json_encode(['claims' => [
         ['anchor' => 'weather:hot', 'text' => 'It was hot.', 'value' => null, 'delta' => null],
     ]], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $narrator = runInsightNarrator($caller);
 
     expect($narrator->generate($a, $d->fresh())['claims'])->toBe([]);
 });
@@ -377,7 +383,7 @@ it('RunInsightNarrator renders nothing when every claim in the response is inval
         ['anchor' => 'zone:z1', 'text' => 'b', 'value' => null, 'delta' => null],
         ['anchor' => 'metric:cadence_drop', 'text' => 'c', 'value' => null, 'delta' => null],
     ]], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $narrator = runInsightNarrator($caller);
 
     expect($narrator->generate($a, $d->fresh())['claims'])->toBe([]);
 });
@@ -396,7 +402,7 @@ it('RunInsightNarrator caps claims at 3 even when the model returns more valid o
         ['anchor' => 'metric:cadence_drop', 'text' => 'c', 'value' => null, 'delta' => null],
         ['anchor' => 'metric:pace_variability', 'text' => 'd', 'value' => null, 'delta' => null],
     ]], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $narrator = runInsightNarrator($caller);
 
     expect($narrator->generate($a, $d->fresh())['claims'])->toHaveCount(3);
 });
@@ -447,7 +453,7 @@ it('RunInsightNarrator feeds prev_narrative from the prior activity run-insight 
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     priorActivityWithDoneAnalysis($a->user, AnalysisType::RunInsight, 'Cadence was 168 yesterday, starting to improve.');
 
-    $narrator = new RunInsightNarrator(fakeCaller('{"claims":[]}'), new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $narrator = runInsightNarrator(fakeCaller('{"claims":[]}'));
     $context = $narrator->context($a, $d->fresh());
 
     expect($context['prev_narrative'])->toBe('Cadence was 168 yesterday, starting to improve.');
@@ -456,7 +462,7 @@ it('RunInsightNarrator feeds prev_narrative from the prior activity run-insight 
 it('RunInsightNarrator leaves prev_narrative null when no prior run-insight is Done', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
-    $narrator = new RunInsightNarrator(fakeCaller('{"claims":[]}'), new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $narrator = runInsightNarrator(fakeCaller('{"claims":[]}'));
     $context = $narrator->context($a, $d->fresh());
 
     expect($context['prev_narrative'])->toBeNull();
@@ -465,7 +471,7 @@ it('RunInsightNarrator leaves prev_narrative null when no prior run-insight is D
 it('RunInsightNarrator sends no run data in the context, only the continuity the filter retry must be able to strip', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
-    $narrator = new RunInsightNarrator(fakeCaller('{"claims":[]}'), new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $narrator = runInsightNarrator(fakeCaller('{"claims":[]}'));
 
     expect(array_keys($narrator->context($a, $d->fresh())))
         ->toBe(NarratorContinuity::CONTEXT_KEYS);
@@ -474,7 +480,7 @@ it('RunInsightNarrator sends no run data in the context, only the continuity the
 it('RunInsightNarrator offers every run reading as a tool bound to this activity', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
-    $narrator = new RunInsightNarrator(fakeCaller('{"claims":[]}'), new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $narrator = runInsightNarrator(fakeCaller('{"claims":[]}'));
     $names = array_column($narrator->toolbox($a, $d)->definitions(), 'name');
 
     expect($names)->toBe([
