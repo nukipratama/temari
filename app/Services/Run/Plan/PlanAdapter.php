@@ -52,6 +52,12 @@ final readonly class PlanAdapter
     /** One ragged day is a bad morning. This many is how the week was run. */
     public const int RAGGED_DAYS_MIN = 2;
 
+    /** Twice the easy-day line: a day this far past it speaks for the week on its own. */
+    public const float EGREGIOUS_EASY_DAY_HARD_SHARE = 40.0;
+
+    /** Three times the decoupling line, the same way. */
+    public const float EGREGIOUS_DECOUPLING = 15.0;
+
     /** Projection within this fraction of the goal time is on track; neither direction fires. */
     public const float RACE_GAP_MARGIN = 0.02;
 
@@ -71,6 +77,7 @@ final readonly class PlanAdapter
     {
         $load = $this->trainingLoad->summary($user, $today);
         $ceiling = ReadinessCeiling::from(BriefingContext::forUser($user, $today, $load)->readinessCeiling);
+        $execution = $this->previousWeekExecution($user, $weekStart);
 
         return self::decide(
             $ceiling,
@@ -78,7 +85,8 @@ final readonly class PlanAdapter
             self::floatOrNull($load['strain'] ?? null),
             self::floatOrNull($load['ctl_42d'] ?? null),
             $this->previousWeekAdherencePct($user, $weekStart),
-            $this->previousWeekRaggedDays($user, $weekStart),
+            $execution['ragged'],
+            $execution['egregious'],
             $this->raceGapRatio($user, $race),
         );
     }
@@ -86,6 +94,7 @@ final readonly class PlanAdapter
     /**
      * @param  int  $adherencePct  average of last week's persisted per-day compliance_score (Rest/Planned/Skip days excluded, each day capped at 100 before averaging — an overreached day can't paper over a missed one)
      * @param  int  $raggedDays  days last week whose runs came in harder than the day was written for
+     * @param  int  $egregiousDays  of those, the days so far past the line that one is the whole verdict
      * @param  float|null  $raceGapRatio  projected finish / goal time; above 1.0 the athlete is behind their goal
      * @return array{reason: AdaptationReason, deload: bool, quality_delta: int, adherence_pct: int}
      */
@@ -96,9 +105,10 @@ final readonly class PlanAdapter
         ?float $ctl,
         int $adherencePct,
         int $raggedDays,
+        int $egregiousDays,
         ?float $raceGapRatio,
     ): array {
-        $reason = self::reasonFor($ceiling, $monotony, $strain, $ctl, $adherencePct, $raggedDays, $raceGapRatio);
+        $reason = self::reasonFor($ceiling, $monotony, $strain, $ctl, $adherencePct, $raggedDays, $egregiousDays, $raceGapRatio);
 
         return [
             'reason' => $reason,
@@ -119,6 +129,7 @@ final readonly class PlanAdapter
         ?float $ctl,
         int $adherencePct,
         int $raggedDays,
+        int $egregiousDays,
         ?float $raceGapRatio,
     ): AdaptationReason {
         if ($ceiling === ReadinessCeiling::Rest) {
@@ -133,7 +144,7 @@ final readonly class PlanAdapter
         if ($adherencePct < self::MISSED_WEEK_ADHERENCE) {
             return AdaptationReason::MissedWeek;
         }
-        if ($raggedDays >= self::RAGGED_DAYS_MIN) {
+        if ($egregiousDays >= 1 || $raggedDays >= self::RAGGED_DAYS_MIN) {
             return AdaptationReason::RanTooHard;
         }
         if ($raceGapRatio === null) {
@@ -184,18 +195,22 @@ final readonly class PlanAdapter
     }
 
     /**
-     * Days last week whose runs came in harder than the day was written for:
-     * an `Easy` day that spent more than {@see self::EASY_DAY_HARD_SHARE} of
-     * its moving time above Z2, or a `Long`/`Tempo`/`Interval` day whose
-     * decoupling ran past {@see self::HIGH_DECOUPLING}. A day counts once
-     * however many runs it holds, because sessions are matched to days and
-     * not to individual runs.
+     * How last week was run, as two counts of days whose runs came in harder
+     * than the day was written for: an `Easy` day that spent more than
+     * {@see self::EASY_DAY_HARD_SHARE} of its moving time above Z2, or a
+     * `Long`/`Tempo`/`Interval` day whose decoupling ran past
+     * {@see self::HIGH_DECOUPLING}. `egregious` is the subset far enough past
+     * those lines to be the whole verdict on its own.
      *
-     * A run carrying no heart-rate stream reads as no signal rather than as a
-     * clean day: the zone breakdown is absent and decoupling is withheld, so
-     * neither test can fire. Rest and race days are never judged.
+     * A day counts once however many runs it holds, because sessions are
+     * matched to days and not to individual runs. A run carrying no
+     * heart-rate stream reads as no signal rather than as a clean day: the
+     * zone breakdown is absent and decoupling is withheld, so neither test
+     * can fire. Rest and race days are never judged.
+     *
+     * @return array{ragged: int, egregious: int}
      */
-    private function previousWeekRaggedDays(User $user, Carbon $weekStart): int
+    private function previousWeekExecution(User $user, Carbon $weekStart): array
     {
         [$previousStart, $previousEnd] = self::previousWeekBounds($weekStart);
 
@@ -206,7 +221,7 @@ final readonly class PlanAdapter
             ->mapWithKeys(static fn (PlannedSession $session): array => [$session->date->toDateString() => $session->session_type]);
 
         if ($prescribed->isEmpty()) {
-            return 0;
+            return ['ragged' => 0, 'egregious' => 0];
         }
 
         $details = ActivityDetail::query()
@@ -216,25 +231,30 @@ final readonly class PlanAdapter
             ->get(['id', 'start_date_local', 'stream_summary']);
 
         $ragged = [];
+        $egregious = [];
         foreach ($details as $detail) {
             $date = $detail->start_date_local?->toDateString();
             $type = $date === null ? null : $prescribed->get($date);
-            if (! $type instanceof SessionType || isset($ragged[$date])) {
+            if (! $type instanceof SessionType) {
                 continue;
             }
-            if (self::ranHarderThanWritten($type, StreamSummary::fromArray($detail->streamSummary()))) {
+            $summary = StreamSummary::fromArray($detail->streamSummary());
+            if (self::ranHarderThanWritten($type, $summary, self::EASY_DAY_HARD_SHARE, self::HIGH_DECOUPLING)) {
                 $ragged[$date] = true;
+            }
+            if (self::ranHarderThanWritten($type, $summary, self::EGREGIOUS_EASY_DAY_HARD_SHARE, self::EGREGIOUS_DECOUPLING)) {
+                $egregious[$date] = true;
             }
         }
 
-        return count($ragged);
+        return ['ragged' => count($ragged), 'egregious' => count($egregious)];
     }
 
-    private static function ranHarderThanWritten(SessionType $type, StreamSummary $summary): bool
+    private static function ranHarderThanWritten(SessionType $type, StreamSummary $summary, float $easyLine, float $decouplingLine): bool
     {
         return match ($type) {
-            SessionType::Easy => $summary->hardZoneShare() > self::EASY_DAY_HARD_SHARE,
-            SessionType::Long, SessionType::Tempo, SessionType::Interval => ($summary->decouplingPct() ?? 0.0) > self::HIGH_DECOUPLING,
+            SessionType::Easy => $summary->hardZoneShare() > $easyLine,
+            SessionType::Long, SessionType::Tempo, SessionType::Interval => ($summary->decouplingPct() ?? 0.0) > $decouplingLine,
             SessionType::Rest, SessionType::Race => false,
         };
     }
