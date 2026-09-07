@@ -52,6 +52,7 @@ _Plan_
 - [[today-credits-when-earned]] — today is graded on the same km ratio but only ever upward, and the week's ring counts training rows this week actually holds
 - [[readiness-clamp-is-advisory]] — a clamped day renders as a marked step-down beside the session the plan asked for, which stays the thing narrated and graded
 - [[a-session-is-the-whole-outing]] — the warmup is carved out of a day's prescribed distance rather than added on top, so the card and the graded run are the same outing
+- [[the-clamp-explains-itself]] — a readiness step-down gets its own coarsely-fingerprinted line, requested where the ceiling is already computed and replacing the templated note in place
 - [[the-plan-follows-the-coaching]] — a race build gets scheduled recovery weeks, quality stays off the long run's flanks, the single quality slot follows projected race duration rather than distance, and the threshold block progresses by phase
 
 _Data_

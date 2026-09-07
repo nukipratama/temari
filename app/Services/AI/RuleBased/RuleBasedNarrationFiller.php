@@ -50,6 +50,7 @@ final readonly class RuleBasedNarrationFiller
             AnalysisType::MonthlyRecap => $this->monthlyRecap($seed),
             AnalysisType::TrendRead => $this->trendRead($seed),
             AnalysisType::PlanDayVoice => $this->planDayVoice($row),
+            AnalysisType::PlanClampVoice => $this->planClampVoice($seed),
             AnalysisType::PlanWeekVoice => $this->planWeekVoice($row),
             AnalysisType::PlanSeasonVoice => $this->planSeasonVoice($row),
         };
@@ -71,6 +72,22 @@ final readonly class RuleBasedNarrationFiller
         return $row->subject_id + (int) crc32($row->discriminator);
     }
 
+
+    /**
+     * The clamp's templated note is a permanent floor on the card, so this is
+     * never the difference between an explanation and none — it stands in when
+     * the model is paused or the day is cost-capped, and says the one thing the
+     * note cannot: that the step-down has a reason behind it.
+     */
+    private function planClampVoice(int $seed): string
+    {
+        return $this->select([
+            'load has been stacking up. today gives it somewhere to go.',
+            "you've been carrying a lot this week, so today steps back a little.",
+            'a heavier stretch than usual, so this one comes down a notch.',
+            'nothing wrong here, just a tired week. easy keeps it intact.',
+        ], $seed);
+    }
 
     private function briefingMascotVoice(int $seed): string
     {

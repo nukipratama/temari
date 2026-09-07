@@ -96,6 +96,30 @@ final class ReadinessClamp
     }
 
     /**
+     * What today's ceiling would downgrade this session to, or null when the
+     * session already fits under it. The general form of
+     * {@see self::clampsToRest()}, and it exists for the same reason: a caller
+     * that needs only the OUTCOME should not have to build a segment list to
+     * learn it. {@see \App\Services\Run\Plan\ClampNarrationContext} narrates the
+     * downgrade and has neither paces nor a volume multiplier to hand.
+     *
+     * Shares {@see self::requiredRank()} with {@see self::apply()}, so the two
+     * can never disagree about what the ceiling permits.
+     */
+    public static function downgradeFor(SessionType $sessionType, ReadinessCeiling $ceiling): ?SessionType
+    {
+        if (self::requiredRank($sessionType) <= $ceiling->rank()) {
+            return null;
+        }
+
+        return match ($ceiling) {
+            ReadinessCeiling::Rest => SessionType::Rest,
+            ReadinessCeiling::EasyOnly, ReadinessCeiling::ModerateOk => SessionType::Easy,
+            ReadinessCeiling::QualityOk => null,
+        };
+    }
+
+    /**
      * The ceiling rank a session needs to run as prescribed. Quality work
      * (Tempo/Interval, in Daniels' vocabulary) needs the optimistic default;
      * a Long day is a volume day, not an intensity one, so it only needs

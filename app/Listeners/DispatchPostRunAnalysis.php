@@ -18,6 +18,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
 use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
+use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Carbon;
@@ -37,6 +38,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         private readonly StaggerBackfillAction $staggerBackfill,
         private readonly BackfillAgeGate $ageGate,
         private readonly RestClampRecorder $restClampRecorder,
+        private readonly PlanNarrationRequester $planNarration,
     ) {
     }
 
@@ -90,6 +92,9 @@ class DispatchPostRunAnalysis implements ShouldQueue
         // already covers.
         if ($isToday) {
             $this->restClampRecorder->record($user, Carbon::today());
+            // The run that just landed is what moved the ceiling, so the event
+            // that invalidates the clamp's explanation regenerates it.
+            $this->planNarration->requestClampVoice($user, Carbon::today());
         }
         if ($snapshot !== null) {
             // Weekly cadence: regenerating the recap of a still-unfinished week

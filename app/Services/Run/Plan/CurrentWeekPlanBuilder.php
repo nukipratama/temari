@@ -10,6 +10,7 @@ use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Services\Run\Metrics\ReadinessCeiling;
+use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
@@ -36,6 +37,7 @@ final readonly class CurrentWeekPlanBuilder
         private TrainingPaceCalculator $paceCalculator,
         private VdotEstimator $vdotEstimator,
         private SessionMatcher $sessionMatcher,
+        private PlanNarrationRequester $planNarration,
     ) {
     }
 
@@ -140,6 +142,7 @@ final readonly class CurrentWeekPlanBuilder
             $paces,
             $resolvedStatuses[$s->date->toDateString()] ?? PlannedSessionStatus::Planned,
             $activityByDate[$s->date->toDateString()] ?? null,
+            $clamp === null ? null : $this->planNarration->clampVoiceFor($user, $today),
         ))->values()->all();
 
         // A rest day asks for nothing and always scores Done, so counting it

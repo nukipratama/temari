@@ -35,6 +35,7 @@ final class AnalysisSubjectAuthorizer
             AnalysisType::ProfileVoice,
             AnalysisType::MonthlyRecap,
             AnalysisType::TrendRead,
+            AnalysisType::PlanClampVoice,
             AnalysisType::PlanDayVoice => $subjectId === $user->id,
             AnalysisType::PostRunSpeech,
             AnalysisType::RunInsight => self::userOwns(Activity::query(), $subjectId, $user->id),

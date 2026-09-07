@@ -126,6 +126,7 @@ final class PlanRenderer
         ?array $paces,
         PlannedSessionStatus $status,
         ?array $activity = null,
+        ?string $clampVoice = null,
     ): array {
         $isToday = $s->date->isSameDay($today);
         $volumeScale = $volumeScaleByDate[$s->date->toDateString()] ?? 1.0;
@@ -161,7 +162,7 @@ final class PlanRenderer
             'status' => $status->value,
             'compliance_score' => $s->compliance_score,
             'ran_anyway' => $s->ran_anyway,
-            'clamp' => $isToday && $clamp !== null ? self::clampPayload($clamp) : null,
+            'clamp' => $isToday && $clamp !== null ? self::clampPayload($clamp, $clampVoice) : null,
             'actual_km' => $activity['km'] ?? null,
             'activities' => $activity['runs'] ?? [],
         ];
@@ -176,10 +177,16 @@ final class PlanRenderer
      * pace rather than the full segment list: the step-down is one line, and
      * only the core set's pace is ever shown on it.
      *
+     * `note` is a permanent floor rather than a placeholder: the templated
+     * string always renders, and the narrated line replaces it in place once
+     * it lands. A step-down is therefore never unexplained, there is no pending
+     * skeleton on a block that must always say something, and a paused or
+     * cost-capped day still reads correctly.
+     *
      * @param array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string} $clamp
      * @return array{session_type: string, distance_km: float, pace_sec_per_km: int|null, note: string}
      */
-    private static function clampPayload(array $clamp): array
+    private static function clampPayload(array $clamp, ?string $voice): array
     {
         $core = null;
         foreach ($clamp['segments'] as $segment) {
@@ -194,7 +201,7 @@ final class PlanRenderer
             'session_type' => $clamp['session_type']->value,
             'distance_km' => $clamp['core_km'],
             'pace_sec_per_km' => $core?->paceSecPerKm,
-            'note' => $clamp['note'],
+            'note' => $voice ?? $clamp['note'],
         ];
     }
 }

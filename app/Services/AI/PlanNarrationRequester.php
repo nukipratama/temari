@@ -9,6 +9,7 @@ use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
+use App\Services\Run\Plan\ClampNarrationContext;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Support\Cooldown;
 use Illuminate\Support\Carbon;
@@ -39,7 +40,51 @@ final readonly class PlanNarrationRequester
     public function __construct(
         private AnalysisService $analysisService,
         private TrainingBaseline $baseline,
+        private ClampNarrationContext $clampContext,
     ) {
+    }
+
+    /**
+     * The narrated explanation for today's step-down, or null while none has
+     * landed. Callers fall back to the clamp's own templated note, which is why
+     * this returns only a Done row and never a pending one.
+     */
+    public function clampVoiceFor(User $user, Carbon $today): ?string
+    {
+        return Analysis::query()
+            ->forSubject(AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanClampVoice, $today->toDateString())
+            ->where('status', AnalysisStatus::Done)
+            ->value('content');
+    }
+
+    /**
+     * Asks for a line explaining today's readiness step-down, if there is one.
+     *
+     * Called from the two places that already compute a ceiling — the ingest
+     * listener and the 00:01 briefing — and never from a render, so a GET never
+     * bills. A run landing is what moves the ceiling, so the event that
+     * invalidates this line is the event that regenerates it, and the line is
+     * usually ready before the app is next opened.
+     *
+     * Requesting resolves the clamp rather than assuming one: an athlete whose
+     * day already fits under the ceiling has nothing to explain, and a row
+     * requested for a clamp that has since lifted would be one the job could
+     * never fill.
+     */
+    public function requestClampVoice(User $user, Carbon $today): bool
+    {
+        if ($this->clampContext->forUserOn($user->id, $today) === null) {
+            return false;
+        }
+
+        $this->analysisService->request(
+            subjectOrType: AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
+            subjectId: $user->id,
+            type: AnalysisType::PlanClampVoice,
+            discriminator: $today->toDateString(),
+        );
+
+        return true;
     }
 
     /**
