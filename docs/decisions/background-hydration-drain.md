@@ -17,6 +17,19 @@ code_refs:
 
 **Status:** Accepted (2026-09-06)
 
+> **Cadence changed 2026-09-07: the drain now runs every 15 minutes, not hourly.**
+> The decision below — a headroom-paced background drain, newest-first, yielding to
+> live ingest — is unchanged and still holds; only the tick interval moved. Fifteen
+> minutes matches the read bucket's own decay window, and it is the direct remedy for
+> the "headroom is measured at dispatch, not spent at dispatch" behaviour recorded
+> under *Consequences*: a tick that fires into a still-draining bucket queues only a
+> handful of runs, and used to wait a full hour for its next chance. The cadence cannot
+> overspend, since each tick still takes only what `backgroundHeadroom()` allows. The
+> daily total is unchanged (~750 runs at a full pool); a new account's history simply
+> converges in well under an hour instead of several. `strava:sync` moved from
+> `0 4-10,16-22 * * *` to hourly in the same change, closing a five-hour overnight gap
+> in the webhook fallback.
+
 ## Context
 
 [[summary-first-ingest]] made a connect cost single-digit Strava reads regardless of history depth, and it is still the right call. It also named its own price: *"a run nobody opens never gets its splits, zones, TRIMP, card, PRs or narration"*, and *"load history is genuinely incomplete until runs are opened."*
