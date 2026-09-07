@@ -67,10 +67,19 @@ if (is_dir(dirname(__DIR__).'/.git') || is_dir((string) getenv('GIT_DIR'))) {
         'resources/css/**' => 'tests/Unit/Architecture',
         // These scanning tests read resources/js and the blade mirrors from
         // disk, so a change there records no coverage edge and TIA replays them
-        // green. A bare `**` matches one level only, which is why these spell
-        // the extension out: `resources/js/**` never matched a component two
-        // directories deep, and `resources/views/**` never matched
-        // errors/layout.blade.php, which DesignTokenMirrorsTest mirrors.
+        // green.
+        //
+        // The js/tsx entries below only reach files the graph does not already
+        // know. Graph.php's watch hook collects a changed path only when
+        // `! isset($this->fileIds[$rel])`, so any component Pest has linked
+        // through Inertia page resolution — every component a feature test
+        // renders, which is most of them — never reaches this map at all.
+        // `resources/css/**` works precisely because nothing links it.
+        //
+        // That is not fixable here, so `composer check` runs
+        // `pest --no-tia --group=structure` (1.5s) and does not rely on this.
+        // Found the hard way: an unregistered translucent panel in a component
+        // three directories deep passed the local gate and broke main.
         'resources/js/**/*.ts' => 'tests/Unit/Architecture',
         'resources/js/**/*.tsx' => 'tests/Unit/Architecture',
         'resources/views/**/*.blade.php' => 'tests/Unit/Architecture',
