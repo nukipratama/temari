@@ -11,6 +11,7 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
+use App\Services\Run\Plan\WeekPlanBuilder;
 use Illuminate\Support\Carbon;
 
 /**
@@ -76,14 +77,8 @@ final class PlanContextTool extends UserTool
                 'phase' => $session->phase->value,
                 'distance_km' => $session->prescribed_km !== null
                     ? round($session->prescribed_km, 1)
-                    : round(SegmentGenerator::coreKmFor(
-                        $session->session_type,
-                        isPrimaryEasy: false,
-                        longRunBaselineKm: $longRunBaselineKm,
-                        volumeMultiplier: 1.0,
-                        raceDistanceM: $session->race_distance_m === null ? null : (float) $session->race_distance_m,
-                    ), 1),
-                'target_pace_sec' => self::targetPaceSec($session->session_type, $paces),
+                    : SegmentGenerator::coreKmForPlannedSession($session, $longRunBaselineKm),
+                'target_pace_sec' => self::targetPaceSec($session, $paces),
                 'skipped' => $session->skipped,
                 'status' => $session->status->value,
                 'compliance_score' => $session->compliance_score,
@@ -92,14 +87,21 @@ final class PlanContextTool extends UserTool
         ];
     }
 
-    /** @param  array<string, int|null>  $paces  Empty until the athlete's PR history can estimate a VDOT. */
-    private static function targetPaceSec(SessionType $type, array $paces): ?int
+    /**
+     * Mirrors {@see SegmentGenerator::raceSegments()}: a race short of marathon
+     * distance is raced at threshold effort, not marathon effort.
+     *
+     * @param  array<string, int|null>  $paces  Empty until the athlete's PR history can estimate a VDOT.
+     */
+    private static function targetPaceSec(PlannedSession $session, array $paces): ?int
     {
-        return match ($type) {
+        return match ($session->session_type) {
             SessionType::Easy, SessionType::Long => $paces['easy'] ?? null,
             SessionType::Tempo => $paces['threshold'] ?? null,
             SessionType::Interval => $paces['interval'] ?? null,
-            SessionType::Race => $paces['marathon'] ?? null,
+            SessionType::Race => WeekPlanBuilder::isMarathonDistance(
+                $session->race_distance_m === null ? null : (float) $session->race_distance_m
+            ) ? $paces['marathon'] ?? null : $paces['threshold'] ?? null,
             SessionType::Rest => null,
         };
     }

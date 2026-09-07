@@ -8,6 +8,7 @@ use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\SegmentKey;
 use App\Enums\SessionType;
+use App\Models\PlannedSession;
 use App\Services\Run\Metrics\HeartRateZones;
 
 /**
@@ -118,6 +119,22 @@ final class SegmentGenerator
             SessionType::Interval => round($effectiveLong * self::SHORT_FRACTION_OF_LONG, 1),
             SessionType::Easy => round($effectiveLong * ($isPrimaryEasy ? self::MEDIUM_FRACTION_OF_LONG : self::SHORT_FRACTION_OF_LONG), 1),
         };
+    }
+
+    /**
+     * {@see self::coreKmFor()} for a stored {@see PlannedSession}, unredistributed
+     * and at the render-time multiplier of 1.0 — the qualitative figure the AI
+     * tools narrate, not {@see PlanRenderer}'s exact scaled one.
+     */
+    public static function coreKmForPlannedSession(PlannedSession $session, float $longRunBaselineKm): float
+    {
+        return self::coreKmFor(
+            $session->session_type,
+            isPrimaryEasy: false,
+            longRunBaselineKm: $longRunBaselineKm,
+            volumeMultiplier: 1.0,
+            raceDistanceM: $session->race_distance_m === null ? null : (float) $session->race_distance_m,
+        );
     }
 
     /**

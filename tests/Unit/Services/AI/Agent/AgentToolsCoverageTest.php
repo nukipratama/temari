@@ -922,6 +922,29 @@ it('targets each day at the pace its session type calls for', function (): void 
         ->and($paces[2])->toBeNull();
 });
 
+/**
+ * {@see \App\Services\Run\Plan\SegmentGenerator::raceSegments()} races anything
+ * short of marathon distance at threshold effort, not marathon effort — a 5K
+ * race day must target the same pace, not the much slower marathon band.
+ */
+it('targets a sub-marathon race day at threshold pace, not marathon pace', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
+    $today = Carbon::today();
+    PlannedSession::factory()->for($user)->create([
+        'date' => $today->toDateString(),
+        'session_type' => SessionType::Race,
+        'race_distance_m' => 5000,
+    ]);
+
+    $paces = planContextTool($user, $today, $today)->handle([])['days'][0];
+
+    $expectedThreshold = app(TrainingPaceCalculator::class)
+        ->fromVdotResult(app(VdotEstimator::class)->estimate($user, $today))['threshold'];
+
+    expect($paces['target_pace_sec'])->toBe($expectedThreshold);
+});
+
 /** A brand-new athlete has no VDOT, and a guessed pace is worse than none. */
 it('carries no target pace at all until the PR history can estimate a VDOT', function (): void {
     $user = User::factory()->create();
