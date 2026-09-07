@@ -768,3 +768,93 @@ it('still decorates lap-derived per_km rows with cadence from the stream', funct
 
     expect(array_column($summary['per_km'], 'avg_cadence_spm'))->toBe([170, 176, 160]);
 });
+
+it('does not read a downhill finish as cardiac drift', function (): void {
+    // Identical effort throughout — HR never moves — but the second half runs
+    // downhill, so the athlete speeds up for free. Against RAW pace that is a
+    // ~31% decoupling reading: "you fell apart". Grade-adjusted, it is the
+    // steady run it actually was.
+    $time = [];
+    $hr = [];
+    $velocity = [];
+    $grade = [];
+    for ($t = 0; $t <= 3600; $t += 30) {
+        $descending = $t >= 1800;
+        $time[] = $t;
+        $hr[] = 140;
+        // -5% costs ~0.763 of flat, so the same effort carries this much faster.
+        $velocity[] = $descending ? 3.277 : 2.5;
+        $grade[] = $descending ? -5.0 : 0.0;
+    }
+
+    $summary = $this->analysis->compute(
+        [
+            'time' => ['data' => $time],
+            'heartrate' => ['data' => $hr],
+            'velocity_smooth' => ['data' => $velocity],
+            'grade_smooth' => ['data' => $grade],
+        ],
+        defaultZones(),
+        null,
+        170,
+    );
+
+    expect($summary['decoupling_pct'])->toEqualWithDelta(0.0, 1.0);
+});
+
+it('still reports drift on a flat run, so the grade adjustment is not swallowing the signal', function (): void {
+    $time = [];
+    $hr = [];
+    $velocity = [];
+    $grade = [];
+    for ($t = 0; $t <= 3600; $t += 30) {
+        $time[] = $t;
+        $hr[] = $t < 1800 ? 140 : 150;
+        $velocity[] = 2.5;
+        $grade[] = 0.0;
+    }
+
+    $summary = $this->analysis->compute(
+        [
+            'time' => ['data' => $time],
+            'heartrate' => ['data' => $hr],
+            'velocity_smooth' => ['data' => $velocity],
+            'grade_smooth' => ['data' => $grade],
+        ],
+        defaultZones(),
+        null,
+        170,
+    );
+
+    expect($summary['decoupling_pct'])->toEqualWithDelta(7.1, 0.2);
+});
+
+it('publishes no heart-rate-against-pace reading at all on genuinely steep terrain', function (): void {
+    // A sustained 20% grade is outside the range the Minetti cost curve was
+    // fitted for, so the corrected figure would not be trustworthy either.
+    $time = [];
+    $hr = [];
+    $velocity = [];
+    $grade = [];
+    for ($t = 0; $t <= 3600; $t += 30) {
+        $time[] = $t;
+        $hr[] = $t < 1800 ? 140 : 150;
+        $velocity[] = 2.5;
+        $grade[] = 20.0;
+    }
+
+    $summary = $this->analysis->compute(
+        [
+            'time' => ['data' => $time],
+            'heartrate' => ['data' => $hr],
+            'velocity_smooth' => ['data' => $velocity],
+            'grade_smooth' => ['data' => $grade],
+        ],
+        defaultZones(),
+        null,
+        170,
+    );
+
+    expect($summary)->not->toHaveKey('decoupling_pct')
+        ->and($summary)->not->toHaveKey('hr_drift_bpm');
+});
