@@ -50,6 +50,19 @@ final class PhaseSchedule
     /** Taper reduction curve, nearest-to-race last (a 3-week taper: -20% / -40% / -60%). */
     private const array TAPER_REDUCTION_CURVE = [0.20, 0.40, 0.60];
 
+    /**
+     * Every fourth week of the Base/Build ramp is a recovery week. Without one
+     * the ramp compounds unbroken — five Build weeks at
+     * {@see self::BUILD_WEEKLY_RAMP} is +33% with nothing absorbing it — and
+     * the only Deload that existed was the reactive one
+     * {@see \App\Services\Run\Plan\Periodizer::applyDeload()} applies to the
+     * current week once monotony, strain or adherence has ALREADY slipped. The
+     * self-scaled arc has had a scheduled down week all along
+     * ({@see self::SELF_SCALED_CYCLE_WEEKS}); the arc with a deadline is the one
+     * that needed it more.
+     */
+    private const int DELOAD_EVERY_WEEKS = 4;
+
     private const int SELF_SCALED_CYCLE_WEEKS = 4;
 
     public function taperWeeksForDistance(float $distanceM): int
@@ -106,7 +119,7 @@ final class PhaseSchedule
             ...array_fill(0, $taperWeeks, PlanPhase::Taper),
         ];
 
-        return $this->weeksFrom($currentWeekStart, $phases);
+        return $this->weeksFrom($currentWeekStart, self::withScheduledDeloads($phases, $baseWeeks + $buildWeeks));
     }
 
     /**
@@ -138,7 +151,11 @@ final class PhaseSchedule
     public static function volumeMultipliers(array $phases): array
     {
         $result = [];
-        $prevBuildFinal = 1.0;
+        // The ramp counts BUILD WEEKS, not position within a contiguous run: a
+        // recovery week splits the build into separate runs, and exponentiating
+        // within each run would restart every one of them at 1.0 and flatten the
+        // progression entirely. Counting weeks lets the ramp carry across the dip.
+        $buildWeeks = 0;
         $i = 0;
         $n = count($phases);
 
@@ -149,22 +166,24 @@ final class PhaseSchedule
                 $runLength++;
             }
 
+            $buildLevel = $buildWeeks === 0 ? 1.0 : self::BUILD_WEEKLY_RAMP ** ($buildWeeks - 1);
+
             $curve = match ($phase) {
                 PlanPhase::Base => array_fill(0, $runLength, 1.0),
                 PlanPhase::Build => array_map(
-                    static fn (int $k): float => self::BUILD_WEEKLY_RAMP ** $k,
+                    static fn (int $k): float => self::BUILD_WEEKLY_RAMP ** ($buildWeeks + $k),
                     range(0, $runLength - 1),
                 ),
-                PlanPhase::Peak => array_fill(0, $runLength, $prevBuildFinal * self::PEAK_VOLUME_FRACTION),
+                PlanPhase::Peak => array_fill(0, $runLength, $buildLevel * self::PEAK_VOLUME_FRACTION),
                 PlanPhase::Taper => array_map(
-                    static fn (float $reduction): float => $prevBuildFinal * self::PEAK_VOLUME_FRACTION * (1 - $reduction),
+                    static fn (float $reduction): float => $buildLevel * self::PEAK_VOLUME_FRACTION * (1 - $reduction),
                     self::taperCurve($runLength),
                 ),
-                PlanPhase::Deload => array_fill(0, $runLength, $prevBuildFinal * (1 - self::DELOAD_REDUCTION)),
+                PlanPhase::Deload => array_fill(0, $runLength, $buildLevel * (1 - self::DELOAD_REDUCTION)),
             };
 
             if ($phase === PlanPhase::Build) {
-                $prevBuildFinal = end($curve);
+                $buildWeeks += $runLength;
             }
 
             array_push($result, ...$curve);
@@ -172,6 +191,25 @@ final class PhaseSchedule
         }
 
         return $result;
+    }
+
+    /**
+     * Turns every fourth week of the Base/Build ramp into a recovery week. Peak
+     * and Taper are untouched — both are already volume reductions, and a race
+     * arc short enough to hold fewer than {@see self::DELOAD_EVERY_WEEKS} ramp
+     * weeks has nothing to recover from yet.
+     *
+     * @param  list<PlanPhase>  $phases
+     * @param  int  $rampWeeks  how many leading weeks are Base or Build
+     * @return list<PlanPhase>
+     */
+    private static function withScheduledDeloads(array $phases, int $rampWeeks): array
+    {
+        for ($i = self::DELOAD_EVERY_WEEKS - 1; $i < $rampWeeks; $i += self::DELOAD_EVERY_WEEKS) {
+            $phases[$i] = PlanPhase::Deload;
+        }
+
+        return array_values($phases);
     }
 
     /**

@@ -112,8 +112,10 @@ it('supports the 2-session template, long run on Saturday', function (): void {
     $rows = $this->builder->build($this->monday, PlanPhase::Build, 2, [], null, true);
     $saturday = $this->monday->copy()->addDays(5)->toDateString();
 
-    expect(qualityCount($rows) + collect($rows)->filter(fn (array $r): bool => $r['session_type'] === SessionType::Long)->count())
-        ->toBe(2)
+    // Two training days, and neither is quality — a week this short has no room
+    // for it without giving up every easy kilometre.
+    expect(collect($rows)->filter(fn (array $r): bool => $r['session_type'] !== SessionType::Rest))->toHaveCount(2)
+        ->and(qualityCount($rows))->toBe(0)
         ->and($rows[$saturday]['session_type'])->toBe(SessionType::Long);
 });
 
@@ -193,22 +195,76 @@ it('classifies marathon distance at and above the threshold, never on a null rac
         ->and(WeekPlanBuilder::isMarathonDistance(42_195.0))->toBeTrue();
 });
 
-it('spends a four-session week\'s only quality day on interval work once a short race is being built for', function (): void {
+it('spends a fast runner\'s only quality day on interval work, and a slow runner\'s on threshold', function (): void {
     $tenK = 10_000.0;
 
-    $types = fn (PlanPhase $phase): array => array_values(array_map(
+    $types = fn (PlanPhase $phase, ?float $seconds): array => array_values(array_map(
         fn (array $row): SessionType => $row['session_type'],
-        $this->builder->build($this->monday, $phase, 4, [], $tenK, false),
+        $this->builder->build($this->monday, $phase, 4, [], $tenK, false, null, 0, null, null, $seconds),
     ));
 
-    // Base still opens with threshold — the safest single quality session —
-    // then the build carries the VO2max work that moves 10K pace.
-    expect($types(PlanPhase::Base))->toContain(SessionType::Tempo)
-        ->and($types(PlanPhase::Base))->not->toContain(SessionType::Interval)
-        ->and($types(PlanPhase::Build))->toContain(SessionType::Interval)
-        ->and($types(PlanPhase::Peak))->toContain(SessionType::Interval)
-        ->and($types(PlanPhase::Taper))->toContain(SessionType::Interval)
-        ->and($types(PlanPhase::Deload))->not->toContain(SessionType::Interval);
+    // The same 10K is a different event depending on how long it takes. A
+    // 35-minute runner races above threshold, so VO2max work is specific.
+    $fast = 35 * 60.0;
+    expect($types(PlanPhase::Build, $fast))->toContain(SessionType::Interval)
+        ->and($types(PlanPhase::Peak, $fast))->toContain(SessionType::Interval);
+
+    // A 70-minute runner races at or below threshold, so intervals train a pace
+    // they will never race at.
+    $slow = 70 * 60.0;
+    expect($types(PlanPhase::Build, $slow))->toContain(SessionType::Tempo)
+        ->and($types(PlanPhase::Build, $slow))->not->toContain(SessionType::Interval)
+        ->and($types(PlanPhase::Peak, $slow))->not->toContain(SessionType::Interval);
+
+    // In between, the build develops VO2max and the peak sharpens at threshold.
+    $middling = 60 * 60.0;
+    expect($types(PlanPhase::Build, $middling))->toContain(SessionType::Interval)
+        ->and($types(PlanPhase::Peak, $middling))->not->toContain(SessionType::Interval);
+
+    // Base is threshold whatever the runner, and Deload carries no quality.
+    expect($types(PlanPhase::Base, $fast))->not->toContain(SessionType::Interval)
+        ->and($types(PlanPhase::Deload, $fast))->not->toContain(SessionType::Interval);
+});
+
+it('falls back to threshold when there is no projection to judge the race by', function (): void {
+    $types = array_column($this->builder->build($this->monday, PlanPhase::Build, 4, [], 10_000.0, false), 'session_type');
+
+    expect($types)->toContain(SessionType::Tempo)
+        ->and($types)->not->toContain(SessionType::Interval);
+});
+
+it('keeps quality off the days either side of the long run', function (): void {
+    foreach ([5, 6] as $sessionsPerWeek) {
+        $rows = $this->builder->build($this->monday, PlanPhase::Build, $sessionsPerWeek, [], 10_000.0, false, null, 0, null, null, 35 * 60.0);
+
+        $offsetOf = fn (string $date): int => (int) $this->monday->diffInDays(Carbon::parse($date));
+        $long = null;
+        $quality = [];
+        foreach ($rows as $date => $row) {
+            if ($row['session_type'] === SessionType::Long) {
+                $long = $offsetOf($date);
+            }
+            if (in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true)) {
+                $quality[] = $offsetOf($date);
+            }
+        }
+
+        expect($long)->not->toBeNull();
+        foreach ($quality as $offset) {
+            expect($offset)->not->toBe(($long + 1) % 7, "sessions={$sessionsPerWeek}")
+                ->and($offset)->not->toBe(($long + 6) % 7, "sessions={$sessionsPerWeek}");
+        }
+    }
+});
+
+it('gives a two-session week easy running rather than half a week of quality', function (): void {
+    foreach ([PlanPhase::Build, PlanPhase::Peak, PlanPhase::Taper] as $phase) {
+        $types = array_column($this->builder->build($this->monday, $phase, 2, [], 10_000.0, false, null, 0, null, null, 35 * 60.0), 'session_type');
+
+        expect($types)->not->toContain(SessionType::Tempo)
+            ->and($types)->not->toContain(SessionType::Interval)
+            ->and($types)->toContain(SessionType::Long);
+    }
 });
 
 it('keeps a four-session week on threshold when there is no race to sharpen for', function (): void {

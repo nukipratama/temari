@@ -140,4 +140,63 @@ describe('SessionBarGraph', () => {
 
         expect(screen.getByText('10 min')).toBeInTheDocument();
     });
+
+    it('collapses a phase-split tempo day the same way it collapses interval reps', () => {
+        render(
+            <SessionBarGraph
+                segments={[
+                    segment({
+                        key: 'warmup',
+                        minutes: 10,
+                        km: 1.7,
+                        zone: 'Z1',
+                    }),
+                    segment({
+                        key: 'main',
+                        minutes: 18.9,
+                        km: 4.2,
+                        zone: 'Z4',
+                        pace_label: 'threshold',
+                    }),
+                    segment({
+                        key: 'recovery',
+                        minutes: 2,
+                        km: 0.3,
+                        zone: 'Z1',
+                    }),
+                    segment({
+                        key: 'main',
+                        minutes: 18.9,
+                        km: 4.2,
+                        zone: 'Z4',
+                        pace_label: 'threshold',
+                    }),
+                ]}
+            />,
+        );
+
+        expect(screen.getByText('2× main set')).toBeInTheDocument();
+        expect(
+            screen.getByText('4.2 km · 18.9 min hard / 2 min easy'),
+        ).toBeInTheDocument();
+    });
+
+    it('still lists a single main set rather than collapsing it', () => {
+        render(
+            <SessionBarGraph
+                segments={[
+                    segment({
+                        key: 'warmup',
+                        minutes: 10,
+                        km: 1.7,
+                        zone: 'Z1',
+                    }),
+                    segment({ key: 'main', minutes: 30, km: 4.6 }),
+                ]}
+            />,
+        );
+
+        expect(screen.getByText('main set')).toBeInTheDocument();
+        expect(screen.queryByText(/× main set/)).not.toBeInTheDocument();
+    });
 });

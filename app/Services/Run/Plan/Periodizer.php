@@ -11,6 +11,7 @@ use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\TrainingPreference;
 use App\Models\User;
+use App\Services\Run\Metrics\RiegelProjector;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -47,6 +48,7 @@ final readonly class Periodizer
         private WeekPlanBuilder $weekPlanBuilder,
         private SeasonService $seasonService,
         private PlanAdapter $planAdapter,
+        private RiegelProjector $riegelProjector,
     ) {
     }
 
@@ -86,6 +88,12 @@ final readonly class Periodizer
         );
 
         $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
+        // How long the race will take this athlete, not how far it is: the same
+        // 10K is a VO2max event for one runner and a threshold event for
+        // another, and only the projection can tell them apart.
+        $projectedRaceSeconds = $race === null
+            ? null
+            : $this->riegelProjector->project($user, (float) $race->distance_m)['predicted_sec'] ?? null;
 
         $rows = [];
         foreach ($weeks as $week) {
@@ -100,6 +108,7 @@ final readonly class Periodizer
                 $adaptation['quality_delta'],
                 $preference?->run_days,
                 $preference?->long_run_day,
+                $projectedRaceSeconds,
             );
             foreach ($weekRows as $date => $row) {
                 $rows[$date] = $row;

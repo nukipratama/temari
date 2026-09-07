@@ -39,6 +39,26 @@ final class WeekPlanBuilder
 
     private const int MIN_SESSIONS = 2;
 
+    /**
+     * Below this, a week has no room for quality at all: at two sessions the
+     * long run plus one quality day IS the week, leaving no easy running
+     * whatsoever. Base already refused quality below four; the other phases
+     * refused it nowhere, so an explicitly-chosen two-session week came out
+     * half hard.
+     */
+    private const int MIN_SESSIONS_FOR_QUALITY = 3;
+
+    /**
+     * A projected race under this is run above threshold, so VO2max work is the
+     * specific stimulus. Over {@see self::THRESHOLD_RACE_SECONDS} the race is at
+     * or below threshold and threshold work is more specific than intervals —
+     * the same 10K is a different event for a 35-minute runner and a 70-minute
+     * one, which race DISTANCE alone cannot see.
+     */
+    private const int VO2MAX_RACE_SECONDS = 3000;
+
+    private const int THRESHOLD_RACE_SECONDS = 4200;
+
     private const int MAX_SESSIONS = 6;
 
     /** Races at/above this distance get race-pace-specific (marathon band) quality work in Peak/Taper. */
@@ -72,6 +92,7 @@ final class WeekPlanBuilder
         int $qualityDelta = 0,
         ?array $preferredOffsets = null,
         ?int $preferredLongOffset = null,
+        ?float $projectedRaceSeconds = null,
     ): array {
         if ($preferredOffsets !== null && $preferredLongOffset !== null) {
             $trainingOffsets = $preferredOffsets;
@@ -84,13 +105,13 @@ final class WeekPlanBuilder
         }
         $isMarathonDistance = self::isMarathonDistance($raceDistanceM);
 
-        $qualitySlots = $this->qualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $qualityDelta);
+        $qualitySlots = $this->qualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $qualityDelta, $projectedRaceSeconds);
 
         // Non-long training offsets, in date order — the pool quality work is
         // spread across. Picking spread-out positions (not just the first N)
         // keeps two hard sessions from landing on consecutive training days.
         $nonLongOffsets = array_values(array_diff($trainingOffsets, [$longOffset]));
-        $qualityOffsets = array_flip(self::spreadOffsets($nonLongOffsets, count($qualitySlots)));
+        $qualityOffsets = array_flip(self::spreadOffsets(self::awayFromLongRun($nonLongOffsets, $longOffset), count($qualitySlots)));
 
         $rows = [];
         $qualityIndex = 0;
@@ -128,6 +149,28 @@ final class WeekPlanBuilder
             static fn (array $row): array => [...$row, 'phase' => $phase],
             $rows,
         );
+    }
+
+    /**
+     * Drops the days either side of the long run from the quality pool. The
+     * long run is a hard day too, but {@see self::spreadOffsets()} only knows
+     * about the gap BETWEEN quality days, so it pushed them to the ends of the
+     * week — landing one the day before the long run and the other the day
+     * after the previous week's, at five and six sessions. Adjacency wraps the
+     * week, since Sunday's long run and next Monday are consecutive days.
+     *
+     * Falls back to the full pool when trimming would leave too few days: a
+     * dense week that cannot avoid the flanks still needs its quality somewhere.
+     *
+     * @param  list<int>  $nonLongOffsets
+     * @return list<int>
+     */
+    private static function awayFromLongRun(array $nonLongOffsets, int $longOffset): array
+    {
+        $flanks = [($longOffset + 6) % 7, ($longOffset + 1) % 7];
+        $kept = array_values(array_diff($nonLongOffsets, $flanks));
+
+        return $kept === [] ? $nonLongOffsets : $kept;
     }
 
     /**
@@ -186,16 +229,16 @@ final class WeekPlanBuilder
      */
     public function qualitySlotCount(PlanPhase $phase, int $sessionsPerWeek, ?float $raceDistanceM, bool $selfScaled): int
     {
-        return count($this->qualitySlots($phase, $sessionsPerWeek, self::isMarathonDistance($raceDistanceM), $selfScaled, 0));
+        return count($this->qualitySlots($phase, $sessionsPerWeek, self::isMarathonDistance($raceDistanceM), $selfScaled, 0, null));
     }
 
     /**
      * @return list<array{session_type: SessionType}>
      */
-    private function qualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled, int $qualityDelta): array
+    private function qualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled, int $qualityDelta, ?float $projectedRaceSeconds): array
     {
         return self::withQualityDelta(
-            $this->phaseQualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled),
+            $this->phaseQualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $projectedRaceSeconds),
             $phase,
             $sessionsPerWeek,
             $qualityDelta,
@@ -243,9 +286,9 @@ final class WeekPlanBuilder
      *
      * @return list<array{session_type: SessionType}>
      */
-    private function phaseQualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled): array
+    private function phaseQualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled, ?float $projectedRaceSeconds): array
     {
-        if ($phase === PlanPhase::Deload) {
+        if ($phase === PlanPhase::Deload || $sessionsPerWeek < self::MIN_SESSIONS_FOR_QUALITY) {
             return [];
         }
 
@@ -265,12 +308,37 @@ final class WeekPlanBuilder
             return [['session_type' => SessionType::Tempo]];
         }
 
-        $second = ['session_type' => $selfScaled ? SessionType::Tempo : SessionType::Interval];
-
         if ($sessionsPerWeek < self::MIN_SESSIONS_FOR_EXTRA_QUALITY) {
-            return [$second];
+            return [['session_type' => self::singleQualityType($phase, $selfScaled, $projectedRaceSeconds)]];
         }
 
-        return [['session_type' => SessionType::Tempo], $second];
+        // Two slots hold both stimuli, so there is nothing to choose between.
+        return [
+            ['session_type' => SessionType::Tempo],
+            ['session_type' => $selfScaled ? SessionType::Tempo : SessionType::Interval],
+        ];
+    }
+
+    /**
+     * The one quality day a week gets when it only gets one. Self-scaled
+     * training has no race pace to sharpen for and stays threshold-only. With a
+     * race, the choice follows how long the race will take rather than how far
+     * it is: a short race is run above threshold, a long one at or below it, and
+     * in between the build develops VO2max while the peak and taper sharpen at
+     * race-specific threshold. No projection yet means no evidence, so it falls
+     * back to threshold — the safer single quality session, the same reasoning
+     * Base already applies.
+     */
+    private static function singleQualityType(PlanPhase $phase, bool $selfScaled, ?float $projectedRaceSeconds): SessionType
+    {
+        if ($selfScaled || $projectedRaceSeconds === null) {
+            return SessionType::Tempo;
+        }
+
+        return match (true) {
+            $projectedRaceSeconds < self::VO2MAX_RACE_SECONDS => SessionType::Interval,
+            $projectedRaceSeconds >= self::THRESHOLD_RACE_SECONDS => SessionType::Tempo,
+            default => $phase === PlanPhase::Build ? SessionType::Interval : SessionType::Tempo,
+        };
     }
 }
