@@ -174,6 +174,11 @@ export default function SplitsChart({
                     {bars.map((bar) => (
                         <button
                             key={bar.key}
+                            id={
+                                bar.partial
+                                    ? undefined
+                                    : `anchor-split-${bar.tick}`
+                            }
                             type="button"
                             onClick={(event) => selectBar(event, bar)}
                             aria-label={`Km ${bar.tick}, ${bar.pace ?? 'no'} pace`}

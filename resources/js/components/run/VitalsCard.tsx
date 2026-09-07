@@ -4,6 +4,7 @@ import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
+import { showsDecoupling, showsGrade } from '@/lib/anchors';
 import { cn } from '@/lib/cn';
 
 // Mirrors the "hot run" threshold used across the backend narration (e.g.
@@ -65,6 +66,13 @@ interface VitalTile {
     label: string;
     icon: string;
     value: string;
+    /**
+     * The `metric:<name>` this tile draws, so a claim about it can point here.
+     * Null where the tile draws something the anchor namespace has no name for:
+     * the cadence tile is an average, not `cadence_drop`, and pointing a claim
+     * about the drop at the average would ground it in the wrong number.
+     */
+    metric: string | null;
 }
 
 /**
@@ -94,36 +102,33 @@ export default function VitalsCard({
             label: 'spm avg',
             icon: 'mdi:shoe-print',
             value: `${Math.round(detail.average_cadence * 2)}`,
+            metric: null,
         });
     }
     // stream_summary is an untyped DB JSON blob; a corrupt or legacy row can
     // carry an unusable reading, which must not render as "NaN%". Only a run
     // that actually climbed shows a grade, so a flat GPS run doesn't show 0%.
     const maxGrade = Number(summary.max_grade_pct);
-    if (
-        summary.max_grade_pct != null &&
-        Number.isFinite(maxGrade) &&
-        maxGrade >= 3
-    ) {
+    if (showsGrade(summary)) {
         tiles.push({
             label: 'steepest grade',
             icon: 'mdi:terrain',
             value: `${maxGrade}%`,
+            metric: 'grade',
         });
         if (summary.gap_pace != null) {
             tiles.push({
                 label: 'flat pace /km',
                 icon: 'mdi:scale-balance',
                 value: summary.gap_pace,
+                metric: 'gap_pace',
             });
         }
     }
 
-    const decouplingRaw = Number(summary.decoupling_pct);
-    const decoupling =
-        summary.decoupling_pct != null && Number.isFinite(decouplingRaw)
-            ? decouplingRaw
-            : null;
+    const decoupling = showsDecoupling(summary)
+        ? Number(summary.decoupling_pct)
+        : null;
 
     if (avgHr === null && tiles.length === 0 && decoupling === null) {
         return (
@@ -192,6 +197,11 @@ export default function VitalsCard({
                     {tiles.map((tile) => (
                         <div
                             key={tile.label}
+                            id={
+                                tile.metric === null
+                                    ? undefined
+                                    : `anchor-metric-${tile.metric}`
+                            }
                             className="rounded-sm bg-muted p-2.5 text-center"
                         >
                             <Icon
@@ -226,7 +236,7 @@ function Decoupling({
     const note = decouplingNote(value, detail);
 
     return (
-        <div className="mt-3.5">
+        <div id="anchor-metric-decoupling" className="mt-3.5">
             <div className="flex items-center justify-between gap-3">
                 <Eyebrow token="micro" tone="ink-3" as="span">
                     Decoupling

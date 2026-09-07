@@ -194,3 +194,57 @@ describe('RunLenses', () => {
         expect(button.textContent).toContain('Next in 2:00');
     });
 });
+
+describe('RunLenses claim citations', () => {
+    /**
+     * The narrator validates an anchor against the run's StreamSummary, which
+     * holds readings no component on the page draws. Offering a control for one
+     * of those would be a button that goes nowhere.
+     */
+    it('offers no control for a claim the page has no site for', () => {
+        render(
+            <RunLenses
+                {...defaultProps}
+                drawnAnchors={new Set(['split:3'])}
+                insight={claimsAnalysis([
+                    { anchor: 'metric:cadence_drop', text: 'Cadence fell.' },
+                ])}
+            />,
+        );
+
+        expect(screen.getByText('Cadence fell.')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Show/ })).toBeNull();
+    });
+
+    it('names what it points at, so the reader knows before tapping', () => {
+        render(
+            <RunLenses {...defaultProps} drawnAnchors={new Set(['split:3'])} />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: 'Show km 3 on this page' }),
+        ).toBeInTheDocument();
+    });
+
+    it('scrolls to the element that draws the claim and marks it', () => {
+        const target = document.createElement('div');
+        target.id = 'anchor-split-3';
+        const scrollIntoView = vi.fn();
+        target.scrollIntoView = scrollIntoView;
+        document.body.append(target);
+
+        render(
+            <RunLenses {...defaultProps} drawnAnchors={new Set(['split:3'])} />,
+        );
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Show km 3 on this page' }),
+        );
+
+        expect(scrollIntoView).toHaveBeenCalledWith({
+            block: 'center',
+            behavior: 'smooth',
+        });
+        expect(target.dataset.anchorHit).toBe('true');
+        target.remove();
+    });
+});

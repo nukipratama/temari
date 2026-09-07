@@ -524,7 +524,33 @@ body {
     );
 }
 
+/* Where a claim's citation lands. A ring rather than a fill: the target is a
+   split bar, a stat tile or a zone legend entry, all of which already carry
+   their own colour, and a fill would recolour the very thing being pointed at.
+   Fades on its own so the page does not stay marked up after the reader has
+   looked. */
+@keyframes anchor-hit {
+    from {
+        box-shadow: 0 0 0 3px var(--color-horizon);
+    }
+    to {
+        box-shadow: 0 0 0 3px transparent;
+    }
+}
+
+[data-anchor-hit] {
+    border-radius: var(--radius-sm);
+    animation: anchor-hit 1.6s ease-out forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
+    /* No fade to watch, so the ring simply holds for the same window and is
+       removed with the attribute. */
+    [data-anchor-hit] {
+        animation: none;
+        box-shadow: 0 0 0 3px var(--color-horizon);
+    }
+
     .skeleton,
     .skeleton-on-sky {
         background-image: none;
