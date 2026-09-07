@@ -225,6 +225,7 @@ it('lets the chained recap kickoff narrate the whole backfilled history without 
         app(KickoffWeeklyRecaps::class),
         app(KickoffMonthlyRecaps::class),
         app(PlanNarrationRequester::class),
+        app(AnalysisService::class),
     );
 
     // The backfill already wrote the weekly snapshot and the summary detail rows

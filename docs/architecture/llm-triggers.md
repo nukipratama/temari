@@ -70,6 +70,7 @@ scheduled command missing from this table is a bug in this table.
 | daily 06:00 | [`ai:trend-read 30d`](../../routes/console.php#L90) | `TrendRead`, discriminator `30d` |
 | every 3rd day 06:00 | [`ai:trend-read 90d`](../../routes/console.php#L91) | discriminator `90d` |
 | Mon 06:00 | [`ai:trend-read 12mo`](../../routes/console.php#L92) | discriminator `12mo` |
+| first connect | [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php) | all three `trend_read` ranges at once |
 | hourly | [`ai:self-heal`](../../routes/console.php#L100) | recovery only — see origin 4 |
 
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
@@ -84,6 +85,14 @@ backfill chain race, and whichever finishes second calls
 `users.backfilled_at` is already stamped, [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php)
 when a plan already exists. That path never invalidates, so the interleaving where both fire re-bills
 nothing.
+
+**The Trends reads are kicked from the same link, for a different reason.** Each range refreshes on
+its own cadence — `30d` daily, `90d` every third day, `12mo` on Mondays — and each of those crons only
+reaches athletes who already existed when it last ran. A Friday signup therefore had no 90d read for up
+to three days and no 12mo read for up to seven, on exactly the days a new account forms its impression.
+`KickoffRecapsJob` requests all three once the backfill lands, skipping an athlete whose backfill found
+no runs; `AnalysisService::request()` is idempotent, so the cron that comes round later finds them done
+and bills nothing.
 
 **Those nine re-bill only where the material changed.** The periodizer frequently rewrites a week
 into something that reads identically — the same session type, phase and prescribed distance produce

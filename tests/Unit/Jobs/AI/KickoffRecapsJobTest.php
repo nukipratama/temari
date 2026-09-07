@@ -6,11 +6,15 @@ use App\Actions\AI\KickoffMonthlyRecaps;
 use App\Actions\AI\KickoffWeeklyRecaps;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\KickoffRecapsJob;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\AnalysisType;
 use App\Services\AI\NarrationOrigin;
+use App\Services\AI\AnalysisService;
 use App\Services\AI\PlanNarrationRequester;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -51,7 +55,7 @@ it('runs the weekly and monthly kickoff for its own user, attributed to the inge
             return ['dispatched' => 0, 'rule_based' => 0];
         });
 
-    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class));
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class));
 
     expect($seen['weekly'])->toBe([$user->id, AnalysisOrigin::Ingest])
         ->and($seen['monthly'])->toBe([$user->id, AnalysisOrigin::Ingest]);
@@ -62,7 +66,7 @@ it('stamps backfilled_at as the last link of the connect chain', function (): vo
     $user = User::factory()->create();
     [$weekly, $monthly] = kickoffRecapsDoubles();
 
-    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class));
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class));
 
     expect($user->fresh()->backfilled_at)->not->toBeNull();
 });
@@ -73,7 +77,7 @@ it('narrates the first week when onboarding already wrote a plan', function (): 
     PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
     [$weekly, $monthly] = kickoffRecapsDoubles();
 
-    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class));
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class));
 
     Bus::assertDispatched(
         AnalyzePlanDayVoiceJob::class,
@@ -87,7 +91,7 @@ it('narrates nothing when no plan exists yet', function (): void {
     $user = User::factory()->create();
     [$weekly, $monthly] = kickoffRecapsDoubles();
 
-    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class));
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class));
 
     Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
     expect($user->fresh()->backfilled_at)->not->toBeNull();
@@ -97,7 +101,38 @@ it('does nothing beyond the recaps when the user is gone', function (): void {
     Bus::fake();
     [$weekly, $monthly] = kickoffRecapsDoubles();
 
-    new KickoffRecapsJob(404)->handle($weekly, $monthly, app(PlanNarrationRequester::class));
+    new KickoffRecapsJob(404)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class));
 
     Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
+});
+
+it('kicks every Trends range off the backfill, so a new account is not days behind', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
+    [$weekly, $monthly] = kickoffRecapsDoubles();
+
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class));
+
+    // Each range refreshes on its own cadence and every cron only reaches
+    // athletes who existed when it last ran, so without this a Friday signup
+    // waits up to three days for 90d and seven for 12mo.
+    $ranges = Analysis::query()
+        ->where('subject_id', $user->id)
+        ->where('analysis_type', AnalysisType::TrendRead)
+        ->pluck('discriminator')
+        ->all();
+
+    expect($ranges)->toEqualCanonicalizing(AnalysisType::TREND_READ_RANGES);
+});
+
+it('reads no trends for an athlete whose backfill found no runs', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    [$weekly, $monthly] = kickoffRecapsDoubles();
+
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class));
+
+    expect(Analysis::query()->where('analysis_type', AnalysisType::TrendRead)->count())->toBe(0);
 });
