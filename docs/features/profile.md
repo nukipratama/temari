@@ -62,6 +62,21 @@ These are the same estimators [ProfileVoiceNarrator](app/Services/AI/Narrators/P
 
 Only records set within `VdotEstimator::RECENT_MONTHS` (12) vote. Deliberately a cut on voting rights rather than a decay applied to the number: PR age is not evidence of detraining, and an athlete running steadily who simply has not raced still holds the fitness their old record proved. When *nothing* is recent the older estimate still stands — no null cliff for a returning athlete — but it comes back flagged `stale`, and [PaceTargetsCard](resources/js/components/profile/PaceTargetsCard.tsx) names the record and its date under the rail rather than presenting an old number as current.
 
+### Endurance and quality read different evidence
+
+A record is a **floor** on what the athlete could do on its own date, never a **ceiling** on what they can do now. One minimum taken across every distance *and* every date conflates the two, and on real data that broke the quality end outright: a hard half from four months ago outvoted a week-old 5 km and had the plan prescribing **interval reps slower than the athlete's own sub-maximal 5 km training pace**.
+
+Raising the single anchor is not the fix either — it breaks the other end. Anchored on the recent short evidence, prescribed *easy* pace came out faster than the athlete's actual half-marathon **race** pace.
+
+So `estimate()` returns two anchors, and [TrainingPaceCalculator::fromVdot()](app/Services/Run/Metrics/TrainingPaceCalculator.php) splits the four paces between them:
+
+| pace | anchor | why |
+|---|---|---|
+| easy, marathon | `vdot` — minimum across every category in the 12-month window | never outrun a distance the athlete has actually proven |
+| threshold, interval | `quality_vdot` — the same minimum over records inside `QUALITY_MONTHS` (3) and at or under `QUALITY_MAX_METERS` (10 km) | quality work should reflect what the athlete runs *now*, over durations quality work actually lasts |
+
+`quality_vdot` can never fall below `vdot`: its slice is a subset of the endurance slice, so its minimum can only be higher. With no qualifying recent short record it simply equals `vdot`, which is the pre-split behaviour. `quality_source` is set only when the two genuinely diverge, and `PaceTargetsCard` then names both records rather than presenting one date as the source of all four numbers.
+
 The window is measured from a caller-supplied date, defaulting to now. [TrainingBaseline](app/Services/Run/Plan/TrainingBaseline.php) threads its own `$asOf` through, so the as-of paths [ComplianceScorer](app/Services/Run/Plan/ComplianceScorer.php) and [SeasonSummaryBuilder](app/Services/Run/Plan/SeasonSummaryBuilder.php) already use judge an old week by the evidence that existed then, the same discipline as [[a-day-is-scored-when-it-is-run]].
 
 ## Time in zone · last 12 weeks

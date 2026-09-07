@@ -30,27 +30,32 @@ class TrainingPaceCalculator
      * {@see VdotEstimator::estimate()} result directly, which is null whenever
      * there is not yet enough PR history to estimate a VDOT.
      *
-     * @param  array{vdot: float, ...}|null  $vdotResult
+     * @param  array{vdot: float, quality_vdot?: float, ...}|null  $vdotResult
      * @return array{easy: int, marathon: int, threshold: int, interval: int}|null seconds per kilometre
      */
     public function fromVdotResult(?array $vdotResult): ?array
     {
-        return $vdotResult !== null ? $this->fromVdot($vdotResult['vdot']) : null;
+        if ($vdotResult === null) {
+            return null;
+        }
+
+        return $this->fromVdot($vdotResult['vdot'], $vdotResult['quality_vdot'] ?? null);
     }
 
     /**
      * @return array{easy: int, marathon: int, threshold: int, interval: int} seconds per kilometre
      */
-    public function fromVdot(float $vdot): array
+    public function fromVdot(float $vdot, ?float $qualityVdot = null): array
     {
         $easyLowPace = $this->paceFromVo2Fraction($vdot, self::EASY_LOW_FRACTION);
         $easyHighPace = $this->paceFromVo2Fraction($vdot, self::EASY_HIGH_FRACTION);
+        $quality = $qualityVdot ?? $vdot;
 
         return [
             'easy' => (int) round(($easyLowPace + $easyHighPace) / 2),
             'marathon' => (int) round($this->paceFromVo2Fraction($vdot, self::MARATHON_FRACTION)),
-            'threshold' => (int) round($this->paceFromVo2Fraction($vdot, self::THRESHOLD_FRACTION)),
-            'interval' => (int) round($this->paceFromVo2Fraction($vdot, self::INTERVAL_FRACTION)),
+            'threshold' => (int) round($this->paceFromVo2Fraction($quality, self::THRESHOLD_FRACTION)),
+            'interval' => (int) round($this->paceFromVo2Fraction($quality, self::INTERVAL_FRACTION)),
         ];
     }
 

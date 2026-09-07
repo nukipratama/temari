@@ -37,7 +37,25 @@ class VdotEstimator
     public const int RECENT_MONTHS = 12;
 
     /**
-     * @return array{vdot: float, source_category: string, set_at: Carbon, stale: bool}|null
+     * A record is a floor on what the athlete could do on its own date, never a
+     * ceiling on what they can do now. Taking one minimum across every distance
+     * and every date conflates the two: a hard long effort from months ago
+     * outvotes a recent short one and holds quality paces below what the athlete
+     * demonstrably runs in training. Quality work therefore reads a second
+     * anchor, restricted to recent short-distance evidence.
+     */
+    public const int QUALITY_MONTHS = 3;
+
+    public const float QUALITY_MAX_METERS = 10_000.0;
+
+    /**
+     * `vdot` anchors endurance work and takes the minimum across every category
+     * in the window, so an easy or long pace never outruns a proven distance.
+     * `quality_vdot` anchors threshold and interval work. It reads the same
+     * minimum over a narrower slice, and is never below `vdot`, that slice being
+     * a subset of this one.
+     *
+     * @return array{vdot: float, quality_vdot: float, source_category: string, set_at: Carbon, stale: bool, quality_source: array{source_category: string, set_at: Carbon}|null}|null
      */
     public function estimate(User $user, ?Carbon $asOf = null): ?array
     {
@@ -48,7 +66,9 @@ class VdotEstimator
             ->whereIn('category', $eligibleValues)
             ->get();
 
-        $cutoff = ($asOf ?? Carbon::now())->copy()->subMonths(self::RECENT_MONTHS);
+        $now = $asOf ?? Carbon::now();
+        $cutoff = $now->copy()->subMonths(self::RECENT_MONTHS);
+        $qualityCutoff = $now->copy()->subMonths(self::QUALITY_MONTHS);
 
         $result = $this->lowestVdot($prs->filter(
             static fn (PersonalRecord $pr): bool => $pr->set_at->greaterThanOrEqualTo($cutoff),
@@ -56,7 +76,26 @@ class VdotEstimator
         $stale = $result === null;
         $result ??= $this->lowestVdot($prs);
 
-        return $result === null ? null : [...$result, 'stale' => $stale];
+        if ($result === null) {
+            return null;
+        }
+
+        $quality = $this->lowestVdot($prs->filter(
+            static fn (PersonalRecord $pr): bool => $pr->set_at->greaterThanOrEqualTo($qualityCutoff)
+                && ($pr->category->distanceMeters() ?? INF) <= self::QUALITY_MAX_METERS,
+        ));
+
+        $split = $quality !== null && $quality['vdot'] > $result['vdot'];
+
+        return [
+            ...$result,
+            'quality_vdot' => $quality['vdot'] ?? $result['vdot'],
+            'quality_source' => $split ? [
+                'source_category' => $quality['source_category'],
+                'set_at' => $quality['set_at'],
+            ] : null,
+            'stale' => $stale,
+        ];
     }
 
     /**

@@ -163,3 +163,67 @@ it('measures the window from the given date, so replaying an old week does not j
     expect($this->estimator->estimate($user)['stale'])->toBeTrue()
         ->and($this->estimator->estimate($user, Carbon::today()->subMonths(13))['stale'])->toBeFalse();
 });
+
+it('anchors quality work on recent short evidence, so intervals are not prescribed slower than a training 5km', function (): void {
+    $user = User::factory()->create();
+    // The shape found on prod: a hard half four months back and a much fresher
+    // 5km. The half is the honest endurance ceiling and must keep easy pace
+    // conservative, but letting it also set interval pace prescribed reps
+    // SLOWER than the athlete's own sub-maximal 5km.
+    PersonalRecord::factory()->for($user)->create([
+        'category' => 'half_marathon',
+        'value_sec' => 8_845.0,
+        'set_at' => Carbon::today()->subMonths(4),
+    ]);
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1_675.0,
+        'set_at' => Carbon::today()->subWeek(),
+    ]);
+
+    $result = $this->estimator->estimate($user);
+
+    expect($result['vdot'])->toEqualWithDelta(28.5, 0.2)
+        ->and($result['quality_vdot'])->toEqualWithDelta(33.6, 0.2)
+        ->and($result['quality_source']['source_category'])->toBe('5km');
+});
+
+it('leaves the quality anchor equal to the endurance one when the short evidence is just as old', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create([
+        'category' => 'half_marathon',
+        'value_sec' => 8_845.0,
+        'set_at' => Carbon::today()->subMonths(4),
+    ]);
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1_675.0,
+        'set_at' => Carbon::today()->subMonths(4),
+    ]);
+
+    $result = $this->estimator->estimate($user);
+
+    expect($result['quality_vdot'])->toBe($result['vdot'])
+        ->and($result['quality_source'])->toBeNull();
+});
+
+it('never lets the quality anchor fall below the endurance one', function (): void {
+    $user = User::factory()->create();
+    // A recent short record that is SLOWER in VDOT terms than the endurance
+    // anchor. The quality slice is a subset of the endurance slice, so its
+    // minimum can only be higher; this pins that invariant.
+    PersonalRecord::factory()->for($user)->create([
+        'category' => 'half_marathon',
+        'value_sec' => 6_300.0,
+        'set_at' => Carbon::today()->subMonth(),
+    ]);
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 2_400.0,
+        'set_at' => Carbon::today()->subWeek(),
+    ]);
+
+    $result = $this->estimator->estimate($user);
+
+    expect($result['quality_vdot'])->toBeGreaterThanOrEqual($result['vdot']);
+});

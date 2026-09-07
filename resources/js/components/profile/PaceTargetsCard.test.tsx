@@ -61,6 +61,8 @@ describe('PaceTargetsCard', () => {
                     category: 'half_marathon',
                     set_at: '2026-05-19',
                     stale: false,
+                    quality_category: null,
+                    quality_set_at: null,
                 }}
             />,
         );
@@ -79,13 +81,45 @@ describe('PaceTargetsCard', () => {
                     threshold: 300,
                     interval: 280,
                 }}
-                source={{ category: '5km', set_at: '2024-01-08', stale: true }}
+                source={{
+                    category: '5km',
+                    set_at: '2024-01-08',
+                    stale: true,
+                    quality_category: null,
+                    quality_set_at: null,
+                }}
             />,
         );
 
         expect(
             screen.getByText(
                 'from your 5 km pr, set jan 2024 · nothing newer to go on',
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('names both records when tempo and interval read a fresher one', () => {
+        render(
+            <PaceTargetsCard
+                paces={{
+                    easy: 450,
+                    marathon: 408,
+                    threshold: 344,
+                    interval: 323,
+                }}
+                source={{
+                    category: 'half_marathon',
+                    set_at: '2026-05-17',
+                    stale: false,
+                    quality_category: '5km',
+                    quality_set_at: '2026-08-29',
+                }}
+            />,
+        );
+
+        expect(
+            screen.getByText(
+                'easy and marathon from your half marathon pr, set may 2026 · tempo and interval from your 5 km pr, set aug 2026',
             ),
         ).toBeInTheDocument();
     });
