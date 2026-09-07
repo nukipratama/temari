@@ -129,6 +129,8 @@ const baseProps: AiUsageProps = {
     budget: {
         todayCost: 0.02,
         dailyCeiling: 0.1,
+        perUserCeiling: 0.05,
+        athletes: 2,
         currency: 'USD',
         trippedAt: null,
         degradedFills: 0,
@@ -253,6 +255,8 @@ describe('AiUsage page', () => {
                 budget={{
                     todayCost: 1000,
                     dailyCeiling: 5000,
+                    perUserCeiling: 2500,
+                    athletes: 2,
                     currency: 'IDR',
                     trippedAt: null,
                     degradedFills: 0,
