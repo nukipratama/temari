@@ -152,10 +152,7 @@ class TrendReadNarrator
             propertySchema: self::READING_PROPERTY_SCHEMA,
         );
 
-        // `reading` is a commitment device, not content: naming the one family
-        // before writing is what stops four of them turning up in the prose.
-        // Three separate no-stacking rules in the prompt did not, measured at
-        // 4-5 families and 9-10 numbers against a stated ceiling of 3.
+        // `reading` is a commitment device: it is never rendered, only required.
         return trim((string) $decoded['title']."\n\n".(string) $decoded['description']);
     }
 }
