@@ -2,13 +2,19 @@
 
 declare(strict_types=1);
 
+use App\Enums\PlanPhase;
+use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Plan\PlanRenderer;
+use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\RestClampRecorder;
+use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -98,6 +104,64 @@ it('records no eased target once the athlete has already run today', function ()
     // run. Either way the guarantee holds: a cap the athlete's own run caused
     // is never a target they were set.
     expect($session->fresh()->clamped_km)->toBeNull();
+});
+
+/**
+ * The eased distance recorded must be the one the render actually shows —
+ * {@see \App\Services\Run\Plan\ReadinessClamp::apply()}'s `core_km` — not a
+ * hardcoded (Easy, isPrimaryEasy: false, multiplier: 1.0) computation. A
+ * multi-week Build ramp moves the week's multiplier off 1.0, and a downgraded
+ * Long day sizes itself by the primary-easy fraction, not the small one used
+ * for a downgraded Tempo/Interval — a hardcoded call collapses both.
+ */
+it('records the eased distance the render itself would show, not a fixed formula', function (): void {
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+        'form_status' => 'fatigued',
+        'monotony' => 1.0,
+    ]);
+
+    $currentWeekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    foreach ([3, 2, 1] as $weeksAgo) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => $currentWeekStart->copy()->subWeeks($weeksAgo)->toDateString(),
+            'phase' => PlanPhase::Build,
+            'session_type' => SessionType::Easy,
+        ]);
+    }
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Long,
+    ]);
+
+    app(RestClampRecorder::class)->record($user, Carbon::today());
+
+    // The multiplier is read from the renderer's own helper rather than
+    // written out as a literal: the invariant under test is that the recorder
+    // and the render agree, not that the Build ramp is any particular number.
+    $currentWeekKey = $currentWeekStart->toDateString();
+    [, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers(
+        PlannedSession::query()->where('user_id', $user->id)->orderBy('date')->get()
+            ->groupBy(fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString()),
+    );
+
+    $longRunKm = app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_km'];
+    $clamp = ReadinessClamp::apply(
+        SessionType::Long,
+        PlanPhase::Build,
+        null,
+        $longRunKm,
+        $multiplierByWeek[$currentWeekKey] ?? 1.0,
+        null,
+        ReadinessCeiling::EasyOnly,
+    );
+
+    $coreKm = $clamp['core_km'] ?? throw new RuntimeException('ReadinessClamp::apply() unexpectedly found nothing to clamp.');
+
+    expect($coreKm)->toBeGreaterThan(0.0)
+        ->and($session->fresh()?->clamped_km)->toBe($coreKm);
 });
 
 /** Write once: readiness moving later in the day does not re-set the target. */

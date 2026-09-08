@@ -38,21 +38,37 @@ final readonly class RestClampRecorder
     }
 
     /**
-     * Whether the eased distance is safe to record, which turns entirely on why
-     * the ceiling dropped.
-     *
-     * `Readiness::assess()` caps to `EasyOnly` on `ranToday` alone, so after any
-     * run at all the ceiling reads easy — including on a day the athlete just
-     * correctly ran a tempo. Recording an eased target then would tell the
-     * scorer the day only ever asked for 3.6 km, and grade a properly-executed
-     * 6 km tempo as an overreach. A cap caused by having already trained is
-     * guidance for a SECOND outing, never an instruction that replaced the
-     * session, so it is not a target anyone was set. See
-     * `docs/decisions/a-clamped-day-is-graded-on-what-it-asked.md`.
+     * The week's volume multiplier, read the same way {@see CurrentWeekPlanBuilder}
+     * and {@see \App\Http\Controllers\PlanController} do — the same trailing
+     * window resolves to the same multiplier for the shared week. Needed so
+     * the eased distance recorded here matches the one the render actually
+     * showed: {@see ReadinessClamp::apply()}'s core_km scales with it, and a
+     * hardcoded 1.0 would only agree with the render by coincidence, in the
+     * one phase where the ramp has not moved off it yet.
      */
-    private static function isReplacementTarget(bool $ranToday): bool
+    private function volumeMultiplierFor(User $user, Carbon $today): float
     {
-        return ! $ranToday;
+        $currentWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
+
+        $sessions = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [
+                $currentWeekStart->copy()->subWeeks(CurrentWeekPlanBuilder::HISTORY_WEEKS)->toDateString(),
+                $currentWeekStart->copy()->addDays(6)->toDateString(),
+            ])
+            ->orderBy('date')
+            ->get();
+
+        if ($sessions->isEmpty()) {
+            return 1.0;
+        }
+
+        $sessionsByWeek = $sessions->groupBy(
+            fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
+        );
+        [, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek);
+
+        return $multiplierByWeek[$currentWeekStart->toDateString()] ?? 1.0;
     }
 
     public function record(User $user, Carbon $today): bool
@@ -84,19 +100,38 @@ final readonly class RestClampRecorder
             return true;
         }
 
-        $easedTo = ReadinessClamp::downgradeFor($session->session_type, $ceiling);
-        if ($easedTo === null || ! self::isReplacementTarget($context->ranToday)) {
+        // `Readiness::assess()` caps to `EasyOnly` on `ranToday` alone, so after
+        // any run at all the ceiling reads easy — including on a day the
+        // athlete just correctly ran a tempo. Recording an eased target then
+        // would tell the scorer the day only ever asked for 3.6 km, and grade a
+        // properly-executed 6 km tempo as an overreach. A cap caused by having
+        // already trained is guidance for a SECOND outing, never an instruction
+        // that replaced the session, so it is not a target anyone was set. See
+        // `docs/decisions/a-clamped-day-is-graded-on-what-it-asked.md`.
+        if ($context->ranToday) {
             return false;
         }
 
-        $session->update([
-            'clamped_km' => SegmentGenerator::coreKmFor(
-                $easedTo,
-                false,
-                (float) $this->baseline->forUser($user, $today)['long_run_km'],
-                1.0,
-            ),
-        ]);
+        // core_km comes from the same ReadinessClamp::apply() the render calls
+        // (paces are irrelevant to it, so null is safe) rather than a hand-rolled
+        // SegmentGenerator::coreKmFor(): apply()'s ModerateOk arm sizes a downgraded
+        // Tempo/Interval by the ORIGINAL session type, not by SessionType::Easy, and
+        // its EasyOnly arm sizes a downgraded Long day by the primary-easy fraction —
+        // two distinctions a hardcoded (Easy, isPrimaryEasy: false) call collapses.
+        $clamp = ReadinessClamp::apply(
+            $session->session_type,
+            $session->phase,
+            $session->race_distance_m === null ? null : (float) $session->race_distance_m,
+            (float) $this->baseline->forUser($user, $today)['long_run_km'],
+            $this->volumeMultiplierFor($user, $today),
+            null,
+            $ceiling,
+        );
+        if ($clamp === null) {
+            return false;
+        }
+
+        $session->update(['clamped_km' => $clamp['core_km']]);
 
         return true;
     }
