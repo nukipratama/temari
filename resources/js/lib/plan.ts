@@ -130,7 +130,7 @@ export const STATUS_TONE: Record<string, string> = {
     done: 'text-horizon-ink',
     partial: 'text-citrus-ink',
     missed: 'text-ember-ink',
-    overreached: 'text-citrus-ink',
+    overreached: 'text-horizon-ink',
     skip: 'text-text-3',
 };
 

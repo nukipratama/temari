@@ -289,7 +289,7 @@ export default function WeekPlanWidget({
                                         today.distance_km,
                                     )}
                                 </span>
-                                <span className="mt-0.5 block italic text-text-3">
+                                <span className="mt-0.5 block italic text-text-2">
                                     {today.clamp.note}
                                 </span>
                             </span>
