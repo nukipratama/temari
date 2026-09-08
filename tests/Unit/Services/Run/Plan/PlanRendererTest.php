@@ -9,6 +9,7 @@ use App\Models\PlannedSession;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\SegmentGenerator;
+use App\Services\Run\Plan\SessionSegment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -241,13 +242,10 @@ it('dayPayload puts the race on the card at its own distance, whatever the train
 });
 
 /**
- * `Readiness::assess()` caps to EasyOnly on `ranToday` alone, so finishing the
- * session is itself what clamps it. Left alone the card reads "today backs off
- * to easy" beside a DONE badge, as a verdict on work already done. It is
- * guidance for a second outing, and once credited it says so.
+ * @return array{0: PlannedSession, 1: array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string}}
  */
-it('dayPayload turns the clamp into second-session guidance once the day is credited', function (PlannedSessionStatus $status): void {
-    $today = Carbon::parse('2026-08-10');
+function tempoSessionWithEasyClamp(Carbon $today, string $note): array
+{
     $session = PlannedSession::factory()->make([
         'date' => $today,
         'phase' => PlanPhase::Build,
@@ -258,8 +256,21 @@ it('dayPayload turns the clamp into second-session guidance once the day is cred
         'session_type' => SessionType::Easy,
         'segments' => SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, false, 20.0, 1.0, RENDERER_PACES),
         'core_km' => SegmentGenerator::coreKmFor(SessionType::Easy, false, 20.0, 1.0),
-        'note' => 'Quality work waits until you are fresher.',
+        'note' => $note,
     ];
+
+    return [$session, $clamp];
+}
+
+/**
+ * `Readiness::assess()` caps to EasyOnly on `ranToday` alone, so finishing the
+ * session is itself what clamps it. Left alone the card reads "today backs off
+ * to easy" beside a DONE badge, as a verdict on work already done. It is
+ * guidance for a second outing, and once credited it says so.
+ */
+it('dayPayload turns the clamp into second-session guidance once the day is credited', function (PlannedSessionStatus $status): void {
+    $today = Carbon::parse('2026-08-10');
+    [$session, $clamp] = tempoSessionWithEasyClamp($today, 'Quality work waits until you are fresher.');
 
     $payload = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, RENDERER_PACES, $status);
 
@@ -272,21 +283,19 @@ it('dayPayload turns the clamp into second-session guidance once the day is cred
     PlannedSessionStatus::Overreached,
 ]);
 
-/** Nothing has been run yet, so the step-down is still a step-down. */
+/**
+ * Nothing has been run yet, so the step-down is still a step-down.
+ *
+ * `Missed` and `Skip` cannot actually reach TODAY — `SessionMatcher::scoreFor()`
+ * floors a non-past day short of credited back to `Planned`, and `Skip` only
+ * comes from the excused-AND-past branch. They are pinned here anyway because
+ * `dayPayload()` is a pure function of the status it is handed, and the
+ * invariant worth holding is that everything outside `isCredited()` keeps the
+ * forecast wording.
+ */
 it('dayPayload keeps the forecast wording on a day not yet credited', function (PlannedSessionStatus $status): void {
     $today = Carbon::parse('2026-08-10');
-    $session = PlannedSession::factory()->make([
-        'date' => $today,
-        'phase' => PlanPhase::Build,
-        'session_type' => SessionType::Tempo,
-        'pinned' => false,
-    ]);
-    $clamp = [
-        'session_type' => SessionType::Easy,
-        'segments' => SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, false, 20.0, 1.0, RENDERER_PACES),
-        'core_km' => SegmentGenerator::coreKmFor(SessionType::Easy, false, 20.0, 1.0),
-        'note' => 'Quality work waits until you are fresher.',
-    ];
+    [$session, $clamp] = tempoSessionWithEasyClamp($today, 'Quality work waits until you are fresher.');
 
     $payload = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, RENDERER_PACES, $status);
 
@@ -305,18 +314,7 @@ it('dayPayload keeps the forecast wording on a day not yet credited', function (
  */
 it('dayPayload drops the narrated clamp voice once the day is credited', function (): void {
     $today = Carbon::parse('2026-08-10');
-    $session = PlannedSession::factory()->make([
-        'date' => $today,
-        'phase' => PlanPhase::Build,
-        'session_type' => SessionType::Tempo,
-        'pinned' => false,
-    ]);
-    $clamp = [
-        'session_type' => SessionType::Easy,
-        'segments' => SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, false, 20.0, 1.0, RENDERER_PACES),
-        'core_km' => SegmentGenerator::coreKmFor(SessionType::Easy, false, 20.0, 1.0),
-        'note' => 'Templated floor.',
-    ];
+    [$session, $clamp] = tempoSessionWithEasyClamp($today, 'Templated floor.');
     $voice = 'a heavy stretch is catching up, so today backs off to easy.';
 
     $credited = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Done, null, $voice);
