@@ -93,6 +93,27 @@ describe('renderNarration', () => {
         expect(screen.getByRole('button')).toHaveTextContent('an easy run');
     });
 
+    /**
+     * The server keeps at most one citation, but this renderer is also fed
+     * hand-written specimens on the design page, so the split arithmetic has to
+     * hold for more than one token.
+     */
+    it('handles more than one citation without dropping text', () => {
+        render(
+            <p>
+                {renderNarration(
+                    'before [one](session:today) middle [two](session:today) after',
+                    DRAWN,
+                )}
+            </p>,
+        );
+
+        expect(screen.getAllByRole('button')).toHaveLength(2);
+        expect(screen.getByText(/before/, { selector: 'p' })).toHaveTextContent(
+            'before one middle two after',
+        );
+    });
+
     it('renders narration that cites nothing unchanged', () => {
         render(<p>{renderNarration('Easy run, 25-30 minutes.', DRAWN)}</p>);
 

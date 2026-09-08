@@ -308,9 +308,11 @@ class BriefingMascotVoiceNarrator
             return self::clampedVoice($ceiling);
         }
 
+        $today = $this->plannedToday($user, $asOf);
+
         return $this->citations->keepResolving(
             (string) $decoded['mascot_voice'],
-            fn (string $anchor): bool => $this->dayAnchors->resolves($anchor, $this->plannedToday($user, $asOf)),
+            fn (string $anchor): bool => $this->dayAnchors->resolves($anchor, $today),
             'briefing_mascot_voice',
         );
     }

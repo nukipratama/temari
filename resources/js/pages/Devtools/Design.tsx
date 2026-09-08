@@ -42,6 +42,9 @@ const TYPE_SPECIMENS: ReadonlyArray<[string, string, string]> = [
  * draws, the same block when no plan covers today so nothing draws it, and the
  * common block that names no session in its body and cites nothing.
  */
+const SESSION_CITATION_NARRATION =
+    '13.5 km this week, down from 23.6 last week.\n\nyou’re on a 12-week streak, but the last few days have been heavy and your form’s sitting at -8.4, so I’m keeping this to [an easy run, 30-40 minutes](session:today). Hold it around your normal 7:02/km, easy enough to talk, with a steady warmup and no urge to force the middle.';
+
 const CITATION_SPECIMENS: ReadonlyArray<{
     label: string;
     drawn: ReadonlySet<string>;
@@ -50,12 +53,12 @@ const CITATION_SPECIMENS: ReadonlyArray<{
     {
         label: 'session:today · drawn · the citation renders',
         drawn: new Set(['session:today']),
-        text: '13.5 km this week, down from 23.6 last week.\n\nyou’re on a 12-week streak, but the last few days have been heavy and your form’s sitting at -8.4, so I’m keeping this to [an easy run, 30-40 minutes](session:today). Hold it around your normal 7:02/km, easy enough to talk, with a steady warmup and no urge to force the middle.',
+        text: SESSION_CITATION_NARRATION,
     },
     {
         label: 'session:today · not drawn · degrades to plain prose',
         drawn: new Set<string>(),
-        text: '13.5 km this week, down from 23.6 last week.\n\nyou’re on a 12-week streak, but the last few days have been heavy and your form’s sitting at -8.4, so I’m keeping this to [an easy run, 30-40 minutes](session:today). Hold it around your normal 7:02/km, easy enough to talk, with a steady warmup and no urge to force the middle.',
+        text: SESSION_CITATION_NARRATION,
     },
     {
         label: 'no citation · the body names no session',
