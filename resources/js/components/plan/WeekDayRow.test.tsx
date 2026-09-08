@@ -317,6 +317,7 @@ describe('WeekDayRow', () => {
                     distance_km: 5.9,
                     pace_sec_per_km: 450,
                     note: 'Eased off, you slept badly.',
+                    label: 'eased today',
                 },
             }),
         });
@@ -328,6 +329,28 @@ describe('WeekDayRow', () => {
         expect(
             screen.getByText('Eased off, you slept badly.'),
         ).toBeInTheDocument();
+    });
+
+    /** The server decides what the step-down is for; the row must not hardcode
+     *  a label that contradicts the note beside it. */
+    it('renders the server label rather than a fixed one', () => {
+        renderRow({
+            day: day({
+                date: TODAY,
+                distance_km: 9.1,
+                clamp: {
+                    session_type: 'easy',
+                    distance_km: 3.6,
+                    pace_sec_per_km: 450,
+                    note: "You've already run today, so anything else stays easy.",
+                    label: 'anything else today',
+                },
+            }),
+        });
+        expand();
+
+        expect(screen.getByText('anything else today')).toBeInTheDocument();
+        expect(screen.queryByText('eased today')).not.toBeInTheDocument();
     });
 
     it('shows no step-down on a day the clamp did not touch', () => {

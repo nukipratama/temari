@@ -156,4 +156,25 @@ final class ReadinessClamp
             default => "Quality work waits until you're fresher, today's the easy version instead.",
         };
     }
+
+    /**
+     * What the step-down means once the day is already credited.
+     *
+     * `Readiness::assess()` caps to `EasyOnly` on `ranToday` alone, so finishing
+     * the session is itself what produces the clamp on it — the note above then
+     * reads as a verdict on work already done. It never was one: the ceiling is
+     * about what the body has left, so on a credited day this is guidance for a
+     * SECOND outing, and says so. Only `Rest` and `Easy` are reachable here,
+     * because `ranToday` caps the ceiling at `EasyOnly` before anything else
+     * gets a say.
+     *
+     * @param  SessionType  $clampedTo  what the ceiling allows, not what was asked
+     */
+    public static function secondSessionNote(SessionType $clampedTo): string
+    {
+        return match ($clampedTo) {
+            SessionType::Rest => "You've already run today and you're carrying a lot, so leave it there.",
+            default => "You've already run today, so anything else stays easy.",
+        };
+    }
 }

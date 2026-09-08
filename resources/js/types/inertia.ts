@@ -364,6 +364,10 @@ export interface PlanDayClamp {
     distance_km: number;
     pace_sec_per_km: number | null;
     note: string;
+    /** "eased today" before the day is run, "anything else today" once it is
+     *  credited — from `PlanRenderer::clampPayload()`, so Plan and Home cannot
+     *  disagree about what the step-down is for. */
+    label: string;
 }
 
 /** One day within `WeekPlan['days']`, as `PlanRenderer::dayPayload()` ships

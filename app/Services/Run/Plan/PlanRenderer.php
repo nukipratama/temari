@@ -172,7 +172,7 @@ final class PlanRenderer
             'compliance_score' => $s->compliance_score,
             'prescribed_km' => $s->prescribed_km,
             'ran_anyway' => $s->ran_anyway,
-            'clamp' => $isToday && $clamp !== null ? self::clampPayload($clamp, $clampVoice) : null,
+            'clamp' => $isToday && $clamp !== null ? self::clampPayload($clamp, $clampVoice, $status->isCredited()) : null,
             'actual_km' => $activity['km'] ?? null,
             'activities' => $activity['runs'] ?? [],
         ];
@@ -199,10 +199,17 @@ final class PlanRenderer
      * skeleton on a block that must always say something, and a paused or
      * cost-capped day still reads correctly.
      *
+     * Once the day is credited the block is guidance for a SECOND outing
+     * rather than a step-down from the one already run, so it carries its own
+     * label and note and the narrated voice is dropped: that line was written
+     * for the forecast and re-narrating it would bill an LLM call from a GET.
+     * Both surfaces read `label` rather than hardcoding one, which is the
+     * property this class exists to guarantee.
+     *
      * @param array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string} $clamp
-     * @return array{session_type: string, distance_km: float, pace_sec_per_km: int|null, note: string}
+     * @return array{session_type: string, distance_km: float, pace_sec_per_km: int|null, note: string, label: string}
      */
-    private static function clampPayload(array $clamp, ?string $voice): array
+    private static function clampPayload(array $clamp, ?string $voice, bool $credited): array
     {
         $core = null;
         foreach ($clamp['segments'] as $segment) {
@@ -217,7 +224,10 @@ final class PlanRenderer
             'session_type' => $clamp['session_type']->value,
             'distance_km' => $clamp['core_km'],
             'pace_sec_per_km' => $core?->paceSecPerKm,
-            'note' => $voice ?? $clamp['note'],
+            'note' => $credited
+                ? ReadinessClamp::secondSessionNote($clamp['session_type'])
+                : ($voice ?? $clamp['note']),
+            'label' => $credited ? 'anything else today' : 'eased today',
         ];
     }
 }

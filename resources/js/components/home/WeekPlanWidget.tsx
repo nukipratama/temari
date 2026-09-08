@@ -281,7 +281,7 @@ export default function WeekPlanWidget({
                                         height={10}
                                         aria-hidden
                                     />
-                                    eased today
+                                    {today.clamp.label}
                                 </span>
                                 <span className="block font-semibold text-foreground">
                                     {clampSummary(

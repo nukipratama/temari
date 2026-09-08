@@ -193,6 +193,7 @@ describe('WeekPlanWidget', () => {
                           distance_km: 5.9,
                           pace_sec_per_km: 450,
                           note: 'Clamped for low readiness.',
+                          label: 'eased today',
                       },
                   })
                 : day({ date }),
@@ -207,6 +208,31 @@ describe('WeekPlanWidget', () => {
         expect(
             screen.getByText('Clamped for low readiness.'),
         ).toBeInTheDocument();
+        expect(screen.getByText('eased today')).toBeInTheDocument();
+    });
+
+    /** Home and Plan both read the server's label, so the two pages cannot
+     *  disagree about whether the step-down is a forecast or second-session
+     *  guidance. */
+    it('renders the server label rather than a fixed one', () => {
+        const days = MON_TO_SUN.map((date) =>
+            date === '2026-01-07'
+                ? day({
+                      date,
+                      clamp: {
+                          session_type: 'easy',
+                          distance_km: 3.6,
+                          pace_sec_per_km: 450,
+                          note: "You've already run today, so anything else stays easy.",
+                          label: 'anything else today',
+                      },
+                  })
+                : day({ date }),
+        );
+        render(<WeekPlanWidget weekPlan={weekOf(days)} />);
+
+        expect(screen.getByText('anything else today')).toBeInTheDocument();
+        expect(screen.queryByText('eased today')).not.toBeInTheDocument();
     });
 
     it('labels a rest day without a distance or pace suffix', () => {

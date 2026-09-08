@@ -118,3 +118,30 @@ it('never clamps a race, at any ceiling: the goal race is not a session to be ta
             ->and(ReadinessClamp::downgradeFor(SessionType::Race, $ceiling))->toBeNull();
     }
 });
+
+/**
+ * Only Rest and Easy are reachable: `Readiness::assess()` caps the ceiling to
+ * EasyOnly on `ranToday` alone, so a credited day can never sit above it.
+ */
+it('speaks to a second outing rather than to the session already run', function (): void {
+    expect(ReadinessClamp::secondSessionNote(SessionType::Easy))
+        ->toContain('already run today')
+        ->and(ReadinessClamp::secondSessionNote(SessionType::Easy))->toContain('stays easy')
+        ->and(ReadinessClamp::secondSessionNote(SessionType::Rest))->toContain('already run today');
+});
+
+/** The forecast wording is a verdict on work already done; these must differ. */
+it('never reuses the forecast wording for a credited day', function (): void {
+    $forecast = ReadinessClamp::apply(
+        SessionType::Tempo,
+        PlanPhase::Build,
+        null,
+        20.0,
+        1.0,
+        ['easy' => 450, 'marathon' => 400, 'threshold' => 344, 'interval' => 320],
+        ReadinessCeiling::EasyOnly,
+    );
+
+    expect($forecast)->not->toBeNull()
+        ->and(ReadinessClamp::secondSessionNote(SessionType::Easy))->not->toBe($forecast['note']);
+});
