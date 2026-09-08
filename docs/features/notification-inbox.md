@@ -55,8 +55,18 @@ is what keeps an old account's inbox usable without deciding how long a record l
 
 `PP3` cut both celebration replays: the card-reveal modal and its `api.cards.*` endpoints, and the
 accessory-unlock takeover. Rows are now a record and a deep link, nothing more. Every row's only
-action is the "Open" link into the page the notification was about, which is the same URL its web
-push already carried.
+action is the link into the page the notification was about, which is the same URL its web push
+already carried — drawn as an "open" pill and, so a thumb does not have to find it, as a
+full-bleed overlay over the row itself ([InboxRow](../../resources/js/components/inbox/InboxRow.tsx#L92)).
+The overlay is pointer-only (`aria-hidden`, not focusable): the pill stays the one accessible
+control rather than the row's target being announced twice. Both mark the row read.
+
+**Every kind carries that link.** It is whatever the producing notification put in
+`payload['url']` — the controller computes nothing — and two kinds used to put nothing there, so an
+unlock row (the kind that fills the public demo's inbox) and a test row rendered with no way in at
+all. An unlock now points at `profile`, the accessory shelf it landed on, and a test send at the
+dashboard. Rows recorded before that stay non-navigable; nothing backfills them, since the payload
+is the record of what was sent.
 
 An **unlock** row's rarity badge is resolved read-side from the unlock catalog by `unlock_key`
 ([InboxController](../../app/Http/Controllers/InboxController.php#L170)) rather than read out of the

@@ -78,5 +78,6 @@ it('records the test in the inbox as well, so the send leaves a trace', function
     expect($message->kind)->toBe(NotificationKind::Test)
         ->and($message->title)->toBe('Test notification')
         ->and($message->body)->toBe(TelegramReplies::test())
+        ->and($message->payload)->toBe(['url' => route('dashboard')])
         ->and($message->dedupeKey)->toBeNull();
 });

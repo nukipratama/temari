@@ -210,6 +210,7 @@ describe('the inbox record', function (): void {
                 'name' => $catalog['accessory.medal_first']['name'],
                 'icon' => $catalog['accessory.medal_first']['icon'],
                 'is_major' => false,
+                'url' => route('profile'),
             ])
             ->and($row->title)->toBe('Unlocked: '.$catalog['accessory.medal_first']['name']);
     });

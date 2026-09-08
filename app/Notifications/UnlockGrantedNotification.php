@@ -21,7 +21,8 @@ use Illuminate\Notifications\Notification;
  * Inbox-only on purpose: unlocks arrive in batches and are earned rather than
  * time-sensitive, so pushing each one to Telegram and the lock screen would be
  * new noise. The payload mirrors the flash exactly, so the same takeover can
- * replay from the inbox weeks later.
+ * replay from the inbox weeks later, plus the deep link to the accessory shelf
+ * the unlock landed on.
  */
 class UnlockGrantedNotification extends Notification implements ShouldQueue
 {
@@ -54,7 +55,7 @@ class UnlockGrantedNotification extends Notification implements ShouldQueue
         return new InboxMessage(
             kind: NotificationKind::Unlock,
             title: 'Unlocked: ' . $this->celebration['name'],
-            payload: $this->celebration,
+            payload: $this->celebration + ['url' => route('profile')],
             dedupeKey: 'unlock:' . $this->celebration['unlock_key'],
         );
     }
