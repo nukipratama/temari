@@ -67,24 +67,13 @@
             "@php artisan config:clear --ansi @no_additional_args",
             "@php artisan test"
         ],
-        "check": [
+        "gate": [
             "Composer\\Config::disableProcessTimeout",
-            "@php artisan config:clear --ansi",
-            "@php artisan typescript:enums --check",
-            "@php scripts/check-doc-citations.php",
-            "@php scripts/check-see-references.php",
-            "vendor/bin/pint --test",
-            "npm run format:check",
-            "npm run typecheck",
-            "npm run lint",
-            "npm run check:palette",
-            "vendor/bin/phpstan analyse",
-            "vendor/bin/rector --dry-run",
-            "vendor/bin/pest --no-tia --group=structure",
-            "vendor/bin/pest --parallel",
-            "npm run test:coverage",
-            "npm run build",
-            "npm run check:chunks"
+            "sh scripts/gate.sh"
+        ],
+        "check:full": [
+            "Composer\\Config::disableProcessTimeout",
+            "sh scripts/gate.sh --full"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

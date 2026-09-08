@@ -10,6 +10,8 @@
       "Bash(./vendor/bin/sail pest *)",
       "Bash(./vendor/bin/sail bin phpstan)",
       "Bash(./vendor/bin/sail bin phpstan *)",
+      "Bash(./vendor/bin/sail composer gate)",
+      "Bash(./vendor/bin/sail composer gate *)",
       "Bash(./vendor/bin/sail npm run test)",
       "Bash(./vendor/bin/sail npm run typecheck)",
       "Bash(./vendor/bin/sail npm run lint)",

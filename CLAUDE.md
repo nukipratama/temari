@@ -33,9 +33,15 @@ Everything runs in Docker via **Sail** (no host PHP/Node). Stop at the first fai
 ./vendor/bin/sail bin pest --parallel        # full PHP suite
 ./vendor/bin/sail npm run test               # frontend (Vitest); `test:coverage` for the 95% gate
 ./vendor/bin/sail npm run build              # build assets (`npm run dev` for HMR)
-./vendor/bin/sail bin pint                    # format PHP (pre-commit also runs phpstan + rector)
-./vendor/bin/sail composer check             # THE gate, pre-push: runs exactly what CI runs
+./vendor/bin/sail bin pint                    # format PHP (pre-commit also runs phpstan + eslint)
+./vendor/bin/sail composer gate              # fast pre-push gate (~1-2 min); CI is the full gate
+./vendor/bin/sail composer check:full        # reproduce CI locally, opt-in, slow
 ```
+
+**Reading the gate.** Run it unpiped and read the final `GATE:` line. If you must capture the
+output, `./vendor/bin/sail composer gate 2>&1 | tee <file>` and read `${PIPESTATUS[0]}` — never
+`| tail`, which drops the failing step, and never `; echo EXIT=$?` after a pipe, which reports the
+pipe's exit code rather than the gate's.
 
 Running several agents at once, each in its own `git worktree`? See the `temari` skill's
 "Parallel worktrees & stacked PRs" section before starting a second Sail stack.
