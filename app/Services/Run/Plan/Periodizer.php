@@ -84,7 +84,7 @@ final readonly class Periodizer
             ? $this->phaseSchedule->forRace($arcStart, $race->race_date, (float) $race->distance_m)
             // The season's own window, not a fresh horizon, so the arc
             // SeasonSummaryBuilder draws is the one the athlete trains.
-            : $this->phaseSchedule->selfScaled($arcStart, max(1, (int) $arcStart->diffInWeeks($season->ends_at) + 1));
+            : $this->phaseSchedule->selfScaled($arcStart, max(1, (int) $arcStart->diffInWeeks($season->ends_at) + 1), $season->opens_with_recovery);
 
         $weeks = self::sliceFromCurrentWeek($arc, $arcStart, $currentWeekStart, $adaptation['deload']);
 

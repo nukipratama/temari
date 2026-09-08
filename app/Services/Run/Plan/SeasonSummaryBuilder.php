@@ -73,7 +73,7 @@ final readonly class SeasonSummaryBuilder
         } else {
             $raceDistanceM = null;
             $totalWeeks = max(1, (int) $season->starts_at->diffInWeeks($season->ends_at) + 1);
-            $weeks = $this->phaseSchedule->selfScaled($season->starts_at, $totalWeeks);
+            $weeks = $this->phaseSchedule->selfScaled($season->starts_at, $totalWeeks, $season->opens_with_recovery);
         }
 
         $phases = array_map(fn (array $w): PlanPhase => $w['phase'], $weeks);
