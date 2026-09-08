@@ -104,7 +104,7 @@ class HistoryController extends Controller
             'rangeAutoWidened' => $filters->rangeAutoWidened,
             // The header's activity count is lifetime, not page-scoped: paging
             // by week would otherwise shrink it on first paint.
-            'lifetime' => $this->lifetimeStats->forUser($user),
+            'lifetime' => fn (): array => $this->lifetimeStats->forUser($user),
             'weeksShown' => $weeks,
             'hasOlderWeeks' => $hasOlderWeeks,
             'weeklySnapshots' => Inertia::defer(fn (): SupportCollection => $this->weeklySnapshotPayload(
@@ -228,7 +228,7 @@ class HistoryController extends Controller
             'nextMonth' => $monthStart->copy()->addMonthNoOverflow()->format('Y-m'),
             'todayMonth' => Carbon::today()->format('Y-m'),
             'cells' => Inertia::defer(fn (): array => ($this->calendarBuilder)($user, $gridStart, $gridEnd, $monthStart, $monthEnd)),
-            'lifetime' => $this->lifetimeStats->forUser($user),
+            'lifetime' => fn (): array => $this->lifetimeStats->forUser($user),
             // The grid's own weeks, so each week row can disclose Temari's
             // weekly recap without leaving the calendar (prototype WeekRow).
             'weeklySnapshots' => Inertia::defer(fn (): SupportCollection => $this->weeklySnapshotPayload(
