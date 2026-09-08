@@ -67,8 +67,17 @@ final class WeekPlanBuilder
     /** Ceiling on quality sessions per week once race-pace feedback asks for more. */
     private const int MAX_QUALITY_SLOTS = 3;
 
-    /** A week with fewer sessions than this has no room to absorb an extra quality day. */
+    /** A week with fewer sessions than this carries one quality day on the phase baseline, not two. */
     private const int MIN_SESSIONS_FOR_EXTRA_QUALITY = 5;
+
+    /**
+     * Below this, race-pace feedback cannot add a quality day: at three
+     * sessions the long run plus two quality days is the whole week, leaving
+     * no easy running at all. At four there is still an easy day left over,
+     * and {@see self::awayFromLongRun()} keeps both hard days off the long
+     * run's flanks.
+     */
+    private const int MIN_SESSIONS_FOR_ADDED_QUALITY = 4;
 
     /**
      * @param  array<string, true>  $pinnedDates  Y-m-d dates already fixed by the user; never assigned a row here
@@ -107,13 +116,14 @@ final class WeekPlanBuilder
         }
         $isMarathonDistance = self::isMarathonDistance($raceDistanceM);
 
-        $qualitySlots = $this->qualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $qualityDelta, $projectedRaceSeconds);
-
         // Non-long training offsets, in date order — the pool quality work is
         // spread across. Picking spread-out positions (not just the first N)
         // keeps two hard sessions from landing on consecutive training days.
         $nonLongOffsets = array_values(array_diff($trainingOffsets, [$longOffset]));
-        $qualityOffsets = array_flip(self::spreadOffsets(self::awayFromLongRun($nonLongOffsets, $longOffset), count($qualitySlots)));
+        $qualityPool = self::awayFromLongRun($nonLongOffsets, $longOffset);
+
+        $qualitySlots = $this->qualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $qualityDelta, $projectedRaceSeconds, count($qualityPool));
+        $qualityOffsets = array_flip(self::spreadOffsets($qualityPool, count($qualitySlots)));
 
         $rows = [];
         $qualityIndex = 0;
@@ -266,19 +276,20 @@ final class WeekPlanBuilder
      */
     public function qualitySlotCount(PlanPhase $phase, int $sessionsPerWeek, ?float $raceDistanceM, bool $selfScaled): int
     {
-        return count($this->qualitySlots($phase, $sessionsPerWeek, self::isMarathonDistance($raceDistanceM), $selfScaled, 0, null));
+        return count($this->phaseQualitySlots($phase, $sessionsPerWeek, self::isMarathonDistance($raceDistanceM), $selfScaled, null));
     }
 
     /**
      * @return list<array{session_type: SessionType}>
      */
-    private function qualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled, int $qualityDelta, ?float $projectedRaceSeconds): array
+    private function qualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled, int $qualityDelta, ?float $projectedRaceSeconds, int $qualityPoolSize): array
     {
         return self::withQualityDelta(
             $this->phaseQualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $projectedRaceSeconds),
             $phase,
             $sessionsPerWeek,
             $qualityDelta,
+            $qualityPoolSize,
         );
     }
 
@@ -291,20 +302,31 @@ final class WeekPlanBuilder
      * the week having enough sessions to absorb it, so a 3-day week never
      * turns into two-thirds quality.
      *
+     * A slot is only ever promised where the week can actually place it:
+     * `$qualityPoolSize` is how many training days are left once the long run
+     * and its flanks are excluded, so the block is never asked for a day
+     * {@see self::spreadOffsets()} would silently drop.
+     *
      * @param  list<array{session_type: SessionType}>  $slots
      * @return list<array{session_type: SessionType}>
      */
-    private static function withQualityDelta(array $slots, PlanPhase $phase, int $sessionsPerWeek, int $qualityDelta): array
+    private static function withQualityDelta(array $slots, PlanPhase $phase, int $sessionsPerWeek, int $qualityDelta, int $qualityPoolSize): array
     {
         if ($qualityDelta === 0 || in_array($phase, [PlanPhase::Deload, PlanPhase::Taper], true)) {
             return $slots;
         }
 
-        $ceiling = $sessionsPerWeek >= self::MIN_SESSIONS_FOR_EXTRA_QUALITY ? self::MAX_QUALITY_SLOTS : count($slots);
-        $target = max(0, min($ceiling, count($slots) + $qualityDelta));
+        if ($qualityDelta < 0) {
+            return array_slice($slots, 0, max(0, count($slots) + $qualityDelta));
+        }
+
+        $ceiling = $sessionsPerWeek >= self::MIN_SESSIONS_FOR_ADDED_QUALITY
+            ? min(self::MAX_QUALITY_SLOTS, $qualityPoolSize)
+            : count($slots);
+        $target = min($ceiling, count($slots) + $qualityDelta);
 
         if ($target <= count($slots)) {
-            return array_slice($slots, 0, $target);
+            return $slots;
         }
 
         return [
