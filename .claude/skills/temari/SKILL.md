@@ -268,6 +268,18 @@ host path outside the bind mount, and TIA panics on an unresolvable repo rather 
 worktree stack brought up without that override falls through to TIA off (the `tests/Pest.php` guard),
 which is degraded but not broken. Each worktree records its own graph from cold on first run.
 
+**Composer strips `GIT_DIR`/`GIT_WORK_TREE`** from the environment of every script it runs, so under
+`composer gate` a worktree has no readable repo at all — for the gate and for every tool it shells
+out to. `worktree-setup.sh` therefore also exports `TEMARI_GIT_DIR`, a copy under a name Composer
+leaves alone, and [scripts/git-env.sh](../../../scripts/git-env.sh) — sourced by
+[scripts/gate.sh](../../../scripts/gate.sh) — puts it back. Cost of not doing it: `vitest --changed`
+found no git, reported `No test files found`, and the step passed having run zero frontend tests.
+The main checkout never sets `TEMARI_GIT_DIR` and git reads its own `.git` directly, so the restore
+is a no-op there. The base itself is resolved by
+[scripts/vitest-changed-base.sh](../../../scripts/vitest-changed-base.sh), which fails the gate
+rather than falling back — a bare `vitest --changed` diffs the working tree against HEAD, which on a
+clean checkout selects nothing and exits 0.
+
 **Dev commands:**
 - After changing a PHP enum exposed to TS: `./vendor/bin/sail artisan typescript:enums` (`--check` mirrors CI).
 - Local UI/demo data (deterministic, no LLM tokens, no Strava HTTP): `./vendor/bin/sail artisan demo:seed`. Idempotent, re-run any time to converge. It only upserts the current blueprint set, so to purge rows from retired blueprints do a full reset: `./vendor/bin/sail artisan migrate:fresh` then `demo:seed`.

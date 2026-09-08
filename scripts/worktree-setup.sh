@@ -68,6 +68,10 @@ services:
         environment:
             GIT_DIR: /gitcommon${GIT_WORKTREE_DIR#"$GIT_COMMON_DIR"}
             GIT_WORK_TREE: /var/www/html
+            # Composer strips GIT_DIR and GIT_WORK_TREE from the environment of
+            # every script it runs, so \`composer gate\` sees no repo at all. This
+            # copy survives it; scripts/git-env.sh puts it back.
+            TEMARI_GIT_DIR: /gitcommon${GIT_WORKTREE_DIR#"$GIT_COMMON_DIR"}
 EOF
 
 docker compose up -d

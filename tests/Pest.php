@@ -65,6 +65,9 @@ if (is_dir(dirname(__DIR__).'/.git') || is_dir((string) getenv('GIT_DIR'))) {
         'tests/**/*.php' => 'tests/Unit/Architecture',
         'docs/**/*.md' => 'tests/Unit/Architecture',
         'resources/css/**' => 'tests/Unit/Architecture',
+        // The guard scripts are asserted by architecture tests that shell out
+        // to them, which records no PHP coverage edge back to the script.
+        'scripts/**' => 'tests/Unit/Architecture',
         // These scanning tests read resources/js and the blade mirrors from
         // disk, so a change there records no coverage edge and TIA replays them
         // green.
