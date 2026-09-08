@@ -11,6 +11,7 @@ use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\LifetimeStats;
 use App\Support\Cooldown;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -754,3 +755,20 @@ function snapshotOnlyHeaders(object $actingAs): array
         'X-Inertia-Partial-Data' => 'weeklySnapshots',
     ];
 }
+
+it('does not recompute the lifetime totals on the request that only fetches the deferred props', function (): void {
+    $user = User::factory()->create();
+
+    // Headers first: the helper resolves the asset version with a real request
+    // of its own, which the mock below would otherwise count.
+    $headers = inertiaPartialHeaders($this->actingAs($user), '/history', 'History', 'runs');
+
+    $lifetime = Mockery::mock(LifetimeStats::class);
+    $lifetime->shouldNotReceive('forUser');
+    app()->instance(LifetimeStats::class, $lifetime);
+
+    $response = $this->actingAs($user)->get('/history', $headers)->assertSuccessful();
+
+    expect($response->json('props'))->toHaveKey('runs')
+        ->and($response->json('props'))->not->toHaveKey('lifetime');
+});
