@@ -17,6 +17,9 @@ use App\Services\AI\Agent\Tools\WeekStateTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousDailyNarrative;
 use App\Services\AI\StructuredChatCaller;
+use App\Models\PlannedSession;
+use App\Services\AI\Anchor\CitationValidator;
+use App\Services\AI\Anchor\DayAnchorResolver;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
@@ -67,6 +70,14 @@ class BriefingMascotVoiceNarrator
         it down and say plainly what was on the board and why you're moving off
         it. An empty list means no plan covers today, and the session is yours
         to pick.
+
+        POINTING AT THE BOARD: when your narration names the session that was
+        prescribed, wrap those exact words once as [words](session:today) so
+        the reader can jump to it on the plan. Example: "so I'm keeping this to
+        [an easy run, 30-40 minutes](session:today)". At most ONE of these in
+        the whole block, in paragraph 2 or 3 and never in the title line, never
+        on a whole sentence, and never on the same words you put in **bold**.
+        This is the only link form allowed: no URLs, no other markdown.
 
         RULE ABOUT TIMING (IMPORTANT):
         This dashboard can be opened any time of day (morning, midday, evening,
@@ -253,7 +264,17 @@ class BriefingMascotVoiceNarrator
         private readonly TrainingBaseline $trainingBaseline,
         private readonly VdotEstimator $vdotEstimator,
         private readonly TrainingPaceCalculator $paceCalculator,
+        private readonly DayAnchorResolver $dayAnchors,
+        private readonly CitationValidator $citations,
     ) {
+    }
+
+    private function plannedToday(User $user, Carbon $asOf): ?PlannedSession
+    {
+        return PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->where('date', $asOf->toDateString())
+            ->first();
     }
 
     public function generate(User $user, ?Carbon $asOf = null): string
@@ -287,7 +308,11 @@ class BriefingMascotVoiceNarrator
             return self::clampedVoice($ceiling);
         }
 
-        return (string) $decoded['mascot_voice'];
+        return $this->citations->keepResolving(
+            (string) $decoded['mascot_voice'],
+            fn (string $anchor): bool => $this->dayAnchors->resolves($anchor, $this->plannedToday($user, $asOf)),
+            'briefing_mascot_voice',
+        );
     }
 
     /**

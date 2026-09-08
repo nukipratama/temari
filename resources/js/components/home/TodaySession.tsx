@@ -1,10 +1,11 @@
 import type { BriefingResult } from '@/types/inertia';
 
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import { renderNarration } from '@/components/temari/Citation';
 import FaceIcon from '@/components/temari/FaceIcon';
 import Eyebrow from '@/components/ui/Eyebrow';
 import Card from '@/components/ui/LegacyCard';
-import { renderBold, stripEdgeQuotes } from '@/lib/richText';
+import { stripEdgeQuotes } from '@/lib/richText';
 
 /**
  * Paragraph breaks when the narrator honoured them, otherwise the opening
@@ -31,7 +32,10 @@ function leadAndBody(text: string): readonly [string, string] {
 /**
  * Temari's read on today, split into the line that leads and the rest.
  */
-function SessionVoice({ text }: Readonly<{ text: string }>) {
+function SessionVoice({
+    text,
+    drawnAnchors,
+}: Readonly<{ text: string; drawnAnchors: ReadonlySet<string> }>) {
     const [lead, body] = leadAndBody(text);
 
     if (lead === '') {
@@ -41,10 +45,12 @@ function SessionVoice({ text }: Readonly<{ text: string }>) {
     return (
         <>
             <p className="narration font-semibold">
-                {renderBold(stripEdgeQuotes(lead))}
+                {renderNarration(stripEdgeQuotes(lead), drawnAnchors)}
             </p>
             {body !== '' && (
-                <p className="narration-dense mt-2.5">{renderBold(body)}</p>
+                <p className="narration-dense mt-2.5">
+                    {renderNarration(body, drawnAnchors)}
+                </p>
             )}
         </>
     );
@@ -57,7 +63,12 @@ function SessionVoice({ text }: Readonly<{ text: string }>) {
  */
 export default function TodaySession({
     briefing,
-}: Readonly<{ briefing: BriefingResult }>) {
+    drawnAnchors = new Set<string>(),
+}: Readonly<{
+    briefing: BriefingResult;
+    /** From {@link drawnHomeAnchors} — which citations this page can honour. */
+    drawnAnchors?: ReadonlySet<string>;
+}>) {
     return (
         <Card as="section" className="border-today-accent">
             <div className="flex items-start gap-3">
@@ -71,7 +82,12 @@ export default function TodaySession({
                         inertiaReloadProps={['briefing']}
                         allowReanalyze={false}
                         showTimestamp={false}
-                        renderContent={(text) => <SessionVoice text={text} />}
+                        renderContent={(text) => (
+                            <SessionVoice
+                                text={text}
+                                drawnAnchors={drawnAnchors}
+                            />
+                        )}
                     />
                 </div>
             </div>

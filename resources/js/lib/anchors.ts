@@ -1,9 +1,10 @@
+import { todayLocalIso } from '@/lib/pace';
 import { ANCHOR_KIND_VALUES, type AnchorKind } from '@/types/generated';
 
 /**
- * The anchor namespace `RunInsightNarrator` already validates server-side
- * (`split:<n>`, `zone:z1..z5`, `metric:<name>`), resolved here to the element
- * that actually draws the thing on this page.
+ * The anchor namespace the narrators validate server-side (`split:<n>`,
+ * `zone:z1..z5`, `metric:<name>`, `session:today`), resolved here to the
+ * element that actually draws the thing on the page in question.
  *
  * An anchor being well-formed does not mean it has a rendering site: the
  * narrator validates against the run's `StreamSummary`, which knows readings
@@ -23,6 +24,7 @@ const VALUE_PATTERN: Record<AnchorKind, string> = {
     split: '[1-9]\\d*',
     zone: 'z[1-5]',
     metric: '[a-z_]+',
+    session: 'today',
 };
 
 const VALUE_REGEX: Record<AnchorKind, RegExp> = Object.fromEntries(
@@ -72,6 +74,8 @@ export function anchorLabel(anchor: string): string | null {
             return `zone ${parsed.value.slice(1)}`;
         case 'metric':
             return parsed.value.replace(/_/g, ' ');
+        case 'session':
+            return "today's session";
     }
 }
 
@@ -139,6 +143,25 @@ export function drawnRunAnchors(
     }
 
     return drawn;
+}
+
+interface WeekPlanish {
+    days: ReadonlyArray<{ date: string }>;
+}
+
+/**
+ * Which anchors the Home page draws. `WeekPlanWidget` renders today's row only
+ * when the plan covers today, the same condition the server resolves
+ * `session:today` against.
+ */
+export function drawnHomeAnchors(
+    weekPlan: WeekPlanish | null,
+): ReadonlySet<string> {
+    const todayIso = todayLocalIso();
+    const covered =
+        weekPlan?.days.some((day) => day.date === todayIso) ?? false;
+
+    return new Set(covered ? ['session:today'] : []);
 }
 
 /** Scroll the anchored element into view and mark it briefly. */

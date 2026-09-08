@@ -1,7 +1,9 @@
 import { Head } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { renderNarration } from '@/components/temari/Citation';
 import FaceIcon, { DARK_FACE } from '@/components/temari/FaceIcon';
+import Card from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
 import {
     type ContrastRow,
@@ -32,6 +34,34 @@ const TYPE_SPECIMENS: ReadonlyArray<[string, string, string]> = [
     ['label-small', 'text-label-small text-text-3', 'Section label'],
     ['label-micro', 'text-label-micro text-text-3', 'Tile caption'],
     ['meta', 'text-meta', '12 Aug 2026 · 05:41'],
+];
+
+/**
+ * Real `briefing_mascot_voice` narration from prod, rendered through the same
+ * {@link renderNarration} the Home page uses. Three cases: a citation the page
+ * draws, the same block when no plan covers today so nothing draws it, and the
+ * common block that names no session in its body and cites nothing.
+ */
+const CITATION_SPECIMENS: ReadonlyArray<{
+    label: string;
+    drawn: ReadonlySet<string>;
+    text: string;
+}> = [
+    {
+        label: 'session:today · drawn · the citation renders',
+        drawn: new Set(['session:today']),
+        text: '13.5 km this week, down from 23.6 last week.\n\nyou’re on a 12-week streak, but the last few days have been heavy and your form’s sitting at -8.4, so I’m keeping this to [an easy run, 30-40 minutes](session:today). Hold it around your normal 7:02/km, easy enough to talk, with a steady warmup and no urge to force the middle.',
+    },
+    {
+        label: 'session:today · not drawn · degrades to plain prose',
+        drawn: new Set<string>(),
+        text: '13.5 km this week, down from 23.6 last week.\n\nyou’re on a 12-week streak, but the last few days have been heavy and your form’s sitting at -8.4, so I’m keeping this to [an easy run, 30-40 minutes](session:today). Hold it around your normal 7:02/km, easy enough to talk, with a steady warmup and no urge to force the middle.',
+    },
+    {
+        label: 'no citation · the body names no session',
+        drawn: new Set(['session:today']),
+        text: 'Easy run, 25-30 minutes.\n\nfirst one back after a few days off, so this one is short on purpose. slow, effort by feel, don’t look at the pace at all.',
+    },
 ];
 
 function Section({
@@ -504,6 +534,32 @@ export default function Design() {
                                         {...DARK_FACE}
                                     />
                                 </Specimen>
+                            ))}
+                        </div>
+                    </Section>
+
+                    <Section
+                        title="Citation affordance"
+                        note="A narration span that points at what proves it, rendered at the phone width the app is designed for. The words carry a dotted underline and nothing else: a trailing chip and a superscript marker were built here too and rejected, the chip because it restated what the sentence already said and orphaned the punctuation after it, the marker because it never showed which words it covered. An anchor the page does not draw renders as ordinary prose rather than a control that goes nowhere."
+                    >
+                        <div className="flex flex-wrap gap-3">
+                            {CITATION_SPECIMENS.map((specimen) => (
+                                <div
+                                    key={specimen.label}
+                                    className="w-[380px] max-w-full"
+                                >
+                                    <div className="mb-2 text-meta">
+                                        {specimen.label}
+                                    </div>
+                                    <Card tone="narration" padding="hero">
+                                        <p className="narration">
+                                            {renderNarration(
+                                                specimen.text,
+                                                specimen.drawn,
+                                            )}
+                                        </p>
+                                    </Card>
+                                </div>
                             ))}
                         </div>
                     </Section>

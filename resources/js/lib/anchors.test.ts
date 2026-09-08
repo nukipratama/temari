@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
     anchorElementId,
     anchorLabel,
+    drawnHomeAnchors,
     drawnRunAnchors,
     revealAnchor,
     showsDecoupling,
@@ -12,6 +13,7 @@ import {
 describe('anchorElementId', () => {
     it('maps each namespace to the element that draws it', () => {
         expect(anchorElementId('split:4')).toBe('anchor-split-4');
+        expect(anchorElementId('session:today')).toBe('anchor-session-today');
         expect(anchorElementId('zone:z3')).toBe('anchor-zone-z3');
         expect(anchorElementId('metric:gap_pace')).toBe(
             'anchor-metric-gap_pace',
@@ -159,5 +161,24 @@ describe('revealAnchor', () => {
 
         vi.runAllTimers();
         expect(target.dataset.anchorHit).toBeUndefined();
+    });
+});
+
+describe('drawnHomeAnchors', () => {
+    it('draws the prescribed session only when the plan covers today', () => {
+        const today = new Date();
+        const iso = [
+            today.getFullYear(),
+            String(today.getMonth() + 1).padStart(2, '0'),
+            String(today.getDate()).padStart(2, '0'),
+        ].join('-');
+
+        expect(drawnHomeAnchors({ days: [{ date: iso }] })).toEqual(
+            new Set(['session:today']),
+        );
+        expect(drawnHomeAnchors({ days: [{ date: '1999-01-01' }] })).toEqual(
+            new Set(),
+        );
+        expect(drawnHomeAnchors(null)).toEqual(new Set());
     });
 });

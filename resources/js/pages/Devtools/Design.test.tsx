@@ -148,6 +148,27 @@ describe('Devtools/Design', () => {
         }
     });
 
+    it('renders the citation treatment, drawn and undrawn, on real narration', () => {
+        cleanup = declareTokens();
+        const { container } = render(<Design />);
+
+        expect(
+            screen.getByRole('heading', { name: 'Citation affordance' }),
+        ).toBeInTheDocument();
+
+        // One specimen draws the anchor, one does not, one cites nothing.
+        expect(
+            screen.getAllByRole('button', {
+                name: "Show today's session on this page",
+            }),
+        ).toHaveLength(1);
+        // The undrawn specimen still says the words, just not as a control.
+        const said = (container.textContent ?? '').split(
+            'an easy run, 30-40 minutes',
+        ).length;
+        expect(said - 1).toBe(2);
+    });
+
     it('leaves a hook for the card art sections', () => {
         cleanup = declareTokens();
         render(<Design />);
