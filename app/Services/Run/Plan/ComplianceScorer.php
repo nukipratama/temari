@@ -71,7 +71,13 @@ final readonly class ComplianceScorer
             $longRunKm = $longRunKmByDate[$date] ??= (float) $this->baseline->forUser($user, $row->date)['long_run_km'];
             $byDate = $kmByBaseline[(string) $longRunKm] ??= PlanRenderer::plannedKmByDate($contextRows, $longRunKm);
             if (array_key_exists($date, $byDate)) {
-                $plannedKmByDate[$date] = $byDate[$date];
+                // The eased distance wins where one was recorded: an athlete
+                // told at 00:01 to run 3.6 instead of the 5.9 on the board is
+                // graded on what they were told, not on the session it
+                // replaced. Only the scorer substitutes it — PlanRenderer keeps
+                // the stored figure, so the week's headline km and the day
+                // cells still agree at the un-eased total.
+                $plannedKmByDate[$date] = $row->clamped_km ?? $byDate[$date];
             }
         }
 

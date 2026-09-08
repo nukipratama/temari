@@ -12,8 +12,9 @@ use App\Services\Run\Story\BriefingContext;
 use Illuminate\Support\Carbon;
 
 /**
- * Records the one clamp outcome that has to outlive the render: a today
- * downgraded all the way to a full rest.
+ * Records the clamp outcomes that have to outlive the render: a today
+ * downgraded to a full rest, and the eased distance a lighter downgrade asked
+ * for instead.
  *
  * {@see ReadinessClamp} is otherwise deliberately render-only, and that works
  * because every other consumer recomputes it. Compliance cannot — it runs the
@@ -30,8 +31,28 @@ use Illuminate\Support\Carbon;
  */
 final readonly class RestClampRecorder
 {
-    public function __construct(private TrainingLoad $trainingLoad)
+    public function __construct(
+        private TrainingLoad $trainingLoad,
+        private TrainingBaseline $baseline,
+    ) {
+    }
+
+    /**
+     * Whether the eased distance is safe to record, which turns entirely on why
+     * the ceiling dropped.
+     *
+     * `Readiness::assess()` caps to `EasyOnly` on `ranToday` alone, so after any
+     * run at all the ceiling reads easy — including on a day the athlete just
+     * correctly ran a tempo. Recording an eased target then would tell the
+     * scorer the day only ever asked for 3.6 km, and grade a properly-executed
+     * 6 km tempo as an overreach. A cap caused by having already trained is
+     * guidance for a SECOND outing, never an instruction that replaced the
+     * session, so it is not a target anyone was set. See
+     * `docs/decisions/a-clamped-day-is-graded-on-what-it-asked.md`.
+     */
+    private static function isReplacementTarget(bool $ranToday): bool
     {
+        return ! $ranToday;
     }
 
     public function record(User $user, Carbon $today): bool
@@ -43,7 +64,7 @@ final readonly class RestClampRecorder
 
         // A pinned row is exempt from the clamp at render time too, so it must
         // not be excused by one here either.
-        if ($session === null || $session->pinned || $session->rest_clamped_at !== null) {
+        if ($session === null || $session->pinned || $session->rest_clamped_at !== null || $session->clamped_km !== null) {
             return false;
         }
 
@@ -54,15 +75,28 @@ final readonly class RestClampRecorder
         // self-corrects.
         TrainingLoad::clearSummaryCache($user);
 
-        $ceiling = ReadinessCeiling::from(
-            BriefingContext::forUser($user, $today, $this->trainingLoad->summary($user, $today))->readinessCeiling,
-        );
+        $context = BriefingContext::forUser($user, $today, $this->trainingLoad->summary($user, $today));
+        $ceiling = ReadinessCeiling::from($context->readinessCeiling);
 
-        if (! ReadinessClamp::clampsToRest($session->session_type, $ceiling)) {
+        if (ReadinessClamp::clampsToRest($session->session_type, $ceiling)) {
+            $session->update(['rest_clamped_at' => Carbon::now()]);
+
+            return true;
+        }
+
+        $easedTo = ReadinessClamp::downgradeFor($session->session_type, $ceiling);
+        if ($easedTo === null || ! self::isReplacementTarget($context->ranToday)) {
             return false;
         }
 
-        $session->update(['rest_clamped_at' => Carbon::now()]);
+        $session->update([
+            'clamped_km' => SegmentGenerator::coreKmFor(
+                $easedTo,
+                false,
+                (float) $this->baseline->forUser($user, $today)['long_run_km'],
+                1.0,
+            ),
+        ]);
 
         return true;
     }

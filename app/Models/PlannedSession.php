@@ -39,6 +39,7 @@ use Override;
  * @property PlanPhase $phase
  * @property SessionType $session_type
  * @property float|null $prescribed_km
+ * @property float|null $clamped_km
  * @property int|null $race_distance_m
  * @property bool $pinned
  * @property bool $skipped
@@ -59,6 +60,7 @@ use Override;
     'status',
     'compliance_score',
     'prescribed_km',
+    'clamped_km',
     'ran_anyway',
     'rest_clamped_at',
 ])]
@@ -137,6 +139,7 @@ class PlannedSession extends Model
             'status' => PlannedSessionStatus::class,
             'compliance_score' => 'integer',
             'prescribed_km' => 'float',
+            'clamped_km' => 'float',
             'ran_anyway' => 'boolean',
             'rest_clamped_at' => 'datetime',
         ];

@@ -155,3 +155,56 @@ it('measures a day against the baseline as it stood that day, not against today\
 
     expect($row->refresh()->prescribed_km)->toBe($expected);
 });
+
+/**
+ * The bug this closes: an athlete told at 00:01 to run an eased 3.6 instead of
+ * the 5.9 tempo on the board, who obeys, was graded 3.6/5.9 = 61% and landed on
+ * `partial` for following the app's own advice.
+ */
+it('grades a clamped day against the eased distance it actually asked for', function (): void {
+    $user = User::factory()->create();
+    // 1.2 against a stored tempo ask of ~3.4 is 35% — `partial` — without the
+    // substitution, which is exactly the shape of the reported bug.
+    $row = scorerDay($user, '2026-08-05', [
+        'session_type' => SessionType::Tempo,
+        'clamped_km' => 1.2,
+    ]);
+    scorerRun($user, '2026-08-05', 1.2);
+
+    app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-05'), Carbon::parse('2026-08-05'));
+
+    expect($row->refresh()->status)->toBe(PlannedSessionStatus::Done)
+        ->and($row->compliance_score)->toBe(100)
+        // The ask recorded beside the verdict is the one they were set, so the
+        // card cannot show "3.4 asked · 1.2 run · DONE".
+        ->and($row->prescribed_km)->toBe(1.2);
+});
+
+/** Told to do less and doing the original session anyway is an overreach. */
+it('reads the full original session on a clamped day as going past the ask', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', [
+        'session_type' => SessionType::Tempo,
+        'clamped_km' => 1.2,
+    ]);
+    scorerRun($user, '2026-08-05', 3.4);
+
+    app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-05'), Carbon::parse('2026-08-05'));
+
+    expect($row->refresh()->status)->toBe(PlannedSessionStatus::Overreached);
+});
+
+/** No clamp recorded, nothing changes: the stored session is still the ask. */
+it('grades an unclamped day against the stored session exactly as before', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo]);
+    scorerRun($user, '2026-08-05', 3.6);
+
+    app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-05'), Carbon::parse('2026-08-05'));
+
+    // The stored figure is whatever the renderer derives for a tempo at this
+    // baseline; the point is only that 3.6 was NOT substituted in for it.
+    expect($row->refresh()->clamped_km)->toBeNull()
+        ->and($row->prescribed_km)->not->toBe(3.6)
+        ->and($row->prescribed_km)->toBeGreaterThan(0.0);
+});
