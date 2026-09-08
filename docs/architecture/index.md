@@ -20,7 +20,7 @@ Cross-cutting patterns that appear across subsystems:
 - **Separated metering** — cost/sync logs live on a separate `analytics` DB connection that survives `migrate:fresh`. See [[analytics-db]].
 - **Transactional ingest** — the Strava-to-card path is wrapped in a DB transaction so a partial import cannot leave inconsistent state. See [[run-ingest-pipeline]].
 - **Converged lookback** — EWMA-based metrics (CTL/ATL) use a bounded-but-converged lookback window instead of full history or a naive rolling window, giving correct values at O(year) cost. See [[training-load-metrics]].
-- **Dawn-shift, light-mode only** — surface tints drift by time of day via `data-time-of-day` attribute; no dark mode, no `*-dark` tokens. See [[frontend-architecture]], [[design-tokens]].
+- **Two grounds, device is the default** — `data-theme` on `<html>` switches between the light and dark ground; with no stored preference the app resolves from `prefers-color-scheme`, and an explicit Settings choice overrides it. See [[frontend-architecture]], [[design-tokens]], [[system-is-the-default-ground]].
 
 ## Notes
 

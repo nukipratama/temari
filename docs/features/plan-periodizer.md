@@ -11,7 +11,6 @@ code_refs:
   - app/Services/Run/Plan/TrainingBaseline.php
   - app/Models/TrainingPreference.php
   - app/Enums/ExperienceLevel.php
-  - app/Enums/GoalType.php
   - app/Services/Run/Plan/SegmentGenerator.php
   - app/Services/Run/Plan/SessionSegment.php
   - app/Enums/SegmentKey.php
