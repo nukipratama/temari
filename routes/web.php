@@ -12,6 +12,7 @@ use App\Http\Controllers\Auth\StravaAuthController;
 use App\Http\Controllers\ClientErrorController;
 use App\Http\Controllers\DevtoolsDesignController;
 use App\Http\Controllers\DevtoolsIndexController;
+use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\InboxController;
 use App\Http\Controllers\LegalController;
@@ -132,6 +133,13 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::post('/plan/regenerate', [PlanController::class, 'regenerate'])->name('plan.regenerate');
     Route::patch('/plan/sessions/{plannedSession}', [PlanController::class, 'update'])->name('plan.sessions.update');
     Route::get('/inbox', InboxController::class)->name('inbox');
+
+    // "This is wrong" on a plan day or a narration. The block-demo-telegram
+    // guard is behaviourally generic (it blocks any demo mutation), so it also
+    // keeps the shared sandbox from filling the table with visitor noise.
+    Route::post('/feedback', FeedbackController::class)
+        ->middleware(['throttle:10,1', 'block-demo-telegram'])
+        ->name('feedback.store');
 
     Route::get('/profile', ProfileController::class)->name('profile');
 

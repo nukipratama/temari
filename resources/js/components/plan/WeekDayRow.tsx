@@ -7,6 +7,7 @@ import type { AnalysisPayload, PlanDayClamp } from '@/types/inertia';
 import MiniSessionBar, { zoneColor } from '@/components/plan/MiniSessionBar';
 import SessionBarGraph from '@/components/plan/SessionBarGraph';
 import TemariTake from '@/components/plan/TemariTake';
+import FlagWrong from '@/components/temari/FlagWrong';
 import {
     Collapsible,
     CollapsibleContent,
@@ -196,6 +197,11 @@ export default function WeekDayRow({
                     />
                 )}
                 <SessionBarGraph segments={day.segments} />
+                <FlagWrong
+                    subjectType="plan_day"
+                    subjectId={day.id}
+                    label="flag this day"
+                />
                 {day.activities.map((run) => (
                     <Link
                         key={run.id}

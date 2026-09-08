@@ -177,6 +177,7 @@ const ICON_MAP: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
     'mdi:filter-variant': SlidersHorizontal,
     'mdi:fire': Flame,
     'mdi:flag-checkered': Flag,
+    'mdi:flag-outline': Flag,
     'mdi:gift': Gift,
     'mdi:hanger': Shirt,
     'mdi:heart-pulse': HeartPulse,
