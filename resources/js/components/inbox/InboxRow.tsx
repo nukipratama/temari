@@ -24,6 +24,7 @@ const KIND_LABEL: Record<NotificationKind, string> = {
     weekly_recap: 'Weekly Recap',
     monthly_recap: 'Monthly Recap',
     streak_reminder: 'Streak',
+    strava_disconnected: 'Strava',
     unlock: 'Unlock',
     test: 'Test',
 };
@@ -33,6 +34,7 @@ const KIND_ICON: Record<NotificationKind, string> = {
     weekly_recap: 'mdi:calendar-week',
     monthly_recap: 'mdi:calendar-blank-outline',
     streak_reminder: 'mdi:fire',
+    strava_disconnected: 'mdi:sync-off',
     unlock: 'mdi:trophy-outline',
     test: 'mdi:bell-outline',
 };
@@ -42,6 +44,7 @@ const KIND_TONE: Record<NotificationKind, Tone> = {
     weekly_recap: 'neutral',
     monthly_recap: 'neutral',
     streak_reminder: 'accent',
+    strava_disconnected: 'neutral',
     unlock: 'pop',
     test: 'neutral',
 };

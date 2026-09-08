@@ -45,7 +45,7 @@ class User extends Authenticatable
             $connection = $user->stravaConnection;
 
             if ($connection !== null && ! $connection->isRevoked()) {
-                $connection->markRevoked();
+                $connection->markRevoked(notify: false);
             }
 
             StravaSyncLog::log($user->id, 'deleted', error: 'User model deleted');
