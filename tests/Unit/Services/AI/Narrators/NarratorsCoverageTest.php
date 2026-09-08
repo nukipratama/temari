@@ -755,6 +755,20 @@ it('PlanDayTool carries how the day went once it has been graded', function (): 
 });
 
 
+/**
+ * Prod shipped "tempo day, about 5.9 km. base work, nothing flashy." — the model
+ * reading `phase: base` and rendering it as a description of the session's
+ * effort. A threshold set is quality work in every phase, so that line tells the
+ * athlete to take a hard day easy. Reproduced 4/4 before the carve-out.
+ */
+it('PlanDayVoiceNarrator prompt separates the training phase from the day\'s effort', function (): void {
+    $prompt = narratorPrompt(PlanDayVoiceNarrator::class);
+
+    expect($prompt)->toContain('PHASE IS THE BLOCK, NOT THE EFFORT')
+        ->and($prompt)->toContain('base work')
+        ->and($prompt)->toContain('quality work in every phase');
+});
+
 // ── PlanWeekVoiceNarrator ─────────────────────────────────────────────
 
 it('PlanWeekVoiceNarrator returns voice on valid JSON', function (): void {

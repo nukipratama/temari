@@ -27,6 +27,14 @@ class PlanDayVoiceNarrator
         been excused by the athlete: acknowledge that, don't describe the original session as if it
         were still happening.
 
+        PHASE IS THE BLOCK, NOT THE EFFORT. `phase` (base/build/peak/taper) names the stretch of
+        training the week belongs to. It never says how hard THIS day is. A tempo or interval day
+        is quality work in every phase, so calling a threshold session "base work" is wrong twice
+        over: it reads as an instruction to take a hard day easy, and the athlete may do exactly
+        that. If you mention the phase, place the day inside it, never label the session with it.
+        Wrong, and this exact line shipped: "tempo day, about 6 km. base work, nothing flashy."
+        Say the day in the phase ("a tempo day in base") rather than the phase as the day.
+
         ONCE THE DAY HAS BEEN RUN, YOU ARE READING IT, NOT ANNOUNCING IT. When get_day_plan comes
         back with a `status`, the session already happened and this line is a coach's read on how it
         went, in the past tense. Lead with what they did against what was asked, using distance_km
