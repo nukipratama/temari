@@ -135,6 +135,36 @@ it('dayPayload applies a redistributed volume scale for a non-today day', functi
     expect($scaled['distance_km'])->toBe(round($unscaled['distance_km'] * 0.5, 1));
 });
 
+it('dayPayload prescribes race day at the athlete\'s goal pace', function (): void {
+    $session = PlannedSession::factory()->make([
+        'date' => '2026-08-10',
+        'phase' => PlanPhase::Taper,
+        'session_type' => SessionType::Race,
+        'race_distance_m' => 10_000,
+    ]);
+
+    $payload = PlanRenderer::dayPayload(
+        $session,
+        Carbon::parse('2026-08-01'),
+        null,
+        [],
+        10_000.0,
+        false,
+        20.0,
+        1.0,
+        RENDERER_PACES,
+        PlannedSessionStatus::Planned,
+        null,
+        null,
+        3_540,
+    );
+
+    // A 59:00 10K is 5:54/km, not this athlete's 4:30/km threshold band.
+    expect($payload['segments'][0]['pace_sec_per_km'])->toBe(354)
+        ->and($payload['segments'][0]['minutes'])->toBe(59.0)
+        ->and($payload['distance_km'])->toBe(10.0);
+});
+
 it('dayPayload returns no segments and a null distance_km for a rest day', function (): void {
     $session = PlannedSession::factory()->rest()->make(['date' => '2026-08-10', 'phase' => PlanPhase::Build]);
 

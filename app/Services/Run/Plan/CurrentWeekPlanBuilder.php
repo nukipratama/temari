@@ -144,6 +144,7 @@ final readonly class CurrentWeekPlanBuilder
             $resolvedStatuses[$s->date->toDateString()] ?? PlannedSessionStatus::Planned,
             $activityByDate[$s->date->toDateString()] ?? null,
             $clamp === null ? null : $this->planNarration->clampVoiceFor($user, $today),
+            $race !== null && $s->date->isSameDay($race->race_date) ? $race->goal_time_sec : null,
         ))->values()->all();
 
         // A rest day asks for nothing and always scores Done, so counting it
