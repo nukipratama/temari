@@ -67,6 +67,9 @@ final class WeekPlanBuilder
     /** Ceiling on quality sessions per week once race-pace feedback asks for more. */
     private const int MAX_QUALITY_SLOTS = 3;
 
+    /** Floor on quality sessions per week a reason marked {@see \App\Enums\AdaptationReason::keepsAQualitySession()} drops to. */
+    private const int MIN_QUALITY_SLOTS_WHEN_EASING = 1;
+
     /** A week with fewer sessions than this carries one quality day on the phase baseline, not two. */
     private const int MIN_SESSIONS_FOR_EXTRA_QUALITY = 5;
 
@@ -125,7 +128,14 @@ final class WeekPlanBuilder
         $nonLongOffsets = array_values(array_diff($trainingOffsets, [$longOffset]));
         $qualityPool = self::awayFromLongRun($nonLongOffsets, $longOffset);
 
-        $qualitySlots = $this->qualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $qualityDelta, $projectedRaceSeconds, count($qualityPool), $keepsAQualitySession);
+        $qualitySlots = self::withQualityDelta(
+            $this->phaseQualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $projectedRaceSeconds),
+            $phase,
+            $sessionsPerWeek,
+            $qualityDelta,
+            count($qualityPool),
+            $keepsAQualitySession,
+        );
         $qualityOffsets = array_flip(self::spreadOffsets($qualityPool, count($qualitySlots)));
 
         $rows = [];
@@ -271,7 +281,7 @@ final class WeekPlanBuilder
 
     /**
      * How many quality (Tempo/Interval) sessions a week of this phase carries
-     * — the same count {@see self::qualitySlots()} materializes into rows,
+     * — the same count {@see self::withQualityDelta()} materializes into rows,
      * exposed so season-goal generation can sum it across an arc without
      * materializing rows that far ahead. Computes `isMarathonDistance` the
      * same way {@see self::build()} does, so callers pass the raw race
@@ -280,21 +290,6 @@ final class WeekPlanBuilder
     public function qualitySlotCount(PlanPhase $phase, int $sessionsPerWeek, ?float $raceDistanceM, bool $selfScaled): int
     {
         return count($this->phaseQualitySlots($phase, $sessionsPerWeek, self::isMarathonDistance($raceDistanceM), $selfScaled, null));
-    }
-
-    /**
-     * @return list<array{session_type: SessionType}>
-     */
-    private function qualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled, int $qualityDelta, ?float $projectedRaceSeconds, int $qualityPoolSize, bool $keepsAQualitySession): array
-    {
-        return self::withQualityDelta(
-            $this->phaseQualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $projectedRaceSeconds),
-            $phase,
-            $sessionsPerWeek,
-            $qualityDelta,
-            $qualityPoolSize,
-            $keepsAQualitySession,
-        );
     }
 
     /**
@@ -311,10 +306,12 @@ final class WeekPlanBuilder
      * and its flanks are excluded, so the block is never asked for a day
      * {@see self::spreadOffsets()} would silently drop.
      *
-     * `$keepsAQualitySession` floors the drop at the week's last quality day,
-     * which is what stops a four-session race week (one slot on the phase
-     * baseline) losing its quality work altogether. The day that survives is
-     * {@see self::eased()} rather than left as written.
+     * `$keepsAQualitySession` raises the floor from 0 to
+     * {@see self::MIN_QUALITY_SLOTS_WHEN_EASING}, which is what stops a
+     * four-session race week (one slot on the phase baseline) losing its
+     * quality work altogether. Whenever the floor is what stopped the drop,
+     * the surviving slot(s) are {@see self::eased()} rather than left as
+     * written — mirroring how `$ceiling` bounds the positive branch below.
      *
      * @param  list<array{session_type: SessionType}>  $slots
      * @return list<array{session_type: SessionType}>
@@ -326,12 +323,13 @@ final class WeekPlanBuilder
         }
 
         if ($qualityDelta < 0) {
-            $kept = max(0, count($slots) + $qualityDelta);
-            if ($kept === 0 && $keepsAQualitySession && $slots !== []) {
-                return [self::eased($slots[0])];
-            }
+            $unfloored = count($slots) + $qualityDelta;
+            $floor = $keepsAQualitySession ? self::MIN_QUALITY_SLOTS_WHEN_EASING : 0;
+            $kept = array_slice($slots, 0, max($floor, $unfloored));
 
-            return array_slice($slots, 0, $kept);
+            return $unfloored < $floor
+                ? array_map(self::eased(...), $kept)
+                : $kept;
         }
 
         $ceiling = $sessionsPerWeek >= self::MIN_SESSIONS_FOR_ADDED_QUALITY
