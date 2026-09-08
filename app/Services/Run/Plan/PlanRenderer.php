@@ -42,25 +42,14 @@ final class PlanRenderer
      */
     public static function weekPhasesAndMultipliers(Collection $sessionsByWeek): array
     {
-        $phaseByWeek = $sessionsByWeek->map(function ($weekSessions): PlanPhase {
-            $first = $weekSessions->first();
-            if ($first === null) {
-                // groupBy never produces an empty group; this only guards the type.
-                throw new LogicException('A grouped week unexpectedly had no sessions.');
-            }
+        $rowByWeek = $sessionsByWeek->map(fn ($weekSessions): PlannedSession => self::weekRow($weekSessions))->sortKeys();
 
-            return $first->phase;
-        })->sortKeys();
+        $phaseByWeek = $rowByWeek->map(fn (PlannedSession $row): PlanPhase => $row->phase);
 
-        // Read off the SAME row the phase is, never a different one in the
-        // week: the two are written together, and a week whose phase and
-        // multiplier came from different rows could render a Deload header
-        // over Build kilometres.
         $stamped = [];
-        foreach ($phaseByWeek->keys()->all() as $weekKey) {
-            $multiplier = $sessionsByWeek->get($weekKey)?->first()?->volume_multiplier;
-            if ($multiplier !== null) {
-                $stamped[$weekKey] = $multiplier;
+        foreach ($rowByWeek as $weekKey => $row) {
+            if ($row->volume_multiplier !== null) {
+                $stamped[$weekKey] = $row->volume_multiplier;
             }
         }
 
@@ -76,6 +65,30 @@ final class PlanRenderer
             );
 
         return [$phaseByWeek, $multiplierByWeek];
+    }
+
+    /**
+     * The row a week reads its phase AND multiplier from — one row, so the
+     * two can never disagree with each other. Regeneration never rewrites a
+     * pinned row, nor one already carrying a verdict, nor a date already
+     * behind it, so a week can hold a stale row from an older generation
+     * next to fresh ones. Every regeneration writes forward to the week's
+     * end, so the latest-dated row it could still own is the one carrying
+     * its most recent decision; only a week pinned to the last day reads a
+     * pinned row.
+     *
+     * @param  Collection<int, PlannedSession>  $weekSessions
+     */
+    private static function weekRow(Collection $weekSessions): PlannedSession
+    {
+        $byDate = $weekSessions->sortBy(fn (PlannedSession $s): string => $s->date->toDateString());
+        $row = $byDate->last(fn (PlannedSession $s): bool => ! $s->pinned) ?? $byDate->last();
+        if ($row === null) {
+            // groupBy never produces an empty group; this only guards the type.
+            throw new LogicException('A grouped week unexpectedly had no sessions.');
+        }
+
+        return $row;
     }
 
     /**
