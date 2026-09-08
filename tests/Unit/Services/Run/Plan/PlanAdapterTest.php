@@ -142,6 +142,16 @@ it('drops a quality session when the projection is already inside the goal time'
         ->and($decision['quality_delta'])->toBe(-1);
 });
 
+it('relaxes rather than removes the last quality session when the athlete is ahead of race pace', function (): void {
+    $ahead = decide(raceGapRatio: 0.9)['reason'];
+
+    expect($ahead->keepsAQualitySession())->toBeTrue()
+        ->and(AdaptationReason::RanTooHard->keepsAQualitySession())->toBeFalse()
+        ->and(AdaptationReason::BehindRacePace->keepsAQualitySession())->toBeFalse()
+        ->and($ahead->headline())->toBe('one quality session')
+        ->and($ahead->detail(100))->toContain('eased toward goal pace rather than dropped');
+});
+
 it('holds steady inside the race-gap margin', function (): void {
     expect(decide(raceGapRatio: 1.0 + PlanAdapter::RACE_GAP_MARGIN)['reason'])->toBe(AdaptationReason::Steady)
         ->and(decide(raceGapRatio: 1.0 - PlanAdapter::RACE_GAP_MARGIN)['reason'])->toBe(AdaptationReason::Steady);

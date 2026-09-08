@@ -30,13 +30,27 @@ enum AdaptationReason: string
         };
     }
 
+    /**
+     * Whether a negative `quality_delta` from this reason stops at the week's
+     * last quality session instead of emptying the block. Being ahead of the
+     * goal time is feedback on a prescription that is working, not a red flag,
+     * so it relaxes the work rather than removing it; a week run harder than it
+     * was written still gets its quality day taken away. Only ever true with an
+     * active race, since the race-gap arm needs one to fire at all.
+     */
+    public function keepsAQualitySession(): bool
+    {
+        return $this === self::AheadOfRacePace;
+    }
+
     public function headline(): string
     {
         return match ($this) {
             self::Steady => 'on plan',
             self::LowReadiness, self::HighMonotony, self::HighStrain, self::MissedWeek => 'deload week',
             self::BehindRacePace => 'one more quality session',
-            self::RanTooHard, self::AheadOfRacePace => 'one less quality session',
+            self::RanTooHard => 'one less quality session',
+            self::AheadOfRacePace => 'one quality session',
         };
     }
 
@@ -50,7 +64,7 @@ enum AdaptationReason: string
             self::MissedWeek => "you finished {$adherencePct}% of last week's sessions. this week comes back smaller, not doubled.",
             self::RanTooHard => 'you ran last week harder than it was written, so this week carries one less quality session. the easy days need somewhere to be easy.',
             self::BehindRacePace => 'your projected finish is behind your goal time. one extra quality session a week from here.',
-            self::AheadOfRacePace => 'your projected finish is already inside your goal time. one less quality session a week, banking the freshness.',
+            self::AheadOfRacePace => 'your projected finish is already inside your goal time. the week holds a single quality session, eased toward goal pace rather than dropped, and banks the rest as freshness.',
         };
     }
 }

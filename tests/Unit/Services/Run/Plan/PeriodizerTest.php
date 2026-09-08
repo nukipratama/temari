@@ -315,8 +315,10 @@ it('lets the race projection move prescribed quality work in both directions', f
     regenerateWithProjectedFinish($user, 5000.0);
     $aheadOfGoal = currentWeekQualityCount($user);
 
+    // Ahead of the goal time the week comes down to its last quality session
+    // and stops there, rather than to none at all.
     expect($behindGoal)->toBeGreaterThan($aheadOfGoal)
-        ->and($aheadOfGoal)->toBe(0);
+        ->and($aheadOfGoal)->toBe(1);
 });
 
 it('writes race day into the plan and stamps the distance onto the row', function (): void {
