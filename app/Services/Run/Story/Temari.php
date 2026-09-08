@@ -9,6 +9,7 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\Run\Metrics\DecouplingBands;
 use App\Services\Run\Metrics\SessionIntent;
 use App\Services\Run\Metrics\StreamSummary;
 use Illuminate\Support\Carbon;
@@ -127,14 +128,14 @@ class Temari
             $hasPr => self::MOOD_NYALA,
             // A hard session finished under control (strong negative split, HR held
             // together): a genuine win, not a grind.
-            $hardSession && $negativeSplit && $decoupling <= 5.0 => self::MOOD_NYALA,
+            $hardSession && $negativeSplit && $decoupling <= DecouplingBands::CONTROLLED => self::MOOD_NYALA,
             // An intended-hard session (tagged race/workout, or inferred tempo) runs
             // HR/decoupling hot on purpose — that's the work, not weakness. A strong
             // finish is a quality win (blazing); an uncontrolled grind is honest overreach
             // (overloaded), never the tired 'gassed'.
-            $intendedHard && $decoupling > 12.0 => $negativeSplit ? self::MOOD_NYALA : self::MOOD_MUMET,
+            $intendedHard && $decoupling > DecouplingBands::HIGH => $negativeSplit ? self::MOOD_NYALA : self::MOOD_MUMET,
             // HR drifted well past pace on a run that wasn't meant to be hard.
-            $decoupling > 12.0 => self::MOOD_LEMES,
+            $decoupling > DecouplingBands::HIGH => self::MOOD_LEMES,
             $hotWeather => self::MOOD_OLENG,
             // A hard grind that never settled into a controlled finish.
             $hardSession && ! $negativeSplit => self::MOOD_MUMET,

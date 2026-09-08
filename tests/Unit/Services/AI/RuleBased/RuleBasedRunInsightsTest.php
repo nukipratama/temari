@@ -17,17 +17,19 @@ it('returns no claims for a run with no notable stream data', function (): void 
 // ── decoupling ───────────────────────────────────────────────────────
 
 it('blames the heat rather than the aerobic base when a hot run decouples', function (): void {
-    $hot = detailWith(['stream_summary' => ['decoupling_pct' => 8.4], 'weather_temp_c' => 33]);
-    $mild = detailWith(['stream_summary' => ['decoupling_pct' => 8.4], 'weather_temp_c' => 24]);
+    $hot = detailWith(['stream_summary' => ['decoupling_pct' => 14.2], 'weather_temp_c' => 33]);
+    $mild = detailWith(['stream_summary' => ['decoupling_pct' => 14.2], 'weather_temp_c' => 24]);
 
     expect(RuleBasedRunInsights::claims($hot)[0])
-        ->toMatchArray(['anchor' => 'metric:decoupling', 'value' => '+8.4%'])
+        ->toMatchArray(['anchor' => 'metric:decoupling', 'value' => '+14.2%'])
         ->and(RuleBasedRunInsights::claims($hot)[0]['text'])->toContain('heat talking')
         ->and(RuleBasedRunInsights::claims($mild)[0]['text'])->toContain("aerobic base isn't quite solid yet");
 });
 
+// 8.4% sits inside the band ordinary runs occupy, so it reads as normal rather
+// than as the aerobic base slipping.
 it('calls moderate decoupling normal and stays silent below the floor', function (): void {
-    expect(RuleBasedRunInsights::claims(detailWith(['stream_summary' => ['decoupling_pct' => 3.2]]))[0]['text'])
+    expect(RuleBasedRunInsights::claims(detailWith(['stream_summary' => ['decoupling_pct' => 8.4]]))[0]['text'])
         ->toContain('normal range')
         ->and(RuleBasedRunInsights::claims(detailWith(['stream_summary' => ['decoupling_pct' => 1.1]]))[0]['text'])
         ->toContain('held up well');

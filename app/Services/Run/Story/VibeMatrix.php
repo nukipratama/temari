@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Services\Run\Metrics\DecouplingBands;
 use App\Services\Run\Metrics\TrainingFormStatus;
 
 class VibeMatrix
@@ -31,7 +32,7 @@ class VibeMatrix
         }
 
         if ($status === TrainingFormStatus::Overreaching) {
-            if ($decoupling !== null && $decoupling > 5.0) {
+            if ($decoupling !== null && $decoupling > DecouplingBands::CONTROLLED) {
                 return 'stretched_thin';
             }
 

@@ -24,6 +24,8 @@ use App\Services\AI\Anchor\RunAnchorResolver;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\StructuredChatCaller;
+use App\Services\Run\Metrics\DecimalFormatter;
+use App\Services\Run\Metrics\DecouplingBands;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -120,7 +122,7 @@ class RunInsightNarrator
         normal HR varies person to person, and a number that looks high can
         still be Z2 for that runner.
 
-        WEATHER & DECOUPLING: if decoupling is high (>10%) BUT weather_temp_c
+        WEATHER & DECOUPLING: if decoupling is high (>{decoupling_high}%) BUT weather_temp_c
         is above 30 degrees, NEVER claim the aerobic base is weak or fitness
         is declining. Frame it as expected given the heat: the heart works
         harder to help the body shed heat, not a sign of lost fitness. If
@@ -222,6 +224,16 @@ class RunInsightNarrator
     ) {
     }
 
+    /** The prompt's "high decoupling" line, reading the same band the plan and the mood read. */
+    private static function systemPrompt(): string
+    {
+        return str_replace(
+            '{decoupling_high}',
+            DecimalFormatter::trimmed(DecouplingBands::HIGH),
+            self::SYSTEM_PROMPT,
+        );
+    }
+
     /**
      * @return array{claims: list<array{anchor: string, text: string, value: string|null, delta: string|null}>}
      */
@@ -229,7 +241,7 @@ class RunInsightNarrator
     {
         $decoded = $this->caller->call(
             kind: 'run_insight',
-            systemPrompt: self::SYSTEM_PROMPT."\n\n".NarratorContinuity::RULE,
+            systemPrompt: self::systemPrompt()."\n\n".NarratorContinuity::RULE,
             context: $this->context($activity, $detail),
             schemaName: 'TemariRunInsight',
             requiredKeys: ['claims'],
