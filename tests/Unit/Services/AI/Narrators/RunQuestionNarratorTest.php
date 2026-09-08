@@ -13,6 +13,7 @@ use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use OpenAI\Testing\ClientFake;
@@ -35,6 +36,7 @@ function runQuestionNarrator(string $content): RunQuestionNarrator
         app(VdotEstimator::class),
         app(TrainingPaceCalculator::class),
         app(RelativeEffort::class),
+        app(TrainingBaseline::class),
     );
 }
 
@@ -124,7 +126,7 @@ it('leaves the stream reads off a summary-state run instead of offering empty to
 
     $names = array_column(runQuestionNarrator('{}')->toolbox($activity, $detail)->definitions(), 'name');
 
-    expect($names)->toBe(['get_run_summary', 'get_training_load', 'get_recent_baseline', 'get_training_paces']);
+    expect($names)->toBe(['get_run_summary', 'get_training_load', 'get_recent_baseline', 'get_training_paces', 'get_planned_sessions']);
 });
 
 it('offers the full stream reads once the run is detailed', function (): void {

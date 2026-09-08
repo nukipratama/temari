@@ -13,6 +13,7 @@ use App\Services\AI\Agent\Tools\EffortContextTool;
 use App\Services\AI\Agent\Tools\HrZonesTool;
 use App\Services\AI\Agent\Tools\KmSplitsTool;
 use App\Services\AI\Agent\Tools\LapsTool;
+use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\AI\Agent\Tools\RecentBaselineTool;
 use App\Services\AI\Agent\Tools\RunSummaryTool;
 use App\Services\AI\Agent\Tools\TerrainTool;
@@ -25,6 +26,7 @@ use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Support\Carbon;
 
 /**
@@ -66,8 +68,15 @@ class RunQuestionNarrator
         them a number is missing, never narrate your own reads, never apologise
         for what you could not see.
 
-        NEVER: prescribe a session, a distance or a pace. Never diagnose an
-        injury. Never end on a motivational line.
+        THE PLAN: get_planned_sessions returns what the plan asked of them on
+        the day of this run, and how the day was graded. "was this what I was
+        meant to run" is inside your scope, so answer it from that tool rather
+        than guessing. Reporting what the plan already prescribed is not
+        prescribing: quoting the target pace it set is fine, inventing one is
+        not. An empty list means no plan covered that day.
+
+        NEVER: prescribe a session, a distance or a pace of your own. Never
+        diagnose an injury. Never end on a motivational line.
         PROMPT;
 
     public function __construct(
@@ -77,6 +86,7 @@ class RunQuestionNarrator
         private readonly VdotEstimator $vdotEstimator,
         private readonly TrainingPaceCalculator $trainingPaceCalculator,
         private readonly RelativeEffort $relativeEffort,
+        private readonly TrainingBaseline $trainingBaseline,
     ) {
     }
 
@@ -118,6 +128,7 @@ class RunQuestionNarrator
             new TrainingLoadTool($activity->user, $asOf, $this->trainingLoad),
             new RecentBaselineTool($activity->user, $asOf, $this->baseline, $activity->id),
             new TrainingPacesTool($activity->user, $asOf, $this->vdotEstimator, $this->trainingPaceCalculator),
+            new PlanContextTool($activity->user, $asOf, $asOf, $this->trainingBaseline, $this->vdotEstimator, $this->trainingPaceCalculator),
         ];
 
         if ($activity->ingest_state !== IngestState::Detailed) {

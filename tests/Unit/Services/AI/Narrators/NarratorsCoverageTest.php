@@ -84,9 +84,19 @@ function capturingCaller(string $content): array
     return [fakeStructuredCaller($client), $client];
 }
 
+function postRunNarrator(StructuredChatCaller $caller): PostRunSpeechNarrator
+{
+    return new PostRunSpeechNarrator($caller, app(PastYouMatcher::class), app(TrainingLoad::class), app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+}
+
+function cardFlavorNarrator(StructuredChatCaller $caller): CardFlavorNarrator
+{
+    return new CardFlavorNarrator($caller, app(RelativeEffort::class), app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+}
+
 function runInsightNarrator(StructuredChatCaller $caller): RunInsightNarrator
 {
-    return new RunInsightNarrator($caller, new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class), new RunAnchorResolver());
+    return new RunInsightNarrator($caller, new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class), new RunAnchorResolver(), app(TrainingBaseline::class));
 }
 
 // ── PostRunSpeechNarrator ─────────────────────────────────────────────
@@ -107,21 +117,21 @@ function postRunFixture(): array
 it('PostRunSpeechNarrator returns speech on valid JSON', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller(json_encode(['speech' => 'Nice run today!'], JSON_THROW_ON_ERROR));
-    $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class), app(TrainingLoad::class));
+    $narrator = postRunNarrator($caller);
     expect($narrator->generate($a, $d, 'blazing'))->toBe('Nice run today!');
 });
 
 it('PostRunSpeechNarrator throws on non-JSON', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller('not json');
-    $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class), app(TrainingLoad::class));
+    $narrator = postRunNarrator($caller);
     $narrator->generate($a, $d, 'blazing');
 })->throws(UnavailableException::class, 'non-JSON');
 
 it('PostRunSpeechNarrator throws on missing key', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class), app(TrainingLoad::class));
+    $narrator = postRunNarrator($caller);
     $narrator->generate($a, $d, 'blazing');
 })->throws(UnavailableException::class, 'missing speech');
 
@@ -129,7 +139,7 @@ it('PostRunSpeechNarrator does not fatal when the stream summary is null', funct
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $d->update(['stream_summary' => null]);
     $caller = fakeCaller(json_encode(['speech' => 'Mantap'], JSON_THROW_ON_ERROR));
-    $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class), app(TrainingLoad::class));
+    $narrator = postRunNarrator($caller);
     expect($narrator->generate($a, $d->fresh(), 'dim'))->toBe('Mantap');
 });
 
@@ -141,7 +151,7 @@ it('PostRunSpeechNarrator narrates a run with a populated stream summary', funct
         'negative_split' => true,
     ]]);
     $caller = fakeCaller(json_encode(['speech' => 'Base solid'], JSON_THROW_ON_ERROR));
-    $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class), app(TrainingLoad::class));
+    $narrator = postRunNarrator($caller);
     expect($narrator->generate($a, $d->fresh(), 'blazing'))->toBe('Base solid');
 });
 
@@ -153,7 +163,7 @@ it('PostRunSpeechNarrator narrates a run with a populated stream summary', funct
 it('PostRunSpeechNarrator is not handed the insight blocks it used to retell', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
-    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class), app(TrainingLoad::class))
+    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))
         ->context($a, $d->fresh(), 'blazing');
 
     expect($context)->not->toHaveKey('insights');
@@ -185,7 +195,7 @@ it('PostRunSpeechNarrator feeds prev_narrative from the prior activity post-run 
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     priorActivityWithDoneAnalysis($a->user, AnalysisType::PostRunSpeech, 'The run yesterday was very easy.');
 
-    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class), app(TrainingLoad::class))->context($a, $d->fresh(), 'blazing');
+    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))->context($a, $d->fresh(), 'blazing');
 
     expect($context['prev_narrative'])->toBe('The run yesterday was very easy.')
         // prev_opener is the first few words, so the model can steer away from it.
@@ -205,7 +215,7 @@ it('PostRunSpeechNarrator leaves prev_narrative null when there is no prior Done
         'status' => AnalysisStatus::Pending,
     ]);
 
-    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class), app(TrainingLoad::class))->context($a, $d->fresh(), 'blazing');
+    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))->context($a, $d->fresh(), 'blazing');
 
     expect($context['prev_narrative'])->toBeNull()
         ->and($context['prev_opener'])->toBeNull();
@@ -219,7 +229,7 @@ it('PostRunSpeechNarrator truncates prev_opener to the first few words of a long
         'Still carrying yesterday, and this time your close was livelier with a tidier finishing pace.',
     );
 
-    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class), app(TrainingLoad::class))->context($a, $d->fresh(), 'blazing');
+    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))->context($a, $d->fresh(), 'blazing');
 
     expect($context['prev_opener'])->toBe('Still carrying yesterday, and this time your close was livelier')
         ->and(str_word_count((string) $context['prev_opener']))->toBeLessThanOrEqual(10);
@@ -228,7 +238,7 @@ it('PostRunSpeechNarrator truncates prev_opener to the first few words of a long
 it('PostRunSpeechNarrator keeps only what no tool can serve in the context', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
-    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class), app(TrainingLoad::class))
+    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))
         ->context($a, $d->fresh(), 'blazing');
 
     // mood is the call's own argument, so it is not readable from anywhere.
@@ -240,7 +250,7 @@ it('PostRunSpeechNarrator is not offered the splits or zones its insights alread
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
     $names = array_column(
-        new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class), app(TrainingLoad::class))
+        postRunNarrator(fakeCaller('{"speech":"x"}'))
             ->toolbox($a, $d)->definitions(),
         'name',
     );
@@ -254,6 +264,7 @@ it('PostRunSpeechNarrator is not offered the splits or zones its insights alread
         'get_personal_records',
         'get_past_you',
         'get_week_state',
+        'get_planned_sessions',
     ]);
 });
 
@@ -496,6 +507,7 @@ it('RunInsightNarrator offers every run reading as a tool bound to this activity
         'get_training_load',
         'get_recent_baseline',
         'get_training_paces',
+        'get_planned_sessions',
     ]);
 });
 
@@ -804,7 +816,7 @@ function cardFixture(): RunCard
 it('CardFlavorNarrator returns flavor on valid JSON', function (): void {
     $card = cardFixture();
     $caller = fakeCaller(json_encode(['flavor' => 'Card epic!'], JSON_THROW_ON_ERROR));
-    $narrator = new CardFlavorNarrator($caller, app(RelativeEffort::class));
+    $narrator = cardFlavorNarrator($caller);
     expect($narrator->generate($card))->toBe('Card epic!');
 });
 
@@ -812,7 +824,7 @@ it('CardFlavorNarrator sends an empty context and lets the model read the card',
     $card = cardFixture();
 
     $names = array_column(
-        new CardFlavorNarrator(fakeCaller('{"flavor":"x"}'), app(RelativeEffort::class))
+        cardFlavorNarrator(fakeCaller('{"flavor":"x"}'))
             ->toolbox($card)->definitions(),
         'name',
     );
@@ -824,6 +836,7 @@ it('CardFlavorNarrator sends an empty context and lets the model read the card',
         'get_weather',
         'get_effort_context',
         'get_personal_records',
+        'get_planned_sessions',
     ]);
 });
 
@@ -832,7 +845,7 @@ it('CardFlavorNarrator drops the run reads when the activity was never detailed'
     $card->activity->detail->delete();
 
     $names = array_column(
-        new CardFlavorNarrator(fakeCaller('{"flavor":"x"}'), app(RelativeEffort::class))
+        cardFlavorNarrator(fakeCaller('{"flavor":"x"}'))
             ->toolbox($card->fresh())->definitions(),
         'name',
     );
@@ -844,14 +857,14 @@ it('CardFlavorNarrator drops the run reads when the activity was never detailed'
 it('CardFlavorNarrator throws on missing flavor key', function (): void {
     $card = cardFixture();
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new CardFlavorNarrator($caller, app(RelativeEffort::class));
+    $narrator = cardFlavorNarrator($caller);
     $narrator->generate($card);
 })->throws(UnavailableException::class);
 
 it('CardFlavorNarrator throws on non-JSON', function (): void {
     $card = cardFixture();
     $caller = fakeCaller('not json');
-    $narrator = new CardFlavorNarrator($caller, app(RelativeEffort::class));
+    $narrator = cardFlavorNarrator($caller);
     $narrator->generate($card);
 })->throws(UnavailableException::class, 'non-JSON');
 
