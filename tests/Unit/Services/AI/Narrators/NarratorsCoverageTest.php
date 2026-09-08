@@ -734,6 +734,37 @@ it('PlanDayTool reports the prescribed session, distance and skip state', functi
         ->and($context)->not->toHaveKey('ran_anyway');
 });
 
+it('PlanDayTool asks for the eased distance on a clamped day, not the one it replaced', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'session_type' => 'tempo',
+        'phase' => 'build',
+        'date' => Carbon::today()->toDateString(),
+        'skipped' => false,
+        'clamped_km' => 3.6,
+    ]);
+
+    $context = new PlanDayTool($session, app(TrainingBaseline::class))->handle([]);
+
+    // The card says 3.6 km. The blurb has to say 3.6 km too.
+    expect($context['distance_km'])->toBe(3.6)
+        ->and($context['eased'])->toBeTrue();
+});
+
+it('PlanDayTool leaves an unclamped day with no easing to explain', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'session_type' => 'tempo',
+        'phase' => 'build',
+        'date' => Carbon::today()->toDateString(),
+        'skipped' => false,
+    ]);
+
+    $context = new PlanDayTool($session, app(TrainingBaseline::class))->handle([]);
+
+    expect($context)->not->toHaveKey('eased');
+});
+
 it('PlanDayTool carries how the day went once it has been graded', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create([
