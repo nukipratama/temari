@@ -73,7 +73,7 @@ final class ReadinessClamp
                 'session_type' => SessionType::Easy,
                 'segments' => SegmentGenerator::easyEquivalentOf($sessionType, $longRunBaselineKm, $volumeMultiplier, $paces),
                 'core_km' => SegmentGenerator::coreKmFor($sessionType, false, $longRunBaselineKm, $volumeMultiplier),
-                'note' => "Your form dipped, so today's the easy version instead.",
+                'note' => self::moderateOkNote(),
             ],
             ReadinessCeiling::QualityOk => null, // unreachable: nothing requires more than QualityOk
         };
@@ -138,6 +138,31 @@ final class ReadinessClamp
             SessionType::Long => ReadinessCeiling::ModerateOk->rank(),
             SessionType::Tempo, SessionType::Interval => ReadinessCeiling::QualityOk->rank(),
         };
+    }
+
+    /**
+     * The line a step-down is explained by, or null when the session already
+     * fits under the ceiling. Split out of {@see self::apply()} for the same
+     * reason as {@see self::downgradeFor()}: a caller that needs only the
+     * explanation should not have to build a segment list to reach it.
+     */
+    public static function noteFor(SessionType $sessionType, ReadinessCeiling $ceiling): ?string
+    {
+        if (self::requiredRank($sessionType) <= $ceiling->rank()) {
+            return null;
+        }
+
+        return match ($ceiling) {
+            ReadinessCeiling::Rest => self::restNote($sessionType),
+            ReadinessCeiling::EasyOnly => self::easyOnlyNote($sessionType),
+            ReadinessCeiling::ModerateOk => self::moderateOkNote(),
+            ReadinessCeiling::QualityOk => null,
+        };
+    }
+
+    private static function moderateOkNote(): string
+    {
+        return "Your form dipped, so today's the easy version instead.";
     }
 
     private static function restNote(SessionType $original): string

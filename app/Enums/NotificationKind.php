@@ -16,6 +16,7 @@ enum NotificationKind: string
     case WeeklyRecap = 'weekly_recap';
     case MonthlyRecap = 'monthly_recap';
     case StreakReminder = 'streak_reminder';
+    case PlanClamp = 'plan_clamp';
     case Unlock = 'unlock';
     case Test = 'test';
 

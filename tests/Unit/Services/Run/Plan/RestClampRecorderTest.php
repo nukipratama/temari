@@ -9,6 +9,7 @@ use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Notifications\DayClampedNotification;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Plan\PlanRenderer;
@@ -17,6 +18,7 @@ use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
@@ -243,4 +245,50 @@ it('recomputes fresh training load instead of a pre-ingest cache entry', functio
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
         ->and($session->fresh()->rest_clamped_at)->not->toBeNull();
+});
+
+// The recorder's own guards make it the one place that fires once per athlete
+// per day, so the inbox row inherits that dedupe rather than adding its own.
+it('tells the athlete once when the day is clamped to a full rest', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    bottomOutReadiness($user);
+    todaysSession($user);
+
+    app(RestClampRecorder::class)->record($user, Carbon::today());
+    app(RestClampRecorder::class)->record($user, Carbon::today());
+
+    Notification::assertSentToTimes($user, DayClampedNotification::class, 1);
+    Notification::assertSentTo(
+        $user,
+        DayClampedNotification::class,
+        fn (DayClampedNotification $n): bool => $n->clampedTo === SessionType::Rest
+            && $n->date === Carbon::today()->toDateString()
+            && $n->note === ReadinessClamp::noteFor(SessionType::Interval, ReadinessCeiling::Rest),
+    );
+});
+
+it('tells the athlete when the day is only eased, naming what it eased to', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    todaysSession($user);
+
+    app(RestClampRecorder::class)->record($user, Carbon::today());
+
+    Notification::assertSentTo(
+        $user,
+        DayClampedNotification::class,
+        fn (DayClampedNotification $n): bool => $n->clampedTo === SessionType::Easy
+            && $n->note === ReadinessClamp::noteFor(SessionType::Interval, ReadinessCeiling::ModerateOk),
+    );
+});
+
+it('says nothing on a day that already fits under the ceiling', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    todaysSession($user, 'easy');
+
+    app(RestClampRecorder::class)->record($user, Carbon::today());
+
+    Notification::assertNothingSent();
 });

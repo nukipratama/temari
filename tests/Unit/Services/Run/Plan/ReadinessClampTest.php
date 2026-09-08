@@ -145,3 +145,15 @@ it('never reuses the forecast wording for a credited day', function (): void {
     expect($forecast)->not->toBeNull()
         ->and(ReadinessClamp::secondSessionNote(SessionType::Easy))->not->toBe($forecast['note']);
 });
+
+// noteFor() is the same explanation apply() builds, reached without a segment
+// list. The pair only stays honest if every combination agrees, including which
+// ones have nothing to explain at all.
+it('gives the same note as apply for every session and ceiling', function (): void {
+    foreach (SessionType::cases() as $type) {
+        foreach (ReadinessCeiling::cases() as $ceiling) {
+            expect(ReadinessClamp::noteFor($type, $ceiling))
+                ->toBe(applyClamp($type, $ceiling)['note'] ?? null, "{$type->value} under {$ceiling->value}");
+        }
+    }
+});

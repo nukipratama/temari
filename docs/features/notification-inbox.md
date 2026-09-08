@@ -20,6 +20,20 @@ code_refs:
 `/inbox` is the read side of the always-on in-app channel ([[inbox-is-an-always-on-channel]]).
 Every row is something Temari already sent; nothing is written here, and nothing is deleted here.
 
+**`plan_clamp` is inbox-only, like an unlock.** A step-down used to exist only while the plan page
+still rendered it: [RestClampRecorder](../../app/Services/Run/Plan/RestClampRecorder.php#L76) already
+wrote the outcome so compliance could grade the day the athlete was actually set, and that write is
+now also where they are told. Its guards make it the one place that fires once per athlete per day,
+so the row inherits that dedupe rather than adding its own, and a ceiling that recovers later does
+not delete what was already said. The clamp is advisory ([[readiness-clamp-is-advisory]]) and the
+briefing path records it at 00:01, so a lock screen is the wrong place for it — and
+`notifications_enabled`, which enumerates what it governs, does not name it either.
+
+The body is the clamp's own explanation, in whichever voice has reached it: the `plan_clamp_voice`
+row once one is `done`, and otherwise the templated note that [[the-clamp-explains-itself]] keeps as
+a permanent floor. The note is what a row usually carries, because the narration is requested moments
+before the notification is queued.
+
 ## The prop shape
 
 There is no listing API. The page is a normal Inertia page
