@@ -231,6 +231,25 @@ describe('MobileBottomNav', () => {
         );
     });
 
+    // The bell in the top bar is the labelled, actionable control; this is a
+    // reason to look up, so it carries no count and is not announced.
+    it('dots the today tab while the inbox has unread rows', () => {
+        setMockPage({ unreadNotifications: 3 }, '/history', 'History');
+        render(<MobileBottomNav />);
+
+        const dot = screen.getByTestId('unread-dot');
+        expect(screen.getByText('Today').closest('a')).toContainElement(dot);
+        expect(dot).toHaveAttribute('aria-hidden', 'true');
+        expect(dot).not.toHaveTextContent('3');
+    });
+
+    it('leaves the tabs undotted when nothing is unread', () => {
+        setMockPage({ unreadNotifications: 0 }, '/history', 'History');
+        render(<MobileBottomNav />);
+
+        expect(screen.queryByTestId('unread-dot')).not.toBeInTheDocument();
+    });
+
     it('keeps the pill clear of a landscape notch on both sides', () => {
         setMockPage({}, '/', 'Home');
         const { container } = render(<MobileBottomNav />);
