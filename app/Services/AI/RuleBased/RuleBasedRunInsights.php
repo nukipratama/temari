@@ -6,6 +6,7 @@ namespace App\Services\AI\RuleBased;
 
 use App\Models\ActivityDetail;
 use App\Services\Run\Metrics\DecimalFormatter;
+use App\Services\Run\Metrics\DecouplingBands;
 use App\Services\Run\Metrics\PaceConsistency;
 use App\Services\Run\Metrics\StreamSummary;
 
@@ -25,11 +26,6 @@ use App\Services\Run\Metrics\StreamSummary;
  */
 final class RuleBasedRunInsights
 {
-    /** Decoupling (% pace drift) */
-    private const float DECOUPLING_HIGH = 5.0;
-
-    private const float DECOUPLING_OK = 2.0;
-
     /** Above this temperature high decoupling is the weather, not lost fitness. */
     private const int DECOUPLING_HOT_TEMP_C = 31;
 
@@ -73,8 +69,8 @@ final class RuleBasedRunInsights
 
         $value = '+'.DecimalFormatter::decimal($decoupling).'%';
         $text = match (true) {
-            $decoupling > self::DECOUPLING_HIGH => self::decouplingHighText($detail),
-            $decoupling > self::DECOUPLING_OK => 'Decoupling stayed within a normal range, HR tracked pace pretty well.',
+            $decoupling > DecouplingBands::HIGH => self::decouplingHighText($detail),
+            $decoupling > DecouplingBands::TIGHT => 'Decoupling stayed within a normal range, HR tracked pace pretty well.',
             default => 'Decoupling stayed tight, your aerobic fitness held up well across the run.',
         };
 

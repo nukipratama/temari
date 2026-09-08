@@ -29,7 +29,7 @@ This is *not* downstream of [[summary-first-ingest]]: `TrainingBaseline` reads `
 
 ### What this is not
 
-The first diagnosis blamed the null load curve — `ctl_42d` of 5.0 with 52 of 57 weeks carrying a null `weekly_trimp`. That was wrong in both directions. The periodizer never reads load for volume, and it handles null load correctly: [PlanAdapter::strainIsExcessive()](app/Services/Run/Plan/PlanAdapter.php#L131) *disables* the deload when CTL is null or below 10 rather than firing it, honouring [[unscored-load-is-null-not-zero]]. The plan was over-prescribing, not under-.
+The first diagnosis blamed the null load curve — `ctl_42d` of 5.0 with 52 of 57 weeks carrying a null `weekly_trimp`. That was wrong in both directions. The periodizer never reads load for volume, and it handles null load correctly: [PlanAdapter::strainIsExcessive()](app/Services/Run/Plan/PlanAdapter.php#L176) *disables* the deload when CTL is null or below 10 rather than firing it, honouring [[unscored-load-is-null-not-zero]]. The plan was over-prescribing, not under-.
 
 ## Decision
 

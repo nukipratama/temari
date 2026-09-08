@@ -11,6 +11,7 @@ use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
+use App\Services\Run\Metrics\DecouplingBands;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\RiegelProjector;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -27,10 +28,11 @@ function decide(
     ?float $ctl = 40.0,
     int $adherencePct = 100,
     int $raggedDays = 0,
-    int $egregiousDays = 0,
+    int $egregiousEasyDays = 0,
+    int $egregiousDecouplingDays = 0,
     ?float $raceGapRatio = null,
 ): array {
-    return PlanAdapter::decide($ceiling, $monotony, $strain, $ctl, $adherencePct, $raggedDays, $egregiousDays, $raceGapRatio);
+    return PlanAdapter::decide($ceiling, $monotony, $strain, $ctl, $adherencePct, $raggedDays, $egregiousEasyDays, $egregiousDecouplingDays, $raceGapRatio);
 }
 
 it('leaves a healthy, fully adhered week alone', function (): void {
@@ -88,11 +90,29 @@ it('reads a single ragged day as a bad morning, not as how the week was run', fu
     expect(decide(raggedDays: PlanAdapter::RAGGED_DAYS_MIN - 1)['reason'])->toBe(AdaptationReason::Steady);
 });
 
-it('lets one day far enough past the line speak for the week on its own', function (): void {
-    $decision = decide(raggedDays: 1, egregiousDays: 1);
+it('lets one easy day far enough above Z2 speak for the week on its own', function (): void {
+    $decision = decide(raggedDays: 1, egregiousEasyDays: 1);
 
     expect($decision['reason'])->toBe(AdaptationReason::RanTooHard)
         ->and($decision['quality_delta'])->toBe(-1);
+});
+
+it('does not let one decoupled day speak for the week, however far past the line', function (): void {
+    expect(decide(raggedDays: 1, egregiousDecouplingDays: 1)['reason'])->toBe(AdaptationReason::Steady);
+});
+
+it('reads a second egregiously decoupled day as how the week was run', function (): void {
+    $decision = decide(egregiousDecouplingDays: PlanAdapter::EGREGIOUS_DECOUPLING_DAYS_MIN);
+
+    expect($decision['reason'])->toBe(AdaptationReason::RanTooHard)
+        ->and($decision['quality_delta'])->toBe(-1);
+});
+
+// The verdict on how the week was run sits above the race-pace arms, so a
+// premature RanTooHard used to hide whichever of those the athlete needed.
+it('still reaches the race-gap verdict when one decoupled day is all there is', function (): void {
+    expect(decide(egregiousDecouplingDays: 1, raceGapRatio: 1.5)['reason'])->toBe(AdaptationReason::BehindRacePace)
+        ->and(decide(egregiousDecouplingDays: 1, raceGapRatio: 0.9)['reason'])->toBe(AdaptationReason::AheadOfRacePace);
 });
 
 it('keeps a safety deload ahead of how the week was run', function (): void {
@@ -332,7 +352,7 @@ it('reads an easy day run above Z2 and a long day that decoupled as how the week
     planAdapterCreditedDay($user, '2026-08-05', SessionType::Long);
 
     planAdapterRunOn($user, '2026-08-03', ['time_in_zone_pct' => ['Z1' => 20, 'Z2' => 55, 'Z3' => 25]]);
-    planAdapterRunOn($user, '2026-08-05', ['decoupling_pct' => PlanAdapter::HIGH_DECOUPLING + 2.5]);
+    planAdapterRunOn($user, '2026-08-05', ['decoupling_pct' => DecouplingBands::HIGH + 2.5]);
 
     $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
 
@@ -392,12 +412,31 @@ it('leaves a rest day unjudged, however it was run', function (): void {
     Carbon::setTestNow();
 });
 
-it('lets one long run that came apart speak for the week, where two milder days would be needed', function (): void {
+// The reading that started this: one Sunday long run stored at 47.1% decoupling
+// took a whole week's quality session away on its own.
+it('does not let one long run that came apart speak for the week', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
 
     planAdapterCreditedDay($user, '2026-08-05', SessionType::Long);
-    planAdapterRunOn($user, '2026-08-05', ['decoupling_pct' => PlanAdapter::EGREGIOUS_DECOUPLING + 0.1]);
+    planAdapterRunOn($user, '2026-08-05', ['decoupling_pct' => DecouplingBands::EGREGIOUS + 20.0]);
+
+    $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
+
+    expect($decision['reason'])->toBe(AdaptationReason::Steady)
+        ->and($decision['quality_delta'])->toBe(0);
+
+    Carbon::setTestNow();
+});
+
+it('reads two egregiously decoupled days as how the week was run', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+
+    planAdapterCreditedDay($user, '2026-08-05', SessionType::Long);
+    planAdapterCreditedDay($user, '2026-08-07', SessionType::Tempo);
+    planAdapterRunOn($user, '2026-08-05', ['decoupling_pct' => DecouplingBands::EGREGIOUS + 0.1]);
+    planAdapterRunOn($user, '2026-08-07', ['decoupling_pct' => DecouplingBands::EGREGIOUS + 0.1]);
 
     $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
 
@@ -407,15 +446,17 @@ it('lets one long run that came apart speak for the week, where two milder days 
     Carbon::setTestNow();
 });
 
-it('holds one merely ragged day below the egregious line to the two-day bar', function (): void {
+it('still lets one easy day far above Z2 speak for the week', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
 
-    planAdapterCreditedDay($user, '2026-08-05', SessionType::Long);
-    planAdapterRunOn($user, '2026-08-05', ['decoupling_pct' => PlanAdapter::EGREGIOUS_DECOUPLING - 0.1]);
+    planAdapterCreditedDay($user, '2026-08-03', SessionType::Easy);
+    planAdapterRunOn($user, '2026-08-03', ['time_in_zone_pct' => ['Z1' => 5, 'Z2' => 2.8, 'Z3' => 92.2]]);
 
-    expect(planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null)['reason'])
-        ->toBe(AdaptationReason::Steady);
+    $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
+
+    expect($decision['reason'])->toBe(AdaptationReason::RanTooHard)
+        ->and($decision['quality_delta'])->toBe(-1);
 
     Carbon::setTestNow();
 });
