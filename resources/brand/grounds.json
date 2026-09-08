@@ -354,49 +354,9 @@
         "horizon/0.35": {
             "text": []
         },
-        "ink/0.04": {
-            "over": {
-                "resources/js/components/NotificationBell.tsx": [
-                    "paper"
-                ]
-            },
-            "text": [
-                "text-2"
-            ]
-        },
         "ink/0.05": {
             "over": {
                 "resources/js/components/aiusage/UserTable.tsx": [
-                    "paper"
-                ]
-            },
-            "text": [
-                "text-2"
-            ]
-        },
-        "ink/0.06": {
-            "over": {
-                "resources/js/components/NotificationBell.tsx": [
-                    "paper"
-                ],
-                "resources/js/components/ui/Chip.test.tsx": [
-                    "paper"
-                ],
-                "resources/js/lib/variants.ts": [
-                    "paper"
-                ],
-                "resources/js/pages/Devtools/Design.tsx": [
-                    "paper"
-                ]
-            },
-            "text": [
-                "foreground",
-                "text-2"
-            ]
-        },
-        "ink/0.12": {
-            "over": {
-                "resources/js/components/run/RunLenses.tsx": [
                     "paper"
                 ]
             },
@@ -455,10 +415,13 @@
         },
         "muted/0.6": {
             "over": {
-                "resources/js/lib/splits.ts": [
+                "resources/js/components/NotificationBell.tsx": [
                     "paper"
                 ],
                 "resources/js/lib/splits.test.ts": [
+                    "paper"
+                ],
+                "resources/js/lib/splits.ts": [
                     "paper"
                 ]
             },

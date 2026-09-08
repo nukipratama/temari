@@ -223,7 +223,7 @@ export default function Design() {
                     </p>
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                        <span className="text-label-micro rounded-full bg-ink/[0.06] pad-chip text-text-2">
+                        <span className="text-label-micro rounded-full bg-muted pad-chip text-text-2">
                             {names.length} tokens live
                         </span>
                         <span
