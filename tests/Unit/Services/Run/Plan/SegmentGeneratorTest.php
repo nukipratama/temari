@@ -10,6 +10,10 @@ use App\Services\Run\Plan\SegmentGenerator;
 
 const PACES = ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240];
 
+// No race, a race below the marathon-pace threshold, and one at or above it —
+// the three inputs `WeekPlanBuilder::isMarathonDistance()` distinguishes.
+const RACE_DISTANCES = ['no race' => null, '10K' => 10_000.0, 'marathon' => 42_195.0];
+
 it('returns no segments for a rest day', function (): void {
     expect(SegmentGenerator::generate(SessionType::Rest, PlanPhase::Base, null, false, 16.0, 1.0, PACES))->toBe([]);
 });
@@ -219,15 +223,22 @@ it('coreKmFor stays available with no VDOT estimate at all — it never needs pa
 
 it('rounds a session\'s segment distances so they add up to the figure on the card', function (): void {
     // Every long-run baseline in a realistic range, so a case where the two
-    // parts each round the same way past the midpoint can't slip through.
-    foreach (range(30, 250) as $tenths) {
-        $longRunKm = $tenths / 10;
-        $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, null, false, $longRunKm, 1.0, PACES);
+    // parts each round the same way past the midpoint can't slip through --
+    // and across every phase and race distance, since both reshape the day:
+    // the phase decides how many blocks the threshold work is broken into,
+    // and a marathon-distance race swaps the band the main set is run at.
+    foreach (PlanPhase::cases() as $phase) {
+        foreach (RACE_DISTANCES as $label => $raceDistanceM) {
+            foreach (range(30, 250) as $tenths) {
+                $longRunKm = $tenths / 10;
+                $segments = SegmentGenerator::generate(SessionType::Tempo, $phase, $raceDistanceM, false, $longRunKm, 1.0, PACES);
 
-        $shown = round(array_sum(array_map(fn ($s): float => $s->km, $segments)), 1);
-        $headline = SegmentGenerator::coreKmFor(SessionType::Tempo, false, $longRunKm, 1.0);
+                $shown = round(array_sum(array_map(fn ($s): float => $s->km, $segments)), 1);
+                $headline = SegmentGenerator::coreKmFor(SessionType::Tempo, false, $longRunKm, 1.0);
 
-        expect($shown)->toBe($headline, "long_run_km {$longRunKm}");
+                expect($shown)->toBe($headline, "{$phase->value}, {$label}, long_run_km {$longRunKm}");
+            }
+        }
     }
 });
 
@@ -247,14 +258,18 @@ it('reports what an Interval day actually asks for, which its budget cannot alwa
 });
 
 it('reports a Tempo and an Easy day at exactly their budget', function (): void {
-    foreach (range(30, 250) as $tenths) {
-        $longRunKm = $tenths / 10;
+    foreach (PlanPhase::cases() as $phase) {
+        foreach (RACE_DISTANCES as $label => $raceDistanceM) {
+            foreach (range(30, 250) as $tenths) {
+                $longRunKm = $tenths / 10;
 
-        foreach ([SessionType::Tempo, SessionType::Easy, SessionType::Long] as $type) {
-            $segments = SegmentGenerator::generate($type, PlanPhase::Build, null, false, $longRunKm, 1.0, PACES);
+                foreach ([SessionType::Tempo, SessionType::Easy, SessionType::Long] as $type) {
+                    $segments = SegmentGenerator::generate($type, $phase, $raceDistanceM, false, $longRunKm, 1.0, PACES);
 
-            expect(SegmentGenerator::prescribedKm($segments))
-                ->toBe(SegmentGenerator::coreKmFor($type, false, $longRunKm, 1.0), "{$type->value} at {$longRunKm}");
+                    expect(SegmentGenerator::prescribedKm($segments))
+                        ->toBe(SegmentGenerator::coreKmFor($type, false, $longRunKm, 1.0), "{$type->value} in {$phase->value}, {$label}, at {$longRunKm}");
+                }
+            }
         }
     }
 });
