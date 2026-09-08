@@ -38,8 +38,8 @@ services:
             # repo it does not own ("detected dubious ownership"). Pest surfaces
             # that as the same `Tia mode requires git` message as a missing binary,
             # which is why installing git in the Dockerfile looked like the whole
-            # fix. Without this, `composer check` dies at the pest step with every
-            # test passing and never reaches coverage, build or check:chunks.
+            # fix. Without this, `composer gate` dies at the pest step with every
+            # test passing and never reaches the steps after it.
             # Env-based rather than a Dockerfile `git config --system`, so it needs
             # no image rebuild and applies to images already on disk.
             GIT_CONFIG_COUNT: 1

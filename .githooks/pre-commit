@@ -50,8 +50,8 @@ if ! docker compose ps --status running --services 2>/dev/null | grep -qx 'app';
 fi
 
 # Formatting + the static analysis that is cheap enough to pay for on every
-# commit. `composer check` is the full gate and runs before a push; rector and
-# tsc moved there, being the two slowest steps here and fully covered by it.
+# commit. `composer gate` runs before a push; tsc lives there, and rector — the
+# slowest step this hook ever carried — is CI-only, reproducible via `check:full`.
 #
 # Each language branch is ONE `sail exec`. The container round-trip costs ~1.1s,
 # which was the largest single line item in the old hook's three-call shape.

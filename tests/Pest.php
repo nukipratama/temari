@@ -76,7 +76,7 @@ if (is_dir(dirname(__DIR__).'/.git') || is_dir((string) getenv('GIT_DIR'))) {
         // renders, which is most of them — never reaches this map at all.
         // `resources/css/**` works precisely because nothing links it.
         //
-        // That is not fixable here, so `composer check` runs
+        // That is not fixable here, so `scripts/gate.sh` runs
         // `pest --no-tia --group=structure` (1.5s) and does not rely on this.
         // Found the hard way: an unregistered translucent panel in a component
         // three directories deep passed the local gate and broke main.

@@ -186,7 +186,7 @@ follows `WeeklyRecap` / `CardFlavor` / `PlanWeekVoice`. Let `Name` = StudlyCase,
 6. **Frontend** — render the block through `resources/js/components/temari/AnalysisStatus.tsx` on
    the page that shows it, so pending / failed / retry states are handled.
 
-Then run `./vendor/bin/sail composer check` and fix anything red.
+Then run `./vendor/bin/sail composer gate` and fix anything red.
 
 **Not every AI surface is a narrated block.** The scoped per-run Q&A stores its own
 `run_questions` rows and dispatches its own job instead of using the Analysis row model —
@@ -210,11 +210,14 @@ before reaching for a new `AnalysisType` on anything user-initiated and free-for
 ./vendor/bin/sail pest --group=structure   # instant: 1:1 + aggregate structural gates. Run first.
 ./vendor/bin/sail bin pest --filter=Name    # targeted: one test/feature while iterating
 ./vendor/bin/sail bin pest --parallel       # full PHP suite (local parallel — see docker/mysql-test-init.sh)
-./vendor/bin/sail composer check            # full gate: pint + phpstan + rector + pest --parallel + tsc + vitest. Pre-push only.
-./vendor/bin/sail bin pint                  # format (also runs on pre-commit with phpstan + rector)
+./vendor/bin/sail composer gate             # fast pre-push gate (~30s warm): enum/doc guards + palette + structure + tsc + changed vitest + pest --parallel under TIA
+./vendor/bin/sail composer check:full       # the gate's steps plus pint, format, lint, phpstan, rector, pest --no-tia, coverage, build, check:chunks. Opt-in, slow.
+./vendor/bin/sail bin pint                  # format (also runs on pre-commit with phpstan + eslint)
 ```
-Code quality (pint/phpstan/rector/tsc) runs on **pre-commit**; the 95% coverage gate runs in **CI**,
-on `pull_request` only. Coverage is deliberately *not* part of `composer check`.
+Both modes are [scripts/gate.sh](../../../scripts/gate.sh); it stops at the first failure and its
+last line is `GATE: PASS (<n>s, mode=fast|full)` or `GATE: FAIL at <step> (<n>s)`.
+Pint/phpstan/eslint run on **pre-commit**; rector runs in **CI** and in `check:full`. CI is the
+full gate and is what `main` is protected by; coverage is CI-owned and only in `check:full`.
 
 **When CI's coverage gate goes red** you can reproduce it locally — `pcov` ships in the dev image
 (it is what TIA records with), so this is a debugging tool, not a routine step:
@@ -250,8 +253,8 @@ internalising:
   `resources/js/**/*.tsx` entry is therefore dead for exactly the most-edited files in the repo;
   `resources/css/**` works only because nothing links it. **The globs are fine** — verified by
   probing the matcher, `**` compiles to `.*` and spans path segments. Because of this,
-  `composer check` runs `pest --no-tia --group=structure` (1.5s) rather than trusting TIA for the
-  architecture gates. Found when an unregistered translucent panel in a component three
+  [scripts/gate.sh](../../../scripts/gate.sh) runs `pest --no-tia --group=structure` (1.5s) rather
+  than trusting TIA for the architecture gates. Found when an unregistered translucent panel in a component three
   directories deep passed the local gate and broke `main`.
 - A fresh clone or worktree records the graph from cold (~47s). `pest()->tia()->baselined()` skips
   that by pulling the graph published by [tia-baseline.yml](../../../.github/workflows/tia-baseline.yml)
@@ -306,6 +309,11 @@ worktree's install just replays from cache instead of re-downloading over the ne
 `worktree-setup.sh` chowns all three cache-type volumes (`node_modules` included) to `www-data`
 right after bringing the stack up, since they're created root-owned on first boot and the container
 always runs as `www-data` — no manual fix needed.
+
+**Throughput, rule of thumb.** On 6 cores / 10 GB each idle stack costs ≈0.7 GB, so the ceiling is
+CPU, not RAM: at most **two** worktrees may run the gate's Pest step at the same time
+(`GATE_PEST_PROCESSES` defaults to 3, and a third concurrent run starves them all), and
+`check:full` — rector, coverage and the Vite build — in **one** worktree at a time.
 
 **Git hooks are shared, not per-worktree.** `core.hooksPath` lives in the common `.git/config` that
 linked worktrees inherit, so every worktree runs the *main checkout's* `.githooks/` at whatever

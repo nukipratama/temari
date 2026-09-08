@@ -62,7 +62,8 @@ Day-to-day commands (all inside Sail):
 
 ```bash
 ./vendor/bin/sail composer run dev   # Vite + queue listener + log watcher
-./vendor/bin/sail composer check     # one-shot gate: pint + phpstan + rector + pest + tsc + vitest
+./vendor/bin/sail composer gate      # fast pre-push gate: guards + structure + tsc + changed vitest + pest
+./vendor/bin/sail composer check:full # everything CI runs (pint, phpstan, rector, coverage, build). Slow.
 ./vendor/bin/sail bin pest           # PHP tests
 ./vendor/bin/sail bin pest --parallel    # parallel (works locally; test user is granted per-process DB rights)
 ./vendor/bin/sail npm run test       # FE tests (Vitest)
