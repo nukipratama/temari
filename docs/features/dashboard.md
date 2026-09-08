@@ -1,9 +1,9 @@
 ---
 title: Dashboard
-description: The home page — this week's plan widget, the Past You verdict and its evidence, today's session, then the week's stats behind a closed disclosure
+description: The home page — today's session and the voice on it, this week's plan widget, the week's stats behind a closed disclosure, then the Past You verdict and its evidence
 tags: [feature, dashboard]
 status: living
-reviewed: 2026-09-01
+reviewed: 2026-09-09
 code_refs:
   - resources/js/pages/Home.tsx
   - app/Http/Controllers/DashboardController.php
@@ -16,6 +16,7 @@ code_refs:
   - resources/js/components/home/NoPlanCard.tsx
   - resources/js/components/home/WeekStatsDisclosure.tsx
   - resources/js/lib/verdict.ts
+  - resources/js/lib/plan.ts
   - resources/js/components/dashboard/VitalBars.tsx
   - resources/js/components/dashboard/LastRunCard.tsx
   - resources/js/components/dashboard/TrainingLoadCard.tsx
@@ -23,7 +24,7 @@ code_refs:
 
 # Dashboard
 
-The app's home (`/`), ported to the frozen prototype's `TodayScreen` in `PS3`. Four sections, in its order: the week's plan card (or its empty state), the **"am I getting better?"** verdict with the evidence behind it, Temari's read on today, then the week's stats behind a **closed** disclosure. Server entry is [DashboardController](app/Http/Controllers/DashboardController.php) (`__invoke`), rendering the [Home](resources/js/pages/Home.tsx) page.
+The app's home (`/`), ported to the frozen prototype's `TodayScreen` in `PS3`. Four sections, in the order the page draws them: today's session and Temari's read on it, the week's plan card (or its empty state), the week's stats behind a **closed** disclosure, then the **"am I getting better?"** verdict with the evidence behind it. Server entry is [DashboardController](app/Http/Controllers/DashboardController.php) (`__invoke`), rendering the [Home](resources/js/pages/Home.tsx) page.
 
 **Navigation:** `route('dashboard')` → `/`. Named route: `dashboard`. `/` is dispatched by [RootController](app/Http/Controllers/RootController.php), which branches on auth: a guest gets the landing page ([[landing]]) and a signed-in user is delegated here. `route('dashboard')` therefore resolves for guests too — it answers with the landing page rather than a redirect.
 
@@ -36,7 +37,9 @@ The app's home (`/`), ported to the frozen prototype's `TodayScreen` in `PS3`. F
 
 ## This week's plan
 
-[WeekPlanWidget](resources/js/components/home/WeekPlanWidget.tsx) leads the page whenever `weekPlan` is non-null. It shows a credited/total progress ring reading out its own figure, that same figure and the week's planned distance as two plain stat figures, a phase badge, a 7-day day-status grid (today's cell ringed), and a footer row for today's session that links into Plan — all lifted straight from `CurrentWeekPlanBuilder::forUser`'s payload — the same [PlanRenderer::dayPayload](app/Services/Run/Plan/PlanRenderer.php) shape Plan's own week rows render, so nothing shown here can numerically drift from the Plan page. A rest day someone ran anyway shows its `actual_km`, the way the prototype's own wednesday cell does.
+[WeekPlanWidget](resources/js/components/home/WeekPlanWidget.tsx) renders whenever `weekPlan` is non-null. It shows a credited/total progress ring reading out its own figure, that same figure and the week's planned distance as two plain stat figures, a phase badge, a 7-day day-status grid (today's cell ringed), and a link into Plan — all lifted straight from `CurrentWeekPlanBuilder::forUser`'s payload — the same [PlanRenderer::dayPayload](app/Services/Run/Plan/PlanRenderer.php) shape Plan's own week rows render, so nothing shown here can numerically drift from the Plan page. A rest day someone ran anyway shows its `actual_km`, the way the prototype's own wednesday cell does.
+
+**Today's own session is not repeated here.** It used to be a footer row on this card while the voice describing it sat on the card below, so answering "what do I run, at what pace, and why is it eased" meant reading two cards. The prescription now leads [TodaySession](resources/js/components/home/TodaySession.tsx) instead, and this widget is the week at a glance.
 
 Both halves of the ring count **training days only, against the non-rest rows this week actually holds** (`sessions_this_week`), not the baseline's weekly target — a rest day always scores `Done`, so counting it would credit a day off, and a plan created mid-week holds fewer rows than the target it was sized from. Today is credited as soon as a qualifying run syncs rather than at the next morning's compliance pass. Both rules are [today-credits-when-earned](docs/decisions/today-credits-when-earned.md).
 
@@ -69,7 +72,11 @@ The fourth outcome, `not_enough_history`, renders [NoVerdictPanel](resources/js/
 
 ## Today's session
 
-[TodaySession](resources/js/components/home/TodaySession.tsx) is the one forward-looking block on an otherwise backward-looking page: a leaf-ringed `FaceIcon` beside a "Today" eyebrow and the line that leads, on a `today-accent` edged card (`PS3` moved it off the `sky` panel it used to sit on, see [[design-tokens]]). It renders `briefing.mascotVoice` through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx), so it carries the skeleton / retry states from the [[ai-pipeline]]. The text is parsed on `\n\n`: the first paragraph leads, the rest follows as body. Both halves render through [renderNarration](resources/js/components/temari/Citation.tsx) rather than plain bold, so the briefing may point one span of its own prose at the session it is talking about: the footer row above carries `id="anchor-session-today"`, and clicking the cited words scrolls to it and rings it. The server drops a citation the plan does not back, and the client drops one this page draws no element for, so the affordance only ever appears when there is something to show. See [[citations-go-where-the-prose-already-points]].
+[TodaySession](resources/js/components/home/TodaySession.tsx) is the one forward-looking block on an otherwise backward-looking page: a leaf-ringed `FaceIcon` beside a "Today" eyebrow, what today asks for, then the voice describing it, on a `today-accent` edged card (`PS3` moved it off the `sky` panel it used to sit on, see [[design-tokens]]).
+
+The prescription is `weekPlan`'s row for today, passed down by the page and drawn as one line: the session type, its distance and the core set's pace. A day the plan has already judged states both figures it recorded, `N km asked · N km run`, from the same [kmLabel](resources/js/lib/plan.ts) the Plan page's day rows read, so the two pages cannot phrase the day differently. A readiness step-down renders beneath it as a marked modification, never a replacement: the label, the eased session, and the note explaining it as ordinary prose rather than a footnote. See [[readiness-clamp-is-advisory]] and [[the-clamp-explains-itself]]. When no plan covers today the block is the voice alone.
+
+It renders `briefing.mascotVoice` through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx), so it carries the skeleton / retry states from the [[ai-pipeline]]. The text is parsed on `\n\n`: the first paragraph leads, the rest follows as body. Both halves render through [renderNarration](resources/js/components/temari/Citation.tsx) rather than plain bold, so the briefing may point one span of its own prose at the session it is talking about: the prescription above carries `id="anchor-session-today"`, and clicking the cited words scrolls to it and rings it. The server drops a citation the plan does not back, and the client drops one this page draws no element for, so the affordance only ever appears when there is something to show. See [[citations-go-where-the-prose-already-points]].
 
 The whole briefing object is assembled server-side by [BriefingComposer::compose](app/Services/Run/Story/BriefingComposer.php#L24) — a single Analysis row, the daily voice (the featured-kartu voice that used to sit beside it was swept by `W2`). It is its own [[ai-pipeline]] block with independent retry. The signals their prompts read come from the context builders in [[ai-narration-internals]]; the vibe that colours Temari's tone is [[vibe-and-mood]].
 
