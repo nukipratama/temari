@@ -135,8 +135,7 @@ describe('Login', () => {
         ).toBeInTheDocument();
     });
 
-    it('renders the data-use and disclaimer copy handed down by the server', async () => {
-        const userEvent = (await import('@testing-library/user-event')).default;
+    it('renders the data-use and disclaimer copy handed down by the server', () => {
         render(
             <Login
                 authStravaUrl="/x"
@@ -144,10 +143,6 @@ describe('Login', () => {
                 trainingDisclaimer={DISCLAIMER}
             />,
         );
-
-        await userEvent
-            .setup()
-            .click(screen.getByRole('button', { name: /data & AI use/ }));
 
         // "what temari stores" is also the auth card's footnote link, so the
         // headings are asserted against the disclosure panel.
@@ -164,7 +159,7 @@ describe('Login', () => {
         ).toHaveAttribute('href', '/training-disclaimer');
     });
 
-    it('keeps the data & AI use disclosure closed until it is asked for', async () => {
+    it('keeps the data & AI use disclosure open by default, and lets it be collapsed', async () => {
         const userEvent = (await import('@testing-library/user-event')).default;
         render(
             <Login
@@ -175,13 +170,13 @@ describe('Login', () => {
         );
 
         const trigger = screen.getByRole('button', { name: /data & AI use/ });
-        expect(trigger).toHaveAttribute('aria-expanded', 'false');
-        expect(screen.getByText(DATA_USE.points[0])).not.toBeVisible();
+        expect(trigger).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByText(DATA_USE.points[0])).toBeVisible();
 
         await userEvent.setup().click(trigger);
 
-        expect(trigger).toHaveAttribute('aria-expanded', 'true');
-        expect(screen.getByText(DATA_USE.points[0])).toBeVisible();
+        expect(trigger).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.getByText(DATA_USE.points[0])).not.toBeVisible();
     });
 
     it('omits the disclosure entirely when the server sends no copy', () => {

@@ -21,7 +21,7 @@ const DOCUMENTS: ReadonlyArray<{ slug: string; href: string; label: string }> =
     [
         { slug: 'terms', href: '/terms', label: 'Terms of use' },
         { slug: 'privacy', href: '/privacy', label: 'Privacy policy' },
-        { slug: 'ai-use', href: '/ai-use', label: 'How Temari uses AI' },
+        { slug: 'ai-use', href: '/ai-use', label: 'how temari uses AI' },
         {
             slug: 'training-disclaimer',
             href: '/training-disclaimer',

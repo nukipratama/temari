@@ -20,7 +20,7 @@ class DemoAuthController extends Controller
         $user = User::query()->where('is_demo', true)->orderBy('id')->first();
         if ($user === null) {
             return redirect()->route('login')->withErrors([
-                'demo' => 'Demo user hasn\'t been seeded yet. Run `php artisan demo:seed` first.',
+                'demo' => 'The demo account isn\'t set up yet. Try again in a bit.',
             ]);
         }
 

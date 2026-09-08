@@ -18,7 +18,7 @@ class TelegramReplies
      */
     public static function welcome(string $name): string
     {
-        return "Hey {$name}, I'm Temari. Your Telegram is now linked to your Temari account. "
+        return "Hey {$name}, I'm temari. Your Telegram is now linked to your Temari account. "
             . "From here on, I'll ping you after every run and with your weekly recap.";
     }
 
@@ -30,7 +30,7 @@ class TelegramReplies
 
     public static function generic(): string
     {
-        return 'Hey! I\'m Temari. Open Temari and tap "Connect Telegram" to link up.';
+        return 'Hey! I\'m temari. Open Temari and tap "Connect Telegram" to link up.';
     }
 
     public static function disconnected(): string

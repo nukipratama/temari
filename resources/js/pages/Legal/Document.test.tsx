@@ -67,7 +67,7 @@ describe('Legal/Document', () => {
             name: 'Other documents',
         });
         expect(nav).toHaveTextContent('Terms of use');
-        expect(nav).toHaveTextContent('How Temari uses AI');
+        expect(nav).toHaveTextContent('how temari uses AI');
         expect(nav).toHaveTextContent('Training disclaimer');
         expect(nav).not.toHaveTextContent('Privacy policy');
     });

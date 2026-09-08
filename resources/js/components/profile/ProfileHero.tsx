@@ -64,7 +64,7 @@ export default function ProfileHero({
                 </div>
                 <div className="min-w-0">
                     <Eyebrow token="micro" tone="horizon-ink">
-                        ★ What Temari says about you
+                        ★ What temari says about you
                     </Eyebrow>
                     {firstRunAt && (
                         <p className="mt-1.5 text-label-micro text-text-2">
@@ -78,7 +78,7 @@ export default function ProfileHero({
                 {memberSince && (
                     <div className="ml-auto hidden flex-none text-right min-[900px]:block">
                         <Eyebrow token="micro" tone="ink-3">
-                            With Temari since
+                            With temari since
                         </Eyebrow>
                         <p className="mt-1 font-serif text-headline-sm text-foreground">
                             {formatShortDateId(memberSince)}
