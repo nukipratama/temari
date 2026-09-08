@@ -13,7 +13,7 @@ code_refs:
 
 **Status:** Accepted (documented 2026-06-20)
 
-> **One detail below is superseded (noted 2026-08-14).** The note says `rateLimitRemaining(int $userId)` still takes a `$userId` for call-site compatibility. It no longer does: the parameter was never read, so it is gone ([StravaClient::rateLimitRemaining](app/Services/Strava/StravaClient.php#L147)). The decision recorded here, that the buckets are keyed app-wide and never per athlete, is unchanged.
+> **One detail below is superseded (noted 2026-08-14).** The note says `rateLimitRemaining(int $userId)` still takes a `$userId` for call-site compatibility. It no longer does: the parameter was never read, so it is gone ([StravaClient::rateLimitRemaining](app/Services/Strava/StravaClient.php#L194)). The decision recorded here, that the buckets are keyed app-wide and never per athlete, is unchanged.
 
 ## Context
 
