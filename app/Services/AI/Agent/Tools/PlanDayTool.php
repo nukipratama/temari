@@ -17,6 +17,13 @@ use Illuminate\Support\Carbon;
  * the day's plan can still shift before it's actually run, so the
  * narration only needs to be qualitatively right, not pixel-matched to a
  * number the UI itself may later redistribute.
+ *
+ * A readiness-eased day is the exception, and the only figure here read
+ * from the row: `clamped_km` is a decision already taken, recorded by
+ * {@see \App\Services\Run\Plan\RestClampRecorder}, and it is what the card
+ * shows. The clamp still never reaches
+ * {@see \App\Services\AI\MaterialFingerprint} — see
+ * `docs/decisions/the-clamp-explains-itself.md`.
  */
 final class PlanDayTool extends NoArgumentTool
 {
@@ -40,7 +47,9 @@ final class PlanDayTool extends NoArgumentTool
             .'has already excused themselves from this day. Once the day has been run it also '
             .'carries how it went: status (done/partial/missed/overreached), completed_km, and '
             .'ran_anyway true when they ran a day they had excused. Those four are absent on a '
-            .'day that has not been graded yet, which means it is still ahead of the athlete.';
+            .'day that has not been graded yet, which means it is still ahead of the athlete. '
+            .'eased true means readiness cut the day back: distance_km is the smaller figure the '
+            .'athlete was actually asked for, not the session it replaced.';
     }
 
     /** @return array<string, mixed> */
@@ -49,11 +58,17 @@ final class PlanDayTool extends NoArgumentTool
         $baselineData = $this->baseline->forUser($this->session->user, Carbon::today());
         $coreKm = SegmentGenerator::coreKmForPlannedSession($this->session, $baselineData['long_run_km']);
 
+        // A readiness-eased day was told to run less, and that smaller figure is
+        // what the card shows and what the athlete is being asked for. Reading
+        // past it leaves the blurb describing a session that was called off.
+        $easedKm = $this->session->clamped_km;
+
         return [
             'date' => $this->session->date->toDateString(),
             'session_type' => $this->session->session_type->value,
             'phase' => $this->session->phase->value,
-            'distance_km' => $coreKm,
+            'distance_km' => $easedKm ?? $coreKm,
+            ...($easedKm === null ? [] : ['eased' => true]),
             'skipped' => $this->session->skipped,
             // Absent rather than null on an ungraded day: a key that is always
             // there teaches the model the day is over even when it is not.
