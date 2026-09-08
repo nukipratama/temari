@@ -8,7 +8,6 @@ use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
 use App\Models\User;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 
 /**
  * How well the athlete held the plan over a span, as counts rather than days.
@@ -57,24 +56,19 @@ final class PlanAdherenceTool extends UserTool
             ->get();
 
         $meanCompliance = $sessions->whereNotNull('compliance_score')->avg('compliance_score');
+        $byStatus = $sessions->countBy(fn (PlannedSession $session): string => $session->status->value);
 
         return [
             'from' => $this->from?->toDateString(),
             'through' => $this->asOf->toDateString(),
             'prescribed' => $sessions->count(),
-            'done' => $this->countOf($sessions, PlannedSessionStatus::Done),
-            'partial' => $this->countOf($sessions, PlannedSessionStatus::Partial),
-            'missed' => $this->countOf($sessions, PlannedSessionStatus::Missed),
-            'overreached' => $this->countOf($sessions, PlannedSessionStatus::Overreached),
-            'excused' => $this->countOf($sessions, PlannedSessionStatus::Skip),
+            'done' => $byStatus->get(PlannedSessionStatus::Done->value, 0),
+            'partial' => $byStatus->get(PlannedSessionStatus::Partial->value, 0),
+            'missed' => $byStatus->get(PlannedSessionStatus::Missed->value, 0),
+            'overreached' => $byStatus->get(PlannedSessionStatus::Overreached->value, 0),
+            'excused' => $byStatus->get(PlannedSessionStatus::Skip->value, 0),
             'ran_anyway' => $sessions->where('ran_anyway', true)->count(),
             'mean_compliance' => $meanCompliance === null ? null : (int) round($meanCompliance),
         ];
-    }
-
-    /** @param  Collection<int, PlannedSession>  $sessions */
-    private function countOf(Collection $sessions, PlannedSessionStatus $status): int
-    {
-        return $sessions->where('status', $status)->count();
     }
 }

@@ -74,11 +74,15 @@ class TrendReadNarrator
         - load shape: avg_monotony above 2 means the load was unusually
           uniform (a known injury-risk pattern), worth naming once if it
           stands out, not a default thing to mention.
-        - plan adherence: get_plan_adherence's counts across this same
-          range. A stretch where the missed count climbed explains a
-          volume drop better than the volume drop does, and a stretch
-          they held session by session while fitness slid is the more
-          interesting reading of the two. Skip it when prescribed is 0.
+        - plan adherence: get_plan_adherence's counts. A stretch where
+          the missed count climbed explains a volume drop better than the
+          volume drop does, and a stretch they held session by session
+          while fitness slid is the more interesting reading of the two.
+          Its counts cover the WHOLE range you were asked to read, which
+          on 12mo means both halves together, NOT the `current` half. So
+          never pair an adherence count with a current-vs-comparison
+          figure as though the two describe the same stretch of time.
+          Skip it when prescribed is 0.
         Don't stack two or more of these into one answer.
 
         Title: one short sentence, the headline. A number is not required
