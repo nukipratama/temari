@@ -171,12 +171,13 @@ final readonly class TrainingBaseline
             $sessionsPerWeek = $seed[0] ?? self::MIN_SESSIONS_PER_WEEK;
         }
 
-        $weeklyVolumeKm = self::anchorFor($user, $asOf) ?? $this->weeklyVolumeKm($weeks, $seed);
+        $season = self::seasonFor($user, $asOf);
+        $weeklyVolumeKm = $season->anchor_weekly_volume_km ?? $this->weeklyVolumeKm($weeks, $seed);
 
         return [
             'sessions_per_week' => $sessionsPerWeek,
             'weekly_volume_km' => $weeklyVolumeKm,
-            'long_run_km' => $this->longRunKm($user, $weeklyVolumeKm, $asOf),
+            'long_run_km' => $this->longRunKm($user, $weeklyVolumeKm, $asOf, $season),
         ];
     }
 
@@ -192,17 +193,6 @@ final readonly class TrainingBaseline
         $weeks = self::trailingWeeks($user, $asOf);
 
         return $this->weeklyVolumeKm($weeks, self::seedFor($preference, $weeks));
-    }
-
-    /**
-     * The weekly volume the arc covering `$asOf` was anchored to, or null
-     * when nothing has anchored it — a season predating
-     * `docs/decisions/the-arc-is-anchored-once.md`, or an athlete with no
-     * season at all.
-     */
-    private static function anchorFor(User $user, Carbon $asOf): ?float
-    {
-        return self::seasonFor($user, $asOf)?->anchor_weekly_volume_km;
     }
 
     /**
@@ -279,16 +269,18 @@ final readonly class TrainingBaseline
      * Volume decides the long run, not the other way round. Both ceilings are
      * applied and the tighter one wins: a race-distance band, and time on feet.
      */
-    private function longRunKm(User $user, float $weeklyVolumeKm, Carbon $asOf): float
+    private function longRunKm(User $user, float $weeklyVolumeKm, Carbon $asOf, ?Season $season): float
     {
+        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
+
         $derived = max(
             $weeklyVolumeKm * self::longRunShare($weeklyVolumeKm),
-            $this->raceDistanceFloorKm($user, $asOf),
+            $this->raceDistanceFloorKm($race, $season),
         );
 
         $capped = min(
             $derived,
-            $this->raceBandCapKm($user),
+            self::raceBandCapKm($race),
             $this->timeCapKm($user, $asOf),
             $weeklyVolumeKm * self::MAX_LONG_RUN_SHARE_OF_WEEK,
         );
@@ -308,11 +300,8 @@ final readonly class TrainingBaseline
      * too flat to hold a ramp simply gets a smaller step — 0.0 when there is
      * no race, no season, or a marathon-distance goal.
      */
-    private function raceDistanceFloorKm(User $user, Carbon $asOf): float
+    private function raceDistanceFloorKm(?RaceGoal $race, ?Season $season): float
     {
-        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
-        $season = self::seasonFor($user, $asOf);
-
         if ($race === null || $season === null || (float) $race->distance_m >= self::RACE_DISTANCE_FLOOR_THRESHOLD_M) {
             return 0.0;
         }
@@ -341,10 +330,8 @@ final readonly class TrainingBaseline
         return self::LONG_RUN_SHARE_ABOVE_BANDS;
     }
 
-    private function raceBandCapKm(User $user): float
+    private static function raceBandCapKm(?RaceGoal $race): float
     {
-        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
-
         if ($race === null) {
             return self::LONG_RUN_CAP_NO_RACE_KM;
         }
