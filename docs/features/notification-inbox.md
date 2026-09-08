@@ -103,6 +103,17 @@ reloads only `unreadNotifications`, which is what the bell in
 [MobileTopBar](../../resources/js/components/MobileTopBar.tsx) renders. There is no "mark all read": the unread count is a count of things not looked at, and a
 button that lies about that is worse than a count that stays high.
 
+The same prop puts a dot on the Today tab
+([MobileBottomNav](../../resources/js/components/MobileBottomNav.tsx#L60)). On mobile the bell sits
+in a header a runner glancing at their dashboard after a run need never scroll up to, and a four-tab
+pill has no fifth slot to give the inbox. A dot rather than a count, and decorative rather than
+announced: the bell is the labelled, actionable control, and this tab does not open the inbox — it
+is a reason to look up, not a second way in. It carries the *unread dot's* own token rather than the
+bell badge's: `ember-deep` is a fixed-identity fill built to sit under `text-cream`, and bare on the
+pill it falls under 3:1 on the dark ground, while `icon-accent` — what
+[InboxRow](../../resources/js/components/inbox/InboxRow.tsx#L195) already dots an unread row with —
+is ground-reactive. A ring keeps it off the lime the active tab tints its own icon with.
+
 `/inbox?item={id}` is the per-row deep link. The controller widens the window far enough to contain
 that row ([InboxController](../../app/Http/Controllers/InboxController.php#L150)) so the target is on
 screen even when it sits well behind the first twenty, and arriving on a row counts as reading it.
