@@ -653,7 +653,7 @@ it('WeekTotalsTool reads avg_decoupling for the week', function (): void {
 
 it('TrendReadNarrator joins title and description with a blank line on valid JSON', function (): void {
     $user = User::factory()->create();
-    $caller = fakeCaller(json_encode(['title' => 'Judul.', 'description' => 'Deskripsi.'], JSON_THROW_ON_ERROR));
+    $caller = fakeCaller(json_encode(['reading' => 'load', 'title' => 'Judul.', 'description' => 'Deskripsi.'], JSON_THROW_ON_ERROR));
     $narrator = new TrendReadNarrator($caller, app(TrainingLoad::class));
 
     expect($narrator->generate($user, '30d'))->toBe("Judul.\n\nDeskripsi.");
@@ -754,7 +754,6 @@ it('PlanDayTool carries how the day went once it has been graded', function (): 
         ->and($context['distance_km'])->toBeFloat();
 });
 
-
 /**
  * Prod shipped "tempo day, about 5.9 km. base work, nothing flashy." — the model
  * reading `phase: base` and rendering it as a description of the session's
@@ -767,6 +766,26 @@ it('PlanDayVoiceNarrator prompt separates the training phase from the day\'s eff
     expect($prompt)->toContain('PHASE IS THE BLOCK, NOT THE EFFORT')
         ->and($prompt)->toContain('base work')
         ->and($prompt)->toContain('quality work in every phase');
+});
+
+/**
+ * Three separate no-stacking rules in the prompt did not stop it: measured at
+ * 4-5 metric families and 9-10 numbers against a stated ceiling of 3. Making the
+ * model NAME its one reading in the schema before writing brought that to 1.5
+ * families and 2.2 numbers. The enum is the mechanism, so a family added to the
+ * prompt without a matching value would be unpickable — and silently so.
+ */
+it('TrendReadNarrator offers exactly the readings its prompt describes', function (): void {
+    $schema = new ReflectionClass(TrendReadNarrator::class)->getConstant('READING_PROPERTY_SCHEMA');
+    $prompt = narratorPrompt(TrendReadNarrator::class);
+
+    expect($schema['reading']['enum'])->toBe(['load', 'fitness', 'vdot', 'shape', 'adherence']);
+
+    foreach ($schema['reading']['enum'] as $reading) {
+        expect($prompt)->toContain("`{$reading}`:");
+    }
+
+    expect($prompt)->toContain('COMMIT FIRST');
 });
 
 // ── PlanWeekVoiceNarrator ─────────────────────────────────────────────

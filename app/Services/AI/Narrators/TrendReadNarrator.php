@@ -44,37 +44,40 @@ class TrendReadNarrator
           12mo as "this year vs last year": you were not given a prior
           year, only this window's own two halves.
 
-        THE PLAN: get_plan_adherence returns how the athlete held their
-        training plan across this same range, as counts -- prescribed,
-        done, partial, missed, overreached, excused, and a mean
-        compliance score. Adherence is a trend like any other, and it is
-        often the reading that explains the rest: a quarter where the
-        volume fell and the missed count climbed is one story, and a
-        quarter where they held every session while fitness slid is a
-        different one entirely. Use it when it explains the range better
-        than load or fitness do, not as an extra sentence bolted on. It
-        counts days, so it is bound by the number limit below.
-        prescribed 0 means no plan covered this range.
+        ONE READING, AND THE SENTENCES DEEPEN IT. The description has room
+        for 2-4 sentences and that room is NOT there to fit more metrics
+        into. Every sentence after the first explains the same reading:
+        what it means, what it does not mean, what would change it, what
+        the athlete should take from it. The moment a second metric
+        family appears you are writing a table.
 
-        NUMBER LIMIT: max 3 numbers across title + description combined,
-        and one of them must be the current-vs-comparison figure that
-        drives the reading. This is a ceiling, not a target: a good
-        reading is one observation backed by numbers, not a list of
-        metrics.
+        NUMBER LIMIT: max 3 numbers across title + description combined.
+        A comparison is TWO of them (the before and the after), so in
+        practice you get one comparison and at most one more figure. If
+        you are about to write a fourth number, you have started a second
+        reading: cut it and say more about the first instead.
 
-        Pick ONE thing that best explains the range and build the whole
-        reading around it:
-        - load change: current vs comparison distance_km, runs, or
+        COMMIT FIRST. Output a `reading` field naming the ONE thing below
+        your description is about, before you write a word of it. Every
+        number you then use has to belong to that reading. If you find
+        yourself wanting a figure from a different family, the answer is
+        not to add it, it is that you may have picked the wrong reading:
+        go back and change `reading`, then write to the new one.
+
+        The five, and `reading` takes exactly one of these values:
+        - `load`: current vs comparison distance_km, runs, or
           trimp_total (trimp_total is null on an unscored stretch, that
           means "no reading", not zero, don't narrate it as a rest period).
-        - fitness direction: ctl_start vs ctl_end.
-        - VDOT movement: vdot_start vs vdot_end, skip this angle entirely
+        - `fitness`: ctl_start vs ctl_end.
+        - `vdot`: vdot_start vs vdot_end, skip this angle entirely
           if either is null, that means not enough history yet, don't
           guess a direction from missing data.
-        - load shape: avg_monotony above 2 means the load was unusually
+        - `shape`: avg_monotony above 2 means the load was unusually
           uniform (a known injury-risk pattern), worth naming once if it
-          stands out, not a default thing to mention.
-        - plan adherence: get_plan_adherence's counts. A stretch where
+          stands out, not a default thing to mention. Call it "monotony"
+          in your words; `avg_monotony` is the field name and field names
+          never reach the reader.
+        - `adherence`: get_plan_adherence's counts. A stretch where
           the missed count climbed explains a volume drop better than the
           volume drop does, and a stretch they held session by session
           while fitness slid is the more interesting reading of the two.
@@ -88,8 +91,8 @@ class TrendReadNarrator
         Title: one short sentence, the headline. A number is not required
         if the plain read is clear on its own ("training load eased back
         this quarter" is a complete title).
-        Description: 2-4 sentences, the supporting numbers and context for
-        the title.
+        Description: 2-4 sentences explaining the title, all of them about
+        the one thing you picked.
 
         Match posture to the direction of the number that drives the
         reading, never softening what it actually says: a real drop in
@@ -107,6 +110,14 @@ class TrendReadNarrator
           only have this window's own first half vs second half.
         PROMPT;
 
+    /** @var array<string, array<string, mixed>> */
+    private const array READING_PROPERTY_SCHEMA = [
+        'reading' => [
+            'type' => 'string',
+            'enum' => ['load', 'fitness', 'vdot', 'shape', 'adherence'],
+        ],
+    ];
+
     public function __construct(
         private readonly StructuredChatCaller $caller,
         private readonly TrainingLoad $trainingLoad,
@@ -123,7 +134,7 @@ class TrendReadNarrator
             systemPrompt: self::SYSTEM_PROMPT,
             context: ['range' => $range],
             schemaName: 'TemariTrendRead',
-            requiredKeys: ['title', 'description'],
+            requiredKeys: ['reading', 'title', 'description'],
             options: new ChatCallOptions(
                 temperature: 0.7,
                 userId: $user->id,
@@ -138,8 +149,10 @@ class TrendReadNarrator
                 ]),
                 maxSteps: 6,
             ),
+            propertySchema: self::READING_PROPERTY_SCHEMA,
         );
 
+        // `reading` is a commitment device: it is never rendered, only required.
         return trim((string) $decoded['title']."\n\n".(string) $decoded['description']);
     }
 }
