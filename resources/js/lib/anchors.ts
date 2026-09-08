@@ -150,9 +150,9 @@ interface WeekPlanish {
 }
 
 /**
- * Which anchors the Home page draws. `WeekPlanWidget` renders today's row only
- * when the plan covers today, the same condition the server resolves
- * `session:today` against.
+ * Which anchors the Home page draws. `TodaySession` renders today's
+ * prescription only when the plan covers today, the same condition the server
+ * resolves `session:today` against.
  */
 export function drawnHomeAnchors(
     weekPlan: WeekPlanish | null,

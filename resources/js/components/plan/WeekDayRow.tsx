@@ -14,9 +14,11 @@ import {
 } from '@/components/ui/collapsible';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
-import { formatDurationHMS, formatPace } from '@/lib/pace';
+import { formatDurationHMS } from '@/lib/pace';
 import {
     clampSummary,
+    kmLabel,
+    paceLabel,
     SESSION_TYPE_ICON,
     SESSION_TYPE_LABEL,
     STATUS_LABEL,
@@ -25,33 +27,11 @@ import {
 } from '@/lib/plan';
 import { cardVariants } from '@/lib/variants';
 
-function paceLabel(day: PlanDay): string | null {
-    const core = day.segments.find(
-        (s) => s.key === 'main' || s.key === 'interval',
-    );
-    return core?.pace_sec_per_km == null
-        ? null
-        : `${formatPace(core.pace_sec_per_km)}/km`;
-}
-
 /**
  * The whole day, for a rest day that was run anyway. Both halves are day
  * totals: mixing a summed distance with one run's clock is the bug this
  * replaced.
  */
-/**
- * A day the plan has already judged states both facts it recorded: what it
- * asked for, and what was run. Every other day shows the ask alone, sized
- * against the athlete's fitness today.
- */
-function kmLabel(day: PlanDay): string {
-    if (day.prescribed_km == null) {
-        return `${day.distance_km} km`;
-    }
-
-    return `${day.prescribed_km} km asked · ${day.actual_km ?? 0} km run`;
-}
-
 function daySummary(day: PlanDay): string {
     const km = day.actual_km == null ? null : `${day.actual_km} km`;
     const seconds = day.activities.reduce<number | null>(
@@ -129,6 +109,7 @@ export default function WeekDayRow({
 }>) {
     const [picking, setPicking] = useState(false);
 
+    const pace = paceLabel(day);
     const isRest = day.session_type === 'rest';
     const ranAnyway = isRest && day.ran_anyway;
     const editable = day.date > today;
@@ -176,7 +157,7 @@ export default function WeekDayRow({
                     {!isRest && (
                         <span className="mt-0.5 block text-xs text-text-2">
                             {kmLabel(day)}
-                            {paceLabel(day) && ` · ${paceLabel(day)}`}
+                            {pace !== null && ` · ${pace}`}
                         </span>
                     )}
                     {ranAnyway && (
