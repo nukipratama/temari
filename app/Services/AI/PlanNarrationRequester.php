@@ -58,6 +58,42 @@ final readonly class PlanNarrationRequester
     }
 
     /**
+     * Re-narrates one day's blurb when the day's own material has changed —
+     * which, after {@see \App\Services\Run\Plan\ComplianceScorer::creditIfEarned()},
+     * means the day just flipped to credited and the line should now read what
+     * happened rather than announce what was coming.
+     *
+     * Scoped to the single date rather than going through
+     * {@see self::requestForCurrentWeek()}: that walks the whole week and would
+     * re-request six days nothing touched. Returns whether anything was asked
+     * for, so the caller can tell a real invalidation from a no-op.
+     *
+     * The gated counterpart to {@see self::requestDayNarration()}, which
+     * invalidates unconditionally. That is right for a user edit, where the
+     * athlete has just changed the day; it is wrong here, because this runs on
+     * every ingested run and would re-bill each one.
+     */
+    public function requestDayVoiceIfChanged(User $user, Carbon $date): bool
+    {
+        $key = $date->toDateString();
+        $expected = $this->expectedDayFingerprints($user, $date, [$key])[$key] ?? null;
+
+        if ($expected === null || $expected === $this->stampedDayFingerprints($user, [$key])[$key]) {
+            return false;
+        }
+
+        $this->analysisService->request(
+            AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+            $user->id,
+            AnalysisType::PlanDayVoice,
+            $key,
+            invalidate: true,
+        );
+
+        return true;
+    }
+
+    /**
      * Asks for a line explaining today's readiness step-down, if there is one.
      *
      * Called from the two places that already compute a ceiling — the ingest
@@ -269,6 +305,10 @@ final readonly class PlanNarrationRequester
      * ({@see \App\Http\Controllers\PlanController::update()}) changes what a
      * day's blurb would need to say, so it never keeps describing a session
      * the athlete just skipped, blocked, or moved off of.
+     *
+     * Invalidates unconditionally, because the edit IS the change. Anything
+     * firing on a repeatable event wants {@see self::requestDayVoiceIfChanged()}
+     * instead, which asks the fingerprint first.
      */
     public function requestDayNarration(int $userId, Carbon $date): void
     {

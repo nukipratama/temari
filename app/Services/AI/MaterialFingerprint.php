@@ -50,6 +50,14 @@ final class MaterialFingerprint
             // conditionally so every already-stamped row keeps its digest
             // rather than the new key re-narrating everyone's whole week.
             ...($session->race_distance_m === null ? [] : ['race_distance_m' => $session->race_distance_m]),
+            // The day flipping to credited turns the blurb from a label into a
+            // read of what happened, so it has to re-narrate once. Added
+            // conditionally for the same reason race_distance_m is: an ungraded
+            // day keeps the digest it already carries, so shipping this does not
+            // re-narrate every athlete's whole week. The SCORE is deliberately
+            // out — it moves with every run that lands, and the verdict is what
+            // changes the sentence.
+            ...($session->status->isCredited() ? ['status' => $session->status->value] : []),
         ]);
     }
 

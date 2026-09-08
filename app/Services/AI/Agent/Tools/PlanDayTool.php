@@ -11,9 +11,10 @@ use Illuminate\Support\Carbon;
 
 /**
  * The prescribed session for one day: type, phase, and a rough core
- * distance. Deliberately the unredistributed, multiplier-1.0 figure rather
- * than {@see \App\Http\Controllers\PlanController}'s exact render-time
- * number: the day's plan can still shift before it's actually run, so the
+ * distance, plus how the day actually went once it has been graded.
+ * Deliberately the unredistributed, multiplier-1.0 figure rather than
+ * {@see \App\Http\Controllers\PlanController}'s exact render-time number:
+ * the day's plan can still shift before it's actually run, so the
  * narration only needs to be qualitatively right, not pixel-matched to a
  * number the UI itself may later redistribute.
  */
@@ -22,6 +23,8 @@ final class PlanDayTool extends NoArgumentTool
     public function __construct(
         private readonly PlannedSession $session,
         private readonly TrainingBaseline $baseline,
+        /** Km actually run on this date, or null while nothing has been logged. */
+        private readonly ?float $completedKm = null,
     ) {
     }
 
@@ -34,7 +37,10 @@ final class PlanDayTool extends NoArgumentTool
     {
         return 'The prescribed session for this day: type (easy/long/tempo/interval/rest/race), '
             .'training phase, and an approximate distance in km. skipped true means the athlete '
-            .'has already excused themselves from this day.';
+            .'has already excused themselves from this day. Once the day has been run it also '
+            .'carries how it went: status (done/partial/missed/overreached), completed_km, and '
+            .'ran_anyway true when they ran a day they had excused. Those four are absent on a '
+            .'day that has not been graded yet, which means it is still ahead of the athlete.';
     }
 
     /** @return array<string, mixed> */
@@ -49,6 +55,13 @@ final class PlanDayTool extends NoArgumentTool
             'phase' => $this->session->phase->value,
             'distance_km' => $coreKm,
             'skipped' => $this->session->skipped,
+            // Absent rather than null on an ungraded day: a key that is always
+            // there teaches the model the day is over even when it is not.
+            ...($this->session->status->isCredited() ? [
+                'status' => $this->session->status->value,
+                'completed_km' => $this->completedKm,
+                'ran_anyway' => $this->session->ran_anyway,
+            ] : []),
         ];
     }
 }

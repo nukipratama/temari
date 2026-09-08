@@ -10,6 +10,9 @@ use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Listeners\DispatchPostRunAnalysis;
+use App\Models\PlannedSession;
+use App\Enums\PlannedSessionStatus;
+use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -578,4 +581,45 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
     $listener->handle(new ActivityIngested($activity->id));
 
     expect(Analysis::query()->where('analysis_type', AnalysisType::WeeklyRecap)->exists())->toBeFalse();
+});
+
+/**
+ * creditIfEarned() may flip today's row to credited, which turns its blurb from
+ * "tempo day, about 5.9 km" into a read of what was run. The fingerprint gate is
+ * what keeps that to one call: a second run the same day moves the score, not
+ * the verdict.
+ */
+it('re-narrates today plan day blurb once the run credits the day', function (): void {
+    $activity = analyzedActivity(Carbon::today()->setTime(6, 30)->toDateTimeString());
+    PlannedSession::factory()->for($activity->user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Planned,
+    ]);
+
+    fire($activity);
+
+    expect(Analysis::query()
+        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
+        ->where('subject_id', $activity->user_id)
+        ->where('analysis_type', AnalysisType::PlanDayVoice)
+        ->where('discriminator', Carbon::today()->toDateString())
+        ->exists())->toBeTrue();
+});
+
+/** Re-narrating a backfilled day would rewrite history at LLM prices. */
+it('leaves an older day blurb alone when the ingest is a backfill', function (): void {
+    $activity = analyzedActivity('2026-05-10 06:30:00');
+    PlannedSession::factory()->for($activity->user)->create([
+        'date' => '2026-05-10',
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Planned,
+    ]);
+
+    fire($activity);
+
+    expect(Analysis::query()
+        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
+        ->where('discriminator', '2026-05-10')
+        ->exists())->toBeFalse();
 });

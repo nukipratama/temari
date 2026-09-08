@@ -20,6 +20,7 @@ use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use App\Enums\PlannedSessionStatus;
 
 uses(RefreshDatabase::class);
 
@@ -548,6 +549,42 @@ describe('requestForFirstWeek', function (): void {
         $this->requester->requestForFirstWeek($user, Carbon::today());
 
         expect($row->fresh()->status)->toBe(AnalysisStatus::Done);
+        Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
+    });
+});
+
+describe('requestDayVoiceIfChanged', function (): void {
+    /** The whole point: it runs on every ingested run, so it must not re-bill. */
+    it('asks for nothing when the day material has not moved', function (): void {
+        $user = User::factory()->create();
+        $today = Carbon::today();
+        $session = PlannedSession::factory()->for($user)->create(['date' => $today->toDateString()]);
+        stampedDay($user, $session);
+
+        expect($this->requester->requestDayVoiceIfChanged($user, $today))->toBeFalse();
+        Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
+    });
+
+    /** Crediting the day changes its digest, which is what earns the one re-narration. */
+    it('re-narrates once when the day flips to credited', function (): void {
+        $user = User::factory()->create();
+        $today = Carbon::today();
+        $session = PlannedSession::factory()->for($user)->create([
+            'date' => $today->toDateString(),
+            'status' => PlannedSessionStatus::Planned,
+        ]);
+        stampedDay($user, $session);
+
+        $session->forceFill(['status' => PlannedSessionStatus::Done])->save();
+
+        expect($this->requester->requestDayVoiceIfChanged($user, $today->copy()))->toBeTrue();
+        Bus::assertDispatchedTimes(AnalyzePlanDayVoiceJob::class, 1);
+    });
+
+    it('asks for nothing on a date the plan does not cover', function (): void {
+        $user = User::factory()->create();
+
+        expect($this->requester->requestDayVoiceIfChanged($user, Carbon::today()))->toBeFalse();
         Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
     });
 });
