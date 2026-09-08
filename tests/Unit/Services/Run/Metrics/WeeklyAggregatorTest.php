@@ -94,6 +94,27 @@ it('writes null avg_decoupling when no runs in the week have decoupling_pct', fu
     expect($snapshot->avg_decoupling)->toBeNull();
 });
 
+it('writes no weekly decoupling average when a single run is all there is to average', function (): void {
+    // One long run that drifted is a fact about that Sunday. Copied into a
+    // column the plan and the history chips read as a statement about the week,
+    // it becomes a verdict on seven days nobody measured.
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 21000,
+        'moving_time' => 7200,
+        'trimp_edwards' => 180.0,
+        'start_date_local' => Carbon::today(),
+        'stream_summary' => ['decoupling_pct' => 12.4],
+    ]);
+
+    $this->aggregator->rebuildFor($user);
+
+    $snapshot = WeeklySnapshot::query()->where('user_id', $user->id)->latest('week_ending')->firstOrFail();
+    expect($snapshot->runs)->toBe(1)
+        ->and($snapshot->avg_decoupling)->toBeNull();
+});
+
 it('leaves load unknown, not zero, when no run scored a TRIMP', function (): void {
     // A brand-new connection's history is entirely summary-only, so nothing
     // carries trimp_edwards: volume is exact, load is unscored. Writing 0.0

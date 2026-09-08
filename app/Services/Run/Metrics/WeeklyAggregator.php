@@ -15,6 +15,9 @@ use Illuminate\Support\Enumerable;
 
 class WeeklyAggregator
 {
+    /** Runs that must carry a decoupling reading before the week gets an average of them. */
+    private const int MIN_RUNS_FOR_AVG_DECOUPLING = 2;
+
     /**
      * The only ActivityDetail columns the weekly roll-up reads: the week filter
      * and daily TRIMP map need the date, upsertWeek sums distance/moving_time,
@@ -241,6 +244,13 @@ class WeeklyAggregator
     }
 
     /**
+     * The week's average cardiac drift, or null when too few runs carry a
+     * reading. A mean over a single run is that run, and the plan and the
+     * history chips read this column as a statement about the week: one long
+     * run that drifted is a fact about Sunday, not about the seven days around
+     * it. Null is already the "no signal" value here, per
+     * {@see docs/decisions/unscored-load-is-null-not-zero.md}.
+     *
      * @param  Enumerable<int, ActivityDetail>  $details
      */
     private function averageDecoupling(Enumerable $details): ?float
@@ -249,7 +259,7 @@ class WeeklyAggregator
             ->map(fn (ActivityDetail $detail): ?float => StreamSummary::fromArray($detail->stream_summary)->decouplingPct())
             ->filter(fn (?float $value): bool => $value !== null);
 
-        if ($values->isEmpty()) {
+        if ($values->count() < self::MIN_RUNS_FOR_AVG_DECOUPLING) {
             return null;
         }
 

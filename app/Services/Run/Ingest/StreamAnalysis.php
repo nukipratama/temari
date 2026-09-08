@@ -42,6 +42,29 @@ class StreamAnalysis
     private const int DECOUPLING_MIN_MOVING_SEC = 2700;
 
     /**
+     * Heart rates outside this band are a strap dropout or a contact spike, not
+     * an athlete. Samples carrying one are skipped rather than averaged in: a
+     * stretch of dropouts in one half drags that half's mean HR toward zero and
+     * the ratio between the halves then reports the gap in the data as drift.
+     *
+     * Deliberately a fixed physiological band rather than the runner's own zone
+     * table, which {@see self::timeInZones} uses for the same "skip what does
+     * not belong" purpose: a zone table's Z1 floor sits around 100 bpm, so
+     * reusing it would discard genuine easy-running samples.
+     */
+    private const float HR_PLAUSIBLE_MIN_BPM = 30.0;
+
+    private const float HR_PLAUSIBLE_MAX_BPM = 220.0;
+
+    /**
+     * Drift this far from zero is not a reading about the athlete. Real aerobic
+     * decoupling lives in single digits and a hard long run reaches the teens;
+     * a figure past this describes inputs that broke in a way the per-sample
+     * guards did not catch, so no number is published rather than a wrong one.
+     */
+    private const float DECOUPLING_IMPLAUSIBLE_PCT = 40.0;
+
+    /**
      * How much faster the second half must average before a run counts as a
      * negative split. A bare `>` lets per-km noise coin-flip into the badge;
      * fitted against real split data, 7% lands it near 1 run in 8, so finishing
@@ -101,7 +124,7 @@ class StreamAnalysis
 
         $terrainReadable = self::terrainIsReadable($summary);
 
-        if ($terrainReadable && $this->isSustainedEffort($time, $heartrate, $velocity, $summary)) {
+        if ($terrainReadable && $this->isSustainedEffort($time, $heartrate, $velocity, $grade, $summary)) {
             $summary = array_merge($summary, $this->decoupling($time, $heartrate, $velocity, $grade));
         }
 
@@ -498,29 +521,52 @@ class StreamAnalysis
      * Whether the run is long enough for half-vs-half drift metrics to describe
      * physiology rather than noise.
      *
-     * Measured across the same samples {@see decoupling} will actually analyse,
-     * not the full time stream: the three streams can arrive at different
-     * lengths, and a run whose velocity trace stops early would otherwise be
-     * certified on 90 minutes of elapsed time while the ratio was computed from
-     * the ten minutes that had data. Stopped time comes from the summary so stop
-     * detection keeps a single definition.
+     * Measured across the same samples {@see decoupling} will actually analyse
+     * ({@see driftSampleCount}), not the full time stream: the streams can
+     * arrive at different lengths, and a run whose velocity trace stops early
+     * would otherwise be certified on 90 minutes of elapsed time while the ratio
+     * was computed from the ten minutes that had data. Stopped time comes from
+     * the summary so stop detection keeps a single definition.
      *
      * @param  list<float|int>  $time
      * @param  list<float|int>  $heartrate
      * @param  list<float|int>  $velocity
+     * @param  list<float|int>  $grade
      * @param  array<string, mixed>  $summary  must already carry stoppedTime()'s output
      */
-    private function isSustainedEffort(array $time, array $heartrate, array $velocity, array $summary): bool
+    private function isSustainedEffort(array $time, array $heartrate, array $velocity, array $grade, array $summary): bool
     {
-        $n = min(count($time), count($heartrate), count($velocity));
-        if ($n < 2) {
+        $n = self::driftSampleCount($time, $heartrate, $velocity, $grade);
+        if ($n < 1) {
             return false;
         }
 
-        $analysed = (float) $time[$n - 1] - (float) $time[0];
+        $analysed = (float) $time[$n] - (float) $time[0];
         $stopped = (float) ($summary['stopped_time_sec'] ?? 0);
 
         return ($analysed - $stopped) >= self::DECOUPLING_MIN_MOVING_SEC;
+    }
+
+    /**
+     * How many sample intervals the half-vs-half drift metrics can read: every
+     * stream they consume has to cover the index, and each interval needs its
+     * closing timestamp.
+     *
+     * The gradient is one of those streams. The pace inside the ratio is
+     * grade-adjusted by contract ({@see decoupling}), so a run whose grade trace
+     * is missing or short carries no reading over that stretch rather than one
+     * computed as though the ground were flat. That is the same set
+     * {@see gradeAdjustedPace} reads, and the mismatch used to let the tail of a
+     * hilly run be scored flat.
+     *
+     * @param  list<float|int>  $time
+     * @param  list<float|int>  $heartrate
+     * @param  list<float|int>  $velocity
+     * @param  list<float|int>  $grade
+     */
+    private static function driftSampleCount(array $time, array $heartrate, array $velocity, array $grade): int
+    {
+        return max(0, min(count($time) - 1, count($heartrate), count($velocity), count($grade)));
     }
 
     /**
@@ -563,6 +609,15 @@ class StreamAnalysis
      * back half reads as decoupling, and a downhill finish flatters it. The
      * grade stream is already fetched for GAP, so this costs nothing extra.
      *
+     * Both halves are **time-weighted**, and the split is the run's time
+     * midpoint rather than the middle index. Each half's pace is its moving
+     * seconds over its flat-equivalent distance, the same shape
+     * {@see self::gradeAdjustedPace()} computes, so a slow sample weighs what
+     * its seconds are worth. Averaging per-sample s/km instead let one crawling
+     * sample near the stop threshold count for the same as a running one while
+     * standing for a couple of metres, and an index split cut the halves
+     * unevenly in time whenever the sample spacing changed mid-run.
+     *
      * @param  list<float|int>  $time
      * @param  list<float|int>  $heartrate
      * @param  list<float|int>  $velocity
@@ -571,42 +626,56 @@ class StreamAnalysis
      */
     private function decoupling(array $time, array $heartrate, array $velocity, array $grade): array
     {
-        $n = min(count($time), count($heartrate), count($velocity));
-        $half = (int) ($n / 2);
-        if ($half < 2) {
+        $n = self::driftSampleCount($time, $heartrate, $velocity, $grade);
+        if ($n < 4) {
             return [];
         }
-        $avg = function (int $from, int $to) use ($heartrate, $velocity, $grade): ?array {
-            $hSum = 0.0;
-            $pSum = 0.0;
-            $c = 0;
-            for ($i = $from; $i < $to; $i++) {
-                $v = (float) ($velocity[$i] ?? 0);
-                if ($v < self::STOP_VELOCITY_MS) {
-                    continue;
-                }
-                $hSum += (float) ($heartrate[$i] ?? 0);
-                // Flat-equivalent pace: climbing costs more per metre, so the
-                // raw pace is divided by that cost to compare like with like.
-                $pSum += (1000 / $v) / $this->gradeCostFactor((float) ($grade[$i] ?? 0) / 100);
-                $c++;
-            }
-            if ($c === 0) {
-                return null;
-            }
+        $midpoint = ((float) $time[0] + (float) $time[$n]) / 2;
 
-            return [$hSum / $c, $pSum / $c];
-        };
-        $first = $avg(0, $half);
-        $second = $avg($half, $n);
-        if ($first === null || $second === null || $first[1] <= 0 || $second[1] <= 0) {
+        $firstHrSeconds = 0.0;
+        $firstFlatEquivDist = 0.0;
+        $firstMovingSeconds = 0.0;
+        $secondHrSeconds = 0.0;
+        $secondFlatEquivDist = 0.0;
+        $secondMovingSeconds = 0.0;
+        for ($i = 0; $i < $n; $i++) {
+            $at = (float) $time[$i];
+            $v = (float) $velocity[$i];
+            $bpm = (float) $heartrate[$i];
+            if ($v < self::STOP_VELOCITY_MS || $bpm < self::HR_PLAUSIBLE_MIN_BPM || $bpm > self::HR_PLAUSIBLE_MAX_BPM) {
+                continue;
+            }
+            $dt = (float) $time[$i + 1] - $at;
+            if ($dt <= 0) {
+                continue;
+            }
+            // Flat-equivalent distance: climbing costs more per metre, so
+            // the metres covered are scaled by that cost to compare like
+            // with like.
+            $flatEquivDelta = $v * $dt * $this->gradeCostFactor((float) $grade[$i] / 100);
+            if ($at < $midpoint) {
+                $firstHrSeconds += $bpm * $dt;
+                $firstFlatEquivDist += $flatEquivDelta;
+                $firstMovingSeconds += $dt;
+            } else {
+                $secondHrSeconds += $bpm * $dt;
+                $secondFlatEquivDist += $flatEquivDelta;
+                $secondMovingSeconds += $dt;
+            }
+        }
+
+        $ratio = fn (float $hrSeconds, float $flatEquivDist, float $movingSeconds): ?float => $movingSeconds > 0 && $flatEquivDist > 0
+            ? ($hrSeconds / $movingSeconds) / ($movingSeconds / ($flatEquivDist / 1000))
+            : null;
+
+        $first = $ratio($firstHrSeconds, $firstFlatEquivDist, $firstMovingSeconds);
+        $second = $ratio($secondHrSeconds, $secondFlatEquivDist, $secondMovingSeconds);
+        if ($first === null || $second === null || $first <= 0) {
             return [];
         }
-        $firstRatio = $first[0] / $first[1];
-        $secondRatio = $second[0] / $second[1];
-        $pct = round(($secondRatio / $firstRatio - 1) * 100, 1);
+        $pct = round(($second / $first - 1) * 100, 1);
 
-        return ['decoupling_pct' => $pct];
+        return abs($pct) > self::DECOUPLING_IMPLAUSIBLE_PCT ? [] : ['decoupling_pct' => $pct];
     }
 
     /**
