@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Activity;
 use App\Models\StravaConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,20 +28,23 @@ function athleteWithLiveGrant(): User
     return $user;
 }
 
-it('releases the grant on Strava and revokes the connection locally, keeping the account', function (): void {
+it('releases the grant on Strava and then removes the account and everything it owns', function (): void {
     $user = athleteWithLiveGrant();
+    Activity::factory()->for($user)->create();
 
     $this->artisan('strava:remove-athlete', ['user' => $user->id, '--force' => true])
+        ->expectsOutputToContain('Removed user '.$user->id)
         ->assertSuccessful();
 
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize'
         && $request['access_token'] === 'live-access');
 
-    expect(User::query()->whereKey($user->id)->exists())->toBeTrue()
-        ->and($user->stravaConnection()->sole()->isRevoked())->toBeTrue();
+    expect(User::query()->whereKey($user->id)->exists())->toBeFalse()
+        ->and(StravaConnection::query()->where('user_id', $user->id)->exists())->toBeFalse()
+        ->and(Activity::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
 
-it('revokes the connection anyway when Strava will not take the deauthorize', function (): void {
+it('removes the account anyway when Strava will not take the deauthorize', function (): void {
     Http::fake(['https://www.strava.com/oauth/deauthorize' => fn () => throw new ConnectionException('Strava unreachable')]);
     $user = athleteWithLiveGrant();
 
@@ -48,10 +52,10 @@ it('revokes the connection anyway when Strava will not take the deauthorize', fu
         ->expectsOutputToContain('did not accept the deauthorize')
         ->assertSuccessful();
 
-    expect($user->stravaConnection()->sole()->isRevoked())->toBeTrue();
+    expect(User::query()->whereKey($user->id)->exists())->toBeFalse();
 });
 
-it('does nothing for an athlete whose grant is already revoked', function (): void {
+it('removes an athlete whose grant is already revoked without calling Strava again', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create([
         'token_expires_at' => Carbon::now()->addHours(5),
@@ -59,10 +63,12 @@ it('does nothing for an athlete whose grant is already revoked', function (): vo
     ]);
 
     $this->artisan('strava:remove-athlete', ['user' => $user->id, '--force' => true])
-        ->expectsOutputToContain('Nothing to release')
+        ->expectsOutputToContain('nothing to release')
         ->assertSuccessful();
 
     Http::assertNothingSent();
+    expect(User::query()->whereKey($user->id)->exists())->toBeFalse()
+        ->and(StravaConnection::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
 
 it('refuses the demo account, whose connection the seed owns', function (): void {
@@ -73,6 +79,7 @@ it('refuses the demo account, whose connection the seed owns', function (): void
         ->assertFailed();
 
     Http::assertNothingSent();
+    expect(User::query()->whereKey($user->id)->exists())->toBeTrue();
 });
 
 it('fails on a user id that does not exist', function (): void {
@@ -81,13 +88,14 @@ it('fails on a user id that does not exist', function (): void {
         ->assertFailed();
 });
 
-it('asks before releasing, and releases nothing when the answer is no', function (): void {
+it('asks before removing, and removes nothing when the answer is no', function (): void {
     $user = athleteWithLiveGrant();
 
     $this->artisan('strava:remove-athlete', ['user' => $user->id])
-        ->expectsConfirmation('Release '.$user->name.' <'.$user->email.'> (id '.$user->id.') from Strava? They will have to reconnect to sync again.', 'no')
+        ->expectsConfirmation('Release '.$user->name.' <'.$user->email.'> (id '.$user->id.') from Strava and permanently remove the account and all owned data? This cannot be undone.', 'no')
         ->assertSuccessful();
 
     Http::assertNothingSent();
-    expect($user->stravaConnection()->sole()->isRevoked())->toBeFalse();
+    expect(User::query()->whereKey($user->id)->exists())->toBeTrue()
+        ->and($user->stravaConnection()->sole()->isRevoked())->toBeFalse();
 });
