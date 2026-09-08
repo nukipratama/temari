@@ -13,8 +13,8 @@ export const ANALYSIS_STATUS_VALUES = ['pending', 'queued', 'processing', 'done'
 export type AnalysisType = 'briefing_mascot_voice' | 'post_run_speech' | 'run_insight' | 'weekly_recap' | 'card_flavor' | 'profile_voice' | 'monthly_recap' | 'trend_read' | 'plan_day_voice' | 'plan_clamp_voice' | 'plan_week_voice' | 'plan_season_voice';
 export const ANALYSIS_TYPE_VALUES = ['briefing_mascot_voice', 'post_run_speech', 'run_insight', 'weekly_recap', 'card_flavor', 'profile_voice', 'monthly_recap', 'trend_read', 'plan_day_voice', 'plan_clamp_voice', 'plan_week_voice', 'plan_season_voice'] as const;
 
-export type NotificationKind = 'post_run' | 'weekly_recap' | 'monthly_recap' | 'streak_reminder' | 'plan_clamp' | 'unlock' | 'test';
-export const NOTIFICATION_KIND_VALUES = ['post_run', 'weekly_recap', 'monthly_recap', 'streak_reminder', 'plan_clamp', 'unlock', 'test'] as const;
+export type NotificationKind = 'post_run' | 'weekly_recap' | 'monthly_recap' | 'streak_reminder' | 'plan_clamp' | 'strava_disconnected' | 'unlock' | 'test';
+export const NOTIFICATION_KIND_VALUES = ['post_run', 'weekly_recap', 'monthly_recap', 'streak_reminder', 'plan_clamp', 'strava_disconnected', 'unlock', 'test'] as const;
 
 export type PlannedSessionStatus = 'planned' | 'done' | 'partial' | 'missed' | 'overreached' | 'skip';
 export const PLANNED_SESSION_STATUS_VALUES = ['planned', 'done', 'partial', 'missed', 'overreached', 'skip'] as const;

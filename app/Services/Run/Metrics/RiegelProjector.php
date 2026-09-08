@@ -7,6 +7,7 @@ namespace App\Services\Run\Metrics;
 use App\Enums\PrCategory;
 use App\Models\PersonalRecord;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 
 /**
  * Projects a realistic race time for a target distance from the athlete's own
@@ -23,6 +24,12 @@ use App\Models\User;
  * an edge case: those fall back to the default 1.06 exponent and widen the
  * predicted range rather than claim false precision from one data point.
  *
+ * The fit reads only the records set within {@see self::RECENT_MONTHS} of the
+ * projection date, falling back to the whole record when fewer than two
+ * remain. A category with no time-series keeps a season-old PR forever, and
+ * regressing today's shape against it fits the exponent to a fade the athlete
+ * has since trained out of.
+ *
  * Deliberately does not reconcile with {@see VdotEstimator}, which solves a
  * different problem (training-pace prescription via min() across PRs, not
  * race-time projection).
@@ -31,6 +38,9 @@ class RiegelProjector
 {
     /** Riegel's population-average exponent, used when the athlete's own PRs are too thin to fit. */
     public const float DEFAULT_EXPONENT = 1.06;
+
+    /** How far back a personal record still describes the athlete's current block. */
+    public const int RECENT_MONTHS = 4;
 
     /**
      * Sanity bounds on a fitted exponent. A 2-point fit can be pulled to an
@@ -62,12 +72,12 @@ class RiegelProjector
     private const float HALF_WIDTH_RICH_SAMPLE = 0.04;
 
     /**
-     * @return array{predicted_sec: float, low_sec: float, high_sec: float, exponent: float, sample_size: int, confidence: string}|null
-     *                                                                                                                                     null when the athlete has no usable PR at all to anchor a projection from.
+     * @return array{predicted_sec: float, low_sec: float, high_sec: float, exponent: float, sample_size: int, confidence: string, window: 'recent'|'all'}|null
+     *                                                                                                                                                          null when the athlete has no usable PR at all to anchor a projection from.
      */
     public function project(User $user, float $targetDistanceM): ?array
     {
-        $pairs = $this->usablePairs($user);
+        ['pairs' => $pairs, 'window' => $window] = $this->usablePairs($user);
         if ($pairs === []) {
             return null;
         }
@@ -89,6 +99,7 @@ class RiegelProjector
                 $sampleSize <= 3 => 'medium',
                 default => 'high',
             },
+            'window' => $window,
         ];
     }
 
@@ -152,21 +163,30 @@ class RiegelProjector
     }
 
     /**
-     * @return list<array{distance_m: float, time_sec: float}>
+     * @return array{pairs: list<array{distance_m: float, time_sec: float}>, window: 'recent'|'all'}
      */
     private function usablePairs(User $user): array
     {
         $prs = PersonalRecord::query()->where('user_id', $user->id)->get();
+        $cutoff = Carbon::now()->subMonths(self::RECENT_MONTHS);
 
-        $pairs = [];
+        $all = [];
+        $recent = [];
         foreach ($prs as $pr) {
             $pair = $this->pairFor($pr);
-            if ($pair !== null) {
-                $pairs[] = $pair;
+            if ($pair === null) {
+                continue;
+            }
+
+            $all[] = $pair;
+            if ($pr->set_at->greaterThanOrEqualTo($cutoff)) {
+                $recent[] = $pair;
             }
         }
 
-        return $pairs;
+        return count($recent) >= 2
+            ? ['pairs' => $recent, 'window' => 'recent']
+            : ['pairs' => $all, 'window' => 'all'];
     }
 
     /**

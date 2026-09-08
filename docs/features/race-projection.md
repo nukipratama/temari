@@ -3,7 +3,7 @@ title: Race — goal race and Riegel projection
 description: The first user-authored object in the app — a race the user is training for and a fitted-Riegel finish-time projection
 tags: [feature, run]
 status: living
-reviewed: 2026-08-10
+reviewed: 2026-09-09
 code_refs:
   - app/Models/RaceGoal.php
   - app/Http/Controllers/RaceController.php
@@ -11,6 +11,7 @@ code_refs:
   - app/Services/Run/Metrics/RiegelProjector.php
   - app/Services/Run/Metrics/TrainingLoad.php
   - app/Services/Inertia/GamificationProps.php
+  - resources/js/components/race/ProjectionBlock.tsx
   - resources/js/pages/Race.tsx
 ---
 
@@ -37,6 +38,12 @@ The first genuinely user-authored object in the app: a race the user is training
 - **≥2 usable PRs** → fits both the exponent and intercept via log-log regression, clamped to `[0.90, 1.30]` so a noisy 2-point fit can't extrapolate into a physiologically meaningless slope.
 
 The uncertainty band (`low_sec`/`high_sec`) widens as the sample thins — see `HALF_WIDTH_BY_SAMPLE` in the projector — so the UI never claims false precision from one or two data points.
+
+## The fit reads the current block, not the whole record
+
+`personal_records` has no time-series, so a category keeps whichever record was set last — a spring 10 km can still be on file after an autumn block has moved the athlete well past it. Regressing today's shape against those rows fits the exponent to a fade that has since been trained out: for one athlete a stale spring set pulled the fitted exponent to 1.1075 and the 10 km projection to 64:21, against 57:49 from their current block alone, which was enough for [PlanAdapter](app/Services/Run/Plan/PlanAdapter.php) to keep prescribing an extra quality session every week.
+
+`RiegelProjector::RECENT_MONTHS` (4) bounds the fit on `set_at`, as of the projection date. Fewer than two records survive that window and the fit falls back to the whole record rather than dropping to a single-PR default — a thin recent sample is worse evidence than a complete stale one. The chosen window travels with the payload as `window` (`recent` / `all`) and renders as the projection's provenance in [ProjectionBlock](resources/js/components/race/ProjectionBlock.tsx), beside the sample size that was already there.
 
 Effort-window PRs (`Best5Min` etc.) store a **pace** (sec/km), not elapsed time — `RiegelProjector` converts each to a `(distance, time)` pair (`distance_m = window_sec / pace_sec_per_km * 1000`, `time_sec = window_sec`) before fitting alongside distance-category rows.
 
