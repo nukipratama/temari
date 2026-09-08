@@ -9,9 +9,13 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
+use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\TrainingBaseline;
 
 class WeeklyRecapNarrator
 {
@@ -49,6 +53,16 @@ class WeeklyRecapNarrator
         - fatigued: back off. Rest is the honest read, not a consolation prize.
         - overreaching: direct and concerned, no moralizing. Say the load is high
           and that easing off is the harder call, once.
+
+        WHAT THE WEEK ASKED FOR: get_planned_sessions returns the days the plan
+        prescribed across this exact week, and how each was graded --
+        done/partial/missed/overreached, plus ran_anyway on a day they had
+        excused themselves. The scoreboard above is this week against last week;
+        this is this week against what was asked, and where the two disagree the
+        plan is usually the better story. "four on the board, three run, the
+        Thursday tempo is the one that got away" is a whole recap. Stay inside
+        the number limit: a count of sessions is a number like any other. An
+        empty list means no plan covered this week.
 
         COASTING: if the week is thinner than the last few and form_status is fresh
         or optimal the whole time, that is a coast and you may name it, once,
@@ -95,8 +109,12 @@ class WeeklyRecapNarrator
         - Exclamation points, and emoji. A week, however good, is not a first-ever.
         PROMPT;
 
-    public function __construct(private readonly StructuredChatCaller $caller)
-    {
+    public function __construct(
+        private readonly StructuredChatCaller $caller,
+        private readonly TrainingBaseline $trainingBaseline,
+        private readonly VdotEstimator $vdotEstimator,
+        private readonly TrainingPaceCalculator $paceCalculator,
+    ) {
     }
 
     public function generate(WeeklySnapshot $snapshot): string
@@ -111,8 +129,18 @@ class WeeklyRecapNarrator
                 temperature: 0.7,
                 userId: $snapshot->user_id,
                 maxTokens: 1500,
-                toolbox: new AgentToolbox([new WeekTotalsTool($snapshot)]),
-                maxSteps: 4,
+                toolbox: new AgentToolbox([
+                    new WeekTotalsTool($snapshot),
+                    new PlanContextTool(
+                        $snapshot->user,
+                        $snapshot->week_ending->copy()->subDays(6),
+                        $snapshot->week_ending,
+                        $this->trainingBaseline,
+                        $this->vdotEstimator,
+                        $this->paceCalculator,
+                    ),
+                ]),
+                maxSteps: 6,
             ),
         );
 
