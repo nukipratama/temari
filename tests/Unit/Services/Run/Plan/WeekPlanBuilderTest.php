@@ -165,9 +165,43 @@ it('drops the week to zero quality when asked for less than it already carries',
 });
 
 it('refuses to add a quality session to a week too short to absorb it', function (): void {
-    $rows = $this->builder->build($this->monday, PlanPhase::Build, 4, [], null, true, null, 1);
+    // Three sessions is the long run plus two: a second quality day would
+    // leave the week with no easy running at all.
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 3, [], null, true, null, 1);
 
     expect(qualityCount($rows))->toBe(1);
+});
+
+it('adds the promised quality session to a four-session week, either side of the long run', function (): void {
+    $before = $this->builder->build($this->monday, PlanPhase::Build, 4, [], null, true);
+    $after = $this->builder->build($this->monday, PlanPhase::Build, 4, [], null, true, null, 1);
+
+    // 4-session template: Tue, Thu, Sat, Sun (long). Both quality days land
+    // away from Sunday's long run rather than flanking it.
+    $quality = collect($after)
+        ->filter(fn (array $r): bool => in_array($r['session_type'], [SessionType::Tempo, SessionType::Interval], true))
+        ->keys()
+        ->map(fn (string $d): int => (int) Carbon::parse($d)->dayOfWeekIso)
+        ->all();
+
+    expect(qualityCount($before))->toBe(1)
+        ->and(qualityCount($after))->toBe(2)
+        ->and($quality)->toBe([2, 4]);
+});
+
+it('drops the quality session a four-session week already carries when feedback asks for less', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 4, [], null, true, null, -1);
+
+    expect(qualityCount($rows))->toBe(0);
+});
+
+it('never asks a week for more quality days than it has room to place', function (): void {
+    // Five sessions: Mon, Tue, Thu, Sat, Sun (long). Saturday and Monday flank
+    // the long run, leaving only Tue and Thu to carry quality work -- so the
+    // week keeps the two it already had rather than being promised a third.
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 5, [], null, true, null, 1);
+
+    expect(qualityCount($rows))->toBe(2);
 });
 
 it('never lets race-pace feedback add quality work to a taper or a deload', function (): void {
