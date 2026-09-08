@@ -37,7 +37,7 @@ describe('ProfileHero', () => {
         renderHero();
 
         expect(
-            screen.getByText('★ What Temari says about you'),
+            screen.getByText('★ What temari says about you'),
         ).toBeInTheDocument();
         expect(screen.getByText('Est. 12 jun 2026')).toBeInTheDocument();
         expect(screen.getByText('284.6')).toBeInTheDocument();
@@ -53,13 +53,13 @@ describe('ProfileHero', () => {
     it('renders the join-date block, which CSS reveals only at 900px', () => {
         renderHero();
 
-        expect(screen.getByText('With Temari since')).toBeInTheDocument();
+        expect(screen.getByText('With temari since')).toBeInTheDocument();
     });
 
     it('omits the join-date block when member_since is missing', () => {
         renderHero({ memberSince: null });
 
-        expect(screen.queryByText('With Temari since')).not.toBeInTheDocument();
+        expect(screen.queryByText('With temari since')).not.toBeInTheDocument();
     });
 
     it('renders the zone bar only when zone time exists', () => {

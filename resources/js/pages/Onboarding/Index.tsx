@@ -354,7 +354,7 @@ export default function OnboardingIndex() {
                             className="w-full justify-center"
                             onClick={() => setStep('preferences')}
                         >
-                            Continue
+                            continue
                         </PillButton>
                     </motion.div>
                 ) : step === 'preferences' ? (
@@ -364,13 +364,13 @@ export default function OnboardingIndex() {
                         initial="hidden"
                         animate="visible"
                     >
-                        <div className="mb-5 flex h-8 items-center justify-between">
+                        <div className="mb-5 flex h-11 items-center justify-between">
                             {subIndex > 0 ? (
                                 <button
                                     type="button"
                                     onClick={goBackSubStep}
                                     aria-label="Back"
-                                    className="focus-ring flex size-8 flex-none items-center justify-center rounded-full bg-muted text-foreground shadow-e1"
+                                    className="focus-ring flex size-11 flex-none items-center justify-center rounded-full bg-muted text-foreground shadow-e1"
                                 >
                                     <Icon
                                         icon="mdi:chevron-left"
@@ -383,7 +383,7 @@ export default function OnboardingIndex() {
                                 <span />
                             )}
                             <PillButton tone="ghost" onClick={skipPreferences}>
-                                Skip for now
+                                skip for now
                             </PillButton>
                         </div>
 
@@ -391,7 +391,7 @@ export default function OnboardingIndex() {
                             <PreferenceQuestion
                                 heading={
                                     <>
-                                        How would you describe where
+                                        how would you describe where
                                         you&rsquo;re at?
                                     </>
                                 }
@@ -477,7 +477,7 @@ export default function OnboardingIndex() {
                         {subIndex === 3 && sessionsPerWeek !== null && (
                             <div>
                                 <h2 className="font-serif text-quote-lg text-foreground italic">
-                                    Which days do you usually run?
+                                    which days do you usually run?
                                 </h2>
                                 <p className="mt-2 mb-5 text-xs leading-relaxed text-text-2">
                                     pick {sessionsPerWeek} &middot;{' '}
@@ -510,7 +510,7 @@ export default function OnboardingIndex() {
                                 {runDays.length === sessionsPerWeek && (
                                     <div className="mt-6 rounded-md bg-muted p-2.5">
                                         <p className="mb-3 narration">
-                                            Which one&rsquo;s your long run?
+                                            which one&rsquo;s your long run?
                                         </p>
                                         <DayRow
                                             items={DAY_OPTIONS.filter((day) =>
@@ -556,7 +556,7 @@ export default function OnboardingIndex() {
                             <Chip className="mt-1 self-start">optional</Chip>
                         </div>
                         <p className="mt-3 font-sans text-sm leading-relaxed text-text-2">
-                            Give Temari something to build toward. Skip it if
+                            Give temari something to build toward. Skip it if
                             you&rsquo;re not sure yet, you can always set one
                             later from Plan.
                         </p>
@@ -600,7 +600,7 @@ export default function OnboardingIndex() {
                             </div>
                             <div className="relative min-w-0 flex-1">
                                 <span className="text-label-micro text-text-3">
-                                    Required pace
+                                    required pace
                                 </span>
                                 <div className="mt-1 text-stat text-icon-accent">
                                     {pace}
@@ -615,7 +615,7 @@ export default function OnboardingIndex() {
                                         htmlFor="onboarding_race_name"
                                         className={FIELD_LABEL}
                                     >
-                                        Name (optional)
+                                        name (optional)
                                     </label>
                                     <input
                                         id="onboarding_race_name"
@@ -638,7 +638,7 @@ export default function OnboardingIndex() {
                                         htmlFor="onboarding_race_date"
                                         className={FIELD_LABEL}
                                     >
-                                        Race day
+                                        race day
                                     </label>
                                     <DateField
                                         id="onboarding_race_date"
@@ -652,7 +652,7 @@ export default function OnboardingIndex() {
 
                                 <div>
                                     <span className={FIELD_LABEL}>
-                                        Distance
+                                        distance
                                     </span>
                                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                                         {DISTANCE_PRESETS.map((preset) => (
@@ -677,7 +677,7 @@ export default function OnboardingIndex() {
 
                                 <div>
                                     <span className={FIELD_LABEL}>
-                                        Goal time
+                                        goal time
                                     </span>
                                     <div className="mt-1.5 flex items-center gap-1.5">
                                         <input
@@ -730,7 +730,7 @@ export default function OnboardingIndex() {
                                     className="flex-1 justify-center"
                                 >
                                     {processing
-                                        ? 'Saving…'
+                                        ? 'saving…'
                                         : 'set my goal & finish'}
                                 </PillButton>
                                 <PillButton
@@ -740,7 +740,7 @@ export default function OnboardingIndex() {
                                     onClick={skip}
                                     className="flex-1 justify-center"
                                 >
-                                    Skip for now
+                                    skip for now
                                 </PillButton>
                             </div>
                         </form>
@@ -762,7 +762,7 @@ function PreferenceQuestion({
                 {heading}
             </h2>
             <p className="mt-2 mb-5 text-xs leading-relaxed text-text-2">
-                You can change this anytime in settings.
+                you can change this anytime in settings.
             </p>
             {children}
         </div>
@@ -790,7 +790,7 @@ function SkipQuestionLink({ onClick }: Readonly<{ onClick: () => void }>) {
             onClick={onClick}
             className="focus-ring mt-4 font-sans text-xs text-text-3 underline-offset-2 hover:text-foreground hover:underline"
         >
-            Skip this
+            skip this
         </button>
     );
 }

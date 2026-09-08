@@ -75,7 +75,7 @@ final readonly class RestClampRecorder
     {
         $session = PlannedSession::query()
             ->where('user_id', $user->id)
-            ->whereDate('date', $today->toDateString())
+            ->where('date', $today->toDateString())
             ->first();
 
         // A pinned row is exempt from the clamp at render time too, so it must

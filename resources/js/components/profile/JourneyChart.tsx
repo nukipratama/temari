@@ -127,7 +127,7 @@ export default function JourneyChart({
                         role="button"
                         tabIndex={0}
                         aria-label={`${point.label}: ${formatDurationHMS(point.time)}${point.pr ? ', personal record' : ''}`}
-                        className="group cursor-pointer focus:outline-none"
+                        className="group focus-ring cursor-pointer"
                         onClick={() => toggle(point)}
                         onKeyDown={(event) => {
                             if (event.key === 'Enter' || event.key === ' ') {

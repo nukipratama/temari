@@ -33,6 +33,11 @@ code_refs:
 > the `equippedAccessories` shared prop, the `user_unlocks.equipped` column, and the brand
 > generators that drew the poses and the 25 accessory SVGs. The accessory *catalog* and its unlock
 > rows survive; only the wardrobe that wore them is gone. See [[targets-accessories]].
+>
+> **Fact update, 2026-09-08.** The "Not done" line below claiming "no dark-mode variant (the app
+> stays light-mode only)" is stale: `F2` shipped a dark ground and `data-theme` switch, and the
+> default now follows the device. See [[dark-is-the-default-ground]] and
+> [[system-is-the-default-ground]].
 
 ## Context
 

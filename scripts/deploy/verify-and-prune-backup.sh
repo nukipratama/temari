@@ -22,5 +22,20 @@ fi
 
 echo "$LABEL OK: $OUT ($SIZE bytes, $TABLES tables)"
 
+# Keep every dump from the last 7 days, plus at least the 10 newest overall
+# (so a burst of same-day deploys never prunes down to nothing during a quiet
+# week, and a quiet stretch still keeps a week of history).
+CUTOFF=$(($(date +%s) - 7 * 24 * 3600))
+
+i=0
 # shellcheck disable=SC2086
-ls -1t $PRUNE_GLOB | tail -n +11 | xargs -r rm
+for f in $(ls -1t $PRUNE_GLOB 2>/dev/null); do
+  i=$((i + 1))
+  if [ "$i" -le 10 ]; then
+    continue
+  fi
+  MTIME=$(stat -c%Y "$f")
+  if [ "$MTIME" -lt "$CUTOFF" ]; then
+    rm -f "$f"
+  fi
+done

@@ -94,10 +94,10 @@ final readonly class RuleBasedNarrationFiller
         return $this->select([
             "Easy tempo, 35-45 minutes.\n\nnothing quality has gone into the log since last week and your rhythm's been flat and steady the whole time, so today's the day to break that up. 10 minutes easy to warm up, 15-20 minutes a bit quicker than your usual pace, then cool down. cadence 175+.\n\nWhat to watch: if HR climbs fast at easy pace, drop it to a 15-25 minute run-walk and stop at the cooldown. Brutal heat is reason enough to run the whole thing easy instead.",
             "Easy run, 30-40 minutes.\n\nyour last two sessions both read heavy and the gap since then is short, so today is easy, and I mean actually easy. hold your normal pace, breathing loose enough to talk, cadence 170+ so the steps stay light.\n\nWhat to watch: legs still heavy or HR up early means the recovery isn't finished. A brisk 20-minute walk covers the day.",
-            "Long run, 8-12 km easy.\n\nYour weekly distance has crept up every week this month, and this is the session that closes it out. conversational pace the whole way, don't go chasing a time, take water if it's hot.\n\nWhat to watch: if km 5 already feels like work, cut it at 6-8. short and clean beats long and ugly.",
+            "Long run, 8-12 km easy.\n\nyour weekly distance has crept up every week this month, and this is the session that closes it out. conversational pace the whole way, don't go chasing a time, take water if it's hot.\n\nWhat to watch: if km 5 already feels like work, cut it at 6-8. short and clean beats long and ugly.",
             "Rest today.\n\nyou've run every day of this stretch and the load is stacked higher than anything you've been carrying. no run from me today. light mobility, or a 20-minute walk if you want the legs moving.\n\nWhat to watch: still heavy tomorrow, take another one. A zero today is what keeps the rest of the week.",
             "Easy run, 25-30 minutes.\n\nfirst one back after a few days off, so this one is short on purpose. slow, effort by feel, don't look at the pace at all.\n\nWhat to watch: the classic move after time off is picking up exactly where you left off. If the breathing gets heavy before minute 15, ease off or walk a bit.",
-            "Base run, 5-7 km.\n\nYou've hit every session you meant to this week and nothing in the numbers says back off, so today just holds the rhythm that's already working. your average pace, one steady block, no gear changes.\n\nWhat to watch: a run like this turns into a tempo halfway through if you let it. Save the push for a day it's actually on the plan.",
+            "Base run, 5-7 km.\n\nyou've hit every session you meant to this week and nothing in the numbers says back off, so today just holds the rhythm that's already working. your average pace, one steady block, no gear changes.\n\nWhat to watch: a run like this turns into a tempo halfway through if you let it. Save the push for a day it's actually on the plan.",
         ], $seed);
     }
 
@@ -178,24 +178,24 @@ final readonly class RuleBasedNarrationFiller
         $snapshot = WeeklySnapshot::query()->find($snapshotId);
         if ($snapshot === null || $snapshot->runs === null || $snapshot->runs < 1) {
             return $this->select([
-                "Nothing in the log this week. A gap is a gap, I'm not going to call it anything else.",
-                'A blank week. The counter sits at zero and next week starts from there.',
-                'Quiet week. The log stayed exactly where you left it.',
-                "No runs this week. I'm not dressing that up.",
-                'Empty week. Easing back in gets you further than trying to win it all back in one session.',
-                "This week didn't get a run in it. The next one is still open.",
-                'No entries this week. Starting small again gets you back quicker than starting big.',
+                "nothing in the log this week. a gap is a gap, I'm not going to call it anything else.",
+                'a blank week. the counter sits at zero and next week starts from there.',
+                'quiet week. the log stayed exactly where you left it.',
+                "no runs this week. I'm not dressing that up.",
+                'empty week. easing back in gets you further than trying to win it all back in one session.',
+                "this week didn't get a run in it. the next one is still open.",
+                'no entries this week. starting small again gets you back quicker than starting big.',
             ], $snapshotId);
         }
 
         $km = DecimalFormatter::decimal((float) $snapshot->distance_km);
         $runs = $snapshot->runs;
         $closer = match ($snapshot->form_status) {
-            'fresh' => "You're fresh, with room to add a little on top of that.",
-            'optimal' => "That's the range where the work actually banks.",
-            'fatigued' => 'The fatigue is showing. Bank some recovery next week.',
-            'overreaching' => "Your load is above what you've been carrying lately. Worth pulling something back.",
-            default => "Steady. That's the read.",
+            'fresh' => "you're fresh, with room to add a little on top of that.",
+            'optimal' => "that's the range where the work actually banks.",
+            'fatigued' => 'the fatigue is showing. bank some recovery next week.',
+            'overreaching' => "your load is above what you've been carrying lately. worth pulling something back.",
+            default => "steady. that's the read.",
         };
 
         return $this->select([
@@ -432,23 +432,23 @@ final readonly class RuleBasedNarrationFiller
     private function trendRead(int $seed): string
     {
         return $this->select([
-            "Steady is the read.\n\nNothing in this window moved sharply enough to call out on its own. The rhythm held, which is its own kind of answer.",
-            "The numbers are still catching up.\n\nThere isn't quite enough history in this window yet for a sharper read. Keep logging and the picture fills in.",
-            "A quiet stretch.\n\nNo big swings in either direction this window. Sometimes the story is that there isn't one.",
-            "The trend line sat flat.\n\nNeither a climb nor a drop stands out here. Worth checking back once a few more weeks are in.",
+            "steady is the read.\n\nnothing in this window moved sharply enough to call out on its own. the rhythm held, which is its own kind of answer.",
+            "the numbers are still catching up.\n\nthere isn't quite enough history in this window yet for a sharper read. keep logging and the picture fills in.",
+            "a quiet stretch.\n\nno big swings in either direction this window. sometimes the story is that there isn't one.",
+            "the trend line sat flat.\n\nneither a climb nor a drop stands out here. worth checking back once a few more weeks are in.",
         ], $seed);
     }
 
     private function monthlyRecap(int $seed): string
     {
         return $this->select([
-            "The rhythm held all month. You didn't force it and you didn't disappear either.",
-            'A full month of regular running. The volume made sense and the effort stayed in hand.',
-            'No real gaps this month. Showed up, ran, went home, repeatedly.',
-            "This month traded intensity for consistency. That's a trade, not a free win.",
-            "You kept showing up this month without being fast about it. The total says what the paces didn't.",
-            'A clean month. Volume on track, effort never forced, nothing to untangle.',
-            'This month leaned patient. That works right up until patient turns into a habit.',
+            "the rhythm held all month. you didn't force it and you didn't disappear either.",
+            'a full month of regular running. the volume made sense and the effort stayed in hand.',
+            'no real gaps this month. showed up, ran, went home, repeatedly.',
+            "this month traded intensity for consistency. that's a trade, not a free win.",
+            "you kept showing up this month without being fast about it. the total says what the paces didn't.",
+            'a clean month. volume on track, effort never forced, nothing to untangle.',
+            'this month leaned patient. that works right up until patient turns into a habit.',
         ], $seed);
     }
 }

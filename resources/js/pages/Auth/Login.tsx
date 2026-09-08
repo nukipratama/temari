@@ -339,7 +339,7 @@ function DataUseDisclosure({
     dataUse,
     trainingDisclaimer,
 }: Readonly<Pick<LoginProps, 'dataUse' | 'trainingDisclaimer'>>) {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(true);
     const panelId = useId();
 
     if (!dataUse && !trainingDisclaimer) {

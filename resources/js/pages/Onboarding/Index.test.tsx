@@ -12,18 +12,18 @@ function lastPostCall() {
 
 /** Connected -> preferences, then straight past preferences to the goal step. */
 function advanceToGoal() {
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+    fireEvent.click(screen.getByRole('button', { name: 'continue' }));
+    fireEvent.click(screen.getByRole('button', { name: 'skip for now' }));
 }
 
 /** Connected -> preferences, past the experience and sessions questions,
  *  choosing `sessions` (so the days sub-step is reachable) and skipping the
  *  goal-type question. Lands on the days sub-step. */
 function advanceToDays(sessions: number) {
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+    fireEvent.click(screen.getByRole('button', { name: 'continue' }));
+    fireEvent.click(screen.getByRole('button', { name: 'skip this' }));
     fireEvent.click(screen.getByRole('button', { name: `${sessions}x` }));
-    fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+    fireEvent.click(screen.getByRole('button', { name: 'skip this' }));
 }
 
 describe('Onboarding/Index', () => {
@@ -41,10 +41,10 @@ describe('Onboarding/Index', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
 
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        fireEvent.click(screen.getByRole('button', { name: 'continue' }));
 
         expect(
-            screen.getByText(/How would you describe where you.re at\?/),
+            screen.getByText(/how would you describe where you.re at\?/),
         ).toBeInTheDocument();
     });
 
@@ -67,7 +67,7 @@ describe('Onboarding/Index', () => {
             screen.getByRole('button', { name: 'set my goal & finish' }),
         ).toBeDisabled();
 
-        fireEvent.change(screen.getByLabelText('Race day'), {
+        fireEvent.change(screen.getByLabelText('race day'), {
             target: { value: '2026-12-25' },
         });
 
@@ -81,7 +81,7 @@ describe('Onboarding/Index', () => {
         render(<OnboardingIndex />);
         advanceToGoal();
 
-        fireEvent.change(screen.getByLabelText('Race day'), {
+        fireEvent.change(screen.getByLabelText('race day'), {
             target: { value: '2026-12-25' },
         });
         fireEvent.click(screen.getByRole('button', { name: '5K' }));
@@ -91,7 +91,7 @@ describe('Onboarding/Index', () => {
         fireEvent.change(screen.getByLabelText('Minutes'), {
             target: { value: '25' },
         });
-        fireEvent.change(screen.getByLabelText('Name (optional)'), {
+        fireEvent.change(screen.getByLabelText('name (optional)'), {
             target: { value: 'Christmas 5K' },
         });
 
@@ -114,7 +114,7 @@ describe('Onboarding/Index', () => {
         render(<OnboardingIndex />);
         advanceToGoal();
 
-        fireEvent.change(screen.getByLabelText('Race day'), {
+        fireEvent.change(screen.getByLabelText('race day'), {
             target: { value: '2026-12-25' },
         });
         fireEvent.click(
@@ -128,7 +128,7 @@ describe('Onboarding/Index', () => {
         ];
         act(() => options.onStart?.());
         expect(
-            screen.getByRole('button', { name: 'Saving…' }),
+            screen.getByRole('button', { name: 'saving…' }),
         ).toBeInTheDocument();
 
         act(() => options.onFinish?.());
@@ -158,7 +158,7 @@ describe('Onboarding/Index', () => {
         render(<OnboardingIndex />);
         advanceToGoal();
 
-        fireEvent.change(screen.getByLabelText('Race day'), {
+        fireEvent.change(screen.getByLabelText('race day'), {
             target: { value: '2026-12-25' },
         });
         fireEvent.change(screen.getByLabelText('Minutes'), {
@@ -178,7 +178,7 @@ describe('Onboarding/Index', () => {
         render(<OnboardingIndex />);
         advanceToGoal();
 
-        const min = screen.getByLabelText('Race day').getAttribute('min') ?? '';
+        const min = screen.getByLabelText('race day').getAttribute('min') ?? '';
 
         expect(min).toMatch(/^\d{4}-\d{2}-\d{2}$/);
         expect(new Date(`${min}T23:59:59`).getTime()).toBeGreaterThan(
@@ -204,10 +204,10 @@ describe('Onboarding/Index', () => {
         render(<OnboardingIndex />);
         advanceToGoal();
 
-        fireEvent.change(screen.getByLabelText('Name (optional)'), {
+        fireEvent.change(screen.getByLabelText('name (optional)'), {
             target: { value: 'Half-typed idea' },
         });
-        fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+        fireEvent.click(screen.getByRole('button', { name: 'skip for now' }));
 
         const call = lastPostCall();
         expect(call?.[0]).toBe('/onboarding');
@@ -217,11 +217,11 @@ describe('Onboarding/Index', () => {
     it('lets the preferences step be skipped entirely, discarding any partial picks', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        fireEvent.click(screen.getByRole('button', { name: 'continue' }));
 
         fireEvent.click(screen.getByRole('button', { name: 'new to running' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+        fireEvent.click(screen.getByRole('button', { name: 'skip for now' }));
+        fireEvent.click(screen.getByRole('button', { name: 'skip for now' }));
 
         const call = lastPostCall();
         expect(call?.[1]).toEqual({});
@@ -230,15 +230,15 @@ describe('Onboarding/Index', () => {
     it('lets a single question be skipped without discarding the others', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        fireEvent.click(screen.getByRole('button', { name: 'continue' }));
 
-        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+        fireEvent.click(screen.getByRole('button', { name: 'skip this' }));
         fireEvent.click(screen.getByRole('button', { name: '3x' }));
         fireEvent.click(
             screen.getByRole('button', { name: 'stay consistent' }),
         );
-        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+        fireEvent.click(screen.getByRole('button', { name: 'skip this' }));
+        fireEvent.click(screen.getByRole('button', { name: 'skip for now' }));
 
         const call = lastPostCall();
         expect(call?.[1]).toEqual({
@@ -250,11 +250,11 @@ describe('Onboarding/Index', () => {
     it('skips the days question entirely once sessions per week is left blank', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        fireEvent.click(screen.getByRole('button', { name: 'continue' }));
 
-        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+        fireEvent.click(screen.getByRole('button', { name: 'skip this' }));
+        fireEvent.click(screen.getByRole('button', { name: 'skip this' }));
+        fireEvent.click(screen.getByRole('button', { name: 'skip this' }));
 
         expect(
             screen.getByRole('heading', { name: /got a race in mind\?/ }),
@@ -264,7 +264,7 @@ describe('Onboarding/Index', () => {
     it('steps back to a previous question without losing the current answer', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        fireEvent.click(screen.getByRole('button', { name: 'continue' }));
 
         fireEvent.click(screen.getByRole('button', { name: 'new to running' }));
         expect(
@@ -309,28 +309,28 @@ describe('Onboarding/Index', () => {
         advanceToDays(2);
 
         expect(
-            screen.queryByText(/Which one.s your long run\?/),
+            screen.queryByText(/which one.s your long run\?/),
         ).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'Mon' }));
         fireEvent.click(screen.getByRole('button', { name: 'Wed' }));
 
         expect(
-            screen.getByText(/Which one.s your long run\?/),
+            screen.getByText(/which one.s your long run\?/),
         ).toBeInTheDocument();
     });
 
     it('recaps the answered preferences on the goal step', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        fireEvent.click(screen.getByRole('button', { name: 'continue' }));
 
         fireEvent.click(screen.getByRole('button', { name: 'new to running' }));
         fireEvent.click(screen.getByRole('button', { name: '3x' }));
         fireEvent.click(
             screen.getByRole('button', { name: 'stay consistent' }),
         );
-        fireEvent.click(screen.getByRole('button', { name: 'Skip this' }));
+        fireEvent.click(screen.getByRole('button', { name: 'skip this' }));
 
         expect(
             screen.getByText(
@@ -350,7 +350,7 @@ describe('Onboarding/Index', () => {
     it('submits the chosen training preferences alongside the race goal', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        fireEvent.click(screen.getByRole('button', { name: 'continue' }));
 
         fireEvent.click(screen.getByRole('button', { name: 'new to running' }));
         fireEvent.click(screen.getByRole('button', { name: '2x' }));
@@ -364,7 +364,7 @@ describe('Onboarding/Index', () => {
         expect(
             screen.getByRole('heading', { name: /got a race in mind\?/ }),
         ).toBeInTheDocument();
-        fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+        fireEvent.click(screen.getByRole('button', { name: 'skip for now' }));
 
         const call = lastPostCall();
         expect(call?.[1]).toEqual({

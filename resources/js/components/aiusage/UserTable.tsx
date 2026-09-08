@@ -15,7 +15,7 @@ export default function UserTable({
         <DataTable
             icon="mdi:account-multiple"
             title="Breakdown per User"
-            subtitle="Users who chat with Temari the most."
+            subtitle="Users who chat with temari the most."
             tone="accent"
             columns={COLUMNS}
             minWidth={520}
