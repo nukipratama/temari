@@ -164,3 +164,32 @@ describe('SeasonWeekRow', () => {
         expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
 });
+
+describe('week marks', () => {
+    it('marks a deload week in its header, in words', () => {
+        renderRow({ week: week({ phase: 'deload' }) });
+
+        expect(screen.getByText('deload week')).toBeInTheDocument();
+        expect(screen.queryByText('race week')).not.toBeInTheDocument();
+    });
+
+    it('marks the week the goal race falls in', () => {
+        renderRow({ week: week({ phase: 'taper' }), raceDate: '2026-06-21' });
+
+        expect(screen.getByText('race week')).toBeInTheDocument();
+        expect(screen.queryByText('deload week')).not.toBeInTheDocument();
+    });
+
+    it('marks a week the race sits outside of, and a plain phase, not at all', () => {
+        renderRow({ week: week({ phase: 'build' }), raceDate: '2026-07-05' });
+
+        expect(screen.queryByText('race week')).not.toBeInTheDocument();
+        expect(screen.queryByText('deload week')).not.toBeInTheDocument();
+    });
+
+    it('marks a week with no day rows of its own too', () => {
+        renderRow({ week: week({ phase: 'deload' }), detail: null });
+
+        expect(screen.getByText('deload week')).toBeInTheDocument();
+    });
+});

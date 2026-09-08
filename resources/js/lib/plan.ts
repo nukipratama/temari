@@ -7,6 +7,7 @@ import type {
 import {
     formatMonthDayId,
     formatPace,
+    isoDateLocal,
     mondayOf,
     parseNaiveLocalDate,
     sundayOf,
@@ -171,6 +172,28 @@ export function weekRangeLabel(weekStartIso: string): string {
         return `${month} ${monday.getDate()}–${sunday.getDate()}`;
     }
     return `${formatMonthDayId(monday)}–${formatMonthDayId(sunday)}`;
+}
+
+/**
+ * Whether the goal race falls inside the week starting `weekStartIso`. Read off
+ * the race date the page already holds rather than a per-week flag: the season
+ * summary covers weeks far past the periodizer's day-row horizon, which is
+ * exactly where a race sits.
+ */
+export function isRaceWeek(
+    weekStartIso: string,
+    raceDateIso: string | null,
+): boolean {
+    if (raceDateIso === null) {
+        return false;
+    }
+
+    const monday = mondayOf(weekStartIso);
+
+    return (
+        raceDateIso >= isoDateLocal(monday) &&
+        raceDateIso <= isoDateLocal(sundayOf(monday))
+    );
 }
 
 /**

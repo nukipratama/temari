@@ -4,6 +4,7 @@ import type { AnalysisPayload } from '@/types/inertia';
 import TemariTake from '@/components/plan/TemariTake';
 import WeekDayRow from '@/components/plan/WeekDayRow';
 import WeekVolumeChart from '@/components/plan/WeekVolumeChart';
+import Chip from '@/components/ui/Chip';
 import {
     Collapsible,
     CollapsibleContent,
@@ -11,7 +12,7 @@ import {
 } from '@/components/ui/collapsible';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
-import { computeAdherence, weekRangeLabel } from '@/lib/plan';
+import { computeAdherence, isRaceWeek, weekRangeLabel } from '@/lib/plan';
 import { cardVariants } from '@/lib/variants';
 
 /** The dot on the season rail: filled and haloed for now, filled for done, hollow ahead. */
@@ -34,6 +35,26 @@ export function SeasonRailNode({
 }
 
 /**
+ * What sets this week apart from the one before it, in words rather than in a
+ * bar colour: a scheduled step down, or the week the goal race lands in.
+ */
+function WeekMarks({
+    phase,
+    raceWeek,
+}: Readonly<{ phase: string; raceWeek: boolean }>) {
+    if (phase !== 'deload' && !raceWeek) {
+        return null;
+    }
+
+    return (
+        <span className="flex flex-wrap items-center gap-1.5">
+            {phase === 'deload' && <Chip>deload week</Chip>}
+            {raceWeek && <Chip tone="horizon">race week</Chip>}
+        </span>
+    );
+}
+
+/**
  * One week on the season rail. A week the plan has day-level rows for opens
  * into its volume chart and seven day rows; a week outside that window (older
  * history, or far enough ahead that the day plan isn't decided yet) renders as
@@ -45,6 +66,7 @@ export default function SeasonWeekRow({
     detail,
     isLast,
     today,
+    raceDate = null,
     focus,
     narration,
     dayNarration,
@@ -56,6 +78,8 @@ export default function SeasonWeekRow({
     detail: PlanWeek | null;
     isLast: boolean;
     today: string;
+    /** The goal race's date, so the week holding it can say so. */
+    raceDate?: string | null;
     /** What this week is for — the periodizer's own adaptation verdict, where one exists. */
     focus: { headline: string; detail: string } | null;
     narration: AnalysisPayload | null;
@@ -65,6 +89,7 @@ export default function SeasonWeekRow({
 }>) {
     const isCurrent = week.type === 'current';
     const adherence = detail === null ? null : computeAdherence(detail.days);
+    const raceWeek = isRaceWeek(week.week_start, raceDate);
 
     return (
         <div className="flex gap-3">
@@ -97,6 +122,7 @@ export default function SeasonWeekRow({
                             <p className="min-w-0 flex-1 text-sm font-semibold text-foreground">
                                 {weekRangeLabel(week.week_start)}
                             </p>
+                            <WeekMarks phase={week.phase} raceWeek={raceWeek} />
                         </div>
                         <p className="mt-2 text-xs text-text-2">
                             {Math.round(week.planned_km)} km target ·{' '}
@@ -119,8 +145,14 @@ export default function SeasonWeekRow({
                                 Wk {weekNumber}
                             </span>
                             <span className="min-w-0 flex-1">
-                                <span className="block text-sm font-semibold text-foreground">
-                                    {weekRangeLabel(week.week_start)}
+                                <span className="flex flex-wrap items-center gap-2">
+                                    <span className="text-sm font-semibold text-foreground">
+                                        {weekRangeLabel(week.week_start)}
+                                    </span>
+                                    <WeekMarks
+                                        phase={week.phase}
+                                        raceWeek={raceWeek}
+                                    />
                                 </span>
                                 <span className="mt-0.5 block text-label-micro text-text-3">
                                     {Math.round(week.planned_km)} km target ·{' '}
