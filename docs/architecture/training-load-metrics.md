@@ -43,6 +43,8 @@ The remaining two numbers describe the *distribution* of load across the last 7 
 
 [WeeklyAggregator](app/Services/Run/Metrics/WeeklyAggregator.php) persists the engine's output one row per ISO week into [WeeklySnapshot](app/Models/WeeklySnapshot.php) (week keyed by its Sunday `week_ending`; see [[data-model]]). Each week is an idempotent **upsert** keyed by `(user_id, week_ending)` in [upsertWeek](app/Services/Run/Metrics/WeeklyAggregator.php#L172), which slices that week's runs for the volume columns and asks [TrainingLoad](app/Services/Run/Metrics/TrainingLoad.php) for the load columns.
 
+The `avg_decoupling` column is the one non-load figure on the row, averaged across the week's runs that carry a reading ([averageDecoupling](app/Services/Run/Metrics/WeeklyAggregator.php)). It needs **at least two** such runs: a mean over one run is that run, and everything reading the column — the plan, the history chips, the recap narrator — reads it as a statement about the week. One long run that came apart is a fact about that Sunday. Below two contributing runs the column is `null`, which is already the "no signal" value here, per [[unscored-load-is-null-not-zero]].
+
 Two subtleties:
 
 - **Converged lead-in.** To roll a correct CTL for any given week, the aggregator first loads a long lead-in of history before that week ([leadInStart](app/Services/Run/Metrics/WeeklyAggregator.php#L79), sized by the same converged-lookback constant), then rolls the EWMA forward through the week. A short warm-up window would produce a too-low, window-dependent CTL.

@@ -116,9 +116,12 @@ it('detects a stop when velocity drops below 0.5 m/s', function (): void {
     ]);
 });
 
-it('computes cardiac decoupling as (second-half HR/pace ratio) - 1', function (): void {
-    // Half1: 140bpm/400s/km = 0.35. Half2: 150bpm/400s/km = 0.375. Drift +7.1%.
-    // Runs an hour so the effort is long enough for drift to describe physiology.
+// The published figure is grade-adjusted by contract, so the gradient is one of
+// the streams the reading is made of rather than an optional refinement. Where
+// it is missing the run used to be scored as though the ground were flat — the
+// exact reading the grade correction exists to refuse. The positive case with a
+// gradient present is asserted further down ("still reports drift on a flat run").
+it('publishes no decoupling when the run carries no gradient stream to correct pace with', function (): void {
     $time = [];
     $hr = [];
     $velocity = [];
@@ -139,8 +142,160 @@ it('computes cardiac decoupling as (second-half HR/pace ratio) - 1', function ()
         170,
     );
 
-    expect($summary['decoupling_pct'])->toBeFloat()
-        ->toEqualWithDelta(7.1, 0.2);
+    expect($summary)->not->toHaveKey('decoupling_pct');
+});
+
+it('does not read a heart-rate dropout in the first half as cardiac drift', function (): void {
+    // Identical effort throughout, but the strap loses contact for ten minutes
+    // early on and Strava ships those samples as 0 bpm. Averaged in, they drag
+    // the first half's mean HR down and the run reports a ~40% drift it never
+    // ran. The prod week of 2026-09-05 stored 47.1% this way.
+    $time = [];
+    $hr = [];
+    $velocity = [];
+    $grade = [];
+    for ($t = 0; $t <= 3600; $t += 30) {
+        $time[] = $t;
+        $hr[] = $t >= 300 && $t < 900 ? 0 : 145;
+        $velocity[] = 2.5;
+        $grade[] = 0.0;
+    }
+
+    $summary = $this->analysis->compute(
+        [
+            'time' => ['data' => $time],
+            'heartrate' => ['data' => $hr],
+            'velocity_smooth' => ['data' => $velocity],
+            'grade_smooth' => ['data' => $grade],
+        ],
+        defaultZones(),
+        null,
+        170,
+    );
+
+    expect($summary['decoupling_pct'])->toEqualWithDelta(0.0, 0.2);
+});
+
+it('weighs a half by the seconds each sample is worth, not by sample count', function (): void {
+    // Steady 2.5 m/s throughout except for one crawling sample just above the
+    // stop threshold, which stands for two metres of the run. As an arithmetic
+    // mean of per-sample s/km it contributes ~1960 s/km against 400, dragging
+    // the second half's average pace out by a fifth on its own.
+    $time = [];
+    $hr = [];
+    $velocity = [];
+    $grade = [];
+    for ($t = 0; $t <= 3600; $t += 30) {
+        $time[] = $t;
+        $hr[] = 145;
+        $velocity[] = $t === 2400 ? 0.51 : 2.5;
+        $grade[] = 0.0;
+    }
+
+    $summary = $this->analysis->compute(
+        [
+            'time' => ['data' => $time],
+            'heartrate' => ['data' => $hr],
+            'velocity_smooth' => ['data' => $velocity],
+            'grade_smooth' => ['data' => $grade],
+        ],
+        defaultZones(),
+        null,
+        170,
+    );
+
+    expect($summary['decoupling_pct'])->toEqualWithDelta(0.0, 2.0);
+});
+
+it('splits the halves at the time midpoint, not the middle sample', function (): void {
+    // The watch samples every second for the first 20 minutes and every 30
+    // seconds after, so the middle *index* lands at 11 minutes. HR steps up at
+    // the run's real midpoint: split by index most of that step falls in the
+    // "first" half and the run reads +1.0% instead of the +7.1% it ran.
+    $time = [];
+    $hr = [];
+    $velocity = [];
+    $grade = [];
+    for ($t = 0; $t <= 5400; $t += ($t < 1200 ? 1 : 30)) {
+        $time[] = $t;
+        $hr[] = $t < 2700 ? 140 : 150;
+        $velocity[] = 2.5;
+        $grade[] = 0.0;
+    }
+
+    $summary = $this->analysis->compute(
+        [
+            'time' => ['data' => $time],
+            'heartrate' => ['data' => $hr],
+            'velocity_smooth' => ['data' => $velocity],
+            'grade_smooth' => ['data' => $grade],
+        ],
+        defaultZones(),
+        null,
+        170,
+    );
+
+    expect($time[(int) (count($time) / 2)])->toBeLessThan(2700)
+        ->and($summary['decoupling_pct'])->toEqualWithDelta(7.1, 0.2);
+});
+
+it('withholds a decoupling reading no athlete could have produced', function (): void {
+    // HR triples across the halves at a held pace. Whatever happened to this
+    // run, it is not a fact about aerobic drift, so no number is published.
+    $time = [];
+    $hr = [];
+    $velocity = [];
+    $grade = [];
+    for ($t = 0; $t <= 3600; $t += 30) {
+        $time[] = $t;
+        $hr[] = $t < 1800 ? 60 : 180;
+        $velocity[] = 2.5;
+        $grade[] = 0.0;
+    }
+
+    $summary = $this->analysis->compute(
+        [
+            'time' => ['data' => $time],
+            'heartrate' => ['data' => $hr],
+            'velocity_smooth' => ['data' => $velocity],
+            'grade_smooth' => ['data' => $grade],
+        ],
+        defaultZones(),
+        null,
+        170,
+    );
+
+    expect($summary)->not->toHaveKey('decoupling_pct');
+});
+
+it('stops reading where the gradient stream stops, rather than calling the rest flat', function (): void {
+    // The grade trace covers the first 45 minutes; after that the athlete slows
+    // to 2.0 m/s on a climb. Scored as flat ground that slowdown is a 20% drop
+    // in the HR/pace ratio the run never earned. The covered window is a steady
+    // 45 minutes and reads as one.
+    $time = [];
+    $hr = [];
+    $velocity = [];
+    for ($t = 0; $t <= 5400; $t += 30) {
+        $time[] = $t;
+        $hr[] = 145;
+        $velocity[] = $t < 2700 ? 2.5 : 2.0;
+    }
+    $grade = array_fill(0, 90, 0.0);
+
+    $summary = $this->analysis->compute(
+        [
+            'time' => ['data' => $time],
+            'heartrate' => ['data' => $hr],
+            'velocity_smooth' => ['data' => $velocity],
+            'grade_smooth' => ['data' => $grade],
+        ],
+        defaultZones(),
+        null,
+        170,
+    );
+
+    expect($summary['decoupling_pct'])->toEqualWithDelta(0.0, 0.2);
 });
 
 it('omits decoupling on a run too short to sustain the measurement', function (): void {
