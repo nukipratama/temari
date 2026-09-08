@@ -12,9 +12,17 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use App\Services\User\UserEraser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    Http::fake();
+});
 
 /**
  * One ai_analyses row for every subject shape the table carries, so a change to
@@ -180,4 +188,48 @@ it('leaves another user cost history unstamped', function (): void {
     app(UserEraser::class)->erase($user);
 
     expect(TokenUsage::query()->where('user_id', $bystander->id)->sole()->user_name)->toBeNull();
+});
+
+it('hands the athlete grant back to Strava so the deleted account stops counting against the app cap', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create([
+        'access_token' => 'live-access',
+        'token_expires_at' => Carbon::now()->addHours(5),
+    ]);
+
+    app(UserEraser::class)->erase($user);
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize'
+        && $request['access_token'] === 'live-access');
+});
+
+it('deletes the account anyway when Strava refuses the deauthorize', function (): void {
+    Http::fake(['https://www.strava.com/oauth/deauthorize' => fn () => throw new ConnectionException('Strava unreachable')]);
+
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create([
+        'token_expires_at' => Carbon::now()->addHours(5),
+    ]);
+
+    app(UserEraser::class)->erase($user);
+
+    expect(User::query()->whereKey($user->id)->exists())->toBeFalse();
+});
+
+it('skips the deauthorize for a connection Strava has already revoked', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create([
+        'token_expires_at' => Carbon::now()->addHours(5),
+        'revoked_at' => Carbon::now()->subDay(),
+    ]);
+
+    app(UserEraser::class)->erase($user);
+
+    Http::assertNothingSent();
+});
+
+it('sends nothing for an account that never connected Strava', function (): void {
+    app(UserEraser::class)->erase(User::factory()->create());
+
+    Http::assertNothingSent();
 });
