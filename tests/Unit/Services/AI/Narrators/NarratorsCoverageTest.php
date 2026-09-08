@@ -41,6 +41,7 @@ use App\Services\AI\Anchor\RunAnchorResolver;
 use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
+use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\LifetimeStats;
 use App\Services\Run\Metrics\RelativeEffort;
@@ -698,7 +699,7 @@ it('PlanDayVoiceNarrator returns voice on valid JSON', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create(['session_type' => 'tempo', 'date' => Carbon::today()->toDateString()]);
     $caller = fakeCaller(json_encode(['voice' => 'tempo work today.'], JSON_THROW_ON_ERROR));
-    $narrator = new PlanDayVoiceNarrator($caller, app(TrainingBaseline::class));
+    $narrator = new PlanDayVoiceNarrator($caller, app(TrainingBaseline::class), app(SessionMatcher::class));
     expect($narrator->generate($session))->toBe('tempo work today.');
 });
 
@@ -706,7 +707,7 @@ it('PlanDayVoiceNarrator throws on missing voice key', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create();
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new PlanDayVoiceNarrator($caller, app(TrainingBaseline::class));
+    $narrator = new PlanDayVoiceNarrator($caller, app(TrainingBaseline::class), app(SessionMatcher::class));
     $narrator->generate($session);
 })->throws(UnavailableException::class);
 
@@ -724,8 +725,35 @@ it('PlanDayTool reports the prescribed session, distance and skip state', functi
     expect($context['session_type'])->toBe('long')
         ->and($context['phase'])->toBe('build')
         ->and($context['distance_km'])->toBeFloat()
-        ->and($context['skipped'])->toBeFalse();
+        ->and($context['skipped'])->toBeFalse()
+        // A day still ahead of the athlete has no outcome. The keys are ABSENT
+        // rather than null: one that is always there teaches the model the day
+        // is over even when it is not.
+        ->and($context)->not->toHaveKey('status')
+        ->and($context)->not->toHaveKey('completed_km')
+        ->and($context)->not->toHaveKey('ran_anyway');
 });
+
+it('PlanDayTool carries how the day went once it has been graded', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'session_type' => 'tempo',
+        'phase' => 'build',
+        'date' => Carbon::today()->toDateString(),
+        'skipped' => false,
+        'status' => 'overreached',
+        'ran_anyway' => true,
+    ]);
+
+    $context = new PlanDayTool($session, app(TrainingBaseline::class), 10.4)->handle([]);
+
+    expect($context['status'])->toBe('overreached')
+        ->and($context['completed_km'])->toBe(10.4)
+        ->and($context['ran_anyway'])->toBeTrue()
+        // The ask stays beside the outcome: the line reads one against the other.
+        ->and($context['distance_km'])->toBeFloat();
+});
+
 
 // ── PlanWeekVoiceNarrator ─────────────────────────────────────────────
 

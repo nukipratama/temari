@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\PlanPhase;
+use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -133,4 +134,64 @@ it('leaves a non-race day fingerprinted exactly as it was before race days exist
             'session_type' => 'long',
             'skipped' => false,
         ])));
+});
+
+/**
+ * The day flipping to credited turns the blurb from a label into a read of what
+ * happened, so it has to re-narrate once — and exactly once.
+ */
+it('re-fingerprints a day once it is credited', function (): void {
+    $planned = PlannedSession::factory()->make([
+        'session_type' => SessionType::Tempo,
+        'phase' => PlanPhase::Build,
+        'skipped' => false,
+        'race_distance_m' => null,
+        'status' => PlannedSessionStatus::Planned,
+    ]);
+    $done = PlannedSession::factory()->make([
+        'session_type' => SessionType::Tempo,
+        'phase' => PlanPhase::Build,
+        'skipped' => false,
+        'race_distance_m' => null,
+        'status' => PlannedSessionStatus::Done,
+    ]);
+
+    expect(MaterialFingerprint::forPlannedSession($planned, 16.0))
+        ->not->toBe(MaterialFingerprint::forPlannedSession($done, 16.0));
+});
+
+/**
+ * The score moves with every run that lands; the verdict is what changes the
+ * sentence. Including the score would re-bill a second run on the same day.
+ */
+it('does not re-fingerprint a credited day when only its score moves', function (): void {
+    $make = fn (int $score): PlannedSession => PlannedSession::factory()->make([
+        'session_type' => SessionType::Tempo,
+        'phase' => PlanPhase::Build,
+        'skipped' => false,
+        'race_distance_m' => null,
+        'status' => PlannedSessionStatus::Done,
+        'compliance_score' => $score,
+    ]);
+
+    expect(MaterialFingerprint::forPlannedSession($make(88), 16.0))
+        ->toBe(MaterialFingerprint::forPlannedSession($make(126), 16.0));
+});
+
+/** Each verdict reads differently, so each has to be its own digest. */
+it('separates the credited verdicts from one another', function (): void {
+    $make = fn (PlannedSessionStatus $status): PlannedSession => PlannedSession::factory()->make([
+        'session_type' => SessionType::Tempo,
+        'phase' => PlanPhase::Build,
+        'skipped' => false,
+        'race_distance_m' => null,
+        'status' => $status,
+    ]);
+
+    $digests = array_map(
+        fn (PlannedSessionStatus $s): string => MaterialFingerprint::forPlannedSession($make($s), 16.0),
+        [PlannedSessionStatus::Done, PlannedSessionStatus::Partial, PlannedSessionStatus::Overreached],
+    );
+
+    expect(array_unique($digests))->toHaveCount(3);
 });

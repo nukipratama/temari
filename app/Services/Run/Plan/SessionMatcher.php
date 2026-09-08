@@ -186,6 +186,28 @@ final class SessionMatcher
     }
 
     /**
+     * The km a single day is credited with, by the same rule
+     * {@see self::scoreRange()} grades it on: a `Long` day counts its single
+     * longest run, everything else counts the day's total. Null when nothing
+     * was logged.
+     *
+     * Exists so a caller that wants the credited figure — narration reading
+     * "you ran X against an ask of Y" — cannot drift from the figure the score
+     * was computed from. Re-deriving it at the call site is how the two come
+     * apart.
+     */
+    public function creditedKmFor(PlannedSession $session): ?float
+    {
+        $day = $this->completedKmByDate($session->user, [$session->date->toDateString() => 0.0])[$session->date->toDateString()] ?? null;
+
+        if ($day === null) {
+            return null;
+        }
+
+        return $session->session_type === SessionType::Long ? $day['longest'] : $day['sum'];
+    }
+
+    /**
      * A day's runs as both figures the scorer can need: everything that day
      * added up, and its single longest run.
      *

@@ -9,12 +9,14 @@ use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\PlanDayTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
+use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\TrainingBaseline;
 
 class PlanDayVoiceNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Task: one short line narrating a single day's prescribed training session, max 25 words.
+        Task: one short line about a single day of training, max 25 words. Before the day is run
+        that is its prescribed session; after it, how the session actually went.
 
         DATA: call get_day_plan to see the day's session type, phase, and approximate distance
         before writing. Don't guess at what the day is.
@@ -24,6 +26,20 @@ class PlanDayVoiceNarrator
         (fine to use the 🛌 glyph here, and only here). A skipped day (skipped is true) has already
         been excused by the athlete: acknowledge that, don't describe the original session as if it
         were still happening.
+
+        ONCE THE DAY HAS BEEN RUN, YOU ARE READING IT, NOT ANNOUNCING IT. When get_day_plan comes
+        back with a `status`, the session already happened and this line is a coach's read on how it
+        went, in the past tense. Lead with what they did against what was asked, using distance_km
+        (asked) and completed_km (run). `overreached` means they went well past the ask, `partial`
+        means they came up short, `done` means they hit it, and `ran_anyway` true means they ran a
+        day they had already excused themselves from, which is worth a nod. NEVER quote a percentage
+        or a score out of 100, and never grade the athlete: name the two numbers and what they add
+        up to. Without a `status` the day is still ahead of them, so write it as the label it was.
+        Examples with a status:
+        - "asked for 5.9, you ran 6 at tempo pace. that's the session, done properly."
+        - "10 against an easy 7. more than the day wanted, but you clearly had it."
+        - "3 of the 8 you were down for. short, but it's on the board."
+        - "excused, and you ran it anyway. 6k."
 
         Feel free to gesture at how the day sits in the week (e.g. a long run the week is built
         around, a tempo day after a rest) when the phase or type makes that obvious, but don't force
@@ -46,6 +62,7 @@ class PlanDayVoiceNarrator
     public function __construct(
         private readonly StructuredChatCaller $caller,
         private readonly TrainingBaseline $baseline,
+        private readonly SessionMatcher $sessionMatcher,
     ) {
     }
 
@@ -61,11 +78,28 @@ class PlanDayVoiceNarrator
                 temperature: 0.7,
                 userId: $session->user_id,
                 maxTokens: 300,
-                toolbox: new AgentToolbox([new PlanDayTool($session, $this->baseline)]),
+                toolbox: new AgentToolbox([new PlanDayTool($session, $this->baseline, $this->completedKm($session))]),
                 maxSteps: 4,
             ),
         );
 
         return (string) $decoded['voice'];
+    }
+
+    /**
+     * Km run on the day, and only once it is graded: an ungraded day has no
+     * outcome to read, so the query is skipped rather than answered with a
+     * figure the tool then withholds.
+     *
+     * Delegates the day-total-vs-longest-run rule to {@see SessionMatcher},
+     * which is where the score itself gets it. Re-deriving it here would put
+     * the same rule in two places and let the narration quote a figure the
+     * verdict was never computed from.
+     */
+    private function completedKm(PlannedSession $session): ?float
+    {
+        return $session->status->isCredited()
+            ? $this->sessionMatcher->creditedKmFor($session)
+            : null;
     }
 }

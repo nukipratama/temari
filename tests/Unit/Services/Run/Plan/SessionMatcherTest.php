@@ -201,3 +201,40 @@ it('still sums the day everywhere a long run was not what was asked for', functi
 
     expect($statuses['2026-08-03'])->toBe(PlannedSessionStatus::Done);
 });
+
+/**
+ * A long run's training effect is continuity, so its day is credited from the
+ * single longest run — a shakeout logged alongside it must not count toward the
+ * ask. Narration reads this same figure, so the rule lives here rather than at
+ * each call site, where the two would drift.
+ */
+it('credits a long day from its longest run and every other day from the total', function (SessionType $type, float $expected): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => $type,
+    ]);
+
+    foreach ([18_000.0, 5_000.0] as $metres) {
+        $activity = Activity::factory()->for($user)->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'start_date_local' => Carbon::today()->setTime(7, 0),
+            'distance' => $metres,
+        ]);
+    }
+
+    expect(app(SessionMatcher::class)->creditedKmFor($session))->toBe($expected);
+})->with([
+    [SessionType::Long, 18.0],
+    [SessionType::Easy, 23.0],
+]);
+
+it('credits nothing on a day with no runs at all', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Easy,
+    ]);
+
+    expect(app(SessionMatcher::class)->creditedKmFor($session))->toBeNull();
+});
