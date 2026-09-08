@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Support\Carbon;
+use App\Notifications\StravaDisconnectedNotification;
 use App\Support\SharedPropCacheKey;
 use Database\Factories\StravaConnectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -90,13 +91,39 @@ class StravaConnection extends Model
         return str_contains((string) $this->scopes, 'profile:read_all');
     }
 
-    public function markRevoked(): void
+    /**
+     * The one place a Strava grant dies, so it is also the one place the athlete
+     * is told, once per revocation rather than once per failing call.
+     * `$notify` is false only for an account deletion, whose cascade takes the
+     * inbox row with it anyway.
+     */
+    public function markRevoked(bool $notify = true): void
     {
         if ($this->revoked_at !== null) {
             return;
         }
 
-        $this->update(['revoked_at' => Carbon::now()]);
+        $revokedAt = Carbon::now();
+
+        // The check above cannot see a concurrent revocation: no lock covers
+        // every caller, so two failing jobs can each hold an active copy of this
+        // row. Whoever flips revoked_at away from null wins, and only the winner
+        // notifies and purges; the model save below is what busts the shared
+        // prop caches.
+        $claimed = static::query()
+            ->whereKey($this->getKey())
+            ->whereNull('revoked_at')
+            ->update(['revoked_at' => $revokedAt]);
+
+        if ($claimed === 0) {
+            return;
+        }
+
+        $this->update(['revoked_at' => $revokedAt]);
+
+        if ($notify) {
+            $this->user->notify(new StravaDisconnectedNotification($revokedAt));
+        }
 
         // Purge this user's un-ingested stubs: the ingest drain only selects
         // activities whose connection is non-revoked, so stubs inserted before a

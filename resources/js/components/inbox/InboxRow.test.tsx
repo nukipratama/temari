@@ -122,6 +122,7 @@ describe('InboxRow', () => {
         ['weekly_recap', 'Weekly Recap'],
         ['monthly_recap', 'Monthly Recap'],
         ['streak_reminder', 'Streak'],
+        ['strava_disconnected', 'Strava'],
         ['unlock', 'Unlock'],
         ['test', 'Test'],
     ] as const)('labels the %s kind', (kind, label) => {
