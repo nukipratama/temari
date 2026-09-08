@@ -10,7 +10,6 @@ code_refs:
   - app/Services/AI/Agent/Tools/ActivityTool.php
   - app/Services/AI/Narrators/RunInsightNarrator.php
   - app/Services/Run/Story/BriefingContext.php
-  - app/Services/Run/Story/MetricsContext.php
   - app/Services/AI/RuleBased/RuleBasedNarrationFiller.php
   - app/Services/AI/RuleBased/RuleBasedRunInsights.php
   - app/Services/AI/AnalysisType.php
@@ -72,10 +71,6 @@ Every narrator now reads rather than receives. What remains in any context is on
 - **consecutive weeks active** — a streak proxy reusing the `WeeklySnapshot` rows we already keep, since we don't track a day-level streak ([`countConsecutiveActiveWeeks`](app/Services/Run/Story/BriefingContext.php#L196)).
 
 Recovery hours is "hours since the most recent activity start", sharper than days-since for a mid-day briefing — now computed by [RecoveryWindow::forUser](app/Services/Run/Story/RecoveryWindow.php#L35) and passed in. `BriefingContext::forUser` is called from [WeekStateTool::handle](app/Services/AI/Agent/Tools/WeekStateTool.php#L48), one of the agent tools [BriefingMascotVoiceNarrator](app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php) reads from; the rendered surface is the [[dashboard]] mascot-voice block.
-
-### MetricsContext (briefing call envelope)
-
-[MetricsContext](app/Services/Run/Story/MetricsContext.php) is the lighter wrapper the briefing narrators take as input — user, vibe state, training-load summary, recent verdicts, and the as-of timestamp — from which `BriefingContext::forUser` is then derived. It's the call boundary, not a signal collector.
 
 ## The demo filler — copy without the LLM
 

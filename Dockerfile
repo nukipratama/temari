@@ -87,7 +87,10 @@ EXPOSE 80
 # Composer install (no dev deps), then dump optimized autoloader. The second
 # composer call also fires post-autoload-dump → `php artisan package:discover`,
 # which writes bootstrap/cache/{packages,services}.php.
-FROM composer:2 AS vendor
+# Digest-pinned like the other base images above. = composer:2.10.3. Refresh
+# after a bump with:
+#   docker buildx imagetools inspect composer:2 --format '{{json .Manifest.Digest}}'
+FROM composer@sha256:d8f6343d3fae98107426bc49163ccad46ef85aabd4a27d80a74401fab4aba332 AS vendor
 WORKDIR /var/www/html
 
 COPY composer.json composer.lock ./
