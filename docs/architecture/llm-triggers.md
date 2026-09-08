@@ -228,12 +228,12 @@ drives everything below.
 
 | narrator | tools | max steps | max output | temp | deployment key |
 |---|---|---|---|---|---|
-| `RunInsightNarrator` | 10 | default (8) | 3000 | 0.7 | `run_insight` |
-| `RunQuestionNarrator` | up to 10 | default (8) | 1200 | 0.7 | `run_question` |
-| `CardFlavorNarrator` | up to 6 | default (8) | 400 | 0.8 | `card_flavor` |
-| `PostRunSpeechNarrator` | 6 | default (8) | 1500 | 0.8 | `post_run_speech` |
-| `BriefingMascotVoiceNarrator` | 5 | default (8) | 1800 | 0.8 | `briefing_mascot_voice` |
-| `ProfileVoiceNarrator` | 4 | default (8) | 1800 | 0.75 | `profile_voice` |
+| `RunInsightNarrator` | 11 | default (10) | 3000 | 0.7 | `run_insight` |
+| `RunQuestionNarrator` | up to 11 | default (10) | 1200 | 0.7 | `run_question` |
+| `CardFlavorNarrator` | up to 7 | default (10) | 400 | 0.8 | `card_flavor` |
+| `PostRunSpeechNarrator` | 7 | default (10) | 1500 | 0.8 | `post_run_speech` |
+| `BriefingMascotVoiceNarrator` | 6 | default (10) | 1800 | 0.8 | `briefing_mascot_voice` |
+| `ProfileVoiceNarrator` | 4 | default (10) | 1800 | 0.75 | `profile_voice` |
 | `WeeklyRecapNarrator` | 1 | **4** | 1500 | 0.7 | `weekly_recap` |
 | `MonthlyRecapNarrator` | 1 | **4** | 1500 | 0.7 | `monthly_recap` |
 | `TrendReadNarrator` | 1 | **4** | 1200 | 0.7 | `trend_read` |
@@ -314,10 +314,10 @@ inline in its `toolbox()` method.
 
 | narrator | tools |
 |---|---|
-| `RunInsightNarrator` | `RunSummaryTool`, `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool` |
-| `RunQuestionNarrator` | `RunSummaryTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool` always; `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool` only once the run is `Detailed` |
-| `PostRunSpeechNarrator` | `RunSummaryTool`, `TerrainTool`, `WeatherTool`, `PersonalRecordsTool`, `PastYouTool`, `WeekStateTool` |
-| `CardFlavorNarrator` | `CardIdentityTool` always; `RunSummaryTool`, `KmSplitsTool`, `WeatherTool`, `EffortContextTool`, `PersonalRecordsTool` when the run has detail |
+| `RunInsightNarrator` | `RunSummaryTool`, `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool` |
+| `RunQuestionNarrator` | `RunSummaryTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool` always; `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool` only once the run is `Detailed` |
+| `PostRunSpeechNarrator` | `RunSummaryTool`, `TerrainTool`, `WeatherTool`, `PersonalRecordsTool`, `PastYouTool`, `WeekStateTool`, `PlanContextTool` |
+| `CardFlavorNarrator` | `CardIdentityTool` always; `RunSummaryTool`, `KmSplitsTool`, `WeatherTool`, `EffortContextTool`, `PersonalRecordsTool`, `PlanContextTool` when the run has detail |
 | `BriefingMascotVoiceNarrator` | `WeekStateTool`, `RecentRunsTool`, `TrainingLoadTool`, `LatestPastYouTool`, `RecentBaselineTool`, `PlanContextTool` |
 | `ProfileVoiceNarrator` | `LifetimeStatsTool`, `PersonaMixTool`, `TrainingPacesTool`, `ProgressionSignalTool` |
 | `WeeklyRecapNarrator` | `WeekTotalsTool` |
@@ -327,7 +327,7 @@ inline in its `toolbox()` method.
 | `PlanWeekVoiceNarrator` | `PlanWeekTool` |
 | `PlanSeasonVoiceNarrator` | `PlanSeasonTool` |
 
-Every one of the 25 tools is carried by at least one narrator; none is orphaned.
+Every one of the 26 tools is carried by at least one narrator; none is orphaned.
 
 ## The deterministic half
 
@@ -374,7 +374,8 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
   tool round trip per plan block, which is up to nine per user per week.
 - `PlanContextTool` is the one plan read bound to a *span* rather than a row, so a narrator with no
   `PlannedSession` in hand can still say what was prescribed. It is the only plan tool a block that
-  is not itself about the plan carries.
+  is not itself about the plan carries, and the four per-run narrators bind it to a single day: the
+  date of the run they are describing.
 - `RunInsightNarrator`'s three user-level tools are the ones to question first if its toolbox is
   narrowed.
 

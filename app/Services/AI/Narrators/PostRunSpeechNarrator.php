@@ -9,6 +9,7 @@ use App\Models\ActivityDetail;
 use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\PastYouTool;
 use App\Services\AI\Agent\Tools\PersonalRecordsTool;
+use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\AI\Agent\Tools\RunSummaryTool;
 use App\Services\AI\Agent\Tools\TerrainTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
@@ -18,6 +19,9 @@ use App\Services\AI\ChatCallOptions;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
+use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Story\PastYouMatcher;
 use Illuminate\Support\Carbon;
 
@@ -68,6 +72,16 @@ class PostRunSpeechNarrator
         those entirely. The run already happened, you are not planning the next one,
         and this block never suggests a session. What you want out of it is the
         week-over-week counts and the streak.
+
+        THE PLAN: this athlete follows a training plan, and get_planned_sessions
+        returns what was on the board for the day of this run, plus how the day was
+        graded once it passed. Whether they ran what was asked is journey, not
+        mechanics, so it belongs to you: a hard day honoured, a long run cut short,
+        or a run on a day they had already excused themselves from (ran_anyway) is
+        worth naming once. Compare what was asked against what they did, in your own
+        words, never as a grade or a score out of anything. NEVER prescribe the next
+        session, that is not this block. An empty list means no plan covered that
+        day, so say nothing about a plan at all.
 
         COASTING: if the week is thinner than the last few and nothing in the data
         explains it, you may name it once, flatly, then move on. NEVER name it when
@@ -123,6 +137,9 @@ class PostRunSpeechNarrator
         private readonly StructuredChatCaller $caller,
         private readonly PastYouMatcher $pastYou,
         private readonly TrainingLoad $trainingLoad,
+        private readonly TrainingBaseline $trainingBaseline,
+        private readonly VdotEstimator $vdotEstimator,
+        private readonly TrainingPaceCalculator $paceCalculator,
     ) {
     }
 
@@ -177,13 +194,16 @@ class PostRunSpeechNarrator
      */
     public function toolbox(Activity $activity, ActivityDetail $detail): AgentToolbox
     {
+        $asOf = $detail->start_date_local ?? Carbon::now();
+
         return new AgentToolbox([
             new RunSummaryTool($activity, $detail),
             new TerrainTool($activity, $detail),
             new WeatherTool($activity, $detail),
             new PersonalRecordsTool($activity, $detail),
             new PastYouTool($activity, $detail, $this->pastYou),
-            new WeekStateTool($activity->user, $detail->start_date_local ?? Carbon::now(), $this->trainingLoad),
+            new WeekStateTool($activity->user, $asOf, $this->trainingLoad),
+            new PlanContextTool($activity->user, $asOf, $asOf, $this->trainingBaseline, $this->vdotEstimator, $this->paceCalculator),
         ]);
     }
 }

@@ -12,6 +12,7 @@ use App\Services\AI\Agent\Tools\EffortContextTool;
 use App\Services\AI\Agent\Tools\HrZonesTool;
 use App\Services\AI\Agent\Tools\KmSplitsTool;
 use App\Services\AI\Agent\Tools\LapsTool;
+use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\AI\Agent\Tools\RecentBaselineTool;
 use App\Services\AI\Agent\Tools\RunSummaryTool;
 use App\Services\AI\Agent\Tools\TerrainTool;
@@ -28,6 +29,7 @@ use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Support\Carbon;
 
 class RunInsightNarrator
@@ -133,6 +135,16 @@ class RunInsightNarrator
         split. Skip it if it's under ~20 km/h: wind that light isn't worth a
         claim.
 
+        THE PLAN: get_planned_sessions returns what was prescribed for the day
+        of this run -- session type, target pace, distance. Use it to READ a
+        reading, NEVER as the subject of a claim. A km at 5:41 on a day the
+        plan asked for 5:44 tempo is a split-anchored claim about landing on
+        the target; the same km with nothing prescribed is just a fast km. The
+        plan itself has no anchor, so a claim whose subject is the plan is
+        dropped by the gate above and wastes the whole claim. Anchor to the
+        split, zone or metric, and let the prescription say what it means. An
+        empty list means no plan covered that day.
+
         STRUCTURED SESSION: if get_laps gives a rep_count, the laps alternate
         fast-slow, meaning up-and-down pace IS the shape of the session by
         design, not messy pacing. A split-anchored claim about a "slow" km on
@@ -206,6 +218,7 @@ class RunInsightNarrator
         private readonly TrainingPaceCalculator $trainingPaceCalculator,
         private readonly RelativeEffort $relativeEffort,
         private readonly RunAnchorResolver $anchorResolver,
+        private readonly TrainingBaseline $trainingBaseline,
     ) {
     }
 
@@ -313,6 +326,7 @@ class RunInsightNarrator
             new TrainingLoadTool($activity->user, $asOf, $this->trainingLoad),
             new RecentBaselineTool($activity->user, $asOf, $this->baseline, $activity->id),
             new TrainingPacesTool($activity->user, $asOf, $this->vdotEstimator, $this->trainingPaceCalculator),
+            new PlanContextTool($activity->user, $asOf, $asOf, $this->trainingBaseline, $this->vdotEstimator, $this->trainingPaceCalculator),
         ]);
     }
 }

@@ -10,11 +10,16 @@ use App\Services\AI\Agent\Tools\CardIdentityTool;
 use App\Services\AI\Agent\Tools\EffortContextTool;
 use App\Services\AI\Agent\Tools\KmSplitsTool;
 use App\Services\AI\Agent\Tools\PersonalRecordsTool;
+use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\AI\Agent\Tools\RunSummaryTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\RelativeEffort;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
+use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\TrainingBaseline;
+use Illuminate\Support\Carbon;
 
 class CardFlavorNarrator
 {
@@ -66,6 +71,13 @@ class CardFlavorNarrator
         NEVER mention a PR or a personal record. An empty list means this run broke
         nothing, not that the data is missing.
 
+        WHAT WAS ASKED: get_planned_sessions returns what the training plan put
+        on the board for the day behind this card. The best use of it is the
+        gap: a long run cut short, a tempo held at the pace it asked for, or
+        ran_anyway true, meaning they ran a day they had already excused
+        themselves from. That last one is a card in itself. An empty list means
+        no plan covered that day, so say nothing about a plan.
+
         ANTI-PATTERN:
         - A generic sentence that could apply to any card.
         - Repeating the same formula for the same rarity.
@@ -86,6 +98,9 @@ class CardFlavorNarrator
     public function __construct(
         private readonly StructuredChatCaller $caller,
         private readonly RelativeEffort $relativeEffort,
+        private readonly TrainingBaseline $trainingBaseline,
+        private readonly VdotEstimator $vdotEstimator,
+        private readonly TrainingPaceCalculator $paceCalculator,
     ) {
     }
 
@@ -124,6 +139,8 @@ class CardFlavorNarrator
             return new AgentToolbox([new CardIdentityTool($card)]);
         }
 
+        $asOf = $detail->start_date_local ?? Carbon::now();
+
         return new AgentToolbox([
             new CardIdentityTool($card),
             new RunSummaryTool($activity, $detail),
@@ -131,6 +148,7 @@ class CardFlavorNarrator
             new WeatherTool($activity, $detail),
             new EffortContextTool($activity, $detail, $this->relativeEffort),
             new PersonalRecordsTool($activity, $detail),
+            new PlanContextTool($activity->user, $asOf, $asOf, $this->trainingBaseline, $this->vdotEstimator, $this->paceCalculator),
         ]);
     }
 }
