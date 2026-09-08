@@ -97,7 +97,7 @@ export const chipVariants = cva(
     {
         variants: {
             tone: {
-                neutral: 'bg-ink/[0.06] text-text-2',
+                neutral: 'bg-muted text-text-2',
                 horizon: 'bg-horizon/[0.18] text-horizon-ink',
                 sky: 'bg-sky/[0.08] text-sky',
                 onSky: 'bg-cream/10 text-cream/80',
@@ -145,7 +145,7 @@ export const toggleButtonVariants = cva(
  * arrows, modal dismiss). `onSky` flips it to the cream-on-dark treatment.
  */
 export const iconButtonVariants = cva(
-    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full transition text-text-2 hover:bg-ink/[0.06] hover:text-foreground focus-ring',
+    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full transition text-text-2 hover:bg-muted hover:text-foreground focus-ring',
     {
         variants: {
             size: {

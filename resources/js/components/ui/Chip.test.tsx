@@ -5,7 +5,7 @@ import Chip, { type ChipTone } from './Chip';
 
 describe('Chip', () => {
     it.each([
-        ['neutral', 'bg-ink/[0.06]'],
+        ['neutral', 'bg-muted'],
         ['horizon', 'bg-horizon/[0.18]'],
         ['sky', 'bg-sky/[0.08]'],
         ['onSky', 'bg-cream/10'],
