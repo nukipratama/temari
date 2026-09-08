@@ -40,12 +40,13 @@ it('routes the demo user to the inbox, like everyone else', function (): void {
 });
 
 // The payload is the flash payload verbatim, so the same takeover component can
-// replay the celebration from the inbox weeks later.
-it('carries the whole celebration payload, keyed on the unlock', function (): void {
+// replay the celebration from the inbox weeks later. It also carries the deep
+// link to the accessory shelf, without which the row renders no open control.
+it('carries the whole celebration payload and the shelf deep link, keyed on the unlock', function (): void {
     $message = new UnlockGrantedNotification(unlockCelebration())->toInbox(User::factory()->create());
 
     expect($message->kind)->toBe(NotificationKind::Unlock)
         ->and($message->title)->toBe('Unlocked: Legendary Shoes')
-        ->and($message->payload)->toBe(unlockCelebration())
+        ->and($message->payload)->toBe(unlockCelebration() + ['url' => route('profile')])
         ->and($message->dedupeKey)->toBe('unlock:accessory.shoes_legendary');
 });

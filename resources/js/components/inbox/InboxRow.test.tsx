@@ -23,7 +23,7 @@ const item = (overrides: Partial<InboxItem> = {}): InboxItem => ({
 
 function renderRow(overrides: Partial<InboxItem> = {}, props = {}) {
     const onOpen = vi.fn();
-    render(
+    const { container } = render(
         <InboxRow
             item={item(overrides)}
             read={false}
@@ -32,7 +32,7 @@ function renderRow(overrides: Partial<InboxItem> = {}, props = {}) {
             {...props}
         />,
     );
-    return { onOpen };
+    return { onOpen, container };
 }
 
 describe('InboxRow', () => {
@@ -86,6 +86,26 @@ describe('InboxRow', () => {
 
         await userEvent.click(link);
         expect(onOpen).toHaveBeenCalledTimes(1);
+    });
+
+    it('makes the whole row tappable, reporting it read like the pill does', async () => {
+        const { onOpen, container } = renderRow({
+            kind: 'unlock',
+            url: '/profile',
+        });
+
+        const overlay = container.querySelector('a[aria-hidden="true"]');
+        expect(overlay).toHaveAttribute('href', '/profile');
+        expect(overlay).toHaveAttribute('tabindex', '-1');
+
+        await userEvent.click(overlay!);
+        expect(onOpen).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves a row with nothing to open untappable', () => {
+        const { container } = renderRow();
+
+        expect(container.querySelector('a')).toBeNull();
     });
 
     it('rings the deep-linked row', () => {

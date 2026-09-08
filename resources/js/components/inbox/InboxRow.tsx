@@ -1,3 +1,4 @@
+import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 
 import type { InboxItem, NotificationKind } from '@/types/inertia';
@@ -83,11 +84,24 @@ export default function InboxRow({
         <Card
             as="article"
             className={cn(
-                'scroll-mt-24 transition',
+                'relative scroll-mt-24 transition',
                 !read && 'border-horizon bg-horizon/[0.07]',
                 focused && 'ring-2 ring-horizon',
             )}
         >
+            {item.url && (
+                /* A pointer affordance only: the visible "open" pill below is the
+                   accessible control, so this overlay stays out of the a11y tree
+                   rather than reading the row's target twice. */
+                <Link
+                    href={item.url}
+                    onClick={() => onOpen(item)}
+                    aria-hidden
+                    tabIndex={-1}
+                    className="absolute inset-0 z-10 rounded-md"
+                />
+            )}
+
             <div className="flex gap-3">
                 <span
                     aria-hidden
@@ -120,7 +134,7 @@ export default function InboxRow({
                         <button
                             type="button"
                             onClick={() => setShowAbsolute((prev) => !prev)}
-                            className="shrink-0 font-mono text-xs tabular-nums text-text-3"
+                            className="relative z-20 shrink-0 font-mono text-xs tabular-nums text-text-3"
                         >
                             <time
                                 dateTime={item.created_at ?? undefined}
@@ -160,7 +174,7 @@ export default function InboxRow({
                     )}
 
                     {item.url && (
-                        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                        <div className="relative z-20 mt-2.5 flex w-fit flex-wrap items-center gap-2">
                             <PillLink
                                 href={item.url}
                                 tone="outline"

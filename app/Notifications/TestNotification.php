@@ -53,6 +53,7 @@ class TestNotification extends Notification implements ShouldQueue
             kind: NotificationKind::Test,
             title: 'Test notification',
             body: TelegramReplies::test(),
+            payload: ['url' => route('dashboard')],
         );
     }
 
