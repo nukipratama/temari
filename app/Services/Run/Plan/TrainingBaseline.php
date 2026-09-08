@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Models\RaceGoal;
+use App\Models\Season;
 use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -29,6 +30,13 @@ use Illuminate\Support\Collection;
  * {@see SegmentGenerator::coreKmFor()} scales the whole week off that one
  * scalar. Anchoring on a trimmed weekly mean describes the athlete instead of
  * their biggest day. See docs/decisions/plan-volume-anchors-on-weekly-mean.md.
+ *
+ * That trailing mean SETS the volume once, at the start of a {@see Season},
+ * and is then frozen on the row: re-reading it every week made the ramp
+ * chase its own output and made a missed week shrink the next one. Every
+ * caller here reads the anchor of the season covering `$asOf`, so
+ * generation, render and a late compliance verdict all agree. See
+ * docs/decisions/the-arc-is-anchored-once.md.
  *
  * An explicit {@see TrainingPreference} sits above both: a set
  * `sessions_per_week` always wins over the behavioral average (this is the
@@ -131,12 +139,7 @@ final readonly class TrainingBaseline
         $preferredSessions = $preference?->sessions_per_week;
         $experienceLevel = $preference?->experience_level;
 
-        $weeks = WeeklySnapshot::query()
-            ->where('user_id', $user->id)
-            ->where('week_ending', '<=', $asOf->toDateString())
-            ->orderByDesc('week_ending')
-            ->limit(self::TRAILING_WEEKS)
-            ->get();
+        $weeks = self::trailingWeeks($user, $asOf);
 
         $hasHistory = ! $weeks->isEmpty();
         $seed = (! $hasHistory && $experienceLevel !== null) ? self::EXPERIENCE_SEED[$experienceLevel->value] : null;
@@ -149,13 +152,59 @@ final readonly class TrainingBaseline
             $sessionsPerWeek = $seed[0] ?? self::MIN_SESSIONS_PER_WEEK;
         }
 
-        $weeklyVolumeKm = $this->weeklyVolumeKm($weeks, $seed);
+        $weeklyVolumeKm = self::anchorFor($user, $asOf) ?? $this->weeklyVolumeKm($weeks, $seed);
 
         return [
             'sessions_per_week' => $sessionsPerWeek,
             'weekly_volume_km' => $weeklyVolumeKm,
             'long_run_km' => $this->longRunKm($user, $weeklyVolumeKm, $asOf),
         ];
+    }
+
+    /**
+     * The live trailing read, ignoring whatever the season has frozen — the
+     * value {@see SeasonService} anchors a new arc to, and the one it
+     * re-anchors against when the athlete's own volume has collapsed away
+     * from it.
+     */
+    public function trailingWeeklyVolumeKm(User $user, Carbon $asOf): float
+    {
+        $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
+        $weeks = self::trailingWeeks($user, $asOf);
+        $experienceLevel = $preference?->experience_level;
+        $seed = ($weeks->isEmpty() && $experienceLevel !== null) ? self::EXPERIENCE_SEED[$experienceLevel->value] : null;
+
+        return $this->weeklyVolumeKm($weeks, $seed);
+    }
+
+    /**
+     * The weekly volume the arc covering `$asOf` was anchored to, or null
+     * when nothing has anchored it — a season predating
+     * `docs/decisions/the-arc-is-anchored-once.md`, or an athlete with no
+     * season at all. The latest season *starting* on or before the date wins,
+     * so a day is always measured against the arc it was actually prescribed
+     * under, which is what keeps a late compliance verdict honest.
+     */
+    private static function anchorFor(User $user, Carbon $asOf): ?float
+    {
+        $anchor = Season::query()
+            ->where('user_id', $user->id)
+            ->whereDate('starts_at', '<=', $asOf->toDateString())
+            ->orderByDesc('starts_at')
+            ->value('anchor_weekly_volume_km');
+
+        return $anchor === null ? null : (float) $anchor;
+    }
+
+    /** @return Collection<int, WeeklySnapshot> */
+    private static function trailingWeeks(User $user, Carbon $asOf): Collection
+    {
+        return WeeklySnapshot::query()
+            ->where('user_id', $user->id)
+            ->where('week_ending', '<=', $asOf->toDateString())
+            ->orderByDesc('week_ending')
+            ->limit(self::TRAILING_WEEKS)
+            ->get();
     }
 
     private static function clampSessions(float $avgRuns): int

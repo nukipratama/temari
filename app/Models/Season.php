@@ -22,15 +22,27 @@ use Override;
  * "mode switch takes effect at the next call" rule {@see
  * \App\Services\Run\Plan\Periodizer} already follows.
  *
+ * `starts_at` is also the arc's own origin: every phase and volume
+ * multiplier is counted from the Monday of this date, not from whichever
+ * week happens to be current — see
+ * `docs/decisions/the-arc-is-anchored-once.md`. `anchor_weekly_volume_km`
+ * is the trailing weekly volume as it stood then, frozen so the ramp has
+ * something fixed to ramp off, and moved mid-season only by
+ * {@see \App\Services\Run\Plan\SeasonService::reanchorIfCollapsed()} — downward,
+ * past a sustained collapse. Null on a season created before that decision
+ * (and on a factory row); {@see \App\Services\Run\Plan\TrainingBaseline}
+ * falls back to the live trailing mean there.
+ *
  * @property int $id
  * @property int $user_id
  * @property int|null $race_goal_id
+ * @property float|null $anchor_weekly_volume_km
  * @property Carbon $starts_at
  * @property Carbon $ends_at
  * @property-read User $user
  * @property-read RaceGoal|null $raceGoal
  */
-#[Fillable(['user_id', 'race_goal_id', 'starts_at', 'ends_at'])]
+#[Fillable(['user_id', 'race_goal_id', 'anchor_weekly_volume_km', 'starts_at', 'ends_at'])]
 class Season extends Model
 {
     /** @use HasFactory<SeasonFactory> */
@@ -75,6 +87,7 @@ class Season extends Model
         return [
             'user_id' => 'integer',
             'race_goal_id' => 'integer',
+            'anchor_weekly_volume_km' => 'float',
             'starts_at' => 'date:Y-m-d',
             'ends_at' => 'date:Y-m-d',
         ];
