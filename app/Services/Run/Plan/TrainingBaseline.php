@@ -137,12 +137,11 @@ final readonly class TrainingBaseline
     {
         $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
         $preferredSessions = $preference?->sessions_per_week;
-        $experienceLevel = $preference?->experience_level;
 
         $weeks = self::trailingWeeks($user, $asOf);
 
         $hasHistory = ! $weeks->isEmpty();
-        $seed = (! $hasHistory && $experienceLevel !== null) ? self::EXPERIENCE_SEED[$experienceLevel->value] : null;
+        $seed = self::seedFor($preference, $weeks);
 
         if ($preferredSessions !== null) {
             $sessionsPerWeek = $preferredSessions;
@@ -171,10 +170,8 @@ final readonly class TrainingBaseline
     {
         $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
         $weeks = self::trailingWeeks($user, $asOf);
-        $experienceLevel = $preference?->experience_level;
-        $seed = ($weeks->isEmpty() && $experienceLevel !== null) ? self::EXPERIENCE_SEED[$experienceLevel->value] : null;
 
-        return $this->weeklyVolumeKm($weeks, $seed);
+        return $this->weeklyVolumeKm($weeks, self::seedFor($preference, $weeks));
     }
 
     /**
@@ -194,6 +191,17 @@ final readonly class TrainingBaseline
             ->value('anchor_weekly_volume_km');
 
         return $anchor === null ? null : (float) $anchor;
+    }
+
+    /**
+     * @param  Collection<int, WeeklySnapshot>  $weeks
+     * @return array{int, float}|null
+     */
+    private static function seedFor(?TrainingPreference $preference, Collection $weeks): ?array
+    {
+        $experienceLevel = $preference?->experience_level;
+
+        return ($weeks->isEmpty() && $experienceLevel !== null) ? self::EXPERIENCE_SEED[$experienceLevel->value] : null;
     }
 
     /** @return Collection<int, WeeklySnapshot> */

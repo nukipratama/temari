@@ -52,6 +52,10 @@ final class PlanRenderer
             return $first->phase;
         })->sortKeys();
 
+        // Read off the SAME row the phase is, never a different one in the
+        // week: the two are written together, and a week whose phase and
+        // multiplier came from different rows could render a Deload header
+        // over Build kilometres.
         $stamped = [];
         foreach ($phaseByWeek->keys()->all() as $weekKey) {
             $multiplier = $sessionsByWeek->get($weekKey)?->first()?->volume_multiplier;

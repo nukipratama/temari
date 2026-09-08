@@ -49,6 +49,45 @@ it('weekPhasesAndMultipliers ramps a multi-week Build block relative to its own 
         ->and($multiplierByWeek['2026-08-17'])->toBeGreaterThan($multiplierByWeek['2026-08-10']);
 });
 
+it('weekPhasesAndMultipliers reads a week\'s phase and multiplier off the same row', function (): void {
+    // A pinned row, or one already carrying a verdict, is never overwritten
+    // by regeneration, so it can be left holding an older phase AND an older
+    // multiplier than the rest of its week. Whichever row the week reads, it
+    // must read both from it — a Deload header over Build kilometres would
+    // be worse than either row's own reading.
+    $stalePinned = PlannedSession::factory()->make([
+        'date' => '2026-08-03',
+        'phase' => PlanPhase::Build,
+        'pinned' => true,
+        'volume_multiplier' => 1.075,
+    ]);
+    $fresh = PlannedSession::factory()->count(3)->make([
+        'date' => '2026-08-05',
+        'phase' => PlanPhase::Deload,
+        'volume_multiplier' => 0.65,
+    ]);
+
+    [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers(
+        collect(['2026-08-03' => collect([$stalePinned, ...$fresh])]),
+    );
+
+    expect($phaseByWeek->get('2026-08-03'))->toBe(PlanPhase::Build)
+        ->and($multiplierByWeek['2026-08-03'])->toBe(1.075);
+});
+
+it('weekPhasesAndMultipliers falls back to the phase-sequence recompute when a week is unstamped', function (): void {
+    $stamped = PlannedSession::factory()->make(['phase' => PlanPhase::Build, 'volume_multiplier' => 1.075]);
+    $unstamped = PlannedSession::factory()->make(['phase' => PlanPhase::Build, 'volume_multiplier' => null]);
+
+    [, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers(collect([
+        '2026-08-03' => collect([$stamped]),
+        '2026-08-10' => collect([$unstamped]),
+    ]));
+
+    expect($multiplierByWeek['2026-08-03'])->toBe(1.0)
+        ->and($multiplierByWeek['2026-08-10'])->toBe(1.075);
+});
+
 it('dayPayload generates segments fresh from the stored session when there is no clamp', function (): void {
     $session = PlannedSession::factory()->make([
         'date' => '2026-08-10',
