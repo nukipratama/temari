@@ -118,6 +118,7 @@ final class PlanRenderer
      * @param  bool  $isPrimaryEasy  whether this is the week's first (bigger) Easy day — see {@see SegmentGenerator::coreKmFor()}
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
      * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null}>}|null  $activity  every run logged that day, for the planned-vs-actual bar and the links out
+     * @param  ?int  $raceGoalTimeSec  the active race's `goal_time_sec` — what race day is prescribed at
      * @return array<string, mixed>
      */
     public static function dayPayload(
@@ -133,6 +134,7 @@ final class PlanRenderer
         PlannedSessionStatus $status,
         ?array $activity = null,
         ?string $clampVoice = null,
+        ?int $raceGoalTimeSec = null,
     ): array {
         $isToday = $s->date->isSameDay($today);
         $volumeScale = $volumeScaleByDate[$s->date->toDateString()] ?? 1.0;
@@ -150,6 +152,7 @@ final class PlanRenderer
             $multiplier,
             $paces,
             $volumeScale,
+            $raceGoalTimeSec,
         );
         // The whole outing, and the figure the segments beneath it add up to.
         // An Interval day is the one that cannot land on its own budget — a

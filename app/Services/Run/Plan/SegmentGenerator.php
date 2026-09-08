@@ -176,6 +176,7 @@ final class SegmentGenerator
      * @param  ?float  $raceDistanceM  the active {@see \App\Models\RaceGoal}'s distance, or null in self-scaled mode
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces  seconds per kilometre; null when the athlete has no VDOT estimate yet
      * @param  float  $volumeScale  from {@see VolumeRedistributor} — 1.0 outside a redistributed week
+     * @param  ?int  $raceGoalTimeSec  the active race's `goal_time_sec`, which is what a `Race` day is run at
      * @return list<SessionSegment>
      */
     public static function generate(
@@ -187,6 +188,7 @@ final class SegmentGenerator
         float $volumeMultiplier,
         ?array $paces,
         float $volumeScale = 1.0,
+        ?int $raceGoalTimeSec = null,
     ): array {
         if ($sessionType === SessionType::Rest) {
             return [];
@@ -197,7 +199,7 @@ final class SegmentGenerator
         // The race is the distance it is: a redistributed week may scale the
         // training around it, never the event itself.
         if ($sessionType === SessionType::Race) {
-            return self::raceSegments(self::coreKmFor($sessionType, $isPrimaryEasy, $longRunBaselineKm, $volumeMultiplier, $raceDistanceM), $isMarathonDistance, $paces);
+            return self::raceSegments(self::coreKmFor($sessionType, $isPrimaryEasy, $longRunBaselineKm, $volumeMultiplier, $raceDistanceM), $isMarathonDistance, $paces, $raceGoalTimeSec);
         }
 
         $coreKm = self::coreKmFor($sessionType, $isPrimaryEasy, $longRunBaselineKm, $volumeMultiplier) * $volumeScale;
@@ -216,12 +218,31 @@ final class SegmentGenerator
      * race-day routine belongs to the athlete, the same reasoning that keeps
      * a cooldown off every other session (see `docs/decisions/a-session-is-the-whole-outing.md`).
      *
+     * The pace is the athlete's own goal, not a training zone: the goal time
+     * over the race distance. The band still labels which zone that effort
+     * sits in. Without a goal time — a race read back after
+     * `plan:close-finished-races` has retired the goal behind it — the band's
+     * own pace stands in.
+     *
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
      * @return list<SessionSegment>
      */
-    private static function raceSegments(float $km, bool $isMarathonDistance, ?array $paces): array
+    private static function raceSegments(float $km, bool $isMarathonDistance, ?array $paces, ?int $goalTimeSec): array
     {
-        return [self::block(SegmentKey::Main, $km, $isMarathonDistance ? PaceBand::Marathon : PaceBand::Threshold, $paces)];
+        $band = $isMarathonDistance ? PaceBand::Marathon : PaceBand::Threshold;
+
+        if ($goalTimeSec === null || $goalTimeSec <= 0 || $km <= 0.0) {
+            return [self::block(SegmentKey::Main, $km, $band, $paces)];
+        }
+
+        return [new SessionSegment(
+            SegmentKey::Main,
+            round($goalTimeSec / 60, 1),
+            self::zoneFor($band),
+            $band,
+            (int) round($goalTimeSec / $km),
+            round($km, 1),
+        )];
     }
 
     /**

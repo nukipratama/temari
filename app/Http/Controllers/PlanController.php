@@ -241,6 +241,7 @@ class PlanController extends Controller
                     $fallbackStatuses[$s->date->toDateString()] ?? $s->status,
                     $activityByDate[$s->date->toDateString()] ?? null,
                     $clampVoice,
+                    $race !== null && $s->date->isSameDay($race->race_date) ? $race->goal_time_sec : null,
                 ))->all(),
             ];
         }

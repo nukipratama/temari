@@ -296,6 +296,22 @@ it('races a marathon at marathon pace and anything shorter at threshold', functi
         ->and($tenK[0]->paceLabel)->toBe(PaceBand::Threshold);
 });
 
+it('runs race day at the goal pace rather than at the threshold band', function (): void {
+    // A 10K goal of 59:00 is 5:54/km, well slower than this athlete's 4:30/km
+    // threshold: the race is run at the goal, not at the training zone.
+    $segments = SegmentGenerator::generate(SessionType::Race, PlanPhase::Taper, 10_000.0, false, 16.0, 1.0, PACES, 1.0, 3_540);
+
+    expect($segments[0]->paceSecPerKm)->toBe(354)
+        ->and($segments[0]->minutes)->toBe(59.0)
+        ->and($segments[0]->paceLabel)->toBe(PaceBand::Threshold);
+});
+
+it('falls back to the pace band on a race day with no goal time behind it', function (): void {
+    $segments = SegmentGenerator::generate(SessionType::Race, PlanPhase::Taper, 10_000.0, false, 16.0, 1.0, PACES);
+
+    expect($segments[0]->paceSecPerKm)->toBe(PACES['threshold']);
+});
+
 it('sizes a race day from the race rather than the training baseline', function (): void {
     expect(SegmentGenerator::coreKmFor(SessionType::Race, false, 16.0, 1.0, 10_000.0))->toBe(10.0)
         ->and(SegmentGenerator::coreKmFor(SessionType::Race, false, 99.0, 2.0, 10_000.0))->toBe(10.0);

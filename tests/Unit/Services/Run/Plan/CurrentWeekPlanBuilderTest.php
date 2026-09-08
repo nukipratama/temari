@@ -7,6 +7,7 @@ use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
+use App\Models\RaceGoal;
 use App\Models\User;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\Plan\SegmentGenerator;
@@ -52,6 +53,34 @@ it('builds sessions_this_week, phase, and one day payload per planned session', 
         ->and($result['phase'])->toBe('base')
         ->and($result['days'])->toHaveCount(7)
         ->and($result['days'][0]['date'])->toBe($weekStart->toDateString());
+
+    Carbon::setTestNow();
+});
+
+it('never prices an old race day at a newer race goal\'s time', function (): void {
+    Carbon::setTestNow('2026-08-12'); // a Wednesday
+    $user = User::factory()->create();
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    seedWeekOfSessions($user, $weekStart);
+    // A 10K race day left in this week by a goal that has since been retired,
+    // and a fresh marathon goal a month out. The row keeps its own distance;
+    // it must not borrow the new goal's four-hour finish, which over 10 km
+    // would read as 24:00/km.
+    PlannedSession::query()->where('user_id', $user->id)->where('date', $weekStart->copy()->addDay())->update([
+        'session_type' => SessionType::Race,
+        'race_distance_m' => 10_000,
+    ]);
+    RaceGoal::factory()->for($user)->create([
+        'race_date' => '2026-09-20',
+        'distance_m' => 42_195,
+        'goal_time_sec' => 14_400,
+    ]);
+
+    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+
+    $raceDay = collect($result['days'])->firstWhere('date', $weekStart->copy()->addDay()->toDateString());
+    expect($raceDay['session_type'])->toBe('race')
+        ->and($raceDay['segments'][0]['pace_sec_per_km'])->toBeNull();
 
     Carbon::setTestNow();
 });
