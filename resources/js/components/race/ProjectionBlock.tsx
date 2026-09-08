@@ -15,6 +15,7 @@ export interface RaceProjection {
     high_sec: number;
     sample_size: number;
     confidence: 'low' | 'medium' | 'high';
+    window: 'recent' | 'all';
 }
 
 interface ProjectionBlockProps {
@@ -26,6 +27,11 @@ const CONFIDENCE_COPY: Record<RaceProjection['confidence'], string> = {
     low: 'wide range, thin PR sample',
     medium: 'moderate range',
     high: 'narrow range, well-fitted',
+};
+
+const WINDOW_COPY: Record<RaceProjection['window'], string> = {
+    recent: 'in the last 4 months',
+    all: 'across your whole record',
 };
 
 const GLOW =
@@ -82,7 +88,8 @@ export default function ProjectionBlock({
                     {formatDurationHMS(Math.round(predictedSec))}
                 </p>
                 <p className="relative mt-1.5 text-center text-xs leading-relaxed text-text-2">
-                    Best estimate, from {prLabel} (
+                    Best estimate, from {prLabel}{' '}
+                    {WINDOW_COPY[projection.window]} (
                     {CONFIDENCE_COPY[projection.confidence]}).
                 </p>
             </motion.div>
