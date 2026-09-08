@@ -22,7 +22,7 @@ Every row is something Temari already sent; nothing is written here, and nothing
 
 ## The kinds
 
-Seven, each with its own row treatment ([NotificationKind](../../app/Enums/NotificationKind.php#L13)).
+Eight, each with its own row treatment ([NotificationKind](../../app/Enums/NotificationKind.php#L13)).
 Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never the kind's.
 
 | kind | what fires it | channels | opens |
@@ -31,9 +31,24 @@ Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never
 | `weekly_recap` | Monday's recap, or the manual send on the Feed | inbox · Telegram · push | that week in history |
 | `monthly_recap` | the 1st's recap, or the manual send on the Calendar | inbox · Telegram · push | that month on the calendar |
 | `streak_reminder` | Saturday 18:00, one per at-risk week | inbox · Telegram · push | the dashboard |
+| `plan_clamp` | a rest day being stepped down | inbox only | the plan |
 | `strava_disconnected` | the Strava grant being revoked | inbox · Telegram · push | the profile, where the reconnect button is |
 | `unlock` | an eligible run or backfill granting one | inbox only | the accessory shelf |
 | `test` | the "send test notification" button | inbox · Telegram · push | the dashboard |
+
+**`plan_clamp` is inbox-only, like an unlock.** A step-down used to exist only while the plan page
+still rendered it: [RestClampRecorder](../../app/Services/Run/Plan/RestClampRecorder.php#L76) already
+wrote the outcome so compliance could grade the day the athlete was actually set, and that write is
+now also where they are told. Its guards make it the one place that fires once per athlete per day,
+so the row inherits that dedupe rather than adding its own, and a ceiling that recovers later does
+not delete what was already said. The clamp is advisory ([[readiness-clamp-is-advisory]]) and the
+briefing path records it at 00:01, so a lock screen is the wrong place for it — and
+`notifications_enabled`, which enumerates what it governs, does not name it either.
+
+The body is the clamp's own explanation, in whichever voice has reached it: the `plan_clamp_voice`
+row once one is `done`, and otherwise the templated note that [[the-clamp-explains-itself]] keeps as
+a permanent floor. The note is what a row usually carries, because the narration is requested moments
+before the notification is queued.
 
 **`strava_disconnected` is the one kind the master switch does not govern.** Until it notified, the
 only surface that admitted a dead grant was the empty-runs hero, a screen an athlete with runs on
