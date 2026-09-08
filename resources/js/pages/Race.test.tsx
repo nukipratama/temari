@@ -19,6 +19,7 @@ const PROJECTION = {
     exponent: 1.06,
     sample_size: 2,
     confidence: 'medium' as const,
+    window: 'recent' as const,
 };
 
 describe('Race', () => {
