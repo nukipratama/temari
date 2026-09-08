@@ -86,7 +86,7 @@ function ClampStepDown({
         <div className="mt-2 border-l-2 border-border-strong pl-3">
             <p className="flex items-center gap-1.5 text-label-micro text-text-2">
                 <Icon icon="mdi:arrow-down" className="size-3" aria-hidden />
-                eased today
+                {clamp.label}
             </p>
             <p className="mt-0.5 text-xs font-semibold text-foreground">
                 {clampSummary(clamp, plannedKm)}

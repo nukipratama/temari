@@ -7,6 +7,7 @@ use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Services\Run\Plan\PlanRenderer;
+use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\SegmentGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -104,6 +105,7 @@ it('dayPayload carries the clamp beside today\'s own prescription, never in plac
             'distance_km' => $clamp['core_km'],
             'pace_sec_per_km' => RENDERER_PACES['easy'],
             'note' => 'Clamped for low readiness.',
+            'label' => 'eased today',
         ]);
 
     $tomorrowSession = PlannedSession::factory()->make([
@@ -236,4 +238,90 @@ it('dayPayload puts the race on the card at its own distance, whatever the train
     expect($payload['session_type'])->toBe('race')
         ->and($payload['distance_km'])->toBe(21.1)
         ->and($payload['segments'])->toHaveCount(1);
+});
+
+/**
+ * `Readiness::assess()` caps to EasyOnly on `ranToday` alone, so finishing the
+ * session is itself what clamps it. Left alone the card reads "today backs off
+ * to easy" beside a DONE badge, as a verdict on work already done. It is
+ * guidance for a second outing, and once credited it says so.
+ */
+it('dayPayload turns the clamp into second-session guidance once the day is credited', function (PlannedSessionStatus $status): void {
+    $today = Carbon::parse('2026-08-10');
+    $session = PlannedSession::factory()->make([
+        'date' => $today,
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'pinned' => false,
+    ]);
+    $clamp = [
+        'session_type' => SessionType::Easy,
+        'segments' => SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, false, 20.0, 1.0, RENDERER_PACES),
+        'core_km' => SegmentGenerator::coreKmFor(SessionType::Easy, false, 20.0, 1.0),
+        'note' => 'Quality work waits until you are fresher.',
+    ];
+
+    $payload = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, RENDERER_PACES, $status);
+
+    expect($payload['clamp']['label'])->toBe('anything else today')
+        ->and($payload['clamp']['note'])->toBe(ReadinessClamp::secondSessionNote(SessionType::Easy))
+        ->and($payload['clamp']['distance_km'])->toBe($clamp['core_km']);
+})->with([
+    PlannedSessionStatus::Done,
+    PlannedSessionStatus::Partial,
+    PlannedSessionStatus::Overreached,
+]);
+
+/** Nothing has been run yet, so the step-down is still a step-down. */
+it('dayPayload keeps the forecast wording on a day not yet credited', function (PlannedSessionStatus $status): void {
+    $today = Carbon::parse('2026-08-10');
+    $session = PlannedSession::factory()->make([
+        'date' => $today,
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'pinned' => false,
+    ]);
+    $clamp = [
+        'session_type' => SessionType::Easy,
+        'segments' => SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, false, 20.0, 1.0, RENDERER_PACES),
+        'core_km' => SegmentGenerator::coreKmFor(SessionType::Easy, false, 20.0, 1.0),
+        'note' => 'Quality work waits until you are fresher.',
+    ];
+
+    $payload = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, RENDERER_PACES, $status);
+
+    expect($payload['clamp']['label'])->toBe('eased today')
+        ->and($payload['clamp']['note'])->toBe('Quality work waits until you are fresher.');
+})->with([
+    PlannedSessionStatus::Planned,
+    PlannedSessionStatus::Missed,
+    PlannedSessionStatus::Skip,
+]);
+
+/**
+ * The narrated clamp line was written for the forecast, so it cannot stand once
+ * the day is done. Re-narrating instead would bill an LLM call from a GET, which
+ * `readiness-clamp-is-advisory.md` rules out.
+ */
+it('dayPayload drops the narrated clamp voice once the day is credited', function (): void {
+    $today = Carbon::parse('2026-08-10');
+    $session = PlannedSession::factory()->make([
+        'date' => $today,
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'pinned' => false,
+    ]);
+    $clamp = [
+        'session_type' => SessionType::Easy,
+        'segments' => SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, false, 20.0, 1.0, RENDERER_PACES),
+        'core_km' => SegmentGenerator::coreKmFor(SessionType::Easy, false, 20.0, 1.0),
+        'note' => 'Templated floor.',
+    ];
+    $voice = 'a heavy stretch is catching up, so today backs off to easy.';
+
+    $credited = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Done, null, $voice);
+    $pending = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned, null, $voice);
+
+    expect($credited['clamp']['note'])->not->toBe($voice)
+        ->and($pending['clamp']['note'])->toBe($voice);
 });
