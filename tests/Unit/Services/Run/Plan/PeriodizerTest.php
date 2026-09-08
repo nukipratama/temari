@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
 use App\Enums\PlanPhase;
+use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
@@ -395,4 +396,24 @@ it('leaves nothing behind when a near-term race shrinks the horizon, and refills
     $this->periodizer->regenerate($user);
 
     expect(PlannedSession::query()->where('user_id', $user->id)->max('date'))->toBe($selfScaledEnd);
+});
+
+it('keeps today\'s row when the day has already been scored', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    $scored = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Long,
+        'status' => PlannedSessionStatus::Done,
+        'compliance_score' => 104,
+        'prescribed_km' => 12.0,
+    ]);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    $fresh = $scored->fresh();
+    expect($fresh)->not->toBeNull()
+        ->and($fresh->status)->toBe(PlannedSessionStatus::Done)
+        ->and($fresh->compliance_score)->toBe(104)
+        ->and($fresh->session_type)->toBe(SessionType::Long);
 });

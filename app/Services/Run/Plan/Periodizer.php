@@ -26,6 +26,8 @@ use Illuminate\Support\Facades\DB;
  * - Past dates (before `$today`) are never touched.
  * - Pinned rows are read first and never overwritten; the rest of each week
  *   is planned around them.
+ * - A row already carrying a verdict is left alone, even inside the
+ *   today-forward window: it records what was run, not what is still planned.
  * - A mode switch (race set/cleared) only takes effect at the next call —
  *   this method always reads the CURRENT active race fresh.
  * - The plan reacts to what actually happened: {@see PlanAdapter} can turn
@@ -89,6 +91,22 @@ final readonly class Periodizer
             true,
         );
 
+        // A day that already carries a verdict is the record of what was run,
+        // not a slot left to plan. Since compliance lands at ingest rather
+        // than at 00:03 the next morning, regeneration can meet a settled row
+        // inside its own today-forward window — see
+        // `docs/decisions/a-day-is-scored-when-it-is-run.md`.
+        $settledDates = array_fill_keys(
+            PlannedSession::query()
+                ->where('user_id', $user->id)
+                ->where('status', '!=', PlannedSessionStatus::Planned)
+                ->whereBetween('date', [$today->toDateString(), $deleteHorizonEnd->toDateString()])
+                ->pluck('date')
+                ->map(fn (Carbon $date): string => $date->toDateString())
+                ->all(),
+            true,
+        );
+
         $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
         // How long the race will take this athlete, not how far it is: the same
         // 10K is a VO2max event for one runner and a threshold event for
@@ -118,7 +136,7 @@ final readonly class Periodizer
             }
         }
 
-        DB::transaction(function () use ($user, $today, $currentWeekStart, $deleteHorizonEnd, $rows, $adaptation, $raceDistanceM): void {
+        DB::transaction(function () use ($user, $today, $currentWeekStart, $deleteHorizonEnd, $rows, $settledDates, $adaptation, $raceDistanceM): void {
             // Clear the full horizon's stale unpinned rows (not just the
             // freshly-computed weeks) so a shrinking horizon — e.g. a
             // self-scaled plan's far-future weeks after the user sets a
@@ -126,10 +144,15 @@ final readonly class Periodizer
             PlannedSession::query()
                 ->where('user_id', $user->id)
                 ->where('pinned', false)
+                ->where('status', PlannedSessionStatus::Planned)
                 ->whereBetween('date', [$today->toDateString(), $deleteHorizonEnd->toDateString()])
                 ->delete();
 
             foreach ($rows as $date => $row) {
+                if (isset($settledDates[$date])) {
+                    continue;
+                }
+
                 PlannedSession::query()->updateOrCreate(
                     ['user_id' => $user->id, 'date' => $date],
                     [
