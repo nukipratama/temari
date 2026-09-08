@@ -22,7 +22,8 @@ use Illuminate\Support\Carbon;
 final class TrendRangeTool extends NoArgumentTool
 {
     /** @var array<string, int> */
-    private const array RANGE_DAYS = ['30d' => 30, '90d' => 90, '12mo' => 365];
+    /** Also read by narrators binding a second tool to the same window. */
+    public const array RANGE_DAYS = ['30d' => 30, '90d' => 90, '12mo' => 365];
 
     public function __construct(
         private readonly User $user,

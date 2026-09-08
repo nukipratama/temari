@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\LifetimeStatsTool;
 use App\Services\AI\Agent\Tools\PersonaMixTool;
+use App\Services\AI\Agent\Tools\PlanAdherenceTool;
 use App\Services\AI\Agent\Tools\ProgressionSignalTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\ChatCallOptions;
@@ -57,6 +58,16 @@ class ProfileVoiceNarrator
         that used to have hard days in it and now doesn't is a real observation, and
         the honest version of it is more useful to them than a compliment.
 
+        HOW THEY TREAT A PLAN: get_plan_adherence counts their whole history
+        against what was prescribed -- done, partial, missed, overreached,
+        excused, ran_anyway, and a mean compliance score. This is identity
+        evidence, not a report card: someone who holds the plan and someone who
+        improvises around it are two different runners, and both are worth
+        saying plainly. ran_anyway is the most characterful of these, an athlete
+        who excuses a day and then runs it anyway. NEVER read it as a grade,
+        never print the mean score as a mark out of 100, and never scold. If
+        prescribed is 0 they have no plan history, so skip this entirely.
+
         FLOW (one flowing paragraph, no headers or bullets):
         1. Identity: which mood shows up most in get_persona_mix and what that says
            about the user's running style. Mention a percentage or ratio when it's
@@ -64,13 +75,17 @@ class ProfileVoiceNarrator
            direction from persona_mix_earlier (the 6 weeks before that), call out the
            SHIFT, e.g. "lately you've been on fire more than last month's quieter
            stretch". If they're similar or one is empty, don't force it.
-        2. Evidence: one, at most two numbers from get_lifetime_stats or
-           get_progression_signal that EXPLAIN the identity above, connected
-           explicitly. Example connectors: "and that shows up in ...", "the numbers
-           back it up: ...", "which is why ...". Total km, total runs, time spent
-           running, weekly_streak, PRs, an unlocked accessory, or a falling
-           delta_sec in progression. Pick whichever connects best to the claim, not
-           the biggest number.
+        2. Evidence: one, at most two numbers from get_lifetime_stats,
+           get_progression_signal or get_plan_adherence that EXPLAIN the identity
+           above, connected explicitly. Example connectors: "and that shows up in
+           ...", "the numbers back it up: ...", "which is why ...". Total km, total
+           runs, time spent running, weekly_streak, PRs, an unlocked accessory, a
+           falling delta_sec in progression, or how they treat a prescribed
+           session. Pick whichever connects best to the claim, not the biggest
+           number. When get_plan_adherence shows a lopsided record -- most sessions
+           held, or most of them let go -- that IS the identity and it outranks a
+           lifetime total, because a total says what they have done and adherence
+           says how they operate.
         3. One gentle nudge that fits that persona, not a generic new target.
 
         If weekly_streak >= 2, fine to use as evidence of consistency (e.g.
@@ -172,6 +187,7 @@ class ProfileVoiceNarrator
             new PersonaMixTool($user, $asOf),
             new TrainingPacesTool($user, $asOf, $this->vdotEstimator, $this->trainingPaceCalculator),
             new ProgressionSignalTool($user, $asOf, $this->progressionSeriesBuilder),
+            new PlanAdherenceTool($user, $asOf, null),
         ]);
     }
 

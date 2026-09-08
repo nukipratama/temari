@@ -6,10 +6,12 @@ namespace App\Services\AI\Narrators;
 
 use App\Models\User;
 use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\Agent\Tools\PlanAdherenceTool;
 use App\Services\AI\Agent\Tools\TrendRangeTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\TrainingLoad;
+use Illuminate\Support\Carbon;
 
 /**
  * "Temari's read" on the Trends tab: one narrated take on the user's
@@ -42,6 +44,18 @@ class TrendReadNarrator
           12mo as "this year vs last year": you were not given a prior
           year, only this window's own two halves.
 
+        THE PLAN: get_plan_adherence returns how the athlete held their
+        training plan across this same range, as counts -- prescribed,
+        done, partial, missed, overreached, excused, and a mean
+        compliance score. Adherence is a trend like any other, and it is
+        often the reading that explains the rest: a quarter where the
+        volume fell and the missed count climbed is one story, and a
+        quarter where they held every session while fitness slid is a
+        different one entirely. Use it when it explains the range better
+        than load or fitness do, not as an extra sentence bolted on. It
+        counts days, so it is bound by the number limit below.
+        prescribed 0 means no plan covered this range.
+
         NUMBER LIMIT: max 3 numbers across title + description combined,
         and one of them must be the current-vs-comparison figure that
         drives the reading. This is a ceiling, not a target: a good
@@ -60,6 +74,15 @@ class TrendReadNarrator
         - load shape: avg_monotony above 2 means the load was unusually
           uniform (a known injury-risk pattern), worth naming once if it
           stands out, not a default thing to mention.
+        - plan adherence: get_plan_adherence's counts. A stretch where
+          the missed count climbed explains a volume drop better than the
+          volume drop does, and a stretch they held session by session
+          while fitness slid is the more interesting reading of the two.
+          Its counts cover the WHOLE range you were asked to read, which
+          on 12mo means both halves together, NOT the `current` half. So
+          never pair an adherence count with a current-vs-comparison
+          figure as though the two describe the same stretch of time.
+          Skip it when prescribed is 0.
         Don't stack two or more of these into one answer.
 
         Title: one short sentence, the headline. A number is not required
@@ -105,8 +128,15 @@ class TrendReadNarrator
                 temperature: 0.7,
                 userId: $user->id,
                 maxTokens: 1200,
-                toolbox: new AgentToolbox([new TrendRangeTool($user, $range, $this->trainingLoad)]),
-                maxSteps: 4,
+                toolbox: new AgentToolbox([
+                    new TrendRangeTool($user, $range, $this->trainingLoad),
+                    new PlanAdherenceTool(
+                        $user,
+                        Carbon::today(),
+                        Carbon::today()->subDays((TrendRangeTool::RANGE_DAYS[$range] ?? TrendRangeTool::RANGE_DAYS['30d']) - 1),
+                    ),
+                ]),
+                maxSteps: 6,
             ),
         );
 

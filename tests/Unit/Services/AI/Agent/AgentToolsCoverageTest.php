@@ -24,6 +24,8 @@ use App\Services\AI\Agent\Tools\TerrainTool;
 use App\Services\AI\Agent\Tools\TrainingLoadTool;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
+use App\Enums\PlannedSessionStatus;
+use App\Services\AI\Agent\Tools\PlanAdherenceTool;
 use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
@@ -961,4 +963,103 @@ it('answers with an empty span rather than failing when no plan covers it', func
     $user = User::factory()->create();
 
     expect(planContextTool($user, Carbon::today(), Carbon::today())->handle([]))->toBe(['days' => []]);
+});
+
+// ── PlanAdherenceTool ─────────────────────────────────────────────────
+
+/**
+ * @param  array<int, array<string, mixed>>  $sessions
+ */
+function seedPlan(User $user, array $sessions): void
+{
+    foreach ($sessions as $attributes) {
+        PlannedSession::factory()->for($user)->create($attributes);
+    }
+}
+
+it('counts how the plan was held rather than listing the days', function (): void {
+    $user = User::factory()->create();
+    $monday = Carbon::parse('2026-09-07');
+
+    seedPlan($user, [
+        ['date' => $monday->toDateString(), 'status' => PlannedSessionStatus::Done, 'compliance_score' => 100],
+        ['date' => $monday->copy()->addDay()->toDateString(), 'status' => PlannedSessionStatus::Missed, 'compliance_score' => 0],
+        ['date' => $monday->copy()->addDays(2)->toDateString(), 'status' => PlannedSessionStatus::Partial, 'compliance_score' => 50],
+        ['date' => $monday->copy()->addDays(3)->toDateString(), 'status' => PlannedSessionStatus::Overreached, 'compliance_score' => 150],
+        ['date' => $monday->copy()->addDays(4)->toDateString(), 'status' => PlannedSessionStatus::Skip, 'skipped' => true, 'ran_anyway' => true],
+    ]);
+
+    $reading = new PlanAdherenceTool($user, $monday->copy()->addDays(4), $monday)->handle([]);
+
+    expect($reading)->toMatchArray([
+        'from' => '2026-09-07',
+        'through' => '2026-09-11',
+        'prescribed' => 5,
+        'done' => 1,
+        'missed' => 1,
+        'partial' => 1,
+        'overreached' => 1,
+        'excused' => 1,
+        'ran_anyway' => 1,
+    ]);
+});
+
+/** The excused day is never scored, so it must not drag the average toward zero. */
+it('averages compliance across the graded days only', function (): void {
+    $user = User::factory()->create();
+    $monday = Carbon::parse('2026-09-07');
+
+    seedPlan($user, [
+        ['date' => $monday->toDateString(), 'status' => PlannedSessionStatus::Done, 'compliance_score' => 90],
+        ['date' => $monday->copy()->addDay()->toDateString(), 'status' => PlannedSessionStatus::Partial, 'compliance_score' => 60],
+        ['date' => $monday->copy()->addDays(2)->toDateString(), 'status' => PlannedSessionStatus::Skip, 'skipped' => true],
+    ]);
+
+    expect(new PlanAdherenceTool($user, $monday->copy()->addDays(2), $monday)->handle([])['mean_compliance'])->toBe(75);
+});
+
+/** A future day is prescribed but not yet lived, so counting it would report a miss that has not happened. */
+it('stops at the as-of date and never counts a day still ahead', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::today();
+
+    seedPlan($user, [
+        ['date' => $today->toDateString(), 'status' => PlannedSessionStatus::Done, 'compliance_score' => 100],
+        ['date' => $today->copy()->addDay()->toDateString(), 'status' => PlannedSessionStatus::Planned],
+    ]);
+
+    expect(new PlanAdherenceTool($user, $today, null)->handle([])['prescribed'])->toBe(1);
+});
+
+/** A null `from` is what the profile voice binds: the athlete's whole history. */
+it('reads the whole history when given no lower bound', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::today();
+
+    seedPlan($user, [
+        ['date' => $today->copy()->subYears(2)->toDateString(), 'status' => PlannedSessionStatus::Done, 'compliance_score' => 100],
+        ['date' => $today->toDateString(), 'status' => PlannedSessionStatus::Done, 'compliance_score' => 100],
+    ]);
+
+    $reading = new PlanAdherenceTool($user, $today, null)->handle([]);
+
+    expect($reading['prescribed'])->toBe(2)->and($reading['from'])->toBeNull();
+});
+
+it('reports a plan-less athlete as zero prescribed rather than failing', function (): void {
+    $user = User::factory()->create();
+
+    $reading = new PlanAdherenceTool($user, Carbon::today(), null)->handle([]);
+
+    expect($reading['prescribed'])->toBe(0)->and($reading['mean_compliance'])->toBeNull();
+});
+
+it('never counts another athlete plan', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::today();
+    seedPlan(User::factory()->create(), [
+        ['date' => $today->toDateString(), 'status' => PlannedSessionStatus::Done, 'compliance_score' => 100],
+    ]);
+
+    expect(new PlanAdherenceTool($user, $today, null)->handle([])['prescribed'])->toBe(0);
 });

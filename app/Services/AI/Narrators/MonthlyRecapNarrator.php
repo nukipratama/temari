@@ -10,8 +10,12 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\MonthTotalsTool;
+use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
+use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Support\Carbon;
 
 class MonthlyRecapNarrator
@@ -35,6 +39,16 @@ class MonthlyRecapNarrator
         different stories, and the fade is one you're allowed to tell plainly.
         NEVER compare against a previous month's numbers, you never fetched them:
         prev_narrative is a thread to pick up, not a source of figures.
+
+        WHAT THE MONTH ASKED FOR: get_planned_sessions returns every day the plan
+        prescribed across this month and how each was graded --
+        done/partial/missed/overreached, plus ran_anyway on a day they had excused
+        themselves. Over a month the shape matters more than any single day: a
+        month that held the plan and a month that quietly stopped following it are
+        two different stories, and the second one is worth telling plainly, once,
+        without moralizing. Never list days, and never quote a compliance score;
+        the score is a number for you to read, not to print. An empty list means
+        no plan covered this month.
 
         Expected structure:
         1. Open with a concrete number (total km, number of runs).
@@ -78,13 +92,18 @@ class MonthlyRecapNarrator
         - Exclamation points, and emoji.
         PROMPT;
 
-    public function __construct(private readonly StructuredChatCaller $caller)
-    {
+    public function __construct(
+        private readonly StructuredChatCaller $caller,
+        private readonly TrainingBaseline $trainingBaseline,
+        private readonly VdotEstimator $vdotEstimator,
+        private readonly TrainingPaceCalculator $paceCalculator,
+    ) {
     }
 
     public function generate(User $user, string $month): string
     {
         $context = $this->context($user, $month);
+        $monthStart = Carbon::createFromFormat('Y-m', $month)?->startOfMonth() ?? Carbon::now()->startOfMonth();
 
         $decoded = $this->caller->call(
             kind: 'monthly_recap',
@@ -96,8 +115,18 @@ class MonthlyRecapNarrator
                 temperature: 0.7,
                 userId: $user->id,
                 maxTokens: 1500,
-                toolbox: new AgentToolbox([new MonthTotalsTool($user, $month)]),
-                maxSteps: 4,
+                toolbox: new AgentToolbox([
+                    new MonthTotalsTool($user, $month),
+                    new PlanContextTool(
+                        $user,
+                        $monthStart,
+                        $monthStart->copy()->endOfMonth(),
+                        $this->trainingBaseline,
+                        $this->vdotEstimator,
+                        $this->paceCalculator,
+                    ),
+                ]),
+                maxSteps: 6,
             ),
         );
 

@@ -84,6 +84,16 @@ function capturingCaller(string $content): array
     return [fakeStructuredCaller($client), $client];
 }
 
+function weeklyRecapNarrator(StructuredChatCaller $caller): WeeklyRecapNarrator
+{
+    return new WeeklyRecapNarrator($caller, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+}
+
+function monthlyRecapNarrator(StructuredChatCaller $caller): MonthlyRecapNarrator
+{
+    return new MonthlyRecapNarrator($caller, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+}
+
 function postRunNarrator(StructuredChatCaller $caller): PostRunSpeechNarrator
 {
     return new PostRunSpeechNarrator($caller, app(PastYouMatcher::class), app(TrainingLoad::class), app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
@@ -543,7 +553,7 @@ it('WeeklyRecapNarrator returns narrative on valid JSON', function (): void {
         'runs' => 4,
     ]);
     $caller = fakeCaller(json_encode(['narrative' => 'Solid week'], JSON_THROW_ON_ERROR));
-    $narrator = new WeeklyRecapNarrator($caller);
+    $narrator = weeklyRecapNarrator($caller);
     expect($narrator->generate($snap))->toBe('Solid week');
 });
 
@@ -553,7 +563,7 @@ it('WeeklyRecapNarrator throws on missing narrative key', function (): void {
         'week_ending' => Carbon::today()->endOfWeek()->toDateString(),
     ]);
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new WeeklyRecapNarrator($caller);
+    $narrator = weeklyRecapNarrator($caller);
     $narrator->generate($snap);
 })->throws(UnavailableException::class);
 
@@ -563,7 +573,7 @@ it('WeeklyRecapNarrator throws on non-JSON', function (): void {
         'week_ending' => Carbon::today()->endOfWeek()->toDateString(),
     ]);
     $caller = fakeCaller('not json');
-    $narrator = new WeeklyRecapNarrator($caller);
+    $narrator = weeklyRecapNarrator($caller);
     $narrator->generate($snap);
 })->throws(UnavailableException::class, 'non-JSON');
 
@@ -605,7 +615,7 @@ it('WeeklyRecapNarrator feeds prev_narrative when the prior week recap is Done',
     ]);
     $current = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
 
-    $context = new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($current);
+    $context = weeklyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($current);
 
     expect($context['prev_narrative'])->toBe('You were solid last week.');
 });
@@ -622,7 +632,7 @@ it('WeeklyRecapNarrator omits prev_narrative when the prior week recap is not ye
     ]);
     $current = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
 
-    $context = new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($current);
+    $context = weeklyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($current);
 
     expect($context['prev_narrative'])->toBeNull();
 });
@@ -783,14 +793,14 @@ it('WeeklyRecapNarrator sends only the continuity line and reads the week', func
     $user = User::factory()->create();
     $snapshot = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
 
-    expect(array_keys(new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($snapshot)))
+    expect(array_keys(weeklyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($snapshot)))
         ->toBe(NarratorContinuity::CONTEXT_KEYS);
 });
 
 it('MonthlyRecapNarrator sends only the continuity line and reads the month', function (): void {
     $user = User::factory()->create();
 
-    expect(array_keys(new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05')))
+    expect(array_keys(monthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05')))
         ->toBe(NarratorContinuity::CONTEXT_KEYS);
 });
 
@@ -894,7 +904,7 @@ it('MonthTotalsTool reads month totals and the mood mix', function (): void {
     expect($context['pr_count'])->toBe(0);
     expect($context['weekly_distance_km'])->toBeArray();
 
-    expect(new MonthlyRecapNarrator(fakeCaller('{"narrative":"This month, mostly blazing."}'))->generate($user, $month))
+    expect(monthlyRecapNarrator(fakeCaller('{"narrative":"This month, mostly blazing."}'))->generate($user, $month))
         ->toBe('This month, mostly blazing.');
 });
 
@@ -956,7 +966,7 @@ it('MonthlyRecapNarrator feeds prev_narrative when the prior month recap is Done
         'discriminator' => '2026-04',
     ]);
 
-    $context = new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05');
+    $context = monthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05');
 
     expect($context['prev_narrative'])->toBe('You were consistent last month.');
 });
@@ -971,7 +981,7 @@ it('MonthlyRecapNarrator omits prev_narrative when the prior month recap is not 
         'status' => AnalysisStatus::Pending,
     ]);
 
-    $context = new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05');
+    $context = monthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05');
 
     expect($context['prev_narrative'])->toBeNull();
 });
@@ -979,7 +989,7 @@ it('MonthlyRecapNarrator omits prev_narrative when the prior month recap is not 
 it('MonthlyRecapNarrator leaves prev_narrative null on the first month', function (): void {
     $user = User::factory()->create();
 
-    $context = new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05');
+    $context = monthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05');
 
     expect($context['prev_narrative'])->toBeNull();
 });
@@ -1407,12 +1417,12 @@ it('per-narrator step budgets cover two full read passes and only exist where th
     ksort($declared);
 
     expect($declared)->toBe([
-        'MonthlyRecapNarrator' => 4,
+        'MonthlyRecapNarrator' => 6,
         'PlanDayVoiceNarrator' => 4,
         'PlanSeasonVoiceNarrator' => 4,
         'PlanWeekVoiceNarrator' => 4,
-        'TrendReadNarrator' => 4,
-        'WeeklyRecapNarrator' => 4,
+        'TrendReadNarrator' => 6,
+        'WeeklyRecapNarrator' => 6,
     ]);
 });
 
