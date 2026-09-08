@@ -32,6 +32,8 @@ final class RunAnchorResolver
             AnchorKind::Split => count($summary->perKm() ?? []) >= (int) $value,
             AnchorKind::Zone => $summary->zonePct() !== [] || $summary->zoneMinutes() !== null,
             AnchorKind::Metric => self::metricResolves($value, $summary),
+            // The prescribed session belongs to a date, not to a run's stream.
+            AnchorKind::Session => false,
         };
     }
 

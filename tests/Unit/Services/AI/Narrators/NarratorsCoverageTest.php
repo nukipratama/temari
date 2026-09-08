@@ -27,6 +27,8 @@ use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\TrendRangeTool;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
 use App\Services\AI\Narrators\ProfileVoiceNarrator;
+use App\Services\AI\Anchor\CitationValidator;
+use App\Services\AI\Anchor\DayAnchorResolver;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\NarratorContinuity;
@@ -1117,6 +1119,8 @@ function bootMascotNarrator(string $content): BriefingMascotVoiceNarrator
         app(TrainingBaseline::class),
         app(VdotEstimator::class),
         app(TrainingPaceCalculator::class),
+        app(DayAnchorResolver::class),
+        app(CitationValidator::class),
     );
 }
 
@@ -1130,6 +1134,37 @@ it('BriefingMascotVoiceNarrator returns the mascot voice on valid JSON', functio
     ], JSON_THROW_ON_ERROR));
 
     expect($narrator->generate($user, Carbon::today()))->toBe('Your km ticked up slightly. Good.');
+});
+
+it('BriefingMascotVoiceNarrator keeps a citation the plan actually backs', function (): void {
+    $user = User::factory()->create();
+    Activity::factory()->for($user)->analyzed()->create();
+    PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
+
+    $narrator = bootMascotNarrator(json_encode([
+        'mascot_voice' => 'so I am keeping this to [an easy run](session:today) today.',
+        'session_type' => 'rest',
+    ], JSON_THROW_ON_ERROR));
+
+    expect($narrator->generate($user, Carbon::today()))
+        ->toBe('so I am keeping this to [an easy run](session:today) today.');
+});
+
+/**
+ * The model is told the plan exists, so it will cite one on a day the plan
+ * does not cover. The words stay; the control does not.
+ */
+it('BriefingMascotVoiceNarrator unwraps a citation on a day no plan covers', function (): void {
+    $user = User::factory()->create();
+    Activity::factory()->for($user)->analyzed()->create();
+
+    $narrator = bootMascotNarrator(json_encode([
+        'mascot_voice' => 'so I am keeping this to [an easy run](session:today) today.',
+        'session_type' => 'rest',
+    ], JSON_THROW_ON_ERROR));
+
+    expect($narrator->generate($user, Carbon::today()))
+        ->toBe('so I am keeping this to an easy run today.');
 });
 
 it('BriefingMascotVoiceNarrator throws on missing mascot_voice key', function (): void {

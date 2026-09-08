@@ -89,6 +89,19 @@ Common running words everyone gets stay plain English and never get explained. B
 
 LLM narration renders `**…**` via [`renderBold`](../resources/js/lib/richText.tsx); any surface that renders Temari's text routes through it (`AnalysisStatus` default + every `renderContent` caller), so emphasis lands instead of showing literal asterisks.
 
+## The one other markdown form: a citation
+
+Markdown's inline-link form — the cited words in square brackets, then the anchor in parentheses, as in `[an easy run]` immediately followed by `(session:today)` — is the **single** exception to "no other markdown", and it is not decoration — it is how a claim points at the thing on the page that proves it. `anchor` is `<kind>:<value>` from [AnchorKind.php](../app/Services/AI/Anchor/AnchorKind.php), never a URL; a link to anywhere off the page is not a legal form here.
+
+Rules, all enforced rather than trusted:
+
+- **One per block, on the words themselves**, never on a whole sentence.
+- **Never on the same words as a `**bold**` span.** A block may carry one of each; the worst case is two marked spans in about 75 words.
+- A citation whose anchor names something the subject does not have is **unwrapped back to plain prose** server-side by [CitationValidator.php](../app/Services/AI/Anchor/CitationValidator.php), and so is a second one. The block is never lost to a bad citation.
+- One that resolves but that the page draws no element for also renders as plain prose, decided on the client ([anchors.ts](../resources/js/lib/anchors.ts)).
+
+The affordance is a **dotted underline on the cited words and nothing else** ([Citation.tsx](../resources/js/components/temari/Citation.tsx)). A trailing chip and a superscript marker were built against real narration and rejected: the chip restated what the sentence already said, cost a line of height and orphaned the punctuation after it; the marker never showed which words it covered.
+
 ## Numbers
 
 - **Decimals take a period.** `24.7 seconds`, `90.3%`, `TRIMP 80.4`. Data already arrives formatted this way — keep it as-is, never convert it.

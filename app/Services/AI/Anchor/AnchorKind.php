@@ -6,7 +6,7 @@ namespace App\Services\AI\Anchor;
 
 /**
  * The namespace a citation anchor lives in. An anchor is `<kind>:<value>` —
- * `split:4`, `zone:z3`, `metric:decoupling`.
+ * `split:4`, `zone:z3`, `metric:decoupling`, `session:today`.
  *
  * The grammar is defined once here and exported to TypeScript through
  * `artisan typescript:enums`, because both sides need it: the server decides
@@ -25,6 +25,15 @@ enum AnchorKind: string
     /** A named derived reading, e.g. `decoupling`. */
     case Metric = 'metric';
 
+    /**
+     * The session the plan prescribed. `today` is the only legal value: the
+     * briefing is a today-scoped block by construction, and the week grid's
+     * other six days have no narrator citing them yet. A slice that needs one
+     * widens the pattern then, the way this kind was added rather than
+     * speculated in S1.
+     */
+    case Session = 'session';
+
     /** The value half of the grammar, without delimiters. */
     public function valuePattern(): string
     {
@@ -32,6 +41,7 @@ enum AnchorKind: string
             self::Split => '[1-9]\d*',
             self::Zone => 'z[1-5]',
             self::Metric => '[a-z_]+',
+            self::Session => 'today',
         };
     }
 

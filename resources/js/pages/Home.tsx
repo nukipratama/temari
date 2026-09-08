@@ -19,6 +19,7 @@ import WeekStatsDisclosure from '@/components/home/WeekStatsDisclosure';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
 import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
+import { drawnHomeAnchors } from '@/lib/anchors';
 
 interface HomeProps {
     briefing: BriefingResult;
@@ -57,7 +58,10 @@ export default function Home({
                     <EmptyRunsState />
                 ) : (
                     <div className="flex flex-col gap-4">
-                        <TodaySession briefing={briefing} />
+                        <TodaySession
+                            briefing={briefing}
+                            drawnAnchors={drawnHomeAnchors(weekPlan)}
+                        />
 
                         {weekPlan !== null ? (
                             <WeekPlanWidget weekPlan={weekPlan} />

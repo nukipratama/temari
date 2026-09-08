@@ -45,6 +45,7 @@ _AI cost & flow_
 - [[demo-triggers-served-rule-based]] — the public demo's "Baca ulang" works but is filled rule-based, never billed
 - [[narration-agents-on-openai-php]] — tool-calling narrators stay on openai-php; one block is bounded by steps + tokens
 - [[scoped-run-qa-not-an-analysis-row]] — ask-about-this-run is bound to one activity by construction, stored in its own table, rate-limited per user without a per-user cost cap
+- [[citations-go-where-the-prose-already-points]] — which narrator carries inline citations is decided by measuring what its real output names, which moved the first prose citation off the post-run speech onto the daily briefing
 - [[twelve-week-narration-cutoff]] — narration depth stops at 84 days, and every manual trigger that could reach past it is gated too
 
 _Plan_

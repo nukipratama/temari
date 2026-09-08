@@ -260,6 +260,7 @@ export default function WeekPlanWidget({
 
             {today !== null && (
                 <Link
+                    id="anchor-session-today"
                     href="/plan"
                     className="focus-ring flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2.5 text-[0.71875rem] text-foreground transition-colors hover:bg-accent"
                 >
