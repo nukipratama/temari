@@ -233,10 +233,10 @@ drives everything below.
 | `CardFlavorNarrator` | up to 7 | default (10) | 400 | 0.8 | `card_flavor` |
 | `PostRunSpeechNarrator` | 7 | default (10) | 1500 | 0.8 | `post_run_speech` |
 | `BriefingMascotVoiceNarrator` | 6 | default (10) | 1800 | 0.8 | `briefing_mascot_voice` |
-| `ProfileVoiceNarrator` | 4 | default (10) | 1800 | 0.75 | `profile_voice` |
-| `WeeklyRecapNarrator` | 1 | **4** | 1500 | 0.7 | `weekly_recap` |
-| `MonthlyRecapNarrator` | 1 | **4** | 1500 | 0.7 | `monthly_recap` |
-| `TrendReadNarrator` | 1 | **4** | 1200 | 0.7 | `trend_read` |
+| `ProfileVoiceNarrator` | 5 | default (10) | 1800 | 0.75 | `profile_voice` |
+| `WeeklyRecapNarrator` | 2 | **6** | 1500 | 0.7 | `weekly_recap` |
+| `MonthlyRecapNarrator` | 2 | **6** | 1500 | 0.7 | `monthly_recap` |
+| `TrendReadNarrator` | 2 | **6** | 1200 | 0.7 | `trend_read` |
 | `PlanDayVoiceNarrator` | 1 | **4** | 300 | 0.7 | `plan_day_voice` |
 | `PlanClampVoiceNarrator` | 1 | — | 200 | 0.7 | `plan_clamp_voice` |
 | `PlanWeekVoiceNarrator` | 1 | **4** | 400 | 0.7 | `plan_week_voice` |
@@ -309,6 +309,7 @@ inline in its `toolbox()` method.
 | `PlanWeekTool` · `get_week_adaptation` | `week_start`, `reason`, `headline`, `detail`, `deload`, `quality_delta`, `adherence_pct` | stored `PlanAdaptation`, written by `PlanAdapter` |
 | `PlanSeasonTool` · `get_season` | `starts_at`, `ends_at`, `is_race_oriented`, `race_name`, `race_date`, `race_distance_m`, `goals` | stored `Season`, `RaceGoal` and `SeasonGoal` rows |
 | `PlanContextTool` · `get_planned_sessions` | `days[]` of `date`, `session_type`, `phase`, `distance_km`, `target_pace_sec`, `skipped`, `status`, `compliance_score`, `ran_anyway` | `PlannedSession` rows over the bound span; `SegmentGenerator::coreKmFor()` for days `ComplianceScorer` has not yet written `prescribed_km` on; `VdotEstimator` into `TrainingPaceCalculator` for the pace |
+| `PlanAdherenceTool` · `get_plan_adherence` | `from`, `through`, `prescribed`, `done`, `partial`, `missed`, `overreached`, `excused`, `ran_anyway`, `mean_compliance` | `PlannedSession` rows up to the as-of date, counted by `PlannedSessionStatus`; a null `from` means the athlete's whole history |
 
 **Which narrator carries which toolbox:**
 
@@ -319,15 +320,15 @@ inline in its `toolbox()` method.
 | `PostRunSpeechNarrator` | `RunSummaryTool`, `TerrainTool`, `WeatherTool`, `PersonalRecordsTool`, `PastYouTool`, `WeekStateTool`, `PlanContextTool` |
 | `CardFlavorNarrator` | `CardIdentityTool` always; `RunSummaryTool`, `KmSplitsTool`, `WeatherTool`, `EffortContextTool`, `PersonalRecordsTool`, `PlanContextTool` when the run has detail |
 | `BriefingMascotVoiceNarrator` | `WeekStateTool`, `RecentRunsTool`, `TrainingLoadTool`, `LatestPastYouTool`, `RecentBaselineTool`, `PlanContextTool` |
-| `ProfileVoiceNarrator` | `LifetimeStatsTool`, `PersonaMixTool`, `TrainingPacesTool`, `ProgressionSignalTool` |
-| `WeeklyRecapNarrator` | `WeekTotalsTool` |
-| `MonthlyRecapNarrator` | `MonthTotalsTool` |
-| `TrendReadNarrator` | `TrendRangeTool` |
+| `ProfileVoiceNarrator` | `LifetimeStatsTool`, `PersonaMixTool`, `TrainingPacesTool`, `ProgressionSignalTool`, `PlanAdherenceTool` |
+| `WeeklyRecapNarrator` | `WeekTotalsTool`, `PlanContextTool` |
+| `MonthlyRecapNarrator` | `MonthTotalsTool`, `PlanContextTool` |
+| `TrendReadNarrator` | `TrendRangeTool`, `PlanAdherenceTool` |
 | `PlanDayVoiceNarrator` | `PlanDayTool` |
 | `PlanWeekVoiceNarrator` | `PlanWeekTool` |
 | `PlanSeasonVoiceNarrator` | `PlanSeasonTool` |
 
-Every one of the 26 tools is carried by at least one narrator; none is orphaned.
+Every one of the 27 tools is carried by at least one narrator; none is orphaned.
 
 ## The deterministic half
 
@@ -373,9 +374,14 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
   with nothing for the model to decide. Handing the payload straight to the prompt would remove a
   tool round trip per plan block, which is up to nine per user per week.
 - `PlanContextTool` is the one plan read bound to a *span* rather than a row, so a narrator with no
-  `PlannedSession` in hand can still say what was prescribed. It is the only plan tool a block that
-  is not itself about the plan carries, and the four per-run narrators bind it to a single day: the
-  date of the run they are describing.
+  `PlannedSession` in hand can still say what was prescribed. The four per-run narrators bind it to
+  a single day, the date of the run they are describing; the weekly and monthly recaps bind it to
+  their own window.
+- `PlanAdherenceTool` is its aggregate counterpart, and the split is about payload shape rather
+  than preference. `PlanContextTool` returns one entry per prescribed day (~178 bytes each), which
+  is right for a week or a month and wrong for a range measured in quarters: a 12-month trend read
+  would carry ~365 entries once plan history has accumulated that far. The trend read and the
+  profile voice ask about a shape, so they get counts, which are the same size at any span.
 - `RunInsightNarrator`'s three user-level tools are the ones to question first if its toolbox is
   narrowed.
 

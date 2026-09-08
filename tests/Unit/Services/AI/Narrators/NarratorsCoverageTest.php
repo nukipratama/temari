@@ -1421,7 +1421,7 @@ it('per-narrator step budgets cover two full read passes and only exist where th
         'PlanDayVoiceNarrator' => 4,
         'PlanSeasonVoiceNarrator' => 4,
         'PlanWeekVoiceNarrator' => 4,
-        'TrendReadNarrator' => 4,
+        'TrendReadNarrator' => 6,
         'WeeklyRecapNarrator' => 6,
     ]);
 });
