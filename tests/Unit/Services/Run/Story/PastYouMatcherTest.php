@@ -28,6 +28,21 @@ function seedRun(User $user, Carbon $when, float $distanceM, int $movingTimeSec,
     ], $overrides));
 }
 
+/**
+ * @param  array<string, mixed>  $overrides
+ */
+function seedUnanalyzedRun(User $user, Carbon $when, float $distanceM, int $movingTimeSec, array $overrides = []): ActivityDetail
+{
+    $activity = Activity::factory()->for($user)->stub()->create();
+
+    return ActivityDetail::factory()->for($activity)->create(array_merge([
+        'distance' => $distanceM,
+        'moving_time' => $movingTimeSec,
+        'elapsed_time' => $movingTimeSec,
+        'start_date_local' => $when,
+    ], $overrides));
+}
+
 it('returns null when the user has no history', function (): void {
     $user = User::factory()->create();
     $current = seedRun($user, Carbon::today(), 10_000, 4_200);
@@ -177,6 +192,16 @@ it('ignores other users\' history', function (): void {
     seedRun($userB, Carbon::today()->subDays(60), 10_000, 4_200);
 
     $current = seedRun($userA, Carbon::today(), 10_000, 4_200);
+
+    expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->toBeNull();
+});
+
+it('never matches a not-yet-analyzed candidate', function (): void {
+    $user = User::factory()->create();
+    $temp = ['weather_temp_c' => 27];
+    seedUnanalyzedRun($user, Carbon::today()->subDays(90), 10_000, 4_200, $temp);
+
+    $current = seedRun($user, Carbon::today(), 10_000, 4_140, $temp);
 
     expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->toBeNull();
 });

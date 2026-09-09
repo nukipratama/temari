@@ -33,13 +33,14 @@ class VerdictTimeline implements VerdictNarrator
     public function recent(User $user, int $limit = self::DEFAULT_LIMIT): array
     {
         /** @var Collection<int, StoryLine> $lines */
-        $lines = StoryLine::query()
-            ->select('story_lines.*')
-            ->join('activities', 'activities.id', '=', 'story_lines.activity_id')
-            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+        $lines = Activity::analyzedJoinConstraint(
+            StoryLine::query()
+                ->select('story_lines.*')
+                ->join('activities', 'activities.id', '=', 'story_lines.activity_id')
+                ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id'),
+        )
             ->where('story_lines.user_id', $user->id)
             ->where('story_lines.kind', StoryLine::KIND_POST_RUN)
-            ->whereNotNull('activities.analyzed_at')
             ->whereNotNull('activity_details.start_date_local')
             ->whereExists(fn (QueryBuilder $query) => $query
                 ->from('ai_analyses')

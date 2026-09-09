@@ -95,8 +95,9 @@ class PastYouMatcher
         $paceExpr = '(activity_details.moving_time * 1000.0 / activity_details.distance)';
 
         /** @var Collection<int, ActivityDetail> $candidates */
-        $candidates = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+        $candidates = Activity::analyzedJoinConstraint(
+            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )
             ->where('activities.user_id', $activity->user_id)
             ->where('activities.id', '!=', $activity->id)
             ->where('activity_details.start_date_local', '<=', $minDate)
