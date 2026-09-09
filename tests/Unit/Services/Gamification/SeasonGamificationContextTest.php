@@ -187,3 +187,44 @@ it('never computes CTL growth for a race-oriented season', function (): void {
 
     expect(ctxFor($user, $season)->ctlGrowth)->toBe(0.0);
 });
+
+it('does not count a session against a not-yet-analyzed activity', function (): void {
+    $user = User::factory()->create();
+    $season = seasonFor($user);
+    $date = Carbon::today()->subDays(2);
+    PlannedSession::factory()->for($user)->create(['date' => $date->toDateString(), 'session_type' => SessionType::Easy]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->stub()->create())->create(['start_date_local' => $date]);
+
+    expect(ctxFor($user, $season)->sessionsCompleted)->toBe(0);
+});
+
+it('does not count a not-yet-analyzed activity toward the longest long-band run', function (): void {
+    $user = User::factory()->create();
+    $season = seasonFor($user);
+    $date = Carbon::today()->subDays(2);
+    PlannedSession::factory()->for($user)->create(['date' => $date->toDateString(), 'session_type' => SessionType::Long]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->stub()->create())->create(['start_date_local' => $date, 'distance' => 18_000]);
+
+    expect(ctxFor($user, $season)->longestLongRunKm)->toBe(0.0);
+});
+
+it('does not flag the race goal met from a not-yet-analyzed activity', function (): void {
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create([
+        'race_date' => Carbon::today()->subDay()->toDateString(),
+        'distance_m' => 10_000,
+        'goal_time_sec' => 3_000,
+    ]);
+    $season = Season::factory()->for($user)->create([
+        'race_goal_id' => $race->id,
+        'starts_at' => Carbon::today()->subDays(5)->toDateString(),
+        'ends_at' => $race->race_date->toDateString(),
+    ]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->stub()->create())->create([
+        'start_date_local' => $race->race_date->copy()->addHours(8),
+        'distance' => 10_100,
+        'elapsed_time' => 3_050,
+    ]);
+
+    expect(ctxFor($user, $season)->raceGoalMet)->toBeFalse();
+});
