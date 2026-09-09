@@ -6,7 +6,6 @@
 set -eu
 
 cd "$(dirname "$0")/.."
-. scripts/git-env.sh
 
 MODE=fast
 case "${1:-}" in

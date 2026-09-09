@@ -9,7 +9,6 @@
 set -eu
 
 cd "$(dirname "$0")/.."
-. scripts/git-env.sh
 
 if base=$(git merge-base HEAD origin/main 2>/dev/null) && [ -n "$base" ]; then
   echo "    vitest --changed base: origin/main ($base)" >&2
@@ -21,7 +20,7 @@ echo "vitest-changed-base: no base commit found (git merge-base HEAD origin/main
 
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
   echo "vitest-changed-base: git cannot read this checkout. In a worktree stack that means the" >&2
-  echo "compose.override.yaml predates TEMARI_GIT_DIR — re-run scripts/worktree-setup.sh <slot>." >&2
+  echo "compose.override.yaml is missing or stale — re-run scripts/worktree-setup.sh <slot>." >&2
 fi
 
 exit 1

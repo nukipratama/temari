@@ -50,16 +50,31 @@ pest()->extend(TestCase::class)->in('Feature', 'Unit');
 | The compliance sweeps read the route table the same way, so a new route has
 | to re-run them.
 |
-| The guard is what keeps parallel worktrees working. A worktree's .git is a
-| *file* pointing at a host path outside the container's bind mount, so git
-| cannot resolve the repo there — and TIA panics on that rather than degrading,
-| which would break every Pest run in a worktree. scripts/worktree-setup.sh
-| mounts the shared git dir and exports GIT_DIR to restore it; a worktree whose
-| stack predates that override still falls through to TIA off.
+| The guard is what keeps parallel worktrees working. TIA panics on a repo it
+| cannot resolve rather than degrading, and in a worktree .git is a *file*
+| holding a host path — readable only because scripts/worktree-setup.sh mounts
+| the shared git dir at that same absolute path. Asking git itself covers both
+| layouts, and a stack without that mount falls through to TIA off.
 |
 */
 
-if (is_dir(dirname(__DIR__).'/.git') || is_dir((string) getenv('GIT_DIR'))) {
+function gitCanReadRepository(string $root): bool
+{
+    $dotGit = $root.'/.git';
+
+    if (is_dir($dotGit)) {
+        return true;
+    }
+
+    if (! is_file($dotGit)) {
+        return false;
+    }
+
+    return preg_match('/^gitdir: (.+)$/m', (string) file_get_contents($dotGit), $matches) === 1
+        && is_dir(trim($matches[1]));
+}
+
+if (gitCanReadRepository(dirname(__DIR__))) {
     pest()->tia()->locally()->baselined()->watch([
         'app/**/*.php' => 'tests/Unit/Architecture',
         'tests/**/*.php' => 'tests/Unit/Architecture',
