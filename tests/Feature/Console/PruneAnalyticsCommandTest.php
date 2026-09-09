@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 use App\Models\AI\TokenUsage;
 use App\Models\Analytics\StravaSyncLog;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+
+uses(RefreshDatabase::class);
 
 it('deletes ai_token_usages and strava_sync_logs rows older than 90 days', function (): void {
     $old = TokenUsage::query()->create([
