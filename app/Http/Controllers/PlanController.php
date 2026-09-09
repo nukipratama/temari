@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Http\Requests\UpdatePlannedSessionRequest;
+use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
@@ -445,8 +446,9 @@ class PlanController extends Controller
             return 0.0;
         }
 
-        $meters = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+        $meters = Activity::analyzedJoinConstraint(
+            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )
             ->where('activities.user_id', $user->id)
             ->whereNotNull('activity_details.start_date_local')
             ->whereBetween('activity_details.start_date_local', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
