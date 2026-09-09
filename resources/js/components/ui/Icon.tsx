@@ -175,6 +175,7 @@ const ICON_MAP: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
     'mdi:filter-remove-outline': FilterX,
     'mdi:filter-variant': SlidersHorizontal,
     'mdi:fire': Flame,
+    'mdi:flag': Flag,
     'mdi:flag-checkered': Flag,
     'mdi:flag-outline': Flag,
     'mdi:gift': Gift,

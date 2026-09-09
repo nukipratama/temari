@@ -537,4 +537,50 @@ describe('AnalysisStatus', () => {
             expect(screen.getByText(BADGE_TEXT)).toBeInTheDocument();
         });
     });
+
+    it('draws the flag at the right end of the reread line', () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({ id: 7, status: 'done', content: 'Halo' })}
+            />,
+        );
+
+        const flag = screen.getByRole('button', { name: 'flag this read' });
+
+        expect(flag).toHaveTextContent('');
+        expect(
+            screen.getByRole('button', { name: /reread/ }).parentElement,
+        ).toBe(flag.parentElement);
+    });
+
+    it('draws an inert flagged icon on a read already flagged', () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({
+                    id: 7,
+                    status: 'done',
+                    content: 'Halo',
+                    flagged: true,
+                })}
+            />,
+        );
+
+        expect(screen.getByLabelText('flagged')).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'flag this read' }),
+        ).toBeNull();
+    });
+
+    it('draws the flag even when the block cannot be reread', () => {
+        render(
+            <AnalysisStatus
+                allowReanalyze={false}
+                analysis={payload({ id: 7, status: 'done', content: 'Halo' })}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: 'flag this read' }),
+        ).toBeInTheDocument();
+    });
 });

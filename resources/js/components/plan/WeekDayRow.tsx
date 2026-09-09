@@ -197,25 +197,30 @@ export default function WeekDayRow({
                     />
                 )}
                 <SessionBarGraph segments={day.segments} />
-                <FlagWrong
-                    subjectType="plan_day"
-                    subjectId={day.id}
-                    label="flag this day"
-                />
-                {day.activities.map((run) => (
-                    <Link
-                        key={run.id}
-                        href={`/activities/${run.id}`}
-                        className="focus-ring mt-3 flex items-center gap-1.5 text-label-micro text-horizon-ink"
-                    >
-                        View activity · {runSummary(run)}
-                        <Icon
-                            icon="mdi:arrow-right"
-                            className="size-3"
-                            aria-hidden
-                        />
-                    </Link>
-                ))}
+                <div className="mt-3 flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 flex-col gap-2">
+                        {day.activities.map((run) => (
+                            <Link
+                                key={run.id}
+                                href={`/activities/${run.id}`}
+                                className="focus-ring flex items-center gap-1.5 text-label-micro text-horizon-ink"
+                            >
+                                View activity · {runSummary(run)}
+                                <Icon
+                                    icon="mdi:arrow-right"
+                                    className="size-3"
+                                    aria-hidden
+                                />
+                            </Link>
+                        ))}
+                    </div>
+                    <FlagWrong
+                        subjectType="plan_day"
+                        subjectId={day.id}
+                        label="flag this day"
+                        flagged={day.flagged === true}
+                    />
+                </div>
                 {(canMove || canSkip) && (
                     <div className="mt-3">
                         {picking ? (

@@ -6,7 +6,10 @@ import { makeUser, setMockPage } from '@/test/setup';
 
 import FlagWrong from './FlagWrong';
 
-function renderFlag(isDemo = false) {
+function renderFlag({
+    isDemo = false,
+    flagged = false,
+}: { isDemo?: boolean; flagged?: boolean } = {}) {
     setMockPage({ auth: { user: makeUser({ is_demo: isDemo }) } });
 
     return render(
@@ -14,6 +17,7 @@ function renderFlag(isDemo = false) {
             subjectType="plan_day"
             subjectId={12}
             label="flag this day"
+            flagged={flagged}
         />,
     );
 }
@@ -29,35 +33,66 @@ describe('FlagWrong', () => {
         vi.mocked(router.post).mockReset();
     });
 
-    it('starts closed, showing only the flag control', () => {
+    it('shows one icon-only control and no sheet', () => {
         renderFlag();
 
-        expect(
-            screen.getByRole('button', { name: /flag this day/ }),
-        ).toBeInTheDocument();
-        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        const control = screen.getByRole('button', { name: 'flag this day' });
+
+        expect(control).toHaveAttribute('title', 'flag this day');
+        expect(control).toHaveTextContent('');
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     it('renders nothing for the demo account', () => {
-        const { container } = renderFlag(true);
+        const { container } = renderFlag({ isDemo: true });
 
         expect(container).toBeEmptyDOMElement();
     });
 
-    it('opens a note field and closes again on never mind', () => {
+    it('offers the plan day reasons in a sheet', () => {
         renderFlag();
-        fireEvent.click(screen.getByRole('button', { name: /flag this day/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'flag this day' }));
 
-        expect(screen.getByRole('textbox')).toBeInTheDocument();
-
-        fireEvent.click(screen.getByRole('button', { name: 'never mind' }));
-
-        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('dialog', { name: 'something off?' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'wrong pace' }),
+        ).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'tone off' })).toBeNull();
     });
 
-    it('posts the subject and the trimmed note, then confirms quietly', () => {
+    it('offers the narration reasons for a narration subject', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(
+            <FlagWrong
+                subjectType="narration"
+                subjectId={4}
+                label="flag this read"
+            />,
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'flag this read' }));
+
+        expect(
+            screen.getByRole('button', { name: 'tone off' }),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps send disabled until a reason is chosen', () => {
         renderFlag();
-        fireEvent.click(screen.getByRole('button', { name: /flag this day/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'flag this day' }));
+
+        expect(screen.getByRole('button', { name: 'send' })).toBeDisabled();
+
+        fireEvent.click(screen.getByRole('button', { name: 'too hard' }));
+
+        expect(screen.getByRole('button', { name: 'send' })).toBeEnabled();
+    });
+
+    it('posts the reason and the trimmed note, then goes inert', () => {
+        renderFlag();
+        fireEvent.click(screen.getByRole('button', { name: 'flag this day' }));
+        fireEvent.click(screen.getByRole('button', { name: 'too hard' }));
         fireEvent.change(screen.getByRole('textbox'), {
             target: { value: '  too long for a tuesday  ' },
         });
@@ -68,6 +103,7 @@ describe('FlagWrong', () => {
             {
                 subject_type: 'plan_day',
                 subject_id: 12,
+                reason: 'too_hard',
                 note: 'too long for a tuesday',
             },
             expect.objectContaining({ preserveScroll: true }),
@@ -75,13 +111,32 @@ describe('FlagWrong', () => {
 
         act(() => lastPostOptions().onSuccess?.());
 
-        expect(screen.getByText('noted, thanks')).toBeInTheDocument();
-        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'flag this day' }),
+        ).toBeNull();
+        expect(screen.getByLabelText('flagged')).toBeInTheDocument();
+    });
+
+    it('closes the sheet on never mind without posting', () => {
+        renderFlag();
+        fireEvent.click(screen.getByRole('button', { name: 'flag this day' }));
+        fireEvent.click(screen.getByText('never mind'));
+
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(router.post).not.toHaveBeenCalled();
+    });
+
+    it('renders an inert flagged icon when the server says it is already flagged', () => {
+        renderFlag({ flagged: true });
+
+        expect(screen.getByLabelText('flagged')).toBeInTheDocument();
+        expect(screen.queryByRole('button')).toBeNull();
     });
 
     it('caps the note at the column length', () => {
         renderFlag();
-        fireEvent.click(screen.getByRole('button', { name: /flag this day/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'flag this day' }));
 
         expect(screen.getByRole('textbox')).toHaveAttribute('maxlength', '280');
     });
