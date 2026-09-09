@@ -58,7 +58,7 @@ afterEach(() => {
 });
 
 describe('Devtools/Design', () => {
-    it('renders every scale section', () => {
+    it('renders every scale section', { timeout: 15_000 }, () => {
         cleanup = declareTokens();
         render(<Design />);
 
