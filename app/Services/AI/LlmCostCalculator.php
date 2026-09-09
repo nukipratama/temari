@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use App\Models\AI\TokenUsage;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -66,7 +66,7 @@ class LlmCostCalculator
      */
     public function dailyCost(?int $userId = null): float
     {
-        $rows = DB::connection('analytics')->table('ai_token_usages')
+        $rows = TokenUsage::query()->toBase()
             ->whereBetween('created_at', [Carbon::today()->startOfDay(), Carbon::today()->endOfDay()])
             ->when($userId !== null, fn ($query) => $query->where('user_id', $userId))
             ->selectRaw('model, SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, SUM(cached_tokens) as cached')

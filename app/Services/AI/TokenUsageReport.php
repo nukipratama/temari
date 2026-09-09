@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use App\Models\AI\TokenUsage;
 use App\Models\StravaConnection;
 use App\Models\User;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Builds the /devtools/ai-usage reporting payload from the analytics-schema
@@ -46,7 +46,7 @@ class TokenUsageReport
      */
     public function build(Carbon $from, Carbon $to, ?string $kind, bool $includePrevious = true, ?string $origin = null): array
     {
-        $baseQuery = DB::connection('analytics')->table('ai_token_usages')
+        $baseQuery = TokenUsage::query()->toBase()
             ->whereBetween('created_at', [$from, $to]);
 
         if ($kind !== null) {
@@ -263,7 +263,7 @@ class TokenUsageReport
         $prevTo = $from->copy()->subSecond();
         $prevFrom = $prevTo->copy()->subSeconds($to->getTimestamp() - $from->getTimestamp());
 
-        $query = DB::connection('analytics')->table('ai_token_usages')
+        $query = TokenUsage::query()->toBase()
             ->whereBetween('created_at', [$prevFrom, $prevTo]);
 
         if ($kind !== null) {
@@ -355,7 +355,7 @@ class TokenUsageReport
      */
     private function daily(Carbon $from, Carbon $to): array
     {
-        $dailyRows = DB::connection('analytics')->table('ai_token_usages')
+        $dailyRows = TokenUsage::query()->toBase()
             ->whereBetween('created_at', [$from, $to])
             ->selectRaw(
                 'DATE(created_at) as day, model, '.
@@ -443,7 +443,7 @@ class TokenUsageReport
      */
     private function availableOrigins(Carbon $from, Carbon $to): array
     {
-        return array_values(DB::connection('analytics')->table('ai_token_usages')
+        return array_values(TokenUsage::query()->toBase()
             ->whereBetween('created_at', [$from, $to])
             ->distinct()
             ->orderBy('origin')
@@ -462,7 +462,7 @@ class TokenUsageReport
      */
     private function availableKinds(Carbon $from, Carbon $to): array
     {
-        return array_values(DB::connection('analytics')->table('ai_token_usages')
+        return array_values(TokenUsage::query()->toBase()
             ->whereBetween('created_at', [$from, $to])
             ->distinct()
             ->orderBy('kind')
