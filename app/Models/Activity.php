@@ -120,6 +120,23 @@ class Activity extends Model
     }
 
     /**
+     * Rows the ingest pipeline still owes a full hydration: an unfetched stub or
+     * a summary-only row that has not exhausted its detail attempts. The union
+     * of what `strava:ingest` and `strava:hydrate-backlog` are between them
+     * still going to turn into {@see IngestState::Detailed} rows, and the
+     * complement of "this week's data is final".
+     *
+     * @param  Builder<Activity>  $query
+     */
+    #[Scope]
+    protected function awaitingHydration(Builder $query): void
+    {
+        $query->withStubs()
+            ->summaryOnly()
+            ->where($query->qualifyColumn('detail_fail_count'), '<', self::MAX_DETAIL_FETCH_ATTEMPTS);
+    }
+
+    /**
      * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo

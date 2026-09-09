@@ -10,6 +10,7 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
+use App\Services\AI\RecapHydrationReadiness;
 use App\Services\AI\RecapPeriod;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -17,18 +18,22 @@ use Illuminate\Database\Eloquent\Builder;
  * Kicks off the connected weekly-recap chain for every completed week whose
  * recap is not Done — the scheduled Monday sweep and the one-shot kickoff that
  * follows a first-connect backfill draw from this single query.
+ *
+ * A week the ingest pipeline is still hydrating is held back by
+ * {@see RecapHydrationReadiness} rather than narrated thin.
  */
 class KickoffWeeklyRecaps
 {
     public function __construct(
         private readonly AnalysisService $service,
         private readonly BackfillAgeGate $ages,
+        private readonly RecapHydrationReadiness $readiness,
     ) {
     }
 
     /**
      * @param  int|null  $userId  narrow to one user; null sweeps every non-demo user
-     * @return array{dispatched: int, rule_based: int}
+     * @return array{dispatched: int, rule_based: int, deferred: int}
      */
     public function __invoke(?int $userId = null): array
     {
@@ -61,7 +66,8 @@ class KickoffWeeklyRecaps
         // (AnalyzeWeeklyRecapJob) walks forward to each successor once its
         // predecessor is Done. invalidate:false never re-bills a Done recap,
         // so this doubles as a daily resume safety net for stalled links.
-        $snapshots = $baseQuery()->where('week_ending', '>=', $oldestReal)->orderBy('week_ending')->get();
+        $candidates = $baseQuery()->where('week_ending', '>=', $oldestReal)->orderBy('week_ending')->get();
+        $snapshots = $this->readiness->ready($candidates);
 
         $stagger = (int) config('ai.backfill_stagger_seconds', 360);
 
@@ -75,6 +81,10 @@ class KickoffWeeklyRecaps
             );
         });
 
-        return ['dispatched' => $snapshots->count(), 'rule_based' => $tooOld->count()];
+        return [
+            'dispatched' => $snapshots->count(),
+            'rule_based' => $tooOld->count(),
+            'deferred' => $candidates->count() - $snapshots->count(),
+        ];
     }
 }

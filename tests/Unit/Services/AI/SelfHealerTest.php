@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\IngestState;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -13,6 +14,7 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\ChainResolver;
+use App\Services\AI\RecapHydrationReadiness;
 use App\Services\AI\SelfHealer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -75,7 +77,7 @@ function nonDispatchingResumeService(): AnalysisService
 
 function selfHealer(AnalysisService $service): SelfHealer
 {
-    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate());
+    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate(), new RecapHydrationReadiness());
 }
 
 /** Seed an activity for $user dated $startDate whose post-run speech is Pending. */
@@ -588,4 +590,50 @@ it('sweeps past a retired-type row left in flight instead of dying on the enum c
 
     expect(DB::table('ai_analyses')->where('analysis_type', 'trend_caption')->value('status'))
         ->toBe(AnalysisStatus::Queued->value);
+});
+
+/**
+ * The hourly pickup for a week KickoffWeeklyRecaps deferred: the recap row is
+ * already staged Pending by the ingest cascade, so the sweep is what re-offers
+ * it once hydration lands. Monday 2026-06-15, inside the week ending
+ * 2026-06-14's 48-hour hydration grace.
+ */
+function stalledWeekWithUnhydratedRun(User $user): Activity
+{
+    Carbon::setTestNow('2026-06-15 06:00:00');
+
+    $week = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-06-14', 'runs' => 3]);
+    Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $week->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $activity = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse('2026-06-11')]);
+
+    return $activity;
+}
+
+it('does not resume a weekly link whose week is still hydrating', function (): void {
+    $activity = stalledWeekWithUnhydratedRun(User::factory()->create());
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(0)
+        ->and($captured)->toBeEmpty()
+        ->and($activity->fresh()->ingest_state)->toBe(IngestState::Summary);
+});
+
+it('resumes that weekly link on the first sweep after hydration finishes', function (): void {
+    $activity = stalledWeekWithUnhydratedRun(User::factory()->create());
+    $activity->update(['ingest_state' => IngestState::Detailed]);
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(1)
+        ->and($captured)->toHaveCount(1)
+        ->and($captured[0]['type'])->toBe(AnalysisType::WeeklyRecap);
 });
