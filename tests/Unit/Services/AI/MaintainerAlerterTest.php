@@ -214,3 +214,35 @@ it('a dead-letter after a flush schedules its own new flush instead of being los
 
     Bus::assertDispatchedTimes(FlushDeadLetterAlertJob::class, 2);
 });
+
+it('totalCeilingReached names the spend, the ceiling and how many athletes degraded', function (): void {
+    $client = fakeTelegram();
+    adminWithChat(7003);
+
+    $client->shouldReceive('sendMessage')->once()->with(
+        7003,
+        'App-wide AI spend passed the daily ceiling: $6.20 of $5.00. 4 athletes are now served rule-based until midnight.',
+    );
+
+    app(MaintainerAlerter::class)->totalCeilingReached(6.2, 5.0, 4);
+});
+
+it('totalCeilingReached singularises a lone degraded athlete', function (): void {
+    $client = fakeTelegram();
+    adminWithChat(7004);
+
+    $client->shouldReceive('sendMessage')->once()->with(7004, Mockery::pattern('/1 athlete is now served rule-based/'));
+
+    app(MaintainerAlerter::class)->totalCeilingReached(6.0, 5.0, 1);
+});
+
+it('totalCeilingReached pushes once per cooldown, not once per gated dispatch', function (): void {
+    $client = fakeTelegram();
+    adminWithChat(7005);
+
+    $client->shouldReceive('sendMessage')->once();
+
+    $alerter = app(MaintainerAlerter::class);
+    $alerter->totalCeilingReached(6.0, 5.0, 2);
+    $alerter->totalCeilingReached(7.5, 5.0, 2);
+});

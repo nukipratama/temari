@@ -67,12 +67,17 @@ return [
     // LLM for them and serves their narration from the deterministic rule-based
     // filler until midnight resets the daily cost. Everyone else is unaffected.
     //
-    // This is the only enforced ceiling. A shared pool used to sit above it, but
-    // it meant the heaviest athlete on a given day spent the whole budget and
-    // *everyone* silently degraded, which is the failure a ceiling is supposed to
-    // prevent. The total bill is bounded by this figure times the number of
-    // athletes, which /devtools/ai-usage reports so the aggregate stays visible.
+    // It binds first for a heavy athlete on an ordinary day, and keeps one
+    // athlete from spending everybody else's budget.
     'daily_cost_ceiling_per_user' => env('AZURE_OPENAI_DAILY_COST_CEILING_PER_USER') !== null
         ? (float) env('AZURE_OPENAI_DAILY_COST_CEILING_PER_USER')
         : 1.00,
+
+    // USD/day ceiling on the WHOLE app's spend, sitting above the per-athlete
+    // one. Past it, every athlete's pending narration is served from the same
+    // rule-based filler until midnight, so the bill is bounded absolutely rather
+    // than by a figure that grows with the athlete count. Null disables it.
+    'daily_cost_ceiling_total' => env('AZURE_OPENAI_DAILY_COST_CEILING_TOTAL') !== null
+        ? (float) env('AZURE_OPENAI_DAILY_COST_CEILING_TOTAL')
+        : 5.00,
 ];

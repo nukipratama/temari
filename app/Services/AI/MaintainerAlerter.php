@@ -45,6 +45,11 @@ class MaintainerAlerter
 
     private const string METERING_ALERT_COOLDOWN_CACHE_KEY = 'ai.metering.record_failed_alert_cooldown';
 
+    /** Cooldown so an app-wide ceiling that stays tripped alerts once per window, not once per gated dispatch. */
+    private const int TOTAL_CEILING_ALERT_COOLDOWN_SECONDS = 3600;
+
+    private const string TOTAL_CEILING_ALERT_COOLDOWN_CACHE_KEY = 'ai.cost_ceiling.total_alert_cooldown';
+
     public function __construct(
         private readonly TelegramClient $telegram,
         private readonly AppConfig $config,
@@ -176,6 +181,27 @@ class MaintainerAlerter
         $modelLabel = $model ?? 'unknown';
 
         $this->broadcast("Token usage metering failed ({$exceptionClass}) for user {$user}, kind {$kind}, model {$modelLabel}. The cost ceiling is under-counting spend until this is fixed.");
+    }
+
+    /**
+     * The app-wide daily spend ceiling has been passed, so every athlete's
+     * narration is now served rule-based until midnight. Unlike one athlete
+     * exhausting their own slice, this is worth waking the maintainer for.
+     */
+    public function totalCeilingReached(float $todayCost, float $ceiling, int $athletes): void
+    {
+        if (! Cache::add(self::TOTAL_CEILING_ALERT_COOLDOWN_CACHE_KEY, true, self::TOTAL_CEILING_ALERT_COOLDOWN_SECONDS)) {
+            return;
+        }
+
+        $degraded = $athletes === 1 ? '1 athlete is' : "{$athletes} athletes are";
+
+        $this->broadcast(sprintf(
+            'App-wide AI spend passed the daily ceiling: $%.2f of $%.2f. %s now served rule-based until midnight.',
+            $todayCost,
+            $ceiling,
+            $degraded,
+        ));
     }
 
     private function pauseMessage(?string $reason): string

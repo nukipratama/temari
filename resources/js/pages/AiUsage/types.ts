@@ -80,12 +80,14 @@ export interface OriginRow {
 export interface Budget {
     todayCost: number;
     /**
-     * Combined ceiling: perUserCeiling x athletes. Derived, not configured and
-     * not enforced as a total — the only enforced limit is per athlete.
+     * Combined figure: perUserCeiling x athletes. Derived — what the bill would
+     * reach if every athlete spent their own slice, not a limit of its own.
      */
     dailyCeiling: number | null;
     /** The enforced per-athlete daily ceiling. */
     perUserCeiling: number | null;
+    /** The enforced app-wide daily ceiling, which binds before the combined figure. */
+    totalCeiling: number | null;
     /** Non-demo athletes the combined ceiling is derived from. */
     athletes: number;
     currency: string;

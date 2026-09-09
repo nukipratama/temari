@@ -10,6 +10,7 @@ function budget(overrides: Partial<Budget> = {}): Budget {
         todayCost: 0.02,
         dailyCeiling: 0.1,
         perUserCeiling: 0.05,
+        totalCeiling: 0.08,
         athletes: 2,
         currency: 'USD',
         trippedAt: null,
@@ -41,7 +42,9 @@ describe('BudgetGauge', () => {
 
         expect(screen.getByText(/no limit/i)).toBeInTheDocument();
         expect(screen.getByText('No daily limit set.')).toBeInTheDocument();
-        expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('progressbar', { name: /today's budget/i }),
+        ).not.toBeInTheDocument();
     });
 
     it('treats a zero ceiling as no ceiling rather than dividing by it', () => {
@@ -61,7 +64,10 @@ describe('BudgetGauge', () => {
     it('says nothing about degradation while the ceiling has not tripped', () => {
         render(<BudgetGauge budget={budget()} />);
 
-        expect(screen.queryByText(/rule-based/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Ceiling tripped/i)).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/served\s+rule-based$/i),
+        ).not.toBeInTheDocument();
     });
 
     it('names the trip time and how many replies were served rule-based', () => {
@@ -139,5 +145,24 @@ describe('BudgetGauge', () => {
 
         expect(screen.queryByText(/per athlete/)).not.toBeInTheDocument();
         expect(screen.getByText('No daily limit set.')).toBeInTheDocument();
+    });
+
+    it('shows the app-wide ceiling against the same spend', () => {
+        render(<BudgetGauge budget={budget({ totalCeiling: 0.04 })} />);
+
+        expect(screen.getByText('App-wide ceiling')).toBeInTheDocument();
+        expect(screen.getByText('$0.04')).toBeInTheDocument();
+        expect(
+            screen.getByRole('progressbar', { name: /app-wide ceiling/i }),
+        ).toHaveAttribute('aria-valuenow', '50');
+        expect(
+            screen.getByText(/all\s+narration is served rule-based/i),
+        ).toBeInTheDocument();
+    });
+
+    it('drops the app-wide tile when no total ceiling is configured', () => {
+        render(<BudgetGauge budget={budget({ totalCeiling: null })} />);
+
+        expect(screen.queryByText('App-wide ceiling')).not.toBeInTheDocument();
     });
 });

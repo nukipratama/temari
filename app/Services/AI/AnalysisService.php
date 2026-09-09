@@ -32,7 +32,7 @@ class AnalysisService
 
     /**
      * Memoized {@see self::dailyCostCeilingExceeded()} answers, keyed by the
-     * athlete the question was asked about (`'global'` for the shared pool). The
+     * athlete the question was asked about (`'total'` for the app-wide one). The
      * service is a `scoped` binding, so this lives exactly one HTTP request or
      * one queue job: both the queue worker and Octane discard it via
      * forgetScopedInstances(). Only the cost read is memoized -- the kill switch
@@ -766,14 +766,17 @@ class AnalysisService
     }
 
     /**
-     * True when this athlete has already spent past their own daily ceiling, so
-     * further auto-dispatch for them is skipped to cap cost. No ceiling
-     * configured (null) means this never gates dispatch, and a caller with no
-     * athlete in hand (the /pulse status line, ai:self-heal) is never gated —
-     * there is no shared pool left to trip.
+     * True when spend has already passed a ceiling that gates this caller: the
+     * app-wide total, which gates everyone including a caller with no athlete in
+     * hand (the /pulse status line, ai:self-heal), or this athlete's own slice
+     * underneath it. A ceiling left null never gates.
      */
     private function dailyCostCeilingExceeded(?int $userId = null): bool
     {
+        if ($this->ceilingExceeded('total', 'azure_openai.daily_cost_ceiling_total', null, appWide: true)) {
+            return true;
+        }
+
         // Memoized per athlete, prefixed so the key stays a string: PHP silently
         // casts a numeric string array key to an int, which the declared shape
         // is not.
@@ -786,12 +789,12 @@ class AnalysisService
      * `$memoKey` for the life of the scope. Null ceiling means that ceiling never
      * gates dispatch.
      *
-     * The ceiling is per athlete rather than a shared pool: a shared one meant
-     * the heaviest athlete on a given day spent the whole budget and *everyone*
-     * silently degraded to rule-based narration, which is the failure a ceiling
-     * exists to prevent.
+     * Both ceilings share this path so the per-athlete slice and the app-wide
+     * total can never diverge in what "past the ceiling" does. `$appWide` marks
+     * the total, whose trip is an incident worth a maintainer push rather than
+     * one athlete's ordinary day.
      */
-    private function ceilingExceeded(string $memoKey, string $configKey, ?int $userId): bool
+    private function ceilingExceeded(string $memoKey, string $configKey, ?int $userId, bool $appWide = false): bool
     {
         if (isset($this->costCeilingMemo[$memoKey])) {
             return $this->costCeilingMemo[$memoKey];
@@ -813,6 +816,10 @@ class AnalysisService
             'user_id' => $userId,
         ]);
         $this->ceilingLedger->recordTrip();
+
+        if ($appWide) {
+            $this->alerter->totalCeilingReached($todayCost, (float) $ceiling, User::query()->notDemo()->count());
+        }
 
         return $this->costCeilingMemo[$memoKey] = true;
     }
