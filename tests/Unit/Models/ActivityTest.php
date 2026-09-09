@@ -7,6 +7,7 @@ use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
+use App\Models\Scopes\AnalyzedScope;
 use App\Models\StoryLine;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -99,4 +100,29 @@ it('latestIdForUser scopes to the given user', function (): void {
     ActivityDetail::factory()->for($otherActivity)->create(['start_date_local' => Carbon::parse('2026-05-10')]);
 
     expect(Activity::latestIdForUser($user->id))->toBeNull();
+});
+
+it('analyzedJoinConstraint produces the same predicate as AnalyzedScope', function (): void {
+    $scoped = Activity::query()->toSql();
+    $viaHelper = Activity::analyzedJoinConstraint(
+        Activity::query()->withoutGlobalScope(AnalyzedScope::class),
+    )->toSql();
+
+    expect($viaHelper)->toBe($scoped);
+});
+
+it('analyzedJoinConstraint excludes a not-yet-analyzed activity from a raw join', function (): void {
+    $user = User::factory()->create();
+    $analyzed = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($analyzed)->create();
+    $stub = Activity::factory()->for($user)->stub()->create();
+    ActivityDetail::factory()->for($stub)->create();
+
+    $ids = Activity::analyzedJoinConstraint(
+        ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+    )
+        ->where('activities.user_id', $user->id)
+        ->pluck('activities.id');
+
+    expect($ids->all())->toBe([$analyzed->id]);
 });

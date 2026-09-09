@@ -145,6 +145,20 @@ class Activity extends Model
     }
 
     /**
+     * Re-applies {@see AnalyzedScope}'s predicate for a raw join that bypasses
+     * Eloquent's global scopes, so a hand-written join can't drift from the
+     * scope it duplicates.
+     *
+     * @template TModel of Model
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
+    public static function analyzedJoinConstraint(Builder $query, string $table = 'activities'): Builder
+    {
+        return $query->whereNotNull("{$table}.analyzed_at");
+    }
+
+    /**
      * The id of the user's latest run by `start_date_local` (the head of the
      * per-activity narration chain), or null when the user has no dated run.
      * Single source of truth for "latest run", shared by the run-detail page
