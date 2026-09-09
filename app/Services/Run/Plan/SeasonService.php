@@ -74,6 +74,7 @@ final readonly class SeasonService
 
         return DB::transaction(function () use ($user, $race, $today, $current): Season {
             $anchorKm = $this->baseline->trailingWeeklyVolumeKm($user, $today);
+            $opensWithRecovery = $race === null && self::followsARaceAlreadyRun($current, $today);
             $endsAt = $race !== null
                 ? $race->race_date->toDateString()
                 : $today->copy()->addWeeks(self::SELF_SCALED_WEEKS)->toDateString();
@@ -84,7 +85,12 @@ final readonly class SeasonService
             // calendar day — which `unique(user_id, starts_at)` forbids, and
             // which would leave a nonsensical zero-day season in history.
             if ($current !== null && ! $today->isAfter($current->ends_at) && $current->starts_at->isSameDay($today)) {
-                $current->update(['race_goal_id' => $race?->id, 'anchor_weekly_volume_km' => $anchorKm, 'ends_at' => $endsAt]);
+                $current->update([
+                    'race_goal_id' => $race?->id,
+                    'anchor_weekly_volume_km' => $anchorKm,
+                    'opens_with_recovery' => $opensWithRecovery,
+                    'ends_at' => $endsAt,
+                ]);
                 SeasonGoal::query()->where('season_id', $current->id)->delete();
                 $this->generateGoals($current, $user, $race, $today);
 
@@ -102,6 +108,7 @@ final readonly class SeasonService
                 'user_id' => $user->id,
                 'race_goal_id' => $race?->id,
                 'anchor_weekly_volume_km' => $anchorKm,
+                'opens_with_recovery' => $opensWithRecovery,
                 'starts_at' => $today->toDateString(),
                 'ends_at' => $endsAt,
             ]);
@@ -157,6 +164,25 @@ final readonly class SeasonService
         }
     }
 
+    /**
+     * Whether the arc being opened comes straight off a race the athlete
+     * actually ran. `plan:close-finished-races` retires the goal the morning
+     * after race day and the plan falls back to the self-scaled arc, which
+     * used to open at Build x1.0 — a full training week from a runner who
+     * raced on Saturday.
+     *
+     * Read off the race DATE rather than `completed_at`: a goal is also
+     * retired when the athlete calls the race off ({@see
+     * \App\Http\Controllers\RaceController::destroy()}) or supersedes it
+     * with another, and there is nothing to recover from in either case.
+     */
+    private static function followsARaceAlreadyRun(?Season $previous, Carbon $today): bool
+    {
+        $race = $previous?->raceGoal;
+
+        return $race !== null && ! $race->race_date->startOfDay()->isAfter($today);
+    }
+
     private function isCurrent(Season $season, ?RaceGoal $race, Carbon $today): bool
     {
         if ($today->isAfter($season->ends_at)) {
@@ -173,7 +199,7 @@ final readonly class SeasonService
 
         $weeks = $race !== null
             ? $this->phaseSchedule->forRace($today, $race->race_date, (float) $race->distance_m)
-            : $this->phaseSchedule->selfScaled($today, self::SELF_SCALED_WEEKS);
+            : $this->phaseSchedule->selfScaled($today, self::SELF_SCALED_WEEKS, $season->opens_with_recovery);
         $weekCount = count($weeks);
 
         $phases = array_map(fn (array $w): PlanPhase => $w['phase'], $weeks);

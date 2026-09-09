@@ -61,10 +61,9 @@ final class PhaseSchedule
      * the only Deload that existed was the reactive one
      * {@see \App\Services\Run\Plan\Periodizer::sliceFromCurrentWeek()} applies
      * to the current week once monotony, strain or adherence has ALREADY
-     * slipped. The
-     * self-scaled arc has had a scheduled down week all along
-     * ({@see self::SELF_SCALED_CYCLE_WEEKS}); the arc with a deadline is the one
-     * that needed it more.
+     * slipped. The self-scaled arc has had a scheduled down week all along
+     * ({@see self::SELF_SCALED_CYCLE_WEEKS}); the arc with a deadline is the
+     * one that needed it more.
      */
     private const int DELOAD_EVERY_WEEKS = 4;
 
@@ -128,14 +127,20 @@ final class PhaseSchedule
     }
 
     /**
+     * `$opensWithRecovery` puts a single recovery week at the head of the arc,
+     * before the cycle starts, for an athlete who has just raced. The cycle
+     * then runs from the week after it, so the recovery week is an extra week
+     * rather than one borrowed from the first build block.
+     *
      * @return list<array{week_start: Carbon, phase: PlanPhase}>
      */
-    public function selfScaled(Carbon $arcStart, int $weeks): array
+    public function selfScaled(Carbon $arcStart, int $weeks, bool $opensWithRecovery = false): array
     {
         $currentWeekStart = $arcStart->copy()->startOfWeek(Carbon::MONDAY);
 
-        $phases = [];
-        for ($i = 0; $i < $weeks; $i++) {
+        $phases = $opensWithRecovery ? [PlanPhase::Deload] : [];
+        $cycleWeeks = $weeks - count($phases);
+        for ($i = 0; $i < $cycleWeeks; $i++) {
             $cyclePosition = $i % self::SELF_SCALED_CYCLE_WEEKS;
             $phases[] = $cyclePosition < self::SELF_SCALED_CYCLE_WEEKS - 1 ? PlanPhase::Build : PlanPhase::Deload;
         }
