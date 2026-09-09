@@ -15,6 +15,11 @@ use App\Actions\Run\Metrics\ResolveDistanceRecordsAction;
 
 class PersonalRecords
 {
+    public function __construct(
+        private ResolveDistanceRecordsAction $distanceRecords,
+    ) {
+    }
+
     /**
      * Rebuild the user's personal records from scratch across their remaining
      * activities, oldest-first. Used after an activity is deleted: detectAndStore
@@ -25,7 +30,7 @@ class PersonalRecords
     public function rebuildForUser(User $user): void
     {
         PersonalRecord::query()->where('user_id', $user->id)->delete();
-        app(ResolveDistanceRecordsAction::class)->forget($user->id);
+        $this->distanceRecords->forget($user->id);
 
         $activities = Activity::query()
             ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
