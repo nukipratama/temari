@@ -207,6 +207,7 @@ export default function Plan({
                                         ]),
                                     )}
                                     today={today}
+                                    raceDate={race?.race_date ?? null}
                                     weekFocus={adaptation}
                                     weekNarration={planNarration.week}
                                     dayNarration={planNarration.days}

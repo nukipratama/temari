@@ -7,6 +7,7 @@ import {
     SESSION_TYPE_LABEL,
     clampSummary,
     computeAdherence,
+    isRaceWeek,
     kmLabel,
     paceLabel,
     phasesOf,
@@ -193,6 +194,23 @@ describe('clampSummary', () => {
                 9.1,
             ),
         ).toBe('rest · 0 km');
+    });
+});
+
+describe('isRaceWeek', () => {
+    it('marks the week the race date falls in, from monday to sunday', () => {
+        expect(isRaceWeek('2026-06-15', '2026-06-15')).toBe(true);
+        expect(isRaceWeek('2026-06-15', '2026-06-21')).toBe(true);
+        expect(isRaceWeek('2026-06-15', '2026-06-18')).toBe(true);
+    });
+
+    it('leaves the weeks either side of it unmarked', () => {
+        expect(isRaceWeek('2026-06-15', '2026-06-14')).toBe(false);
+        expect(isRaceWeek('2026-06-15', '2026-06-22')).toBe(false);
+    });
+
+    it('marks nothing when no race is set', () => {
+        expect(isRaceWeek('2026-06-15', null)).toBe(false);
     });
 });
 

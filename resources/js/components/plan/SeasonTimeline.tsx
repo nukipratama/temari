@@ -37,6 +37,7 @@ export default function SeasonTimeline({
     weeks,
     detailByWeekStart,
     today,
+    raceDate = null,
     weekFocus,
     weekNarration,
     dayNarration,
@@ -46,6 +47,8 @@ export default function SeasonTimeline({
     weeks: SeasonSummaryWeek[];
     detailByWeekStart: Record<string, PlanWeek>;
     today: string;
+    /** The goal race's date, passed down so its week is marked as one. */
+    raceDate?: string | null;
     /** The current week's adaptation verdict, shown as its focus line. */
     weekFocus: { headline: string; detail: string } | null;
     weekNarration: AnalysisPayload | null;
@@ -85,6 +88,7 @@ export default function SeasonTimeline({
             detail={detailByWeekStart[week.week_start] ?? null}
             isLast={isLast}
             today={today}
+            raceDate={raceDate}
             focus={week.type === 'current' ? weekFocus : null}
             narration={week.type === 'current' ? weekNarration : null}
             dayNarration={week.type === 'current' ? dayNarration : {}}
