@@ -8,6 +8,8 @@ use App\Http\Requests\StoreRaceGoalRequest;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Models\RaceGoal;
 use App\Models\User;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Metrics\RiegelProjector;
@@ -50,6 +52,8 @@ class RaceController extends Controller
         PlanNarrationRequester $narrationRequester,
         ResolveActiveRaceAction $activeRace,
     ): RedirectResponse {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::User);
+
         /** @var User $user */
         $user = $request->user();
 
@@ -107,6 +111,8 @@ class RaceController extends Controller
         PlanNarrationRequester $narrationRequester,
         ResolveActiveRaceAction $activeRace,
     ): RedirectResponse {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::User);
+
         /** @var User $user */
         $user = $request->user();
 

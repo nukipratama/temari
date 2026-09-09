@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import PaceTargetsCard from './PaceTargetsCard';
 
@@ -173,5 +173,36 @@ describe('PaceTargetsCard', () => {
         expect(dots[3].style.left).toBe('100%');
         expect(leftOf(labels[3])).toBeLessThan(leftOf(dots[3]));
         expect(leftOf(labels[1])).toBeGreaterThan(0);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        Reflect.deleteProperty(document, 'fonts');
+    });
+
+    it('remeasures the rail once webfonts finish loading', async () => {
+        const clientWidthSpy = vi
+            .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+            .mockReturnValue(0);
+        let resolveReady: () => void = () => {};
+        const ready = new Promise<void>((resolve) => {
+            resolveReady = resolve;
+        });
+        Object.defineProperty(document, 'fonts', {
+            configurable: true,
+            value: { ready },
+        });
+
+        render(<PaceTargetsCard paces={PACES} />);
+        const callsBeforeReady = clientWidthSpy.mock.calls.length;
+
+        resolveReady();
+        await act(async () => {
+            await ready;
+        });
+
+        expect(clientWidthSpy.mock.calls.length).toBeGreaterThan(
+            callsBeforeReady,
+        );
     });
 });

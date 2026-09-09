@@ -231,7 +231,7 @@ function AccountActions() {
             <button
                 type="button"
                 onClick={() => router.post('/logout')}
-                className="pressable focus-ring flex w-full items-center justify-center gap-2 rounded-lg border border-border-strong bg-card py-3 font-sans text-[0.8125rem] font-bold text-foreground transition hover:bg-cream-deep/40 min-[900px]:w-auto min-[900px]:px-6"
+                className="pressable focus-ring flex w-full items-center justify-center gap-2 rounded-lg border border-border-strong bg-card py-3 font-sans text-[0.8125rem] font-bold text-foreground transition hover:bg-cream-deep/30 min-[900px]:w-auto min-[900px]:px-6"
             >
                 <Icon icon="mdi:logout" width={16} height={16} aria-hidden />
                 log out

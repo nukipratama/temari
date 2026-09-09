@@ -96,7 +96,7 @@ export default function SettingsRow({
     );
 
     const baseClasses =
-        'focus-ring -mx-2 flex items-center justify-between gap-3 rounded-xl p-2 text-left transition hover:bg-cream-deep/40';
+        'focus-ring -mx-2 flex items-center justify-between gap-3 rounded-xl p-2 text-left transition hover:bg-cream-deep/30';
     // Only the interactive branches get press feedback; the plain-<div> row
     // below is a static readout and must not pretend to be tappable.
     const tappableClasses = cn(baseClasses, 'pressable cursor-pointer');

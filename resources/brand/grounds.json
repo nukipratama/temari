@@ -138,9 +138,10 @@
             },
             "text": [
                 "citrus-ink"
-            ]
+            ],
+            "graphic": true
         },
-        "cream-deep/0.4": {
+        "cream-deep/0.3": {
             "over": {
                 "resources/js/pages/Settings/Index.tsx": [
                     "paper"
@@ -393,7 +394,8 @@
             },
             "text": [
                 "leaf-ink"
-            ]
+            ],
+            "graphic": true
         },
         "leaf/0.18": {
             "over": {

@@ -20,12 +20,12 @@ covers the fill side; nothing it decided changes.
 ## Context
 
 Every recovery family in [SelfHealer](../../app/Services/AI/SelfHealer.php) starts from a row that
-already exists — `resumeSingleRowType` [:259](../../app/Services/AI/SelfHealer.php#L259),
-`resumeCardFlavor` [:221](../../app/Services/AI/SelfHealer.php#L221) and the two chain sweeps all
+already exists — `resumeSingleRowType` [:291](../../app/Services/AI/SelfHealer.php#L291),
+`resumeCardFlavor` [:253](../../app/Services/AI/SelfHealer.php#L253) and the two chain sweeps all
 query `Analysis::query()->stalled()`. There is no `firstOrCreate` anywhere in it.
 
 But a row's existence is decided by a single scheduled minute. `ai:daily-briefing` stages the day's
-`BriefingMascotVoice` at 00:01, and the Monday block at 00:00–00:07 stages the week's recap and
+`BriefingMascotVoice` at 00:01, and the Monday block at 00:00–00:26 stages the week's recap and
 profile voice. If the scheduler container is down across that minute, no row is ever created and
 self-heal has nothing to find: a resting athlete silently loses that day's briefing, and a Monday
 outage loses the week's recap and profile narration outright. The only partial mitigation was the
