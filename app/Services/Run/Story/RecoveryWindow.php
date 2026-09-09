@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Story;
 
 use NoDiscard;
-use App\Models\ActivityDetail;
+use App\Actions\Run\Story\ResolveLastRunStartAction;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 
@@ -38,7 +38,7 @@ final readonly class RecoveryWindow
         // recomputes a past-dated briefing, and leaking a later run into it
         // would misreport recovery (and weaken the readiness cap) for that day.
         $ceiling = $asOf->copy()->endOfDay();
-        $lastStart = self::lastStartAtOrBefore($user, $ceiling);
+        $lastStart = app(ResolveLastRunStartAction::class)($user->id, $ceiling);
 
         if ($lastStart === null) {
             return new self(null, false, null, null);
@@ -59,22 +59,5 @@ final readonly class RecoveryWindow
         $recoveryHours = $ranToday ? null : $hoursSinceLastRun;
 
         return new self($hoursSinceLastRun, $ranToday, $daysSinceLastRun, $recoveryHours);
-    }
-
-    /**
-     * The most recent activity start at or before $ceiling. $ceiling keeps the
-     * window as-of the briefing date so a backdated recompute never sees a
-     * later run.
-     */
-    private static function lastStartAtOrBefore(User $user, Carbon $ceiling): ?Carbon
-    {
-        $value = ActivityDetail::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
-            ->whereNotNull('start_date_local')
-            ->where('start_date_local', '<=', $ceiling)
-            ->orderByDesc('start_date_local')
-            ->value('start_date_local');
-
-        return $value === null ? null : Carbon::parse($value);
     }
 }
