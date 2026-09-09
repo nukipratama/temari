@@ -3,7 +3,7 @@ title: Flag this as wrong
 description: A per-row "this is wrong" control on plan days and narrations, read by the owner in tinker.
 tags: [feature, feedback]
 status: living
-reviewed: 2026-09-10
+reviewed: 2026-09-09
 code_refs:
   - app/Models/Feedback.php
   - app/Enums/FeedbackSubject.php
@@ -13,7 +13,6 @@ code_refs:
   - app/Http/Controllers/FeedbackController.php
   - app/Http/Requests/StoreFeedbackRequest.php
   - resources/js/components/temari/FlagWrong.tsx
-  - resources/js/components/temari/NarrationFlag.tsx
   - resources/js/components/temari/FlagSheet.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
   - resources/js/components/plan/WeekDayRow.tsx
@@ -48,8 +47,8 @@ Ownership lives in [StoreFeedbackRequest::authorize()](../../app/Http/Requests/S
 
 [FlagWrong](../../resources/js/components/temari/FlagWrong.tsx) is one icon-only ghost button at a 44px tap target, on every width, that opens a bottom sheet titled `something off?`: the subject's four reasons as single-select chips, an optional note, `send` (disabled until a reason is chosen) and `never mind`. There is no toast — the icon itself fills in and goes inert, which is the confirmation. It is mounted twice:
 
-- Top-right of every `done` narration block, level with that block's eyebrow. [AnalysisStatus](../../resources/js/components/temari/AnalysisStatus.tsx) does not draw the eyebrow — each host builds its own — so the flag is drawn by the host through [NarrationFlag](../../resources/js/components/temari/NarrationFlag.tsx), which answers with nothing on a block that is not `done` or has no row yet (`NarrationFlag.tsx:18-24`). The seven hosts are `TodaySession`, `TemariTake`, `NarrationCard`, `RecapCard`, `CalendarWeekRow`, `ProfileHero` and both lenses of `RunLenses` (whose `LensLabel` takes a `trailing` slot, [RunLenses.tsx:157](../../resources/js/components/run/RunLenses.tsx)); `RecapCard`, `CalendarWeekRow` and `ProfileHero` had no header row before this and were given one. `AnalysisStatus` keeps only the `reread` trigger, which is drawn alone or not at all — the flag leaving that line is what removes the orphan row a block that cannot be reread used to end on. An eyebrow line is ~16px against a 44px tap target, so the header flag passes `compact` ([FlagWrong.tsx:19](../../resources/js/components/temari/FlagWrong.tsx)), which draws the icon on a 20px box and pushes the target back out to 44px with a pseudo-element instead of with the button's own size.
-- On the plan day's collapsed trigger row in [WeekDayRow](../../resources/js/components/plan/WeekDayRow.tsx), pinned to its right edge and readable without expanding the day. The trigger is itself a button, so the flag is its sibling in the row rather than a button nested inside one ([WeekDayRow.tsx:191](../../resources/js/components/plan/WeekDayRow.tsx)). Labelled `flag this day` against the narration's `flag this read` — a wrong prescription and a wrong reading of it are different complaints.
+- On every `done` narration block, from inside [AnalysisStatus](../../resources/js/components/temari/AnalysisStatus.tsx), at the right end of the same action line the `reread` trigger sits on, so it follows narration wherever it renders (home, run detail, trends, plan) and inherits that block's `onSky` styling. It is drawn whether or not that block may be reread. A block that has no row yet (`analysis.id === null`) has nothing to flag, so it draws none.
+- On the expanded plan day row in [WeekDayRow](../../resources/js/components/plan/WeekDayRow.tsx), at the right end of the `view activity` line, or alone on its own right-aligned line on a day with no run. Labelled `flag this day` against the narration's `flag this read` — a wrong prescription and a wrong reading of it are different complaints.
 
 It posts through `router.post` with `preserveState`, so the confirmation survives the redirect back.
 

@@ -6,7 +6,6 @@ import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
 
 import CalendarWeekRow from '@/components/history/CalendarWeekRow';
 import HistoryHeader from '@/components/history/HistoryHeader';
-import MonthlyStatusChips from '@/components/history/MonthlyStatusChips';
 import RecapCard from '@/components/history/RecapCard';
 import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
@@ -111,11 +110,6 @@ export default function Calendar({
                                     isChainHead={monthlyRecap.is_chain_head}
                                     size="month"
                                     inertiaReloadProps={['monthlyRecap']}
-                                    chips={
-                                        <MonthlyStatusChips
-                                            totals={monthTotals}
-                                        />
-                                    }
                                     notification={{
                                         url: `/recaps/monthly/${month}/send`,
                                         retryAfterSeconds:

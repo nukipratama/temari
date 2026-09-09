@@ -13,13 +13,6 @@ const ICON_BUTTON_CLASS =
     'inline-flex size-11 flex-none items-center justify-center rounded-full';
 
 /**
- * The same 44px target on a 20px box, so the control can sit on an eyebrow
- * line without the row growing around it.
- */
-const COMPACT_BUTTON_CLASS =
-    "relative inline-flex size-5 flex-none items-center justify-center rounded-full before:absolute before:-inset-3 before:content-['']";
-
-/**
  * "This is wrong" on one plan day or one narration, as a single icon that
  * opens a sheet. Only the icon is on the first-paint path; the sheet and the
  * dialog under it arrive with the first tap.
@@ -30,7 +23,6 @@ export default function FlagWrong({
     label,
     flagged = false,
     onSky = false,
-    compact = false,
 }: Readonly<{
     subjectType: FeedbackSubject;
     subjectId: number;
@@ -40,8 +32,6 @@ export default function FlagWrong({
     flagged?: boolean;
     /** Cream-on-sky styling, for a block drawn on a dark panel. */
     onSky?: boolean;
-    /** Draw on a small box, keeping the 44px target — see {@link COMPACT_BUTTON_CLASS}. */
-    compact?: boolean;
 }>) {
     const isDemo = usePage<SharedProps>().props.auth.user?.is_demo === true;
     const [open, setOpen] = useState(false);
@@ -55,14 +45,13 @@ export default function FlagWrong({
     }
 
     const tone = onSky ? 'text-ink-on-sky' : 'text-text-3';
-    const box = compact ? COMPACT_BUTTON_CLASS : ICON_BUTTON_CLASS;
 
     if (flagged || sent) {
         return (
             <span
                 aria-label="flagged"
                 title="flagged"
-                className={cn(box, tone)}
+                className={cn(ICON_BUTTON_CLASS, tone)}
             >
                 <Icon
                     icon="mdi:flag"
@@ -84,7 +73,7 @@ export default function FlagWrong({
                     setOpen(true);
                 }}
                 className={cn(
-                    box,
+                    ICON_BUTTON_CLASS,
                     'focus-ring pressable transition-colors hover:text-foreground',
                     tone,
                 )}

@@ -6,7 +6,6 @@ import type { AnalysisPayload } from '@/types/inertia';
 import TimeInZoneBar from '@/components/profile/TimeInZoneBar';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import FaceIcon from '@/components/temari/FaceIcon';
-import NarrationFlag from '@/components/temari/NarrationFlag';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import Skeleton from '@/components/ui/Skeleton';
@@ -90,9 +89,6 @@ export default function ProfileHero({
 
             {voice && (
                 <div className="relative mt-4">
-                    <div className="flex justify-end">
-                        <NarrationFlag analysis={voice} />
-                    </div>
                     <AnalysisStatus
                         analysis={voice}
                         inertiaReloadProps={['profileVoice']}

@@ -68,18 +68,4 @@ describe('NarrationCard', () => {
 
         expect(screen.getByText('Just a title.')).toBeInTheDocument();
     });
-
-    it('sits the flag in the header row, level with the eyebrow', () => {
-        render(
-            <NarrationCard
-                analysis={payload({ id: 3, status: 'done', content: 'Up.' })}
-            />,
-        );
-
-        const flag = screen.getByRole('button', { name: 'flag this read' });
-
-        expect(screen.getByText("Temari's read").parentElement).toBe(
-            flag.parentElement,
-        );
-    });
 });

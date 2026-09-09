@@ -1,9 +1,10 @@
-import { Fragment } from 'react';
+import { Fragment, useLayoutEffect, useRef, useState } from 'react';
 
 import Eyebrow from '@/components/ui/Eyebrow';
 import LegacyCard from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
 import { formatPace, parseNaiveLocalDate } from '@/lib/pace';
+import { layoutPaceLabels } from '@/lib/paceRail';
 import { PR_CATEGORY_LABELS } from '@/lib/pr';
 
 export interface TrainingPaces {
@@ -66,72 +67,103 @@ const MARKERS = [
     { key: 'interval', label: 'interval', below: true },
 ] as const;
 
-/**
- * How far from each end a label still anchors to the rail edge rather than
- * centring over its dot. Wide enough that the longest label ("marathon")
- * clears on a phone, where the rail is narrowest relative to the text.
- */
-const LABEL_ANCHOR_ZONE = 25;
+/** Breathing room kept on each side of a label, in pixels. */
+const LABEL_PADDING = 8;
+
+/** Stands in for the rail until it is measured, and where there is no layout. */
+const ASSUMED_RAIL_WIDTH = 260;
 
 /**
- * Percentage of its own width to shift a label left. A label centres over its
- * dot, except inside the anchor zones, where it ramps to flush-left at 0% and
- * flush-right at 100% so the end labels never overhang the rail.
+ * A label's room before it is measured: the wider of its two lines, at 11px
+ * bold over 12px mono.
  */
-function labelShift(left: number): number {
-    if (left < LABEL_ANCHOR_ZONE) {
-        return (left / LABEL_ANCHOR_ZONE) * 50;
-    }
-    if (left > 100 - LABEL_ANCHOR_ZONE) {
-        return (
-            50 + ((left - (100 - LABEL_ANCHOR_ZONE)) / LABEL_ANCHOR_ZONE) * 50
-        );
-    }
-
-    return 50;
+function estimateLabelWidth(label: string, pace: string): number {
+    return (
+        ((Math.max(label.length * 6.6, pace.length * 7.2) + LABEL_PADDING) /
+            ASSUMED_RAIL_WIDTH) *
+        100
+    );
 }
 
 /**
  * The four training paces on one rail. The prototype hardcodes each marker's
  * left offset; here the offsets are the paces themselves, linearly placed
- * between the slowest and the fastest, so a runner whose tempo sits unusually
- * close to their marathon pace sees those two markers crowd together.
+ * between the slowest and the fastest. Dots stay on those offsets; labels
+ * centre on them and give way to each other when two paces sit close enough
+ * that their labels would collide.
  */
 export default function PaceTargetsCard({
     paces,
     source = null,
 }: Readonly<{ paces: TrainingPaces; source?: VdotSource | null }>) {
+    const [rail, setRail] = useState<HTMLDivElement | null>(null);
+    const [widths, setWidths] = useState<number[] | null>(null);
+    const labelRef = useRef<(HTMLSpanElement | null)[]>([]);
+
+    useLayoutEffect(() => {
+        if (!rail) {
+            return;
+        }
+        const measure = () => {
+            const railWidth = rail.clientWidth;
+            if (railWidth === 0) {
+                return;
+            }
+            setWidths(
+                labelRef.current.map(
+                    (label) =>
+                        (((label?.offsetWidth ?? 0) + LABEL_PADDING) /
+                            railWidth) *
+                        100,
+                ),
+            );
+        };
+        const observer = new ResizeObserver(measure);
+        observer.observe(rail);
+
+        return () => observer.disconnect();
+    }, [rail]);
+
     const values = MARKERS.map((m) => paces[m.key]);
     const slowest = Math.max(...values);
     const fastest = Math.min(...values);
     const span = slowest - fastest;
+
+    const layout = layoutPaceLabels(
+        MARKERS.map((marker, index) => ({
+            below: marker.below,
+            position:
+                span === 0 ? 50 : ((slowest - paces[marker.key]) / span) * 100,
+            width:
+                widths?.[index] ??
+                estimateLabelWidth(marker.label, formatPace(paces[marker.key])),
+        })),
+    );
 
     return (
         <LegacyCard as="section">
             <Eyebrow token="micro" tone="ink-3">
                 Training · pace targets · per km
             </Eyebrow>
-            <div className="relative mx-4 mt-2.5 h-[78px]">
+            <div ref={setRail} className="relative mx-4 mt-2.5 h-[78px]">
                 <div className="absolute inset-x-0 top-[39px] h-1 rounded-full bg-gradient-to-r from-leaf to-horizon" />
-                {MARKERS.map((marker) => {
-                    const pace = paces[marker.key];
-                    const left =
-                        span === 0 ? 50 : ((slowest - pace) / span) * 100;
+                {MARKERS.map((marker, index) => {
+                    const { position, left } = layout[index];
 
                     return (
                         <Fragment key={marker.key}>
                             <span
+                                ref={(element) => {
+                                    labelRef.current[index] = element;
+                                }}
                                 className={cn(
                                     'absolute text-center leading-tight whitespace-nowrap',
                                     marker.below ? 'bottom-0' : 'top-0',
                                 )}
-                                style={{
-                                    left: `${left}%`,
-                                    transform: `translateX(-${labelShift(left)}%)`,
-                                }}
+                                style={{ left: `${left}%` }}
                             >
                                 <b className="block font-mono text-xs font-bold tabular-nums text-foreground">
-                                    {formatPace(pace)}
+                                    {formatPace(paces[marker.key])}
                                 </b>
                                 <span className="block text-label-micro text-text-2">
                                     {marker.label}
@@ -139,7 +171,7 @@ export default function PaceTargetsCard({
                             </span>
                             <i
                                 className="absolute top-[37px] size-2 -translate-x-1/2 rounded-full bg-foreground ring-[3px] ring-card"
-                                style={{ left: `${left}%` }}
+                                style={{ left: `${position}%` }}
                             />
                         </Fragment>
                     );

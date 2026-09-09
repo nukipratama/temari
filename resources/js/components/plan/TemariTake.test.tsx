@@ -38,21 +38,4 @@ describe('TemariTake', () => {
             screen.queryByText('Base has been steady, no red flags.'),
         ).not.toBeInTheDocument();
     });
-
-    it('sits the flag in the header row, level with the label', () => {
-        render(<TemariTake analysis={analysis()} />);
-
-        const flag = screen.getByRole('button', { name: 'flag this read' });
-        const label = screen.getByText("Temari's take");
-
-        expect(label.parentElement?.parentElement).toBe(flag.parentElement);
-    });
-
-    it('draws no flag while the narration is not done', () => {
-        render(<TemariTake analysis={analysis({ status: 'pending' })} />);
-
-        expect(
-            screen.queryByRole('button', { name: 'flag this read' }),
-        ).toBeNull();
-    });
 });
