@@ -1,4 +1,4 @@
-import { contrast, darkest, darkGrounds, groundsForInk, paperGrounds, toRgb } from './grounds.mjs';
+import { KINDS, composite, contrast, darkest, darkGrounds, groundsForInk, paperGrounds, toRgb } from './grounds.mjs';
 
 /* The colour derivation behind resources/css/app.css: the raw palette, and the
    -ink tiers derived from it per ground so a label always clears contrast on
@@ -137,8 +137,28 @@ COLOR.line = inkOn(COLOR.line, GROUNDS, 1.4);
    on #0b1017 at 2.9:1. inkOnDark returns the vivid fill unchanged here, so the
    dark value is the #ade047 that reasoning assumed was already in use. */
 const DARK_INK_FAMILIES = ['horizon', 'leaf', 'ember', 'citrus'];
+
+/* ember-ink's dark value was worst-cased only against the raw Sky surfaces,
+   before accent/muted/popover joined the reactive panel set the live audit
+   checks a translucent `bg-ember/<alpha>` chip against (ErrorBanner,
+   FlashNotice, the fatigued/overreaching training-load chip). accent/muted/
+   popover all resolve to sky-2 on dark, but a chip prints on the tint over
+   that ground, not on the ground itself, so the tint has to be a ground too. */
+function darkTintGrounds(family) {
+  const alpha = KINDS.tint[family];
+  if (alpha === undefined) return GROUNDS_DARK;
+  const grounds = { ...GROUNDS_DARK };
+  for (const [name, bg] of Object.entries(GROUNDS_DARK)) {
+    grounds[`${family}/${alpha} on ${name}`] = composite(COLOR[family], alpha, bg);
+  }
+  return grounds;
+}
+
 export const DARK_INK = Object.fromEntries(
-  DARK_INK_FAMILIES.map((family) => [family, inkOnDark(COLOR[family], GROUNDS_DARK)]),
+  DARK_INK_FAMILIES.map((family) => [
+    family,
+    inkOnDark(COLOR[family], family === 'ember' ? darkTintGrounds(family) : GROUNDS_DARK),
+  ]),
 );
 export const RARITY_INK_DARK = Object.fromEntries(
   Object.entries(RARITY).map(([k, v]) => [k, inkOnDark(v, GROUNDS_DARK)]),

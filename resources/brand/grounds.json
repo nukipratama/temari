@@ -140,7 +140,7 @@
                 "citrus-ink"
             ]
         },
-        "cream-deep/0.4": {
+        "cream-deep/0.3": {
             "over": {
                 "resources/js/pages/Settings/Index.tsx": [
                     "paper"

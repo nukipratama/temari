@@ -68,6 +68,6 @@ describe('SettingsRow', () => {
         expect(screen.getByText(defaultProps.label)).toBeInTheDocument();
         const div = screen.getByText(defaultProps.label).closest('div');
         expect(div).toBeInTheDocument();
-        expect(div).toHaveClass('focus-ring', 'hover:bg-cream-deep/40');
+        expect(div).toHaveClass('focus-ring', 'hover:bg-cream-deep/30');
     });
 });

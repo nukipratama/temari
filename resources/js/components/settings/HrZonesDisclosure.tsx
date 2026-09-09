@@ -227,7 +227,7 @@ export default function HrZonesDisclosure({
                 type="button"
                 onClick={() => setOpen((v) => !v)}
                 aria-expanded={open}
-                className="pressable focus-ring flex w-full items-center gap-2.5 p-4 text-left transition hover:bg-cream-deep/40"
+                className="pressable focus-ring flex w-full items-center gap-2.5 p-4 text-left transition hover:bg-cream-deep/30"
             >
                 <Icon
                     icon="mdi:heart-pulse"
