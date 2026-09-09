@@ -123,26 +123,19 @@ final readonly class AgentLoop
      *
      * A run past its wall-clock deadline starts no further request: it gives up
      * terminally here, at a step boundary, rather than being killed mid-request
-     * by the worker's own timeout with the step billed and the block empty.
+     * by the worker's own timeout with the step billed and the block empty. The
+     * deadline is checked again after the throttle block, since that block can
+     * itself spend up to `azure_block_cap_seconds` of the same wall clock.
      *
      * @param  array<string, mixed>  $payload
      */
     private function createResponse(string $kind, array $payload, AgentBudget $budget, float $startedAt): CreateResponse
     {
-        if ($budget->deadlinePassed()) {
-            Log::warning('narrator.ai.agent_deadline', [
-                'kind' => $kind,
-                'steps' => $budget->steps(),
-                'total_tokens' => $budget->totalTokens(),
-                'latency_ms' => self::latencyMs($startedAt),
-            ]);
-
-            throw new UnavailableException(
-                'Azure OpenAI run gave up at its wall-clock deadline after '.$budget->steps().' steps',
-            );
-        }
+        $this->failIfDeadlinePassed($kind, $budget, $startedAt);
 
         $this->throttle->block();
+
+        $this->failIfDeadlinePassed($kind, $budget, $startedAt);
 
         try {
             $response = $this->azure->client()->responses()->create($payload);
@@ -169,6 +162,24 @@ final readonly class AgentLoop
         }
 
         return $response;
+    }
+
+    private function failIfDeadlinePassed(string $kind, AgentBudget $budget, float $startedAt): void
+    {
+        if (! $budget->deadlinePassed()) {
+            return;
+        }
+
+        Log::warning('narrator.ai.agent_deadline', [
+            'kind' => $kind,
+            'steps' => $budget->steps(),
+            'total_tokens' => $budget->totalTokens(),
+            'latency_ms' => self::latencyMs($startedAt),
+        ]);
+
+        throw new UnavailableException(
+            'Azure OpenAI run gave up at its wall-clock deadline after '.$budget->steps().' steps',
+        );
     }
 
     /**

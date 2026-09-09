@@ -331,3 +331,24 @@ it('refuses the forced answer replay once the deadline has passed', function ():
 
     $client->assertNothingSent();
 });
+
+it('gives up when the wait for a throttle slot is what spends the deadline', function (): void {
+    Carbon::setTestNow('2026-09-09 06:00:00');
+
+    $client = new ClientFake([fakeAzureResponse('{}')]);
+    $azure = Mockery::mock(AzureOpenAIClient::class);
+    $azure->shouldReceive('client')->andReturn($client);
+    $breaker = Mockery::mock(AzureConfigCircuitBreaker::class);
+    $breaker->shouldReceive('recordSuccess')->andReturnNull();
+    $throttle = Mockery::mock(AzureCallThrottle::class);
+    $throttle->shouldReceive('block')->once()->andReturnUsing(function (): void {
+        Carbon::setTestNow(Carbon::now()->addSeconds(241));
+    });
+    $loop = new AgentLoop($azure, $breaker, $throttle);
+    $budget = new AgentBudget(maxSteps: 10, maxTokens: 30_000, deadlineSeconds: 240);
+
+    expect(fn () => $loop->converse('run_insight', agentLoopPayload(), null, $budget, microtime(true)))
+        ->toThrow(UnavailableException::class, 'wall-clock deadline');
+
+    $client->assertNothingSent();
+});
