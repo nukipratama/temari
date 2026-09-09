@@ -126,7 +126,7 @@ come back: P27 cut the day-grained streak readout, and the week streak surfaces 
 
 ## Not on this page
 
-Accessories are **not** rendered here — Profile shows no accessory strip. PRs surface only as the progression charts above; the Personal Bests panel that used to list them on `/trends` was cut in `PP3` ([[records]]). The accessory unlock catalog has no surface anywhere since `PP2` deleted its page (see [[targets-accessories]]).
+PRs surface only as the progression charts above; the Personal Bests panel that used to list them on `/trends` was cut in `PP3` ([[records]]). Accessories are not rendered here either — `PP2` deleted the page that drew them, and the unlock catalog behind it has since been removed outright (see [[gamification]]).
 
 ## Settings
 

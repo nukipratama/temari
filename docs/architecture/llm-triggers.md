@@ -293,7 +293,7 @@ inline in its `toolbox()` method.
 | `RecentBaselineTool` · `get_recent_baseline` | `recent_baseline_28d`: rolling pace / HR / decoupling averages | `ResolveRunBaselineAction` |
 | `RecentRunsTool` · `get_recent_runs` | `recent_runs`: up to 5 × `{mood, km, intensity, oneline}` | `VerdictNarrator::recent()` |
 | `LatestPastYouTool` · `get_latest_past_you` | `past_you`, same shape as `PastYouTool` but for the latest run | `PastYouMatcher` |
-| `LifetimeStatsTool` · `get_lifetime_stats` | `name`, `total_runs`, `total_km`, `longest_run_km`, `months_running`, `pr_count`, `unlocked_accessories`, `total_accessories`, `weekly_streak`, `favorite_time`, `strava_connected`, `form_status` | `LifetimeStats`, `WeeklySnapshot::consecutiveWeekStreak()` / `::latestFormStatus()` |
+| `LifetimeStatsTool` · `get_lifetime_stats` | `name`, `total_runs`, `total_km`, `longest_run_km`, `months_running`, `pr_count`, `weekly_streak`, `favorite_time`, `strava_connected`, `form_status` | `LifetimeStats`, `WeeklySnapshot::consecutiveWeekStreak()` / `::latestFormStatus()` |
 | `PersonaMixTool` · `get_persona_mix` | `lookback_weeks`, `total_runs`, `persona_mix`, `persona_mix_recent`, `persona_mix_earlier`, `form_status` | `MoodMix`, `WeeklySnapshot::latestFormStatus()` |
 | `ProgressionSignalTool` · `get_progression_signal` | `progression_signal`: `{label, delta_sec}` | `ProgressionSeriesBuilder` over `PersonalRecord` rows |
 

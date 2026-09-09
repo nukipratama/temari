@@ -113,11 +113,10 @@ import {
 } from 'lucide-react';
 
 /**
- * Every mdi:* key the app renders anywhere (JSX literals, nav/settings/link
- * config arrays, and the backend-sourced UnlockFlash.icon string from
- * config/temari_unlocks.php), mapped to its closest lucide-react icon. The
- * "mdi:" prefix survives the swap as an opaque lookup key only — nothing here
- * still talks to @iconify/react or fetches from api.iconify.design.
+ * Every mdi:* key the app renders anywhere (JSX literals and the nav, settings
+ * and link config arrays), mapped to its closest lucide-react icon. The "mdi:"
+ * prefix survives the swap as an opaque lookup key only — nothing here still
+ * talks to @iconify/react or fetches from api.iconify.design.
  */
 const ICON_MAP: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
     'mdi:account-multiple': Users,

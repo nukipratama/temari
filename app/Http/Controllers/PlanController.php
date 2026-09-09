@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Actions\Gamification\GrantSeasonUnlocksAction;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Http\Requests\UpdatePlannedSessionRequest;
@@ -15,7 +14,6 @@ use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\User;
 use App\Services\AI\PlanNarrationRequester;
-use App\Services\Gamification\SeasonGamificationContext;
 use App\Services\Gamification\SeasonStreakSummaryBuilder;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\ReadinessCeiling;
@@ -65,7 +63,6 @@ class PlanController extends Controller
         SeasonService $seasonService,
         SeasonStreakSummaryBuilder $seasonStreakBuilder,
         SeasonSummaryBuilder $seasonSummaryBuilder,
-        GrantSeasonUnlocksAction $grantSeasonUnlocks,
         SessionMatcher $sessionMatcher,
         PlanNarrationRequester $narrationRequester,
     ): Response {
@@ -102,13 +99,7 @@ class PlanController extends Controller
                 $sessionMatcher,
                 $narrationRequester,
             )),
-            'season' => function () use ($seasonStreakBuilder, $grantSeasonUnlocks, $loadSeason, $trainingLoad, $user, $today): ?array {
-                $season = $loadSeason();
-                $context = SeasonGamificationContext::forSeason($user, $season, $today, $trainingLoad);
-                $grantSeasonUnlocks($user, $season, $context);
-
-                return $seasonStreakBuilder->seasonPayload($user, $season, $today, $context);
-            },
+            'season' => fn (): ?array => $seasonStreakBuilder->seasonPayload($user, $loadSeason(), $today),
             'seasonSummary' => Inertia::defer(fn (): array => $seasonSummaryBuilder->build($user, $loadSeason(), $today)),
             'seasonAdherencePct' => Inertia::defer(fn (): ?int => $seasonSummaryBuilder->adherencePct($user, $loadSeason())),
             'adaptation' => Inertia::defer(fn (): ?array => $this->adaptationPayload($user, $currentWeekStart)),

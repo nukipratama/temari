@@ -27,7 +27,6 @@ function briefing(content: string, status = 'done'): BriefingResult {
         recoveryHours: 41,
         streakLabel: 'Ran today',
         sigilPattern: 'orct',
-        accessory: null,
         mood: 'blazing',
     };
 }

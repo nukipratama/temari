@@ -34,9 +34,6 @@ final readonly class SeasonService
     /** Self-scaled seasons match the periodizer's own materialization horizon. */
     public const int SELF_SCALED_WEEKS = Periodizer::HORIZON_WEEKS;
 
-    /** Rest-honored badge-board tiers, per season (see {@see \App\Actions\Gamification\GrantSeasonUnlocksAction}). */
-    public const array REST_HONORED_THRESHOLDS = [3, 7];
-
     /** Floor so a brand-new athlete (CTL ~0) still gets a meaningful, non-zero growth target. */
     private const float MIN_CTL_GROWTH_TARGET = 3.0;
 

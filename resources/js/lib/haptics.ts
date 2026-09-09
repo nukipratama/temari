@@ -1,6 +1,6 @@
 /**
  * A short vibration for the moments that deserve a physical confirmation — a
- * notification sent, an accessory equipped, a card unlocked. Deliberately not
+ * notification sent, a card revealed. Deliberately not
  * wired to every tap: the visual `.pressable` shrink is the cross-platform
  * touch feedback, this is the extra beat on a real commit.
  *
@@ -30,7 +30,7 @@ function vibrate(pattern: number): void {
     }
 }
 
-/** A slightly heavier beat for a completed action (send, equip, unlock). */
+/** A slightly heavier beat for a completed action (send, reveal). */
 export function hapticCommit(): void {
     vibrate(COMMIT_MS);
 }

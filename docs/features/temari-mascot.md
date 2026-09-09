@@ -20,8 +20,9 @@ drawn expressions, a mood halo, six wearable accessory slots and a season thread
 ported from `resources/brand/build-mascot.mjs` into `TemariProto.tsx` and pinned against that
 generator. The frozen prototype draws none of it — only a simple ring-and-face icon — so decision
 P10 cut the rig, its pose vocabulary (`temariPose.ts`), the accessory-driven variants
-(`Temari.tsx`, `lib/equippedAccessories.ts`) and the page that dressed it (see
-[[targets-accessories]]). Git history holds all of it. The generators themselves
+(`Temari.tsx`, `lib/equippedAccessories.ts`) and the page that dressed it. Git history
+holds all of it, as it does the accessory catalog itself, removed in full once nothing
+read its grants. The generators themselves
 (`build-mascot.mjs` and the four brand scripts that imported it) were exploration art with no app
 consumer left, and `W2` swept them along with the rest of the unread brand preview layer.
 
@@ -98,4 +99,3 @@ surfaces draw it now:
 
 - [[design-tokens]] — the palette these SVG strokes resolve through
 - [[voice-and-tone]] — what Temari actually *says*
-- [[targets-accessories]] — the accessory catalog the rig used to wear

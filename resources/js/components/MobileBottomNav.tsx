@@ -13,9 +13,8 @@ import { tabIconPop } from '@/lib/motion';
 import { ITEMS, navTabFor } from '@/lib/nav';
 
 // Keyed by NavItem.icon (a lucide component name, not an iconify string — see
-// nav.ts) rather than the shared Icon wrapper: the wrapper's mdi:xxx lookup
-// exists to preserve a backend-driven prop shape (UnlockFlash.icon) that this
-// fixed, 4-item nav list has no equivalent of.
+// nav.ts) rather than the shared Icon wrapper, whose mdi:xxx lookup this fixed
+// 4-item nav list has no need of.
 const ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
     Sunrise,
     CalendarCheck,

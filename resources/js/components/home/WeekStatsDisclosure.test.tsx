@@ -32,7 +32,6 @@ const briefing: BriefingResult = {
     recoveryHours: 14,
     streakLabel: null,
     sigilPattern: 'orct',
-    accessory: null,
     mood: 'easy',
 };
 

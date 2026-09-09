@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Actions\Gamification\GrantEligibleUnlocksAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -17,9 +16,6 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Bus::fake();
-    $unlockEngine = Mockery::mock(GrantEligibleUnlocksAction::class);
-    $unlockEngine->shouldReceive('__invoke')->andReturn([]);
-    $this->app->instance(GrantEligibleUnlocksAction::class, $unlockEngine);
     $this->records = app(PersonalRecords::class);
 });
 

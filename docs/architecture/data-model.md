@@ -13,7 +13,6 @@ code_refs:
   - app/Models/RunCard.php
   - app/Models/StoryLine.php
   - app/Models/PersonalRecord.php
-  - app/Models/UserUnlock.php
   - app/Models/RunnerProfile.php
   - app/Models/WeeklySnapshot.php
   - app/Models/AI/Analysis.php
@@ -48,8 +47,6 @@ Activity
 
 WeeklySnapshot ── morphMany Analysis (subject)
 
-UserUnlock ── belongsTo User      (NO inverse on User; query directly)
-
 Analysis (ai_analyses)   ── polymorphic, no Eloquent relation method
 TokenUsage / StravaSyncLog ── standalone on `analytics`, user_id column only
 ```
@@ -65,7 +62,6 @@ TokenUsage / StravaSyncLog ── standalone on `analytics`, user_id column only
 - [StoryLine](app/Models/StoryLine.php): the Temari mood/speech layer. `belongsTo` User **and** (nullable) Activity. `kind` discriminates `post_run` vs `daily_greeting`; `for_date` cast `date:Y-m-d` (the explicit format guards against the UTC-shift off-by-one, same as `week_ending`).
 - [PersonalRecord](app/Models/PersonalRecord.php): `belongsTo` User + (nullable) Activity. `category` → `PrCategory` enum, `value_sec` `float`.
 - [WeeklySnapshot](app/Models/WeeklySnapshot.php): training-load rollup (`belongsTo` User, `morphMany` Analysis). `week_ending` cast `date:Y-m-d`.
-- [UserUnlock](app/Models/UserUnlock.php): `belongsTo` User only — **User has no inverse `userUnlocks()` relation**, so query `UserUnlock` directly. `metadata` cast `array`, `equipped` `boolean`.
 - [RunnerProfile](app/Models/RunnerProfile.php): `hr_zones` cast `array`; a `saving` hook stamps `hr_zones_changed_at` on any zone change.
 
 ## The AnalyzedScope gotcha

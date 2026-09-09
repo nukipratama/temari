@@ -87,9 +87,8 @@ class PlannedSession extends Model
 
     /**
      * Count PAST, SCORED `Rest` rows where nothing was logged that date
-     * (`ran_anyway = false`) — "honored" per
-     * {@see \App\Actions\Gamification\GrantSeasonUnlocksAction}'s and the
-     * badge board's shared definition. `[$from, $to]` scopes to one season;
+     * (`ran_anyway = false`) — the badge board's "honored" definition.
+     * `[$from, $to]` scopes to one season;
      * omitted, it's the lifetime count across the user's whole plan history.
      * A past row `plan:score-compliance` hasn't reached yet is excluded
      * (still `Planned`, not proven honored) rather than assumed honored —

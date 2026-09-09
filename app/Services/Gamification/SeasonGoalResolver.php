@@ -12,10 +12,8 @@ use InvalidArgumentException;
 
 /**
  * Resolves a {@see Season}'s 5 {@see \App\Models\SeasonGoal} rows to live
- * `current` values, the same "read a `metric` string against a context"
- * pattern {@see GoalResolver::currentValue()} uses for the lifetime
- * accessory catalog — scoped to one season's {@see SeasonGamificationContext}
- * instead of the user's whole history.
+ * `current` values by reading each goal's `metric` string against one
+ * season's {@see SeasonGamificationContext}.
  */
 readonly class SeasonGoalResolver
 {
@@ -25,7 +23,7 @@ readonly class SeasonGoalResolver
     }
 
     /**
-     * @param  SeasonGamificationContext|null  $ctx  Pass a pre-built context (e.g. one the caller already computed for {@see \App\Actions\Gamification\GrantSeasonUnlocksAction}) to avoid resolving it twice.
+     * @param  SeasonGamificationContext|null  $ctx  Pass a pre-built context when the caller already holds one, to avoid resolving it twice.
      * @return list<array{id: int, title: string, current: int|float, target: int|float, unit: string, is_completed: bool}>
      */
     public function forSeason(User $user, Season $season, ?SeasonGamificationContext $ctx = null, ?Carbon $today = null): array

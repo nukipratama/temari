@@ -37,7 +37,6 @@ final readonly class BriefingResult implements Arrayable
         public ?int $recoveryHours,
         public ?string $streakLabel,
         public string $sigilPattern,
-        public ?string $accessory,
         public string $mood,
     ) {
     }
@@ -57,7 +56,6 @@ final readonly class BriefingResult implements Arrayable
             'recoveryHours' => $this->recoveryHours,
             'streakLabel' => $this->streakLabel,
             'sigilPattern' => $this->sigilPattern,
-            'accessory' => $this->accessory,
             'mood' => $this->mood,
         ];
     }

@@ -61,7 +61,7 @@ Default is **zero**. Hard ceiling is **one per output**. The app already celebra
 
 The only two occasions that earn one, and the only glyphs allowed:
 - 🔥 a genuine PR
-- ✨ a first-ever, an unlock, or a rare card
+- ✨ a first-ever or a rare card
 - 🛌 rest, but only when rest is the entire message
 
 Nothing else — not a good week, not a long run, not a streak, not a nice pace. Never sprinkle emoji into a sentence (no 🎉, no 💪, no 👋). When in doubt, skip it. Full policy: TemariPersona.php:217-230.

@@ -184,12 +184,12 @@ Three `AnalysisType` cases narrate what the rules above already decided, never r
 ### No season track on the page
 
 `PP3` cut the `SeasonTrack` tier module (P24): the prototype's Plan screen draws a
-`SeasonHeaderCard` with a single progress line, not a pip rail. The season-scoped reward engine is
-unchanged — `GrantSeasonUnlocksAction` still grants a tier under `season.{id}.track_{N}` per
-completed `SeasonGoal`, and `season.tiers_kept_from_past_seasons`
-([SeasonStreakSummaryBuilder](../../app/Services/Gamification/SeasonStreakSummaryBuilder.php)) still
-counts the tiers owned under an earlier season's key namespace. Nothing renders that count now;
-`PS4` decides whether the prototype's single line carries it.
+`SeasonHeaderCard` with a single progress line, not a pip rail. The season-scoped reward engine
+behind it — `GrantSeasonUnlocksAction`, the `season.{id}.track_{N}` grants and the
+`season.tiers_kept_from_past_seasons` count — went with the rest of the unlock system, since
+nothing had rendered any of it since P24. What remains is the `SeasonGoal` set itself, resolved
+live by [SeasonGoalResolver](../../app/Services/Gamification/SeasonGoalResolver.php) and drawn as
+that single progress line.
 
 The per-goal `GoalCard` grid under the season summary is gone: P24 replaced the tier module with
 the prototype's single progress line, and `W2` swept the orphaned component. The week-grained

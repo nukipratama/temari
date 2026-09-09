@@ -44,7 +44,6 @@ class BriefingComposer
             recoveryHours: $hoursSince,
             streakLabel: $this->streakLabel($daysSince),
             sigilPattern: Temari::sigilForMoodPublic($mood),
-            accessory: Temari::accessoryForMoodPublic($mood),
             mood: $mood,
         );
     }

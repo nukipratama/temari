@@ -13,9 +13,9 @@ use Override;
 
 /**
  * One of the 5 goals generated once at {@see Season} creation — a stable
- * checklist for the arc, unlike the day-by-day plan. Same shape as
- * `config/temari_goals.php`'s entries; `current` is never stored, only
- * resolved live by {@see \App\Services\Gamification\SeasonGoalResolver}.
+ * checklist for the arc, unlike the day-by-day plan. `current` is never
+ * stored, only resolved live by
+ * {@see \App\Services\Gamification\SeasonGoalResolver}.
  *
  * @property int $id
  * @property int $season_id

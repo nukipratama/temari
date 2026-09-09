@@ -49,24 +49,6 @@ enum Badge: string
         };
     }
 
-    /**
-     * Badges tracked by the gamification unlock criteria.
-     *
-     * @return list<self>
-     */
-    public static function tracked(): array
-    {
-        return [
-            self::NightOwl,
-            self::EarlyBird,
-            self::RainWarrior,
-            self::NegativeSplit,
-            self::HeatTamer,
-            self::Z2Master,
-            self::Headwind,
-        ];
-    }
-
     /** @return array<string, string> slug → label for the full catalog */
     public static function labels(): array
     {

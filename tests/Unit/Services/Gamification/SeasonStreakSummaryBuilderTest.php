@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Actions\Gamification\SettleStreakRestTokensAction;
 use App\Models\StreakRestToken;
 use App\Models\User;
-use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
 use App\Services\Gamification\SeasonStreakSummaryBuilder;
 use App\Services\Run\Plan\SeasonService;
@@ -35,24 +34,10 @@ it('builds the same season payload PlanController used to build inline, given an
     $payload = $this->builder->seasonPayload($user, $season, Carbon::today());
 
     expect($payload)
-        ->toHaveKeys(['starts_at', 'ends_at', 'week_index', 'total_weeks', 'is_race_oriented', 'tiers_kept_from_past_seasons', 'goals'])
+        ->toHaveKeys(['starts_at', 'ends_at', 'week_index', 'total_weeks', 'is_race_oriented', 'goals'])
         ->and($payload['week_index'])->toBe(1)
         ->and($payload['is_race_oriented'])->toBeFalse()
         ->and($payload['goals'])->toHaveCount(5);
-});
-
-it('counts only an earlier season\'s track tiers as kept, never the live season\'s', function (): void {
-    $user = User::factory()->create();
-    $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
-
-    UserUnlock::query()->insert([
-        ['user_id' => $user->id, 'unlock_key' => 'season.999.track_1', 'unlocked_at' => now(), 'created_at' => now(), 'updated_at' => now()],
-        ['user_id' => $user->id, 'unlock_key' => "season.{$season->id}.track_1", 'unlocked_at' => now(), 'created_at' => now(), 'updated_at' => now()],
-    ]);
-
-    $payload = $this->builder->seasonPayload($user, $season, Carbon::today());
-
-    expect($payload['tiers_kept_from_past_seasons'])->toBe(1);
 });
 
 it('reports the weekly streak with its open week and no rest weeks held', function (): void {

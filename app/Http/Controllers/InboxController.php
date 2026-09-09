@@ -104,9 +104,7 @@ final class InboxController extends Controller
             'read_at' => $row->read_at?->toIso8601String(),
             'url' => self::stringOrNull($payload['url'] ?? null),
             'run_card_id' => self::intOrNull($payload['run_card_id'] ?? null),
-            'rarity' => $row->kind === NotificationKind::Unlock
-                ? self::unlockRarity($payload)
-                : self::stringOrNull($payload['rarity'] ?? null),
+            'rarity' => self::stringOrNull($payload['rarity'] ?? null),
             'distance_m' => $stats['distance_m'] ?? null,
             'moving_time_s' => $stats['moving_time_s'] ?? null,
         ];
@@ -159,25 +157,6 @@ final class InboxController extends Controller
         }
 
         return min($shown, self::MAX_SHOWN);
-    }
-
-    /**
-     * The rarity tier of an unlock, read from the catalog by its key so rows
-     * recorded before rarity was surfaced still render a badge (P12).
-     *
-     * @param  array<string, mixed>  $payload
-     */
-    private static function unlockRarity(array $payload): ?string
-    {
-        $key = self::stringOrNull($payload['unlock_key'] ?? null);
-        if ($key === null) {
-            return null;
-        }
-
-        $catalog = config('temari_unlocks', []);
-        $definition = is_array($catalog) ? ($catalog[$key] ?? null) : null;
-
-        return is_array($definition) ? self::stringOrNull($definition['rarity'] ?? null) : null;
     }
 
     /** @param  array<string, mixed>  $payload */

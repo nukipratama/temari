@@ -29,11 +29,10 @@ _Pages_
 _Collection_
 - [[cards-collection]] — the Card's reveal + full view (rarities, badges, special moves); browsing/filtering by rarity is inline on [[run-history]]
 - [[records]] — PRs, progression chart
-- [[targets-accessories]] — the accessory unlock catalog, granted at ingest and drawn nowhere since `PP2`
 
 _Systems_
 - [[recaps]] — weekly/monthly/persona narratives across the app
-- [[gamification]] — milestones, unlocks, rarities, special moves engine
+- [[gamification]] — milestones, rarities, special moves engine
 - [[vibe-and-mood]] — the daily vibe matrix + run mood that drive Temari's tone
 - [[strava-connect]] — OAuth, sync, webhook
 - [[onboarding]] — first-connect wizard and the DB-backed gate

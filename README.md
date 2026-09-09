@@ -17,7 +17,7 @@ It is deliberately **not** a Strava clone. The run-tracker core is correct and h
 - **Run detail** — four-lens breakdown, route map, splits, HR zones, AI insights per run. See [docs/features/run-detail.md](docs/features/run-detail.md).
 - **Training load & records** — CTL/ATL/Form, personal records, progression. See [docs/features/records.md](docs/features/records.md).
 - **Recaps** — weekly, monthly, and persona narratives in Temari's voice. See [docs/features/recaps.md](docs/features/recaps.md).
-- **Targets & accessories** — goals and unlockable accessories, granted at ingest. See [docs/features/targets-accessories.md](docs/features/targets-accessories.md).
+- **Plan** — a deterministic periodizer, a readiness clamp, and season goals. See [docs/features/plan-periodizer.md](docs/features/plan-periodizer.md).
 
 Full feature map: [docs/features/index.md](docs/features/index.md).
 
