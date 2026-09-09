@@ -30,7 +30,7 @@ The app's home (`/`), ported to the frozen prototype's `TodayScreen` in `PS3`. F
 
 ## System dependencies
 
-- **Past You** — `pastYouTrend` comes from `PastYouTrendBuilder::build`. See [[past-you-engine]].
+- **Past You** — `pastYouTrend` comes from `PastYouTrendBuilder::payload`, which memoizes `build` per runner per day. See [[past-you-engine]].
 - **AI narration** — today's voice block is an `Analysis` row from the [[ai-pipeline]].
 - **Training metrics** — `load` comes from `TrainingLoad::summary`. See [[training-load-metrics]].
 - **Plan** — `weekPlan` comes from `CurrentWeekPlanBuilder::forUser`, the same phase/volume computation [[plan-periodizer]] uses for the full multi-week arc. See below.
@@ -101,7 +101,7 @@ When `recentRuns.length === 0`, the page renders `EmptyRunsState` alone — conn
 
 ## Notes / gotchas
 
-- `pastYouTrend` is a **plain (eager) closure**, not `Inertia::defer()`, so the verdict is present at first paint rather than popping in after it. That is deliberate now that it is the page's hero — but it means the dashboard's response time includes `PastYouTrendBuilder::build`, whose `TrainingLoad::ctlTrend` call is **uncached** (`summary()` is cached, `ctlTrend()` is not). If the dashboard gets slower, look there first.
+- `pastYouTrend` is a **plain (eager) closure**, not `Inertia::defer()`, so the verdict is present at first paint rather than popping in after it. That is deliberate now that it is the page's hero — but it means the dashboard's response time includes the verdict. That used to be ~70 % of Home's server time, so the whole payload is now cached per runner per day and invalidated at ingest (see [[past-you-engine]]); only the first load of the day pays for it. The rebuild behind that cache still calls `TrainingLoad::ctlTrend`, which is **uncached** (`summary()` is cached, `ctlTrend()` is not). If the dashboard gets slower, look there first.
 - The previous dashboard (`Today.tsx`), its hero banner and the standalone `PastYouTrendCard` were **deleted** in an earlier change; the shared helper module moved with the page, and `pages/Today/helpers.ts` is now [pages/Home/helpers.ts](resources/js/pages/Home/helpers.ts). `PS3` emptied most of it out in turn — the week-range label, the weather/location formatters and the training-load hint/tone helpers all lost their last caller with the mini cards. Git history has them.
 - The weekly recap narrative lives on [[run-history]]/Feed and [[recaps]], not the dashboard.
 - Every Temari voice block routes through the [[ai-pipeline]]; see [[data-model]] for `Analysis`, `WeeklySnapshot`, and `StoryLine`.

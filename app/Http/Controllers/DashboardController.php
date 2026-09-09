@@ -67,7 +67,7 @@ class DashboardController extends Controller
                 ->orderByDesc('week_ending')
                 ->first(),
             'recentRuns' => fn (): Collection => $loadRecentRuns(),
-            'pastYouTrend' => fn (): array => $pastYouTrend->build($user, $today)->toArray(),
+            'pastYouTrend' => fn (): array => $pastYouTrend->payload($user, $today),
             'weekPlan' => fn (): ?array => $weekPlanBuilder->forUser($user, $today),
         ]);
     }
