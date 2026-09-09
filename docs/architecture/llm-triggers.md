@@ -50,7 +50,7 @@ without a row here is a red build.
 Origin is a property of the dispatcher, not the narrator: the same `RunInsightNarrator` answers an
 ingest cascade, a "Reread" and a self-heal. Each entry point declares itself once by setting
 [`NarrationOrigin`](../../app/Services/AI/NarrationOrigin.php#L23),
-[`AnalysisService::stamped()`](../../app/Services/AI/AnalysisService.php#L355) writes that
+[`AnalysisService::stamped()`](../../app/Services/AI/AnalysisService.php#L372) writes that
 [`AnalysisOrigin`](../../app/Services/AI/AnalysisOrigin.php#L19) onto the job, and the job restores it
 before generating, so the metering row records what started the call rather than only which narrator
 answered. A dispatch site that declares nothing records `unknown` rather than a guess.
@@ -71,7 +71,8 @@ scheduled command missing from this table is a bug in this table.
 | every 3rd day 06:00 | [`ai:trend-read 90d`](../../routes/console.php#L91) | discriminator `90d` |
 | Mon 06:00 | [`ai:trend-read 12mo`](../../routes/console.php#L92) | discriminator `12mo` |
 | first connect | [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php) | all three `trend_read` ranges at once |
-| hourly | [`ai:self-heal`](../../routes/console.php#L100) | recovery only — see origin 4 |
+| hourly | [`ai:self-heal`](../../routes/console.php#L106) | recovery only — see origin 4 |
+| hourly | [`ai:catch-up`](../../routes/console.php#L115) | creation only — recreates a kickoff row a missed scheduler minute never staged, never dispatches |
 
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
 but the command then calls
@@ -185,16 +186,16 @@ is the one people misremember.
 | **daily cost ceiling** | **`Done`, rule-based** | no | **no — clears on the clock** |
 
 All three pauses resolve through
-[`blockingReason()`](../../app/Services/AI/AnalysisService.php#L686), and an in-flight job reverts
+[`blockingReason()`](../../app/Services/AI/AnalysisService.php#L697), and an in-flight job reverts
 its rows via [`haltForPausedGeneration()`](../../app/Jobs/AI/AnalyzeBaseJob.php#L193) without burning
 an attempt.
 
 **The cost ceiling is the exception in three ways.** It does not pause: a `pending` row is filled
 from the rule-based filler and marked `Done` by
-[`degradeToRuleBased()`](../../app/Services/AI/AnalysisService.php#L740), so a capped day is not a
+[`degradeToRuleBased()`](../../app/Services/AI/AnalysisService.php#L751), so a capped day is not a
 day of empty blocks. A `Failed` row is explicitly excluded and stays failed, keeping its dead-letter
 visibility. And a *manual* trigger past the ceiling is refused with a 409 rather than degraded,
-because [`generationPaused()`](../../app/Services/AI/AnalysisService.php#L651) asks with the budget
+because [`generationPaused()`](../../app/Services/AI/AnalysisService.php#L662) asks with the budget
 included while auto-dispatch asks without it. See [[cost-ceiling-degrades-to-rule-based]] and
 [[cost-ceiling-answers-run-questions-rule-based]].
 
@@ -202,7 +203,7 @@ Three more limits:
 
 - **Demo exclusion.** [`notDemo()`](../../app/Models/User.php#L85) filters the AI kickoff commands
   and every `SelfHealer` sweep, and
-  [`shouldServeRuleBased()`](../../app/Services/AI/AnalysisService.php#L602) serves a demo user's
+  [`shouldServeRuleBased()`](../../app/Services/AI/AnalysisService.php#L613) serves a demo user's
   manual trigger from the filler *before* any pause check — so the public demo spends nothing while
   still feeling live. See [[demo-triggers-served-rule-based]].
 - **The backfill age gate**, [84 days](../../config/ai.php#L43). The only limit that gates automatic

@@ -108,6 +108,15 @@ $alertOnFailure(Schedule::command('ai:trend-read 12mo')->weeklyOn(1, '06:00'), '
 // dead-lettered. Early-exits while generation is paused.
 $alertOnFailure(Schedule::command('ai:self-heal')->hourly()->withoutOverlapping(55), 'ai:self-heal');
 
+// Hourly catch-up sweep, the creation-side companion to ai:self-heal: recreates
+// the kickoff rows a scheduler outage across 00:01 (or across Monday 00:01/00:05)
+// never created, since every self-heal family starts from a row that already
+// exists. Upsert-only under AnalysisService::withoutDispatching() — an existing
+// row of any status is untouched, nothing is queued and nothing is billed, so
+// unlike ai:self-heal it deliberately keeps running while generation is paused.
+// See docs/decisions/kickoff-catch-up-is-upsert-only.md.
+$alertOnFailure(Schedule::command('ai:catch-up')->hourly()->withoutOverlapping(55), 'ai:catch-up');
+
 // 02:20 daily: prune failed_jobs older than 7 days. Most entries are superseded
 // dupes of the same Analysis rows (which are the real source of truth), so the
 // table just bloats and reads as an alarming unexplained count during triage.
