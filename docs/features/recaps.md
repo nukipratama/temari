@@ -31,7 +31,7 @@ Every recap is an `Analysis` row surfaced through the shared [AnalysisStatus](re
 
 ## Weekly recap — on the run log (`/history`, list view)
 
-Rendered inside each [WeekSection](resources/js/components/history/WeekSection.tsx) via the shared [RecapCard](resources/js/components/history/RecapCard.tsx) (a mood-ringed Temari beside the narration, metric chips and the "Send notification" trigger underneath). `RecapCard` is `chained`, forwards `isChainHead`, and keeps a rule-based `fallback` (`ruleBasedFallback`, alongside it — "You ran Nx this week for N km.") visible whenever `analysis.status !== 'done'`, so the block never looks empty.
+Rendered inside each [WeekSection](resources/js/components/history/WeekSection.tsx) via the shared [RecapCard](resources/js/components/history/RecapCard.tsx) (a mood-ringed Temari beside a single column: the metric chips and the "Send notification" trigger on one wrapping row, then the narration under them). `RecapCard` is `chained`, forwards `isChainHead`, and keeps a rule-based `fallback` (`ruleBasedFallback`, alongside it — "You ran Nx this week for N km.") visible whenever `analysis.status !== 'done'`, so the block never looks empty.
 
 `HistoryController`'s list branch supplies it: each `WeeklySnapshot` is mapped with `recap_analysis` (from `recapAnalysesFor`, type `AnalysisType::WeeklyRecap`), `is_current_week` (the in-progress week → `awaitingSchedule`, trigger suppressed), and `is_chain_head` (`chainHeadId` = latest completed week with runs > 0, the only link that may regenerate).
 

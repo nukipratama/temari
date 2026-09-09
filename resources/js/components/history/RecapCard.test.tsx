@@ -110,7 +110,7 @@ describe('RecapCard', () => {
         );
     });
 
-    it('lays the chips beside the narration from tablet up', () => {
+    it('puts the chips on one wrapping row above the narration', () => {
         render(
             <RecapCard
                 mood="blazing"
@@ -119,12 +119,16 @@ describe('RecapCard', () => {
             />,
         );
 
-        expect(screen.getByTestId('recap-secondary').className).toContain(
-            'md:w-2/5',
-        );
+        const secondary = screen.getByTestId('recap-secondary');
+        expect(secondary.className).toContain('flex-wrap');
+        expect(
+            secondary.compareDocumentPosition(
+                screen.getByText('Consistent week.'),
+            ) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
     });
 
-    it('renders no secondary column when there is nothing honest to put in it', () => {
+    it('renders no secondary row when there is nothing honest to put in it', () => {
         render(
             <RecapCard
                 mood="blazing"
