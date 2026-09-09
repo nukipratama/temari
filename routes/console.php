@@ -113,6 +113,11 @@ $alertOnFailure(Schedule::command('ai:self-heal')->hourly()->withoutOverlapping(
 // table just bloats and reads as an alarming unexplained count during triage.
 Schedule::command('queue:prune-failed --hours=168')->dailyAt('02:20');
 
+// 02:25 daily: prune the analytics-connection metering tables (ai_token_usages,
+// strava_sync_logs), which had no retention at all before this. 90 days keeps
+// enough history for cost/rate-limit triage without unbounded growth.
+Schedule::command('analytics:prune')->dailyAt('02:25');
+
 // Fallback poll behind the Strava webhook. Hourly around the clock rather than
 // only across the two running peaks: the old window left a five-hour overnight
 // gap in which a missed webhook went unnoticed, and one read per connected user
