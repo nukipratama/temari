@@ -43,7 +43,7 @@ export default function DataTable<T>({
                 emptyState
             ) : (
                 <div className="relative mt-4">
-                    <Card className="overflow-x-auto bg-popover py-0">
+                    <Card className="overflow-x-auto bg-popover py-0 scrollbar-thin-fine">
                         <table
                             className="w-full text-sm tabular-nums"
                             style={{ minWidth }}

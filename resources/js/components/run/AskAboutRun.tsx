@@ -171,7 +171,7 @@ export default function AskAboutRun({
                         maxLength={MAX_QUESTION_LENGTH}
                         disabled={asking}
                         onChange={(event) => setDraft(event.target.value)}
-                        placeholder="ask anything about this run"
+                        placeholder="ask about this run"
                         className={cn(inputVariants(), 'min-w-0 flex-1')}
                     />
                     <Button

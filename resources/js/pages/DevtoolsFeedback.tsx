@@ -17,7 +17,6 @@ export interface FeedbackFlagRow {
 }
 
 const COLUMNS = ['when', 'runner', 'subject', 'reason', 'note'];
-const NOTE_TRUNCATE_LENGTH = 60;
 
 export default function DevtoolsFeedback({
     rows,
@@ -77,16 +76,6 @@ export default function DevtoolsFeedback({
     );
 }
 
-function truncateNote(note: string | null): string {
-    if (note === null || note === '') {
-        return '—';
-    }
-
-    return note.length > NOTE_TRUNCATE_LENGTH
-        ? `${note.slice(0, NOTE_TRUNCATE_LENGTH)}…`
-        : note;
-}
-
 function FeedbackCells({ row }: Readonly<{ row: FeedbackFlagRow }>) {
     return (
         <>
@@ -108,10 +97,10 @@ function FeedbackCells({ row }: Readonly<{ row: FeedbackFlagRow }>) {
             </Td>
             <Td>{row.reason ?? '—'}</Td>
             <td
-                className="max-w-[240px] truncate px-5 py-3 text-text-2"
+                className="max-w-[40ch] whitespace-normal px-5 py-3 text-text-2"
                 title={row.note ?? undefined}
             >
-                {truncateNote(row.note)}
+                {row.note ?? '—'}
             </td>
         </>
     );

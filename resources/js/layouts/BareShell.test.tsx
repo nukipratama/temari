@@ -58,7 +58,7 @@ describe('BareShell', () => {
             screen.queryByText(/pull from Strava is paused/),
         ).not.toBeInTheDocument();
         expect(
-            screen.queryByText(/Reconnect Strava to auto-sync/),
+            screen.queryByText(/Strava only shares your HR zones/),
         ).not.toBeInTheDocument();
     });
 

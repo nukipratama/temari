@@ -11,7 +11,7 @@ namespace App\Support;
  */
 final class TrainingDisclaimer
 {
-    public const string HEADLINE = 'Training guidance, not medical advice';
+    public const string HEADLINE = 'training guidance, not medical advice';
 
     public const string TEXT = 'Temari prescribes from your own data, not from a medical assessment. These numbers are training guidance, not medical advice. Pain, illness or injury is a conversation for a doctor, not a plan engine.';
 
