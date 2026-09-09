@@ -122,7 +122,7 @@ export default function ProfileHero({
                 style={{
                     maskImage: statRail.faded ? SCROLL_FADE_MASK : undefined,
                 }}
-                className="relative -mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5 pt-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="relative -mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5 pt-3.5 scrollbar-thin-fine"
             >
                 {stats.map((stat) => (
                     <div
