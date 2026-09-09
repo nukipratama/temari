@@ -70,7 +70,7 @@ Read through [StreamSummary](app/Services/Run/Metrics/StreamSummary.php), a type
 
 ## Who consumes it
 
-- **Training metrics** — `EstimateThresholdAction` mines best-effort paces and zone percent across recent runs ([query](app/Actions/Run/Metrics/EstimateThresholdAction.php#L23)); `RunBaseline` and the `Vibe` form score average `decoupling_pct` ([Vibe](app/Services/Run/Story/Vibe.php#L132)). See [[training-load-metrics]].
+- **Training metrics** — `EstimateThresholdAction` mines best-effort paces and zone percent across recent runs ([query](app/Actions/Run/Metrics/EstimateThresholdAction.php#L23)); `RunBaseline` and the `Vibe` form score average `decoupling_pct` ([Vibe](app/Services/Run/Story/Vibe.php#L141)). See [[training-load-metrics]].
 - **Run detail UI** — the [[run-detail]] page reads the blob directly ([Show.tsx](resources/js/pages/Runs/Show.tsx#L94)); helpers in [runcard.ts](resources/js/lib/runcard.ts#L168) derive the pace-shape glyph, mean cadence, fastest km, and zone bar from `per_km` / `time_in_zone_pct`.
 - **Narration** — the narrators read the blob through their tools; the demo stand-in frames the same cadence / decoupling / HR story from it ([RuleBasedRunInsights](app/Services/AI/RuleBased/RuleBasedRunInsights.php#L57)) for the [[ai-pipeline]].
 - **Personal records** — distance PRs slide their window over `per_km` on `elapsed_sec`, then the `partial_split` leftover, so a 42.6 km run can still reach the 42 195 m marathon target ([splitRows](app/Services/Run/Metrics/PersonalRecords.php#L134)). See [[records]].

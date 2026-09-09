@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Run\Story\Vibe;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -165,4 +166,44 @@ it('exposes display labels', function (): void {
         ->and(Vibe::label(Vibe::COOKED))->toBe('Cooked')
         ->and(Vibe::label(Vibe::HIBERNATING))->toBe('Hibernating')
         ->and(Vibe::emoji(Vibe::PUMPED))->toBe('💥');
+});
+
+// DashboardController resolves today's vibe in the method body and BriefingComposer
+// asks again while rendering. Three statements each, on a scoped() binding.
+it('resolves a given day once per request', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->subDay(),
+        'trimp_edwards' => 80.0,
+    ]);
+
+    $vibe = app(Vibe::class);
+    $vibe->current($user, Carbon::today());
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    expect($vibe->current($user, Carbon::today()))->toBe($vibe->current($user, Carbon::today()))
+        ->and($queries)->toBe(0);
+});
+
+it('keeps separate answers per day', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->subDays(11),
+        'trimp_edwards' => 80.0,
+    ]);
+
+    $vibe = app(Vibe::class);
+
+    expect($vibe->current($user, Carbon::today()))->toBe(Vibe::HIBERNATING)
+        ->and($vibe->current($user, Carbon::today()->subDays(9)))->not->toBe(Vibe::HIBERNATING);
+});
+
+it('is one shared instance per request', function (): void {
+    expect(app(Vibe::class))->toBe(app(Vibe::class));
 });

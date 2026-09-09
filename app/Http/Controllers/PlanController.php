@@ -10,6 +10,7 @@ use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\ActivityDetail;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
+use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\User;
@@ -65,6 +66,7 @@ class PlanController extends Controller
         SeasonSummaryBuilder $seasonSummaryBuilder,
         SessionMatcher $sessionMatcher,
         PlanNarrationRequester $narrationRequester,
+        ResolveActiveRaceAction $activeRace,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -86,12 +88,12 @@ class PlanController extends Controller
         };
 
         return Inertia::render('Plan', [
-            'race' => fn (): ?array => $this->racePayload($this->activeRace($user)),
+            'race' => fn (): ?array => $this->racePayload($activeRace($user->id)),
             'sessionsPerWeek' => fn (): int => $baseline->forUser($user, $today)['sessions_per_week'],
             'weeks' => Inertia::defer(fn (): array => $this->weeksPayload(
                 $user,
                 $today,
-                $this->activeRace($user),
+                $activeRace($user->id),
                 $baseline,
                 $trainingLoad,
                 $vdotEstimator,
@@ -118,11 +120,6 @@ class PlanController extends Controller
             }),
             'regenerateCooldownSeconds' => fn (): ?int => $narrationRequester->regenerateCooldownRemaining($user),
         ]);
-    }
-
-    private function activeRace(User $user): ?RaceGoal
-    {
-        return RaceGoal::query()->where('user_id', $user->id)->active()->first();
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Actions\Run\Metrics\ResolveRunBaselineAction;
+use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Events\ActivityIngested;
 use App\Http\Middleware\EnsureDevtoolsAccess;
 use App\Listeners\DispatchPostRunAnalysis;
@@ -14,6 +15,7 @@ use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\NarrationOrigin;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
+use App\Services\Run\Story\Vibe;
 use App\Services\Run\Story\VerdictTimeline;
 use App\Support\Config\AppConfig;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -56,6 +58,13 @@ class AppServiceProvider extends ServiceProvider
         // builds RelativeEffort its own ResolveRunBaselineAction and the window is
         // scanned twice.
         $this->app->scoped(ResolveRunBaselineAction::class);
+
+        // Scoped for the same reason. The active race is read by the plan
+        // engine, the season service and three controllers within one page
+        // render, and today's vibe is resolved by DashboardController and again
+        // inside BriefingComposer — both memos need a shared instance to bite.
+        $this->app->scoped(ResolveActiveRaceAction::class);
+        $this->app->scoped(Vibe::class);
     }
 
     public function boot(): void

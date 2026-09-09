@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
-use App\Models\RaceGoal;
 use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Services\Run\Metrics\RiegelProjector;
@@ -58,6 +58,7 @@ final readonly class Periodizer
         private SeasonService $seasonService,
         private PlanAdapter $planAdapter,
         private RiegelProjector $riegelProjector,
+        private ResolveActiveRaceAction $activeRace,
     ) {
     }
 
@@ -72,7 +73,7 @@ final readonly class Periodizer
         // expiry, both take effect here — see SeasonService's own docblock.
         $season = $this->seasonService->ensureCurrent($user, $today);
 
-        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
+        $race = ($this->activeRace)($user->id);
         $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
         $baselineData = $this->baseline->forUser($user, $today);
         $sessionsPerWeek = $baselineData['sessions_per_week'];

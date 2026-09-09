@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\PlannedSession;
+use App\Models\RaceGoal;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\StoryLine;
@@ -268,3 +269,32 @@ function briefingOnlyHeaders(object $actingAs): array
         'X-Inertia-Partial-Data' => 'briefing',
     ];
 }
+
+// Home reaches the same collaborators from six independent prop closures, so
+// the count is a budget rather than an exact figure: it is allowed to move with
+// the page, but a memoization regression (Vibe or the active race resolving per
+// caller again) shows up here as several statements at once.
+it('paints Home inside its query budget', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['completed_at' => null]);
+    foreach (range(1, 6) as $daysAgo) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'start_date_local' => Carbon::today()->subDays($daysAgo),
+            'distance' => 8000.0,
+            'trimp_edwards' => 70.0,
+        ]);
+    }
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->subWeek()->toDateString(),
+    ]);
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    $this->actingAs($user)->get('/')->assertSuccessful();
+
+    expect($queries)->toBeLessThanOrEqual(25);
+});

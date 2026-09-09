@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Support\SharedPropCacheKey;
@@ -64,4 +65,26 @@ it('forgets the shared active-race cache prop on create, update and delete', fun
     Cache::put($cacheKey, 'stale-on-delete');
     $race->delete();
     expect(Cache::has($cacheKey))->toBeFalse();
+});
+
+// The per-request memo is the second reader of the same fact. Setting a race
+// mid-request (onboarding, then the periodizer it calls) has to be seen by it,
+// or the plan is rebuilt against the race that was just replaced.
+it('forgets the per-request active-race memo on create, update and delete', function (): void {
+    $user = User::factory()->create();
+    $resolve = app(ResolveActiveRaceAction::class);
+
+    expect($resolve($user->id))->toBeNull();
+
+    $race = RaceGoal::factory()->for($user)->create(['completed_at' => null]);
+    expect($resolve($user->id)?->id)->toBe($race->id);
+
+    $race->update(['completed_at' => now()]);
+    expect($resolve($user->id))->toBeNull();
+
+    $revived = RaceGoal::factory()->for($user)->create(['completed_at' => null]);
+    expect($resolve($user->id)?->id)->toBe($revived->id);
+
+    $revived->delete();
+    expect($resolve($user->id))->toBeNull();
 });

@@ -6,6 +6,7 @@ use App\Enums\ExperienceLevel;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\TrainingPreference;
+use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
@@ -34,7 +35,7 @@ function baselineWithEasyPace(?int $easySecPerKm): TrainingBaseline
             : ['easy' => $easySecPerKm, 'marathon' => 320, 'threshold' => 292, 'interval' => 268],
     );
 
-    return new TrainingBaseline($vdot, $paces, new PhaseSchedule());
+    return new TrainingBaseline($vdot, $paces, new PhaseSchedule(), new ResolveActiveRaceAction());
 }
 
 function weeksOf(User $user, array $volumesKm, int $runs = 4): void

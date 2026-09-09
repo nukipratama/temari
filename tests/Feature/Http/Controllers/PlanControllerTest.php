@@ -5,11 +5,13 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
+use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -335,3 +337,65 @@ it('leaves the eager block alone on the request that only fetches the deferred p
         ->and($response->json('props'))->not->toHaveKey('season')
         ->and($response->json('props'))->not->toHaveKey('sessionsPerWeek');
 });
+
+// A budget, not an exact count: it may move with the page, but a memoization
+// regression (the active race resolving once per collaborator again) lands here
+// as several statements at once. The deferred leg is the expensive one — the
+// plan engine, the season service and the narration requester all run there.
+it('paints the Plan shell inside its query budget', function (): void {
+    $user = planBudgetFixture();
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    $this->actingAs($user)->get('/plan')->assertSuccessful();
+
+    expect($queries)->toBeLessThanOrEqual(30);
+});
+
+it('resolves the deferred Plan props inside their query budget', function (): void {
+    $user = planBudgetFixture();
+    $headers = inertiaPartialHeaders(
+        $this->actingAs($user),
+        '/plan',
+        'Plan',
+        'weeks,seasonSummary,seasonAdherencePct,adaptation,planNarration',
+    );
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    $this->actingAs($user)->get('/plan', $headers)->assertSuccessful();
+
+    expect($queries)->toBeLessThanOrEqual(33);
+});
+
+function planBudgetFixture(): User
+{
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create([
+        'race_date' => Carbon::today()->addWeeks(10),
+        'completed_at' => null,
+    ]);
+
+    foreach (range(1, 6) as $daysAgo) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'start_date_local' => Carbon::today()->subDays($daysAgo),
+            'distance' => 8000.0,
+            'trimp_edwards' => 70.0,
+        ]);
+    }
+
+    foreach (range(1, 6) as $weeksAgo) {
+        WeeklySnapshot::factory()->for($user)->create([
+            'week_ending' => Carbon::today()->subWeeks($weeksAgo)->toDateString(),
+        ]);
+    }
+
+    return $user;
+}

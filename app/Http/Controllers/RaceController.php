@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreRaceGoalRequest;
+use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Services\AI\PlanNarrationRequester;
@@ -47,6 +48,7 @@ class RaceController extends Controller
         StoreRaceGoalRequest $request,
         Periodizer $periodizer,
         PlanNarrationRequester $narrationRequester,
+        ResolveActiveRaceAction $activeRace,
     ): RedirectResponse {
         /** @var User $user */
         $user = $request->user();
@@ -71,6 +73,7 @@ class RaceController extends Controller
         // after the commit so a concurrent read can't re-warm the cache from
         // the pre-swap state. Same reasoning as AccessoryController::equip().
         SharedPropCacheKey::ActiveRace->forget($user->id);
+        $activeRace->forget($user->id);
 
         // A race replaces the plan's whole structure — PhaseSchedule::forRace()
         // supersedes the self-scaled arc, the season flips mode, and the
@@ -102,6 +105,7 @@ class RaceController extends Controller
         Request $request,
         Periodizer $periodizer,
         PlanNarrationRequester $narrationRequester,
+        ResolveActiveRaceAction $activeRace,
     ): RedirectResponse {
         /** @var User $user */
         $user = $request->user();
@@ -116,6 +120,7 @@ class RaceController extends Controller
         }
 
         SharedPropCacheKey::ActiveRace->forget($user->id);
+        $activeRace->forget($user->id);
 
         // Same reasoning as store(): the plan's whole structure hangs off
         // whether a race is active, so it is rebuilt now rather than on Monday.
