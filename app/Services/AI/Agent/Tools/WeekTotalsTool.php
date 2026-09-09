@@ -6,6 +6,7 @@ namespace App\Services\AI\Agent\Tools;
 
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\PaceCalculator;
+use App\Services\Run\Metrics\PaceFormatter;
 
 /**
  * The week a recap is about, and the calendar week before it to measure
@@ -26,9 +27,11 @@ final class WeekTotalsTool extends NoArgumentTool
     {
         return "The week you're telling: number of runs, distance, average pace, TRIMP, "
             .'ctl_42d/atl_7d/form/form_status, monotony, strain, average decoupling, plus the '
-            ."previous week's numbers to compare against. If prev_* is missing, there's no "
-            .'comparison week yet. weekly_trimp, monotony and strain are null when no run that '
-            .'week carried heart rate: the load is unknown, which is not the same as zero.';
+            ."previous week's numbers to compare against. pace_formatted and prev_pace_formatted "
+            .'(mm:ss/km) are the only forms to quote -- matches what the app shows; the _sec_per_km '
+            .'twins are raw seconds, for judging size, never for quoting. If prev_* is missing, '
+            ."there's no comparison week yet. weekly_trimp, monotony and strain are null when no "
+            .'run that week carried heart rate: the load is unknown, which is not the same as zero.';
     }
 
     /** @return array<string, mixed> */
@@ -39,11 +42,15 @@ final class WeekTotalsTool extends NoArgumentTool
             ->whereDate('week_ending', $this->snapshot->week_ending->copy()->subWeek())
             ->first();
 
+        $pace = self::paceFor($this->snapshot);
+        $prevPace = $previous === null ? null : self::paceFor($previous);
+
         return [
             'week_ending' => $this->snapshot->week_ending->toDateString(),
             'runs' => $this->snapshot->runs,
             'distance_km' => $this->snapshot->distance_km,
-            'pace_sec_per_km' => self::paceFor($this->snapshot),
+            'pace_sec_per_km' => $pace,
+            'pace_formatted' => $pace === null ? null : PaceFormatter::format($pace),
             'weekly_trimp' => $this->snapshot->weekly_trimp,
             'ctl_42d' => $this->snapshot->ctl_42d,
             'atl_7d' => $this->snapshot->atl_7d,
@@ -54,7 +61,8 @@ final class WeekTotalsTool extends NoArgumentTool
             'avg_decoupling' => $this->snapshot->avg_decoupling,
             'prev_runs' => $previous?->runs,
             'prev_distance_km' => $previous?->distance_km,
-            'prev_pace_sec_per_km' => $previous === null ? null : self::paceFor($previous),
+            'prev_pace_sec_per_km' => $prevPace,
+            'prev_pace_formatted' => $prevPace === null ? null : PaceFormatter::format($prevPace),
         ];
     }
 

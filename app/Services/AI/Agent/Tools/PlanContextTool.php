@@ -7,6 +7,7 @@ namespace App\Services\AI\Agent\Tools;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\User;
+use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\SegmentGenerator;
@@ -47,11 +48,13 @@ final class PlanContextTool extends UserTool
     {
         return 'What the training plan prescribed over the days this block covers: session type '
             .'(easy/long/tempo/interval/rest/race), training phase, distance in km, and the target '
-            .'pace in seconds per km. For days that have already been graded it also returns how '
-            .'the athlete did: status (done/partial/missed/overreached/planned), a compliance score '
-            .'out of 100, and ran_anyway true when they ran a day they had excused themselves from. '
-            .'skipped true means they excused the day. Call this to say what was asked of them, not '
-            .'just what they did. An empty list means no plan covers these days.';
+            .'pace as target_pace_formatted (mm:ss/km, the only form to quote) with target_pace_sec '
+            .'(raw seconds, for judging size, never for quoting). For days that have already been '
+            .'graded it also returns how the athlete did: status (done/partial/missed/overreached/'
+            .'planned), a compliance score out of 100, and ran_anyway true when they ran a day they '
+            .'had excused themselves from. skipped true means they excused the day. Call this to say '
+            .'what was asked of them, not just what they did. An empty list means no plan covers '
+            .'these days.';
     }
 
     /** @return array<string, mixed> */
@@ -71,19 +74,26 @@ final class PlanContextTool extends UserTool
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($this->user, $this->asOf)) ?? [];
 
         return [
-            'days' => $sessions->map(fn (PlannedSession $session): array => [
-                'date' => $session->date->toDateString(),
-                'session_type' => $session->session_type->value,
-                'phase' => $session->phase->value,
-                'distance_km' => $session->prescribed_km !== null
-                    ? round($session->prescribed_km, 1)
-                    : SegmentGenerator::coreKmForPlannedSession($session, $longRunBaselineKm),
-                'target_pace_sec' => self::targetPaceSec($session, $paces),
-                'skipped' => $session->skipped,
-                'status' => $session->status->value,
-                'compliance_score' => $session->compliance_score,
-                'ran_anyway' => $session->ran_anyway,
-            ])->all(),
+            'days' => $sessions->map(function (PlannedSession $session) use ($paces, $longRunBaselineKm): array {
+                $targetPaceSec = self::targetPaceSec($session, $paces);
+
+                return [
+                    'date' => $session->date->toDateString(),
+                    'session_type' => $session->session_type->value,
+                    'phase' => $session->phase->value,
+                    'distance_km' => $session->prescribed_km !== null
+                        ? round($session->prescribed_km, 1)
+                        : SegmentGenerator::coreKmForPlannedSession($session, $longRunBaselineKm),
+                    'target_pace_sec' => $targetPaceSec,
+                    'target_pace_formatted' => $targetPaceSec === null
+                        ? null
+                        : PaceFormatter::format((float) $targetPaceSec),
+                    'skipped' => $session->skipped,
+                    'status' => $session->status->value,
+                    'compliance_score' => $session->compliance_score,
+                    'ran_anyway' => $session->ran_anyway,
+                ];
+            })->all(),
         ];
     }
 
