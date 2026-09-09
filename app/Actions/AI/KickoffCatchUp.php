@@ -11,9 +11,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * Creates the kickoff rows a missed scheduler minute never created, and nothing
- * else: the kickoffs' own creation paths run under
- * {@see AnalysisService::withoutDispatching()}, which reduces each `request()`
- * to its `firstOrCreate`.
+ * else. See docs/decisions/kickoff-catch-up-is-upsert-only.md.
  *
  * The three types here are exactly the per-user kickoff types
  * {@see \App\Services\AI\SelfHealer} already resumes — filling is left to that
@@ -34,26 +32,27 @@ class KickoffCatchUp
      */
     public function __invoke(): int
     {
-        $before = Analysis::query()->count();
+        $created = 0;
 
-        $this->service->withoutDispatching(function (): void {
+        $this->service->withoutDispatching(function () use (&$created): void {
             $today = Carbon::today()->toDateString();
             $isoWeek = AnalysisType::currentIsoWeek();
 
             foreach (($this->activeUsers)() as $user) {
-                $this->service->requestBriefing($user, $today);
-
-                $this->service->request(
-                    subjectOrType: AnalysisType::ProfileVoice->subjectType(),
-                    subjectId: $user->id,
-                    type: AnalysisType::ProfileVoice,
-                    discriminator: $isoWeek,
-                );
+                $created += (int) $this->service->requestBriefing($user, $today)->wasRecentlyCreated;
+                $created += (int) $this->service->requestProfileVoice($user, $isoWeek)->wasRecentlyCreated;
             }
 
+            $recapsBefore = $this->recapRowCount();
             ($this->weeklyRecaps)();
+            $created += $this->recapRowCount() - $recapsBefore;
         });
 
-        return Analysis::query()->count() - $before;
+        return $created;
+    }
+
+    private function recapRowCount(): int
+    {
+        return Analysis::query()->where('analysis_type', AnalysisType::WeeklyRecap)->count();
     }
 }

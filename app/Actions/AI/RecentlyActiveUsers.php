@@ -18,9 +18,8 @@ use Illuminate\Support\Carbon;
 class RecentlyActiveUsers
 {
     /**
-     * How recently a user must have run to be briefed, keyed off the run's own
-     * date because an on-connect backfill stamps `analyzed_at` to now across a
-     * whole imported history.
+     * Keyed off the run's own date, since an on-connect backfill stamps
+     * `analyzed_at` to now across a whole imported history.
      */
     public const int ACTIVE_WINDOW_DAYS = 7;
 

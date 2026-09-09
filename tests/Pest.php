@@ -3,6 +3,7 @@
 use OpenAI\Responses\Responses\CreateResponse;
 use OpenAI\Responses\Meta\MetaInformation;
 use App\Models\AI\Analysis;
+use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Agent\AgentLoop;
@@ -294,6 +295,20 @@ function captureAnalysisServiceRequests(array &$captured): AnalysisService
     $service->shouldReceive('requestRuleBased')
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null) use (&$captured): Analysis {
             $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator') + ['delaySeconds' => null, 'invalidate' => null, 'ruleBased' => true];
+
+            return new Analysis();
+        });
+    $service->shouldReceive('requestProfileVoice')
+        ->andReturnUsing(function (User $user, string $isoWeek, bool $invalidate = false) use (&$captured): Analysis {
+            $captured[] = [
+                'subjectOrType' => AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
+                'subjectId' => $user->id,
+                'type' => AnalysisType::ProfileVoice,
+                'discriminator' => $isoWeek,
+                'delaySeconds' => null,
+                'invalidate' => $invalidate,
+                'ruleBased' => false,
+            ];
 
             return new Analysis();
         });

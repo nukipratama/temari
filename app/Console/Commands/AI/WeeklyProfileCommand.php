@@ -37,13 +37,7 @@ class WeeklyProfileCommand extends Command
         $users = $activeUsers();
 
         foreach ($users as $user) {
-            $service->request(
-                subjectOrType: AnalysisType::ProfileVoice->subjectType(),
-                subjectId: $user->id,
-                type: AnalysisType::ProfileVoice,
-                discriminator: $isoWeek,
-                invalidate: false,
-            );
+            $service->requestProfileVoice($user, $isoWeek);
         }
 
         $this->info("Dispatched weekly profile refresh for {$users->count()} active users.");
