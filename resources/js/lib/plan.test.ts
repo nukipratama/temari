@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { SeasonSummaryWeek } from './plan';
+import type { PlanDay, SeasonSummaryWeek } from './plan';
 
 import {
     SESSION_TYPE_ICON,
@@ -8,6 +8,8 @@ import {
     clampSummary,
     computeAdherence,
     isRaceWeek,
+    kmLabel,
+    paceLabel,
     phasesOf,
     weekdayLabel,
     weekRangeLabel,
@@ -209,6 +211,93 @@ describe('isRaceWeek', () => {
 
     it('marks nothing when no race is set', () => {
         expect(isRaceWeek('2026-06-15', null)).toBe(false);
+    });
+});
+
+function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
+    return {
+        id: 1,
+        date: '2026-06-12',
+        phase: 'build',
+        session_type: 'easy',
+        segments: [
+            {
+                key: 'main',
+                minutes: 48,
+                zone: 'Z2',
+                pace_label: 'easy',
+                km: 5.2,
+                pace_sec_per_km: 360,
+            },
+        ],
+        distance_km: 8,
+        pinned: false,
+        skipped: false,
+        status: 'planned',
+        compliance_score: null,
+        ran_anyway: false,
+        prescribed_km: null,
+        clamp: null,
+        actual_km: null,
+        activities: [],
+        ...overrides,
+    };
+}
+
+describe('kmLabel', () => {
+    it('reads a day still to come as the ask alone', () => {
+        expect(kmLabel(planDay())).toBe('8 km');
+    });
+
+    it('states what a judged day asked for and what was run against it', () => {
+        expect(kmLabel(planDay({ prescribed_km: 6, actual_km: 5.4 }))).toBe(
+            '6 km asked · 5.4 km run',
+        );
+    });
+
+    it('reads a judged day nothing was run on as zero, not as blank', () => {
+        expect(kmLabel(planDay({ prescribed_km: 6 }))).toBe(
+            '6 km asked · 0 km run',
+        );
+    });
+});
+
+describe('paceLabel', () => {
+    it("reads the core set's pace", () => {
+        expect(paceLabel(planDay())).toBe('6:00/km');
+    });
+
+    it('reads an interval day off its rep segment', () => {
+        expect(
+            paceLabel(
+                planDay({
+                    segments: [
+                        {
+                            key: 'warmup',
+                            minutes: 10,
+                            zone: 'Z1',
+                            pace_label: 'easy',
+                            km: 2,
+                            pace_sec_per_km: 420,
+                        },
+                        {
+                            key: 'interval',
+                            minutes: 4,
+                            zone: 'Z5',
+                            pace_label: 'interval',
+                            km: 1,
+                            pace_sec_per_km: 240,
+                        },
+                    ],
+                }),
+            ),
+        ).toBe('4:00/km');
+    });
+
+    it('has no pace to read on a rest day', () => {
+        expect(paceLabel(planDay({ session_type: 'rest', segments: [] }))).toBe(
+            null,
+        );
     });
 });
 

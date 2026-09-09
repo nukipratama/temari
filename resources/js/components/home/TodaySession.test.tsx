@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { BriefingResult } from '@/types/inertia';
+import type { BriefingResult, WeekPlanDay } from '@/types/inertia';
 
 import { makeUser, setMockPage } from '@/test/setup';
 
@@ -29,6 +29,36 @@ function briefing(content: string, status = 'done'): BriefingResult {
         sigilPattern: 'orct',
         accessory: null,
         mood: 'blazing',
+    };
+}
+
+function day(overrides: Partial<WeekPlanDay> = {}): WeekPlanDay {
+    return {
+        id: 1,
+        date: '2026-06-12',
+        phase: 'build',
+        session_type: 'easy',
+        segments: [
+            {
+                key: 'main',
+                minutes: 48,
+                zone: 'Z2',
+                pace_label: 'easy',
+                km: 5.2,
+                pace_sec_per_km: 360,
+            },
+        ],
+        distance_km: 8,
+        pinned: false,
+        skipped: false,
+        status: 'planned',
+        compliance_score: null,
+        ran_anyway: false,
+        prescribed_km: null,
+        clamp: null,
+        actual_km: null,
+        activities: [],
+        ...overrides,
     };
 }
 
@@ -120,5 +150,105 @@ describe('TodaySession', () => {
             'stroke',
             'var(--color-leaf)',
         );
+    });
+
+    it('states the session, its distance and its pace above the voice', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day({ session_type: 'long', distance_km: 15 })}
+            />,
+        );
+
+        expect(
+            screen.getByText('long run · 15 km · 6:00/km'),
+        ).toBeInTheDocument();
+    });
+
+    it('states the eased session beside the one the plan asked for, and why', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day({
+                    session_type: 'long',
+                    distance_km: 15,
+                    clamp: {
+                        session_type: 'easy',
+                        distance_km: 5.9,
+                        pace_sec_per_km: 450,
+                        note: "You've already run today, so anything else stays easy.",
+                        label: 'anything else today',
+                    },
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByText('long run · 15 km · 6:00/km'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('anything else today')).toBeInTheDocument();
+        expect(screen.getByText('easy · 5.9 km · 7:30/km')).toBeInTheDocument();
+
+        const note = screen.getByText(
+            "You've already run today, so anything else stays easy.",
+        );
+        expect(note).toBeInTheDocument();
+        expect(note).toHaveClass('text-text-2');
+        expect(note).not.toHaveClass('italic');
+    });
+
+    it('names a rest day with no distance or pace hung off it', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day({
+                    session_type: 'rest',
+                    distance_km: 0,
+                    segments: [],
+                })}
+            />,
+        );
+
+        expect(screen.getByText('rest')).toBeInTheDocument();
+    });
+
+    it('states both figures once the day has been judged', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day({
+                    status: 'done',
+                    compliance_score: 100,
+                    distance_km: 8,
+                    prescribed_km: 6,
+                    actual_km: 6.4,
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByText('easy · 6 km asked · 6.4 km run · 6:00/km'),
+        ).toBeInTheDocument();
+    });
+
+    it('draws no prescription when no plan covers today', () => {
+        const { container } = render(
+            <TodaySession briefing={briefing('Easy 6k.')} />,
+        );
+
+        expect(screen.getByText('Easy 6k.')).toBeInTheDocument();
+        expect(
+            container.querySelector('#anchor-session-today'),
+        ).not.toBeInTheDocument();
+    });
+
+    it("carries the citation anchor the briefing's prose points at", () => {
+        const { container } = render(
+            <TodaySession briefing={briefing('Easy 6k.')} today={day()} />,
+        );
+
+        expect(
+            container.querySelector('#anchor-session-today'),
+        ).toBeInTheDocument();
     });
 });
