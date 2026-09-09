@@ -23,6 +23,7 @@ export default function FlagWrong({
     label,
     flagged = false,
     onSky = false,
+    compact = false,
 }: Readonly<{
     subjectType: FeedbackSubject;
     subjectId: number;
@@ -32,6 +33,11 @@ export default function FlagWrong({
     flagged?: boolean;
     /** Cream-on-sky styling, for a block drawn on a dark panel. */
     onSky?: boolean;
+    /**
+     * Collapse the 44px target's own height so it can sit on an eyebrow line
+     * without growing the row. The tap target itself is unchanged.
+     */
+    compact?: boolean;
 }>) {
     const isDemo = usePage<SharedProps>().props.auth.user?.is_demo === true;
     const [open, setOpen] = useState(false);
@@ -45,13 +51,14 @@ export default function FlagWrong({
     }
 
     const tone = onSky ? 'text-ink-on-sky' : 'text-text-3';
+    const box = cn(ICON_BUTTON_CLASS, compact && '-my-3.5');
 
     if (flagged || sent) {
         return (
             <span
                 aria-label="flagged"
                 title="flagged"
-                className={cn(ICON_BUTTON_CLASS, tone)}
+                className={cn(box, tone)}
             >
                 <Icon
                     icon="mdi:flag"
@@ -73,7 +80,7 @@ export default function FlagWrong({
                     setOpen(true);
                 }}
                 className={cn(
-                    ICON_BUTTON_CLASS,
+                    box,
                     'focus-ring pressable transition-colors hover:text-foreground',
                     tone,
                 )}

@@ -18,7 +18,6 @@ import { fadeInUp } from '@/lib/motion';
 import { formatDurationHMS, formatRelativeId } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 
-import FlagWrong from './FlagWrong';
 import UnavailableNote from './UnavailableNote';
 
 export type AnalysisStatusSize = 'sm' | 'md';
@@ -185,48 +184,28 @@ export default function AnalysisStatus({
                         generated {formatRelativeId(analysis.generated_at)}
                     </span>
                 )}
-                {(canRegenerate || analysis.id !== null) && (
-                    <div className="flex items-center justify-end gap-2">
-                        {canRegenerate && (
-                            <button
-                                type="button"
-                                onClick={trigger}
-                                disabled={cooling || pending}
-                                aria-label={cooldownAriaLabel(
-                                    cooldownRemaining,
-                                    'reread',
-                                )}
-                                className={cn(
-                                    TRIGGER_CLASS,
-                                    triggerTone(onSky),
-                                )}
-                            >
-                                <Icon
-                                    icon={
-                                        cooling
-                                            ? 'mdi:clock-outline'
-                                            : 'mdi:sync'
-                                    }
-                                    className="size-3"
-                                    aria-hidden
-                                />
-                                <span>
-                                    {cooling
-                                        ? `next in ${formatDurationHMS(cooldownRemaining)}`
-                                        : 'reread'}
-                                </span>
-                            </button>
+                {canRegenerate && (
+                    <button
+                        type="button"
+                        onClick={trigger}
+                        disabled={cooling || pending}
+                        aria-label={cooldownAriaLabel(
+                            cooldownRemaining,
+                            'reread',
                         )}
-                        {analysis.id !== null && (
-                            <FlagWrong
-                                subjectType="narration"
-                                subjectId={analysis.id}
-                                label="flag this read"
-                                flagged={analysis.flagged === true}
-                                onSky={onSky}
-                            />
-                        )}
-                    </div>
+                        className={cn(TRIGGER_CLASS, triggerTone(onSky))}
+                    >
+                        <Icon
+                            icon={cooling ? 'mdi:clock-outline' : 'mdi:sync'}
+                            className="size-3"
+                            aria-hidden
+                        />
+                        <span>
+                            {cooling
+                                ? `next in ${formatDurationHMS(cooldownRemaining)}`
+                                : 'reread'}
+                        </span>
+                    </button>
                 )}
                 {rateLimited && <RateLimitedNote onSky={onSky} />}
             </motion.div>

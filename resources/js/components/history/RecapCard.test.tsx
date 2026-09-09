@@ -125,4 +125,33 @@ describe('RecapCard', () => {
             }),
         ).not.toBeInTheDocument();
     });
+
+    it('gives the recap a header row that holds the flag above the narration', () => {
+        const { container } = render(
+            <RecapCard mood="blazing" analysis={analysis()} />,
+        );
+
+        const flag = screen.getByRole('button', { name: 'flag this read' });
+        const narration = screen.getByText('Consistent week.');
+
+        expect(flag.parentElement).toHaveClass('justify-end');
+        expect(
+            flag.compareDocumentPosition(narration) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(container.firstChild).toContainElement(flag);
+    });
+
+    it('draws no flag while the recap is not done', () => {
+        render(
+            <RecapCard
+                mood="blazing"
+                analysis={analysis({ status: 'pending', content: null })}
+            />,
+        );
+
+        expect(
+            screen.queryByRole('button', { name: 'flag this read' }),
+        ).toBeNull();
+    });
 });

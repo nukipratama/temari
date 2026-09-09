@@ -104,4 +104,27 @@ describe('ProfileHero', () => {
             screen.getByRole('button', { name: 'Reconnect' }),
         ).toBeInTheDocument();
     });
+
+    it('draws the flag above the voice block, not under it', () => {
+        renderHero({
+            voice: {
+                id: 9,
+                status: 'done',
+                content: 'You show up.',
+                type: 'profile_voice',
+                subject_type: 'profile_voice_user',
+                subject_id: 1,
+                discriminator: null,
+            },
+        });
+
+        const flag = screen.getByRole('button', { name: 'flag this read' });
+        const voice = screen.getByText('You show up.');
+
+        expect(flag.parentElement).toHaveClass('justify-end');
+        expect(
+            flag.compareDocumentPosition(voice) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+    });
 });

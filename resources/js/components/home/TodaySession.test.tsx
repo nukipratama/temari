@@ -250,4 +250,14 @@ describe('TodaySession', () => {
             container.querySelector('#anchor-session-today'),
         ).toBeInTheDocument();
     });
+
+    it('sits the flag in the header row, level with the eyebrow', () => {
+        render(<TodaySession briefing={briefing('Easy 6k.')} />);
+
+        const flag = screen.getByRole('button', { name: 'flag this read' });
+
+        expect(screen.getByText('Today').parentElement).toBe(
+            flag.parentElement,
+        );
+    });
 });
