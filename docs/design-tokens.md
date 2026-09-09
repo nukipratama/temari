@@ -151,7 +151,8 @@ edge carries the contrast. Never darken them instead.
 White on `strava-orange` (`#fc4c02`) is **Strava's own pair and scores 3.36:1**, under the 4.5:1 AA
 floor for normal text. Neither colour may move, so the reconnect CTA in
 [StravaZoneReconnectBanner.tsx](../resources/js/components/StravaZoneReconnectBanner.tsx) is set at
-19px bold instead: at 18.66px bold and up the applicable AA threshold is 3:1, which the pair clears. Any
+`1.1875rem` bold instead — 19px at the base size and larger at the two desktop type steps. At
+18.66px bold and up the applicable AA threshold is 3:1, which the pair clears. Any
 other vendor mark reusing this pair must do the same or be listed as a documented exception.
 
 Chart.js and inline SVG cannot read CSS custom properties off a canvas, so a small
