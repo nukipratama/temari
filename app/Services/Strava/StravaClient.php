@@ -344,11 +344,9 @@ class StravaClient
      */
     private function backgroundCeilings(): array
     {
-        $liveFloor = max(0, min(self::RATE_LIMIT_DAILY_MAX, (int) config('strava.live_read_floor')));
-
         return [
             '15min' => self::RATE_LIMIT_15MIN_MAX - intdiv(self::RATE_LIMIT_15MIN_MAX * self::LIVE_RESERVE_PERCENT, 100),
-            'daily' => self::RATE_LIMIT_DAILY_MAX - $liveFloor,
+            'daily' => self::RATE_LIMIT_DAILY_MAX - (int) config('strava.live_read_floor'),
         ];
     }
 

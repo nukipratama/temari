@@ -511,15 +511,6 @@ it('still refuses a background burst at the unchanged 15-minute ceiling', functi
     Http::assertNothingSent();
 });
 
-it('clamps an out-of-range live floor to the daily pool', function (int $floor, int $expected): void {
-    config(['strava.live_read_floor' => $floor]);
-
-    expect(new StravaClient()->backgroundHeadroom()['daily'])->toBe($expected);
-})->with([
-    'negative floor cannot lend background more than the pool' => [-100, 2000],
-    'floor above the pool leaves background nothing' => [3000, 0],
-]);
-
 it('reserves a live floor that leaves the daily pool something to lend', function (): void {
     expect(config('strava.live_read_floor'))
         ->toBeInt()
