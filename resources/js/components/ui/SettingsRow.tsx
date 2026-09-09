@@ -15,6 +15,13 @@ interface SettingsRowProps {
     href?: string;
     /** External href (e.g., Telegram bot link) */
     externalHref?: string;
+    /**
+     * Opens `externalHref` in a new tab instead of the current one. The
+     * onboarding wizard sets this: it offers this row before the wizard has
+     * been submitted, and replacing the page would strand a half-finished
+     * signup. Settings leaves it off.
+     */
+    openInNewTab?: boolean;
     /** Click handler for button-style row */
     onClick?: MouseEventHandler<HTMLButtonElement>;
     /**
@@ -43,6 +50,7 @@ export default function SettingsRow({
     description,
     href,
     externalHref,
+    openInNewTab = false,
     onClick,
     control,
     tone = 'default',
@@ -115,7 +123,14 @@ export default function SettingsRow({
 
     if (externalHref) {
         return (
-            <a href={externalHref} className={tappableClasses}>
+            <a
+                href={externalHref}
+                {...(openInNewTab && {
+                    target: '_blank',
+                    rel: 'noopener noreferrer',
+                })}
+                className={tappableClasses}
+            >
                 {content}
             </a>
         );

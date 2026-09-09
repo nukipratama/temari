@@ -4,12 +4,23 @@ import { describe, expect, it } from 'vitest';
 import StepProgress from './StepProgress';
 
 describe('StepProgress', () => {
-    it('renders the three step labels', () => {
+    it('renders the four step labels', () => {
         render(<StepProgress step="connected" subIndex={0} />);
 
         expect(screen.getByText('welcome')).toBeInTheDocument();
         expect(screen.getByText('training')).toBeInTheDocument();
         expect(screen.getByText('race goal')).toBeInTheDocument();
+        expect(screen.getByText('nudges')).toBeInTheDocument();
+    });
+
+    it('marks every earlier step done once the wizard reaches nudges', () => {
+        const { container } = render(
+            <StepProgress step="nudge" subIndex={0} />,
+        );
+
+        expect(
+            container.querySelectorAll('.bg-icon-accent.text-btn-primary-fg'),
+        ).toHaveLength(3);
     });
 
     it('shows the preferences sub-dots only while on the preferences step', () => {

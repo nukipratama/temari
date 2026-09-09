@@ -68,3 +68,15 @@ it('throws a non-expired exception for an undecryptable token', function (): voi
         expect($e->expired)->toBeFalse();
     }
 });
+
+it('builds a t.me deep link carrying a fresh token when the bot is configured', function (): void {
+    config(['services.telegram.bot_username' => 'temari_bot']);
+    $url = new TelegramLinkToken()->connectUrl(42);
+
+    expect($url)->toStartWith('https://t.me/temari_bot?start=');
+});
+
+it('returns no connect url when the bot username is unconfigured', function (): void {
+    config(['services.telegram.bot_username' => '']);
+    expect(new TelegramLinkToken()->connectUrl(42))->toBeNull();
+});

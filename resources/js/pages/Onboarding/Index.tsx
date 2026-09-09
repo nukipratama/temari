@@ -13,6 +13,7 @@ import SessionsDial from '@/components/onboarding/SessionsDial';
 import StepProgress, {
     type OnboardingStep,
 } from '@/components/onboarding/StepProgress';
+import PushNotificationToggle from '@/components/PushNotificationToggle';
 import FaceIcon from '@/components/temari/FaceIcon';
 import Chip from '@/components/ui/Chip';
 import DateField from '@/components/ui/DateField';
@@ -21,6 +22,7 @@ import LegacyCard from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
+import SettingsRow from '@/components/ui/SettingsRow';
 import { useCountUp } from '@/hooks/useCountUp';
 import { bareLayout } from '@/layouts/BareShell';
 import { cn } from '@/lib/cn';
@@ -162,7 +164,9 @@ function preferencesSummary(
     return parts.join(' · ');
 }
 
-export default function OnboardingIndex() {
+export default function OnboardingIndex({
+    telegramConnectUrl = null,
+}: Readonly<{ telegramConnectUrl?: string | null }>) {
     const page = usePage<SharedProps>().props;
     const firstName = page.auth.user?.first_name ?? '';
     const errors = page.errors ?? {};
@@ -174,6 +178,10 @@ export default function OnboardingIndex() {
     const [minutes, setMinutes] = useState(50);
     const [name, setName] = useState('');
     const [processing, setProcessing] = useState(false);
+    const [goalPayload, setGoalPayload] = useState<Record<
+        string,
+        FormDataConvertible
+    > | null>(null);
 
     const [experienceLevel, setExperienceLevel] =
         useState<ExperienceLevel | null>(null);
@@ -275,28 +283,46 @@ export default function OnboardingIndex() {
         return payload;
     };
 
-    const finish = (payload: Record<string, FormDataConvertible>) => {
-        router.post(
-            '/onboarding',
-            { ...preferencesPayload(), ...payload },
-            {
-                onStart: () => setProcessing(true),
-                onFinish: () => setProcessing(false),
-            },
-        );
-    };
-
+    // Nothing is written until the last step, so the goal answer waits here
+    // rather than posting: the nudge step behind it is the one that submits.
     const submitGoal = (event: FormEvent) => {
         event.preventDefault();
-        finish({
+        setGoalPayload({
             race_date: raceDate,
             distance_m: Math.round(distanceKm * 1000),
             goal_time_sec: goalTimeSec,
             name: name.trim() === '' ? null : name.trim(),
         });
+        setStep('nudge');
     };
 
-    const skip = () => finish({});
+    const skipGoal = () => {
+        setGoalPayload(null);
+        setStep('nudge');
+    };
+
+    const finish = () => {
+        router.post(
+            '/onboarding',
+            { ...preferencesPayload(), ...(goalPayload ?? {}) },
+            {
+                onStart: () => setProcessing(true),
+                onFinish: () => setProcessing(false),
+                // The only server-validated fields live a step behind, and
+                // that step is the only one that renders their errors.
+                onError: (submitErrors) => {
+                    if (
+                        submitErrors.race_date ||
+                        submitErrors.distance_m ||
+                        submitErrors.goal_time_sec ||
+                        submitErrors.name
+                    ) {
+                        setStep('goal');
+                    }
+                },
+            },
+        );
+    };
 
     return (
         <>
@@ -536,7 +562,7 @@ export default function OnboardingIndex() {
                             </div>
                         )}
                     </motion.div>
-                ) : (
+                ) : step === 'goal' ? (
                     <motion.div
                         key="goal"
                         variants={fadeInUp}
@@ -726,24 +752,91 @@ export default function OnboardingIndex() {
                                 <PillButton
                                     type="submit"
                                     tone="horizon"
-                                    disabled={processing || !canSubmitGoal}
+                                    disabled={!canSubmitGoal}
                                     className="flex-1 justify-center"
                                 >
-                                    {processing
-                                        ? 'saving…'
-                                        : 'set my goal & finish'}
+                                    set my goal
                                 </PillButton>
                                 <PillButton
                                     type="button"
                                     tone="ghost"
-                                    disabled={processing}
-                                    onClick={skip}
+                                    onClick={skipGoal}
                                     className="flex-1 justify-center"
                                 >
                                     skip for now
                                 </PillButton>
                             </div>
                         </form>
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="nudge"
+                        variants={fadeInUp}
+                        initial="hidden"
+                        animate="visible"
+                    >
+                        <div className="mb-5 flex h-11 items-center justify-between">
+                            <button
+                                type="button"
+                                onClick={() => setStep('goal')}
+                                aria-label="Back"
+                                className="focus-ring flex size-11 flex-none items-center justify-center rounded-full bg-muted text-foreground shadow-e1"
+                            >
+                                <Icon
+                                    icon="mdi:chevron-left"
+                                    width={18}
+                                    height={18}
+                                    aria-hidden
+                                />
+                            </button>
+                            <PillButton
+                                tone="ghost"
+                                disabled={processing}
+                                onClick={finish}
+                            >
+                                skip for now
+                            </PillButton>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <PageHero size="quote-lg" italic>
+                                want temari to <br />
+                                <em className="text-icon-accent">nudge you?</em>
+                            </PageHero>
+                            <Chip className="mt-1 self-start">optional</Chip>
+                        </div>
+                        <p className="mt-3 font-sans text-sm leading-relaxed text-text-2">
+                            She only pings you when there is something to say:
+                            the read on a run once it lands, your week and month
+                            wrapped up, a heads-up when a streak is about to
+                            slip, and a word if Strava quietly stops syncing.
+                        </p>
+
+                        <LegacyCard className="mt-6 flex flex-col">
+                            {telegramConnectUrl !== null && (
+                                <SettingsRow
+                                    icon="mdi:telegram"
+                                    label="Telegram"
+                                    description="connect it so temari can keep you posted."
+                                    externalHref={telegramConnectUrl}
+                                    openInNewTab
+                                />
+                            )}
+                            <PushNotificationToggle />
+                        </LegacyCard>
+
+                        <p className="mt-3 font-sans text-xs leading-relaxed text-text-3">
+                            you can wire either of these up later from settings.
+                        </p>
+
+                        <PillButton
+                            tone="horizon"
+                            disabled={processing}
+                            onClick={finish}
+                            className="mt-4 w-full justify-center"
+                        >
+                            {processing ? 'saving…' : 'finish'}
+                        </PillButton>
                     </motion.div>
                 )}
             </PageContainer>

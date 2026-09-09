@@ -1,13 +1,33 @@
 import { router } from '@inertiajs/react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import * as webPush from '@/lib/webPush';
 import { makeUser, setMockPage } from '@/test/setup';
 
 import OnboardingIndex from './Index';
 
+vi.mock('@/lib/webPush');
+
+// The nudge step mounts the real PushNotificationToggle. Left unsupported by
+// default so it settles synchronously; the nudge tests opt into a live device.
+beforeEach(() => {
+    vi.mocked(webPush.isPushSupported).mockReturnValue(false);
+    vi.mocked(webPush.isStandalone).mockReturnValue(true);
+    vi.mocked(webPush.isIosNonSafari).mockReturnValue(false);
+    vi.mocked(webPush.currentSubscription).mockResolvedValue(null);
+    vi.stubGlobal('Notification', { permission: 'default' });
+});
+
+afterEach(() => vi.unstubAllGlobals());
+
 function lastPostCall() {
     return vi.mocked(router.post).mock.calls.at(-1);
+}
+
+/** The wizard only posts from its last step, so every submission goes through here. */
+function finishFromNudge() {
+    fireEvent.click(screen.getByRole('button', { name: 'finish' }));
 }
 
 /** Connected -> preferences, then straight past preferences to the goal step. */
@@ -58,13 +78,13 @@ describe('Onboarding/Index', () => {
         ).toBeInTheDocument();
     });
 
-    it('disables the finish button until a race day is entered', () => {
+    it('disables the goal submit until a race day is entered', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
         advanceToGoal();
 
         expect(
-            screen.getByRole('button', { name: 'set my goal & finish' }),
+            screen.getByRole('button', { name: 'set my goal' }),
         ).toBeDisabled();
 
         fireEvent.change(screen.getByLabelText('race day'), {
@@ -72,7 +92,7 @@ describe('Onboarding/Index', () => {
         });
 
         expect(
-            screen.getByRole('button', { name: 'set my goal & finish' }),
+            screen.getByRole('button', { name: 'set my goal' }),
         ).not.toBeDisabled();
     });
 
@@ -95,9 +115,8 @@ describe('Onboarding/Index', () => {
             target: { value: 'Christmas 5K' },
         });
 
-        fireEvent.click(
-            screen.getByRole('button', { name: 'set my goal & finish' }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: 'set my goal' }));
+        finishFromNudge();
 
         const call = lastPostCall();
         expect(call?.[0]).toBe('/onboarding');
@@ -117,9 +136,8 @@ describe('Onboarding/Index', () => {
         fireEvent.change(screen.getByLabelText('race day'), {
             target: { value: '2026-12-25' },
         });
-        fireEvent.click(
-            screen.getByRole('button', { name: 'set my goal & finish' }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: 'set my goal' }));
+        finishFromNudge();
 
         const [, , options] = vi.mocked(router.post).mock.calls.at(-1) as [
             string,
@@ -133,7 +151,7 @@ describe('Onboarding/Index', () => {
 
         act(() => options.onFinish?.());
         expect(
-            screen.getByRole('button', { name: 'set my goal & finish' }),
+            screen.getByRole('button', { name: 'finish' }),
         ).toBeInTheDocument();
     });
 
@@ -166,7 +184,7 @@ describe('Onboarding/Index', () => {
         });
 
         expect(
-            screen.getByRole('button', { name: 'set my goal & finish' }),
+            screen.getByRole('button', { name: 'set my goal' }),
         ).toBeDisabled();
         expect(
             screen.getByText('Goal time has to be at least 5 minutes.'),
@@ -208,6 +226,7 @@ describe('Onboarding/Index', () => {
             target: { value: 'Half-typed idea' },
         });
         fireEvent.click(screen.getByRole('button', { name: 'skip for now' }));
+        finishFromNudge();
 
         const call = lastPostCall();
         expect(call?.[0]).toBe('/onboarding');
@@ -222,6 +241,7 @@ describe('Onboarding/Index', () => {
         fireEvent.click(screen.getByRole('button', { name: 'new to running' }));
         fireEvent.click(screen.getByRole('button', { name: 'skip for now' }));
         fireEvent.click(screen.getByRole('button', { name: 'skip for now' }));
+        finishFromNudge();
 
         const call = lastPostCall();
         expect(call?.[1]).toEqual({});
@@ -239,6 +259,7 @@ describe('Onboarding/Index', () => {
         );
         fireEvent.click(screen.getByRole('button', { name: 'skip this' }));
         fireEvent.click(screen.getByRole('button', { name: 'skip for now' }));
+        finishFromNudge();
 
         const call = lastPostCall();
         expect(call?.[1]).toEqual({
@@ -365,6 +386,7 @@ describe('Onboarding/Index', () => {
             screen.getByRole('heading', { name: /got a race in mind\?/ }),
         ).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'skip for now' }));
+        finishFromNudge();
 
         const call = lastPostCall();
         expect(call?.[1]).toEqual({
@@ -374,5 +396,127 @@ describe('Onboarding/Index', () => {
             run_days: [0, 2],
             long_run_day: 2,
         });
+    });
+    it('lands on the nudge step once the goal step is answered or skipped', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        advanceToGoal();
+        vi.mocked(router.post).mockClear();
+
+        fireEvent.click(screen.getByRole('button', { name: 'skip for now' }));
+
+        expect(
+            screen.getByRole('heading', { name: /want temari to nudge you\?/ }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/a heads-up when a streak is about to slip/),
+        ).toBeInTheDocument();
+        expect(vi.mocked(router.post)).not.toHaveBeenCalled();
+    });
+
+    it('offers both channels on the nudge step', async () => {
+        vi.mocked(webPush.isPushSupported).mockReturnValue(true);
+        setMockPage({
+            auth: { user: makeUser() },
+            webPushPublicKey: 'test-key',
+        });
+        render(
+            <OnboardingIndex telegramConnectUrl="https://t.me/bot?start=x" />,
+        );
+        advanceToGoal();
+        fireEvent.click(screen.getByRole('button', { name: 'skip for now' }));
+
+        expect(screen.getByText('Telegram').closest('a')).toHaveAttribute(
+            'href',
+            'https://t.me/bot?start=x',
+        );
+        // The wizard has not been submitted yet, so leaving the page in place
+        // is what keeps a half-finished signup recoverable.
+        expect(screen.getByText('Telegram').closest('a')).toHaveAttribute(
+            'target',
+            '_blank',
+        );
+        expect(
+            await screen.findByRole('button', { name: /Turn on/ }),
+        ).toBeInTheDocument();
+    });
+
+    it('leaves the Telegram row out when there is no bot to connect to', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        advanceToGoal();
+        fireEvent.click(screen.getByRole('button', { name: 'skip for now' }));
+
+        expect(screen.queryByText('Telegram')).not.toBeInTheDocument();
+    });
+
+    it('reports push as already handled when the device is subscribed', async () => {
+        vi.mocked(webPush.isPushSupported).mockReturnValue(true);
+        vi.mocked(webPush.currentSubscription).mockResolvedValue(
+            {} as PushSubscription,
+        );
+        setMockPage({
+            auth: { user: makeUser() },
+            webPushPublicKey: 'test-key',
+        });
+        render(<OnboardingIndex />);
+        advanceToGoal();
+        fireEvent.click(screen.getByRole('button', { name: 'skip for now' }));
+
+        expect(
+            await screen.findByText('active on this device.'),
+        ).toBeInTheDocument();
+    });
+
+    it('finishes onboarding from the nudge step without wiring either channel', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        advanceToGoal();
+        fireEvent.click(screen.getByRole('button', { name: 'skip for now' }));
+
+        fireEvent.click(screen.getByRole('button', { name: 'skip for now' }));
+
+        expect(lastPostCall()?.[0]).toBe('/onboarding');
+    });
+
+    it('steps back from the nudge step to the goal it already holds', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        advanceToGoal();
+
+        fireEvent.change(screen.getByLabelText('race day'), {
+            target: { value: '2026-12-25' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'set my goal' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+        expect(screen.getByLabelText('race day')).toHaveValue('2026-12-25');
+    });
+    it('steps back to the goal form when the server rejects a goal field', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        advanceToGoal();
+
+        fireEvent.change(screen.getByLabelText('race day'), {
+            target: { value: '2026-12-25' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'set my goal' }));
+        finishFromNudge();
+
+        const [, , options] = vi.mocked(router.post).mock.calls.at(-1) as [
+            string,
+            Record<string, unknown>,
+            { onError?: (errors: Record<string, string>) => void },
+        ];
+        act(() =>
+            options.onError?.({
+                race_date: 'Race day has to be in the future.',
+            }),
+        );
+
+        expect(screen.getByLabelText('race day')).toHaveValue('2026-12-25');
+        expect(
+            screen.getByRole('button', { name: 'set my goal' }),
+        ).toBeInTheDocument();
     });
 });

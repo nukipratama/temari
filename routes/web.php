@@ -152,9 +152,11 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::delete('/profile/telegram', [TelegramConnectionController::class, 'destroy'])->middleware('block-demo-telegram')->name('telegram.disconnect');
     Route::post('/profile/notifications/test', NotificationTestController::class)->middleware(['throttle:6,1', 'block-demo-telegram'])->name('notifications.test');
 
-    // Browser push subscription, managed via fetch from the installed PWA. The
-    // block-demo-telegram guard is behaviourally generic (it blocks any demo
-    // mutation); the throttle caps abuse of the push send path a subscription feeds.
+    // Browser push subscription, managed via fetch from the installed PWA. Allow-listed
+    // by name in EnsureOnboarded so the wizard's last step can subscribe before the
+    // `onboarded` gate would otherwise redirect it. The block-demo-telegram guard is
+    // behaviourally generic (it blocks any demo mutation); the throttle caps abuse of
+    // the push send path a subscription feeds.
     Route::post('/profile/push', [PushSubscriptionController::class, 'store'])->middleware(['throttle:6,1', 'block-demo-telegram'])->name('push.subscribe');
     Route::delete('/profile/push', [PushSubscriptionController::class, 'destroy'])->middleware(['throttle:6,1', 'block-demo-telegram'])->name('push.unsubscribe');
 
